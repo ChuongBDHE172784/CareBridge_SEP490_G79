@@ -16,6 +16,8 @@ import type {
   ContentSource,
   CreateCommunityTopicPayload,
   UpdateCommunityTopicPayload,
+  AdminChecklistTemplate,
+  ChecklistTemplateStatus,
 } from '../models/content';
 
 export async function fetchContentList(params: {
@@ -172,6 +174,38 @@ export async function uploadContentImage(file: File): Promise<string> {
     { headers: { 'Content-Type': undefined } },
   );
   return res.data.data.presignedUrl;
+}
+
+/** Story 6.9 read-only admin projection with real template status and item counts. */
+export async function fetchAdminChecklists(params: {
+  stage?: ContentStage;
+  status?: ChecklistTemplateStatus;
+  page?: number;
+  size?: number;
+} = {}): Promise<PaginatedResponse<AdminChecklistTemplate>> {
+  const res = await apiClient.get<
+    ApiResponse<AdminChecklistTemplate[]> & {
+      page: number;
+      size: number;
+      totalElements: number;
+      totalPages: number;
+    }
+  >('/api/v1/admin/content/checklists', {
+    params: {
+      ...(params.stage ? { stage: params.stage } : {}),
+      ...(params.status ? { status: params.status } : {}),
+      page: params.page ?? 0,
+      size: params.size ?? 10,
+    },
+  });
+  const body = res.data;
+  return {
+    content: body.data ?? [],
+    number: body.page ?? (params.page ?? 0),
+    size: body.size ?? (params.size ?? 10),
+    totalElements: body.totalElements ?? 0,
+    totalPages: body.totalPages ?? 0,
+  };
 }
 
 export interface CreateContentResult {

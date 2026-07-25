@@ -41,6 +41,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
+05_Development/CareBridgeAITriageService/.pytest-tmp-*/
 .mypy_cache/
 .ruff_cache/
 .coverage

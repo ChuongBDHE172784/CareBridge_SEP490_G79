@@ -26,7 +26,9 @@ class CareFacilityCanonicalMigrationIntegrationTest {
 
     @BeforeEach
     void resetSchema() throws Exception {
-        execute("DROP SCHEMA public CASCADE; CREATE SCHEMA public");
+        execute("DROP SCHEMA IF EXISTS carebridge_migration_bridge CASCADE");
+        execute("DROP SCHEMA public CASCADE");
+        execute("CREATE SCHEMA public");
     }
 
     @Test

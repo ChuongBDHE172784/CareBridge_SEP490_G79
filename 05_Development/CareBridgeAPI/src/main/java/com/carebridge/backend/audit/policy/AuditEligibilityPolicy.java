@@ -50,6 +50,7 @@ public class AuditEligibilityPolicy {
             AuditAction.DIRECT_CALL_ACCESS_DENIED,
             AuditAction.DIRECT_CALL_MISSED_BY_TIMEOUT,
             AuditAction.FIREBASE_CUSTOM_TOKEN_ISSUED,
+            AuditAction.CHECKLIST_ITEM_ADDED,
             AuditAction.SAFETY_MONITORING_ENABLED,
             AuditAction.SAFETY_MONITORING_DISABLED,
             AuditAction.SAFETY_EVENT_RECORDED,

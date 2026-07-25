@@ -10,7 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Component
@@ -40,7 +40,8 @@ public class BabyJourneyLinkagePolicy {
                 .orElseThrow(BabyJourneyLinkagePolicy::notEligible);
         if (!ownerId.equals(evidence.getOwnerUserId())
                 || evidence.getOutcomeType() != PregnancyOutcomeType.LIVE_BIRTH
-                || evidence.getOutcomeType() != selected.getPregnancyOutcome()) {
+                || evidence.getOutcomeType() != selected.getPregnancyOutcome()
+                || !Objects.equals(evidence.getOutcomeDate(), selected.getPregnancyOutcomeDate())) {
             throw notEligible();
         }
         return selected;
@@ -53,6 +54,7 @@ public class BabyJourneyLinkagePolicy {
         return evidenceRepository.findFirstByJourneyIdOrderByRevisionNumberDesc(journey.getId())
                 .filter(e -> journey.getOwnerUserId().equals(e.getOwnerUserId()))
                 .filter(e -> e.getOutcomeType() == PregnancyOutcomeType.LIVE_BIRTH)
+                .filter(e -> Objects.equals(e.getOutcomeDate(), journey.getPregnancyOutcomeDate()))
                 .isPresent();
     }
 

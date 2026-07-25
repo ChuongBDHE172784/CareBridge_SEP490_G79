@@ -12,6 +12,8 @@ import com.carebridge.backend.journey.dto.RecordPregnancyOutcomeRequest;
 import com.carebridge.backend.journey.dto.PregnancyOutcomeResponse;
 import com.carebridge.backend.journey.service.IJourneyService;
 import com.carebridge.backend.journey.service.IJourneyTransitionService;
+import com.carebridge.backend.journey.service.IJourneyTimelineService;
+import com.carebridge.backend.journey.dto.JourneyTimelinePageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -34,6 +36,7 @@ public class JourneyController {
 
     private final IJourneyService journeyService;
     private final IJourneyTransitionService journeyTransitionService;
+    private final IJourneyTimelineService journeyTimelineService;
 
     // UC22: Create mother journey
     @PostMapping
@@ -83,6 +86,18 @@ public class JourneyController {
         var history = journeyService.getHistory(
                 ownerId, journeyId, PageRequest.of(page, size));
         return ResponseEntity.ok(ApiResponse.success(history));
+    }
+
+    @GetMapping("/{journeyId}/timeline")
+    @PreAuthorize("hasRole('MOTHER')")
+    public ResponseEntity<ApiResponse<JourneyTimelinePageResponse>> getTimeline(
+            @PathVariable UUID journeyId,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int size,
+            Principal principal) {
+        var ownerId = SecurityUtils.requireCurrentUserId(principal);
+        return ResponseEntity.ok(ApiResponse.success(journeyTimelineService.getTimeline(
+                ownerId, journeyId, PageRequest.of(page, size))));
     }
 
     // UC24: View mother journey dashboard — /me pattern prevents IDOR (ADR-JOURNEY-003-003)

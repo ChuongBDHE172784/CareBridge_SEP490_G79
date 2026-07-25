@@ -32,6 +32,9 @@ public class StructuredIntakeData {
     @Column(name = "emergency_flag", nullable = false)
     private boolean emergencyFlag;
 
+    @Column(name = "emergency", nullable = false)
+    private boolean emergency;
+
     @Column(name = "extracted_at", nullable = false)
     private Instant extractedAt;
 

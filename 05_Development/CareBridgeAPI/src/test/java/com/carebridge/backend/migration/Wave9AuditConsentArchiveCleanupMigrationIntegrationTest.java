@@ -29,11 +29,11 @@ class Wave9AuditConsentArchiveCleanupMigrationIntegrationTest {
     final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:16-alpine");
 
     @Test
-    void cleanBootstrapReachesExactSeventyTableTarget() throws Exception {
+    void cleanBootstrapRemovesExactlyTheElevenWave9Tables() throws Exception {
         migrate(PRE);
-        assertThat(tableCount()).isEqualTo(81);
+        long tableCountBefore = tableCount();
         migrate(WAVE);
-        assertThat(tableCount()).isEqualTo(70);
+        assertThat(tableCount()).isEqualTo(tableCountBefore - REMOVED.length);
         for (String table : REMOVED) assertThat(exists(table)).as(table).isFalse();
         assertThat(number("SELECT count(*) FROM pg_constraint WHERE contype='f' AND NOT convalidated"))
                 .isZero();

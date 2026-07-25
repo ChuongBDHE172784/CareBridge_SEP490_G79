@@ -17,6 +17,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 class Wave4TriageKnowledgeCleanupMigrationIntegrationTest {
 
     private static final MigrationVersion PRE = MigrationVersion.fromVersion("20260722231300");
+    private static final MigrationVersion WAVE_INPUT = MigrationVersion.fromVersion("20260722231360");
     private static final MigrationVersion WAVE = MigrationVersion.fromVersion("20260722231400");
     private static final String[] REMOVED = {
         "intake_sessions", "structured_intake_data", "evidence_sources",
@@ -28,10 +29,10 @@ class Wave4TriageKnowledgeCleanupMigrationIntegrationTest {
 
     @Test
     void cleanBootstrapRemovesFiveWave4Tables() throws Exception {
-        migrate(PRE);
-        assertThat(tableCount()).isEqualTo(111);
+        migrate(WAVE_INPUT);
+        long tableCountBefore = tableCount();
         migrate(WAVE);
-        assertThat(tableCount()).isEqualTo(106);
+        assertThat(tableCount()).isEqualTo(tableCountBefore - REMOVED.length);
         for (String table : REMOVED) assertThat(exists(table)).as(table).isFalse();
         assertThat(number("SELECT count(*) FROM pg_constraint WHERE contype='f' AND NOT convalidated"))
                 .isZero();
@@ -105,14 +106,14 @@ class Wave4TriageKnowledgeCleanupMigrationIntegrationTest {
                 .locations("classpath:db/migration").target(target).load().migrate();
     }
 
-    private long tableCount() throws Exception {
-        return number("SELECT count(*) FROM information_schema.tables "
-                + "WHERE table_schema='public' AND table_type='BASE TABLE'");
-    }
-
     private boolean exists(String table) throws Exception {
         try (Connection c=connection(); Statement s=c.createStatement(); ResultSet r=s.executeQuery(
                 "SELECT to_regclass('public."+table+"') IS NOT NULL")) { r.next(); return r.getBoolean(1); }
+    }
+
+    private long tableCount() throws Exception {
+        return number("SELECT count(*) FROM information_schema.tables "
+                + "WHERE table_schema='public' AND table_type='BASE TABLE'");
     }
 
     private long number(String sql) throws Exception {

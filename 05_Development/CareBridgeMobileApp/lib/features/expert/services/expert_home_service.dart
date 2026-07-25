@@ -20,7 +20,9 @@ class ExpertHomeService {
   Future<ExpertHomeSnapshot> loadSnapshot() async {
     ExpertHomeProfile profile = const ExpertHomeProfile();
     var online = false;
+    var requestCount = 0;
     var questionCount = 0;
+    ExpertConsultation? nextConsultation;
     final supportRequests = <ExpertSupportRequest>[];
 
     try {
@@ -44,6 +46,27 @@ class ExpertHomeService {
             !now.isBefore(start) &&
             !now.isAfter(end);
       });
+    } catch (_) {}
+
+    try {
+      final summaryJson = await api.get(
+        '/api/v1/consultation-requests/pending-summary',
+      );
+      requestCount =
+          ((summaryJson['data'] as Map<String, dynamic>?)?['pendingCount']
+                  as num?)
+              ?.toInt() ??
+          0;
+      final requestsJson = await api.get(
+        '/api/v1/consultation-requests/assigned?status=PENDING&page=0&size=5',
+      );
+      final rows =
+          (requestsJson['data'] ?? requestsJson['content']) as List? ?? [];
+      if (rows.isNotEmpty) {
+        nextConsultation = ExpertConsultation.fromJson(
+          rows.first as Map<String, dynamic>,
+        );
+      }
     } catch (_) {}
 
     try {
@@ -72,7 +95,9 @@ class ExpertHomeService {
     return ExpertHomeSnapshot(
       profile: profile,
       online: online,
+      requestCount: requestCount,
       questionCount: questionCount,
+      nextConsultation: nextConsultation,
       supportRequests: supportRequests,
     );
   }
@@ -93,13 +118,17 @@ class ExpertHomeService {
 class ExpertHomeSnapshot {
   final ExpertHomeProfile profile;
   final bool online;
+  final int requestCount;
   final int questionCount;
+  final ExpertConsultation? nextConsultation;
   final List<ExpertSupportRequest> supportRequests;
 
   const ExpertHomeSnapshot({
     required this.profile,
     required this.online,
+    this.requestCount = 0,
     required this.questionCount,
+    this.nextConsultation,
     required this.supportRequests,
   });
 }
@@ -123,6 +152,28 @@ class ExpertHomeProfile {
           : specialty?.isNotEmpty == true
           ? specialty!
           : 'Chuyên gia CareBridge',
+    );
+  }
+}
+
+class ExpertConsultation {
+  final String motherName;
+  final String topic;
+  final String timeLabel;
+
+  const ExpertConsultation({
+    required this.motherName,
+    required this.topic,
+    required this.timeLabel,
+  });
+
+  factory ExpertConsultation.fromJson(Map<String, dynamic> json) {
+    final created = DateTime.tryParse(json['createdAt'] as String? ?? '');
+    return ExpertConsultation(
+      motherName:
+          json['counterpartDisplayName'] as String? ?? 'Người dùng CareBridge',
+      topic: json['topic'] as String? ?? 'Tư vấn sức khỏe',
+      timeLabel: created == null ? 'Mới' : _timeAgo(created),
     );
   }
 }

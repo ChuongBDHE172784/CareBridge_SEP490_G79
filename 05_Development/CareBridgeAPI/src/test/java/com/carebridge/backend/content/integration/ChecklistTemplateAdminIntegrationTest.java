@@ -15,7 +15,7 @@ import com.carebridge.backend.checklist.entity.UserChecklistItem;
 import com.carebridge.backend.content.entity.ChecklistItem;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
 import com.carebridge.backend.content.entity.ContentStage;
-import com.carebridge.backend.content.entity.ContentStatus;
+import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
 import com.carebridge.backend.content.repository.ChecklistItemRepository;
 import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
 import com.carebridge.backend.journey.entity.JourneyStatus;
@@ -60,15 +60,15 @@ class ChecklistTemplateAdminIntegrationTest extends AbstractPostgresIntegrationT
     void authenticatedListing_returnsOnlyApprovedTemplatesWithAndWithoutStage() throws Exception {
         String token = seedUser("chk.list@test.com", Role.MOTHER);
         ChecklistTemplate approvedPregnancy = checklistTemplateRepository.saveAndFlush(
-                template("Public approved pregnancy", ContentStage.PREGNANCY, ContentStatus.APPROVED));
+                template("Public approved pregnancy", ContentStage.PREGNANCY, ChecklistTemplateStatus.APPROVED));
         ChecklistTemplate approvedPostpartum = checklistTemplateRepository.saveAndFlush(
-                template("Public approved postpartum", ContentStage.POSTPARTUM, ContentStatus.APPROVED));
+                template("Public approved postpartum", ContentStage.POSTPARTUM, ChecklistTemplateStatus.APPROVED));
         ChecklistTemplate draft = checklistTemplateRepository.saveAndFlush(
-                template("Hidden draft", ContentStage.PREGNANCY, ContentStatus.DRAFT));
+                template("Hidden draft", ContentStage.PREGNANCY, ChecklistTemplateStatus.DRAFT));
         ChecklistTemplate pending = checklistTemplateRepository.saveAndFlush(
-                template("Hidden pending", ContentStage.PREGNANCY, ContentStatus.PENDING_REVIEW));
+                template("Hidden pending", ContentStage.PREGNANCY, ChecklistTemplateStatus.PENDING_REVIEW));
         ChecklistTemplate archived = checklistTemplateRepository.saveAndFlush(
-                template("Hidden archived", ContentStage.PREGNANCY, ContentStatus.ARCHIVED));
+                template("Hidden archived", ContentStage.PREGNANCY, ChecklistTemplateStatus.ARCHIVED));
 
         checklistItemRepository.saveAllAndFlush(List.of(
                 item(approvedPregnancy, "Visible pregnancy item", 1),
@@ -115,7 +115,7 @@ class ChecklistTemplateAdminIntegrationTest extends AbstractPostgresIntegrationT
                 .filter(t -> "Checklist khám thai tháng 3".equals(t.getName())).toList();
         assertThat(templates).hasSize(1);
         ChecklistTemplate saved = templates.get(0);
-        assertThat(saved.getStatus()).isEqualTo(ContentStatus.DRAFT);
+        assertThat(saved.getStatus()).isEqualTo(ChecklistTemplateStatus.DRAFT);
         List<ChecklistItem> items = checklistItemRepository.findByTemplate_IdOrderByOrder(saved.getId());
         assertThat(items).hasSize(2);
     }
@@ -146,6 +146,49 @@ class ChecklistTemplateAdminIntegrationTest extends AbstractPostgresIntegrationT
                 .containsExactly("Mục mới 1", "Mục mới 2", "Mục mới 3");
     }
 
+    @Test
+    void update_preservesReferencedEntryIdAndSoftDeactivatesOmittedEntry() throws Exception {
+        String email = "chk.identity@test.com";
+        String token = seedUser(email, Role.CONTENT_ADMIN);
+        User admin = userRepository.findByEmailIgnoreCase(email).orElseThrow();
+        ChecklistTemplate template = checklistTemplateRepository.saveAndFlush(
+                draftTemplate("Identity-preserving update"));
+        ChecklistItem retained = checklistItemRepository.saveAndFlush(
+                item(template, "Retained entry", 1));
+        ChecklistItem omitted = checklistItemRepository.saveAndFlush(
+                item(template, "Omitted entry", 2));
+        UserChecklistItem imported = userChecklistItemRepository.saveAndFlush(
+                UserChecklistItem.builder()
+                        .ownerUserId(admin.getId())
+                        .templateItemId(retained.getId())
+                        .itemText(retained.getItemText())
+                        .itemOrder(retained.getOrder())
+                        .build());
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put(BASE_URL + "/{id}", template.getId()).with(csrf())
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"name":"Identity-preserving update","description":"Updated",
+                                 "stage":"PREGNANCY","status":"DRAFT",
+                                 "items":[{"id":"%s","itemText":"Retained entry updated","order":1,"isRequired":true},
+                                          {"itemText":"New entry","order":2,"isRequired":false}]}
+                                """.formatted(retained.getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.items[0].id").value(retained.getId().toString()));
+
+        ChecklistItem retainedAfter = checklistItemRepository.findById(retained.getId()).orElseThrow();
+        ChecklistItem omittedAfter = checklistItemRepository.findById(omitted.getId()).orElseThrow();
+        assertThat(retainedAfter.getItemText()).isEqualTo("Retained entry updated");
+        assertThat(retainedAfter.getIsActive()).isTrue();
+        assertThat(omittedAfter.getIsActive()).isFalse();
+        assertThat(checklistItemRepository.findByTemplate_IdOrderByOrder(template.getId())).hasSize(2);
+        assertThat(checklistItemRepository.findAllByTemplateIdOrderByOrder(template.getId())).hasSize(3);
+        assertThat(userChecklistItemRepository.findById(imported.getId()).orElseThrow().getTemplateItemId())
+                .isEqualTo(retained.getId());
+    }
+
     // CHKTPL-TC-INT-003
     @Test
     void archive_keepsChecklistItemsRowCountUnchanged() throws Exception {
@@ -161,7 +204,7 @@ class ChecklistTemplateAdminIntegrationTest extends AbstractPostgresIntegrationT
                 .andExpect(status().isOk());
 
         ChecklistTemplate persisted = checklistTemplateRepository.findById(template.getId()).orElseThrow();
-        assertThat(persisted.getStatus()).isEqualTo(ContentStatus.ARCHIVED);
+        assertThat(persisted.getStatus()).isEqualTo(ChecklistTemplateStatus.ARCHIVED);
         assertThat(checklistItemRepository.findByTemplate_IdOrderByOrder(template.getId())).hasSize(2);
     }
 
@@ -180,7 +223,7 @@ class ChecklistTemplateAdminIntegrationTest extends AbstractPostgresIntegrationT
                 .build());
 
         ChecklistTemplate template = checklistTemplateRepository.saveAndFlush(
-                template("Import source", ContentStage.PREGNANCY, ContentStatus.APPROVED));
+                template("Import source", ContentStage.PREGNANCY, ChecklistTemplateStatus.APPROVED));
         ChecklistItem templateItem = checklistItemRepository.saveAndFlush(item(template, "Mục nhập khẩu", 1));
 
         // MOTHER imports the template item into her personal checklist (real UC-50 endpoint)
@@ -214,10 +257,10 @@ class ChecklistTemplateAdminIntegrationTest extends AbstractPostgresIntegrationT
     }
 
     private ChecklistTemplate draftTemplate(String name) {
-        return template(name, ContentStage.PREGNANCY, ContentStatus.DRAFT);
+        return template(name, ContentStage.PREGNANCY, ChecklistTemplateStatus.DRAFT);
     }
 
-    private ChecklistTemplate template(String name, ContentStage stage, ContentStatus status) {
+    private ChecklistTemplate template(String name, ContentStage stage, ChecklistTemplateStatus status) {
         return ChecklistTemplate.builder()
                 .name(name)
                 .stage(stage)

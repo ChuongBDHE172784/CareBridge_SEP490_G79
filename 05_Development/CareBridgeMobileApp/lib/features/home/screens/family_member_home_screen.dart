@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../auth/screens/account_profile_screen.dart';
-import '../../familySync/screens/care_groups_screen.dart';
 import '../../familySync/screens/my_care_groups_screen.dart';
-import '../../familySync/screens/pending_invitations_screen.dart';
 import '../../familySync/services/family_home_service.dart';
 import '../../notification/screens/notification_center_screen.dart';
 
@@ -32,12 +30,12 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
   static const _error = Color(0xFFBA1A1A);
   static const _errorContainer = Color(0xFFFFDAD6);
   static List<BoxShadow> get _softShadow => [
-        BoxShadow(
-          color: const Color(0xFF5A463F).withValues(alpha: 0.06),
-          blurRadius: 22,
-          offset: const Offset(0, 4),
-        ),
-      ];
+    BoxShadow(
+      color: const Color(0xFF5A463F).withValues(alpha: 0.06),
+      blurRadius: 22,
+      offset: const Offset(0, 4),
+    ),
+  ];
 
   FamilyHomeSnapshot? _snapshot;
   bool _loading = true;
@@ -287,11 +285,7 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
                   children: [
                     Row(
                       children: [
-                        const Icon(
-                          Icons.schedule,
-                          size: 18,
-                          color: _secondary,
-                        ),
+                        const Icon(Icons.schedule, size: 18, color: _secondary),
                         const SizedBox(width: 8),
                         Text(
                           _timeLabel(schedule?.dueAt),
@@ -434,11 +428,9 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
   }
 
   void _openGroups() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const MyCareGroupsScreen(),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const MyCareGroupsScreen()));
   }
 
   String _timeLabel(DateTime? dueAt) {
@@ -616,8 +608,9 @@ class _BottomNavItem extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
         color: active
-            ? _FamilyMemberHomeScreenState._primaryContainer
-                .withValues(alpha: 0.18)
+            ? _FamilyMemberHomeScreenState._primaryContainer.withValues(
+                alpha: 0.18,
+              )
             : Colors.transparent,
         borderRadius: BorderRadius.circular(32),
       ),

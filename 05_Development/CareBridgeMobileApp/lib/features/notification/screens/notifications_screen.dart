@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/network/api_client.dart';
 import '../models/notification_model.dart';
 import '../services/notification_service.dart';
 import 'notification_detail_screen.dart';
 import '../../familySync/screens/care_group_invitation_screen.dart';
 import '../../familySync/models/care_group_model.dart';
+import '../routing/consultation_notification_routing.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -290,7 +292,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       padding: const EdgeInsets.only(bottom: 16),
       child: GestureDetector(
         onTap: () {
-          if (notification.type == 'GROUP_INVITE' &&
+          final consultationRoute = resolveNotificationRoute(notification);
+          if (consultationRoute != null) {
+            context.push(consultationRoute);
+          } else if (notification.type == 'GROUP_INVITE' &&
               notification.referenceId != null) {
             final pendingInvite = PendingInvitation(
               groupId: notification.referenceId!,

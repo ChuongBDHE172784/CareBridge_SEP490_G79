@@ -18,6 +18,8 @@ class RemainingUnusedCleanupMigrationIntegrationTest {
 
     private static final MigrationVersion PRE_CLEANUP =
             MigrationVersion.fromVersion("20260722020900");
+    private static final MigrationVersion CLEANUP_INPUT =
+            MigrationVersion.fromVersion("20260722020950");
     private static final MigrationVersion CLEANUP =
             MigrationVersion.fromVersion("20260722021000");
     private static final String[] REMOVED = {
@@ -34,25 +36,24 @@ class RemainingUnusedCleanupMigrationIntegrationTest {
 
     @BeforeEach
     void resetSchema() throws Exception {
-        execute("DROP SCHEMA public CASCADE; CREATE SCHEMA public");
+        execute("DROP SCHEMA IF EXISTS carebridge_migration_bridge CASCADE");
+        execute("DROP SCHEMA public CASCADE");
+        execute("CREATE SCHEMA public");
     }
 
     @Test
     void cleanBootstrapAcceptsOnlyKnownLiveOnlyAbsences() throws Exception {
-        migrateTo(PRE_CLEANUP);
+        migrateTo(CLEANUP_INPUT);
+        int tableCountBefore = publicTableCount();
+        int presentCandidateCount = existingTableCount(REMOVED);
         migrateTo(CLEANUP);
 
         for (String table : REMOVED) assertThat(exists(table)).as(table).isFalse();
         assertThat(exists("expert_credentials")).isTrue();
         assertThat(exists("contribution_points")).isTrue();
-        assertThat(Integer.parseInt(scalar("""
-                SELECT count(*)
-                  FROM information_schema.tables
-                 WHERE table_schema = 'public'
-                   AND table_type = 'BASE TABLE'
-                """)))
+        assertThat(publicTableCount())
                 .as("clean-bootstrap public base-table count")
-                .isEqualTo(102);
+                .isEqualTo(tableCountBefore - presentCandidateCount);
     }
 
     @Test
@@ -236,6 +237,23 @@ class RemainingUnusedCleanupMigrationIntegrationTest {
 
     private boolean exists(String relation) throws Exception {
         return "t".equals(scalar("SELECT to_regclass('public." + relation + "') IS NOT NULL"));
+    }
+
+    private int publicTableCount() throws Exception {
+        return Integer.parseInt(scalar("""
+                SELECT count(*)
+                  FROM information_schema.tables
+                 WHERE table_schema = 'public'
+                   AND table_type = 'BASE TABLE'
+                """));
+    }
+
+    private int existingTableCount(String[] tables) throws Exception {
+        int count = 0;
+        for (String table : tables) {
+            if (exists(table)) count++;
+        }
+        return count;
     }
 
     private String scalar(String sql) throws Exception {

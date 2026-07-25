@@ -1,4 +1,4 @@
-# CareBridge Database Redesign — Tổng hợp thay đổi schema 70 bảng
+# CareBridge Database Redesign — 70 bảng core + 3 Release-1 extensions
 
 > Cập nhật theo nhánh `integration/db-redesign-70`, merge commit `6f80fa73`.
 >
@@ -8,17 +8,17 @@
 
 | Hạng mục | Trước redesign | Target mới |
 |---|---:|---:|
-| Tổng số base tables | 127 | 70 |
-| Business/application tables | — | 69 |
+| Tổng số base tables | 127 | 73 (70 core + 3 extensions) |
+| Business/application tables | — | 72 (69 core + 3 extensions) |
 | Technical tables | — | 1 (`flyway_schema_history`) |
-| Số bảng giảm | — | 57 |
+| Số bảng giảm | — | 54 deployed (57 ở core design) |
 | Bảng giữ nguyên identity | — | 28 |
-| Bảng tạo mới hoặc rebuild | — | 42 |
+| Bảng tạo mới hoặc rebuild | — | 42 core + 3 extensions |
 | Nguồn dữ liệu được merge | — | 74/74 |
 | Drop candidates cần evidence | — | 25 |
 | Invalid merge trong thiết kế đã duyệt | — | 0 |
 
-Target 70 thay thế target 65 trước đó. `care_items` và `legacy_archived_records` không còn trong target; lifecycle được tách thành các bảng chuyên biệt. `triage_session_evidence` được bổ sung để claim/citation có thể query, index và audit.
+Target 70 core thay thế target 65 trước đó. `care_items` và `legacy_archived_records` không còn trong core target; lifecycle được tách thành các bảng chuyên biệt. `triage_session_evidence` được bổ sung để claim/citation có thể query, index và audit. Epic 6 bổ sung ba Release-1 extension đã duyệt, nên inventory triển khai là **70 core + 3 extensions** thay vì mô tả sai là 70 bảng tổng cộng.
 
 ## 2. Nguyên tắc thiết kế chính
 
@@ -35,7 +35,7 @@ Target 70 thay thế target 65 trước đó. `care_items` và `legacy_archived_
 - Safety response, delivery và retry là từng row, có idempotency và per-device uniqueness.
 - Không dùng `DROP CASCADE`; destructive migration phải kiểm tra dữ liệu và dependency trước.
 
-## 3. Danh sách chính xác 70 bảng target
+## 3. Danh sách chính xác 70 bảng core
 
 ### Person / Care Subject — 2
 
@@ -151,6 +151,14 @@ Target 70 thay thế target 65 trước đó. `care_items` và `legacy_archived_
 68. `archived_realtime_records`
 69. `archived_partner_records`
 70. `flyway_schema_history`
+
+### 3.1. Ba Release-1 extensions đã duyệt
+
+71. `expert_consultation_requests`
+72. `consultation_context_shares`
+73. `consultation_context_citations`
+
+Ba extension giữ request lifecycle, consented context snapshot và approved citation snapshot cho Epic 6. Chúng được kiểm kê ngoài core baseline nhưng nằm trong schema Release 1; validation phải chứng minh đúng **70 core + 3 extensions**.
 
 ## 4. Thay đổi theo domain
 
@@ -380,32 +388,27 @@ Các bảng dưới đây không được coi là `DROP_FINAL` chỉ vì có tê
 |---|---|
 | PostgreSQL disposable container | PASS |
 | Flyway clean bootstrap | PASS |
-| Số migration được validate/applied | 138 |
-| Clean bootstrap table count | 70 |
-| Business tables | 69 |
+| Số migration được validate/applied | 164 |
+| Clean bootstrap table count | 73 (70 core + 3 extensions) |
+| Business tables | 72 (69 core + 3 extensions) |
 | Technical tables | 1 |
 | Exact target-name comparison | PASS |
 | Backend compile | PASS |
-| Hibernate schema validation trên target 70 | PASS |
+| Hibernate schema validation trên target 73 | PASS |
 | Focused expert/file tests | PASS |
 | Web production build | PASS |
-| Full backend suite | Chưa PASS: 15 failures, 134 errors, 21 skipped trên 2.463 tests |
+| Full backend suite | PASS: 2.884 tests, 0 failures, 0 errors, 21 expected skips trên 455 suites |
 
-Container kiểm tra local `carebridge-erd70-postgres` hiện trả về đúng 70 base tables. Chưa có migration nào được chạy lên Supabase/shared production database trong quá trình tích hợp này.
+Clean bootstrap trên PostgreSQL Testcontainers hiện trả về đúng 73 base tables và exact-name test xác nhận đủ 70 core + 3 extensions, không có bảng ngoài inventory đã duyệt. 21 skips còn lại là các gate opt-in cần external database/credentials hoặc test cấp controller đã được tách riêng; toàn bộ migration tests trọng yếu chạy với `Skipped: 0`. Chưa có migration nào được chạy lên Supabase/shared production database trong quá trình tích hợp này.
 
 ## 11. Blocker và việc còn phải làm
 
-1. Cập nhật test fixture còn query trực tiếp tên bảng cũ, đặc biệt `audit_logs`.
-2. Mọi fixture tạo `users` phải tạo/link `persons` và cung cấp `person_id`.
-3. Hoàn thiện quyết định cho medical contribution: map vào canonical content/attachment/history hoặc đóng feature nhất quán trên backend, web và mobile.
-4. Rà lại access policy cho `attachments` vì legacy provider/kind/purpose/access-mode không còn toàn bộ trong target table.
-5. Sửa các integration tests đang phụ thuộc migration count/checksum cũ.
-6. Tách lỗi external configuration như Zego/Firebase khỏi hermetic database tests.
-7. Chạy lại từng domain suite, sau đó full backend suite.
-8. Chạy upgrade trên clone có dữ liệu thật; migration phải dừng nếu contribution/verification legacy còn live data chưa mapping.
-9. Chỉ cập nhật shared Supabase sau khi Hibernate validation và full regression phù hợp đã PASS.
+1. Chạy upgrade trên clone đại diện có dữ liệu thật; migration phải dừng nếu contribution/verification legacy còn live data chưa mapping hoặc reconciliation không đầy đủ.
+2. Chạy các Gate0 read-only/manifest opt-in trên target database đã chọn; không dùng database shared làm môi trường thử destructive migration.
+3. Trước khi cập nhật shared Supabase, phải có backup/rollback plan, quiesce writers và đúng một migration leader; không dùng Flyway repair hoặc chỉnh schema history để bỏ qua checksum/missing migration.
+4. Cấp external credentials riêng khi cần chạy test Cloudinary end-to-end; không đưa credential vào repository hoặc hermetic test profile.
 
-## 12. Cách kiểm tra schema 70 bảng
+## 12. Cách kiểm tra schema 70 core + 3 extensions
 
 ```sql
 SELECT
@@ -420,9 +423,9 @@ WHERE table_schema = 'public'
 Kết quả mong đợi:
 
 ```text
-business_tables = 69
+business_tables = 72
 technical_tables = 1
-total_tables = 70
+total_tables = 73
 ```
 
 Để kiểm tra exact names:
@@ -439,8 +442,8 @@ ORDER BY table_name;
 
 - Không sửa migration đã được áp dụng; luôn thêm Flyway migration mới.
 - Không bật `ddl-auto=update`, `create` hoặc `create-drop`.
-- Không thêm bảng thứ 71 nếu chưa thay đổi approved target bằng quyết định thiết kế riêng.
-- Không drop legacy table chỉ để ép count về 70.
+- Không thêm core table thứ 71 hoặc Release-1 extension thứ 4 nếu chưa thay đổi approved target bằng quyết định thiết kế riêng.
+- Không drop legacy table chỉ để ép count về target; mọi drop phải qua mapping, reconciliation và evidence gate.
 - Không dùng `DROP CASCADE`.
 - Không commit `.env`, database password, Supabase key hoặc dump chứa dữ liệu thật.
 - Mỗi domain mapping phải có focused test và Hibernate validation.
@@ -455,4 +458,3 @@ ORDER BY table_name;
 - `FINAL_CLEANUP_LIVE_RECONCILIATION.md`: live-like reconciliation evidence.
 - `FINAL_CLEANUP_CANONICAL_ENUM_REVIEW.md`: canonical enum decisions.
 - `BATCH5_LIVE_RECONCILIATION.md`: cleanup reconciliation notes.
-

@@ -2,7 +2,6 @@ package com.carebridge.backend.masterdata.dto.response;
 
 import com.carebridge.backend.masterdata.entity.AdministrativeArea;
 import com.carebridge.backend.masterdata.entity.Specialty;
-import com.carebridge.backend.masterdata.entity.Ward;
 import com.carebridge.backend.map.entity.CareFacility;
 import org.springframework.stereotype.Component;
 
@@ -49,12 +48,13 @@ public class MasterDataMapper {
    .build();
  }
 
- public WardResponse toWardResponse(Ward entity) {
+ public WardResponse toWardResponse(
+   AdministrativeArea entity, String districtId, String provinceId) {
   if (entity == null) return null;
   return WardResponse.builder()
-   .wardId(entity.getWardId())
-   .districtId(entity.getDistrictId())
-   .provinceId(entity.getProvinceId())
+   .wardId(entity.getLegacyCode())
+   .districtId(districtId)
+   .provinceId(provinceId)
    .name(entity.getName())
    .nameEn(entity.getNameEn())
    .build();

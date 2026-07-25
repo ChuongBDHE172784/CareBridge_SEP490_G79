@@ -28,10 +28,10 @@ carebridge:
     enabled: true
   hermetic:
     datasource:
-      url: ${CAREBRIDGE_HERMETIC_DB_URL:jdbc:postgresql://localhost:5433/carebridge_test}
-      username: ${CAREBRIDGE_HERMETIC_DB_USERNAME:carebridge}
-      password: ${CAREBRIDGE_HERMETIC_DB_PASSWORD:carebridge}
-      database-name: ${CAREBRIDGE_HERMETIC_DB_DATABASE_NAME:carebridge_test}
-      schema: ${CAREBRIDGE_HERMETIC_DB_SCHEMA:carebridge_test}
+      url: ${CAREBRIDGE_HERMETIC_DB_URL}
+      username: ${CAREBRIDGE_HERMETIC_DB_USERNAME}
+      password: ${CAREBRIDGE_HERMETIC_DB_PASSWORD}
+      database-name: ${CAREBRIDGE_HERMETIC_DB_DATABASE_NAME}
+      schema: ${CAREBRIDGE_HERMETIC_DB_SCHEMA}
   dev-seed:
     enabled: false

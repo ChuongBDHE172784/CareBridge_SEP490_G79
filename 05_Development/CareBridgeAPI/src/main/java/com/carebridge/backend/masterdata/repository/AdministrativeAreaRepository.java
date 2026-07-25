@@ -2,6 +2,7 @@ package com.carebridge.backend.masterdata.repository;
 
 import com.carebridge.backend.masterdata.entity.AdministrativeArea;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -11,6 +12,11 @@ public interface AdministrativeAreaRepository
         extends JpaRepository<AdministrativeArea, UUID> {
 
     List<AdministrativeArea> findByAreaTypeOrderByNameAsc(String areaType);
+
+    Optional<AdministrativeArea> findByCode(String code);
+
+    List<AdministrativeArea> findByAreaTypeAndParentAreaIdOrderByNameAsc(
+            String areaType, UUID parentAreaId);
 
     @Query("""
         SELECT district FROM AdministrativeArea district

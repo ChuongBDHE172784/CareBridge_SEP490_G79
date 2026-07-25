@@ -31,6 +31,7 @@ class CanonicalTriageMigrationIntegrationTest {
     @BeforeEach
     void resetDisposableSchema() throws SQLException {
         try (Connection connection = connection(); var statement = connection.createStatement()) {
+            statement.execute("DROP SCHEMA IF EXISTS carebridge_migration_bridge CASCADE");
             statement.execute("DROP SCHEMA public CASCADE");
             statement.execute("CREATE SCHEMA public");
         }

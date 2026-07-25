@@ -12,7 +12,6 @@ import com.carebridge.backend.notification.service.impl.NotificationPreferenceSe
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -97,9 +96,6 @@ class NotificationPreferenceServiceImplTest {
     @DisplayName("TC-UNIT-002: updatePreferences creates new row when none exists (upsert)")
     void updatePreferences_noExistingRow_createsNewPreference() {
         // Given — no existing preference
-        when(preferenceRepository.findByUserIdAndNotificationType(USER_ID, NotificationType.REMINDER))
-                .thenReturn(Optional.empty());
-
         NotificationPreference savedPref = NotificationPreference.builder()
                 .preferenceId(UUID.randomUUID())
                 .userId(USER_ID)
@@ -108,7 +104,6 @@ class NotificationPreferenceServiceImplTest {
                 .emailEnabled(false)
                 .inAppEnabled(true)
                 .build();
-        when(preferenceRepository.save(any())).thenReturn(savedPref);
         when(preferenceRepository.findByUserId(USER_ID)).thenReturn(List.of(savedPref));
 
         UpdateNotificationPreferencesRequest request = new UpdateNotificationPreferencesRequest(
@@ -118,7 +113,8 @@ class NotificationPreferenceServiceImplTest {
         NotificationPreferencesResponse response = service.updatePreferences(USER_ID, request);
 
         // Then — repository.save called once
-        verify(preferenceRepository, times(1)).save(any(NotificationPreference.class));
+        verify(preferenceRepository).patchChannels(
+                USER_ID, NotificationType.REMINDER, true, false, true);
         assertThat(response.preferences()).hasSize(1);
 
         // C6: audit emitted
@@ -142,9 +138,6 @@ class NotificationPreferenceServiceImplTest {
                 .emailEnabled(true)
                 .inAppEnabled(true)
                 .build();
-        when(preferenceRepository.findByUserIdAndNotificationType(USER_ID, NotificationType.REMINDER))
-                .thenReturn(Optional.of(existing));
-
         NotificationPreference updated = NotificationPreference.builder()
                 .preferenceId(existing.getPreferenceId())
                 .userId(USER_ID)
@@ -153,7 +146,6 @@ class NotificationPreferenceServiceImplTest {
                 .emailEnabled(true)
                 .inAppEnabled(true)
                 .build();
-        when(preferenceRepository.save(any())).thenReturn(updated);
         when(preferenceRepository.findByUserId(USER_ID)).thenReturn(List.of(updated));
 
         UpdateNotificationPreferencesRequest request = new UpdateNotificationPreferencesRequest(
@@ -163,18 +155,14 @@ class NotificationPreferenceServiceImplTest {
         service.updatePreferences(USER_ID, request);
 
         // Then — captured save has pushEnabled=false
-        ArgumentCaptor<NotificationPreference> captor = ArgumentCaptor.forClass(NotificationPreference.class);
-        verify(preferenceRepository).save(captor.capture());
-        assertThat(captor.getValue().getPushEnabled()).isFalse();
+        verify(preferenceRepository).patchChannels(
+                USER_ID, NotificationType.REMINDER, false, null, null);
     }
 
     @Test
     @DisplayName("TC-UNIT-003: updatePreferences with 3 items calls save 3 times")
     void updatePreferences_multipleItems_callsSaveForEach() {
         // Given
-        when(preferenceRepository.findByUserIdAndNotificationType(any(), any()))
-                .thenReturn(Optional.empty());
-        when(preferenceRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         when(preferenceRepository.findByUserId(USER_ID)).thenReturn(List.of());
 
         UpdateNotificationPreferencesRequest request = new UpdateNotificationPreferencesRequest(List.of(
@@ -186,7 +174,8 @@ class NotificationPreferenceServiceImplTest {
         service.updatePreferences(USER_ID, request);
 
         // Then — save called exactly 3 times (one per preference item)
-        verify(preferenceRepository, times(3)).save(any(NotificationPreference.class));
+        verify(preferenceRepository, times(3)).patchChannels(
+                eq(USER_ID), any(NotificationType.class), any(), any(), any());
     }
 
     // =========================================================================

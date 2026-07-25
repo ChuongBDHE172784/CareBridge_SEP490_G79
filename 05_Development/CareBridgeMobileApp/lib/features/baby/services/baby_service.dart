@@ -67,16 +67,15 @@ class BabyService {
     await apiPost('/api/v1/babies/$babyId/archive', {});
   }
 
-  Future<BabyProfile> linkBabyToJourney({
+  Future<void> linkBabyToJourney({
     required String babyId,
     required String relatedJourneyId,
     required String submissionId,
   }) async {
-    final data = await _put('/api/v1/babies/$babyId/journey-link', {
+    await _put('/api/v1/babies/$babyId/journey-link', {
       'relatedJourneyId': relatedJourneyId,
       'submissionId': submissionId,
     });
-    return BabyProfile.fromJson(data['data'] as Map<String, dynamic>);
   }
 
   Future<BabyProfilePage> listJourneyBabies(
@@ -88,6 +87,36 @@ class BabyService {
       '/api/v1/journeys/$journeyId/babies',
       queryParams: {'page': page, 'size': size},
     );
-    return BabyProfilePage.fromJson(data['data'] as Map<String, dynamic>);
+    // The journey-scoped endpoint returns its pagination body directly,
+    // unlike the profile endpoints which use the standard `data` envelope.
+    // Accept both forms so the client remains compatible with the API
+    // contract and avoids treating a successful 200 response as a load error.
+    if (data is! Map<String, dynamic>) {
+      throw const FormatException('Invalid journey babies response');
+    }
+    final response = data;
+    final payload = response['data'];
+    final Map<String, dynamic> pageBody;
+    if (payload is Map<String, dynamic>) {
+      pageBody = payload;
+    } else if (payload is List<dynamic>) {
+      // PaginatedResponse extends ApiResponse<List<T>>, so paging metadata
+      // lives beside the list-valued `data` field.
+      pageBody = {...response, 'items': payload};
+    } else if (response['content'] is List<dynamic> ||
+        response['items'] is List<dynamic>) {
+      pageBody = response;
+    } else {
+      throw const FormatException(
+        'Journey babies response has no recognized page items',
+      );
+    }
+    if (pageBody['content'] is! List<dynamic> &&
+        pageBody['items'] is! List<dynamic>) {
+      throw const FormatException(
+        'Journey babies response has no recognized page items',
+      );
+    }
+    return BabyProfilePage.fromJson(pageBody);
   }
 }

@@ -6,9 +6,12 @@ import com.carebridge.backend.emergency.event.EmergencySessionOpened;
 import com.carebridge.backend.emergency.event.FamilyAlertSent;
 import com.carebridge.backend.emergency.service.AlertRecipientEndpoint;
 import com.carebridge.backend.emergency.service.EmergencyAlertAttemptService;
+import com.carebridge.backend.emergency.service.EmergencyAlertClaim;
+import com.carebridge.backend.emergency.service.EmergencyAlertProviderFence;
 import com.carebridge.backend.emergency.service.EmergencyAlertDeliveryPersistenceService;
 import com.carebridge.backend.emergency.service.FamilyMemberPort;
 import com.carebridge.backend.emergency.service.FcmNotificationPort;
+import com.carebridge.backend.emergency.service.FencedAlertDelivery;
 import com.carebridge.backend.emergency.service.IFamilyAlertService;
 import com.carebridge.backend.emergency.service.LocationConsentPort;
 import com.carebridge.backend.emergency.service.PreparedAlertDelivery;
@@ -36,19 +39,22 @@ public class FamilyAlertService implements IFamilyAlertService {
     private final SmsFallbackPort smsFallbackPort;
     private final ApplicationEventPublisher eventPublisher;
     private final EmergencyAlertAttemptService alertAttemptService;
+    private final EmergencyAlertProviderFence providerFence;
     private final EmergencyAlertDeliveryPersistenceService deliveryPersistenceService;
     private final AuditService auditService;
 
     @Override
     public void sendAlert(EmergencySessionOpened event) {
-        if (!alertAttemptService.claim(event.sessionId())) {
+        var claimed = alertAttemptService.claim(event.sessionId());
+        if (claimed.isEmpty()) {
             log.info("Alert attempt is complete or leased for session [{}] — skipping replay", event.sessionId());
             return;
         }
+        EmergencyAlertClaim claim = claimed.get();
 
         List<AlertRecipientEndpoint> recipients = familyMemberPort.getFamilyAlertRecipients(event.userId());
         if (recipients.isEmpty()) {
-            alertAttemptService.complete(event.sessionId(), "NO_RECIPIENTS", 0, 0, false);
+            alertAttemptService.complete(claim, "NO_RECIPIENTS", 0, 0, false);
             return;
         }
 
@@ -59,24 +65,48 @@ public class FamilyAlertService implements IFamilyAlertService {
         Map<UUID, Boolean> recipientSucceeded = new HashMap<>();
 
         for (AlertRecipientEndpoint recipient : recipients) {
+            if (!alertAttemptService.renew(claim)) {
+                log.info("Alert claim became stale or resolved before delivery intent for session [{}]",
+                        event.sessionId());
+                return;
+            }
             PreparedAlertDelivery prepared = deliveryPersistenceService.prepare(
-                    event, recipient, notificationByRecipient.get(recipient.userId()));
+                    event, recipient, notificationByRecipient.get(recipient.userId()), claim);
             notificationByRecipient.putIfAbsent(recipient.userId(), prepared.notificationRecordId());
             if (prepared.alreadySuccessful()) {
                 recipientSucceeded.merge(recipient.userId(), true, Boolean::logicalOr);
                 continue;
             }
+            Map<String, String> deliveryPayload = new HashMap<>(payload);
+            deliveryPayload.put("deliveryActionId", prepared.deliveryId().toString());
 
             auditDeliveryAttempt(event, recipient, prepared.deliveryId());
 
-            FcmDeliveryResult result;
-            try {
-                result = fcmNotificationPort.send(recipient.token(), payload);
-            } catch (Exception exception) {
-                log.warn("FCM send failed for session [{}]: {}", event.sessionId(), exception.getMessage());
-                result = FcmDeliveryResult.failed("FCM_EXCEPTION", 1);
+            var fencedDelivery = providerFence.execute(claim, () -> {
+                FcmDeliveryResult providerResult;
+                try {
+                    providerResult = fcmNotificationPort.send(
+                            recipient.token(), deliveryPayload);
+                } catch (Exception exception) {
+                    log.warn("FCM send failed for session [{}]: {}",
+                            event.sessionId(), exception.getMessage());
+                    providerResult = FcmDeliveryResult.failed("FCM_EXCEPTION", 1);
+                }
+                boolean recorded = deliveryPersistenceService.complete(prepared, claim, providerResult);
+                return new FencedAlertDelivery(providerResult, recorded);
+            });
+            if (fencedDelivery.isEmpty()) {
+                log.info("Alert claim became stale or resolved at provider fence for session [{}]",
+                        event.sessionId());
+                return;
             }
-            deliveryPersistenceService.complete(prepared.deliveryId(), result);
+            FencedAlertDelivery outcome = fencedDelivery.get();
+            if (!outcome.recorded()) {
+                log.info("Alert claim became stale or resolved after send for session [{}]",
+                        event.sessionId());
+                return;
+            }
+            FcmDeliveryResult result = outcome.result();
             recipientSucceeded.merge(recipient.userId(), result.success(), Boolean::logicalOr);
         }
 
@@ -84,8 +114,12 @@ public class FamilyAlertService implements IFamilyAlertService {
                 .filter(Boolean::booleanValue).count();
         int failedRecipients = recipientSucceeded.size() - successfulRecipients;
         String status = successfulRecipients == 0 ? "FAILED" : failedRecipients == 0 ? "SENT" : "PARTIAL";
-        alertAttemptService.complete(event.sessionId(), status,
-                successfulRecipients, failedRecipients, locationIncluded);
+        if (!alertAttemptService.complete(claim, status,
+                successfulRecipients, failedRecipients, locationIncluded)) {
+            log.info("Alert claim could not complete because its fence is stale for session [{}]",
+                    event.sessionId());
+            return;
+        }
 
         if (successfulRecipients == 0) {
             smsFallbackPort.sendFallback(event.userId(), event.sessionId(),
@@ -101,6 +135,7 @@ public class FamilyAlertService implements IFamilyAlertService {
         Map<String, String> payload = new HashMap<>();
         payload.put("type", "EMERGENCY_ALERT");
         payload.put("sessionId", event.sessionId().toString());
+        payload.put("safetyEventId", event.sessionId().toString());
         payload.put("userId", event.userId().toString());
         payload.put("triggerSource", event.triggerSource());
         payload.put("detectedAt", event.openedAt().toString());

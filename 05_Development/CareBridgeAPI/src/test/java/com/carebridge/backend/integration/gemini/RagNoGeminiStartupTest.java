@@ -1,6 +1,7 @@
 package com.carebridge.backend.integration.gemini;
 
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -9,6 +10,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.carebridge.backend.common.config.JpaAuditingConfig;
 import com.carebridge.backend.integration.gemini.controller.RagController;
 import com.carebridge.backend.integration.gemini.service.FallbackRagServiceImpl;
+import com.carebridge.backend.integration.gemini.service.RagPolicyServiceImpl;
+import com.carebridge.backend.integration.gemini.filter.RagSafetyFilter;
+import com.carebridge.backend.integration.gemini.dto.RagSafetyResult;
+import com.carebridge.backend.content.policy.LifecycleContentStageResolver;
+import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.config.MockMvcSecurityBuilderConfig;
 import com.carebridge.backend.security.entity.User;
@@ -45,7 +51,8 @@ import org.springframework.test.web.servlet.MockMvc;
         value = RagController.class,
         excludeFilters = @Filter(type = FilterType.ASSIGNABLE_TYPE, classes = JpaAuditingConfig.class)
 )
-@Import({SecurityConfig.class, FallbackRagServiceImpl.class, MockMvcSecurityBuilderConfig.class})
+@Import({SecurityConfig.class, FallbackRagServiceImpl.class, RagPolicyServiceImpl.class,
+        MockMvcSecurityBuilderConfig.class})
 class RagNoGeminiStartupTest {
 
     @Autowired
@@ -57,6 +64,12 @@ class RagNoGeminiStartupTest {
     @MockitoBean
     private UserRepository userRepository;
 
+    @MockitoBean
+    private RagSafetyFilter ragSafetyFilter;
+
+    @MockitoBean
+    private LifecycleContentStageResolver lifecycleContentStageResolver;
+
     private static final String VALID_QUERY =
             "{\"query\": \"Phù chân khi mang thai 28 tuần\", \"maxContextChunks\": 3}";
 
@@ -64,6 +77,8 @@ class RagNoGeminiStartupTest {
     @Test
     @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "MOTHER")
     void contextLoads_withNoGeminiKey_returnsFallbackResponse() throws Exception {
+        when(ragSafetyFilter.check(anyString())).thenReturn(RagSafetyResult.safe());
+        when(lifecycleContentStageResolver.resolve(any())).thenReturn(ContentStage.PREGNANCY);
         mockMvc.perform(post("/api/v1/rag/answer")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(VALID_QUERY))

@@ -13,4 +13,9 @@ public class IntakeSessionResponse {
     private String disclaimer;
     private Instant createdAt;
     private Instant completedAt;
+    private UUID journeyId;
+    private String originDashboard;
+    private UUID originReferenceId;
+    private UUID continuationToken;
+    private Instant continuationExpiresAt;
 }

@@ -78,6 +78,16 @@ void main() {
     expect(route, isNull);
   });
 
+  test('malformed consultation request identifier is rejected', () {
+    expect(
+      FcmService.resolveTapRoute({
+        'type': 'CONSULTATION_REQUEST',
+        'requestId': '../admin',
+      }),
+      isNull,
+    );
+  });
+
   test('cold-start route waits for readiness and flushes exactly once', () {
     final service = FcmService();
     final navigated = <String>[];

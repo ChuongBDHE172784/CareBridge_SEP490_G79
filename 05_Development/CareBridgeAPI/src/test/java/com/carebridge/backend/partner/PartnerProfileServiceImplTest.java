@@ -56,7 +56,7 @@ class PartnerProfileServiceImplTest {
                 .type(OrganizationType.CLINIC)
                 .address("123 Đường Test")
                 .city("Hà Nội")
-                .phone("0901234567")
+                .phone("84 90 123 4567")
                 .email("test@clinic.vn")
                 .website(null)
                 .description(null)
@@ -117,6 +117,7 @@ class PartnerProfileServiceImplTest {
         verify(partnerOrganizationRepository).save(captor.capture());
         // Oracle: ADR-003 — MUST be PENDING_APPROVAL, never APPROVED
         assertEquals(OrganizationStatus.PENDING_APPROVAL, captor.getValue().getStatus());
+        assertEquals("+84901234567", captor.getValue().getPhone());
     }
 
     // PTR-TC-002 sub: representativeUserId dari actorId param, tidak dari request body

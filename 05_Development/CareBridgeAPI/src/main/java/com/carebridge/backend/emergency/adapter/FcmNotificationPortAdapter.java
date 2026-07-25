@@ -33,6 +33,9 @@ public class FcmNotificationPortAdapter implements FcmNotificationPort {
                 ? "Người thân của bạn vừa kích hoạt chế độ khẩn cấp. Vui lòng kiểm tra ngay."
                 : "Hệ thống phát hiện dấu hiệu khẩn cấp cho người thân của bạn. Vui lòng kiểm tra ngay.";
         int sent = fcmService.sendToTokens(fcmTokens, title, body);
+        if (sent <= 0) {
+            throw new IllegalStateException("FCM reported no successful emergency deliveries");
+        }
         log.info("FCM batch dispatched to {} token(s), {} reported sent", fcmTokens.size(), sent);
     }
 

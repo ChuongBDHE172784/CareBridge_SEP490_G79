@@ -34,7 +34,7 @@ public class ChecklistTemplate {
     @Column(name = "template_id", updatable = false, nullable = false)
     private UUID id;
 
-    @Column(name = "title", length = 255)
+    @Column(name = "title", length = 500)
     private String name;
 
     @Enumerated(EnumType.STRING)
@@ -44,7 +44,11 @@ public class ChecklistTemplate {
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "content_status", nullable = false, length = 20)
-    private ContentStatus status = ContentStatus.DRAFT;
+    private ChecklistTemplateStatus status = ChecklistTemplateStatus.DRAFT;
+
+    @Builder.Default
+    @Column(name = "version", nullable = false)
+    private Integer versionNo = 1;
 
     @Builder.Default
     @Column(name = "entry_type", nullable = false, length = 30)

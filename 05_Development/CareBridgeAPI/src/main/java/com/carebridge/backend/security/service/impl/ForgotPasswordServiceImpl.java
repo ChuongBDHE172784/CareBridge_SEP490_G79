@@ -4,6 +4,7 @@ import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.common.exception.RateLimitExceededException;
 import com.carebridge.backend.common.exception.ValidationException;
+import com.carebridge.backend.common.validation.VietnamesePhoneNumbers;
 import com.carebridge.backend.security.dto.request.ForgotPasswordRequest;
 import com.carebridge.backend.security.dto.response.ForgotPasswordResponse;
 import com.carebridge.backend.security.entity.PasswordResetToken;
@@ -43,10 +44,11 @@ public class ForgotPasswordServiceImpl implements ForgotPasswordService {
     private int maxPerUser;
 
     private String normalizePhone(String phone) {
-        if (phone == null || phone.isBlank()) return null;
-        String compact = phone.replaceAll("[\\s().-]", "");
-        if (compact.startsWith("0")) return "+84" + compact.substring(1);
-        return compact.startsWith("+") ? compact : "+" + compact;
+        try {
+            return VietnamesePhoneNumbers.normalizeToE164(phone);
+        } catch (IllegalArgumentException invalidPhone) {
+            throw new ValidationException(VietnamesePhoneNumbers.INVALID_FORMAT_MESSAGE);
+        }
     }
 
     @Override

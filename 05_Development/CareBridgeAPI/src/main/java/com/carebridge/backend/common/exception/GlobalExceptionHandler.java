@@ -42,6 +42,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.util.List;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -136,7 +138,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusiness(BusinessException ex, HttpServletRequest request) {
-        logger.error("Business exception [{}]: {}", ex.getCode(), ex.getMessage(), ex);
+        logger.error("Business exception [{}]: {}", ex.getCode(), ex.getMessage());
         return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
     }
 
@@ -158,6 +160,19 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleNotFound(ResourceNotFoundException ex, HttpServletRequest request) {
         logger.error("Resource not found: {}", ex.getMessage(), ex);
         return error(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoResourceFound(
+            NoResourceFoundException ex, HttpServletRequest request) {
+        return error(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", "Resource not found", request);
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleMethodNotSupported(
+            HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
+        return error(HttpStatus.METHOD_NOT_ALLOWED, "METHOD_NOT_ALLOWED",
+                "Request method not supported", request);
     }
 
     @ExceptionHandler(CommunityTopicNotFoundException.class)
@@ -246,6 +261,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(com.carebridge.backend.directchat.exception.DirectChatException.class)
     public ResponseEntity<ErrorResponse> handleDirectChat(
             com.carebridge.backend.directchat.exception.DirectChatException ex, HttpServletRequest request) {
+        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(com.carebridge.backend.consultation.exception.ConsultationRequestException.class)
+    public ResponseEntity<ErrorResponse> handleConsultationRequest(
+            com.carebridge.backend.consultation.exception.ConsultationRequestException ex,
+            HttpServletRequest request) {
         return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
     }
 

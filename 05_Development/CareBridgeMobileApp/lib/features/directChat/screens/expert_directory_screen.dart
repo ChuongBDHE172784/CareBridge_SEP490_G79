@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/auth/auth_state.dart';
 import '../models/expert_directory_item.dart';
 import '../services/direct_chat_service.dart';
 
@@ -30,20 +31,41 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
   String? _selectedSpecialty;
   List<String> _specialties = const [];
   String? _startingChatWithExpertProfileId;
+  late String? _accountId;
 
   @override
   void initState() {
     super.initState();
+    _accountId = AuthState.instance.userId;
+    AuthState.instance.addListener(_handleAuthChanged);
     _scrollController.addListener(_onScroll);
     _load(reset: true);
   }
 
   @override
   void dispose() {
+    AuthState.instance.removeListener(_handleAuthChanged);
     _debounce?.cancel();
     _searchController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  void _handleAuthChanged() {
+    final current = AuthState.instance.userId;
+    if (current == _accountId) return;
+    _accountId = current;
+    _requestGeneration++;
+    if (!mounted) return;
+    setState(() {
+      _experts = const [];
+      _loading = false;
+      _loadingMore = false;
+      _loadMoreFailed = false;
+      _startingChatWithExpertProfileId = null;
+      _error =
+          'Phiên đăng nhập đã thay đổi. Danh sách của tài khoản trước đã được xóa.';
+    });
   }
 
   void _onScroll() {
@@ -66,6 +88,7 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
 
   Future<void> _load({required bool reset}) async {
     final generation = ++_requestGeneration;
+    final requestAccountId = AuthState.instance.userId;
     final query = _searchController.text.trim();
     final specialty = _selectedSpecialty;
     setState(() {
@@ -81,7 +104,11 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
         page: 0,
         size: 20,
       );
-      if (!mounted || generation != _requestGeneration) return;
+      if (!mounted ||
+          generation != _requestGeneration ||
+          AuthState.instance.userId != requestAccountId) {
+        return;
+      }
       setState(() {
         _experts = page.experts;
         _page = page.currentPage;
@@ -91,7 +118,11 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
       });
       _fillViewportIfNeeded(generation);
     } catch (e) {
-      if (!mounted || generation != _requestGeneration) return;
+      if (!mounted ||
+          generation != _requestGeneration ||
+          AuthState.instance.userId != requestAccountId) {
+        return;
+      }
       setState(() {
         _error = 'Không thể tải danh sách chuyên gia.';
         _loading = false;
@@ -101,6 +132,7 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
 
   Future<void> _loadMore() async {
     final generation = _requestGeneration;
+    final requestAccountId = AuthState.instance.userId;
     final query = _searchController.text.trim();
     final specialty = _selectedSpecialty;
     final nextPage = _page + 1;
@@ -115,7 +147,11 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
         page: nextPage,
         size: 20,
       );
-      if (!mounted || generation != _requestGeneration) return;
+      if (!mounted ||
+          generation != _requestGeneration ||
+          AuthState.instance.userId != requestAccountId) {
+        return;
+      }
       setState(() {
         _experts = [..._experts, ...page.experts];
         _page = page.currentPage;
@@ -124,11 +160,15 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
       });
       _fillViewportIfNeeded(generation);
     } catch (_) {
-      if (mounted && generation == _requestGeneration) {
+      if (mounted &&
+          generation == _requestGeneration &&
+          AuthState.instance.userId == requestAccountId) {
         setState(() => _loadMoreFailed = true);
       }
     } finally {
-      if (mounted && generation == _requestGeneration) {
+      if (mounted &&
+          generation == _requestGeneration &&
+          AuthState.instance.userId == requestAccountId) {
         setState(() => _loadingMore = false);
       }
     }
@@ -157,19 +197,33 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
 
   Future<void> _startChat(ExpertDirectoryItem expert) async {
     if (_startingChatWithExpertProfileId != null) return;
+    final requestAccountId = AuthState.instance.userId;
+    final generation = _requestGeneration;
     setState(() => _startingChatWithExpertProfileId = expert.expertProfileId);
     try {
       final conversation = await DirectChatService.instance
           .findOrCreateConversation(expert.expertProfileId);
-      if (!mounted) return;
+      if (!mounted ||
+          generation != _requestGeneration ||
+          AuthState.instance.userId != requestAccountId) {
+        return;
+      }
       context.push('/direct-chat/${conversation.conversationId}');
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted ||
+          generation != _requestGeneration ||
+          AuthState.instance.userId != requestAccountId) {
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Không thể mở cuộc trò chuyện: $e')),
       );
     } finally {
-      if (mounted) setState(() => _startingChatWithExpertProfileId = null);
+      if (mounted &&
+          generation == _requestGeneration &&
+          AuthState.instance.userId == requestAccountId) {
+        setState(() => _startingChatWithExpertProfileId = null);
+      }
     }
   }
 
@@ -293,8 +347,13 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
                 ),
               ),
               const SizedBox(width: 6),
-              // Directory only ever returns APPROVED experts (ADR-MEDI-001) — always true here.
-              const Icon(Icons.verified, size: 16, color: Colors.green),
+              if (expert.verificationStatus == 'APPROVED')
+                const Icon(
+                  Icons.verified,
+                  size: 18,
+                  color: Color(0xFFC98C7B),
+                  semanticLabel: 'Đã xác thực',
+                ),
             ],
           ),
           subtitle: Text(

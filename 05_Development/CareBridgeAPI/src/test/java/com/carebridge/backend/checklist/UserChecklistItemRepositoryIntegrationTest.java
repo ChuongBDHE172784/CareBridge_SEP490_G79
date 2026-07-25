@@ -7,7 +7,7 @@ import com.carebridge.backend.checklist.repository.UserChecklistItemRepository;
 import com.carebridge.backend.content.entity.ChecklistItem;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
 import com.carebridge.backend.content.entity.ContentStage;
-import com.carebridge.backend.content.entity.ContentStatus;
+import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
 import com.carebridge.backend.content.repository.ChecklistItemRepository;
 import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
 import com.carebridge.backend.journey.entity.JourneyStatus;
@@ -126,7 +126,7 @@ class UserChecklistItemRepositoryIntegrationTest extends AbstractPostgresIntegra
         ChecklistTemplate template = templateRepository.saveAndFlush(ChecklistTemplate.builder()
                 .name("Approved concurrent import")
                 .stage(ContentStage.PREGNANCY)
-                .status(ContentStatus.APPROVED)
+                .status(ChecklistTemplateStatus.APPROVED)
                 .build());
         ChecklistItem templateItem = templateItemRepository.saveAndFlush(ChecklistItem.builder()
                 .template(template)

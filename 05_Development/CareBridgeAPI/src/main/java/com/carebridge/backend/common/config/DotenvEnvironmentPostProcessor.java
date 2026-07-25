@@ -54,7 +54,7 @@ public class DotenvEnvironmentPostProcessor implements EnvironmentPostProcessor,
 
     @Override
     public int getOrder() {
-        return Ordered.LOWEST_PRECEDENCE - 1;
+        return Ordered.LOWEST_PRECEDENCE - 2;
     }
 
     static Map<String, Object> parseDotenv(Path dotenvPath) {

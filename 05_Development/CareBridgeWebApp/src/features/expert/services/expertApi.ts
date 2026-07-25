@@ -13,6 +13,7 @@ export interface ExpertProfileResponse {
 	verificationStatus: string;
 	verifiedAt: string | null;
 	ratingAvg: number | null;
+	consultationFeeVnd: number | null;
 	avatarUrl?: string | null;
 	createdAt: string;
 }
@@ -193,8 +194,10 @@ export interface HospitalResponse {
 
 export interface WardResponse {
 	wardId: string;
-	name: string;
 	districtId: string;
+	provinceId: string;
+	name: string;
+	nameEn: string | null;
 }
 
 export async function getProvinces(): Promise<ProvinceResponse[]> {
@@ -235,6 +238,7 @@ export async function createMyProfile(body: {
 	experienceYears?: number;
 	hospitalId: string;
 	consultationScope: string;
+	consultationFeeVnd?: number;
 }): Promise<ExpertProfileResponse> {
 	const { data } = await apiClient.post('/api/v1/expert/profiles', body);
 	return data.data;
@@ -246,6 +250,7 @@ export async function updateMyProfile(body: {
 	experienceYears?: number;
 	hospitalId?: string;
 	consultationScope?: string;
+	consultationFeeVnd?: number;
 }): Promise<ExpertProfileResponse> {
 	const { data } = await apiClient.patch('/api/v1/expert/profiles/me', body);
 	return data.data;

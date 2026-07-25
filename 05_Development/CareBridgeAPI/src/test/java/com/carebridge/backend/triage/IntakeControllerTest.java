@@ -9,6 +9,7 @@ import com.carebridge.backend.triage.controller.IntakeController;
 import com.carebridge.backend.triage.engine.TriageGraphService;
 import com.carebridge.backend.triage.service.ChildTriageAiClient;
 import com.carebridge.backend.triage.service.ITriageService;
+import com.carebridge.backend.triage.service.ITriageContinuationService;
 import com.carebridge.backend.triage.dto.request.StartIntakeConversationRequest;
 import com.carebridge.backend.triage.dto.response.IntakeConversationResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -42,6 +43,7 @@ class IntakeControllerTest {
 
     @Autowired private MockMvc mockMvc;
     @MockitoBean private ITriageService triageService;
+    @MockitoBean private ITriageContinuationService continuationService;
     @MockitoBean private ChildTriageAiClient childTriageAiClient;
     @MockitoBean private TriageGraphService triageGraphService;
     @MockitoBean private ObjectMapper objectMapper;

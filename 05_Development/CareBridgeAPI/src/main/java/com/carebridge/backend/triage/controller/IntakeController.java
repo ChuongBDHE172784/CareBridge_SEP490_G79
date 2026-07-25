@@ -9,6 +9,10 @@ import com.carebridge.backend.triage.dto.response.IntakeConversationResponse;
 import com.carebridge.backend.triage.dto.response.IntakeSessionResponse;
 import com.carebridge.backend.triage.dto.response.TriageResultResponse;
 import com.carebridge.backend.triage.service.ITriageService;
+import com.carebridge.backend.triage.service.ITriageContinuationService;
+import com.carebridge.backend.triage.dto.request.ContinuationTokenRequest;
+import com.carebridge.backend.triage.dto.response.ContinuationDescriptor;
+import com.carebridge.backend.triage.dto.response.ContinuationAcknowledgementResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -26,6 +30,7 @@ import java.util.UUID;
 public class IntakeController {
 
     private final ITriageService triageService;
+    private final ITriageContinuationService continuationService;
 
     @PostMapping
     @PreAuthorize("hasRole('MOTHER')")
@@ -69,5 +74,24 @@ public class IntakeController {
             Principal principal) {
         UUID userId = SecurityUtils.requireCurrentUserId(principal);
         return ResponseEntity.ok(ApiResponse.success(triageService.continueConversation(request, userId)));
+    }
+
+    @PostMapping("/continuations/resolve")
+    @PreAuthorize("hasRole('MOTHER')")
+    public ResponseEntity<ApiResponse<ContinuationDescriptor>> resolveContinuation(
+            @Valid @RequestBody ContinuationTokenRequest request, Principal principal) {
+        UUID userId = SecurityUtils.requireCurrentUserId(principal);
+        return ResponseEntity.ok(ApiResponse.success(
+                continuationService.resolve(userId, request.getToken())));
+    }
+
+    @PostMapping("/continuations/acknowledge")
+    @PreAuthorize("hasRole('MOTHER')")
+    public ResponseEntity<ApiResponse<ContinuationAcknowledgementResponse>> acknowledgeContinuation(
+            @Valid @RequestBody ContinuationTokenRequest request, Principal principal) {
+        UUID userId = SecurityUtils.requireCurrentUserId(principal);
+        continuationService.acknowledge(userId, request.getToken());
+        return ResponseEntity.ok(ApiResponse.success(
+                new ContinuationAcknowledgementResponse("ACKNOWLEDGED")));
     }
 }

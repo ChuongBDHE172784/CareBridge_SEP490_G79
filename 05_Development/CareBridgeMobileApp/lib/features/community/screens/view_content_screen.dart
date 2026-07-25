@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/auth/auth_state.dart';
 import '../../checklist/models/user_checklist_item_model.dart';
 import '../../checklist/screens/preparation_checklist_screen.dart';
 import '../../checklist/services/user_checklist_service.dart';
@@ -11,23 +12,35 @@ import '../services/community_service.dart';
 import '../services/content_service.dart';
 import '../widgets/verified_content_body.dart';
 import 'verified_content_detail_screen.dart';
+import 'verified_content_search_screen.dart';
 
 /// CB-223 — View Content and Checklist (UC-82)
 /// Displays curated articles, FAQs, and checklists filtered by pregnancy
 /// stage and topic. Navigated to via Navigator.push from Home or Community.
 class ViewContentScreen extends StatefulWidget {
-  const ViewContentScreen({super.key});
+  const ViewContentScreen({
+    super.key,
+    this.mode = ContentBrowseMode.generic,
+    this.contentService,
+    this.communityService,
+  });
+
+  final ContentBrowseMode mode;
+  final ContentService? contentService;
+  final CommunityService? communityService;
 
   @override
   State<ViewContentScreen> createState() => _ViewContentScreenState();
 }
 
 class _ViewContentScreenState extends State<ViewContentScreen> {
+  static const _maxChecklistImportItems = 50;
+
   // ── Design tokens (Warm Claymorphism palette) ──
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
-  static const _canvas = Color(0xFFFFF8F6);
-  static const _surface = Color(0xFFFFF8F6);
+  static const _canvas = Color(0xFFF6F1EC);
+  static const _surface = Colors.white;
   static const _surfaceContainerHigh = Color(0xFFFFE2D9);
   static const _surfaceContainerLow = Color(0xFFFFF1EC);
   static const _surfaceContainer = Color(0xFFFFE9E3);
@@ -41,8 +54,8 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
   // ignore: unused_field
   static const _error = Color(0xFFBA1A1A);
 
-  final _contentService = ContentService.instance;
-  final _communityService = CommunityService.instance;
+  late ContentService _contentService;
+  late CommunityService _communityService;
   final _journeyService = JourneyService();
   final _userChecklistService = UserChecklistService.instance;
   final _searchController = TextEditingController();
@@ -56,6 +69,8 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
   bool _checklistLoadFailed = false;
   bool _userChecklistLoadFailed = false;
   int _loadGeneration = 0;
+  String? _resolvedStage;
+  String? _observedAccountId;
   int _selectedTypeIndex = 0; // 0=All, 1=Article, 2=FAQ, 3=Checklist
   int _selectedStageIndex = -1;
   JourneyDashboard? _dashboard;
@@ -73,7 +88,7 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
   static const _typeLabels = ['Tất cả', 'Bài viết', 'FAQ', 'Checklist'];
   static const _stageLabels = ['Chuẩn bị', 'Thai kỳ', 'Sau sinh', 'Chăm bé'];
   static const _stageValues = [
-    'PREPARATION',
+    'PRE_PREGNANCY',
     'PREGNANCY',
     'POSTPARTUM',
     'BABY_CARE',
@@ -91,19 +106,47 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
   @override
   void initState() {
     super.initState();
+    _contentService = widget.contentService ?? ContentService.instance;
+    _communityService = widget.communityService ?? CommunityService.instance;
+    _observedAccountId = AuthState.instance.userId;
+    AuthState.instance.addListener(_onAccountChanged);
     _load(syncStageToJourney: true);
   }
 
   @override
+  void didUpdateWidget(covariant ViewContentScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.mode != widget.mode ||
+        oldWidget.contentService != widget.contentService ||
+        oldWidget.communityService != widget.communityService) {
+      _contentService = widget.contentService ?? ContentService.instance;
+      _communityService = widget.communityService ?? CommunityService.instance;
+      _load();
+    }
+  }
+
+  @override
   void dispose() {
+    AuthState.instance.removeListener(_onAccountChanged);
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _onAccountChanged() {
+    final accountId = AuthState.instance.userId;
+    if (accountId == _observedAccountId) return;
+    _observedAccountId = accountId;
+    _load();
   }
 
   void _openContentDetail(String contentId) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => VerifiedContentDetailScreen(contentId: contentId),
+        builder: (_) => VerifiedContentDetailScreen(
+          contentId: contentId,
+          mode: widget.mode,
+          contentService: _contentService,
+        ),
       ),
     );
   }
@@ -131,12 +174,60 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
 
   Future<void> _load({bool syncStageToJourney = false}) async {
     final generation = ++_loadGeneration;
+    final accountId = AuthState.instance.userId;
     if (!mounted) return;
     setState(() {
       _loading = true;
       _loadError = null;
+      _resolvedStage = null;
+      if (widget.mode == ContentBrowseMode.lifecycle) {
+        _topics = [];
+        _articles = [];
+        _faqs = [];
+        _checklists = [];
+        _userChecklistItems = [];
+      }
     });
     try {
+      if (widget.mode == ContentBrowseMode.lifecycle) {
+        final results = await Future.wait<Object>([
+          _contentService.getAllLifecycleContent(
+            shouldContinue: () => _canApply(generation, accountId),
+          ),
+          _contentService.getLifecycleChecklists(),
+        ]);
+        if (!_canApply(generation, accountId)) return;
+
+        final content = results[0] as LifecycleEnvelope<List<ContentListItem>>;
+        final checklists =
+            results[1] as LifecycleEnvelope<List<ChecklistTemplate>>;
+        final stageMismatch =
+            content.stage != checklists.stage ||
+            content.payload.any((item) => item.stage != content.stage) ||
+            checklists.payload.any((item) => item.stage != content.stage);
+        if (stageMismatch) {
+          throw const FormatException('Lifecycle stage mismatch');
+        }
+
+        final articles = content.payload
+            .where((item) => item.type == 'ARTICLE')
+            .toList(growable: false);
+        setState(() {
+          _resolvedStage = content.stage;
+          _articles = articles;
+          _faqs = content.payload
+              .where((item) => item.type == 'FAQ')
+              .toList(growable: false);
+          _checklists = checklists.payload;
+          _articleLoadFailed = false;
+          _faqLoadFailed = false;
+          _checklistLoadFailed = false;
+          _userChecklistLoadFailed = false;
+          _loading = false;
+        });
+        return;
+      }
+
       JourneyDashboard? dashboard;
       var journeyLoadFailed = false;
       try {
@@ -144,7 +235,7 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
       } catch (_) {
         journeyLoadFailed = true;
       }
-      if (!mounted || generation != _loadGeneration) return;
+      if (!_canApply(generation, accountId)) return;
       final journeyStageIndex = dashboard == null
           ? -1
           : _stageIndexForDashboard(dashboard);
@@ -171,7 +262,7 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
       final faqsResult = await faqsFuture;
       final checklistsResult = await checklistsFuture;
       final userItemsResult = await userItemsFuture;
-      if (mounted && generation == _loadGeneration) {
+      if (_canApply(generation, accountId)) {
         final articles = articlesResult.$1 ?? <ContentListItem>[];
         setState(() {
           _dashboard = dashboard;
@@ -188,10 +279,14 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
           _userChecklistLoadFailed = userItemsResult.$2;
           _loading = false;
         });
-        _loadFeaturedImage(articles);
+        _loadFeaturedImage(
+          articles,
+          generation: generation,
+          accountId: accountId,
+        );
       }
     } catch (_) {
-      if (mounted && generation == _loadGeneration) {
+      if (_canApply(generation, accountId)) {
         setState(() {
           _topics = [];
           _articles = [];
@@ -199,7 +294,9 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
           _checklists = [];
           _userChecklistItems = [];
           _loading = false;
-          _loadError = 'Không tải được nội dung. Vui lòng thử lại.';
+          _loadError = widget.mode == ContentBrowseMode.lifecycle
+              ? 'Không thể tải nội dung theo giai đoạn hiện tại.'
+              : 'Không tải được nội dung. Vui lòng thử lại.';
         });
       }
     }
@@ -209,9 +306,13 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
     return contentStageIndexForJourneyType(dashboard.journeyType);
   }
 
-  Future<void> _loadFeaturedImage(List<ContentListItem> articles) async {
+  Future<void> _loadFeaturedImage(
+    List<ContentListItem> articles, {
+    required int generation,
+    required String? accountId,
+  }) async {
     if (articles.isEmpty) {
-      if (mounted) {
+      if (_canApply(generation, accountId)) {
         setState(() {
           _featuredImageUrl = null;
           _featuredImageContentId = null;
@@ -221,7 +322,7 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
     }
     try {
       final detail = await _contentService.getContentDetail(articles.first.id);
-      if (mounted &&
+      if (_canApply(generation, accountId) &&
           _articles.isNotEmpty &&
           _articles.first.id == articles.first.id) {
         setState(() {
@@ -230,7 +331,7 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
         });
       }
     } catch (_) {
-      if (mounted) {
+      if (_canApply(generation, accountId)) {
         setState(() {
           _featuredImageUrl = null;
           _featuredImageContentId = null;
@@ -238,6 +339,18 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
       }
     }
   }
+
+  bool _canApply(int requestGeneration, String? accountId) =>
+      mounted &&
+      requestGeneration == _loadGeneration &&
+      AuthState.instance.userId == accountId;
+
+  bool get _selectedTypeIsEmpty => switch (_selectedTypeIndex) {
+    1 => _articles.isEmpty,
+    2 => _faqs.isEmpty,
+    3 => _checklists.isEmpty,
+    _ => _articles.isEmpty && _faqs.isEmpty && _checklists.isEmpty,
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -252,17 +365,25 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
               SliverToBoxAdapter(child: _buildAppBar()),
               SliverToBoxAdapter(child: _buildContextStrip()),
               SliverToBoxAdapter(child: _buildTypeTabs()),
-              SliverToBoxAdapter(child: _buildStageChips()),
-              SliverToBoxAdapter(child: _buildSearchInput()),
+              if (widget.mode == ContentBrowseMode.generic)
+                SliverToBoxAdapter(child: _buildStageChips()),
+              if (widget.mode == ContentBrowseMode.generic)
+                SliverToBoxAdapter(child: _buildSearchInput())
+              else
+                SliverToBoxAdapter(child: _buildGenericBrowseEntry()),
               SliverToBoxAdapter(child: _buildTopicRow()),
               if (_loading)
                 const SliverFillRemaining(
+                  key: Key('lifecycle-content-loading'),
                   child: Center(
                     child: CircularProgressIndicator(color: _primaryContainer),
                   ),
                 )
               else if (_loadError != null)
-                SliverFillRemaining(child: _buildLoadError())
+                SliverFillRemaining(child: _buildErrorState())
+              else if (widget.mode == ContentBrowseMode.lifecycle &&
+                  _selectedTypeIsEmpty)
+                SliverFillRemaining(child: _buildEmptyState())
               else ...[
                 // Show sections based on selected type
                 if (_selectedTypeIndex == 0 || _selectedTypeIndex == 1)
@@ -283,26 +404,41 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
     );
   }
 
-  Widget _buildLoadError() {
+  Widget _buildErrorState() {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, size: 48, color: _onSurfaceVariant),
-            const SizedBox(height: 12),
-            Text(
-              _loadError!,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontFamily: 'Lexend',
-                color: _onSurfaceVariant,
+      key: const Key('lifecycle-content-error'),
+      child: Semantics(
+        liveRegion: true,
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.cloud_off_rounded, color: _primary, size: 48),
+              const SizedBox(height: 16),
+              Text(
+                _loadError!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16, color: _onSurface),
               ),
-            ),
-            const SizedBox(height: 12),
-            ElevatedButton(onPressed: _load, child: const Text('Thử lại')),
-          ],
+              const SizedBox(height: 16),
+              Semantics(
+                button: true,
+                label: 'Thử tải lại nội dung',
+                child: FilledButton.icon(
+                  key: const Key('lifecycle-content-retry'),
+                  onPressed: _load,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Thử lại'),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(48, 48),
+                    backgroundColor: _primaryContainer,
+                    shape: const StadiumBorder(),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -323,6 +459,31 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
             ),
             TextButton(onPressed: _load, child: const Text('Thử lại')),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      key: const Key('lifecycle-content-empty'),
+      child: Semantics(
+        liveRegion: true,
+        label: 'Chưa có nội dung đã kiểm duyệt cho giai đoạn này',
+        child: const Padding(
+          padding: EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.menu_book_rounded, color: _primaryContainer, size: 48),
+              SizedBox(height: 16),
+              Text(
+                'Chưa có nội dung đã kiểm duyệt cho giai đoạn này.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 16, color: _onSurface),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -366,6 +527,10 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
 
   // ── Personal context strip ──
   Widget _buildContextStrip() {
+    if (widget.mode == ContentBrowseMode.lifecycle) {
+      return _buildLifecycleContextStrip();
+    }
+
     final dashboard = _dashboard;
     final statusLabel = _journeyLoadFailed
         ? 'Không tải được hành trình · Chạm để thử lại'
@@ -456,39 +621,150 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
   }
 
   // ── Type selector tabs ──
-  Widget _buildTypeTabs() {
+  Widget _buildLifecycleContextStrip() {
+    final stageLabel = _resolvedStage == null
+        ? 'Đang xác định từ máy chủ'
+        : _stageLabelFromValue(_resolvedStage!);
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: List.generate(_typeLabels.length, (i) {
-          final isActive = _selectedTypeIndex == i;
-          return Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() => _selectedTypeIndex = i),
-              child: Container(
-                padding: const EdgeInsets.only(bottom: 10, top: 12),
-                decoration: BoxDecoration(
-                  border: Border(
-                    bottom: BorderSide(
-                      color: isActive ? _primaryContainer : Colors.transparent,
-                      width: 3,
-                    ),
-                  ),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      child: Semantics(
+        key: const Key('lifecycle-content-stage'),
+        label: 'Giai đoạn do CareBridge xác định: $stageLabel. Đã khóa.',
+        readOnly: true,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF2EAE4),
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0F5A463F),
+                blurRadius: 20,
+                offset: Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 48,
+                height: 48,
+                decoration: const BoxDecoration(
+                  color: _primaryContainer,
+                  shape: BoxShape.circle,
                 ),
-                child: Text(
-                  _typeLabels[i],
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 14,
-                    fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-                    color: isActive ? _primary : _onSurfaceVariant,
-                  ),
+                child: const Icon(
+                  Icons.pregnant_woman,
+                  color: Colors.white,
+                  size: 26,
                 ),
               ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Giai đoạn nội dung hiện tại',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 12,
+                        color: _onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      stageLabel,
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: _onSurface,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                key: const Key('lifecycle-content-stage-locked'),
+                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.lock_rounded, color: _primary),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGenericBrowseEntry() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      child: Semantics(
+        button: true,
+        label: 'Mở tìm kiếm nội dung theo lựa chọn của bạn',
+        child: OutlinedButton.icon(
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) =>
+                  VerifiedContentSearchScreen(contentService: _contentService),
             ),
-          );
-        }),
+          ),
+          icon: const Icon(Icons.manage_search_rounded),
+          label: const Text('Khám phá nội dung theo lựa chọn'),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(double.infinity, 48),
+            foregroundColor: _primary,
+            backgroundColor: Colors.white,
+            side: const BorderSide(color: Color(0xFFD6C2BD)),
+            shape: const StadiumBorder(),
+            textStyle: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTypeTabs() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          children: List.generate(_typeLabels.length, (i) {
+            final isActive = _selectedTypeIndex == i;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ChoiceChip(
+                label: Text(_typeLabels[i]),
+                selected: isActive,
+                onSelected: (_) => setState(() => _selectedTypeIndex = i),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                labelStyle: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: isActive ? Colors.white : _onSurfaceVariant,
+                ),
+                selectedColor: _primaryContainer,
+                backgroundColor: _surfaceContainer,
+                side: BorderSide.none,
+                shape: const StadiumBorder(),
+              ),
+            );
+          }),
+        ),
       ),
     );
   }
@@ -655,8 +931,10 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            spacing: 16,
+            runSpacing: 8,
             children: [
               const Text(
                 'Gợi ý hôm nay',
@@ -785,7 +1063,9 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Stage tag + date
-                      Row(
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -807,7 +1087,6 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 8),
                           if (article.publishedAt != null)
                             Text(
                               article.publishedAt!,
@@ -1033,6 +1312,8 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
     final journeyId = rawJourneyId == null || rawJourneyId.isEmpty
         ? null
         : rawJourneyId;
+    final hasImportContext =
+        journeyId != null || widget.mode == ContentBrowseMode.lifecycle;
     final action = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
@@ -1081,7 +1362,7 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                   },
                 ),
               ),
-              if (journeyId == null) ...[
+              if (!hasImportContext) ...[
                 const SizedBox(height: 12),
                 const Text(
                   'Hãy thiết lập hành trình trước khi thêm checklist.',
@@ -1098,7 +1379,7 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: journeyId == null || _userChecklistLoadFailed
+                  onPressed: !hasImportContext || _userChecklistLoadFailed
                       ? null
                       : () => Navigator.pop(
                           sheetContext,
@@ -1135,7 +1416,9 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
     final journeyId = rawJourneyId == null || rawJourneyId.isEmpty
         ? null
         : rawJourneyId;
-    if (journeyId == null || _importingChecklistIds.isNotEmpty) {
+    final hasImportContext =
+        journeyId != null || widget.mode == ContentBrowseMode.lifecycle;
+    if (!hasImportContext || _importingChecklistIds.isNotEmpty) {
       return;
     }
     final importedIds = _importedTemplateItemIds;
@@ -1145,6 +1428,18 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
         .toList(growable: false);
     if (missingIds.isEmpty) {
       await _openMyChecklist();
+      return;
+    }
+    if (missingIds.length > _maxChecklistImportItems) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Checklist có hơn 50 mục. Vui lòng chọn checklist nhỏ hơn.',
+          ),
+          backgroundColor: _error,
+        ),
+      );
       return;
     }
 
@@ -1180,16 +1475,17 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
   }
 
   Future<void> _openMyChecklist() async {
+    final lifecycle = widget.mode == ContentBrowseMode.lifecycle;
+    final journeyId = lifecycle ? null : _dashboard?.journeyId;
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) =>
-            PreparationChecklistScreen(journeyId: _dashboard?.journeyId),
+        builder: (_) => PreparationChecklistScreen(journeyId: journeyId),
       ),
     );
-    if (mounted && _dashboard?.journeyId != null) {
+    if (mounted && (lifecycle || journeyId != null)) {
       try {
         final items = await _userChecklistService.listItems(
-          journeyId: _dashboard!.journeyId,
+          journeyId: journeyId,
         );
         if (mounted) setState(() => _userChecklistItems = items);
       } catch (_) {

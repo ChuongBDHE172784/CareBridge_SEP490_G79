@@ -3,17 +3,9 @@ spring:
     name: backend
 
   datasource:
-    # Supabase Database alternative (currently inactive).
-    # To restore it, uncomment SUPABASE_DB_* in .env, then replace the active
-    # CAREBRIDGE_DB_* block below with these three lines in one edit:
-    # url: ${SUPABASE_DB_URL}
-    # username: ${SUPABASE_DB_USERNAME}
-    # password: ${SUPABASE_DB_PASSWORD}
-
-    # Generic datasource contract using local Docker PostgreSQL defaults (currently active):
-    url: ${CAREBRIDGE_DB_URL:jdbc:postgresql://localhost:5433/carebridge}
-    username: ${CAREBRIDGE_DB_USERNAME:carebridge}
-    password: ${CAREBRIDGE_DB_PASSWORD:carebridge}
+    # Runtime deployments must provide an explicit datasource. Local Docker
+    # defaults are isolated in application-local.yaml. Runtime credentials are
+    # published atomically by RuntimeDatasourceEnvironmentPostProcessor.
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 5
@@ -25,7 +17,6 @@ spring:
     enabled: false
     clean-disabled: true
     out-of-order: true
-    ignore-migration-patterns: "*:missing"
 
   docker:
     compose:

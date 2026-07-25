@@ -76,4 +76,28 @@ public interface ConsentGrantRepository extends JpaRepository<ConsentGrant, Long
             @Param("dataType") ConsentDataType dataType,
             @Param("purpose") ConsentPurpose purpose,
             @Param("now") Instant now);
+
+    @Query(value = """
+            SELECT EXISTS (
+                SELECT 1
+                  FROM public.data_permissions permission
+                 WHERE permission.permission_id = :permissionId
+                   AND permission.owner_user_id = :userId
+                   AND permission.permission_kind = 'CONSENT_GRANT'
+                   AND permission.scope_type = :dataType
+                   AND permission.purpose = :purpose
+                   AND permission.status = 'ACTIVE'
+                   AND permission.granted_at IS NOT NULL
+                   AND permission.granted_at <= :now
+                   AND permission.revoked_at IS NULL
+                   AND permission.expires_at >= :requiredUntil
+            )
+            """, nativeQuery = true)
+    boolean existsValidConsentByPermissionIdCoveringInterval(
+            @Param("permissionId") java.util.UUID permissionId,
+            @Param("userId") java.util.UUID userId,
+            @Param("dataType") String dataType,
+            @Param("purpose") String purpose,
+            @Param("now") Instant now,
+            @Param("requiredUntil") Instant requiredUntil);
 }

@@ -2,6 +2,7 @@ package com.carebridge.backend.integration.gemini.service;
 
 import com.carebridge.backend.integration.gemini.dto.RagAnswerRequest;
 import com.carebridge.backend.integration.gemini.dto.RagAnswerResponse;
+import com.carebridge.backend.integration.gemini.dto.RagExecutionContext;
 
 /**
  * RAG (Retrieval-Augmented Generation) service interface.
@@ -15,5 +16,5 @@ import com.carebridge.backend.integration.gemini.dto.RagAnswerResponse;
  */
 public interface RagService {
 
-    RagAnswerResponse generateAnswer(RagAnswerRequest request);
+    RagAnswerResponse generateAnswer(RagAnswerRequest request, RagExecutionContext context);
 }

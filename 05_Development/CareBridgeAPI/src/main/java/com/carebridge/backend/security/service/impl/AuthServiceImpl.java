@@ -11,6 +11,7 @@ import com.carebridge.backend.common.exception.ResourceNotFoundException;
 import com.carebridge.backend.common.exception.RevokedSessionException;
 import com.carebridge.backend.common.exception.SessionNotFoundException;
 import com.carebridge.backend.common.exception.ValidationException;
+import com.carebridge.backend.common.validation.VietnamesePhoneNumbers;
 import com.carebridge.backend.notification.repository.DeviceTokenRepository;
 import com.carebridge.backend.common.util.StringUtils;
 import com.carebridge.backend.identity.entity.UserSession;
@@ -114,7 +115,7 @@ public class AuthServiceImpl implements AuthService {
 
         // 2. Determine identifier (email or phone)
         String email = request.getEmail();
-        String phone = request.getPhone();
+        String phone = normalizePhone(request.getPhone());
         String identifier;
 
         if (email != null && !email.isBlank()) {
@@ -124,9 +125,6 @@ public class AuthServiceImpl implements AuthService {
             }
         } else if (phone != null && !phone.isBlank()) {
             identifier = phone;
-            if (!identifier.matches("^\\+84[1-9][0-9]{8,9}$")) {
-                throw new ValidationException("Invalid phone format. Use E.164 format (+84xxxxxxxxx)");
-            }
         } else {
             throw new ValidationException("Either email or phone must be provided");
         }
@@ -471,7 +469,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public OtpResendResponse resendOtp(ResendOtpRequest request) {
-        String phone = StringUtils.trimToNull(request.getPhone());
+        String phone = normalizePhone(request.getPhone());
         String email = StringUtils.trimToNull(request.getEmail());
 
         boolean hasPhone = phone != null;
@@ -938,10 +936,11 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private String normalizePhone(String phone) {
-        if (phone == null || phone.isBlank()) return null;
-        String compact = phone.replaceAll("[\\s().-]", "");
-        if (compact.startsWith("0")) return "+84" + compact.substring(1);
-        return compact.startsWith("+") ? compact : "+" + compact;
+        try {
+            return VietnamesePhoneNumbers.normalizeToE164(phone);
+        } catch (IllegalArgumentException invalidPhone) {
+            throw new ValidationException(VietnamesePhoneNumbers.INVALID_FORMAT_MESSAGE);
+        }
     }
 
     private String getRateLimitKey(User user) {

@@ -1,5 +1,7 @@
 package com.carebridge.backend.content.integration;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -37,6 +39,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import com.carebridge.backend.content.support.Story69TestFactory;
 
 // CNT82-TC-INT-001, CNT82-TC-INT-002, CNT82-TC-INT-003
 // Integration tests: full HTTP stack (security → controller → service) with mocked persistence
@@ -157,5 +160,23 @@ class ContentIntegrationTest {
         ArgumentCaptor<ContentStage> stageCaptor = ArgumentCaptor.forClass(ContentStage.class);
         verify(contentService).getChecklists(stageCaptor.capture());
         // Stage enum resolved correctly from query param
+    }
+
+    @Test
+    void uc82_69_tc_002_repositoryContractUsesTwoBoundedApprovedQueries() {
+        String templates = Story69TestFactory.productionSource(
+                "com/carebridge/backend/content/repository/ChecklistTemplateRepository.java");
+        String items = Story69TestFactory.productionSource(
+                "com/carebridge/backend/content/repository/ChecklistItemRepository.java");
+
+        assertThat(templates.contains("ChecklistTemplateStatus")
+                        && templates.contains("findByStatusOrderByUpdatedAtDesc")
+                        && templates.contains("findByStageAndStatusOrderByUpdatedAtDesc"))
+                .as("TC-002: template selection enforces APPROVED in the repository method")
+                .isTrue();
+        assertThat(items.contains("findAllByApprovedTemplateIds")
+                        && items.contains("join fetch i.template"))
+                .as("TC-002: one batch item query proves approved parent membership")
+                .isTrue();
     }
 }

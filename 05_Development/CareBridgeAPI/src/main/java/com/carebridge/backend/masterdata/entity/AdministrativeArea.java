@@ -37,6 +37,9 @@ public class AdministrativeArea {
     @Column(name = "name", nullable = false, length = 255)
     private String name;
 
+    @Column(name = "name_en", length = 255)
+    private String nameEn;
+
     @Column(name = "legacy_code", length = 80)
     private String legacyCode;
 

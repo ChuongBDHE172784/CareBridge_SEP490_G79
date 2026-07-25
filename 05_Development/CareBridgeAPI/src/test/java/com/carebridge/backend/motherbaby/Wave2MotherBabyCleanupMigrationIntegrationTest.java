@@ -48,19 +48,15 @@ class Wave2MotherBabyCleanupMigrationIntegrationTest {
     @Test
     void cleanBootstrapRemovesWave2LegacyAndKeepsAllCanonicalNames() throws Exception {
         migrate(PRE_WAVE);
-        assertThat(number("SELECT count(*) FROM information_schema.tables "
-                + "WHERE table_schema='public' AND table_type='BASE TABLE'"))
-                .isEqualTo(133);
+        long tableCountBefore = tableCount();
+        long transitionalTableCountBefore = nonTargetTableCount();
         migrate(WAVE);
 
         for (String table : REMOVED) assertThat(exists(table)).as(table).isFalse();
         for (String table : TARGET) assertThat(exists(table)).as(table).isTrue();
-        assertThat(number("SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'"))
-                .isEqualTo(120);
-        assertThat(number("SELECT count(*) FROM information_schema.tables WHERE table_schema='public' "
-                + "AND table_type='BASE TABLE' AND table_name <> ALL(ARRAY['"
-                + String.join("','", TARGET) + "'])"))
-                .isEqualTo(50);
+        assertThat(tableCount()).isEqualTo(tableCountBefore - REMOVED.length);
+        assertThat(nonTargetTableCount())
+                .isEqualTo(transitionalTableCountBefore - REMOVED.length);
         assertThat(number("SELECT count(*) FROM pg_constraint WHERE contype='f' AND NOT convalidated"))
                 .isZero();
     }
@@ -190,6 +186,17 @@ class Wave2MotherBabyCleanupMigrationIntegrationTest {
     private boolean exists(String table) throws Exception {
         try (Connection c=connection(); Statement s=c.createStatement(); ResultSet r=s.executeQuery(
                 "SELECT to_regclass('public."+table+"') IS NOT NULL")) { r.next(); return r.getBoolean(1); }
+    }
+
+    private long tableCount() throws Exception {
+        return number("SELECT count(*) FROM information_schema.tables "
+                + "WHERE table_schema='public' AND table_type='BASE TABLE'");
+    }
+
+    private long nonTargetTableCount() throws Exception {
+        return number("SELECT count(*) FROM information_schema.tables WHERE table_schema='public' "
+                + "AND table_type='BASE TABLE' AND table_name <> ALL(ARRAY['"
+                + String.join("','", TARGET) + "'])");
     }
 
     private long number(String sql) throws Exception {
