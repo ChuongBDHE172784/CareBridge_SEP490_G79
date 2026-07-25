@@ -135,3 +135,4 @@ tools/
 .mcp.json
 .github/code-review-graph.instruction.md
 .codex_tmp/
+code-review-graph/
