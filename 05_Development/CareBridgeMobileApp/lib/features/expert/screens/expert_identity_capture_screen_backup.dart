@@ -1,11 +1,7 @@
-import 'dart:convert';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../core/network/api_client.dart';
@@ -36,10 +32,6 @@ class _ExpertIdentityCaptureScreenState
   ExpertEvidenceImage? _back;
   bool _submitting = false;
   String? _error;
-  bool _verifying = false;
-  double? _similarity;
-  String? _aiStatus;
-  Color? _aiColor;
 
   ExpertImageCapture get _capture =>
       widget.capture ?? ImagePickerExpertCapture();
@@ -61,43 +53,8 @@ class _ExpertIdentityCaptureScreenState
         }
         _error = null;
       });
-      await _runAiVerify();
     } catch (_) {
       if (mounted) setState(() => _error = 'Không thể mở camera hoặc thư viện ảnh.');
-    }
-  }
-
-  Future<void> _runAiVerify() async {
-    if (_selfie == null || _front == null) return;
-    setState(() { _verifying = true; _aiStatus = null; _similarity = null; });
-    try {
-      final uri = Uri.parse('${ApiClient.apiBaseUrl}/api/v1/expert/verify-face');
-      var request = http.MultipartRequest('POST', uri);
-      request.headers['Authorization'] = 'Bearer ${AuthState.instance.accessToken ?? ""}';
-      request.files.add(http.MultipartFile.fromBytes('selfie', _selfie!.bytes,
-          filename: _selfie!.fileName, contentType: MediaType.parse(_selfie!.mimeType)));
-      request.files.add(http.MultipartFile.fromBytes('idCard', _front!.bytes,
-          filename: _front!.fileName, contentType: MediaType.parse(_front!.mimeType)));
-      final streamed = await request.send();
-      final resp = await http.Response.fromStream(streamed);
-      if (!mounted) return;
-      if (resp.statusCode >= 200 && resp.statusCode < 300) {
-        final data = jsonDecode(utf8.decode(resp.bodyBytes)) as Map<String, dynamic>;
-        final result = data['data'] as Map<String, dynamic>? ?? data;
-        final status = (result['status'] ?? '').toString();
-        final similarity = (result['similarity'] ?? 0.0) as double;
-        final matched = status == 'MATCHED';
-        setState(() {
-          _verifying = false;
-          _similarity = similarity;
-          _aiStatus = matched ? 'MATCHED' : 'NOT_MATCHED';
-          _aiColor = matched ? Colors.green : Colors.red;
-        });
-      } else {
-        setState(() { _verifying = false; _aiStatus = 'ERROR'; _aiColor = Colors.orange; });
-      }
-    } catch (_) {
-      if (mounted) setState(() { _verifying = false; _aiStatus = 'ERROR'; _aiColor = Colors.orange; });
     }
   }
 
