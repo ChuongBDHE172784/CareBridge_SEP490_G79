@@ -132,3 +132,6 @@ tools/
 .code-review-graph/
 .mcp.json
 .github/code-review-graph.instruction.md
+.pytest_cache/ 
+.venv/
+.vscode/

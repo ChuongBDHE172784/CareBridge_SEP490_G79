@@ -68,20 +68,15 @@ BEGIN
 END
 $community_mapping$;
 
-CREATE TABLE IF NOT EXISTS public.professional_profiles (
-    professional_profile_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id uuid NOT NULL UNIQUE REFERENCES public.users(user_id),
-    professional_title varchar(150),
-    workplace varchar(200),
-    experience_years smallint,
-    consultation_scope text,
-    verification_status varchar(30) NOT NULL DEFAULT 'PENDING',
-    verified_at timestamptz,
-    verified_by uuid REFERENCES public.users(user_id),
-    rating_avg numeric,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now()
-);
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS professional_title varchar(150);
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS workplace varchar(200);
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS experience_years smallint;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS consultation_scope text;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS verification_status varchar(30) NOT NULL DEFAULT 'PENDING';
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS verified_at timestamptz;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS verified_by uuid REFERENCES public.users(user_id);
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS rating_avg numeric;
+ALTER TABLE public.users ADD COLUMN IF NOT EXISTS specialty_ids uuid[];
 
 CREATE TABLE IF NOT EXISTS public.specialties (
     specialty_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -92,17 +87,9 @@ CREATE TABLE IF NOT EXISTS public.specialties (
     created_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS public.professional_specialties (
-    professional_profile_id uuid NOT NULL REFERENCES public.professional_profiles(professional_profile_id),
-    specialty_id uuid NOT NULL REFERENCES public.specialties(specialty_id),
-    is_primary boolean NOT NULL DEFAULT false,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    PRIMARY KEY (professional_profile_id, specialty_id)
-);
-
 CREATE TABLE IF NOT EXISTS public.expert_credentials (
     credential_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    professional_profile_id uuid REFERENCES public.professional_profiles(professional_profile_id),
+    user_id uuid REFERENCES public.users(user_id),
     credential_type varchar(50) NOT NULL,
     credential_number varchar(100),
     issuer varchar(200),
@@ -114,11 +101,11 @@ CREATE TABLE IF NOT EXISTS public.expert_credentials (
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
 );
-ALTER TABLE public.expert_credentials ADD COLUMN IF NOT EXISTS professional_profile_id uuid;
+ALTER TABLE public.expert_credentials ADD COLUMN IF NOT EXISTS user_id uuid;
 
 CREATE TABLE IF NOT EXISTS public.expert_availability (
     availability_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    professional_profile_id uuid REFERENCES public.professional_profiles(professional_profile_id),
+    user_id uuid REFERENCES public.users(user_id),
     start_at timestamptz NOT NULL,
     end_at timestamptz NOT NULL,
     channel_type varchar(30) NOT NULL,
@@ -127,11 +114,11 @@ CREATE TABLE IF NOT EXISTS public.expert_availability (
     updated_at timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT expert_availability_window_ck CHECK (end_at > start_at)
 );
-ALTER TABLE public.expert_availability ADD COLUMN IF NOT EXISTS professional_profile_id uuid;
+ALTER TABLE public.expert_availability ADD COLUMN IF NOT EXISTS user_id uuid;
 
 CREATE TABLE IF NOT EXISTS public.expert_location_shares (
     location_share_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    professional_profile_id uuid REFERENCES public.professional_profiles(professional_profile_id),
+    user_id uuid REFERENCES public.users(user_id),
     latitude numeric NOT NULL,
     longitude numeric NOT NULL,
     accuracy_meters numeric,
@@ -141,52 +128,58 @@ CREATE TABLE IF NOT EXISTS public.expert_location_shares (
     consent_reference uuid,
     created_at timestamptz NOT NULL DEFAULT now()
 );
-ALTER TABLE public.expert_location_shares ADD COLUMN IF NOT EXISTS professional_profile_id uuid;
-
-CREATE TABLE IF NOT EXISTS public.expert_contribution_events (
-    contribution_event_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    professional_profile_id uuid REFERENCES public.professional_profiles(professional_profile_id),
-    actor_user_id uuid NOT NULL REFERENCES public.users(user_id),
-    points integer NOT NULL,
-    reason varchar(120) NOT NULL,
-    source_type varchar(60),
-    source_id uuid,
-    created_at timestamptz NOT NULL DEFAULT now()
-);
+ALTER TABLE public.expert_location_shares ADD COLUMN IF NOT EXISTS user_id uuid;
 
 DO $expert_mapping$
 BEGIN
     IF to_regclass('public.expert_profiles') IS NOT NULL THEN
-        INSERT INTO public.professional_profiles
-            (professional_profile_id, user_id, professional_title, workplace, experience_years,
-             consultation_scope, verification_status, verified_at, verified_by, rating_avg, created_at, updated_at)
-        SELECT expert_profile_id, user_id, professional_title, workplace, experience_years,
-               consultation_scope, verification_status, verified_at, verified_by, rating_avg, created_at, updated_at
-          FROM public.expert_profiles
-        ON CONFLICT (professional_profile_id) DO NOTHING;
+        UPDATE public.users u
+           SET professional_title = ep.professional_title,
+               workplace = ep.workplace,
+               experience_years = ep.experience_years,
+               consultation_scope = ep.consultation_scope,
+               verification_status = ep.verification_status,
+               verified_at = ep.verified_at,
+               verified_by = ep.verified_by,
+               rating_avg = ep.rating_avg
+          FROM public.expert_profiles ep
+         WHERE u.user_id = ep.user_id;
     END IF;
+
     IF to_regclass('public.expert_credentials') IS NOT NULL THEN
         UPDATE public.expert_credentials ec
-           SET professional_profile_id = ec.expert_profile_id
-         WHERE professional_profile_id IS NULL
-           AND EXISTS (SELECT 1 FROM public.professional_profiles pp WHERE pp.professional_profile_id = ec.expert_profile_id);
+           SET user_id = ep.user_id
+          FROM public.expert_profiles ep
+         WHERE ec.expert_profile_id = ep.expert_profile_id;
     END IF;
+
     IF to_regclass('public.expert_availability') IS NOT NULL THEN
         UPDATE public.expert_availability ea
-           SET professional_profile_id = ea.expert_profile_id
-         WHERE professional_profile_id IS NULL
-           AND EXISTS (SELECT 1 FROM public.professional_profiles pp WHERE pp.professional_profile_id = ea.expert_profile_id);
+           SET user_id = ep.user_id
+          FROM public.expert_profiles ep
+         WHERE ea.expert_profile_id = ep.expert_profile_id;
     END IF;
+
     IF to_regclass('public.expert_location_shares') IS NOT NULL THEN
         UPDATE public.expert_location_shares els
-           SET professional_profile_id = els.expert_profile_id
-         WHERE professional_profile_id IS NULL
-           AND EXISTS (SELECT 1 FROM public.professional_profiles pp WHERE pp.professional_profile_id = els.expert_profile_id);
+           SET user_id = ep.user_id
+          FROM public.expert_profiles ep
+         WHERE els.expert_profile_id = ep.expert_profile_id;
+    END IF;
+
+    IF to_regclass('public.expert_specialties') IS NOT NULL THEN
+        UPDATE public.users u
+           SET specialty_ids = x.spec_ids
+          FROM (
+              SELECT ep.user_id, array_agg(es.specialty_id) as spec_ids
+                FROM public.expert_specialties es
+                JOIN public.expert_profiles ep ON ep.expert_profile_id = es.expert_profile_id
+               GROUP BY ep.user_id
+          ) x
+         WHERE u.user_id = x.user_id;
     END IF;
 END
 $expert_mapping$;
 
-CREATE INDEX IF NOT EXISTS professional_specialties_specialty_ix ON public.professional_specialties(specialty_id);
-CREATE INDEX IF NOT EXISTS expert_credentials_profile_status_ix ON public.expert_credentials(professional_profile_id, review_status);
-CREATE INDEX IF NOT EXISTS expert_availability_profile_window_ix ON public.expert_availability(professional_profile_id, start_at, end_at);
-CREATE INDEX IF NOT EXISTS expert_contribution_profile_time_ix ON public.expert_contribution_events(professional_profile_id, created_at);
+CREATE INDEX IF NOT EXISTS expert_credentials_user_status_ix ON public.expert_credentials(user_id, review_status);
+CREATE INDEX IF NOT EXISTS expert_availability_user_window_ix ON public.expert_availability(user_id, start_at, end_at);

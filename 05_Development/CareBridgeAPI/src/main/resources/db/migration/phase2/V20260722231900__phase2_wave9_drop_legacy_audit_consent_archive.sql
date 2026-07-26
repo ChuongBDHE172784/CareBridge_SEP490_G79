@@ -83,7 +83,7 @@ ON CONFLICT (expense_entry_id) DO UPDATE SET
   amount=excluded.amount,currency=excluded.currency,expense_date=excluded.expense_date,
   note=excluded.note,updated_at=excluded.updated_at;
 
-ALTER TABLE public.archived_consultation_records
+ALTER TABLE public.archived_records
   ALTER COLUMN payload_jsonb SET DEFAULT '{}'::jsonb,
   ALTER COLUMN archive_reason SET DEFAULT 'RUNTIME_COMPATIBILITY',
   ALTER COLUMN source_schema_version SET DEFAULT 'PHASE2_WAVE9',
@@ -122,17 +122,10 @@ ALTER TABLE public.archived_consultation_records
   ADD COLUMN IF NOT EXISTS ended_at timestamptz,
   ADD COLUMN IF NOT EXISTS session_status varchar(30),
   ADD COLUMN IF NOT EXISTS expert_summary text,
-  ADD COLUMN IF NOT EXISTS technical_log_json jsonb;
-
-ALTER TABLE public.archived_realtime_records
-  ALTER COLUMN payload_jsonb SET DEFAULT '{}'::jsonb,
-  ALTER COLUMN archive_reason SET DEFAULT 'RUNTIME_COMPATIBILITY',
-  ALTER COLUMN source_schema_version SET DEFAULT 'PHASE2_WAVE9',
-  ALTER COLUMN checksum SET DEFAULT md5(gen_random_uuid()::text),
+  ADD COLUMN IF NOT EXISTS technical_log_json jsonb,
   ADD COLUMN IF NOT EXISTS conversation_id uuid,
   ADD COLUMN IF NOT EXISTS mother_user_id uuid,
   ADD COLUMN IF NOT EXISTS expert_user_id uuid,
-  ADD COLUMN IF NOT EXISTS status varchar(20),
   ADD COLUMN IF NOT EXISTS last_activity_at timestamptz,
   ADD COLUMN IF NOT EXISTS mother_last_read_at timestamptz,
   ADD COLUMN IF NOT EXISTS mother_last_read_message_id uuid,
@@ -148,14 +141,7 @@ ALTER TABLE public.archived_realtime_records
   ADD COLUMN IF NOT EXISTS zego_room_id varchar(255),
   ADD COLUMN IF NOT EXISTS initiated_at timestamptz,
   ADD COLUMN IF NOT EXISTS answered_at timestamptz,
-  ADD COLUMN IF NOT EXISTS ended_at timestamptz,
-  ADD COLUMN IF NOT EXISTS duration_seconds integer;
-
-ALTER TABLE public.archived_partner_records
-  ALTER COLUMN payload_jsonb SET DEFAULT '{}'::jsonb,
-  ALTER COLUMN archive_reason SET DEFAULT 'RUNTIME_COMPATIBILITY',
-  ALTER COLUMN source_schema_version SET DEFAULT 'PHASE2_WAVE9',
-  ALTER COLUMN checksum SET DEFAULT md5(gen_random_uuid()::text),
+  ADD COLUMN IF NOT EXISTS duration_seconds integer,
   ADD COLUMN IF NOT EXISTS name varchar(200),
   ADD COLUMN IF NOT EXISTS organization_type varchar(20),
   ADD COLUMN IF NOT EXISTS address varchar(500),
@@ -166,8 +152,7 @@ ALTER TABLE public.archived_partner_records
   ADD COLUMN IF NOT EXISTS logo_url varchar(1000),
   ADD COLUMN IF NOT EXISTS description varchar(2000),
   ADD COLUMN IF NOT EXISTS organization_status varchar(30),
-  ADD COLUMN IF NOT EXISTS representative_user_id uuid,
-  ADD COLUMN IF NOT EXISTS updated_at timestamptz;
+  ADD COLUMN IF NOT EXISTS representative_user_id uuid;
 
 DO $wave9_collision_gate$
 BEGIN
@@ -177,21 +162,18 @@ BEGIN
       UNION ALL SELECT expert_price_id FROM public.expert_consultation_prices
       UNION ALL SELECT booking_id FROM public.consultation_bookings
       UNION ALL SELECT session_id FROM public.consultation_sessions
-    ) x GROUP BY source_id HAVING count(*) > 1
-  ) THEN RAISE EXCEPTION 'WAVE9_ID_COLLISION: consultation archive'; END IF;
-  IF EXISTS (
-    SELECT source_id FROM (
-      SELECT conversation_id source_id FROM public.direct_conversations
+      UNION ALL SELECT conversation_id FROM public.direct_conversations
       UNION ALL SELECT message_id FROM public.direct_messages
       UNION ALL SELECT call_id FROM public.conversation_calls
     ) x GROUP BY source_id HAVING count(*) > 1
-  ) THEN RAISE EXCEPTION 'WAVE9_ID_COLLISION: realtime archive'; END IF;
+  ) THEN RAISE EXCEPTION 'WAVE9_ID_COLLISION: archived records'; END IF;
 END $wave9_collision_gate$;
 
-DELETE FROM public.archived_consultation_records WHERE legacy_table IN (
-  'consultation_price_bands','expert_consultation_prices','consultation_bookings','consultation_sessions');
+DELETE FROM public.archived_records WHERE legacy_table IN (
+  'consultation_price_bands','expert_consultation_prices','consultation_bookings','consultation_sessions',
+  'direct_conversations','direct_messages','conversation_calls','partner_organizations');
 
-INSERT INTO public.archived_consultation_records (
+INSERT INTO public.archived_records (
     archive_id,legacy_table,legacy_id,owner_user_id,payload_jsonb,original_created_at,
     archive_reason,source_schema_version,checksum,configured_by,channel_type,
     duration_minutes,specialty_scope,minimum_price,maximum_price,commission_rate,
@@ -202,7 +184,7 @@ SELECT price_band_id,'consultation_price_bands',price_band_id::text,configured_b
        maximum_price,commission_rate,currency,effective_from,effective_to,status,updated_at
   FROM public.consultation_price_bands b;
 
-INSERT INTO public.archived_consultation_records (
+INSERT INTO public.archived_records (
     archive_id,legacy_table,legacy_id,payload_jsonb,original_created_at,archive_reason,
     source_schema_version,checksum,expert_profile_id,price_band_id,channel_type,
     duration_minutes,price_amount,currency,cancellation_policy,effective_from,effective_to,
@@ -213,7 +195,7 @@ SELECT expert_price_id,'expert_consultation_prices',expert_price_id::text,to_jso
        effective_from,effective_to,status,version_no,updated_at
   FROM public.expert_consultation_prices p;
 
-INSERT INTO public.archived_consultation_records (
+INSERT INTO public.archived_records (
     archive_id,legacy_table,legacy_id,owner_user_id,payload_jsonb,original_created_at,
     archive_reason,source_schema_version,checksum,requester_user_id,expert_profile_id,
     availability_id,expert_price_id,shared_summary_id,topic,channel_type,duration_minutes,
@@ -226,7 +208,7 @@ SELECT booking_id,'consultation_bookings',booking_id::text,requester_user_id,to_
        commission_rate_snapshot,currency,cancellation_policy_snapshot,price_locked_at,status,updated_at
   FROM public.consultation_bookings b;
 
-INSERT INTO public.archived_consultation_records (
+INSERT INTO public.archived_records (
     archive_id,legacy_table,legacy_id,payload_jsonb,original_created_at,archive_reason,
     source_schema_version,checksum,booking_id,communication_room_id,started_at,ended_at,
     session_status,expert_summary,technical_log_json,updated_at)
@@ -236,10 +218,7 @@ SELECT session_id,'consultation_sessions',session_id::text,to_jsonb(s),created_a
        technical_log_json,updated_at
   FROM public.consultation_sessions s;
 
-DELETE FROM public.archived_realtime_records WHERE legacy_table IN (
-  'direct_conversations','direct_messages','conversation_calls');
-
-INSERT INTO public.archived_realtime_records (
+INSERT INTO public.archived_records (
     archive_id,legacy_table,legacy_id,owner_user_id,payload_jsonb,original_created_at,
     archive_reason,source_schema_version,checksum,conversation_id,mother_user_id,
     expert_user_id,status,last_activity_at,mother_last_read_at,mother_last_read_message_id,
@@ -250,7 +229,7 @@ SELECT conversation_id,'direct_conversations',conversation_id::text,mother_user_
        mother_last_read_message_id,expert_last_read_at,expert_last_read_message_id
   FROM public.direct_conversations c;
 
-INSERT INTO public.archived_realtime_records (
+INSERT INTO public.archived_records (
     archive_id,legacy_table,legacy_id,owner_user_id,payload_jsonb,original_created_at,
     archive_reason,source_schema_version,checksum,conversation_id,sender_user_id,
     client_message_id,message_type,message_body)
@@ -259,7 +238,7 @@ SELECT message_id,'direct_messages',message_id::text,sender_user_id,to_jsonb(m),
        sender_user_id,client_message_id,message_type,message_body
   FROM public.direct_messages m;
 
-INSERT INTO public.archived_realtime_records (
+INSERT INTO public.archived_records (
     archive_id,legacy_table,legacy_id,owner_user_id,payload_jsonb,original_created_at,
     archive_reason,source_schema_version,checksum,conversation_id,initiated_by_user_id,
     call_type,call_status,zego_room_id,initiated_at,answered_at,ended_at,duration_seconds)
@@ -269,8 +248,7 @@ SELECT call_id,'conversation_calls',call_id::text,initiated_by_user_id,to_jsonb(
        ended_at,duration_seconds
   FROM public.conversation_calls c;
 
-DELETE FROM public.archived_partner_records WHERE legacy_table='partner_organizations';
-INSERT INTO public.archived_partner_records (
+INSERT INTO public.archived_records (
     archive_id,legacy_table,legacy_id,owner_user_id,payload_jsonb,original_created_at,
     archive_reason,source_schema_version,checksum,name,organization_type,address,city,
     phone,email,website,logo_url,description,organization_status,representative_user_id,updated_at)
@@ -285,6 +263,10 @@ BEGIN
      (SELECT count(*) FROM public.audit_events WHERE event_origin='AUDIT_LOG') THEN
     RAISE EXCEPTION 'WAVE9_RECONCILIATION: audit logs';
   END IF;
+  IF (SELECT count(*) FROM public.security_events) <>
+     (SELECT count(*) FROM public.audit_events WHERE event_category IN ('LOGIN_FAILED', 'PERMISSION_DENIED', 'SUSPICIOUS_ACTIVITY', 'TOKEN_REVOKED', 'OTP_ATTEMPT_LIMIT_EXCEEDED')) THEN
+    RAISE EXCEPTION 'WAVE9_RECONCILIATION: security events';
+  END IF;
   IF (SELECT count(*) FROM public.consent_grants) <>
      (SELECT count(*) FROM public.data_permissions WHERE permission_kind='CONSENT_GRANT') THEN
     RAISE EXCEPTION 'WAVE9_RECONCILIATION: consent grants';
@@ -293,41 +275,41 @@ BEGIN
     RAISE EXCEPTION 'WAVE9_RECONCILIATION: expenses';
   END IF;
   IF (SELECT count(*) FROM public.consultation_price_bands) <>
-     (SELECT count(*) FROM public.archived_consultation_records WHERE legacy_table='consultation_price_bands') OR
+     (SELECT count(*) FROM public.archived_records WHERE legacy_table='consultation_price_bands') OR
      (SELECT count(*) FROM public.expert_consultation_prices) <>
-     (SELECT count(*) FROM public.archived_consultation_records WHERE legacy_table='expert_consultation_prices') OR
+     (SELECT count(*) FROM public.archived_records WHERE legacy_table='expert_consultation_prices') OR
      (SELECT count(*) FROM public.consultation_bookings) <>
-     (SELECT count(*) FROM public.archived_consultation_records WHERE legacy_table='consultation_bookings') OR
+     (SELECT count(*) FROM public.archived_records WHERE legacy_table='consultation_bookings') OR
      (SELECT count(*) FROM public.consultation_sessions) <>
-     (SELECT count(*) FROM public.archived_consultation_records WHERE legacy_table='consultation_sessions') THEN
+     (SELECT count(*) FROM public.archived_records WHERE legacy_table='consultation_sessions') THEN
     RAISE EXCEPTION 'WAVE9_RECONCILIATION: consultation archive';
   END IF;
   IF (SELECT count(*) FROM public.direct_conversations) <>
-     (SELECT count(*) FROM public.archived_realtime_records WHERE legacy_table='direct_conversations') OR
+     (SELECT count(*) FROM public.archived_records WHERE legacy_table='direct_conversations') OR
      (SELECT count(*) FROM public.direct_messages) <>
-     (SELECT count(*) FROM public.archived_realtime_records WHERE legacy_table='direct_messages') OR
+     (SELECT count(*) FROM public.archived_records WHERE legacy_table='direct_messages') OR
      (SELECT count(*) FROM public.conversation_calls) <>
-     (SELECT count(*) FROM public.archived_realtime_records WHERE legacy_table='conversation_calls') THEN
+     (SELECT count(*) FROM public.archived_records WHERE legacy_table='conversation_calls') THEN
     RAISE EXCEPTION 'WAVE9_RECONCILIATION: realtime archive';
   END IF;
   IF (SELECT count(*) FROM public.partner_organizations) <>
-     (SELECT count(*) FROM public.archived_partner_records WHERE legacy_table='partner_organizations') THEN
+     (SELECT count(*) FROM public.archived_records WHERE legacy_table='partner_organizations') THEN
     RAISE EXCEPTION 'WAVE9_RECONCILIATION: partner archive';
   END IF;
-  IF EXISTS (SELECT 1 FROM public.archived_realtime_records r
-             LEFT JOIN public.archived_realtime_records c ON c.archive_id=r.conversation_id
-               AND c.legacy_table='direct_conversations'
-             WHERE r.legacy_table IN ('direct_messages','conversation_calls') AND c.archive_id IS NULL) OR
+  IF EXISTS (SELECT 1 FROM public.archived_records r
+              LEFT JOIN public.archived_records c ON c.archive_id=r.conversation_id
+                AND c.legacy_table='direct_conversations'
+              WHERE r.legacy_table IN ('direct_messages','conversation_calls') AND c.archive_id IS NULL) OR
      EXISTS (SELECT 1 FROM public.data_permissions p LEFT JOIN public.users u
-               ON u.user_id=p.owner_user_id
-             WHERE p.permission_kind='CONSENT_GRANT' AND u.user_id IS NULL) THEN
+                ON u.user_id=p.owner_user_id
+              WHERE p.permission_kind='CONSENT_GRANT' AND u.user_id IS NULL) THEN
     RAISE EXCEPTION 'WAVE9_ORPHAN_TARGET';
   END IF;
 END $wave9_reconcile$;
 
 ALTER TABLE public.care_facilities DROP CONSTRAINT IF EXISTS care_facilities_partner_id_fkey;
 ALTER TABLE public.care_facilities ADD CONSTRAINT care_facilities_partner_archive_fk
-  FOREIGN KEY (partner_id) REFERENCES public.archived_partner_records(archive_id);
+  FOREIGN KEY (partner_id) REFERENCES public.archived_records(archive_id);
 
 CREATE INDEX IF NOT EXISTS audit_events_origin_time_ix
   ON public.audit_events(event_origin,occurred_at DESC);
@@ -335,34 +317,34 @@ CREATE INDEX IF NOT EXISTS data_permissions_consent_owner_ix
   ON public.data_permissions(owner_user_id,granted_at DESC)
   WHERE permission_kind='CONSENT_GRANT';
 CREATE INDEX IF NOT EXISTS archived_consultation_booking_requester_ix
-  ON public.archived_consultation_records(requester_user_id,status,original_created_at DESC)
+  ON public.archived_records(requester_user_id,status,original_created_at DESC)
   WHERE legacy_table='consultation_bookings';
 CREATE UNIQUE INDEX IF NOT EXISTS archived_realtime_conversation_pair_uk
-  ON public.archived_realtime_records(mother_user_id,expert_user_id)
+  ON public.archived_records(mother_user_id,expert_user_id)
   WHERE legacy_table='direct_conversations';
 CREATE UNIQUE INDEX IF NOT EXISTS archived_realtime_message_client_uk
-  ON public.archived_realtime_records(conversation_id,sender_user_id,client_message_id)
+  ON public.archived_records(conversation_id,sender_user_id,client_message_id)
   WHERE legacy_table='direct_messages';
 CREATE INDEX IF NOT EXISTS archived_realtime_message_timeline_ix
-  ON public.archived_realtime_records(conversation_id,original_created_at DESC)
+  ON public.archived_records(conversation_id,original_created_at DESC)
   WHERE legacy_table='direct_messages';
 CREATE INDEX IF NOT EXISTS archived_realtime_call_timeline_ix
-  ON public.archived_realtime_records(conversation_id,initiated_at DESC)
+  ON public.archived_records(conversation_id,initiated_at DESC)
   WHERE legacy_table='conversation_calls';
 CREATE UNIQUE INDEX IF NOT EXISTS archived_partner_email_uk
-  ON public.archived_partner_records(email) WHERE legacy_table='partner_organizations';
+  ON public.archived_records(email) WHERE legacy_table='partner_organizations';
 CREATE UNIQUE INDEX IF NOT EXISTS archived_partner_representative_uk
-  ON public.archived_partner_records(representative_user_id)
+  ON public.archived_records(representative_user_id)
   WHERE legacy_table='partner_organizations';
 
-ALTER TABLE public.archived_realtime_records
+ALTER TABLE public.archived_records
   ADD CONSTRAINT archived_realtime_conversation_fk
-  FOREIGN KEY (conversation_id) REFERENCES public.archived_realtime_records(archive_id),
+  FOREIGN KEY (conversation_id) REFERENCES public.archived_records(archive_id),
   ADD CONSTRAINT archived_realtime_mother_fk FOREIGN KEY (mother_user_id) REFERENCES public.users(user_id),
   ADD CONSTRAINT archived_realtime_expert_fk FOREIGN KEY (expert_user_id) REFERENCES public.users(user_id),
   ADD CONSTRAINT archived_realtime_sender_fk FOREIGN KEY (sender_user_id) REFERENCES public.users(user_id),
   ADD CONSTRAINT archived_realtime_initiator_fk FOREIGN KEY (initiated_by_user_id) REFERENCES public.users(user_id);
-ALTER TABLE public.archived_realtime_records
+ALTER TABLE public.archived_records
   ADD CONSTRAINT archived_realtime_conversation_shape_ck CHECK (
     legacy_table <> 'direct_conversations' OR
     (mother_user_id IS NOT NULL AND expert_user_id IS NOT NULL AND status='ACTIVE'
@@ -383,22 +365,20 @@ ALTER TABLE public.archived_realtime_records
      AND (answered_at IS NULL OR answered_at >= initiated_at)
      AND (ended_at IS NULL OR ended_at >= initiated_at)
      AND (call_status <> 'ENDED' OR answered_at IS NOT NULL)));
-ALTER TABLE public.archived_consultation_records
+ALTER TABLE public.archived_records
   ADD CONSTRAINT archived_consultation_configured_by_fk
   FOREIGN KEY (configured_by) REFERENCES public.users(user_id),
   ADD CONSTRAINT archived_consultation_requester_fk
   FOREIGN KEY (requester_user_id) REFERENCES public.users(user_id),
-  ADD CONSTRAINT archived_consultation_expert_profile_fk
-  FOREIGN KEY (expert_profile_id) REFERENCES public.professional_profiles(professional_profile_id),
   ADD CONSTRAINT archived_consultation_availability_fk
   FOREIGN KEY (availability_id) REFERENCES public.expert_availability(availability_id),
   ADD CONSTRAINT archived_consultation_price_band_fk
-  FOREIGN KEY (price_band_id) REFERENCES public.archived_consultation_records(archive_id),
+  FOREIGN KEY (price_band_id) REFERENCES public.archived_records(archive_id),
   ADD CONSTRAINT archived_consultation_expert_price_fk
-  FOREIGN KEY (expert_price_id) REFERENCES public.archived_consultation_records(archive_id),
+  FOREIGN KEY (expert_price_id) REFERENCES public.archived_records(archive_id),
   ADD CONSTRAINT archived_consultation_booking_fk
-  FOREIGN KEY (booking_id) REFERENCES public.archived_consultation_records(archive_id);
-ALTER TABLE public.archived_partner_records
+  FOREIGN KEY (booking_id) REFERENCES public.archived_records(archive_id);
+ALTER TABLE public.archived_records
   ADD CONSTRAINT archived_partner_representative_fk
   FOREIGN KEY (representative_user_id) REFERENCES public.users(user_id),
   ADD CONSTRAINT archived_partner_shape_ck CHECK (
@@ -414,7 +394,7 @@ BEGIN
   FOREACH source_name IN ARRAY ARRAY[
     'audit_logs','consent_grants','consultation_bookings','consultation_price_bands',
     'consultation_sessions','conversation_calls','direct_conversations','direct_messages',
-    'expenses','expert_consultation_prices','partner_organizations'
+    'expenses','expert_consultation_prices','partner_organizations','security_events','security_event_notes'
   ] LOOP
     source_oid:=to_regclass('public.'||source_name);
     SELECT count(*) INTO dependency_count FROM pg_constraint
@@ -438,17 +418,19 @@ BEGIN
   END LOOP;
 END $wave9_dependency_gate$;
 
-DROP TABLE public.consultation_sessions;
-DROP TABLE public.consultation_bookings;
-DROP TABLE public.expert_consultation_prices;
-DROP TABLE public.consultation_price_bands;
-DROP TABLE public.conversation_calls;
-DROP TABLE public.direct_messages;
-DROP TABLE public.direct_conversations;
-DROP TABLE public.audit_logs;
-DROP TABLE public.consent_grants;
-DROP TABLE public.expenses;
-DROP TABLE public.partner_organizations;
+DROP TABLE IF EXISTS public.consultation_sessions;
+DROP TABLE IF EXISTS public.consultation_bookings;
+DROP TABLE IF EXISTS public.expert_consultation_prices;
+DROP TABLE IF EXISTS public.consultation_price_bands;
+DROP TABLE IF EXISTS public.conversation_calls;
+DROP TABLE IF EXISTS public.direct_messages;
+DROP TABLE IF EXISTS public.direct_conversations;
+DROP TABLE IF EXISTS public.audit_logs;
+DROP TABLE IF EXISTS public.consent_grants;
+DROP TABLE IF EXISTS public.expenses;
+DROP TABLE IF EXISTS public.partner_organizations;
+DROP TABLE IF EXISTS public.security_event_notes;
+DROP TABLE IF EXISTS public.security_events;
 
 DO $wave9_absence_gate$
 DECLARE name text;
@@ -456,7 +438,7 @@ BEGIN
   FOREACH name IN ARRAY ARRAY[
     'audit_logs','consent_grants','consultation_bookings','consultation_price_bands',
     'consultation_sessions','conversation_calls','direct_conversations','direct_messages',
-    'expenses','expert_consultation_prices','partner_organizations'
+    'expenses','expert_consultation_prices','partner_organizations','security_events','security_event_notes'
   ] LOOP
     IF to_regclass('public.'||name) IS NOT NULL THEN
       RAISE EXCEPTION 'WAVE9_DROP_FAILED: %',name;

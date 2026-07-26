@@ -6,28 +6,28 @@ SET LOCAL statement_timeout = '5min';
 DO $wave1_copy$
 BEGIN
     IF to_regclass('public.user_profiles') IS NOT NULL THEN
-        INSERT INTO persons (person_id, display_name, date_of_birth, phone_number, avatar_url, area, created_at, updated_at)
-        SELECT u.user_id, coalesce(up.display_name, u.full_name), up.date_of_birth,
-               coalesce(up.phone_number, u.phone), coalesce(up.avatar_url, u.avatar_url), up.area,
-               least(u.created_at, up.created_at), greatest(u.updated_at, up.updated_at)
-          FROM user_profiles up JOIN users u ON u.user_id=up.user_id
-        ON CONFLICT (person_id) DO UPDATE SET
-          display_name=excluded.display_name, date_of_birth=excluded.date_of_birth,
-          phone_number=excluded.phone_number, avatar_url=excluded.avatar_url,
-          area=excluded.area, updated_at=excluded.updated_at;
+        UPDATE users u
+           SET display_name = coalesce(up.display_name, u.full_name),
+               date_of_birth = up.date_of_birth,
+               phone_number = coalesce(up.phone_number, u.phone),
+               avatar_url = coalesce(up.avatar_url, u.avatar_url),
+               area = up.area,
+               updated_at = greatest(u.updated_at, up.updated_at)
+          FROM user_profiles up
+         WHERE up.user_id = u.user_id;
         IF (SELECT count(*) FROM user_profiles) <>
-           (SELECT count(*) FROM user_profiles up JOIN users u ON u.user_id=up.user_id JOIN persons p ON p.person_id=u.person_id) THEN
+           (SELECT count(*) FROM user_profiles up JOIN users u ON u.user_id=up.user_id WHERE u.display_name IS NOT NULL) THEN
             RAISE EXCEPTION 'WAVE1_RECONCILIATION: user profile rows';
         END IF;
     END IF;
 
     IF to_regclass('public.baby_profiles') IS NOT NULL THEN
-        INSERT INTO persons(person_id, display_name, date_of_birth, created_at, updated_at)
+        INSERT INTO users(user_id, display_name, date_of_birth, created_at, updated_at)
         SELECT (substr(md5('baby:'||baby_id),1,8)||'-'||substr(md5('baby:'||baby_id),9,4)||'-'||
                 substr(md5('baby:'||baby_id),13,4)||'-'||substr(md5('baby:'||baby_id),17,4)||'-'||
                 substr(md5('baby:'||baby_id),21,12))::uuid,
                nickname,birth_date,created_at,updated_at FROM baby_profiles
-        ON CONFLICT (person_id) DO UPDATE SET display_name=excluded.display_name,
+        ON CONFLICT (user_id) DO UPDATE SET display_name=excluded.display_name,
           date_of_birth=excluded.date_of_birth, updated_at=excluded.updated_at;
 
         INSERT INTO care_subjects(care_subject_id,person_id,owner_user_id,mother_journey_id,subject_type,
@@ -38,7 +38,7 @@ BEGIN
                owner_user_id,related_journey_id,'BABY',nickname,birth_date,sex,birth_weight_kg,birth_length_cm,
                CASE WHEN is_active THEN status ELSE 'INACTIVE' END,created_at,updated_at FROM baby_profiles
         ON CONFLICT (care_subject_id) DO UPDATE SET owner_user_id=excluded.owner_user_id,
-          mother_journey_id=excluded.mother_journey_id,nickname=excluded.nickname,birth_date=excluded.birth_date,
+          nickname=excluded.nickname,birth_date=excluded.birth_date,
           sex=excluded.sex,birth_weight_kg=excluded.birth_weight_kg,birth_length_cm=excluded.birth_length_cm,
           status=excluded.status,updated_at=excluded.updated_at;
         IF (SELECT count(*) FROM baby_profiles) <>
@@ -110,11 +110,10 @@ BEGIN
     END IF;
 
     IF to_regclass('public.token_blacklist') IS NOT NULL THEN
-        INSERT INTO auth_revocations(token_hash,reason,revoked_at,expires_at,legacy_source,legacy_id)
-        SELECT token_hash,coalesce(reason,'LEGACY_BLACKLIST'),coalesce(revoked_at,now()),expires_at,'token_blacklist',id::text
-          FROM token_blacklist ON CONFLICT (token_hash) WHERE token_hash IS NOT NULL DO NOTHING;
-        IF EXISTS (SELECT 1 FROM token_blacklist t LEFT JOIN auth_revocations a ON a.token_hash=t.token_hash
-                   WHERE a.revocation_id IS NULL) THEN RAISE EXCEPTION 'WAVE1_RECONCILIATION: revocations'; END IF;
+        IF (SELECT count(*) FROM public.token_blacklist) <>
+           (SELECT count(*) FROM public.auth_sessions WHERE legacy_source = 'token_blacklist') THEN
+          RAISE EXCEPTION 'WAVE1_RECONCILIATION: revocations';
+        END IF;
     END IF;
 
     IF to_regclass('public.otp_verifications') IS NOT NULL THEN
@@ -168,7 +167,7 @@ DO $dependency_gate$
 DECLARE legacy regclass; name text;
 BEGIN
   FOREACH name IN ARRAY ARRAY['user_profiles','baby_profiles','refresh_tokens','user_sessions','token_blacklist',
-    'notification_preferences','privacy_settings','otp_verifications','password_reset_tokens','roles','user_roles']
+    'notification_preferences','privacy_settings','otp_verifications','password_reset_tokens','roles','user_roles','user_identities']
   LOOP
     legacy:=to_regclass('public.'||name);
     IF legacy IS NOT NULL AND EXISTS (SELECT 1 FROM pg_constraint WHERE confrelid=legacy) THEN
@@ -188,12 +187,13 @@ DROP TABLE IF EXISTS public.otp_verifications;
 DROP TABLE IF EXISTS public.password_reset_tokens;
 DROP TABLE IF EXISTS public.user_roles;
 DROP TABLE IF EXISTS public.roles;
+DROP TABLE IF EXISTS public.user_identities;
 
 DO $absence_gate$
 DECLARE name text;
 BEGIN
   FOREACH name IN ARRAY ARRAY['user_profiles','baby_profiles','refresh_tokens','user_sessions','token_blacklist',
-    'notification_preferences','privacy_settings','otp_verifications','password_reset_tokens','roles','user_roles']
+    'notification_preferences','privacy_settings','otp_verifications','password_reset_tokens','roles','user_roles','user_identities']
   LOOP
     IF to_regclass('public.'||name) IS NOT NULL THEN RAISE EXCEPTION 'WAVE1_DROP_FAILED: %',name; END IF;
   END LOOP;

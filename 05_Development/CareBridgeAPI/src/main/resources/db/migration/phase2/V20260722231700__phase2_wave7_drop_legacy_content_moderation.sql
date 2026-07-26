@@ -8,11 +8,8 @@ ALTER TABLE public.moderation_cases
   ADD COLUMN IF NOT EXISTS reverted_at timestamptz,
   ADD COLUMN IF NOT EXISTS reverted_by uuid;
 
-ALTER TABLE public.moderation_events
-  ALTER COLUMN moderation_case_id DROP NOT NULL;
-
 ALTER TABLE public.audit_events
-  ADD COLUMN IF NOT EXISTS security_event_id bigint,
+  ADD COLUMN IF NOT EXISTS security_event_id uuid,
   ADD COLUMN IF NOT EXISTS note_text text;
 
 INSERT INTO public.moderation_cases (
@@ -31,13 +28,20 @@ ON CONFLICT (moderation_case_id) DO UPDATE SET
   resolved_at=excluded.resolved_at,updated_at=excluded.updated_at,
   reverted_at=excluded.reverted_at,reverted_by=excluded.reverted_by;
 
-INSERT INTO public.moderation_events (
-    moderation_event_id,moderation_case_id,moderator_user_id,action_type,
-    target_type,target_id,reason,expires_at,action_at)
-SELECT moderation_action_id,report_id,moderator_user_id,coalesce(action_type,'REVIEW'),
-       coalesce(target_type,'CONTENT'),target_id,reason,expires_at,coalesce(action_at,now())
-  FROM public.moderation_actions
-ON CONFLICT (moderation_event_id) DO NOTHING;
+INSERT INTO public.audit_events (
+    audit_event_id, actor_user_id, event_category, subject_reference_id,
+    resource_type, resource_id, payload, occurred_at, created_at, severity, status
+)
+SELECT m.moderation_action_id, m.moderator_user_id, 'MODERATION_' || coalesce(m.action_type, 'REVIEW'),
+       m.report_id, coalesce(m.target_type, 'CONTENT'), m.target_id,
+       jsonb_build_object(
+           'reason', m.reason,
+           'expiresAt', m.expires_at,
+           'legacySource', 'moderation_actions'
+       ), coalesce(m.action_at, now()), coalesce(m.action_at, now()),
+       'HIGH', 'CLOSED'
+  FROM public.moderation_actions m
+ON CONFLICT (audit_event_id) DO NOTHING;
 
 INSERT INTO public.content_item_sources (
     content_item_id,source_title,source_url,source_publisher)
@@ -49,7 +53,11 @@ INSERT INTO public.audit_events (
     audit_event_id,actor_user_id,event_category,resource_type,purpose,
     security_event_id,note_text,occurred_at,created_at)
 SELECT note_id,author_id,'SECURITY_INVESTIGATION_NOTE','SECURITY_EVENT',
-       'SECURITY_INVESTIGATION',event_id,note_text,created_at,created_at
+       'SECURITY_INVESTIGATION',
+       (substr(md5('security_event:'||event_id),1,8)||'-'||substr(md5('security_event:'||event_id),9,4)||'-'||
+        substr(md5('security_event:'||event_id),13,4)||'-'||substr(md5('security_event:'||event_id),17,4)||'-'||
+        substr(md5('security_event:'||event_id),21,12))::uuid,
+       note_text,created_at,created_at
   FROM public.security_event_notes
 ON CONFLICT (audit_event_id) DO NOTHING;
 
@@ -60,7 +68,7 @@ BEGIN
     RAISE EXCEPTION 'WAVE7_RECONCILIATION: moderation cases';
   END IF;
   IF (SELECT count(*) FROM public.moderation_actions) <>
-     (SELECT count(*) FROM public.moderation_events) THEN
+     (SELECT count(*) FROM public.audit_events WHERE event_category LIKE 'MODERATION_%') THEN
     RAISE EXCEPTION 'WAVE7_RECONCILIATION: moderation events';
   END IF;
   IF (SELECT count(*) FROM public.content_sources) <>
@@ -87,7 +95,7 @@ DECLARE m record; c record; new_def text;
 BEGIN
   FOR m IN SELECT * FROM (VALUES
     ('content_reports','moderation_cases','report_id','moderation_case_id'),
-    ('moderation_actions','moderation_events','moderation_action_id','moderation_event_id'),
+    ('moderation_actions','audit_events','moderation_action_id','audit_event_id'),
     ('security_event_notes','audit_events','note_id','audit_event_id')
   ) x(source_table,target_table,source_key,target_key)
   LOOP
@@ -107,8 +115,6 @@ END $wave7_retarget_fks$;
 
 CREATE INDEX IF NOT EXISTS moderation_cases_report_source_ix
   ON public.moderation_cases(report_source,status,opened_at DESC);
-CREATE INDEX IF NOT EXISTS moderation_events_target_history_ix
-  ON public.moderation_events(target_type,target_id,action_at DESC);
 CREATE INDEX IF NOT EXISTS audit_events_security_note_ix
   ON public.audit_events(security_event_id,occurred_at)
   WHERE event_category='SECURITY_INVESTIGATION_NOTE';
@@ -118,7 +124,7 @@ ALTER TABLE public.audit_events
          (security_event_id IS NOT NULL AND length(trim(note_text)) > 0));
 ALTER TABLE public.audit_events
   ADD CONSTRAINT audit_events_security_event_fk
-  FOREIGN KEY (security_event_id) REFERENCES public.security_events(id);
+  FOREIGN KEY (security_event_id) REFERENCES public.audit_events(audit_event_id);
 
 DROP TABLE IF EXISTS public.moderation_actions;
 DROP TABLE IF EXISTS public.content_reports;
