@@ -40,37 +40,49 @@ class ExpertOnboardingState {
         root['profileExists'] == true ||
         root['hasProfile'] == true ||
         profile != null;
-    final identityStatus = (root['identityStatus'] ??
-            identity['reviewStatus'] ??
-            identity['status'] ??
-            'NOT_SUBMITTED')
+    final rawIdentityStatus =
+        root['identityStatus'] ??
+        identity['reviewStatus'] ??
+        identity['status'];
+    final identityStatus = (rawIdentityStatus ?? 'NOT_SUBMITTED')
         .toString()
         .toUpperCase();
-    final identityComplete = root['identityComplete'] == true ||
-        identity['submittedAt'] != null ||
-        !const {'', 'NOT_SUBMITTED', 'REQUIRED'}.contains(identityStatus);
-    final credentialStatus = (root['credentialStatus'] ?? '').toString().toUpperCase();
-    final credentialComplete = root['credentialComplete'] == true ||
-        root['hasCredential'] == true ||
-        !const {'', 'NOT_SUBMITTED', 'REQUIRED'}.contains(credentialStatus) ||
-        (credentials is List && credentials.isNotEmpty);
-    final status = (root['verificationStatus'] ??
-            verification['status'] ??
-            root['status'] ??
-            'PENDING')
+    const incompleteStatuses = {
+      '',
+      'NOT_SUBMITTED',
+      'REQUIRED',
+      'MISSING',
+      'REJECTED',
+    };
+    final identityComplete = rawIdentityStatus != null
+        ? !incompleteStatuses.contains(identityStatus)
+        : root['identityComplete'] == true || identity['submittedAt'] != null;
+    final credentialStatus = (root['credentialStatus'] ?? '')
         .toString()
         .toUpperCase();
+    final credentialComplete = credentialStatus.isNotEmpty
+        ? !incompleteStatuses.contains(credentialStatus)
+        : root['credentialComplete'] == true ||
+              root['hasCredential'] == true ||
+              (credentials is List && credentials.isNotEmpty);
+    final status =
+        (root['verificationStatus'] ??
+                verification['status'] ??
+                root['status'] ??
+                'PENDING')
+            .toString()
+            .toUpperCase();
 
     final explicit = _parseStep(root['nextStep']?.toString());
     final calculated = status == 'APPROVED'
         ? ExpertOnboardingStep.complete
         : !profileComplete
-            ? ExpertOnboardingStep.profile
-            : !identityComplete
-                ? ExpertOnboardingStep.identity
-                : !credentialComplete
-                    ? ExpertOnboardingStep.credential
-                    : ExpertOnboardingStep.review;
+        ? ExpertOnboardingStep.profile
+        : !identityComplete
+        ? ExpertOnboardingStep.identity
+        : !credentialComplete
+        ? ExpertOnboardingStep.credential
+        : ExpertOnboardingStep.review;
 
     return ExpertOnboardingState(
       profileComplete: profileComplete,
@@ -78,8 +90,14 @@ class ExpertOnboardingState {
       credentialComplete: credentialComplete,
       verificationStatus: status,
       identityStatus: identityStatus,
-      rejectionReason: (root['rejectionReason'] ?? verification['rejectionReason'])
-          ?.toString(),
+      rejectionReason: _firstNonBlank([
+        root['rejectionReason'],
+        verification['rejectionReason'],
+        identity['reviewReason'],
+        root['latestIdentityAttempt'] is Map
+            ? (root['latestIdentityAttempt'] as Map)['reviewReason']
+            : null,
+      ]),
       nextStep: explicit ?? calculated,
     );
   }
@@ -107,6 +125,14 @@ class ExpertOnboardingState {
       default:
         return null;
     }
+  }
+
+  static String? _firstNonBlank(List<dynamic> values) {
+    for (final value in values) {
+      final text = value?.toString().trim();
+      if (text != null && text.isNotEmpty) return text;
+    }
+    return null;
   }
 }
 

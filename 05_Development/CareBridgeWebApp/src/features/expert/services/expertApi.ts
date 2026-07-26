@@ -80,6 +80,7 @@ export interface ExpertOnboardingResponse {
 	identityStatus: string | null;
 	credentialStatus: string | null;
 	verificationStatus: string | null;
+	rejectionReason?: string | null;
 	nextStep: ExpertOnboardingStep;
 	latestIdentityAttempt: IdentityAttemptResponse | null;
 }

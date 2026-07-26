@@ -4,6 +4,7 @@ import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Getter
@@ -18,6 +19,7 @@ public class ExpertProfileResponse {
 	private String displayName;
 	private String specialty;
 	private String specialtyId;
+	private List<String> specialtyIds;
 	private String professionalTitle;
 	private Integer experienceYears;
 	private String workplace;

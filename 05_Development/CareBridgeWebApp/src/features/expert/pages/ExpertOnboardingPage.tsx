@@ -83,7 +83,7 @@ export default function ExpertOnboardingPage() {
 
       {error && <ErrorBanner message={error} retry={reload} />}
       {state?.nextStep === 'PROFILE' && <ProfileStep onDone={reload} />}
-      {state?.nextStep === 'IDENTITY' && <IdentityStep onDone={reload} latestReason={state.latestIdentityAttempt?.reviewReason} />}
+      {state?.nextStep === 'IDENTITY' && <IdentityStep onDone={reload} latestReason={state.rejectionReason ?? state.latestIdentityAttempt?.reviewReason} />}
       {state?.nextStep === 'CREDENTIAL' && <CredentialStep onDone={reload} />}
       {state?.nextStep === 'UNDER_REVIEW' && <ReviewStep state={state} reload={reload} />}
       {state?.nextStep === 'COMPLETE' && (
@@ -474,7 +474,11 @@ function ReviewStep({ state, reload }: { state: ExpertOnboardingResponse; reload
         <Status label="Chứng chỉ" value={state.credentialStatus} />
         <Status label="Hồ sơ" value={state.verificationStatus} />
       </div>
-      {state.latestIdentityAttempt?.reviewReason && <div className="mt-5 rounded-xl bg-red-50 p-4 text-sm text-red-700">Phản hồi định danh: {state.latestIdentityAttempt.reviewReason}</div>}
+      {(state.rejectionReason || state.latestIdentityAttempt?.reviewReason) && (
+        <div className="mt-5 rounded-xl bg-red-50 p-4 text-sm text-red-700">
+          Phản hồi xét duyệt: {state.rejectionReason ?? state.latestIdentityAttempt?.reviewReason}
+        </div>
+      )}
       <button onClick={() => void reload()} className="mt-6 inline-flex items-center gap-2 rounded-full border border-primary px-5 py-2.5 font-semibold text-primary">
         <RefreshCw size={17} />
         Kiểm tra trạng thái

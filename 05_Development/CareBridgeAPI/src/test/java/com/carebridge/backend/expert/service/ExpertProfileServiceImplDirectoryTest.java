@@ -11,6 +11,7 @@ import com.carebridge.backend.expert.dto.response.ExpertDirectoryResponse;
 import com.carebridge.backend.expert.entity.ExpertProfile;
 import com.carebridge.backend.expert.mapper.ExpertProfileMapper;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
+import com.carebridge.backend.expert.repository.ProfessionalSpecialtyRepository;
 import com.carebridge.backend.expert.service.impl.ExpertProfileServiceImpl;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import com.carebridge.backend.security.entity.User;
@@ -39,6 +40,7 @@ class ExpertProfileServiceImplDirectoryTest {
     @Mock private UserRepository userRepository;
     @Mock private SpecialtyRepository specialtyRepository;
     @Mock private CareFacilityRepository careFacilityRepository;
+    @Mock private ProfessionalSpecialtyRepository professionalSpecialtyRepository;
     @Mock private ExpertIdentityVerificationRepository identityRepository;
     @Mock private ExpertCredentialRepository credentialRepository;
     @Mock private AuditService auditService;
@@ -52,7 +54,7 @@ class ExpertProfileServiceImplDirectoryTest {
     void setUp() {
         service = new ExpertProfileServiceImpl(expertProfileRepository, userRepository, mapper,
                 identityRepository, credentialRepository, auditService,
-                specialtyRepository, careFacilityRepository);
+                specialtyRepository, careFacilityRepository, professionalSpecialtyRepository);
     }
 
     private static ExpertProfile approvedExpert(UUID userId) {

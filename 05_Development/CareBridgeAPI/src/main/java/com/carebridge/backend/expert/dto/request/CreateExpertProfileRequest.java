@@ -7,6 +7,7 @@ import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 import java.math.BigDecimal;
+import java.util.List;
 
 @Getter
 @Setter
@@ -18,6 +19,9 @@ public class CreateExpertProfileRequest {
     @NotBlank
     @Size(max = 80)
     private String specialtyId;
+
+    @Size(max = 20)
+    private List<@NotBlank @Size(max = 80) String> specialtyIds;
 
     @NotBlank
     @Size(max = 36)

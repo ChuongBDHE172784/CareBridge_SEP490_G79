@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-
 class AdminIdentityReviewItem {
   final String identityVerificationId;
   final String expertProfileId;

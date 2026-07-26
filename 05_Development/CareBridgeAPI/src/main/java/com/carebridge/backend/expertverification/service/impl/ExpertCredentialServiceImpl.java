@@ -89,7 +89,7 @@ public class ExpertCredentialServiceImpl implements IExpertCredentialService {
                 .orElseThrow(() -> new ExpertException(
                         HttpStatus.NOT_FOUND, "EXPERT-004", "Expert profile not found"));
 
-        return credentialRepository.findByExpertProfileId(profile.getExpertProfileId()).stream()
+        return credentialRepository.findProfessionalByExpertProfileId(profile.getExpertProfileId()).stream()
                 .map(credential -> withAuthorizedUrl(
                         credentialMapper.toResponse(credential), credential, userId))
                 .collect(Collectors.toList());
@@ -101,6 +101,7 @@ public class ExpertCredentialServiceImpl implements IExpertCredentialService {
         var credential = credentialRepository.findByCredentialId(credentialId)
                 .orElseThrow(() -> new ExpertException(
                         HttpStatus.NOT_FOUND, "EXPVER-004", "Credential not found"));
+        rejectIdentityEvidence(credential);
 
         var profile = expertProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new ExpertException(
@@ -119,6 +120,7 @@ public class ExpertCredentialServiceImpl implements IExpertCredentialService {
         var credential = credentialRepository.findByCredentialId(credentialId)
                 .orElseThrow(() -> new ExpertException(
                         HttpStatus.NOT_FOUND, "EXPVER-004", "Credential not found"));
+        rejectIdentityEvidence(credential);
 
         var profile = expertProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new ExpertException(
@@ -140,6 +142,7 @@ public class ExpertCredentialServiceImpl implements IExpertCredentialService {
         var credential = credentialRepository.findByCredentialIdForUpdate(credentialId)
                 .orElseThrow(() -> new ExpertException(
                         HttpStatus.NOT_FOUND, "EXPVER-004", "Credential not found"));
+        rejectIdentityEvidence(credential);
 
         if (request.getReviewStatus() != ReviewStatus.APPROVED
                 && request.getReviewStatus() != ReviewStatus.REJECTED) {
@@ -205,6 +208,14 @@ public class ExpertCredentialServiceImpl implements IExpertCredentialService {
             response.setFileUrl(fileService.viewFile(credential.getFileId(), callerId).getPresignedUrl());
         }
         return response;
+    }
+
+    private static void rejectIdentityEvidence(ExpertCredential credential) {
+        if (credential.getCredentialType() != null
+                && credential.getCredentialType().startsWith("IDENTITY_")) {
+            throw new ExpertException(
+                    HttpStatus.NOT_FOUND, "EXPVER-004", "Credential not found");
+        }
     }
 
     private void applyAuthorizedUrl(

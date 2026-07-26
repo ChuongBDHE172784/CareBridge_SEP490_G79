@@ -97,6 +97,18 @@ class ExpertDirectoryEligibilityIntegrationTest extends AbstractPostgresIntegrat
                      rating_avg, created_at, updated_at)
                 VALUES (?, ?, ?, ?, ?, ?, now(), now())
                 """, profileId, userId, specialty, verificationStatus, trustStatus, rating);
+        UUID specialtyId = UUID.nameUUIDFromBytes(
+                ("expert-directory:" + specialty).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        jdbcTemplate.update("""
+                INSERT INTO specialties(specialty_id, code, name, is_active, created_at)
+                VALUES (?, ?, ?, true, now())
+                ON CONFLICT (specialty_id) DO NOTHING
+                """, specialtyId, "DIR_" + specialtyId.toString().replace("-", ""), specialty);
+        jdbcTemplate.update("""
+                INSERT INTO professional_specialties
+                    (professional_profile_id, specialty_id, is_primary, created_at)
+                VALUES (?, ?, true, now())
+                """, profileId, specialtyId);
         return profileId;
     }
 
