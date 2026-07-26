@@ -190,7 +190,31 @@ public class CareGroupController {
             Principal principal) {
         var callerId = SecurityUtils.requireCurrentUserId(principal);
         var response = careGroupService.joinGroupByCode(request.getCode(), callerId);
-        return ResponseEntity.ok(ApiResponse.success(response, "Joined care group successfully"));
+        return ResponseEntity.ok(ApiResponse.success(response, "Yêu cầu tham gia đã được gửi, vui lòng chờ Mother duyệt."));
+    }
+
+    // List self-initiated join requests for this group (OWNER only)
+    @GetMapping("/{groupId}/join-requests")
+    @PreAuthorize("hasRole('MOTHER')")
+    public ResponseEntity<ApiResponse<List<com.carebridge.backend.family.dto.JoinRequestDto>>> listJoinRequests(
+            @PathVariable UUID groupId,
+            Principal principal) {
+        var callerId = SecurityUtils.requireCurrentUserId(principal);
+        return ResponseEntity.ok(ApiResponse.success(careGroupService.listJoinRequests(groupId, callerId)));
+    }
+
+    // Mother approves or rejects a join request
+    @PostMapping("/{groupId}/join-requests/{memberId}/respond")
+    @PreAuthorize("hasRole('MOTHER')")
+    public ResponseEntity<ApiResponse<CareGroupMemberDto>> respondJoinRequest(
+            @PathVariable UUID groupId,
+            @PathVariable UUID memberId,
+            @RequestParam boolean approve,
+            Principal principal) {
+        var callerId = SecurityUtils.requireCurrentUserId(principal);
+        var response = careGroupService.respondJoinRequest(groupId, memberId, approve, callerId);
+        return ResponseEntity.ok(ApiResponse.success(response,
+                approve ? "Đã chấp nhận yêu cầu tham gia" : "Đã từ chối yêu cầu tham gia"));
     }
 
     // UC72: Update a member's permission flags (OWNER only)

@@ -10,6 +10,7 @@ import com.carebridge.backend.family.dto.FamilyPermissionResponse;
 import com.carebridge.backend.family.dto.InviteCareGroupMemberRequest;
 import com.carebridge.backend.family.dto.InviteFamilyMemberRequest;
 import com.carebridge.backend.family.dto.InviteFamilyMemberResponse;
+import com.carebridge.backend.family.dto.JoinRequestDto;
 import com.carebridge.backend.family.dto.LeaveCareGroupResponse;
 import com.carebridge.backend.family.dto.PendingInvitationDto;
 import com.carebridge.backend.family.dto.RemoveMemberResponse;
@@ -103,6 +104,19 @@ public interface ICareGroupService {
 
     /**
      * Joins a care group using an invite code (groupId UUID or invite token).
+     * Creates a PENDING join request; the Mother must approve before the member can access the group.
      */
     CareGroupSummaryDto joinGroupByCode(String code, UUID callerId);
+
+    /**
+     * Lists all self-initiated join requests (PENDING, no invite token) for a care group.
+     * Only the group OWNER (Mother) may call this.
+     */
+    List<JoinRequestDto> listJoinRequests(UUID groupId, UUID callerId);
+
+    /**
+     * Mother approves or rejects a join request.
+     * @param approve true = accept (ACCEPTED), false = reject (REJECTED)
+     */
+    CareGroupMemberDto respondJoinRequest(UUID groupId, UUID memberId, boolean approve, UUID callerId);
 }
