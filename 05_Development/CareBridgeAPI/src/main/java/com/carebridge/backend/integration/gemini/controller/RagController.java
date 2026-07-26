@@ -4,7 +4,10 @@ import com.carebridge.backend.common.response.ApiResponse;
 import com.carebridge.backend.integration.gemini.dto.RagAnswerRequest;
 import com.carebridge.backend.integration.gemini.dto.RagAnswerResponse;
 import com.carebridge.backend.integration.gemini.exception.RagException;
-import com.carebridge.backend.integration.gemini.service.RagService;
+import com.carebridge.backend.integration.gemini.service.RagPolicyService;
+import com.carebridge.backend.integration.gemini.dto.RagAudienceContext;
+import com.carebridge.backend.common.util.SecurityUtils;
+import java.security.Principal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -18,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class RagController {
 
-    private final RagService ragService;
+    private final RagPolicyService ragPolicyService;
 
     // PARTNER is excluded: RAG health guidance is for personal-use roles only.
     // Account locked/disabled state is enforced at token issuance (AuthenticationPolicy),
@@ -26,7 +29,8 @@ public class RagController {
     @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY', 'EXPERT', 'MODERATOR', 'CONTENT_ADMIN', 'SYSTEM_ADMIN')")
     @PostMapping("/answer")
     public ResponseEntity<ApiResponse<RagAnswerResponse>> generateAnswer(
-            @RequestBody RagAnswerRequest request) {
+            @RequestBody RagAnswerRequest request,
+            Principal principal) {
 
         String query = request.getQuery();
         if (query == null || query.isBlank() || query.length() < 3 || query.length() > 500) {
@@ -36,7 +40,9 @@ public class RagController {
             throw RagException.contextChunksExceeded();
         }
 
-        RagAnswerResponse response = ragService.generateAnswer(request);
+        RagAnswerResponse response = ragPolicyService.generateAnswer(request,
+                new RagAudienceContext(SecurityUtils.requireCurrentUserId(principal),
+                        SecurityUtils.hasRole("MOTHER")));
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

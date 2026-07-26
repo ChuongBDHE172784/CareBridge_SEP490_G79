@@ -1,9 +1,16 @@
 import '../../../core/network/api_client.dart';
 import '../models/user_checklist_item_model.dart';
 
+typedef ChecklistPostRequest =
+    Future<dynamic> Function(String path, Map<String, dynamic> body);
+
 class UserChecklistService {
-  UserChecklistService._();
-  static final UserChecklistService instance = UserChecklistService._();
+  UserChecklistService({ChecklistPostRequest? postRequest})
+    : _postRequest = postRequest ?? apiPost;
+
+  static final UserChecklistService instance = UserChecklistService();
+
+  final ChecklistPostRequest _postRequest;
 
   Future<List<UserChecklistItem>> listItems({
     String? journeyId,
@@ -59,11 +66,20 @@ class UserChecklistService {
 
   Future<List<UserChecklistItem>> importFromTemplate({
     required List<String> templateItemIds,
-    required String journeyId,
+    String? journeyId,
+    String? babyId,
   }) async {
+    final normalizedJourneyId = journeyId == null || journeyId.isEmpty
+        ? null
+        : journeyId;
+    final normalizedBabyId = babyId == null || babyId.isEmpty ? null : babyId;
+    if (normalizedJourneyId != null && normalizedBabyId != null) {
+      throw ArgumentError('journeyId and babyId are mutually exclusive');
+    }
     if (templateItemIds.isEmpty) return const [];
-    final data = await apiPost('/api/v1/user-checklist-items/import', {
-      'journeyId': journeyId,
+    final data = await _postRequest('/api/v1/user-checklist-items/import', {
+      'journeyId': ?normalizedJourneyId,
+      'babyId': ?normalizedBabyId,
       'templateItemIds': templateItemIds,
     });
     return (data['data'] as List? ?? [])

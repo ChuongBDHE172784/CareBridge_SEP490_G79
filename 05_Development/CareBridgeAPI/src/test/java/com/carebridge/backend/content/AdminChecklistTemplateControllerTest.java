@@ -7,12 +7,17 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.carebridge.backend.common.config.JpaAuditingConfig;
 import com.carebridge.backend.config.MockMvcSecurityBuilderConfig;
 import com.carebridge.backend.content.controller.AdminChecklistTemplateController;
-import com.carebridge.backend.content.dto.response.ChecklistTemplateResponse;
+import com.carebridge.backend.content.dto.response.AdminChecklistTemplateDetailResponse;
+import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
+import com.carebridge.backend.content.entity.ContentStage;
+import java.util.List;
+import java.util.UUID;
 import com.carebridge.backend.content.service.AdminChecklistTemplateService;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
@@ -97,9 +102,27 @@ class AdminChecklistTemplateControllerTest {
     @Test
     @WithMockUser(username = "00000000-0000-0000-0000-000000000003", roles = "SYSTEM_ADMIN")
     void list_asSystemAdmin_shouldReturn200() throws Exception {
-        Page<ChecklistTemplateResponse> page = new PageImpl<>(java.util.List.of());
+        Page<AdminChecklistTemplateDetailResponse> page = new PageImpl<>(java.util.List.of());
         when(adminChecklistTemplateService.list(any(), any(), any())).thenReturn(page);
 
         mockMvc.perform(get(BASE_URL)).andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000003", roles = "SYSTEM_ADMIN")
+    void list_adminContractRetainsTrueTemplateStatus() throws Exception {
+        AdminChecklistTemplateDetailResponse template = AdminChecklistTemplateDetailResponse.builder()
+                .id(UUID.fromString("69000000-0000-0000-0000-000000000701"))
+                .name("Draft checklist")
+                .stage(ContentStage.PREGNANCY)
+                .status(ChecklistTemplateStatus.DRAFT)
+                .items(List.of())
+                .build();
+        when(adminChecklistTemplateService.list(any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of(template)));
+
+        mockMvc.perform(get(BASE_URL))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[0].status").value("DRAFT"));
     }
 }

@@ -19,13 +19,18 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class MasterDataServiceImpl implements IMasterDataService {
 
+    private static final String PROVINCE = "PROVINCE";
+    private static final String DISTRICT = "DISTRICT";
+    private static final String WARD = "WARD";
+
     private final AdministrativeAreaRepository administrativeAreaRepository;
     private final SpecialtyRepository specialtyRepository;
     private final CareFacilityRepository careFacilityRepository;
+    private final MasterDataMapper masterDataMapper;
 
     @Override
     public List<ProvinceResponse> getProvinces() {
-        return administrativeAreaRepository.findByAreaTypeOrderByNameAsc("PROVINCE").stream()
+        return administrativeAreaRepository.findByAreaTypeOrderByNameAsc(PROVINCE).stream()
                 .map(p -> ProvinceResponse.builder()
                         .provinceId(p.getLegacyCode())
                         .name(p.getName())
@@ -98,6 +103,34 @@ public class MasterDataServiceImpl implements IMasterDataService {
                 .type(h.getFacilityType())
                 .phone(h.getPhone())
                 .build());
+    }
+
+    @Override
+    public List<WardResponse> getWardsByDistrict(String districtId) {
+        if (districtId == null || districtId.isBlank()) {
+            return List.of();
+        }
+
+        var district = administrativeAreaRepository.findByCode(DISTRICT + ":" + districtId)
+                .filter(area -> DISTRICT.equals(area.getAreaType()))
+                .filter(area -> districtId.equals(area.getLegacyCode()))
+                .orElse(null);
+        if (district == null || district.getParentAreaId() == null) {
+            return List.of();
+        }
+
+        var province = administrativeAreaRepository.findById(district.getParentAreaId())
+                .filter(area -> PROVINCE.equals(area.getAreaType()))
+                .orElse(null);
+        if (province == null || province.getLegacyCode() == null) {
+            return List.of();
+        }
+
+        return administrativeAreaRepository
+                .findByAreaTypeAndParentAreaIdOrderByNameAsc(WARD, district.getId()).stream()
+                .map(ward -> masterDataMapper.toWardResponse(
+                        ward, district.getLegacyCode(), province.getLegacyCode()))
+                .collect(Collectors.toList());
     }
 
     private Optional<CareFacility> findActiveFacility(String identifier) {

@@ -232,6 +232,237 @@ class TriageGraphServiceTest {
     }
 
     @Test
+    void preconceptionAndPregnancyUniversalDangerSigns_shouldReturnDeterministicRed() {
+        List<MaternalDangerVector> vectors = List.of(
+                new MaternalDangerVector("breathing distress", "Tôi đang khó thở", null, null, false,
+                        "BREATHING_DISTRESS"),
+                new MaternalDangerVector("cyanosis", "Môi tôi tím tái", "tím tái", null, false,
+                        "CYANOSIS"),
+                new MaternalDangerVector("seizure", "Tôi vừa bị co giật", null, null, true,
+                        "SEIZURE"),
+                new MaternalDangerVector("altered consciousness", "Tôi vừa ngất xỉu", null, "ngất", false,
+                        "ALTERED_CONSCIOUSNESS"),
+                new MaternalDangerVector("heavy bleeding", "Tôi đang chảy máu nhiều", null, null, false,
+                        "HEAVY_BLEEDING"),
+                new MaternalDangerVector("self harm", "Tôi muốn tự sát ngay", null, null, false,
+                        "SELF_HARM"));
+
+        for (TriageStage stage : List.of(TriageStage.PRECONCEPTION, TriageStage.PREGNANCY)) {
+            for (MaternalDangerVector vector : vectors) {
+                ChildTriageResult result = graph.run(RunIntakeRequest.builder()
+                        .stage(stage)
+                        .duration("vừa xuất hiện")
+                        .parentFreeText(vector.parentFreeText())
+                        .breathingStatus(vector.breathingStatus())
+                        .consciousnessStatus(vector.consciousnessStatus())
+                        .seizure(vector.seizure())
+                        .build());
+
+                assertThat(result.getStatus()).as(stage + " / " + vector.name()).isEqualTo("COMPLETED");
+                assertThat(result.getRiskLevel()).as(stage + " / " + vector.name()).isEqualTo("RED");
+                assertThat(result.isEmergencyActionRequired()).as(stage + " / " + vector.name()).isTrue();
+                assertThat(result.getMatchedRules()).as(stage + " / " + vector.name())
+                        .containsExactly("RED_" + stage.name() + "_" + vector.expectedRuleSuffix());
+                assertThat(result.getRecommendedAction()).as(stage + " / " + vector.name())
+                        .contains("115")
+                        .doesNotContain("trẻ", "bé", "bú");
+                assertThat(result.getDisclaimer()).as(stage + " / " + vector.name())
+                        .doesNotContain("trẻ", "bé", "bú");
+            }
+        }
+    }
+
+    @Test
+    void preconceptionAndPregnancyNegatedUniversalSigns_shouldRemainNeedMoreInfo() {
+        for (TriageStage stage : List.of(TriageStage.PRECONCEPTION, TriageStage.PREGNANCY)) {
+            ChildTriageResult result = graph.run(RunIntakeRequest.builder()
+                    .stage(stage)
+                    .duration("1 ngày")
+                    .parentFreeText("Tôi không khó thở, không co giật, không ngất, không chảy máu nhiều "
+                            + "và không muốn tự làm hại bản thân")
+                    .breathingStatus("bình thường")
+                    .consciousnessStatus("tỉnh táo")
+                    .seizure(false)
+                    .build());
+
+            assertThat(result.getStatus()).as(stage.name()).isEqualTo("NEED_MORE_INFO");
+            assertThat(result.getRiskLevel()).as(stage.name()).isNull();
+            assertThat(result.isEmergencyActionRequired()).as(stage.name()).isFalse();
+            assertThat(result.getMatchedRules()).as(stage.name())
+                    .noneMatch(rule -> rule.startsWith("RED_" + stage.name() + "_"));
+        }
+    }
+
+    @Test
+    void mixedNegatedAndAffirmedMaternalClauses_shouldPreserveLaterHeavyBleedingRed() {
+        for (TriageStage stage : List.of(TriageStage.PRECONCEPTION, TriageStage.PREGNANCY)) {
+            for (String report : List.of(
+                    "Tôi không khó thở và chảy máu nhiều",
+                    "I have no breathing difficulty and heavy bleeding")) {
+                ChildTriageResult result = graph.run(RunIntakeRequest.builder()
+                        .stage(stage)
+                        .duration("vừa xuất hiện")
+                        .parentFreeText(report)
+                        .build());
+
+                assertThat(result.getRiskLevel()).as(stage + " / " + report).isEqualTo("RED");
+                assertThat(result.getMatchedRules()).as(stage + " / " + report)
+                        .containsExactly("RED_" + stage.name() + "_HEAVY_BLEEDING");
+            }
+        }
+    }
+
+    @Test
+    void independentlyNegatedMaternalClauses_shouldRemainNeedMoreInfo() {
+        for (TriageStage stage : List.of(TriageStage.PRECONCEPTION, TriageStage.PREGNANCY)) {
+            for (String report : List.of(
+                    "Tôi không khó thở và không chảy máu nhiều",
+                    "I have no breathing difficulty and no heavy bleeding")) {
+                ChildTriageResult result = graph.run(RunIntakeRequest.builder()
+                        .stage(stage)
+                        .duration("1 ngày")
+                        .parentFreeText(report)
+                        .build());
+
+                assertThat(result.getStatus()).as(stage + " / " + report).isEqualTo("NEED_MORE_INFO");
+                assertThat(result.getRiskLevel()).as(stage + " / " + report).isNull();
+                assertThat(result.isEmergencyActionRequired()).as(stage + " / " + report).isFalse();
+            }
+        }
+    }
+
+    @Test
+    void preconceptionAndPregnancyParitySynonyms_shouldEmitExactlyOneStageSpecificRule() {
+        List<MaternalDangerVector> vectors = List.of(
+                new MaternalDangerVector("unable to breathe", "I am unable to breathe", null, null, false,
+                        "BREATHING_DISTRESS"),
+                new MaternalDangerVector("cyanotic", "I am cyanotic", null, null, false,
+                        "CYANOSIS"),
+                new MaternalDangerVector("fainting", "I am fainting", null, null, false,
+                        "ALTERED_CONSCIOUSNESS"),
+                new MaternalDangerVector("loss of consciousness", "I had loss of consciousness", null, null, false,
+                        "ALTERED_CONSCIOUSNESS"),
+                new MaternalDangerVector("bleeding heavily", "I am bleeding heavily", null, null, false,
+                        "HEAVY_BLEEDING"),
+                new MaternalDangerVector("tự tử", "Tôi muốn tự tử", null, null, false,
+                        "SELF_HARM"));
+
+        for (TriageStage stage : List.of(TriageStage.PRECONCEPTION, TriageStage.PREGNANCY)) {
+            for (MaternalDangerVector vector : vectors) {
+                ChildTriageResult result = graph.run(RunIntakeRequest.builder()
+                        .stage(stage)
+                        .duration("vừa xuất hiện")
+                        .parentFreeText(vector.parentFreeText())
+                        .build());
+
+                assertThat(result.getRiskLevel()).as(stage + " / " + vector.name()).isEqualTo("RED");
+                assertThat(result.getMatchedRules()).as(stage + " / " + vector.name())
+                        .containsExactly("RED_" + stage.name() + "_" + vector.expectedRuleSuffix());
+            }
+        }
+    }
+
+    @Test
+    void negatedParitySynonyms_shouldRemainNonRedWithoutRuleLeakage() {
+        for (TriageStage stage : List.of(TriageStage.PRECONCEPTION, TriageStage.PREGNANCY)) {
+            for (String report : List.of(
+                    "I am not unable to breathe, not cyanotic, not fainting, no loss of consciousness, "
+                            + "not bleeding heavily and no self harm",
+                    "Tôi không không thở được",
+                    "Tôi không tự tử")) {
+                ChildTriageResult result = graph.run(RunIntakeRequest.builder()
+                        .stage(stage)
+                        .duration("1 ngày")
+                        .parentFreeText(report)
+                        .build());
+
+                assertThat(result.getStatus()).as(stage + " / " + report).isEqualTo("NEED_MORE_INFO");
+                assertThat(result.getRiskLevel()).as(stage + " / " + report).isNull();
+                assertThat(result.getMatchedRules()).as(stage + " / " + report)
+                        .noneMatch(rule -> rule.startsWith("RED_" + stage.name() + "_"));
+            }
+        }
+    }
+
+    @Test
+    void maternalFallbackConsciousnessOption_shouldReturnExactAlteredConsciousnessRed() {
+        for (TriageStage stage : List.of(
+                TriageStage.PRECONCEPTION, TriageStage.PREGNANCY, TriageStage.POSTPARTUM)) {
+            ChildTriageResult result = graph.run(RunIntakeRequest.builder()
+                    .stage(stage)
+                    .duration("vừa xuất hiện")
+                    .consciousnessStatus("Khó giữ tỉnh táo")
+                    .build());
+
+            assertThat(result.getStatus()).as(stage.name()).isEqualTo("COMPLETED");
+            assertThat(result.getRiskLevel()).as(stage.name()).isEqualTo("RED");
+            assertThat(result.getMatchedRules()).as(stage.name())
+                    .containsExactly("RED_" + stage.name() + "_ALTERED_CONSCIOUSNESS");
+            assertThat(result.getNormalizedSymptoms()).as(stage.name()).contains("difficult_to_wake");
+        }
+    }
+
+    @Test
+    void negatedMaternalFallbackConsciousnessOption_shouldRemainNonRed() {
+        for (TriageStage stage : List.of(
+                TriageStage.PRECONCEPTION, TriageStage.PREGNANCY, TriageStage.POSTPARTUM)) {
+            ChildTriageResult result = graph.run(RunIntakeRequest.builder()
+                    .stage(stage)
+                    .duration("1 ngày")
+                    .consciousnessStatus("Không khó giữ tỉnh táo")
+                    .parentFreeText("Tôi không khó giữ tỉnh táo")
+                    .build());
+
+            assertThat(result.getStatus()).as(stage.name()).isEqualTo("NEED_MORE_INFO");
+            assertThat(result.getRiskLevel()).as(stage.name()).isNull();
+            assertThat(result.getMatchedRules()).as(stage.name())
+                    .noneMatch(rule -> rule.endsWith("_ALTERED_CONSCIOUSNESS"));
+        }
+    }
+
+    @Test
+    void unsignedPregnancySpecificSigns_shouldRemainInactive() {
+        ChildTriageResult result = graph.run(RunIntakeRequest.builder()
+                .stage(TriageStage.PREGNANCY)
+                .duration("2 giờ")
+                .parentFreeText("Tôi đau bụng dữ dội, đau đầu dữ dội, hoa mắt và giảm cử động thai")
+                .breathingStatus("bình thường")
+                .consciousnessStatus("tỉnh táo")
+                .seizure(false)
+                .build());
+
+                assertThat(result.getStatus()).isEqualTo("NEED_MORE_INFO");
+                assertThat(result.getRiskLevel()).isNull();
+                assertThat(result.isEmergencyActionRequired()).isFalse();
+                assertThat(result.getMatchedRules()).containsExactly("PREGNANCY_RULES_NEED_CLINICAL_REVIEW");
+                assertThat(result.getQuestions()).allSatisfy(question ->
+                        assertThat(question).doesNotContain("trẻ", "bé", "bú", "child", "baby"));
+                assertThat(result.getPossibleConcern()).doesNotContain("trẻ", "bé", "bú", "child", "baby");
+                assertThat(result.getRecommendedAction()).doesNotContain("trẻ", "bé", "bú", "child", "baby");
+                assertThat(result.getDisclaimer()).doesNotContain("trẻ", "bé", "bú", "child", "baby");
+    }
+
+    @Test
+    void preconceptionNonDangerInput_shouldUseOnlyMaternalQuestionsAndCopy() {
+        ChildTriageResult result = graph.run(RunIntakeRequest.builder()
+                .stage(TriageStage.PRECONCEPTION)
+                .duration("1 ngày")
+                .parentFreeText("Tôi muốn được tư vấn chuẩn bị sức khỏe")
+                .breathingStatus("bình thường")
+                .consciousnessStatus("tỉnh táo")
+                .seizure(false)
+                .build());
+
+        assertThat(result.getStatus()).isEqualTo("NEED_MORE_INFO");
+        assertThat(result.getRiskLevel()).isNull();
+        assertThat(result.getQuestions()).allSatisfy(question ->
+                assertThat(question).doesNotContain("trẻ", "bé", "bú", "child", "baby"));
+        assertThat(result.getPossibleConcern()).doesNotContain("trẻ", "bé", "bú", "child", "baby");
+        assertThat(result.getRecommendedAction()).doesNotContain("trẻ", "bé", "bú", "child", "baby");
+        assertThat(result.getDisclaimer()).doesNotContain("trẻ", "bé", "bú", "child", "baby");
+    }
+
+    @Test
     void noCitationMatch_shouldNotFabricateSource() {
         ChildTriageResult result = graph.run(base()
                 .symptomList(List.of("ngứa tai"))
@@ -252,5 +483,14 @@ class TriageGraphServiceTest {
                 .consciousnessStatus("tỉnh táo")
                 .seizure(false)
                 .dehydrationSigns(List.of());
+    }
+
+    private record MaternalDangerVector(
+            String name,
+            String parentFreeText,
+            String breathingStatus,
+            String consciousnessStatus,
+            boolean seizure,
+            String expectedRuleSuffix) {
     }
 }

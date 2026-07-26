@@ -29,9 +29,9 @@ class Wave5HealthFilesDevicesCleanupMigrationIntegrationTest {
     @Test
     void cleanBootstrapRemovesFiveWave5Tables() throws Exception {
         migrate(PRE);
-        assertThat(tableCount()).isEqualTo(106);
+        long tableCountBefore = tableCount();
         migrate(WAVE);
-        assertThat(tableCount()).isEqualTo(101);
+        assertThat(tableCount()).isEqualTo(tableCountBefore - REMOVED.length);
         for (String table : REMOVED) assertThat(exists(table)).as(table).isFalse();
         assertThat(number("SELECT count(*) FROM pg_constraint WHERE contype='f' AND NOT convalidated"))
                 .isZero();

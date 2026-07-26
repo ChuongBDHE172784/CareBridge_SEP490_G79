@@ -5,20 +5,21 @@ import com.carebridge.backend.integration.gemini.builder.GeminiPromptBuilder;
 import com.carebridge.backend.integration.gemini.client.GeminiClient;
 import com.carebridge.backend.integration.gemini.dto.RagAnswerRequest;
 import com.carebridge.backend.integration.gemini.dto.RagAnswerResponse;
-import com.carebridge.backend.integration.gemini.dto.RagSafetyResult;
 import com.carebridge.backend.integration.gemini.dto.RagSource;
+import com.carebridge.backend.integration.gemini.dto.RagExecutionContext;
 import com.carebridge.backend.integration.gemini.exception.GeminiUnavailableException;
-import com.carebridge.backend.integration.gemini.filter.RagSafetyFilter;
 import com.carebridge.backend.integration.gemini.retriever.RagContextRetriever;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Primary;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 @Service
 @Primary
+@Profile("!test")
 @RequiredArgsConstructor
 @Slf4j
 public class GeminiRagServiceImpl implements RagService {
@@ -33,26 +34,20 @@ public class GeminiRagServiceImpl implements RagService {
 
     private final RagContextRetriever contextRetriever;
     private final GeminiClient geminiClient;
-    private final RagSafetyFilter safetyFilter;
     private final GeminiPromptBuilder promptBuilder;
 
     @Override
-    public RagAnswerResponse generateAnswer(RagAnswerRequest request) {
-        // C1: Safety check FIRST — before any retrieval or Gemini call
-        RagSafetyResult safetyResult = safetyFilter.check(request.getQuery());
-        if (safetyResult.isRedFlag()) {
-            log.info("RagRedFlagDetected for query hash: {}", request.getQuery().hashCode());
-            return buildRedFlagResponse(safetyResult.getEmergencyGuidance());
-        }
-
+    public RagAnswerResponse generateAnswer(RagAnswerRequest request, RagExecutionContext context) {
         int maxChunks = (request.getMaxContextChunks() != null && request.getMaxContextChunks() > 0)
                 ? request.getMaxContextChunks() : 5;
 
-        List<ContentItem> contextItems = contextRetriever.retrieveContext(
-                request.getQuery(), request.getTopicId(), maxChunks);
+        List<ContentItem> contextItems = context.mother()
+                ? contextRetriever.retrieveContext(
+                        request.getQuery(), request.getTopicId(), context.canonicalStage(), maxChunks)
+                : contextRetriever.retrieveContext(request.getQuery(), request.getTopicId(), maxChunks);
 
         String prompt = promptBuilder.buildSafetyConstrainedPrompt(
-                request.getQuery(), contextItems, request.getUserStage());
+                request.getQuery(), contextItems, context.promptStage());
 
         // C2: Catch Gemini unavailability — NEVER propagate exception to caller
         try {

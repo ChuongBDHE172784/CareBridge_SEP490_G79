@@ -23,7 +23,8 @@ public interface ContentRepository extends JpaRepository<ContentItem, UUID> {
            "(:type IS NULL OR c.type = :type) AND " +
            "(:stage IS NULL OR c.stage = :stage) AND " +
            "(:topicId IS NULL OR c.topicId = :topicId) AND " +
-           "c.status = :status")
+           "c.status = :status " +
+           "ORDER BY c.publishedAt DESC NULLS LAST, c.id DESC")
     Page<ContentItem> findByFilters(
             @Param("type") ContentType type,
             @Param("stage") ContentStage stage,
@@ -32,6 +33,12 @@ public interface ContentRepository extends JpaRepository<ContentItem, UUID> {
             Pageable pageable);
 
     Optional<ContentItem> findByIdAndStatus(UUID id, ContentStatus status);
+
+    Optional<ContentItem> findByIdAndStageAndStatus(UUID id, ContentStage stage, ContentStatus status);
+
+    Page<ContentItem> findByStatus(ContentStatus status, Pageable pageable);
+
+    Page<ContentItem> findByType(ContentType type, Pageable pageable);
 
     // Admin workspace filter: every param optional and ANDed together (type+stage+status+keyword
     // used to be handled by separate findByStatus/findByType/searchStaffByKeyword* methods that

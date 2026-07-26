@@ -1,6 +1,7 @@
 export type ContentType = 'ARTICLE' | 'FAQ' | 'CHECKLIST';
 export type ContentStage = 'PRE_PREGNANCY' | 'PREGNANCY' | 'POSTPARTUM' | 'BABY_CARE';
 export type ContentStatus = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'ARCHIVED';
+export type ChecklistTemplateStatus = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'ARCHIVED';
 export type ContentDecision = 'APPROVE' | 'REJECT';
 
 export interface ContentListItem {
@@ -96,6 +97,17 @@ export interface UpdateCommunityTopicPayload extends Partial<CommunityTopicMutat
   isHidden?: boolean;
 }
 
+export interface AdminChecklistTemplate {
+  id: string;
+  name: string;
+  stage: ContentStage | null;
+  status: ChecklistTemplateStatus;
+  description: string;
+  versionNo: number;
+  updatedAt: string | null;
+  itemCount: number;
+}
+
 export interface CommunityTopic {
   id: string;
   name: string;
@@ -136,5 +148,13 @@ export const STATUS_LABELS: Record<ContentStatus, string> = {
   DRAFT: 'Bản nháp',
   PENDING_REVIEW: 'Chờ phê duyệt',
   APPROVED: 'Đã xuất bản',
+  ARCHIVED: 'Đã lưu trữ',
+};
+
+export const CHECKLIST_STATUS_LABELS: Record<ChecklistTemplateStatus, string> = {
+  DRAFT: 'Bản nháp',
+  PENDING_REVIEW: 'Chờ duyệt',
+  APPROVED: 'Đã duyệt',
+  REJECTED: 'Đã từ chối',
   ARCHIVED: 'Đã lưu trữ',
 };

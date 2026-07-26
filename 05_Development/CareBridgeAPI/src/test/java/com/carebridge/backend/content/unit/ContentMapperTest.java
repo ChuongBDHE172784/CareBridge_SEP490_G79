@@ -38,6 +38,7 @@ class ContentMapperTest {
                 .status(status)
                 .versionNo(1)
                 .authorUserId(AUTHOR_ID)
+                .sources(List.of())
                 .publishedAt(Instant.now())
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
@@ -94,6 +95,20 @@ class ContentMapperTest {
         ContentDetailResponse response = contentMapper.toDetailResponse(item);
 
         assertThat(response.getVersion()).isEqualTo(1);
+    }
+
+    @Test
+    void toDetailResponse_builderWithoutSources_mapsEmptySourceList() {
+        ContentItem item = ContentItem.builder()
+                .id(CONTENT_ID)
+                .type(ContentType.ARTICLE)
+                .title("Content without explicit sources")
+                .status(ContentStatus.APPROVED)
+                .build();
+
+        ContentDetailResponse response = contentMapper.toDetailResponse(item);
+
+        assertThat(response.getSources()).isEmpty();
     }
 
     @Test

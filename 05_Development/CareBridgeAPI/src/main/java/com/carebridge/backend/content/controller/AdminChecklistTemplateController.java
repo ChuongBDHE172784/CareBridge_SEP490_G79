@@ -5,10 +5,10 @@ import com.carebridge.backend.common.util.SecurityUtils;
 import com.carebridge.backend.content.dto.request.CreateChecklistTemplateRequest;
 import com.carebridge.backend.content.dto.request.HideChecklistTemplateRequest;
 import com.carebridge.backend.content.dto.request.UpdateChecklistTemplateRequest;
-import com.carebridge.backend.content.dto.response.ChecklistTemplateResponse;
+import com.carebridge.backend.content.dto.response.AdminChecklistTemplateDetailResponse;
 import com.carebridge.backend.content.dto.response.HideChecklistTemplateResponse;
+import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
 import com.carebridge.backend.content.entity.ContentStage;
-import com.carebridge.backend.content.entity.ContentStatus;
 import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.service.AdminChecklistTemplateService;
 import jakarta.validation.Valid;
@@ -40,8 +40,8 @@ public class AdminChecklistTemplateController {
     private final AdminChecklistTemplateService adminChecklistTemplateService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<ChecklistTemplateResponse>>> list(
-            @RequestParam(required = false) ContentStatus status,
+    public ResponseEntity<ApiResponse<Page<AdminChecklistTemplateDetailResponse>>> list(
+            @RequestParam(required = false) ChecklistTemplateStatus status,
             @RequestParam(required = false) ContentStage stage,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
@@ -54,30 +54,32 @@ public class AdminChecklistTemplateController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<ChecklistTemplateResponse>> getById(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<AdminChecklistTemplateDetailResponse>> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(
                 adminChecklistTemplateService.getById(id), "Checklist template loaded"));
     }
 
     @PostMapping
     @PreAuthorize("hasRole('CONTENT_ADMIN')")
-    public ResponseEntity<ApiResponse<ChecklistTemplateResponse>> create(
+    public ResponseEntity<ApiResponse<AdminChecklistTemplateDetailResponse>> create(
             @Valid @RequestBody CreateChecklistTemplateRequest request,
             Principal principal) {
         UUID adminUserId = SecurityUtils.requireCurrentUserId(principal);
-        ChecklistTemplateResponse response = adminChecklistTemplateService.create(request, adminUserId);
+        AdminChecklistTemplateDetailResponse response =
+                adminChecklistTemplateService.create(request, adminUserId);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "Checklist template created successfully"));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('CONTENT_ADMIN')")
-    public ResponseEntity<ApiResponse<ChecklistTemplateResponse>> update(
+    public ResponseEntity<ApiResponse<AdminChecklistTemplateDetailResponse>> update(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateChecklistTemplateRequest request,
             Principal principal) {
         UUID adminUserId = SecurityUtils.requireCurrentUserId(principal);
-        ChecklistTemplateResponse response = adminChecklistTemplateService.update(id, request, adminUserId);
+        AdminChecklistTemplateDetailResponse response =
+                adminChecklistTemplateService.update(id, request, adminUserId);
         return ResponseEntity.ok(ApiResponse.success(response, "Checklist template updated successfully"));
     }
 

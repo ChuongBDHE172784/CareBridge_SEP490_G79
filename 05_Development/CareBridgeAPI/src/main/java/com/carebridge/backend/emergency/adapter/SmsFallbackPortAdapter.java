@@ -11,6 +11,7 @@ public class SmsFallbackPortAdapter implements SmsFallbackPort {
 
     @Override
     public void sendFallback(UUID userId, UUID sessionId, String message) {
-        log.warn("SMS fallback placeholder triggered for emergency session [{}], user [{}]", sessionId, userId);
+        log.error("SMS fallback delivery outcome=PROVIDER_NOT_CONFIGURED");
+        throw new IllegalStateException("SMS fallback provider is not configured");
     }
 }

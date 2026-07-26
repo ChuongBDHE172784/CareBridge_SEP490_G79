@@ -3,7 +3,7 @@ package com.carebridge.backend.content;
 import com.carebridge.backend.content.entity.ChecklistItem;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
 import com.carebridge.backend.content.entity.ContentStage;
-import com.carebridge.backend.content.entity.ContentStatus;
+import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
 import java.util.UUID;
 import java.util.function.Consumer;
 
@@ -20,7 +20,7 @@ final class ChecklistTemplateTestFactory {
                 .id(TEMPLATE_ID)
                 .name("Checklist mẫu kiểm thử")
                 .stage(ContentStage.PREGNANCY)
-                .status(ContentStatus.DRAFT)
+                .status(ChecklistTemplateStatus.DRAFT)
                 .description("Mô tả kiểm thử")
                 .build();
     }

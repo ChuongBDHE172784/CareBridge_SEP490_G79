@@ -1,6 +1,5 @@
 package com.carebridge.backend.emergency.service;
 
-import com.carebridge.backend.emergency.entity.EmergencyAlertDelivery;
 import com.carebridge.backend.emergency.event.EmergencySessionOpened;
 import com.carebridge.backend.emergency.repository.EmergencyAlertDeliveryRepository;
 import com.carebridge.backend.notification.dto.FcmDeliveryResult;
@@ -26,22 +25,13 @@ public class EmergencyAlertDeliveryPersistenceService {
     public PreparedAlertDelivery prepare(
             EmergencySessionOpened event,
             AlertRecipientEndpoint recipient,
-            UUID sharedNotificationId) {
-        var existing = deliveryRepository.findByEmergencySessionIdAndDeviceTokenId(
-                event.sessionId(), recipient.deviceTokenId());
+            UUID sharedNotificationId,
+            EmergencyAlertClaim claim) {
+        var existing = deliveryRepository.findSuccessful(event.sessionId(), recipient.deviceTokenId());
         if (existing.isPresent()) {
-            EmergencyAlertDelivery delivery = existing.get();
-            boolean successful = "SENT".equals(delivery.getDeliveryStatus())
-                    || "DELIVERED".equals(delivery.getDeliveryStatus());
-            if (!successful) {
-                delivery.setDeliveryStatus("PENDING");
-                delivery.setFailureCode(null);
-                delivery.setFcmMessageId(null);
-                delivery.setDeliveredAt(null);
-                deliveryRepository.save(delivery);
-            }
-            return new PreparedAlertDelivery(delivery.getId(), delivery.getNotificationRecordId(),
-                    successful, delivery.getAttemptCount());
+            var delivery = existing.get();
+            return new PreparedAlertDelivery(delivery.actionId(), delivery.notificationRecordId(),
+                    true, delivery.attempts());
         }
 
         NotificationRecord notification = sharedNotificationId == null
@@ -61,30 +51,24 @@ public class EmergencyAlertDeliveryPersistenceService {
                             .build()))
                 : notificationRepository.findById(sharedNotificationId).orElseThrow();
 
-        EmergencyAlertDelivery delivery = deliveryRepository.save(EmergencyAlertDelivery.builder()
-                .emergencySessionId(event.sessionId())
-                .recipientUserId(recipient.userId())
-                .deviceTokenId(recipient.deviceTokenId())
-                .notificationRecordId(notification.getId())
-                .deliveryStatus("PENDING")
-                .attemptCount(0)
-                .createdAt(Instant.now())
-                .build());
-        return new PreparedAlertDelivery(delivery.getId(), notification.getId(), false, 0);
+        var delivery = deliveryRepository.insertIntent(
+                claim, recipient.userId(), recipient.deviceTokenId(), notification.getId());
+        return new PreparedAlertDelivery(delivery.actionId(), notification.getId(), false, 0);
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void complete(UUID deliveryId, FcmDeliveryResult result) {
-        EmergencyAlertDelivery delivery = deliveryRepository.findById(deliveryId).orElseThrow();
+    @Transactional(propagation = Propagation.MANDATORY)
+    public boolean complete(
+            PreparedAlertDelivery prepared,
+            EmergencyAlertClaim claim,
+            FcmDeliveryResult result) {
+        boolean appended = deliveryRepository.appendResult(
+                prepared.deliveryId(), claim, result.success(), result.attempts(),
+                result.messageId(), truncate(result.errorCode()));
+        if (!appended) {
+            return false;
+        }
         Instant now = Instant.now();
-        delivery.setDeliveryStatus(result.success() ? "SENT" : "FAILED");
-        delivery.setAttemptCount(delivery.getAttemptCount() + result.attempts());
-        delivery.setFcmMessageId(result.messageId());
-        delivery.setFailureCode(truncate(result.errorCode()));
-        delivery.setDeliveredAt(result.success() ? now : null);
-        deliveryRepository.save(delivery);
-
-        NotificationRecord notification = notificationRepository.findById(delivery.getNotificationRecordId())
+        NotificationRecord notification = notificationRepository.findById(prepared.notificationRecordId())
                 .orElseThrow();
         notification.setAttemptCount(notification.getAttemptCount() + result.attempts());
         if (result.success()) {
@@ -96,6 +80,7 @@ public class EmergencyAlertDeliveryPersistenceService {
             notification.setFailedAt(now);
         }
         notificationRepository.save(notification);
+        return true;
     }
 
     private String truncate(String value) {

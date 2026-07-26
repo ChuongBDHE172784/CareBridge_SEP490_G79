@@ -1,26 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../core/auth/auth_state.dart';
 import '../../emergency/services/emergency_service.dart';
+import '../models/triage_continuation.dart';
 import '../models/triage_entry_context.dart';
 import '../models/triage_intake_flow_model.dart';
 import '../models/triage_result_model.dart';
 import '../services/triage_service.dart';
+import '../services/triage_continuation_restore_coordinator.dart';
+import '../services/triage_continuation_store.dart';
 
 class SymptomIntakeScreen extends StatefulWidget {
   final TriageService? triageService;
   final EmergencyService? emergencyService;
   final TriageEntryContext entryContext;
-  final VoidCallback? postpartumEmergencyAction;
   final Future<bool> Function()? postpartumEmergencyLauncher;
+  final TriageContinuationRestoreCoordinator? continuationCoordinator;
 
   const SymptomIntakeScreen({
     super.key,
     this.triageService,
     this.emergencyService,
     this.entryContext = const TriageEntryContext(),
-    this.postpartumEmergencyAction,
     this.postpartumEmergencyLauncher,
+    this.continuationCoordinator,
   });
 
   @override
@@ -34,9 +38,11 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
   static const _onSurface = Color(0xFF271812);
   static const _onVariant = Color(0xFF524440);
   static const _outline = Color(0xFFD6C2BD);
+  static const _maternalStages = {'PRECONCEPTION', 'PREGNANCY', 'POSTPARTUM'};
 
   late final TriageService _service;
   late final EmergencyService _emergencyService;
+  late final TriageContinuationRestoreCoordinator _continuationCoordinator;
   final _initialController = TextEditingController();
   final Map<String, TextEditingController> _answerControllers = {};
   final List<_ChatMessage> _messages = [];
@@ -49,27 +55,42 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
   int _round = 1;
   bool _loading = false;
   bool _openingEmergency = false;
+  bool _dialing115 = false;
   bool _emergencyFailed = false;
   bool _postpartumManualCallRequired = false;
+  bool _returningToOrigin = false;
+  String? _dialerNotice;
   TriageResult? _result;
   String? _error;
+  String? _returnNotice;
 
   @override
   void initState() {
     super.initState();
     _service = widget.triageService ?? TriageService();
     _emergencyService = widget.emergencyService ?? EmergencyService();
+    _continuationCoordinator =
+        widget.continuationCoordinator ??
+        TriageContinuationRestoreCoordinator(
+          store: SecureTriageContinuationStore(),
+          gateway: _service,
+        );
     _selectedStage = widget.entryContext.stage.apiValue;
-    _currentIntake = _blankIntake(stage: _selectedStage);
+    _currentIntake = _newIntake(stage: _selectedStage);
     _messages.add(
       _ChatMessage(
         role: _ChatRole.assistant,
-        text: widget.entryContext.isPostpartum
-            ? 'Hãy mô tả dấu hiệu bạn đang gặp trong quá trình hồi phục sau sinh. CareBridge chỉ hỗ trợ phân loại rủi ro ban đầu.'
+        text: widget.entryContext.isMaternal
+            ? 'Hãy mô tả dấu hiệu bạn đang gặp. CareBridge chỉ hỗ trợ phân loại rủi ro ban đầu theo giai đoạn sức khỏe hiện tại.'
             : 'Hãy mô tả triệu chứng của bé. CareBridge sẽ hỏi thêm nếu cần và chỉ phân loại rủi ro ban đầu.',
       ),
     );
   }
+
+  Map<String, dynamic> _newIntake({required String stage}) => {
+    ..._blankIntake(stage: stage),
+    ...widget.entryContext.toLifecycleBindingJson(),
+  };
 
   static Map<String, dynamic> _blankIntake({String stage = 'INFANT'}) {
     final common = <String, dynamic>{
@@ -82,7 +103,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
       'seizure': null,
       'parentFreeText': null,
     };
-    if (stage == 'POSTPARTUM') return common;
+    if (_maternalStages.contains(stage)) return common;
     return {
       ...common,
       'childAgeMonths': null,
@@ -111,7 +132,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
       _loading = true;
       _error = null;
       _currentIntake = {
-        ..._blankIntake(stage: _selectedStage),
+        ..._newIntake(stage: _selectedStage),
         'symptomList': <String>[text],
         'parentFreeText': text,
       };
@@ -168,17 +189,95 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
     }
   }
 
+  Future<void> _returnToValidatedOrigin() async {
+    if (_returningToOrigin) return;
+    final userId = AuthState.instance.userId;
+    if (userId == null || userId.isEmpty) {
+      setState(() => _returnNotice = 'Vui lòng đăng nhập lại để tiếp tục.');
+      return;
+    }
+    setState(() {
+      _returningToOrigin = true;
+      _returnNotice = null;
+    });
+    TriageContinuationDecision decision;
+    try {
+      decision = await _continuationCoordinator.restoreForUser(userId);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _returningToOrigin = false;
+        _returnNotice =
+            'Chưa thể khôi phục điểm quay lại. Dữ liệu vẫn được giữ; hãy thử lại.';
+      });
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _returningToOrigin = false);
+    final String? location = switch (decision.destination) {
+      TriageContinuationDestination.motherJourney =>
+        '/mother-home?tab=1&triageReturn=${Uri.encodeQueryComponent(_sessionId ?? DateTime.now().microsecondsSinceEpoch.toString())}',
+      TriageContinuationDestination.babyProfile
+          when decision.originReferenceId?.isNotEmpty == true =>
+        '/babies/detail/${Uri.encodeComponent(decision.originReferenceId!)}',
+      TriageContinuationDestination.safeDashboard => '/mother-home',
+      _ => null,
+    };
+    if (location == null) {
+      setState(() {
+        _returnNotice =
+            'Chưa thể khôi phục điểm quay lại. Dữ liệu tiếp tục vẫn được giữ để thử lại.';
+      });
+      return;
+    }
+    context.go(
+      location,
+      extra:
+          decision.destination == TriageContinuationDestination.motherJourney ||
+              decision.destination == TriageContinuationDestination.babyProfile
+          ? TriageContinuationArrival(
+              userId: userId,
+              decision: decision,
+              coordinator: _continuationCoordinator,
+            )
+          : decision.destination ==
+                    TriageContinuationDestination.safeDashboard &&
+                decision.isRecoverable
+          ? const TriageContinuationRecoveryNotice()
+          : null,
+    );
+  }
+
   void _applyResponse(IntakeFlowResponse response, {String? userMessage}) {
-    if (widget.entryContext.lockStage &&
-        response.stage != widget.entryContext.stage.apiValue) {
+    final mergedStage = response.mergedIntake['stage']?.toString();
+    if (mergedStage != null && mergedStage != response.stage) {
       setState(() {
         _error =
-            'Phản hồi không khớp với giai đoạn sau sinh. Vui lòng thử lại.';
+            'Phản hồi intake không khớp giai đoạn đã chọn. Vui lòng thử lại.';
         _questions = [];
       });
       return;
     }
-    if (widget.entryContext.isPostpartum &&
+    if (response.triageResult != null &&
+        response.triageResult!.stage != response.stage) {
+      setState(() {
+        _error =
+            'Phản hồi phân loại không khớp giai đoạn đã chọn. Vui lòng thử lại.';
+        _questions = [];
+      });
+      return;
+    }
+    if (widget.entryContext.lockStage &&
+        response.stage != widget.entryContext.stage.apiValue) {
+      setState(() {
+        _error = widget.entryContext.isPostpartum
+            ? 'Phản hồi không khớp với giai đoạn sau sinh. Vui lòng thử lại.'
+            : 'Phản hồi không khớp với giai đoạn đã chọn. Vui lòng thử lại.';
+        _questions = [];
+      });
+      return;
+    }
+    if (widget.entryContext.isMaternal &&
         response.questions.any(
           (question) => const {
             'childAgeMonths',
@@ -191,7 +290,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
         )) {
       setState(() {
         _error =
-            'Không thể dùng bộ câu hỏi này cho giai đoạn sau sinh. Vui lòng thử lại.';
+            'Không thể dùng bộ câu hỏi dành cho bé ở giai đoạn sức khỏe của mẹ. Vui lòng thử lại.';
         _questions = [];
       });
       return;
@@ -316,23 +415,42 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
 
   Future<void> _openEmergencyFlow() async {
     if (_openingEmergency) return;
+    final requestUserId = AuthState.instance.userId;
     setState(() {
       _openingEmergency = true;
       _emergencyFailed = false;
       _error = null;
     });
     try {
-      await _emergencyService
-          .openFlow(triggerSource: 'AI_TRIAGE')
-          .timeout(const Duration(seconds: 8));
+      final session = await _emergencyService.getActive().timeout(
+        const Duration(seconds: 8),
+      );
       if (!mounted) return;
-      context.push('/emergency/map');
+      if (AuthState.instance.userId != requestUserId) {
+        setState(() {
+          _emergencyFailed = true;
+          _error =
+              'Phiên đăng nhập đã thay đổi. Hãy tải lại phiên hỗ trợ cho tài khoản hiện tại.';
+        });
+        return;
+      }
+      if (session == null) {
+        throw StateError('Missing backend-created emergency session');
+      }
+      final location = Uri(
+        path: '/emergency/map',
+        queryParameters: {
+          'mode': 'triage',
+          'stage': _result?.stage ?? _selectedStage,
+        },
+      ).toString();
+      context.push(location, extra: session);
     } catch (_) {
       if (mounted) {
         setState(() {
           _emergencyFailed = true;
           _error =
-              'Không thể kích hoạt hỗ trợ khẩn cấp. Vui lòng gọi cấp cứu hoặc thử lại.';
+              'Không thể tải phiên hỗ trợ lúc này. Phiên có thể vẫn đang được hệ thống xử lý.';
         });
       }
     } finally {
@@ -342,14 +460,55 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
 
   Future<void> _openPostpartumEmergency() async {
     if (_openingEmergency) return;
-    final action = widget.postpartumEmergencyAction;
-    if (action != null) {
-      action();
-      return;
-    }
+    final requestUserId = AuthState.instance.userId;
     setState(() {
       _openingEmergency = true;
+      _emergencyFailed = false;
+      _error = null;
+    });
+    try {
+      final session = await _emergencyService.getActive().timeout(
+        const Duration(seconds: 8),
+      );
+      if (!mounted) return;
+      if (AuthState.instance.userId != requestUserId) {
+        setState(() {
+          _emergencyFailed = true;
+          _error =
+              'Phiên đăng nhập đã thay đổi. Hãy tải lại phiên hỗ trợ cho tài khoản hiện tại.';
+        });
+        return;
+      }
+      if (session == null) {
+        throw StateError('Missing backend-created emergency session');
+      }
+      final location = Uri(
+        path: '/emergency/map',
+        queryParameters: {
+          'mode': 'triage',
+          'stage': _result?.stage ?? 'POSTPARTUM',
+        },
+      ).toString();
+      context.push(location, extra: session);
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _emergencyFailed = true;
+          _error =
+              'Không thể tải phiên hỗ trợ lúc này. Phiên có thể vẫn đang được hệ thống xử lý.';
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _openingEmergency = false);
+    }
+  }
+
+  Future<void> _call115() async {
+    if (_dialing115 || !mounted) return;
+    setState(() {
+      _dialing115 = true;
       _postpartumManualCallRequired = false;
+      _dialerNotice = null;
     });
     var opened = false;
     try {
@@ -364,8 +523,9 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
     }
     if (!mounted) return;
     setState(() {
-      _openingEmergency = false;
+      _dialing115 = false;
       _postpartumManualCallRequired = !opened;
+      _dialerNotice = opened ? 'Đang mở cuộc gọi cấp cứu 115.' : null;
     });
   }
 
@@ -380,6 +540,8 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
         title: Text(
           widget.entryContext.isPostpartum
               ? 'Hỗ trợ dấu hiệu sau sinh'
+              : widget.entryContext.isMaternal
+              ? 'Kiểm tra dấu hiệu an toàn'
               : 'Kiểm tra triệu chứng',
         ),
       ),
@@ -479,7 +641,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
                 ? null
                 : (_) => setState(() {
                     _selectedStage = entry.key;
-                    _currentIntake = _blankIntake(stage: entry.key);
+                    _currentIntake = _newIntake(stage: entry.key);
                   }),
           );
         }).toList(),
@@ -543,6 +705,21 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
     }
   }
 
+  bool _canOpenYellowHandoff(TriageResult result) =>
+      result.status == 'COMPLETED' &&
+      result.riskLevel == 'YELLOW' &&
+      (result.journeyId ?? '').isNotEmpty &&
+      const {
+        'MOTHER_JOURNEY',
+        'BABY_PROFILE',
+      }.contains(result.originDashboard) &&
+      (result.originReferenceId ?? '').isNotEmpty;
+
+  void _openYellowHandoff(TriageResult result) {
+    if (!_canOpenYellowHandoff(result)) return;
+    context.push('/triage/expert-handoff', extra: result.sessionId);
+  }
+
   Widget _buildResult(TriageResult result) {
     final color = _riskColor(result.riskLevel);
     return Container(
@@ -584,11 +761,42 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
           ],
           if (result.riskLevel == 'RED' || result.emergencyActionRequired) ...[
             const SizedBox(height: 16),
+            if (result.stage == 'POSTPARTUM') ...[
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton.icon(
+                  key: const Key('triage-postpartum-call-115'),
+                  onPressed: _dialing115 ? null : _call115,
+                  icon: _dialing115
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.call),
+                  label: const Text(
+                    'Gọi cấp cứu 115 ngay',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFBA1A1A),
+                    foregroundColor: Colors.white,
+                    shape: const StadiumBorder(),
+                    elevation: 3,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+            ],
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
                 key: const Key('triage-emergency-cta'),
-                onPressed: widget.entryContext.isPostpartum
+                onPressed: result.stage == 'POSTPARTUM'
                     ? (_openingEmergency ? null : _openPostpartumEmergency)
                     : (_openingEmergency ? null : _openEmergencyFlow),
                 icon: _openingEmergency
@@ -599,13 +807,33 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
                       )
                     : const Icon(Icons.emergency),
                 label: Text(
-                  widget.entryContext.isPostpartum
-                      ? 'Gọi cấp cứu 115'
-                      : 'Kích hoạt hỗ trợ khẩn cấp',
+                  _emergencyFailed
+                      ? 'Thử tải lại phiên hỗ trợ'
+                      : 'Mở phiên hỗ trợ khẩn cấp',
+                ),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size.fromHeight(52),
+                  backgroundColor: const Color(0xFFBA1A1A),
+                  foregroundColor: Colors.white,
+                  shape: const StadiumBorder(),
                 ),
               ),
             ),
-            if (widget.entryContext.isPostpartum &&
+            if (result.stage == 'POSTPARTUM' &&
+                (_dialerNotice ?? '').isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Semantics(
+                liveRegion: true,
+                child: Text(
+                  _dialerNotice!,
+                  style: const TextStyle(
+                    color: Color(0xFF5A463F),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+            if (result.stage == 'POSTPARTUM' &&
                 _postpartumManualCallRequired) ...[
               const SizedBox(height: 12),
               Semantics(
@@ -627,6 +855,98 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
                       fontWeight: FontWeight.w700,
                       height: 1.4,
                     ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+          if (result.riskLevel == 'YELLOW') ...[
+            const SizedBox(height: 16),
+            if (_canOpenYellowHandoff(result))
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: FilledButton.icon(
+                  key: const Key('triage-inline-yellow-expert-handoff-cta'),
+                  onPressed: () => _openYellowHandoff(result),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFFC98C7B),
+                    foregroundColor: Colors.white,
+                    shape: const StadiumBorder(),
+                  ),
+                  icon: const Icon(Icons.support_agent),
+                  label: const Text(
+                    'Tìm chuyên gia đã xác thực',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                  ),
+                ),
+              )
+            else
+              Semantics(
+                liveRegion: true,
+                child: Container(
+                  key: const Key('triage-inline-yellow-handoff-unavailable'),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF2EAE4),
+                    borderRadius: BorderRadius.circular(24),
+                    border: const Border(
+                      left: BorderSide(color: Color(0xFFC98C7B), width: 4),
+                    ),
+                  ),
+                  child: const Text(
+                    'Chưa thể chuyển ngữ cảnh cho chuyên gia vì kết quả chưa có đầy đủ liên kết hành trình. Hướng dẫn YELLOW vẫn được giữ an toàn; hãy thử tải lại từ nơi bắt đầu.',
+                    style: TextStyle(
+                      color: Color(0xFF5A463F),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      height: 1.4,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+          if (result.riskLevel != 'RED' &&
+              widget.entryContext.toLifecycleBindingJson().isNotEmpty) ...[
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                key: const Key('triage-inline-return-to-origin'),
+                onPressed: _returningToOrigin ? null : _returnToValidatedOrigin,
+                icon: _returningToOrigin
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.arrow_back_rounded),
+                label: Text(
+                  widget.entryContext.origin == TriageOriginIntent.babyProfile
+                      ? 'Quay lại hồ sơ bé'
+                      : 'Quay lại Hành trình của mẹ',
+                ),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(52),
+                  backgroundColor: const Color(0xFFC98C7B),
+                  foregroundColor: Colors.white,
+                  shape: const StadiumBorder(),
+                ),
+              ),
+            ),
+            if ((_returnNotice ?? '').isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Semantics(
+                liveRegion: true,
+                child: Text(
+                  _returnNotice!,
+                  style: const TextStyle(
+                    color: Color(0xFF5A463F),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
@@ -773,7 +1093,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
                     minLines: 1,
                     maxLines: 4,
                     decoration: InputDecoration(
-                      hintText: widget.entryContext.isPostpartum
+                      hintText: widget.entryContext.isMaternal
                           ? 'Ví dụ: Tôi thấy chóng mặt và khó thở...'
                           : 'Ví dụ: Bé bị sốt và ho...',
                       border: OutlineInputBorder(),
@@ -817,13 +1137,64 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(_error!, style: const TextStyle(color: Colors.red)),
-          if (_emergencyFailed)
-            TextButton.icon(
-              key: const Key('triage-emergency-fallback-map'),
-              onPressed: () => context.push('/emergency/map'),
-              icon: const Icon(Icons.map_outlined),
-              label: const Text('Vẫn mở bản đồ khẩn cấp'),
+          if (_emergencyFailed) ...[
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                SizedBox(
+                  height: 48,
+                  child: OutlinedButton.icon(
+                    key: const Key('triage-emergency-retry'),
+                    onPressed: _openingEmergency
+                        ? null
+                        : _result?.stage == 'POSTPARTUM'
+                        ? _openPostpartumEmergency
+                        : _openEmergencyFlow,
+                    style: OutlinedButton.styleFrom(
+                      shape: const StadiumBorder(),
+                    ),
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Thử tải lại phiên hỗ trợ'),
+                  ),
+                ),
+                SizedBox(
+                  height: 48,
+                  child: TextButton.icon(
+                    key: const Key('triage-emergency-fallback-map'),
+                    onPressed: () {
+                      final location = Uri(
+                        path: '/emergency/map',
+                        queryParameters: {
+                          'mode': 'triage',
+                          'stage': _result?.stage ?? _selectedStage,
+                        },
+                      ).toString();
+                      context.push(location);
+                    },
+                    style: TextButton.styleFrom(shape: const StadiumBorder()),
+                    icon: const Icon(Icons.support_agent_outlined),
+                    label: const Text('Mở trang hỗ trợ'),
+                  ),
+                ),
+                if (_result?.stage == 'POSTPARTUM')
+                  SizedBox(
+                    height: 48,
+                    child: TextButton.icon(
+                      key: const Key('triage-emergency-call-115-fallback'),
+                      onPressed: _dialing115 ? null : _call115,
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFFBA1A1A),
+                        shape: const StadiumBorder(),
+                      ),
+                      icon: const Icon(Icons.call),
+                      label: const Text('Gọi 115'),
+                    ),
+                  ),
+              ],
             ),
+          ],
         ],
       ),
     );

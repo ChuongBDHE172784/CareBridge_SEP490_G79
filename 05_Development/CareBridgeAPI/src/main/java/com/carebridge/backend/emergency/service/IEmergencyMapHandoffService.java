@@ -9,7 +9,7 @@ public interface IEmergencyMapHandoffService {
 
     EmergencyHandoffResponse createHandoff(UUID userId, CreateEmergencyHandoffRequest request);
 
-    EmergencyHandoffResponse getHandoff(UUID handoffId);
+    EmergencyHandoffResponse getHandoff(UUID handoffId, UUID callerId, boolean systemAdmin);
 
     List<EmergencyHandoffResponse> getMyHandoffs(UUID userId);
 }

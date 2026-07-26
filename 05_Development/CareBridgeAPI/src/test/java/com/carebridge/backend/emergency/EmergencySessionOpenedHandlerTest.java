@@ -4,25 +4,30 @@ import com.carebridge.backend.emergency.event.EmergencySessionOpened;
 import com.carebridge.backend.emergency.service.EmergencySessionOpenedHandler;
 import com.carebridge.backend.emergency.service.IFamilyAlertService;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
 class EmergencySessionOpenedHandlerTest {
 
-    @Mock
-    private IFamilyAlertService familyAlertService;
+    @Test
+    void afterCommitDispatchUsesCanonicalFamilyAlertService() {
+        IFamilyAlertService alerts = mock(IFamilyAlertService.class);
+        EmergencySessionOpenedHandler handler = new EmergencySessionOpenedHandler(alerts);
+        EmergencySessionOpened event = EmergencyTestFactory.makeEmergencySessionOpenedEvent();
 
-    @InjectMocks
-    private EmergencySessionOpenedHandler handler;
+        handler.onEmergencySessionOpened(event);
+
+        verify(alerts).sendAlert(event);
+    }
 
     @Test
-    void onEmergencySessionOpened_shouldCallSendAlert() {
+    void deliveryFailureDoesNotSurfaceAfterEmergencyCommit() {
+        IFamilyAlertService alerts = mock(IFamilyAlertService.class);
         EmergencySessionOpened event = EmergencyTestFactory.makeEmergencySessionOpenedEvent();
-        handler.onEmergencySessionOpened(event);
-        verify(familyAlertService).sendAlert(event);
+        doThrow(new IllegalStateException("delivery unavailable")).when(alerts).sendAlert(event);
+        EmergencySessionOpenedHandler handler = new EmergencySessionOpenedHandler(alerts);
+
+        assertThatCode(() -> handler.onEmergencySessionOpened(event)).doesNotThrowAnyException();
     }
 }

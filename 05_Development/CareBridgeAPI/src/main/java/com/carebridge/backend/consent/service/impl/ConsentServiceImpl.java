@@ -15,10 +15,12 @@ import com.carebridge.backend.consent.mapper.ConsentGrantMapper;
 import com.carebridge.backend.consent.policy.ConsentCheckPolicy;
 import com.carebridge.backend.consent.repository.ConsentGrantRepository;
 import com.carebridge.backend.consent.service.ConsentService;
+import com.carebridge.backend.expertavailability.repository.ExpertLocationShareRepository;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +34,7 @@ public class ConsentServiceImpl implements ConsentService {
     private final ConsentGrantMapper consentGrantMapper;
     private final ConsentCheckPolicy consentCheckPolicy;
     private final AuditService auditService;
+    private final ExpertLocationShareRepository expertLocationShareRepository;
 
     @Override
     public ConsentGrantResponse grantConsent(java.util.UUID userId, GrantConsentRequest request) {
@@ -66,9 +69,15 @@ public class ConsentServiceImpl implements ConsentService {
         if (grant.getRevokedAt() != null) {
             throw new ValidationException("CONSENT-012: Consent has already been revoked");
         }
+        UUID permissionId = grant.getPermissionId();
+        if (permissionId == null) {
+            throw new IllegalStateException("Consent grant is missing its canonical permission id");
+        }
         grant.setRevokedAt(Instant.now());
         grant.setRevokedBy(userId);
+        grant.setStatus("REVOKED");
         ConsentGrant saved = consentGrantRepository.save(grant);
+        expertLocationShareRepository.deleteAllByConsentReference(permissionId);
         auditService.log(
                 AuditAction.CONSENT_REVOKED,
                 userId,

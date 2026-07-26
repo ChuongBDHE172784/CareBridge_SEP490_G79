@@ -8,7 +8,10 @@ import '../services/expert_contribution_service.dart';
 import '../widgets/contribution_status_chip.dart';
 
 class ExpertContributionDetailScreen extends StatefulWidget {
-  const ExpertContributionDetailScreen({super.key, required this.contributionId});
+  const ExpertContributionDetailScreen({
+    super.key,
+    required this.contributionId,
+  });
 
   final String contributionId;
 
@@ -49,7 +52,8 @@ class _ExpertContributionDetailScreenState
       builder: (ctx) => AlertDialog(
         title: const Text('Gửi duyệt bài viết?'),
         content: const Text(
-            'Sau khi gửi, bạn sẽ không thể chỉnh sửa cho đến khi được duyệt hoặc từ chối.'),
+          'Sau khi gửi, bạn sẽ không thể chỉnh sửa cho đến khi được duyệt hoặc từ chối.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -69,15 +73,16 @@ class _ExpertContributionDetailScreenState
       await _service.submitContribution(widget.contributionId);
       if (mounted) {
         await _loadContribution();
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Đã gửi duyệt thành công')),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gửi duyệt thất bại: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Gửi duyệt thất bại: $e')));
       }
     }
   }
@@ -111,9 +116,9 @@ class _ExpertContributionDetailScreenState
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Xóa thất bại: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Xóa thất bại: $e')));
       }
     }
   }
@@ -124,9 +129,10 @@ class _ExpertContributionDetailScreenState
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Không thể mở liên kết')),
-        );
+        if (!mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Không thể mở liên kết')));
       }
     }
   }
@@ -146,10 +152,10 @@ class _ExpertContributionDetailScreenState
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? _buildError(cs, theme)
-              : _contribution == null
-                  ? _buildNotFound(theme, cs)
-                  : _buildDetail(theme, cs),
+          ? _buildError(cs, theme)
+          : _contribution == null
+          ? _buildNotFound(theme, cs)
+          : _buildDetail(theme, cs),
     );
   }
 
@@ -185,8 +191,10 @@ class _ExpertContributionDetailScreenState
           children: [
             const Icon(Icons.article_outlined, size: 64, color: Colors.grey),
             const SizedBox(height: 16),
-            Text('Không tìm thấy bài viết',
-                style: theme.textTheme.headlineSmall),
+            Text(
+              'Không tìm thấy bài viết',
+              style: theme.textTheme.headlineSmall,
+            ),
             const SizedBox(height: 16),
             FilledButton(
               onPressed: () => context.pop(),
@@ -237,7 +245,11 @@ class _ExpertContributionDetailScreenState
                     ),
                     child: Row(
                       children: [
-                        Icon(Icons.error_outline, size: 16, color: cs.onErrorContainer),
+                        Icon(
+                          Icons.error_outline,
+                          size: 16,
+                          color: cs.onErrorContainer,
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
@@ -296,9 +308,12 @@ class _ExpertContributionDetailScreenState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Nội dung',
-                    style: theme.textTheme.titleLarge
-                        ?.copyWith(fontWeight: FontWeight.w600)),
+                Text(
+                  'Nội dung',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 12),
                 Text(
                   c.content,
@@ -320,17 +335,24 @@ class _ExpertContributionDetailScreenState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Tệp đính kèm (${c.attachments!.length})',
-                      style: theme.textTheme.titleLarge
-                          ?.copyWith(fontWeight: FontWeight.w600)),
+                  Text(
+                    'Tệp đính kèm (${c.attachments!.length})',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   Wrap(
                     spacing: 12,
                     runSpacing: 12,
-                    children: c.attachments!.map((att) => _AttachmentCard(
-                      attachment: att,
-                      onTap: () => _openAttachment(att),
-                    )).toList(),
+                    children: c.attachments!
+                        .map(
+                          (att) => _AttachmentCard(
+                            attachment: att,
+                            onTap: () => _openAttachment(att),
+                          ),
+                        )
+                        .toList(),
                   ),
                 ],
               ),
@@ -353,8 +375,8 @@ class _ExpertContributionDetailScreenState
                   alignment: WrapAlignment.end,
                   children: [
                     OutlinedButton.icon(
-                      onPressed: () => context.push(
-                          '/expert/contributions/${c.id}/edit'),
+                      onPressed: () =>
+                          context.push('/expert/contributions/${c.id}/edit'),
                       icon: const Icon(Icons.edit_outlined, size: 18),
                       label: const Text('Chỉnh sửa'),
                     ),
@@ -412,11 +434,10 @@ class _MetaChip extends StatelessWidget {
         children: [
           Icon(icon, size: 14, color: cs.onSurfaceVariant),
           const SizedBox(width: 6),
-          Text(label,
-              style: TextStyle(
-                fontSize: 12,
-                color: cs.onSurfaceVariant,
-              )),
+          Text(
+            label,
+            style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
+          ),
         ],
       ),
     );
@@ -424,10 +445,7 @@ class _MetaChip extends StatelessWidget {
 }
 
 class _AttachmentCard extends StatelessWidget {
-  const _AttachmentCard({
-    required this.attachment,
-    required this.onTap,
-  });
+  const _AttachmentCard({required this.attachment, required this.onTap});
 
   final ContributionAttachment attachment;
   final VoidCallback onTap;
@@ -437,7 +455,8 @@ class _AttachmentCard extends StatelessWidget {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
     final isImage = attachment.kind == 'IMAGE';
-    final hasUrl = attachment.presignedUrl != null && attachment.presignedUrl!.isNotEmpty;
+    final hasUrl =
+        attachment.presignedUrl != null && attachment.presignedUrl!.isNotEmpty;
 
     return InkWell(
       onTap: onTap,
@@ -463,7 +482,7 @@ class _AttachmentCard extends StatelessWidget {
                   width: double.infinity,
                   height: 80,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _buildDocIcon(cs),
+                  errorBuilder: (_, _, _) => _buildDocIcon(cs),
                 ),
               )
             else
@@ -498,11 +517,7 @@ class _AttachmentCard extends StatelessWidget {
   Widget _buildDocIcon(ColorScheme cs) {
     return Container(
       padding: const EdgeInsets.all(16),
-      child: Icon(
-        Icons.description,
-        size: 36,
-        color: cs.primary,
-      ),
+      child: Icon(Icons.description, size: 36, color: cs.primary),
     );
   }
 }

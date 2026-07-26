@@ -2,6 +2,7 @@ package com.carebridge.backend.expertavailability.dto.request;
 
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import java.math.BigDecimal;
@@ -28,6 +29,8 @@ public class ShareLocationRequest {
 
     private String availabilityStatus;
 
+    @NotNull
+    @Future
     private LocalDateTime expiresAt;
 
     @NotNull

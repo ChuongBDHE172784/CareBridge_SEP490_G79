@@ -3,9 +3,9 @@ spring:
     name: backend
 
   datasource:
-    url: ${SUPABASE_DB_URL}
-    username: ${SUPABASE_DB_USERNAME}
-    password: ${SUPABASE_DB_PASSWORD}
+    # Runtime deployments must provide an explicit datasource. Local Docker
+    # defaults are isolated in application-local.yaml. Runtime credentials are
+    # published atomically by RuntimeDatasourceEnvironmentPostProcessor.
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 5
@@ -17,7 +17,6 @@ spring:
     enabled: false
     clean-disabled: true
     out-of-order: true
-    ignore-migration-patterns: "*:missing"
 
   docker:
     compose:

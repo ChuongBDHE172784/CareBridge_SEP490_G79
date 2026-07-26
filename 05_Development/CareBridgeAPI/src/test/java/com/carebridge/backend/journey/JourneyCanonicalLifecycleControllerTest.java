@@ -10,6 +10,7 @@ import com.carebridge.backend.journey.dto.PregnancyOutcomeResponse;
 import com.carebridge.backend.journey.entity.*;
 import com.carebridge.backend.journey.service.IJourneyService;
 import com.carebridge.backend.journey.service.IJourneyTransitionService;
+import com.carebridge.backend.journey.service.IJourneyTimelineService;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
 import com.carebridge.backend.security.repository.UserRepository;
@@ -49,6 +50,7 @@ class JourneyCanonicalLifecycleControllerTest {
 
     @MockitoBean IJourneyService journeyService;
     @MockitoBean IJourneyTransitionService journeyTransitionService;
+    @MockitoBean IJourneyTimelineService journeyTimelineService;
     @MockitoBean JwtTokenProvider jwtTokenProvider;
     @MockitoBean UserRepository userRepository;
 

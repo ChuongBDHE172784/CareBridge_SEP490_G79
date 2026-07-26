@@ -6,7 +6,7 @@
   * Run: `set -a && source .env && set +a && ./mvnw spring-boot:run`
   * Build/Package: `./mvnw clean package`
   * Test: `./mvnw test`
-  * Requires `.env` file with `SUPABASE_DB_URL`, `JWT_SECRET`, etc. (see `.env.example`).
+  * Requires `.env` with `CAREBRIDGE_DB_*`, `JWT_SECRET`, etc. (see `.env.example`); datasource defaults to local Docker PostgreSQL.
   * Values containing `&` or spaces must be quoted in `.env` for bash `source` compatibility.
 * Web (`05_Development/CareBridgeWebApp`):
   * Run: `npm run dev`

@@ -30,9 +30,9 @@ class Wave3CommunityExpertCleanupMigrationIntegrationTest {
     @Test
     void cleanBootstrapRemovesNineWave3Tables() throws Exception {
         migrate(PRE);
-        assertThat(tableCount()).isEqualTo(120);
+        long tableCountBefore = tableCount();
         migrate(WAVE);
-        assertThat(tableCount()).isEqualTo(111);
+        assertThat(tableCount()).isEqualTo(tableCountBefore - REMOVED.length);
         for (String table : REMOVED) {
             assertThat(exists(table)).as(table).isFalse();
         }

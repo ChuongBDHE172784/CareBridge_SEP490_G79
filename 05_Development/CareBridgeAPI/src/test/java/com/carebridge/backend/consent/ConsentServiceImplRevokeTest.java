@@ -13,6 +13,7 @@ import com.carebridge.backend.consent.policy.ConsentCheckPolicy;
 import com.carebridge.backend.consent.repository.ConsentGrantRepository;
 import com.carebridge.backend.consent.service.ConsentService;
 import com.carebridge.backend.consent.service.impl.ConsentServiceImpl;
+import com.carebridge.backend.expertavailability.repository.ExpertLocationShareRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -36,6 +37,7 @@ class ConsentServiceImplRevokeTest {
     private ConsentGrantMapper consentGrantMapper;
     private ConsentCheckPolicy consentCheckPolicy;
     private AuditService auditService;
+    private ExpertLocationShareRepository expertLocationShareRepository;
 
     @BeforeEach
     void setUp() {
@@ -43,18 +45,25 @@ class ConsentServiceImplRevokeTest {
         consentGrantMapper = mock(ConsentGrantMapper.class);
         consentCheckPolicy = mock(ConsentCheckPolicy.class);
         auditService = mock(AuditService.class);
+        expertLocationShareRepository = mock(ExpertLocationShareRepository.class);
         consentService = new ConsentServiceImpl(
-                consentGrantRepository, consentGrantMapper, consentCheckPolicy, auditService);
+                consentGrantRepository,
+                consentGrantMapper,
+                consentCheckPolicy,
+                auditService,
+                expertLocationShareRepository);
     }
 
     @Test
     @DisplayName("CONSENT-TC-010: revokeConsent sets revokedAt and revokedBy")
     void revokeConsent_activeGrant_setsRevokedFields() {
         UUID userId = UUID.randomUUID();
+        UUID permissionId = UUID.randomUUID();
         Long consentId = 1L;
 
         ConsentGrant grant = ConsentGrant.builder()
                 .id(consentId)
+                .permissionId(permissionId)
                 .userId(userId)
                 .dataType(ConsentDataType.HEALTH_RECORD)
                 .purpose(ConsentPurpose.VIEW)
@@ -84,6 +93,8 @@ class ConsentServiceImplRevokeTest {
         verify(consentGrantRepository).save(captor.capture());
         assertThat(captor.getValue().getRevokedAt()).isNotNull();
         assertThat(captor.getValue().getRevokedBy()).isEqualTo(userId);
+        assertThat(captor.getValue().getStatus()).isEqualTo("REVOKED");
+        verify(expertLocationShareRepository).deleteAllByConsentReference(permissionId);
     }
 
     @Test

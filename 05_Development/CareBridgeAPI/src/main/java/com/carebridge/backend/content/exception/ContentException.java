@@ -137,4 +137,18 @@ public class ContentException extends RuntimeException {
                 "Lý do bắt buộc khi từ chối checklist template",
                 HttpStatus.BAD_REQUEST);
     }
+
+    public static ContentException checklistTemplateItemReferenceInvalid() {
+        return new ContentException(
+                "CHKTPL-009",
+                "Checklist item id is duplicated or does not belong to this template",
+                HttpStatus.BAD_REQUEST);
+    }
+
+    public static ContentException lifecycleContextUnavailable() {
+        return new ContentException(
+                "CNT-013",
+                "Lifecycle content context unavailable",
+                HttpStatus.CONFLICT);
+    }
 }

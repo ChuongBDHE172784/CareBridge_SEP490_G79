@@ -1,13 +1,18 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:untitled/core/auth/auth_state.dart';
+import 'package:untitled/features/aiTriage/models/triage_continuation.dart';
 import 'package:untitled/features/aiTriage/models/triage_intake_flow_model.dart';
 import 'package:untitled/features/aiTriage/models/triage_entry_context.dart';
 import 'package:untitled/features/aiTriage/models/triage_result_model.dart';
 import 'package:untitled/features/aiTriage/screens/symptom_intake_screen.dart';
 import 'package:untitled/features/aiTriage/services/triage_service.dart';
+import 'package:untitled/features/aiTriage/services/triage_continuation_restore_coordinator.dart';
+import 'package:untitled/features/aiTriage/services/triage_continuation_store.dart';
 import 'package:untitled/features/emergency/models/emergency_session_model.dart';
 import 'package:untitled/features/emergency/services/emergency_service.dart';
 
@@ -16,7 +21,8 @@ const _sessionId = '11111111-1111-1111-1111-111111111111';
 IntakeFlowResponse _complete(TriageResult result) => IntakeFlowResponse(
   status: 'TRIAGE_COMPLETE',
   intakeSessionId: _sessionId,
-  mergedIntake: const {'persisted': true},
+  stage: result.stage,
+  mergedIntake: {'persisted': true, 'stage': result.stage},
   round: 2,
   triageResult: result,
 );
@@ -24,9 +30,11 @@ IntakeFlowResponse _complete(TriageResult result) => IntakeFlowResponse(
 TriageResult _result(
   String risk, {
   bool emergency = false,
+  String stage = 'INFANT',
   List<TriageCitation> citations = const [],
 }) => TriageResult(
   sessionId: _sessionId,
+  stage: stage,
   status: 'COMPLETED',
   riskLevel: risk,
   emergencyActionRequired: emergency,
@@ -45,6 +53,37 @@ class _StaticTriageService extends TriageService {
     required String initialText,
     required Map<String, dynamic> currentIntake,
   }) async => response;
+}
+
+class _RetryContinuationStore implements TriageContinuationStore {
+  _RetryContinuationStore(this.pending);
+
+  PendingTriageContinuation? pending;
+
+  @override
+  int generationFor(String userId) => 0;
+
+  @override
+  Future<PendingTriageContinuation?> read(String userId) async => pending;
+
+  @override
+  Future<void> invalidateUser(String userId) async => pending = null;
+
+  @override
+  Future<void> save({
+    required String userId,
+    required PendingTriageContinuation continuation,
+    required int generation,
+  }) async => pending = continuation;
+}
+
+class _OfflineContinuationGateway implements TriageContinuationGateway {
+  @override
+  Future<void> acknowledge(String token) async {}
+
+  @override
+  Future<TriageContinuationResolution> resolve(String token) =>
+      Future.error(StateError('offline'));
 }
 
 class _RecordingPostpartumTriageService extends TriageService {
@@ -155,8 +194,15 @@ class _PendingTriageService extends TriageService {
 }
 
 class _DelayedEmergencyService extends EmergencyService {
-  int calls = 0;
-  final completer = Completer<EmergencySession>();
+  int activeCalls = 0;
+  int openCalls = 0;
+  final completer = Completer<EmergencySession?>();
+
+  @override
+  Future<EmergencySession?> getActive() {
+    activeCalls++;
+    return completer.future;
+  }
 
   @override
   Future<EmergencySession> openFlow({
@@ -164,13 +210,20 @@ class _DelayedEmergencyService extends EmergencyService {
     double? latitude,
     double? longitude,
   }) {
-    calls++;
-    return completer.future;
+    openCalls++;
+    return Future.error(StateError('RED handoff must not POST a session'));
   }
 }
 
 class _FailingEmergencyService extends EmergencyService {
-  int calls = 0;
+  int activeCalls = 0;
+  int openCalls = 0;
+
+  @override
+  Future<EmergencySession?> getActive() {
+    activeCalls++;
+    return Future.error(Exception('RAW_EMERGENCY_FAILURE'));
+  }
 
   @override
   Future<EmergencySession> openFlow({
@@ -178,7 +231,7 @@ class _FailingEmergencyService extends EmergencyService {
     double? latitude,
     double? longitude,
   }) {
-    calls++;
+    openCalls++;
     return Future.error(Exception('RAW_EMERGENCY_FAILURE'));
   }
 }
@@ -187,6 +240,9 @@ Future<GoRouter> _pumpScreen(
   WidgetTester tester, {
   required TriageService triage,
   EmergencyService? emergency,
+  TriageEntryContext entryContext = const TriageEntryContext(),
+  Future<bool> Function()? postpartumEmergencyLauncher,
+  TriageContinuationRestoreCoordinator? continuationCoordinator,
 }) async {
   final router = GoRouter(
     routes: [
@@ -195,11 +251,23 @@ Future<GoRouter> _pumpScreen(
         builder: (_, _) => SymptomIntakeScreen(
           triageService: triage,
           emergencyService: emergency,
+          entryContext: entryContext,
+          postpartumEmergencyLauncher: postpartumEmergencyLauncher,
+          continuationCoordinator: continuationCoordinator,
         ),
       ),
       GoRoute(
         path: '/emergency/map',
-        builder: (_, _) => const Scaffold(body: Text('Emergency map')),
+        builder: (_, state) {
+          final session = state.extra as EmergencySession?;
+          return Scaffold(
+            body: Text(
+              'Emergency map ${session?.sessionId ?? 'manual'} '
+              '${state.uri.queryParameters['mode']} '
+              '${state.uri.queryParameters['stage']}',
+            ),
+          );
+        },
       ),
     ],
   );
@@ -266,71 +334,125 @@ void main() {
   });
 
   testWidgets(
-    'postpartum RED uses direct emergency action without creating a client session',
+    'postpartum RED opens the backend session without posting another session',
     (tester) async {
       final emergency = _DelayedEmergencyService();
-      var directEmergencyCalls = 0;
-      await tester.pumpWidget(
-        MaterialApp(
-          home: SymptomIntakeScreen(
-            triageService: _StaticTriageService(
-              IntakeFlowResponse(
-                status: 'TRIAGE_COMPLETE',
-                intakeSessionId: _sessionId,
-                stage: 'POSTPARTUM',
-                mergedIntake: const {'stage': 'POSTPARTUM'},
-                round: 1,
-                triageResult: _result('RED', emergency: true),
-              ),
-            ),
-            emergencyService: emergency,
-            entryContext: const TriageEntryContext.postpartum(),
-            postpartumEmergencyAction: () => directEmergencyCalls++,
+      await _pumpScreen(
+        tester,
+        triage: _StaticTriageService(
+          IntakeFlowResponse(
+            status: 'TRIAGE_COMPLETE',
+            intakeSessionId: _sessionId,
+            stage: 'POSTPARTUM',
+            mergedIntake: const {'stage': 'POSTPARTUM'},
+            round: 1,
+            triageResult: _result('RED', emergency: true, stage: 'POSTPARTUM'),
           ),
         ),
+        emergency: emergency,
+        entryContext: const TriageEntryContext.postpartum(),
       );
 
       await _submitInitial(tester);
+      expect(
+        find.byKey(const Key('triage-postpartum-call-115')),
+        findsOneWidget,
+      );
       await tester.tap(find.byKey(const Key('triage-emergency-cta')));
       await tester.pump();
 
-      expect(directEmergencyCalls, 1);
-      expect(emergency.calls, 0);
+      expect(emergency.activeCalls, 1);
+      expect(emergency.openCalls, 0);
+      emergency.completer.complete(
+        const EmergencySession(
+          sessionId: 'postpartum-emergency',
+          userId: 'mother',
+          status: 'ACTIVE',
+          triggerSource: 'AI_TRIAGE',
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Emergency map postpartum-emergency triage POSTPARTUM'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('bé'), findsNothing);
     },
   );
 
   testWidgets('postpartum RED keeps manual 115 guidance when launch throws', (
     tester,
   ) async {
-    await tester.pumpWidget(
-      MaterialApp(
-        home: SymptomIntakeScreen(
-          triageService: _StaticTriageService(
-            IntakeFlowResponse(
-              status: 'TRIAGE_COMPLETE',
-              intakeSessionId: _sessionId,
-              stage: 'POSTPARTUM',
-              mergedIntake: const {'stage': 'POSTPARTUM'},
-              round: 1,
-              triageResult: _result('RED', emergency: true),
-            ),
-          ),
-          entryContext: const TriageEntryContext.postpartum(),
-          postpartumEmergencyLauncher: () async =>
-              throw StateError('dialer unavailable'),
+    final emergency = _FailingEmergencyService();
+    await _pumpScreen(
+      tester,
+      triage: _StaticTriageService(
+        IntakeFlowResponse(
+          status: 'TRIAGE_COMPLETE',
+          intakeSessionId: _sessionId,
+          stage: 'POSTPARTUM',
+          mergedIntake: const {'stage': 'POSTPARTUM'},
+          round: 1,
+          triageResult: _result('RED', emergency: true, stage: 'POSTPARTUM'),
         ),
       ),
+      emergency: emergency,
+      entryContext: const TriageEntryContext.postpartum(),
+      postpartumEmergencyLauncher: () async =>
+          throw StateError('dialer unavailable'),
     );
 
     await _submitInitial(tester);
     await tester.tap(find.byKey(const Key('triage-emergency-cta')));
     await tester.pumpAndSettle();
 
+    await tester.drag(find.byType(ListView), const Offset(0, -600));
+    await tester.pump();
+    expect(find.textContaining('Phiên có thể'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('triage-postpartum-call-115')));
+    await tester.pumpAndSettle();
     expect(
       find.byKey(const Key('triage-postpartum-manual-call-guidance')),
       findsOneWidget,
     );
     expect(find.textContaining('tự gọi 115'), findsOneWidget);
+    expect(emergency.activeCalls, 1);
+    expect(emergency.openCalls, 0);
+    expect(find.textContaining('Phiên có thể'), findsOneWidget);
+  });
+
+  testWidgets('postpartum 115 action is immediate and skips backend lookup', (
+    tester,
+  ) async {
+    final emergency = _DelayedEmergencyService();
+    var dialerCalls = 0;
+    await _pumpScreen(
+      tester,
+      triage: _StaticTriageService(
+        IntakeFlowResponse(
+          status: 'TRIAGE_COMPLETE',
+          intakeSessionId: _sessionId,
+          stage: 'POSTPARTUM',
+          mergedIntake: const {'stage': 'POSTPARTUM'},
+          round: 1,
+          triageResult: _result('RED', emergency: true, stage: 'POSTPARTUM'),
+        ),
+      ),
+      emergency: emergency,
+      entryContext: const TriageEntryContext.postpartum(),
+      postpartumEmergencyLauncher: () async {
+        dialerCalls++;
+        return true;
+      },
+    );
+
+    await _submitInitial(tester);
+    await tester.tap(find.byKey(const Key('triage-postpartum-call-115')));
+    await tester.pump();
+
+    expect(dialerCalls, 1);
+    expect(emergency.activeCalls, 0);
+    expect(emergency.openCalls, 0);
   });
 
   testWidgets('ASK_MORE continues the same server-owned conversation', (
@@ -368,7 +490,8 @@ void main() {
     expect(cta, findsOneWidget);
     await tester.tap(cta);
     await tester.tap(cta);
-    expect(emergency.calls, 1);
+    expect(emergency.activeCalls, 1);
+    expect(emergency.openCalls, 0);
 
     emergency.completer.complete(
       const EmergencySession(
@@ -379,8 +502,122 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Emergency map'), findsOneWidget);
+    expect(find.text('Emergency map e1 triage INFANT'), findsOneWidget);
   });
+
+  testWidgets(
+    'infant emergency GET discards a late previous-account response',
+    (tester) async {
+      FlutterSecureStorage.setMockInitialValues({});
+      await AuthState.instance.clear();
+      await AuthState.instance.setTokens(
+        accessToken: 'access-a',
+        refreshToken: 'refresh-a',
+        userId: 'account-a',
+        role: 'MOTHER',
+      );
+      addTearDown(AuthState.instance.clear);
+      final emergency = _DelayedEmergencyService();
+      final router = await _pumpScreen(
+        tester,
+        triage: _StaticTriageService(
+          _complete(_result('RED', emergency: true)),
+        ),
+        emergency: emergency,
+      );
+      addTearDown(router.dispose);
+      await _submitInitial(tester);
+
+      final action = find.byKey(const Key('triage-emergency-cta'));
+      await tester.tap(action);
+      await tester.pump();
+      await AuthState.instance.setTokens(
+        accessToken: 'access-b',
+        refreshToken: 'refresh-b',
+        userId: 'account-b',
+        role: 'MOTHER',
+      );
+      emergency.completer.complete(
+        const EmergencySession(
+          sessionId: 'account-a-infant-emergency',
+          userId: 'account-a',
+          status: 'ACTIVE',
+          triggerSource: 'AI_TRIAGE',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Emergency map'), findsNothing);
+      await tester.drag(find.byType(ListView), const Offset(0, -600));
+      await tester.pump();
+      expect(
+        find.textContaining('Phiên đăng nhập đã thay đổi'),
+        findsOneWidget,
+      );
+      expect(tester.widget<ElevatedButton>(action).onPressed, isNotNull);
+    },
+  );
+
+  testWidgets(
+    'postpartum emergency GET discards a late previous-account response',
+    (tester) async {
+      FlutterSecureStorage.setMockInitialValues({});
+      await AuthState.instance.clear();
+      await AuthState.instance.setTokens(
+        accessToken: 'access-a',
+        refreshToken: 'refresh-a',
+        userId: 'account-a',
+        role: 'MOTHER',
+      );
+      addTearDown(AuthState.instance.clear);
+      final emergency = _DelayedEmergencyService();
+      final router = await _pumpScreen(
+        tester,
+        triage: _StaticTriageService(
+          IntakeFlowResponse(
+            status: 'TRIAGE_COMPLETE',
+            intakeSessionId: _sessionId,
+            stage: 'POSTPARTUM',
+            mergedIntake: const {'stage': 'POSTPARTUM'},
+            round: 1,
+            triageResult: _result('RED', emergency: true, stage: 'POSTPARTUM'),
+          ),
+        ),
+        emergency: emergency,
+        entryContext: const TriageEntryContext.postpartum(),
+      );
+      addTearDown(router.dispose);
+      await _submitInitial(tester);
+
+      final action = find.byKey(const Key('triage-emergency-cta'));
+      await tester.tap(action);
+      await tester.pump();
+      await AuthState.instance.setTokens(
+        accessToken: 'access-b',
+        refreshToken: 'refresh-b',
+        userId: 'account-b',
+        role: 'MOTHER',
+      );
+      emergency.completer.complete(
+        const EmergencySession(
+          sessionId: 'account-a-postpartum-emergency',
+          userId: 'account-a',
+          status: 'ACTIVE',
+          triggerSource: 'AI_TRIAGE',
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Emergency map'), findsNothing);
+      await tester.drag(find.byType(ListView), const Offset(0, -600));
+      await tester.pump();
+      expect(
+        find.textContaining('Phiên đăng nhập đã thay đổi'),
+        findsOneWidget,
+      );
+      expect(tester.widget<ElevatedButton>(action).onPressed, isNotNull);
+    },
+  );
 
   testWidgets(
     'failed RED emergency request has no false success and offers safe map fallback',
@@ -397,17 +634,18 @@ void main() {
       await tester.tap(find.byKey(const Key('triage-emergency-cta')));
       await tester.pumpAndSettle();
 
-      expect(
-        find.textContaining('Không thể kích hoạt hỗ trợ khẩn cấp'),
-        findsOneWidget,
-      );
+      await tester.drag(find.byType(ListView), const Offset(0, -600));
+      await tester.pump();
+      expect(find.textContaining('Không thể tải phiên hỗ trợ'), findsOneWidget);
       expect(find.textContaining('RAW_EMERGENCY_FAILURE'), findsNothing);
       expect(find.textContaining('Da kich hoat'), findsNothing);
+      expect(emergency.activeCalls, 1);
+      expect(emergency.openCalls, 0);
       final fallback = find.byKey(const Key('triage-emergency-fallback-map'));
       expect(fallback, findsOneWidget);
       tester.widget<TextButton>(fallback).onPressed!();
       await tester.pumpAndSettle();
-      expect(find.text('Emergency map'), findsOneWidget);
+      expect(find.text('Emergency map manual triage INFANT'), findsOneWidget);
     },
   );
 
@@ -559,6 +797,64 @@ void main() {
     });
   }
 
+  testWidgets(
+    'offline continuation resolve keeps completed intake visible and retryable',
+    (tester) async {
+      FlutterSecureStorage.setMockInitialValues({});
+      await AuthState.instance.clear();
+      await AuthState.instance.setTokens(
+        accessToken: 'access-a',
+        refreshToken: 'refresh-a',
+        userId: 'account-a',
+        role: 'MOTHER',
+      );
+      addTearDown(AuthState.instance.clear);
+      const token = 'opaque-continuation';
+      final store = _RetryContinuationStore(
+        PendingTriageContinuation(
+          token: token,
+          intakeSessionId: _sessionId,
+          expiresAt: DateTime.utc(2026, 7, 30),
+        ),
+      );
+      final coordinator = TriageContinuationRestoreCoordinator(
+        store: store,
+        gateway: _OfflineContinuationGateway(),
+      );
+      final router = await _pumpScreen(
+        tester,
+        triage: _StaticTriageService(
+          _complete(_result('GREEN', stage: 'PREGNANCY')),
+        ),
+        entryContext: const TriageEntryContext.locked(
+          stage: TriageStageIntent.pregnancy,
+          origin: TriageOriginIntent.motherJourney,
+          journeyId: 'journey-a',
+          originReferenceId: 'journey-a',
+        ),
+        continuationCoordinator: coordinator,
+      );
+      addTearDown(router.dispose);
+      await _submitInitial(tester);
+      await tester.pumpAndSettle();
+
+      final returnAction = find.byKey(
+        const Key('triage-inline-return-to-origin'),
+      );
+      await tester.ensureVisible(returnAction);
+      await tester.tap(returnAction);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Ket qua GREEN'), findsWidgets);
+      expect(find.textContaining('thử lại'), findsWidgets);
+      final retry = tester.widget<FilledButton>(
+        find.byKey(const Key('triage-inline-return-to-origin')),
+      );
+      expect(retry.onPressed, isNotNull);
+      expect(store.pending?.token, token);
+    },
+  );
+
   testWidgets('pending response is ignored after intake screen is disposed', (
     tester,
   ) async {
@@ -572,6 +868,133 @@ void main() {
 
     expect(tester.takeException(), isNull);
     router.dispose();
+  });
+
+  test(
+    'postpartum flow preserves missing nested stage and rejects mismatch',
+    () {
+      final inherited = IntakeFlowResponse.fromJson({
+        'status': 'TRIAGE_COMPLETE',
+        'intakeSessionId': _sessionId,
+        'stage': 'POSTPARTUM',
+        'mergedIntake': {'stage': 'POSTPARTUM'},
+        'round': 1,
+        'triageResult': {'riskLevel': 'RED', 'emergencyActionRequired': true},
+      });
+
+      expect(inherited.triageResult?.stage, 'POSTPARTUM');
+      expect(
+        () => IntakeFlowResponse.fromJson({
+          'status': 'TRIAGE_COMPLETE',
+          'intakeSessionId': _sessionId,
+          'stage': 'POSTPARTUM',
+          'mergedIntake': {'stage': 'POSTPARTUM'},
+          'round': 1,
+          'triageResult': {'stage': 'INFANT', 'riskLevel': 'RED'},
+        }),
+        throwsFormatException,
+      );
+      expect(
+        () => IntakeFlowResponse.fromJson({
+          'status': 'ASK_MORE',
+          'intakeSessionId': _sessionId,
+          'stage': 'POSTPARTUM',
+          'mergedIntake': {'stage': 'INFANT'},
+          'round': 1,
+          'questions': const [],
+        }),
+        throwsFormatException,
+      );
+    },
+  );
+
+  test('flow-level lifecycle identity overrides untrusted nested metadata', () {
+    final response = IntakeFlowResponse.fromJson({
+      'status': 'TRIAGE_COMPLETE',
+      'intakeSessionId': _sessionId,
+      'stage': 'POSTPARTUM',
+      'mergedIntake': {'stage': 'POSTPARTUM'},
+      'round': 1,
+      'journeyId': 'journey-authoritative',
+      'originDashboard': 'POSTPARTUM_DASHBOARD',
+      'originReferenceId': 'origin-authoritative',
+      'continuationToken': 'continuation-authoritative',
+      'continuationExpiresAt': '2026-07-29T12:00:00Z',
+      'triageResult': {
+        'status': 'FAILED',
+        'triageStatus': 'FAILED',
+        'riskLevel': 'RED',
+        'continuationToken': 'continuation-untrusted',
+        'continuationExpiresAt': '2026-07-24T12:00:00Z',
+      },
+    });
+
+    expect(response.triageResult?.sessionId, _sessionId);
+    expect(response.triageResult?.status, 'COMPLETED');
+    expect(response.triageResult?.triageStatus, 'TRIAGE_COMPLETE');
+    expect(response.triageResult?.stage, 'POSTPARTUM');
+    expect(response.triageResult?.journeyId, 'journey-authoritative');
+    expect(response.triageResult?.originDashboard, 'POSTPARTUM_DASHBOARD');
+    expect(response.triageResult?.originReferenceId, 'origin-authoritative');
+    expect(
+      response.triageResult?.continuationToken,
+      'continuation-authoritative',
+    );
+    expect(
+      response.triageResult?.continuationExpiresAt,
+      DateTime.parse('2026-07-29T12:00:00Z'),
+    );
+  });
+
+  test('flow rejects mismatched nested lifecycle identity and origin', () {
+    Map<String, dynamic> payload(Map<String, dynamic> nested) => {
+      'status': 'TRIAGE_COMPLETE',
+      'intakeSessionId': _sessionId,
+      'stage': 'POSTPARTUM',
+      'mergedIntake': {'stage': 'POSTPARTUM'},
+      'round': 1,
+      'journeyId': 'journey-authoritative',
+      'originDashboard': 'POSTPARTUM_DASHBOARD',
+      'originReferenceId': 'origin-authoritative',
+      'triageResult': {'riskLevel': 'RED', ...nested},
+    };
+
+    for (final nested in const [
+      {'sessionId': 'different-session'},
+      {'journeyId': 'different-journey'},
+      {'originDashboard': 'PREGNANCY_DASHBOARD'},
+      {'originReferenceId': 'different-origin'},
+    ]) {
+      expect(
+        () => IntakeFlowResponse.fromJson(payload(nested)),
+        throwsFormatException,
+      );
+    }
+  });
+
+  testWidgets('applyResponse rejects a nested triage stage mismatch', (
+    tester,
+  ) async {
+    await _pumpScreen(
+      tester,
+      triage: _StaticTriageService(
+        IntakeFlowResponse(
+          status: 'TRIAGE_COMPLETE',
+          intakeSessionId: _sessionId,
+          stage: 'POSTPARTUM',
+          mergedIntake: const {'stage': 'POSTPARTUM'},
+          round: 1,
+          triageResult: _result('RED', emergency: true, stage: 'INFANT'),
+        ),
+      ),
+      entryContext: const TriageEntryContext.postpartum(),
+    );
+
+    await _submitInitial(tester);
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('không khớp giai đoạn'), findsOneWidget);
+    expect(find.byKey(const Key('triage-emergency-cta')), findsNothing);
   });
 
   test('legacy result and citation payloads receive safe defaults', () {

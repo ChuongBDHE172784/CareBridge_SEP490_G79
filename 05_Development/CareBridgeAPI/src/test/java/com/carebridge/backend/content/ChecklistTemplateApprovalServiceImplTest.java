@@ -17,7 +17,7 @@ import com.carebridge.backend.content.dto.request.ContentDecisionRequest;
 import com.carebridge.backend.content.dto.response.ChecklistTemplateDecisionResponse;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
 import com.carebridge.backend.content.entity.ContentDecision;
-import com.carebridge.backend.content.entity.ContentStatus;
+import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
 import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
 import com.carebridge.backend.content.service.ChecklistTemplateApprovalServiceImpl;
@@ -49,35 +49,35 @@ class ChecklistTemplateApprovalServiceImplTest {
     // CHKTPL-TC-010
     @Test
     void decide_approvePendingReview_transitionsToApproved() {
-        ChecklistTemplate template = makeTemplate(t -> t.setStatus(ContentStatus.PENDING_REVIEW));
+        ChecklistTemplate template = makeTemplate(t -> t.setStatus(ChecklistTemplateStatus.PENDING_REVIEW));
         when(checklistTemplateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(template));
         when(checklistTemplateRepository.save(any(ChecklistTemplate.class))).thenAnswer(inv -> inv.getArgument(0));
 
         ChecklistTemplateDecisionResponse response = service.decide(
                 TEMPLATE_ID, new ContentDecisionRequest(ContentDecision.APPROVE, null), principal);
 
-        assertEquals(ContentStatus.APPROVED, response.newStatus());
+        assertEquals(ChecklistTemplateStatus.APPROVED, response.newStatus());
         verify(auditService).log(eq(AuditAction.CHECKLIST_TEMPLATE_DECIDED), eq(ADMIN_ID), eq("ChecklistTemplate"), any(), any());
     }
 
     // CHKTPL-TC-011
     @Test
     void decide_rejectPendingReview_transitionsToDraftWithReason() {
-        ChecklistTemplate template = makeTemplate(t -> t.setStatus(ContentStatus.PENDING_REVIEW));
+        ChecklistTemplate template = makeTemplate(t -> t.setStatus(ChecklistTemplateStatus.PENDING_REVIEW));
         when(checklistTemplateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(template));
         when(checklistTemplateRepository.save(any(ChecklistTemplate.class))).thenAnswer(inv -> inv.getArgument(0));
 
         ChecklistTemplateDecisionResponse response = service.decide(
                 TEMPLATE_ID, new ContentDecisionRequest(ContentDecision.REJECT, "Thiếu mục quan trọng"), principal);
 
-        assertEquals(ContentStatus.DRAFT, response.newStatus());
+        assertEquals(ChecklistTemplateStatus.DRAFT, response.newStatus());
         assertEquals("Thiếu mục quan trọng", response.reason());
     }
 
     // CHKTPL-TC-012a
     @ParameterizedTest
     @MethodSource("nonPendingReviewStatuses")
-    void decide_nonPendingReviewStatus_throwsChktpl007(ContentStatus status) {
+    void decide_nonPendingReviewStatus_throwsChktpl007(ChecklistTemplateStatus status) {
         ChecklistTemplate template = makeTemplate(t -> t.setStatus(status));
         when(checklistTemplateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(template));
 
@@ -88,15 +88,19 @@ class ChecklistTemplateApprovalServiceImplTest {
         verify(checklistTemplateRepository, never()).save(any());
     }
 
-    private static Stream<ContentStatus> nonPendingReviewStatuses() {
-        return Stream.of(ContentStatus.DRAFT, ContentStatus.APPROVED, ContentStatus.ARCHIVED);
+    private static Stream<ChecklistTemplateStatus> nonPendingReviewStatuses() {
+        return Stream.of(
+                ChecklistTemplateStatus.DRAFT,
+                ChecklistTemplateStatus.REJECTED,
+                ChecklistTemplateStatus.APPROVED,
+                ChecklistTemplateStatus.ARCHIVED);
     }
 
     // CHKTPL-TC-012b
     @ParameterizedTest
     @MethodSource("blankReasons")
     void decide_rejectMissingReason_throwsChktpl008(String reason) {
-        ChecklistTemplate template = makeTemplate(t -> t.setStatus(ContentStatus.PENDING_REVIEW));
+        ChecklistTemplate template = makeTemplate(t -> t.setStatus(ChecklistTemplateStatus.PENDING_REVIEW));
         when(checklistTemplateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(template));
 
         ContentException ex = assertThrows(ContentException.class, () -> service.decide(

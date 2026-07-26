@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test": "vitest run",
+    "test:run": "vitest run",
     "preview": "vite preview",
     "test:e2e": "playwright test",
     "firebase:emulators": "npx --yes firebase-tools@15.11.0 emulators:start --only auth --project demo-carebridge",

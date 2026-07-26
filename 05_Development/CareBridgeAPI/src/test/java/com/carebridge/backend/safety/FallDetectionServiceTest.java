@@ -19,6 +19,7 @@ import com.carebridge.backend.emergency.dto.response.EmergencySessionResponse;
 import com.carebridge.backend.safety.service.IFallDetectionAlgorithmService;
 import com.carebridge.backend.safety.service.FallAnalysisResult;
 import com.carebridge.backend.safety.service.ImuDataPayload;
+import com.carebridge.backend.safety.service.SafetyCountdownTransactionRunner;
 import com.carebridge.backend.safety.exception.SafetyException;
 import com.carebridge.backend.safety.service.impl.FallDetectionService;
 import org.springframework.data.domain.PageImpl;
@@ -28,6 +29,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
@@ -58,6 +60,7 @@ class FallDetectionServiceTest {
     @Mock private IEmergencyService emergencyService;
     @Mock private AuditService auditService;
     @Mock private IFallDetectionAlgorithmService algorithmService;
+    @Mock private SafetyCountdownTransactionRunner countdownTransactionRunner;
 
     @InjectMocks
     private FallDetectionService fallDetectionService;
@@ -77,7 +80,11 @@ class FallDetectionServiceTest {
                 .sensorPermissionRecordedAt(Instant.now())
                 .build();
         lenient().when(safetyConfigRepository.findByUserId(USER_ID)).thenReturn(Optional.of(config));
-        lenient().when(responseRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        lenient().when(responseRepository.insert(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        lenient().doAnswer(invocation -> {
+            invocation.<Runnable>getArgument(0).run();
+            return null;
+        }).when(countdownTransactionRunner).run(any(Runnable.class));
         lenient().when(emergencyService.openFlow(any(), eq(USER_ID))).thenReturn(
                 EmergencySessionResponse.builder().sessionId(UUID.randomUUID()).userId(USER_ID).build());
     }
@@ -91,6 +98,10 @@ class FallDetectionServiceTest {
         ImuMonitoringSessionResponse result = fallDetectionService.enable(USER_ID, "MEDIUM");
 
         verify(imuSessionRepository).save(any(ImuMonitoringSession.class));
+        InOrder enableOrder = inOrder(imuSessionRepository);
+        enableOrder.verify(imuSessionRepository).acquireUserLock(USER_ID);
+        enableOrder.verify(imuSessionRepository).findActiveByUserId(USER_ID);
+        enableOrder.verify(imuSessionRepository).save(any(ImuMonitoringSession.class));
         assertThat(result).isNotNull();
         assertThat(result.getStatus()).isEqualTo("ACTIVE");
     }
@@ -124,11 +135,15 @@ class FallDetectionServiceTest {
     void disable_activeSessionExists_shouldSetStatusStopped() {
         // DIS-TC-001 / FD-TC-005
         ImuMonitoringSession active = SafetyConfigTestFactory.makeActiveSession();
-        when(imuSessionRepository.findActiveByUserId(USER_ID)).thenReturn(Optional.of(active));
+        when(imuSessionRepository.findActiveForUpdateByUserId(USER_ID)).thenReturn(Optional.of(active));
         when(imuSessionRepository.save(any())).thenReturn(active);
 
         fallDetectionService.disable(USER_ID);
 
+        InOrder disableOrder = inOrder(imuSessionRepository);
+        disableOrder.verify(imuSessionRepository).acquireUserLock(USER_ID);
+        disableOrder.verify(imuSessionRepository).findActiveForUpdateByUserId(USER_ID);
+        disableOrder.verify(imuSessionRepository).save(any(ImuMonitoringSession.class));
         ArgumentCaptor<ImuMonitoringSession> captor = ArgumentCaptor.forClass(ImuMonitoringSession.class);
         verify(imuSessionRepository).save(captor.capture());
         assertThat(captor.getValue().getStatus()).isEqualTo(ImuSessionStatus.STOPPED);
@@ -139,7 +154,7 @@ class FallDetectionServiceTest {
     @Test
     void disable_noActiveSession_shouldBeNoOp() {
         // DIS-TC-002
-        when(imuSessionRepository.findActiveByUserId(USER_ID)).thenReturn(Optional.empty());
+        when(imuSessionRepository.findActiveForUpdateByUserId(USER_ID)).thenReturn(Optional.empty());
 
         assertThatCode(() -> fallDetectionService.disable(USER_ID)).doesNotThrowAnyException();
         verify(imuSessionRepository, never()).save(any());
@@ -149,7 +164,7 @@ class FallDetectionServiceTest {
     void disable_shouldPublishFallDetectionDisabledEvent() {
         // DIS-TC-004
         ImuMonitoringSession active = SafetyConfigTestFactory.makeActiveSession();
-        when(imuSessionRepository.findActiveByUserId(USER_ID)).thenReturn(Optional.of(active));
+        when(imuSessionRepository.findActiveForUpdateByUserId(USER_ID)).thenReturn(Optional.of(active));
         when(imuSessionRepository.save(any())).thenReturn(active);
 
         fallDetectionService.disable(USER_ID);
@@ -239,7 +254,7 @@ class FallDetectionServiceTest {
         ImuMonitoringSession session = SafetyConfigTestFactory.makeActiveSession();
         SafetyEvent existing = makeSafetyEvent();
         existing.setSignalKey("signal-1");
-        when(imuSessionRepository.findActiveByUserId(USER_ID)).thenReturn(Optional.of(session));
+        when(imuSessionRepository.findActiveForUpdateByUserId(USER_ID)).thenReturn(Optional.of(session));
         when(safetyEventRepository.findByImuSessionIdAndSignalKey(session.getId(), "signal-1"))
                 .thenReturn(Optional.of(existing));
 
@@ -253,7 +268,7 @@ class FallDetectionServiceTest {
     @Test
     void processImuData_withoutLocationConsentDoesNotPersistCoordinates() {
         ImuMonitoringSession session = SafetyConfigTestFactory.makeActiveSession();
-        when(imuSessionRepository.findActiveByUserId(USER_ID)).thenReturn(Optional.of(session));
+        when(imuSessionRepository.findActiveForUpdateByUserId(USER_ID)).thenReturn(Optional.of(session));
         when(safetyEventRepository.findByImuSessionIdAndSignalKey(any(), anyString())).thenReturn(Optional.empty());
         when(algorithmService.analyze(any(), anyString()))
                 .thenReturn(new FallAnalysisResult(true, SafetyEventType.SUSPECTED_FALL, 12.4));
@@ -286,7 +301,7 @@ class FallDetectionServiceTest {
         assertThat(event.getResponseType()).isEqualTo("TIMEOUT");
         assertThat(event.getStatus()).isEqualTo(SafetyEventStatus.ESCALATION_REQUESTED);
         verify(emergencyService).openFlow(any(), eq(USER_ID));
-        verify(responseRepository).save(argThat(response ->
+        verify(responseRepository).insert(argThat(response ->
                 "SYSTEM".equals(response.getActorType()) && response.getCreatedBy() == null));
     }
 
@@ -310,9 +325,34 @@ class FallDetectionServiceTest {
     }
 
     @Test
+    void poisonCountdownRollsBackItsEventAndDoesNotBlockLaterEvents() {
+        SafetyEvent poison = makeSafetyEvent();
+        poison.setId(UUID.randomUUID());
+        poison.setCountdownDeadlineAt(Instant.now().minusSeconds(2));
+        SafetyEvent healthy = makeSafetyEvent();
+        healthy.setId(UUID.randomUUID());
+        healthy.setCountdownDeadlineAt(Instant.now().minusSeconds(1));
+        when(safetyEventRepository
+                .findTop100ByStatusAndResponseTypeIsNullAndCountdownDeadlineAtLessThanEqualOrderByCountdownDeadlineAtAsc(
+                        eq(SafetyEventStatus.OPEN), any())).thenReturn(List.of(poison, healthy));
+        when(safetyEventRepository.findLockedByIdAndUserId(poison.getId(), USER_ID))
+                .thenThrow(new IllegalStateException("poison"));
+        when(safetyEventRepository.findLockedByIdAndUserId(healthy.getId(), USER_ID))
+                .thenReturn(Optional.of(healthy));
+        when(safetyEventRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        fallDetectionService.processExpiredCountdowns();
+
+        assertThat(poison.getResponseType()).isNull();
+        assertThat(healthy.getResponseType()).isEqualTo("TIMEOUT");
+        verify(countdownTransactionRunner, times(2)).run(any(Runnable.class));
+        verify(emergencyService, times(1)).openFlow(any(), eq(USER_ID));
+    }
+
+    @Test
     void processImuDataRejectsTimestampOutsideAcceptedSkew() {
         ImuMonitoringSession session = SafetyConfigTestFactory.makeActiveSession();
-        when(imuSessionRepository.findActiveByUserId(USER_ID)).thenReturn(Optional.of(session));
+        when(imuSessionRepository.findActiveForUpdateByUserId(USER_ID)).thenReturn(Optional.of(session));
         ImuDataPayload stale = new ImuDataPayload(1, 2, 3, 4, 5, 6,
                 Instant.now().minusSeconds(25 * 60 * 60), "stale", null, null);
 
@@ -326,7 +366,7 @@ class FallDetectionServiceTest {
     void processImuDataUsesServerDetectedAtAndRetainsValidatedClientTime() {
         ImuMonitoringSession session = SafetyConfigTestFactory.makeActiveSession();
         Instant clientTime = Instant.now().minusSeconds(30);
-        when(imuSessionRepository.findActiveByUserId(USER_ID)).thenReturn(Optional.of(session));
+        when(imuSessionRepository.findActiveForUpdateByUserId(USER_ID)).thenReturn(Optional.of(session));
         when(safetyEventRepository.findByImuSessionIdAndSignalKey(any(), anyString())).thenReturn(Optional.empty());
         when(algorithmService.analyze(any(), anyString()))
                 .thenReturn(new FallAnalysisResult(true, SafetyEventType.SUSPECTED_FALL, 12.4));

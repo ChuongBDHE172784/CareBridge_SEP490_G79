@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -77,6 +78,29 @@ class AdminStaffServiceImplTest {
 
         assertThat(response.getRole()).isEqualTo(Role.MODERATOR);
         assertThat(response.isMustChangePassword()).isTrue();
+    }
+
+    @Test
+    void createStaffAccount_formattedPhone_checksAndPersistsCanonicalPhone() {
+        AdminStaffServiceImpl service = newService();
+        String formattedPhone = "(+84) 90-111.2222";
+        String canonicalPhone = "+84901112222";
+        when(userRepository.existsByEmail(anyString())).thenReturn(false);
+        when(userRepository.existsByPhone(canonicalPhone)).thenReturn(false);
+        when(passwordEncoder.encode(anyString())).thenReturn("$2a$10$encodedHash");
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> {
+            User user = inv.getArgument(0);
+            user.setId(UUID.randomUUID());
+            return user;
+        });
+
+        service.createStaffAccount(UUID.randomUUID(),
+                AdminGovernanceTestFactory.makeCreateStaffRequest(r -> r.setPhone(formattedPhone)));
+
+        ArgumentCaptor<User> savedCaptor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).existsByPhone(canonicalPhone);
+        verify(userRepository).save(savedCaptor.capture());
+        assertThat(savedCaptor.getValue().getPhone()).isEqualTo(canonicalPhone);
     }
 
     // UC115-TC-002
@@ -208,12 +232,16 @@ class AdminStaffServiceImplTest {
     @Test
     void createStaffAccount_duplicatePhone_rejected() {
         AdminStaffServiceImpl service = newService();
+        String canonicalPhone = "+84901112222";
         when(userRepository.existsByEmail(anyString())).thenReturn(false);
-        when(userRepository.existsByPhone(anyString())).thenReturn(true);
+        when(userRepository.existsByPhone(canonicalPhone)).thenReturn(true);
 
         assertThatThrownBy(() -> service.createStaffAccount(UUID.randomUUID(),
-                AdminGovernanceTestFactory.makeCreateStaffRequest(r -> {})))
+                AdminGovernanceTestFactory.makeCreateStaffRequest(r -> r.setPhone("84 90 111 2222"))))
                 .isInstanceOf(com.carebridge.backend.common.exception.BusinessException.class);
+
+        verify(userRepository).existsByPhone(canonicalPhone);
+        verify(userRepository, never()).save(any());
     }
 
     // UC115-TC-012

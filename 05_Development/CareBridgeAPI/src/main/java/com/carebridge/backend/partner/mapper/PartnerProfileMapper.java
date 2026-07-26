@@ -1,5 +1,6 @@
 package com.carebridge.backend.partner.mapper;
 
+import com.carebridge.backend.common.validation.VietnamesePhoneNumbers;
 import com.carebridge.backend.partner.dto.request.CreatePartnerProfileRequest;
 import com.carebridge.backend.partner.dto.response.CreatePartnerProfileResponse;
 import com.carebridge.backend.partner.dto.request.UpdatePartnerProfileRequest;
@@ -18,7 +19,7 @@ public class PartnerProfileMapper {
                 .type(request.getType())
                 .address(request.getAddress())
                 .city(request.getCity())
-                .phone(request.getPhone())
+                .phone(VietnamesePhoneNumbers.normalizeToE164(request.getPhone()))
                 .email(request.getEmail())
                 .website(request.getWebsite())
                 .description(request.getDescription())
@@ -42,7 +43,7 @@ public class PartnerProfileMapper {
         entity.setType(request.getType());
         entity.setAddress(request.getAddress());
         entity.setCity(request.getCity());
-        entity.setPhone(request.getPhone());
+        entity.setPhone(VietnamesePhoneNumbers.normalizeToE164(request.getPhone()));
         entity.setEmail(request.getEmail());
         entity.setWebsite(request.getWebsite());
         entity.setLogoUrl(request.getLogoUrl());

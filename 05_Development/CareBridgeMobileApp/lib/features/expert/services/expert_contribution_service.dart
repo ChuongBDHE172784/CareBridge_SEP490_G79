@@ -4,16 +4,15 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
-import 'package:mime/mime.dart';
 
 import '../../../core/auth/auth_state.dart';
-import '../../../core/network/api_client.dart' as api_client;
 import '../models/contribution_model.dart';
 
 /// Service for Expert Medical Contribution APIs
 class ExpertContributionService {
   ExpertContributionService._();
-  static final ExpertContributionService instance = ExpertContributionService._();
+  static final ExpertContributionService instance =
+      ExpertContributionService._();
 
   static const _basePath = '/api/v1/contributions';
 
@@ -39,9 +38,7 @@ class ExpertContributionService {
     int page = 0,
     int size = 10,
   }) async {
-    final uri = Uri.parse(
-      '$_baseUrl$_basePath/me?page=$page&size=$size',
-    );
+    final uri = Uri.parse('$_baseUrl$_basePath/me?page=$page&size=$size');
     final response = await http.get(uri, headers: _headers);
     _handleUnauthorized(response);
     if (response.statusCode >= 200 && response.statusCode < 300) {
@@ -130,7 +127,8 @@ class ExpertContributionService {
     required String fileName,
     required String mimeType,
     required String kind, // 'IMAGE' | 'DOCUMENT'
-    required String purpose, // 'MEDICAL_CONTRIBUTION_IMAGE' | 'MEDICAL_CONTRIBUTION_DOCUMENT'
+    required String
+    purpose, // 'MEDICAL_CONTRIBUTION_IMAGE' | 'MEDICAL_CONTRIBUTION_DOCUMENT'
     required String accessMode, // 'PUBLIC' | 'AUTHENTICATED' | 'PRIVATE'
   }) async {
     final uri = Uri.parse('$_baseUrl/api/v1/files/upload/with-purpose');

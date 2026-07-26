@@ -13,6 +13,7 @@ export interface ExpertProfileResponse {
 	verificationStatus: string;
 	verifiedAt: string | null;
 	ratingAvg: number | null;
+	consultationFeeVnd: number | null;
 	avatarUrl?: string | null;
 	createdAt: string;
 }
@@ -191,6 +192,14 @@ export interface HospitalResponse {
 	phone: string;
 }
 
+export interface WardResponse {
+	wardId: string;
+	districtId: string;
+	provinceId: string;
+	name: string;
+	nameEn: string | null;
+}
+
 export async function getProvinces(): Promise<ProvinceResponse[]> {
 	const { data } = await apiClient.get('/api/v1/master-data/provinces');
 	return data.data;
@@ -211,6 +220,11 @@ export async function getHospitals(params: { provinceId?: string; districtId?: s
 	return data.data;
 }
 
+export async function getWards(districtId: string): Promise<WardResponse[]> {
+	const { data } = await apiClient.get('/api/v1/master-data/wards', { params: { districtId } });
+	return data.data;
+}
+
 // ── PKG-01 Expert Profile ──────────────────────────────────────────────────
 
 export async function getMyProfile(): Promise<ExpertProfileResponse> {
@@ -224,6 +238,7 @@ export async function createMyProfile(body: {
 	experienceYears?: number;
 	hospitalId: string;
 	consultationScope: string;
+	consultationFeeVnd?: number;
 }): Promise<ExpertProfileResponse> {
 	const { data } = await apiClient.post('/api/v1/expert/profiles', body);
 	return data.data;
@@ -235,6 +250,7 @@ export async function updateMyProfile(body: {
 	experienceYears?: number;
 	hospitalId?: string;
 	consultationScope?: string;
+	consultationFeeVnd?: number;
 }): Promise<ExpertProfileResponse> {
 	const { data } = await apiClient.patch('/api/v1/expert/profiles/me', body);
 	return data.data;

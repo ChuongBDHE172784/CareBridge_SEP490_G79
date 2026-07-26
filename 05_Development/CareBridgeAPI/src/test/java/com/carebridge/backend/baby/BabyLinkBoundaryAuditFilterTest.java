@@ -9,7 +9,6 @@ import com.carebridge.backend.baby.security.BabyLinkBoundaryAuditFilter;
 import com.carebridge.backend.baby.service.BabyLinkRejectionAuditService;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -20,19 +19,12 @@ import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.beans.factory.ObjectProvider;
 
 @ExtendWith(MockitoExtension.class)
 class BabyLinkBoundaryAuditFilterTest {
 
     @Mock BabyLinkRejectionAuditService audit;
-    @Mock ObjectProvider<BabyLinkRejectionAuditService> auditProvider;
     @InjectMocks BabyLinkBoundaryAuditFilter filter;
-
-    @BeforeEach
-    void provideAuditWriter() {
-        org.mockito.Mockito.lenient().when(auditProvider.getIfAvailable()).thenReturn(audit);
-    }
 
     @AfterEach
     void clearSecurityContext() {

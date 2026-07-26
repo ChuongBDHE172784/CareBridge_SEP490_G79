@@ -27,7 +27,12 @@ from app.intake_question_engine import (
     determine_missing_information,
     naturalize_followup_questions,
 )
-from app.risk_rules import apply_red_flag_rules, missing_info_questions, score_risk
+from app.risk_rules import (
+    MATERNAL_STAGES,
+    apply_red_flag_rules,
+    missing_info_questions,
+    score_risk,
+)
 from app.schemas import (
     ChildTriageRequest,
     ChildTriageResponse,
@@ -168,7 +173,11 @@ def select_followup_question_keys(state: TriageState) -> TriageState:
     if not state.get("normalizedSymptoms") and not state.get("redFlags"):
         generic = IntakeQuestion(
             questionKey="parentFreeText",
-            text="Vui lòng mô tả dấu hiệu cụ thể mà bạn quan sát được ở trẻ.",
+            text=(
+                f"Vui lòng mô tả cụ thể dấu hiệu bạn đang gặp {_maternal_context(state['intake'].stage)}."
+                if state["intake"].stage in MATERNAL_STAGES
+                else "Vui lòng mô tả dấu hiệu cụ thể mà bạn quan sát được ở trẻ."
+            ),
             answerType="TEXT",
         )
         questions = [generic] + [item for item in questions if item.questionKey != "parentFreeText"]
@@ -182,7 +191,9 @@ def naturalize_followup_questions_with_gemini(state: TriageState) -> TriageState
         state.get("followupQuestions", []),
         intake=state["intake"],
         normalized_symptoms=state.get("normalizedSymptoms", []),
-        gemini_client=state.get("geminiClient"),
+        gemini_client=(
+            None if state["intake"].stage == "POSTPARTUM" else state.get("geminiClient")
+        ),
         deadline=state.get("requestDeadline"),
     )
     state["followupQuestions"] = questions
@@ -285,12 +296,14 @@ def attach_evidence(state: TriageState) -> TriageState:
         state["warning"] = NO_SOURCE_WARNING
     if state.get("forcedWarning"):
         state["warning"] = state["forcedWarning"]
-    state["disclaimer"] = DISCLAIMER
+    state["disclaimer"] = _disclaimer(state["intake"].stage)
     return state
 
 
 def compose_deterministic_response(state: TriageState) -> TriageState:
     risk = state["riskLevel"]
+    if state["intake"].stage in MATERNAL_STAGES:
+        return _compose_maternal_response(state, risk)
     symptoms = ", ".join(state.get("normalizedSymptoms", [])) or "các dấu hiệu đã nhập"
     if risk == "NEED_MORE_INFO":
         state["summary"] = "CareBridge cần thêm thông tin trước khi phân loại rủi ro."
@@ -342,7 +355,7 @@ def build_claims(risk: str, red_flags: list[str], citations: list[Citation]) -> 
 
 def compose_safe_explanation_with_gemini(state: TriageState) -> TriageState:
     compose_deterministic_response(state)
-    if state.get("riskLevel") == "RED":
+    if state.get("riskLevel") == "RED" or state["intake"].stage == "POSTPARTUM":
         return state
     client = state.get("geminiClient")
     if client is None:
@@ -365,7 +378,7 @@ def compose_safe_explanation_with_gemini(state: TriageState) -> TriageState:
     state["recommendedAction"] = explanation.recommendedAction
     state["assistantProvider"] = "GEMINI"
     state["assistantFallbackUsed"] = False
-    state["disclaimer"] = DISCLAIMER
+    state["disclaimer"] = _disclaimer(state["intake"].stage)
     return state
 
 
@@ -375,19 +388,13 @@ def validate_final_response(state: TriageState) -> TriageState:
         compose_deterministic_response(state)
         state["assistantProvider"] = "DETERMINISTIC_FALLBACK"
         state["assistantFallbackUsed"] = True
-    state["disclaimer"] = DISCLAIMER
+    state["disclaimer"] = _disclaimer(state["intake"].stage)
     return state
 
 
 def audit_handoff(state: TriageState) -> TriageState:
     log.info(
-        "ai_triage_audit normalizedSymptoms=%s riskLevel=%s matchedRules=%s "
-        "citationIds=%s emergencyActionRequired=%s assistantProvider=%s fallback=%s",
-        state.get("normalizedSymptoms", []),
-        state.get("riskLevel"),
-        state.get("matchedRules", []),
-        [citation.sourceId or citation.id for citation in state.get("citations", [])],
-        state.get("emergencyActionRequired"),
+        "ai_triage_audit status=COMPLETED assistantProvider=%s fallback=%s",
         state.get("assistantProvider"),
         state.get("assistantFallbackUsed"),
     )
@@ -407,6 +414,68 @@ def _recommendation_code(risk: str) -> str:
         "GREEN": "MONITOR_AT_HOME",
         "NEED_MORE_INFO": "PROVIDE_MORE_INFORMATION",
     }[risk]
+
+
+def _compose_maternal_response(state: TriageState, risk: str) -> TriageState:
+    stage = state["intake"].stage
+    context = _maternal_context(stage)
+    if risk == "RED":
+        flags = ", ".join(state.get("redFlags", [])) or "dấu hiệu cảnh báo"
+        state["summary"] = (
+            f"CareBridge ghi nhận {flags} {context}; bạn cần được hỗ trợ khẩn cấp."
+        )
+        state["possibleConcern"] = (
+            f"Có dấu hiệu cảnh báo {context} theo quy tắc an toàn của CareBridge."
+        )
+        state["recommendedAction"] = (
+            "Gọi cấp cứu 115 hoặc đến cơ sở y tế gần nhất ngay. "
+            "Không chờ thêm kết quả trực tuyến nếu tình trạng đang xấu đi."
+        )
+    elif risk == "YELLOW":
+        state["summary"] = (
+            f"Thông tin {context} hiện chưa đầy đủ; kết quả được phân loại thận trọng."
+        )
+        state["possibleConcern"] = "Dấu hiệu cần được nhân viên y tế đánh giá thêm."
+        state["recommendedAction"] = (
+            "Liên hệ nhân viên y tế để được đánh giá và theo dõi diễn tiến. "
+            "Gọi cấp cứu ngay nếu xuất hiện dấu hiệu nặng hoặc bạn cảm thấy không an toàn."
+        )
+    elif risk == "NEED_MORE_INFO":
+        state["summary"] = (
+            f"CareBridge cần thêm thông tin trước khi phân loại rủi ro {context}."
+        )
+        state["possibleConcern"] = (
+            f"Thông tin {context} hiện chưa đủ để phân loại an toàn."
+        )
+        state["recommendedAction"] = (
+            "Vui lòng trả lời các câu hỏi bổ sung. Nếu có dấu hiệu nặng hoặc cảm thấy không an toàn, "
+            "hãy liên hệ cơ sở y tế hoặc cấp cứu ngay."
+        )
+    else:
+        state["summary"] = "Chưa ghi nhận dấu hiệu nguy hiểm từ thông tin hiện có."
+        state["possibleConcern"] = "Thông tin hiện có chưa cho thấy dấu hiệu cảnh báo rõ ràng."
+        state["recommendedAction"] = (
+            "Tiếp tục theo dõi và liên hệ nhân viên y tế nếu dấu hiệu kéo dài hoặc nặng hơn."
+        )
+    state["disclaimer"] = _disclaimer(stage)
+    return state
+
+
+def _disclaimer(stage: str) -> str:
+    if stage in MATERNAL_STAGES:
+        return (
+            "CareBridge không chẩn đoán bệnh, không kê thuốc và không thay thế nhân viên y tế hoặc cấp cứu. "
+            "Nếu bạn có dấu hiệu nặng hoặc cảm thấy không an toàn, hãy liên hệ cơ sở y tế hoặc cấp cứu ngay."
+        )
+    return DISCLAIMER
+
+
+def _maternal_context(stage: str) -> str:
+    return {
+        "PRECONCEPTION": "trước khi mang thai",
+        "PREGNANCY": "trong thai kỳ",
+        "POSTPARTUM": "sau sinh",
+    }[stage]
 
 
 def build_graph():
@@ -521,7 +590,7 @@ def run_triage(
         evidence=state["evidence"],
         questions=state.get("questions", []),
         warning=state.get("warning"),
-        disclaimer=DISCLAIMER,
+        disclaimer=_disclaimer(intake.stage),
         normalizedSymptoms=state.get("normalizedSymptoms", []),
         normalizedSymptomDetails=details,
         evidenceIds=[item.sourceId or item.id for item in citations if item.sourceId or item.id],

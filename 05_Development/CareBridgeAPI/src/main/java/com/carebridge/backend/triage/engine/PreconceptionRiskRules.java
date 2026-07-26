@@ -20,6 +20,8 @@ public class PreconceptionRiskRules implements StageRiskRules {
 
     @Override
     public PediatricRiskRules.RuleOutcome apply(RunIntakeRequest request, List<String> symptoms) {
+        PediatricRiskRules.RuleOutcome universalRed = UniversalMaternalRedRules.apply(request, "RED_PRECONCEPTION");
+        if (universalRed != null) return universalRed;
         // Preconception clinical escalation rules require specialist review before production activation.
         return new PediatricRiskRules.RuleOutcome(
                 "NEED_MORE_INFO",

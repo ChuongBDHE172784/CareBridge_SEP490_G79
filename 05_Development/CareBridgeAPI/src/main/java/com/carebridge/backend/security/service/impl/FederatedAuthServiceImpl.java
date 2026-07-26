@@ -21,6 +21,7 @@ import com.carebridge.backend.security.repository.UserIdentityRepository;
 import com.carebridge.backend.security.repository.UserRepository;
 import com.carebridge.backend.security.service.FederatedAuthService;
 import com.carebridge.backend.security.util.TokenUtils;
+import com.carebridge.backend.common.validation.VietnamesePhoneNumbers;
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
 import java.time.Instant;
@@ -57,7 +58,6 @@ public class FederatedAuthServiceImpl implements FederatedAuthService {
         if (verified.subject() == null || verified.subject().isBlank()) {
             throw FederatedAuthException.invalidProof();
         }
-
         identityRepository.lockProviderSubject(verified.provider().name() + ':' + verified.subject());
 
         UserIdentity identity = identityRepository
@@ -66,14 +66,15 @@ public class FederatedAuthServiceImpl implements FederatedAuthService {
         boolean newUser = identity == null;
         User user;
         if (identity == null) {
-            rejectUnlinkedContactCollision(verified);
-            user = createUser(verified);
+            String normalizedPhone = normalizePhone(verified.phoneNumber());
+            rejectUnlinkedContactCollision(verified, normalizedPhone);
+            user = createUser(verified, normalizedPhone);
             identity = UserIdentity.builder()
                     .user(user)
                     .provider(verified.provider())
                     .providerSubject(verified.subject())
                     .providerEmail(normalizeEmail(verified.email()))
-                    .providerPhone(normalizePhone(verified.phoneNumber()))
+                    .providerPhone(normalizedPhone)
                     .lastUsedAt(Instant.now())
                     .build();
             identityRepository.saveAndFlush(identity);
@@ -178,10 +179,10 @@ public class FederatedAuthServiceImpl implements FederatedAuthService {
                 identity.getCreatedAt());
     }
 
-    private User createUser(VerifiedFederatedIdentity verified) {
+    private User createUser(VerifiedFederatedIdentity verified, String normalizedPhone) {
         return userRepository.save(User.builder()
                 .email(normalizeEmail(verified.email()))
-                .phone(normalizePhone(verified.phoneNumber()))
+                .phone(normalizedPhone)
                 .name(verified.displayName())
                 .accountStatus("ACTIVE")
                 .emailVerified(verified.emailVerified())
@@ -191,11 +192,11 @@ public class FederatedAuthServiceImpl implements FederatedAuthService {
                 .build());
     }
 
-    private void rejectUnlinkedContactCollision(VerifiedFederatedIdentity verified) {
+    private void rejectUnlinkedContactCollision(
+            VerifiedFederatedIdentity verified, String normalizedPhone) {
         String email = normalizeEmail(verified.email());
-        String phone = normalizePhone(verified.phoneNumber());
         if ((email != null && userRepository.findByEmailIgnoreCase(email).isPresent())
-                || (phone != null && userRepository.findByPhone(phone).isPresent())) {
+                || (normalizedPhone != null && userRepository.findByPhone(normalizedPhone).isPresent())) {
             throw FederatedAuthException.collision();
         }
     }
@@ -229,9 +230,10 @@ public class FederatedAuthServiceImpl implements FederatedAuthService {
     }
 
     private String normalizePhone(String phone) {
-        if (phone == null || phone.isBlank()) return null;
-        String compact = phone.replaceAll("[\\s().-]", "");
-        if (compact.startsWith("0")) return "+84" + compact.substring(1);
-        return compact.startsWith("+") ? compact : "+" + compact;
+        try {
+            return VietnamesePhoneNumbers.normalizeToE164(phone);
+        } catch (IllegalArgumentException invalidPhone) {
+            throw FederatedAuthException.invalidProof();
+        }
     }
 }

@@ -171,13 +171,8 @@ class BabyProfileUpdateTestFactory {
 
 **Severity:** `CRITICAL`
 **Feature Under Test:** `BabyService.updateBabyProfile()`
-<<<<<<< Updated upstream
-**Test File:** `src/test/java/com/carebridge/backend/baby/service/BabyServiceUpdateTest.java`
-**TDD Phase:** RED
-=======
-**Test File:** `src/test/java/com/carebridge/backend/carejourney/service/BabyServiceUpdateTest.java`
+**Test File:** `src/test/java/com/carebridge/backend/baby/BabyServiceUpdateTest.java`
 **TDD Phase:** 🟢 GREEN
->>>>>>> Stashed changes
 **Condition Ref:** `TC-COND-001`
 **Oracle Source:** `UC-32 Normal Flow, ADR-BABY-003`
 
@@ -209,13 +204,8 @@ class BabyProfileUpdateTestFactory {
 
 **Severity:** `HIGH`
 **Feature Under Test:** `BabyService.updateBabyProfile()`
-<<<<<<< Updated upstream
-**Test File:** `src/test/java/com/carebridge/backend/baby/service/BabyServiceUpdateTest.java`
-**TDD Phase:** RED
-=======
-**Test File:** `src/test/java/com/carebridge/backend/carejourney/service/BabyServiceUpdateTest.java`
+**Test File:** `src/test/java/com/carebridge/backend/baby/BabyServiceUpdateTest.java`
 **TDD Phase:** 🟢 GREEN
->>>>>>> Stashed changes
 **Condition Ref:** `TC-COND-002`
 **Oracle Source:** `BR-BABY-010`
 
@@ -240,13 +230,8 @@ class BabyProfileUpdateTestFactory {
 **Severity:** `CRITICAL`
 **OWASP:** `A01:2021 — Broken Access Control`
 **Feature Under Test:** `BabyService.checkOwnership()`
-<<<<<<< Updated upstream
-**Test File:** `src/test/java/com/carebridge/backend/baby/service/BabyServiceUpdateTest.java`
-**TDD Phase:** RED
-=======
-**Test File:** `src/test/java/com/carebridge/backend/carejourney/service/BabyServiceUpdateTest.java`
+**Test File:** `src/test/java/com/carebridge/backend/baby/BabyServiceUpdateTest.java`
 **TDD Phase:** 🟢 GREEN
->>>>>>> Stashed changes
 **Condition Ref:** `TC-COND-003`
 **Oracle Source:** `BR-BABY-011, BR-RBAC`
 
@@ -275,13 +260,8 @@ class BabyProfileUpdateTestFactory {
 
 **Severity:** `HIGH`
 **Feature Under Test:** `BabyService.checkActiveStatus()`
-<<<<<<< Updated upstream
-**Test File:** `src/test/java/com/carebridge/backend/baby/service/BabyServiceUpdateTest.java`
-**TDD Phase:** RED
-=======
-**Test File:** `src/test/java/com/carebridge/backend/carejourney/service/BabyServiceUpdateTest.java`
+**Test File:** `src/test/java/com/carebridge/backend/baby/BabyServiceUpdateTest.java`
 **TDD Phase:** 🟢 GREEN
->>>>>>> Stashed changes
 **Condition Ref:** `TC-COND-004`
 **Oracle Source:** `ADR-BABY-004, BR-BABY-012`
 

@@ -25,6 +25,9 @@ public class EmergencySession {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
+    @Column(name = "source_event_id")
+    private UUID sourceEventId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private EmergencyStatus status;
@@ -46,6 +49,36 @@ public class EmergencySession {
 
     @Column(name = "created_by_user_id")
     private UUID createdBy;
+
+    @Builder.Default
+    @Column(name = "alert_generation", nullable = false)
+    private long alertGeneration = 0;
+
+    @Column(name = "alert_status", length = 20)
+    private String alertStatus;
+
+    @Column(name = "alert_claim_token")
+    private UUID alertClaimToken;
+
+    @Column(name = "alert_claimed_at")
+    private Instant alertClaimedAt;
+
+    @Column(name = "alert_lease_expires_at")
+    private Instant alertLeaseExpiresAt;
+
+    @Column(name = "alert_completed_at")
+    private Instant alertCompletedAt;
+
+    @Builder.Default
+    @Column(name = "alert_successful_recipient_count", nullable = false)
+    private int alertSuccessfulRecipientCount = 0;
+
+    @Builder.Default
+    @Column(name = "alert_failed_recipient_count", nullable = false)
+    private int alertFailedRecipientCount = 0;
+
+    @Column(name = "alert_updated_at")
+    private Instant alertUpdatedAt;
 
     @Builder.Default
     @Column(name = "record_type", nullable = false, updatable = false)

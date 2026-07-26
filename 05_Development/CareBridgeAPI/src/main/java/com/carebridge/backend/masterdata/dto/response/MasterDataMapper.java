@@ -47,4 +47,16 @@ public class MasterDataMapper {
    .phone(entity.getPhone())
    .build();
  }
+
+ public WardResponse toWardResponse(
+   AdministrativeArea entity, String districtId, String provinceId) {
+  if (entity == null) return null;
+  return WardResponse.builder()
+   .wardId(entity.getLegacyCode())
+   .districtId(districtId)
+   .provinceId(provinceId)
+   .name(entity.getName())
+   .nameEn(entity.getNameEn())
+   .build();
+ }
 }
