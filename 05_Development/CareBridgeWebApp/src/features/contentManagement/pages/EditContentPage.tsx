@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchStaffContentDetail, updateContent } from '../services/contentApi';
+import { fetchStaffContentDetail, updateContent, uploadContentImage } from '../services/contentApi';
 import type { ContentDetail } from '../models/content';
-import { STAGE_LABELS } from '../models/content';
+import { STAGE_LABELS, TYPE_LABELS } from '../models/content';
+import RichTextEditor from '../components/RichTextEditor';
 
 export default function EditContentPage() {
   const { id } = useParams<{ id: string }>();
@@ -52,12 +53,12 @@ export default function EditContentPage() {
         stage: detail.stage,
         topicId: detail.topicId || undefined,
         status,
+        sourceLabel: detail.sourceLabel || undefined,
         sources: sourceTitle.trim() ? [{ title: sourceTitle.trim(), url: sourceUrl.trim() || undefined }] : undefined,
       });
       navigate(`/content/${id}`);
-    } catch (err: unknown) {
-      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setSubmitError(message || 'Cập nhật thất bại. Vui lòng thử lại.');
+    } catch {
+      setSubmitError('Cập nhật thất bại. Vui lòng thử lại.');
     } finally {
       setSubmitting(null);
     }
@@ -83,24 +84,25 @@ export default function EditContentPage() {
 
   return (
     <div className="p-8 font-sans">
+      <button
+        onClick={() => navigate(-1)}
+        className="inline-flex items-center gap-1.5 py-2 px-5 rounded-full border border-outline-variant bg-transparent text-primary text-sm font-semibold cursor-pointer mb-6"
+      >
+        <span className="material-symbols-outlined text-lg">arrow_back</span>
+        Quay lại
+      </button>
+
       <div className="flex items-center justify-between mb-6">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-on-surface m-0">Chỉnh sửa Bài viết</h1>
+            <h1 className="text-2xl font-bold text-on-surface m-0">Chỉnh sửa {TYPE_LABELS[detail.type]}</h1>
             <span className="py-1 px-3 rounded-full bg-surface-container text-primary text-xs font-semibold">
               Version v{detail.version}
             </span>
           </div>
-          <p className="text-sm text-outline mt-1">Cập nhật nội dung cho bài viết ID: {detail.id.slice(0, 8).toUpperCase()}</p>
+          <p className="text-sm text-outline mt-1">Cập nhật nội dung ID: {detail.id.slice(0, 8).toUpperCase()}</p>
         </div>
         <div className="flex gap-2.5">
-          <button
-            onClick={() => navigate(`/content/${id}/preview`)}
-            className="flex items-center gap-1.5 py-2.5 px-5 rounded-full border border-outline-variant bg-transparent text-primary text-sm font-semibold cursor-pointer"
-          >
-            <span className="material-symbols-outlined text-lg">visibility</span>
-            Preview
-          </button>
           <button
             onClick={() => submit('DRAFT')}
             disabled={submitting !== null}
@@ -164,11 +166,10 @@ export default function EditContentPage() {
                 <h2 className="text-base font-bold text-on-surface m-0">Nội dung chi tiết</h2>
               </div>
             </div>
-            <textarea
+            <RichTextEditor
               value={body}
-              onChange={(e) => setBody(e.target.value)}
-              rows={14}
-              className="w-full py-3 px-4 rounded-2xl border border-outline-variant bg-surface-container-low text-sm text-on-surface font-sans resize-none"
+              onChange={setBody}
+              onImageUpload={uploadContentImage}
             />
             <input value={sourceTitle} onChange={e => setSourceTitle(e.target.value)} placeholder="Nguồn tham khảo đã xác thực" className="w-full mt-4 py-3 px-4 rounded-2xl border border-outline-variant bg-surface text-sm" />
             <input value={sourceUrl} onChange={e => setSourceUrl(e.target.value)} placeholder="Liên kết nguồn" className="w-full mt-3 py-3 px-4 rounded-2xl border border-outline-variant bg-surface text-sm" />

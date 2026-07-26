@@ -5,10 +5,12 @@ class CommunityService {
   static final CommunityService instance = CommunityService._();
   CommunityService._();
 
-  // [type] defaults to unset (all taxonomy kinds). TopicDirectoryScreen passes type: 'TOPIC' so
-  // mothers only see root topics, not the CATEGORY/TAG rows used internally by the admin console
-  // (ADR-COM-017 in CommunityTopicManagement_TDS.md).
-  Future<List<CommunityTopic>> getTopics({String? keyword, String? type}) async {
+  // [type] defaults to unset (all taxonomy kinds). Directory consumers request TOPIC and
+  // CATEGORY rows separately so the CATEGORY -> TOPIC hierarchy remains explicit.
+  Future<List<CommunityTopic>> getTopics({
+    String? keyword,
+    String? type,
+  }) async {
     final params = <String, String>{};
     if (keyword != null && keyword.isNotEmpty) params['keyword'] = keyword;
     if (type != null && type.isNotEmpty) params['type'] = type;
@@ -21,6 +23,9 @@ class CommunityService {
         .map((e) => CommunityTopic.fromJson(e as Map<String, dynamic>))
         .toList();
   }
+
+  Future<List<CommunityTopic>> getTopicCategories() =>
+      getTopics(type: 'CATEGORY');
 
   Future<List<CommunityFeedItem>> getFeed({
     String? topicId,

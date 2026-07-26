@@ -11,10 +11,16 @@ import com.carebridge.backend.expert.dto.response.ExpertDirectoryResponse;
 import com.carebridge.backend.expert.entity.ExpertProfile;
 import com.carebridge.backend.expert.mapper.ExpertProfileMapper;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
+import com.carebridge.backend.expert.repository.ProfessionalSpecialtyRepository;
 import com.carebridge.backend.expert.service.impl.ExpertProfileServiceImpl;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.repository.UserRepository;
+import com.carebridge.backend.audit.service.AuditService;
+import com.carebridge.backend.expertverification.repository.ExpertCredentialRepository;
+import com.carebridge.backend.expertverification.repository.ExpertIdentityVerificationRepository;
+import com.carebridge.backend.masterdata.repository.SpecialtyRepository;
+import com.carebridge.backend.map.repository.CareFacilityRepository;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,6 +38,12 @@ class ExpertProfileServiceImplDirectoryTest {
 
     @Mock private ExpertProfileRepository expertProfileRepository;
     @Mock private UserRepository userRepository;
+    @Mock private SpecialtyRepository specialtyRepository;
+    @Mock private CareFacilityRepository careFacilityRepository;
+    @Mock private ProfessionalSpecialtyRepository professionalSpecialtyRepository;
+    @Mock private ExpertIdentityVerificationRepository identityRepository;
+    @Mock private ExpertCredentialRepository credentialRepository;
+    @Mock private AuditService auditService;
 
     private ExpertProfileServiceImpl service;
     private final ExpertProfileMapper mapper = new ExpertProfileMapper();
@@ -40,7 +52,9 @@ class ExpertProfileServiceImplDirectoryTest {
 
     @BeforeEach
     void setUp() {
-        service = new ExpertProfileServiceImpl(expertProfileRepository, userRepository, mapper);
+        service = new ExpertProfileServiceImpl(expertProfileRepository, userRepository, mapper,
+                identityRepository, credentialRepository, auditService,
+                specialtyRepository, careFacilityRepository, professionalSpecialtyRepository);
     }
 
     private static ExpertProfile approvedExpert(UUID userId) {

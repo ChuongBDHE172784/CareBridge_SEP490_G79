@@ -11,6 +11,7 @@ import com.carebridge.backend.common.exception.ResourceNotFoundException;
 import com.carebridge.backend.common.exception.RevokedSessionException;
 import com.carebridge.backend.common.exception.SessionNotFoundException;
 import com.carebridge.backend.common.exception.ValidationException;
+import com.carebridge.backend.common.validation.VietnamesePhoneNumbers;
 import com.carebridge.backend.notification.repository.DeviceTokenRepository;
 import com.carebridge.backend.common.util.StringUtils;
 import com.carebridge.backend.identity.entity.UserSession;
@@ -114,7 +115,7 @@ public class AuthServiceImpl implements AuthService {
 
         // 2. Determine identifier (email or phone)
         String email = request.getEmail();
-        String phone = request.getPhone();
+        String phone = normalizePhone(request.getPhone());
         String identifier;
 
         if (email != null && !email.isBlank()) {
@@ -124,9 +125,6 @@ public class AuthServiceImpl implements AuthService {
             }
         } else if (phone != null && !phone.isBlank()) {
             identifier = phone;
-            if (!identifier.matches("^\\+84[1-9][0-9]{8,9}$")) {
-                throw new ValidationException("Invalid phone format. Use E.164 format (+84xxxxxxxxx)");
-            }
         } else {
             throw new ValidationException("Either email or phone must be provided");
         }
@@ -350,47 +348,9 @@ public class AuthServiceImpl implements AuthService {
         user.setLocked(false);
         user.setLockedAt(null);
 
-        // Skip OTP for already-verified identifiers — issue tokens directly
-        boolean identifierVerified = (hasEmail && Boolean.TRUE.equals(user.getEmailVerified()))
-                || (hasPhone && Boolean.TRUE.equals(user.getPhoneVerified()));
-        if (identifierVerified) {
-            user.setLastLoginAt(Instant.now());
-            userRepository.save(user);
-            RefreshToken rt = createRefreshToken(user);
-            String rawRt = rt.getToken();
-            UUID sessionId = UUID.randomUUID();
-            String ipAddress = this.request != null ? this.request.getRemoteAddr() : null;
-            String userAgent = this.request != null ? this.request.getHeader("User-Agent") : null;
-            UserSession session = UserSession.builder()
-                    .userId(user.getId())
-                    .sessionId(sessionId)
-                    .refreshTokenHash(TokenUtils.hashSha256(rawRt))
-                    .deviceName(extractDeviceName(userAgent))
-                    .browser(userAgent != null ? userAgent : "Unknown")
-                    .ipAddress(ipAddress)
-                    .location(null)
-                    .lastActivityAt(Instant.now())
-                    .expiresAt(rt.getExpiresAt())
-                    .status("active")
-                    .isCurrent(true)
-                    .createdAt(Instant.now())
-                    .updatedAt(Instant.now())
-                    .build();
-            sessionRepository.save(session);
-            sessionRepository.clearCurrentSessions(user.getId(), sessionId);
-            String accessToken = jwtTokenProvider.generateAccessToken(user, sessionId);
-            auditService.log(AuditAction.LOGIN, user.getId(), "User", user.getId().toString(), null);
-            AuthResponse authResponse = AuthResponse.builder()
-                    .accessToken(accessToken)
-                    .refreshToken(rawRt)
-                    .user(userMapper.toProfileResponse(user))
-                    .build();
-            return OtpSendResponse.builder()
-                    .message("Login successful")
-                    .auth(authResponse)
-                    .build();
-        }
-
+        // Password verification never completes authentication. Even previously verified
+        // identifiers must prove possession again through the login OTP challenge. Tokens and
+        // sessions are issued only by verifyOtp (or the explicitly opt-in local/test controller).
         userRepository.save(user);
 
         // Generate OTP
@@ -471,7 +431,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public OtpResendResponse resendOtp(ResendOtpRequest request) {
-        String phone = StringUtils.trimToNull(request.getPhone());
+        String phone = normalizePhone(request.getPhone());
         String email = StringUtils.trimToNull(request.getEmail());
 
         boolean hasPhone = phone != null;
@@ -938,7 +898,11 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private String normalizePhone(String phone) {
-        return StringUtils.trimToNull(phone);
+        try {
+            return VietnamesePhoneNumbers.normalizeToE164(phone);
+        } catch (IllegalArgumentException invalidPhone) {
+            throw new ValidationException(VietnamesePhoneNumbers.INVALID_FORMAT_MESSAGE);
+        }
     }
 
     private String getRateLimitKey(User user) {

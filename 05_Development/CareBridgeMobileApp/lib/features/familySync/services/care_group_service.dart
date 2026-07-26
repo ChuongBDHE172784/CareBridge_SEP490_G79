@@ -86,6 +86,22 @@ class CareGroupService {
     await apiPost('/api/v1/care-groups/$groupId/leave', const {});
   }
 
+  // List join requests for a group (Mother only)
+  Future<List<JoinRequest>> listJoinRequests(String groupId) async {
+    final data = await apiGet('/api/v1/care-groups/$groupId/join-requests');
+    final list = data['data'] as List<dynamic>? ?? [];
+    return list.map((item) => JoinRequest.fromJson(item as Map<String, dynamic>)).toList();
+  }
+
+  // Mother approves or rejects a join request
+  Future<void> respondJoinRequest(
+      String groupId, String memberId, bool approve) async {
+    await apiPost(
+      '/api/v1/care-groups/$groupId/join-requests/$memberId/respond?approve=$approve',
+      const {},
+    );
+  }
+
   // Delete care group (owner only, hard delete from DB)
   Future<void> deleteCareGroup(String groupId) async {
     await apiDelete('/api/v1/care-groups/$groupId');

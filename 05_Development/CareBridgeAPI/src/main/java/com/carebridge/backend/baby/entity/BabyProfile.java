@@ -13,6 +13,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "care_subjects")
+@org.hibernate.annotations.SQLRestriction("subject_type = 'BABY'")
 @Getter
 @Setter
 @Builder
@@ -56,7 +57,7 @@ public class BabyProfile {
     @Column(name = "status", nullable = false, length = 20)
     private BabyProfileStatus status = BabyProfileStatus.ACTIVE;
 
-    @org.hibernate.annotations.Formula("coalesce((select (u.settings_jsonb ->> 'activeBabyId')::uuid = care_subject_id from users u where u.user_id = owner_user_id), false)")
+    @Transient
     private Boolean active;
 
     @Builder.Default

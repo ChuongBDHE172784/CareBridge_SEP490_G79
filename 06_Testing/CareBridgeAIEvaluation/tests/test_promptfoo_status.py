@@ -23,6 +23,14 @@ def test_local_promptfoo_does_not_require_api_or_external_key(monkeypatch):
     assert status == "READY"
 
 
+def test_missing_promptfoo_fails_the_runner(monkeypatch, tmp_path):
+    module = _module()
+    monkeypatch.setattr(module.shutil, "which", lambda _: None)
+    monkeypatch.setattr(module.argparse.ArgumentParser, "parse_args", lambda _self: SimpleNamespace(output_dir=tmp_path))
+
+    assert module.main() == 1
+
+
 def test_rag_promptfoo_without_all_api_fixtures_is_infrastructure_skipped(monkeypatch):
     module = _module()
     for name in module.API_FIXTURES:

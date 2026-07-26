@@ -9,7 +9,7 @@ const topic = (overrides: Partial<CommunityTopic>): CommunityTopic => ({
   icon: '',
   type: 'TOPIC',
   slug: 'slug',
-  parentId: null,
+  parentId: 'category-id',
   questionCount: 0,
   isHidden: false,
   sortOrder: 0,
@@ -18,41 +18,65 @@ const topic = (overrides: Partial<CommunityTopic>): CommunityTopic => ({
   ...overrides,
 });
 
-// WEB-TC-001: a CATEGORY nests only under its real parentId, not under every expanded topic.
+// WEB-TC-001/002: CATEGORY is the root, TOPIC is its child, and TAG stays flat.
 describe('buildTopicTree', () => {
-  it('nests a category only under its real parent topic, not under every expanded topic', () => {
-    const topicA = topic({ id: 'topic-a', name: 'Topic A', type: 'TOPIC' });
-    const topicB = topic({ id: 'topic-b', name: 'Topic B', type: 'TOPIC' });
-    const categoryX = topic({ id: 'category-x', name: 'Category X', type: 'CATEGORY', parentId: 'topic-a' });
+  it('nests a topic only under its real parent category', () => {
+    const categoryA = topic({ id: 'category-a', name: 'Category A', type: 'CATEGORY', parentId: null });
+    const categoryB = topic({ id: 'category-b', name: 'Category B', type: 'CATEGORY', parentId: null });
+    const topicX = topic({ id: 'topic-x', name: 'Topic X', parentId: 'category-a' });
 
-    const rows = buildTopicTree([topicA, topicB, categoryX], new Set(['topic-a', 'topic-b']));
+    const rows = buildTopicTree([categoryA, categoryB, topicX], new Set(['category-a', 'category-b']));
 
-    const categoryRows = rows.filter((r) => r.item.id === 'category-x');
-    expect(categoryRows).toHaveLength(1);
-
-    const topicAIndex = rows.findIndex((r) => r.item.id === 'topic-a');
-    const categoryIndex = rows.findIndex((r) => r.item.id === 'category-x');
-    const topicBIndex = rows.findIndex((r) => r.item.id === 'topic-b');
-    expect(categoryIndex).toBeGreaterThan(topicAIndex);
-    expect(categoryIndex).toBeLessThan(topicBIndex);
-    expect(rows[categoryIndex].isChild).toBe(true);
+    expect(rows.map((row) => [row.item.id, row.isChild])).toEqual([
+      ['category-a', false],
+      ['topic-x', true],
+      ['category-b', false],
+    ]);
   });
 
-  it('does not render a category under a topic when that topic is not expanded', () => {
-    const topicA = topic({ id: 'topic-a', type: 'TOPIC' });
-    const categoryX = topic({ id: 'category-x', type: 'CATEGORY', parentId: 'topic-a' });
+  it('does not render a topic when its parent category is collapsed', () => {
+    const category = topic({ id: 'category', type: 'CATEGORY', parentId: null });
+    const childTopic = topic({ id: 'child-topic', parentId: 'category' });
 
-    const rows = buildTopicTree([topicA, categoryX], new Set());
+    const rows = buildTopicTree([category, childTopic], new Set());
 
-    expect(rows.some((r) => r.item.id === 'category-x')).toBe(false);
+    expect(rows.map((row) => row.item.id)).toEqual(['category']);
   });
 
-  it('renders a parentless category (e.g. from ContentCategoryController) as a standalone top-level row', () => {
-    const standaloneCategory = topic({ id: 'standalone', type: 'CATEGORY', parentId: null });
+  it('renders tags as a separate flat list', () => {
+    const category = topic({ id: 'category', type: 'CATEGORY', parentId: null });
+    const childTopic = topic({ id: 'child-topic', parentId: 'category' });
+    const tag = topic({ id: 'tag', type: 'TAG', parentId: null });
 
-    const rows = buildTopicTree([standaloneCategory], new Set());
+    const rows = buildTopicTree([category, childTopic, tag], new Set(['category']));
 
-    expect(rows).toHaveLength(1);
-    expect(rows[0].isChild).toBe(false);
+    expect(rows.map((row) => [row.item.id, row.isChild])).toEqual([
+      ['category', false],
+      ['child-topic', true],
+      ['tag', false],
+    ]);
+  });
+
+  it('orders categories, child topics, and tags by sortOrder rather than array position', () => {
+    const categoryA = topic({ id: 'category-a', type: 'CATEGORY', parentId: null, sortOrder: 2 });
+    const categoryB = topic({ id: 'category-b', type: 'CATEGORY', parentId: null, sortOrder: 1 });
+    const topicA = topic({ id: 'topic-a', parentId: 'category-a', sortOrder: 2 });
+    const topicB = topic({ id: 'topic-b', parentId: 'category-a', sortOrder: 1 });
+    const tagA = topic({ id: 'tag-a', type: 'TAG', parentId: null, sortOrder: 2 });
+    const tagB = topic({ id: 'tag-b', type: 'TAG', parentId: null, sortOrder: 1 });
+
+    const rows = buildTopicTree(
+      [categoryA, topicA, tagA, categoryB, topicB, tagB],
+      new Set(['category-a', 'category-b']),
+    );
+
+    expect(rows.map((row) => row.item.id)).toEqual([
+      'category-b',
+      'category-a',
+      'topic-b',
+      'topic-a',
+      'tag-b',
+      'tag-a',
+    ]);
   });
 });

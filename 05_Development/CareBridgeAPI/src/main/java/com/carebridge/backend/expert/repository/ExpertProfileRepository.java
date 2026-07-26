@@ -30,15 +30,29 @@ public interface ExpertProfileRepository extends JpaRepository<ExpertProfile, UU
 
  List<ExpertProfile> findByVerificationStatus(VerificationStatus status);
 
- @Query("SELECT ep FROM ExpertProfile ep WHERE ep.verificationStatus = 'APPROVED' "
+ @Query("SELECT ep FROM ExpertProfile ep, com.carebridge.backend.security.entity.User u "
+     + "WHERE u.id = ep.userId "
+     + "AND ep.verificationStatus = 'APPROVED' "
      + "AND ep.trustStatus = com.carebridge.backend.expert.truststatus.TrustStatus.ACTIVE "
+     + "AND u.enabled = true AND u.locked = false "
+     + "AND (u.suspendedUntil IS NULL OR u.suspendedUntil <= CURRENT_TIMESTAMP) "
      + "ORDER BY ep.ratingAvg DESC NULLS LAST")
  List<ExpertProfile> findVerifiedPublic();
 
- @Query("SELECT ep FROM ExpertProfile ep " +
- "WHERE ep.verificationStatus = 'APPROVED' " +
- "AND ep.trustStatus = com.carebridge.backend.expert.truststatus.TrustStatus.ACTIVE " +
- "AND (:specialty IS NULL OR ep.specialty = :specialty)")
+ @Query("SELECT ep FROM ExpertProfile ep, com.carebridge.backend.security.entity.User u "
+     + "WHERE u.id = ep.userId "
+     + "AND ep.verificationStatus = 'APPROVED' "
+     + "AND ep.trustStatus = com.carebridge.backend.expert.truststatus.TrustStatus.ACTIVE "
+     + "AND u.enabled = true AND u.locked = false "
+     + "AND (u.suspendedUntil IS NULL OR u.suspendedUntil <= CURRENT_TIMESTAMP) "
+     + "AND (:specialty IS NULL OR EXISTS (SELECT ps.professionalProfileId "
+     + "FROM com.carebridge.backend.expert.entity.ProfessionalSpecialty ps, "
+     + "com.carebridge.backend.masterdata.entity.Specialty s "
+     + "WHERE ps.professionalProfileId = ep.expertProfileId "
+     + "AND s.specialtyId = ps.specialtyId "
+     + "AND s.isActive = true "
+     + "AND (LOWER(s.code) = LOWER(:specialty) "
+     + "OR LOWER(s.name) = LOWER(:specialty))))")
  List<ExpertProfile> findVerifiedBySpecialty(@Param("specialty") String specialty);
 
  List<ExpertProfile> findByUserIdIn(Set<UUID> userIds);
@@ -50,7 +64,16 @@ public interface ExpertProfileRepository extends JpaRepository<ExpertProfile, UU
      SELECT ep.* FROM professional_profiles ep JOIN users u ON u.user_id = ep.user_id
      WHERE ep.verification_status = 'APPROVED'
        AND ep.trust_status = 'ACTIVE'
-       AND (:specialty IS NULL OR ep.specialty = :specialty)
+       AND u.enabled = true
+       AND u.locked = false
+       AND (u.suspended_until IS NULL OR u.suspended_until <= CURRENT_TIMESTAMP)
+       AND (:specialty IS NULL OR EXISTS (
+           SELECT 1 FROM professional_specialties ps
+           JOIN specialties s ON s.specialty_id = ps.specialty_id
+           WHERE ps.professional_profile_id = ep.professional_profile_id
+             AND s.is_active = true
+             AND (LOWER(s.code) = LOWER(:specialty) OR LOWER(s.name) = LOWER(:specialty)
+                  OR s.specialty_id::text = :specialty)))
        AND (:q IS NULL OR LOWER(u.full_name) LIKE LOWER(CONCAT('%', :q, '%'))
                        OR LOWER(ep.professional_title) LIKE LOWER(CONCAT('%', :q, '%'))
                        OR LOWER(ep.workplace) LIKE LOWER(CONCAT('%', :q, '%')))
@@ -60,7 +83,16 @@ public interface ExpertProfileRepository extends JpaRepository<ExpertProfile, UU
      SELECT COUNT(*) FROM professional_profiles ep JOIN users u ON u.user_id = ep.user_id
      WHERE ep.verification_status = 'APPROVED'
        AND ep.trust_status = 'ACTIVE'
-       AND (:specialty IS NULL OR ep.specialty = :specialty)
+       AND u.enabled = true
+       AND u.locked = false
+       AND (u.suspended_until IS NULL OR u.suspended_until <= CURRENT_TIMESTAMP)
+       AND (:specialty IS NULL OR EXISTS (
+           SELECT 1 FROM professional_specialties ps
+           JOIN specialties s ON s.specialty_id = ps.specialty_id
+           WHERE ps.professional_profile_id = ep.professional_profile_id
+             AND s.is_active = true
+             AND (LOWER(s.code) = LOWER(:specialty) OR LOWER(s.name) = LOWER(:specialty)
+                  OR s.specialty_id::text = :specialty)))
        AND (:q IS NULL OR LOWER(u.full_name) LIKE LOWER(CONCAT('%', :q, '%'))
                        OR LOWER(ep.professional_title) LIKE LOWER(CONCAT('%', :q, '%'))
                        OR LOWER(ep.workplace) LIKE LOWER(CONCAT('%', :q, '%')))
@@ -68,10 +100,32 @@ public interface ExpertProfileRepository extends JpaRepository<ExpertProfile, UU
      nativeQuery = true)
  Page<ExpertProfile> searchDirectory(@Param("specialty") String specialty, @Param("q") String q, Pageable pageable);
 
- @Query("SELECT DISTINCT TRIM(ep.specialty) FROM ExpertProfile ep "
-     + "WHERE ep.verificationStatus = 'APPROVED' "
-     + "AND ep.trustStatus = com.carebridge.backend.expert.truststatus.TrustStatus.ACTIVE "
-     + "AND ep.specialty IS NOT NULL "
-     + "AND TRIM(ep.specialty) <> '' ORDER BY TRIM(ep.specialty)")
+ @Query(value = """
+     SELECT DISTINCT s.name
+     FROM professional_profiles ep
+     JOIN users u ON u.user_id = ep.user_id
+     JOIN professional_specialties ps
+       ON ps.professional_profile_id = ep.professional_profile_id
+     JOIN specialties s ON s.specialty_id = ps.specialty_id
+     WHERE ep.verification_status = 'APPROVED'
+       AND ep.trust_status = 'ACTIVE'
+       AND u.enabled = true AND u.locked = false
+       AND (u.suspended_until IS NULL OR u.suspended_until <= CURRENT_TIMESTAMP)
+       AND s.is_active = true
+     ORDER BY s.name
+     """, nativeQuery = true)
  List<String> findApprovedSpecialties();
+
+ @Query(value = """
+     SELECT after_payload_jsonb ->> 'reason'
+     FROM audit_events
+     WHERE event_origin = 'AUDIT_LOG'
+       AND event_category = 'EXPERT_VERIFICATION'
+       AND resource_type = 'ExpertProfile'
+       AND resource_id = :expertProfileId
+       AND after_payload_jsonb ->> 'decision' = 'REJECTED'
+     ORDER BY occurred_at DESC, audit_event_id DESC
+     LIMIT 1
+     """, nativeQuery = true)
+ Optional<String> findLatestProfileRejectionReason(@Param("expertProfileId") UUID expertProfileId);
 }

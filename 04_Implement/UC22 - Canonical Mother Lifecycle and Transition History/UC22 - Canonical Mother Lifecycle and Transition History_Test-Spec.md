@@ -18,7 +18,7 @@
 - `_bmad-output/planning-artifacts/prd.md` — FR43
 - `_bmad-output/planning-artifacts/epics.md` — Story 6.1
 - `02_Requirements/SRS/3_Functional_Specification.md` — UC22/UC23
-- `02_Requirements/SRS/3_Functional_Specification_Detailed_Scope_121UC.md` — aliases UC19/UC20
+- `02_Requirements/SRS/3_Functional_Specification_Detailed_Scope_121UC.md` — superseded experimental UC19/UC20 allocation input
 - `05_Development/CareBridgeAPI/src/main/resources/db/migration/V1__init_schema.sql`
 
 All tests use SYNTHETIC data. Production PII is prohibited.
@@ -86,7 +86,7 @@ All tests use SYNTHETIC data. Production PII is prohibited.
 | L3 | Updates overwrite dates/stage | no history table | Each accepted mutation writes exactly one immutable transition |
 | L4 | No database concurrent-create protection | only application pre-check | Partial unique index makes one create win and one return 409 |
 | L5 | No lost-update detection | no `@Version` | optimistic conflict returns `JOURNEY-017` |
-| L6 | Legacy specs use UC22/23; approved 121-UC uses UC19/20 | conflicting repository artifacts | Use UC22/23 as implementation IDs and record aliases until Story 6.10 |
+| L6 | Full SRS/shipped implementation use UC22/23; experimental 121-UC draft assigns UC19/20 | conflicting repository artifacts | Story 6.10 closes UC22/23 as canonical and classifies UC19/20 as superseded input, not aliases |
 | L7 | Template requests V1 sync; project rule forbids editing applied migration | project context | Test the new forward migration; do not modify V1 |
 | L8 | BABY_CARE exists in current enum/mobile | OV-01 maternal stages exclude it | Keep readable and outside canonical unique predicate until Stories 6.4/6.5 |
 
@@ -472,3 +472,13 @@ Review status:
 - [x] Risk IDs and coverage conditions are bidirectionally mapped.
 - [x] Human project approver approved the TDS decisions and Red Gate plan.
 - [x] Human-approved code review remediation is complete; all 21 Story findings are closed. Repository-wide baseline debt remains release-visible under the scoped waiver.
+
+## Story 6.10 OV-01 Test Contract Addendum
+
+| Case ID | Requirement | Level | Deterministic oracle | Executable linkage |
+| --- | --- | --- | --- | --- |
+| `OV01-TS-22-001` | Baseline plus consent gates initialization and fails closed after revocation/concurrent revocation | API/PostgreSQL + Mobile component | No journey/current-history write is committed without valid consent | `JourneyOnboardingIntegrationTest`; `journey_onboarding_screen_test.dart` |
+| `OV01-TS-22-002` | One canonical active lifecycle and append-only history | PostgreSQL | One current row, matching transition versions, immutable history | `JourneyCanonicalLifecycleIntegrationTest` |
+| `OV01-TS-22-003` | Direct POSTPARTUM setup is Mother-owned and baby-independent | Mobile component + Backend service | Valid provenance creates/opens recovery; zero baby profiles do not block dashboard | `postpartum_recovery_setup_screen_test.dart`; `postpartum_recovery_dashboard_test.dart` |
+
+UC19/UC20 must not appear as executable test ownership or as aliases. Final evidence status is consumed from the Story 6.10 authoritative trace matrix.

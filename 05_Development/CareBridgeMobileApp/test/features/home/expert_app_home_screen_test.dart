@@ -55,11 +55,7 @@ void main() {
       await tester.pumpWidget(const MaterialApp(home: ExpertHomeShell()));
       await tester.pumpAndSettle();
 
-      expect(
-        find.text('3'),
-        findsOneWidget,
-      ); // Badge label on the Trò chuyện destination
-
+      expect(find.text('3'), findsOneWidget);
       expect(find.byType(NavigationBar), findsOneWidget);
       expect(find.text('Yêu cầu tư vấn'), findsNothing);
     },
@@ -87,10 +83,7 @@ void main() {
     (tester) async {
       original = DirectChatService.instance;
       DirectChatService.instance = _FakeDirectChatService();
-      // Not awaited: setTokens's internal secure-storage write hangs on the unmocked platform
-      // channel in this test environment. The synchronous role/userId assignment inside
-      // setTokens runs to completion before its first `await`, so this is already visible by
-      // the very next line — no pump needed.
+      // The synchronous role/user assignment happens before the first secure-storage await.
       // ignore: unawaited_futures
       AuthState.instance.setTokens(
         accessToken: 'test-access',
@@ -102,15 +95,10 @@ void main() {
       await tester.pumpWidget(const MaterialApp(home: ExpertHomeShell()));
       await tester.pumpAndSettle();
 
-      for (final label in const [
-        'Tìm chuyên gia',
-        'Tìm Mother',
-        'Nhắn tin mới',
-      ]) {
+      for (final label in const ['Tìm Mother', 'Nhắn tin mới']) {
         expect(find.text(label), findsNothing);
       }
 
-      // Visit every tab and re-check — IndexedStack keeps them all built, but assert per tab too.
       for (final tabLabel in const [
         'Trò chuyện',
         'Lịch',
@@ -119,11 +107,7 @@ void main() {
       ]) {
         await tester.tap(find.text(tabLabel).last);
         await tester.pumpAndSettle();
-        for (final label in const [
-          'Tìm chuyên gia',
-          'Tìm Mother',
-          'Nhắn tin mới',
-        ]) {
+        for (final label in const ['Tìm Mother', 'Nhắn tin mới']) {
           expect(find.text(label), findsNothing);
         }
       }

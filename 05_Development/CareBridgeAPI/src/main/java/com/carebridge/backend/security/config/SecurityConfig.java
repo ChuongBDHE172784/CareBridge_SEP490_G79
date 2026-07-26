@@ -4,7 +4,7 @@ import com.carebridge.backend.security.jwt.JwtAuthenticationFilter;
 import com.carebridge.backend.baby.security.BabyLinkBoundaryAuditFilter;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.security.autoconfigure.actuate.web.servlet.EndpointRequest;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -31,7 +31,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final ObjectProvider<BabyLinkBoundaryAuditFilter> babyLinkBoundaryAuditFilterProvider;
+    private final BabyLinkBoundaryAuditFilter babyLinkBoundaryAuditFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -40,6 +40,11 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        // Only DB-backed readiness is anonymous for the container
+                        // orchestrator. Root health, liveness, and every other
+                        // actuator operation remain denied.
+                        .requestMatchers(HttpMethod.GET, "/actuator/health/readiness").permitAll()
+                        .requestMatchers(EndpointRequest.toAnyEndpoint()).denyAll()
                         // Auth endpoints
                         .requestMatchers(HttpMethod.POST,
                                 "/api/v1/auth/register",
@@ -54,6 +59,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/profile").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/v1/auth/profile").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/logout").authenticated()
+                        // Master data endpoints (public)
+                        .requestMatchers(HttpMethod.GET, "/api/v1/master-data/**").permitAll()
                         // All community and content read endpoints require a valid JWT.
                         // Unauthenticated requests → 401 (per CNT82-TC-SEC-001, ADR-COM-*)
                         // Admin / privileged write endpoints
@@ -73,7 +80,6 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/admin/content/*/archive").hasRole("CONTENT_ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/admin/content/*/unpublish").hasRole("CONTENT_ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/admin/content/*/decision").hasRole("SYSTEM_ADMIN")
-                        .requestMatchers("/api/v1/admin/content/categories/**").hasRole("CONTENT_ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/community/topics").hasAnyRole("MODERATOR", "CONTENT_ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/partner/profile").hasRole("PARTNER")
                         .requestMatchers(HttpMethod.PUT, "/api/v1/partner/profile").hasRole("PARTNER")
@@ -83,21 +89,15 @@ public class SecurityConfig {
                         .anyRequest().permitAll())
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-        BabyLinkBoundaryAuditFilter boundaryAuditFilter = babyLinkBoundaryAuditFilterProvider.getIfAvailable();
-        if (boundaryAuditFilter != null) {
-            http.addFilterAfter(boundaryAuditFilter, JwtAuthenticationFilter.class);
-        }
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(babyLinkBoundaryAuditFilter, JwtAuthenticationFilter.class);
         return http.build();
     }
 
     @Bean
     public FilterRegistrationBean<BabyLinkBoundaryAuditFilter> babyLinkBoundaryAuditRegistration() {
         FilterRegistrationBean<BabyLinkBoundaryAuditFilter> registration = new FilterRegistrationBean<>();
-        BabyLinkBoundaryAuditFilter boundaryAuditFilter = babyLinkBoundaryAuditFilterProvider.getIfAvailable();
-        if (boundaryAuditFilter != null) {
-            registration.setFilter(boundaryAuditFilter);
-        }
+        registration.setFilter(babyLinkBoundaryAuditFilter);
         registration.setEnabled(false);
         return registration;
     }

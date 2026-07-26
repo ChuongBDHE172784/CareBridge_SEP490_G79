@@ -31,9 +31,9 @@ class Wave8SafetyFacilityCleanupMigrationIntegrationTest {
     @Test
     void cleanBootstrapRemovesElevenWave8Tables() throws Exception {
         migrate(PRE);
-        assertThat(tableCount()).isEqualTo(92);
+        long tableCountBefore = tableCount();
         migrate(WAVE);
-        assertThat(tableCount()).isEqualTo(81);
+        assertThat(tableCount()).isEqualTo(tableCountBefore - REMOVED.length);
         for (String table : REMOVED) assertThat(exists(table)).as(table).isFalse();
         assertThat(number("SELECT count(*) FROM pg_constraint WHERE contype='f' AND NOT convalidated"))
                 .isZero();

@@ -17,6 +17,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 class SafetyPersistenceMigrationIntegrationTest {
 
     private static final String PRE_BATCH4_TARGET = "20260722020500";
+    private static final String BATCH4_TARGET = "20260722020600";
 
     @Test
     void emptyLegacyTablesAreDroppedAndCanonicalSafetySchemaIsCompleted() throws Exception {
@@ -24,7 +25,7 @@ class SafetyPersistenceMigrationIntegrationTest {
             postgres.start();
             flyway(postgres, PRE_BATCH4_TARGET).migrate();
 
-            flyway(postgres, null).migrate();
+            flyway(postgres, BATCH4_TARGET).migrate();
 
             try (var connection = connection(postgres);
                  var statement = connection.createStatement()) {
@@ -70,7 +71,7 @@ class SafetyPersistenceMigrationIntegrationTest {
                 statement.execute(insertSql);
             }
 
-            assertThatThrownBy(() -> flyway(postgres, null).migrate())
+            assertThatThrownBy(() -> flyway(postgres, BATCH4_TARGET).migrate())
                     .hasMessageContaining("BLOCKED_PARTIAL_SAFETY_MIGRATION")
                     .hasMessageContaining(table);
 
@@ -87,7 +88,7 @@ class SafetyPersistenceMigrationIntegrationTest {
                 statement.execute("CREATE VIEW public.legacy_safety_event_view AS SELECT * FROM public.safety_events");
             }
 
-            assertThatThrownBy(() -> flyway(postgres, null).migrate())
+            assertThatThrownBy(() -> flyway(postgres, BATCH4_TARGET).migrate())
                     .hasMessageContaining("BLOCKED_PARTIAL_SAFETY_MIGRATION")
                     .hasMessageContaining("dependent view");
             assertRollbackState(postgres, "safety_events");

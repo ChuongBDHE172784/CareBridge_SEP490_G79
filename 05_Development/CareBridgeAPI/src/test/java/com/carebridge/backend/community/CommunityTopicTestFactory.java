@@ -16,18 +16,18 @@ final class CommunityTopicTestFactory {
 
     private CommunityTopicTestFactory() {}
 
-    static CommunityTopic makeTopic() {
-        return makeTopic(t -> {});
+    static CommunityTopic makeCategory() {
+        return makeCategory(t -> {});
     }
 
-    static CommunityTopic makeTopic(Consumer<CommunityTopic> overrides) {
+    static CommunityTopic makeCategory(Consumer<CommunityTopic> overrides) {
         CommunityTopic topic = CommunityTopic.builder()
                 .id(UUID.randomUUID())
-                .name("Dinh dưỡng thai kỳ")
+                .name("Mang thai")
                 .description("desc")
-                .icon("restaurant")
-                .type(TopicType.TOPIC)
-                .slug("dinh-duong-thai-ky")
+                .icon("pregnant_woman")
+                .type(TopicType.CATEGORY)
+                .slug("mang-thai")
                 .parentId(null)
                 .isHidden(false)
                 .sortOrder(1)
@@ -37,21 +37,32 @@ final class CommunityTopicTestFactory {
         return topic;
     }
 
-    static CommunityTopic makeCategory(UUID parentId) {
-        return makeTopic(t -> {
+    static CommunityTopic makeTopic(UUID categoryId) {
+        return makeCategory(t -> {
             t.setId(UUID.randomUUID());
-            t.setName("Ăn uống");
-            t.setType(TopicType.CATEGORY);
-            t.setSlug("an-uong");
-            t.setParentId(parentId);
+            t.setName("Dinh dưỡng thai kỳ");
+            t.setIcon("restaurant");
+            t.setType(TopicType.TOPIC);
+            t.setSlug("dinh-duong-thai-ky");
+            t.setParentId(categoryId);
         });
+    }
+
+    static CommunityTopic makeTopic() {
+        return makeTopic(UUID.randomUUID());
+    }
+
+    static CommunityTopic makeTopic(Consumer<CommunityTopic> overrides) {
+        CommunityTopic topic = makeTopic();
+        overrides.accept(topic);
+        return topic;
     }
 
     static CreateCommunityTopicRequest.CreateCommunityTopicRequestBuilder makeCreateTopicRequestBuilder() {
         return CreateCommunityTopicRequest.builder()
                 .name("Sức khỏe tinh thần")
                 .description("desc")
-                .type(TopicType.TOPIC)
+                .type(TopicType.CATEGORY)
                 .sortOrder(0);
     }
 

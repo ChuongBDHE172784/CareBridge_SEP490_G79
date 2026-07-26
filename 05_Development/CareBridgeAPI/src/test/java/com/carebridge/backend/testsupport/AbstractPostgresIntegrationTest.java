@@ -35,6 +35,14 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
         // Neutralise the H2 driver hard-coded in the test application.yaml; the
         // container connection details supplied by @ServiceConnection take over.
         "spring.datasource.driver-class-name=org.postgresql.Driver",
+        // Every distinct @MockitoBean set creates a separately cached Spring
+        // context, hence a separate Hikari pool, while all contexts share this
+        // one PostgreSQL container. Keep each test pool small and elastic so a
+        // full suite cannot exhaust PostgreSQL's connection limit. Four still
+        // supports the integration tests that exercise three concurrent writers.
+        "spring.datasource.hikari.maximum-pool-size=4",
+        "spring.datasource.hikari.minimum-idle=0",
+        "spring.datasource.hikari.idle-timeout=10000",
         // Provide a mail host so JavaMailSender autoconfigures and GmailEmailService
         // can be constructed. Tests still mock EmailService/SmsService so nothing is
         // actually sent; this just keeps the context bootable without mocking.

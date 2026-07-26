@@ -3,6 +3,7 @@ package com.carebridge.backend.family.service.impl;
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.common.exception.BusinessException;
+import com.carebridge.backend.common.validation.VietnamesePhoneNumbers;
 import com.carebridge.backend.family.dto.AcceptInvitationByTokenResponse;
 import com.carebridge.backend.family.dto.CareGroupMemberDto;
 import com.carebridge.backend.family.dto.CareGroupMembersResponse;
@@ -17,6 +18,7 @@ import com.carebridge.backend.family.dto.LeaveCareGroupResponse;
 import com.carebridge.backend.family.dto.RemoveMemberResponse;
 import com.carebridge.backend.family.dto.RevokeInvitationResponse;
 import com.carebridge.backend.family.dto.CareGroupSummaryDto;
+import com.carebridge.backend.family.dto.JoinRequestDto;
 import com.carebridge.backend.family.dto.PendingInvitationDto;
 import com.carebridge.backend.family.dto.UpdateFamilyPermissionRequest;
 import com.carebridge.backend.family.event.CareGroupInvitationRevoked;
@@ -49,6 +51,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -362,6 +365,10 @@ public class CareGroupServiceImpl implements ICareGroupService {
                 throw new BusinessException(HttpStatus.CONFLICT, "FAM-061",
                         "The group owner cannot be removed");
             }
+            if (target.getInviteStatus() != InviteStatus.ACCEPTED) {
+                throw new BusinessException(HttpStatus.CONFLICT, "FAM-060",
+                        "Only an accepted member can be removed");
+            }
 
             UUID memberId = target.getId();
             UUID targetUserUuid = target.getUserId();
@@ -502,8 +509,13 @@ public class CareGroupServiceImpl implements ICareGroupService {
                 throw new BusinessException(HttpStatus.BAD_REQUEST, "FAM-010",
                         "Phone number or email is required for invitation.");
             }
-            User invitee = userRepository.findByPhone(phone)
-                    .or(() -> userRepository.findByEmailIgnoreCase(phone))
+            String canonicalPhone = VietnamesePhoneNumbers.isValidOrBlank(phone)
+                    ? VietnamesePhoneNumbers.normalizeToE164(phone)
+                    : null;
+            Optional<User> inviteeMatch = canonicalPhone != null
+                    ? userRepository.findByPhone(canonicalPhone)
+                    : userRepository.findByEmailIgnoreCase(phone.trim());
+            User invitee = inviteeMatch
                     .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "FAM-014",
                             "No CareBridge account was found for this phone number or email."));
 
@@ -520,7 +532,7 @@ public class CareGroupServiceImpl implements ICareGroupService {
 
             String targetPhone = (invitee.getPhone() != null && !invitee.getPhone().isBlank())
                     ? invitee.getPhone()
-                    : (phone.length() <= 20 ? phone : null);
+                    : canonicalPhone;
 
             CareGroupMember member = CareGroupMember.builder()
                     .careGroupId(groupId)
@@ -671,14 +683,17 @@ public class CareGroupServiceImpl implements ICareGroupService {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "FAM-060", "Mã mời không được để trống.");
         }
         String cleanCode = code.trim();
-        UUID groupId = null;
+        UUID groupId;
 
         try {
             groupId = UUID.fromString(cleanCode);
         } catch (IllegalArgumentException e) {
+            // Not a UUID — try accepting via invite token (old LINK/QR/PHONE flow)
             try {
                 var res = acceptInvitationByToken(cleanCode, callerId);
                 groupId = res.getCareGroupId();
+                CareGroup tokenGroup = groupRepository.findById(groupId).orElseThrow();
+                return toGroupSummaryDto(tokenGroup, GroupMemberRole.MEMBER.name());
             } catch (Exception ex) {
                 throw new BusinessException(HttpStatus.NOT_FOUND, "FAM-005", "Mã mời không hợp lệ hoặc không tồn tại.");
             }
@@ -691,32 +706,103 @@ public class CareGroupServiceImpl implements ICareGroupService {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "FAM-061", "Nhóm chăm sóc này hiện không hoạt động.");
         }
 
+        // If caller is the group owner, they are already a member
+        if (group.getOwnerUserId().equals(callerId)) {
+            return toGroupSummaryDto(group, GroupMemberRole.OWNER.name());
+        }
+
         var existingOpt = memberRepository.findByCareGroupIdAndUserId(groupId, callerId);
         if (existingOpt.isPresent()) {
             CareGroupMember existing = existingOpt.get();
             if (existing.getInviteStatus() == InviteStatus.ACCEPTED) {
-                return toGroupSummaryDto(group, existing.getMemberRole().name());
-            } else {
-                existing.setInviteStatus(InviteStatus.ACCEPTED);
-                existing.setJoinedAt(Instant.now());
-                memberRepository.save(existing);
-                return toGroupSummaryDto(group, existing.getMemberRole().name());
+                throw new BusinessException(HttpStatus.CONFLICT, "FAM-007", "Bạn đã là thành viên của nhóm này.");
             }
+            if (existing.getInviteStatus() == InviteStatus.PENDING) {
+                throw new BusinessException(HttpStatus.CONFLICT, "FAM-007", "Yêu cầu tham gia đã được gửi, vui lòng chờ Mother duyệt.");
+            }
+            // REJECTED / REVOKED / EXPIRED — allow re-requesting
+            existing.setInviteStatus(InviteStatus.PENDING);
+            existing.setJoinedAt(null);
+            memberRepository.save(existing);
+            auditService.log(AuditAction.CARE_GROUP_MEMBER_INVITED, callerId,
+                    "CareGroup", group.getId().toString(), "Re-submitted join request via code");
+            return toGroupSummaryDto(group, GroupMemberRole.MEMBER.name());
         }
 
-        CareGroupMember newMember = CareGroupMember.builder()
+        // New join request — PENDING until Mother approves
+        CareGroupMember joinRequest = CareGroupMember.builder()
                 .careGroupId(groupId)
                 .userId(callerId)
                 .memberRole(GroupMemberRole.MEMBER)
-                .inviteStatus(InviteStatus.ACCEPTED)
-                .joinedAt(Instant.now())
+                .inviteStatus(InviteStatus.PENDING)
                 .build();
-        memberRepository.save(newMember);
+        memberRepository.save(joinRequest);
 
-        auditService.log(AuditAction.CARE_GROUP_INVITE_ACCEPTED, callerId,
-                "CareGroup", group.getId().toString(), "Joined care group via invite code");
+        auditService.log(AuditAction.CARE_GROUP_MEMBER_INVITED, callerId,
+                "CareGroup", group.getId().toString(), "Join request submitted via invite code");
 
         return toGroupSummaryDto(group, GroupMemberRole.MEMBER.name());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<JoinRequestDto> listJoinRequests(UUID groupId, UUID callerId) {
+        CareGroup group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "FAM-005",
+                        "Care group not found: " + groupId));
+        if (!group.getOwnerUserId().equals(callerId)) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "FAM-008",
+                    "Only the group owner can view join requests");
+        }
+        return memberRepository
+                .findByCareGroupIdAndInviteStatusAndInviteTokenIsNull(groupId, InviteStatus.PENDING)
+                .stream()
+                .map(m -> {
+                    var userOpt = userRepository.findById(m.getUserId());
+                    String displayName = userOpt.map(u -> u.getName() != null ? u.getName() : u.getEmail()).orElse("Unknown");
+                    String email = userOpt.map(com.carebridge.backend.security.entity.User::getEmail).orElse(null);
+                    String phone = userOpt.map(com.carebridge.backend.security.entity.User::getPhone).orElse(null);
+                    return JoinRequestDto.builder()
+                            .memberId(m.getId())
+                            .userId(m.getUserId())
+                            .displayName(displayName)
+                            .email(email)
+                            .phone(phone)
+                            .requestedAt(m.getCreatedAt())
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public CareGroupMemberDto respondJoinRequest(UUID groupId, UUID memberId, boolean approve, UUID callerId) {
+        CareGroup group = groupRepository.findById(groupId)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "FAM-005",
+                        "Care group not found: " + groupId));
+        if (!group.getOwnerUserId().equals(callerId)) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "FAM-008",
+                    "Only the group owner can approve or reject join requests");
+        }
+        CareGroupMember member = memberRepository.findByIdAndCareGroupId(memberId, groupId)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "FAM-009",
+                        "Join request not found"));
+        if (member.getInviteStatus() != InviteStatus.PENDING || member.getInviteToken() != null) {
+            throw new BusinessException(HttpStatus.CONFLICT, "FAM-042",
+                    "This is not a pending join request");
+        }
+        if (approve) {
+            member.setInviteStatus(InviteStatus.ACCEPTED);
+            member.setJoinedAt(Instant.now());
+            auditService.log(AuditAction.CARE_GROUP_INVITE_ACCEPTED, callerId,
+                    "CareGroup", groupId.toString(), "Join request approved for member: " + memberId);
+        } else {
+            member.setInviteStatus(InviteStatus.REJECTED);
+            auditService.log(AuditAction.CARE_GROUP_INVITE_DECLINED, callerId,
+                    "CareGroup", groupId.toString(), "Join request rejected for member: " + memberId);
+        }
+        CareGroupMember saved = memberRepository.save(member);
+        return toMemberDto(saved);
     }
 
     private CareGroupSummaryDto toGroupSummaryDto(CareGroup group, String roleName) {

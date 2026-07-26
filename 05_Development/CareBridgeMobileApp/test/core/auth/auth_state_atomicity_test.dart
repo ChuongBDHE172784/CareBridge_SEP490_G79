@@ -1,0 +1,108 @@
+import 'dart:async';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:untitled/core/auth/auth_state.dart';
+import 'package:untitled/core/storage/token_storage.dart';
+
+class _ControlledTokenStorage implements TokenStorage {
+  final values = <String, String?>{};
+  Completer<void>? pendingSave;
+  Object? saveFailure;
+  int clearCalls = 0;
+
+  @override
+  Future<void> save({
+    required String accessToken,
+    required String refreshToken,
+    required String userId,
+    required String role,
+  }) async {
+    final blocker = pendingSave;
+    if (blocker != null) await blocker.future;
+    final failure = saveFailure;
+    if (failure != null) throw failure;
+    values
+      ..['accessToken'] = accessToken
+      ..['refreshToken'] = refreshToken
+      ..['userId'] = userId
+      ..['role'] = role;
+  }
+
+  @override
+  Future<Map<String, String?>> load() async => Map.of(values);
+
+  @override
+  Future<void> clear() async {
+    clearCalls++;
+    values.clear();
+  }
+}
+
+void main() {
+  test(
+    'setTokens persists before publishing authenticated memory state',
+    () async {
+      final storage = _ControlledTokenStorage();
+      final saveBlocker = Completer<void>();
+      storage.pendingSave = saveBlocker;
+      final state = AuthState.forTesting(storage: storage);
+      var notifications = 0;
+      state.addListener(() => notifications++);
+
+      final update = state.setTokens(
+        accessToken: 'access-b',
+        refreshToken: 'refresh-b',
+        userId: 'account-b',
+        role: 'MOTHER',
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(state.accessToken, isNull);
+      expect(state.userId, isNull);
+      expect(state.isAuthenticated, isFalse);
+      expect(notifications, 0);
+
+      saveBlocker.complete();
+      await update;
+
+      expect(storage.values['userId'], 'account-b');
+      expect(state.accessToken, 'access-b');
+      expect(state.userId, 'account-b');
+      expect(state.isAuthenticated, isTrue);
+      expect(notifications, 1);
+    },
+  );
+
+  test(
+    'failed account switch clears durable and memory state then rethrows',
+    () async {
+      final storage = _ControlledTokenStorage();
+      final state = AuthState.forTesting(storage: storage);
+      await state.setTokens(
+        accessToken: 'access-a',
+        refreshToken: 'refresh-a',
+        userId: 'account-a',
+        role: 'MOTHER',
+      );
+      storage.saveFailure = StateError('synthetic account cleanup failure');
+
+      await expectLater(
+        state.setTokens(
+          accessToken: 'access-b',
+          refreshToken: 'refresh-b',
+          userId: 'account-b',
+          role: 'MOTHER',
+        ),
+        throwsA(isA<StateError>()),
+      );
+
+      expect(storage.clearCalls, 1);
+      expect(storage.values, isEmpty);
+      expect(state.accessToken, isNull);
+      expect(state.refreshToken, isNull);
+      expect(state.userId, isNull);
+      expect(state.role, isNull);
+      expect(state.isAuthenticated, isFalse);
+    },
+  );
+}

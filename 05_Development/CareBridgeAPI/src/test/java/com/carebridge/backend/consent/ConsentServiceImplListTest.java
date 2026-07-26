@@ -10,6 +10,7 @@ import com.carebridge.backend.consent.policy.ConsentCheckPolicy;
 import com.carebridge.backend.consent.repository.ConsentGrantRepository;
 import com.carebridge.backend.consent.service.ConsentService;
 import com.carebridge.backend.consent.service.impl.ConsentServiceImpl;
+import com.carebridge.backend.expertavailability.repository.ExpertLocationShareRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,6 +29,7 @@ class ConsentServiceImplListTest {
     private ConsentGrantMapper consentGrantMapper;
     private ConsentCheckPolicy consentCheckPolicy;
     private AuditService auditService;
+    private ExpertLocationShareRepository expertLocationShareRepository;
 
     @BeforeEach
     void setUp() {
@@ -35,8 +37,13 @@ class ConsentServiceImplListTest {
         consentGrantMapper = mock(ConsentGrantMapper.class);
         consentCheckPolicy = mock(ConsentCheckPolicy.class);
         auditService = mock(AuditService.class);
+        expertLocationShareRepository = mock(ExpertLocationShareRepository.class);
         consentService = new ConsentServiceImpl(
-                consentGrantRepository, consentGrantMapper, consentCheckPolicy, auditService);
+                consentGrantRepository,
+                consentGrantMapper,
+                consentCheckPolicy,
+                auditService,
+                expertLocationShareRepository);
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.carebridge.backend.triage.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
@@ -9,6 +10,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import com.carebridge.backend.triage.TriageStage;
+import com.carebridge.backend.triage.OriginDashboard;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -36,4 +38,12 @@ public class StartIntakeConversationRequest {
     private TriageStage stage;
     private UUID babyProfileId;
     private UUID motherProfileId;
+    private UUID journeyId;
+    private OriginDashboard originDashboard;
+    private UUID originReferenceId;
+
+    @JsonAnySetter
+    public void rejectUnknownField(String fieldName, Object ignoredValue) {
+        throw new IllegalArgumentException("Unsupported conversation start field: " + fieldName);
+    }
 }

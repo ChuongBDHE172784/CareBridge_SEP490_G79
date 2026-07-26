@@ -1,7 +1,6 @@
 package com.carebridge.backend.emergency.service;
 
 import com.carebridge.backend.ai.event.EmergencyEscalationTriggered;
-import com.carebridge.backend.emergency.dto.request.OpenEmergencyRequest;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,11 +17,13 @@ public class EmergencyEscalationHandler {
 
     @EventListener
     public void onEmergencyEscalationTriggered(EmergencyEscalationTriggered event) {
-        log.info("Emergency escalation triggered for session [{}] user [{}]",
-                event.sessionId(), event.userId());
-        OpenEmergencyRequest request = OpenEmergencyRequest.builder()
-                .triggerSource(event.triggerSource())
-                .build();
-        emergencyService.openFlow(request, event.userId());
+        log.info("Emergency escalation processing started source=AUTO_TRIAGE");
+        try {
+            emergencyService.openOrReuseFromTriage(event.sessionId(), event.userId());
+        } catch (RuntimeException exception) {
+            log.error("Emergency escalation processing failed reason={}",
+                    exception.getClass().getSimpleName());
+            throw exception;
+        }
     }
 }

@@ -1,5 +1,12 @@
 # CareBridge — Hướng dẫn Test tay Toàn diện theo Role (Web + Mobile)
 
+> **Historical/superseded reference — do not execute as a current runbook.** This
+> snapshot is retained as input/evidence for the 2026-07-01 code state. Its seed
+> credentials and direct-login instructions are retired. Current operators must
+> follow `README.md`, `05_Development/STARTUP.md`, and the applicable canonical
+> guide under `06_Testing/TestCases/`; no password value in this historical file
+> may be reused.
+
 > Ngày tạo: 2026-07-01 (cập nhật: đã fix bug #1, #3, #4 ở mục 4 — xem ghi chú "ĐÃ FIX" tại từng mục)
 > Nguồn đối chiếu: `02_Requirements/SRS/3_Functional_Specification.md` (241 UC), `4_Functional_Requirements.md` (ma trận phân quyền 4.1.3), code thực tế `05_Development/CareBridgeAPI`, `CareBridgeWebApp`, `CareBridgeMobileApp` tại thời điểm nhánh `dev` (commit `2dc8ab8d`).
 > Tài liệu này **bổ sung** cho `08_References/ManualTestFlow.md` (vốn chỉ test Mobile/role MOTHER) — mở rộng ra toàn bộ 7 role và cả Web App.

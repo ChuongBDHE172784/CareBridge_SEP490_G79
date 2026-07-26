@@ -5,18 +5,20 @@
 ## Revised Target Summary
 
 - Live baseline: **127** base tables.
-- Revised target: **70** base tables.
-- Expected reduction: **57** tables.
-- Business/application tables: **69**.
+- Canonical core target: **70** base tables.
+- Approved Release-1 extensions: **3** base tables.
+- Effective deployed target: **73** base tables.
+- Core redesign reduction: **57** tables; effective deployed reduction: **54** tables.
+- Business/application tables: **72** — 69 core + 3 approved extensions.
 - Technical tables: **1** — `flyway_schema_history`.
 - Live merge sources: **74**.
 - Live drop candidates pending evidence: **25**.
 - Tables kept by identity: **28**.
-- Tables newly created or rebuilt: **42**.
+- Tables newly created or rebuilt: **42 core + 3 approved extensions**.
 
-Target 70 thay thế target 65 trước đây. `care_items` và `legacy_archived_records` bị loại khỏi target; chúng được thay bằng sáu bảng theo owner/lifecycle riêng. `triage_session_evidence` được thêm để giữ claim/citation có thể query và audit.
+Target 70 core thay thế target 65 trước đây. `care_items` và `legacy_archived_records` bị loại khỏi core target; chúng được thay bằng sáu bảng theo owner/lifecycle riêng. `triage_session_evidence` được thêm để giữ claim/citation có thể query và audit. Release 1 bổ sung đúng ba extension đã duyệt cho consultation/handoff; vì vậy inventory triển khai là **70 core + 3 extensions**, không phải 70 bảng tổng cộng.
 
-## Exact 70 Tables
+## Exact 70 Core Tables
 
 ### Person / Care Subject — 2
 
@@ -132,6 +134,14 @@ Target 70 thay thế target 65 trước đây. `care_items` và `legacy_archived
 68. `archived_realtime_records`
 69. `archived_partner_records`
 70. `flyway_schema_history`
+
+## Approved Release-1 Extensions — 3
+
+71. `expert_consultation_requests`
+72. `consultation_context_shares`
+73. `consultation_context_citations`
+
+Ba bảng này là extension có chủ đích cho Epic 6: request lifecycle, consented context snapshot và approved citation snapshot. Chúng không thay thế hoặc đổi số thứ tự của 70 core tables; mọi inventory gate phải kiểm tra riêng **70 core + 3 extensions**.
 
 ## Revised Canonical Models
 
@@ -339,7 +349,7 @@ Compatibility windows may temporarily exceed 70 while old and canonical tables c
 
 ## Approval Gate
 
-- Revised target count: **70**.
+- Revised target count: **70 core + 3 approved Release-1 extensions**.
 - Duplicate target names: **0**.
 - Invalid merges remaining: **0**.
 - HIGH-risk merges without explicit mapping/control: **0**.
@@ -348,6 +358,6 @@ Compatibility windows may temporarily exceed 70 while old and canonical tables c
 
 **APPROVED_TARGET_SCHEMA**
 
-Approved on **2026-07-22**. Scope: target schema design with **70 base tables**.
+Approved on **2026-07-22**. Scope: core target schema design with **70 base tables**; the separately approved Release-1 inventory adds the 3 extensions listed above.
 
 Approval authorizes only the next database-design/migration-planning stage. It does not authorize application code changes, live database access or migration execution.

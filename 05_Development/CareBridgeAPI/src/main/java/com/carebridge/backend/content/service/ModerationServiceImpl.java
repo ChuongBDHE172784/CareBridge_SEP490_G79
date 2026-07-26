@@ -42,6 +42,7 @@ import com.carebridge.backend.content.exception.ModerationException;
 import com.carebridge.backend.content.mapper.ModerationMapper;
 import com.carebridge.backend.content.repository.ContentReportRepository;
 import com.carebridge.backend.content.repository.ModerationActionRepository;
+import com.carebridge.backend.expert.handler.IExpertEventHandler;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.repository.UserRepository;
 import java.security.Principal;
@@ -71,6 +72,7 @@ public class ModerationServiceImpl implements ModerationService {
     private final CommunityAnswerRepository communityAnswerRepository;
     private final ModerationActionRepository moderationActionRepository;
     private final UserRepository userRepository;
+    private final IExpertEventHandler expertEventHandler;
 
     @Override
     public ModerationQueueResponse getModerationQueue(ModerationQueueFilter filter, Principal principal) {
@@ -404,6 +406,10 @@ public class ModerationServiceImpl implements ModerationService {
         // Keep canonical question answer_count in sync with the visible (APPROVED) answer set
         if (oldStatus != AnswerStatus.APPROVED && newStatus == AnswerStatus.APPROVED) {
             communityQuestionRepository.incrementAnswerCount(answer.getQuestionId());
+            // Award contribution points on APPROVE transition (idempotent via sourceId check)
+            if (answer.isExpertLabeled()) {
+                expertEventHandler.onAnswerApproved(targetId.toString(), answer.getAuthorId().toString());
+            }
         } else if (oldStatus == AnswerStatus.APPROVED && newStatus != AnswerStatus.APPROVED) {
             communityQuestionRepository.decrementAnswerCount(answer.getQuestionId());
         }

@@ -1,16 +1,30 @@
 import 'package:flutter/material.dart';
-
-import 'expert_placeholder_screen.dart';
+import '../../community/screens/post_answer_screen.dart';
 
 class ExpertAnswerComposerScreen extends StatelessWidget {
-  const ExpertAnswerComposerScreen({super.key});
+  final String questionId;
+  final String? questionTitle;
+  final String? authorName;
+  final String? topicName;
+  final String? timeAgo;
+
+  const ExpertAnswerComposerScreen({
+    super.key,
+    required this.questionId,
+    this.questionTitle,
+    this.authorName,
+    this.topicName,
+    this.timeAgo,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return const ExpertPlaceholderScreen(
-      title: 'Soạn câu trả lời',
-      subtitle: 'Trình soạn câu trả lời chuyên gia sẽ được nối API sau.',
-      icon: Icons.edit_note_outlined,
+    return PostAnswerScreen(
+      questionId: questionId,
+      questionTitle: questionTitle,
+      authorName: authorName,
+      topicName: topicName,
+      timeAgo: timeAgo,
     );
   }
 }

@@ -8,6 +8,7 @@ import com.carebridge.backend.community.dto.response.CommunityQuestionDetailResp
 import com.carebridge.backend.community.dto.response.CommunityQuestionResponse;
 import com.carebridge.backend.community.entity.CommunityQuestion;
 import com.carebridge.backend.community.entity.QuestionStatus;
+import com.carebridge.backend.community.entity.TopicType;
 import com.carebridge.backend.community.exception.CommunityTopicNotFoundException;
 import com.carebridge.backend.community.exception.QuestionNotFoundException;
 import com.carebridge.backend.community.exception.QuestionNotEditableException;
@@ -116,8 +117,8 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
  public CommunityQuestionResponse createQuestion(UUID authorId, CreateCommunityQuestionRequest request) {
  communitySafetyPolicy.requirePostingAllowed(authorId);
 
- // BR-COM-002: reject hidden or non-existent topics (ADR-COM-005)
- topicRepository.findByIdAndIsHiddenFalse(request.getTopicId())
+ // ADR-COM-021: questions may target only visible TOPIC rows.
+ topicRepository.findByIdAndTypeAndIsHiddenFalse(request.getTopicId(), TopicType.TOPIC)
  .orElseThrow(() -> new CommunityTopicNotFoundException(request.getTopicId().toString()));
 
  CommunityQuestion question = questionMapper.toEntity(request, authorId);

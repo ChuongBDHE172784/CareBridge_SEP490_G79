@@ -4,6 +4,7 @@ import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.repository.AuditLogRepository;
 import com.carebridge.backend.consent.service.ConsentService;
+import com.carebridge.backend.journey.dto.UpdateJourneyRequest;
 import com.carebridge.backend.journey.entity.*;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.journey.repository.MotherJourneyTransitionRepository;
@@ -13,6 +14,8 @@ import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.data.domain.PageRequest;
@@ -38,6 +41,7 @@ import static org.assertj.core.api.Assertions.*;
         "carebridge.zego.app-id=1",
         "carebridge.zego.server-secret=synthetic-test-secret"
 })
+@Execution(ExecutionMode.SAME_THREAD)
 class JourneyCanonicalLifecycleIntegrationTest extends AbstractPostgresIntegrationTest {
 
     private static final java.util.UUID ELIGIBILITY_SUBMISSION_ID =
@@ -53,58 +57,69 @@ class JourneyCanonicalLifecycleIntegrationTest extends AbstractPostgresIntegrati
 
     @BeforeEach
     void seedMother() {
-        jdbcTemplate.execute("""
-                DO $cleanup$
-                BEGIN
-                    PERFORM set_config(
-                        'carebridge.allow_transition_mutation', 'on', true);
-                    DELETE FROM public.mother_journey_transitions
-                    WHERE journey_id IN (
-                        SELECT journey_id FROM public.mother_journeys
-                        WHERE owner_user_id = '00000000-0000-0000-0000-000000000101'
-                    );
-                END
-                $cleanup$;
-                """);
+        jdbcTemplate.execute(
+                "ALTER TABLE public.mother_journey_events DISABLE TRIGGER mother_journey_events_immutable_trg");
+        try {
+            jdbcTemplate.update(
+                    "DELETE FROM public.mother_journey_events WHERE owner_user_id = ?",
+                    JourneyLifecycleTestFactory.MOTHER_ID);
+        } finally {
+            jdbcTemplate.execute(
+                    "ALTER TABLE public.mother_journey_events ENABLE TRIGGER mother_journey_events_immutable_trg");
+        }
+        jdbcTemplate.update(
+                "UPDATE public.care_subjects SET mother_journey_id = NULL "
+                        + "WHERE owner_user_id = ? AND subject_type = 'MOTHER'",
+                JourneyLifecycleTestFactory.MOTHER_ID);
         jdbcTemplate.update(
                 "DELETE FROM public.mother_journeys WHERE owner_user_id = ?",
                 JourneyLifecycleTestFactory.MOTHER_ID);
         jdbcTemplate.update(
-                "DELETE FROM public.mother_baseline_contexts WHERE owner_user_id = ?",
+                "DELETE FROM public.care_subjects WHERE owner_user_id = ? AND subject_type = 'MOTHER'",
                 JourneyLifecycleTestFactory.MOTHER_ID);
         jdbcTemplate.update(
-                "DELETE FROM public.consent_grants WHERE user_id = ? AND data_type = 'MOTHER_BASELINE'",
+                "DELETE FROM public.data_permissions WHERE owner_user_id = ? "
+                        + "AND permission_kind = 'CONSENT_GRANT' AND scope_type = 'MOTHER_BASELINE'",
                 JourneyLifecycleTestFactory.MOTHER_ID);
         jdbcTemplate.update("""
+                INSERT INTO public.persons (person_id, display_name, created_at, updated_at)
+                VALUES (?, 'Story 61 Mother', now(), now())
+                ON CONFLICT (person_id) DO NOTHING
+                """, JourneyLifecycleTestFactory.MOTHER_ID);
+        jdbcTemplate.update("""
                 INSERT INTO public.users (
-                    user_id, email, role, account_status, enabled, locked,
-                    must_change_password, created_at, updated_at
-                ) VALUES (?, ?, 'MOTHER', 'ACTIVE', true, false, false, now(), now())
+                    user_id, person_id, email, role, account_status, enabled, locked,
+                    email_verified, phone_verified, created_at, updated_at
+                ) VALUES (?, ?, ?, 'MOTHER', 'ACTIVE', true, false, true, false, now(), now())
                 ON CONFLICT (user_id) DO NOTHING
                 """,
                 JourneyLifecycleTestFactory.MOTHER_ID,
+                JourneyLifecycleTestFactory.MOTHER_ID,
                 "story61.mother@test.carebridge.local");
         jdbcTemplate.update("""
-                INSERT INTO public.mother_baseline_contexts (
-                    baseline_id, owner_user_id, submission_id, revision,
+                INSERT INTO public.mother_journey_events (
+                    event_id, owner_user_id, submission_id, journey_version,
                     schema_version, lifecycle_goal, locale, time_zone,
-                    preferences, recorded_at, source
+                    preferences, recorded_at, event_source, event_type,
+                    event_payload_jsonb, effective_at, legacy_source, legacy_id
                 ) VALUES (?, ?, ?, 1, 'MOTHER_BASELINE_V1',
                     'CURRENTLY_PREGNANT', 'vi-VN', 'Asia/Ho_Chi_Minh',
-                    'NUTRITION', now(), 'SELF_REPORTED')
+                    'NUTRITION', now(), 'SELF_REPORTED', 'BASELINE_CONTEXT',
+                    '{}'::jsonb, now(), 'MOTHER_BASELINE', ?)
                 """,
                 java.util.UUID.randomUUID(),
                 JourneyLifecycleTestFactory.MOTHER_ID,
-                ELIGIBILITY_SUBMISSION_ID);
+                ELIGIBILITY_SUBMISSION_ID,
+                ELIGIBILITY_SUBMISSION_ID.toString());
         jdbcTemplate.update("""
-                INSERT INTO public.consent_grants (
-                    user_id, data_type, purpose, scope_text, policy_version,
-                    evidence_key, locale, consent_given_at, expiry_at,
-                    version, created_at, updated_at
-                ) VALUES (?, 'MOTHER_BASELINE', 'PERSONALIZE',
+                INSERT INTO public.data_permissions (
+                    permission_kind, owner_user_id, scope_type, purpose, scope_text,
+                    policy_version, evidence_key, locale, granted_at, expires_at,
+                    version_number, status, created_at, updated_at
+                ) VALUES ('CONSENT_GRANT', ?, 'MOTHER_BASELINE', 'PERSONALIZE',
                     'STORE_BASELINE_AND_PERSONALIZE_MOTHER_LIFECYCLE',
                     'MOTHER_LIFECYCLE_V1', ?, 'vi-VN', now(),
-                    now() + interval '30 days', 1, now(), now())
+                    now() + interval '30 days', 1, 'ACTIVE', now(), now())
                 """,
                 JourneyLifecycleTestFactory.MOTHER_ID,
                 ELIGIBILITY_SUBMISSION_ID);
@@ -127,8 +142,9 @@ class JourneyCanonicalLifecycleIntegrationTest extends AbstractPostgresIntegrati
     void concurrentRevocationCommitsBeforeCreateEligibilityAndPreventsInitialization()
             throws Exception {
         Long consentId = jdbcTemplate.queryForObject("""
-                SELECT id FROM public.consent_grants
-                WHERE user_id = ? AND evidence_key = ?
+                SELECT legacy_consent_id FROM public.data_permissions
+                WHERE permission_kind = 'CONSENT_GRANT'
+                  AND owner_user_id = ? AND evidence_key = ?
                 """, Long.class, JourneyLifecycleTestFactory.MOTHER_ID,
                 ELIGIBILITY_SUBMISSION_ID);
         CountDownLatch revokedButUncommitted = new CountDownLatch(1);
@@ -172,9 +188,10 @@ class JourneyCanonicalLifecycleIntegrationTest extends AbstractPostgresIntegrati
                 SELECT count(*) FROM public.mother_journeys WHERE owner_user_id = ?
                 """, Long.class, JourneyLifecycleTestFactory.MOTHER_ID)).isZero();
         assertThat(jdbcTemplate.queryForObject("""
-                SELECT count(*) FROM public.mother_journey_transitions t
-                JOIN public.mother_journeys j ON j.journey_id = t.journey_id
+                SELECT count(*) FROM public.mother_journey_events t
+                JOIN public.mother_journeys j ON j.journey_id = t.mother_journey_id
                 WHERE j.owner_user_id = ?
+                  AND t.legacy_source = 'JOURNEY_TRANSITION'
                 """, Long.class, JourneyLifecycleTestFactory.MOTHER_ID)).isZero();
     }
 
@@ -202,7 +219,11 @@ class JourneyCanonicalLifecycleIntegrationTest extends AbstractPostgresIntegrati
 
         assertThat(journeyRepository.countByOwnerUserIdAndStatus(
                 JourneyLifecycleTestFactory.MOTHER_ID, JourneyStatus.ACTIVE)).isEqualTo(1L);
-        assertThat(transitionRepository.count()).isEqualTo(1L);
+        assertThat(jdbcTemplate.queryForObject("""
+                SELECT count(*) FROM public.mother_journey_events e
+                JOIN public.mother_journeys j ON j.journey_id = e.mother_journey_id
+                WHERE j.owner_user_id = ? AND e.legacy_source = 'JOURNEY_TRANSITION'
+                """, Long.class, JourneyLifecycleTestFactory.MOTHER_ID)).isEqualTo(1L);
     }
 
     @Test
@@ -325,22 +346,78 @@ class JourneyCanonicalLifecycleIntegrationTest extends AbstractPostgresIntegrati
                 JourneyLifecycleTestFactory.MOTHER_ID);
 
         assertThatThrownBy(() -> jdbcTemplate.update("""
-                UPDATE public.mother_journey_transitions
+                UPDATE public.mother_journey_events
                 SET reason = 'tampered'
-                WHERE journey_id = ?
+                WHERE mother_journey_id = ? AND legacy_source = 'JOURNEY_TRANSITION'
                 """, created.getId()))
-                .hasRootCauseMessage("ERROR: mother_journey_transitions is append-only\n"
-                        + "  Where: PL/pgSQL function "
-                        + "reject_mother_journey_transition_mutation() line 6 at RAISE");
+                .hasRootCauseMessage("ERROR: IMMUTABLE_TABLE: public.mother_journey_events "
+                        + "does not allow UPDATE or DELETE\n"
+                        + "  Where: PL/pgSQL function carebridge_reject_mutation() line 3 at RAISE");
 
         assertThatThrownBy(() -> jdbcTemplate.update("""
-                DELETE FROM public.mother_journey_transitions
-                WHERE journey_id = ?
+                DELETE FROM public.mother_journey_events
+                WHERE mother_journey_id = ? AND legacy_source = 'JOURNEY_TRANSITION'
                 """, created.getId()))
-                .hasRootCauseMessage("ERROR: mother_journey_transitions is append-only\n"
-                        + "  Where: PL/pgSQL function "
-                        + "reject_mother_journey_transition_mutation() line 6 at RAISE");
+                .hasRootCauseMessage("ERROR: IMMUTABLE_TABLE: public.mother_journey_events "
+                        + "does not allow UPDATE or DELETE\n"
+                        + "  Where: PL/pgSQL function carebridge_reject_mutation() line 3 at RAISE");
         assertThat(transitionRepository.countByJourneyId(created.getId())).isEqualTo(1L);
+    }
+
+    @Test
+    void ov01Be019_completionPersistsStatusHistoryAndRemovesActiveSelection() {
+        var created = transitionService.createJourney(
+                JourneyLifecycleTestFactory.pregnancyCreate(),
+                JourneyLifecycleTestFactory.MOTHER_ID);
+        UpdateJourneyRequest completion = new UpdateJourneyRequest();
+        completion.setStatus("COMPLETED");
+        completion.setDeliveryDate(LocalDate.of(2026, 7, 20));
+        completion.setDateSource(JourneyDateSource.SELF_REPORTED);
+        completion.setDateConfidence(JourneyDateConfidence.CONFIRMED);
+        completion.setChangeReason("OV01_COMPLETION_VERIFICATION");
+        completion.setEffectiveAt(JourneyLifecycleTestFactory.NOW.plusSeconds(60));
+
+        var response = transitionService.updateJourney(
+                JourneyLifecycleTestFactory.MOTHER_ID, created.getId(), completion);
+
+        assertThat(response.getStatus()).isEqualTo(JourneyStatus.COMPLETED.name());
+        assertThat(journeyRepository.findById(created.getId()).orElseThrow())
+                .satisfies(journey -> {
+                    assertThat(journey.getStatus()).isEqualTo(JourneyStatus.COMPLETED);
+                    assertThat(journey.getDeliveryDate()).isEqualTo(LocalDate.of(2026, 7, 20));
+                });
+        assertThat(journeyRepository.countByOwnerUserIdAndStatus(
+                JourneyLifecycleTestFactory.MOTHER_ID, JourneyStatus.ACTIVE)).isZero();
+        assertThat(transitionRepository.countByJourneyId(created.getId())).isEqualTo(2L);
+        assertThat(transitionService.getHistory(
+                JourneyLifecycleTestFactory.MOTHER_ID,
+                created.getId(),
+                PageRequest.of(0, 20)).getItems())
+                .extracting("eventType")
+                .contains(JourneyTransitionType.STATUS_CHANGED);
+    }
+
+    @Test
+    void ov01Be020_archivedFixtureIsInactiveImmutableAndPreservesHistory() {
+        var created = transitionService.createJourney(
+                JourneyLifecycleTestFactory.pregnancyCreate(),
+                JourneyLifecycleTestFactory.MOTHER_ID);
+        long historyBeforeFixtureSetup = transitionRepository.countByJourneyId(created.getId());
+        jdbcTemplate.update(
+                "UPDATE public.mother_journeys SET status = 'ARCHIVED' WHERE journey_id = ?",
+                created.getId());
+
+        assertThat(journeyRepository.countByOwnerUserIdAndStatus(
+                JourneyLifecycleTestFactory.MOTHER_ID, JourneyStatus.ACTIVE)).isZero();
+        assertThatThrownBy(() -> transitionService.updateJourney(
+                JourneyLifecycleTestFactory.MOTHER_ID,
+                created.getId(),
+                JourneyLifecycleTestFactory.dateCorrection()))
+                .isInstanceOf(BusinessException.class)
+                .extracting(error -> ((BusinessException) error).getCode())
+                .isEqualTo("JOURNEY-012");
+        assertThat(transitionRepository.countByJourneyId(created.getId()))
+                .isEqualTo(historyBeforeFixtureSetup);
     }
 
     private Object createAfterBarrier(

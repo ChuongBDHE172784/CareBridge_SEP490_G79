@@ -285,7 +285,7 @@ public class VaccinationServiceImpl implements IVaccinationService {
         requireOwner(babyId, callerId, "VAC-001", "VAC-002");
         validateReference(request.getVaccineName(), request.getDoseNumber(), "VAC-022");
         if (request.getNewScheduledDate().isBefore(LocalDate.now())) {
-            throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, "VAC-024",
+            throw new BusinessException(HttpStatus.UNPROCESSABLE_CONTENT, "VAC-024",
                     "New scheduled date cannot be in the past");
         }
 
@@ -354,7 +354,7 @@ public class VaccinationServiceImpl implements IVaccinationService {
 
     private void rejectFutureDate(LocalDate date, String code) {
         if (date != null && date.isAfter(LocalDate.now())) {
-            throw new BusinessException(HttpStatus.UNPROCESSABLE_ENTITY, code,
+            throw new BusinessException(HttpStatus.UNPROCESSABLE_CONTENT, code,
                     "Administered date cannot be in the future");
         }
     }

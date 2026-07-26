@@ -50,6 +50,80 @@ class HermeticDatasourceEnvironmentPostProcessorTest {
     }
 
     @Test
+    void postProcessEnvironment_WithTestcontainersHostOverride_AcceptsEndpoint() {
+        String url = "jdbc:postgresql://container-host:49152/carebridge_test";
+        StandardEnvironment environment = hermeticEnvironment(Map.of(
+                "GITLAB_CI", true,
+                "TESTCONTAINERS_HOST_OVERRIDE", "container-host",
+                "carebridge.hermetic.datasource.url", url,
+                "spring.datasource.url", url));
+
+        assertThatCode(() -> process(environment)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void postProcessEnvironment_WithTestcontainersHostOverrideOutsideGitLab_RejectsEndpoint() {
+        String url = "jdbc:postgresql://container-host:49152/carebridge_test";
+        assertRejected(
+                Map.of(
+                        "TESTCONTAINERS_HOST_OVERRIDE", "container-host",
+                        "carebridge.hermetic.datasource.url", url,
+                        "spring.datasource.url", url),
+                "HERMETIC_DATASOURCE_REMOTE",
+                "container-host");
+    }
+
+    @Test
+    void postProcessEnvironment_WithGitLabDockerHost_AcceptsEndpoint() {
+        String url = "jdbc:postgresql://docker:49152/carebridge_test";
+        StandardEnvironment environment = hermeticEnvironment(Map.of(
+                "GITLAB_CI", true,
+                "DOCKER_HOST", "tcp://docker:2376",
+                "carebridge.hermetic.datasource.url", url,
+                "spring.datasource.url", url));
+
+        assertThatCode(() -> process(environment)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void postProcessEnvironment_WithDockerHostOutsideGitLab_RejectsEndpoint() {
+        String url = "jdbc:postgresql://docker:49152/carebridge_test";
+        assertRejected(
+                Map.of(
+                        "DOCKER_HOST", "tcp://docker:2376",
+                        "carebridge.hermetic.datasource.url", url,
+                        "spring.datasource.url", url),
+                "HERMETIC_DATASOURCE_REMOTE",
+                "docker");
+    }
+
+    @Test
+    void postProcessEnvironment_WithMalformedGitLabDockerHost_RejectsEndpoint() {
+        String url = "jdbc:postgresql://docker:49152/carebridge_test";
+        assertRejected(
+                Map.of(
+                        "GITLAB_CI", true,
+                        "DOCKER_HOST", "not-a-docker-endpoint",
+                        "carebridge.hermetic.datasource.url", url,
+                        "spring.datasource.url", url),
+                "HERMETIC_DATASOURCE_REMOTE",
+                "docker");
+    }
+
+    @Test
+    void postProcessEnvironment_WithUnrelatedGitLabRemoteHost_RejectsEndpoint() {
+        String url = "jdbc:postgresql://database.internal:5432/carebridge_test";
+        assertRejected(
+                Map.of(
+                        "GITLAB_CI", true,
+                        "DOCKER_HOST", "tcp://docker:2376",
+                        "carebridge.hermetic.datasource.url", url,
+                        "spring.datasource.url", url),
+                "HERMETIC_DATASOURCE_REMOTE",
+                "database.internal");
+    }
+
+    @Test
     void postProcessEnvironment_WithRemoteEndpoint_RejectsWithoutLeakingValue() {
         assertRejected(
                 Map.of(
@@ -201,6 +275,7 @@ class HermeticDatasourceEnvironmentPostProcessorTest {
 
     private StandardEnvironment hermeticEnvironment(Map<String, Object> overrides) {
         Map<String, Object> properties = new HashMap<>();
+        properties.put("GITLAB_CI", false);
         properties.put("spring.profiles.active", "hermetic");
         properties.put("carebridge.datasource-guard.enabled", true);
         properties.put("carebridge.dotenv.enabled", false);

@@ -184,6 +184,12 @@ export default function LoginPage() {
 
           {/* Footer */}
           <div className="text-center pt-4 border-t border-[rgba(214,194,189,0.3)]">
+            <p className="mb-3 mt-0 text-sm leading-5 text-on-surface-variant">
+              Bạn là bác sĩ/chuyên gia?{' '}
+              <a href="/expert/register" className="font-semibold text-primary no-underline hover:underline">
+                Đăng ký chuyên gia
+              </a>
+            </p>
             <p className="text-sm leading-5 text-on-surface-variant m-0">
               Cần trợ giúp?{' '}
               <a href="#" className="text-primary font-medium no-underline hover:underline">

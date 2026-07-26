@@ -21,11 +21,15 @@ import com.carebridge.backend.safety.service.FallAnalysisResult;
 import com.carebridge.backend.safety.service.IFallDetectionAlgorithmService;
 import com.carebridge.backend.safety.service.IFallDetectionService;
 import com.carebridge.backend.safety.service.ImuDataPayload;
+import com.carebridge.backend.safety.service.SafetyCountdownTransactionRunner;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -43,6 +47,7 @@ import com.carebridge.backend.emergency.service.IEmergencyService;
 @Transactional
 public class FallDetectionService implements IFallDetectionService {
 
+    private static final Logger log = LoggerFactory.getLogger(FallDetectionService.class);
     private static final Duration MAX_CLIENT_PAST_SKEW = Duration.ofHours(24);
     private static final Duration MAX_CLIENT_FUTURE_SKEW = Duration.ofMinutes(5);
 
@@ -55,6 +60,7 @@ public class FallDetectionService implements IFallDetectionService {
     private final SafetyConsentPolicy consentPolicy;
     private final IEmergencyService emergencyService;
     private final AuditService auditService;
+    private final SafetyCountdownTransactionRunner countdownTransactionRunner;
 
     @Override
     public ImuMonitoringSessionResponse enable(UUID userId, String sensitivityLevel) {
@@ -64,6 +70,7 @@ public class FallDetectionService implements IFallDetectionService {
             throw new SafetyException(HttpStatus.FORBIDDEN, "SAFETY-009",
                     "Sensor permission has not been granted");
         }
+        imuSessionRepository.acquireUserLock(userId);
         return imuSessionRepository.findActiveByUserId(userId)
                 .map(this::toSessionResponse)
                 .orElseGet(() -> {
@@ -85,7 +92,8 @@ public class FallDetectionService implements IFallDetectionService {
 
     @Override
     public void disable(UUID userId) {
-        imuSessionRepository.findActiveByUserId(userId).ifPresent(session -> {
+        imuSessionRepository.acquireUserLock(userId);
+        imuSessionRepository.findActiveForUpdateByUserId(userId).ifPresent(session -> {
             session.setStatus(ImuSessionStatus.STOPPED);
             session.setEndedAt(Instant.now());
             imuSessionRepository.save(session);
@@ -104,7 +112,7 @@ public class FallDetectionService implements IFallDetectionService {
             throw new SafetyException(HttpStatus.FORBIDDEN, "SAFETY-009",
                     "Sensor permission has not been granted");
         }
-        ImuMonitoringSession activeSession = imuSessionRepository.findActiveByUserId(userId)
+        ImuMonitoringSession activeSession = imuSessionRepository.findActiveForUpdateByUserId(userId)
                 .orElseThrow(() -> new SafetyException(HttpStatus.CONFLICT, "SAFETY-006",
                         "No active IMU monitoring session found for user"));
 
@@ -175,16 +183,35 @@ public class FallDetectionService implements IFallDetectionService {
     }
 
     @Override
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public void processExpiredCountdowns() {
         for (SafetyEvent event : safetyEventRepository
                 .findTop100ByStatusAndResponseTypeIsNullAndCountdownDeadlineAtLessThanEqualOrderByCountdownDeadlineAtAsc(
                         SafetyEventStatus.OPEN, Instant.now())) {
-            boolean shouldEscalate = safetyConfigRepository.findByUserId(event.getUserId())
-                    .map(SafetyMonitoringConfig::isEmergencyAutoAlert).orElse(false);
-            SafetyEvent saved = respondEntity(event.getUserId(), event.getId(), "TIMEOUT",
-                    shouldEscalate ? SafetyEventStatus.ESCALATION_REQUESTED : SafetyEventStatus.TIMED_OUT,
-                    null, shouldEscalate);
-            if (shouldEscalate) openEmergency(saved);
+            try {
+                countdownTransactionRunner.run(() -> processExpiredCountdown(event.getUserId(), event.getId()));
+            } catch (RuntimeException exception) {
+                log.error("Safety countdown event failed eventId={} reason={}",
+                        event.getId(), exception.getClass().getSimpleName());
+            }
+        }
+    }
+
+    private void processExpiredCountdown(UUID userId, UUID eventId) {
+        SafetyEvent event = findOwnedEvent(userId, eventId);
+        if (event.getStatus() != SafetyEventStatus.OPEN
+                || event.getResponseType() != null
+                || event.getCountdownDeadlineAt() == null
+                || event.getCountdownDeadlineAt().isAfter(Instant.now())) {
+            return;
+        }
+        boolean shouldEscalate = safetyConfigRepository.findByUserId(userId)
+                .map(SafetyMonitoringConfig::isEmergencyAutoAlert).orElse(false);
+        SafetyEvent saved = respondEntity(userId, eventId, "TIMEOUT",
+                shouldEscalate ? SafetyEventStatus.ESCALATION_REQUESTED : SafetyEventStatus.TIMED_OUT,
+                null, shouldEscalate);
+        if (shouldEscalate) {
+            openEmergency(saved);
         }
     }
 
@@ -234,7 +261,7 @@ public class FallDetectionService implements IFallDetectionService {
         event.setResponseType(responseType);
         event.setResponseReason(reason);
         event.setRespondedAt(now);
-        responseRepository.save(SafetyEventResponseRecord.builder()
+        responseRepository.insert(SafetyEventResponseRecord.builder()
                 .safetyEventId(event.getId())
                 .ownerUserId(userId)
                 .responseType(responseType)

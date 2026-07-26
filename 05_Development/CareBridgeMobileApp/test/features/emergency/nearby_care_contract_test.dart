@@ -200,7 +200,13 @@ void main() {
     await tester.pumpAndSettle();
     expect(emergency.calls, 2);
     expect(find.text('Báo động gia đình'), findsOneWidget);
-    expect(find.text('Đã gửi báo động đến người thân'), findsOneWidget);
+    expect(
+      find.text(
+        'Yêu cầu hỗ trợ đã được gửi; thông báo gia đình đang được xử lý.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Đã gửi báo động đến người thân'), findsNothing);
   });
 
   testWidgets('renders provider labels and route for nullable facility ID', (

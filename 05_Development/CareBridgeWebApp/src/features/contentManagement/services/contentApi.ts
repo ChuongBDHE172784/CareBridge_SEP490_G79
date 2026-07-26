@@ -5,6 +5,8 @@ import type {
   ContentDetail,
   ContentSearchItem,
   ChecklistTemplate,
+  CreateChecklistTemplatePayload,
+  UpdateChecklistTemplatePayload,
   CommunityTopic,
   PaginatedResponse,
   ContentType,
@@ -12,6 +14,10 @@ import type {
   ContentStatus,
   ContentDecision,
   ContentSource,
+  CreateCommunityTopicPayload,
+  UpdateCommunityTopicPayload,
+  AdminChecklistTemplate,
+  ChecklistTemplateStatus,
 } from '../models/content';
 
 export async function fetchContentList(params: {
@@ -55,6 +61,7 @@ export async function fetchStaffContentDetail(id: string): Promise<ContentDetail
 export async function fetchStaffContentList(params: {
   status?: ContentStatus;
   type?: ContentType;
+  stage?: ContentStage;
   keyword?: string;
   page?: number;
   size?: number;
@@ -92,6 +99,113 @@ export async function fetchChecklists(stage?: ContentStage): Promise<ChecklistTe
     `/api/v1/content/checklists${q}`,
   );
   return res.data.data;
+}
+
+/** Admin workspace (UC-243): includes DRAFT/PENDING_REVIEW/ARCHIVED, unlike the public list above. */
+export async function fetchAdminChecklistTemplates(params: {
+  status?: ContentStatus;
+  stage?: ContentStage;
+  page?: number;
+  size?: number;
+} = {}): Promise<PaginatedResponse<ChecklistTemplate>> {
+  const res = await apiClient.get<ApiResponse<PaginatedResponse<ChecklistTemplate>>>(
+    '/api/v1/admin/checklist-templates',
+    { params: { ...params, page: params.page ?? 0, size: params.size ?? 20 } },
+  );
+  return res.data.data;
+}
+
+export async function fetchChecklistTemplateDetail(id: string): Promise<ChecklistTemplate> {
+  const res = await apiClient.get<ApiResponse<ChecklistTemplate>>(`/api/v1/admin/checklist-templates/${id}`);
+  return res.data.data;
+}
+
+export async function createChecklistTemplate(data: CreateChecklistTemplatePayload): Promise<ChecklistTemplate> {
+  const res = await apiClient.post<ApiResponse<ChecklistTemplate>>('/api/v1/admin/checklist-templates', data);
+  return res.data.data;
+}
+
+export async function updateChecklistTemplate(
+  id: string,
+  data: UpdateChecklistTemplatePayload,
+): Promise<ChecklistTemplate> {
+  const res = await apiClient.put<ApiResponse<ChecklistTemplate>>(`/api/v1/admin/checklist-templates/${id}`, data);
+  return res.data.data;
+}
+
+/** Soft-delete: transitions the template to ARCHIVED (no hard delete). */
+export async function archiveChecklistTemplate(
+  id: string,
+  reason: string,
+): Promise<{ previousStatus: ContentStatus; newStatus: ContentStatus }> {
+  const res = await apiClient.post<ApiResponse<{ previousStatus: ContentStatus; newStatus: ContentStatus }>>(
+    `/api/v1/admin/checklist-templates/${id}/archive`, { reason },
+  );
+  return res.data.data;
+}
+
+/** SYSTEM_ADMIN-only approval decision (UC-243 §14 addendum). */
+export async function decideChecklistTemplate(
+  id: string,
+  decision: ContentDecision,
+  reason?: string,
+): Promise<{ previousStatus: ContentStatus; newStatus: ContentStatus }> {
+  const res = await apiClient.post<ApiResponse<{ previousStatus: ContentStatus; newStatus: ContentStatus }>>(
+    `/api/v1/admin/checklist-templates/${id}/decision`, { decision, reason },
+  );
+  return res.data.data;
+}
+
+/**
+ * Uploads an image for embedding in article/FAQ rich text content. Reuses the generic
+ * file-upload endpoint (ADR-RTE-003) with purpose=PUBLIC_CONTENT_IMAGE, accessMode=PUBLIC —
+ * the backend returns a permanent, non-expiring Cloudinary URL for this combination
+ * (ADR-RTE-004), unlike the 15-minute presigned URLs used elsewhere for private files.
+ */
+export async function uploadContentImage(file: File): Promise<string> {
+  const form = new FormData();
+  form.append('file', file);
+  form.append('kind', 'IMAGE');
+  form.append('purpose', 'PUBLIC_CONTENT_IMAGE');
+  form.append('accessMode', 'PUBLIC');
+  const res = await apiClient.post<ApiResponse<{ presignedUrl: string }>>(
+    '/api/v1/files/upload/with-purpose',
+    form,
+    { headers: { 'Content-Type': undefined } },
+  );
+  return res.data.data.presignedUrl;
+}
+
+/** Story 6.9 read-only admin projection with real template status and item counts. */
+export async function fetchAdminChecklists(params: {
+  stage?: ContentStage;
+  status?: ChecklistTemplateStatus;
+  page?: number;
+  size?: number;
+} = {}): Promise<PaginatedResponse<AdminChecklistTemplate>> {
+  const res = await apiClient.get<
+    ApiResponse<AdminChecklistTemplate[]> & {
+      page: number;
+      size: number;
+      totalElements: number;
+      totalPages: number;
+    }
+  >('/api/v1/admin/content/checklists', {
+    params: {
+      ...(params.stage ? { stage: params.stage } : {}),
+      ...(params.status ? { status: params.status } : {}),
+      page: params.page ?? 0,
+      size: params.size ?? 10,
+    },
+  });
+  const body = res.data;
+  return {
+    content: body.data ?? [],
+    number: body.page ?? (params.page ?? 0),
+    size: body.size ?? (params.size ?? 10),
+    totalElements: body.totalElements ?? 0,
+    totalPages: body.totalPages ?? 0,
+  };
 }
 
 export interface CreateContentResult {
@@ -148,24 +262,24 @@ export async function decideContent(
 
 export async function fetchTopics(includeHidden = false): Promise<CommunityTopic[]> {
   const res = await apiClient.get<ApiResponse<CommunityTopic[]>>(
-    `/api/v1/community/topics?includeHidden=${includeHidden}`,
+    `/api/v1/community/topics?includeHidden=${includeHidden}&type=TOPIC`,
   );
   return res.data.data;
 }
 
-export async function createTopic(data: {
-  name: string;
-  description?: string;
-  icon?: string;
-  sortOrder?: number;
-}): Promise<CommunityTopic> {
-  const res = await apiClient.post<ApiResponse<CommunityTopic>>('/api/v1/community/topics', data);
+export async function createTopic(
+  data: Omit<Extract<CreateCommunityTopicPayload, { type: 'TOPIC' }>, 'type'>,
+): Promise<CommunityTopic> {
+  const res = await apiClient.post<ApiResponse<CommunityTopic>>('/api/v1/community/topics', {
+    ...data,
+    type: 'TOPIC',
+  });
   return res.data.data;
 }
 
 export async function updateTopic(
   id: string,
-  data: { name?: string; description?: string; icon?: string; isHidden?: boolean; sortOrder?: number },
+  data: UpdateCommunityTopicPayload,
 ): Promise<CommunityTopic> {
   const res = await apiClient.patch<ApiResponse<CommunityTopic>>(
     `/api/v1/community/topics/${id}`,
@@ -174,43 +288,17 @@ export async function updateTopic(
   return res.data.data;
 }
 
-// UC-226 uses the Content Admin boundary. Community-topic routes are reserved
-// for the Moderator workflow (UC-109), even though both workflows share data.
-export async function fetchContentCategories(includeHidden = false): Promise<CommunityTopic[]> {
-  const res = await apiClient.get<ApiResponse<CommunityTopic[]>>(
-    `/api/v1/admin/content/categories?includeHidden=${includeHidden}`,
-  );
-  return res.data.data;
-}
-
-export async function createContentCategory(data: {
-  name: string;
-  description?: string;
-  icon?: string;
-  sortOrder?: number;
-}): Promise<CommunityTopic> {
-  // Backend now requires `type` (TOPIC | CATEGORY | TAG) — this route always creates CATEGORY.
-  const res = await apiClient.post<ApiResponse<CommunityTopic>>('/api/v1/admin/content/categories', {
-    ...data,
-    type: 'CATEGORY',
-  });
-  return res.data.data;
-}
-
-export async function updateContentCategory(
-  id: string,
-  data: { name?: string; description?: string; icon?: string; isHidden?: boolean; sortOrder?: number },
-): Promise<CommunityTopic> {
-  const res = await apiClient.patch<ApiResponse<CommunityTopic>>(
-    `/api/v1/admin/content/categories/${id}`,
-    data,
-  );
-  return res.data.data;
-}
-
 export async function unpublishContent(id: string, reason: string): Promise<{ previousStatus: ContentStatus; newStatus: ContentStatus }> {
   const res = await apiClient.post<ApiResponse<{ previousStatus: ContentStatus; newStatus: ContentStatus }>>(
     `/api/v1/admin/content/${id}/unpublish`, { reason },
+  );
+  return res.data.data;
+}
+
+/** Soft-deletes content by transitioning it to ARCHIVED (no hard delete — keeps audit history). */
+export async function archiveContent(id: string, reason: string): Promise<{ previousStatus: ContentStatus; newStatus: ContentStatus }> {
+  const res = await apiClient.post<ApiResponse<{ previousStatus: ContentStatus; newStatus: ContentStatus }>>(
+    `/api/v1/admin/content/${id}/archive`, { reason },
   );
   return res.data.data;
 }

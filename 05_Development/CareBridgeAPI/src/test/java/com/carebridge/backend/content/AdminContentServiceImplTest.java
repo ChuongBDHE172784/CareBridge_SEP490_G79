@@ -7,6 +7,7 @@ import static org.mockito.ArgumentCaptor.forClass;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -22,11 +23,13 @@ import com.carebridge.backend.content.entity.ContentStatus;
 import com.carebridge.backend.content.entity.ContentType;
 import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.mapper.ContentMapper;
+import com.carebridge.backend.content.policy.HtmlContentSanitizer;
 import com.carebridge.backend.content.repository.ContentRepository;
 import com.carebridge.backend.content.service.AdminContentServiceImpl;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -50,8 +53,18 @@ class AdminContentServiceImplTest {
     @Mock
     private AuditService auditService;
 
+    @Mock
+    private HtmlContentSanitizer htmlContentSanitizer;
+
     @InjectMocks
     private AdminContentServiceImpl adminContentService;
+
+    // RTE-TC-007 covers the "sanitizer actually used" assertion explicitly; other tests in this
+    // class don't care about body content, so default to identity to avoid noise.
+    @BeforeEach
+    void stubSanitizerAsIdentity() {
+        lenient().when(htmlContentSanitizer.sanitize(anyString())).thenAnswer(inv -> inv.getArgument(0));
+    }
 
     private static final UUID ADMIN_USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
 
@@ -246,5 +259,29 @@ class AdminContentServiceImplTest {
                 "ContentItem",
                 savedId.toString(),
                 "created");
+    }
+
+    // RTE-TC-007: createContent() gọi sanitizer đúng 1 lần, entity lưu dùng OUTPUT của sanitizer
+    // chứ không phải input thô — xem ContentRichTextEditor_Test-Spec.md
+    @Test
+    void createContent_bodySanitized_savedEntityUsesSanitizerOutputNotRawInput() {
+        CreateContentRequest request = makeRequest(ContentType.ARTICLE, ContentStage.PREGNANCY, null);
+        String sanitizedBody = "<p>an toàn</p>";
+        when(htmlContentSanitizer.sanitize("Nội dung chi tiết...")).thenReturn(sanitizedBody);
+
+        when(contentRepository.findByTitleIgnoreCaseAndStageAndType(any(), any(), any()))
+                .thenReturn(Optional.empty());
+        when(contentRepository.save(any(ContentItem.class))).thenAnswer(inv -> {
+            ContentItem arg = inv.getArgument(0);
+            arg.setId(UUID.randomUUID());
+            return arg;
+        });
+
+        adminContentService.createContent(request, ADMIN_USER_ID);
+
+        verify(htmlContentSanitizer).sanitize("Nội dung chi tiết...");
+        ArgumentCaptor<ContentItem> captor = forClass(ContentItem.class);
+        verify(contentRepository).save(captor.capture());
+        assertEquals(sanitizedBody, captor.getValue().getBody());
     }
 }

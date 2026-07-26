@@ -11,15 +11,19 @@ import com.carebridge.backend.content.dto.response.CreateContentResponse;
 import com.carebridge.backend.content.dto.response.HideContentResponse;
 import com.carebridge.backend.content.dto.response.UpdateContentResponse;
 import com.carebridge.backend.content.entity.ContentItem;
+import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.content.entity.ContentStatus;
 import com.carebridge.backend.content.entity.ContentType;
 import com.carebridge.backend.content.entity.ContentSource;
 import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.mapper.ContentMapper;
+import com.carebridge.backend.content.policy.HtmlContentSanitizer;
 import com.carebridge.backend.content.repository.ContentRepository;
 import java.security.Principal;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,23 +39,14 @@ public class AdminContentServiceImpl implements AdminContentService {
     private final CommunityTopicRepository communityTopicRepository;
     private final ContentMapper contentMapper;
     private final AuditService auditService;
+    private final HtmlContentSanitizer htmlContentSanitizer;
 
     @Override
     @Transactional(readOnly = true)
-    public Page<ContentDetailResponse> getStaffContents(ContentStatus status, ContentType type, String keyword, Pageable pageable) {
+    public Page<ContentDetailResponse> getStaffContents(
+            ContentStatus status, ContentType type, ContentStage stage, String keyword, Pageable pageable) {
         String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
-        Page<ContentItem> items;
-        if (status != null) {
-            items = contentRepository.findByStatus(status, pageable);
-        } else if (normalizedKeyword != null && type != null) {
-            items = contentRepository.searchStaffByKeywordAndType(normalizedKeyword, type, pageable);
-        } else if (normalizedKeyword != null) {
-            items = contentRepository.searchStaffByKeyword(normalizedKeyword, pageable);
-        } else if (type != null) {
-            items = contentRepository.findByType(type, pageable);
-        } else {
-            items = contentRepository.findAll(pageable);
-        }
+        Page<ContentItem> items = contentRepository.findByAdminFilters(type, stage, status, normalizedKeyword, pageable);
         return items.map(contentMapper::toDetailResponse);
     }
 
@@ -77,6 +72,9 @@ public class AdminContentServiceImpl implements AdminContentService {
                 });
 
         ContentItem entity = contentMapper.toEntity(request, authorUserId);
+        // ADR-RTE-005: body is rendered unescaped (web dangerouslySetInnerHTML, mobile
+        // flutter_html) — must be sanitized before persisting, not just at render time.
+        entity.setBody(htmlContentSanitizer.sanitize(request.getBody()));
         entity = contentRepository.save(entity);
 
         auditService.log(AuditAction.CONTENT_CREATED, authorUserId,
@@ -121,15 +119,20 @@ public class AdminContentServiceImpl implements AdminContentService {
 
         // BR-CNT-006: only title/body/stage/status/topicId/sourceLabel editable — type/authorUserId immutable
         item.setTitle(request.title());
-        item.setBody(request.body());
+        // ADR-RTE-005: see note in createContent() above.
+        item.setBody(htmlContentSanitizer.sanitize(request.body()));
         item.setStage(request.stage());
         item.setTopicId(request.topicId());
         item.setStatus(request.status());
         item.setSourceLabel(request.sourceLabel());
         // Omitted sources mean the client did not edit them. An explicit [] intentionally clears them.
         if (request.sources() != null) {
+            // Must stay mutable: Hibernate manages @ElementCollection fields in place and
+            // throws UnsupportedOperationException on the next flush/merge if handed an
+            // immutable list (Stream.toList()) instead of a real ArrayList.
             item.setSources(request.sources().stream()
-                    .map(s -> new ContentSource(s.title(), s.url(), s.publisher())).toList());
+                    .map(s -> new ContentSource(s.title(), s.url(), s.publisher()))
+                    .collect(Collectors.toCollection(ArrayList::new)));
         }
 
         // ADR-002: versionNo += 1 on every successful update; null (legacy row) treated as starting at 1

@@ -7,8 +7,11 @@ import com.carebridge.backend.journey.entity.JourneyStatus;
 import com.carebridge.backend.journey.entity.JourneyType;
 import com.carebridge.backend.journey.entity.JourneyDateSource;
 import com.carebridge.backend.journey.entity.JourneyDateConfidence;
+import com.carebridge.backend.journey.entity.PregnancyOutcomeEvidence;
+import com.carebridge.backend.journey.entity.PregnancyOutcomeType;
 import com.carebridge.backend.journey.policy.JourneyTransitionPolicy;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
+import com.carebridge.backend.journey.repository.PregnancyOutcomeEvidenceRepository;
 import com.carebridge.backend.journey.service.impl.JourneyServiceImpl;
 import com.carebridge.backend.security.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,6 +41,7 @@ class JourneyDashboardServiceImplTest {
     @Mock private MotherJourneyRepository journeyRepository;
     @Mock private UserRepository userRepository;
     @Mock private AuditService auditService;
+    @Mock private PregnancyOutcomeEvidenceRepository outcomeEvidenceRepository;
 
     private JourneyServiceImpl journeyService;
 
@@ -45,7 +49,8 @@ class JourneyDashboardServiceImplTest {
     void setUp() {
         // Fixed clock = 2026-06-26 00:00 UTC (matches JourneyDashboardTestFactory.TODAY)
         Clock fixedClock = Clock.fixed(Instant.parse("2026-06-26T00:00:00Z"), ZoneOffset.UTC);
-        journeyService = new JourneyServiceImpl(journeyRepository, userRepository, auditService, fixedClock);
+        journeyService = new JourneyServiceImpl(
+                journeyRepository, userRepository, auditService, fixedClock, outcomeEvidenceRepository);
     }
 
     /** TC-024-001: Active PREGNANCY journey → ACTIVE_PREGNANCY with week + trimester calculated. */
@@ -83,6 +88,72 @@ class JourneyDashboardServiceImplTest {
         assertThat(dashboard.getStatus()).isEqualTo(DashboardStatus.ACTIVE_POSTPARTUM);
         assertThat(dashboard.getPregnancyWeek()).isNull();
         assertThat(dashboard.getTrimester()).isNull();
+        assertThat(dashboard.isBabyActionsEligible()).isFalse();
+    }
+
+    @Test
+    void getDashboard_liveBirthWithMatchingEvidence_exposesBabyActions() {
+        var journey = JourneyDashboardTestFactory.makePostpartumJourney();
+        journey.setPregnancyOutcome(PregnancyOutcomeType.LIVE_BIRTH);
+        journey.setPregnancyOutcomeDate(JourneyDashboardTestFactory.TODAY.minusDays(14));
+        var evidence = PregnancyOutcomeEvidence.builder()
+                .journeyId(journey.getId())
+                .ownerUserId(JourneyDashboardTestFactory.MOTHER_ID)
+                .outcomeType(PregnancyOutcomeType.LIVE_BIRTH)
+                .outcomeDate(journey.getPregnancyOutcomeDate())
+                .build();
+        when(journeyRepository.findByOwnerUserIdAndStatusAndJourneyTypeIn(
+                JourneyDashboardTestFactory.MOTHER_ID,
+                JourneyStatus.ACTIVE,
+                JourneyTransitionPolicy.CANONICAL_STAGES))
+                .thenReturn(Optional.of(journey));
+        when(outcomeEvidenceRepository.findFirstByJourneyIdOrderByRevisionNumberDesc(journey.getId()))
+                .thenReturn(Optional.of(evidence));
+
+        JourneyDashboardResponse dashboard = journeyService.getDashboard(JourneyDashboardTestFactory.MOTHER_ID);
+
+        assertThat(dashboard.isBabyActionsEligible()).isTrue();
+    }
+
+    @Test
+    void getDashboard_liveBirthWithOutcomeDateMismatch_hidesBabyActions() {
+        var journey = JourneyDashboardTestFactory.makePostpartumJourney();
+        journey.setPregnancyOutcome(PregnancyOutcomeType.LIVE_BIRTH);
+        journey.setPregnancyOutcomeDate(JourneyDashboardTestFactory.TODAY.minusDays(14));
+        var evidence = PregnancyOutcomeEvidence.builder()
+                .journeyId(journey.getId())
+                .ownerUserId(JourneyDashboardTestFactory.MOTHER_ID)
+                .outcomeType(PregnancyOutcomeType.LIVE_BIRTH)
+                .outcomeDate(journey.getPregnancyOutcomeDate().minusDays(1))
+                .build();
+        when(journeyRepository.findByOwnerUserIdAndStatusAndJourneyTypeIn(
+                JourneyDashboardTestFactory.MOTHER_ID,
+                JourneyStatus.ACTIVE,
+                JourneyTransitionPolicy.CANONICAL_STAGES))
+                .thenReturn(Optional.of(journey));
+        when(outcomeEvidenceRepository.findFirstByJourneyIdOrderByRevisionNumberDesc(journey.getId()))
+                .thenReturn(Optional.of(evidence));
+
+        JourneyDashboardResponse dashboard = journeyService.getDashboard(JourneyDashboardTestFactory.MOTHER_ID);
+
+        assertThat(dashboard.isBabyActionsEligible()).isFalse();
+    }
+
+    @Test
+    void getDashboard_liveBirthWithoutEvidence_hidesBabyActions() {
+        var journey = JourneyDashboardTestFactory.makePostpartumJourney();
+        journey.setPregnancyOutcome(PregnancyOutcomeType.LIVE_BIRTH);
+        when(journeyRepository.findByOwnerUserIdAndStatusAndJourneyTypeIn(
+                JourneyDashboardTestFactory.MOTHER_ID,
+                JourneyStatus.ACTIVE,
+                JourneyTransitionPolicy.CANONICAL_STAGES))
+                .thenReturn(Optional.of(journey));
+        when(outcomeEvidenceRepository.findFirstByJourneyIdOrderByRevisionNumberDesc(journey.getId()))
+                .thenReturn(Optional.empty());
+
+        JourneyDashboardResponse dashboard = journeyService.getDashboard(JourneyDashboardTestFactory.MOTHER_ID);
+
+        assertThat(dashboard.isBabyActionsEligible()).isFalse();
     }
 
     @Test

@@ -15,7 +15,8 @@ public class ExpertLocationShareMapper {
                 .latitude(request.getLatitude())
                 .longitude(request.getLongitude())
                 .accuracyMeters(request.getAccuracyMeters())
-                .availabilityStatus(request.getAvailabilityStatus())
+                // A new share is never online until the guarded status transition succeeds.
+                .availabilityStatus("OFFLINE")
                 .expiresAt(request.getExpiresAt())
                 .consentReference(request.getConsentReference())
                 .build();

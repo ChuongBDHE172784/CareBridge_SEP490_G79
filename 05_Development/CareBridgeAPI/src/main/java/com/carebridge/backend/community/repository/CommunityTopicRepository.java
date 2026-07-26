@@ -28,9 +28,11 @@ public interface CommunityTopicRepository extends JpaRepository<CommunityTopic, 
 
     boolean existsBySlugAndIdNot(String slug, UUID id);
 
+    boolean existsByParentId(UUID parentId);
+
     Optional<CommunityTopic> findByIdAndIsHiddenFalse(UUID id);
 
-    // ADR-COM-016: parent lookup for hierarchy validation — must exist, be TOPIC-typed, not hidden.
+    // ADR-COM-020: typed, visible lookup used for CATEGORY parent and question-target validation.
     Optional<CommunityTopic> findByIdAndTypeAndIsHiddenFalse(UUID id, TopicType type);
 
     @Query("SELECT t FROM CommunityTopic t WHERE t.isHidden = false AND LOWER(t.name) LIKE LOWER(CONCAT('%', :keyword, '%')) ORDER BY t.sortOrder ASC")

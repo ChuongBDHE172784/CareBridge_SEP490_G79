@@ -120,6 +120,37 @@ class AuthServiceResendOtpTest {
     }
 
     @Test
+    void resendOtp_WithFormattedPhone_ShouldUseCanonicalLookupAndDelivery() {
+        String formattedPhone = "84 90 123 4567";
+        String canonicalPhone = "+84901234567";
+        UUID userId = UUID.randomUUID();
+        User user = User.builder()
+                .id(userId)
+                .phone(canonicalPhone)
+                .build();
+        OtpVerification existingOtp = OtpVerification.builder()
+                .id(UUID.randomUUID())
+                .user(user)
+                .phone(canonicalPhone)
+                .purpose(OtpVerification.OtpPurpose.REGISTER)
+                .build();
+
+        when(userRepository.findByPhone(canonicalPhone)).thenReturn(Optional.of(user));
+        when(otpVerificationRepository.findTopByUserIdAndUsedAtIsNullOrderByCreatedAtDescIdDesc(userId))
+                .thenReturn(Optional.of(existingOtp));
+        when(rateLimitPolicy.tryConsumeResend(userId.toString())).thenReturn(true);
+
+        ResendOtpRequest request = new ResendOtpRequest();
+        request.setPhone(formattedPhone);
+
+        authService.resendOtp(request);
+
+        verify(userRepository).findByPhone(canonicalPhone);
+        verify(userRepository, never()).findByPhone(formattedPhone);
+        verify(smsService).sendOtpVerificationSms(eq(canonicalPhone), anyString(), eq(5));
+    }
+
+    @Test
     @DisplayName("OTP-TC-RESEND-002: Resend OTP via email")
     void resendOtp_WithEmail_ShouldWorkWithEmailIdentifier() {
         // Given

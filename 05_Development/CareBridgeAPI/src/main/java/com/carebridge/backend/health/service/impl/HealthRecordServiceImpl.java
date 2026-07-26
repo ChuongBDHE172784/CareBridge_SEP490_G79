@@ -6,7 +6,7 @@ import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.file.entity.FileStatus;
 import com.carebridge.backend.file.entity.UploadedFile;
 import com.carebridge.backend.file.repository.UploadedFileRepository;
-import com.carebridge.backend.file.service.IStorageService;
+import com.carebridge.backend.file.service.IFileService;
 import com.carebridge.backend.health.dto.*;
 import com.carebridge.backend.health.dto.AddHealthRecordRequest;
 import com.carebridge.backend.health.dto.AddHealthRecordResponse;
@@ -36,7 +36,7 @@ public class HealthRecordServiceImpl implements IHealthRecordService {
     private final HealthRecordRepository recordRepository;
     private final HealthRecordFileRepository recordFileRepository;
     private final UploadedFileRepository uploadedFileRepository;
-    private final IStorageService storageService;
+    private final IFileService fileService;
     private final AuditService auditService;
 
     @Override
@@ -119,7 +119,7 @@ public class HealthRecordServiceImpl implements IHealthRecordService {
                     .originalName(f.getOriginalName())
                     .mimeType(f.getMimeType())
                     .displayOrder(link.getDisplayOrder())
-                    .presignedUrl(storageService.generatePresignedUrl(f.getStorageKey(), 15))
+                    .presignedUrl(fileService.generatePresignedUrl(f.getId(), callerId, 15))
                     .build();
         }).filter(a -> a != null).collect(Collectors.toList());
 

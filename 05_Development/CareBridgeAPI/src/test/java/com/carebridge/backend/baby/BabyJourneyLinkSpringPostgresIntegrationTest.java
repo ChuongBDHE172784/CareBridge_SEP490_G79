@@ -42,6 +42,8 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -52,6 +54,7 @@ import javax.sql.DataSource;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 /** Production Spring/JPA/PostgreSQL evidence for Story 6.5. */
+@Execution(ExecutionMode.SAME_THREAD)
 class BabyJourneyLinkSpringPostgresIntegrationTest extends AbstractPostgresIntegrationTest {
 
     @Autowired private IBabyService babyService;
@@ -115,9 +118,10 @@ class BabyJourneyLinkSpringPostgresIntegrationTest extends AbstractPostgresInteg
         UUID validBaby = seedBaby(motherId, canonicalJourneyId, "Valid");
         UUID ownerMismatch = seedBaby(motherId, foreignJourneyId, "Owner mismatch");
 
+        UUID nonCanonicalMother = seedMother("6500000005");
         UUID nonCanonicalJourney = seedJourney(
-                motherId, JourneyStatus.COMPLETED, PregnancyOutcomeType.LIVE_BIRTH, true);
-        UUID nonCanonical = seedBaby(motherId, nonCanonicalJourney, "Non canonical");
+                nonCanonicalMother, JourneyStatus.COMPLETED, PregnancyOutcomeType.LIVE_BIRTH, true);
+        UUID nonCanonical = seedBaby(nonCanonicalMother, nonCanonicalJourney, "Non canonical");
 
         UUID noEvidenceMother = seedMother("6500000003");
         UUID noEvidenceJourney = seedJourney(
@@ -255,15 +259,8 @@ class BabyJourneyLinkSpringPostgresIntegrationTest extends AbstractPostgresInteg
 
     @Test
     void concurrentDifferentJourneysForOneExistingBabyYieldOneSuccessAndOneTypedConflict() throws Exception {
-        UUID secondJourneyId = journeyRepository.saveAndFlush(MotherJourney.builder()
-                .ownerUserId(motherId)
-                .journeyType(JourneyType.POSTPARTUM)
-                .status(JourneyStatus.COMPLETED)
-                .startDate(LocalDate.of(2025, 12, 1))
-                .deliveryDate(LocalDate.of(2025, 12, 1))
-                .pregnancyOutcome(PregnancyOutcomeType.LIVE_BIRTH)
-                .pregnancyOutcomeDate(LocalDate.of(2025, 12, 1))
-                .build()).getId();
+        UUID secondJourneyId = seedJourney(
+                motherId, JourneyStatus.COMPLETED, PregnancyOutcomeType.LIVE_BIRTH, true);
         UUID babyId = seedBaby(motherId, null, "Concurrent existing");
 
         // The product allows only one canonical journey. Stub only the eligibility gate so this
@@ -342,8 +339,19 @@ class BabyJourneyLinkSpringPostgresIntegrationTest extends AbstractPostgresInteg
             JourneyStatus status,
             PregnancyOutcomeType outcome,
             boolean withEvidence) {
+        UUID careSubjectId = UUID.randomUUID();
+        jdbcTemplate.update("""
+                INSERT INTO care_subjects (
+                    care_subject_id, person_id, owner_user_id, subject_type,
+                    nickname, status, created_at, updated_at)
+                SELECT ?, u.person_id, u.user_id, 'MOTHER', p.display_name,
+                       'ACTIVE', now(), now()
+                  FROM users u JOIN persons p ON p.person_id = u.person_id
+                 WHERE u.user_id = ?
+                """, careSubjectId, ownerId);
         MotherJourney journey = journeyRepository.saveAndFlush(MotherJourney.builder()
                 .ownerUserId(ownerId)
+                .careSubjectId(careSubjectId)
                 .journeyType(JourneyType.POSTPARTUM)
                 .status(status)
                 .startDate(LocalDate.of(2026, 1, 1))
@@ -351,6 +359,9 @@ class BabyJourneyLinkSpringPostgresIntegrationTest extends AbstractPostgresInteg
                 .pregnancyOutcome(outcome)
                 .pregnancyOutcomeDate(LocalDate.of(2026, 1, 1))
                 .build());
+        jdbcTemplate.update(
+                "UPDATE care_subjects SET mother_journey_id = ? WHERE care_subject_id = ?",
+                journey.getId(), careSubjectId);
         if (withEvidence) {
             evidenceRepository.saveAndFlush(PregnancyOutcomeEvidence.builder()
                     .journeyId(journey.getId())
@@ -454,6 +465,7 @@ class BabyJourneyLinkSpringPostgresIntegrationTest extends AbstractPostgresInteg
     }
 
     private void wipeStoryFixtures() {
-        jdbcTemplate.execute("truncate table baby_link_submissions, pregnancy_outcome_evidence, care_subjects, mother_journeys, audit_logs, users cascade");
+        jdbcTemplate.execute("truncate table mother_journey_events, care_subjects, "
+                + "mother_journeys, audit_events, users, persons cascade");
     }
 }

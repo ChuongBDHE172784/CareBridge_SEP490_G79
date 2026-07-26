@@ -10,6 +10,10 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.time.Instant;
+import java.util.UUID;
+import com.carebridge.backend.triage.OriginAction;
+import com.carebridge.backend.triage.OriginDashboard;
 
 @Getter
 @Setter
@@ -29,4 +33,10 @@ public class IntakeConversationResponse {
     private List<Object> questions = new ArrayList<>();
     private Integer round;
     private Map<String, Object> triageResult;
+    private UUID journeyId;
+    private OriginDashboard originDashboard;
+    private UUID originReferenceId;
+    private OriginAction originAction;
+    private UUID continuationToken;
+    private Instant continuationExpiresAt;
 }

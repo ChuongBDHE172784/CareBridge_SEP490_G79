@@ -62,7 +62,7 @@
 |-------|-------|
 | **AI Assisted?** | `Yes` |
 | **Constraint Source** | `CB-AUTH-IMP-003 §17`, `ADR-AUTH-006`, `ADR-AUTH-007`, `ADR-AUTH-008` |
-| **Constraints Injected** | jwt-env-secret, token-ttl, refresh-hash, lockout-5, anti-enumeration |
+| **Constraints Injected** | jwt-rs256-keyring, token-ttl, opaque-refresh-hash, lockout-5, anti-enumeration |
 | **Model** | `claude-sonnet-4-6` |
 | **Trust Level** | `T2 → T3 (pending Red Gate)` |
 
@@ -74,7 +74,7 @@
 |---|------------------------|--------------------------|------------------------|
 | L1 | Spec nói "reset failedLoginCount khi login thành công" nhưng không rõ thời điểm | Policy: reset TRƯỚC khi issue token, TRONG cùng transaction | Test verify count=0 sau login thành công |
 | L2 | Không rõ message khi user không tồn tại vs sai password | Policy: cùng message AUTH-011 (anti-enumeration) | Test cả 2 case cùng expect AUTH-011 với message giống nhau |
-| L3 | Refresh token lưu dưới dạng gì trong DB | ADR-AUTH-008: SHA-256 hash | Test verify DB chứa hex string, không phải JWT plaintext |
+| L3 | Refresh token lưu dưới dạng gì trong DB | ADR-AUTH-008: secret opaque 48-byte; chỉ lưu SHA-256 hash | Test verify DB chứa hex hash, không phải raw opaque token; refresh token không được parse như JWT |
 
 ---
 
@@ -84,10 +84,10 @@
 
 ```
 Login bao gồm các layer:
-├── JwtService (token generation — mock clock)
-├── AuthService.login() (orchestration — mock repos, mock JwtService)
+├── JwtTokenProvider (RS256 access-token generation/verification)
+├── AuthService.login()/verifyOtp() (OTP gate, opaque refresh/session orchestration)
 ├── AuthController (HTTP layer — mock service)
-└── Integration (Testcontainers PostgreSQL + real JwtService)
+└── Integration (Testcontainers PostgreSQL + real JwtTokenProvider)
 ```
 
 ### TDS-02 — Test Basis
@@ -95,7 +95,7 @@ Login bao gồm các layer:
 | Source | Items Derived |
 |--------|--------------|
 | `SRS UC-03` | Login flow, token issuance |
-| `ADR-AUTH-006` | JWT TTL: access=15min, refresh=7d |
+| `ADR-AUTH-006` | RS256 access JWT TTL=15min; opaque rotating refresh token TTL=7d |
 | `ADR-AUTH-007` | Lockout after 5 failures |
 | `ADR-AUTH-008` | Session tracking |
 | `BR-LOGIN-001` | ACTIVE account only |
@@ -114,7 +114,7 @@ Login bao gồm các layer:
 | TC-COND-004 | Account LOCKED → AUTH-013 | `AuthService.validateAccountStatus()` | `LOGIN-TC-004` |
 | TC-COND-005 | Password sai → AUTH-011 + failedCount++ | `AuthService.handleLoginFailure()` | `LOGIN-TC-005` |
 | TC-COND-006 | Lần thứ 5 sai → LOCKED + SecurityEvent | `AuthService.handleLoginFailure()` | `LOGIN-TC-006` |
-| TC-COND-007 | JWT access token TTL = 900s | `JwtService.generateAccessToken()` | `LOGIN-TC-007` |
+| TC-COND-007 | Access token `alg=RS256`, có `kid`, TTL=900s; HS256/unknown `kid` bị reject | `JwtTokenProvider` | `LOGIN-TC-007` |
 | TC-COND-008 | Session record trong DB | `SessionRepository.save()` | `LOGIN-TC-008` |
 | TC-COND-009 | Anti-enumeration: same message | Error path | `LOGIN-TC-009` |
 | TC-COND-010 | Brute force rate limit | Rate limiter | `LOGIN-TC-SEC-001` |
@@ -137,7 +137,7 @@ Login bao gồm các layer:
 | `FX-LOGIN-003` | DB seed | `{email:"unverified@test.com", status:UNVERIFIED}` | UNVERIFIED account |
 | `FX-LOGIN-004` | DB seed | `{email:"locked@test.com", status:LOCKED}` | LOCKED account |
 | `FX-LOGIN-005` | DB seed | `{email:"almost@test.com", failedCount:4, status:ACTIVE}` | One away from lockout |
-| `FX-LOGIN-006` | ENV | `JWT_SECRET=dGVzdHNlY3JldHZhbHVlZm9ydGVzdGluZw==` | Fixed JWT secret |
+| `FX-LOGIN-006` | ENV | Synthetic RSA-2048 fixture: `JWT_ACTIVE_KEY_ID=test-key`; `JWT_PRIVATE_KEY=<base64-DER-PKCS8>`; `JWT_PUBLIC_KEYS=test-key:<base64-DER-SPKI>` | Fixed test-only RS256 pair; never production key material |
 | `FX-LOGIN-007` | Clock | `fixed clock: 2026-06-26T10:00:00Z` | Deterministic token TTL test |
 
 ---
@@ -173,7 +173,7 @@ private static LoginRequestDTO makeLoginRequest(String identifier, String passwo
 ### LOGIN-TC-001 — Login thành công → nhận access và refresh token
 
 **Severity:** `CRITICAL`
-**Feature Under Test:** `AuthService.login()` + `JwtService.generateAccessToken()`
+**Feature Under Test:** `AuthService.login()/verifyOtp()` + `JwtTokenProvider.generateAccessToken()`
 **Test File:** `src/test/java/com/carebridge/backend/security/service/AuthServiceLoginTest.java`
 **TDD Phase:** 🟢 GREEN
 **Condition Ref:** `TC-COND-001`
@@ -181,7 +181,7 @@ private static LoginRequestDTO makeLoginRequest(String identifier, String passwo
 
 **Preconditions:**
 - `FX-LOGIN-001`: user ACTIVE
-- `JwtService` real implementation với `FX-LOGIN-006` + `FX-LOGIN-007`
+- `JwtTokenProvider` real implementation với `FX-LOGIN-006` + `FX-LOGIN-007`
 - `SessionRepository` mock: capture saved entity
 - `UserRepository` mock: return FX-LOGIN-001
 
@@ -190,7 +190,7 @@ private static LoginRequestDTO makeLoginRequest(String identifier, String passwo
 2. **Act:** `authService.login(request, "127.0.0.1")`
 3. **Assert:**
    - `accessToken` không null và là JWT hợp lệ
-   - `refreshToken` không null và là JWT hợp lệ
+   - `refreshToken` không null, dài 64 ký tự base64url từ 48 random bytes, không có cấu trúc JWT ba segment
    - `expiresIn` == 900
    - `role` == "MOTHER"
    - `sessionRepository.save()` được gọi 1 lần
@@ -325,26 +325,30 @@ private static LoginRequestDTO makeLoginRequest(String identifier, String passwo
 
 ---
 
-### LOGIN-TC-007 — JWT access token có TTL đúng 900 giây
+### LOGIN-TC-007 — RS256 access JWT có `kid`, TTL đúng 900 giây và fail closed
 
 **Severity:** `HIGH`
-**Feature Under Test:** `JwtService.generateAccessToken()`
-**Test File:** `src/test/java/com/carebridge/backend/auth/JwtServiceTest.java`
+**Feature Under Test:** `JwtTokenProvider.generateAccessToken()` / `validateToken()`
+**Test File:** `src/test/java/com/carebridge/backend/security/jwt/JwtTokenProviderSecretValidationTest.java`
 **TDD Phase:** 🔴 RED
 **Condition Ref:** `TC-COND-007`
 **Oracle Source:** `BR-LOGIN-004`, `ADR-AUTH-006`
 
 **Preconditions:**
 - Fixed clock: `2026-06-26T10:00:00Z`
-- `JWT_SECRET` = FX-LOGIN-006
+- RS256 key pair/ring = `FX-LOGIN-006`
 
 **Test Steps:**
 1. **Act:** `jwtService.generateAccessToken(user)` với fixed clock
 2. **Assert:**
-   - Parse JWT, kiểm tra claims:
+   - Parse/verify JWT bằng public key được chọn theo `kid`, kiểm tra header/claims:
+     - `alg` == `RS256`
+     - `kid` == `JWT_ACTIVE_KEY_ID`
      - `sub` == userId.toString()
      - `role` == "MOTHER"
      - `exp` == `iat + 900` (chính xác đến giây)
+   - Token HS256 giả mạo, token thiếu/không biết `kid`, hoặc RSA key < 2048 bit đều bị reject
+   - Public key cũ trong `JWT_PUBLIC_KEYS` vẫn verify token cũ trong cửa sổ rotation; active private key phải khớp active public key
 
 **Expected Result (PASS):**
 ```java
@@ -354,7 +358,7 @@ long exp = claims.getExpiration().getTime() / 1000;
 assertThat(exp - iat).isEqualTo(900L);
 ```
 
-**Current Status:** 🟢 Passing — 2026-07-04 (implemented as `JwtTokenProviderSecretValidationTest.generateAccessToken_hasExactly900SecondTtl`; real class is `JwtTokenProvider`, not `JwtService`)
+**Current Status:** 🟢 Passing — 2026-07-25 (`JwtTokenProviderSecretValidationTest` proves RS256 header/required `kid`, exact 900-second TTL, previous-public-key rotation acceptance, missing/mismatched key fail-closed behavior, and HS256 algorithm-confusion rejection.)
 
 ---
 
@@ -382,9 +386,9 @@ assertThat(exp - iat).isEqualTo(900L);
 - Hash stored, plain token in response
 
 **Expected Result (FAIL):**
-- Nếu plain JWT được lưu → ADR-AUTH-008 vi phạm, security risk
+- Nếu raw opaque refresh token được lưu → ADR-AUTH-008 vi phạm, security risk
 
-**Current Status:** 🟢 Passing — 2026-07-04 (implemented as `AuthServiceLoginTest.login_verifiedIdentifier_sessionStoresSha256Hash`; captured `UserSession.refreshTokenHash` is 64-char SHA-256 hex == `hashSha256(rawRefreshToken)`, never plaintext. Note: real login is OTP-gated; the verified-identifier branch exercises the session-persistence path.)
+**Current Status:** 🟢 Passing — 2026-07-25 (`AuthServiceLoginTest` and integration coverage capture `UserSession.refreshTokenHash` as 64-char SHA-256 hex equal to `hashSha256(rawRefreshToken)`, never plaintext. Normal password login is OTP-gated; token/session issuance occurs only after OTP verification or the explicitly gated dev/test direct-login boundary.)
 
 ---
 
@@ -448,7 +452,7 @@ assertThat(claims.getSubject()).isEqualTo(userId.toString());
 assertThat(claims.get("role", String.class)).isEqualTo("MOTHER");
 ```
 
-**Current Status:** 🟢 Passing — 2026-07-04 (`LoginIntegrationTest`, Testcontainers PostgreSQL + MockMvc. Seeds an ACTIVE user, calls the token-issuing `/login-direct` endpoint, and asserts the persisted `refresh_tokens` row (revoked=false, 64-char SHA-256 hash), the `user_sessions` row (revoked=false, 64-char hash), and JWT claims (`sub` = userId, authority `ROLE_MOTHER`). Real-behavior note: `/login` issues an OTP challenge, so `/login-direct` is the token path; role authority is `ROLE_MOTHER`, not the idealized bare `MOTHER`.)
+**Current Status:** 🟢 Passing — 2026-07-25 (`LoginIntegrationTest`, Testcontainers PostgreSQL + MockMvc. In the test profile with the explicit direct-login property enabled, it asserts persisted `refresh_tokens`/`user_sessions` SHA-256 hashes and RS256 access claims. Production never registers `/login-direct`; normal `/login` issues an OTP challenge and token/session issuance follows verified OTP.)
 
 ---
 
@@ -481,7 +485,7 @@ public class AuthService implements IAuthService {
 }
 
 @Service
-public class JwtServiceImpl implements JwtService {
+public class JwtTokenProvider {
     @Override
     public String generateAccessToken(User user) {
         throw new UnsupportedOperationException("Not implemented — Red Phase stub");
@@ -507,13 +511,13 @@ public class JwtServiceImpl implements JwtService {
 - [ ] TDS CB-AUTH-IMP-003 đã approve
 - [ ] UC-01 + UC-02 đã implement (users table với status, failedLoginCount)
 - [ ] Migration V3 (user_sessions) đã approve
-- [ ] `JWT_SECRET` ENV variable đã được cấu hình cho test env
+- [ ] Test-only `JWT_ACTIVE_KEY_ID`, PKCS#8 `JWT_PRIVATE_KEY`, và SPKI `JWT_PUBLIC_KEYS` đã được cấu hình; không dùng production key
 
 ### Exit Criteria (DoD)
 
 - [ ] Tất cả 10 test cases xanh
-- [ ] Test coverage ≥ 80% trên `AuthService.login()`, `JwtServiceImpl`
-- [ ] JWT secret không xuất hiện trong source code (chỉ ENV)
+- [ ] Test coverage ≥ 80% trên auth OTP/session orchestration và `JwtTokenProvider`
+- [ ] RS256 private key không xuất hiện trong source code; test fixture chỉ dùng synthetic RSA pair và runtime key material chỉ từ ENV
 - [ ] Refresh token lưu dưới dạng SHA-256 hash trong DB (code review)
 - [ ] Anti-enumeration: same message (LOGIN-TC-009 green)
 - [ ] Account lockout sau đúng 5 lần thất bại
@@ -530,7 +534,7 @@ public class JwtServiceImpl implements JwtService {
 ```bash
 # Revert service và migration
 git checkout -- src/main/java/com/carebridge/backend/auth/service/AuthService.java
-git checkout -- src/main/java/com/carebridge/backend/auth/service/JwtServiceImpl.java
+git checkout -- src/main/java/com/carebridge/backend/security/jwt/JwtTokenProvider.java
 ./mvnw flyway:undo  # Revert V3 user_sessions
 ```
 
@@ -542,7 +546,7 @@ git checkout -- src/main/java/com/carebridge/backend/auth/service/JwtServiceImpl
 |-------|-------------|--------------------------|-------|-----------|
 | AP-AI-001 | Unconstrained Generation | TC không reference BR-LOGIN-* | ☐ | G-0 |
 | AP-AI-002 | Green-from-Birth | LOGIN-TC-001 PASS với stub | ☐ | G-2 ★ |
-| AP-AI-003 | Implicit Decision | JWT secret hard-coded trong implementation | ☐ | G-1 |
+| AP-AI-003 | Implicit Decision | RSA private key hard-coded hoặc refresh token bị triển khai như JWT | ☐ | G-1 |
 | AP-AI-004 | Layer Violation | AuthController chứa JWT generation logic | ☐ | G-4 |
 | AP-AI-005 | Hallucinated Contract | Test import `TokenFactory` không có trong §8 TDS | ☐ | G-3 |
 

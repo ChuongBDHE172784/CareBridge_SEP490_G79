@@ -26,5 +26,12 @@ carebridge:
     enabled: false
   datasource-guard:
     enabled: true
+  hermetic:
+    datasource:
+      url: ${CAREBRIDGE_HERMETIC_DB_URL}
+      username: ${CAREBRIDGE_HERMETIC_DB_USERNAME}
+      password: ${CAREBRIDGE_HERMETIC_DB_PASSWORD}
+      database-name: ${CAREBRIDGE_HERMETIC_DB_DATABASE_NAME}
+      schema: ${CAREBRIDGE_HERMETIC_DB_SCHEMA}
   dev-seed:
     enabled: false

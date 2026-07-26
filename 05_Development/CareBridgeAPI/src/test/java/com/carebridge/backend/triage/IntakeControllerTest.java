@@ -9,8 +9,10 @@ import com.carebridge.backend.triage.controller.IntakeController;
 import com.carebridge.backend.triage.engine.TriageGraphService;
 import com.carebridge.backend.triage.service.ChildTriageAiClient;
 import com.carebridge.backend.triage.service.ITriageService;
+import com.carebridge.backend.triage.service.ITriageContinuationService;
 import com.carebridge.backend.triage.dto.request.StartIntakeConversationRequest;
 import com.carebridge.backend.triage.dto.response.IntakeConversationResponse;
+import com.carebridge.backend.triage.exception.TriageException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,14 +21,17 @@ import org.springframework.context.annotation.ComponentScan.Filter;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.ArgumentCaptor;
@@ -42,6 +47,7 @@ class IntakeControllerTest {
 
     @Autowired private MockMvc mockMvc;
     @MockitoBean private ITriageService triageService;
+    @MockitoBean private ITriageContinuationService continuationService;
     @MockitoBean private ChildTriageAiClient childTriageAiClient;
     @MockitoBean private TriageGraphService triageGraphService;
     @MockitoBean private ObjectMapper objectMapper;
@@ -102,12 +108,19 @@ class IntakeControllerTest {
 
     @Test
     @WithMockUser(username = "00000000-0000-0000-0000-000000000010", roles = "MOTHER")
-    void startConversation_postpartumJson_shouldBindTypedMaternalStage() throws Exception {
+    void ov01E2e008_startConversationReturnsTypedMaternalOrigin() throws Exception {
+        UUID journeyId = UUID.fromString("00000000-0000-0000-0000-000000000098");
+        UUID continuationToken = UUID.fromString("00000000-0000-0000-0000-000000000097");
         when(triageService.startConversation(any(), any())).thenReturn(
                 IntakeConversationResponse.builder()
                         .status("ASK_MORE")
                         .intakeSessionId("00000000-0000-0000-0000-000000000064")
                         .stage("POSTPARTUM")
+                        .journeyId(journeyId)
+                        .originDashboard(OriginDashboard.MOTHER_JOURNEY)
+                        .originReferenceId(journeyId)
+                        .originAction(OriginAction.RETURN_TO_MOTHER_JOURNEY)
+                        .continuationToken(continuationToken)
                         .round(1)
                         .build());
 
@@ -117,11 +130,20 @@ class IntakeControllerTest {
                                 {
                                   "initialText": "Tôi cần hỗ trợ sau sinh",
                                   "stage": "POSTPARTUM",
+                                  "journeyId": "00000000-0000-0000-0000-000000000098",
+                                  "originDashboard": "MOTHER_JOURNEY",
+                                  "originReferenceId": "00000000-0000-0000-0000-000000000098",
                                   "motherProfileId": "00000000-0000-0000-0000-000000000099",
                                   "currentIntake": {"stage": "POSTPARTUM"}
                                 }
                                 """))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.journeyId").value(journeyId.toString()))
+                .andExpect(jsonPath("$.data.originDashboard").value("MOTHER_JOURNEY"))
+                .andExpect(jsonPath("$.data.originReferenceId").value(journeyId.toString()))
+                .andExpect(jsonPath("$.data.originAction").value("RETURN_TO_MOTHER_JOURNEY"))
+                .andExpect(jsonPath("$.data.continuationToken")
+                        .value(continuationToken.toString()));
 
         ArgumentCaptor<StartIntakeConversationRequest> captor =
                 ArgumentCaptor.forClass(StartIntakeConversationRequest.class);
@@ -133,6 +155,41 @@ class IntakeControllerTest {
         org.assertj.core.api.Assertions.assertThat(captor.getValue().getMotherProfileId())
                 .isEqualTo(UUID.fromString("00000000-0000-0000-0000-000000000099"));
         org.assertj.core.api.Assertions.assertThat(captor.getValue().getBabyProfileId()).isNull();
+        org.assertj.core.api.Assertions.assertThat(captor.getValue().getJourneyId())
+                .isEqualTo(journeyId);
+        org.assertj.core.api.Assertions.assertThat(captor.getValue().getOriginDashboard())
+                .isEqualTo(OriginDashboard.MOTHER_JOURNEY);
+        org.assertj.core.api.Assertions.assertThat(captor.getValue().getOriginReferenceId())
+                .isEqualTo(journeyId);
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000011", roles = "MOTHER")
+    void ov01E2e015_crossAccountContinuationUsesAuthenticatedOwnerAndReturnsNeutral404()
+            throws Exception {
+        UUID accountB = UUID.fromString("00000000-0000-0000-0000-000000000011");
+        String accountAToken = "00000000-0000-0000-0000-000000000096";
+        when(continuationService.resolve(accountB, accountAToken))
+                .thenThrow(new TriageException(
+                        HttpStatus.NOT_FOUND, "TRIAGE-014", "Continuation not found"));
+        doThrow(new TriageException(
+                HttpStatus.NOT_FOUND, "TRIAGE-014", "Continuation not found"))
+                .when(continuationService).acknowledge(accountB, accountAToken);
+
+        String body = "{\"token\":\"" + accountAToken + "\"}";
+        mockMvc.perform(post(BASE_URL + "/continuations/resolve")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("TRIAGE-014"));
+        mockMvc.perform(post(BASE_URL + "/continuations/acknowledge")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(body))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("TRIAGE-014"));
+
+        verify(continuationService).resolve(accountB, accountAToken);
+        verify(continuationService).acknowledge(accountB, accountAToken);
     }
 
     @Test

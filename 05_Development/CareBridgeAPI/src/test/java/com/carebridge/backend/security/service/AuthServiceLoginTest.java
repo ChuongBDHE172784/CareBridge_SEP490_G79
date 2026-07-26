@@ -10,7 +10,9 @@ import com.carebridge.backend.security.dto.response.AuthResponse;
 import com.carebridge.backend.security.dto.response.OtpSendResponse;
 import com.carebridge.backend.security.dto.response.UserProfileResponse;
 import com.carebridge.backend.security.entity.RefreshToken;
+import com.carebridge.backend.security.entity.OtpVerification;
 import com.carebridge.backend.security.entity.User;
+import com.carebridge.backend.security.repository.OtpVerificationRepository;
 import com.carebridge.backend.security.repository.RefreshTokenRepository;
 import com.carebridge.backend.security.repository.UserRepository;
 import com.carebridge.backend.security.policy.AuthenticationPolicy;
@@ -47,6 +49,9 @@ class AuthServiceLoginTest {
     private com.carebridge.backend.audit.service.AuditService auditService;
     private com.carebridge.backend.identity.repository.UserSessionRepository sessionRepository;
     private TokenBlacklistRepository tokenBlacklistRepository;
+    private OtpVerificationRepository otpVerificationRepository;
+    private EmailService emailService;
+    private SmsService smsService;
 
     @BeforeEach
     void setUp() {
@@ -61,11 +66,14 @@ class AuthServiceLoginTest {
         auditService = mock(com.carebridge.backend.audit.service.AuditService.class);
         sessionRepository = mock(com.carebridge.backend.identity.repository.UserSessionRepository.class);
         tokenBlacklistRepository = mock(TokenBlacklistRepository.class);
+        otpVerificationRepository = mock(OtpVerificationRepository.class);
+        emailService = mock(EmailService.class);
+        smsService = mock(SmsService.class);
 
         authService = new AuthServiceImpl(
                 userRepository,
                 refreshTokenRepository,
-                mock(com.carebridge.backend.security.repository.OtpVerificationRepository.class),
+                otpVerificationRepository,
                 auditService,
                 jwtTokenProvider,
                 userMapper,
@@ -74,8 +82,8 @@ class AuthServiceLoginTest {
                 rateLimitPolicy,
                 sessionRepository,
                 tokenBlacklistRepository,
-                mock(com.carebridge.backend.security.service.EmailService.class),
-                mock(com.carebridge.backend.security.service.SmsService.class),
+                emailService,
+                smsService,
                 passwordEncoder,
                 mock(com.carebridge.backend.notification.repository.DeviceTokenRepository.class)
         );
@@ -333,6 +341,18 @@ class AuthServiceLoginTest {
         assertThatThrownBy(() -> authService.login(request))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("Either phone or email must be provided");
+    }
+
+    @Test
+    void login_WithInvalidVietnamesePhone_ShouldRejectBeforeLookup() {
+        LoginRequest request = new LoginRequest();
+        request.setPhone("+84123456789");
+        request.setPassword("password");
+
+        assertThatThrownBy(() -> authService.login(request))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("Vietnamese mobile number");
+        verify(userRepository, never()).findByPhone(anyString());
     }
 
     @Test
@@ -649,10 +669,8 @@ class AuthServiceLoginTest {
     }
 
     @Test
-    @DisplayName("LOGIN-TC-008b: Session persists SHA-256 hash of refresh token, never the plaintext")
-    void login_verifiedIdentifier_sessionStoresSha256Hash() {
-        // A verified identifier skips the OTP step and issues tokens directly, exercising the
-        // real session-persistence path where the refresh token is stored as a SHA-256 hash.
+    @DisplayName("LOGIN-TC-008b: Verified identifier still requires a fresh login OTP")
+    void login_verifiedIdentifier_stillIssuesOtpWithoutSessionOrTokens() {
         String email = "verified@example.com";
         String password = "MyP@ssw0rd123";
         UUID userId = UUID.randomUUID();
@@ -671,16 +689,6 @@ class AuthServiceLoginTest {
         doNothing().when(authenticationPolicy).ensureCanAuthenticate(user);
         when(rateLimitPolicy.canAttempt(userId.toString())).thenReturn(true);
         when(passwordEncoder.matches(password, "$2a$12$hashedpassword")).thenReturn(true);
-        when(refreshTokenRepository.save(any(RefreshToken.class))).thenAnswer(invocation -> {
-            RefreshToken token = invocation.getArgument(0);
-            if (token.getId() == null) {
-                token.setId(1L);
-            }
-            return token;
-        });
-        when(sessionRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(jwtTokenProvider.generateAccessToken(eq(user), any(UUID.class))).thenReturn("access-token");
-        when(userMapper.toProfileResponse(user)).thenReturn(new UserProfileResponse());
 
         LoginRequest request = new LoginRequest();
         request.setPhone(null);
@@ -690,18 +698,10 @@ class AuthServiceLoginTest {
         OtpSendResponse response = authService.login(request);
 
         assertThat(response).isNotNull();
-        assertThat(response.getAuth()).isNotNull();
-        String rawRefreshToken = response.getAuth().getRefreshToken();
-        assertThat(rawRefreshToken).isNotBlank();
-
-        ArgumentCaptor<com.carebridge.backend.identity.entity.UserSession> sessionCaptor =
-                ArgumentCaptor.forClass(com.carebridge.backend.identity.entity.UserSession.class);
-        verify(sessionRepository).save(sessionCaptor.capture());
-        String storedHash = sessionCaptor.getValue().getRefreshTokenHash();
-
-        assertThat(storedHash).isNotEqualTo(rawRefreshToken); // never plaintext
-        assertThat(storedHash).hasSize(64);                   // SHA-256 hex
-        assertThat(storedHash).isEqualTo(
-                com.carebridge.backend.security.util.TokenUtils.hashSha256(rawRefreshToken));
+        assertThat(response.getMessage()).isEqualTo("OTP sent");
+        assertThat(response.getAuth()).isNull();
+        verify(otpVerificationRepository).save(any(OtpVerification.class));
+        verify(emailService).sendOtpVerificationEmail(eq(email), anyString(), anyInt());
+        verifyNoInteractions(refreshTokenRepository, sessionRepository, jwtTokenProvider);
     }
 }

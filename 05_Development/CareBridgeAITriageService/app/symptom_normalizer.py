@@ -151,7 +151,9 @@ def _without_negated_candidate(text: str, candidate: str) -> str:
     if candidate.startswith(("khong ", "chua ")):
         return text
     return re.sub(
-        rf"(?<!\w)(?:khong|chua)\s+(?:co\s+)?{re.escape(candidate)}(?!\w)",
+        rf"(?<!\w)(?:khong|chua|not|no|never|without)\s+"
+        rf"(?:(?:co|bi|con|he|have|has|had|feel|feeling|any|signs?|symptoms?|of|currently)\s+){{0,4}}"
+        rf"{re.escape(candidate)}(?!\w)",
         " ",
         text,
     )

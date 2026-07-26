@@ -30,9 +30,9 @@ class Wave3CommunityExpertCleanupMigrationIntegrationTest {
     @Test
     void cleanBootstrapRemovesNineWave3Tables() throws Exception {
         migrate(PRE);
-        assertThat(tableCount()).isEqualTo(120);
+        long tableCountBefore = tableCount();
         migrate(WAVE);
-        assertThat(tableCount()).isEqualTo(111);
+        assertThat(tableCount()).isEqualTo(tableCountBefore - REMOVED.length);
         for (String table : REMOVED) {
             assertThat(exists(table)).as(table).isFalse();
         }
@@ -50,8 +50,13 @@ class Wave3CommunityExpertCleanupMigrationIntegrationTest {
             INSERT INTO users(user_id,person_id,email,role,enabled,locked,created_at,updated_at) VALUES
               ('31000000-0000-0000-0000-000000000001','31000000-0000-0000-0000-000000000001','mother.wave3@test','MOTHER',true,false,now(),now()),
               ('31000000-0000-0000-0000-000000000002','31000000-0000-0000-0000-000000000002','expert.wave3@test','EXPERT',true,false,now(),now());
-            INSERT INTO community_topics(id,name,slug,description,created_at,updated_at,is_hidden,sort_order)
-            VALUES ('31100000-0000-0000-0000-000000000001','Wave 3 Topic','wave-3-topic','fixture',now(),now(),false,1);
+            INSERT INTO community_topics(
+              id,name,slug,description,type,parent_id,created_at,updated_at,is_hidden,sort_order)
+            VALUES
+              ('31100000-0000-0000-0000-000000000000','Wave 3 Category','wave-3-category',
+               'fixture','CATEGORY',null,now(),now(),false,1),
+              ('31100000-0000-0000-0000-000000000001','Wave 3 Topic','wave-3-topic',
+               'fixture','TOPIC','31100000-0000-0000-0000-000000000000',now(),now(),false,1);
             INSERT INTO community_questions
               (id,topic_id,author_id,title,body,stage,pregnancy_week,urgency,is_anonymous,status,like_count,answer_count,created_at,updated_at)
             VALUES ('31200000-0000-0000-0000-000000000001','31100000-0000-0000-0000-000000000001',

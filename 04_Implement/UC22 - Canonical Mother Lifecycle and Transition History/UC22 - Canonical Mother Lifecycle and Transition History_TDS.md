@@ -58,7 +58,7 @@
 | **Function identity** | Story 6.1 — Establish Canonical Mother Lifecycle and Transition History |
 | **Primary UC** | Legacy/current implementation: `UC-22 Create Mother Journey` |
 | **Secondary UC** | Legacy/current implementation: `UC-23 Update Mother Journey` |
-| **Approved aliases** | 121-UC scope: `UC-19 Initialize Mother Care Journey`, `UC-20 Update Mother Journey Stage and Dates` |
+| **Superseded allocation input** | The experimental 121-UC draft assigned `UC-19 Initialize Mother Care Journey` and `UC-20 Update Mother Journey Stage and Dates`. Those numbers conflict with the canonical full SRS and are not aliases for this implementation. |
 | **Module Name** | Canonical Mother Lifecycle |
 | **Bounded Context** | `journey` |
 | **Primary Actor** | Mother |
@@ -125,7 +125,7 @@ Out of scope:
 | `BR-JOURNEY-02` | Business rule | Refresh stage-dependent data after valid change | transition event for consumers | `JRN-COND-005` |
 | `BR-HEALTH-BOUNDARY` | Business rule | No diagnosis/prescription | API contains factual lifecycle state only | `JRN-COND-008` |
 
-Traceability decision: UC22/UC23 remain the implementation identifiers because current SRS, code comments, tests, and legacy Function artifacts use them. UC19/UC20 are recorded as approved aliases; renumbering is deferred to Story 6.10.
+Traceability decision closed by Story 6.10: UC22/UC23 remain the canonical implementation identifiers because the full SRS, shipped code, API comments, tests, and Function artifacts use them. UC19/UC20 are superseded experimental allocation input, not approved aliases; no runtime or artifact renumbering is performed.
 
 ---
 
@@ -743,7 +743,19 @@ Tests must satisfy the companion Test-Spec and demonstrate RED before implementa
 - `_bmad-output/planning-artifacts/epics.md` — Story 6.1
 - `_bmad-output/planning-artifacts/architecture.md` — Mother Lifecycle Orchestration
 - `02_Requirements/SRS/3_Functional_Specification.md` — legacy UC22/UC23
-- `02_Requirements/SRS/3_Functional_Specification_Detailed_Scope_121UC.md` — approved aliases UC19/UC20 and business rules
+- `02_Requirements/SRS/3_Functional_Specification_Detailed_Scope_121UC.md` — superseded experimental UC19/UC20 allocation input and business-rule source
 - `03_Design/ActivityDiagram/CareBridge-Main-Workflows.drawio` — OV-01
 - `05_Development/CareBridgeAPI/src/main/resources/db/migration/V1__init_schema.sql` — current schema evidence
 - Legacy `04_Implement/UC22_CreateMotherJourney/` and `04_Implement/UC23_UpdateMotherJourney/` — input/evidence only
+
+## Story 6.10 OV-01 Traceability Addendum
+
+This addendum follows `.agents/workflows/create-specs.md` and updates the existing canonical Function. It does not create a Story 6.10 Function or UC.
+
+| OV-01 branch | Story AC | Canonical decision | Test-Spec contract | Executable evidence |
+| --- | --- | --- | --- | --- |
+| `OV01-B01` baseline and required consent | Story 6.2 AC1-AC5 | Lifecycle initialization requires a valid, in-scope, non-revoked consent grant; role selection is not consent | `OV01-TS-22-001` | `JourneyOnboardingIntegrationTest`, `JourneyOnboardingControllerTest`, `journey_onboarding_screen_test.dart` |
+| `OV01-B02` one canonical PRE/PREG/POST lifecycle | Story 6.1 AC1-AC5 | The partial unique index, optimistic version, ownership and append-only history decisions remain authoritative | existing `JRN-TC-*` plus `OV01-TS-22-002` | `JourneyCanonicalLifecycleIntegrationTest`, `story_6_1_mobile_gap_test.dart` |
+| `OV01-B05` direct postpartum initialization | Story 6.4 AC1-AC4 | POSTPARTUM is a Mother lifecycle stage with required recovery-date provenance and no baby dependency | `OV01-TS-22-003` | `postpartum_recovery_setup_screen_test.dart`, `postpartum_recovery_dashboard_test.dart` |
+
+Authoritative cross-Function status and evidence paths are maintained in `_bmad-output/test-artifacts/traceability/ov-01/traceability-matrix.md`.

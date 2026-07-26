@@ -1,7 +1,24 @@
 # DATABASE REDESIGN PHASE 2 — MIGRATION PLAN
 
-Approved baseline: 70 tables (69 business/application + `flyway_schema_history`).
+Approved baseline: 70 core tables (69 business/application + `flyway_schema_history`) plus 3 approved Release-1 extensions: `expert_consultation_requests`, `consultation_context_shares`, and `consultation_context_citations`. The effective deployed inventory is 73 base tables (72 business/application + 1 technical), expressed in gates as **70 core + 3 extensions**.
 Application code remains unchanged until the database validation gate passes.
+
+## Branch-history rollout contract
+
+The merged migration chain must be executed by exactly one Flyway migration
+leader while application writes are quiesced. Do not start another application
+instance until the leader has completed the full chain and the canonical
+inventory and Hibernate validation gates have passed. Take the normal database
+backup/snapshot first and retain it until post-deployment verification completes.
+
+The branch-history bridges are intentionally forward-only and each version is
+transactional, but the whole multi-version sequence is not one transaction. If
+execution stops after a capture migration, keep the bridge schema and rerun the
+same immutable chain; the next migration verifies and restores the captured
+values. Never edit or delete `flyway_schema_history`, run `flyway repair`, skip a
+pending version, or manually drop a bridge relation to make startup continue.
+Any checksum mismatch, unexpected source count, unapproved cleanup reason, or
+non-empty synthetic shadow is a release stop that requires evidence review.
 
 | Wave | Scope | Canonical work | Drop policy |
 |---|---|---|---|

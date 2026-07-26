@@ -18,6 +18,18 @@ public interface CareFacilityRepository extends JpaRepository<CareFacility, UUID
 
     Optional<CareFacility> findByFacilityIdAndActiveTrue(UUID facilityId);
 
+    Optional<CareFacility> findByExternalSourceIdAndActiveTrue(String externalSourceId);
+
+    List<CareFacility> findByProvinceIdAndActiveTrueOrderByNameAsc(String provinceId);
+
+    List<CareFacility> findByProvinceIdAndDistrictIdAndActiveTrueOrderByNameAsc(
+            String provinceId, String districtId);
+
+    @Query("SELECT f FROM CareFacility f WHERE f.active = true AND f.provinceId = :provinceId "
+            + "AND LOWER(f.name) LIKE LOWER(CONCAT('%', :query, '%')) ORDER BY f.name")
+    List<CareFacility> searchActiveInProvince(
+            @Param("provinceId") String provinceId, @Param("query") String query);
+
     @Query(value = "SELECT * FROM care_facilities " +
             "WHERE is_active = true AND is_searchable = true AND verification_status = 'VERIFIED' " +
             "AND latitude IS NOT NULL AND longitude IS NOT NULL " +

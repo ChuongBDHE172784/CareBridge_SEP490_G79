@@ -1,0 +1,1 @@
+Follow the template from d:\Do_aN\.templates\template.md while drafting capabilities. If any file is missing or marked TODO, ask instead of assuming.

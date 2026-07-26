@@ -7,6 +7,16 @@ import '../../../core/auth/auth_state.dart';
 import '../../../core/network/api_client.dart';
 import '../models/journey_model.dart';
 
+typedef JourneyApiMutation =
+    Future<dynamic> Function(String path, Map<String, dynamic> body);
+
+typedef JourneyDashboardCacheWriter =
+    Future<void> Function(
+      JourneyDashboard dashboard, {
+      bool pendingSync,
+      String? expectedUserId,
+    });
+
 class JourneyDashboardReconciler {
   const JourneyDashboardReconciler._();
 
@@ -70,6 +80,27 @@ class JourneyDashboardReconciler {
 }
 
 class JourneyService {
+  JourneyService({
+    JourneyApiMutation? apiPostOverride,
+    JourneyApiMutation? apiPutOverride,
+    JourneyDashboardCacheWriter? dashboardCacheWriterOverride,
+    Future<void> Function()? clearOptimisticDashboardOverride,
+    String? Function()? currentUserIdProvider,
+  }) : _apiPost = apiPostOverride ?? apiPost,
+       _apiPut = apiPutOverride ?? apiPut,
+       _dashboardCacheWriter =
+           dashboardCacheWriterOverride ?? _saveOptimisticDashboard,
+       _clearOptimisticDashboard =
+           clearOptimisticDashboardOverride ?? clearOptimisticDashboard,
+       _currentUserIdProvider =
+           currentUserIdProvider ?? (() => AuthState.instance.userId);
+
+  final JourneyApiMutation _apiPost;
+  final JourneyApiMutation _apiPut;
+  final JourneyDashboardCacheWriter _dashboardCacheWriter;
+  final Future<void> Function() _clearOptimisticDashboard;
+  final String? Function() _currentUserIdProvider;
+
   static const _storage = FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
   );
@@ -127,42 +158,43 @@ class JourneyService {
   Future<CreateJourneyResponse> createJourney(
     CreateJourneyRequest request,
   ) async {
-    final requestUserId = AuthState.instance.userId;
-    final data = await apiPost('/api/v1/journeys', request.toJson());
-    if (!_isCurrentUser(requestUserId)) {
-      throw StateError('Authenticated account changed during journey create');
-    }
+    final requestUserId = _currentUserIdProvider();
+    final data = await _apiPost('/api/v1/journeys', request.toJson());
     final body = data['data'] as Map<String, dynamic>;
     final response = CreateJourneyResponse.fromJson(body);
-    if (request.journeyType.isMaternalLifecycle) {
-      final fallback = _scopedOptimisticDashboard;
-      await _saveOptimisticDashboard(
-        JourneyDashboard(
-          journeyId: response.id,
-          journeyType: response.journeyType,
-          status: _dashboardStatusForJourneyType(
-            response.journeyType,
-            response.status,
+    _ensureRequestUserCurrent(requestUserId, 'journey create');
+    await _reconcileAfterCommit('journey create', () async {
+      if (request.journeyType.isMaternalLifecycle) {
+        final fallback = _scopedOptimisticDashboard;
+        await _dashboardCacheWriter(
+          JourneyDashboard(
+            journeyId: response.id,
+            journeyType: response.journeyType,
+            status: _dashboardStatusForJourneyType(
+              response.journeyType,
+              response.status,
+            ),
+            startDate:
+                _parseDate(response.startDate) ?? _parseDate(request.startDate),
+            estimatedDueDate:
+                _parseDate(response.estimatedDueDate) ??
+                _parseDate(request.estimatedDueDate),
+            lastMenstrualDate:
+                _parseDate(response.lastMenstrualDate) ??
+                _parseDate(request.lastMenstrualDate) ??
+                fallback?.lastMenstrualDate,
+            version: response.version,
+            dateSource: response.dateSource ?? request.dateSource,
+            dateConfidence: response.dateConfidence ?? request.dateConfidence,
           ),
-          startDate:
-              _parseDate(response.startDate) ?? _parseDate(request.startDate),
-          estimatedDueDate:
-              _parseDate(response.estimatedDueDate) ??
-              _parseDate(request.estimatedDueDate),
-          lastMenstrualDate:
-              _parseDate(response.lastMenstrualDate) ??
-              _parseDate(request.lastMenstrualDate) ??
-              fallback?.lastMenstrualDate,
-          version: response.version,
-          dateSource: response.dateSource ?? request.dateSource,
-          dateConfidence: response.dateConfidence ?? request.dateConfidence,
-        ),
-        pendingSync: true,
-        expectedUserId: requestUserId,
-      );
-    } else {
-      await clearOptimisticDashboard();
-    }
+          pendingSync: true,
+          expectedUserId: requestUserId,
+        );
+      } else {
+        await _clearOptimisticDashboard();
+      }
+    });
+    _ensureRequestUserCurrent(requestUserId, 'journey create delivery');
     _notifyDashboardChanged();
     return response;
   }
@@ -255,47 +287,62 @@ class JourneyService {
     return List.unmodifiable(transitions);
   }
 
+  Future<JourneyTimelinePage> getTimeline(
+    String journeyId, {
+    int page = 0,
+    int size = 20,
+  }) async {
+    final requestUserId = AuthState.instance.userId;
+    final data = await apiGet(
+      '/api/v1/journeys/$journeyId/timeline?page=$page&size=$size',
+    );
+    if (!_isCurrentUser(requestUserId)) {
+      throw StateError('Authenticated account changed during timeline request');
+    }
+    final payload = data['data'] as Map<String, dynamic>? ?? const {};
+    return JourneyTimelinePage.fromJson(payload);
+  }
+
   Future<PregnancyOutcomeResult> recordPregnancyOutcome(
     String journeyId,
     RecordPregnancyOutcomeRequest request,
   ) async {
-    final requestUserId = AuthState.instance.userId;
-    final data = await apiPost(
+    final requestUserId = _currentUserIdProvider();
+    final data = await _apiPost(
       '/api/v1/journeys/$journeyId/pregnancy-outcomes',
       request.toJson(),
     );
-    if (!_isCurrentUser(requestUserId)) {
-      throw StateError(
-        'Authenticated account changed during pregnancy outcome update',
-      );
-    }
     final result = PregnancyOutcomeResult.fromJson(
       data['data'] as Map<String, dynamic>,
     );
-    final prior =
-        _scopedOptimisticDashboard ?? await _readOptimisticDashboard();
-    await _saveOptimisticDashboard(
-      JourneyDashboard(
-        journeyId: result.journeyId,
-        journeyType: result.journeyType,
-        status: _dashboardStatusForJourneyType(
-          result.journeyType,
-          result.journeyType == 'POSTPARTUM'
-              ? 'ACTIVE_POSTPARTUM'
-              : 'ACTIVE_PREGNANCY',
+    _ensureRequestUserCurrent(requestUserId, 'pregnancy outcome update');
+    await _reconcileAfterCommit('pregnancy outcome', () async {
+      final prior =
+          _scopedOptimisticDashboard ?? await _readOptimisticDashboard();
+      await _dashboardCacheWriter(
+        JourneyDashboard(
+          journeyId: result.journeyId,
+          journeyType: result.journeyType,
+          status: _dashboardStatusForJourneyType(
+            result.journeyType,
+            result.journeyType == 'POSTPARTUM'
+                ? 'ACTIVE_POSTPARTUM'
+                : 'ACTIVE_PREGNANCY',
+          ),
+          version: result.journeyVersion,
+          estimatedDueDate: prior?.estimatedDueDate,
+          lastMenstrualDate: prior?.lastMenstrualDate,
+          startDate: prior?.startDate,
+          dateSource: prior?.dateSource,
+          dateConfidence: prior?.dateConfidence,
+          pregnancyOutcome: result.outcomeType,
+          pregnancyOutcomeDate: result.outcomeDate,
         ),
-        version: result.journeyVersion,
-        estimatedDueDate: prior?.estimatedDueDate,
-        lastMenstrualDate: prior?.lastMenstrualDate,
-        startDate: prior?.startDate,
-        dateSource: prior?.dateSource,
-        dateConfidence: prior?.dateConfidence,
-        pregnancyOutcome: result.outcomeType,
-        pregnancyOutcomeDate: result.outcomeDate,
-      ),
-      pendingSync: true,
-      expectedUserId: requestUserId,
-    );
+        pendingSync: true,
+        expectedUserId: requestUserId,
+      );
+    });
+    _ensureRequestUserCurrent(requestUserId, 'pregnancy outcome delivery');
     _notifyDashboardChanged();
     return result;
   }
@@ -305,55 +352,83 @@ class JourneyService {
     String journeyId,
     UpdateJourneyRequest request,
   ) async {
-    final requestUserId = AuthState.instance.userId;
-    final data = await apiPut('/api/v1/journeys/$journeyId', request.toJson());
-    if (!_isCurrentUser(requestUserId)) {
-      throw StateError('Authenticated account changed during journey update');
-    }
-    final body = data?['data'] as Map<String, dynamic>?;
-    final journeyType =
-        body?['journeyType'] as String? ?? request.journeyType?.toApiValue();
-    final estimatedDueDate =
-        _parseDate(body?['estimatedDueDate'] as String?) ??
-        _parseDate(request.estimatedDueDate);
-    final responseContainsLmp = body?.containsKey('lastMenstrualDate') == true;
-    final responseLmp = _parseDate(body?['lastMenstrualDate'] as String?);
-    final requestLmp = _parseDate(request.lastMenstrualDate);
-    if (estimatedDueDate != null || responseContainsLmp || requestLmp != null) {
-      final fallback = _scopedOptimisticDashboard;
-      final lastMenstrualDate =
-          JourneyDashboardReconciler.updatedLastMenstrualDate(
-            responseContainsField: responseContainsLmp,
-            responseValue: responseLmp,
-            requestValue: requestLmp,
-            requestEstimatedDueDate: _parseDate(request.estimatedDueDate),
-            fallbackValue: fallback?.lastMenstrualDate,
-          );
-      await _saveOptimisticDashboard(
-        JourneyDashboard(
-          journeyId:
-              body?['journeyId'] as String? ??
-              body?['id'] as String? ??
-              journeyId,
-          journeyType: journeyType ?? 'PREGNANCY',
-          status: _dashboardStatusForJourneyType(
-            journeyType,
-            'ACTIVE_PREGNANCY',
+    final requestUserId = _currentUserIdProvider();
+    final data = await _apiPut('/api/v1/journeys/$journeyId', request.toJson());
+    _ensureRequestUserCurrent(requestUserId, 'journey update');
+    await _reconcileAfterCommit('journey update', () async {
+      final body = data?['data'] as Map<String, dynamic>?;
+      final journeyType =
+          body?['journeyType'] as String? ?? request.journeyType?.toApiValue();
+      final estimatedDueDate =
+          _parseDate(body?['estimatedDueDate'] as String?) ??
+          _parseDate(request.estimatedDueDate);
+      final responseContainsLmp =
+          body?.containsKey('lastMenstrualDate') == true;
+      final responseLmp = _parseDate(body?['lastMenstrualDate'] as String?);
+      final requestLmp = _parseDate(request.lastMenstrualDate);
+      if (estimatedDueDate != null ||
+          responseContainsLmp ||
+          requestLmp != null) {
+        final fallback = _scopedOptimisticDashboard;
+        final lastMenstrualDate =
+            JourneyDashboardReconciler.updatedLastMenstrualDate(
+              responseContainsField: responseContainsLmp,
+              responseValue: responseLmp,
+              requestValue: requestLmp,
+              requestEstimatedDueDate: _parseDate(request.estimatedDueDate),
+              fallbackValue: fallback?.lastMenstrualDate,
+            );
+        await _dashboardCacheWriter(
+          JourneyDashboard(
+            journeyId:
+                body?['journeyId'] as String? ??
+                body?['id'] as String? ??
+                journeyId,
+            journeyType: journeyType ?? 'PREGNANCY',
+            status: _dashboardStatusForJourneyType(
+              journeyType,
+              'ACTIVE_PREGNANCY',
+            ),
+            estimatedDueDate: estimatedDueDate ?? fallback?.estimatedDueDate,
+            lastMenstrualDate: lastMenstrualDate,
+            startDate:
+                _parseDate(body?['startDate'] as String?) ??
+                fallback?.startDate,
+            version: (body?['version'] as num?)?.toInt(),
+            dateSource: body?['dateSource'] as String? ?? request.dateSource,
+            dateConfidence:
+                body?['dateConfidence'] as String? ?? request.dateConfidence,
           ),
-          estimatedDueDate: estimatedDueDate ?? fallback?.estimatedDueDate,
-          lastMenstrualDate: lastMenstrualDate,
-          startDate:
-              _parseDate(body?['startDate'] as String?) ?? fallback?.startDate,
-          version: (body?['version'] as num?)?.toInt(),
-          dateSource: body?['dateSource'] as String? ?? request.dateSource,
-          dateConfidence:
-              body?['dateConfidence'] as String? ?? request.dateConfidence,
-        ),
-        pendingSync: true,
-        expectedUserId: requestUserId,
+          pendingSync: true,
+          expectedUserId: requestUserId,
+        );
+      }
+    });
+    _ensureRequestUserCurrent(requestUserId, 'journey update delivery');
+    _notifyDashboardChanged();
+  }
+
+  bool _isRequestUserCurrent(String? expectedUserId) =>
+      expectedUserId != null && expectedUserId == _currentUserIdProvider();
+
+  void _ensureRequestUserCurrent(String? expectedUserId, String operation) {
+    if (!_isRequestUserCurrent(expectedUserId)) {
+      throw StateError('Authenticated account changed during $operation');
+    }
+  }
+
+  Future<void> _reconcileAfterCommit(
+    String operation,
+    Future<void> Function() reconcile,
+  ) async {
+    try {
+      await reconcile();
+    } catch (error) {
+      debugPrint(
+        '[JourneyService] $operation committed; local reconciliation will '
+        'retry from the server (${error.runtimeType}).',
       );
     }
-    _notifyDashboardChanged();
   }
 
   static void _notifyDashboardChanged() {

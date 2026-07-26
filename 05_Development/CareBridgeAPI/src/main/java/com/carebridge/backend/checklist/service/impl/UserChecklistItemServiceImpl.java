@@ -2,6 +2,7 @@ package com.carebridge.backend.checklist.service.impl;
 
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
+import com.carebridge.backend.baby.repository.BabyProfileRepository;
 import com.carebridge.backend.checklist.dto.*;
 import com.carebridge.backend.checklist.entity.ChecklistCategory;
 import com.carebridge.backend.checklist.entity.UserChecklistItem;
@@ -10,6 +11,11 @@ import com.carebridge.backend.checklist.service.IUserChecklistItemService;
 import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.common.exception.ResourceNotFoundException;
 import com.carebridge.backend.content.entity.ChecklistItem;
+import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
+import com.carebridge.backend.content.entity.ContentStage;
+import com.carebridge.backend.content.exception.ContentException;
+import com.carebridge.backend.content.policy.LifecycleContentStageResolver;
+import com.carebridge.backend.content.policy.ResolvedLifecycleContext;
 import com.carebridge.backend.content.repository.ChecklistItemRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -18,8 +24,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -30,6 +42,8 @@ public class UserChecklistItemServiceImpl implements IUserChecklistItemService {
     private final UserChecklistItemRepository checklistRepository;
     private final ChecklistItemRepository templateItemRepository;
     private final AuditService auditService;
+    private final LifecycleContentStageResolver lifecycleContentStageResolver;
+    private final BabyProfileRepository babyProfileRepository;
 
     @Override
     public ChecklistItemResponse addItem(AddChecklistItemRequest request, UUID userId) {
@@ -51,28 +65,92 @@ public class UserChecklistItemServiceImpl implements IUserChecklistItemService {
 
     @Override
     public List<ChecklistItemResponse> importFromTemplate(ImportFromTemplateRequest request, UUID userId) {
-        return request.templateItemIds().stream()
-                .map(templateId -> {
-                    ChecklistItem template = templateItemRepository.findById(templateId)
-                            .orElseThrow(() -> new ResourceNotFoundException(
-                                    "CHECKLIST-004: Template item not found: " + templateId));
+        if (request.journeyId() != null && request.babyId() != null) {
+            throw invalidImport();
+        }
 
-                    var item = UserChecklistItem.builder()
-                            .ownerUserId(userId)
-                            .journeyId(request.journeyId())
-                            .babyId(request.babyId())
-                            .templateItemId(templateId)
-                            .itemText(template.getItemText())
-                            .category(ChecklistCategory.GENERAL)
-                            .itemOrder(template.getOrder() != null ? template.getOrder() : 0)
-                            .build();
+        UUID journeyId = null;
+        UUID babyId = null;
+        ContentStage contextStage;
+        if (request.babyId() != null) {
+            var baby = babyProfileRepository.findOwnedActiveByIdForUpdate(request.babyId(), userId)
+                    .orElseThrow(this::unavailableTemplateItem);
+            babyId = baby.getId();
+            contextStage = ContentStage.BABY_CARE;
+        } else {
+            ResolvedLifecycleContext context;
+            try {
+                context = lifecycleContentStageResolver.resolveForUpdate(userId);
+            } catch (ContentException exception) {
+                if (request.journeyId() != null && "CNT-013".equals(exception.getCode())) {
+                    throw unavailableTemplateItem();
+                }
+                throw exception;
+            }
+            if (request.journeyId() != null && !request.journeyId().equals(context.journeyId())) {
+                throw unavailableTemplateItem();
+            }
+            journeyId = context.journeyId();
+            contextStage = context.stage();
+        }
 
-                    var saved = checklistRepository.save(item);
-                    auditService.log(AuditAction.CHECKLIST_ITEM_ADDED, userId,
-                            "UserChecklistItem", saved.getId().toString(), "imported");
-                    return toResponse(saved);
-                })
-                .toList();
+        LinkedHashSet<UUID> distinctTemplateItemIds = new LinkedHashSet<>(request.templateItemIds());
+        List<UUID> sortedIds = new ArrayList<>(distinctTemplateItemIds);
+        sortedIds.sort(Comparator.naturalOrder());
+        List<ChecklistItem> available = templateItemRepository.findAllAvailableByIdInForUpdate(
+                sortedIds, ChecklistTemplateStatus.APPROVED, contextStage);
+        if (available.size() != distinctTemplateItemIds.size()) {
+            throw unavailableTemplateItem();
+        }
+        Map<UUID, ChecklistItem> byId = available.stream()
+                .collect(Collectors.toMap(ChecklistItem::getId, Function.identity()));
+        final UUID resolvedJourneyId = journeyId;
+        final UUID resolvedBabyId = babyId;
+
+        return distinctTemplateItemIds.stream().map(templateItemId -> {
+            ChecklistItem template = byId.get(templateItemId);
+            if (template == null || template.getItemText() == null || template.getItemText().isBlank()) {
+                throw unavailableTemplateItem();
+            }
+            int inserted;
+            UserChecklistItem persisted;
+            if (resolvedBabyId != null) {
+                inserted = checklistRepository.insertBabyImportedIfAbsent(
+                        UUID.randomUUID(), userId, resolvedBabyId, templateItemId,
+                        template.getItemText(), template.getOrder() != null ? template.getOrder() : 0);
+                persisted = checklistRepository.findBabyImportedByExactScope(
+                                userId, resolvedBabyId, templateItemId)
+                        .orElseThrow(() -> new IllegalStateException(
+                                "Imported baby checklist item could not be resolved"));
+                if (persisted.getJourneyId() != null) {
+                    persisted.setJourneyId(null);
+                }
+            } else {
+                inserted = checklistRepository.insertJourneyImportedIfAbsent(
+                        UUID.randomUUID(), userId, resolvedJourneyId, templateItemId,
+                        template.getItemText(), template.getOrder() != null ? template.getOrder() : 0);
+                persisted = checklistRepository.findJourneyImportedByExactScope(
+                                userId, resolvedJourneyId, templateItemId)
+                        .orElseThrow(() -> new IllegalStateException(
+                                "Imported journey checklist item could not be resolved"));
+            }
+
+            if (inserted == 1) {
+                auditService.log(AuditAction.CHECKLIST_ITEM_ADDED, userId,
+                        "UserChecklistItem", persisted.getId().toString(), "imported");
+            }
+            return toResponse(persisted);
+        }).toList();
+    }
+
+    private BusinessException invalidImport() {
+        return new BusinessException(HttpStatus.BAD_REQUEST, "CHECKLIST-001",
+                "Invalid checklist import request");
+    }
+
+    private BusinessException unavailableTemplateItem() {
+        return new BusinessException(HttpStatus.NOT_FOUND, "CHECKLIST-007",
+                "Template item not found or unavailable");
     }
 
     @Override

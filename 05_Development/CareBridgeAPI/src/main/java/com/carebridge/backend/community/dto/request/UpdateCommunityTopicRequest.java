@@ -23,11 +23,10 @@ public class UpdateCommunityTopicRequest {
     @Size(max = 255, message = "icon must not exceed 255 characters")
     private String icon;
 
-    // null = leave unchanged (PATCH semantics — matches isHidden/sortOrder below)
+    // null = leave unchanged; a different value is rejected because type is immutable (COM-017).
     private TopicType type;
 
-    // null = leave unchanged. If `type` is being set to TOPIC in the same request, this MUST be
-    // null too (a TOPIC can never have a parent) — validated in CommunityTopicServiceImpl.
+    // null = leave unchanged. A TOPIC may provide another visible CATEGORY id for reassignment.
     private UUID parentId;
 
     private Boolean isHidden;

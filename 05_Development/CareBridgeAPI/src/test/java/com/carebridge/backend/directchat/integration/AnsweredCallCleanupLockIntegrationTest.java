@@ -10,6 +10,7 @@ import com.carebridge.backend.expert.entity.ExpertProfile;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import com.carebridge.backend.expert.truststatus.TrustStatus;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
+import com.carebridge.backend.testsupport.CanonicalUserFixture;
 import com.carebridge.backend.integration.zegocloud.IZegoCloudService;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -56,7 +57,8 @@ class AnsweredCallCleanupLockIntegrationTest extends AbstractPostgresIntegration
         var response = end.get(10, TimeUnit.SECONDS);
         assertThat(response).isNotNull();
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT call_status FROM conversation_calls WHERE call_id=?",
+                "SELECT call_status FROM archived_realtime_records "
+                        + "WHERE legacy_table='conversation_calls' AND archive_id=?",
                 String.class, fixture.callId())).isEqualTo("ENDED");
 
         releaseTrust.countDown();
@@ -77,7 +79,8 @@ class AnsweredCallCleanupLockIntegrationTest extends AbstractPostgresIntegration
         assertThatThrownBy(() -> cancel.get(500, TimeUnit.MILLISECONDS))
                 .isInstanceOf(TimeoutException.class);
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT call_status FROM conversation_calls WHERE call_id=?",
+                "SELECT call_status FROM archived_realtime_records "
+                        + "WHERE legacy_table='conversation_calls' AND archive_id=?",
                 String.class, fixture.callId())).isEqualTo("RINGING");
 
         releaseTrust.countDown();
@@ -89,7 +92,8 @@ class AnsweredCallCleanupLockIntegrationTest extends AbstractPostgresIntegration
                                         business -> assertThat(business.getCode())
                                                 .isEqualTo("DCC-010")));
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT call_status FROM conversation_calls WHERE call_id=?",
+                "SELECT call_status FROM archived_realtime_records "
+                        + "WHERE legacy_table='conversation_calls' AND archive_id=?",
                 String.class, fixture.callId())).isEqualTo("RINGING");
     }
 
@@ -114,16 +118,10 @@ class AnsweredCallCleanupLockIntegrationTest extends AbstractPostgresIntegration
         UUID expertProfileId = UUID.randomUUID();
         UUID conversationId = UUID.randomUUID();
         UUID callId = UUID.randomUUID();
-        jdbcTemplate.update("""
-                INSERT INTO users
-                    (user_id, full_name, phone, role, enabled, locked, created_at, updated_at)
-                VALUES (?, 'Cleanup Mother', ?, 'MOTHER', true, false, now(), now())
-                """, motherId, uniquePhone());
-        jdbcTemplate.update("""
-                INSERT INTO users
-                    (user_id, full_name, phone, role, enabled, locked, created_at, updated_at)
-                VALUES (?, 'Cleanup Expert', ?, 'EXPERT', true, false, now(), now())
-                """, expertUserId, uniquePhone());
+        CanonicalUserFixture.insertUser(
+                jdbcTemplate, motherId, "Cleanup Mother", uniquePhone(), "MOTHER");
+        CanonicalUserFixture.insertUser(
+                jdbcTemplate, expertUserId, "Cleanup Expert", uniquePhone(), "EXPERT");
         jdbcTemplate.update("""
                 INSERT INTO professional_profiles
                     (professional_profile_id, user_id, specialty, verification_status, trust_status,
@@ -131,18 +129,20 @@ class AnsweredCallCleanupLockIntegrationTest extends AbstractPostgresIntegration
                 VALUES (?, ?, 'Sản khoa', 'APPROVED', 'ACTIVE', now(), now())
                 """, expertProfileId, expertUserId);
         jdbcTemplate.update("""
-                INSERT INTO direct_conversations
-                    (conversation_id, mother_user_id, expert_user_id, status, created_at, last_activity_at)
-                VALUES (?, ?, ?, 'ACTIVE', now(), now())
-                """, conversationId, motherId, expertUserId);
+                INSERT INTO archived_realtime_records
+                    (archive_id, legacy_table, legacy_id, mother_user_id, expert_user_id,
+                     status, original_created_at, last_activity_at)
+                VALUES (?, 'direct_conversations', ?, ?, ?, 'ACTIVE', now(), now())
+                """, conversationId, conversationId.toString(), motherId, expertUserId);
         jdbcTemplate.update("""
-                INSERT INTO conversation_calls
-                    (call_id, conversation_id, initiated_by_user_id, call_type, call_status,
-                     zego_room_id, initiated_at, answered_at, created_at)
-                VALUES (?, ?, ?, 'VOICE', ?, ?, now() - interval '2 minutes',
+                INSERT INTO archived_realtime_records
+                    (archive_id, legacy_table, legacy_id, conversation_id, initiated_by_user_id,
+                     call_type, call_status, zego_room_id, initiated_at, answered_at,
+                     original_created_at)
+                VALUES (?, 'conversation_calls', ?, ?, ?, 'VOICE', ?, ?, now() - interval '2 minutes',
                         CASE WHEN ? = 'ANSWERED' THEN now() - interval '1 minute' ELSE NULL END,
                         now() - interval '2 minutes')
-                """, callId, conversationId, motherId, callStatus.name(),
+                """, callId, callId.toString(), conversationId, motherId, callStatus.name(),
                 callId.toString(), callStatus.name());
         return new Fixture(motherId, expertProfileId, conversationId, callId);
     }

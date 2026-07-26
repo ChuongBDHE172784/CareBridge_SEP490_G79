@@ -56,8 +56,8 @@ public class TriageGraphService {
 
         if (symptoms.isEmpty() && !"RED".equals(outcome.riskLevel())) {
             questions = new ArrayList<>(questions);
-            questions.add(stage == TriageStage.POSTPARTUM
-                    ? "Vui lòng mô tả cụ thể dấu hiệu bạn đang gặp trong quá trình hồi phục sau sinh."
+            questions.add(stage.isMaternal()
+                    ? "Vui lòng mô tả cụ thể dấu hiệu sức khỏe bạn đang gặp."
                     : "Vui lòng mô tả lại bằng dấu hiệu cụ thể mà bạn quan sát được ở trẻ.");
             questions = questions.stream().distinct().limit(3).toList();
         }
@@ -68,10 +68,10 @@ public class TriageGraphService {
             return ChildTriageResult.builder()
                     .status("NEED_MORE_INFO")
                     .summary("CareBridge cần thêm thông tin quan trọng trước khi phân loại rủi ro chắc chắn.")
-                    .possibleConcern(stage == TriageStage.POSTPARTUM
-                            ? "Thông tin hồi phục hiện chưa đủ để phân loại an toàn."
+                    .possibleConcern(stage.isMaternal()
+                            ? "Thông tin sức khỏe hiện chưa đủ để phân loại an toàn."
                             : "Thiếu dữ liệu nền như tuổi, hô hấp, ý thức hoặc bú/uống.")
-                    .recommendedAction(stage == TriageStage.POSTPARTUM
+                    .recommendedAction(stage.isMaternal()
                             ? "Vui lòng trả lời các câu hỏi bổ sung. Nếu bạn thấy không an toàn hoặc có dấu hiệu nặng, hãy liên hệ cơ sở y tế/cấp cứu ngay."
                             : "Vui lòng trả lời các câu hỏi bổ sung. Nếu trẻ có dấu hiệu nặng, hãy liên hệ cơ sở y tế/cấp cứu ngay.")
                     .emergencyActionRequired(false)
@@ -169,7 +169,7 @@ public class TriageGraphService {
     }
 
     private String recommendedAction(TriageStage stage, String riskLevel) {
-        if (stage == TriageStage.POSTPARTUM) {
+        if (stage.isMaternal()) {
             return switch (riskLevel) {
                 case "RED" -> "Gọi cấp cứu 115 hoặc đến cơ sở y tế gần nhất ngay. Không chờ thêm kết quả trực tuyến nếu tình trạng đang xấu đi.";
                 case "YELLOW" -> "Liên hệ nhân viên y tế để được đánh giá và theo dõi diễn tiến.";
@@ -184,7 +184,7 @@ public class TriageGraphService {
     }
 
     private String disclaimer(TriageStage stage) {
-        if (stage == TriageStage.POSTPARTUM) {
+        if (stage.isMaternal()) {
             return "CareBridge không chẩn đoán bệnh, không kê thuốc và không thay thế nhân viên y tế. "
                     + "Nếu bạn có dấu hiệu nặng hoặc cảm thấy không an toàn, hãy liên hệ cơ sở y tế/cấp cứu.";
         }

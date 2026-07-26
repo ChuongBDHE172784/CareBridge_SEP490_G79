@@ -2,24 +2,44 @@ package com.carebridge.backend.testsupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.DriverManager;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import org.flywaydb.core.Flyway;
+import org.flywaydb.core.api.MigrationVersion;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
+import org.junit.jupiter.api.io.TempDir;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 @EnabledIfSystemProperty(named = "gate0.enabled", matches = "true")
 class DatabaseGate0IntegrationTest {
 
     private static final String POSTGRES_IMAGE = "postgres:16-alpine";
+    private static final Path MIGRATION_DIRECTORY =
+            Path.of("src", "main", "resources", "db", "migration");
+
+    @TempDir
+    Path temporaryDirectory;
 
     @Test
     void cleanBootstrapAppliesTheExpectedMigrationChain() throws Exception {
         var repository = DatabaseGate0Support.inspectRepository();
+        MigrationVersion selectedBaseline = repository.migrations().stream()
+                .filter(migration -> "B".equals(migration.type()))
+                .map(migration -> MigrationVersion.fromVersion(migration.version()))
+                .max(MigrationVersion::compareTo)
+                .orElseThrow();
         List<BootstrapMigration> expected = repository.migrations().stream()
+                .filter(migration -> {
+                    MigrationVersion version = MigrationVersion.fromVersion(migration.version());
+                    return ("B".equals(migration.type()) && version.equals(selectedBaseline))
+                            || ("V".equals(migration.type())
+                                && version.compareTo(selectedBaseline) > 0);
+                })
                 .map(migration -> new BootstrapMigration(
                         migration.version(), migration.script(), migration.flywayChecksum()))
                 .toList();
@@ -72,7 +92,8 @@ class DatabaseGate0IntegrationTest {
                          var historyResult = historyStatement.executeQuery("""
                                  SELECT version, script, checksum
                                    FROM flyway_schema_history
-                                  WHERE success AND version IS NOT NULL AND type = 'SQL'
+                                  WHERE success AND version IS NOT NULL
+                                    AND type IN ('SQL', 'SQL_BASELINE')
                                   ORDER BY installed_rank
                                  """)) {
                         while (historyResult.next()) {
@@ -126,7 +147,7 @@ class DatabaseGate0IntegrationTest {
             postgres.start();
             Flyway.configure()
                     .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
-                    .locations("classpath:db/migration")
+                    .locations("filesystem:" + copyVersionedMigrations().toAbsolutePath())
                     .baselineOnMigrate(true)
                     .outOfOrder(true)
                     .target("20260722020900")
@@ -153,5 +174,19 @@ class DatabaseGate0IntegrationTest {
     }
 
     private record BootstrapMigration(String version, String script, Integer checksum) {
+    }
+
+    private Path copyVersionedMigrations() throws Exception {
+        Path destinationRoot = temporaryDirectory.resolve("versioned-migrations");
+        try (var paths = Files.walk(MIGRATION_DIRECTORY)) {
+            for (Path source : paths.filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName().toString().matches("V.+__.+\\.sql"))
+                    .toList()) {
+                Path destination = destinationRoot.resolve(MIGRATION_DIRECTORY.relativize(source));
+                Files.createDirectories(destination.getParent());
+                Files.copy(source, destination);
+            }
+        }
+        return destinationRoot;
     }
 }

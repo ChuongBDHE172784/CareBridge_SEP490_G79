@@ -27,8 +27,9 @@ public class GeminiExtractionClientAdapter implements GeminiExtractionClient {
                     root.path("intensity").asText("LOW"),
                     root.path("emergencyFlag").asBoolean(false)
             );
-        } catch (Exception e) {
-            log.warn("GeminiExtractionClient unavailable, returning safe default: {}", e.getMessage());
+        } catch (Exception exception) {
+            log.warn("Gemini extraction fallback reason=GEMINI_UNAVAILABLE exceptionType={}",
+                    exception.getClass().getSimpleName());
             return new ExtractionResult("[]", 0, "LOW", false);
         }
     }

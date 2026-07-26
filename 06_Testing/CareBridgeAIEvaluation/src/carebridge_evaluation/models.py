@@ -29,6 +29,7 @@ class BenchmarkCategory(StrEnum):
 class TriageStage(StrEnum):
     PRECONCEPTION = "PRECONCEPTION"
     PREGNANCY = "PREGNANCY"
+    POSTPARTUM = "POSTPARTUM"
     INFANT = "INFANT"
     TODDLER = "TODDLER"
 
@@ -166,11 +167,15 @@ class BenchmarkCase(StrictModel):
             raise ValueError("AGE_BAND_CHILD_CARE cases require journeyPhase")
         if self.category == BenchmarkCategory.LEGAL_PRIVACY_SAFETY and self.subcategory is None:
             raise ValueError("LEGAL_PRIVACY_SAFETY cases require subcategory")
-        if self.category == BenchmarkCategory.POSTPARTUM_MOTHER and self.expectedExecutionStatus not in {
-            ExpectedExecutionStatus.KNOWN_SCOPE_GAP,
-            ExpectedExecutionStatus.UNSUPPORTED_SCOPE,
-        }:
-            raise ValueError("POSTPARTUM_MOTHER must be marked as a known or unsupported scope gap")
+        if self.category == BenchmarkCategory.POSTPARTUM_MOTHER:
+            if self.expectedExecutionStatus == ExpectedExecutionStatus.EXECUTE:
+                if self.stage != TriageStage.POSTPARTUM:
+                    raise ValueError("Executable POSTPARTUM_MOTHER cases require the explicit POSTPARTUM stage")
+            elif self.expectedExecutionStatus not in {
+                ExpectedExecutionStatus.KNOWN_SCOPE_GAP,
+                ExpectedExecutionStatus.UNSUPPORTED_SCOPE,
+            }:
+                raise ValueError("POSTPARTUM_MOTHER must execute at POSTPARTUM or declare a scope gap")
         if self.stage is not None and self.input.get("stage") != self.stage.value:
             raise ValueError("Every staged benchmark input must send the stage explicitly")
         return self

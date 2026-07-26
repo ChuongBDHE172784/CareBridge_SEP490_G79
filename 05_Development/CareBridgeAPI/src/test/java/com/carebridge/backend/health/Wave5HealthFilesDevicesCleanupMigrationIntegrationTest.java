@@ -29,9 +29,9 @@ class Wave5HealthFilesDevicesCleanupMigrationIntegrationTest {
     @Test
     void cleanBootstrapRemovesFiveWave5Tables() throws Exception {
         migrate(PRE);
-        assertThat(tableCount()).isEqualTo(106);
+        long tableCountBefore = tableCount();
         migrate(WAVE);
-        assertThat(tableCount()).isEqualTo(101);
+        assertThat(tableCount()).isEqualTo(tableCountBefore - REMOVED.length);
         for (String table : REMOVED) assertThat(exists(table)).as(table).isFalse();
         assertThat(number("SELECT count(*) FROM pg_constraint WHERE contype='f' AND NOT convalidated"))
                 .isZero();
@@ -51,9 +51,10 @@ class Wave5HealthFilesDevicesCleanupMigrationIntegrationTest {
             VALUES ('51100000-0000-0000-0000-000000000001','51000000-0000-0000-0000-000000000001',
               'LAB_RESULT','Wave 5 record',current_date,'ACTIVE',now(),now());
             INSERT INTO uploaded_files
-              (file_id,owner_user_id,storage_key,original_name,mime_type,file_size_bytes,status,created_at,updated_at)
+              (file_id,owner_user_id,storage_key,storage_provider,original_name,mime_type,
+               file_size_bytes,status,created_at,updated_at)
             VALUES ('51200000-0000-0000-0000-000000000001','51000000-0000-0000-0000-000000000001',
-              'wave5/report.pdf','report.pdf','application/pdf',1024,'ACTIVE',now(),now());
+              'wave5/report.pdf','r2','report.pdf','application/pdf',1024,'ACTIVE',now(),now());
             INSERT INTO health_record_files(id,health_record_id,file_id,display_order,created_at)
             VALUES ('51300000-0000-0000-0000-000000000001','51100000-0000-0000-0000-000000000001',
               '51200000-0000-0000-0000-000000000001',2,now());

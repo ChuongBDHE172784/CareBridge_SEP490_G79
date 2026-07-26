@@ -18,6 +18,8 @@ class RemainingUnusedCleanupMigrationIntegrationTest {
 
     private static final MigrationVersion PRE_CLEANUP =
             MigrationVersion.fromVersion("20260722020900");
+    private static final MigrationVersion CLEANUP_INPUT =
+            MigrationVersion.fromVersion("20260722020950");
     private static final MigrationVersion CLEANUP =
             MigrationVersion.fromVersion("20260722021000");
     private static final String[] REMOVED = {
@@ -34,25 +36,24 @@ class RemainingUnusedCleanupMigrationIntegrationTest {
 
     @BeforeEach
     void resetSchema() throws Exception {
-        execute("DROP SCHEMA public CASCADE; CREATE SCHEMA public");
+        execute("DROP SCHEMA IF EXISTS carebridge_migration_bridge CASCADE");
+        execute("DROP SCHEMA public CASCADE");
+        execute("CREATE SCHEMA public");
     }
 
     @Test
     void cleanBootstrapAcceptsOnlyKnownLiveOnlyAbsences() throws Exception {
-        migrateTo(PRE_CLEANUP);
+        migrateTo(CLEANUP_INPUT);
+        int tableCountBefore = publicTableCount();
+        int presentCandidateCount = existingTableCount(REMOVED);
         migrateTo(CLEANUP);
 
         for (String table : REMOVED) assertThat(exists(table)).as(table).isFalse();
         assertThat(exists("expert_credentials")).isTrue();
         assertThat(exists("contribution_points")).isTrue();
-        assertThat(Integer.parseInt(scalar("""
-                SELECT count(*)
-                  FROM information_schema.tables
-                 WHERE table_schema = 'public'
-                   AND table_type = 'BASE TABLE'
-                """)))
+        assertThat(publicTableCount())
                 .as("clean-bootstrap public base-table count")
-                .isEqualTo(99);
+                .isEqualTo(tableCountBefore - presentCandidateCount);
     }
 
     @Test
@@ -124,7 +125,7 @@ class RemainingUnusedCleanupMigrationIntegrationTest {
 
     private void installLiveOnlyEmptyFixture() throws Exception {
         execute("""
-                CREATE TABLE medical_contributions (
+                CREATE TABLE IF NOT EXISTS medical_contributions (
                     contribution_id uuid PRIMARY KEY,
                     content text NOT NULL,
                     created_at timestamptz NOT NULL,
@@ -139,15 +140,15 @@ class RemainingUnusedCleanupMigrationIntegrationTest {
                     CONSTRAINT medical_contributions_status_check
                         CHECK (status IN ('DRAFT', 'SUBMITTED', 'APPROVED', 'REJECTED'))
                 );
-                CREATE INDEX idx_medical_contributions_expert_user_id
+                CREATE INDEX IF NOT EXISTS idx_medical_contributions_expert_user_id
                     ON medical_contributions (expert_user_id);
-                CREATE INDEX idx_medical_contributions_hospital_id
+                CREATE INDEX IF NOT EXISTS idx_medical_contributions_hospital_id
                     ON medical_contributions (hospital_id);
-                CREATE INDEX idx_medical_contributions_specialty_id
+                CREATE INDEX IF NOT EXISTS idx_medical_contributions_specialty_id
                     ON medical_contributions (specialty_id);
-                CREATE INDEX idx_medical_contributions_status
+                CREATE INDEX IF NOT EXISTS idx_medical_contributions_status
                     ON medical_contributions (status);
-                CREATE TABLE contribution_attachments (
+                CREATE TABLE IF NOT EXISTS contribution_attachments (
                     attachment_id uuid PRIMARY KEY,
                     access_mode varchar NOT NULL,
                     contribution_id uuid NOT NULL,
@@ -168,11 +169,11 @@ class RemainingUnusedCleanupMigrationIntegrationTest {
                         'COMMUNITY_ANSWER_IMAGE', 'MEDICAL_CONTRIBUTION_IMAGE',
                         'MEDICAL_CONTRIBUTION_DOCUMENT', 'PUBLIC_CONTENT_IMAGE'))
                 );
-                CREATE INDEX idx_contrib_attachments_contribution_id
+                CREATE INDEX IF NOT EXISTS idx_contrib_attachments_contribution_id
                     ON contribution_attachments (contribution_id);
-                CREATE INDEX idx_contrib_attachments_file_id
+                CREATE INDEX IF NOT EXISTS idx_contrib_attachments_file_id
                     ON contribution_attachments (file_id);
-                CREATE TABLE expert_identity_verifications (
+                CREATE TABLE IF NOT EXISTS expert_identity_verifications (
                     identity_verification_id uuid PRIMARY KEY,
                     created_at timestamptz NOT NULL,
                     expert_profile_id uuid NOT NULL,
@@ -208,11 +209,11 @@ class RemainingUnusedCleanupMigrationIntegrationTest {
                         FOREIGN KEY (selfie_crop_file_id) REFERENCES uploaded_files(file_id)
                         ON DELETE SET NULL
                 );
-                CREATE INDEX idx_expert_identity_pipeline_status
+                CREATE INDEX IF NOT EXISTS idx_expert_identity_pipeline_status
                     ON expert_identity_verifications (pipeline_status, created_at);
-                CREATE INDEX idx_expert_identity_profile_created
+                CREATE INDEX IF NOT EXISTS idx_expert_identity_profile_created
                     ON expert_identity_verifications (expert_profile_id, created_at DESC);
-                CREATE INDEX idx_expert_identity_review_status
+                CREATE INDEX IF NOT EXISTS idx_expert_identity_review_status
                     ON expert_identity_verifications (review_status, created_at)
                 """);
     }
@@ -236,6 +237,23 @@ class RemainingUnusedCleanupMigrationIntegrationTest {
 
     private boolean exists(String relation) throws Exception {
         return "t".equals(scalar("SELECT to_regclass('public." + relation + "') IS NOT NULL"));
+    }
+
+    private int publicTableCount() throws Exception {
+        return Integer.parseInt(scalar("""
+                SELECT count(*)
+                  FROM information_schema.tables
+                 WHERE table_schema = 'public'
+                   AND table_type = 'BASE TABLE'
+                """));
+    }
+
+    private int existingTableCount(String[] tables) throws Exception {
+        int count = 0;
+        for (String table : tables) {
+            if (exists(table)) count++;
+        }
+        return count;
     }
 
     private String scalar(String sql) throws Exception {

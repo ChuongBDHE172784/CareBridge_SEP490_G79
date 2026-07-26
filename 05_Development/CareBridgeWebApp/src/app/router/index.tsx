@@ -6,6 +6,7 @@ import ContentLayout from '../layouts/ContentLayout';
 import ProtectedRoute from '../guards/ProtectedRoute';
 import RoleAwareRedirect from '../guards/RoleAwareRedirect';
 import ModeratorIndexRedirect from '../guards/ModeratorIndexRedirect';
+import ExpertOnboardingGuard from '../guards/ExpertOnboardingGuard';
 
 // Auth screens
 import LoginPage from '../../features/auth/pages/LoginPage';
@@ -13,6 +14,7 @@ import FederatedRegisterPage from '../../features/auth/pages/FederatedRegisterPa
 import OtpPage from '../../features/auth/pages/OtpPage';
 import BlockedAccountPage from '../../features/auth/pages/BlockedAccountPage';
 import NoWebAccessPage from '../../features/auth/pages/NoWebAccessPage';
+import ExpertRegisterPage from '../../features/auth/pages/ExpertRegisterPage';
 import AccountProfilePage from '../../features/auth/pages/AccountProfilePage';
 import BabyCareHubPage from '../../features/babyCare/pages/BabyCareHubPage';
 import BabyCareResourceNotFoundPage from '../../features/babyCare/pages/BabyCareResourceNotFoundPage';
@@ -23,9 +25,17 @@ import ExpertProfilePage from '../../features/expert/pages/ExpertProfilePage';
 import VerificationDocumentsPage from '../../features/expert/pages/VerificationDocumentsPage';
 import AvailabilityCalendarPage from '../../features/expert/pages/AvailabilityCalendarPage';
 import ExpertQuestionQueuePage from '../../features/expert/pages/ExpertQuestionQueuePage';
+import ExpertOnboardingPage from '../../features/expert/pages/ExpertOnboardingPage';
+
+// Contribution screens
+import ContributionListPage from '../../features/expert/pages/ContributionListPage';
+import ContributionDraftPage from '../../features/expert/pages/ContributionDraftPage';
+import ContributionDetailPage from '../../features/expert/pages/ContributionDetailPage';
+import AdminContributionReviewQueuePage from '../../features/expert/pages/AdminContributionReviewQueuePage';
 
 // Expert verification queue (admin side, UC-70)
 import ExpertVerificationQueuePage from '../../features/expert/pages/ExpertVerificationQueuePage';
+import AdminExpertIdentityReviewPage from '../../features/expert/pages/AdminExpertIdentityReviewPage';
 
 // UC-144 (redesign, CB-CHAT-IMP-144D) — Direct Consult Chat & Call, Expert Portal side
 import ConversationListPage from '../../features/directChat/pages/ConversationListPage';
@@ -48,9 +58,11 @@ import PrivacySettingsPage from '../../features/settings/pages/PrivacySettingsPa
 import ContentDashboardPage from '../../features/contentManagement/pages/ContentDashboardPage';
 import ContentListPage from '../../features/contentManagement/pages/ContentListPage';
 import ContentDetailPage from '../../features/contentManagement/pages/ContentDetailPage';
-import ContentPreviewPage from '../../features/contentManagement/pages/ContentPreviewPage';
+import ArticleListPage from '../../features/contentManagement/pages/ArticleListPage';
 import FaqListPage from '../../features/contentManagement/pages/FaqListPage';
 import ChecklistListPage from '../../features/contentManagement/pages/ChecklistListPage';
+import ChecklistDetailPage from '../../features/contentManagement/pages/ChecklistDetailPage';
+import ChecklistFormPage from '../../features/contentManagement/pages/ChecklistFormPage';
 import ManageTopicsPage from '../../features/contentManagement/pages/ManageTopicsPage';
 
 // Content Management screens (CB-076, 077, 079, 087)
@@ -73,7 +85,6 @@ import RegisterPartnerPage from '../../features/partnerGovernance/pages/Register
 import CreatePartnerProfilePage from '../../features/partnerGovernance/pages/CreatePartnerProfilePage';
 import PartnerProfilePage from '../../features/partnerGovernance/pages/PartnerProfilePage';
 import PartnerVerificationQueuePage from '../../features/partnerGovernance/pages/PartnerVerificationQueuePage';
-import ContentCategoryListPage from '../../features/contentManagement/pages/ContentCategoryListPage';
 import UnpublishContentPage from '../../features/contentManagement/pages/UnpublishContentPage';
 
 // Moderation screens (CB-068, 069, 070, 071)
@@ -109,6 +120,7 @@ export const router = createBrowserRouter([
   { path: '/forbidden', element: <ForbiddenPage /> },
   { path: '/account-blocked', element: <BlockedAccountPage /> },
   { path: '/no-web-access', element: <NoWebAccessPage /> },
+  { path: '/expert/register', element: <ExpertRegisterPage /> },
   { path: '/mother/baby-care', element: <BabyCareHubPage /> },
   { path: '/mother/babies/:babyId/daily-logs/:logId', element: <BabyCareResourceNotFoundPage /> },
 
@@ -147,8 +159,16 @@ export const router = createBrowserRouter([
               { path: '/admin/dashboard', element: <AdminDashboardPage /> },
               { path: '/admin', element: <Navigate to="/admin/dashboard" replace /> },
               { path: '/admin/expert-verification-queue', element: <ExpertVerificationQueuePage /> },
+              { path: '/admin/expert-identity-queue', element: <AdminExpertIdentityReviewPage /> },
 { path: '/admin/expert-trust-management', element: <AdminExpertTrustManagementPage /> },
               { path: '/admin/content-approval-queue', element: <ContentApprovalQueuePage /> },
+              // Read-only review routes for the approval queue's "Xem chi tiết" links — System Admin
+              // lacks CONTENT_ADMIN, so it cannot use /content/:id or /content/checklists/:id directly
+              // (those are gated to CONTENT_ADMIN below); ContentDetailPage/ChecklistDetailPage already
+              // hide all write actions when the viewer lacks CONTENT_ADMIN (see canManage in each page).
+              { path: '/admin/content-review/:id', element: <ContentDetailPage /> },
+              { path: '/admin/content-review/checklists/:id', element: <ChecklistDetailPage /> },
+              { path: '/admin/contribution-review-queue', element: <AdminContributionReviewQueuePage /> },
 { path: '/security/incidents', element: <SecurityIncidentListPage /> },
               { path: '/security/events', element: <SecurityEventsPage /> },
               { path: '/security/events/:eventId', element: <SecurityEventDetailPage /> },
@@ -172,13 +192,15 @@ export const router = createBrowserRouter([
                   { path: '/content', element: <Navigate to="/content/dashboard" replace /> },
                   { path: '/content/create', element: <CreateContentPage /> },
                   { path: '/content/list', element: <ContentListPage /> },
+                  { path: '/content/articles', element: <ArticleListPage /> },
                   { path: '/content/:id', element: <ContentDetailPage /> },
                   { path: '/content/:id/edit', element: <EditContentPage /> },
-                  { path: '/content/:id/preview', element: <ContentPreviewPage /> },
                   { path: '/content/:id/versions', element: <ContentVersionHistoryPage /> },
                   { path: '/content/faq', element: <FaqListPage /> },
                   { path: '/content/checklists', element: <ChecklistListPage /> },
-                  { path: '/content/categories', element: <ContentCategoryListPage /> },
+                  { path: '/content/checklists/create', element: <ChecklistFormPage /> },
+                  { path: '/content/checklists/:id', element: <ChecklistDetailPage /> },
+                  { path: '/content/checklists/:id/edit', element: <ChecklistFormPage /> },
                   { path: '/content/:id/unpublish', element: <UnpublishContentPage /> },
                   { path: '/content/exercises', element: <PregnancyExerciseListPage /> },
                   { path: '/content/exercises/create', element: <CreatePregnancyExercisePage /> },
@@ -202,19 +224,30 @@ export const router = createBrowserRouter([
           {
             element: <ProtectedRoute requiredRoles={['EXPERT']} />,
             children: [
-              { path: '/expert/dashboard', element: <ExpertDashboardPage /> },
-              { path: '/expert', element: <Navigate to="/expert/dashboard" replace /> },
-              // CB-055: Expert Profile
-              { path: '/expert/profile', element: <ExpertProfilePage /> },
-              // CB-056: Verification Documents
-              { path: '/expert/credentials', element: <VerificationDocumentsPage /> },
-              // CB-057: Availability Calendar
-              { path: '/expert/calendar', element: <AvailabilityCalendarPage /> },
-              // CB-063: Expert Question Queue
-              { path: '/expert/question-queue', element: <ExpertQuestionQueuePage /> },
-              // UC-144D: Direct Consult Chat & Call
-              { path: '/expert/direct-chats', element: <ConversationListPage /> },
-              { path: '/expert/direct-chats/:conversationId', element: <ConversationRoomPage /> },
+              { path: '/expert/onboarding', element: <ExpertOnboardingPage /> },
+              {
+                element: <ExpertOnboardingGuard />,
+                children: [
+                  { path: '/expert/dashboard', element: <ExpertDashboardPage /> },
+                  { path: '/expert', element: <Navigate to="/expert/dashboard" replace /> },
+                  // CB-055: Expert Profile
+                  { path: '/expert/profile', element: <ExpertProfilePage /> },
+                  // CB-056: Verification Documents
+                  { path: '/expert/credentials', element: <VerificationDocumentsPage /> },
+                  // CB-057: Availability Calendar
+                  { path: '/expert/calendar', element: <AvailabilityCalendarPage /> },
+                  // CB-063: Expert Question Queue
+                  { path: '/expert/question-queue', element: <ExpertQuestionQueuePage /> },
+                  // UC-144D: Direct Consult Chat & Call
+                  { path: '/expert/direct-chats', element: <ConversationListPage /> },
+                  { path: '/expert/direct-chats/:conversationId', element: <ConversationRoomPage /> },
+                  // Contribution (Medical Knowledge)
+                  { path: '/expert/contributions', element: <ContributionListPage /> },
+                  { path: '/expert/contributions/new', element: <ContributionDraftPage /> },
+                  { path: '/expert/contributions/:id/edit', element: <ContributionDraftPage /> },
+                  { path: '/expert/contributions/:id', element: <ContributionDetailPage /> },
+                ],
+              },
             ],
           },
           {

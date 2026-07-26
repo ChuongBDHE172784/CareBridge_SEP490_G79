@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
@@ -31,6 +32,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -71,7 +74,7 @@ class CommunityTopicServiceImplTest {
                 .name(name)
                 .description("Chủ đề về " + name)
                 .icon("pregnant_woman")
-                .type(TopicType.TOPIC)
+                .type(TopicType.CATEGORY)
                 .sortOrder(1)
                 .build();
     }
@@ -81,6 +84,8 @@ class CommunityTopicServiceImplTest {
                 .id(id)
                 .name(name)
                 .description("Mô tả " + name)
+                .type(TopicType.CATEGORY)
+                .parentId(null)
                 .isHidden(hidden)
                 .sortOrder(1)
                 .createdBy(MODERATOR_ID)
@@ -268,7 +273,7 @@ class CommunityTopicServiceImplTest {
     @Test
     void updateTopic_nameChange_shouldRecomputeSlug() {
         UUID topicId = UUID.randomUUID();
-        CommunityTopic existing = CommunityTopicTestFactory.makeTopic(t -> {
+        CommunityTopic existing = CommunityTopicTestFactory.makeCategory(t -> {
             t.setId(topicId);
             t.setName("Dinh dưỡng thai kỳ");
             t.setSlug("dinh-duong-thai-ky");
@@ -287,11 +292,11 @@ class CommunityTopicServiceImplTest {
         verify(topicRepository).existsBySlugAndIdNot("dinh-duong-khi-mang-thai", topicId);
     }
 
-    // COM-TC-005: TOPIC with a parentId is rejected
+    // COM-TC-005: TOPIC without its mandatory CATEGORY parent is rejected (ADR-COM-020)
     @Test
-    void createTopic_topicTypeWithParentId_shouldThrowInvalidHierarchy() {
+    void createTopic_topicTypeWithoutParentId_shouldThrowInvalidHierarchy() {
         CreateCommunityTopicRequest request = makeCreateTopicRequest(
-                r -> r.type(TopicType.TOPIC).parentId(UUID.randomUUID()));
+                r -> r.type(TopicType.TOPIC).parentId(null));
 
         org.junit.jupiter.api.Assertions.assertThrows(InvalidTopicHierarchyException.class,
                 () -> topicService.createTopic(MODERATOR_ID, request));
@@ -299,8 +304,7 @@ class CommunityTopicServiceImplTest {
         verify(topicRepository, never()).save(any());
     }
 
-    // COM-TC-006 (ADR-COM-016 revised): CATEGORY without a parentId is ACCEPTED — parentId is optional
-    // so the pre-existing ContentCategoryController (flat categories, no parent) keeps working.
+    // COM-TC-006: CATEGORY is a root and therefore has no parentId.
     @Test
     void createTopic_categoryWithoutParentId_shouldSucceed() {
         CreateCommunityTopicRequest request = makeCreateTopicRequest(
@@ -316,50 +320,52 @@ class CommunityTopicServiceImplTest {
         verify(topicRepository).save(any(CommunityTopic.class));
     }
 
-    // COM-TC-007: parentId pointing to a non-TOPIC entity is rejected
+    // COM-TC-007: a TOPIC parent must resolve as a visible CATEGORY.
     @Test
-    void createTopic_parentIsNotTopicType_shouldThrowInvalidHierarchy() {
-        UUID categoryId = UUID.randomUUID();
+    void createTopic_topicParentIsNotCategoryType_shouldThrowInvalidHierarchy() {
+        UUID nonCategoryId = UUID.randomUUID();
         CreateCommunityTopicRequest request = makeCreateTopicRequest(
-                r -> r.type(TopicType.TAG).parentId(categoryId));
-        when(topicRepository.findByIdAndTypeAndIsHiddenFalse(categoryId, TopicType.TOPIC))
+                r -> r.type(TopicType.TOPIC).parentId(nonCategoryId));
+        lenient().when(topicRepository.findByIdAndTypeAndIsHiddenFalse(nonCategoryId, TopicType.CATEGORY))
                 .thenReturn(Optional.empty());
 
         org.junit.jupiter.api.Assertions.assertThrows(InvalidTopicHierarchyException.class,
                 () -> topicService.createTopic(MODERATOR_ID, request));
 
+        verify(topicRepository).findByIdAndTypeAndIsHiddenFalse(nonCategoryId, TopicType.CATEGORY);
         verify(topicRepository, never()).save(any());
     }
 
-    // COM-TC-008: parentId pointing to a hidden TOPIC is rejected
+    // COM-TC-008: parentId pointing to a hidden CATEGORY is rejected.
     @Test
-    void createTopic_parentTopicIsHidden_shouldThrowInvalidHierarchy() {
-        UUID hiddenTopicId = UUID.randomUUID();
+    void createTopic_parentCategoryIsHidden_shouldThrowInvalidHierarchy() {
+        UUID hiddenCategoryId = UUID.randomUUID();
         CreateCommunityTopicRequest request = makeCreateTopicRequest(
-                r -> r.type(TopicType.CATEGORY).parentId(hiddenTopicId));
-        when(topicRepository.findByIdAndTypeAndIsHiddenFalse(hiddenTopicId, TopicType.TOPIC))
+                r -> r.type(TopicType.TOPIC).parentId(hiddenCategoryId));
+        lenient().when(topicRepository.findByIdAndTypeAndIsHiddenFalse(hiddenCategoryId, TopicType.CATEGORY))
                 .thenReturn(Optional.empty());
 
         org.junit.jupiter.api.Assertions.assertThrows(InvalidTopicHierarchyException.class,
                 () -> topicService.createTopic(MODERATOR_ID, request));
+        verify(topicRepository).findByIdAndTypeAndIsHiddenFalse(hiddenCategoryId, TopicType.CATEGORY);
     }
 
-    // COM-TC-009: valid CATEGORY under an existing TOPIC succeeds with questionCount=0
+    // COM-TC-009: valid TOPIC under an existing CATEGORY succeeds with questionCount=0.
     @Test
-    void createTopic_validCategoryUnderTopic_shouldSucceedWithZeroQuestionCount() {
-        CommunityTopic parentTopic = CommunityTopicTestFactory.makeTopic();
+    void createTopic_validTopicUnderCategory_shouldSucceedWithZeroQuestionCount() {
+        CommunityTopic parentCategory = CommunityTopicTestFactory.makeCategory();
         CreateCommunityTopicRequest request = makeCreateTopicRequest(
-                r -> r.name("Ăn uống").type(TopicType.CATEGORY).parentId(parentTopic.getId()));
-        when(topicRepository.existsByNameIgnoreCase("Ăn uống")).thenReturn(false);
-        when(topicRepository.existsBySlug("an-uong")).thenReturn(false);
-        when(topicRepository.findByIdAndTypeAndIsHiddenFalse(parentTopic.getId(), TopicType.TOPIC))
-                .thenReturn(Optional.of(parentTopic));
+                r -> r.name("Dinh dưỡng thai kỳ").type(TopicType.TOPIC).parentId(parentCategory.getId()));
+        when(topicRepository.existsByNameIgnoreCase("Dinh dưỡng thai kỳ")).thenReturn(false);
+        when(topicRepository.existsBySlug("dinh-duong-thai-ky")).thenReturn(false);
+        when(topicRepository.findByIdAndTypeAndIsHiddenFalse(parentCategory.getId(), TopicType.CATEGORY))
+                .thenReturn(Optional.of(parentCategory));
         when(topicRepository.save(any(CommunityTopic.class))).thenAnswer(this::echoWithGeneratedId);
 
         CommunityTopicResponse response = topicService.createTopic(MODERATOR_ID, request);
 
-        assertEquals(TopicType.CATEGORY, response.getType());
-        assertEquals(parentTopic.getId(), response.getParentId());
+        assertEquals(TopicType.TOPIC, response.getType());
+        assertEquals(parentCategory.getId(), response.getParentId());
         assertNotNull(response.getSlug());
         assertEquals(0L, response.getQuestionCount());
         assertFalse(response.isHidden());
@@ -380,24 +386,206 @@ class CommunityTopicServiceImplTest {
         verify(questionRepository, org.mockito.Mockito.times(1)).countApprovedQuestionsByTopicIds(anyList());
     }
 
-    // COM-TC-012: changing type to TOPIC while parentId is still set in the same request is rejected
+    // COM-TC-012: type is immutable after creation (COM-017).
     @Test
-    void updateTopic_changeToTopicWithParentIdStillSet_shouldThrowInvalidHierarchy() {
+    void updateTopic_changeType_shouldThrowImmutableTypeError() {
         UUID topicId = UUID.randomUUID();
-        UUID parentId = UUID.randomUUID();
-        CommunityTopic existing = CommunityTopicTestFactory.makeCategory(parentId);
+        CommunityTopic existing = CommunityTopicTestFactory.makeCategory();
         existing.setId(topicId);
         when(topicRepository.findById(topicId)).thenReturn(Optional.of(existing));
 
         UpdateCommunityTopicRequest request = UpdateCommunityTopicRequest.builder()
                 .type(TopicType.TOPIC)
-                .parentId(parentId)
+                .parentId(UUID.randomUUID())
                 .build();
 
-        org.junit.jupiter.api.Assertions.assertThrows(InvalidTopicHierarchyException.class,
+        RuntimeException error = assertThrows(RuntimeException.class,
                 () -> topicService.updateTopic(topicId, MODERATOR_ID, request));
+        assertEquals("ImmutableTopicTypeException", error.getClass().getSimpleName());
 
         verify(topicRepository, never()).save(any());
+    }
+
+    // COM-TC-020: Amendment 2 contract — TOPIC cannot be a root.
+    @Test
+    void createTopic_amendment2TopicWithoutParent_shouldReject() {
+        CreateCommunityTopicRequest request = makeCreateTopicRequest(
+                r -> r.type(TopicType.TOPIC).parentId(null));
+
+        assertThrows(InvalidTopicHierarchyException.class,
+                () -> topicService.createTopic(MODERATOR_ID, request));
+        verify(topicRepository, never()).save(any());
+    }
+
+    // COM-TC-021: TAG/TOPIC cannot serve as a TOPIC's parent.
+    @Test
+    void createTopic_amendment2NonCategoryParent_shouldReject() {
+        UUID parentId = UUID.randomUUID();
+        CreateCommunityTopicRequest request = makeCreateTopicRequest(
+                r -> r.type(TopicType.TOPIC).parentId(parentId));
+        lenient().when(topicRepository.findByIdAndTypeAndIsHiddenFalse(parentId, TopicType.CATEGORY))
+                .thenReturn(Optional.empty());
+
+        assertThrows(InvalidTopicHierarchyException.class,
+                () -> topicService.createTopic(MODERATOR_ID, request));
+        verify(topicRepository).findByIdAndTypeAndIsHiddenFalse(parentId, TopicType.CATEGORY);
+        verify(topicRepository, never()).save(any());
+    }
+
+    // COM-TC-022: hidden CATEGORY is not a valid parent.
+    @Test
+    void createTopic_amendment2HiddenCategoryParent_shouldReject() {
+        UUID parentId = UUID.randomUUID();
+        CreateCommunityTopicRequest request = makeCreateTopicRequest(
+                r -> r.type(TopicType.TOPIC).parentId(parentId));
+        lenient().when(topicRepository.findByIdAndTypeAndIsHiddenFalse(parentId, TopicType.CATEGORY))
+                .thenReturn(Optional.empty());
+
+        assertThrows(InvalidTopicHierarchyException.class,
+                () -> topicService.createTopic(MODERATOR_ID, request));
+        verify(topicRepository).findByIdAndTypeAndIsHiddenFalse(parentId, TopicType.CATEGORY);
+    }
+
+    // COM-TC-023: valid visible CATEGORY parent is accepted.
+    @Test
+    void createTopic_amendment2VisibleCategoryParent_shouldPersist() {
+        CommunityTopic category = CommunityTopicTestFactory.makeCategory();
+        CreateCommunityTopicRequest request = makeCreateTopicRequest(
+                r -> r.name("Dinh dưỡng thai kỳ").type(TopicType.TOPIC).parentId(category.getId()));
+        when(topicRepository.findByIdAndTypeAndIsHiddenFalse(category.getId(), TopicType.CATEGORY))
+                .thenReturn(Optional.of(category));
+        when(topicRepository.existsByNameIgnoreCase(request.getName())).thenReturn(false);
+        when(topicRepository.existsBySlug("dinh-duong-thai-ky")).thenReturn(false);
+        when(topicRepository.save(any(CommunityTopic.class))).thenAnswer(this::echoWithGeneratedId);
+
+        CommunityTopicResponse response = topicService.createTopic(MODERATOR_ID, request);
+
+        assertEquals(TopicType.TOPIC, response.getType());
+        assertEquals(category.getId(), response.getParentId());
+    }
+
+    // COM-TC-024: CATEGORY is always top-level.
+    @Test
+    void createTopic_amendment2CategoryWithParent_shouldReject() {
+        CreateCommunityTopicRequest request = makeCreateTopicRequest(
+                r -> r.type(TopicType.CATEGORY).parentId(UUID.randomUUID()));
+
+        assertThrows(InvalidTopicHierarchyException.class,
+                () -> topicService.createTopic(MODERATOR_ID, request));
+        verify(topicRepository, never()).save(any());
+    }
+
+    // COM-TC-025: TAG remains flat.
+    @Test
+    void createTopic_amendment2TagWithParent_shouldReject() {
+        CreateCommunityTopicRequest request = makeCreateTopicRequest(
+                r -> r.type(TopicType.TAG).parentId(UUID.randomUUID()));
+
+        assertThrows(InvalidTopicHierarchyException.class,
+                () -> topicService.createTopic(MODERATOR_ID, request));
+        verify(topicRepository, never()).save(any());
+    }
+
+    // COM-TC-027: child rows block deletion for every target type.
+    @Test
+    void deleteTopic_withChildRow_shouldReject() {
+        CommunityTopic target = CommunityTopicTestFactory.makeCategory();
+        when(topicRepository.findById(target.getId())).thenReturn(Optional.of(target));
+        stubBooleanMethod(topicRepository, "existsByParentId", target.getId(), true);
+
+        assertDeleteThrowsNamed(target.getId(), "TopicHasDependentsException");
+        verify(topicRepository, never()).delete(any());
+    }
+
+    // COM-TC-028/030: a row of any type with zero dependents can be deleted.
+    @Test
+    void deleteTopic_withoutDependents_shouldDeleteAndAudit() {
+        CommunityTopic target = CommunityTopicTestFactory.makeTopic();
+        when(topicRepository.findById(target.getId())).thenReturn(Optional.of(target));
+        stubAllDependencyChecks(target.getId(), false, false, false);
+
+        invokeDelete(target.getId());
+
+        verify(topicRepository).delete(target);
+        verify(auditService).log(eq(AuditAction.MODERATION_ACTION), eq(MODERATOR_ID),
+                eq("CommunityTopic"), eq(target.getId().toString()), anyString());
+    }
+
+    // COM-TC-029: question dependency blocks deletion.
+    @Test
+    void deleteTopic_withQuestion_shouldReject() {
+        CommunityTopic target = CommunityTopicTestFactory.makeTopic();
+        when(topicRepository.findById(target.getId())).thenReturn(Optional.of(target));
+        stubAllDependencyChecks(target.getId(), false, true, false);
+
+        assertDeleteThrowsNamed(target.getId(), "TopicHasDependentsException");
+        verify(topicRepository, never()).delete(any());
+    }
+
+    // COM-TC-032: active follow dependency blocks TOPIC deletion.
+    @Test
+    void deleteTopic_withFollow_shouldReject() {
+        CommunityTopic target = CommunityTopicTestFactory.makeTopic();
+        when(topicRepository.findById(target.getId())).thenReturn(Optional.of(target));
+        stubAllDependencyChecks(target.getId(), false, false, true);
+
+        assertDeleteThrowsNamed(target.getId(), "TopicHasDependentsException");
+        verify(topicRepository, never()).delete(any());
+    }
+
+    // COM-TC-033: legacy CATEGORY/TAG question/follow dependencies are type-agnostic.
+    @Test
+    void deleteTopic_legacyNonTopicDependencies_shouldRejectForEveryTypeAndKind() {
+        for (TopicType type : List.of(TopicType.CATEGORY, TopicType.TAG)) {
+            for (int dependentKind = 0; dependentKind < 2; dependentKind++) {
+                CommunityTopic target = CommunityTopicTestFactory.makeCategory(t -> t.setType(type));
+                when(topicRepository.findById(target.getId())).thenReturn(Optional.of(target));
+                stubAllDependencyChecks(target.getId(), false, dependentKind == 0, dependentKind == 1);
+
+                assertDeleteThrowsNamed(target.getId(), "TopicHasDependentsException");
+            }
+        }
+        verify(topicRepository, never()).delete(any());
+    }
+
+    private void stubAllDependencyChecks(UUID id, boolean children, boolean questions, boolean follows) {
+        stubBooleanMethod(topicRepository, "existsByParentId", id, children);
+        stubBooleanMethod(questionRepository, "existsByTopicId", id, questions);
+        stubBooleanMethod(topicFollowRepository, "existsByTopicId", id, follows);
+    }
+
+    private void stubBooleanMethod(Object mock, String methodName, UUID id, boolean result) {
+        try {
+            Method method = mock.getClass().getMethod(methodName, UUID.class);
+            org.mockito.Mockito.when(method.invoke(mock, id)).thenReturn(result);
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError("Missing planned repository contract: " + methodName + "(UUID)", e);
+        }
+    }
+
+    private void assertDeleteThrowsNamed(UUID id, String expectedSimpleName) {
+        Throwable error = assertThrows(Throwable.class, () -> invokeDelete(id));
+        assertEquals(expectedSimpleName, error.getClass().getSimpleName());
+    }
+
+    private void invokeDelete(UUID id) {
+        try {
+            Method method = topicService.getClass().getMethod("deleteTopic", UUID.class, UUID.class);
+            method.invoke(topicService, id, MODERATOR_ID);
+        } catch (NoSuchMethodException e) {
+            throw new AssertionError("Missing planned service contract: deleteTopic(UUID, UUID)", e);
+        } catch (IllegalAccessException e) {
+            throw new AssertionError(e);
+        } catch (InvocationTargetException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            if (cause instanceof Error error) {
+                throw error;
+            }
+            throw new AssertionError(cause);
+        }
     }
 
     private TopicQuestionCountProjection mockProjection(UUID topicId, long cnt) {

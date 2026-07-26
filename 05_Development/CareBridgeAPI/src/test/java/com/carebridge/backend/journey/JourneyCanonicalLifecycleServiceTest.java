@@ -302,6 +302,24 @@ class JourneyCanonicalLifecycleServiceTest {
     }
 
     @Test
+    void updateJourney_invalidLifecycleConsentFailsBeforeJourneyLookupOrMutation() {
+        doThrow(new BusinessException(
+                HttpStatus.CONFLICT,
+                "LIFECYCLE_CONSENT_INVALID",
+                "Your lifecycle consent needs to be reviewed"))
+                .when(onboardingService)
+                .ensureEligible(JourneyLifecycleTestFactory.MOTHER_ID);
+
+        assertJourneyError("LIFECYCLE_CONSENT_INVALID", HttpStatus.CONFLICT,
+                () -> service.updateJourney(
+                        JourneyLifecycleTestFactory.MOTHER_ID,
+                        JourneyLifecycleTestFactory.JOURNEY_ID,
+                        JourneyLifecycleTestFactory.dateCorrection()));
+
+        verifyNoInteractions(journeyRepository, transitionRepository, auditService, eventPublisher);
+    }
+
+    @Test
     void updateJourney_semanticNoOpIsRejectedBeforePersistence() {
         MotherJourney current = JourneyLifecycleTestFactory.activePregnancy();
         when(journeyRepository.findById(current.getId())).thenReturn(Optional.of(current));

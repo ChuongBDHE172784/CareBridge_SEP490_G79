@@ -38,6 +38,7 @@ class UpdatePartnerProfileServiceImplTest {
         PartnerOrganization entity = partner(OrganizationStatus.APPROVED); editable(entity);
         var response = service.updateProfile(request(), OWNER_ID);
         assertAll(() -> assertEquals("Updated Clinic", entity.getName()),
+                () -> assertEquals("+84907654321", entity.getPhone()),
                 () -> assertEquals(OrganizationStatus.APPROVED, entity.getStatus()),
                 () -> assertEquals(OWNER_ID, entity.getRepresentativeUserId()),
                 () -> assertEquals(OrganizationStatus.APPROVED, response.status()));

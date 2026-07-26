@@ -80,6 +80,40 @@ class FederatedAuthServiceTest {
     }
 
     @Test
+    void newPhoneIdentity_invalidVietnameseNumber_isRejectedBeforeIdentityLock() {
+        when(verifier.verify("invalid-phone-token"))
+                .thenReturn(phone("phone-invalid", "+14155552671"));
+
+        assertThatThrownBy(() -> service.authenticate(request("invalid-phone-token")))
+                .isInstanceOf(FederatedAuthException.class)
+                .hasMessage("Unable to authenticate");
+        verify(identities).lockProviderSubject("PHONE:phone-invalid");
+        verify(users, never()).save(any(User.class));
+    }
+
+    @Test
+    void existingProviderSubject_DoesNotRevalidateAnUnusedForeignPhoneClaim() {
+        UUID userId = UUID.randomUUID();
+        User existingUser = activeUser(userId, null, "+84901111009");
+        UserIdentity identity = UserIdentity.builder()
+                .user(existingUser)
+                .provider(FederatedProvider.PHONE)
+                .providerSubject("existing-foreign-claim")
+                .build();
+        when(verifier.verify("existing-foreign-token"))
+                .thenReturn(phone("existing-foreign-claim", "+14155552671"));
+        when(identities.findByProviderAndProviderSubject(
+                FederatedProvider.PHONE, "existing-foreign-claim"))
+                .thenReturn(Optional.of(identity));
+
+        var response = service.authenticate(request("existing-foreign-token"));
+
+        assertThat(response.user().getId()).isEqualTo(userId);
+        verify(users).save(existingUser);
+        verify(identities, never()).saveAndFlush(any());
+    }
+
+    @Test
     void invalidExpiredOrRevokedToken_isRejectedWithoutSession() {
         when(verifier.verify("invalid-token")).thenThrow(FederatedAuthException.invalidProof());
         assertThatThrownBy(() -> service.authenticate(request("invalid-token")))

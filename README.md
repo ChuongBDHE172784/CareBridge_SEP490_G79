@@ -54,7 +54,8 @@ CareBridge_SEP490_G79/
 
 ### 🟢 Backend (`05_Development/CareBridgeAPI`)
 1. Create a `.env` file from `.env.example` with valid credentials:
-   - `SUPABASE_DB_URL`, `JWT_SECRET`, etc.
+   - `SUPABASE_DB_URL`, `JWT_ACTIVE_KEY_ID`, `JWT_PRIVATE_KEY`, `JWT_PUBLIC_KEYS`, etc.
+   - JWT signing uses RS256. `JWT_PRIVATE_KEY` is base64 DER PKCS#8; `JWT_PUBLIC_KEYS` is a semicolon-separated `kid:base64-DER-SPKI` verification ring. Never commit real keys.
    - *Note: Values containing spaces or `&` must be wrapped in quotes.*
 2. Run the application:
    ```bash
@@ -109,17 +110,25 @@ CareBridge_SEP490_G79/
 
 ## 👥 Demo & Test Accounts
 
-Use these pre-configured accounts for testing different roles:
+These synthetic accounts are created only when all dev-seed gates are satisfied: the
+Spring `dev` profile is active, the `prod` profile is absent, and
+`CAREBRIDGE_DEV_SEED_ENABLED=true` is set explicitly. Dev seeding is disabled by default.
 
-| Role | Email | Password |
-| :--- | :--- | :--- |
-| **SYSTEM_ADMIN** | `admin@carebridge.dev` | `Test@1234` |
-| **MODERATOR** | `moderator@carebridge.dev` | `Test@1234` |
-| **CONTENT_ADMIN** | `content@carebridge.dev` | `Test@1234` |
-| **EXPERT** | `expert@carebridge.dev` | `Test@1234` |
-| **PARTNER** | `partner@carebridge.dev` | `Test@1234` |
-| **MOTHER** | `mother@carebridge.dev` | `Test@1234` |
-| **FAMILY** | `family@carebridge.dev` | `Test@1234` |
+The operator must supply a unique, non-default synthetic password through
+`CAREBRIDGE_DEV_SEED_PASSWORD` in the local runtime secret source. The value is shared by
+the accounts for that run, but must never be written to documentation, console output,
+screenshots, or Git. A blank value or the retired historical default makes backend startup
+fail closed while seeding is enabled.
+
+| Role | Email |
+| :--- | :--- |
+| **SYSTEM_ADMIN** | `admin@carebridge.dev` |
+| **MODERATOR** | `moderator@carebridge.dev` |
+| **CONTENT_ADMIN** | `content@carebridge.dev` |
+| **EXPERT** | `expert@carebridge.dev` |
+| **PARTNER** | `partner@carebridge.dev` |
+| **MOTHER** | `mother@carebridge.dev` |
+| **FAMILY** | `family@carebridge.dev` |
 
 ---
 

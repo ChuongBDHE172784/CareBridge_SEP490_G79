@@ -122,6 +122,7 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
     @Override
     public PregnancyOutcomeResponse recordPregnancyOutcome(
             UUID ownerId, UUID journeyId, RecordPregnancyOutcomeRequest request) {
+        onboardingService.ensureEligible(ownerId);
         if (outcomeRepository == null) {
             throw new IllegalStateException("Pregnancy outcome repository is unavailable");
         }
@@ -309,8 +310,10 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
             estimatedDueDate = request.getLastMenstrualDate().plusDays(280);
         }
 
+        UUID careSubjectId = ensureMotherCareSubject(callerId);
         MotherJourney current = MotherJourney.builder()
                 .ownerUserId(callerId)
+                .careSubjectId(careSubjectId)
                 .journeyType(request.getJourneyType())
                 .startDate(request.getStartDate())
                 .lastMenstrualDate(request.getLastMenstrualDate())
@@ -324,6 +327,7 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
         MotherJourney saved;
         try {
             saved = journeyRepository.saveAndFlush(current);
+            journeyRepository.linkMotherCareSubject(careSubjectId, saved.getId());
         } catch (DataIntegrityViolationException exception) {
             throw canonicalConflict();
         }
@@ -368,6 +372,17 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
         return toCreateResponse(saved);
     }
 
+    private UUID ensureMotherCareSubject(UUID ownerUserId) {
+        UUID existing = journeyRepository.findMotherCareSubjectId(ownerUserId);
+        if (existing != null) {
+            return existing;
+        }
+        UUID candidate = UUID.randomUUID();
+        journeyRepository.ensureMotherCareSubject(candidate, ownerUserId);
+        existing = journeyRepository.findMotherCareSubjectId(ownerUserId);
+        return existing == null ? candidate : existing;
+    }
+
     private void validateDirectPostpartumCreate(CreateJourneyRequest request) {
         if (request.getJourneyType() != JourneyType.POSTPARTUM) {
             return;
@@ -398,6 +413,7 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
     @Override
     public JourneyResponse updateJourney(
             UUID ownerId, UUID journeyId, UpdateJourneyRequest request) {
+        onboardingService.ensureEligible(ownerId);
         MotherJourney current = ownedJourney(ownerId, journeyId);
         if (current.getStatus() != JourneyStatus.ACTIVE) {
             throw new BusinessException(

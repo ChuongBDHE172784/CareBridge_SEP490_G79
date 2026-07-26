@@ -477,14 +477,6 @@ class SessionServiceImplTest {
     }
 
     @Test
-    @DisplayName("LOGOUT-TC-006: No access token — controller-level 401")
-    @org.junit.jupiter.api.Disabled("Controller-level test — requires @WebMvcTest setup")
-    void logout_noAccessToken_returns401() {
-        // This TC requires controller-level testing with MockMvc
-        // Covered at controller layer, not service layer
-    }
-
-    @Test
     @DisplayName("LOGOUT-TC-INT-001: After logout, refresh token is rejected")
     void logout_afterLogout_refreshTokenRejected() {
         // Arrange: set up a valid session with refresh token

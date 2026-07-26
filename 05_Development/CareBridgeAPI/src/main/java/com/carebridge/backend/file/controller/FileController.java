@@ -4,6 +4,9 @@ import com.carebridge.backend.common.response.ApiResponse;
 import com.carebridge.backend.common.util.SecurityUtils;
 import com.carebridge.backend.file.dto.UploadFileResponse;
 import com.carebridge.backend.file.dto.ViewFileResponse;
+import com.carebridge.backend.file.enums.FileAccessMode;
+import com.carebridge.backend.file.enums.FileKind;
+import com.carebridge.backend.file.enums.FilePurpose;
 import com.carebridge.backend.file.service.IFileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -23,7 +26,7 @@ public class FileController {
 
     private final IFileService fileService;
 
-    // UC167: Upload file
+    // UC167: Upload file (legacy - MOTHER only)
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('MOTHER')")
     public ResponseEntity<ApiResponse<UploadFileResponse>> uploadFile(
@@ -31,6 +34,21 @@ public class FileController {
             Principal principal) {
         var callerId = SecurityUtils.requireCurrentUserId(principal);
         var response = fileService.uploadFile(file, callerId);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(response, "File uploaded successfully"));
+    }
+
+    // UC167-EXT: Upload file with explicit purpose (EXPERT, ADMIN, etc.)
+    @PostMapping(value = "/upload/with-purpose", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyRole('EXPERT', 'ADMIN', 'SYSTEM_ADMIN', 'MODERATOR', 'CONTENT_ADMIN', 'PARTNER', 'MOTHER')")
+    public ResponseEntity<ApiResponse<UploadFileResponse>> uploadFileWithPurpose(
+            @RequestPart("file") MultipartFile file,
+            @RequestParam("kind") FileKind kind,
+            @RequestParam("purpose") FilePurpose purpose,
+            @RequestParam("accessMode") FileAccessMode accessMode,
+            Principal principal) {
+        var callerId = SecurityUtils.requireCurrentUserId(principal);
+        var response = fileService.uploadWithPurpose(file, callerId, kind, purpose, accessMode);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success(response, "File uploaded successfully"));
     }

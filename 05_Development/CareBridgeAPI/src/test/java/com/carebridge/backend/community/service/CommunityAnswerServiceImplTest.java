@@ -27,6 +27,7 @@ import com.carebridge.backend.community.policy.CommunitySafetyPolicy;
 import com.carebridge.backend.community.repository.CommunityAnswerRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
+import com.carebridge.backend.expert.handler.IExpertEventHandler;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -66,6 +67,9 @@ class CommunityAnswerServiceImplTest {
     @Mock
     private ExpertProfileRepository expertProfileRepository;
 
+    @Mock
+    private IExpertEventHandler expertEventHandler;
+
     @InjectMocks
     private CommunityAnswerServiceImpl service;
 
@@ -101,7 +105,7 @@ class CommunityAnswerServiceImplTest {
                 .thenReturn(Optional.of(makeApprovedQuestion()));
         CommunityAnswer saved = CommunityAnswer.builder()
                 .id(UUID.randomUUID()).questionId(QUESTION_ID).authorId(AUTHOR_ID)
-                .status(AnswerStatus.PENDING).expertLabeled(false).personalExperience(true)
+                .status(AnswerStatus.APPROVED).expertLabeled(false).personalExperience(true)
                 .build();
         when(answerRepository.save(any())).thenReturn(saved);
         when(authorDisplayResolver.resolve(AUTHOR_ID)).thenReturn("Nguyễn Thị A");
@@ -118,7 +122,7 @@ class CommunityAnswerServiceImplTest {
                 .thenReturn(Optional.of(makeApprovedQuestion()));
         CommunityAnswer saved = CommunityAnswer.builder()
                 .id(UUID.randomUUID()).questionId(QUESTION_ID).authorId(AUTHOR_ID)
-                .status(AnswerStatus.PENDING).expertLabeled(false).personalExperience(true)
+                .status(AnswerStatus.APPROVED).expertLabeled(false).personalExperience(true)
                 .build();
         when(answerRepository.save(any())).thenReturn(saved);
         when(authorDisplayResolver.resolve(AUTHOR_ID)).thenReturn(null);
@@ -128,7 +132,7 @@ class CommunityAnswerServiceImplTest {
         assertThat(response.getAuthorDisplay()).isEqualTo("Thành viên");
     }
 
-    // COM56-TC-001: Happy path — status=PENDING, isExpertLabeled=false (ADR-COM-005, ADR-COM-006)
+    // New answers are immediately visible while preserving the governed expert label.
     @Test
     void postAnswer_validRequest_returnsCorrectDefaults() {
         when(questionRepository.findByIdAndStatus(QUESTION_ID, QuestionStatus.APPROVED))
@@ -138,7 +142,7 @@ class CommunityAnswerServiceImplTest {
                 .questionId(QUESTION_ID)
                 .authorId(AUTHOR_ID)
                 .body("This is a valid personal experience answer with enough characters")
-                .status(AnswerStatus.PENDING)
+                .status(AnswerStatus.APPROVED)
                 .expertLabeled(false)
                 .personalExperience(true)
                 .build();
@@ -146,15 +150,21 @@ class CommunityAnswerServiceImplTest {
 
         CommunityAnswerResponse response = service.postAnswer(AUTHOR_ID, QUESTION_ID, makeRequest());
 
-        // ADR-COM-006: status must be PENDING, ADR-COM-005: isExpertLabeled must be false
+        // The creation transition is APPROVED; the expert label remains server-governed.
         verify(answerRepository, times(1)).save(argThat(a ->
-                a.getStatus() == AnswerStatus.PENDING
+                a.getStatus() == AnswerStatus.APPROVED
                 && !a.isExpertLabeled()
                 && a.getAuthorId().equals(AUTHOR_ID)
                 && a.getQuestionId().equals(QUESTION_ID)
         ));
-        assertThat(response.getStatus()).isEqualTo("PENDING");
+        assertThat(response.getStatus()).isEqualTo("APPROVED");
         assertThat(response.isExpertLabeled()).isFalse();
+        verify(questionRepository).incrementAnswerCount(QUESTION_ID);
+        verifyNoInteractions(expertEventHandler);
+        verify(communitySafetyPolicy).autoReportIfRedFlag(
+                org.mockito.ArgumentMatchers.eq(AUTHOR_ID), org.mockito.ArgumentMatchers.eq(saved.getId()),
+                org.mockito.ArgumentMatchers.eq(com.carebridge.backend.content.entity.ReportTargetType.ANSWER),
+                org.mockito.ArgumentMatchers.anyString());
     }
 
     // COM56-TC-001 sub: audit event emitted after successful answer post
@@ -164,7 +174,7 @@ class CommunityAnswerServiceImplTest {
                 .thenReturn(Optional.of(makeApprovedQuestion()));
         CommunityAnswer saved = CommunityAnswer.builder()
                 .id(UUID.randomUUID()).questionId(QUESTION_ID).authorId(AUTHOR_ID)
-                .status(AnswerStatus.PENDING).expertLabeled(false).personalExperience(true)
+                .status(AnswerStatus.APPROVED).expertLabeled(false).personalExperience(true)
                 .build();
         when(answerRepository.save(any())).thenReturn(saved);
 
@@ -201,7 +211,7 @@ class CommunityAnswerServiceImplTest {
                 .thenReturn(Optional.of(makeApprovedQuestion()));
         CommunityAnswer saved = CommunityAnswer.builder()
                 .id(UUID.randomUUID()).questionId(QUESTION_ID).authorId(AUTHOR_ID)
-                .status(AnswerStatus.PENDING).expertLabeled(false).personalExperience(false)
+                .status(AnswerStatus.APPROVED).expertLabeled(false).personalExperience(false)
                 .build();
         when(answerRepository.save(any())).thenReturn(saved);
 
@@ -210,6 +220,25 @@ class CommunityAnswerServiceImplTest {
 
         verify(answerRepository).save(argThat(a -> !a.isExpertLabeled()));
         assertThat(response.isExpertLabeled()).isFalse();
+    }
+
+    @Test
+    void postAnswer_verifiedExpert_awardsApprovedAnswerContributionOnce() {
+        when(questionRepository.findByIdAndStatus(QUESTION_ID, QuestionStatus.APPROVED))
+                .thenReturn(Optional.of(makeApprovedQuestion()));
+        CommunityAnswer saved = CommunityAnswer.builder()
+                .id(ANSWER_ID).questionId(QUESTION_ID).authorId(AUTHOR_ID)
+                .status(AnswerStatus.APPROVED).expertLabeled(true).personalExperience(false)
+                .build();
+        when(answerRepository.save(any())).thenReturn(saved);
+        when(communitySafetyPolicy.isVerifiedActiveExpert(any())).thenReturn(true);
+
+        CommunityAnswerResponse response = service.postAnswer(AUTHOR_ID, QUESTION_ID, makeRequest());
+
+        assertThat(response.getStatus()).isEqualTo("APPROVED");
+        assertThat(response.isExpertLabeled()).isTrue();
+        verify(questionRepository).incrementAnswerCount(QUESTION_ID);
+        verify(expertEventHandler).onAnswerApproved(ANSWER_ID.toString(), AUTHOR_ID.toString());
     }
 
     // ===================== UC-200: Edit Own Answer =====================

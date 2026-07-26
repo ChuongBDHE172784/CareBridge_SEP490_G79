@@ -6,10 +6,10 @@ import { useAuth } from '../../../shared/auth/useAuth';
 const NAV_ITEMS = [
   { label: 'Tổng quan', icon: 'dashboard', path: '/content/dashboard', roles: ['CONTENT_ADMIN'] },
   { label: 'Thư viện nội dung', icon: 'folder', path: '/content/list', roles: ['CONTENT_ADMIN'] },
+  { label: 'Bài viết', icon: 'article', path: '/content/articles', roles: ['CONTENT_ADMIN'] },
   { label: 'Bài tập thai kỳ', icon: 'fitness_center', path: '/content/exercises', roles: ['CONTENT_ADMIN'] },
   { label: 'FAQ', icon: 'help', path: '/content/faq', roles: ['CONTENT_ADMIN'] },
   { label: 'Checklist', icon: 'checklist', path: '/content/checklists', roles: ['CONTENT_ADMIN'] },
-  { label: 'Danh mục', icon: 'category', path: '/content/categories', roles: ['CONTENT_ADMIN'] },
   { label: 'Chủ đề cộng đồng', icon: 'topic', path: '/content/topics', roles: ['CONTENT_ADMIN', 'MODERATOR'] },
 ] as const;
 

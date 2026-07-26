@@ -136,6 +136,52 @@ class CareGroupServiceImplInviteTest {
     // ── TC-002: Happy path LINK ──────────────────────────────────────────────
 
     @Test
+    void inviteFamilyMember_formattedPhone_usesCanonicalLookupAndPersistence() {
+        stubActiveGroup();
+        stubOwnerCheck(true);
+        stubPendingCount(0);
+        stubInviteePhone(true);
+        stubNoDuplicatePending();
+        captureAndReturnSaved();
+        when(tokenGenerator.generate()).thenReturn(TOKEN);
+
+        InviteFamilyMemberRequest request =
+                new InviteFamilyMemberRequest(InviteChannel.PHONE, "84 91 234 5678");
+        service.inviteFamilyMember(GROUP_ID, request, OWNER_ID);
+
+        ArgumentCaptor<CareGroupMember> captor = ArgumentCaptor.forClass(CareGroupMember.class);
+        verify(userRepository).findByPhone(PHONE);
+        verify(memberRepository).save(captor.capture());
+        assertThat(captor.getValue().getInvitedPhone()).isEqualTo(PHONE);
+    }
+
+    @Test
+    void inviteFamilyMember_legacyEmailLookupRemainsSupported() {
+        String email = "relative@example.com";
+        stubActiveGroup();
+        stubOwnerCheck(true);
+        stubPendingCount(0);
+        User invitee = new User();
+        invitee.setId(INVITEE_ID);
+        invitee.setEmail(email);
+        when(userRepository.findByEmailIgnoreCase(email)).thenReturn(Optional.of(invitee));
+        stubNoDuplicatePending();
+        captureAndReturnSaved();
+        when(tokenGenerator.generate()).thenReturn(TOKEN);
+
+        service.inviteFamilyMember(
+                GROUP_ID,
+                new InviteFamilyMemberRequest(InviteChannel.PHONE, email),
+                OWNER_ID);
+
+        ArgumentCaptor<CareGroupMember> captor = ArgumentCaptor.forClass(CareGroupMember.class);
+        verify(userRepository).findByEmailIgnoreCase(email);
+        verify(userRepository, never()).findByPhone(any());
+        verify(memberRepository).save(captor.capture());
+        assertThat(captor.getValue().getInvitedPhone()).isNull();
+    }
+
+    @Test
     void inviteFamilyMember_linkChannel_returnsTokenWithoutRow() {
         stubActiveGroup();
         stubOwnerCheck(true);

@@ -30,11 +30,13 @@ public class CreateCommunityTopicRequest {
     @NotNull(message = "type is required")
     private TopicType type;
 
-    // Required iff type != TOPIC, must reference an existing, visible TOPIC (ADR-COM-016) —
-    // validated in CommunityTopicServiceImpl, not here (needs a DB lookup).
+    // Required iff type=TOPIC and must reference an existing visible CATEGORY (ADR-COM-020).
+    // CATEGORY/TAG must leave this null; the service performs the cross-row validation.
     private UUID parentId;
 
+    // Boxed (not primitive int): with @AllArgsConstructor present, Jackson can pass null for an
+    // absent JSON field, which throws for primitives ("Cannot map null into type int"). null here
+    // means "not provided" -> mapper defaults it to 0, same convention as UpdateCommunityTopicRequest.
     @Min(value = 0, message = "sortOrder must be non-negative")
-    @Builder.Default
-    private int sortOrder = 0;
+    private Integer sortOrder;
 }

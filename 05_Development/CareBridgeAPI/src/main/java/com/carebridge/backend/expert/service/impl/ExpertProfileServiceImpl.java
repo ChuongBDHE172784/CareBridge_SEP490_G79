@@ -7,14 +7,25 @@ import com.carebridge.backend.expert.dto.response.ExpertProfileDetailResponse;
 import com.carebridge.backend.expert.dto.response.ExpertProfileResponse;
 import com.carebridge.backend.expert.dto.response.VerificationStatusResponse;
 import com.carebridge.backend.expert.entity.ExpertProfile;
+import com.carebridge.backend.expert.entity.ProfessionalSpecialty;
 import com.carebridge.backend.expert.exception.ExpertException;
 import com.carebridge.backend.expert.mapper.ExpertProfileMapper;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
+import com.carebridge.backend.expert.repository.ProfessionalSpecialtyRepository;
 import com.carebridge.backend.expert.service.IExpertProfileService;
 import com.carebridge.backend.expert.truststatus.TrustStatus;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.repository.UserRepository;
+import com.carebridge.backend.masterdata.repository.SpecialtyRepository;
+import com.carebridge.backend.map.entity.CareFacility;
+import com.carebridge.backend.map.repository.CareFacilityRepository;
+import com.carebridge.backend.audit.entity.AuditAction;
+import com.carebridge.backend.audit.service.AuditService;
+import com.carebridge.backend.expertverification.enums.IdentityReviewStatus;
+import com.carebridge.backend.expertverification.repository.ExpertCredentialRepository;
+import com.carebridge.backend.expertverification.repository.ExpertIdentityVerificationRepository;
+import com.carebridge.backend.expertverification.reviewstatus.ReviewStatus;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -23,6 +34,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -37,6 +51,12 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 	private final ExpertProfileRepository expertProfileRepository;
 	private final UserRepository userRepository;
 	private final ExpertProfileMapper expertProfileMapper;
+	private final ExpertIdentityVerificationRepository identityVerificationRepository;
+	private final ExpertCredentialRepository credentialRepository;
+	private final AuditService auditService;
+	private final SpecialtyRepository specialtyRepository;
+	private final CareFacilityRepository careFacilityRepository;
+	private final ProfessionalSpecialtyRepository professionalSpecialtyRepository;
 
 	// ADR-MEDI-001 mục 4 — displayName resolved alongside avatarUrl from the same users row,
 	// 1 lookup, for every response that uses ExpertProfileResponse/ExpertProfileDetailResponse.
@@ -50,15 +70,35 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 
 	@Override
 	public ExpertProfileResponse createProfile(UUID userId, CreateExpertProfileRequest request) {
-		if (expertProfileRepository.existsByUserId(userId)) {
-			throw new ExpertException(
-				org.springframework.http.HttpStatus.CONFLICT,
-				"EXPERT-001", "Expert profile already exists for this user");
+		var existing = expertProfileRepository.findByUserId(userId);
+		if (existing.isPresent()) {
+			List<ProfessionalSpecialty> mappings = professionalSpecialtyRepository
+				.findByProfessionalProfileIdOrderByPrimaryDesc(existing.get().getExpertProfileId());
+			if (mappings.isEmpty()) {
+				MasterDataSelection selection = normalizeMasterData(request);
+				synchronizeSpecialties(existing.get().getExpertProfileId(), selection.specialties());
+				mappings = professionalSpecialtyRepository
+					.findByProfessionalProfileIdOrderByPrimaryDesc(existing.get().getExpertProfileId());
+			}
+			UserInfo info = resolveUserInfo(userId);
+			ExpertProfileResponse response =
+				expertProfileMapper.toResponse(existing.get(), info.displayName(), info.avatarUrl());
+			applySpecialties(response, mappings);
+			return response;
 		}
+		MasterDataSelection selection = normalizeMasterData(request);
 		ExpertProfile profile = expertProfileMapper.toEntity(request, userId);
+		profile.setFacilityId(selection.facilityId());
 		ExpertProfile saved = expertProfileRepository.save(profile);
+		synchronizeSpecialties(saved.getExpertProfileId(), selection.specialties());
 		UserInfo info = resolveUserInfo(userId);
-		return expertProfileMapper.toResponse(saved, info.displayName(), info.avatarUrl());
+		ExpertProfileResponse response = expertProfileMapper.toResponse(saved, info.displayName(), info.avatarUrl());
+		List<String> specialtyIds = selection.specialties().stream()
+			.map(specialty -> specialty.getSpecialtyId().toString())
+			.toList();
+		response.setSpecialtyIds(specialtyIds);
+		response.setSpecialtyId(specialtyIds.getFirst());
+		return response;
 	}
 
 	@Override
@@ -67,19 +107,58 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 		ExpertProfile profile = expertProfileRepository.findByUserId(userId)
 			.orElseGet(() -> new ExpertProfile());
 		UserInfo info = resolveUserInfo(userId);
-		return expertProfileMapper.toDetailResponse(profile, info.displayName(), info.avatarUrl());
+		ExpertProfileDetailResponse response =
+			expertProfileMapper.toDetailResponse(profile, info.displayName(), info.avatarUrl());
+		List<ProfessionalSpecialty> mappings = profile.getExpertProfileId() == null
+			? List.of()
+			: professionalSpecialtyRepository
+				.findByProfessionalProfileIdOrderByPrimaryDesc(profile.getExpertProfileId());
+		applySpecialties(response, mappings);
+		return response;
 	}
 
 	@Override
 	public ExpertProfileDetailResponse updateProfile(UUID userId, UpdateExpertProfileRequest request) {
-		ExpertProfile profile = expertProfileRepository.findByUserId(userId)
+		ExpertProfile profile = expertProfileRepository.findByUserIdForUpdate(userId)
 			.orElseThrow(() -> new ExpertException(
 				org.springframework.http.HttpStatus.NOT_FOUND,
 				"EXPERT-002", "Expert profile not found"));
+		MasterDataSelection selection = normalizeMasterData(request);
 		expertProfileMapper.updateEntity(profile, request);
+		if (request.getHospitalId() != null) {
+			profile.setFacilityId(selection.facilityId());
+		}
 		ExpertProfile saved = expertProfileRepository.save(profile);
+		if (!selection.specialties().isEmpty()) {
+			synchronizeSpecialties(saved.getExpertProfileId(), selection.specialties());
+		}
 		UserInfo info = resolveUserInfo(userId);
-		return expertProfileMapper.toDetailResponse(saved, info.displayName(), info.avatarUrl());
+		ExpertProfileDetailResponse response =
+			expertProfileMapper.toDetailResponse(saved, info.displayName(), info.avatarUrl());
+		if (!selection.specialties().isEmpty()) {
+			List<String> specialtyIds = selection.specialties().stream()
+				.map(specialty -> specialty.getSpecialtyId().toString())
+				.toList();
+			response.setSpecialtyIds(specialtyIds);
+			response.setSpecialtyId(specialtyIds.getFirst());
+		}
+		return response;
+	}
+
+	private void applySpecialties(ExpertProfileResponse response, List<ProfessionalSpecialty> mappings) {
+		List<String> ids = mappings.stream()
+			.map(mapping -> mapping.getSpecialtyId().toString())
+			.toList();
+		response.setSpecialtyIds(ids);
+		response.setSpecialtyId(ids.isEmpty() ? null : ids.getFirst());
+	}
+
+	private void applySpecialties(ExpertProfileDetailResponse response, List<ProfessionalSpecialty> mappings) {
+		List<String> ids = mappings.stream()
+			.map(mapping -> mapping.getSpecialtyId().toString())
+			.toList();
+		response.setSpecialtyIds(ids);
+		response.setSpecialtyId(ids.isEmpty() ? null : ids.getFirst());
 	}
 
 	// ── UC-63: View Verification Status & Renew ────────────────────────
@@ -105,7 +184,7 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 			profile.getVerificationStatus(),
 			profile.getVerifiedAt(),
 			profile.getVerifiedBy(),
-			null,
+			findLatestRejectionReason(profile.getExpertProfileId()),
 			canRenew,
 			nextStep
 		);
@@ -150,6 +229,97 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 		return (s == null || s.isBlank()) ? null : s.trim();
 	}
 
+	private record MasterDataSelection(UUID facilityId,
+		List<com.carebridge.backend.masterdata.entity.Specialty> specialties) {}
+
+	private MasterDataSelection normalizeMasterData(CreateExpertProfileRequest request) {
+		var specialties = resolveActiveSpecialties(request.getSpecialtyId(), request.getSpecialtyIds());
+		var hospital = findActiveFacility(request.getHospitalId())
+			.orElseThrow(() -> new ExpertException(org.springframework.http.HttpStatus.BAD_REQUEST,
+				"EXPERT-HOSPITAL-INVALID", "Cơ sở y tế không hợp lệ hoặc đã ngừng sử dụng"));
+		request.setSpecialty(specialties.getFirst().getName());
+		request.setWorkplace(hospital.getName());
+		return new MasterDataSelection(hospital.getFacilityId(), specialties);
+	}
+
+	private MasterDataSelection normalizeMasterData(UpdateExpertProfileRequest request) {
+		UUID facilityId = null;
+		List<com.carebridge.backend.masterdata.entity.Specialty> specialties = List.of();
+		if (request.getSpecialtyId() != null
+				|| (request.getSpecialtyIds() != null && !request.getSpecialtyIds().isEmpty())) {
+			specialties = resolveActiveSpecialties(request.getSpecialtyId(), request.getSpecialtyIds());
+			request.setSpecialty(specialties.getFirst().getName());
+		}
+		if (request.getHospitalId() != null) {
+			var hospital = findActiveFacility(request.getHospitalId())
+				.orElseThrow(() -> new ExpertException(org.springframework.http.HttpStatus.BAD_REQUEST,
+					"EXPERT-HOSPITAL-INVALID", "Cơ sở y tế không hợp lệ hoặc đã ngừng sử dụng"));
+			request.setWorkplace(hospital.getName());
+			facilityId = hospital.getFacilityId();
+		}
+		return new MasterDataSelection(facilityId, specialties);
+	}
+
+	private List<com.carebridge.backend.masterdata.entity.Specialty> resolveActiveSpecialties(
+			String primaryIdentifier, List<String> additionalIdentifiers) {
+		List<String> identifiers = new ArrayList<>();
+		if (primaryIdentifier != null && !primaryIdentifier.isBlank()) {
+			identifiers.add(primaryIdentifier);
+		}
+		if (additionalIdentifiers != null) {
+			identifiers.addAll(additionalIdentifiers);
+		}
+		if (identifiers.isEmpty()) {
+			throw new ExpertException(org.springframework.http.HttpStatus.BAD_REQUEST,
+				"EXPERT-SPECIALTY-INVALID", "Phải chọn ít nhất một chuyên khoa");
+		}
+
+		Map<UUID, com.carebridge.backend.masterdata.entity.Specialty> unique = new LinkedHashMap<>();
+		for (String identifier : identifiers) {
+			var specialty = specialtyRepository.findByIdentifier(identifier)
+				.filter(item -> Boolean.TRUE.equals(item.getIsActive()))
+				.orElseThrow(() -> new ExpertException(org.springframework.http.HttpStatus.BAD_REQUEST,
+					"EXPERT-SPECIALTY-INVALID", "Chuyên khoa không hợp lệ hoặc đã ngừng sử dụng"));
+			unique.putIfAbsent(specialty.getSpecialtyId(), specialty);
+		}
+		if (unique.size() > 20) {
+			throw new ExpertException(org.springframework.http.HttpStatus.BAD_REQUEST,
+				"EXPERT-SPECIALTY-LIMIT", "Chỉ được chọn tối đa 20 chuyên khoa");
+		}
+		return List.copyOf(unique.values());
+	}
+
+	private void synchronizeSpecialties(UUID expertProfileId,
+			List<com.carebridge.backend.masterdata.entity.Specialty> specialties) {
+		professionalSpecialtyRepository.deleteByProfessionalProfileId(expertProfileId);
+		OffsetDateTime now = OffsetDateTime.now();
+		List<ProfessionalSpecialty> mappings = new ArrayList<>(specialties.size());
+		for (int index = 0; index < specialties.size(); index++) {
+			mappings.add(ProfessionalSpecialty.builder()
+				.professionalProfileId(expertProfileId)
+				.specialtyId(specialties.get(index).getSpecialtyId())
+				.primary(index == 0)
+				.createdAt(now)
+				.build());
+		}
+		professionalSpecialtyRepository.saveAll(mappings);
+	}
+
+	private java.util.Optional<CareFacility> findActiveFacility(String identifier) {
+		try {
+			return careFacilityRepository.findByFacilityIdAndActiveTrue(UUID.fromString(identifier));
+		} catch (IllegalArgumentException ignored) {
+			return careFacilityRepository.findByExternalSourceIdAndActiveTrue(identifier);
+		}
+	}
+
+	private String findLatestRejectionReason(UUID expertProfileId) {
+		if (expertProfileId == null) {
+			return null;
+		}
+		return expertProfileRepository.findLatestProfileRejectionReason(expertProfileId).orElse(null);
+	}
+
 	@Override
 	@Transactional(readOnly = true)
 	public ExpertProfileDetailResponse getPublicProfile(UUID expertProfileId) {
@@ -185,10 +355,37 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 			.orElseThrow(() -> new ExpertException(
 				org.springframework.http.HttpStatus.NOT_FOUND,
 				"EXPERT-003", "Expert profile not found"));
+		if (profile.getVerificationStatus() == VerificationStatus.APPROVED) {
+			return;
+		}
+		var latestIdentity = identityVerificationRepository
+			.findFirstByExpertProfileIdOrderByCreatedAtDesc(expertProfileId)
+			.orElseThrow(() -> new ExpertException(
+				org.springframework.http.HttpStatus.CONFLICT, "EXPERT-IDENTITY-REQUIRED",
+				"Approved identity evidence is required"));
+		if (latestIdentity.getReviewStatus() != IdentityReviewStatus.APPROVED) {
+			throw new ExpertException(
+				org.springframework.http.HttpStatus.CONFLICT, "EXPERT-IDENTITY-NOT-APPROVED",
+				"The latest identity verification must be approved");
+		}
+		boolean hasApprovedProfessionalCredential = credentialRepository
+			.findByExpertProfileIdAndReviewStatus(expertProfileId, ReviewStatus.APPROVED)
+			.stream()
+			.anyMatch(credential -> !credential.getCredentialType().startsWith("IDENTITY_")
+				&& (credential.getExpiryDate() == null
+					|| !credential.getExpiryDate().isBefore(java.time.LocalDate.now())));
+		if (!hasApprovedProfessionalCredential) {
+			throw new ExpertException(
+				org.springframework.http.HttpStatus.CONFLICT, "EXPERT-CREDENTIAL-REQUIRED",
+				"At least one current approved professional credential is required");
+		}
 		profile.setVerificationStatus(VerificationStatus.APPROVED);
 		profile.setVerifiedAt(LocalDateTime.now());
 		profile.setVerifiedBy(adminId);
 		expertProfileRepository.save(profile);
+		auditService.log(AuditAction.EXPERT_VERIFICATION, adminId,
+			"ExpertProfile", expertProfileId.toString(),
+			Map.of("event", "FINAL_DECISION", "decision", "APPROVED"));
 	}
 
 	@Override
@@ -197,10 +394,22 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 			.orElseThrow(() -> new ExpertException(
 				org.springframework.http.HttpStatus.NOT_FOUND,
 				"EXPERT-003", "Expert profile not found"));
+		if (reason == null || reason.isBlank()) {
+			throw new ExpertException(
+				org.springframework.http.HttpStatus.BAD_REQUEST, "EXPERT-REJECTION-REASON-REQUIRED",
+				"An actionable rejection reason is required");
+		}
+		if (profile.getVerificationStatus() == VerificationStatus.REJECTED) {
+			return;
+		}
 		profile.setVerificationStatus(VerificationStatus.REJECTED);
 		profile.setVerifiedAt(LocalDateTime.now());
 		profile.setVerifiedBy(adminId);
 		expertProfileRepository.save(profile);
+		auditService.log(AuditAction.EXPERT_VERIFICATION, adminId,
+			"ExpertProfile", expertProfileId.toString(),
+			Map.of("event", "FINAL_DECISION", "decision", "REJECTED",
+				"reason", reason.trim()));
 	}
 
 	// ── UC-71: Admin trust action ──────────────────────────────────────

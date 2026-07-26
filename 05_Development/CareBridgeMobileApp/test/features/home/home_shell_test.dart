@@ -1,10 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:untitled/features/aiTriage/models/triage_continuation.dart';
+import 'package:untitled/features/aiTriage/services/triage_continuation_restore_coordinator.dart';
+import 'package:untitled/features/aiTriage/services/triage_continuation_store.dart';
 import 'package:untitled/features/directChat/models/direct_conversation.dart';
 import 'package:untitled/features/directChat/models/expert_directory_item.dart';
 import 'package:untitled/features/directChat/services/direct_chat_service.dart';
 import 'package:untitled/features/directChat/services/conversation_refresh_bus.dart';
 import 'package:untitled/features/home/screens/home_shell.dart';
+import 'package:untitled/features/journey/screens/mother_journey_screen.dart';
+
+class _NoopContinuationStore implements TriageContinuationStore {
+  @override
+  int generationFor(String userId) => 0;
+
+  @override
+  Future<void> invalidateUser(String userId) async {}
+
+  @override
+  Future<PendingTriageContinuation?> read(String userId) async => null;
+
+  @override
+  Future<void> save({
+    required String userId,
+    required PendingTriageContinuation continuation,
+    required int generation,
+  }) async {}
+}
+
+class _NoopContinuationGateway implements TriageContinuationGateway {
+  @override
+  Future<void> acknowledge(String token) async {}
+
+  @override
+  Future<TriageContinuationResolution> resolve(String token) =>
+      throw StateError('not used');
+}
 
 class _FakeDirectChatService extends DirectChatService {
   int unreadConversationCount = 0;
@@ -94,6 +125,73 @@ void main() {
       ConversationRefreshBus.notify();
       await tester.pumpAndSettle();
       expect(find.text('2'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    '150 percent text scale keeps bottom navigation labels from colliding',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: const TextScaler.linear(1.5)),
+            child: child!,
+          ),
+          home: const HomeShell(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final navigationBar = tester.widget<NavigationBar>(
+        find.byType(NavigationBar),
+      );
+      expect(
+        navigationBar.labelBehavior,
+        NavigationDestinationLabelBehavior.onlyShowSelected,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'same-route Mother shell update forwards a newly resolved continuation',
+    (tester) async {
+      final coordinator = TriageContinuationRestoreCoordinator(
+        store: _NoopContinuationStore(),
+        gateway: _NoopContinuationGateway(),
+      );
+      final arrival = TriageContinuationArrival(
+        userId: 'account-a',
+        decision: const TriageContinuationDecision(
+          destination: TriageContinuationDestination.motherJourney,
+          continuationToken: 'continuation-token',
+          generation: 0,
+          originReferenceId: '10000000-0000-0000-0000-000000000001',
+          riskLevel: 'GREEN',
+          stage: 'PREGNANCY',
+          showRecordedConfirmation: true,
+        ),
+        coordinator: coordinator,
+      );
+
+      await tester.pumpWidget(
+        const MaterialApp(home: HomeShell(initialIndex: 1)),
+      );
+      await tester.pump();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: HomeShell(initialIndex: 1, continuationArrival: arrival),
+        ),
+      );
+      await tester.pump();
+
+      final journey = tester.widget<MotherJourneyScreen>(
+        find.byType(MotherJourneyScreen),
+      );
+      expect(identical(journey.continuationArrival, arrival), isTrue);
     },
   );
 }

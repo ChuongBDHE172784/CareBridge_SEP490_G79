@@ -27,6 +27,9 @@ public class EmergencyMapHandoff {
     @Column(name = "owner_user_id", nullable = false)
     private UUID userId;
 
+    @Column(name = "safety_event_id")
+    private UUID safetyEventId;
+
     @Column(name = "triage_handoff_id")
     private UUID triageHandoffId;
 

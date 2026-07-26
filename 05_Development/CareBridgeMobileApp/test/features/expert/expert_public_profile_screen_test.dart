@@ -17,7 +17,7 @@ class _ScriptedDirectChatService extends DirectChatService {
         'professionalTitle': 'Bác sĩ Nhi khoa',
         'specialty': 'Nhi khoa',
         'verificationStatus': 'APPROVED',
-        'isConsultationEligible': true,
+        'consultationEligible': true,
       };
 
   @override

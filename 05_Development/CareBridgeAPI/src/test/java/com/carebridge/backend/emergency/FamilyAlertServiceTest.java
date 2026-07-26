@@ -1,13 +1,18 @@
 package com.carebridge.backend.emergency;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.emergency.event.EmergencySessionOpened;
-import com.carebridge.backend.emergency.event.FamilyAlertSent;
 import com.carebridge.backend.emergency.service.AlertRecipientEndpoint;
 import com.carebridge.backend.emergency.service.EmergencyAlertAttemptService;
+import com.carebridge.backend.emergency.service.EmergencyAlertClaim;
+import com.carebridge.backend.emergency.service.EmergencyAlertProviderFence;
 import com.carebridge.backend.emergency.service.EmergencyAlertDeliveryPersistenceService;
 import com.carebridge.backend.emergency.service.FamilyMemberPort;
 import com.carebridge.backend.emergency.service.FcmNotificationPort;
+import com.carebridge.backend.emergency.service.FencedAlertDelivery;
 import com.carebridge.backend.emergency.service.LocationConsentPort;
 import com.carebridge.backend.emergency.service.PreparedAlertDelivery;
 import com.carebridge.backend.emergency.service.SmsFallbackPort;
@@ -16,9 +21,10 @@ import com.carebridge.backend.notification.dto.FcmDeliveryResult;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,6 +32,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.slf4j.LoggerFactory;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -38,28 +45,53 @@ class FamilyAlertServiceTest {
     @Mock private SmsFallbackPort smsFallbackPort;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private EmergencyAlertAttemptService alertAttemptService;
+    @Mock private EmergencyAlertProviderFence providerFence;
     @Mock private EmergencyAlertDeliveryPersistenceService deliveryPersistenceService;
     @Mock private AuditService auditService;
     @InjectMocks private FamilyAlertService familyAlertService;
 
     private static final UUID SESSION_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
     private static final UUID USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000010");
+    private static final EmergencyAlertClaim CLAIM = new EmergencyAlertClaim(
+            SESSION_ID, 1, UUID.fromString("00000000-0000-0000-0000-000000000020"),
+            Instant.now().plusSeconds(120));
 
     @BeforeEach
     void defaults() {
-        lenient().when(alertAttemptService.claim(SESSION_ID)).thenReturn(true);
-        lenient().when(deliveryPersistenceService.prepare(any(), any(), nullable(UUID.class)))
+        lenient().when(alertAttemptService.claim(SESSION_ID)).thenReturn(Optional.of(CLAIM));
+        lenient().when(alertAttemptService.renew(CLAIM)).thenReturn(true);
+        lenient().when(alertAttemptService.complete(
+                eq(CLAIM), anyString(), anyInt(), anyInt(), anyBoolean())).thenReturn(true);
+        lenient().when(deliveryPersistenceService.prepare(
+                        any(), any(), nullable(UUID.class), eq(CLAIM)))
                 .thenAnswer(invocation -> new PreparedAlertDelivery(
                         UUID.randomUUID(), UUID.randomUUID(), false, 0));
+        lenient().when(deliveryPersistenceService.complete(
+                any(PreparedAlertDelivery.class), eq(CLAIM), any())).thenReturn(true);
+        lenient().when(providerFence.execute(eq(CLAIM), any())).thenAnswer(invocation -> {
+            @SuppressWarnings("unchecked")
+            Supplier<FencedAlertDelivery> operation = invocation.getArgument(1);
+            return Optional.of(operation.get());
+        });
         lenient().when(fcmNotificationPort.send(anyString(), any()))
                 .thenReturn(FcmDeliveryResult.success("message-id", 1));
     }
 
     @Test
     void activeLeaseOrCompletedAttemptSkipsReplay() {
-        when(alertAttemptService.claim(SESSION_ID)).thenReturn(false);
+        when(alertAttemptService.claim(SESSION_ID)).thenReturn(Optional.empty());
         familyAlertService.sendAlert(event());
         verifyNoInteractions(familyMemberPort, fcmNotificationPort, deliveryPersistenceService);
+    }
+
+    @Test
+    void noRecipientsCompletesIntentionalNoOpWithoutFallback() {
+        when(familyMemberPort.getFamilyAlertRecipients(USER_ID)).thenReturn(List.of());
+
+        familyAlertService.sendAlert(event());
+
+        verify(alertAttemptService).complete(CLAIM, "NO_RECIPIENTS", 0, 0, false);
+        verifyNoInteractions(fcmNotificationPort, smsFallbackPort, deliveryPersistenceService);
     }
 
     @Test
@@ -81,8 +113,37 @@ class FamilyAlertServiceTest {
     }
 
     @Test
-    void allFailuresRetryReusesEvidenceAndDoesNotCreateDuplicateRows() {
-        when(alertAttemptService.claim(SESSION_ID)).thenReturn(true, true);
+    void payloadRetainsLifecycleSafetyEventIdentity() {
+        when(familyMemberPort.getFamilyAlertRecipients(USER_ID)).thenReturn(recipients("token-1"));
+
+        familyAlertService.sendAlert(event());
+
+        verify(fcmNotificationPort).send(eq("token-1"), argThat(payload ->
+                SESSION_ID.toString().equals(payload.get("sessionId"))
+                        && SESSION_ID.toString().equals(payload.get("safetyEventId"))
+                        && USER_ID.toString().equals(payload.get("userId"))
+                        && payload.containsKey("detectedAt")));
+    }
+
+    @Test
+    void payloadCarriesDeterministicDeliveryActionIdentity() {
+        UUID deliveryId = UUID.fromString("00000000-0000-0000-0000-000000000077");
+        when(familyMemberPort.getFamilyAlertRecipients(USER_ID)).thenReturn(recipients("token-1"));
+        when(deliveryPersistenceService.prepare(
+                any(), any(), nullable(UUID.class), eq(CLAIM)))
+                .thenReturn(new PreparedAlertDelivery(
+                        deliveryId, UUID.randomUUID(), false, 0));
+
+        familyAlertService.sendAlert(event());
+
+        verify(fcmNotificationPort).send(eq("token-1"), argThat(payload ->
+                deliveryId.toString().equals(payload.get("deliveryActionId"))));
+    }
+
+    @Test
+    void allFailuresRetryReusesEvidenceAndTriggersFallback() {
+        when(alertAttemptService.claim(SESSION_ID))
+                .thenReturn(Optional.of(CLAIM), Optional.of(CLAIM));
         List<AlertRecipientEndpoint> recipients = recipients("token-1", "token-2");
         when(familyMemberPort.getFamilyAlertRecipients(USER_ID)).thenReturn(recipients);
         when(fcmNotificationPort.send(anyString(), any())).thenReturn(FcmDeliveryResult.failed("DOWN", 1));
@@ -91,19 +152,47 @@ class FamilyAlertServiceTest {
         familyAlertService.sendAlert(event());
 
         verify(fcmNotificationPort, times(4)).send(anyString(), any());
-        verify(deliveryPersistenceService, times(4)).prepare(any(), any(), nullable(UUID.class));
-        verify(deliveryPersistenceService, times(4)).complete(any(), any());
-        verify(alertAttemptService, times(2)).complete(SESSION_ID, "FAILED", 0, 2, false);
+        verify(deliveryPersistenceService, times(4))
+                .prepare(any(), any(), nullable(UUID.class), eq(CLAIM));
+        verify(deliveryPersistenceService, times(4))
+                .complete(any(PreparedAlertDelivery.class), eq(CLAIM), any());
+        verify(alertAttemptService, times(2)).complete(CLAIM, "FAILED", 0, 2, false);
         verify(smsFallbackPort, times(2)).sendFallback(eq(USER_ID), eq(SESSION_ID), any());
     }
 
     @Test
+    void providerExceptionLogDoesNotExposeRawMessageCanary() {
+        String leakCanary = "token=OV01-SECRET-CANARY";
+        when(familyMemberPort.getFamilyAlertRecipients(USER_ID)).thenReturn(recipients("token-1"));
+        when(fcmNotificationPort.send(anyString(), any()))
+                .thenThrow(new RuntimeException(leakCanary));
+        Logger logger = (Logger) LoggerFactory.getLogger(FamilyAlertService.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+
+        try {
+            familyAlertService.sendAlert(event());
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
+
+        org.assertj.core.api.Assertions.assertThat(appender.list)
+                .extracting(ILoggingEvent::getFormattedMessage)
+                .anyMatch(message -> message.contains("providerCode=FCM_EXCEPTION")
+                        && message.contains("exceptionType=RuntimeException"))
+                .noneMatch(message -> message.contains(leakCanary));
+    }
+
+    @Test
     void partialRetryDoesNotResendSuccessfulDevice() {
-        when(alertAttemptService.claim(SESSION_ID)).thenReturn(true, true);
+        when(alertAttemptService.claim(SESSION_ID))
+                .thenReturn(Optional.of(CLAIM), Optional.of(CLAIM));
         List<AlertRecipientEndpoint> recipients = recipients("token-1", "token-2");
         when(familyMemberPort.getFamilyAlertRecipients(USER_ID)).thenReturn(recipients);
         AtomicInteger tokenOnePrepare = new AtomicInteger();
-        when(deliveryPersistenceService.prepare(any(), any(), nullable(UUID.class)))
+        when(deliveryPersistenceService.prepare(any(), any(), nullable(UUID.class), eq(CLAIM)))
                 .thenAnswer(invocation -> {
                     AlertRecipientEndpoint recipient = invocation.getArgument(1);
                     boolean priorSuccess = "token-1".equals(recipient.token())
@@ -120,12 +209,12 @@ class FamilyAlertServiceTest {
 
         verify(fcmNotificationPort, times(1)).send(eq("token-1"), any());
         verify(fcmNotificationPort, times(2)).send(eq("token-2"), any());
-        verify(alertAttemptService).complete(SESSION_ID, "PARTIAL", 1, 1, false);
-        verify(alertAttemptService).complete(SESSION_ID, "SENT", 2, 0, false);
+        verify(alertAttemptService).complete(CLAIM, "PARTIAL", 1, 1, false);
+        verify(alertAttemptService).complete(CLAIM, "SENT", 2, 0, false);
     }
 
     @Test
-    void auditFailurePreventsExternalDeliveryAndLeavesPendingForLeaseRetry() {
+    void auditFailurePreventsExternalDeliveryAndLeavesAttemptForLeaseRetry() {
         when(familyMemberPort.getFamilyAlertRecipients(USER_ID)).thenReturn(recipients("token-1"));
         doThrow(new RuntimeException("audit unavailable")).when(auditService)
                 .log(any(), any(), anyString(), anyString(), anyMap());
@@ -134,16 +223,17 @@ class FamilyAlertServiceTest {
                 .isInstanceOf(RuntimeException.class)
                 .hasMessage("audit unavailable");
 
-        verify(deliveryPersistenceService).prepare(any(), any(), any());
+        verify(deliveryPersistenceService).prepare(any(), any(), any(), eq(CLAIM));
         verifyNoInteractions(fcmNotificationPort);
-        verify(deliveryPersistenceService, never()).complete(any(), any());
+        verify(deliveryPersistenceService, never()).complete(any(), any(), any());
         verify(alertAttemptService, never()).complete(any(), anyString(), anyInt(), anyInt(), anyBoolean());
         verifyNoInteractions(eventPublisher);
     }
 
     @Test
     void crashAfterClaimLeavesLeaseToBlockImmediateReplay() {
-        when(alertAttemptService.claim(SESSION_ID)).thenReturn(true, false);
+        when(alertAttemptService.claim(SESSION_ID))
+                .thenReturn(Optional.of(CLAIM), Optional.empty());
         when(familyMemberPort.getFamilyAlertRecipients(USER_ID))
                 .thenThrow(new RuntimeException("crash"));
 
@@ -157,14 +247,67 @@ class FamilyAlertServiceTest {
 
     @Test
     void staleLeaseCanBeReclaimedAndProcessed() {
-        when(alertAttemptService.claim(SESSION_ID)).thenReturn(false, true);
+        when(alertAttemptService.claim(SESSION_ID))
+                .thenReturn(Optional.empty(), Optional.of(CLAIM));
         when(familyMemberPort.getFamilyAlertRecipients(USER_ID)).thenReturn(recipients("token-1"));
 
         familyAlertService.sendAlert(event());
         familyAlertService.sendAlert(event());
 
         verify(fcmNotificationPort, times(1)).send(eq("token-1"), any());
-        verify(alertAttemptService).complete(SESSION_ID, "SENT", 1, 0, false);
+        verify(alertAttemptService).complete(CLAIM, "SENT", 1, 0, false);
+    }
+
+    @Test
+    void noRecipientsOutcomeCanBeReclaimedWhenRecipientAppears() {
+        when(alertAttemptService.claim(SESSION_ID))
+                .thenReturn(Optional.of(CLAIM), Optional.of(CLAIM));
+        when(familyMemberPort.getFamilyAlertRecipients(USER_ID))
+                .thenReturn(List.of(), recipients("token-1"));
+
+        familyAlertService.sendAlert(event());
+        familyAlertService.sendAlert(event());
+
+        verify(alertAttemptService).complete(CLAIM, "NO_RECIPIENTS", 0, 0, false);
+        verify(fcmNotificationPort).send(eq("token-1"), any());
+        verify(alertAttemptService).complete(CLAIM, "SENT", 1, 0, false);
+    }
+
+    @Test
+    void resolvedOrStaleClaimIsRevalidatedBeforeExternalSend() {
+        when(familyMemberPort.getFamilyAlertRecipients(USER_ID)).thenReturn(recipients("token-1"));
+        when(alertAttemptService.renew(CLAIM)).thenReturn(false);
+
+        familyAlertService.sendAlert(event());
+
+        verifyNoInteractions(fcmNotificationPort);
+        verify(deliveryPersistenceService, never()).complete(any(), any(), any());
+        verify(alertAttemptService, never()).complete(any(), anyString(), anyInt(), anyInt(), anyBoolean());
+    }
+
+    @Test
+    void staleFenceCannotRecordDeliveryOrCompleteAttempt() {
+        when(familyMemberPort.getFamilyAlertRecipients(USER_ID)).thenReturn(recipients("token-1"));
+        when(deliveryPersistenceService.complete(
+                any(PreparedAlertDelivery.class), eq(CLAIM), any())).thenReturn(false);
+
+        familyAlertService.sendAlert(event());
+
+        verify(fcmNotificationPort).send(eq("token-1"), any());
+        verify(alertAttemptService, never()).complete(any(), anyString(), anyInt(), anyInt(), anyBoolean());
+        verifyNoInteractions(eventPublisher, smsFallbackPort);
+    }
+
+    @Test
+    void resolutionBetweenIntentAndProviderFenceSuppressesExternalSend() {
+        when(familyMemberPort.getFamilyAlertRecipients(USER_ID)).thenReturn(recipients("token-1"));
+        when(providerFence.execute(eq(CLAIM), any())).thenReturn(Optional.empty());
+
+        familyAlertService.sendAlert(event());
+
+        verifyNoInteractions(fcmNotificationPort);
+        verify(deliveryPersistenceService, never()).complete(any(), any(), any());
+        verify(alertAttemptService, never()).complete(any(), anyString(), anyInt(), anyInt(), anyBoolean());
     }
 
     private EmergencySessionOpened event() {

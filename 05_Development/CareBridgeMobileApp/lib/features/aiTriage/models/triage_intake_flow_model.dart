@@ -34,6 +34,11 @@ class IntakeFlowResponse {
   final List<IntakeQuestion> questions;
   final int round;
   final TriageResult? triageResult;
+  final String? journeyId;
+  final String? originDashboard;
+  final String? originReferenceId;
+  final String? continuationToken;
+  final DateTime? continuationExpiresAt;
 
   const IntakeFlowResponse({
     required this.status,
@@ -44,13 +49,68 @@ class IntakeFlowResponse {
     this.questions = const [],
     required this.round,
     this.triageResult,
+    this.journeyId,
+    this.originDashboard,
+    this.originReferenceId,
+    this.continuationToken,
+    this.continuationExpiresAt,
   });
 
   factory IntakeFlowResponse.fromJson(Map<String, dynamic> json) {
     final resultJson = json['triageResult'];
-    final sessionId = json['intakeSessionId']?.toString() ?? '';
+    final sessionId =
+        json['intakeSessionId']?.toString() ??
+        (resultJson is Map<String, dynamic>
+            ? resultJson['sessionId']?.toString()
+            : null) ??
+        '';
+    final stage =
+        json['stage']?.toString() ??
+        (resultJson is Map<String, dynamic>
+            ? resultJson['stage']?.toString()
+            : null) ??
+        'INFANT';
+    if (!TriageResult.supportedStages.contains(stage)) {
+      throw const FormatException('Invalid intake flow stage');
+    }
+    final mergedIntake = json['mergedIntake'] is Map<String, dynamic>
+        ? Map<String, dynamic>.from(
+            json['mergedIntake'] as Map<String, dynamic>,
+          )
+        : <String, dynamic>{};
+    final mergedStage = mergedIntake['stage']?.toString();
+    if (mergedStage != null && mergedStage != stage) {
+      throw const FormatException('Merged intake stage mismatch');
+    }
     TriageResult? result;
     if (resultJson is Map<String, dynamic>) {
+      final isLegacyNestedResult =
+          resultJson.containsKey('status') ||
+          resultJson.containsKey('triageStatus');
+      if (!isLegacyNestedResult) {
+        final nestedStage = resultJson['stage']?.toString();
+        if (nestedStage != null && nestedStage != stage) {
+          throw const FormatException('Triage result stage mismatch');
+        }
+        _rejectNestedMismatch(
+          resultJson,
+          key: 'sessionId',
+          authoritativeValue: sessionId,
+          message: 'Triage result session mismatch',
+        );
+      }
+      for (final binding in const {
+        'journeyId': 'Triage result journey mismatch',
+        'originDashboard': 'Triage result origin dashboard mismatch',
+        'originReferenceId': 'Triage result origin reference mismatch',
+      }.entries) {
+        _rejectNestedMismatch(
+          resultJson,
+          key: binding.key,
+          authoritativeValue: json[binding.key]?.toString(),
+          message: binding.value,
+        );
+      }
       final envelopeStatus = json['status']?.toString();
       final resultStatus = envelopeStatus == 'TRIAGE_COMPLETE'
           ? 'COMPLETED'
@@ -58,27 +118,25 @@ class IntakeFlowResponse {
       final patched = <String, dynamic>{
         ...resultJson,
         'sessionId': sessionId,
-        'stage':
-            json['stage']?.toString() ??
-            resultJson['stage']?.toString() ??
-            'INFANT',
+        'stage': stage,
         'status': resultStatus,
         'triageStatus':
             envelopeStatus ??
             resultJson['triageStatus']?.toString() ??
             resultJson['status']?.toString(),
+        'journeyId': json['journeyId'],
+        'originDashboard': json['originDashboard'],
+        'originReferenceId': json['originReferenceId'],
+        'continuationToken': json['continuationToken'],
+        'continuationExpiresAt': json['continuationExpiresAt'],
       };
       result = TriageResult.fromJson(patched);
     }
     return IntakeFlowResponse(
       status: json['status']?.toString() ?? '',
       intakeSessionId: sessionId,
-      stage: json['stage']?.toString() ?? 'INFANT',
-      mergedIntake: json['mergedIntake'] is Map<String, dynamic>
-          ? Map<String, dynamic>.from(
-              json['mergedIntake'] as Map<String, dynamic>,
-            )
-          : <String, dynamic>{},
+      stage: stage,
+      mergedIntake: mergedIntake,
       assistantMessage: json['assistantMessage']?.toString(),
       questions: (json['questions'] as List<dynamic>? ?? const [])
           .whereType<Map<String, dynamic>>()
@@ -86,6 +144,27 @@ class IntakeFlowResponse {
           .toList(),
       round: int.tryParse(json['round']?.toString() ?? '') ?? 1,
       triageResult: result,
+      journeyId: json['journeyId']?.toString(),
+      originDashboard: json['originDashboard']?.toString(),
+      originReferenceId: json['originReferenceId']?.toString(),
+      continuationToken: json['continuationToken']?.toString(),
+      continuationExpiresAt: DateTime.tryParse(
+        json['continuationExpiresAt']?.toString() ?? '',
+      ),
     );
+  }
+}
+
+void _rejectNestedMismatch(
+  Map<String, dynamic> nested, {
+  required String key,
+  required String? authoritativeValue,
+  required String message,
+}) {
+  final nestedValue = nested[key]?.toString();
+  if (nestedValue != null &&
+      authoritativeValue != null &&
+      nestedValue != authoritativeValue) {
+    throw FormatException(message);
   }
 }

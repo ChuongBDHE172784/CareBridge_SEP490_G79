@@ -24,7 +24,7 @@ public CommunityAnswer toEntity(PostCommunityAnswerRequest request, UUID authorI
  .body(request.getBody())
  .personalExperience(Boolean.TRUE.equals(request.getIsPersonalExperience()))
  .expertLabeled(expertLabeled) // ADR-COM-005: never from request
- .status(AnswerStatus.PENDING) // ADR-COM-006: always PENDING
+ .status(AnswerStatus.APPROVED) // New answers are visible immediately; edits still re-enter moderation.
  .build();
 }
 

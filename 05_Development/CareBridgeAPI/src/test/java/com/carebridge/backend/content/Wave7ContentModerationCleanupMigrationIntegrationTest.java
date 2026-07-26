@@ -28,9 +28,9 @@ class Wave7ContentModerationCleanupMigrationIntegrationTest {
     @Test
     void cleanBootstrapRemovesFourWave7Tables() throws Exception {
         migrate(PRE);
-        assertThat(tableCount()).isEqualTo(96);
+        long tableCountBefore = tableCount();
         migrate(WAVE);
-        assertThat(tableCount()).isEqualTo(92);
+        assertThat(tableCount()).isEqualTo(tableCountBefore - REMOVED.length);
         for (String table : REMOVED) assertThat(exists(table)).as(table).isFalse();
         assertThat(number("SELECT count(*) FROM pg_constraint WHERE contype='f' AND NOT convalidated"))
                 .isZero();

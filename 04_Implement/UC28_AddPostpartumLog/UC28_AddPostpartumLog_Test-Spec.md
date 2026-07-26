@@ -270,3 +270,12 @@ git checkout -- src/main/java/com/carebridge/backend/carejourney/
 
 *TDD Template v2.0 — UC-28 Add Postpartum Log*
 *Status: Approved — 5/9 service unit tests GREEN (TC-001, TC-002, TC-003, TC-006, TC-007 passed 2026-06-29)*
+
+## Story 6.10 OV-01 Test Contract Addendum
+
+| Case ID | Priority | Oracle | Executable linkage |
+| --- | --- | --- | --- |
+| `OV01-TS-28-001` | P1 | Mother-owned postpartum log create/read succeeds for a valid POSTPARTUM journey with zero babies; foreign-owner and non-active boundaries fail closed | `PostpartumLogServiceTest`, `PostpartumLogControllerTest`, `PostpartumLogPostgresIntegrationTest` |
+| `OV01-TS-28-002` | P1 | Drafts/retries/list state are account-scoped and do not require a baby selection | `postpartum_log_draft_store_test.dart`, `postpartum_log_list_screen_test.dart`, `postpartum_recovery_dashboard_test.dart` |
+
+The original `5/9` historical service-only statement is retained as legacy input, not the current Story 6.10 coverage conclusion.

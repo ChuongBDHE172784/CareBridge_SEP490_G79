@@ -5,7 +5,7 @@ import '../../reminder/services/reminder_service.dart';
 
 /// CB-028 — Assigned / Group Tasks Screen (Read-Only)
 /// Displays tasks synced from "Việc hôm nay" (ReminderService).
-/// Read-only view with filter tabs (Cần làm, Đang làm, Đã xong, Quá hạn).
+/// Read-only view with filter tabs (Cần làm, Bỏ qua, Đã xong, Quá hạn).
 class AssignedTasksScreen extends StatefulWidget {
   final String groupId;
   final String groupName;
@@ -24,7 +24,7 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
   final _reminderService = ReminderService.instance;
   bool _isLoading = true;
   List<TodayTask> _allTasks = [];
-  String _currentFilter = 'TODO'; // TODO, IN_PROGRESS, COMPLETED, OVERDUE
+  String _currentFilter = 'TODO'; // TODO, SKIPPED, COMPLETED, OVERDUE
 
   @override
   void initState() {
@@ -63,8 +63,8 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
       if (_currentFilter == 'COMPLETED') {
         return t.isCompleted;
       }
-      if (_currentFilter == 'IN_PROGRESS') {
-        return t.isSnoozed;
+      if (_currentFilter == 'SKIPPED') {
+        return t.isSkipped;
       }
       // TODO filter
       return t.isPending && !isOverdue;
@@ -134,7 +134,7 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
               children: [
                 _buildFilterTab('TODO', 'Cần làm'),
                 const SizedBox(width: 8),
-                _buildFilterTab('IN_PROGRESS', 'Đang làm'),
+                _buildFilterTab('SKIPPED', 'Bỏ qua'),
                 const SizedBox(width: 8),
                 _buildFilterTab('COMPLETED', 'Đã xong'),
                 const SizedBox(width: 8),
@@ -229,6 +229,8 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
     Color indicatorColor;
     if (task.isCompleted) {
       indicatorColor = Colors.green;
+    } else if (task.isSkipped) {
+      indicatorColor = const Color(0xFF84736F);
     } else if (task.isSnoozed) {
       indicatorColor = const Color(0xFF845143);
     } else if (task.dueAt.isBefore(DateTime.now())) {
@@ -240,8 +242,10 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
     String statusText = 'Cần làm';
     if (task.isCompleted) {
       statusText = 'Đã xong';
+    } else if (task.isSkipped) {
+      statusText = 'Bỏ qua';
     } else if (task.isSnoozed) {
-      statusText = 'Đang làm';
+      statusText = 'Hoãn';
     } else if (task.dueAt.isBefore(DateTime.now())) {
       statusText = 'Quá hạn';
     }

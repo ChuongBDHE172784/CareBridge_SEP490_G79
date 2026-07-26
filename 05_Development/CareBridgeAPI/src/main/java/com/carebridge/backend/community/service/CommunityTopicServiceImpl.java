@@ -10,6 +10,9 @@ import com.carebridge.backend.community.entity.CommunityTopic;
 import com.carebridge.backend.community.entity.TopicType;
 import com.carebridge.backend.community.exception.DuplicateTopicNameException;
 import com.carebridge.backend.community.exception.InvalidTopicHierarchyException;
+import com.carebridge.backend.community.exception.CommunityTopicNotFoundException;
+import com.carebridge.backend.community.exception.ImmutableTopicTypeException;
+import com.carebridge.backend.community.exception.TopicHasDependentsException;
 import com.carebridge.backend.community.mapper.CommunityTopicMapper;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
@@ -110,20 +113,19 @@ public class CommunityTopicServiceImpl implements CommunityTopicService {
         CommunityTopic topic = topicRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Community topic not found: " + id));
 
+        if (request.getType() != null && request.getType() != topic.getType()) {
+            throw new ImmutableTopicTypeException(
+                    "Community topic type is immutable after creation: " + topic.getType());
+        }
+
         if (request.getName() != null
                 && !request.getName().trim().equalsIgnoreCase(topic.getName())
                 && topicRepository.existsByNameIgnoreCaseAndIdNot(request.getName(), id)) {
             throw new DuplicateTopicNameException(request.getName());
         }
 
-        TopicType effectiveType = request.getType() != null ? request.getType() : topic.getType();
+        TopicType effectiveType = topic.getType();
         UUID effectiveParentId = request.getParentId() != null ? request.getParentId() : topic.getParentId();
-        // If this request is switching type to TOPIC, parentId must not remain set — whether it
-        // came from the request or is inherited from the existing entity (TDS §9.2).
-        if (request.getType() == TopicType.TOPIC && effectiveParentId != null) {
-            throw new InvalidTopicHierarchyException(
-                    "Cannot set type=TOPIC while parentId is still set: " + effectiveParentId);
-        }
         validateHierarchy(effectiveType, effectiveParentId);
 
         boolean nameChanged = request.getName() != null
@@ -140,22 +142,39 @@ public class CommunityTopicServiceImpl implements CommunityTopicService {
         return hydrateSingle(topic, updatedBy);
     }
 
-    // ADR-COM-016 (revised): TOPIC must never have a parent. CATEGORY/TAG parentId is OPTIONAL —
-    // if provided, it must reference an existing, non-hidden TOPIC (parentId=null is valid for
-    // CATEGORY/TAG too, e.g. ContentCategoryController's flat categories).
+    @Override
+    @Transactional
+    public void deleteTopic(UUID id, UUID deletedBy) {
+        CommunityTopic topic = topicRepository.findById(id)
+                .orElseThrow(() -> new CommunityTopicNotFoundException(id.toString()));
+
+        boolean hasChildren = topicRepository.existsByParentId(id);
+        boolean hasQuestions = questionRepository.existsByTopicId(id);
+        boolean hasFollows = topicFollowRepository.existsByTopicId(id);
+        if (hasChildren || hasQuestions || hasFollows) {
+            throw new TopicHasDependentsException(
+                    "Community topic has dependents and cannot be deleted: " + id);
+        }
+
+        topicRepository.delete(topic);
+        auditService.log(AuditAction.MODERATION_ACTION, deletedBy,
+                "CommunityTopic", id.toString(), "deleted");
+    }
+
+    // ADR-COM-020: CATEGORY/TAG are roots; TOPIC requires an existing visible CATEGORY parent.
     private void validateHierarchy(TopicType type, UUID parentId) {
         if (type == TopicType.TOPIC) {
-            if (parentId != null) {
-                throw new InvalidTopicHierarchyException("A TOPIC cannot have a parent: " + parentId);
+            if (parentId == null) {
+                throw new InvalidTopicHierarchyException("A TOPIC must belong to a parent CATEGORY");
             }
+            topicRepository.findByIdAndTypeAndIsHiddenFalse(parentId, TopicType.CATEGORY)
+                    .orElseThrow(() -> new InvalidTopicHierarchyException(
+                            "parentId must reference an existing, visible CATEGORY: " + parentId));
             return;
         }
-        if (parentId == null) {
-            return;
+        if (parentId != null) {
+            throw new InvalidTopicHierarchyException(type + " cannot have a parent: " + parentId);
         }
-        topicRepository.findByIdAndTypeAndIsHiddenFalse(parentId, TopicType.TOPIC)
-                .orElseThrow(() -> new InvalidTopicHierarchyException(
-                        "parentId must reference an existing, visible TOPIC: " + parentId));
     }
 
     // ADR-COM-018: base slug from the name, auto-suffixed -2, -3, ... on collision.

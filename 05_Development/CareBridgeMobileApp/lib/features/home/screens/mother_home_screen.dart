@@ -8,6 +8,7 @@ import '../../notification/screens/notification_center_screen.dart';
 import '../../notification/services/notification_service.dart';
 import '../../../core/network/api_client.dart';
 import '../../community/screens/community_feed_screen.dart';
+import '../../community/screens/view_content_screen.dart';
 import '../../exercise/screens/mother_exercise_screen.dart';
 
 /// CB-008 — Mother Home (UC-24, UC-49)
@@ -15,7 +16,9 @@ import '../../exercise/screens/mother_exercise_screen.dart';
 /// quick action grid, today's tasks, and personalized content suggestions.
 /// Data: GET /api/v1/journeys/me/dashboard (UC-24), mock tasks + articles.
 class MotherHomeScreen extends StatefulWidget {
-  const MotherHomeScreen({super.key});
+  const MotherHomeScreen({super.key, this.recoveryNotice});
+
+  final String? recoveryNotice;
 
   @override
   State<MotherHomeScreen> createState() => _MotherHomeScreenState();
@@ -132,6 +135,10 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
             padding: const EdgeInsets.symmetric(horizontal: 24),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
+                if (widget.recoveryNotice != null) ...[
+                  _buildContinuationRecoveryNotice(),
+                  const SizedBox(height: 16),
+                ],
                 _buildGreeting(),
                 const SizedBox(height: 24),
                 _buildDiscoverSection(),
@@ -156,6 +163,46 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
           if (!_loading) SliverToBoxAdapter(child: _buildContentSection()),
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
         ],
+      ),
+    );
+  }
+
+  Widget _buildContinuationRecoveryNotice() {
+    final message = widget.recoveryNotice!;
+    return Semantics(
+      key: const Key('triage-continuation-recovery-notice'),
+      container: true,
+      liveRegion: true,
+      label: message,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF2EAE4),
+          borderRadius: BorderRadius.circular(20),
+          border: const Border(
+            left: BorderSide(color: Color(0xFFC98C7B), width: 4),
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.info_outline_rounded, color: Color(0xFF845143)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  height: 1.45,
+                  color: Color(0xFF5A463F),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -280,6 +327,14 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => const MotherExerciseScreen()),
           ),
+        ),
+        const SizedBox(width: 12),
+        _QuickAction(
+          icon: Icons.menu_book_outlined,
+          label: 'Nội dung & FAQ',
+          onTap: () => Navigator.of(
+            context,
+          ).push(MaterialPageRoute(builder: (_) => const ViewContentScreen())),
         ),
       ],
     );

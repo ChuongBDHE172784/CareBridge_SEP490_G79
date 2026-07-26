@@ -30,4 +30,11 @@ class AuditEligibilityPolicyTest {
         assertThat(policy.shouldAudit(AuditAction.JOURNEY_CREATED)).isTrue();
         assertThat(policy.shouldAudit(AuditAction.JOURNEY_UPDATED)).isTrue();
     }
+
+    @Test
+    void uc82_69_tc_011_shouldAuditChecklistItemAdded() {
+        assertThat(policy.shouldAudit(AuditAction.CHECKLIST_ITEM_ADDED))
+                .as("TC-011: successful imported snapshots are audit eligible")
+                .isTrue();
+    }
 }

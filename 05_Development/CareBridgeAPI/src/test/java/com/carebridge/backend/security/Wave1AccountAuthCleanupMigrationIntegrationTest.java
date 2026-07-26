@@ -41,21 +41,26 @@ class Wave1AccountAuthCleanupMigrationIntegrationTest {
     static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer("postgres:16-alpine");
 
     @BeforeEach
-    void reset() throws Exception { execute("DROP SCHEMA public CASCADE; CREATE SCHEMA public"); }
+    void reset() throws Exception {
+        execute("DROP SCHEMA IF EXISTS carebridge_migration_bridge CASCADE");
+        execute("DROP SCHEMA public CASCADE");
+        execute("CREATE SCHEMA public");
+    }
 
     @Test
     void cleanBootstrapDropsOnlyWave1LegacyTablesAndKeepsCanonicalIntegrity() throws Exception {
         migrate(PRE_WAVE);
+        long tableCountBefore = tableCount();
+        long transitionalTableCountBefore = nonTargetTableCount();
+        long presentLegacyTableCount = existingTableCount(REMOVED);
         migrate(WAVE);
 
         for (String table : REMOVED) assertThat(exists(table)).as(table).isFalse();
         for (String table : TARGET) assertThat(exists(table)).as(table).isTrue();
-        assertThat(number("SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'"))
-                .isEqualTo(133);
-        assertThat(number("SELECT count(*) FROM information_schema.tables WHERE table_schema='public' " +
-                "AND table_type='BASE TABLE' AND table_name <> ALL(ARRAY['" + String.join("','", TARGET) + "'])"))
+        assertThat(tableCount()).isEqualTo(tableCountBefore - presentLegacyTableCount);
+        assertThat(nonTargetTableCount())
                 .as("transitional tables outside the approved target")
-                .isEqualTo(63);
+                .isEqualTo(transitionalTableCountBefore - presentLegacyTableCount);
         assertThat(number("SELECT count(*) FROM users u LEFT JOIN persons p ON p.person_id=u.person_id WHERE p.person_id IS NULL"))
                 .isZero();
         assertThat(number("SELECT count(*) FROM care_subjects c LEFT JOIN persons p ON p.person_id=c.person_id WHERE p.person_id IS NULL"))
@@ -114,6 +119,25 @@ class Wave1AccountAuthCleanupMigrationIntegrationTest {
     private boolean exists(String table) throws Exception {
         try (Connection c=connection(); Statement s=c.createStatement(); ResultSet r=s.executeQuery(
                 "SELECT to_regclass('public."+table+"') IS NOT NULL")) { r.next(); return r.getBoolean(1); }
+    }
+
+    private long tableCount() throws Exception {
+        return number("SELECT count(*) FROM information_schema.tables "
+                + "WHERE table_schema='public' AND table_type='BASE TABLE'");
+    }
+
+    private long nonTargetTableCount() throws Exception {
+        return number("SELECT count(*) FROM information_schema.tables WHERE table_schema='public' "
+                + "AND table_type='BASE TABLE' AND table_name <> ALL(ARRAY['"
+                + String.join("','", TARGET) + "'])");
+    }
+
+    private long existingTableCount(String[] tables) throws Exception {
+        long count = 0;
+        for (String table : tables) {
+            if (exists(table)) count++;
+        }
+        return count;
     }
 
     private long number(String sql) throws Exception {

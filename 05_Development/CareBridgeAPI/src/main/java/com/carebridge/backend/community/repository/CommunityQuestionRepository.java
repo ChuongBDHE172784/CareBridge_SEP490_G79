@@ -19,6 +19,8 @@ import java.util.UUID;
 @Repository
 public interface CommunityQuestionRepository extends JpaRepository<CommunityQuestion, UUID> {
 
+    boolean existsByTopicId(UUID topicId);
+
     // ADR-COM-006: used to gate answer posting — only APPROVED questions accept answers
     Optional<CommunityQuestion> findByIdAndStatus(UUID id, QuestionStatus status);
 

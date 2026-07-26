@@ -15,6 +15,7 @@ import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.content.entity.ContentStatus;
 import com.carebridge.backend.content.entity.ContentType;
 import com.carebridge.backend.content.service.AdminContentService;
+import com.carebridge.backend.content.service.ContentService;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
 import com.carebridge.backend.security.repository.UserRepository;
@@ -47,6 +48,9 @@ class UpdateContentIntegrationTest {
 
     @MockitoBean
     private AdminContentService adminContentService;
+
+    @MockitoBean
+    private ContentService contentService;
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;

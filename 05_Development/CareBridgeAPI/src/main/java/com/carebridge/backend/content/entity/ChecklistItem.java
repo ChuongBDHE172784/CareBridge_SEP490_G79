@@ -49,6 +49,10 @@ public class ChecklistItem {
     private Boolean isRequired;
 
     @Builder.Default
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive = Boolean.TRUE;
+
+    @Builder.Default
     @Column(name = "entry_type", nullable = false, length = 30)
     private String entryType = "CHECKLIST_ENTRY";
 

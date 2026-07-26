@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/network/api_client.dart';
 import '../models/notification_model.dart';
 import '../services/notification_service.dart';
+import '../routing/consultation_notification_routing.dart';
 import 'notification_detail_screen.dart';
 
 class NotificationCenterScreen extends StatefulWidget {
@@ -246,6 +247,11 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
             : null;
         if (conversationId != null) {
           context.push('/direct-chat/$conversationId');
+          return;
+        }
+        final consultationRoute = resolveNotificationRoute(n);
+        if (consultationRoute != null) {
+          context.push(consultationRoute);
           return;
         }
         await Navigator.of(context).push(

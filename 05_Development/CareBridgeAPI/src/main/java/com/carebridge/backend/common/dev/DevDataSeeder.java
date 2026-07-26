@@ -31,6 +31,7 @@ import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.content.entity.ContentStatus;
 import com.carebridge.backend.content.entity.ContentType;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
+import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
 import com.carebridge.backend.content.entity.ChecklistItem;
 import com.carebridge.backend.content.entity.ModerationAction;
 import com.carebridge.backend.content.entity.ModerationActionType;
@@ -62,7 +63,11 @@ import com.carebridge.backend.family.repository.CareGroupRepository;
 import com.carebridge.backend.journey.entity.JourneyStatus;
 import com.carebridge.backend.journey.entity.JourneyType;
 import com.carebridge.backend.journey.entity.MotherJourney;
+import com.carebridge.backend.journey.entity.PregnancyOutcomeEvidence;
+import com.carebridge.backend.journey.entity.PregnancyOutcomeType;
+import com.carebridge.backend.journey.entity.JourneyDateSource;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
+import com.carebridge.backend.journey.repository.PregnancyOutcomeEvidenceRepository;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.rbac.Role;
 import com.carebridge.backend.security.repository.UserRepository;
@@ -81,6 +86,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -89,8 +95,13 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Seeds test accounts per role when explicitly enabled.
  *
- * Credentials (same password for all accounts):
- *   Password : carebridge.dev-seed.password (default Test@1234)
+ * Credentials (same operator-supplied synthetic password for all accounts):
+ *   Password : CAREBRIDGE_DEV_SEED_PASSWORD / carebridge.dev-seed.password
+ * The value is required when seeding is enabled, is never logged, and must stay outside
+ * source control and documentation. Blank input and the retired historical default fail
+ * startup closed.
+ * The seeder is available only in the dev profile while prod is absent and still requires
+ * the explicit carebridge.dev-seed.enabled property gate.
  *
  * Base accounts (one per role):
  *   admin@carebridge.dev      -> SYSTEM_ADMIN
@@ -114,6 +125,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Slf4j
 @Component
+@Profile("dev & !prod")
 @ConditionalOnProperty(prefix = "carebridge.dev-seed", name = "enabled", havingValue = "true")
 @RequiredArgsConstructor
 public class DevDataSeeder implements ApplicationRunner {
@@ -123,6 +135,7 @@ public class DevDataSeeder implements ApplicationRunner {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final MotherJourneyRepository motherJourneyRepository;
+    private final PregnancyOutcomeEvidenceRepository pregnancyOutcomeEvidenceRepository;
     private final BabyProfileRepository babyProfileRepository;
     private final CareGroupRepository careGroupRepository;
     private final CareGroupMemberRepository careGroupMemberRepository;
@@ -160,6 +173,8 @@ public class DevDataSeeder implements ApplicationRunner {
         new SeedAccount("mebau@carebridge.dev", "Mẹ Bầu Mới", Role.MOTHER),
         new SeedAccount("mother3@carebridge.dev", "Mother Test 3", Role.MOTHER),
         new SeedAccount("mother4@carebridge.dev", "Mother Test 4", Role.MOTHER),
+        new SeedAccount("mother5@carebridge.dev", "Story 6.5 Mother Create", Role.MOTHER),
+        new SeedAccount("mother6@carebridge.dev", "Story 6.5 Mother Link", Role.MOTHER),
         new SeedAccount("family2@carebridge.dev", "Family Test 2", Role.FAMILY),
         new SeedAccount("family3@carebridge.dev", "Family Test 3", Role.FAMILY),
         new SeedAccount("expert2@carebridge.dev", "Expert Test 2", Role.EXPERT),
@@ -169,7 +184,9 @@ public class DevDataSeeder implements ApplicationRunner {
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
+        validateSeedPassword(testPassword);
         String passwordHash = passwordEncoder.encode(testPassword);
+
         Map<String, User> savedUsers = new HashMap<>();
         int created = 0;
 
@@ -191,16 +208,16 @@ public class DevDataSeeder implements ApplicationRunner {
             }
 
             User user = User.builder()
-                .email(seed.email())
-                .name(seed.fullName())
-                .passwordHash(passwordHash)
-                .role(seed.role())
-                .enabled(true)
-                .locked(false)
-                .accountStatus("ACTIVE")
-                .emailVerified(true)
-                .phoneVerified(true)
-                .build();
+                    .email(seed.email())
+                    .name(seed.fullName())
+                    .passwordHash(passwordHash)
+                    .role(seed.role())
+                    .enabled(true)
+                    .locked(false)
+                    .accountStatus("ACTIVE")
+                    .emailVerified(true)
+                    .phoneVerified(true)
+                    .build();
 
             user = userRepository.save(user);
             savedUsers.put(seed.email(), user);
@@ -208,7 +225,7 @@ public class DevDataSeeder implements ApplicationRunner {
         }
 
         if (created > 0) {
-            log.info("Created/updated {} seed accounts for roles using password {}", created, testPassword);
+            log.info("Created/updated {} synthetic dev seed accounts", created);
         } else {
             log.debug("[DevDataSeeder] All seed accounts already exist - skipped.");
         }
@@ -217,6 +234,15 @@ public class DevDataSeeder implements ApplicationRunner {
         seedCommunitySampleData(savedUsers);
         seedCommunitySampleDataBatch2(savedUsers);
         seedVerifiedContent(savedUsers);
+    }
+
+    static void validateSeedPassword(String candidate) {
+        if (candidate == null
+                || candidate.isBlank()
+                || DEFAULT_TEST_PASSWORD.equals(candidate)) {
+            throw new IllegalStateException(
+                    "Dev seed requires an explicit non-default CAREBRIDGE_DEV_SEED_PASSWORD");
+        }
     }
 
     /** Small idempotent content library covering public, draft and review lifecycle states. */
@@ -351,6 +377,80 @@ public class DevDataSeeder implements ApplicationRunner {
             checklistItemRepository.save(ChecklistItem.builder().template(template).itemText("Chuẩn bị giấy tờ cần thiết")
                     .order(1).isRequired(true).build());
         }
+        seedChecklistTemplateBatch();
+    }
+
+    private record ChecklistItemSpec(String text, boolean required) {}
+
+    /**
+     * 7 additional templates spanning every (stage, status) combination plus a zero-item
+     * template, so the Content Admin "Checklist" screen (/content/checklists) has real
+     * variety instead of the single PREGNANCY/DRAFT row above. Idempotent by template name.
+     */
+    private void seedChecklistTemplateBatch() {
+        seedChecklistTemplate("Checklist khám sức khỏe tiền sản", ContentStage.PRE_PREGNANCY, ContentStatus.APPROVED,
+                "Các xét nghiệm và mũi tiêm cần hoàn thành trước khi mang thai.", List.of(
+                        new ChecklistItemSpec("Khám sức khỏe tổng quát", true),
+                        new ChecklistItemSpec("Xét nghiệm máu và các bệnh lây truyền", true),
+                        new ChecklistItemSpec("Tiêm phòng Rubella, thủy đậu", true),
+                        new ChecklistItemSpec("Tư vấn di truyền nếu có tiền sử gia đình", false)));
+
+        seedChecklistTemplate("Checklist đồ dùng cho mẹ và bé khi đi sinh", ContentStage.PREGNANCY, ContentStatus.APPROVED,
+                "Danh sách vật dụng cần chuẩn bị trước ngày dự sinh cho cả mẹ và bé.", List.of(
+                        new ChecklistItemSpec("Hồ sơ khám thai và giấy tờ tùy thân", true),
+                        new ChecklistItemSpec("Quần áo sơ sinh và tã bỉm", true),
+                        new ChecklistItemSpec("Đồ dùng vệ sinh cá nhân cho mẹ", true),
+                        new ChecklistItemSpec("Nước uống và đồ ăn nhẹ", false),
+                        new ChecklistItemSpec("Sạc điện thoại, máy ảnh", false)));
+
+        seedChecklistTemplate("Checklist chuẩn bị tâm lý trước sinh", ContentStage.PREGNANCY, ContentStatus.DRAFT,
+                "Bản nháp checklist tâm lý trước sinh, chưa có mục nào được thêm.", List.of());
+
+        seedChecklistTemplate("Checklist chăm sóc mẹ sau sinh 6 tuần đầu", ContentStage.POSTPARTUM, ContentStatus.APPROVED,
+                "Các mốc theo dõi sức khỏe mẹ trong 6 tuần đầu sau sinh.", List.of(
+                        new ChecklistItemSpec("Theo dõi vết mổ/vết khâu hàng ngày", true),
+                        new ChecklistItemSpec("Tái khám sau sinh 6 tuần", true),
+                        new ChecklistItemSpec("Theo dõi dấu hiệu trầm cảm sau sinh", true),
+                        new ChecklistItemSpec("Duy trì chế độ dinh dưỡng cho con bú", false)));
+
+        seedChecklistTemplate("Checklist theo dõi dấu hiệu trầm cảm sau sinh", ContentStage.POSTPARTUM, ContentStatus.PENDING_REVIEW,
+                "Bảng theo dõi cảm xúc và dấu hiệu cảnh báo trầm cảm sau sinh, đang chờ duyệt.", List.of(
+                        new ChecklistItemSpec("Ghi nhận chất lượng giấc ngủ", true),
+                        new ChecklistItemSpec("Ghi nhận thay đổi cảm xúc bất thường", true),
+                        new ChecklistItemSpec("Liên hệ chuyên gia nếu có dấu hiệu cảnh báo", false)));
+
+        seedChecklistTemplate("Checklist an toàn cho bé tại nhà", ContentStage.BABY_CARE, ContentStatus.APPROVED,
+                "Danh mục kiểm tra an toàn không gian sống để phòng ngừa tai nạn cho trẻ nhỏ.", List.of(
+                        new ChecklistItemSpec("Che chắn ổ điện và góc cạnh sắc nhọn", true),
+                        new ChecklistItemSpec("Khóa an toàn tủ đựng hóa chất, thuốc", true),
+                        new ChecklistItemSpec("Lắp thanh chắn cầu thang", true),
+                        new ChecklistItemSpec("Kiểm tra nhiệt độ nước tắm", true),
+                        new ChecklistItemSpec("Dọn vật nhỏ dễ hóc nghẹn", false),
+                        new ChecklistItemSpec("Chuẩn bị số điện thoại khẩn cấp", false)));
+
+        seedChecklistTemplate("Checklist đồ dùng sơ sinh (bản cũ)", ContentStage.BABY_CARE, ContentStatus.ARCHIVED,
+                "Phiên bản checklist cũ, đã được thay thế bởi bản cập nhật mới hơn.", List.of(
+                        new ChecklistItemSpec("Bình sữa và dụng cụ tiệt trùng", true),
+                        new ChecklistItemSpec("Nôi và chăn ga cho bé", false)));
+    }
+
+    private void seedChecklistTemplate(String name, ContentStage stage, ContentStatus status, String description,
+            List<ChecklistItemSpec> items) {
+        ChecklistTemplate template = checklistTemplateRepository.findAll().stream()
+                .filter(t -> name.equals(t.getName())).findFirst()
+                .orElseGet(() -> checklistTemplateRepository.saveAndFlush(ChecklistTemplate.builder()
+                        .name(name)
+                        .stage(stage)
+                        .status(ChecklistTemplateStatus.valueOf(status.name()))
+                        .description(description)
+                        .build()));
+        if (checklistItemRepository.findByTemplate_IdOrderByOrder(template.getId()).isEmpty()) {
+            int order = 1;
+            for (ChecklistItemSpec item : items) {
+                checklistItemRepository.save(ChecklistItem.builder().template(template).itemText(item.text())
+                        .order(order++).isRequired(item.required()).build());
+            }
+        }
     }
 
     /**
@@ -370,6 +470,12 @@ public class DevDataSeeder implements ApplicationRunner {
         MotherJourney mother4Journey = seedMotherJourney(
             savedUsers.get("mother4@carebridge.dev"), JourneyType.POSTPARTUM,
             LocalDate.now().minusMonths(2));
+        MotherJourney mother5Journey = seedEligibleStory65Journey(
+            savedUsers.get("mother5@carebridge.dev"), "mother5");
+        MotherJourney mother6Journey = seedEligibleStory65Journey(
+            savedUsers.get("mother6@carebridge.dev"), "mother6");
+
+        seedUnlinkedStory65Babies(savedUsers.get("mother6@carebridge.dev"), mother6Journey);
 
         seedAcceptedCareGroup(
             savedUsers.get("mother3@carebridge.dev"), savedUsers.get("family2@carebridge.dev"),
@@ -393,6 +499,86 @@ public class DevDataSeeder implements ApplicationRunner {
             "Nhi khoa", "Bác sĩ Nhi khoa", 6, "Bệnh viện Nhi Đồng 1");
     }
 
+    /**
+     * Isolated Story 6.5 manual-test fixture. It is deliberately created only by
+     * the opt-in development seeder, never a migration or production bootstrap.
+     */
+    private MotherJourney seedEligibleStory65Journey(User mother, String fixtureKey) {
+        MotherJourney journey = motherJourneyRepository.findCanonical(mother.getId())
+            .orElseGet(() -> saveMotherJourneyWithCanonicalSubject(
+                mother,
+                MotherJourney.builder()
+                    .ownerUserId(mother.getId())
+                    .journeyType(JourneyType.POSTPARTUM)
+                    .startDate(LocalDate.now().minusDays(14))
+                    .deliveryDate(LocalDate.now().minusDays(14))
+                    .pregnancyOutcome(PregnancyOutcomeType.LIVE_BIRTH)
+                    .pregnancyOutcomeDate(LocalDate.now().minusDays(14))
+                    .dateSource(JourneyDateSource.SELF_REPORTED)
+                    .status(JourneyStatus.ACTIVE)
+                    .notes("[DEV][Story 6.5] eligible manual linkage fixture")));
+
+        if (journey.getJourneyType() != JourneyType.POSTPARTUM
+            || journey.getPregnancyOutcome() != PregnancyOutcomeType.LIVE_BIRTH) {
+            throw new IllegalStateException("Story 6.5 fixture must retain an eligible POSTPARTUM/LIVE_BIRTH journey");
+        }
+
+        UUID submissionId = UUID.nameUUIDFromBytes(("story65-" + fixtureKey + "-live-birth").getBytes());
+        if (pregnancyOutcomeEvidenceRepository.findByJourneyIdAndSubmissionId(journey.getId(), submissionId).isEmpty()) {
+            var previousEvidence = pregnancyOutcomeEvidenceRepository
+                .findFirstByJourneyIdOrderByRevisionNumberDesc(journey.getId());
+            pregnancyOutcomeEvidenceRepository.save(PregnancyOutcomeEvidence.builder()
+                .journeyId(journey.getId())
+                .ownerUserId(mother.getId())
+                .submissionId(submissionId)
+                .outcomeType(PregnancyOutcomeType.LIVE_BIRTH)
+                .outcomeDate(journey.getPregnancyOutcomeDate())
+                .source(JourneyDateSource.SELF_REPORTED)
+                .actorUserId(mother.getId())
+                .reason("[DEV][Story 6.5] synthetic live-birth fixture")
+                .effectiveAt(Instant.now())
+                .revisionNumber(previousEvidence
+                    .map(PregnancyOutcomeEvidence::getRevisionNumber)
+                    .orElse(0) + 1)
+                .supersedesEvidenceId(previousEvidence
+                    .map(PregnancyOutcomeEvidence::getId)
+                    .orElse(null))
+                .journeyVersion(journey.getVersion())
+                .semanticHash("dev-story65-" + fixtureKey + "-live-birth")
+                .correction(false)
+                .build());
+        }
+        return journey;
+    }
+
+    private void seedUnlinkedStory65Babies(User mother, MotherJourney journey) {
+        List<BabyProfile> existing = babyProfileRepository
+            .findByOwnerUserIdAndStatusOrderByCreatedAtAsc(mother.getId(), BabyProfileStatus.ACTIVE);
+        seedUnlinkedStory65Baby(existing, mother, journey, "[DEV][Story 6.5] Baby A", Gender.FEMALE, true);
+        seedUnlinkedStory65Baby(existing, mother, journey, "[DEV][Story 6.5] Baby B", Gender.MALE, false);
+    }
+
+    private void seedUnlinkedStory65Baby(
+            List<BabyProfile> existing, User mother, MotherJourney journey, String nickname, Gender gender,
+            boolean selectedInLegacyProfileSwitcher) {
+        boolean present = existing.stream().anyMatch(baby -> nickname.equals(baby.getNickname()));
+        if (present) return;
+        babyProfileRepository.save(BabyProfile.builder()
+            .ownerUserId(mother.getId())
+            .relatedJourneyId(null)
+            .nickname(nickname)
+            .birthDate(journey.getDeliveryDate())
+            .gender(gender)
+            .birthWeightKg(new BigDecimal("3.20"))
+            .birthLengthCm(new BigDecimal("49.0"))
+            .status(BabyProfileStatus.ACTIVE)
+            // The legacy schema permits one selected profile per owner. Both rows
+            // remain ACTIVE and are valid linkage candidates; this flag controls
+            // only the legacy profile switcher selection.
+            .active(selectedInLegacyProfileSwitcher)
+            .build());
+    }
+
     private MotherJourney seedMotherJourney(User mother, JourneyType type, LocalDate deliveryDate) {
         var activeCanonical = motherJourneyRepository
             .findFirstByOwnerUserIdAndStatusOrderByCreatedAtDesc(mother.getId(), JourneyStatus.ACTIVE);
@@ -404,16 +590,41 @@ public class DevDataSeeder implements ApplicationRunner {
         if (!existing.isEmpty()) {
             return existing.get(0);
         }
-        return motherJourneyRepository.save(MotherJourney.builder()
-            .ownerUserId(mother.getId())
-            .journeyType(type)
-            .startDate(LocalDate.now().minusMonths(3))
-            .lastMenstrualDate(LocalDate.now().minusMonths(5))
-            .estimatedDueDate(LocalDate.now().plusMonths(4))
-            .deliveryDate(deliveryDate)
-            .status(JourneyStatus.ACTIVE)
-            .notes("Seeded verified test journey")
-            .build());
+        return saveMotherJourneyWithCanonicalSubject(
+            mother,
+            MotherJourney.builder()
+                .ownerUserId(mother.getId())
+                .journeyType(type)
+                .startDate(LocalDate.now().minusMonths(3))
+                .lastMenstrualDate(LocalDate.now().minusMonths(5))
+                .estimatedDueDate(LocalDate.now().plusMonths(4))
+                .deliveryDate(deliveryDate)
+                .status(JourneyStatus.ACTIVE)
+                .notes("Seeded verified test journey"));
+    }
+
+    private MotherJourney saveMotherJourneyWithCanonicalSubject(
+            User mother, MotherJourney.MotherJourneyBuilder journeyBuilder) {
+        UUID careSubjectId = ensureMotherCareSubject(mother.getId());
+        MotherJourney journey = motherJourneyRepository.saveAndFlush(
+            journeyBuilder.careSubjectId(careSubjectId).build());
+        if (motherJourneyRepository.linkMotherCareSubject(careSubjectId, journey.getId()) != 1) {
+            throw new IllegalStateException("Unable to link seeded mother care subject to journey");
+        }
+        return journey;
+    }
+
+    private UUID ensureMotherCareSubject(UUID ownerUserId) {
+        UUID existing = motherJourneyRepository.findMotherCareSubjectId(ownerUserId);
+        if (existing != null) {
+            return existing;
+        }
+        motherJourneyRepository.ensureMotherCareSubject(UUID.randomUUID(), ownerUserId);
+        UUID created = motherJourneyRepository.findMotherCareSubjectId(ownerUserId);
+        if (created == null) {
+            throw new IllegalStateException("Unable to create seeded mother care subject");
+        }
+        return created;
     }
 
     private BabyProfile seedBabyProfile(User mother, MotherJourney journey) {
@@ -427,9 +638,12 @@ public class DevDataSeeder implements ApplicationRunner {
             baby.setActive(true);
             if (baby.getBirthWeightKg() == null) baby.setBirthWeightKg(new BigDecimal("3.40"));
             if (baby.getBirthLengthCm() == null) baby.setBirthLengthCm(new BigDecimal("50.0"));
-            return babyProfileRepository.save(baby);
+            // saveAndFlush: seedBabyJourneyViewData writes child rows via raw jdbcTemplate right
+            // after this returns, which needs the care_subjects row to already be visible in the
+            // DB (Hibernate write-behind alone would leave it queued, tripping the FK constraint).
+            return babyProfileRepository.saveAndFlush(baby);
         }
-        return babyProfileRepository.save(BabyProfile.builder()
+        return babyProfileRepository.saveAndFlush(BabyProfile.builder()
             .ownerUserId(mother.getId())
             .relatedJourneyId(journey.getId())
             .nickname("Bé " + mother.getName())
@@ -520,10 +734,11 @@ public class DevDataSeeder implements ApplicationRunner {
         Timestamp now = Timestamp.from(Instant.now());
         jdbcTemplate.update("""
             INSERT INTO growth_measurements
-                (growth_measurement_id, baby_id, measured_date, weight_kg, height_cm,
+                (growth_measurement_id, care_subject_id, baby_id, measured_date, weight_kg, height_cm,
                  head_circumference_cm, source_type, note, deleted_at, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, 'HOME', '[DEV][MF-03] Dữ liệu tăng trưởng mẫu', NULL, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'HOME', '[DEV][MF-03] Dữ liệu tăng trưởng mẫu', NULL, ?, ?)
             ON CONFLICT (growth_measurement_id) DO UPDATE SET
+                care_subject_id = EXCLUDED.care_subject_id,
                 baby_id = EXCLUDED.baby_id,
                 measured_date = EXCLUDED.measured_date,
                 weight_kg = EXCLUDED.weight_kg,
@@ -533,7 +748,7 @@ public class DevDataSeeder implements ApplicationRunner {
                 note = EXCLUDED.note,
                 deleted_at = NULL,
                 updated_at = EXCLUDED.updated_at
-            """, UUID.fromString(id), baby.getId(), java.sql.Date.valueOf(measuredDate),
+            """, UUID.fromString(id), baby.getId(), baby.getId(), java.sql.Date.valueOf(measuredDate),
             new BigDecimal(weightKg), new BigDecimal(heightCm), new BigDecimal(headCm), now, now);
     }
 
