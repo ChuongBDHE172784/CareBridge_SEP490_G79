@@ -22,8 +22,9 @@ public class GeminiTriageClientAdapter implements GeminiTriageClient {
             if (response.contains("RED")) level = RiskLevel.RED;
             else if (response.contains("YELLOW")) level = RiskLevel.YELLOW;
             return new AiTriageResult(level, "AI-assisted triage result. Seek professional advice.");
-        } catch (Exception e) {
-            log.warn("GeminiTriageClient unavailable, returning safe default: {}", e.getMessage());
+        } catch (Exception exception) {
+            log.warn("Gemini triage fallback reason=GEMINI_UNAVAILABLE exceptionType={}",
+                    exception.getClass().getSimpleName());
             return new AiTriageResult(RiskLevel.GREEN, "AI triage unavailable. Please consult a healthcare professional.");
         }
     }

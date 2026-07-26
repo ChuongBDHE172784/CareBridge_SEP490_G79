@@ -12,7 +12,11 @@ import com.carebridge.backend.security.jwt.JwtTokenProvider;
 import com.carebridge.backend.security.rbac.Role;
 import com.carebridge.backend.security.repository.UserRepository;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
+import jakarta.persistence.EntityManager;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -34,6 +38,7 @@ class CommunityProfileIntegrationTest extends AbstractPostgresIntegrationTest {
     @Autowired private CommunityProfileRepository profileRepository;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private JwtTokenProvider jwtTokenProvider;
+    @Autowired private EntityManager entityManager;
 
     private String seedUserAndGetToken() {
         User user = userRepository.save(User.builder()
@@ -81,6 +86,30 @@ class CommunityProfileIntegrationTest extends AbstractPostgresIntegrationTest {
         String token = seedUserAndGetToken();
         User user = userRepository.findByEmail(EMAIL).orElseThrow();
 
+        User unrelatedUser = userRepository.save(User.builder()
+                .email("int.communityprofile.unrelated@test.com")
+                .role(Role.MOTHER)
+                .passwordHash(passwordEncoder.encode("UnrelatedP@ss1"))
+                .enabled(true)
+                .locked(false)
+                .emailVerified(true)
+                .phoneVerified(false)
+                .accountStatus("ACTIVE")
+                .build());
+        Instant unrelatedTimestamp = Instant.now().minusSeconds(7200).truncatedTo(ChronoUnit.MICROS);
+        CommunityProfile unrelated = profileRepository.saveAndFlush(CommunityProfile.builder()
+                .userId(unrelatedUser.getId())
+                .displayName("UnrelatedName")
+                .bio("Unrelated bio")
+                .interestStage("POSTPARTUM")
+                .visible(true)
+                .createdAt(unrelatedTimestamp)
+                .updatedAt(unrelatedTimestamp)
+                .build());
+        UUID unrelatedProfileId = unrelated.getCommunityProfileId();
+        Instant unrelatedCreatedAt = unrelated.getCreatedAt();
+        Instant unrelatedUpdatedAt = unrelated.getUpdatedAt();
+
         CommunityProfile existing = profileRepository.save(CommunityProfile.builder()
                 .userId(user.getId())
                 .displayName("OriginalName")
@@ -90,6 +119,7 @@ class CommunityProfileIntegrationTest extends AbstractPostgresIntegrationTest {
                 .createdAt(Instant.now().minusSeconds(3600))
                 .updatedAt(Instant.now().minusSeconds(3600))
                 .build());
+        UUID targetProfileId = existing.getCommunityProfileId();
         Instant originalUpdatedAt = existing.getUpdatedAt();
 
         String requestBody = """
@@ -102,9 +132,28 @@ class CommunityProfileIntegrationTest extends AbstractPostgresIntegrationTest {
                         .content(requestBody))
                 .andExpect(status().isOk());
 
+        profileRepository.flush();
+        entityManager.clear();
+
         CommunityProfile updated = profileRepository.findByUserId(user.getId()).orElseThrow();
+        assertThat(updated.getCommunityProfileId()).isEqualTo(targetProfileId);
+        assertThat(updated.getDisplayName()).isEqualTo("UpdatedName");
         assertThat(updated.getUpdatedAt()).isAfter(originalUpdatedAt);
         assertThat(updated.isVisible()).isFalse();
-        assertThat(profileRepository.count()).isEqualTo(1); // hiding never deletes the row
+        assertThat(profileRepository.findAllByUserIdIn(List.of(user.getId())))
+                .extracting(CommunityProfile::getCommunityProfileId)
+                .containsExactly(targetProfileId);
+
+        CommunityProfile reloadedUnrelated = profileRepository.findById(unrelatedProfileId).orElseThrow();
+        assertThat(reloadedUnrelated.getUserId()).isEqualTo(unrelatedUser.getId());
+        assertThat(reloadedUnrelated.getDisplayName()).isEqualTo("UnrelatedName");
+        assertThat(reloadedUnrelated.getBio()).isEqualTo("Unrelated bio");
+        assertThat(reloadedUnrelated.getInterestStage()).isEqualTo("POSTPARTUM");
+        assertThat(reloadedUnrelated.isVisible()).isTrue();
+        assertThat(reloadedUnrelated.getCreatedAt()).isEqualTo(unrelatedCreatedAt);
+        assertThat(reloadedUnrelated.getUpdatedAt()).isEqualTo(unrelatedUpdatedAt);
+        assertThat(profileRepository.findAllByUserIdIn(List.of(unrelatedUser.getId())))
+                .extracting(CommunityProfile::getCommunityProfileId)
+                .containsExactly(unrelatedProfileId);
     }
 }

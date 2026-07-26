@@ -4,6 +4,7 @@ import com.carebridge.backend.security.jwt.JwtAuthenticationFilter;
 import com.carebridge.backend.baby.security.BabyLinkBoundaryAuditFilter;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.boot.security.autoconfigure.actuate.web.servlet.EndpointRequest;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -39,6 +40,11 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        // Only DB-backed readiness is anonymous for the container
+                        // orchestrator. Root health, liveness, and every other
+                        // actuator operation remain denied.
+                        .requestMatchers(HttpMethod.GET, "/actuator/health/readiness").permitAll()
+                        .requestMatchers(EndpointRequest.toAnyEndpoint()).denyAll()
                         // Auth endpoints
                         .requestMatchers(HttpMethod.POST,
                                 "/api/v1/auth/register",

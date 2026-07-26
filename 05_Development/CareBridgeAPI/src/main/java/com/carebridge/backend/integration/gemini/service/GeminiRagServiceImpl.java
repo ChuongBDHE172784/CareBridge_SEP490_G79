@@ -65,8 +65,9 @@ public class GeminiRagServiceImpl implements RagService {
                     .fallback(false)
                     .generatedAt(LocalDateTime.now())
                     .build();
-        } catch (GeminiUnavailableException e) {
-            log.warn("RagFallbackTriggered: Gemini unavailable — {}", e.getMessage());
+        } catch (GeminiUnavailableException exception) {
+            log.warn("RagFallbackTriggered reason=GEMINI_UNAVAILABLE exceptionType={}",
+                    exception.getClass().getSimpleName());
             return buildFallbackResponse();
         }
     }

@@ -19,6 +19,8 @@ import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -37,6 +39,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * idealized bare {@code MOTHER}.)
  */
 @Transactional
+@ActiveProfiles("test")
+@TestPropertySource(properties = "carebridge.auth.login-direct-enabled=true")
 class LoginIntegrationTest extends AbstractPostgresIntegrationTest {
 
     private static final String EMAIL = "int.login@test.com";

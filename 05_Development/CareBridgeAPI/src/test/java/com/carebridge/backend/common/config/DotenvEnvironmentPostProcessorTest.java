@@ -21,7 +21,9 @@ class DotenvEnvironmentPostProcessorTest {
         Path dotenv = tempDir.resolve(".env");
         Files.writeString(dotenv, """
                 # local development configuration
-                JWT_SECRET=plain-secret-value
+                JWT_ACTIVE_KEY_ID=test-key-2026-07
+                JWT_PRIVATE_KEY=MIIEvSyntheticBase64==
+                JWT_PUBLIC_KEYS=test-key-2026-07:MIIBSyntheticBase64==
                 SUPABASE_DB_URL="jdbc:postgresql://localhost:5432/postgres?sslmode=require&prepareThreshold=0"
                 MAIL_PASSWORD='app password'
                 export CAREBRIDGE_DEV_SEED_ENABLED=true
@@ -31,7 +33,9 @@ class DotenvEnvironmentPostProcessorTest {
         Map<String, Object> values = DotenvEnvironmentPostProcessor.parseDotenv(dotenv);
 
         assertThat(values)
-                .containsEntry("JWT_SECRET", "plain-secret-value")
+                .containsEntry("JWT_ACTIVE_KEY_ID", "test-key-2026-07")
+                .containsEntry("JWT_PRIVATE_KEY", "MIIEvSyntheticBase64==")
+                .containsEntry("JWT_PUBLIC_KEYS", "test-key-2026-07:MIIBSyntheticBase64==")
                 .containsEntry("SUPABASE_DB_URL",
                         "jdbc:postgresql://localhost:5432/postgres?sslmode=require&prepareThreshold=0")
                 .containsEntry("MAIL_PASSWORD", "app password")

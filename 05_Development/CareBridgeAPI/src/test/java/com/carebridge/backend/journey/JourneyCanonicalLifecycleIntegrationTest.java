@@ -4,6 +4,7 @@ import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.repository.AuditLogRepository;
 import com.carebridge.backend.consent.service.ConsentService;
+import com.carebridge.backend.journey.dto.UpdateJourneyRequest;
 import com.carebridge.backend.journey.entity.*;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.journey.repository.MotherJourneyTransitionRepository;
@@ -361,6 +362,62 @@ class JourneyCanonicalLifecycleIntegrationTest extends AbstractPostgresIntegrati
                         + "does not allow UPDATE or DELETE\n"
                         + "  Where: PL/pgSQL function carebridge_reject_mutation() line 3 at RAISE");
         assertThat(transitionRepository.countByJourneyId(created.getId())).isEqualTo(1L);
+    }
+
+    @Test
+    void ov01Be019_completionPersistsStatusHistoryAndRemovesActiveSelection() {
+        var created = transitionService.createJourney(
+                JourneyLifecycleTestFactory.pregnancyCreate(),
+                JourneyLifecycleTestFactory.MOTHER_ID);
+        UpdateJourneyRequest completion = new UpdateJourneyRequest();
+        completion.setStatus("COMPLETED");
+        completion.setDeliveryDate(LocalDate.of(2026, 7, 20));
+        completion.setDateSource(JourneyDateSource.SELF_REPORTED);
+        completion.setDateConfidence(JourneyDateConfidence.CONFIRMED);
+        completion.setChangeReason("OV01_COMPLETION_VERIFICATION");
+        completion.setEffectiveAt(JourneyLifecycleTestFactory.NOW.plusSeconds(60));
+
+        var response = transitionService.updateJourney(
+                JourneyLifecycleTestFactory.MOTHER_ID, created.getId(), completion);
+
+        assertThat(response.getStatus()).isEqualTo(JourneyStatus.COMPLETED.name());
+        assertThat(journeyRepository.findById(created.getId()).orElseThrow())
+                .satisfies(journey -> {
+                    assertThat(journey.getStatus()).isEqualTo(JourneyStatus.COMPLETED);
+                    assertThat(journey.getDeliveryDate()).isEqualTo(LocalDate.of(2026, 7, 20));
+                });
+        assertThat(journeyRepository.countByOwnerUserIdAndStatus(
+                JourneyLifecycleTestFactory.MOTHER_ID, JourneyStatus.ACTIVE)).isZero();
+        assertThat(transitionRepository.countByJourneyId(created.getId())).isEqualTo(2L);
+        assertThat(transitionService.getHistory(
+                JourneyLifecycleTestFactory.MOTHER_ID,
+                created.getId(),
+                PageRequest.of(0, 20)).getItems())
+                .extracting("eventType")
+                .contains(JourneyTransitionType.STATUS_CHANGED);
+    }
+
+    @Test
+    void ov01Be020_archivedFixtureIsInactiveImmutableAndPreservesHistory() {
+        var created = transitionService.createJourney(
+                JourneyLifecycleTestFactory.pregnancyCreate(),
+                JourneyLifecycleTestFactory.MOTHER_ID);
+        long historyBeforeFixtureSetup = transitionRepository.countByJourneyId(created.getId());
+        jdbcTemplate.update(
+                "UPDATE public.mother_journeys SET status = 'ARCHIVED' WHERE journey_id = ?",
+                created.getId());
+
+        assertThat(journeyRepository.countByOwnerUserIdAndStatus(
+                JourneyLifecycleTestFactory.MOTHER_ID, JourneyStatus.ACTIVE)).isZero();
+        assertThatThrownBy(() -> transitionService.updateJourney(
+                JourneyLifecycleTestFactory.MOTHER_ID,
+                created.getId(),
+                JourneyLifecycleTestFactory.dateCorrection()))
+                .isInstanceOf(BusinessException.class)
+                .extracting(error -> ((BusinessException) error).getCode())
+                .isEqualTo("JOURNEY-012");
+        assertThat(transitionRepository.countByJourneyId(created.getId()))
+                .isEqualTo(historyBeforeFixtureSetup);
     }
 
     private Object createAfterBarrier(
