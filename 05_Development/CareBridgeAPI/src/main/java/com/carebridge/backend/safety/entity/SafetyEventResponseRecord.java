@@ -15,7 +15,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "safety_event_actions")
+@Table(name = "safety_events")
 @org.hibernate.annotations.SQLRestriction("action_type = 'RESPONSE'")
 @Getter
 @Builder
@@ -24,13 +24,13 @@ import lombok.NoArgsConstructor;
 public class SafetyEventResponseRecord {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "safety_event_action_id")
+    @Column(name = "safety_event_id")
     private UUID id;
 
-    @Column(name = "safety_event_id", nullable = false, unique = true)
+    @Column(name = "parent_event_id", nullable = false, unique = true)
     private UUID safetyEventId;
 
-    @Column(name = "owner_user_id", nullable = false)
+    @Column(name = "user_id", nullable = false)
     private UUID ownerUserId;
 
     @Column(name = "response_type", nullable = false, length = 30)
@@ -55,9 +55,17 @@ public class SafetyEventResponseRecord {
     @Column(name = "idempotency_key", nullable = false, updatable = false)
     private String idempotencyKey;
 
+    @Builder.Default
+    @Column(name = "event_type", nullable = false, updatable = false)
+    private String eventType = "ACTION";
+
+    @Column(name = "detected_at", nullable = false, updatable = false)
+    private Instant detectedAt;
+
     @PrePersist
     void prepareCanonicalAction() {
         actionType = "RESPONSE";
         if (idempotencyKey == null) idempotencyKey = "response:" + UUID.randomUUID();
+        if (detectedAt == null) detectedAt = respondedAt == null ? Instant.now() : respondedAt;
     }
 }

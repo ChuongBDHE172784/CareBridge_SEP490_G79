@@ -18,10 +18,27 @@ public interface MotherBaselineContextRepository
             """, nativeQuery = true)
     Integer acquireOwnerLock(@Param("ownerUserId") UUID ownerUserId);
 
+    @Query(value = """
+            SELECT * FROM audit_events
+             WHERE event_category='BASELINE_CONTEXT'
+               AND actor_user_id=:ownerUserId
+               AND payload->>'submissionId'=CAST(:submissionId AS text)
+             ORDER BY occurred_at DESC LIMIT 1
+            """, nativeQuery = true)
     Optional<MotherBaselineContext> findByOwnerUserIdAndSubmissionId(
-            UUID ownerUserId, UUID submissionId);
+            @Param("ownerUserId") UUID ownerUserId, @Param("submissionId") UUID submissionId);
 
-    Optional<MotherBaselineContext> findTopByOwnerUserIdOrderByRevisionDesc(UUID ownerUserId);
+    @Query(value = """
+            SELECT * FROM audit_events
+             WHERE event_category='BASELINE_CONTEXT'
+               AND actor_user_id=:ownerUserId
+             ORDER BY CAST(NULLIF(payload->>'revision', '') AS bigint) DESC NULLS LAST,
+                      occurred_at DESC,
+                      audit_event_id DESC
+             LIMIT 1
+            """, nativeQuery = true)
+    Optional<MotherBaselineContext> findTopByOwnerUserIdOrderByRevisionDesc(
+            @Param("ownerUserId") UUID ownerUserId);
 
     @Modifying(flushAutomatically = true)
     @Query(value = """

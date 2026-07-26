@@ -7,11 +7,13 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @Entity
-@Table(name = "maternal_observations")
-@org.hibernate.annotations.SQLRestriction("legacy_source = 'MATERNAL_METRIC'")
+@Table(name = "health_observations")
+@org.hibernate.annotations.SQLRestriction("legacy_source = 'maternal_health_metrics'")
 @Getter
 @Setter
 @Builder
@@ -21,20 +23,20 @@ public class MaternalHealthMetric {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "observation_id", updatable = false, nullable = false)
+    @Column(name = "health_observation_id", updatable = false, nullable = false)
     private UUID id;
 
-    @Column(name = "mother_journey_id", nullable = false)
+    @Column(name = "care_subject_id", nullable = false)
     private UUID journeyId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "observation_type", nullable = false, length = 60)
     private MetricType metricType;
 
-    @Column(name = "numeric_value")
+    @Column(name = "value_numeric")
     private BigDecimal valueNumeric;
 
-    @Column(name = "secondary_numeric_value")
+    @Column(name = "value_secondary")
     private BigDecimal valueSecondary;
 
     @Column(name = "unit", length = 30)
@@ -47,15 +49,14 @@ public class MaternalHealthMetric {
     @Column(name = "source_type", length = 30)
     private DataSource sourceType;
 
-    @Column(name = "source_reference_id")
+    @Transient
     private UUID sourceReferenceId;
 
     @Column(name = "text_value", columnDefinition = "text")
     private String note;
 
     @Builder.Default
-    @Enumerated(EnumType.STRING)
-    @Column(name = "record_status", nullable = false, length = 20)
+    @Transient
     private MetricStatus status = MetricStatus.ACTIVE;
 
     @CreationTimestamp
@@ -68,25 +69,45 @@ public class MaternalHealthMetric {
 
     @Builder.Default
     @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
-    @Column(name = "payload_jsonb", nullable = false, columnDefinition = "jsonb")
-    private String payloadJson = "{}";
-
-    @Builder.Default
-    @Column(name = "schema_version", nullable = false, updatable = false, length = 30)
-    private String schemaVersion = "1";
+    @Column(name = "raw_payload_jsonb", nullable = false, columnDefinition = "jsonb")
+    private Map<String, Object> payloadJson = new LinkedHashMap<>();
 
     @Builder.Default
     @Column(name = "legacy_source", nullable = false, updatable = false, length = 60)
-    private String legacySource = "MATERNAL_METRIC";
+    private String legacySource = "maternal_health_metrics";
 
     @Column(name = "legacy_id", nullable = false, updatable = false, length = 100)
     private String legacyId;
 
+    @Builder.Default
+    @Column(name = "subject_type", nullable = false, updatable = false, length = 30)
+    private String subjectType = "MOTHER";
+
     @PrePersist
+    @PreUpdate
     void prepareCanonicalObservation() {
-        legacyId = id.toString();
+        if (legacyId == null && id != null) legacyId = id.toString();
         if (sourceType == null) {
             sourceType = DataSource.MANUAL;
         }
+        if (payloadJson == null) payloadJson = new LinkedHashMap<>();
+        putPayload("sourceReferenceId", sourceReferenceId);
+        putPayload("recordStatus", status == null ? null : status.name());
     }
+
+    @PostLoad
+    void hydrateCanonicalObservation() {
+        if (payloadJson == null) return;
+        Object reference = payloadJson.get("sourceReferenceId");
+        sourceReferenceId = reference == null || reference.toString().isBlank()
+                ? null : UUID.fromString(reference.toString());
+        Object recordStatus = payloadJson.get("recordStatus");
+        status = recordStatus == null || recordStatus.toString().isBlank()
+                ? MetricStatus.ACTIVE : MetricStatus.valueOf(recordStatus.toString());
+    }
+
+    private void putPayload(String key, Object value) {
+        if (value == null) payloadJson.remove(key); else payloadJson.put(key, value);
+    }
+
 }

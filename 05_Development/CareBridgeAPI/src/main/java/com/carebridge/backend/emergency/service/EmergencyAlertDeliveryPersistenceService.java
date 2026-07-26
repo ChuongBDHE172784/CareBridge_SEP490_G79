@@ -56,6 +56,7 @@ public class EmergencyAlertDeliveryPersistenceService {
         return new PreparedAlertDelivery(delivery.actionId(), notification.getId(), false, 0);
     }
 
+
     @Transactional(propagation = Propagation.MANDATORY)
     public boolean complete(
             PreparedAlertDelivery prepared,

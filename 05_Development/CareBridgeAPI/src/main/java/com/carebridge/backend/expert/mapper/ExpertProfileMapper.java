@@ -69,6 +69,7 @@ public class ExpertProfileMapper {
 
 	public ExpertProfile toEntity(CreateExpertProfileRequest request, UUID userId) {
 		return ExpertProfile.builder()
+			.expertProfileId(userId)
 			.userId(userId)
 			.specialty(request.getSpecialty())
 			.professionalTitle(request.getProfessionalTitle())

@@ -20,6 +20,7 @@ public interface IEmergencySessionRepository extends JpaRepository<EmergencySess
             """, nativeQuery = true)
     Integer acquireUserLock(@Param("userId") UUID userId);
 
+
     @Query("SELECT e FROM EmergencySession e WHERE e.userId = :userId AND e.status = com.carebridge.backend.emergency.EmergencyStatus.ACTIVE")
     Optional<EmergencySession> findActiveByUserId(@Param("userId") UUID userId);
 

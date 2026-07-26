@@ -16,7 +16,6 @@ import com.carebridge.backend.journey.service.LifecycleConsentValidator;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.context.ApplicationEventPublisher;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -203,10 +202,7 @@ class PostpartumLogServiceTest {
         Pageable pageable = pageableCaptor.getValue();
         assertThat(pageable.getPageNumber()).isEqualTo(1);
         assertThat(pageable.getPageSize()).isEqualTo(20);
-        assertThat(pageable.getSort().toList()).containsExactly(
-                new Sort.Order(Sort.Direction.DESC, "logDate"),
-                new Sort.Order(Sort.Direction.DESC, "createdAt"),
-                new Sort.Order(Sort.Direction.DESC, "id"));
+        assertThat(pageable.getSort().isUnsorted()).isTrue();
     }
 
     @Test
@@ -342,6 +338,30 @@ class PostpartumLogServiceTest {
         assertThat(response.getMoodLevel()).isEqualTo((short) 7);
         assertThat(response.getSymptomNote()).isEqualTo("Pain improved");
         verify(eventPublisher).publishEvent(any(PostpartumLogUpdated.class));
+    }
+
+    @Test
+    void updateLog_transientPayloadOnly_explicitlySynchronizesCanonicalJson() {
+        var log = PostpartumLogTestFactory.makeActiveLog();
+        var request = new com.carebridge.backend.health.dto.UpdatePostpartumLogRequest();
+        request.setMoodLevel((short) 9);
+        request.setBreastfeedingNote("updated note");
+        when(logRepository.findByIdAndStatusForUpdate(
+                PostpartumLogTestFactory.LOG_ID, PostpartumLogStatus.ACTIVE))
+                .thenReturn(Optional.of(log));
+        when(journeyRepository.findByIdForUpdate(PostpartumLogTestFactory.JOURNEY_ID))
+                .thenReturn(Optional.of(PostpartumLogTestFactory.makeActivePostpartumJourney()));
+        when(logRepository.save(any(PostpartumLog.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        postpartumLogService.updateLog(
+                PostpartumLogTestFactory.LOG_ID, PostpartumLogTestFactory.MOTHER_ID, request);
+
+        verify(logRepository).syncPayload(
+                log.getId(),
+                log.getSubmissionId(),
+                (short) 9,
+                "updated note",
+                PostpartumLogStatus.ACTIVE);
     }
 
     @Test

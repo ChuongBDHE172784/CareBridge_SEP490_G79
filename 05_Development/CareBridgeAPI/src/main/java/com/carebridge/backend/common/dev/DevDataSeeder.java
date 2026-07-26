@@ -818,6 +818,7 @@ public class DevDataSeeder implements ApplicationRunner {
     private ExpertProfile insertExpertProfileRow(User expertUser, User admin, String specialty,
                                                   String professionalTitle, int experienceYears, String workplace) {
         return expertProfileRepository.save(ExpertProfile.builder()
+            .expertProfileId(expertUser.getId())
             .userId(expertUser.getId())
             .specialty(specialty)
             .professionalTitle(professionalTitle)

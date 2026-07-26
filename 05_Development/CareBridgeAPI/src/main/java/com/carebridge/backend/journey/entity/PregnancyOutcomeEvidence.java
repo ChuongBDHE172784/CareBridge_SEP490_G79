@@ -1,20 +1,34 @@
 package com.carebridge.backend.journey.entity;
 
-import jakarta.persistence.*;
-import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.PostLoad;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreRemove;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.type.SqlTypes;
 
 @Entity
-@Table(
-        name = "mother_journey_events",
-        uniqueConstraints = @UniqueConstraint(
-                name = "uq_pregnancy_outcome_submission",
-                columnNames = {"mother_journey_id", "submission_id", "legacy_source"}))
-@org.hibernate.annotations.SQLRestriction("legacy_source = 'PREGNANCY_OUTCOME'")
+@Table(name = "audit_events")
+@SQLRestriction("event_category = 'PREGNANCY_OUTCOME_EVIDENCE'")
 @Getter
 @Setter
 @Builder
@@ -24,85 +38,124 @@ public class PregnancyOutcomeEvidence {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "event_id", updatable = false, nullable = false)
+    @Column(name = "audit_event_id", updatable = false, nullable = false)
     private UUID id;
 
-    @Column(name = "mother_journey_id", nullable = false, updatable = false)
+    @Column(name = "subject_reference_id", nullable = false, updatable = false)
     private UUID journeyId;
 
-    @Column(name = "owner_user_id", nullable = false, updatable = false)
-    private UUID ownerUserId;
+    @Transient private UUID ownerUserId;
 
-    @Column(name = "submission_id", nullable = false, updatable = false)
-    private UUID submissionId;
+    @Transient private UUID submissionId;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "outcome_type", nullable = false, updatable = false, length = 30)
-    private PregnancyOutcomeType outcomeType;
+    @Transient private PregnancyOutcomeType outcomeType;
+    @Transient private LocalDate outcomeDate;
 
-    @Column(name = "outcome_date", updatable = false)
-    private LocalDate outcomeDate;
+    @Builder.Default
+    @Column(name = "resource_type", length = 100, updatable = false)
+    private String resourceType = "mother_journeys";
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "event_source", nullable = false, updatable = false, length = 30)
-    private JourneyDateSource source;
+    @Column(name = "resource_id", updatable = false)
+    private UUID resourceId;
+
+    @Transient private JourneyDateSource source;
 
     @Column(name = "actor_user_id", nullable = false, updatable = false)
     private UUID actorUserId;
 
-    @Column(name = "reason", nullable = false, updatable = false, length = 500)
-    private String reason;
+    @Transient private String reason;
 
-    @Column(name = "effective_at", nullable = false, updatable = false)
+    @Column(name = "occurred_at", nullable = false, updatable = false)
     private Instant effectiveAt;
 
     @CreationTimestamp
-    @Column(name = "recorded_at", nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant recordedAt;
 
-    @Column(name = "revision_number", nullable = false, updatable = false)
-    private int revisionNumber;
+    @Transient private int revisionNumber;
 
-    @Column(name = "supersedes_evidence_id", updatable = false)
-    private UUID supersedesEvidenceId;
+    @Transient private UUID supersedesEvidenceId;
 
-    @Column(name = "journey_version", nullable = false, updatable = false)
-    private long journeyVersion;
+    @Transient private long journeyVersion;
 
-    @Column(name = "semantic_hash", nullable = false, updatable = false, length = 500)
-    private String semanticHash;
+    @Transient private String semanticHash;
 
-    @Column(name = "correction", nullable = false, updatable = false)
-    private boolean correction;
+    @Transient private boolean correction;
 
     @Builder.Default
-    @Column(name = "event_type", nullable = false, updatable = false, length = 60)
-    private String eventType = "PREGNANCY_OUTCOME_EVIDENCE";
+    @Column(name = "event_category", nullable = false, updatable = false, length = 80)
+    private String eventCategory = "PREGNANCY_OUTCOME_EVIDENCE";
 
     @Builder.Default
-    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
-    @Column(name = "event_payload_jsonb", nullable = false, columnDefinition = "jsonb")
-    private String payloadJson = "{}";
+    @Transient
+    private String eventOrigin = "PREGNANCY_OUTCOME_EVIDENCE";
 
-    @Builder.Default
-    @Column(name = "schema_version", nullable = false, updatable = false, length = 30)
-    private String schemaVersion = "1";
-
-    @Builder.Default
-    @Column(name = "legacy_source", nullable = false, updatable = false, length = 60)
-    private String legacySource = "PREGNANCY_OUTCOME";
-
-    @Column(name = "legacy_id", nullable = false, updatable = false, length = 100)
-    private String legacyId;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "payload", columnDefinition = "jsonb")
+    private Map<String, Object> payload;
 
     @PrePersist
     void prepareCanonicalEvent() {
-        legacyId = id.toString();
+        resourceId = journeyId;
+        if (actorUserId == null) actorUserId = ownerUserId;
+        if (ownerUserId == null) ownerUserId = actorUserId;
+        Map<String, Object> value = payload == null ? new LinkedHashMap<>() : new LinkedHashMap<>(payload);
+        value.put("outcomeType", outcomeType == null ? null : outcomeType.name());
+        value.put("outcomeDate", outcomeDate == null ? null : outcomeDate.toString());
+        value.put("revisionNumber", revisionNumber);
+        value.put("journeyVersion", journeyVersion);
+        value.put("correction", correction);
+        value.put("source", source == null ? null : source.name());
+        value.put("reason", reason);
+        value.put("supersedesEvidenceId", supersedesEvidenceId);
+        value.put("semanticHash", semanticHash);
+        value.put("submissionId", submissionId);
+        payload = value;
+    }
+
+    @PostLoad
+    void hydrateCanonicalEvent() {
+        ownerUserId = actorUserId;
+        if (payload == null) return;
+        outcomeType = enumValue(PregnancyOutcomeType.class, payload.get("outcomeType"));
+        Object date = payload.get("outcomeDate");
+        if (date != null && !date.toString().isBlank()) outcomeDate = LocalDate.parse(date.toString());
+        revisionNumber = intValue(payload.get("revisionNumber"));
+        // V312 legacy rows did not carry this value. Zero is the explicit
+        // pre-versioning sentinel and prevents a missing payload key from
+        // being mistaken for a current journey revision.
+        journeyVersion = longValue(payload.getOrDefault("journeyVersion", 0L));
+        correction = Boolean.parseBoolean(String.valueOf(payload.getOrDefault("correction", false)));
+        source = enumValue(JourneyDateSource.class, payload.get("source"));
+        reason = text(payload.get("reason"));
+        supersedesEvidenceId = uuid(payload.get("supersedesEvidenceId"));
+        semanticHash = text(payload.get("semanticHash"));
+        submissionId = uuid(payload.get("submissionId"));
     }
 
     @PreUpdate
     @PreRemove
     void rejectMutation() {
         throw new UnsupportedOperationException("Pregnancy outcome evidence is append-only");
+    }
+
+    private int intValue(Object value) {
+        return value instanceof Number n ? n.intValue() : value == null ? 0 : Integer.parseInt(value.toString());
+    }
+
+    private long longValue(Object value) {
+        return value instanceof Number n ? n.longValue() : value == null ? 0 : Long.parseLong(value.toString());
+    }
+
+    private <E extends Enum<E>> E enumValue(Class<E> type, Object value) {
+        return value == null || value.toString().isBlank() ? null : Enum.valueOf(type, value.toString());
+    }
+
+    private String text(Object value) {
+        return value == null ? null : value.toString();
+    }
+
+    private UUID uuid(Object value) {
+        return value == null || value.toString().isBlank() ? null : UUID.fromString(value.toString());
     }
 }

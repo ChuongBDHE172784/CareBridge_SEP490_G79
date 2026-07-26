@@ -38,8 +38,12 @@ public interface UserRepository extends JpaRepository<User, java.util.UUID> {
     List<Object[]> countGroupByRole();
 
     // UC-111: dashboard aggregation — active predicate (TDS §5.2)
-    @Query("SELECT COUNT(u) FROM User u WHERE u.enabled = true AND u.locked = false "
-            + "AND (u.suspendedUntil IS NULL OR u.suspendedUntil <= :now)")
+    @Query(value = """
+            SELECT count(*) FROM users u
+             WHERE u.enabled = true AND u.locked = false
+               AND (nullif(u.settings_jsonb ->> 'suspendedUntil', '') IS NULL
+                    OR CAST(nullif(u.settings_jsonb ->> 'suspendedUntil', '') AS timestamptz) <= :now)
+            """, nativeQuery = true)
     long countActive(@Param("now") Instant now);
 
     // UC-113: impact report — mothers served

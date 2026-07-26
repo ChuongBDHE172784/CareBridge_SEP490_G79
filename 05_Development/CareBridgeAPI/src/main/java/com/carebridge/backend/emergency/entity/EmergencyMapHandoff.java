@@ -10,7 +10,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "safety_event_actions")
+@Table(name = "safety_events")
 @org.hibernate.annotations.SQLRestriction("action_type = 'MAP_HANDOFF'")
 @Getter
 @Setter
@@ -21,10 +21,10 @@ public class EmergencyMapHandoff {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "safety_event_action_id", updatable = false, nullable = false)
+    @Column(name = "safety_event_id", updatable = false, nullable = false)
     private UUID handoffId;
 
-    @Column(name = "owner_user_id", nullable = false)
+    @Column(name = "user_id", nullable = false)
     private UUID userId;
 
     @Column(name = "safety_event_id")
@@ -65,10 +65,16 @@ public class EmergencyMapHandoff {
     private String actionType = "MAP_HANDOFF";
     @Column(name = "idempotency_key", nullable = false, updatable = false)
     private String idempotencyKey;
+    @Builder.Default
+    @Column(name = "event_type", nullable = false, updatable = false)
+    private String eventType = "ACTION";
+    @Column(name = "detected_at", nullable = false, updatable = false)
+    private Instant detectedAt;
 
     @PrePersist
     void prepareCanonicalAction() {
         actionType = "MAP_HANDOFF";
         if (idempotencyKey == null) idempotencyKey = "map-handoff:" + UUID.randomUUID();
+        if (detectedAt == null) detectedAt = createdAt == null ? Instant.now() : createdAt;
     }
 }

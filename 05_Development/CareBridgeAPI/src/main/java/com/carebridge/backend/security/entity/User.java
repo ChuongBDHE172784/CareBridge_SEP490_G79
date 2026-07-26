@@ -10,14 +10,16 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import jakarta.persistence.OneToOne;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.CascadeType;
+import jakarta.persistence.PostLoad;
+import jakarta.persistence.Transient;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -42,8 +44,7 @@ public class User {
     @Column(name = "user_id", updatable = false, nullable = false)
     private java.util.UUID id;
 
-    @OneToOne(optional = false, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-    @JoinColumn(name = "person_id", nullable = false, unique = true)
+    @Transient
     private Person person;
 
     @Column(unique = true, length = 20)
@@ -58,6 +59,12 @@ public class User {
     @Column(name = "full_name", length = 120)
     private String name;
 
+    @Column(name = "display_name", length = 200)
+    private String displayName;
+
+    @Column(name = "date_of_birth")
+    private LocalDate dateOfBirth;
+
     @Column(name = "avatar_url", length = 500)
     private String avatarUrl;
 
@@ -70,7 +77,7 @@ public class User {
     @Column(name = "phone_verified")
     private Boolean phoneVerified;
 
-    @Column(name = "last_login_at")
+    @Transient
     private Instant lastLoginAt;
 
     @Enumerated(EnumType.STRING)
@@ -85,23 +92,28 @@ public class User {
     @Column(name = "locked", nullable = false)
     private boolean locked = false;
 
-    @Column(name = "locked_at")
+    @Transient
     private Instant lockedAt;
 
-    @Column(name = "suspended_until")
+    @Transient
     private Instant suspendedUntil;
 
-    @Column(name = "community_posting_restricted_until")
+    @Transient
     private Instant communityPostingRestrictedUntil;
 
     @Builder.Default
-    @Column(name = "must_change_password", nullable = false)
+    @Transient
     private boolean mustChangePassword = false;
 
     @Builder.Default
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "settings_jsonb", nullable = false, columnDefinition = "jsonb")
     private Map<String, Object> settings = new HashMap<>();
+
+    @Builder.Default
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "social_identities", nullable = false, columnDefinition = "jsonb")
+    private List<Map<String, Object>> socialIdentities = new java.util.ArrayList<>();
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -114,7 +126,51 @@ public class User {
     @PrePersist
     @PreUpdate
     void canonicalPerson() {
-        if (person == null) person = Person.builder().displayName(name).build();
-        else person.setDisplayName(name);
+        if (displayName == null || displayName.isBlank()) displayName = name;
+        if (person != null) {
+            if (person.getDisplayName() != null) {
+                displayName = person.getDisplayName();
+                name = person.getDisplayName();
+            }
+            if (person.getDateOfBirth() != null) dateOfBirth = person.getDateOfBirth();
+        }
+        putSetting("lastLoginAt", lastLoginAt);
+        putSetting("lockedAt", lockedAt);
+        putSetting("suspendedUntil", suspendedUntil);
+        putSetting("communityPostingRestrictedUntil", communityPostingRestrictedUntil);
+        settings.put("mustChangePassword", mustChangePassword);
+    }
+
+    @PostLoad
+    void hydratePersonAdapter() {
+        person = Person.builder()
+                .id(id)
+                .displayName(displayName != null ? displayName : name)
+                .dateOfBirth(dateOfBirth)
+                .createdAt(createdAt)
+                .updatedAt(updatedAt)
+                .build();
+        lastLoginAt = instantSetting("lastLoginAt");
+        lockedAt = instantSetting("lockedAt");
+        suspendedUntil = instantSetting("suspendedUntil");
+        communityPostingRestrictedUntil = instantSetting("communityPostingRestrictedUntil");
+        mustChangePassword = Boolean.TRUE.equals(settings.get("mustChangePassword"));
+    }
+
+    private void putSetting(String key, Instant value) {
+        if (settings == null) settings = new HashMap<>();
+        if (value == null) settings.remove(key);
+        else settings.put(key, value.toString());
+    }
+
+    private Instant instantSetting(String key) {
+        if (settings == null) return null;
+        Object value = settings.get(key);
+        if (value == null) return null;
+        try {
+            return Instant.parse(value.toString());
+        } catch (RuntimeException ignored) {
+            return null;
+        }
     }
 }

@@ -53,7 +53,7 @@ public class CareCalendarServiceImpl implements ICareCalendarService {
             }
         }
 
-        // Step 4: query canonical family_tasks only (ADR-FAM-004).
+        // Query canonical manual care tasks only (ADR-FAM-004).
         List<CareTask> tasks = taskRepository
                 .findByCareGroupIdAndDueAtBetween(groupId, rangeStart, rangeEnd);
 

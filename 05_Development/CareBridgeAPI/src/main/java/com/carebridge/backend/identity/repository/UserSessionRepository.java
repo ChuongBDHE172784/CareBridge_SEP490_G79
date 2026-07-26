@@ -27,7 +27,13 @@ public interface UserSessionRepository extends JpaRepository<UserSession, UUID> 
     Optional<UserSession> findByRefreshTokenHashAndRevokedAtIsNull(String refreshTokenHash);
 
     @Modifying
-    @Query("UPDATE UserSession us SET us.lastActivityAt = :now WHERE us.refreshTokenHash = :token")
+    @Query(value = """
+            UPDATE auth_sessions
+               SET last_used_at = :now,
+                   created_ip_hash = CASE WHEN :ip IS NULL THEN created_ip_hash
+                       ELSE encode(sha256(convert_to(:ip, 'UTF8')), 'hex') END
+             WHERE refresh_token_hash = :token
+            """, nativeQuery = true)
     void updateActivity(@Param("now") Instant now, @Param("ip") String ip, @Param("token") String token);
 
     @Modifying

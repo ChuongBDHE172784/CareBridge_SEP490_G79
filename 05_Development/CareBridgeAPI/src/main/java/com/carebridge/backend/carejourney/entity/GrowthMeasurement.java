@@ -24,7 +24,7 @@ public class GrowthMeasurement {
     @Column(name = "growth_measurement_id", updatable = false, nullable = false)
     private UUID growthMeasurementId;
 
-    @Column(name = "baby_id", nullable = false)
+    @Transient
     private UUID babyId;
 
     @Column(name = "care_subject_id", nullable = false)
@@ -62,8 +62,12 @@ public class GrowthMeasurement {
     @PrePersist
     @PreUpdate
     void alignCanonicalCareSubject() {
-        if (careSubjectId == null) {
+        if (careSubjectId == null && babyId != null) {
             careSubjectId = babyId;
+        }
+        if (babyId == null && careSubjectId != null) {
+            babyId = careSubjectId;
         }
     }
 }
+

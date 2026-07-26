@@ -36,17 +36,16 @@ public class CommunityProfileServiceImpl implements CommunityProfileService {
         }
 
         Instant now = Instant.now();
-        CommunityProfile profile = CommunityProfile.builder()
-                .userId(userId)
-                .displayName(request.getDisplayName())
-                .bio(request.getBio())
-                .interestStage(request.getInterestStage())
-                .visible(request.isVisible())
-                .publicAvatarUrl(request.getPublicAvatarUrl())
-                .region(request.getRegion())
-                .createdAt(now)
-                .updatedAt(now)
-                .build();
+        CommunityProfile profile = profileRepository.findAccountByUserId(userId)
+                .orElseThrow(() -> new CommunityProfileNotFoundException(
+                        "Account not found for user: " + userId));
+        profile.setDisplayName(request.getDisplayName());
+        profile.setBio(request.getBio());
+        profile.setInterestStage(request.getInterestStage());
+        profile.setVisible(request.isVisible());
+        profile.setPublicAvatarUrl(request.getPublicAvatarUrl());
+        profile.setRegion(request.getRegion());
+        profile.setUpdatedAt(now);
 
         CommunityProfile saved = profileRepository.save(profile);
 

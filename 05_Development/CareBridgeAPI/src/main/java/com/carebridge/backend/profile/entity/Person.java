@@ -18,18 +18,25 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
-@Table(name = "persons")
+@Table(name = "users")
 @Getter @Setter @Builder @NoArgsConstructor @AllArgsConstructor
 public class Person {
-    @Id @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "person_id")
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "user_id", nullable = false, updatable = false)
     private UUID id;
+
     @Column(name = "display_name", length = 200)
     private String displayName;
+
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
-    @CreationTimestamp @Column(name = "created_at", nullable = false, updatable = false)
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
-    @UpdateTimestamp @Column(name = "updated_at", nullable = false)
+
+    @UpdateTimestamp
+    @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 }

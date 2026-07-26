@@ -128,17 +128,20 @@ class PostpartumLogPostgresIntegrationTest extends AbstractPostgresIntegrationTe
                 UUID.fromString("00000000-0000-4000-8000-000000000002"),
                 UUID.fromString("00000000-0000-4000-8000-000000000003"));
         for (UUID id : ids) {
+            UUID submissionId = UUID.randomUUID();
             jdbcTemplate.update("""
-                    insert into maternal_observations (
-                        observation_id, observation_type, mother_journey_id, submission_id,
-                        observation_date, numeric_value, record_status, observed_at,
-                        payload_jsonb, source_type, legacy_source, legacy_id, created_at, updated_at)
-                    values (?, 'POSTPARTUM_LOG', ?, ?, ?, 1, 'ACTIVE', ?,
-                            '{}'::jsonb, 'POSTPARTUM_LOG', 'POSTPARTUM_LOG', ?, ?, ?)
-                    """, id, journeyId, UUID.randomUUID(), RECOVERY_START,
-                    Timestamp.from(RECOVERY_START.atStartOfDay(java.time.ZoneOffset.UTC).toInstant()),
-                    id.toString(),
+                    insert into health_observations (
+                        health_observation_id, care_subject_id, subject_type,
+                        observation_type, value_numeric, observed_at,
+                        raw_payload_jsonb, source_type, legacy_source, legacy_id,
+                        created_at, updated_at)
+                    values (?, ?, 'MOTHER', 'POSTPARTUM_LOG', 1, ?,
+                            jsonb_build_object('submissionId', CAST(? AS text),
+                                               'recordStatus', 'ACTIVE'),
+                            'POSTPARTUM_LOG', 'postpartum_logs', ?, ?, ?)
+                    """, id, journeyId, RECOVERY_START, submissionId, id.toString(),
                     Timestamp.from(sameCreatedAt), Timestamp.from(sameCreatedAt));
+
         }
 
         var first = logService.listLogs(journeyId, motherId, 0, 1);
@@ -199,9 +202,18 @@ class PostpartumLogPostgresIntegrationTest extends AbstractPostgresIntegrationTe
 
         assertThat(secondId).isEqualTo(firstId);
         assertThat(jdbcTemplate.queryForObject(
+<<<<<<< Updated upstream
                 "select count(*) from maternal_observations "
                         + "where legacy_source = 'POSTPARTUM_LOG' "
                         + "and mother_journey_id = ? and submission_id = ?",
+=======
+                """
+                select count(*) from health_observations
+                 where care_subject_id = ?
+                   and legacy_source = 'postpartum_logs'
+                   and raw_payload_jsonb->>'submissionId' = CAST(? AS text)
+                """,
+>>>>>>> Stashed changes
                 Long.class,
                 journeyId,
                 submissionId)).isEqualTo(1L);

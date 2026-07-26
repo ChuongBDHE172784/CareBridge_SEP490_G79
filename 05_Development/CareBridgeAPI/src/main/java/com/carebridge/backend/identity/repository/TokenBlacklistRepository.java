@@ -2,12 +2,39 @@ package com.carebridge.backend.identity.repository;
 
 import com.carebridge.backend.identity.entity.TokenBlacklist;
 import java.time.Instant;
-import java.util.UUID;
-import org.springframework.data.jpa.repository.JpaRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface TokenBlacklistRepository extends JpaRepository<TokenBlacklist, UUID> {
+@RequiredArgsConstructor
+public class TokenBlacklistRepository {
+    private final JdbcTemplate jdbcTemplate;
 
-    boolean existsByTokenHashAndExpiresAtAfter(String tokenHash, Instant now);
+    public boolean existsByTokenHashAndExpiresAtAfter(String tokenHash, Instant now) {
+        Boolean found = jdbcTemplate.queryForObject("""
+                SELECT EXISTS (
+                    SELECT 1 FROM auth_sessions
+                     WHERE refresh_token_hash = ?
+                       AND expires_at > ?
+                       AND status = 'REVOKED'
+                )
+                """, Boolean.class, tokenHash, now);
+        return Boolean.TRUE.equals(found);
+    }
+
+    public TokenBlacklist save(TokenBlacklist revocation) {
+        revocation.canonicalDefaults();
+        int updated = jdbcTemplate.update("""
+                UPDATE auth_sessions
+                   SET status = 'REVOKED',
+                       revoked_at = ?,
+                       revoke_reason = ?
+                 WHERE refresh_token_hash = ?
+                """, revocation.getRevokedAt(), revocation.getReason(), revocation.getTokenHash());
+        if (updated == 0) {
+            throw new IllegalArgumentException("No auth session exists for the supplied token hash");
+        }
+        return revocation;
+    }
 }

@@ -181,6 +181,7 @@ public class FederatedAuthServiceImpl implements FederatedAuthService {
 
     private User createUser(VerifiedFederatedIdentity verified, String normalizedPhone) {
         return userRepository.save(User.builder()
+
                 .email(normalizeEmail(verified.email()))
                 .phone(normalizedPhone)
                 .name(verified.displayName())

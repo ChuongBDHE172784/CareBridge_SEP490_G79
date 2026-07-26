@@ -9,7 +9,8 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "scheduled_care_items")
+@Table(name = "care_tasks")
+@org.hibernate.annotations.SQLRestriction("task_type = 'SCHEDULED_REMINDER'")
 @Getter
 @Setter
 @Builder
@@ -19,7 +20,7 @@ public class Reminder {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "care_item_id", updatable = false, nullable = false)
+    @Column(name = "task_id", updatable = false, nullable = false)
     private UUID id;
 
     @Column(name = "owner_user_id", nullable = false)
@@ -31,8 +32,11 @@ public class Reminder {
     @Column(name = "baby_id")
     private UUID babyId;
 
+    @Column(name = "care_subject_id")
+    private UUID careSubjectId;
+
     @Enumerated(EnumType.STRING)
-    @Column(name = "item_type", nullable = false, length = 50)
+    @Column(name = "source_reference_type", length = 60)
     private ReminderType reminderType;
 
     @Column(name = "title", nullable = false, length = 255)
@@ -66,4 +70,16 @@ public class Reminder {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    @Builder.Default
+    @Column(name = "task_type", nullable = false, updatable = false, length = 40)
+    private String taskType = "SCHEDULED_REMINDER";
+
+    @PrePersist
+    @PreUpdate
+    void prepareCanonicalTask() {
+        if (careSubjectId == null) {
+            careSubjectId = babyId != null ? babyId : journeyId;
+        }
+    }
 }

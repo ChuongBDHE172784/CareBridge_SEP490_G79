@@ -6,7 +6,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "safety_event_actions")
+@Table(name = "safety_events")
 @org.hibernate.annotations.SQLRestriction("action_type = 'FAMILY_ALERT'")
 @Getter
 @Setter
@@ -17,11 +17,14 @@ public class FamilyAlertLog {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "safety_event_action_id")
+    @Column(name = "safety_event_id")
     private UUID id;
 
-    @Column(name = "safety_event_id", nullable = false, unique = true)
+    @Column(name = "parent_event_id", nullable = false, unique = true)
     private UUID sessionId;
+
+    @Column(name = "user_id", nullable = false)
+    private UUID userId;
 
     @Column(name = "created_at", nullable = false)
     private Instant sentAt;
@@ -40,10 +43,16 @@ public class FamilyAlertLog {
     private String actionType = "FAMILY_ALERT";
     @Column(name = "idempotency_key", nullable = false, updatable = false)
     private String idempotencyKey;
+    @Builder.Default
+    @Column(name = "event_type", nullable = false, updatable = false)
+    private String eventType = "ACTION";
+    @Column(name = "detected_at", nullable = false, updatable = false)
+    private Instant detectedAt;
 
     @PrePersist
     void prepareCanonicalAction() {
         actionType = "FAMILY_ALERT";
         if (idempotencyKey == null) idempotencyKey = "family-alert:" + UUID.randomUUID();
+        if (detectedAt == null) detectedAt = sentAt == null ? Instant.now() : sentAt;
     }
 }
