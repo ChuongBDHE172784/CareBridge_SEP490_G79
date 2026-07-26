@@ -50,7 +50,7 @@ final class DatabaseGate0Support {
     static final String DATABASE_OBJECT_REFERENCE = "DATABASE_OBJECT_REFERENCE";
 
     private static final Pattern MIGRATION_PATTERN =
-            Pattern.compile("^V(.+)__(.+)\\.sql$");
+            Pattern.compile("^([BV])(.+)__(.+)\\.sql$");
     private static final Pattern SAFE_IDENTIFIER =
             Pattern.compile("^[A-Za-z_][A-Za-z0-9_]*$");
     private static final ObjectMapper JSON = new ObjectMapper()
@@ -120,12 +120,16 @@ final class DatabaseGate0Support {
     }
 
     static RepositoryManifest inspectRepository() {
+        return inspectRepository(MIGRATION_DIRECTORY);
+    }
+
+    static RepositoryManifest inspectRepository(Path migrationDirectory) {
         List<MigrationFile> migrations = new ArrayList<>();
         List<String> malformed = new ArrayList<>();
-        Map<MigrationVersion, List<String>> pathsByVersion = new TreeMap<>();
+        Map<String, List<String>> pathsByTypeAndVersion = new TreeMap<>();
         List<String> failures = new ArrayList<>();
 
-        try (Stream<Path> paths = Files.walk(MIGRATION_DIRECTORY)) {
+        try (Stream<Path> paths = Files.walk(migrationDirectory)) {
             paths.filter(Files::isRegularFile)
                     .filter(path -> path.getFileName().toString().endsWith(".sql"))
                     .sorted(Comparator.comparing(path -> path.getFileName().toString()))
@@ -141,22 +145,23 @@ final class DatabaseGate0Support {
         migrations.sort(Comparator
                 .comparing((MigrationFile migration) ->
                         MigrationVersion.fromVersion(migration.version()))
+                .thenComparing(MigrationFile::type)
                 .thenComparing(MigrationFile::script));
 
         for (MigrationFile migration : migrations) {
-            pathsByVersion.computeIfAbsent(
-                            MigrationVersion.fromVersion(migration.version()),
+            String typeAndVersion = migration.type() + ":" + migration.version();
+            pathsByTypeAndVersion.computeIfAbsent(
+                            typeAndVersion,
                             ignored -> new ArrayList<>())
                     .add(migration.path());
         }
 
         Map<String, List<String>> duplicateVersions = new TreeMap<>();
-        pathsByVersion.forEach((version, paths) -> {
+        pathsByTypeAndVersion.forEach((typeAndVersion, paths) -> {
             if (paths.size() > 1) {
                 List<String> sortedPaths = paths.stream().sorted().toList();
-                String canonicalVersion = version.toString();
-                duplicateVersions.put(canonicalVersion, sortedPaths);
-                failures.add(DUPLICATE_VERSION + ":" + canonicalVersion + ":"
+                duplicateVersions.put(typeAndVersion, sortedPaths);
+                failures.add(DUPLICATE_VERSION + ":" + typeAndVersion + ":"
                         + String.join(",", sortedPaths));
             }
         });
@@ -194,10 +199,11 @@ final class DatabaseGate0Support {
             return;
         }
         try {
-            String canonicalVersion = canonicalVersion(matcher.group(1));
+            String canonicalVersion = canonicalVersion(matcher.group(2));
             migrations.add(new MigrationFile(
+                    matcher.group(1),
                     canonicalVersion,
-                    matcher.group(2),
+                    matcher.group(3),
                     script,
                     relativePath,
                     sha256(Files.readAllBytes(path)),
@@ -542,7 +548,9 @@ final class DatabaseGate0Support {
                         + String.join(",", sortedScripts));
             }
         });
-        repositoryByScript.keySet().stream()
+        repository.migrations().stream()
+                .filter(migration -> "V".equals(migration.type()))
+                .map(MigrationFile::script)
                 .filter(script -> !liveScripts.contains(script))
                 .sorted()
                 .forEach(repositoryScriptsMissingFromHistory::add);
@@ -556,7 +564,9 @@ final class DatabaseGate0Support {
     }
 
     private static boolean isVersionedSql(HistoryRow row) {
-        return row.version() != null && "SQL".equalsIgnoreCase(row.type());
+        return row.version() != null
+                && ("SQL".equalsIgnoreCase(row.type())
+                    || "SQL_BASELINE".equalsIgnoreCase(row.type()));
     }
 
     private static String schemaFingerprint(Connection connection, String schema)
@@ -919,6 +929,7 @@ final class DatabaseGate0Support {
     }
 
     record MigrationFile(
+            String type,
             String version,
             String description,
             String script,
