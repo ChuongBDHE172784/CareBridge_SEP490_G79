@@ -40,13 +40,27 @@ export SUPABASE_DB_USERNAME=<user>
 export SUPABASE_DB_PASSWORD=<password>
 export SUPABASE_URL=https://<project>.supabase.co
 export SUPABASE_ANON_KEY=<key>
-export JWT_SECRET=<your-secret>
+export JWT_ACTIVE_KEY_ID=<active-kid>
+export JWT_PRIVATE_KEY=<base64-der-pkcs8-private-key>
+export JWT_PUBLIC_KEYS=<active-kid>:<base64-der-spki-public-key>
 
 # Run with supabase profile
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=supabase
 ```
 
 **Backend starts at:** `http://localhost:8080`
+
+### Optional synthetic dev data
+
+Dev seeding is disabled by default. It is available only when the Spring `dev`
+profile is active, the `prod` profile is absent, and
+`CAREBRIDGE_DEV_SEED_ENABLED=true` is explicitly configured. Before enabling it,
+the operator must inject a unique, non-default synthetic password through
+`CAREBRIDGE_DEV_SEED_PASSWORD` in an uncommitted local secret source. Do not put
+the value in this guide, shell history, logs, screenshots, or Git.
+
+When seeding is enabled, a blank password or the retired historical default makes
+backend startup fail closed. Never enable dev seeding on staging or production.
 
 ### Run Tests
 
