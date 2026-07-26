@@ -116,3 +116,35 @@ class PendingInvitation {
 
   String get roleLabel => careGroupRoleLabel(memberRole);
 }
+
+class JoinRequest {
+  final String memberId;
+  final String userId;
+  final String displayName;
+  final String? email;
+  final String? phone;
+  final DateTime? requestedAt;
+
+  const JoinRequest({
+    required this.memberId,
+    required this.userId,
+    required this.displayName,
+    this.email,
+    this.phone,
+    this.requestedAt,
+  });
+
+  factory JoinRequest.fromJson(Map<String, dynamic> json) {
+    return JoinRequest(
+      memberId: json['memberId'] as String,
+      userId: json['userId'] as String,
+      displayName: json['displayName'] as String? ?? 'Unknown',
+      email: json['email'] as String?,
+      phone: json['phone'] as String?,
+      requestedAt: json['requestedAt'] != null
+          ? DateTime.parse(json['requestedAt'] as String)
+          : null,
+    );
+  }
+}
+
