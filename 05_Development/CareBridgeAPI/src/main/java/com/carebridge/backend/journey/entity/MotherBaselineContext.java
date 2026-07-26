@@ -2,12 +2,16 @@ package com.carebridge.backend.journey.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.PostLoad;
 import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreRemove;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -19,8 +23,8 @@ import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.type.SqlTypes;
 
 @Entity
-@Table(name = "mother_journey_events")
-@SQLRestriction("legacy_source = 'MOTHER_BASELINE'")
+@Table(name = "audit_events")
+@SQLRestriction("event_category = 'BASELINE_CONTEXT'")
 @Getter
 @Setter
 @Builder
@@ -28,68 +32,100 @@ import org.hibernate.type.SqlTypes;
 @AllArgsConstructor
 public class MotherBaselineContext {
 
+    private static final String LEGACY_SCHEMA_VERSION = "MOTHER_BASELINE_V1";
+
     @Id
-    @Column(name = "event_id", nullable = false)
+    @Column(name = "audit_event_id", nullable = false)
     private UUID id;
 
-    @Column(name = "owner_user_id", nullable = false)
+    @Column(name = "actor_user_id", nullable = false)
     private UUID ownerUserId;
 
-    @Column(name = "submission_id", nullable = false)
-    private UUID submissionId;
+    @Transient private UUID submissionId;
 
-    @Column(name = "journey_version", nullable = false)
-    private long revision;
+    @Transient private long revision;
+    @Transient private String schemaVersion;
 
-    @Column(name = "schema_version", nullable = false, length = 40)
-    private String schemaVersion;
+    @Transient private String source;
 
-    @Column(name = "event_source", nullable = false, length = 30)
-    private String source;
+    @Transient private LifecycleGoal lifecycleGoal;
+    @Transient private String locale;
+    @Transient private String timeZone;
+    @Transient private String preferences;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "lifecycle_goal", nullable = false, length = 40)
-    private LifecycleGoal lifecycleGoal;
-
-    @Column(nullable = false, length = 20)
-    private String locale;
-
-    @Column(name = "time_zone", nullable = false, length = 80)
-    private String timeZone;
-
-    @Column(nullable = false, length = 300)
-    private String preferences;
-
-    @Column(name = "recorded_at", nullable = false, updatable = false)
+    @Column(name = "occurred_at", nullable = false, updatable = false)
     private Instant recordedAt;
 
-    @Column(name = "mother_journey_id")
+    @Column(name = "subject_reference_id")
     private UUID journeyId;
 
     @Builder.Default
-    @Column(name = "event_type", nullable = false, updatable = false, length = 60)
-    private String eventType = "BASELINE_CONTEXT";
+    @Column(name = "resource_type", nullable = false, length = 100)
+    private String resourceType = "mother_journeys";
+
+    @Column(name = "resource_id")
+    private UUID resourceId;
+
+    @Transient private Instant effectiveAt;
 
     @Builder.Default
+    @Column(name = "event_category", nullable = false, updatable = false, length = 80)
+    private String eventCategory = "BASELINE_CONTEXT";
+
+    @Builder.Default
+    @Transient
+    private String eventOrigin = "BASELINE_CONTEXT";
+
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "event_payload_jsonb", nullable = false, columnDefinition = "jsonb")
-    private String payloadJson = "{}";
-
-    @Column(name = "effective_at", nullable = false, updatable = false)
-    private Instant effectiveAt;
-
-    @Builder.Default
-    @Column(name = "legacy_source", nullable = false, updatable = false, length = 60)
-    private String legacySource = "MOTHER_BASELINE";
-
-    @Column(name = "legacy_id", nullable = false, updatable = false, length = 100)
-    private String legacyId;
+    @Column(name = "payload", columnDefinition = "jsonb")
+    private Map<String, Object> payload;
 
     @PrePersist
     void prepareCanonicalEvent() {
-        if (effectiveAt == null) {
-            effectiveAt = recordedAt;
+        if (id == null) id = UUID.randomUUID();
+        if (recordedAt == null) recordedAt = effectiveAt == null ? Instant.now() : effectiveAt;
+        effectiveAt = recordedAt;
+        resourceId = journeyId;
+        Map<String, Object> value = payload == null ? new LinkedHashMap<>() : new LinkedHashMap<>(payload);
+        value.put("revision", revision);
+        value.put("schemaVersion", schemaVersion);
+        value.put("lifecycleGoal", lifecycleGoal == null ? null : lifecycleGoal.name());
+        value.put("locale", locale);
+        value.put("timeZone", timeZone);
+        value.put("preferences", preferences);
+        value.put("source", source);
+        value.put("submissionId", submissionId);
+        payload = value;
+    }
+
+    @PostLoad
+    void hydrateCanonicalEvent() {
+        effectiveAt = recordedAt;
+        if (payload == null) return;
+        Object version = payload.get("revision");
+        revision = version instanceof Number n ? n.longValue()
+                : version == null ? 0 : Long.parseLong(version.toString());
+        schemaVersion = text("schemaVersion");
+        if (schemaVersion == null || schemaVersion.isBlank()) {
+            schemaVersion = LEGACY_SCHEMA_VERSION;
         }
-        legacyId = id.toString();
+        lifecycleGoal = payload.get("lifecycleGoal") == null ? null
+                : LifecycleGoal.valueOf(payload.get("lifecycleGoal").toString());
+        locale = text("locale");
+        timeZone = text("timeZone");
+        preferences = text("preferences");
+        source = text("source");
+        submissionId = payload.get("submissionId") == null ? null
+                : UUID.fromString(payload.get("submissionId").toString());
+    }
+
+    @PreUpdate
+    @PreRemove
+    void rejectMutation() {
+        throw new UnsupportedOperationException("Mother baseline context is append-only");
+    }
+
+    private String text(String key) {
+        return payload.get(key) == null ? null : payload.get(key).toString();
     }
 }

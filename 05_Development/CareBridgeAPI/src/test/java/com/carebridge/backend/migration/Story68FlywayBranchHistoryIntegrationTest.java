@@ -89,13 +89,18 @@ class Story68FlywayBranchHistoryIntegrationTest {
         migrate(migrationRoot(), CANONICAL_STORY_68, false, true);
 
         assertCanonicalStory68Shape();
+        assertThat(number("SELECT count(*) FROM flyway_schema_history WHERE version IN ("
+                + "'20260724111500','20260724120000','20260724210000',"
+                + "'20260724211000','20260724211500') AND success")).isEqualTo(5);
         assertThat(number("SELECT count(*) FROM flyway_schema_history WHERE version="
-                + "'20260723090000' AND success")).isOne();
+                + "'20260723090000' AND success")).isZero();
     }
 
     @Test
     void appliedHistoricalStory68GraphSurvivesOutOfOrderMerge() throws Exception {
-        migrate(migrationRoot(), PRE_BRIDGE, false, true);
+        Path preBridge = copyMigrationsThrough(
+                tempDirectory.resolve("historical-pre-bridge"), PRE_BRIDGE, Set.of());
+        migrate(preBridge, PRE_BRIDGE, false, true);
         seedHistoricalParentsAndReferences();
 
         Path historical = copyNamedMigrations(

@@ -16,13 +16,14 @@ public interface ContributionPointRepository extends JpaRepository<ContributionP
         Long getTotalPoints();
     }
 
-    @Query("SELECT COALESCE(SUM(cp.points), 0) FROM ContributionPoint cp WHERE cp.userId = :userId")
+    @Query(value = "SELECT COALESCE(SUM((payload->>'points')::int), 0) FROM audit_events WHERE event_category='EXPERT_CONTRIBUTION' AND actor_user_id=:userId", nativeQuery = true)
     int sumPointsByUserId(@Param("userId") UUID userId);
+
 
     @Query("SELECT cp FROM ContributionPoint cp WHERE cp.userId = :userId ORDER BY cp.recordedAt DESC")
     List<ContributionPoint> findByUserIdOrderByRecordedAtDesc(@Param("userId") UUID userId, org.springframework.data.domain.Pageable pageable);
 
-    @Query("SELECT COALESCE(SUM(cp.points), 0) FROM ContributionPoint cp WHERE cp.userId = :userId AND cp.sourceType = :sourceType")
+    @Query(value = "SELECT COALESCE(SUM((payload->>'points')::int), 0) FROM audit_events WHERE event_category='EXPERT_CONTRIBUTION' AND actor_user_id=:userId AND resource_type=:sourceType", nativeQuery = true)
     int sumPointsByUserIdAndSourceType(@Param("userId") UUID userId, @Param("sourceType") String sourceType);
 
     @Query("""

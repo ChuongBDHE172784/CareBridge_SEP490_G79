@@ -20,13 +20,10 @@ ON CONFLICT (attachment_id) DO UPDATE SET
   file_size_bytes=excluded.file_size_bytes,status=excluded.status,
   updated_at=excluded.updated_at;
 
-INSERT INTO public.health_record_attachments (
-    health_record_attachment_id,health_record_id,attachment_id,display_order,created_at)
-SELECT id,health_record_id,file_id,display_order,created_at
-  FROM public.health_record_files
-ON CONFLICT (health_record_attachment_id) DO UPDATE SET
-  health_record_id=excluded.health_record_id,attachment_id=excluded.attachment_id,
-  display_order=excluded.display_order;
+UPDATE public.attachments a
+   SET health_record_id = f.health_record_id
+  FROM public.health_record_files f
+ WHERE a.attachment_id = f.file_id;
 
 INSERT INTO public.device_connections (
     device_connection_id,user_id,provider_name,device_name,scopes_jsonb,token_reference,
@@ -41,15 +38,19 @@ ON CONFLICT (device_connection_id) DO UPDATE SET
   status=excluded.status,updated_at=excluded.updated_at;
 
 INSERT INTO public.health_observations (
-    health_observation_id,device_connection_id,observation_type,value_numeric,
+    health_observation_id,device_connection_id,care_subject_id,subject_type,observation_type,value_numeric,
     value_secondary,unit,observed_at,source_record_id,quality_label,
     raw_payload_jsonb,created_at,updated_at)
-SELECT device_measurement_id,connection_id,measurement_type,value_numeric,value_secondary,
-       unit,measured_at,source_record_id,quality_label,coalesce(raw_metadata_json,'{}'::jsonb),
-       created_at,updated_at
-  FROM public.device_measurements
+SELECT d.device_measurement_id,d.connection_id,cs.care_subject_id,'MOTHER',d.measurement_type,d.value_numeric,d.value_secondary,
+       d.unit,d.measured_at,d.source_record_id,d.quality_label,coalesce(d.raw_metadata_json,'{}'::jsonb),
+       d.created_at,d.updated_at
+  FROM public.device_measurements d
+  JOIN public.device_connections dc ON dc.device_connection_id = d.connection_id
+  JOIN public.care_subjects cs ON cs.person_id = dc.user_id AND cs.subject_type = 'MOTHER'
 ON CONFLICT (health_observation_id) DO UPDATE SET
   device_connection_id=excluded.device_connection_id,
+  care_subject_id=excluded.care_subject_id,
+  subject_type=excluded.subject_type,
   observation_type=excluded.observation_type,value_numeric=excluded.value_numeric,
   value_secondary=excluded.value_secondary,unit=excluded.unit,observed_at=excluded.observed_at,
   source_record_id=excluded.source_record_id,quality_label=excluded.quality_label,
@@ -81,7 +82,7 @@ BEGIN
     RAISE EXCEPTION 'WAVE5_RECONCILIATION: attachments';
   END IF;
   IF (SELECT count(*) FROM public.health_record_files) <>
-     (SELECT count(*) FROM public.health_record_attachments) THEN
+     (SELECT count(*) FROM public.attachments WHERE health_record_id IS NOT NULL) THEN
     RAISE EXCEPTION 'WAVE5_RECONCILIATION: record attachments';
   END IF;
   IF (SELECT count(*) FROM public.health_device_connections) <>
@@ -113,7 +114,6 @@ DECLARE m record; c record; new_def text;
 BEGIN
   FOR m IN SELECT * FROM (VALUES
     ('uploaded_files','attachments','file_id','attachment_id'),
-    ('health_record_files','health_record_attachments','id','health_record_attachment_id'),
     ('health_device_connections','device_connections','connection_id','device_connection_id'),
     ('device_measurements','health_observations','device_measurement_id','health_observation_id'),
     ('health_summaries','health_records','summary_id','health_record_id')

@@ -12,6 +12,7 @@ import com.carebridge.backend.expert.entity.ExpertProfile;
 import com.carebridge.backend.expert.exception.ExpertException;
 import com.carebridge.backend.expert.mapper.ExpertProfileMapper;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
+import com.carebridge.backend.expert.repository.ProfessionalSpecialtyRepository;
 import com.carebridge.backend.expert.service.impl.ExpertProfileServiceImpl;
 import com.carebridge.backend.expert.truststatus.TrustStatus;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
@@ -39,6 +40,7 @@ class ExpertConsultationEligibilityTest {
     @Mock private UserRepository userRepository;
     @Mock private SpecialtyRepository specialtyRepository;
     @Mock private CareFacilityRepository careFacilityRepository;
+    @Mock private ProfessionalSpecialtyRepository professionalSpecialtyRepository;
     @Mock private ExpertIdentityVerificationRepository identityRepository;
     @Mock private ExpertCredentialRepository credentialRepository;
     @Mock private AuditService auditService;
@@ -71,7 +73,7 @@ class ExpertConsultationEligibilityTest {
         ExpertProfileServiceImpl service =
                 new ExpertProfileServiceImpl(repository, userRepository, mapper,
                         identityRepository, credentialRepository, auditService,
-                        specialtyRepository, careFacilityRepository);
+                        specialtyRepository, careFacilityRepository, professionalSpecialtyRepository);
 
         assertThatThrownBy(() -> service.getPublicProfile(suspended.getExpertProfileId()))
                 .isInstanceOfSatisfying(ExpertException.class,
@@ -102,7 +104,7 @@ class ExpertConsultationEligibilityTest {
         ExpertProfileServiceImpl service =
                 new ExpertProfileServiceImpl(repository, userRepository, mapper,
                         identityRepository, credentialRepository, auditService,
-                        specialtyRepository, careFacilityRepository);
+                        specialtyRepository, careFacilityRepository, professionalSpecialtyRepository);
 
         service.approveExpert(profileId, adminId);
         service.rejectExpert(profileId, adminId, "reason");

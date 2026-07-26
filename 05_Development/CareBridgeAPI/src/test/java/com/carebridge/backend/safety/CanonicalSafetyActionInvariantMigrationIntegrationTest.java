@@ -9,6 +9,11 @@ import com.carebridge.backend.emergency.service.EmergencyAlertClaim;
 import com.carebridge.backend.emergency.service.EmergencyAlertProviderFence;
 import com.carebridge.backend.emergency.service.FencedAlertDelivery;
 import com.carebridge.backend.notification.dto.FcmDeliveryResult;
+import java.io.IOException;
+import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -16,6 +21,7 @@ import java.sql.Statement;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -24,6 +30,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
@@ -38,8 +45,18 @@ class CanonicalSafetyActionInvariantMigrationIntegrationTest {
             MigrationVersion.fromVersion("20260722231350");
     private static final MigrationVersion STORY66_BRIDGE =
             MigrationVersion.fromVersion("20260722231360");
-    private static final MigrationVersion PRE = MigrationVersion.fromVersion("20260723230000");
+    private static final MigrationVersion LEGACY_PRE_STORY66 =
+            MigrationVersion.fromVersion("20260722020400");
+    private static final MigrationVersion BASELINE =
+            MigrationVersion.fromVersion("20260724111500");
+    private static final MigrationVersion BASELINE_COMPATIBILITY =
+            MigrationVersion.fromVersion("20260724120000");
     private static final MigrationVersion CANONICAL = MigrationVersion.fromVersion("20260724210000");
+    private static final Set<String> STORY66_BRANCH_FILES = Set.of(
+            "V20260722119950__bridge_story66_out_of_order_parents.sql",
+            "V20260722120000__guarantee_triage_emergency_idempotency.sql",
+            "V20260722210000__persist_lifecycle_safety_outcomes_and_continuations.sql",
+            "V20260722231350__preserve_epic6_lifecycle_bindings.sql");
     private static final String OWNER = "72000000-0000-0000-0000-000000000001";
     private static final String INTAKE_ONE = "72000000-0000-0000-0000-000000000011";
     private static final String INTAKE_TWO = "72000000-0000-0000-0000-000000000012";
@@ -52,9 +69,12 @@ class CanonicalSafetyActionInvariantMigrationIntegrationTest {
     @Container
     final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:16-alpine");
 
+    @TempDir
+    Path tempDirectory;
+
     @Test
     void migrationReconcilesActiveRowsBackfillsEveryIntakeAndFreezesActions() throws Exception {
-        migrate(PRE);
+        migrate(BASELINE_COMPATIBILITY);
         seedOwnerAndIntakes();
         execute("""
                 INSERT INTO safety_events (
@@ -115,7 +135,7 @@ class CanonicalSafetyActionInvariantMigrationIntegrationTest {
     @Test
     void story66BridgeWaitsForConcurrentWriterThenCapturesAndDropsEveryLegacyLeaf()
             throws Exception {
-        migrate(PRE_STORY66_BRIDGE);
+        migrateHistoricalStory66Branch();
         seedLegacyStory66State();
 
         try (Connection writer = connection()) {
@@ -132,7 +152,7 @@ class CanonicalSafetyActionInvariantMigrationIntegrationTest {
             }
 
             try (var executor = Executors.newSingleThreadExecutor()) {
-                var migration = executor.submit(() -> migrate(STORY66_BRIDGE));
+                var migration = executor.submit(() -> migrate(STORY66_BRIDGE, true));
                 assertThatThrownBy(() -> migration.get(300, TimeUnit.MILLISECONDS))
                         .isInstanceOf(TimeoutException.class);
                 writer.commit();
@@ -532,7 +552,7 @@ class CanonicalSafetyActionInvariantMigrationIntegrationTest {
     @Test
     void migrationReconcilesDuplicateActiveMonitoringAndEnforcesPartialUniqueness()
             throws Exception {
-        migrate(PRE);
+        migrate(BASELINE);
         seedOwnerAndIntakes();
         execute("""
                 INSERT INTO safety_monitoring_sessions (
@@ -578,17 +598,11 @@ class CanonicalSafetyActionInvariantMigrationIntegrationTest {
 
     private void seedLegacyStory66State() throws Exception {
         execute("""
-                INSERT INTO persons(person_id,display_name,created_at,updated_at)
-                VALUES
-                  ('72000000-0000-0000-0000-000000000001',
-                   'Legacy Safety Owner',now(),now())
-                ON CONFLICT (person_id) DO NOTHING;
                 INSERT INTO users(
-                    user_id,person_id,email,role,account_status,enabled,locked,
+                    user_id,email,role,account_status,enabled,locked,
                     email_verified,phone_verified,created_at,updated_at)
                 VALUES
                   ('72000000-0000-0000-0000-000000000001',
-                   '72000000-0000-0000-0000-000000000001',
                    'legacy.safety.owner@test','MOTHER','ACTIVE',true,false,
                    true,false,now(),now())
                 ON CONFLICT (user_id) DO NOTHING;
@@ -745,10 +759,94 @@ class CanonicalSafetyActionInvariantMigrationIntegrationTest {
     }
 
     private void migrate(MigrationVersion target) {
+        migrate(target, false);
+    }
+
+    private void migrate(MigrationVersion target, boolean outOfOrder) {
         Flyway.configure()
                 .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
                 .locations("classpath:db/migration")
                 .target(target)
+                .outOfOrder(outOfOrder)
+                .load()
+                .migrate();
+    }
+
+    private void migrateHistoricalStory66Branch() throws IOException {
+        Path legacy = copyMigrations(
+                tempDirectory.resolve("legacy-through-story66-predecessor"),
+                LEGACY_PRE_STORY66,
+                Set.of(),
+                true);
+        migrate(legacy, LEGACY_PRE_STORY66, false);
+
+        Path story66 = copyMigrations(
+                tempDirectory.resolve("story66-branch"),
+                null,
+                STORY66_BRANCH_FILES,
+                false);
+        migrate(story66, PRE_STORY66_BRIDGE, false);
+    }
+
+    private Path copyMigrations(
+            Path destination,
+            MigrationVersion target,
+            Set<String> names,
+            boolean namesAreExclusions) throws IOException {
+        Path source = migrationRoot();
+        try (var paths = Files.walk(source)) {
+            for (Path path : paths.toList()) {
+                if (Files.isDirectory(path)) {
+                    continue;
+                }
+                String name = path.getFileName().toString();
+                MigrationVersion version = migrationVersion(name);
+                boolean named = names.contains(name);
+                boolean include = namesAreExclusions
+                        ? version != null && version.compareTo(target) <= 0 && !named
+                        : named;
+                if (!include) {
+                    continue;
+                }
+                Path output = destination.resolve(source.relativize(path));
+                Files.createDirectories(output.getParent());
+                Files.copy(path, output, StandardCopyOption.REPLACE_EXISTING);
+            }
+        }
+        return destination;
+    }
+
+    private MigrationVersion migrationVersion(String fileName) {
+        if (!fileName.startsWith("V") || !fileName.endsWith(".sql")) {
+            return null;
+        }
+        int separator = fileName.indexOf("__");
+        if (separator < 2) {
+            return null;
+        }
+        return MigrationVersion.fromVersion(
+                fileName.substring(1, separator).replace('_', '.'));
+    }
+
+    private Path migrationRoot() {
+        try {
+            var resource = Thread.currentThread().getContextClassLoader().getResource("db/migration");
+            if (resource == null || !"file".equals(resource.getProtocol())) {
+                throw new IllegalStateException("exploded db/migration test resource is required");
+            }
+            return Path.of(resource.toURI());
+        } catch (URISyntaxException exception) {
+            throw new IllegalStateException("invalid migration resource path", exception);
+        }
+    }
+
+    private void migrate(Path location, MigrationVersion target, boolean outOfOrder) {
+        Flyway.configure()
+                .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
+                .locations("filesystem:" + location.toAbsolutePath().toString().replace('\\', '/'))
+                .target(target)
+                .outOfOrder(outOfOrder)
+                .validateOnMigrate(false)
                 .load()
                 .migrate();
     }

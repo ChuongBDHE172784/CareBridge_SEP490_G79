@@ -1,15 +1,17 @@
 package com.carebridge.backend.exercise.entity;
 
-import com.carebridge.backend.exercise.entity.converter.JsonbMapConverter;
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+import jakarta.persistence.PostLoad;
 import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import java.time.OffsetDateTime;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
@@ -17,10 +19,13 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.type.SqlTypes;
 
 @Entity
-@Table(name = "maternal_observations")
-@org.hibernate.annotations.SQLRestriction("legacy_source = 'EXERCISE_SAFETY'")
+@Table(name = "health_observations")
+@SQLRestriction("observation_type = 'EXERCISE_SAFETY_RESULT'")
 @Getter
 @Setter
 @Builder
@@ -29,27 +34,26 @@ import lombok.Setter;
 public class ExerciseSafetyCheck {
 
     @Id
-    @Column(name = "observation_id", nullable = false)
+    @Column(name = "health_observation_id", nullable = false)
     private UUID safetyCheckId;
 
-    @Column(name = "exercise_template_id", nullable = false)
+    @Transient
     private UUID exerciseId;
 
-    @Column(name = "mother_journey_id")
+    @Column(name = "care_subject_id", nullable = false)
     private UUID journeyId;
 
-    @Column(name = "owner_user_id", nullable = false)
+    @Transient
     private UUID userId;
 
-    @Convert(converter = JsonbMapConverter.class)
-    @Column(name = "payload_jsonb", nullable = false, columnDefinition = "jsonb")
+    @Transient
     private Map<String, Boolean> answerJson;
 
-    @Column(name = "blocked_boolean", nullable = false)
+    @Transient
     private Boolean redFlagDetected;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "record_status", nullable = false, length = 20)
+    @Column(name = "quality_label", length = 30)
     private SafetyCheckStatus resultStatus;
 
     @Column(name = "text_value", columnDefinition = "text")
@@ -66,25 +70,59 @@ public class ExerciseSafetyCheck {
     private String observationType = "EXERCISE_SAFETY_RESULT";
 
     @Builder.Default
-    @Column(name = "schema_version", nullable = false, updatable = false, length = 30)
-    private String schemaVersion = "1";
+    @Column(name = "subject_type", nullable = false, updatable = false, length = 30)
+    private String subjectType = "MOTHER";
 
     @Builder.Default
     @Column(name = "source_type", nullable = false, updatable = false, length = 60)
     private String sourceType = "EXERCISE_SAFETY";
 
     @Builder.Default
-    @Column(name = "legacy_source", nullable = false, updatable = false, length = 60)
-    private String legacySource = "EXERCISE_SAFETY";
+    @Column(name = "legacy_source", updatable = false, length = 60)
+    private String legacySource = "exercise_safety_checks";
 
-    @Column(name = "legacy_id", nullable = false, updatable = false, length = 100)
+    @Column(name = "legacy_id", updatable = false, length = 100)
     private String legacyId;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "raw_payload_jsonb", nullable = false, columnDefinition = "jsonb")
+    private Map<String, Object> canonicalPayload;
+
     @PrePersist
+    @PreUpdate
     void prepareCanonicalObservation() {
-        legacyId = safetyCheckId.toString();
-        if (completedAt == null) {
-            completedAt = createdAt;
+        if (legacyId == null && safetyCheckId != null) legacyId = safetyCheckId.toString();
+        if (completedAt == null) completedAt = createdAt == null ? OffsetDateTime.now() : createdAt;
+        Map<String, Object> payload = canonicalPayload == null
+                ? new LinkedHashMap<>() : new LinkedHashMap<>(canonicalPayload);
+        payload.put("exerciseTemplateId", exerciseId);
+        payload.put("ownerUserId", userId);
+        payload.put("answer", answerJson == null ? Map.of() : answerJson);
+        payload.put("blockedBoolean", Boolean.TRUE.equals(redFlagDetected));
+        payload.put("recordStatus", resultStatus == null ? null : resultStatus.name());
+        canonicalPayload = payload;
+    }
+
+    @PostLoad
+    @SuppressWarnings("unchecked")
+    void hydrateCanonicalObservation() {
+        if (canonicalPayload == null) return;
+        exerciseId = uuid(canonicalPayload.get("exerciseTemplateId"));
+        userId = uuid(canonicalPayload.get("ownerUserId"));
+        redFlagDetected = Boolean.valueOf(String.valueOf(
+                canonicalPayload.getOrDefault("blockedBoolean", false)));
+        Object status = canonicalPayload.get("recordStatus");
+        if (resultStatus == null && status != null) resultStatus = SafetyCheckStatus.valueOf(status.toString());
+        Object answers = canonicalPayload.get("answer");
+        if (answers instanceof Map<?, ?> map) {
+            Map<String, Boolean> hydrated = new LinkedHashMap<>();
+            map.forEach((key, value) -> hydrated.put(String.valueOf(key), Boolean.valueOf(String.valueOf(value))));
+            answerJson = hydrated;
         }
+    }
+
+    private UUID uuid(Object value) {
+        if (value == null) return null;
+        return value instanceof UUID id ? id : UUID.fromString(value.toString());
     }
 }

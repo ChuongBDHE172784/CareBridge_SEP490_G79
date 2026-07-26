@@ -8,6 +8,7 @@ ALTER TABLE public.health_records ADD COLUMN IF NOT EXISTS care_subject_id uuid;
 CREATE TABLE IF NOT EXISTS public.attachments (
     attachment_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     owner_user_id uuid NOT NULL REFERENCES public.users(user_id),
+    health_record_id uuid REFERENCES public.health_records(health_record_id),
     storage_key varchar(500) NOT NULL UNIQUE,
     original_name varchar(255) NOT NULL,
     mime_type varchar(100) NOT NULL,
@@ -18,15 +19,7 @@ CREATE TABLE IF NOT EXISTS public.attachments (
     updated_at timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS public.health_record_attachments (
-    health_record_attachment_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    health_record_id uuid NOT NULL REFERENCES public.health_records(health_record_id),
-    attachment_id uuid NOT NULL REFERENCES public.attachments(attachment_id),
-    display_order integer NOT NULL DEFAULT 0,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT health_record_attachments_pair_uk UNIQUE (health_record_id, attachment_id)
-);
-CREATE INDEX IF NOT EXISTS health_record_attachments_record_ix ON public.health_record_attachments(health_record_id, display_order);
+ALTER TABLE public.attachments ADD COLUMN IF NOT EXISTS health_record_id uuid REFERENCES public.health_records(health_record_id);
 
 CREATE TABLE IF NOT EXISTS public.device_connections (
     device_connection_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -43,25 +36,19 @@ CREATE TABLE IF NOT EXISTS public.device_connections (
 );
 CREATE INDEX IF NOT EXISTS device_connections_user_status_ix ON public.device_connections(user_id, status);
 
-CREATE TABLE IF NOT EXISTS public.health_observations (
-    health_observation_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    device_connection_id uuid REFERENCES public.device_connections(device_connection_id),
-    care_subject_id uuid REFERENCES public.care_subjects(care_subject_id),
-    observation_type varchar(50) NOT NULL,
-    value_numeric numeric,
-    value_secondary numeric,
-    unit varchar(30),
-    observed_at timestamptz NOT NULL,
-    source_record_id uuid,
-    quality_label varchar(30),
-    raw_payload_jsonb jsonb NOT NULL DEFAULT '{}'::jsonb,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS health_observations_subject_chart_ix
-    ON public.health_observations(care_subject_id, observation_type, observed_at);
+-- Add device connection constraint to health_observations
+DO $obs_device_fk$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'health_observations_device_fk') THEN
+        ALTER TABLE public.health_observations
+            ADD CONSTRAINT health_observations_device_fk
+            FOREIGN KEY (device_connection_id) REFERENCES public.device_connections(device_connection_id);
+    END IF;
+END
+$obs_device_fk$;
+
 CREATE INDEX IF NOT EXISTS health_observations_device_time_ix
-    ON public.health_observations(device_connection_id, observed_at);
+    ON public.health_observations(device_connection_id, observed_at) WHERE device_connection_id IS NOT NULL;
 
 DO $health_mapping$
 BEGIN
@@ -74,14 +61,14 @@ BEGIN
           FROM public.uploaded_files u
         ON CONFLICT (attachment_id) DO NOTHING;
     END IF;
+
     IF to_regclass('public.health_record_files') IS NOT NULL THEN
-        INSERT INTO public.health_record_attachments
-            (health_record_attachment_id, health_record_id, attachment_id, display_order, created_at)
-        SELECT f.id, f.health_record_id, f.file_id, f.display_order, f.created_at
+        UPDATE public.attachments a
+           SET health_record_id = f.health_record_id
           FROM public.health_record_files f
-         WHERE EXISTS (SELECT 1 FROM public.attachments a WHERE a.attachment_id = f.file_id)
-        ON CONFLICT (health_record_attachment_id) DO NOTHING;
+         WHERE a.attachment_id = f.file_id;
     END IF;
+
     IF to_regclass('public.health_device_connections') IS NOT NULL THEN
         INSERT INTO public.device_connections
             (device_connection_id, user_id, provider_name, device_name, scopes_jsonb,
@@ -92,18 +79,22 @@ BEGIN
           FROM public.health_device_connections h
         ON CONFLICT (device_connection_id) DO NOTHING;
     END IF;
+
     IF to_regclass('public.device_measurements') IS NOT NULL THEN
         INSERT INTO public.health_observations
-            (health_observation_id, device_connection_id, observation_type, value_numeric,
+            (health_observation_id, device_connection_id, care_subject_id, subject_type, observation_type, value_numeric,
              value_secondary, unit, observed_at, source_record_id, quality_label,
              raw_payload_jsonb, created_at, updated_at)
-        SELECT d.device_measurement_id, d.connection_id, d.measurement_type,
+        SELECT d.device_measurement_id, d.connection_id, cs.care_subject_id, 'MOTHER', d.measurement_type,
                d.value_numeric, d.value_secondary, d.unit, d.measured_at,
                d.source_record_id, d.quality_label, coalesce(d.raw_metadata_json, '{}'::jsonb),
                d.created_at, d.updated_at
           FROM public.device_measurements d
+          JOIN public.device_connections dc ON dc.device_connection_id = d.connection_id
+          JOIN public.care_subjects cs ON cs.person_id = dc.user_id AND cs.subject_type = 'MOTHER'
         ON CONFLICT (health_observation_id) DO NOTHING;
     END IF;
+
     IF to_regclass('public.health_summaries') IS NOT NULL THEN
         INSERT INTO public.health_records
             (health_record_id, owner_user_id, journey_id, baby_id, record_type, title,

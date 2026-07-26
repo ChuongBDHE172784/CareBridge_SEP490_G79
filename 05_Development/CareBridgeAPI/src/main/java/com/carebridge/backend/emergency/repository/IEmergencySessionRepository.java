@@ -20,6 +20,7 @@ public interface IEmergencySessionRepository extends JpaRepository<EmergencySess
             """, nativeQuery = true)
     Integer acquireUserLock(@Param("userId") UUID userId);
 
+
     @Query("SELECT e FROM EmergencySession e WHERE e.userId = :userId AND e.status = com.carebridge.backend.emergency.EmergencyStatus.ACTIVE")
     Optional<EmergencySession> findActiveByUserId(@Param("userId") UUID userId);
 
@@ -39,7 +40,7 @@ public interface IEmergencySessionRepository extends JpaRepository<EmergencySess
                  OR (event.alert_status = 'PROCESSING'
                      AND event.alert_lease_expires_at <= now())
               )
-            ORDER BY event.created_at
+            ORDER BY event.created_at, event.safety_event_id
             LIMIT 50
             """, nativeQuery = true)
     List<UUID> findAlertRetryCandidates(@Param("retryCutoff") Instant retryCutoff);

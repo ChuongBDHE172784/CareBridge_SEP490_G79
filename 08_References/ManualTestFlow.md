@@ -1,5 +1,12 @@
 # CareBridge — Quy trình Kiểm thử Thủ công (Manual Test Flow)
 
+> **Historical/superseded reference — do not execute as a current runbook.** This
+> snapshot is retained as input/evidence for the 2026-06-28 code state. Its seed
+> credentials and direct-login instructions are retired. Current operators must
+> follow `README.md`, `05_Development/STARTUP.md`, and the applicable canonical
+> guide under `06_Testing/TestCases/`; no password value in this historical file
+> may be reused.
+
 > **Ngày**: 2026-06-28
 > **Nhánh**: PhuongNT (sau khi merge từ dev)
 > **Backend**: `http://localhost:8080`

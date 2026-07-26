@@ -33,7 +33,7 @@ class ExpertOnboardingService {
   final ExpertOnboardingApi api;
 
   ExpertOnboardingService({ExpertOnboardingApi? api})
-      : api = api ?? _DefaultExpertOnboardingApi();
+    : api = api ?? _DefaultExpertOnboardingApi();
 
   Future<ExpertOnboardingState> loadState() async {
     final response = await api.get('/api/v1/expert/onboarding');
@@ -62,10 +62,12 @@ class ExpertOnboardingService {
     final response = await api.get('/api/v1/master-data/specialties');
     final data = _unwrapList(response);
     return data
-        .map((item) => ExpertMasterOption(
-              id: item['specialtyId'] as String,
-              name: item['name'] as String,
-            ))
+        .map(
+          (item) => ExpertMasterOption(
+            id: item['specialtyId'] as String,
+            name: item['name'] as String,
+          ),
+        )
         .toList();
   }
 
@@ -73,10 +75,12 @@ class ExpertOnboardingService {
     final response = await api.get('/api/v1/master-data/hospitals');
     final data = _unwrapList(response);
     return data
-        .map((item) => ExpertMasterOption(
-              id: item['hospitalId'] as String,
-              name: item['name'] as String,
-            ))
+        .map(
+          (item) => ExpertMasterOption(
+            id: item['hospitalId'] as String,
+            name: item['name'] as String,
+          ),
+        )
         .toList();
   }
 
@@ -102,6 +106,22 @@ class ExpertOnboardingService {
       _toUpload('identityFront', identityFront),
       _toUpload('identityBack', identityBack),
     ]);
+  }
+
+  Future<ExpertFacePreview> previewFace({
+    required ExpertEvidenceImage selfie,
+    required ExpertEvidenceImage identityFront,
+  }) async {
+    _validateIdentityImage(selfie, 'Ảnh chân dung');
+    _validateIdentityImage(identityFront, 'CCCD mặt trước');
+    final response = await api.multipart(
+      '/api/v1/expert/verify-face',
+      const {},
+      [_toUpload('selfie', selfie), _toUpload('idCard', identityFront)],
+    );
+    return ExpertFacePreview.fromJson(
+      response as Map<String, dynamic>? ?? const {},
+    );
   }
 
   Future<void> submitCredential({
@@ -145,8 +165,11 @@ class ExpertOnboardingService {
   }
 
   void _validateCredential(ExpertEvidenceImage image) {
-    if (!const {'image/jpeg', 'image/png', 'application/pdf'}
-        .contains(image.mimeType)) {
+    if (!const {
+      'image/jpeg',
+      'image/png',
+      'application/pdf',
+    }.contains(image.mimeType)) {
       throw ArgumentError('Giấy tờ phải là JPEG, PNG hoặc PDF.');
     }
     if (image.bytes.isEmpty || image.bytes.length > 10 * 1024 * 1024) {
@@ -160,4 +183,36 @@ class ExpertMasterOption {
 
   final String id;
   final String name;
+}
+
+class ExpertFacePreview {
+  const ExpertFacePreview({
+    required this.status,
+    this.similarity,
+    this.threshold,
+    this.providerErrorCode,
+  });
+
+  final String status;
+  final double? similarity;
+  final double? threshold;
+  final String? providerErrorCode;
+
+  bool get matched => status == 'MATCHED';
+
+  factory ExpertFacePreview.fromJson(Map<String, dynamic> json) {
+    final data = json['data'] is Map
+        ? Map<String, dynamic>.from(json['data'] as Map)
+        : json;
+    return ExpertFacePreview(
+      status: (data['status'] ?? 'RETRYABLE_ERROR').toString().toUpperCase(),
+      similarity: _asDouble(data['similarity']),
+      threshold: _asDouble(data['threshold']),
+      providerErrorCode: data['providerErrorCode']?.toString(),
+    );
+  }
+
+  static double? _asDouble(dynamic value) => value is num
+      ? value.toDouble()
+      : double.tryParse(value?.toString() ?? '');
 }

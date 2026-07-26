@@ -8,11 +8,13 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @Entity
-@Table(name = "maternal_observations")
-@org.hibernate.annotations.SQLRestriction("legacy_source = 'POSTPARTUM_LOG'")
+@Table(name = "health_observations")
+@org.hibernate.annotations.SQLRestriction("legacy_source = 'postpartum_logs'")
 @Getter
 @Setter
 @Builder
@@ -22,40 +24,39 @@ public class PostpartumLog {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "observation_id", updatable = false, nullable = false)
+    @Column(name = "health_observation_id", updatable = false, nullable = false)
     private UUID id;
 
-    @Column(name = "mother_journey_id", nullable = false)
+    @Column(name = "care_subject_id", nullable = false)
     private UUID journeyId;
 
-    @Column(name = "submission_id", nullable = false)
+    @Transient
     private UUID submissionId;
 
-    @Column(name = "observation_date", nullable = false)
+    @Transient
     private LocalDate logDate;
 
-    @Column(name = "numeric_value")
+    @Column(name = "value_numeric")
     private Short painLevel;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "severity", length = 30)
     private BleedingLevel bleedingLevel;
 
-    @Column(name = "mood_level")
+    @Transient
     private Short moodLevel;
 
-    @Column(name = "secondary_numeric_value")
+    @Column(name = "value_secondary")
     private BigDecimal sleepHours;
 
-    @Column(name = "breastfeeding_note", columnDefinition = "text")
+    @Transient
     private String breastfeedingNote;
 
     @Column(name = "text_value", columnDefinition = "text")
     private String symptomNote;
 
     @Builder.Default
-    @Enumerated(EnumType.STRING)
-    @Column(name = "record_status", nullable = false, length = 20)
+    @Transient
     private PostpartumLogStatus status = PostpartumLogStatus.ACTIVE;
 
     @CreationTimestamp
@@ -75,12 +76,8 @@ public class PostpartumLog {
 
     @Builder.Default
     @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
-    @Column(name = "payload_jsonb", nullable = false, columnDefinition = "jsonb")
-    private String payloadJson = "{}";
-
-    @Builder.Default
-    @Column(name = "schema_version", nullable = false, updatable = false, length = 30)
-    private String schemaVersion = "1";
+    @Column(name = "raw_payload_jsonb", nullable = false, columnDefinition = "jsonb")
+    private Map<String, Object> payloadJson = new LinkedHashMap<>();
 
     @Builder.Default
     @Column(name = "source_type", nullable = false, updatable = false, length = 60)
@@ -88,15 +85,46 @@ public class PostpartumLog {
 
     @Builder.Default
     @Column(name = "legacy_source", nullable = false, updatable = false, length = 60)
-    private String legacySource = "POSTPARTUM_LOG";
+    private String legacySource = "postpartum_logs";
 
     @Column(name = "legacy_id", nullable = false, updatable = false, length = 100)
     private String legacyId;
 
+    @Builder.Default
+    @Column(name = "subject_type", nullable = false, updatable = false, length = 30)
+    private String subjectType = "MOTHER";
+
     @PrePersist
     @PreUpdate
     void prepareCanonicalObservation() {
-        legacyId = id.toString();
-        observedAt = logDate.atStartOfDay(java.time.ZoneOffset.UTC).toInstant();
+        if (legacyId == null && id != null) legacyId = id.toString();
+        if (logDate != null) observedAt = logDate.atStartOfDay(java.time.ZoneOffset.UTC).toInstant();
+        if (payloadJson == null) payloadJson = new LinkedHashMap<>();
+        putPayload("submissionId", submissionId);
+        putPayload("moodLevel", moodLevel);
+        putPayload("breastfeedingNote", breastfeedingNote);
+        putPayload("recordStatus", status == null ? null : status.name());
     }
+
+    @PostLoad
+    void hydrateCanonicalObservation() {
+        if (observedAt != null) logDate = observedAt.atZone(java.time.ZoneOffset.UTC).toLocalDate();
+        if (payloadJson == null) return;
+        Object submission = payloadJson.get("submissionId");
+        submissionId = submission == null || submission.toString().isBlank()
+                ? null : UUID.fromString(submission.toString());
+        Object mood = payloadJson.get("moodLevel");
+        moodLevel = mood instanceof Number number ? number.shortValue()
+                : mood == null ? null : Short.valueOf(mood.toString());
+        Object breastfeeding = payloadJson.get("breastfeedingNote");
+        breastfeedingNote = breastfeeding == null ? null : breastfeeding.toString();
+        Object recordStatus = payloadJson.get("recordStatus");
+        status = recordStatus == null || recordStatus.toString().isBlank()
+                ? PostpartumLogStatus.ACTIVE : PostpartumLogStatus.valueOf(recordStatus.toString());
+    }
+
+    private void putPayload(String key, Object value) {
+        if (value == null) payloadJson.remove(key); else payloadJson.put(key, value);
+    }
+
 }

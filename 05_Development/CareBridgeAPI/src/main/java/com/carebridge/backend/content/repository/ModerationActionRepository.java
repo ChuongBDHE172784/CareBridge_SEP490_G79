@@ -9,6 +9,8 @@ import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -19,29 +21,110 @@ public interface ModerationActionRepository extends JpaRepository<ModerationActi
     // account-violation history view, not this content-moderation history)
     // CB-MOD-IMP-017: AI_FEEDBACK_SUBMITTED history events are excluded from the content
     // moderation history feed — they never mutate content state.
-    Page<ModerationAction> findByTargetTypeInAndActionTypeNotOrderByActionAtDesc(
-            Collection<ReportTargetType> targetTypes, ModerationActionType excludedType, Pageable pageable);
+    default Page<ModerationAction> findByTargetTypeInAndActionTypeNotOrderByActionAtDesc(
+            Collection<ReportTargetType> targetTypes, ModerationActionType excludedType, Pageable pageable) {
+        return findByTargetTypeInAndEventCategoryNotOrderByActionAtDesc(
+                targetTypes, category(excludedType), pageable);
+    }
 
-    Page<ModerationAction> findByTargetTypeAndActionTypeInOrderByActionAtDesc(
-            ReportTargetType targetType, Collection<ModerationActionType> actionTypes, Pageable pageable);
+    @Query("""
+            select m from ModerationAction m
+            where m.targetType in :targetTypes and m.eventCategory <> :excludedCategory
+            order by m.actionAt desc, m.id desc
+            """)
+    Page<ModerationAction> findByTargetTypeInAndEventCategoryNotOrderByActionAtDesc(
+            @Param("targetTypes") Collection<ReportTargetType> targetTypes,
+            @Param("excludedCategory") String excludedCategory,
+            Pageable pageable);
+
+    default Page<ModerationAction> findByTargetTypeAndActionTypeInOrderByActionAtDesc(
+            ReportTargetType targetType, Collection<ModerationActionType> actionTypes, Pageable pageable) {
+        return findByTargetTypeAndEventCategoryInOrderByActionAtDesc(
+                targetType, categories(actionTypes), pageable);
+    }
+
+    @Query("""
+            select m from ModerationAction m
+            where m.targetType = :targetType and m.eventCategory in :eventCategories
+            order by m.actionAt desc, m.id desc
+            """)
+    Page<ModerationAction> findByTargetTypeAndEventCategoryInOrderByActionAtDesc(
+            @Param("targetType") ReportTargetType targetType,
+            @Param("eventCategories") Collection<String> eventCategories,
+            Pageable pageable);
 
     // Dev seed idempotency (DevDataSeeder) — a given target only gets one seeded action of each type
-    boolean existsByTargetIdAndActionType(UUID targetId, ModerationActionType actionType);
+    default boolean existsByTargetIdAndActionType(UUID targetId, ModerationActionType actionType) {
+        return existsByTargetIdAndEventCategory(targetId, category(actionType));
+    }
+
+    @Query("""
+            select (count(m) > 0) from ModerationAction m
+            where m.targetId = :targetId and m.eventCategory = :eventCategory
+            """)
+    boolean existsByTargetIdAndEventCategory(
+            @Param("targetId") UUID targetId, @Param("eventCategory") String eventCategory);
 
     // CB-MOD-IMP-009 ADR-002 (guard 1 — "most recent action"): used to reject undoing an action that
     // has since been superseded by a newer one on the same target.
     // CB-MOD-IMP-017: AI feedback events share the target's id/type but never mutate content
     // state — they must not count as the "most recent action" for undo/revert guards.
-    Optional<ModerationAction> findTopByTargetIdAndTargetTypeAndActionTypeNotOrderByActionAtDesc(
-            UUID targetId, ReportTargetType targetType, ModerationActionType excludedType);
+    default Optional<ModerationAction> findTopByTargetIdAndTargetTypeAndActionTypeNotOrderByActionAtDesc(
+            UUID targetId, ReportTargetType targetType, ModerationActionType excludedType) {
+        return findTopByTargetIdAndTargetTypeAndEventCategoryNot(
+                targetId, targetType, category(excludedType));
+    }
 
-    Page<ModerationAction> findByActionTypeOrderByActionAtDesc(ModerationActionType actionType, Pageable pageable);
+    @Query("""
+            select m from ModerationAction m
+            where m.targetId = :targetId and m.targetType = :targetType
+              and m.eventCategory <> :excludedCategory
+            order by m.actionAt desc, m.id desc
+            limit 1
+            """)
+    Optional<ModerationAction> findTopByTargetIdAndTargetTypeAndEventCategoryNot(
+            @Param("targetId") UUID targetId,
+            @Param("targetType") ReportTargetType targetType,
+            @Param("excludedCategory") String excludedCategory);
+
+    default Page<ModerationAction> findByActionTypeOrderByActionAtDesc(
+            ModerationActionType actionType, Pageable pageable) {
+        return findByEventCategoryOrderByActionAtDesc(category(actionType), pageable);
+    }
+
+    @Query("""
+            select m from ModerationAction m
+            where m.eventCategory = :eventCategory
+            order by m.actionAt desc, m.id desc
+            """)
+    Page<ModerationAction> findByEventCategoryOrderByActionAtDesc(
+            @Param("eventCategory") String eventCategory, Pageable pageable);
 
     // CB-MOD-IMP-015 (revertReport): finds the ModerationAction created when a report was resolved
     // (reportId != null). Returns Optional.empty() for a report resolved via DISMISS, which creates
     // no ModerationAction (BR-MOD-010).
     // CB-MOD-IMP-017: same exclusion — a feedback event on the case must not shadow the
     // content action that revertReport() needs to undo.
-    Optional<ModerationAction> findTopByReportIdAndActionTypeNotOrderByActionAtDesc(
-            UUID reportId, ModerationActionType excludedType);
+    default Optional<ModerationAction> findTopByReportIdAndActionTypeNotOrderByActionAtDesc(
+            UUID reportId, ModerationActionType excludedType) {
+        return findTopByReportIdAndEventCategoryNot(reportId, category(excludedType));
+    }
+
+    @Query("""
+            select m from ModerationAction m
+            where m.reportId = :reportId and m.eventCategory <> :excludedCategory
+            order by m.actionAt desc, m.id desc
+            limit 1
+            """)
+    Optional<ModerationAction> findTopByReportIdAndEventCategoryNot(
+            @Param("reportId") UUID reportId,
+            @Param("excludedCategory") String excludedCategory);
+
+    private static String category(ModerationActionType actionType) {
+        return "MODERATION_" + actionType.name();
+    }
+
+    private static Collection<String> categories(Collection<ModerationActionType> actionTypes) {
+        return actionTypes.stream().map(ModerationActionRepository::category).toList();
+    }
 }

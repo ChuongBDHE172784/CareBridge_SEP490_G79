@@ -129,6 +129,33 @@ void main() {
   );
 
   testWidgets(
+    '150 percent text scale keeps bottom navigation labels from colliding',
+    (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: const TextScaler.linear(1.5)),
+            child: child!,
+          ),
+          home: const HomeShell(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final navigationBar = tester.widget<NavigationBar>(
+        find.byType(NavigationBar),
+      );
+      expect(
+        navigationBar.labelBehavior,
+        NavigationDestinationLabelBehavior.onlyShowSelected,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
     'same-route Mother shell update forwards a newly resolved continuation',
     (tester) async {
       final coordinator = TriageContinuationRestoreCoordinator(

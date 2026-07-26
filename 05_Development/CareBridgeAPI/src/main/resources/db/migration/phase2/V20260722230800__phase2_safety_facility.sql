@@ -34,8 +34,10 @@ CREATE TABLE IF NOT EXISTS public.safety_events (
     care_subject_id uuid REFERENCES public.care_subjects(care_subject_id),
     monitoring_session_id uuid REFERENCES public.safety_monitoring_sessions(monitoring_session_id),
     source_event_id uuid,
+    parent_event_id uuid REFERENCES public.safety_events(safety_event_id),
     detected_at timestamptz NOT NULL,
     event_type varchar(50) NOT NULL,
+    action_type varchar(40),
     confidence_score numeric,
     peak_acceleration numeric,
     angular_velocity numeric,
@@ -45,34 +47,19 @@ CREATE TABLE IF NOT EXISTS public.safety_events (
     false_positive_reason text,
     status varchar(20) NOT NULL DEFAULT 'DETECTED',
     location_snapshot_jsonb jsonb NOT NULL DEFAULT '{}'::jsonb,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS safety_events_user_status_time_ix ON public.safety_events(user_id, status, detected_at);
-
-CREATE TABLE IF NOT EXISTS public.safety_event_actions (
-    safety_event_action_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    safety_event_id uuid NOT NULL REFERENCES public.safety_events(safety_event_id),
-    action_type varchar(40) NOT NULL,
     recipient_user_id uuid REFERENCES public.users(user_id),
     device_identifier varchar(255),
     notification_record_id uuid REFERENCES public.notification_records(id),
     care_facility_id uuid REFERENCES public.care_facilities(facility_id),
-    attempt_number integer NOT NULL DEFAULT 1,
-    idempotency_key varchar(255) NOT NULL,
-    response_type varchar(30),
+    attempt_number integer,
+    idempotency_key varchar(255) UNIQUE,
     delivery_status varchar(30),
-    created_at timestamptz NOT NULL DEFAULT now(),
     delivered_at timestamptz,
-    CONSTRAINT safety_event_actions_idempotency_uk UNIQUE (idempotency_key),
-    CONSTRAINT safety_event_actions_attempt_ck CHECK (attempt_number > 0)
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now()
 );
-CREATE UNIQUE INDEX IF NOT EXISTS safety_event_actions_terminal_response_uk
-    ON public.safety_event_actions(safety_event_id) WHERE response_type IS NOT NULL;
-CREATE UNIQUE INDEX IF NOT EXISTS safety_event_actions_delivery_device_uk
-    ON public.safety_event_actions(safety_event_id, recipient_user_id, device_identifier)
-    WHERE action_type IN ('DELIVERY','FAMILY_ALERT');
-CREATE INDEX IF NOT EXISTS safety_event_actions_event_status_ix ON public.safety_event_actions(safety_event_id, delivery_status, created_at);
+CREATE INDEX IF NOT EXISTS safety_events_user_status_time_ix ON public.safety_events(user_id, status, detected_at);
+CREATE INDEX IF NOT EXISTS safety_events_parent_ix ON public.safety_events(parent_event_id);
 
 CREATE TABLE IF NOT EXISTS public.administrative_areas (
     administrative_area_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -84,9 +71,23 @@ CREATE TABLE IF NOT EXISTS public.administrative_areas (
     created_at timestamptz NOT NULL DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS public.nearby_support_interactions (
+    interaction_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    interaction_type varchar(30) NOT NULL, -- 'REQUEST', 'RESPONSE'
+    parent_interaction_id uuid REFERENCES public.nearby_support_interactions(interaction_id),
+    user_id uuid NOT NULL REFERENCES public.users(user_id),
+    care_subject_id uuid REFERENCES public.care_subjects(care_subject_id),
+    latitude numeric,
+    longitude numeric,
+    radius_meters integer,
+    message text,
+    status varchar(30) NOT NULL DEFAULT 'OPEN',
+    created_at timestamptz NOT NULL DEFAULT now(),
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT nearby_support_interactions_type_ck CHECK (interaction_type IN ('REQUEST', 'RESPONSE'))
+);
+
 ALTER TABLE public.care_facilities ADD COLUMN IF NOT EXISTS administrative_area_id uuid;
-ALTER TABLE public.nearby_support_requests ADD COLUMN IF NOT EXISTS care_subject_id uuid;
-ALTER TABLE public.nearby_support_responses ADD COLUMN IF NOT EXISTS professional_profile_id uuid;
 
 DO $safety_facility_mapping$
 BEGIN
@@ -99,6 +100,7 @@ BEGIN
           FROM public.safety_monitoring_config s
         ON CONFLICT (safety_config_id) DO NOTHING;
     END IF;
+
     IF to_regclass('public.imu_monitoring_sessions') IS NOT NULL THEN
         INSERT INTO public.safety_monitoring_sessions
             (monitoring_session_id, user_id, status, sensitivity_level, started_at, ended_at, created_by)
@@ -106,6 +108,15 @@ BEGIN
           FROM public.imu_monitoring_sessions i
         ON CONFLICT (monitoring_session_id) DO NOTHING;
     END IF;
+
+    IF to_regclass('public.emergency_sessions') IS NOT NULL THEN
+        INSERT INTO public.safety_events
+            (safety_event_id, user_id, detected_at, event_type, status, created_at, updated_at)
+        SELECT s.id, s.user_id, s.created_at, s.trigger_source, s.status, s.created_at, coalesce(s.resolved_at, s.created_at)
+          FROM public.emergency_sessions s
+        ON CONFLICT (safety_event_id) DO NOTHING;
+    END IF;
+
     IF to_regclass('public.imu_safety_events') IS NOT NULL THEN
         INSERT INTO public.safety_events
             (safety_event_id, user_id, monitoring_session_id, source_event_id, detected_at,
@@ -117,30 +128,47 @@ BEGIN
           FROM public.imu_safety_events e
         ON CONFLICT (safety_event_id) DO NOTHING;
     END IF;
+
     IF to_regclass('public.safety_event_responses') IS NOT NULL THEN
-        INSERT INTO public.safety_event_actions
-            (safety_event_action_id, safety_event_id, action_type, recipient_user_id,
-             attempt_number, idempotency_key, response_type, delivery_status, created_at)
-        SELECT r.id, r.safety_event_id, 'RESPONSE', r.owner_user_id,
-               1, 'response:' || r.id::text, r.response_type, 'RECORDED', r.responded_at
+        INSERT INTO public.safety_events
+            (safety_event_id, user_id, parent_event_id, event_type, action_type,
+             attempt_number, idempotency_key, response_type, delivery_status, detected_at, created_at)
+        SELECT r.id, r.owner_user_id, r.safety_event_id, 'ACTION', 'RESPONSE',
+               1, 'response:' || r.id::text, r.response_type, 'RECORDED', r.responded_at, r.responded_at
           FROM public.safety_event_responses r
-        ON CONFLICT (safety_event_action_id) DO NOTHING;
+        ON CONFLICT (idempotency_key) DO NOTHING;
     END IF;
+
     IF to_regclass('public.emergency_alert_deliveries') IS NOT NULL THEN
-        INSERT INTO public.safety_event_actions
-            (safety_event_id, action_type, recipient_user_id, device_identifier,
+        INSERT INTO public.safety_events
+            (parent_event_id, user_id, event_type, action_type, recipient_user_id, device_identifier,
              notification_record_id, attempt_number, idempotency_key, delivery_status,
-             created_at, delivered_at)
-        SELECT e.safety_event_id, 'DELIVERY', d.recipient_user_id, d.device_token_id::text,
+             detected_at, created_at, delivered_at)
+        SELECT d.emergency_session_id, s.user_id, 'ACTION', 'DELIVERY', d.recipient_user_id, d.device_token_id::text,
                d.notification_record_id, greatest(d.attempt_count, 1), 'delivery:' || d.id::text,
-               d.delivery_status, d.created_at, d.delivered_at
+               d.delivery_status, d.created_at, d.created_at, d.delivered_at
           FROM public.emergency_alert_deliveries d
           JOIN public.emergency_sessions s ON s.id = d.emergency_session_id
-          JOIN public.safety_events e ON e.user_id = s.user_id
         ON CONFLICT (idempotency_key) DO NOTHING;
+    END IF;
+
+    IF to_regclass('public.nearby_support_requests') IS NOT NULL THEN
+        INSERT INTO public.nearby_support_interactions
+            (interaction_id, interaction_type, user_id, care_subject_id, latitude, longitude, radius_meters, message, status, created_at, updated_at)
+        SELECT r.request_id, 'REQUEST', r.requester_user_id, (SELECT cs.care_subject_id FROM public.care_subjects cs WHERE cs.owner_user_id = r.requester_user_id LIMIT 1), r.latitude, r.longitude, 5000, r.description, r.status, r.created_at, r.updated_at
+          FROM public.nearby_support_requests r
+        ON CONFLICT (interaction_id) DO NOTHING;
+    END IF;
+
+    IF to_regclass('public.nearby_support_responses') IS NOT NULL THEN
+        INSERT INTO public.nearby_support_interactions
+            (interaction_id, interaction_type, parent_interaction_id, user_id, message, status, created_at, updated_at)
+        SELECT r.response_id, 'RESPONSE', r.request_id, ep.user_id, r.note, r.action, r.responded_at, r.responded_at
+          FROM public.nearby_support_responses r
+          LEFT JOIN public.expert_profiles ep ON ep.expert_profile_id = r.expert_profile_id
+        ON CONFLICT (interaction_id) DO NOTHING;
     END IF;
 END
 $safety_facility_mapping$;
 
 CREATE INDEX IF NOT EXISTS care_facilities_area_ix ON public.care_facilities(administrative_area_id);
-CREATE INDEX IF NOT EXISTS nearby_support_responses_professional_ix ON public.nearby_support_responses(professional_profile_id);

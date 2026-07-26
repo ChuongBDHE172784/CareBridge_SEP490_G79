@@ -1,5 +1,8 @@
 package com.carebridge.backend.emergency;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.emergency.event.EmergencySessionOpened;
 import com.carebridge.backend.emergency.service.AlertRecipientEndpoint;
@@ -29,6 +32,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.slf4j.LoggerFactory;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -154,6 +158,31 @@ class FamilyAlertServiceTest {
                 .complete(any(PreparedAlertDelivery.class), eq(CLAIM), any());
         verify(alertAttemptService, times(2)).complete(CLAIM, "FAILED", 0, 2, false);
         verify(smsFallbackPort, times(2)).sendFallback(eq(USER_ID), eq(SESSION_ID), any());
+    }
+
+    @Test
+    void providerExceptionLogDoesNotExposeRawMessageCanary() {
+        String leakCanary = "token=OV01-SECRET-CANARY";
+        when(familyMemberPort.getFamilyAlertRecipients(USER_ID)).thenReturn(recipients("token-1"));
+        when(fcmNotificationPort.send(anyString(), any()))
+                .thenThrow(new RuntimeException(leakCanary));
+        Logger logger = (Logger) LoggerFactory.getLogger(FamilyAlertService.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+
+        try {
+            familyAlertService.sendAlert(event());
+        } finally {
+            logger.detachAppender(appender);
+            appender.stop();
+        }
+
+        org.assertj.core.api.Assertions.assertThat(appender.list)
+                .extracting(ILoggingEvent::getFormattedMessage)
+                .anyMatch(message -> message.contains("providerCode=FCM_EXCEPTION")
+                        && message.contains("exceptionType=RuntimeException"))
+                .noneMatch(message -> message.contains(leakCanary));
     }
 
     @Test

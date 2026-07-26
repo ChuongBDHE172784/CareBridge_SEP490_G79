@@ -1,0 +1,1 @@
+- [Luồng đăng ký chuyên gia](expert-registration-flow.md) — Cần hoàn thiện UX đăng ký chuyên gia: dropdown chuẩn Bộ Y tế, OTP auto-fill, CompreFace ảnh khớp, admin xem 3 ảnh

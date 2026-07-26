@@ -1,3 +1,5 @@
+> **Legacy input — superseded.** This underscore-named workspace is retained for provenance only. The canonical UC-82 Function workspace is `04_Implement/UC82 - View Content and Checklist/`, whose TDS incorporates the approved Story 6.9 contract and independent review. Do not implement, approve, or trace release status from this file.
+
 # ENGINEERING DOCUMENTATION STANDARD (EDS) v2.0
 # Technical Design Specification — UC-82 View Content and Checklist
 

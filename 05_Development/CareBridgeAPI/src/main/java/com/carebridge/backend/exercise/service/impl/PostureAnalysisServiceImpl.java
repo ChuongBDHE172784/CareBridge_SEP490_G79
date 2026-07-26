@@ -66,6 +66,7 @@ public class PostureAnalysisServiceImpl implements IPostureAnalysisService {
                 com.carebridge.backend.exercise.entity.PostureFeedbackEvent.builder()
                         .feedbackEventId(UUID.randomUUID())
                         .exerciseSessionId(sessionId)
+                        .journeyId(session.getJourneyId())
                         .postureConfigId(config != null ? config.getPostureConfigId() : null)
                         .eventTimeMs(request.getEventTimeMs())
                         .postureCode(analysis.postureCode())

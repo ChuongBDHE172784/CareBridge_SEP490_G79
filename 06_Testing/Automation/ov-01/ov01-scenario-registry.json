@@ -1,0 +1,282 @@
+{
+  "schemaVersion": 1,
+  "runnerId": "OV01-AUTO-002",
+  "requiredScenarioIds": [
+    "OV01-E2E-001", "OV01-E2E-002", "OV01-E2E-003", "OV01-E2E-004", "OV01-E2E-005",
+    "OV01-E2E-006", "OV01-E2E-007", "OV01-E2E-008", "OV01-E2E-009", "OV01-E2E-010",
+    "OV01-E2E-011", "OV01-E2E-012", "OV01-E2E-013", "OV01-E2E-014", "OV01-E2E-015"
+  ],
+  "requiredPlatformGateIds": [
+    "OV01-GATE-BE-FULL", "OV01-GATE-BE-PACKAGE",
+    "OV01-GATE-MOBILE-FULL", "OV01-GATE-MOBILE-ANALYZE", "OV01-GATE-MOBILE-FORMAT", "OV01-GATE-MOBILE-APK",
+    "OV01-GATE-WEB-FULL", "OV01-GATE-WEB-LINT", "OV01-GATE-WEB-BUILD",
+    "OV01-GATE-AI-FULL", "OV01-GATE-AI-COMPILE", "OV01-GATE-EVALUATOR-FULL"
+  ],
+  "scenarios": [
+    {
+      "id": "OV01-E2E-001", "priority": "P0", "title": "Baseline consent gate and canonical preconception initialization",
+      "gateIds": ["OV01-GATE-BE-LIFECYCLE"],
+      "executableSelectors": [{"gateId": "OV01-GATE-BE-LIFECYCLE", "selector": "JourneyOnboardingIntegrationTest"}],
+      "proofRefs": [
+        {"path": "05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/journey/JourneyOnboardingIntegrationTest.java", "contains": "JourneyOnboardingIntegrationTest"},
+        {"path": "05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/journey/JourneyCanonicalLifecycleIntegrationTest.java", "contains": "concurrentRevocationCommitsBeforeCreateEligibilityAndPreventsInitialization"}
+      ]
+    },
+    {
+      "id": "OV01-E2E-002", "priority": "P0", "title": "Preconception to pregnancy with dating provenance and revision history",
+      "gateIds": ["OV01-GATE-BE-LIFECYCLE"],
+      "executableSelectors": [{"gateId": "OV01-GATE-BE-LIFECYCLE", "selector": "JourneyCanonicalLifecycleIntegrationTest"}],
+      "proofRefs": [
+        {"path": "05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/journey/JourneyCanonicalLifecycleIntegrationTest.java", "contains": "JourneyCanonicalLifecycleIntegrationTest"},
+        {"path": "05_Development/CareBridgeMobileApp/test/features/journey/story_6_1_mobile_gap_test.dart", "contains": "source"}
+      ]
+    },
+    {
+      "id": "OV01-E2E-003", "priority": "P0", "title": "Ongoing and unknown outcome remain non-inferential",
+      "gateIds": ["OV01-GATE-BE-LIFECYCLE"],
+      "executableSelectors": [{"gateId": "OV01-GATE-BE-LIFECYCLE", "selector": "PregnancyOutcomeIntegrationTest"}],
+      "proofRefs": [
+        {"path": "05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/journey/PregnancyOutcomeIntegrationTest.java", "contains": "PregnancyOutcomeIntegrationTest"},
+        {"path": "05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/journey/JourneyPregnancyOutcomePolicyTest.java", "contains": "UNKNOWN"}
+      ]
+    },
+    {
+      "id": "OV01-E2E-004", "priority": "P0", "title": "Live birth to postpartum with optional baby handoff",
+      "gateIds": ["OV01-GATE-BE-LIFECYCLE", "OV01-GATE-MOBILE-OV01"],
+      "executableSelectors": [{"gateId": "OV01-GATE-BE-LIFECYCLE", "selector": "PregnancyOutcomeIntegrationTest"}],
+      "proofRefs": [
+        {"path": "05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/journey/PregnancyOutcomeIntegrationTest.java", "contains": "LIVE_BIRTH"},
+        {"path": "05_Development/CareBridgeMobileApp/test/features/baby/story_6_5_baby_linkage_test.dart", "contains": "offers equal create, link existing, and do later actions"}
+      ]
+    },
+    {
+      "id": "OV01-E2E-005", "priority": "P0", "title": "Pregnancy loss recovery has zero baby and no live-birth semantics",
+      "gateIds": ["OV01-GATE-BE-LIFECYCLE"],
+      "executableSelectors": [{"gateId": "OV01-GATE-BE-LIFECYCLE", "selector": "PregnancyOutcomeIntegrationTest"}],
+      "proofRefs": [
+        {"path": "05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/journey/PregnancyOutcomeIntegrationTest.java", "contains": "PREGNANCY_LOSS"},
+        {"path": "05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/journey/PregnancyOutcomeServiceTest.java", "contains": "STILLBIRTH"}
+      ]
+    },
+    {
+      "id": "OV01-E2E-006", "priority": "P0", "title": "Direct postpartum recovery works with zero babies",
+      "gateIds": ["OV01-GATE-BE-LIFECYCLE", "OV01-GATE-MOBILE-OV01"],
+      "executableSelectors": [
+        {"gateId": "OV01-GATE-BE-LIFECYCLE", "selector": "PostpartumLogPostgresIntegrationTest::ov01E2e006_directPostpartumApiPreservesCardinalityAndZeroBabySideEffects"},
+        {"gateId": "OV01-GATE-MOBILE-OV01", "selector": "postpartum_recovery_setup_screen_test.dart"}
+      ],
+      "proofRefs": [
+        {"path": "05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/health/PostpartumLogPostgresIntegrationTest.java", "contains": "ov01E2e006_directPostpartumApiPreservesCardinalityAndZeroBabySideEffects"},
+        {"path": "05_Development/CareBridgeMobileApp/test/features/journey/postpartum_recovery_setup_screen_test.dart", "contains": "POSTPARTUM"},
+        {"path": "05_Development/CareBridgeMobileApp/test/features/journey/postpartum_recovery_dashboard_test.dart", "contains": "postpartum"},
+        {"path": "05_Development/CareBridgeMobileApp/test/features/healthRecords/postpartum_log_list_screen_test.dart", "contains": "postpartum"}
+      ]
+    },
+    {
+      "id": "OV01-E2E-007", "priority": "P0", "title": "Optional baby linkage is owner-safe, compatible and idempotent",
+      "gateIds": ["OV01-GATE-BE-LIFECYCLE", "OV01-GATE-MOBILE-OV01"],
+      "executableSelectors": [{"gateId": "OV01-GATE-BE-LIFECYCLE", "selector": "BabyJourneyLinkSpringPostgresIntegrationTest"}],
+      "proofRefs": [
+        {"path": "05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/baby/BabyJourneyLinkSpringPostgresIntegrationTest.java", "contains": "BabyJourneyLinkSpringPostgresIntegrationTest"},
+        {"path": "05_Development/CareBridgeMobileApp/test/features/baby/story_6_5_baby_linkage_test.dart", "contains": "account switch dismisses a candidate sheet immediately"}
+      ]
+    },
+    {
+      "id": "OV01-E2E-008", "priority": "P0", "title": "GREEN returns to typed origin and projects exactly once",
+      "gateIds": ["OV01-GATE-BE-SAFETY", "OV01-GATE-MOBILE-OV01"],
+      "executableSelectors": [
+        {"gateId": "OV01-GATE-BE-SAFETY", "selector": "Ov01Ac2BackendContractIntegrationTest::ov01E2e008_greenProjectsTypedOriginsExactlyOnceWithoutEmergencySideEffects"},
+        {"gateId": "OV01-GATE-BE-SAFETY", "selector": "IntakeControllerTest::ov01E2e008_startConversationReturnsTypedMaternalOrigin"},
+        {"gateId": "OV01-GATE-BE-SAFETY", "selector": "LifecycleSafetyOutcomeProjectorTest::ov01E2e008_greenProjectsOnceForEveryTypedOriginWithoutEmergencySideEffects"}
+      ],
+      "proofRefs": [
+        {"path": "05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/triage/Ov01Ac2BackendContractIntegrationTest.java", "contains": "ov01E2e008_greenProjectsTypedOriginsExactlyOnceWithoutEmergencySideEffects"},
+        {"path": "05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/triage/IntakeControllerTest.java", "contains": "ov01E2e008_startConversationReturnsTypedMaternalOrigin"},
+        {"path": "05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/journey/LifecycleSafetyOutcomeProjectorTest.java", "contains": "ov01E2e008_greenProjectsOnceForEveryTypedOriginWithoutEmergencySideEffects"},
+        {"path": "05_Development/CareBridgeMobileApp/test/features/aiTriage/story_6_7_lifecycle_origin_contract_test.dart", "contains": "surface forwards exact related journey and baby IDs"}
+      ]
+    },
+    {
+      "id": "OV01-E2E-009", "priority": "P0", "title": "YELLOW uses verified expert and explicit minimum-context consent",
+      "gateIds": ["OV01-GATE-BE-SAFETY", "OV01-GATE-MOBILE-OV01"],
+      "executableSelectors": [{"gateId": "OV01-GATE-BE-SAFETY", "selector": "TriageExpertHandoffPostgresIntegrationTest"}],
+      "proofRefs": [
+        {"path": "05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/consultation/context/TriageExpertHandoffPostgresIntegrationTest.java", "contains": "TriageExpertHandoffPostgresIntegrationTest"},
+        {"path": "05_Development/CareBridgeMobileApp/test/features/consultation/triage_expert_handoff_mobile_test.dart", "contains": "late account-A preview is discarded after switching to B"}
+      ]
+    },
+    {
+      "id": "OV01-E2E-010", "priority": "P0", "title": "RED creates or reuses one emergency without a second AI decision",
+      "gateIds": ["OV01-GATE-BE-SAFETY", "OV01-GATE-MOBILE-OV01"],
+      "executableSelectors": [{"gateId": "OV01-GATE-BE-SAFETY", "selector": "EmergencyTriageLinkPostgresIntegrationTest"}],
+      "proofRefs": [
+        {"path": "05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/emergency/EmergencyTriageLinkPostgresIntegrationTest.java", "contains": "EmergencyTriageLinkPostgresIntegrationTest"},
+        {"path": "05_Development/CareBridgeMobileApp/test/features/emergency/emergency_map_screen_test.dart", "contains": "single-flight retry"}
+      ]
+    },
+    {
+      "id": "OV01-E2E-011", "priority": "P0", "title": "AI-unavailable maternal RED precedence and unsigned-threshold inactivity",
+      "gateIds": ["OV01-GATE-BE-SAFETY", "OV01-GATE-AI-OV01"],
+      "executableSelectors": [{"gateId": "OV01-GATE-AI-OV01", "selector": "test_approved_universal_signs_are_deterministic_red"}],
+      "proofRefs": [
+        {"path": "05_Development/CareBridgeAITriageService/tests/test_story_6_6_universal_maternal_red.py", "contains": "test_approved_universal_signs_are_deterministic_red"},
+        {"path": "05_Development/CareBridgeAITriageService/tests/test_story_6_6_postpartum.py", "contains": "postpartum"},
+        {"path": "05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/triage/TriageServiceTest.java", "contains": "AI service unavailable"}
+      ]
+    },
+    {
+      "id": "OV01-E2E-012", "priority": "P0", "title": "Approved-only stage-aware content, checklist and RAG boundaries",
+      "gateIds": ["OV01-GATE-BE-SAFETY", "OV01-GATE-MOBILE-OV01", "OV01-GATE-WEB-OV01"],
+      "executableSelectors": [{"gateId": "OV01-GATE-WEB-OV01", "selector": "ChecklistListPage.test.tsx"}],
+      "proofRefs": [
+        {"path": "05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/content/integration/LifecycleContentPostgresIntegrationTest.java", "contains": "LifecycleContentPostgresIntegrationTest"},
+        {"path": "05_Development/CareBridgeMobileApp/test/features/journey/story_6_9_lifecycle_content_entry_test.dart", "contains": "opens reviewed lifecycle content"},
+        {"path": "05_Development/CareBridgeWebApp/src/features/contentManagement/pages/ChecklistListPage.test.tsx", "contains": "ChecklistListPage"}
+      ]
+    },
+    {
+      "id": "OV01-E2E-013", "priority": "P1", "title": "Completion and archive boundary preserve append-only history",
+      "gateIds": ["OV01-GATE-BE-LIFECYCLE"],
+      "executableSelectors": [{"gateId": "OV01-GATE-BE-LIFECYCLE", "selector": "ov01Be019_completionPersistsStatusHistoryAndRemovesActiveSelection"}],
+      "proofRefs": [
+        {"path": "05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/journey/JourneyCanonicalLifecycleIntegrationTest.java", "contains": "ov01Be019_completionPersistsStatusHistoryAndRemovesActiveSelection"},
+        {"path": "05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/journey/JourneyCanonicalLifecycleIntegrationTest.java", "contains": "ov01Be020_archivedFixtureIsInactiveImmutableAndPreservesHistory"}
+      ]
+    },
+    {
+      "id": "OV01-E2E-014", "priority": "P1", "title": "Offline, retry, concurrency and partial failure are idempotent and restart-safe",
+      "gateIds": ["OV01-GATE-BE-SAFETY", "OV01-GATE-MOBILE-OV01"],
+      "executableSelectors": [
+        {"gateId": "OV01-GATE-BE-SAFETY", "selector": "EmergencyTriageLinkPostgresIntegrationTest::ov01E2e014RestartReclaimsExpiredAttemptWithoutResendingSuccessfulDevice"},
+        {"gateId": "OV01-GATE-MOBILE-OV01", "selector": "auth landing keeps unresolved continuation and offers retry in place"}
+      ],
+      "proofRefs": [
+        {"path": "05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/emergency/EmergencyTriageLinkPostgresIntegrationTest.java", "contains": "ov01E2e014RestartReclaimsExpiredAttemptWithoutResendingSuccessfulDevice"},
+        {"path": "05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/emergency/EmergencyAlertRetryJobTest.java", "contains": "EmergencyAlertRetryJobTest"},
+        {"path": "05_Development/CareBridgeMobileApp/test/features/consultation/triage_expert_handoff_mobile_test.dart", "contains": "retry keeps one stable client key"},
+        {"path": "05_Development/CareBridgeMobileApp/test/features/aiTriage/story_6_7_continuation_restore_test.dart", "contains": "auth landing keeps unresolved continuation and offers retry in place"}
+      ]
+    },
+    {
+      "id": "OV01-E2E-015", "priority": "P1", "title": "Logout and account switching reject stale cross-account state",
+      "gateIds": ["OV01-GATE-BE-SAFETY", "OV01-GATE-MOBILE-OV01"],
+      "executableSelectors": [
+        {"gateId": "OV01-GATE-BE-SAFETY", "selector": "Ov01Ac2BackendContractIntegrationTest::ov01E2e015_accountBCannotResolveOrAcknowledgeAccountAContinuation"},
+        {"gateId": "OV01-GATE-BE-SAFETY", "selector": "IntakeControllerTest::ov01E2e015_crossAccountContinuationUsesAuthenticatedOwnerAndReturnsNeutral404"},
+        {"gateId": "OV01-GATE-MOBILE-OV01", "selector": "late response from account A cannot persist its token under account B"}
+      ],
+      "proofRefs": [
+        {"path": "05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/triage/Ov01Ac2BackendContractIntegrationTest.java", "contains": "ov01E2e015_accountBCannotResolveOrAcknowledgeAccountAContinuation"},
+        {"path": "05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/triage/IntakeControllerTest.java", "contains": "ov01E2e015_crossAccountContinuationUsesAuthenticatedOwnerAndReturnsNeutral404"},
+        {"path": "05_Development/CareBridgeMobileApp/test/core/storage/token_storage_test.dart", "contains": "logout deletes the current account onboarding draft"},
+        {"path": "05_Development/CareBridgeMobileApp/test/features/aiTriage/story_6_7_continuation_storage_test.dart", "contains": "late response from account A cannot persist its token under account B"},
+        {"path": "05_Development/CareBridgeMobileApp/test/features/emergency/emergency_map_screen_test.dart", "contains": "late active-session response from previous account is discarded"}
+      ]
+    }
+  ],
+  "gates": [
+    {
+      "id": "OV01-GATE-BE-LIFECYCLE", "platform": "Backend/PostgreSQL", "kind": "test", "workingDirectory": "05_Development/CareBridgeAPI", "timeoutSeconds": 900,
+      "executable": "./mvnw.cmd", "arguments": ["-Dtest=JourneyOnboardingIntegrationTest,JourneyCanonicalLifecycleIntegrationTest,PregnancyOutcomeIntegrationTest,PregnancyOutcomeConcurrencyIntegrationTest,BabyJourneyLinkSpringPostgresIntegrationTest,PostpartumLogPostgresIntegrationTest", "test"],
+      "versionArguments": ["-v"], "expectedVersionRegex": "Apache Maven 3\\.9\\.16",
+      "fallback": {"executable": "${MAVEN_PINNED_3_9_16}", "whenOutputMatches": "(?i)(Cannot start maven from wrapper|Cannot index into a null array)", "versionArguments": ["-v"], "expectedVersionRegex": "Apache Maven 3\\.9\\.16"},
+      "parser": "maven-surefire", "expectedMinTests": 1
+    },
+    {
+      "id": "OV01-GATE-BE-SAFETY", "platform": "Backend/PostgreSQL", "kind": "test", "workingDirectory": "05_Development/CareBridgeAPI", "timeoutSeconds": 900,
+      "executable": "./mvnw.cmd", "arguments": ["-Dtest=TriageServiceTest,EmergencyTriageLinkPostgresIntegrationTest,EmergencyAlertRetryJobTest,TriageExpertHandoffPostgresIntegrationTest,TriageExpertHandoffConcurrencyRollbackPostgresTest,LifecycleContentPostgresIntegrationTest,ChecklistImportPostgresIntegrationTest,Ov01Ac2BackendContractIntegrationTest,IntakeControllerTest,LifecycleSafetyOutcomeProjectorTest", "test"],
+      "versionArguments": ["-v"], "expectedVersionRegex": "Apache Maven 3\\.9\\.16",
+      "fallback": {"executable": "${MAVEN_PINNED_3_9_16}", "whenOutputMatches": "(?i)(Cannot start maven from wrapper|Cannot index into a null array)", "versionArguments": ["-v"], "expectedVersionRegex": "Apache Maven 3\\.9\\.16"},
+      "parser": "maven-surefire", "expectedMinTests": 1
+    },
+    {
+      "id": "OV01-GATE-MOBILE-OV01", "platform": "Mobile", "kind": "test", "workingDirectory": "05_Development/CareBridgeMobileApp", "timeoutSeconds": 1200, "runnerTool": "flutter-dart-snapshot",
+      "executable": "D:/Program Files/flutter/bin/flutter.bat", "arguments": ["test", "test/features/journey/story_6_1_mobile_gap_test.dart", "test/features/journey/postpartum_recovery_setup_screen_test.dart", "test/features/journey/postpartum_recovery_dashboard_test.dart", "test/features/healthRecords/postpartum_log_list_screen_test.dart", "test/features/baby/story_6_5_baby_linkage_test.dart", "test/features/aiTriage/story_6_7_lifecycle_origin_contract_test.dart", "test/features/aiTriage/story_6_7_continuation_restore_test.dart", "test/features/aiTriage/story_6_7_continuation_storage_test.dart", "test/features/consultation/triage_expert_handoff_mobile_test.dart", "test/features/emergency/emergency_map_screen_test.dart", "test/features/journey/story_6_9_lifecycle_content_entry_test.dart", "test/core/storage/token_storage_test.dart", "--reporter", "compact", "--no-color"],
+      "versionArguments": ["--version"], "expectedVersionRegex": "Flutter\\s",
+      "parser": "flutter", "expectedMinTests": 1
+    },
+    {
+      "id": "OV01-GATE-WEB-OV01", "platform": "Web", "kind": "test", "workingDirectory": "05_Development/CareBridgeWebApp", "timeoutSeconds": 600,
+      "executable": "npm.cmd", "arguments": ["run", "test:run", "--", "src/features/contentManagement/pages/ChecklistListPage.test.tsx"],
+      "versionArguments": ["--version"], "expectedVersionRegex": "^\\d+\\.",
+      "parser": "vitest", "expectedMinTests": 1
+    },
+    {
+      "id": "OV01-GATE-AI-OV01", "platform": "AI", "kind": "test", "workingDirectory": "05_Development/CareBridgeAITriageService", "timeoutSeconds": 600,
+      "executable": "05_Development/CareBridgeAITriageService/.venv-story66/Scripts/python.exe", "arguments": ["-m", "pytest", "-q", "-rA", "tests/test_story_6_6_universal_maternal_red.py", "tests/test_story_6_6_postpartum.py", "tests/test_timeout_budget.py"],
+      "versionArguments": ["--version"], "expectedVersionRegex": "Python 3\\.",
+      "parser": "pytest", "expectedMinTests": 1, "pytestIsolation": true
+    },
+    {
+      "id": "OV01-GATE-BE-FULL", "platform": "Backend/PostgreSQL", "kind": "test", "workingDirectory": "05_Development/CareBridgeAPI", "timeoutSeconds": 1800,
+      "executable": "./mvnw.cmd", "arguments": ["-Dgate0.enabled=true", "test"],
+      "versionArguments": ["-v"], "expectedVersionRegex": "Apache Maven 3\\.9\\.16",
+      "fallback": {"executable": "${MAVEN_PINNED_3_9_16}", "whenOutputMatches": "(?i)(Cannot start maven from wrapper|Cannot index into a null array)", "versionArguments": ["-v"], "expectedVersionRegex": "Apache Maven 3\\.9\\.16"},
+      "parser": "maven-surefire", "expectedMinTests": 1,
+      "approvedSkippedTests": [{"selector": "com.carebridge.backend.content.integration.ContentBodySanitizeIntegrationTest#uploadPublicContentImage_endToEnd_persistsPublicAccessModeAndPermanentUrl", "reasonContains": "Requires real CLOUDINARY_", "reasonCode": "EXTERNAL_CREDENTIAL_INTEGRATION_OUTSIDE_OV01", "owner": "CareBridge content platform", "expiresOn": "2026-10-31", "evidencePaths": ["04_Implement/ContentRichTextEditor/ContentRichTextEditor_Test-Spec.md", "05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/file/CloudinaryStorageServiceTest.java"]}]
+    },
+    {
+      "id": "OV01-GATE-BE-PACKAGE", "platform": "Backend/PostgreSQL", "kind": "test", "workingDirectory": "05_Development/CareBridgeAPI", "timeoutSeconds": 2400,
+      "executable": "./mvnw.cmd", "arguments": ["-Dgate0.enabled=true", "clean", "package"],
+      "versionArguments": ["-v"], "expectedVersionRegex": "Apache Maven 3\\.9\\.16",
+      "fallback": {"executable": "${MAVEN_PINNED_3_9_16}", "whenOutputMatches": "(?i)(Cannot start maven from wrapper|Cannot index into a null array)", "versionArguments": ["-v"], "expectedVersionRegex": "Apache Maven 3\\.9\\.16"},
+      "parser": "maven-surefire", "expectedMinTests": 1,
+      "approvedSkippedTests": [{"selector": "com.carebridge.backend.content.integration.ContentBodySanitizeIntegrationTest#uploadPublicContentImage_endToEnd_persistsPublicAccessModeAndPermanentUrl", "reasonContains": "Requires real CLOUDINARY_", "reasonCode": "EXTERNAL_CREDENTIAL_INTEGRATION_OUTSIDE_OV01", "owner": "CareBridge content platform", "expiresOn": "2026-10-31", "evidencePaths": ["04_Implement/ContentRichTextEditor/ContentRichTextEditor_Test-Spec.md", "05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/file/CloudinaryStorageServiceTest.java"]}]
+    },
+    {
+      "id": "OV01-GATE-MOBILE-FULL", "platform": "Mobile", "kind": "test", "workingDirectory": "05_Development/CareBridgeMobileApp", "timeoutSeconds": 1800, "runnerTool": "flutter-dart-snapshot",
+      "executable": "D:/Program Files/flutter/bin/flutter.bat", "arguments": ["test", "--reporter", "compact", "--no-color"], "versionArguments": ["--version"], "expectedVersionRegex": "Flutter\\s", "parser": "flutter", "expectedMinTests": 1
+    },
+    {
+      "id": "OV01-GATE-MOBILE-ANALYZE", "platform": "Mobile", "kind": "analysis", "workingDirectory": "05_Development/CareBridgeMobileApp", "timeoutSeconds": 600, "runnerTool": "flutter-dart-snapshot",
+      "executable": "D:/Program Files/flutter/bin/flutter.bat", "arguments": ["analyze", "--suppress-analytics"], "versionArguments": ["--version"], "expectedVersionRegex": "Flutter\\s", "parser": "none", "expectedMinTests": 0
+    },
+    {
+      "id": "OV01-GATE-MOBILE-FORMAT", "platform": "Mobile", "kind": "analysis", "workingDirectory": "05_Development/CareBridgeMobileApp", "timeoutSeconds": 300,
+      "executable": "D:/Program Files/flutter/bin/cache/dart-sdk/bin/dart.exe", "arguments": ["--suppress-analytics", "format", "--output=none", "--set-exit-if-changed"],
+      "dynamicArguments": {"sourceIdentityPathRegex": "^05_Development/CareBridgeMobileApp/.*\\.dart$", "stripPrefix": "05_Development/CareBridgeMobileApp/", "allowEmpty": true},
+      "environment": {"DART_SUPPRESS_ANALYTICS": "true"}, "evidenceEnvironmentKeys": ["DART_SUPPRESS_ANALYTICS"],
+      "versionArguments": ["--version"], "expectedVersionRegex": "Dart SDK version:", "parser": "none", "expectedMinTests": 0
+    },
+    {
+      "id": "OV01-GATE-MOBILE-APK", "platform": "Mobile", "kind": "build", "workingDirectory": "05_Development/CareBridgeMobileApp", "timeoutSeconds": 1800, "runnerTool": "flutter-dart-snapshot",
+      "executable": "D:/Program Files/flutter/bin/flutter.bat", "arguments": ["build", "apk", "--debug"], "versionArguments": ["--version"], "expectedVersionRegex": "Flutter\\s", "parser": "none", "expectedMinTests": 0
+    },
+    {
+      "id": "OV01-GATE-WEB-FULL", "platform": "Web", "kind": "test", "workingDirectory": "05_Development/CareBridgeWebApp", "timeoutSeconds": 600,
+      "executable": "npm.cmd", "arguments": ["run", "test:run"], "versionArguments": ["--version"], "expectedVersionRegex": "^\\d+\\.", "parser": "vitest", "expectedMinTests": 1
+    },
+    {
+      "id": "OV01-GATE-WEB-LINT", "platform": "Web", "kind": "analysis", "workingDirectory": "05_Development/CareBridgeWebApp", "timeoutSeconds": 600,
+      "executable": "npm.cmd", "arguments": ["run", "lint"], "versionArguments": ["--version"], "expectedVersionRegex": "^\\d+\\.", "parser": "none", "expectedMinTests": 0
+    },
+    {
+      "id": "OV01-GATE-WEB-BUILD", "platform": "Web", "kind": "build", "workingDirectory": "05_Development/CareBridgeWebApp", "timeoutSeconds": 600,
+      "executable": "npm.cmd", "arguments": ["run", "build"], "versionArguments": ["--version"], "expectedVersionRegex": "^\\d+\\.", "parser": "none", "expectedMinTests": 0
+    },
+    {
+      "id": "OV01-GATE-AI-FULL", "platform": "AI", "kind": "test", "workingDirectory": "05_Development/CareBridgeAITriageService", "timeoutSeconds": 900, "pytestIsolation": true,
+      "executable": "05_Development/CareBridgeAITriageService/.venv-story66/Scripts/python.exe", "arguments": ["-m", "pytest", "-q"], "versionArguments": ["--version"], "expectedVersionRegex": "Python 3\\.", "parser": "pytest", "expectedMinTests": 1
+    },
+    {
+      "id": "OV01-GATE-AI-COMPILE", "platform": "AI", "kind": "analysis", "workingDirectory": "05_Development/CareBridgeAITriageService", "timeoutSeconds": 300,
+      "executable": "05_Development/CareBridgeAITriageService/.venv-story66/Scripts/python.exe", "arguments": ["-m", "compileall", "-q", "app"], "versionArguments": ["--version"], "expectedVersionRegex": "Python 3\\.", "parser": "none", "expectedMinTests": 0
+    },
+    {
+      "id": "OV01-GATE-EVALUATOR-FULL", "platform": "AI evaluation", "kind": "test", "workingDirectory": "06_Testing/CareBridgeAIEvaluation", "timeoutSeconds": 600, "pytestIsolation": true,
+      "executable": "05_Development/CareBridgeAITriageService/.venv-story66/Scripts/python.exe", "arguments": ["-m", "pytest"],
+      "environment": {"PYTHONPATH": "src"}, "evidenceEnvironmentKeys": ["PYTHONPATH"], "versionArguments": ["--version"], "expectedVersionRegex": "Python 3\\.", "parser": "pytest", "expectedMinTests": 42
+    }
+  ],
+  "artifacts": [
+    {"id": "OV01-ART-REGISTRY", "kind": "input", "path": "06_Testing/Automation/ov-01/ov01-scenario-registry.json", "required": true, "allowMany": false, "requiredForGateIds": []},
+    {"id": "OV01-ART-AI-RULES", "kind": "input", "path": "05_Development/CareBridgeAITriageService/app/risk_rules.py", "required": true, "allowMany": false, "requiredForGateIds": []},
+    {"id": "OV01-ART-AI-SCHEMAS", "kind": "input", "path": "05_Development/CareBridgeAITriageService/app/schemas.py", "required": true, "allowMany": false, "requiredForGateIds": []},
+    {"id": "OV01-ART-EVAL-BENCHMARK", "kind": "input", "path": "06_Testing/CareBridgeAIEvaluation/datasets/benchmark_cases.json", "required": true, "allowMany": false, "requiredForGateIds": []},
+    {"id": "OV01-ART-EVAL-MAPPING", "kind": "input", "path": "06_Testing/CareBridgeAIEvaluation/datasets/care_journey_mapping.json", "required": true, "allowMany": false, "requiredForGateIds": []},
+    {"id": "OV01-ART-BACKEND-JAR", "kind": "build", "path": "05_Development/CareBridgeAPI/target/backend-0.0.1-SNAPSHOT.jar", "required": true, "allowMany": false, "requiredForGateIds": ["OV01-GATE-BE-PACKAGE"]},
+    {"id": "OV01-ART-MOBILE-APK", "kind": "build", "path": "05_Development/CareBridgeMobileApp/build/app/outputs/flutter-apk/app-debug.apk", "required": true, "allowMany": false, "requiredForGateIds": ["OV01-GATE-MOBILE-APK"]},
+    {"id": "OV01-ART-WEB-INDEX", "kind": "build", "path": "05_Development/CareBridgeWebApp/dist/index.html", "required": true, "allowMany": false, "requiredForGateIds": ["OV01-GATE-WEB-BUILD"]},
+    {"id": "OV01-ART-WEB-ASSETS", "kind": "build", "path": "05_Development/CareBridgeWebApp/dist/assets/*", "required": true, "allowMany": true, "requiredForGateIds": ["OV01-GATE-WEB-BUILD"]}
+  ]
+}

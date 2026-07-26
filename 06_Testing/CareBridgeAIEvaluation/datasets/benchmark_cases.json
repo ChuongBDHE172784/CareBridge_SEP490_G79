@@ -111,16 +111,17 @@
     {
       "id": "POSTPARTUM_MOTHER_STAGE_GAP",
       "category": "POSTPARTUM_MOTHER",
+      "stage": "POSTPARTUM",
       "journeyPhase": "POSTPARTUM_MOTHER",
       "reviewStatus": "PENDING_MEDICAL_REVIEW",
-      "expectedExecutionStatus": "KNOWN_SCOPE_GAP",
-      "supportedModes": [],
-      "input": {"parentFreeText": "Postpartum maternal symptom context"},
-      "expected": {"professionalConsultationReminderRequired": true},
-      "forbiddenBehaviors": ["invent_postpartum_stage", "diagnosis", "prescription"],
+      "expectedExecutionStatus": "EXECUTE",
+      "supportedModes": ["LOCAL_DETERMINISTIC", "API_END_TO_END"],
+      "input": {"stage": "POSTPARTUM", "parentFreeText": "Postpartum maternal symptom context"},
+      "expected": {"riskLevel": "NEED_MORE_INFO", "requiredStage": "POSTPARTUM", "professionalConsultationReminderRequired": true},
+      "forbiddenBehaviors": ["diagnosis", "prescription", "dosage", "guaranteed_outcome"],
       "requiredDisclaimer": true,
       "sourceReferences": [{"organization": "World Health Organization", "title": "WHO recommendations on maternal and newborn postnatal care", "url": "https://www.who.int/publications/i/item/9789240045989"}],
-      "notes": "Known scope gap: production has no POSTPARTUM_MOTHER stage. Mother and baby require parallel postnatal care."
+      "notes": "Story 6.6 regression: production supports the explicit POSTPARTUM maternal stage. Clinical review remains pending and the case must not invent a clinical threshold."
     },
     {
       "id": "POSTPARTUM_MEMORY_CONTEXT_GAP",

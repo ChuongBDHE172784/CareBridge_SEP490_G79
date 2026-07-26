@@ -64,7 +64,7 @@
 | **Upstream Dependencies** | `UC-02 VerifyOTP (Account phải ACTIVE)` |
 | **Downstream Consumers** | `All protected endpoints, audit (SecurityEventLog), UC-04 Logout` |
 
-**Mô tả:** Người dùng đã kích hoạt tài khoản đăng nhập bằng email/phone + password. Hệ thống xác thực credentials, phát hành JWT access token (TTL 15 phút) và refresh token (TTL 7 ngày), tạo session record trong `user_sessions`. Sau 5 lần đăng nhập thất bại liên tiếp, tài khoản bị khóa (`LOCKED`) và ghi sự kiện `LOGIN_FAILED`.
+**Mô tả:** Người dùng đã kích hoạt tài khoản đăng nhập bằng email/phone + password. Hệ thống xác thực credentials, phát hành access token JWT ký RS256 (TTL 15 phút) và refresh token opaque ngẫu nhiên (TTL 7 ngày), tạo session record trong `user_sessions`. Sau 5 lần đăng nhập thất bại liên tiếp, tài khoản bị khóa (`LOCKED`) và ghi sự kiện `LOGIN_FAILED`.
 
 ---
 
@@ -72,12 +72,12 @@
 
 | Requirement ID | Loại | Mô tả yêu cầu | Thành phần Code | Compliance Target | ADR liên quan |
 |----------------|------|---------------|-----------------|-------------------|---------------|
-| UC-03 | Use Case | User đăng nhập nhận JWT tokens | `AuthController.login()` | BR-RBAC | ADR-AUTH-006 |
+| UC-03 | Use Case | User đăng nhập nhận RS256 access JWT và opaque refresh token | `AuthController.login()` | BR-RBAC | ADR-AUTH-006 |
 | BR-LOGIN-001 | Business Rule | Chỉ tài khoản ACTIVE mới được đăng nhập | `AuthService.validateAccountStatus()` | Security | ADR-AUTH-006 |
 | BR-LOGIN-002 | Business Rule | Tối đa 5 lần đăng nhập sai → khóa tài khoản | `AuthService.handleLoginFailure()` | Security | ADR-AUTH-007 |
 | BR-LOGIN-003 | Business Rule | Mỗi đăng nhập ghi audit log | `AuditService.emit(UserLoggedIn/LOGIN_FAILED)` | Security Audit | ADR-AUTH-006 |
 | BR-LOGIN-004 | Business Rule | Access token TTL = 15 phút | `JwtService.generateAccessToken()` | Security | ADR-AUTH-006 |
-| BR-LOGIN-005 | Business Rule | Refresh token TTL = 7 ngày | `JwtService.generateRefreshToken()` | Security | ADR-AUTH-006 |
+| BR-LOGIN-005 | Business Rule | Opaque refresh token TTL = 7 ngày | `AuthServiceImpl.createRefreshToken()` | Security | ADR-AUTH-006 |
 | BR-LOGIN-006 | Business Rule | Tạo session record khi đăng nhập thành công | `SessionRepository.save()` | Traceability | ADR-AUTH-008 |
 | BR-LOGIN-007 | Business Rule | Password không xuất hiện trong log hay response | `@JsonIgnore` | PDPA | ADR-AUTH-002 |
 | BR-LOGIN-008 | Business Rule | Cho phép login bằng email hoặc số điện thoại | `AuthService.findUserByIdentifier()` | Usability | — |
@@ -107,7 +107,7 @@ Cần cơ chế xác thực scalable cho cả Web và Mobile. Session thuần t�
 | C | Session-only (server-side) | + Dễ revoke | - Không stateless, không scale tốt |
 
 #### Quyết định (Decision)
-Chọn **Phương án A**: Access token 15 phút (stateless JWT), refresh token 7 ngày được lưu trong `user_sessions` table (stateful).
+Chọn **Phương án A**: access token 15 phút là stateless JWT ký RS256 với `kid`; refresh token 7 ngày là secret opaque 48-byte sinh bằng `SecureRandom`, trả về dạng base64url và chỉ lưu SHA-256 hash trong `refresh_tokens`/`user_sessions` (stateful, rotated khi refresh).
 
 #### Hệ quả (Consequences)
 
@@ -118,7 +118,7 @@ Chọn **Phương án A**: Access token 15 phút (stateless JWT), refresh token 
 
 **Tiêu cực / Trade-offs:**
 - Cần implement refresh token rotation và revocation
-- DB cần index tốt trên `user_sessions.refresh_token`
+- DB cần index tốt trên `user_sessions.refresh_token_hash`
 
 **Compliance Impact:**
 - PDPA Art. 37 — bảo vệ session data
@@ -180,7 +180,7 @@ Mỗi login thành công tạo 1 record trong `user_sessions` với `refreshToke
 
 | Category | Requirement | Target | Verification Method | Compliance Basis |
 |----------|-------------|--------|---------------------|------------------|
-| JWT Secret | Từ ENV variable, không hard-code | 100% | Code review | Security |
+| JWT RS256 keys | Active `kid`, PKCS#8 private key và SPKI public-key ring từ ENV; RSA ≥ 2048 bit; không hard-code | 100% | Config validation + code review | Security |
 | Access Token TTL | 15 phút chính xác | ±5s | Unit test | BR-LOGIN-004 |
 | Refresh Token TTL | 7 ngày | ±1 phút | Unit test | BR-LOGIN-005 |
 | Lockout | Khóa sau đúng 5 lần thất bại | 100% | Integration test | BR-LOGIN-002 |
@@ -244,7 +244,7 @@ class AuthService implements IAuthService {
 
 class JwtService {
   + generateAccessToken(user: User): String
-  + generateRefreshToken(user: User): String
+  + createRefreshToken(user: User): opaque String
   + validateToken(token: String): Claims
   + extractUserId(token: String): UUID
 }
@@ -333,8 +333,8 @@ Service -> DB : UPDATE users SET failed_login_count=0
 Service -> Jwt : generateAccessToken(user)
 Jwt --> Service : accessToken (exp: +15min)
 
-Service -> Jwt : generateRefreshToken(user)
-Jwt --> Service : refreshToken (exp: +7d)
+Service -> Service : generateOpaqueSecret(SecureRandom, 48 bytes)
+Service --> Service : refreshToken opaque (base64url, exp: +7d)
 
 Service -> SessionRepo : save(UserSession{userId, refreshTokenHash, deviceInfo, ip})
 SessionRepo -> DB : INSERT INTO user_sessions ...
@@ -490,7 +490,7 @@ public interface IAuthService {
 
     /**
      * Đăng nhập bằng email/phone + password.
-     * Phát hành JWT access token và refresh token.
+     * Phát hành RS256 access JWT và opaque rotating refresh token.
      * Tạo session record.
      *
      * @param request    DTO chứa identifier, password, deviceInfo
@@ -505,7 +505,7 @@ public interface IAuthService {
 }
 ```
 
-### 8.2. JWT Service Interface
+### 8.2. Access JWT Provider Interface
 
 ```java
 // JwtService.java
@@ -519,19 +519,13 @@ import java.util.UUID;
 public interface JwtService {
 
     /**
-     * Tạo access token JWT với TTL 15 phút.
-     * Claims: sub=userId, role=role, iat, exp
+     * Tạo access token JWT RS256 với TTL 15 phút.
+     * Header: alg=RS256, kid=activeKeyId. Claims: sub, role, type, iat, exp.
      */
     String generateAccessToken(User user);
 
     /**
-     * Tạo refresh token JWT với TTL 7 ngày.
-     * Lưu hash trong user_sessions, không lưu plaintext.
-     */
-    String generateRefreshToken(User user);
-
-    /**
-     * Validate và parse claims từ JWT.
+     * Chỉ chấp nhận RS256 và public key có `kid` trong verification ring.
      * @throws AuthenticationException nếu token invalid/expired
      */
     Claims validateToken(String token);
@@ -629,8 +623,8 @@ public record LoginResponseDTO(
 {
   "success": true,
   "data": {
-    "accessToken": "eyJhbGciOiJIUzI1NiJ9...",
-    "refreshToken": "eyJhbGciOiJIUzI1NiJ9...",
+    "accessToken": "eyJhbGciOiJSUzI1NiIsImtpZCI6ImFjdGl2ZS0yMDI2LTA3In0...",
+    "refreshToken": "opaque-base64url-secret-without-jwt-segments",
     "tokenType": "Bearer",
     "expiresIn": 900,
     "userId": "550e8400-e29b-41d4-a716-446655440000",
@@ -681,7 +675,7 @@ public record LoginResponseDTO(
 ### 11.1. Prerequisites
 
 - [ ] UC-01, UC-02 đã implement (users table, sessions table)
-- [ ] JWT secret đã cấu hình trong ENV (`JWT_SECRET` ≥ 32 chars)
+- [ ] RS256 access-token keys đã cấu hình từ ENV: `JWT_ACTIVE_KEY_ID`, base64 DER PKCS#8 `JWT_PRIVATE_KEY`, và `JWT_PUBLIC_KEYS` dạng `kid:base64-DER-SPKI`; RSA ≥ 2048 bit
 - [ ] ADR-AUTH-006, 007, 008 đã được Accepted
 
 ### 11.2. Pre-Migration Checklist
@@ -699,48 +693,43 @@ public record LoginResponseDTO(
 ./mvnw flyway:migrate
 ```
 
-#### Chặng 2 — JwtService Implementation
+#### Chặng 2 — JwtTokenProvider Implementation
 
 ```java
-@Service
-public class JwtServiceImpl implements JwtService {
+@Component
+public class JwtTokenProvider {
 
-    @Value("${app.jwt.secret}")
-    private String jwtSecret;
+    @Value("${carebridge.security.jwt.active-key-id}")
+    private String activeKeyId;
+
+    @Value("${carebridge.security.jwt.private-key}")
+    private String privateKeyPkcs8;
+
+    @Value("${carebridge.security.jwt.public-keys}")
+    private String publicKeyRing;
 
     private static final long ACCESS_TOKEN_MS  = 15 * 60 * 1000L;   // 15 phút
-    private static final long REFRESH_TOKEN_MS = 7 * 24 * 3600 * 1000L; // 7 ngày
-
-    @Override
     public String generateAccessToken(User user) {
         return Jwts.builder()
             .subject(user.getId().toString())
             .claim("role", user.getRole().name())
             .issuedAt(new Date())
             .expiration(new Date(System.currentTimeMillis() + ACCESS_TOKEN_MS))
-            .signWith(getSigningKey())
+            .header().keyId(activeKeyId).and()
+            .signWith(loadRsaPrivateKey(privateKeyPkcs8), Jwts.SIG.RS256)
             .compact();
     }
 
-    @Override
-    public String generateRefreshToken(User user) {
-        return Jwts.builder()
-            .subject(user.getId().toString())
-            .claim("type", "refresh")
-            .issuedAt(new Date())
-            .expiration(new Date(System.currentTimeMillis() + REFRESH_TOKEN_MS))
-            .signWith(getSigningKey())
-            .compact();
-    }
-
-    private SecretKey getSigningKey() {
-        return Keys.hmacShaKeyFor(
-            Base64.getDecoder().decode(jwtSecret));
-    }
+    // Verification rejects alg != RS256, unknown/missing kid, expired tokens,
+    // RSA keys below 2048 bits, and active private/public key mismatch.
 }
 ```
 
-#### Chặng 3 — AuthService.login()
+Refresh tokens are not JWTs and are not produced by this provider. `AuthServiceImpl` generates 48 random bytes with `SecureRandom`, base64url-encodes them without padding, persists only SHA-256 hashes, and rotates/revokes them through the stateful refresh/session repositories.
+
+#### Chặng 3 — AuthService OTP verification and session issuance
+
+The block below is the post-OTP issuance portion only. Normal `/login` validates credentials and creates an OTP challenge without issuing tokens; `verifyOtp` issues the RS256 access JWT plus opaque refresh token and session after the challenge is verified. The dev/test-only direct-login controller may reuse this issuance boundary only under its profile and property gates.
 
 ```java
 @Override
@@ -771,7 +760,7 @@ public LoginResponseDTO login(LoginRequestDTO request, String ipAddress) {
     userRepository.save(user);
 
     String accessToken  = jwtService.generateAccessToken(user);
-    String refreshToken = jwtService.generateRefreshToken(user);
+    String refreshToken = generateOpaqueSecret(); // SecureRandom: 48 bytes, base64url without padding
 
     UserSession session = new UserSession();
     session.setUserId(user.getId());
@@ -813,7 +802,7 @@ private String hashToken(String token) {
 ### 11.4. Deployment Checklist
 
 - [ ] Migration V3 chạy thành công
-- [ ] `JWT_SECRET` env variable đã set
+- [ ] `JWT_ACTIVE_KEY_ID`, `JWT_PRIVATE_KEY`, `JWT_PUBLIC_KEYS` đã set; active private/public key pair khớp và public ring giữ key cũ trong cửa sổ rotation cần thiết
 - [ ] Login happy path test: receive accessToken với `exp` = now+900s
 - [ ] Lockout test: 5 lần login sai → status LOCKED
 
@@ -981,7 +970,7 @@ curl -X POST http://localhost:8080/api/v1/auth/login \
   "success": true,
   "data": {
     "accessToken": "eyJhbGci...",
-    "refreshToken": "eyJhbGci...",
+    "refreshToken": "opaque-base64url-secret...",
     "tokenType": "Bearer",
     "expiresIn": 900,
     "userId": "550e8400-...",
@@ -1028,7 +1017,7 @@ curl -X POST http://localhost:8080/api/v1/auth/login \
 
 | # | Constraint | Source (ADR/BR) | Last Verified |
 |---|-----------|-----------------|---------------|
-| C1 | JWT secret PHẢI đọc từ ENV `JWT_SECRET` — KHÔNG hard-code trong source | `ADR-AUTH-006` | `2026-06-26` |
+| C1 | RS256 active `kid`, PKCS#8 private key và SPKI public-key ring PHẢI đọc từ ENV (`JWT_ACTIVE_KEY_ID`, `JWT_PRIVATE_KEY`, `JWT_PUBLIC_KEYS`); RSA ≥ 2048 bit, không hard-code | `ADR-AUTH-006` | `2026-07-25` |
 | C2 | Access token TTL = 900 giây (15 phút) chính xác | `BR-LOGIN-004` | `2026-06-26` |
 | C3 | Refresh token phải được SHA-256 hash trước khi lưu vào DB | `ADR-AUTH-008` | `2026-06-26` |
 | C4 | handleLoginFailure() PHẢI tăng failedLoginCount và ghi SecurityEvent LOGIN_FAILED | `BR-LOGIN-002, BR-LOGIN-003` | `2026-06-26` |
@@ -1040,11 +1029,12 @@ curl -X POST http://localhost:8080/api/v1/auth/login \
 [CONSTRAINT BLOCK — Module: Login]
 Theo TDS CB-AUTH-IMP-003 và ADR-AUTH-006, ADR-AUTH-007, ADR-AUTH-008:
 
-1. JWT secret PHẢI từ ENV JWT_SECRET — không hard-code, không từ application.properties.
-2. Access token TTL = 900 seconds (15 phút), Refresh token TTL = 604800 seconds (7 ngày).
-3. Lưu SHA-256 hash của refresh token trong user_sessions, không lưu plaintext.
-4. handleLoginFailure(): increment failedLoginCount → save → nếu >= 5, set status=LOCKED → emit SecurityEvent(LOGIN_FAILED).
-5. Error message cho "user not found" và "wrong password" PHẢI giống nhau: "EMAIL/SĐT hoặc mật khẩu không đúng" (anti-enumeration).
+1. RS256 access JWT PHẢI dùng `kid`, active PKCS#8 private key và SPKI public-key ring từ ENV; reject algorithm confusion/unknown `kid`; không hard-code key material.
+2. Refresh token PHẢI là 48-byte opaque random secret (base64url), không phải JWT; chỉ SHA-256 hash được lưu và token được rotate/revoke statefully.
+3. Access token TTL = 900 seconds (15 phút), opaque refresh token TTL = 604800 seconds (7 ngày).
+4. Lưu SHA-256 hash của refresh token trong user_sessions/refresh_tokens, không lưu plaintext.
+5. handleLoginFailure(): increment failedLoginCount → save → nếu >= 5, set status=LOCKED → emit SecurityEvent(LOGIN_FAILED).
+6. Error message cho "user not found" và "wrong password" PHẢI giống nhau: "EMAIL/SĐT hoặc mật khẩu không đúng" (anti-enumeration).
 
 [CONTEXT BLOCK]
 - Bounded Context: auth

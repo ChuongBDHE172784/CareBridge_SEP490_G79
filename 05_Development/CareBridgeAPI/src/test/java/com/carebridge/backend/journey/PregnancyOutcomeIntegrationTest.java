@@ -32,6 +32,8 @@ class PregnancyOutcomeIntegrationTest extends AbstractPostgresIntegrationTest {
             UUID.fromString("00000000-0000-0000-0000-000000000163");
     private static final UUID JOURNEY_ID =
             UUID.fromString("00000000-0000-0000-0000-000000016300");
+    private static final UUID BASELINE_SUBMISSION_ID =
+            UUID.fromString("00000000-0000-0000-0000-000000016305");
 
     @Autowired IJourneyTransitionService transitionService;
     @Autowired JdbcTemplate jdbcTemplate;
@@ -40,6 +42,11 @@ class PregnancyOutcomeIntegrationTest extends AbstractPostgresIntegrationTest {
     void cleanAndSeedPregnancy() {
         CanonicalAuditFixture.deleteByActor(jdbcTemplate, OWNER_ID);
         deleteCanonicalEvents();
+        jdbcTemplate.update("""
+                DELETE FROM public.data_permissions
+                WHERE owner_user_id = ? AND permission_kind = 'CONSENT_GRANT'
+                  AND scope_type = 'MOTHER_BASELINE'
+                """, OWNER_ID);
         jdbcTemplate.update("DELETE FROM public.mother_journeys WHERE journey_id = ?", JOURNEY_ID);
         jdbcTemplate.update("""
                 INSERT INTO public.persons (person_id, display_name, created_at, updated_at)
@@ -53,6 +60,7 @@ class PregnancyOutcomeIntegrationTest extends AbstractPostgresIntegrationTest {
                 ) VALUES (?, ?, ?, 'MOTHER', 'ACTIVE', true, false, false, now(), now())
                 ON CONFLICT (user_id) DO NOTHING
                 """, OWNER_ID, OWNER_ID, "story63.mother@test.carebridge.local");
+        seedLifecycleBaselineAndConsent();
         jdbcTemplate.update("""
                 INSERT INTO public.care_subjects (
                     care_subject_id, person_id, owner_user_id, subject_type,
@@ -187,11 +195,39 @@ class PregnancyOutcomeIntegrationTest extends AbstractPostgresIntegrationTest {
                 "ALTER TABLE public.mother_journey_events DISABLE TRIGGER mother_journey_events_immutable_trg");
         try {
             jdbcTemplate.update(
-                    "DELETE FROM public.mother_journey_events WHERE mother_journey_id = ?", JOURNEY_ID);
+                    "DELETE FROM public.mother_journey_events "
+                            + "WHERE mother_journey_id = ? OR "
+                            + "(owner_user_id = ? AND legacy_source = 'MOTHER_BASELINE')",
+                    JOURNEY_ID, OWNER_ID);
         } finally {
             jdbcTemplate.execute(
                     "ALTER TABLE public.mother_journey_events ENABLE TRIGGER mother_journey_events_immutable_trg");
         }
+    }
+
+    private void seedLifecycleBaselineAndConsent() {
+        jdbcTemplate.update("""
+                INSERT INTO public.mother_journey_events (
+                    event_id, owner_user_id, submission_id, journey_version,
+                    schema_version, lifecycle_goal, locale, time_zone,
+                    preferences, recorded_at, event_source, event_type,
+                    event_payload_jsonb, effective_at, legacy_source, legacy_id
+                ) VALUES (?, ?, ?, 1, 'MOTHER_BASELINE_V1',
+                    'CURRENTLY_PREGNANT', 'vi-VN', 'Asia/Ho_Chi_Minh',
+                    'NUTRITION', now(), 'SELF_REPORTED', 'BASELINE_CONTEXT',
+                    '{}'::jsonb, now(), 'MOTHER_BASELINE', ?)
+                """, UUID.randomUUID(), OWNER_ID, BASELINE_SUBMISSION_ID,
+                BASELINE_SUBMISSION_ID.toString());
+        jdbcTemplate.update("""
+                INSERT INTO public.data_permissions (
+                    permission_kind, owner_user_id, scope_type, purpose, scope_text,
+                    policy_version, evidence_key, locale, granted_at, expires_at,
+                    version_number, status, created_at, updated_at
+                ) VALUES ('CONSENT_GRANT', ?, 'MOTHER_BASELINE', 'PERSONALIZE',
+                    'STORE_BASELINE_AND_PERSONALIZE_MOTHER_LIFECYCLE',
+                    'MOTHER_LIFECYCLE_V1', ?, 'vi-VN', now(),
+                    now() + interval '30 days', 1, 'ACTIVE', now(), now())
+                """, OWNER_ID, BASELINE_SUBMISSION_ID);
     }
 
     private RecordPregnancyOutcomeRequest request(

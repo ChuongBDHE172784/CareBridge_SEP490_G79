@@ -8,6 +8,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
+import org.flywaydb.core.Flyway;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 
 @EnabledIfSystemProperty(named = "gate0.enabled", matches = "true")
 class DatabaseGate0ManifestTest {
@@ -17,6 +19,30 @@ class DatabaseGate0ManifestTest {
     @Test
     void externalDatabaseProducesPassingReadOnlyManifest() throws Exception {
         var config = DatabaseGate0Support.externalConfigFromEnvironment();
+        if (!config.missingRequiredValues().isEmpty()) {
+            try (PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:16-alpine")
+                    .withDatabaseName("carebridge_gate0_manifest")
+                    .withUsername("gate0_manifest_auditor")
+                    .withPassword("gate0_manifest_secret_4c19f8e2")) {
+                postgres.start();
+                Flyway.configure()
+                        .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
+                        .locations("classpath:db/migration")
+                        .baselineOnMigrate(true)
+                        .outOfOrder(true)
+                        .load()
+                        .migrate();
+                config = new DatabaseGate0Support.ExternalConfig(
+                        postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword(),
+                        "public", "flyway_schema_history", "testcontainers");
+                assertPassingManifest(config);
+            }
+            return;
+        }
+        assertPassingManifest(config);
+    }
+
+    private static void assertPassingManifest(DatabaseGate0Support.ExternalConfig config) throws Exception {
         var manifest = DatabaseGate0Support.auditExternal(config);
         String endpointLabel = manifest.endpointSha256() == null
                 ? "unconfigured"

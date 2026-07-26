@@ -109,6 +109,25 @@ final class DatabaseGate0Support {
             "expert_identity_verifications",
             "medical_contributions");
 
+    static final Map<String, String> CANDIDATE_REMOVAL_VERSIONS = Map.ofEntries(
+            Map.entry("commission_config", "20260722020800"),
+            Map.entry("commission_records", "20260722020800"),
+            Map.entry("consultation_disputes", "20260722020800"),
+            Map.entry("consultation_messages", "20260722020800"),
+            Map.entry("consultation_requests", "20260722020800"),
+            Map.entry("expert_reviews", "20260722020800"),
+            Map.entry("payment_transactions", "20260722020800"),
+            Map.entry("refund_records", "20260722020800"),
+            Map.entry("settlement_records", "20260722020800"),
+            Map.entry("partner_expert_links", "20260722020900"),
+            Map.entry("partner_services", "20260722020900"),
+            Map.entry("sponsored_campaigns", "20260722020900"),
+            Map.entry("contribution_attachments", "20260722021000"),
+            Map.entry("expert_identity_verifications", "20260722021000"),
+            Map.entry("expert_verification_documents", "20260722021000"),
+            Map.entry("impact_assessment_ratings", "20260722021000"),
+            Map.entry("medical_contributions", "20260722021000"));
+
     static final Map<String, Integer> EXPECTED_PUBLIC_TABLE_COUNTS = Map.of(
             "repositoryBeforeFinalCleanup", 113,
             "repositoryAfterFinalCleanup", 99,
@@ -191,9 +210,10 @@ final class DatabaseGate0Support {
             List<MigrationFile> migrations,
             List<String> malformed,
             List<String> failures) {
-        String script = path.getFileName().toString();
+        String filename = path.getFileName().toString();
+        String script = normalizePath(MIGRATION_DIRECTORY.relativize(path));
         String relativePath = normalizePath(path);
-        Matcher matcher = MIGRATION_PATTERN.matcher(script);
+        Matcher matcher = MIGRATION_PATTERN.matcher(filename);
         if (!matcher.matches()) {
             malformed.add(relativePath);
             return;
@@ -338,7 +358,8 @@ final class DatabaseGate0Support {
                     liveScriptsMissingFromRepository, repositoryScriptsMissingFromHistory,
                     checksumMismatches, failures);
             schemaFingerprint = schemaFingerprint(connection, config.schema());
-            candidateStates.putAll(readCandidateStates(connection, config.schema(), failures));
+            candidateStates.putAll(readCandidateStates(
+                    connection, config.schema(), history, failures));
             inboundForeignKeys.addAll(readInboundForeignKeys(connection, config.schema(), failures));
             objectReferences.addAll(readObjectReferences(connection, config.schema(), failures));
         } catch (SQLException exception) {
@@ -637,10 +658,15 @@ final class DatabaseGate0Support {
     }
 
     private static Map<String, CandidateState> readCandidateStates(
-            Connection connection, String schema, List<String> failures) throws SQLException {
+            Connection connection,
+            String schema,
+            List<HistoryRow> history,
+            List<String> failures) throws SQLException {
         Map<String, CandidateState> states = new TreeMap<>();
         for (String table : new TreeSet<>(REMOVAL_CANDIDATES)) {
             boolean present = relationExists(connection, schema, table);
+            boolean removalApplied = successfulVersionExists(
+                    history, CANDIDATE_REMOVAL_VERSIONS.get(table));
             long count = 0;
             if (present) {
                 String sql = "SELECT count(*) FROM " + quoteIdentifier(schema) + "." + quoteIdentifier(table);
@@ -651,14 +677,30 @@ final class DatabaseGate0Support {
                 }
             }
             states.put(table, new CandidateState(present, count));
-            if (!present && !KNOWN_CLEAN_BOOTSTRAP_ABSENT_CANDIDATES.contains(table)) {
+            if (!present
+                    && !KNOWN_CLEAN_BOOTSTRAP_ABSENT_CANDIDATES.contains(table)
+                    && !removalApplied) {
                 failures.add(CANDIDATE_MISSING + ":" + table);
+            }
+            if (present && removalApplied) {
+                failures.add("CANDIDATE_PRESENT_AFTER_CLEANUP:" + table);
             }
             if (count != 0) {
                 failures.add(CANDIDATE_NOT_EMPTY + ":" + table + ":" + count);
             }
         }
         return states;
+    }
+
+    private static boolean successfulVersionExists(List<HistoryRow> history, String expectedVersion) {
+        if (expectedVersion == null) {
+            return false;
+        }
+        MigrationVersion expected = MigrationVersion.fromVersion(expectedVersion);
+        return history.stream()
+                .filter(HistoryRow::success)
+                .filter(row -> row.version() != null)
+                .anyMatch(row -> expected.equals(MigrationVersion.fromVersion(row.version())));
     }
 
     private static List<ForeignKeyDependency> readInboundForeignKeys(

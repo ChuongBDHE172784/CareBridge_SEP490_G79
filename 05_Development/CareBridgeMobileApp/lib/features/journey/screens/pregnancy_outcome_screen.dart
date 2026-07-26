@@ -21,6 +21,7 @@ class PregnancyOutcomeScreen extends StatefulWidget {
     this.submitOutcome,
     this.draftStore,
     this.accountId,
+    this.sameAccountCheck,
   });
 
   final String journeyId;
@@ -29,6 +30,7 @@ class PregnancyOutcomeScreen extends StatefulWidget {
   final PregnancyOutcomeSubmit? submitOutcome;
   final PregnancyOutcomeDraftStore? draftStore;
   final String? accountId;
+  final bool Function()? sameAccountCheck;
 
   @override
   State<PregnancyOutcomeScreen> createState() => _PregnancyOutcomeScreenState();
@@ -80,7 +82,8 @@ class _PregnancyOutcomeScreenState extends State<PregnancyOutcomeScreen> {
   }
 
   bool _sameAccount() =>
-      widget.accountId != null || AuthState.instance.userId == _accountId;
+      widget.sameAccountCheck?.call() ??
+      (widget.accountId != null || AuthState.instance.userId == _accountId);
 
   Future<void> _saveDraft() async {
     final accountId = _accountId;
@@ -206,6 +209,13 @@ class _PregnancyOutcomeScreenState extends State<PregnancyOutcomeScreen> {
         ),
       );
       if (!mounted) return;
+      if (!_sameAccount()) {
+        setState(() {
+          _error = 'Tài khoản đã thay đổi. Vui lòng mở lại màn hình.';
+          _submitting = false;
+        });
+        return;
+      }
       setState(() {
         _result = result;
         _submitting = false;

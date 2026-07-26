@@ -14,12 +14,10 @@ ALTER TABLE public.community_content
 ALTER TABLE public.community_interactions
     ADD COLUMN IF NOT EXISTS target_content_type varchar(20);
 
-ALTER TABLE public.professional_profiles
+ALTER TABLE public.users
     ADD COLUMN IF NOT EXISTS specialty varchar(100),
-    ADD COLUMN IF NOT EXISTS facility_id uuid,
+    ADD COLUMN IF NOT EXISTS facility_id uuid REFERENCES public.care_facilities(facility_id),
     ADD COLUMN IF NOT EXISTS trust_status varchar(20) NOT NULL DEFAULT 'ACTIVE';
-
-ALTER TABLE public.expert_contribution_events ALTER COLUMN reason TYPE text;
 
 INSERT INTO public.community_content (
     content_id,topic_id,author_user_id,content_type,title,body,stage,pregnancy_week,
@@ -69,22 +67,22 @@ INSERT INTO public.community_interactions
     (interaction_id,actor_user_id,interaction_type,content_id,target_content_type,created_at)
 SELECT id,user_id,'MUTE',question_id,'QUESTION',created_at FROM public.question_notification_mutes;
 
-INSERT INTO public.professional_profiles (
-    professional_profile_id,user_id,specialty,professional_title,experience_years,workplace,
-    facility_id,consultation_scope,verification_status,trust_status,verified_at,verified_by,
-    rating_avg,created_at,updated_at)
-SELECT expert_profile_id,user_id,specialty,professional_title,experience_years,workplace,
-       facility_id,consultation_scope,verification_status,trust_status,verified_at,verified_by,
-       rating_avg,created_at,updated_at
-  FROM public.expert_profiles
-ON CONFLICT (professional_profile_id) DO UPDATE SET
-    user_id=excluded.user_id,specialty=excluded.specialty,
-    professional_title=excluded.professional_title,experience_years=excluded.experience_years,
-    workplace=excluded.workplace,facility_id=excluded.facility_id,
-    consultation_scope=excluded.consultation_scope,
-    verification_status=excluded.verification_status,trust_status=excluded.trust_status,
-    verified_at=excluded.verified_at,verified_by=excluded.verified_by,
-    rating_avg=excluded.rating_avg,created_at=excluded.created_at,updated_at=excluded.updated_at;
+UPDATE public.users u
+   SET specialty = ep.specialty,
+       professional_title = ep.professional_title,
+       experience_years = ep.experience_years,
+       workplace = ep.workplace,
+       facility_id = ep.facility_id,
+       consultation_scope = ep.consultation_scope,
+       verification_status = ep.verification_status,
+       trust_status = ep.trust_status,
+       verified_at = ep.verified_at,
+       verified_by = ep.verified_by,
+       rating_avg = ep.rating_avg,
+       created_at = ep.created_at,
+       updated_at = ep.updated_at
+  FROM public.expert_profiles ep
+ WHERE u.user_id = ep.user_id;
 
 INSERT INTO public.specialties (specialty_id,code,name,is_active,created_at)
 SELECT (substr(md5('specialty:'||lower(trim(specialty))),1,8)||'-'||
@@ -99,31 +97,38 @@ SELECT (substr(md5('specialty:'||lower(trim(specialty))),1,8)||'-'||
  GROUP BY lower(trim(specialty)),trim(specialty)
 ON CONFLICT (code) DO NOTHING;
 
-INSERT INTO public.professional_specialties
-    (professional_profile_id,specialty_id,is_primary,created_at)
-SELECT ep.expert_profile_id,s.specialty_id,true,ep.created_at
-  FROM public.expert_profiles ep
-  JOIN public.specialties s
-    ON s.code=left(lower(regexp_replace(trim(ep.specialty),'[^[:alnum:]]+','_','g')),80)
- WHERE ep.specialty IS NOT NULL AND trim(ep.specialty)<>''
-ON CONFLICT (professional_profile_id,specialty_id) DO NOTHING;
+UPDATE public.users u
+   SET specialty_ids = x.spec_ids
+  FROM (
+      SELECT ep.user_id, array_agg(s.specialty_id) as spec_ids
+        FROM public.expert_profiles ep
+        JOIN public.specialties s
+          ON s.code=left(lower(regexp_replace(trim(ep.specialty),'[^[:alnum:]]+','_','g')),80)
+       WHERE ep.specialty IS NOT NULL AND trim(ep.specialty)<>''
+       GROUP BY ep.user_id
+  ) x
+ WHERE u.user_id = x.user_id;
 
-UPDATE public.expert_credentials ec SET professional_profile_id=ec.expert_profile_id
- WHERE ec.professional_profile_id IS NULL;
-UPDATE public.expert_availability ea SET professional_profile_id=ea.expert_profile_id
- WHERE ea.professional_profile_id IS NULL;
-UPDATE public.expert_location_shares els SET professional_profile_id=els.expert_profile_id
- WHERE els.professional_profile_id IS NULL;
+UPDATE public.expert_credentials ec SET user_id=ep.user_id
+  FROM public.expert_profiles ep WHERE ec.expert_profile_id = ep.expert_profile_id;
+UPDATE public.expert_availability ea SET user_id=ep.user_id
+  FROM public.expert_profiles ep WHERE ea.expert_profile_id = ep.expert_profile_id;
+UPDATE public.expert_location_shares els SET user_id=ep.user_id
+  FROM public.expert_profiles ep WHERE els.expert_profile_id = ep.expert_profile_id;
 
-INSERT INTO public.expert_contribution_events (
-    contribution_event_id,professional_profile_id,actor_user_id,points,reason,
-    source_type,source_id,created_at)
-SELECT cp.point_record_id,pp.professional_profile_id,cp.user_id,coalesce(cp.points,0),
-       coalesce(cp.reason,'LEGACY_CONTRIBUTION'),cp.source_type,cp.source_id,
-       coalesce(cp.recorded_at,now())
+INSERT INTO public.audit_events (
+    audit_event_id, actor_user_id, event_category, payload, occurred_at, created_at, severity, status
+)
+SELECT cp.point_record_id, cp.user_id, 'EXPERT_CONTRIBUTION',
+       jsonb_build_object(
+           'points', coalesce(cp.points,0),
+           'reason', coalesce(cp.reason,'LEGACY_CONTRIBUTION'),
+           'sourceType', cp.source_type,
+           'sourceId', cp.source_id,
+           'legacySource', 'contribution_points'
+       ), coalesce(cp.recorded_at,now()), coalesce(cp.recorded_at,now()), 'INFO', 'CLOSED'
   FROM public.contribution_points cp
-  LEFT JOIN public.professional_profiles pp ON pp.user_id=cp.user_id
-ON CONFLICT (contribution_event_id) DO NOTHING;
+ON CONFLICT (audit_event_id) DO NOTHING;
 
 DO $wave3_reconcile$
 BEGIN
@@ -156,11 +161,11 @@ BEGIN
     RAISE EXCEPTION 'WAVE3_RECONCILIATION: mutes';
   END IF;
   IF (SELECT count(*) FROM public.expert_profiles) <>
-     (SELECT count(*) FROM public.professional_profiles) THEN
+     (SELECT count(*) FROM public.users WHERE role = 'EXPERT' AND verification_status IS NOT NULL) THEN
     RAISE EXCEPTION 'WAVE3_RECONCILIATION: professional profiles';
   END IF;
   IF (SELECT count(*) FROM public.contribution_points) <>
-     (SELECT count(*) FROM public.expert_contribution_events) THEN
+     (SELECT count(*) FROM public.audit_events WHERE event_category = 'EXPERT_CONTRIBUTION') THEN
     RAISE EXCEPTION 'WAVE3_RECONCILIATION: contribution events';
   END IF;
 END $wave3_reconcile$;
@@ -183,9 +188,7 @@ BEGIN
     ('community_answer_likes','community_interactions','id','interaction_id'),
     ('community_bookmarks','community_interactions','id','interaction_id'),
     ('user_topic_follows','community_interactions','id','interaction_id'),
-    ('question_notification_mutes','community_interactions','id','interaction_id'),
-    ('expert_profiles','professional_profiles','expert_profile_id','professional_profile_id'),
-    ('contribution_points','expert_contribution_events','point_record_id','contribution_event_id')
+    ('question_notification_mutes','community_interactions','id','interaction_id')
   ) x(source_table,target_table,source_key,target_key)
   LOOP
     FOR c IN SELECT conrelid::regclass AS rel,conname,pg_get_constraintdef(oid) AS def
@@ -200,36 +203,16 @@ BEGIN
   END LOOP;
 END $wave3_retarget_fks$;
 
-ALTER TABLE public.expert_credentials ALTER COLUMN professional_profile_id SET NOT NULL;
-ALTER TABLE public.expert_availability ALTER COLUMN professional_profile_id SET NOT NULL;
-ALTER TABLE public.expert_location_shares ALTER COLUMN professional_profile_id SET NOT NULL;
+ALTER TABLE public.expert_credentials DROP COLUMN IF EXISTS expert_profile_id CASCADE;
+ALTER TABLE public.expert_availability DROP COLUMN IF EXISTS expert_profile_id CASCADE;
+ALTER TABLE public.expert_location_shares DROP COLUMN IF EXISTS expert_profile_id CASCADE;
 
-DO $wave3_canonical_fks$
-BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname='professional_profiles_facility_fk') THEN
-    ALTER TABLE public.professional_profiles ADD CONSTRAINT professional_profiles_facility_fk
-      FOREIGN KEY (facility_id) REFERENCES public.care_facilities(facility_id);
-  END IF;
-END $wave3_canonical_fks$;
+ALTER TABLE public.expert_consultation_prices DROP CONSTRAINT IF EXISTS expert_consultation_prices_expert_profile_id_fkey;
+ALTER TABLE public.consultation_bookings DROP CONSTRAINT IF EXISTS consultation_bookings_expert_profile_id_fkey;
 
-CREATE OR REPLACE FUNCTION public.fill_contribution_profile()
-RETURNS trigger LANGUAGE plpgsql AS $$
-BEGIN
-  IF NEW.professional_profile_id IS NULL THEN
-    SELECT professional_profile_id INTO NEW.professional_profile_id
-      FROM public.professional_profiles WHERE user_id=NEW.actor_user_id;
-  END IF;
-  RETURN NEW;
-END $$;
-DROP TRIGGER IF EXISTS expert_contribution_fill_profile_trg ON public.expert_contribution_events;
-CREATE TRIGGER expert_contribution_fill_profile_trg
-BEFORE INSERT ON public.expert_contribution_events
-FOR EACH ROW EXECUTE FUNCTION public.fill_contribution_profile();
-
-DROP TRIGGER IF EXISTS expert_contribution_events_immutable_trg ON public.expert_contribution_events;
-CREATE TRIGGER expert_contribution_events_immutable_trg
-BEFORE UPDATE OR DELETE ON public.expert_contribution_events
-FOR EACH ROW EXECUTE FUNCTION public.carebridge_reject_mutation();
+ALTER TABLE public.expert_credentials ALTER COLUMN user_id SET NOT NULL;
+ALTER TABLE public.expert_availability ALTER COLUMN user_id SET NOT NULL;
+ALTER TABLE public.expert_location_shares ALTER COLUMN user_id SET NOT NULL;
 
 DROP TABLE IF EXISTS public.community_question_likes;
 DROP TABLE IF EXISTS public.community_answer_likes;
@@ -238,6 +221,7 @@ DROP TABLE IF EXISTS public.user_topic_follows;
 DROP TABLE IF EXISTS public.question_notification_mutes;
 DROP TABLE IF EXISTS public.community_answers;
 DROP TABLE IF EXISTS public.community_questions;
+DROP TABLE IF EXISTS public.community_profiles;
 DROP TABLE IF EXISTS public.contribution_points;
 DROP TABLE IF EXISTS public.expert_profiles;
 
@@ -247,7 +231,7 @@ BEGIN
   FOREACH name IN ARRAY ARRAY[
     'community_questions','community_answers','community_question_likes',
     'community_answer_likes','community_bookmarks','user_topic_follows',
-    'question_notification_mutes','expert_profiles','contribution_points']
+    'question_notification_mutes','community_profiles','expert_profiles','contribution_points']
   LOOP
     IF to_regclass('public.'||name) IS NOT NULL THEN
       RAISE EXCEPTION 'WAVE3_DROP_FAILED: %',name;

@@ -9,7 +9,8 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity(name = "ReminderCareTask")
-@Table(name = "family_tasks")
+@Table(name = "care_tasks")
+@org.hibernate.annotations.SQLRestriction("task_type = 'SCHEDULED_REMINDER'")
 @Getter
 @Setter
 @Builder
@@ -37,8 +38,12 @@ public class CareTask {
     @Column(name = "description", columnDefinition = "text")
     private String description;
 
-    @Column(name = "due_at")
+    @Column(name = "scheduled_at")
     private Instant dueAt;
+
+    @Builder.Default
+    @Column(name = "task_type", nullable = false, updatable = false, length = 40)
+    private String taskType = "SCHEDULED_REMINDER";
 
     @Builder.Default
     @Enumerated(EnumType.STRING)

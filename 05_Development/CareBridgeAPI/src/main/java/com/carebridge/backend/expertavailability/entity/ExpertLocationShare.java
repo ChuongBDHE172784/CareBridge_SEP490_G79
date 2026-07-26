@@ -22,7 +22,7 @@ public class ExpertLocationShare {
     @Column(name = "location_share_id", updatable = false, nullable = false)
     private UUID locationShareId;
 
-    @Column(name = "professional_profile_id", nullable = false)
+    @Column(name = "user_id", nullable = false)
     private UUID expertProfileId;
 
     @Column(nullable = false, precision = 10, scale = 8)

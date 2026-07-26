@@ -5,6 +5,9 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PostLoad;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Size;
 import java.time.Instant;
@@ -19,7 +22,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
-@Table(name = "persons")
+@Table(name = "users")
 @Getter
 @Setter
 @Builder
@@ -28,8 +31,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 public class UserProfile {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "person_id", updatable = false, nullable = false)
+    @Column(name = "user_id", updatable = false, nullable = false)
     private UUID profileId;
 
     @jakarta.persistence.Transient
@@ -56,4 +58,16 @@ public class UserProfile {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    @PrePersist
+    @PreUpdate
+    void prepareCanonicalUser() {
+        if (profileId == null) profileId = userId;
+        if (userId == null) userId = profileId;
+    }
+
+    @PostLoad
+    void hydrateCanonicalUser() {
+        userId = profileId;
+    }
 }

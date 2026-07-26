@@ -17,9 +17,9 @@ import com.carebridge.backend.content.entity.ReportStatus;
 import com.carebridge.backend.content.exception.ModerationException;
 import com.carebridge.backend.content.repository.ContentReportRepository;
 import com.carebridge.backend.content.repository.ModerationActionRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -29,9 +29,9 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Moderator-facing assessment view + agree/disagree feedback. CB-MOD-IMP-017: the CURRENT
  * feedback lives directly on moderation_cases (no join table); every submission also appends
- * an immutable AI_FEEDBACK_SUBMITTED event to moderation_events in the same transaction, so
- * the full history survives repeated updates. Feedback never mutates policies and never
- * "trains" anything.
+ * an immutable MODERATION_AI_FEEDBACK_SUBMITTED event to the canonical audit_events table in
+ * the same transaction, so the full history survives repeated updates. Feedback never mutates
+ * policies and never "trains" anything.
  */
 @Service
 @RequiredArgsConstructor
@@ -44,7 +44,6 @@ public class AiAssessmentModeratorService {
     private final ModerationActionRepository moderationActionRepository;
     private final AiModerationMapper mapper;
     private final AuditService auditService;
-    private final ObjectMapper objectMapper;
 
     @Transactional(readOnly = true)
     public AiAssessmentResponse getAssessmentForReport(UUID reportId, UUID moderatorUserId) {
@@ -104,7 +103,8 @@ public class AiAssessmentModeratorService {
                 .actionType(ModerationActionType.AI_FEEDBACK_SUBMITTED)
                 .moderatorUserId(moderatorUserId)
                 .actionAt(now)
-                .eventPayloadJson(buildFeedbackPayload(request.verdict(), assessmentId, reason,
+                .reason(reason)
+                .payload(buildFeedbackPayload(request.verdict(), assessmentId,
                         previousDecision, now))
                 .build());
 
@@ -125,19 +125,20 @@ public class AiAssessmentModeratorService {
         return trimmed.length() <= MAX_REASON_LENGTH ? trimmed : trimmed.substring(0, MAX_REASON_LENGTH);
     }
 
-    /** Sanitized structured payload only — never raw content, never model output. */
-    private String buildFeedbackPayload(AiFeedbackVerdict decision, UUID assessmentId, String reason,
+    /**
+     * Sanitized structured payload only — never raw content, never model output. Stored in the
+     * canonical audit_events.payload jsonb column; the sanitized reason rides on the entity's
+     * transient reason field and is folded into the same payload by the entity lifecycle hook.
+     */
+    private Map<String, Object> buildFeedbackPayload(AiFeedbackVerdict decision, UUID assessmentId,
             AiFeedbackVerdict previousDecision, Instant submittedAt) {
-        ObjectNode payload = objectMapper.createObjectNode();
+        Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("decision", decision.name());
         payload.put("assessmentId", assessmentId.toString());
-        if (reason != null) {
-            payload.put("reason", reason);
-        }
         if (previousDecision != null) {
             payload.put("previousDecision", previousDecision.name());
         }
         payload.put("submittedAt", submittedAt.toString());
-        return payload.toString();
+        return payload;
     }
 }

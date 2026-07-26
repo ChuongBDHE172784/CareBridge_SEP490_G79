@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:untitled/features/journey/models/journey_model.dart';
@@ -216,6 +218,58 @@ void main() {
     expect(store.drafts.containsKey('mother-a:journey-1'), isFalse);
     expect(store.drafts.containsKey('mother-b:journey-1'), isTrue);
   });
+
+  testWidgets(
+    'account switch during submit discards the stale outcome result',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(800, 1400));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final store = _MemoryDraftStore();
+      final submitted = Completer<PregnancyOutcomeResult>();
+      var sameAccount = true;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: PregnancyOutcomeScreen(
+            journeyId: 'journey-1',
+            journeyVersion: 3,
+            accountId: 'mother-a',
+            sameAccountCheck: () => sameAccount,
+            draftStore: store,
+            submitOutcome: (_) => submitted.future,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Thai kỳ đã kết thúc'));
+      await tester.pump();
+      await tester.tap(find.text('Tiếp tục'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Xác nhận'));
+      await tester.pump();
+
+      sameAccount = false;
+      submitted.complete(
+        const PregnancyOutcomeResult(
+          evidenceId: 'evidence-stale',
+          journeyId: 'journey-1',
+          outcomeType: PregnancyOutcome.pregnancyLoss,
+          journeyType: 'POSTPARTUM',
+          journeyVersion: 4,
+          revisionNumber: 1,
+          babyActionsEligible: false,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Đã cập nhật hành trình'), findsNothing);
+      expect(
+        find.text('Tài khoản đã thay đổi. Vui lòng mở lại màn hình.'),
+        findsOneWidget,
+      );
+      expect(store.drafts.containsKey('mother-a:journey-1'), isTrue);
+    },
+  );
 
   testWidgets('keeps five semantic choices usable at 150 percent landscape', (
     tester,

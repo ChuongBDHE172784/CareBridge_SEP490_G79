@@ -6,16 +6,34 @@ SET LOCAL statement_timeout = '5min';
 ALTER TABLE public.care_groups ADD COLUMN IF NOT EXISTS care_subject_id uuid;
 ALTER TABLE public.care_group_members ADD COLUMN IF NOT EXISTS data_permission_id uuid;
 
-CREATE TABLE IF NOT EXISTS public.scheduled_care_items (
-    care_item_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    owner_user_id uuid NOT NULL REFERENCES public.users(user_id),
+-- Rename legacy care_tasks if it exists with the old schema
+DO $rename_legacy$
+BEGIN
+    IF to_regclass('public.care_tasks') IS NOT NULL AND NOT EXISTS (
+        SELECT 1 FROM pg_attribute 
+         WHERE attrelid = 'public.care_tasks'::regclass 
+           AND attname = 'task_type'
+    ) THEN
+        ALTER TABLE public.care_tasks RENAME TO legacy_care_tasks;
+    END IF;
+END
+$rename_legacy$;
+
+CREATE TABLE IF NOT EXISTS public.care_tasks (
+    task_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    task_type varchar(40) NOT NULL, -- 'SCHEDULED_REMINDER', 'MANUAL_TASK'
+    owner_user_id uuid REFERENCES public.users(user_id),
+    care_group_id uuid REFERENCES public.care_groups(care_group_id),
+    creator_user_id uuid REFERENCES public.users(user_id),
+    assignee_user_id uuid REFERENCES public.users(user_id),
     care_subject_id uuid REFERENCES public.care_subjects(care_subject_id),
-    item_type varchar(40) NOT NULL,
     title varchar(255) NOT NULL,
-    scheduled_at timestamptz NOT NULL,
+    description text,
+    scheduled_at timestamptz,
     recurrence_rule varchar(255),
     snoozed_until timestamptz,
     completed_at timestamptz,
+    cancelled_at timestamptz,
     skipped_at timestamptz,
     status varchar(30) NOT NULL DEFAULT 'PENDING',
     source_reference_type varchar(60),
@@ -23,26 +41,11 @@ CREATE TABLE IF NOT EXISTS public.scheduled_care_items (
     vaccination_record_id uuid REFERENCES public.vaccination_records(vaccination_record_id),
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT scheduled_care_items_vaccination_ck CHECK (item_type <> 'VACCINATION' OR vaccination_record_id IS NOT NULL OR care_subject_id IS NOT NULL)
+    CONSTRAINT care_tasks_type_ck CHECK (task_type IN ('SCHEDULED_REMINDER', 'MANUAL_TASK')),
+    CONSTRAINT care_tasks_vaccination_ck CHECK (task_type <> 'SCHEDULED_REMINDER' OR source_reference_type <> 'VACCINATION' OR vaccination_record_id IS NOT NULL OR care_subject_id IS NOT NULL)
 );
-CREATE INDEX IF NOT EXISTS scheduled_care_items_owner_status_ix ON public.scheduled_care_items(owner_user_id, status, scheduled_at);
-
-CREATE TABLE IF NOT EXISTS public.family_tasks (
-    task_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    care_group_id uuid NOT NULL REFERENCES public.care_groups(care_group_id),
-    creator_user_id uuid REFERENCES public.users(user_id),
-    assignee_user_id uuid REFERENCES public.users(user_id),
-    care_subject_id uuid REFERENCES public.care_subjects(care_subject_id),
-    title varchar(255) NOT NULL,
-    description text,
-    due_at timestamptz,
-    status varchar(30) NOT NULL DEFAULT 'OPEN',
-    completed_at timestamptz,
-    cancelled_at timestamptz,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now()
-);
-CREATE INDEX IF NOT EXISTS family_tasks_assignee_status_ix ON public.family_tasks(assignee_user_id, status, due_at);
+CREATE INDEX IF NOT EXISTS care_tasks_owner_status_ix ON public.care_tasks(owner_user_id, status, scheduled_at) WHERE owner_user_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS care_tasks_assignee_status_ix ON public.care_tasks(assignee_user_id, status, scheduled_at) WHERE assignee_user_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS public.care_item_templates (
     template_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -82,23 +85,25 @@ CREATE INDEX IF NOT EXISTS preparation_checklist_owner_journey_ix ON public.prep
 DO $care_plan_mapping$
 BEGIN
     IF to_regclass('public.reminders') IS NOT NULL THEN
-        INSERT INTO public.scheduled_care_items
-            (care_item_id, owner_user_id, item_type, title, scheduled_at, recurrence_rule,
+        INSERT INTO public.care_tasks
+            (task_id, task_type, owner_user_id, title, scheduled_at, recurrence_rule,
              snoozed_until, status, created_at, updated_at)
-        SELECT r.reminder_id, r.owner_user_id, r.reminder_type, r.title, r.scheduled_at,
+        SELECT r.reminder_id, 'SCHEDULED_REMINDER', r.owner_user_id, r.title, r.scheduled_at,
                r.recurrence_rule, r.snoozed_until, r.status, r.created_at, r.updated_at
           FROM public.reminders r
-        ON CONFLICT (care_item_id) DO NOTHING;
-    END IF;
-    IF to_regclass('public.care_tasks') IS NOT NULL THEN
-        INSERT INTO public.family_tasks
-            (task_id, care_group_id, creator_user_id, assignee_user_id, title, description,
-             due_at, status, completed_at, created_at, updated_at)
-        SELECT t.care_task_id, t.care_group_id, t.assigned_by, t.assigned_to, t.title,
-               t.description, t.due_at, t.status, t.completed_at, t.created_at, t.updated_at
-          FROM public.care_tasks t
         ON CONFLICT (task_id) DO NOTHING;
     END IF;
+
+    IF to_regclass('public.legacy_care_tasks') IS NOT NULL THEN
+        INSERT INTO public.care_tasks
+            (task_id, task_type, care_group_id, creator_user_id, assignee_user_id, title, description,
+             scheduled_at, status, completed_at, created_at, updated_at)
+        SELECT t.care_task_id, 'MANUAL_TASK', t.care_group_id, t.assigned_by, t.assigned_to, t.title,
+               t.description, t.due_at, t.status, t.completed_at, t.created_at, t.updated_at
+          FROM public.legacy_care_tasks t
+        ON CONFLICT (task_id) DO NOTHING;
+    END IF;
+
     IF to_regclass('public.checklist_templates') IS NOT NULL THEN
         INSERT INTO public.care_item_templates
             (template_id, entry_type, title, description, stage, is_active, version, created_at, updated_at)
@@ -108,6 +113,7 @@ BEGIN
           FROM public.checklist_templates t
         ON CONFLICT (template_id) DO NOTHING;
     END IF;
+
     IF to_regclass('public.checklist_items') IS NOT NULL THEN
         INSERT INTO public.care_item_templates
             (template_id, parent_template_id, entry_type, title, description, display_order, is_active, created_at, updated_at)
@@ -117,6 +123,7 @@ BEGIN
           FROM public.checklist_items i
         ON CONFLICT (template_id) DO NOTHING;
     END IF;
+
     IF to_regclass('public.user_checklist_items') IS NOT NULL THEN
         INSERT INTO public.preparation_checklist_items
             (checklist_item_id, owner_user_id, mother_journey_id, template_entry_id, title,

@@ -17,6 +17,20 @@ public interface ExpertCredentialRepository extends JpaRepository<ExpertCredenti
 
 	List<ExpertCredential> findByExpertProfileId(UUID expertProfileId);
 
+	@Query("SELECT c FROM ExpertCredential c WHERE c.expertProfileId = :expertProfileId "
+		+ "AND c.credentialType NOT LIKE 'IDENTITY\\_%' ESCAPE '\\'")
+	List<ExpertCredential> findProfessionalByExpertProfileId(
+		@Param("expertProfileId") UUID expertProfileId);
+
+	List<ExpertCredential> findByExpertProfileIdAndCredentialNumber(
+		UUID expertProfileId, String credentialNumber);
+
+	List<ExpertCredential> findByExpertProfileIdAndCredentialTypeOrderByCreatedAtDesc(
+		UUID expertProfileId, String credentialType);
+
+	List<ExpertCredential> findByCredentialTypeAndReviewStatusOrderByCreatedAtAsc(
+		String credentialType, ReviewStatus reviewStatus);
+
 	List<ExpertCredential> findByExpertProfileIdAndReviewStatus(UUID expertProfileId, ReviewStatus reviewStatus);
 
 	Optional<ExpertCredential> findFirstByExpertProfileIdAndReviewStatusOrderByReviewedAtDescCreatedAtDesc(
@@ -34,8 +48,10 @@ public interface ExpertCredentialRepository extends JpaRepository<ExpertCredenti
 
 	@Query("SELECT c, p, u FROM ExpertCredential c " +
 		"LEFT JOIN ExpertProfile p ON c.expertProfileId = p.expertProfileId " +
-		"LEFT JOIN User u ON p.userId = u.id " +
+		"LEFT JOIN User u ON p.expertProfileId = u.id " +
 		"WHERE c.reviewStatus = :status " +
+		"AND c.credentialType NOT LIKE 'IDENTITY\\_%' ESCAPE '\\' " +
 		"ORDER BY c.createdAt DESC")
 	List<Object[]> findPendingWithExpert(@Param("status") ReviewStatus status);
+
 }

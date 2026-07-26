@@ -7,7 +7,8 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "nearby_support_responses")
+@Table(name = "nearby_support_interactions")
+@org.hibernate.annotations.SQLRestriction("interaction_type = 'RESPONSE'")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -19,23 +20,27 @@ public class NearbySupportResponse {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "response_id", updatable = false, nullable = false)
+    @Column(name = "interaction_id", updatable = false, nullable = false)
     private UUID responseId;
 
-    @Column(name = "request_id", nullable = false)
+    @Column(name = "parent_interaction_id", nullable = false)
     private UUID requestId;
 
-    @Column(name = "expert_profile_id", nullable = false)
+    @Column(name = "user_id", nullable = false)
     private UUID expertProfileId;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "action", nullable = false, length = 20)
+    @Column(name = "status", nullable = false, length = 30)
     private ResponseAction action;
 
-    @Column(columnDefinition = "text")
+    @Column(name = "message", columnDefinition = "text")
     private String note;
 
     @CreationTimestamp
-    @Column(name = "responded_at", nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime respondedAt;
+
+    @Builder.Default
+    @Column(name = "interaction_type", nullable = false, updatable = false, length = 30)
+    private String interactionType = "RESPONSE";
 }

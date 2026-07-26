@@ -2,10 +2,12 @@ package com.carebridge.backend.expert.dto.request;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 import lombok.*;
 import java.math.BigDecimal;
+import java.util.List;
 
 @Getter
 @Setter
@@ -16,6 +18,9 @@ public class UpdateExpertProfileRequest {
 
     @Size(max = 80)
     private String specialtyId;
+
+    @Size(max = 20)
+    private List<@NotBlank @Size(max = 80) String> specialtyIds;
 
     @Size(max = 36)
     private String hospitalId;

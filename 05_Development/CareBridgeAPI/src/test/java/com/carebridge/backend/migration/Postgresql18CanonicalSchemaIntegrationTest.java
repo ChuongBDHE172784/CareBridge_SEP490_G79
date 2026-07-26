@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
@@ -17,6 +19,11 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 @Testcontainers(disabledWithoutDocker = true)
 class Postgresql18CanonicalSchemaIntegrationTest {
 
+    private static final List<String> APPROVED_RELEASE1_EXTENSIONS = List.of(
+            "consultation_context_citations",
+            "consultation_context_shares",
+            "expert_consultation_requests");
+
     @Container
     final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:18.1-alpine");
 
@@ -28,11 +35,36 @@ class Postgresql18CanonicalSchemaIntegrationTest {
                 .load();
 
         assertThat(flyway.migrate().success).isTrue();
-        assertThat(tableCount()).isEqualTo(70);
+        assertThat(tableCount()).isEqualTo(73);
+        assertThat(release1ExtensionTables())
+                .containsExactlyElementsOf(APPROVED_RELEASE1_EXTENSIONS);
         assertThat(legacyExpertProfileColumnCount()).isZero();
         assertThat(canonicalProfessionalProfileColumnCount()).isEqualTo(3);
 
         validateJpaMappings();
+    }
+
+    private List<String> release1ExtensionTables() throws Exception {
+        try (Connection connection = DriverManager.getConnection(
+                        postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+                var statement = connection.createStatement();
+                var result = statement.executeQuery("""
+                        SELECT table_name
+                          FROM information_schema.tables
+                         WHERE table_schema = 'public'
+                           AND table_type = 'BASE TABLE'
+                           AND table_name IN (
+                               'consultation_context_citations',
+                               'consultation_context_shares',
+                               'expert_consultation_requests')
+                         ORDER BY table_name
+                        """)) {
+            List<String> tables = new ArrayList<>();
+            while (result.next()) {
+                tables.add(result.getString(1));
+            }
+            return List.copyOf(tables);
+        }
     }
 
     private int tableCount() throws Exception {

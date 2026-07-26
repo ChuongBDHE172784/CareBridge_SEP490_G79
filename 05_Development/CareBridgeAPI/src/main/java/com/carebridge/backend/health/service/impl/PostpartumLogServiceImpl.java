@@ -25,7 +25,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -51,10 +50,7 @@ public class PostpartumLogServiceImpl implements IPostpartumLogService {
         consentValidator.ensureEligibleForRead(callerId);
         MotherJourney journey = requireActivePostpartumOwner(
                 journeyId, callerId, false, "POST-001");
-        var pageable = PageRequest.of(page, size, Sort.by(
-                Sort.Order.desc("logDate"),
-                Sort.Order.desc("createdAt"),
-                Sort.Order.desc("id")));
+        var pageable = PageRequest.of(page, size);
         return logRepository.findByJourneyIdAndStatus(
                 journey.getId(), PostpartumLogStatus.ACTIVE, pageable).map(this::toResponse);
     }
@@ -120,6 +116,12 @@ public class PostpartumLogServiceImpl implements IPostpartumLogService {
         }
 
         PostpartumLog saved = logRepository.save(log);
+        logRepository.syncPayload(
+                saved.getId(),
+                saved.getSubmissionId(),
+                saved.getMoodLevel(),
+                saved.getBreastfeedingNote(),
+                saved.getStatus());
         auditService.log(AuditAction.POSTPARTUM_LOG_UPDATED, callerId,
                 "PostpartumLog", saved.getId().toString(), String.join(",", changedFields));
         eventPublisher.publishEvent(new PostpartumLogUpdated(
@@ -135,6 +137,7 @@ public class PostpartumLogServiceImpl implements IPostpartumLogService {
 
         log.setStatus(PostpartumLogStatus.DELETED);
         PostpartumLog saved = logRepository.save(log);
+        logRepository.updateStatus(saved.getId(), PostpartumLogStatus.DELETED);
         auditService.log(AuditAction.POSTPARTUM_LOG_DELETED, callerId,
                 "PostpartumLog", saved.getId().toString(), "deleted");
         eventPublisher.publishEvent(new PostpartumLogDeleted(

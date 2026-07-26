@@ -33,6 +33,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.transaction.support.TransactionOperations;
 
 @ExtendWith(MockitoExtension.class)
 class ExpertIdentityVerificationServiceTest {
@@ -52,7 +53,8 @@ class ExpertIdentityVerificationServiceTest {
     void setUp() {
         service = new ExpertIdentityVerificationServiceImpl(
                 profileRepository, identityRepository, credentialRepository,
-                pipelineAdapter, fileService, auditService);
+                pipelineAdapter, fileService, auditService,
+                TransactionOperations.withoutTransaction());
     }
 
     @Test

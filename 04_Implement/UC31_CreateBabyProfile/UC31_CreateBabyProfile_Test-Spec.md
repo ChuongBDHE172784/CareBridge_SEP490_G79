@@ -273,3 +273,12 @@ git checkout -- src/main/java/com/carebridge/backend/baby/
 | AP-AI-001 | ☐ All TCs reference ADR/BR | G-0 |
 | AP-AI-002 | ☐ Tests FAIL with stub | G-2 ★ |
 | AP-AI-004 | ☐ No business logic in controller | G-4 |
+
+## Story 6.10 OV-01 Test Contract Addendum
+
+| Case ID | Priority | Oracle | Executable linkage |
+| --- | --- | --- | --- |
+| `OV01-TS-31-001` | P0 | 0/1/many optional babies preserve the same Mother recovery state; create/link/defer branches are deterministic | `BabyJourneyLinkSpringPostgresIntegrationTest`, `story_6_5_baby_linkage_test.dart` |
+| `OV01-TS-31-002` | P0 | Same-owner compatibility, replay idempotency, concurrency and foreign-owner denial are enforced at server/database boundaries | `BabyJourneyLinkServiceTest`, `BabyJourneyLinkControllerTest`, `BabyJourneyLinkagePolicyTest`, `BabyJourneyLinkSpringPostgresIntegrationTest` |
+
+These cases supplement the retained UC31 profile tests; they do not relabel UC32/UC33 or manufacture an alias UC.

@@ -53,6 +53,11 @@ class FederatedAuthServiceTest {
             if (user.getId() == null) user.setId(UUID.randomUUID());
             return user;
         });
+        when(users.saveAndFlush(any(User.class))).thenAnswer(invocation -> {
+            User user = invocation.getArgument(0);
+            if (user.getId() == null) user.setId(UUID.randomUUID());
+            return user;
+        });
         when(identities.saveAndFlush(any(UserIdentity.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(identities.save(any(UserIdentity.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(jwt.generateAccessToken(any(User.class), any(UUID.class))).thenReturn("carebridge-access-token");
@@ -146,7 +151,8 @@ class FederatedAuthServiceTest {
         var first = service.authenticate(request("stable-subject-token"));
         var second = service.authenticate(request("stable-subject-token"));
         assertThat(first.user().getId()).isEqualTo(second.user().getId());
-        verify(users, times(3)).save(any(User.class)); // one create plus last-login updates for both requests
+        verify(users).saveAndFlush(any(User.class));
+        verify(users, times(2)).save(any(User.class)); // last-login updates for both requests
         verify(identities, times(1)).saveAndFlush(any());
     }
 

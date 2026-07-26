@@ -924,7 +924,7 @@ abstract class IPostureConfigRepository {
 
 - [ ] UC29 (View/Select Pregnancy Exercise) is deployed — `pregnancy_exercises` table is populated with `supports_posture_analysis` flags.
 - [ ] UC30 (Analyze Exercise Posture) TDS approved — `posture_analysis_configs` and `exercise_sessions` tables exist in the DB (created by UC30 migration).
-- [ ] JWT configuration (`JWT_SECRET`) is set in `.env`.
+- [ ] RS256 JWT configuration (`JWT_ACTIVE_KEY_ID`, PKCS#8 `JWT_PRIVATE_KEY`, and SPKI key-ring `JWT_PUBLIC_KEYS`) is set in `.env`; no real key material is committed.
 - [ ] Mobile app: `permission_handler: ^11.x.x` and `camera: ^0.11.x` are in `pubspec.yaml`.
 
 ### 11.2. Pre-Deployment Checklist

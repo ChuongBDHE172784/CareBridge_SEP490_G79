@@ -13,6 +13,7 @@ public class ExpertOnboardingResponse {
     private String identityStatus;
     private String credentialStatus;
     private VerificationStatus verificationStatus;
+    private String rejectionReason;
     private String nextStep;
     private IdentityVerificationResponse latestIdentityAttempt;
 }

@@ -25,7 +25,7 @@ public interface CareTaskRepository extends JpaRepository<CareTask, UUID> {
     /** UC-73: look up a specific task scoped to a group (prevents cross-group access). */
     Optional<CareTask> findByIdAndCareGroupId(UUID id, UUID careGroupId);
 
-    /** UC-74: calendar aggregation — tasks with due_at in [rangeStart, rangeEnd]. */
+    /** UC-74: calendar aggregation — tasks scheduled in [rangeStart, rangeEnd]. */
     List<CareTask> findByCareGroupIdAndDueAtBetween(UUID careGroupId, Instant rangeStart, Instant rangeEnd);
     @Modifying
     @Query("""

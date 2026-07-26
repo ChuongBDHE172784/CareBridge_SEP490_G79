@@ -93,6 +93,7 @@ public class HealthMetricServiceImpl implements IHealthMetricService {
 
         metric.setStatus(MetricStatus.DELETED);
         metricRepository.save(metric);
+        metricRepository.updateStatus(metric.getId(), MetricStatus.DELETED);
         auditService.log(AuditAction.HEALTH_METRIC_DELETED, callerId,
                 "MaternalHealthMetric", metric.getId().toString(), "deleted");
         eventPublisher.publishEvent(new MaternalHealthMetricDeleted(

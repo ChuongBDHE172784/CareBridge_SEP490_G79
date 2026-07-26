@@ -1,6 +1,8 @@
 # ENGINEERING DOCUMENTATION STANDARD (EDS) v2.0
 # Technical Design Specification — UC-22 Create Mother Journey
 
+> **Story 6.10 classification:** retained legacy input/superseded standalone design. The canonical lifecycle decisions and current OV-01 trace live in `04_Implement/UC22 - Canonical Mother Lifecycle and Transition History/`. This file is not deleted and must not be treated as a second canonical UC.
+
 | Field | Value |
 |-------|-------|
 | **Document ID** | `CB-JOURNEY-IMP-001` |

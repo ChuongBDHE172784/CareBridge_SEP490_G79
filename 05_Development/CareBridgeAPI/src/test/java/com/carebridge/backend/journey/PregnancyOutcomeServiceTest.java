@@ -19,6 +19,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.http.HttpStatus;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -64,6 +65,34 @@ class PregnancyOutcomeServiceTest {
                 eventPublisher,
                 onboardingService,
                 Clock.fixed(NOW, ZoneOffset.UTC));
+    }
+
+    @Test
+    void invalidLifecycleConsentFailsBeforeOutcomeLookupOrMutation() {
+        doThrow(new BusinessException(
+                HttpStatus.CONFLICT,
+                "LIFECYCLE_CONSENT_INVALID",
+                "Your lifecycle consent needs to be reviewed"))
+                .when(onboardingService)
+                .ensureEligible(OWNER_ID);
+
+        assertThatThrownBy(() -> service.recordPregnancyOutcome(
+                OWNER_ID,
+                JOURNEY_ID,
+                request(PregnancyOutcomeType.LIVE_BIRTH, LocalDate.of(2026, 7, 18))))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(error -> {
+                    BusinessException exception = (BusinessException) error;
+                    assertThat(exception.getHttpStatus()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(exception.getCode()).isEqualTo("LIFECYCLE_CONSENT_INVALID");
+                });
+
+        verifyNoInteractions(
+                journeyRepository,
+                transitionRepository,
+                outcomeRepository,
+                auditService,
+                eventPublisher);
     }
 
     @Test

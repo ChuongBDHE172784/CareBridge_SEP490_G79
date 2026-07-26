@@ -5,6 +5,9 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PostLoad;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
@@ -21,7 +24,7 @@ import lombok.Setter;
  * community feed (ADR-COMM-020-001 — privacy-by-design separation from {@code users}).
  */
 @Entity
-@Table(name = "community_profiles")
+@Table(name = "users")
 @Getter
 @Setter
 @Builder
@@ -30,11 +33,10 @@ import lombok.Setter;
 public class CommunityProfile {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "community_profile_id", updatable = false, nullable = false, columnDefinition = "uuid")
+    @Column(name = "user_id", updatable = false, nullable = false, columnDefinition = "uuid")
     private UUID communityProfileId;
 
-    @Column(name = "user_id", columnDefinition = "uuid")
+    @jakarta.persistence.Transient
     private UUID userId;
 
     @Column(name = "display_name", length = 100)
@@ -60,4 +62,16 @@ public class CommunityProfile {
 
     @Column(name = "updated_at")
     private Instant updatedAt;
+
+    @PrePersist
+    @PreUpdate
+    void prepareCanonicalUser() {
+        if (communityProfileId == null) communityProfileId = userId;
+        if (userId == null) userId = communityProfileId;
+    }
+
+    @PostLoad
+    void hydrateCanonicalUser() {
+        userId = communityProfileId;
+    }
 }

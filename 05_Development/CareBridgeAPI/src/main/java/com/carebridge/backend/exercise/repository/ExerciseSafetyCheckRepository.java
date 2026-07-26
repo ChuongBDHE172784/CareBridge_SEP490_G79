@@ -12,33 +12,42 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface ExerciseSafetyCheckRepository extends JpaRepository<ExerciseSafetyCheck, UUID> {
 
+    @Query(value = """
+            SELECT * FROM health_observations
+             WHERE observation_type='EXERCISE_SAFETY_RESULT'
+               AND raw_payload_jsonb->>'exerciseTemplateId'=:#{#exerciseId.toString()}
+               AND raw_payload_jsonb->>'ownerUserId'=:#{#userId.toString()}
+             ORDER BY created_at DESC LIMIT 1
+            """, nativeQuery = true)
     Optional<ExerciseSafetyCheck> findTopByExerciseIdAndUserIdOrderByCreatedAtDesc(
-            UUID exerciseId, UUID userId);
+            @Param("exerciseId") UUID exerciseId, @Param("userId") UUID userId);
 
     @Modifying(flushAutomatically = true)
     @Query(value = """
-        INSERT INTO maternal_observations (
-            observation_id, observation_type, mother_journey_id, exercise_template_id,
-            owner_user_id, check_code, response_boolean, blocked_boolean, observed_at,
-            payload_jsonb, schema_version, source_type, legacy_source, legacy_id, created_at)
-        SELECT (substr(md5('safety-answer:' || m.observation_id || ':' || answer.key),1,8) || '-' ||
-                substr(md5('safety-answer:' || m.observation_id || ':' || answer.key),9,4) || '-' ||
-                substr(md5('safety-answer:' || m.observation_id || ':' || answer.key),13,4) || '-' ||
-                substr(md5('safety-answer:' || m.observation_id || ':' || answer.key),17,4) || '-' ||
-                substr(md5('safety-answer:' || m.observation_id || ':' || answer.key),21,12))::uuid,
-               'EXERCISE_SAFETY_CHECK', m.mother_journey_id, m.exercise_template_id,
-               m.owner_user_id, answer.key, answer.value::boolean, m.blocked_boolean,
-               m.observed_at, '{}'::jsonb, '1', 'EXERCISE_SAFETY',
-               'EXERCISE_SAFETY_ANSWER', m.observation_id::text || ':' || answer.key,
-               m.created_at
-          FROM maternal_observations m
-          CROSS JOIN LATERAL jsonb_each_text(m.payload_jsonb) answer
-         WHERE m.observation_id = :observationId
-           AND m.legacy_source = 'EXERCISE_SAFETY'
+        INSERT INTO health_observations (
+            health_observation_id, care_subject_id, subject_type, observation_type,
+            text_value, observed_at, raw_payload_jsonb, source_type,
+            legacy_source, legacy_id, created_at)
+        SELECT (md5('safety-answer:' || m.health_observation_id || ':' || answer.key))::uuid,
+               m.care_subject_id, 'MOTHER', 'EXERCISE_SAFETY_CHECK',
+               m.text_value, m.observed_at,
+               jsonb_build_object(
+                   'exerciseTemplateId', m.raw_payload_jsonb->>'exerciseTemplateId',
+                   'ownerUserId', m.raw_payload_jsonb->>'ownerUserId',
+                   'checkCode', answer.key,
+                   'responseBoolean', answer.value::boolean,
+                   'blockedBoolean', coalesce((m.raw_payload_jsonb->>'blockedBoolean')::boolean,false),
+                   'recordStatus', m.raw_payload_jsonb->>'recordStatus'),
+               'EXERCISE_SAFETY', 'exercise_safety_checks_answer',
+               m.health_observation_id::text || ':' || answer.key, m.created_at
+          FROM health_observations m
+          CROSS JOIN LATERAL jsonb_each_text(coalesce(m.raw_payload_jsonb->'answer','{}'::jsonb)) answer
+         WHERE m.health_observation_id = :observationId
+           AND m.observation_type = 'EXERCISE_SAFETY_RESULT'
         ON CONFLICT (legacy_source, legacy_id) DO UPDATE SET
-            response_boolean = EXCLUDED.response_boolean,
-            blocked_boolean = EXCLUDED.blocked_boolean,
-            observed_at = EXCLUDED.observed_at
+            raw_payload_jsonb = EXCLUDED.raw_payload_jsonb,
+            observed_at = EXCLUDED.observed_at,
+            updated_at = now()
         """, nativeQuery = true)
     int expandSafetyAnswers(@Param("observationId") UUID observationId);
 }

@@ -30,11 +30,10 @@ INSERT INTO public.care_subjects (
     care_subject_id, person_id, owner_user_id, mother_journey_id, subject_type,
     nickname, status, created_at, updated_at
 )
-SELECT mj.journey_id, u.person_id, mj.owner_user_id, mj.journey_id, 'MOTHER',
-       p.display_name, mj.status, mj.created_at, mj.updated_at
+SELECT mj.journey_id, u.user_id, mj.owner_user_id, mj.journey_id, 'MOTHER',
+       u.display_name, mj.status, mj.created_at, mj.updated_at
   FROM public.mother_journeys mj
   JOIN public.users u ON u.user_id = mj.owner_user_id
-  JOIN public.persons p ON p.person_id = u.person_id
 ON CONFLICT (care_subject_id) DO NOTHING;
 
 UPDATE public.mother_journeys SET care_subject_id = journey_id WHERE care_subject_id IS NULL;
@@ -67,49 +66,33 @@ END
 $journey_constraints$;
 ALTER TABLE public.mother_journeys ALTER COLUMN care_subject_id SET NOT NULL;
 
-CREATE TABLE IF NOT EXISTS public.mother_journey_events (
-    event_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    mother_journey_id uuid REFERENCES public.mother_journeys(journey_id),
-    owner_user_id uuid NOT NULL REFERENCES public.users(user_id),
-    event_type varchar(60) NOT NULL,
-    from_stage varchar(40),
-    to_stage varchar(40),
-    event_payload_jsonb jsonb NOT NULL DEFAULT '{}'::jsonb,
-    schema_version varchar(30) NOT NULL DEFAULT '1',
-    actor_user_id uuid REFERENCES public.users(user_id),
-    effective_at timestamptz NOT NULL,
-    recorded_at timestamptz NOT NULL,
-    journey_version bigint,
-    legacy_source varchar(60),
-    legacy_id varchar(100),
-    CONSTRAINT mother_journey_events_legacy_uk UNIQUE (legacy_source, legacy_id)
-);
-CREATE INDEX IF NOT EXISTS mother_journey_events_journey_time_ix
-    ON public.mother_journey_events(mother_journey_id, effective_at);
-
-CREATE TABLE IF NOT EXISTS public.maternal_observations (
-    observation_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+CREATE TABLE IF NOT EXISTS public.health_observations (
+    health_observation_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    care_subject_id uuid NOT NULL REFERENCES public.care_subjects(care_subject_id),
+    device_connection_id uuid, -- FK added in Wave 5
+    subject_type varchar(30) NOT NULL,
     observation_type varchar(60) NOT NULL,
-    mother_journey_id uuid REFERENCES public.mother_journeys(journey_id),
-    exercise_session_id uuid,
-    numeric_value numeric,
-    secondary_numeric_value numeric,
+    value_numeric numeric,
+    value_secondary numeric,
     unit varchar(40),
     text_value text,
     severity varchar(30),
     observed_at timestamptz NOT NULL,
-    payload_jsonb jsonb NOT NULL DEFAULT '{}'::jsonb,
-    schema_version varchar(30) NOT NULL DEFAULT '1',
-    source_type varchar(60) NOT NULL,
+    source_record_id uuid,
+    source_type varchar(60) NOT NULL DEFAULT 'SYSTEM',
+    quality_label varchar(30),
+    raw_payload_jsonb jsonb NOT NULL DEFAULT '{}'::jsonb,
     legacy_source varchar(60),
     legacy_id varchar(100),
     created_at timestamptz NOT NULL DEFAULT now(),
-    CONSTRAINT maternal_observations_legacy_uk UNIQUE (legacy_source, legacy_id)
+    updated_at timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT health_observations_legacy_uk UNIQUE (legacy_source, legacy_id),
+    CONSTRAINT health_observations_type_ck CHECK (subject_type IN ('MOTHER', 'BABY', 'DEPENDENT'))
 );
-CREATE INDEX IF NOT EXISTS maternal_observations_chart_ix
-    ON public.maternal_observations(mother_journey_id, observation_type, observed_at);
-CREATE INDEX IF NOT EXISTS maternal_observations_severity_ix
-    ON public.maternal_observations(severity, observed_at) WHERE severity IS NOT NULL;
+CREATE INDEX IF NOT EXISTS health_observations_subject_chart_ix
+    ON public.health_observations(care_subject_id, observation_type, observed_at);
+CREATE INDEX IF NOT EXISTS health_observations_severity_ix
+    ON public.health_observations(severity, observed_at) WHERE severity IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS public.maternal_exercise_sessions (
     exercise_session_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -155,74 +138,94 @@ $exercise_mapping$;
 DO $event_mapping$
 BEGIN
     IF to_regclass('public.mother_journey_transitions') IS NOT NULL THEN
-        INSERT INTO public.mother_journey_events (
-            event_id, mother_journey_id, owner_user_id, event_type, from_stage, to_stage,
-            event_payload_jsonb, schema_version, actor_user_id, effective_at, recorded_at,
-            journey_version, legacy_source, legacy_id
+        INSERT INTO public.audit_events (
+            audit_event_id, actor_user_id, event_category, subject_reference_id,
+            resource_type, resource_id, payload, occurred_at, created_at,
+            severity, status
         )
-        SELECT t.transition_id, t.journey_id, j.owner_user_id, t.event_type,
-               t.from_stage, t.to_stage, t.changes_json, '1', t.actor_user_id,
-               t.effective_at, t.recorded_at, t.journey_version,
-               'mother_journey_transitions', t.transition_id::text
+        SELECT t.transition_id, t.actor_user_id, 'MOTHER_JOURNEY_TRANSITION', t.journey_id,
+               'mother_journeys', t.journey_id,
+               jsonb_build_object(
+                   'transitionId', t.transition_id,
+                   'fromStage', t.from_stage,
+                   'toStage', t.to_stage,
+                   'changes', t.changes_json,
+                   'journeyVersion', t.journey_version,
+                   'legacySource', 'mother_journey_transitions'
+               ), t.effective_at, t.recorded_at,
+               'INFO', 'CLOSED'
           FROM public.mother_journey_transitions t
           JOIN public.mother_journeys j ON j.journey_id = t.journey_id
-        ON CONFLICT (legacy_source, legacy_id) DO NOTHING;
+        ON CONFLICT (audit_event_id) DO NOTHING;
     END IF;
 
     IF to_regclass('public.pregnancy_outcome_evidence') IS NOT NULL THEN
-        INSERT INTO public.mother_journey_events (
-            event_id, mother_journey_id, owner_user_id, event_type,
-            event_payload_jsonb, schema_version, actor_user_id, effective_at,
-            recorded_at, journey_version, legacy_source, legacy_id
+        INSERT INTO public.audit_events (
+            audit_event_id, actor_user_id, event_category, subject_reference_id,
+            resource_type, resource_id, payload, occurred_at, created_at,
+            severity, status
         )
-        SELECT e.evidence_id, e.journey_id, e.owner_user_id, 'PREGNANCY_OUTCOME_EVIDENCE',
+        SELECT e.evidence_id, e.actor_user_id, 'PREGNANCY_OUTCOME_EVIDENCE', e.journey_id,
+               'mother_journeys', e.journey_id,
                jsonb_build_object(
-                   'submissionId', e.submission_id, 'outcomeType', e.outcome_type,
-                   'outcomeDate', e.outcome_date, 'source', e.source,
-                   'reason', e.reason, 'revisionNumber', e.revision_number,
+                   'outcomeType', e.outcome_type,
+                   'outcomeDate', e.outcome_date,
+                   'source', e.source,
+                   'reason', e.reason,
+                   'revisionNumber', e.revision_number,
                    'supersedesEvidenceId', e.supersedes_evidence_id,
-                   'semanticHash', e.semantic_hash, 'correction', e.correction
-               ), '1', e.actor_user_id, e.effective_at, e.recorded_at,
-               e.journey_version, 'pregnancy_outcome_evidence', e.evidence_id::text
+                   'semanticHash', e.semantic_hash,
+                   'correction', e.correction,
+                   'legacySource', 'pregnancy_outcome_evidence'
+               ), e.effective_at, e.recorded_at,
+               'INFO', 'CLOSED'
           FROM public.pregnancy_outcome_evidence e
-        ON CONFLICT (legacy_source, legacy_id) DO NOTHING;
+        ON CONFLICT (audit_event_id) DO NOTHING;
     END IF;
 
     IF to_regclass('public.mother_baseline_contexts') IS NOT NULL THEN
-        INSERT INTO public.mother_journey_events (
-            mother_journey_id, owner_user_id, event_type, event_payload_jsonb,
-            schema_version, effective_at, recorded_at, journey_version,
-            legacy_source, legacy_id
+        INSERT INTO public.audit_events (
+            actor_user_id, event_category, subject_reference_id,
+            resource_type, resource_id, payload, occurred_at, created_at,
+            severity, status
         )
-        SELECT j.journey_id, b.owner_user_id, 'BASELINE_CONTEXT',
+        SELECT b.owner_user_id, 'BASELINE_CONTEXT', j.journey_id,
+               'mother_journeys', j.journey_id,
                jsonb_build_object(
-                   'submissionId', b.submission_id, 'lifecycleGoal', b.lifecycle_goal,
-                   'locale', b.locale, 'timeZone', b.time_zone,
-                   'preferences', b.preferences, 'source', b.source
-               ), b.schema_version, b.recorded_at, b.recorded_at, b.revision,
-               'mother_baseline_contexts', b.baseline_id::text
+                   'baselineId', b.baseline_id,
+                   'lifecycleGoal', b.lifecycle_goal,
+                   'locale', b.locale,
+                   'timeZone', b.time_zone,
+                   'preferences', b.preferences,
+                   'source', b.source,
+                   'legacySource', 'mother_baseline_contexts'
+               ), b.recorded_at, b.recorded_at,
+               'INFO', 'CLOSED'
           FROM public.mother_baseline_contexts b
           LEFT JOIN LATERAL (
               SELECT mj.journey_id FROM public.mother_journeys mj
                WHERE mj.owner_user_id = b.owner_user_id
                ORDER BY mj.created_at DESC, mj.journey_id LIMIT 1
           ) j ON true
-        ON CONFLICT (legacy_source, legacy_id) DO NOTHING;
+        ON CONFLICT DO NOTHING;
     END IF;
 
     IF to_regclass('public.baby_link_submissions') IS NOT NULL THEN
-        INSERT INTO public.mother_journey_events (
-            mother_journey_id, owner_user_id, event_type, event_payload_jsonb,
-            schema_version, effective_at, recorded_at, legacy_source, legacy_id
+        INSERT INTO public.audit_events (
+            actor_user_id, event_category, subject_reference_id,
+            resource_type, resource_id, payload, occurred_at, created_at,
+            severity, status
         )
-        SELECT bl.journey_id, bl.owner_user_id, 'BABY_LINK_' || bl.operation_type,
+        SELECT bl.owner_user_id, 'BABY_LINK_' || bl.operation_type, bl.journey_id,
+               'care_subjects', bl.baby_id,
                jsonb_build_object(
-                   'submissionId', bl.submission_id, 'semanticIntent', bl.semantic_intent,
-                   'careSubjectId', bl.baby_id
-               ), '1', bl.created_at, bl.created_at,
-               'baby_link_submissions', bl.link_submission_id::text
+                   'submissionId', bl.submission_id,
+                   'semanticIntent', bl.semantic_intent,
+                   'legacySource', 'baby_link_submissions'
+               ), bl.created_at, bl.created_at,
+               'INFO', 'CLOSED'
           FROM public.baby_link_submissions bl
-        ON CONFLICT (legacy_source, legacy_id) DO NOTHING;
+        ON CONFLICT DO NOTHING;
     END IF;
 END
 $event_mapping$;
@@ -230,12 +233,12 @@ $event_mapping$;
 DO $observation_mapping$
 BEGIN
     IF to_regclass('public.maternal_health_metrics') IS NOT NULL THEN
-        INSERT INTO public.maternal_observations (
-            observation_id, observation_type, mother_journey_id, numeric_value,
-            secondary_numeric_value, unit, text_value, observed_at, payload_jsonb,
+        INSERT INTO public.health_observations (
+            health_observation_id, care_subject_id, subject_type, observation_type,
+            value_numeric, value_secondary, unit, text_value, observed_at, raw_payload_jsonb,
             source_type, legacy_source, legacy_id, created_at
         )
-        SELECT m.metric_id, 'MATERNAL_METRIC', m.journey_id, m.value_numeric,
+        SELECT m.metric_id, m.journey_id, 'MOTHER', 'MATERNAL_METRIC', m.value_numeric,
                m.value_secondary, m.unit, m.note, m.measured_at,
                jsonb_build_object('metricType', m.metric_type, 'status', m.status,
                                   'sourceReferenceId', m.source_reference_id),
@@ -246,12 +249,12 @@ BEGIN
     END IF;
 
     IF to_regclass('public.postpartum_logs') IS NOT NULL THEN
-        INSERT INTO public.maternal_observations (
-            observation_id, observation_type, mother_journey_id, numeric_value,
-            secondary_numeric_value, unit, text_value, severity, observed_at,
-            payload_jsonb, source_type, legacy_source, legacy_id, created_at
+        INSERT INTO public.health_observations (
+            health_observation_id, care_subject_id, subject_type, observation_type,
+            value_numeric, value_secondary, unit, text_value, severity, observed_at,
+            raw_payload_jsonb, source_type, legacy_source, legacy_id, created_at
         )
-        SELECT p.postpartum_log_id, 'POSTPARTUM_LOG', p.journey_id, p.pain_level,
+        SELECT p.postpartum_log_id, p.journey_id, 'MOTHER', 'POSTPARTUM_LOG', p.pain_level,
                p.sleep_hours, 'MIXED', p.symptom_note, p.bleeding_level,
                p.log_date::timestamptz,
                jsonb_build_object('moodLevel', p.mood_level,
@@ -263,15 +266,15 @@ BEGIN
     END IF;
 
     IF to_regclass('public.exercise_safety_checks') IS NOT NULL THEN
-        INSERT INTO public.maternal_observations (
-            observation_id, observation_type, mother_journey_id, text_value,
-            severity, observed_at, payload_jsonb, source_type,
+        INSERT INTO public.health_observations (
+            health_observation_id, care_subject_id, subject_type, observation_type,
+            text_value, severity, observed_at, raw_payload_jsonb, source_type,
             legacy_source, legacy_id, created_at
         )
-        SELECT s.safety_check_id,
+        SELECT s.safety_check_id, s.journey_id, 'MOTHER',
                CASE WHEN s.red_flag_detected THEN 'EXERCISE_SAFETY_BLOCK'
                     ELSE 'EXERCISE_SAFETY_ANSWER' END,
-               s.journey_id, s.blocked_reason,
+               s.blocked_reason,
                CASE WHEN s.red_flag_detected THEN 'HIGH' ELSE NULL END,
                coalesce(s.completed_at, s.created_at),
                jsonb_build_object('exerciseId', s.exercise_id, 'userId', s.user_id,
@@ -282,12 +285,12 @@ BEGIN
     END IF;
 
     IF to_regclass('public.posture_feedback_events') IS NOT NULL THEN
-        INSERT INTO public.maternal_observations (
-            observation_id, observation_type, mother_journey_id, exercise_session_id,
-            numeric_value, unit, text_value, severity, observed_at, payload_jsonb,
-            source_type, legacy_source, legacy_id, created_at
+        INSERT INTO public.health_observations (
+            health_observation_id, care_subject_id, subject_type, observation_type,
+            source_record_id, value_numeric, unit, text_value, severity, observed_at,
+            raw_payload_jsonb, source_type, legacy_source, legacy_id, created_at
         )
-        SELECT f.feedback_event_id, 'POSTURE_FEEDBACK', es.mother_journey_id,
+        SELECT f.feedback_event_id, es.mother_journey_id, 'MOTHER', 'POSTURE_FEEDBACK',
                f.exercise_session_id, f.confidence_score, 'CONFIDENCE', f.feedback_text,
                f.severity, es.started_at + make_interval(secs => f.event_time_ms / 1000.0),
                jsonb_build_object('postureConfigId', f.posture_config_id,
@@ -304,9 +307,9 @@ $observation_mapping$;
 
 DO $observation_fk$
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'maternal_observations_session_fk') THEN
-        ALTER TABLE public.maternal_observations ADD CONSTRAINT maternal_observations_session_fk
-            FOREIGN KEY (exercise_session_id)
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'health_observations_session_fk') THEN
+        ALTER TABLE public.health_observations ADD CONSTRAINT health_observations_session_fk
+            FOREIGN KEY (source_record_id)
             REFERENCES public.maternal_exercise_sessions(exercise_session_id);
     END IF;
 END
@@ -471,7 +474,4 @@ CREATE INDEX IF NOT EXISTS development_milestones_subject_ix
 CREATE INDEX IF NOT EXISTS vaccination_records_subject_status_ix
     ON public.vaccination_records(care_subject_id, status, scheduled_date);
 
-DROP TRIGGER IF EXISTS mother_journey_events_immutable_trg ON public.mother_journey_events;
-CREATE TRIGGER mother_journey_events_immutable_trg
-BEFORE UPDATE OR DELETE ON public.mother_journey_events
-FOR EACH ROW EXECUTE FUNCTION public.carebridge_reject_mutation();
+

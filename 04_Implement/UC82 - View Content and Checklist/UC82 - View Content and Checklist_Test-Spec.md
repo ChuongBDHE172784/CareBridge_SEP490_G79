@@ -488,3 +488,16 @@ Test artifacts are additive. If a test encodes the wrong oracle, revert only tha
 | AP detected | TC ID | Description | Fix action | Fixed? |
 |---|---|---|---|---|
 | None in authoring pass | — | Deterministic checks completed: 17/17 TDS sections, 8/8 Test-Spec sections, 29/29 bidirectional conditions, and 27/27 registry/tracker aliases | rerun after final metadata sync and record hashes in handoff | Yes |
+
+## Story 6.10 OV-01 Test Contract Addendum
+
+**Addendum status:** `In Review` — pending independent technical verification; this does not self-approve privacy, legal, DPO, TLS, or retention authority.
+
+| Test ID | Priority | Contract | Executable anchor | Evidence |
+| --- | --- | --- | --- | --- |
+| `OV01-TS-82-610-001` | P0 | Lifecycle content and checklist reads reject every non-APPROVED or wrong-stage record without body/metadata disclosure | `LifecycleContentPostgresIntegrationTest#uc82_69_int_004_eachReadReResolvesSameJourneyAndFiltersApprovedCanonicalStage` | Official Release `OV01-E2E-012`, MAN-029 |
+| `OV01-TS-82-610-002` | P0 | Mixed approved/denied checklist import is atomic and emits no denied write/audit | `ChecklistImportPostgresIntegrationTest#uc82_69_int_001_mixedApprovedAndDeniedBatchRollsBackRowsAndAudits` | Official Release `OV01-E2E-012` |
+| `OV01-TS-82-610-003` | P1 | Lifecycle content request is account-scoped across logout/restart and late responses are ignored | `view_content_lifecycle_screen_test.dart` | MAN-032/MAN-034 sanitized bundle |
+| `OV01-TS-82-610-004` | P0 | Evidence tooling rejects non-canonical content identities, leak-positive artifacts, and stale APK binding | `Invoke-Ov01QualityGate.ps1`, `Runner.SelfTest.ps1` | 17-gate Release report and runner self-tests |
+
+The contract remains additive and introduces no new production Function or schema. Conflicting same-number 121-UC rows are superseded allocation input; full-SRS UC82 ownership remains authoritative.

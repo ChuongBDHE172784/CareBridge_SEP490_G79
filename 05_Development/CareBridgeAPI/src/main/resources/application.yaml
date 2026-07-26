@@ -52,10 +52,12 @@ spring:
 carebridge:
   dev-seed:
     enabled: ${CAREBRIDGE_DEV_SEED_ENABLED:false}
-    password: ${CAREBRIDGE_DEV_SEED_PASSWORD:Test@1234}
+    password: ${CAREBRIDGE_DEV_SEED_PASSWORD:}
   security:
     jwt:
-      secret: ${JWT_SECRET}
+      active-key-id: ${JWT_ACTIVE_KEY_ID:}
+      private-key: ${JWT_PRIVATE_KEY:}
+      public-keys: ${JWT_PUBLIC_KEYS:}
       access-token-expiration-ms: 900000
       refresh-token-expiration-ms: 604800000
     otp:
@@ -63,6 +65,7 @@ carebridge:
       max-attempts: 5
   auth:
     federated-enabled: ${AUTH_FEDERATED_ENABLED:true}
+    login-direct-enabled: ${CAREBRIDGE_AUTH_LOGIN_DIRECT_ENABLED:false}
   firebase:
     project-id: ${FIREBASE_PROJECT_ID:}
     auth-emulator-enabled: ${CAREBRIDGE_FIREBASE_AUTH_EMULATOR_ENABLED:false}
@@ -159,3 +162,19 @@ ai:
     url: ${AI_TRIAGE_SERVICE_URL:http://localhost:8001}
     request-timeout-ms: ${AI_TRIAGE_REQUEST_TIMEOUT_MS:15000}
     internal-api-key: ${AI_TRIAGE_INTERNAL_API_KEY:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+      group:
+        readiness:
+          include: readinessState,db
+          show-components: always
+          show-details: never

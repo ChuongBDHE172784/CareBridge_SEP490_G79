@@ -11,6 +11,6 @@ import org.springframework.data.repository.query.Param;
 @Repository
 public interface ProfileRepository extends JpaRepository<UserProfile, UUID> {
 
-    @Query(value = "SELECT p.* FROM persons p JOIN users u ON u.person_id=p.person_id WHERE u.user_id=:userId", nativeQuery = true)
+    @Query("select p from UserProfile p where p.profileId = :userId")
     Optional<UserProfile> findByUserId(@Param("userId") UUID userId);
 }

@@ -13,7 +13,8 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "professional_profiles")
+@Table(name = "users")
+@org.hibernate.annotations.SQLRestriction("role = 'EXPERT'")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -22,11 +23,10 @@ import java.util.UUID;
 public class ExpertProfile {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "professional_profile_id", updatable = false, nullable = false)
+    @Column(name = "user_id", updatable = false, nullable = false)
     private UUID expertProfileId;
 
-    @Column(name = "user_id", nullable = false, unique = true)
+    @Transient
     private UUID userId;
 
     @Column(name = "specialty", length = 100)
@@ -81,4 +81,17 @@ public class ExpertProfile {
         return verificationStatus == VerificationStatus.APPROVED
                 && trustStatus == TrustStatus.ACTIVE;
     }
+
+    @PrePersist
+    @PreUpdate
+    void canonicalIdentity() {
+        if (expertProfileId == null) expertProfileId = userId;
+        if (userId == null) userId = expertProfileId;
+    }
+
+    @PostLoad
+    void hydrateUserAlias() {
+        userId = expertProfileId;
+    }
 }
+

@@ -48,6 +48,7 @@ public class EmergencyService implements IEmergencyService {
     @Override
     public EmergencySessionResponse openFlow(OpenEmergencyRequest request, UUID userId) {
         emergencySessionRepository.acquireUserLock(userId);
+
         // UC62 C3: idempotent — return existing ACTIVE session if one exists
         return emergencySessionRepository.findActiveByUserId(userId)
                 .map(this::toResponse)

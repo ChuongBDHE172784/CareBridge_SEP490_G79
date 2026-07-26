@@ -38,3 +38,4 @@ public class EmergencyAlertAttemptService {
                 failedRecipients, locationIncluded);
     }
 }
+

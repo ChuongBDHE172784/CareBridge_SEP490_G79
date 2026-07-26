@@ -30,7 +30,7 @@ def test_official_catalog_contains_the_nine_approved_groups_and_thirty_cases():
     assert len(catalog.cases) == 30
 
 
-def test_maternal_clinical_cases_are_pending_and_postpartum_is_known_gap():
+def test_maternal_clinical_cases_are_pending_and_postpartum_stage_is_executable():
     catalog = load_official_catalog()
     maternal = [
         case for case in catalog.cases
@@ -39,9 +39,17 @@ def test_maternal_clinical_cases_are_pending_and_postpartum_is_known_gap():
     postpartum = [case for case in catalog.cases if case.category == BenchmarkCategory.POSTPARTUM_MOTHER]
 
     assert maternal and all(case.reviewStatus == ReviewStatus.PENDING_MEDICAL_REVIEW for case in maternal)
-    assert postpartum and all(
-        case.expectedExecutionStatus == ExpectedExecutionStatus.KNOWN_SCOPE_GAP for case in postpartum
-    )
+    executable_postpartum = [
+        case for case in postpartum
+        if case.expectedExecutionStatus == ExpectedExecutionStatus.EXECUTE
+    ]
+    scope_gap_postpartum = [
+        case for case in postpartum
+        if case.expectedExecutionStatus == ExpectedExecutionStatus.KNOWN_SCOPE_GAP
+    ]
+    assert len(executable_postpartum) == 1
+    assert executable_postpartum[0].stage.value == "POSTPARTUM"
+    assert len(scope_gap_postpartum) == 1
 
 
 def test_parity_review_status_is_not_inferred_from_passing_tests():

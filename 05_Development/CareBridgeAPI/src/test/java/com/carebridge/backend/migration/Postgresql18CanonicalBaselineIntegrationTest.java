@@ -39,6 +39,10 @@ class Postgresql18CanonicalBaselineIntegrationTest {
             Path.of("src/main/resources/db/migration");
     private static final String BASELINE_SCRIPT =
             "B20260724111500__canonical_70_table_baseline.sql";
+    private static final String LEGACY_CUTOVER_SCRIPT =
+            "V20260724111500__remove_legacy_expert_profile_columns.sql";
+    private static final String POST_BASELINE_COMPATIBILITY_SCRIPT =
+            "V20260724120000__bootstrap_post_baseline_compatibility_bridges.sql";
     private static final Set<String> REFERENCE_TABLES = Set.of(
             "administrative_areas",
             "care_facilities",
@@ -63,7 +67,16 @@ class Postgresql18CanonicalBaselineIntegrationTest {
         assertThat(baseline).as("canonical baseline migration").isRegularFile();
         assertBaselineContainsOnlyPortableCanonicalContent(baseline);
 
-        Path historicalLocation = copyMigrations("historical", false);
+        /*
+         * The deployed V-chain received the legacy-column removal out of order:
+         * V20260724214200 completed the expert-profile cutover first, and the
+         * later-arriving V20260724111500 then became a harmless IF EXISTS no-op.
+         * Replaying every V script in version order would manufacture an
+         * impossible history (the 24111500 script removes columns required by
+         * 24214200).  Build the historical location in that same two-step order.
+         */
+        Path historicalLocation = copyMigrations(
+                "historical", false, Set.of(LEGACY_CUTOVER_SCRIPT));
         Path baselineOnlyLocation = copyMigrations("baseline-only", true);
 
         String historicalUrl = createDatabase("carebridge_historical_chain");
@@ -80,21 +93,41 @@ class Postgresql18CanonicalBaselineIntegrationTest {
         assertThat(historicalResult.success).isTrue();
         assertThat(historicalResult.migrationsExecuted).isEqualTo(historicalMigrationCount);
         assertCanonicalTableCount(historicalUrl);
-        DatabaseState historicalBeforeBaseline = databaseState(historicalUrl);
+        DatabaseState historicalBeforeLateCutover = databaseState(historicalUrl);
+
+        Files.copy(
+                MIGRATION_DIRECTORY.resolve(LEGACY_CUTOVER_SCRIPT),
+                historicalLocation.resolve(LEGACY_CUTOVER_SCRIPT),
+                StandardCopyOption.REPLACE_EXISTING);
+        var lateCutoverResult =
+                flyway(historicalUrl, filesystemLocation(historicalLocation)).migrate();
+        assertThat(lateCutoverResult.success).isTrue();
+        assertThat(lateCutoverResult.migrationsExecuted).isOne();
+        assertThat(successfulMigrationScripts(historicalUrl))
+                .last().isEqualTo(LEGACY_CUTOVER_SCRIPT);
+        DatabaseState historicalAfterLateCutover = databaseState(historicalUrl);
+        assertThat(historicalAfterLateCutover.catalog())
+                .as("late out-of-order legacy cutover must not alter canonical catalog")
+                .isEqualTo(historicalBeforeLateCutover.catalog());
+        assertThat(historicalAfterLateCutover.tableRowCounts())
+                .as("late out-of-order legacy cutover must not alter row counts")
+                .isEqualTo(historicalBeforeLateCutover.tableRowCounts());
+        assertThat(historicalAfterLateCutover.referenceData())
+                .as("late out-of-order legacy cutover must not alter reference data")
+                .isEqualTo(historicalBeforeLateCutover.referenceData());
 
         Flyway baselineOnlyFlyway = flyway(baselineOnlyUrl, filesystemLocation(baselineOnlyLocation));
         var baselineResult = baselineOnlyFlyway.migrate();
         assertThat(baselineResult.success).isTrue();
         assertThat(baselineResult.migrationsExecuted).isOne();
         assertThat(successfulMigrationScripts(baselineOnlyUrl)).containsExactly(BASELINE_SCRIPT);
-        assertCanonicalTableCount(baselineOnlyUrl);
-        assertThat(catalogSnapshot(baselineOnlyUrl))
-                .as("baseline catalog must match the complete historical chain")
-                .containsExactlyElementsOf(catalogSnapshot(historicalUrl));
-        assertThat(referenceDataSnapshot(baselineOnlyUrl))
-                .as("baseline reference data must match migration-owned historical data")
-                .isEqualTo(referenceDataSnapshot(historicalUrl));
-        validateJpaMappings(baselineOnlyUrl);
+        assertCanonicalBaselineTableCount(baselineOnlyUrl);
+        /*
+         * B20260724111500 is an immutable 70-table cut-off, not the latest schema.
+         * Later V migrations legitimately expand administrative-area reference data
+         * and add the Release-1 extension tables.  The normal-location assertions
+         * below prove that baseline + V chain converges to the historical V chain.
+         */
 
         var repeatResult = baselineOnlyFlyway.migrate();
         assertThat(repeatResult.success).isTrue();
@@ -103,19 +136,30 @@ class Postgresql18CanonicalBaselineIntegrationTest {
         Flyway normalLocationFlyway = flyway(normalLocationUrl, "classpath:db/migration");
         var normalLocationResult = normalLocationFlyway.migrate();
         assertThat(normalLocationResult.success).isTrue();
-        assertThat(normalLocationResult.migrationsExecuted).isOne();
-        assertThat(successfulMigrationScripts(normalLocationUrl)).containsExactly(BASELINE_SCRIPT);
+        assertThat(normalLocationResult.migrationsExecuted).isGreaterThan(1);
+        assertThat(successfulMigrationScripts(normalLocationUrl))
+                .contains(BASELINE_SCRIPT, POST_BASELINE_COMPATIBILITY_SCRIPT)
+                .doesNotContain(LEGACY_CUTOVER_SCRIPT);
+        assertCanonicalTableCount(normalLocationUrl);
         assertThat(catalogSnapshot(normalLocationUrl))
-                .containsExactlyElementsOf(catalogSnapshot(baselineOnlyUrl));
+                .containsExactlyElementsOf(catalogSnapshot(historicalUrl));
         assertThat(referenceDataSnapshot(normalLocationUrl))
-                .isEqualTo(referenceDataSnapshot(baselineOnlyUrl));
+                .isEqualTo(referenceDataSnapshot(historicalUrl));
+        validateJpaMappings(normalLocationUrl);
 
         var existingChainResult = flyway(historicalUrl, "classpath:db/migration").migrate();
         assertThat(existingChainResult.success).isTrue();
         assertThat(existingChainResult.migrationsExecuted).isZero();
-        assertThat(databaseState(historicalUrl))
+        DatabaseState historicalAfterBaselineAttempt = databaseState(historicalUrl);
+        assertThat(historicalAfterBaselineAttempt.catalog())
                 .as("an existing versioned chain must ignore the baseline completely")
-                .isEqualTo(historicalBeforeBaseline);
+                .isEqualTo(historicalAfterLateCutover.catalog());
+        assertThat(historicalAfterBaselineAttempt.tableRowCounts())
+                .isEqualTo(historicalAfterLateCutover.tableRowCounts());
+        assertThat(historicalAfterBaselineAttempt.referenceData())
+                .isEqualTo(historicalAfterLateCutover.referenceData());
+        assertThat(historicalAfterBaselineAttempt.flywayHistory())
+                .isEqualTo(historicalAfterLateCutover.flywayHistory());
     }
 
     private void assertBaselineContainsOnlyPortableCanonicalContent(Path baseline) throws IOException {
@@ -138,11 +182,18 @@ class Postgresql18CanonicalBaselineIntegrationTest {
     }
 
     private Path copyMigrations(String directoryName, boolean baselineOnly) throws IOException {
+        return copyMigrations(directoryName, baselineOnly, Set.of());
+    }
+
+    private Path copyMigrations(
+            String directoryName, boolean baselineOnly, Set<String> excludedScripts)
+            throws IOException {
         Path destination = temporaryDirectory.resolve(directoryName);
         Files.createDirectories(destination);
         try (Stream<Path> paths = Files.walk(MIGRATION_DIRECTORY)) {
             for (Path source : paths.filter(Files::isRegularFile)
                     .filter(path -> path.getFileName().toString().endsWith(".sql"))
+                    .filter(path -> !excludedScripts.contains(path.getFileName().toString()))
                     .filter(path -> baselineOnly
                             ? path.getFileName().toString().equals(BASELINE_SCRIPT)
                             : path.getFileName().toString().startsWith("V"))
@@ -203,6 +254,23 @@ class Postgresql18CanonicalBaselineIntegrationTest {
                          WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
                         """)) {
             assertThat(result.next()).isTrue();
+            assertThat(result.getInt(1)).isEqualTo(72);
+            assertThat(result.getInt(2)).isOne();
+            assertThat(result.getInt(3)).isEqualTo(73);
+        }
+    }
+
+    private void assertCanonicalBaselineTableCount(String url) throws SQLException {
+        try (Connection connection = connection(url);
+                var statement = connection.createStatement();
+                var result = statement.executeQuery("""
+                        SELECT count(*) FILTER (WHERE table_name <> 'flyway_schema_history'),
+                               count(*) FILTER (WHERE table_name = 'flyway_schema_history'),
+                               count(*)
+                          FROM information_schema.tables
+                         WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+                        """)) {
+            assertThat(result.next()).isTrue();
             assertThat(result.getInt(1)).isEqualTo(69);
             assertThat(result.getInt(2)).isOne();
             assertThat(result.getInt(3)).isEqualTo(70);
@@ -228,8 +296,9 @@ class Postgresql18CanonicalBaselineIntegrationTest {
                                      (xpath('/row/c/text()', query_to_xml(
                                          format('select count(*) as c from %I.%I', schemaname, tablename),
                                          false, true, '')))[1]::text AS exact_count
-                                FROM pg_tables
+                               FROM pg_tables
                                WHERE schemaname = 'public'
+                                 AND tablename <> 'flyway_schema_history'
                           ) counts
                          ORDER BY table_name
                         """),

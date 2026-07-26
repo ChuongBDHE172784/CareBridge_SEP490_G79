@@ -44,10 +44,19 @@ Seeder chỉ chạy khi được bật rõ ràng. Thiết lập trong terminal d
 $env:SUPABASE_DB_URL = "jdbc:postgresql://<host>:<port>/<database>"
 $env:SUPABASE_DB_USERNAME = "<demo-db-user>"
 $env:SUPABASE_DB_PASSWORD = "<demo-db-password>"
-$env:JWT_SECRET = "<demo-jwt-secret-du-dai-va-chi-dung-local>"
+$env:JWT_ACTIVE_KEY_ID = "<demo-active-kid>"
+$env:JWT_PRIVATE_KEY = "<demo-base64-der-pkcs8-private-key>"
+$env:JWT_PUBLIC_KEYS = "<demo-active-kid>:<demo-base64-der-spki-public-key>"
+$env:SPRING_PROFILES_ACTIVE = "dev"
 $env:CAREBRIDGE_DEV_SEED_ENABLED = "true"
-$env:CAREBRIDGE_DEV_SEED_PASSWORD = "Test@1234"
 ```
+
+Trước khi chạy lệnh trên, người vận hành phải nạp
+`CAREBRIDGE_DEV_SEED_PASSWORD` bằng một mật khẩu synthetic riêng, không mặc định,
+thông qua secret source của terminal local. Hướng dẫn này cố ý không hiển thị, đề
+xuất hoặc ghi lại giá trị đó. Seeder chỉ tồn tại dưới profile `dev`, không có profile
+`prod`, và chỉ chạy khi property enable được bật rõ ràng. Nếu password bị bỏ trống
+hoặc trùng historical default đã retired, backend sẽ fail startup thay vì seed dữ liệu.
 
 `application.yaml` đang đặt Flyway mặc định là `false`. Cách an toàn nhất là dùng database demo đã được migrate và kiểm tra trước. Chỉ khi tạo database disposable hoàn toàn mới và đã được nhóm cho phép, bật Flyway cho đúng lần khởi tạo:
 
@@ -64,7 +73,9 @@ cd 05_Development/CareBridgeAPI
 .\mvnw.cmd spring-boot:run
 ```
 
-> `Test@1234` là mật khẩu mặc định của tài khoản seed local. Nếu môi trường đã override `CAREBRIDGE_DEV_SEED_PASSWORD`, dùng giá trị được người vận hành cấu hình; không ghi mật khẩu môi trường dùng chung vào tài liệu hoặc màn hình chiếu.
+> Chỉ người vận hành phiên demo được biết giá trị `CAREBRIDGE_DEV_SEED_PASSWORD` đã
+> nạp. Không đọc, in, ghi log hoặc chiếu giá trị này; không dùng lại secret của shared,
+> staging hay production.
 
 ### 3.3. Chạy ứng dụng trên thiết bị
 
@@ -90,7 +101,8 @@ Với Android emulator, dùng `http://10.0.2.2:8080`. Với thiết bị thật 
 | Demo “Để sau” và tạo baby mới | `mother5@carebridge.dev` | `POSTPARTUM + LIVE_BIRTH`, ban đầu 0 baby linked |
 | Demo liên kết baby có sẵn/nhiều baby | `mother6@carebridge.dev` | Có Baby A và Baby B cùng owner, ACTIVE, chưa linked |
 
-Mật khẩu mặc định local: `Test@1234`.
+Mọi tài khoản fixture dùng chung password synthetic do người vận hành nạp riêng cho
+phiên demo; tài liệu này không lưu giá trị đó.
 
 > Seeder không reset toàn bộ nghiệp vụ sau mỗi lần chạy. Trước buổi review, xác nhận fixture vẫn ở trạng thái mong muốn trên database disposable. Nếu đã dùng `mother5` hoặc `mother6`, chuẩn bị lại database/fixture trước khi demo.
 
@@ -98,7 +110,8 @@ Mật khẩu mặc định local: `Test@1234`.
 
 - [ ] Backend startup không có lỗi Flyway.
 - [ ] Database demo đã có migration cần thiết; nếu là DB mới, Flyway chỉ được bật trên DB disposable đã xác minh.
-- [ ] `JWT_SECRET` demo đã được nạp nhưng không hiển thị trên màn hình chiếu.
+- [ ] Bộ khóa RS256 demo (`JWT_ACTIVE_KEY_ID`, `JWT_PRIVATE_KEY`, `JWT_PUBLIC_KEYS`) đã được nạp nhưng không hiển thị trên màn hình chiếu.
+- [ ] `CAREBRIDGE_DEV_SEED_PASSWORD` synthetic đã được nạp từ secret source local, không bị in hoặc hiển thị; seeder chỉ chạy với `dev & !prod` và enable gate rõ ràng.
 - [ ] API nhận request tại `http://127.0.0.1:8080`.
 - [ ] Thiết bị xuất hiện trong `adb devices`.
 - [ ] `adb reverse tcp:8080 tcp:8080` thành công.

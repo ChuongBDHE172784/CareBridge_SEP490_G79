@@ -66,7 +66,7 @@ def test_dataset_rejects_implicit_stage(tmp_path):
         load_dataset(path)
 
 
-def test_postpartum_requires_known_scope_gap(tmp_path):
+def test_postpartum_execute_requires_explicit_postpartum_stage(tmp_path):
     case = _case()
     case.update({
         "id": "POSTPARTUM_001",
@@ -82,8 +82,30 @@ def test_postpartum_requires_known_scope_gap(tmp_path):
         encoding="utf-8",
     )
 
-    with pytest.raises(ValidationError, match="known or unsupported scope gap"):
+    with pytest.raises(ValidationError, match="explicit POSTPARTUM stage"):
         load_dataset(path)
+
+
+def test_postpartum_execute_accepts_explicit_postpartum_stage(tmp_path):
+    case = _case()
+    case.update({
+        "id": "POSTPARTUM_001",
+        "category": "POSTPARTUM_MOTHER",
+        "stage": "POSTPARTUM",
+        "input": {"stage": "POSTPARTUM", "parentFreeText": "postpartum context"},
+        "reviewStatus": "PENDING_MEDICAL_REVIEW",
+        "expectedExecutionStatus": "EXECUTE",
+    })
+    path = tmp_path / "cases.json"
+    path.write_text(
+        json.dumps({"schemaVersion": "2.0", "name": "test", "cases": [case]}),
+        encoding="utf-8",
+    )
+
+    dataset = load_dataset(path)
+
+    assert dataset.cases[0].stage.value == "POSTPARTUM"
+    assert dataset.cases[0].expectedExecutionStatus == ExpectedExecutionStatus.EXECUTE
 
 
 def test_scope_gap_and_review_status_are_independent():

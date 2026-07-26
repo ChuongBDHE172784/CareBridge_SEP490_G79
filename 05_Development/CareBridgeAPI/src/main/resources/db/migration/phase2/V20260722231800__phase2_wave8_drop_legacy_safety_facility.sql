@@ -21,9 +21,8 @@ ALTER TABLE public.safety_events
 
 ALTER TABLE public.safety_events ALTER COLUMN detected_at SET DEFAULT now();
 
-ALTER TABLE public.safety_event_actions
-  ALTER COLUMN safety_event_id DROP NOT NULL,
-  ADD COLUMN IF NOT EXISTS owner_user_id uuid,
+ALTER TABLE public.safety_events
+  ADD COLUMN IF NOT EXISTS owner_user_id uuid REFERENCES public.users(user_id),
   ADD COLUMN IF NOT EXISTS context_type varchar(50),
   ADD COLUMN IF NOT EXISTS context_id uuid,
   ADD COLUMN IF NOT EXISTS latitude numeric(10,8),
@@ -37,7 +36,6 @@ ALTER TABLE public.safety_event_actions
   ADD COLUMN IF NOT EXISTS failure_code varchar(120),
   ADD COLUMN IF NOT EXISTS reason varchar(500),
   ADD COLUMN IF NOT EXISTS responded_at timestamptz,
-  ADD COLUMN IF NOT EXISTS created_by_user_id uuid,
   ADD COLUMN IF NOT EXISTS actor_type varchar(20),
   ADD COLUMN IF NOT EXISTS attempt_status varchar(20),
   ADD COLUMN IF NOT EXISTS started_at timestamptz,
@@ -47,17 +45,15 @@ ALTER TABLE public.safety_event_actions
   ADD COLUMN IF NOT EXISTS failed_recipient_count integer,
   ADD COLUMN IF NOT EXISTS recipient_count integer,
   ADD COLUMN IF NOT EXISTS location_included boolean,
-  ADD COLUMN IF NOT EXISTS created_by_text varchar(50),
   ADD COLUMN IF NOT EXISTS triage_handoff_id uuid,
   ADD COLUMN IF NOT EXISTS risk_level varchar(20),
   ADD COLUMN IF NOT EXISTS summary text,
-  ADD COLUMN IF NOT EXISTS action_status varchar(20),
-  ADD COLUMN IF NOT EXISTS updated_at timestamptz;
+  ADD COLUMN IF NOT EXISTS action_status varchar(20);
 
-ALTER TABLE public.safety_event_actions
-  DROP CONSTRAINT IF EXISTS safety_event_actions_attempt_ck;
-ALTER TABLE public.safety_event_actions
-  ADD CONSTRAINT safety_event_actions_attempt_ck CHECK (attempt_number >= 0);
+ALTER TABLE public.safety_events
+  DROP CONSTRAINT IF EXISTS safety_events_attempt_ck;
+ALTER TABLE public.safety_events
+  ADD CONSTRAINT safety_events_attempt_ck CHECK (attempt_number IS NULL OR attempt_number >= 0);
 
 DO $wave8_collision_gate$
 BEGIN
@@ -160,80 +156,81 @@ ON CONFLICT (safety_event_id) DO UPDATE SET
   resolved_at=excluded.resolved_at,created_by_user_id=excluded.created_by_user_id,
   created_at=excluded.created_at,updated_at=excluded.updated_at;
 
-INSERT INTO public.safety_event_actions (
-    safety_event_action_id,safety_event_id,action_type,owner_user_id,recipient_user_id,
+INSERT INTO public.safety_events (
+    safety_event_id,parent_event_id,user_id,event_type,action_type,owner_user_id,recipient_user_id,
     attempt_number,idempotency_key,response_type,delivery_status,reason,responded_at,
     created_by_user_id,actor_type,created_at)
-SELECT id,safety_event_id,'RESPONSE',owner_user_id,owner_user_id,1,
+SELECT id,safety_event_id,owner_user_id,'ACTION','RESPONSE',owner_user_id,owner_user_id,1,
        'response:'||id::text,response_type,'RECORDED',reason,responded_at,
        created_by,actor_type,responded_at
   FROM public.safety_event_responses
-ON CONFLICT (safety_event_action_id) DO UPDATE SET
-  safety_event_id=excluded.safety_event_id,action_type='RESPONSE',
+ON CONFLICT (safety_event_id) DO UPDATE SET
+  parent_event_id=excluded.parent_event_id,action_type='RESPONSE',
   owner_user_id=excluded.owner_user_id,recipient_user_id=excluded.recipient_user_id,
   response_type=excluded.response_type,delivery_status=excluded.delivery_status,
   reason=excluded.reason,responded_at=excluded.responded_at,
   created_by_user_id=excluded.created_by_user_id,actor_type=excluded.actor_type,
   created_at=excluded.created_at;
 
--- Remove the provisional Wave 8 delivery mapping, which did not yet have the
--- canonical emergency-session event available, then restore the exact source identity.
-DELETE FROM public.safety_event_actions a
+DELETE FROM public.safety_events a
 USING public.emergency_alert_deliveries d
 WHERE a.idempotency_key='delivery:'||d.id::text;
 
-INSERT INTO public.safety_event_actions (
-    safety_event_action_id,safety_event_id,action_type,recipient_user_id,
+INSERT INTO public.safety_events (
+    safety_event_id,parent_event_id,user_id,event_type,action_type,recipient_user_id,
     device_identifier,device_token_id,notification_record_id,attempt_number,
     idempotency_key,delivery_status,fcm_message_id,failure_code,created_at,delivered_at)
-SELECT id,emergency_session_id,'DELIVERY',recipient_user_id,device_token_id::text,
-       device_token_id,notification_record_id,attempt_count,'delivery:'||id::text,
-       delivery_status,fcm_message_id,failure_code,created_at,delivered_at
-  FROM public.emergency_alert_deliveries;
+SELECT d.id,d.emergency_session_id,s.user_id,'ACTION','DELIVERY',d.recipient_user_id,d.device_token_id::text,
+       d.device_token_id,d.notification_record_id,d.attempt_count,'delivery:'||d.id::text,
+       d.delivery_status,d.fcm_message_id,d.failure_code,d.created_at,d.delivered_at
+  FROM public.emergency_alert_deliveries d
+  JOIN public.emergency_sessions s ON s.id = d.emergency_session_id;
 
-INSERT INTO public.safety_event_actions (
-    safety_event_action_id,safety_event_id,action_type,attempt_number,idempotency_key,
+INSERT INTO public.safety_events (
+    safety_event_id,parent_event_id,user_id,event_type,action_type,attempt_number,idempotency_key,
     attempt_status,started_at,completed_at,lease_expires_at,
     successful_recipient_count,failed_recipient_count,created_at,updated_at)
-SELECT emergency_session_id,emergency_session_id,'ALERT_ATTEMPT',attempt_number,
-       'attempt:'||emergency_session_id::text,status,started_at,completed_at,
-       lease_expires_at,successful_recipient_count,failed_recipient_count,started_at,updated_at
-  FROM public.emergency_alert_attempts
-ON CONFLICT (safety_event_action_id) DO UPDATE SET
-  safety_event_id=excluded.safety_event_id,action_type='ALERT_ATTEMPT',
+SELECT a.emergency_session_id,a.emergency_session_id,s.user_id,'ACTION','ALERT_ATTEMPT',a.attempt_number,
+       'attempt:'||a.emergency_session_id::text,a.status,a.started_at,a.completed_at,
+       a.lease_expires_at,a.successful_recipient_count,a.failed_recipient_count,a.started_at,a.updated_at
+  FROM public.emergency_alert_attempts a
+  JOIN public.emergency_sessions s ON s.id = a.emergency_session_id
+ON CONFLICT (safety_event_id) DO UPDATE SET
+  parent_event_id=excluded.parent_event_id,action_type='ALERT_ATTEMPT',
   attempt_number=excluded.attempt_number,attempt_status=excluded.attempt_status,
   started_at=excluded.started_at,completed_at=excluded.completed_at,
   lease_expires_at=excluded.lease_expires_at,
   successful_recipient_count=excluded.successful_recipient_count,
   failed_recipient_count=excluded.failed_recipient_count,updated_at=excluded.updated_at;
 
-INSERT INTO public.safety_event_actions (
-    safety_event_action_id,safety_event_id,action_type,attempt_number,idempotency_key,
+INSERT INTO public.safety_events (
+    safety_event_id,parent_event_id,user_id,event_type,action_type,attempt_number,idempotency_key,
     recipient_count,location_included,created_by_text,created_at,delivered_at)
-SELECT id,session_id,'FAMILY_ALERT',1,'family-alert:'||id::text,recipient_count,
-       location_included,created_by,sent_at,sent_at
-  FROM public.family_alert_log
-ON CONFLICT (safety_event_action_id) DO NOTHING;
+SELECT l.id,l.session_id,s.user_id,'ACTION','FAMILY_ALERT',1,'family-alert:'||l.id::text,l.recipient_count,
+       l.location_included,l.created_by,l.sent_at,l.sent_at
+  FROM public.family_alert_log l
+  JOIN public.emergency_sessions s ON s.id = l.session_id
+ON CONFLICT (safety_event_id) DO NOTHING;
 
-INSERT INTO public.safety_event_actions (
-    safety_event_action_id,action_type,owner_user_id,attempt_number,idempotency_key,
+INSERT INTO public.safety_events (
+    safety_event_id,user_id,event_type,action_type,owner_user_id,attempt_number,idempotency_key,
     triage_handoff_id,risk_level,latitude,longitude,care_facility_id,summary,
     action_status,created_at,updated_at)
-SELECT handoff_id,'MAP_HANDOFF',user_id,1,'map-handoff:'||handoff_id::text,
+SELECT handoff_id,user_id,'ACTION','MAP_HANDOFF',user_id,1,'map-handoff:'||handoff_id::text,
        triage_handoff_id,risk_level,user_latitude,user_longitude,selected_facility_id,
        summary,status,created_at,updated_at
   FROM public.emergency_map_handoffs
-ON CONFLICT (safety_event_action_id) DO NOTHING;
+ON CONFLICT (safety_event_id) DO NOTHING;
 
-INSERT INTO public.safety_event_actions (
-    safety_event_action_id,action_type,owner_user_id,attempt_number,idempotency_key,
+INSERT INTO public.safety_events (
+    safety_event_id,user_id,event_type,action_type,owner_user_id,attempt_number,idempotency_key,
     context_type,context_id,latitude,longitude,accuracy_meters,captured_at,expires_at,
     consent_status,created_at)
-SELECT location_snapshot_id,'LOCATION_SNAPSHOT',user_id,1,
+SELECT location_snapshot_id,user_id,'ACTION','LOCATION_SNAPSHOT',user_id,1,
        'location:'||location_snapshot_id::text,context_type,context_id,latitude,
        longitude,accuracy_meters,captured_at,expires_at,consent_status,captured_at
   FROM public.location_snapshots
-ON CONFLICT (safety_event_action_id) DO NOTHING;
+ON CONFLICT (safety_event_id) DO NOTHING;
 
 DO $wave8_reconcile$
 BEGIN
@@ -254,27 +251,27 @@ BEGIN
     RAISE EXCEPTION 'WAVE8_RECONCILIATION: emergency sessions';
   END IF;
   IF (SELECT count(*) FROM public.safety_event_responses) <>
-     (SELECT count(*) FROM public.safety_event_actions WHERE action_type='RESPONSE') OR
+     (SELECT count(*) FROM public.safety_events WHERE action_type='RESPONSE') OR
      (SELECT count(*) FROM public.emergency_alert_deliveries) <>
-     (SELECT count(*) FROM public.safety_event_actions WHERE action_type='DELIVERY') OR
+     (SELECT count(*) FROM public.safety_events WHERE action_type='DELIVERY') OR
      (SELECT count(*) FROM public.emergency_alert_attempts) <>
-     (SELECT count(*) FROM public.safety_event_actions WHERE action_type='ALERT_ATTEMPT') OR
+     (SELECT count(*) FROM public.safety_events WHERE action_type='ALERT_ATTEMPT') OR
      (SELECT count(*) FROM public.family_alert_log) <>
-     (SELECT count(*) FROM public.safety_event_actions WHERE action_type='FAMILY_ALERT') OR
+     (SELECT count(*) FROM public.safety_events WHERE action_type='FAMILY_ALERT') OR
      (SELECT count(*) FROM public.emergency_map_handoffs) <>
-     (SELECT count(*) FROM public.safety_event_actions WHERE action_type='MAP_HANDOFF') OR
+     (SELECT count(*) FROM public.safety_events WHERE action_type='MAP_HANDOFF') OR
      (SELECT count(*) FROM public.location_snapshots) <>
-     (SELECT count(*) FROM public.safety_event_actions WHERE action_type='LOCATION_SNAPSHOT') THEN
+     (SELECT count(*) FROM public.safety_events WHERE action_type='LOCATION_SNAPSHOT') THEN
     RAISE EXCEPTION 'WAVE8_RECONCILIATION: safety actions';
   END IF;
 
-  IF EXISTS (SELECT 1 FROM public.safety_event_actions a
-             LEFT JOIN public.safety_events e ON e.safety_event_id=a.safety_event_id
-             WHERE a.safety_event_id IS NOT NULL AND e.safety_event_id IS NULL) OR
+  IF EXISTS (SELECT 1 FROM public.safety_events a
+              LEFT JOIN public.safety_events e ON e.safety_event_id=a.parent_event_id
+              WHERE a.parent_event_id IS NOT NULL AND e.safety_event_id IS NULL AND a.event_type = 'ACTION') OR
      EXISTS (SELECT 1 FROM public.safety_events e
-             LEFT JOIN public.safety_monitoring_sessions s
-               ON s.monitoring_session_id=e.monitoring_session_id
-             WHERE e.monitoring_session_id IS NOT NULL AND s.monitoring_session_id IS NULL) THEN
+              LEFT JOIN public.safety_monitoring_sessions s
+                ON s.monitoring_session_id=e.monitoring_session_id
+              WHERE e.monitoring_session_id IS NOT NULL AND s.monitoring_session_id IS NULL) THEN
     RAISE EXCEPTION 'WAVE8_ORPHAN_TARGET';
   END IF;
 END $wave8_reconcile$;
@@ -317,20 +314,20 @@ CREATE UNIQUE INDEX IF NOT EXISTS safety_events_imu_signal_uk
 CREATE INDEX IF NOT EXISTS safety_events_pending_countdown_ix
   ON public.safety_events(countdown_deadline_at)
   WHERE record_type='IMU_EVENT' AND status='OPEN' AND response_type IS NULL;
-CREATE INDEX IF NOT EXISTS safety_event_actions_owner_location_ix
-  ON public.safety_event_actions(owner_user_id,captured_at DESC)
+CREATE INDEX IF NOT EXISTS safety_events_owner_location_ix
+  ON public.safety_events(owner_user_id,captured_at DESC)
   WHERE action_type='LOCATION_SNAPSHOT';
-CREATE INDEX IF NOT EXISTS safety_event_actions_handoff_status_ix
-  ON public.safety_event_actions(action_status,created_at DESC)
+CREATE INDEX IF NOT EXISTS safety_events_handoff_status_ix
+  ON public.safety_events(action_status,created_at DESC)
   WHERE action_type='MAP_HANDOFF';
-CREATE UNIQUE INDEX IF NOT EXISTS safety_event_actions_delivery_token_uk
-  ON public.safety_event_actions(safety_event_id,device_token_id)
+CREATE UNIQUE INDEX IF NOT EXISTS safety_events_delivery_token_uk
+  ON public.safety_events(parent_event_id,device_token_id)
   WHERE action_type='DELIVERY';
-CREATE UNIQUE INDEX IF NOT EXISTS safety_event_actions_family_alert_uk
-  ON public.safety_event_actions(safety_event_id)
+CREATE UNIQUE INDEX IF NOT EXISTS safety_events_family_alert_uk
+  ON public.safety_events(parent_event_id)
   WHERE action_type='FAMILY_ALERT';
-CREATE UNIQUE INDEX IF NOT EXISTS safety_event_actions_attempt_event_uk
-  ON public.safety_event_actions(safety_event_id)
+CREATE UNIQUE INDEX IF NOT EXISTS safety_events_attempt_event_uk
+  ON public.safety_events(parent_event_id)
   WHERE action_type='ALERT_ATTEMPT';
 
 ALTER TABLE public.safety_events
@@ -339,31 +336,30 @@ ALTER TABLE public.safety_events
   ADD CONSTRAINT safety_events_created_by_user_fk
   FOREIGN KEY (created_by_user_id) REFERENCES public.users(user_id),
   ADD CONSTRAINT safety_events_record_type_ck
-  CHECK (record_type IN ('IMU_EVENT','EMERGENCY_SESSION'));
-ALTER TABLE public.safety_event_actions
-  ADD CONSTRAINT safety_event_actions_owner_fk
+  CHECK (record_type IN ('IMU_EVENT','EMERGENCY_SESSION')),
+  ADD CONSTRAINT safety_events_owner_fk
   FOREIGN KEY (owner_user_id) REFERENCES public.users(user_id),
-  ADD CONSTRAINT safety_event_actions_device_token_fk
+  ADD CONSTRAINT safety_events_device_token_fk
   FOREIGN KEY (device_token_id) REFERENCES public.device_tokens(id),
-  ADD CONSTRAINT safety_event_actions_created_by_user_fk
-  FOREIGN KEY (created_by_user_id) REFERENCES public.users(user_id),
-  ADD CONSTRAINT safety_event_actions_type_ck
-  CHECK (action_type IN ('RESPONSE','DELIVERY','FAMILY_ALERT','ALERT_ATTEMPT',
+  ADD CONSTRAINT safety_events_action_type_ck
+  CHECK (action_type IS NULL OR action_type IN ('RESPONSE','DELIVERY','FAMILY_ALERT','ALERT_ATTEMPT',
                          'MAP_HANDOFF','LOCATION_SNAPSHOT')),
-  ADD CONSTRAINT safety_event_actions_parent_ck
-  CHECK (action_type IN ('MAP_HANDOFF','LOCATION_SNAPSHOT') OR safety_event_id IS NOT NULL);
+  ADD CONSTRAINT safety_events_parent_ck
+  CHECK (action_type IS NULL OR action_type IN ('MAP_HANDOFF','LOCATION_SNAPSHOT') OR parent_event_id IS NOT NULL);
 
-DROP TABLE public.safety_event_responses;
-DROP TABLE public.emergency_alert_deliveries;
-DROP TABLE public.emergency_alert_attempts;
-DROP TABLE public.family_alert_log;
-DROP TABLE public.imu_safety_events;
-DROP TABLE public.emergency_map_handoffs;
-DROP TABLE public.location_snapshots;
-DROP TABLE public.safety_monitoring_config;
-DROP TABLE public.imu_monitoring_sessions;
-DROP TABLE public.care_facility_legacy_ids;
-DROP TABLE public.emergency_sessions;
+DROP TABLE IF EXISTS public.safety_event_responses;
+DROP TABLE IF EXISTS public.emergency_alert_deliveries;
+DROP TABLE IF EXISTS public.emergency_alert_attempts;
+DROP TABLE IF EXISTS public.family_alert_log;
+DROP TABLE IF EXISTS public.imu_safety_events;
+DROP TABLE IF EXISTS public.emergency_map_handoffs;
+DROP TABLE IF EXISTS public.location_snapshots;
+DROP TABLE IF EXISTS public.safety_monitoring_config;
+DROP TABLE IF EXISTS public.imu_monitoring_sessions;
+DROP TABLE IF EXISTS public.care_facility_legacy_ids;
+DROP TABLE IF EXISTS public.emergency_sessions;
+DROP TABLE IF EXISTS public.nearby_support_requests CASCADE;
+DROP TABLE IF EXISTS public.nearby_support_responses CASCADE;
 
 DO $wave8_absence_gate$
 DECLARE name text;
@@ -372,7 +368,7 @@ BEGIN
     'care_facility_legacy_ids','emergency_alert_attempts','emergency_alert_deliveries',
     'emergency_map_handoffs','emergency_sessions','family_alert_log',
     'imu_monitoring_sessions','imu_safety_events','location_snapshots',
-    'safety_event_responses','safety_monitoring_config'
+    'safety_event_responses','safety_monitoring_config','nearby_support_requests','nearby_support_responses'
   ] LOOP
     IF to_regclass('public.'||name) IS NOT NULL THEN
       RAISE EXCEPTION 'WAVE8_DROP_FAILED: %',name;

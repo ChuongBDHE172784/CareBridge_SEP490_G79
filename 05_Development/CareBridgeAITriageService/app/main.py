@@ -1,6 +1,7 @@
 import time
 
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 
 from app.config import GEMINI_SETTINGS, PYTHON_SERVICE_TIMEOUT_SECONDS
 from app.gemini_client import get_gemini_client
@@ -31,15 +32,46 @@ app = FastAPI(title="CareBridge AI Triage Service", version="0.1.0")
 
 
 @app.get("/health")
-def health() -> dict[str, object]:
-    client = get_gemini_client()
-    return {
-        "status": "UP",
+def health() -> JSONResponse:
+    try:
+        client = get_gemini_client()
+    except Exception:
+        # Gemini augments explanations but is not part of the deterministic
+        # safety engine's readiness contract.
+        client = None
+    try:
+        _run_deterministic_readiness_probe()
+        deterministic_ready = True
+    except Exception:
+        # Readiness must fail closed without leaking rules, clinical inputs, or
+        # exception details into an unauthenticated operations endpoint.
+        deterministic_ready = False
+    payload = {
+        "status": "UP" if deterministic_ready else "DOWN",
+        "readiness": "READY" if deterministic_ready else "NOT_READY",
+        "deterministicEngine": {
+            "ready": deterministic_ready,
+            "probe": "POSTPARTUM_RED_PRECEDENCE",
+        },
         "geminiEnabled": GEMINI_SETTINGS.enabled,
         "geminiConfigured": bool(GEMINI_SETTINGS.api_key),
         "geminiReachable": client.reachable if client is not None else False,
         "model": GEMINI_SETTINGS.model,
     }
+    return JSONResponse(status_code=200 if deterministic_ready else 503, content=payload)
+
+
+def _run_deterministic_readiness_probe() -> None:
+    result = run_triage(
+        ChildTriageRequest(
+            stage="POSTPARTUM",
+            symptomList=["heavy bleeding"],
+            parentFreeText="heavy bleeding",
+        ),
+        deterministic_only=True,
+    )
+    if result.riskLevel != "RED" or not result.emergencyActionRequired:
+        raise RuntimeError("deterministic RED precedence probe failed")
 
 
 @app.post("/triage/child", response_model=ChildTriageResponse)
