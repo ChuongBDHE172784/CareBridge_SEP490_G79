@@ -322,8 +322,10 @@ public class TriageService implements ITriageService {
         }
         IntakeSession session = existing;
         if (session == null) {
+            // CB-TRIAGE-FDBB-IMP-001 (ADR-TFBF-003): no pre-assigned id in the builder. The id
+            // is @GeneratedValue; pre-assigning made repository.save() below take Spring Data's
+            // detached-merge path and fail with StaleObjectStateException on real PostgreSQL.
             session = IntakeSession.builder()
-                    .id(UUID.randomUUID())
                     .userId(userId)
                     .clientRequestId(clientRequestId)
                     .stage(stage)
@@ -339,6 +341,10 @@ public class TriageService implements ITriageService {
             boolean databaseArbitrated = clientRequestId != null && intakeSessionWriter != null;
             boolean created = true;
             if (databaseArbitrated) {
+                // The DB-arbitrated native insert consumes a caller-supplied id
+                // (IntakeSessionWriter binds candidate.getId()); JPA generation never
+                // runs on this path, so assign it here — and only here.
+                session.setId(UUID.randomUUID());
                 created = intakeSessionWriter.insertConversationIfAbsent(session).created();
                 session = intakeSessionRepository.findByUserIdAndClientRequestId(userId, clientRequestId)
                         .orElseThrow(() -> new IllegalStateException(

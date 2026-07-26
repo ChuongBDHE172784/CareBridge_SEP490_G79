@@ -27,10 +27,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 @AutoConfigureMockMvc
 @TestPropertySource(properties = {
         "spring.flyway.enabled=true",
-        // db/testfix holds TEST-ONLY shim migrations that let the immutable
-        // post-baseline chain succeed on a fresh (baseline-path) database; see
-        // src/test/resources/db/testfix/*.sql headers for the rationale.
-        "spring.flyway.locations=classpath:db/migration,classpath:db/testfix",
+        "spring.flyway.locations=classpath:db/migration",
         "spring.flyway.baseline-on-migrate=true",
         "spring.flyway.out-of-order=true",
         "spring.jpa.hibernate.ddl-auto=validate",
@@ -64,16 +61,9 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 })
 public abstract class AbstractPostgresIntegrationTest {
 
-    // The init script pre-creates the carebridge_migration_bridge tables that
-    // post-baseline migrations still reference. On a fresh database Flyway takes
-    // the baseline path (B20260724111500) and skips the pre-baseline migrations
-    // that created those bridges, so without this bootstrap the very first
-    // Flyway run fails in V20260724210000 ("relation ... does not exist").
-    // See src/test/resources/testsupport/bridge-bootstrap.sql for details.
     @ServiceConnection
     protected static final PostgreSQLContainer POSTGRES =
-            new PostgreSQLContainer("postgres:16-alpine")
-                    .withInitScript("testsupport/bridge-bootstrap.sql");
+            new PostgreSQLContainer("postgres:16-alpine");
 
     static {
         POSTGRES.start();
