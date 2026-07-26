@@ -1,3 +1,21 @@
+-- DRAFT / REFERENCE-ONLY SCHEMA SNAPSHOT
+--
+-- This file is an unapproved design input. It is not a Flyway migration,
+-- has not been verified against a deployed database, and must not be used
+-- for deployment or production execution. Canonical schema changes remain
+-- the versioned Flyway migrations under the backend resources directory.
+--
+-- Inventory note: this snapshot contains 53 CREATE TABLE statements:
+-- 52 application tables plus public.flyway_schema_history (Flyway metadata).
+-- The companion documents use conceptual/legacy capability labels in places;
+-- those labels are not additional physical tables in this snapshot.
+--
+-- Current executable baseline/source of truth:
+-- B20260724111500__canonical_70_table_baseline.sql plus the three approved
+-- Release-1 extension migrations (effective deployed inventory: 73 tables).
+-- This 53-table snapshot is a proposed narrowing target/reference and does not
+-- describe the current runtime schema.
+
 -- DROP SCHEMA public;
 
 CREATE SCHEMA public AUTHORIZATION postgres;

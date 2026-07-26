@@ -15,6 +15,8 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -35,6 +37,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * mapping of the Test-Spec's idealized {@code AUTH-021}.
  */
 @Transactional
+@ActiveProfiles("test")
+@TestPropertySource(properties = "carebridge.auth.login-direct-enabled=true")
 class LogoutIntegrationTest extends AbstractPostgresIntegrationTest {
 
     private static final String EMAIL = "int.logout@test.com";
@@ -46,6 +50,17 @@ class LogoutIntegrationTest extends AbstractPostgresIntegrationTest {
     @Autowired private JdbcTemplate jdbcTemplate;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Test
+    void logout_noAccessToken_returns401() throws Exception {
+        RefreshTokenRequest logoutReq = new RefreshTokenRequest();
+        logoutReq.setRefreshToken("opaque-refresh-token-without-access-token");
+
+        mockMvc.perform(post("/api/v1/auth/logout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(logoutReq)))
+                .andExpect(status().isUnauthorized());
+    }
 
     @Test
     void logout_revokesSession_andRejectsSubsequentRefresh() throws Exception {

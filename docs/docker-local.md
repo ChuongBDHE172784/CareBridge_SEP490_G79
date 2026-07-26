@@ -8,7 +8,15 @@ Docker Desktop phải đang chạy. Backend vẫn dùng cấu hình Supabase hi�
 cp 05_Development/CareBridgeAPI/.env.example 05_Development/CareBridgeAPI/.env
 ```
 
-Điền các giá trị Supabase và `JWT_SECRET` vào `.env`. Không đưa bất kỳ secret nào vào `docker-compose.yml`.
+Điền các giá trị Supabase cùng `JWT_ACTIVE_KEY_ID`, `JWT_PRIVATE_KEY` (base64 DER PKCS#8) và `JWT_PUBLIC_KEYS` (`kid:base64-DER-SPKI`, phân tách nhiều khóa bằng dấu `;`) vào `.env`. Không đưa private key hoặc secret nào vào `docker-compose.yml` hay Git.
+
+Dev seed mặc định tắt. Chỉ khi chạy backend bằng profile `dev` (không có profile
+`prod`) và cần fixture synthetic local, người vận hành mới đặt
+`CAREBRIDGE_DEV_SEED_ENABLED=true` đồng thời nạp một
+`CAREBRIDGE_DEV_SEED_PASSWORD` riêng, không mặc định, vào `.env` local không commit
+hoặc secret source tương đương. Không in/ghi lại giá trị. Password trống hoặc
+historical default đã retired sẽ làm backend fail startup khi seed được bật. Không
+bật dev seed trên staging/production.
 
 ## Chạy ứng dụng
 

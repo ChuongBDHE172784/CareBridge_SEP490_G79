@@ -348,47 +348,9 @@ public class AuthServiceImpl implements AuthService {
         user.setLocked(false);
         user.setLockedAt(null);
 
-        // Skip OTP for already-verified identifiers — issue tokens directly
-        boolean identifierVerified = (hasEmail && Boolean.TRUE.equals(user.getEmailVerified()))
-                || (hasPhone && Boolean.TRUE.equals(user.getPhoneVerified()));
-        if (identifierVerified) {
-            user.setLastLoginAt(Instant.now());
-            userRepository.save(user);
-            RefreshToken rt = createRefreshToken(user);
-            String rawRt = rt.getToken();
-            UUID sessionId = UUID.randomUUID();
-            String ipAddress = this.request != null ? this.request.getRemoteAddr() : null;
-            String userAgent = this.request != null ? this.request.getHeader("User-Agent") : null;
-            UserSession session = UserSession.builder()
-                    .userId(user.getId())
-                    .sessionId(sessionId)
-                    .refreshTokenHash(TokenUtils.hashSha256(rawRt))
-                    .deviceName(extractDeviceName(userAgent))
-                    .browser(userAgent != null ? userAgent : "Unknown")
-                    .ipAddress(ipAddress)
-                    .location(null)
-                    .lastActivityAt(Instant.now())
-                    .expiresAt(rt.getExpiresAt())
-                    .status("active")
-                    .isCurrent(true)
-                    .createdAt(Instant.now())
-                    .updatedAt(Instant.now())
-                    .build();
-            sessionRepository.save(session);
-            sessionRepository.clearCurrentSessions(user.getId(), sessionId);
-            String accessToken = jwtTokenProvider.generateAccessToken(user, sessionId);
-            auditService.log(AuditAction.LOGIN, user.getId(), "User", user.getId().toString(), null);
-            AuthResponse authResponse = AuthResponse.builder()
-                    .accessToken(accessToken)
-                    .refreshToken(rawRt)
-                    .user(userMapper.toProfileResponse(user))
-                    .build();
-            return OtpSendResponse.builder()
-                    .message("Login successful")
-                    .auth(authResponse)
-                    .build();
-        }
-
+        // Password verification never completes authentication. Even previously verified
+        // identifiers must prove possession again through the login OTP challenge. Tokens and
+        // sessions are issued only by verifyOtp (or the explicitly opt-in local/test controller).
         userRepository.save(user);
 
         // Generate OTP

@@ -2,6 +2,7 @@ package com.carebridge.backend.testsupport;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class DatabaseGate0FinalCleanupPolicyTest {
@@ -52,5 +53,28 @@ class DatabaseGate0FinalCleanupPolicyTest {
         assertThat(repositoryDropCount).isEqualTo(14);
         assertThat(113 - repositoryDropCount).isEqualTo(99);
         assertThat(121 - DatabaseGate0Support.REMOVAL_CANDIDATES.size()).isEqualTo(104);
+    }
+
+    @Test
+    void mapsEveryCandidateToItsExactSuccessfulRemovalMigration() {
+        assertThat(DatabaseGate0Support.CANDIDATE_REMOVAL_VERSIONS)
+                .containsExactlyInAnyOrderEntriesOf(Map.ofEntries(
+                        Map.entry("commission_config", "20260722020800"),
+                        Map.entry("commission_records", "20260722020800"),
+                        Map.entry("consultation_disputes", "20260722020800"),
+                        Map.entry("consultation_messages", "20260722020800"),
+                        Map.entry("consultation_requests", "20260722020800"),
+                        Map.entry("expert_reviews", "20260722020800"),
+                        Map.entry("payment_transactions", "20260722020800"),
+                        Map.entry("refund_records", "20260722020800"),
+                        Map.entry("settlement_records", "20260722020800"),
+                        Map.entry("partner_expert_links", "20260722020900"),
+                        Map.entry("partner_services", "20260722020900"),
+                        Map.entry("sponsored_campaigns", "20260722020900"),
+                        Map.entry("contribution_attachments", "20260722021000"),
+                        Map.entry("expert_identity_verifications", "20260722021000"),
+                        Map.entry("expert_verification_documents", "20260722021000"),
+                        Map.entry("impact_assessment_ratings", "20260722021000"),
+                        Map.entry("medical_contributions", "20260722021000")));
     }
 }

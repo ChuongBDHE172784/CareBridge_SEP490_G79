@@ -86,6 +86,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -94,8 +95,13 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Seeds test accounts per role when explicitly enabled.
  *
- * Credentials (same password for all accounts):
- *   Password : carebridge.dev-seed.password (default Test@1234)
+ * Credentials (same operator-supplied synthetic password for all accounts):
+ *   Password : CAREBRIDGE_DEV_SEED_PASSWORD / carebridge.dev-seed.password
+ * The value is required when seeding is enabled, is never logged, and must stay outside
+ * source control and documentation. Blank input and the retired historical default fail
+ * startup closed.
+ * The seeder is available only in the dev profile while prod is absent and still requires
+ * the explicit carebridge.dev-seed.enabled property gate.
  *
  * Base accounts (one per role):
  *   admin@carebridge.dev      -> SYSTEM_ADMIN
@@ -119,6 +125,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Slf4j
 @Component
+@Profile("dev & !prod")
 @ConditionalOnProperty(prefix = "carebridge.dev-seed", name = "enabled", havingValue = "true")
 @RequiredArgsConstructor
 public class DevDataSeeder implements ApplicationRunner {
@@ -177,7 +184,9 @@ public class DevDataSeeder implements ApplicationRunner {
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
+        validateSeedPassword(testPassword);
         String passwordHash = passwordEncoder.encode(testPassword);
+
         Map<String, User> savedUsers = new HashMap<>();
         int created = 0;
 
@@ -199,16 +208,16 @@ public class DevDataSeeder implements ApplicationRunner {
             }
 
             User user = User.builder()
-                .email(seed.email())
-                .name(seed.fullName())
-                .passwordHash(passwordHash)
-                .role(seed.role())
-                .enabled(true)
-                .locked(false)
-                .accountStatus("ACTIVE")
-                .emailVerified(true)
-                .phoneVerified(true)
-                .build();
+                    .email(seed.email())
+                    .name(seed.fullName())
+                    .passwordHash(passwordHash)
+                    .role(seed.role())
+                    .enabled(true)
+                    .locked(false)
+                    .accountStatus("ACTIVE")
+                    .emailVerified(true)
+                    .phoneVerified(true)
+                    .build();
 
             user = userRepository.save(user);
             savedUsers.put(seed.email(), user);
@@ -216,7 +225,7 @@ public class DevDataSeeder implements ApplicationRunner {
         }
 
         if (created > 0) {
-            log.info("Created/updated {} seed accounts for roles using password {}", created, testPassword);
+            log.info("Created/updated {} synthetic dev seed accounts", created);
         } else {
             log.debug("[DevDataSeeder] All seed accounts already exist - skipped.");
         }
@@ -225,6 +234,15 @@ public class DevDataSeeder implements ApplicationRunner {
         seedCommunitySampleData(savedUsers);
         seedCommunitySampleDataBatch2(savedUsers);
         seedVerifiedContent(savedUsers);
+    }
+
+    static void validateSeedPassword(String candidate) {
+        if (candidate == null
+                || candidate.isBlank()
+                || DEFAULT_TEST_PASSWORD.equals(candidate)) {
+            throw new IllegalStateException(
+                    "Dev seed requires an explicit non-default CAREBRIDGE_DEV_SEED_PASSWORD");
+        }
     }
 
     /** Small idempotent content library covering public, draft and review lifecycle states. */
@@ -487,17 +505,18 @@ public class DevDataSeeder implements ApplicationRunner {
      */
     private MotherJourney seedEligibleStory65Journey(User mother, String fixtureKey) {
         MotherJourney journey = motherJourneyRepository.findCanonical(mother.getId())
-            .orElseGet(() -> motherJourneyRepository.save(MotherJourney.builder()
-                .ownerUserId(mother.getId())
-                .journeyType(JourneyType.POSTPARTUM)
-                .startDate(LocalDate.now().minusDays(14))
-                .deliveryDate(LocalDate.now().minusDays(14))
-                .pregnancyOutcome(PregnancyOutcomeType.LIVE_BIRTH)
-                .pregnancyOutcomeDate(LocalDate.now().minusDays(14))
-                .dateSource(JourneyDateSource.SELF_REPORTED)
-                .status(JourneyStatus.ACTIVE)
-                .notes("[DEV][Story 6.5] eligible manual linkage fixture")
-                .build()));
+            .orElseGet(() -> saveMotherJourneyWithCanonicalSubject(
+                mother,
+                MotherJourney.builder()
+                    .ownerUserId(mother.getId())
+                    .journeyType(JourneyType.POSTPARTUM)
+                    .startDate(LocalDate.now().minusDays(14))
+                    .deliveryDate(LocalDate.now().minusDays(14))
+                    .pregnancyOutcome(PregnancyOutcomeType.LIVE_BIRTH)
+                    .pregnancyOutcomeDate(LocalDate.now().minusDays(14))
+                    .dateSource(JourneyDateSource.SELF_REPORTED)
+                    .status(JourneyStatus.ACTIVE)
+                    .notes("[DEV][Story 6.5] eligible manual linkage fixture")));
 
         if (journey.getJourneyType() != JourneyType.POSTPARTUM
             || journey.getPregnancyOutcome() != PregnancyOutcomeType.LIVE_BIRTH) {
@@ -571,31 +590,41 @@ public class DevDataSeeder implements ApplicationRunner {
         if (!existing.isEmpty()) {
             return existing.get(0);
         }
+        return saveMotherJourneyWithCanonicalSubject(
+            mother,
+            MotherJourney.builder()
+                .ownerUserId(mother.getId())
+                .journeyType(type)
+                .startDate(LocalDate.now().minusMonths(3))
+                .lastMenstrualDate(LocalDate.now().minusMonths(5))
+                .estimatedDueDate(LocalDate.now().plusMonths(4))
+                .deliveryDate(deliveryDate)
+                .status(JourneyStatus.ACTIVE)
+                .notes("Seeded verified test journey"));
+    }
 
-        UUID careSubjectId = motherJourneyRepository.findMotherCareSubjectId(mother.getId());
-        if (careSubjectId == null) {
-            UUID candidateSubjectId = UUID.randomUUID();
-            motherJourneyRepository.ensureMotherCareSubject(candidateSubjectId, mother.getId());
-            careSubjectId = motherJourneyRepository.findMotherCareSubjectId(mother.getId());
+    private MotherJourney saveMotherJourneyWithCanonicalSubject(
+            User mother, MotherJourney.MotherJourneyBuilder journeyBuilder) {
+        UUID careSubjectId = ensureMotherCareSubject(mother.getId());
+        MotherJourney journey = motherJourneyRepository.saveAndFlush(
+            journeyBuilder.careSubjectId(careSubjectId).build());
+        if (motherJourneyRepository.linkMotherCareSubject(careSubjectId, journey.getId()) != 1) {
+            throw new IllegalStateException("Unable to link seeded mother care subject to journey");
         }
-        if (careSubjectId == null) {
-            throw new IllegalStateException(
-                "Unable to create canonical MOTHER care subject for seed account " + mother.getEmail());
-        }
-
-        MotherJourney journey = motherJourneyRepository.saveAndFlush(MotherJourney.builder()
-            .ownerUserId(mother.getId())
-            .careSubjectId(careSubjectId)
-            .journeyType(type)
-            .startDate(LocalDate.now().minusMonths(3))
-            .lastMenstrualDate(LocalDate.now().minusMonths(5))
-            .estimatedDueDate(LocalDate.now().plusMonths(4))
-            .deliveryDate(deliveryDate)
-            .status(JourneyStatus.ACTIVE)
-            .notes("Seeded verified test journey")
-            .build());
-        motherJourneyRepository.linkMotherCareSubject(careSubjectId, journey.getId());
         return journey;
+    }
+
+    private UUID ensureMotherCareSubject(UUID ownerUserId) {
+        UUID existing = motherJourneyRepository.findMotherCareSubjectId(ownerUserId);
+        if (existing != null) {
+            return existing;
+        }
+        motherJourneyRepository.ensureMotherCareSubject(UUID.randomUUID(), ownerUserId);
+        UUID created = motherJourneyRepository.findMotherCareSubjectId(ownerUserId);
+        if (created == null) {
+            throw new IllegalStateException("Unable to create seeded mother care subject");
+        }
+        return created;
     }
 
     private BabyProfile seedBabyProfile(User mother, MotherJourney journey) {

@@ -486,3 +486,13 @@ assertThat(updated.getOwnerUserId()).isEqualTo(MOTHER_ID);             // immuta
 ---
 
 *End of CB-JOURNEY-IMP-002-TEST — UC23 Update Mother Journey Test-Spec v1.0*
+
+## Story 6.10 OV-01 Test Contract Addendum
+
+| Case ID | Priority | Requirement and oracle | Executable linkage | Status basis |
+| --- | --- | --- | --- | --- |
+| `OV01-TS-23-001` | P0 | Ongoing/unknown stay PREGNANCY; live birth/loss enter POSTPARTUM with auditable revision semantics and concurrency safety | `JourneyPregnancyOutcomePolicyTest`, `PregnancyOutcomeServiceTest`, `PregnancyOutcomeIntegrationTest`, `PregnancyOutcomeConcurrencyIntegrationTest` | automated |
+| `OV01-TS-23-002` | P1 | Completion persists `COMPLETED`, removes active selection, and appends `STATUS_CHANGED` history | `JourneyCanonicalLifecycleIntegrationTest#ov01Be019_completionPersistsStatusHistoryAndRemovesActiveSelection` (`OV01-BE-019`) | PostgreSQL/Flyway integration |
+| `OV01-TS-23-003` | P1 | User archive rejects; archived fixture is inactive, immutable and history-preserving; no system transition is claimed | existing `JourneyUpdateServiceImplTest` user rejection plus `JourneyCanonicalLifecycleIntegrationTest#ov01Be020_archivedFixtureIsInactiveImmutableAndPreservesHistory` (`OV01-BE-020`) | unit + PostgreSQL boundary |
+
+The former “integration out of scope MVP” note does not apply to the completion/history branch after Story 6.10; `OV01-TS-23-002` is its canonical integration contract.

@@ -122,6 +122,7 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
     @Override
     public PregnancyOutcomeResponse recordPregnancyOutcome(
             UUID ownerId, UUID journeyId, RecordPregnancyOutcomeRequest request) {
+        onboardingService.ensureEligible(ownerId);
         if (outcomeRepository == null) {
             throw new IllegalStateException("Pregnancy outcome repository is unavailable");
         }
@@ -412,6 +413,7 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
     @Override
     public JourneyResponse updateJourney(
             UUID ownerId, UUID journeyId, UpdateJourneyRequest request) {
+        onboardingService.ensureEligible(ownerId);
         MotherJourney current = ownedJourney(ownerId, journeyId);
         if (current.getStatus() != JourneyStatus.ACTIVE) {
             throw new BusinessException(

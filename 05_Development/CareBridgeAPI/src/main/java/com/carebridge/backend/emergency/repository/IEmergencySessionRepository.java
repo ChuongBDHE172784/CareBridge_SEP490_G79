@@ -39,7 +39,7 @@ public interface IEmergencySessionRepository extends JpaRepository<EmergencySess
                  OR (event.alert_status = 'PROCESSING'
                      AND event.alert_lease_expires_at <= now())
               )
-            ORDER BY event.created_at
+            ORDER BY event.created_at, event.safety_event_id
             LIMIT 50
             """, nativeQuery = true)
     List<UUID> findAlertRetryCandidates(@Param("retryCutoff") Instant retryCutoff);

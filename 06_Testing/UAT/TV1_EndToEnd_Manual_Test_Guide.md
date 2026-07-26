@@ -33,10 +33,20 @@ Kiểm tra tối thiểu các biến sau:
 SUPABASE_DB_URL=
 SUPABASE_DB_USERNAME=
 SUPABASE_DB_PASSWORD=
-JWT_SECRET=
+JWT_ACTIVE_KEY_ID=
+JWT_PRIVATE_KEY=
+JWT_PUBLIC_KEYS=
 CAREBRIDGE_FCM_ENABLED=false
 FIREBASE_CREDENTIALS_BASE64=
 ```
+
+Nếu cần fixture synthetic cho UAT local, dev seeder chỉ được bật khi profile Spring
+là `dev`, profile `prod` không active và
+`CAREBRIDGE_DEV_SEED_ENABLED=true` được đặt rõ ràng. Người vận hành phải nạp một
+`CAREBRIDGE_DEV_SEED_PASSWORD` riêng, không mặc định, từ secret source local; không
+ghi giá trị vào guide, test evidence, log, screenshot hoặc Git. Khi seeder được bật,
+password trống hoặc historical default đã retired sẽ làm backend fail startup.
+Không dùng dev seeder cho staging.
 
 Web sử dụng:
 
@@ -79,7 +89,8 @@ Chuẩn bị hoặc tạo các tài khoản sau:
 | `SYSTEM_ADMIN`  | Test admin user, audit, posture config | `admin.tv1@test.local`   |
 | `CONTENT_ADMIN` | Test quản trị bài tập thai kỳ     | `content.tv1@test.local` |
 
-Ghi credentials thật vào ghi chú riêng tư, không ghi vào file này.
+Ghi credentials vào secret store/ghi chú riêng tư được phê duyệt, không ghi vào file
+này hoặc bằng chứng UAT đã chia sẻ.
 
 ---
 

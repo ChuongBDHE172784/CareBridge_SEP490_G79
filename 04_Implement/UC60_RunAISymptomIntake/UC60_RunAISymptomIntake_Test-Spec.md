@@ -514,3 +514,13 @@ git checkout -- src/test/java/com/carebridge/backend/triage/
 ---
 
 *TDD Spec v1.0 — UC60 Run AI Symptom Intake — CB-TRIAGE-IMP-001-TEST*
+
+## Story 6.10 OV-01 Test Contract Addendum
+
+| Case ID | Priority | Oracle | Executable linkage |
+| --- | --- | --- | --- |
+| `OV01-TS-60-001` | P0 | All five active contexts retain server-owned typed origin; GREEN/NEED_MORE_INFO never creates emergency state | `TriageServiceTest`, `story_6_7_lifecycle_origin_contract_test.dart` |
+| `OV01-TS-60-002` | P0 | Maternal danger signs remain RED during AI failure/timeout and the emergency link is create-or-reuse exactly once | `TriageServiceTest#runIntake_aiServiceUnavailable_shouldFallbackToJavaRules`, RED cases, `EmergencyTriageLinkPostgresIntegrationTest` |
+| `OV01-TS-60-003` | P0 | Official evaluator executes POSTPARTUM and requires diagnosis/prescription/disclaimer safety without inventing thresholds | `POSTPARTUM_MOTHER_STAGE_GAP` benchmark case; evaluator `test_assertions.py`, `test_catalog.py`, `test_local_adapter.py` |
+
+`POSTPARTUM_MEMORY_CONTEXT_GAP` remains a separate known scope gap because health-memory injection is not part of the proven Python graph contract.

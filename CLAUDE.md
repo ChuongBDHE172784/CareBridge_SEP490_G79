@@ -6,7 +6,8 @@
   * Run: `set -a && source .env && set +a && ./mvnw spring-boot:run`
   * Build/Package: `./mvnw clean package`
   * Test: `./mvnw test`
-  * Requires `.env` with `CAREBRIDGE_DB_*`, `JWT_SECRET`, etc. (see `.env.example`); datasource defaults to local Docker PostgreSQL.
+  * Requires `.env` with `CAREBRIDGE_DB_*`, `JWT_ACTIVE_KEY_ID`, `JWT_PRIVATE_KEY`, `JWT_PUBLIC_KEYS`, etc. (see `.env.example`); datasource defaults to local Docker PostgreSQL.
+  * `JWT_PRIVATE_KEY` is base64 DER PKCS#8; `JWT_PUBLIC_KEYS` is a semicolon-separated `kid:base64-DER-SPKI` verification ring. Never commit real key material.
   * Values containing `&` or spaces must be quoted in `.env` for bash `source` compatibility.
 * Web (`05_Development/CareBridgeWebApp`):
   * Run: `npm run dev`
@@ -74,82 +75,25 @@ Inspect relevant code/tests first. Add focused tests where practical, run the na
 1. **Step 1: Scoping & Blast Radius (code-review-graph)**
    * Use `detect_changes` and `get_impact_radius` to identify modified files and their affected areas.
    * Use `get_review_context` to fetch only the exact code changes and relevant context.
-
 2. **Step 2: Architecture & Relations (gitnexus & code-review-graph)**
    * For call chains, dependency paths, or tracking tests: Use `query_graph` or `query` (cypher query).
    * For visual/conceptual routing & API maps: Use `route_map` or `get_architecture_overview`.
    * For structural multi-file renaming: Use `rename`.
-
 3. **Step 3: Verification (Native Commands)**
    * Only read/edit the files discovered in Step 1 & 2.
-   * Use native `grep` or `read` as a fallback only when seeking precise string matching inside the narrowed file set.
+   * Use native text search/read as a fallback only when seeking precise strings inside the narrowed file set.
 
-
-<!-- code-review-graph MCP tools -->
 ## MCP Tools: code-review-graph
 
-**IMPORTANT: This project has a knowledge graph. ALWAYS use the
-code-review-graph MCP tools BEFORE using Grep/Glob/Read to explore
-the codebase.** The graph is faster, cheaper (fewer tokens), and gives
-you structural context (callers, dependents, test coverage) that file
-scanning cannot.
+Use the project knowledge graph before filesystem scanning when exploring code, reviewing changes, mapping impact, locating relationships, or answering architecture questions. The preferred workflow is:
 
-### When to use graph tools FIRST
+1. `detect_changes`
+2. `get_affected_flows`
+3. `query_graph` with `tests_for` where coverage must be checked
+4. Focused native verification commands
 
-- **Exploring code**: `semantic_search_nodes` or `query_graph` instead of Grep
-- **Understanding impact**: `get_impact_radius` instead of manually tracing imports
-- **Code review**: `detect_changes` + `get_review_context` instead of reading entire files
-- **Finding relationships**: `query_graph` with callers_of/callees_of/imports_of/tests_for
-- **Architecture questions**: `get_architecture_overview` + `list_communities`
+## Synthetic Development Accounts
 
-Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
+`DevDataSeeder` creates synthetic role accounts only when the Spring `dev` profile is active, the `prod` profile is absent, and `CAREBRIDGE_DEV_SEED_ENABLED=true` is explicitly set. The operator must inject a unique, non-default password through `CAREBRIDGE_DEV_SEED_PASSWORD` from an uncommitted local secret source.
 
-### Key Tools
-
-| Tool                        | Use when                                               |
-| --------------------------- | ------------------------------------------------------ |
-| `detect_changes`            | Reviewing code changes — gives risk-scored analysis    |
-| `get_review_context`        | Need source snippets for review — token-efficient      |
-| `get_impact_radius`         | Understanding blast radius of a change                 |
-| `get_affected_flows`        | Finding which execution paths are impacted             |
-| `query_graph`               | Tracing callers, callees, imports, tests, dependencies |
-| `semantic_search_nodes`     | Finding functions/classes by name or keyword           |
-| `get_architecture_overview` | Understanding high-level codebase structure            |
-| `refactor_tool`             | Planning renames, finding dead code                    |
-
-### Workflow
-
-1. The graph auto-updates on file changes (via hooks).
-2. Use `detect_changes` for code review.
-3. Use `get_affected_flows` to understand impact.
-4. Use `query_graph` pattern="tests_for" to check coverage.
-
-### Account Test
-
-| Role          | Email                      | Password  |
-| ------------- | -------------------------- | --------- |
-| SYSTEM_ADMIN  | `admin@carebridge.dev`     | Test@1234 |
-| MODERATOR     | `moderator@carebridge.dev` | Test@1234 |
-| CONTENT_ADMIN | `content@carebridge.dev`   | Test@1234 |
-| EXPERT        | `expert@carebridge.dev`    | Test@1234 |
-| PARTNER       | `partner@carebridge.dev`   | Test@1234 |
-| MOTHER        | `mother@carebridge.dev`    | Test@1234 |
-| FAMILY        | `family@carebridge.dev`    | Test@1234 |
-
-All accounts above plus the ones below are created by `DevDataSeeder`
-(`05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/common/dev/DevDataSeeder.java`),
-which only runs when `CAREBRIDGE_DEV_SEED_ENABLED=true` is set in `.env`.
-
-**Extra fully verified/accepted test accounts** (two more each for MOTHER, FAMILY, EXPERT — for
-scenarios needing multiple distinct accounts per role, e.g. testing family invitations or expert
-directory listings):
-
-| Role   | Email                    | Password  | Verified/accepted state                                                                                         |
-| ------ | ------------------------ | --------- | --------------------------------------------------------------------------------------------------------------- |
-| MOTHER | `mother3@carebridge.dev` | Test@1234 | Active `mother_journeys` row, type PREGNANCY                                                                    |
-| MOTHER | `mother4@carebridge.dev` | Test@1234 | Active `mother_journeys` row, type POSTPARTUM + linked active `baby_profiles` row                               |
-| FAMILY | `family2@carebridge.dev` | Test@1234 | `care_group_members.invitation_status = ACCEPTED` in mother3's care group                                       |
-| FAMILY | `family3@carebridge.dev` | Test@1234 | `care_group_members.invitation_status = ACCEPTED` in mother4's care group (incl. the baby profile)              |
-| EXPERT | `expert2@carebridge.dev` | Test@1234 | `expert_profiles.verification_status = APPROVED` (Sản khoa) + APPROVED `expert_credentials` + availability slot |
-| EXPERT | `expert3@carebridge.dev` | Test@1234 | `expert_profiles.verification_status = APPROVED` (Nhi khoa) + APPROVED `expert_credentials` + availability slot |
- 
+Never place that password in source, documentation, shell history, logs, screenshots, or Git. A blank value or the retired historical default must fail startup while seeding is enabled. Never enable dev seeding on staging or production.

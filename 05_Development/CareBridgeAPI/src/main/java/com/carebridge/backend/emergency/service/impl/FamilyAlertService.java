@@ -88,8 +88,9 @@ public class FamilyAlertService implements IFamilyAlertService {
                     providerResult = fcmNotificationPort.send(
                             recipient.token(), deliveryPayload);
                 } catch (Exception exception) {
-                    log.warn("FCM send failed for session [{}]: {}",
-                            event.sessionId(), exception.getMessage());
+                    log.warn(
+                            "FCM send failed session=[{}] providerCode=FCM_EXCEPTION exceptionType={}",
+                            event.sessionId(), exception.getClass().getSimpleName());
                     providerResult = FcmDeliveryResult.failed("FCM_EXCEPTION", 1);
                 }
                 boolean recorded = deliveryPersistenceService.complete(prepared, claim, providerResult);

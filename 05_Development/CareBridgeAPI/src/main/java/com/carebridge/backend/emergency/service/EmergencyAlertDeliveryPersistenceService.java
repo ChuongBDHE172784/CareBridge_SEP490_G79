@@ -37,7 +37,7 @@ public class EmergencyAlertDeliveryPersistenceService {
         NotificationRecord notification = sharedNotificationId == null
                 ? notificationRepository.findByUserIdAndReferenceIdAndTypeAndReferenceType(
                         recipient.userId(), event.sessionId(), NotificationType.EMERGENCY, "EMERGENCY_SESSION")
-                    .orElseGet(() -> notificationRepository.save(NotificationRecord.builder()
+                    .orElseGet(() -> notificationRepository.saveAndFlush(NotificationRecord.builder()
                             .userId(recipient.userId())
                             .type(NotificationType.EMERGENCY)
                             .title("Cảnh báo khẩn cấp từ CareBridge")

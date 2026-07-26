@@ -930,3 +930,15 @@ Tests phải cover §13 Test Scenarios.
 | CASE 2.0 Methodology | `08_References/CASE_AI_METHODOLOGY.md` |
 | EDS v2.0 Template | `08_References/Template/PHASE-3_TDS.md` |
 | PDPA Compliance | Luật 91/2025 |
+
+## Story 6.10 OV-01 Maternal Safety Addendum
+
+Stories 6.6/6.7 bind UC60 intake to canonical PRECONCEPTION, PREGNANCY, POSTPARTUM, INFANT and TODDLER origins. Universal maternal danger signs and Java fallback remain deterministic; unreviewed clinical thresholds stay inactive.
+
+| OV-01 branch | Decision | Test-Spec contract | Executable evidence |
+| --- | --- | --- | --- |
+| `OV01-B07` | GREEN/NEED_MORE_INFO retains the typed origin and creates no emergency | `OV01-TS-60-001` | `TriageServiceTest`, `story_6_7_lifecycle_origin_contract_test.dart` |
+| `OV01-B09/B10` | RED is authoritative and exactly-once; AI unavailable/timeout cannot downgrade deterministic maternal RED | `OV01-TS-60-002` | `TriageServiceTest`, `EmergencyTriageLinkPostgresIntegrationTest`, AI-service maternal/postpartum regression |
+| `OV01-B10` | POSTPARTUM is executable; evaluator disclaimer accepts canonical “bác sĩ” or “nhân viên y tế” boundary wording | `OV01-TS-60-003` | CareBridge AI Evaluation official catalog and `test_assertions.py` |
+
+Medical-review metadata remains `PENDING_MEDICAL_REVIEW`; this technical trace addendum is not clinical approval.

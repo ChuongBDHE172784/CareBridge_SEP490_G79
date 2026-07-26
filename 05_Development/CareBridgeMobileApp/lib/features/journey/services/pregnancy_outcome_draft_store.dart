@@ -66,6 +66,11 @@ class SecurePregnancyOutcomeDraftStore implements PregnancyOutcomeDraftStore {
   static const _indexPrefix = 'cb_pregnancy_outcome_draft_index';
   static const _draftPrefix = 'cb_pregnancy_outcome_draft';
 
+  static String encodeIndexForStorage(Iterable<String> keys) {
+    final sortedKeys = keys.toSet().toList()..sort();
+    return jsonEncode(sortedKeys);
+  }
+
   String _draftKey(String accountId, String journeyId) =>
       '${_draftPrefix}_${accountId}_$journeyId';
   String _indexKey(String accountId) => '${_indexPrefix}_$accountId';
@@ -107,7 +112,10 @@ class SecurePregnancyOutcomeDraftStore implements PregnancyOutcomeDraftStore {
     );
     final indexKey = _indexKey(accountId);
     final existing = await _readIndex(indexKey);
-    await _storage.write(key: indexKey, value: jsonEncode({...existing, key}));
+    await _storage.write(
+      key: indexKey,
+      value: encodeIndexForStorage({...existing, key}),
+    );
   }
 
   @override
@@ -120,7 +128,10 @@ class SecurePregnancyOutcomeDraftStore implements PregnancyOutcomeDraftStore {
     if (existing.isEmpty) {
       await _storage.delete(key: indexKey);
     } else {
-      await _storage.write(key: indexKey, value: jsonEncode(existing));
+      await _storage.write(
+        key: indexKey,
+        value: encodeIndexForStorage(existing),
+      );
     }
   }
 

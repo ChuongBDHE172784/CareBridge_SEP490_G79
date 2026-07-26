@@ -117,6 +117,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
+    final useSelectedOnlyNavigationLabels =
+        MediaQuery.textScalerOf(context).scale(1) >= 1.3;
+
     return Scaffold(
       backgroundColor: _canvas,
       body: SafeArea(
@@ -137,7 +140,9 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
         indicatorColor: _primaryContainer.withAlpha(51),
         shadowColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
-        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        labelBehavior: useSelectedOnlyNavigationLabels
+            ? NavigationDestinationLabelBehavior.onlyShowSelected
+            : NavigationDestinationLabelBehavior.alwaysShow,
         destinations: [
           const NavigationDestination(
             icon: Icon(Icons.home_outlined),

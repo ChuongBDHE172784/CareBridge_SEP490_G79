@@ -29,6 +29,8 @@ class CanonicalTriageLifecycleIntegrityMigrationIntegrationTest {
             MigrationVersion.fromVersion("20260722210000");
     private static final MigrationVersion LIFECYCLE_BRIDGE =
             MigrationVersion.fromVersion("20260722231350");
+    private static final MigrationVersion CANONICAL_BASELINE =
+            MigrationVersion.fromVersion("20260724111500");
     private static final MigrationVersion CANONICAL =
             MigrationVersion.fromVersion("20260724211000");
 
@@ -637,11 +639,26 @@ class CanonicalTriageLifecycleIntegrityMigrationIntegrationTest {
     }
 
     private void seedLegacyLifecycleAggregate() throws Exception {
+        if (exists("persons")) {
+            execute("""
+                    INSERT INTO persons(person_id,display_name,created_at,updated_at)
+                    VALUES ('71000000-0000-0000-0000-000000000001',
+                            'Legacy Lifecycle Mother',now(),now());
+                    INSERT INTO users(user_id,person_id,email,role,account_status,enabled,locked,
+                                      email_verified,phone_verified,created_at,updated_at)
+                    VALUES ('71000000-0000-0000-0000-000000000001',
+                            '71000000-0000-0000-0000-000000000001',
+                            'legacy.lifecycle@test','MOTHER','ACTIVE',true,false,true,false,now(),now());
+                    """);
+        } else {
+            execute("""
+                    INSERT INTO users(user_id,email,role,account_status,enabled,locked,
+                                      email_verified,phone_verified,created_at,updated_at)
+                    VALUES ('71000000-0000-0000-0000-000000000001',
+                            'legacy.lifecycle@test','MOTHER','ACTIVE',true,false,true,false,now(),now());
+                    """);
+        }
         execute("""
-                INSERT INTO users(user_id,email,role,account_status,enabled,locked,
-                                  email_verified,phone_verified,created_at,updated_at)
-                VALUES ('71000000-0000-0000-0000-000000000001',
-                        'legacy.lifecycle@test','MOTHER','ACTIVE',true,false,true,false,now(),now());
                 INSERT INTO mother_journeys(
                     journey_id,owner_user_id,journey_type,status,created_at,updated_at)
                 VALUES ('71000000-0000-0000-0000-000000000021',
@@ -701,13 +718,27 @@ class CanonicalTriageLifecycleIntegrityMigrationIntegrationTest {
     }
 
     private void migrate(MigrationVersion target, boolean outOfOrder) {
-        Flyway.configure()
+        Flyway flyway = Flyway.configure()
                 .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
                 .locations("classpath:db/migration")
                 .target(target)
                 .outOfOrder(outOfOrder)
-                .load()
-                .migrate();
+                .load();
+
+        // Flyway selects the latest B-migration for a brand-new database even when a
+        // lower target is requested. These cases intentionally exercise the historical
+        // V-migration chain, so establish an explicit version-zero history first.
+        if (target.compareTo(CANONICAL_BASELINE) < 0 && flyway.info().current() == null) {
+            Flyway.configure()
+                    .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
+                    .locations("classpath:db/migration")
+                    .baselineVersion(MigrationVersion.fromVersion("0"))
+                    .baselineDescription("Legacy migration-chain integration test")
+                    .load()
+                    .baseline();
+        }
+
+        flyway.migrate();
     }
 
     private int columns(String table, String... names) throws Exception {

@@ -33,7 +33,6 @@ carebridge:
     private-provider: cloudinary
   security:
     jwt:
-      secret: test-secret-key-must-be-at-least-32-characters-long
       access-token-expiration-ms: 900000
       refresh-token-expiration-ms: 604800000
     otp:
@@ -46,3 +45,21 @@ carebridge:
 ai:
   triage-service:
     url: http://localhost:8001
+
+# Keep integration contexts aligned with the production readiness contract.
+# src/test/resources/application.yaml shadows the main resource in tests.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+      group:
+        readiness:
+          include: readinessState,db
+          show-components: always
+          show-details: never

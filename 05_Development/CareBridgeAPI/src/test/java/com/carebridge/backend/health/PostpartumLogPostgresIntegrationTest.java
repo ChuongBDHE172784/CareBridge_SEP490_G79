@@ -2,6 +2,10 @@ package com.carebridge.backend.health;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.consent.entity.ConsentDataType;
@@ -9,7 +13,6 @@ import com.carebridge.backend.consent.entity.ConsentGrant;
 import com.carebridge.backend.consent.entity.ConsentPurpose;
 import com.carebridge.backend.consent.repository.ConsentGrantRepository;
 import com.carebridge.backend.health.dto.AddPostpartumLogRequest;
-import com.carebridge.backend.health.dto.PostpartumLogResponse;
 import com.carebridge.backend.health.repository.PostpartumLogRepository;
 import com.carebridge.backend.health.service.IPostpartumLogService;
 import com.carebridge.backend.journey.dto.CreateJourneyRequest;
@@ -45,6 +48,8 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
 
 /** Real PostgreSQL coverage for Story 6.4 recovery invariants and idempotency. */
 @Isolated
@@ -61,6 +66,7 @@ class PostpartumLogPostgresIntegrationTest extends AbstractPostgresIntegrationTe
     @Autowired private IJourneyTransitionService journeyService;
     @Autowired private IPostpartumLogService logService;
     @Autowired private JdbcTemplate jdbcTemplate;
+    @Autowired private MockMvc mockMvc;
 
     private UUID motherId;
     private UUID journeyId;
@@ -72,11 +78,25 @@ class PostpartumLogPostgresIntegrationTest extends AbstractPostgresIntegrationTe
     }
 
     @Test
-    void directPostpartumAndRecoveryLog_preserveSingleCanonicalAndZeroBabySideEffects() {
-        PostpartumLogResponse created = logService.addLog(
-                motherId, journeyId, request(UUID.randomUUID(), (short) 3));
+    void ov01E2e006_directPostpartumApiPreservesCardinalityAndZeroBabySideEffects()
+            throws Exception {
+        UUID submissionId = UUID.randomUUID();
 
-        assertThat(created.getJourneyId()).isEqualTo(journeyId);
+        mockMvc.perform(post("/api/v1/journeys/{journeyId}/postpartum-logs", journeyId)
+                        .with(user(motherId.toString()).roles("MOTHER"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "submissionId":"%s",
+                                  "logDate":"%s",
+                                  "painLevel":3
+                                }
+                                """.formatted(submissionId, RECOVERY_START)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.journeyId").value(journeyId.toString()))
+                .andExpect(jsonPath("$.data.submissionId").value(submissionId.toString()));
+
         assertThat(journeyRepository.existsByOwnerUserIdAndStatusAndJourneyTypeIn(
                 motherId,
                 JourneyStatus.ACTIVE,
@@ -91,6 +111,13 @@ class PostpartumLogPostgresIntegrationTest extends AbstractPostgresIntegrationTe
                 Long.class,
                 motherId)).isZero();
         assertThat(postpartumCount(journeyId)).isEqualTo(1L);
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from maternal_observations "
+                        + "where mother_journey_id = ? and submission_id = ? "
+                        + "and observation_type = 'POSTPARTUM_LOG'",
+                Long.class,
+                journeyId,
+                submissionId)).isEqualTo(1L);
     }
 
     @Test
