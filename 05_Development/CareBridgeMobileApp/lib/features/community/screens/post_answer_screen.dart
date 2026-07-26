@@ -47,7 +47,7 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
   final _bodyCtrl = TextEditingController();
   final Set<int> _selectedTags = {};
   bool _submitting = false;
-  bool _showPendingModal = false;
+  bool _showPublishedModal = false;
 
   @override
   void dispose() {
@@ -71,7 +71,7 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
           'isPersonalExperience': _selectedTags.isNotEmpty,
         },
       );
-      if (mounted) setState(() => _showPendingModal = true);
+      if (mounted) setState(() => _showPublishedModal = true);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -123,7 +123,7 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
               ],
             ),
           ),
-          if (_showPendingModal) _buildPendingModal(),
+          if (_showPublishedModal) _buildPublishedModal(),
         ],
       ),
     );
@@ -467,7 +467,7 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
               const SizedBox(width: 6),
               const Expanded(
                 child: Text(
-                  'Đóng góp của bạn sẽ được kiểm duyệt trước khi hiển thị.',
+                  'Câu trả lời của bạn sẽ hiển thị ngay sau khi đăng.',
                   style: TextStyle(fontSize: 12, color: _onSurfaceVariant),
                 ),
               ),
@@ -506,7 +506,7 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
     );
   }
 
-  Widget _buildPendingModal() {
+  Widget _buildPublishedModal() {
     return Container(
       color: Colors.black54,
       child: Center(
@@ -529,14 +529,14 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
-                  Icons.hourglass_empty,
+                  Icons.check_circle_outline,
                   color: _primary,
                   size: 36,
                 ),
               ),
               const SizedBox(height: 20),
               const Text(
-                'Đang chờ kiểm duyệt',
+                'Đã đăng trả lời',
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
@@ -545,7 +545,7 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Cảm ơn bạn đã đóng góp! Câu trả lời của bạn đang được đội ngũ y khoa xem xét để đảm bảo an toàn nội dung.',
+                'Cảm ơn bạn đã đóng góp! Câu trả lời của bạn đã hiển thị trong cộng đồng.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,
@@ -566,7 +566,7 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
                   ),
                   onPressed: () => Navigator.of(context).pop(true),
                   child: const Text(
-                    'Quay lại Trang chủ',
+                    'Quay lại bài viết',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),

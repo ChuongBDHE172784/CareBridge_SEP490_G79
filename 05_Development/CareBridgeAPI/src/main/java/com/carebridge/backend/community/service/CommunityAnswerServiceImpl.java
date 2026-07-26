@@ -18,6 +18,7 @@ import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.content.entity.ReportTargetType;
 import com.carebridge.backend.expert.entity.ExpertProfile;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
+import com.carebridge.backend.expert.handler.IExpertEventHandler;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import com.carebridge.backend.security.entity.User;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +40,7 @@ public class CommunityAnswerServiceImpl implements CommunityAnswerService {
     private final CommunitySafetyPolicy communitySafetyPolicy;
     private final CommunityAuthorDisplayResolver authorDisplayResolver;
     private final ExpertProfileRepository expertProfileRepository;
+    private final IExpertEventHandler expertEventHandler;
 
     @Override
     @Transactional
@@ -51,6 +53,10 @@ public class CommunityAnswerServiceImpl implements CommunityAnswerService {
         boolean expertLabeled = communitySafetyPolicy.isVerifiedActiveExpert(author);
         CommunityAnswer answer = answerMapper.toEntity(request, authorId, questionId, expertLabeled);
         answer = answerRepository.save(answer);
+        questionRepository.incrementAnswerCount(questionId);
+        if (expertLabeled) {
+            expertEventHandler.onAnswerApproved(answer.getId().toString(), authorId.toString());
+        }
         communitySafetyPolicy.autoReportIfRedFlag(authorId, answer.getId(), ReportTargetType.ANSWER, answer.getBody());
 
         auditService.log(AuditAction.COMMUNITY_ANSWER_POSTED, authorId,
