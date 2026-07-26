@@ -45,7 +45,7 @@ public class CommunityAnswer {
     @Builder.Default
     private boolean personalExperience = false;
 
-    // ADR-COM-006: always PENDING on creation
+    // Fallback for system-created/revision flows; member posts explicitly start APPROVED.
     @Enumerated(EnumType.STRING)
     @Column(name = "moderation_status", nullable = false, length = 30)
     @Builder.Default
