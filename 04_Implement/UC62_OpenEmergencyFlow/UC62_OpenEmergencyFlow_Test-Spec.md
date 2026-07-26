@@ -417,6 +417,26 @@ git checkout -- src/test/java/com/carebridge/backend/emergency/
 
 ---
 
+## Story 6.10 OV-01 Test Contract Addendum
+
+**Addendum status:** `In Review`
+These cases supersede the stale Story 6.10 emergency rows and status checkboxes elsewhere in this document. Historical EMERG cases remain provenance; they are not a release oracle unless linked below to an executable current test.
+
+| Case ID | Pri | Oracle and exact expected result | Executable linkage | Current status |
+| --- | --- | --- | --- | --- |
+| `OV01-TS-62-001` | P0 | A completed, owner-matching RED intake creates or reuses one ACTIVE owner emergency. The same intake replay returns the same canonical session; a foreign/non-RED/incomplete intake returns `EMERG-006` and creates no link/session/event. | `EmergencyServiceTest#triageReplayUsesCanonicalSafetyEventSourceIdentity`, `#triageCreatesCanonicalEmergencyEventAndPublishesDeliveryTrigger`, `EmergencyTriageLinkPostgresIntegrationTest#firstRedFlushesParentSecondReusesAndReplayReturnsCanonicalEmergency` | Implemented; final Story 6.10 runner evidence required |
+| `OV01-TS-62-002` | P0 | Two RED intakes for one owner keep two canonical intake links while reusing one ACTIVE emergency. A pre-existing manual ACTIVE session is linked instead of duplicated. Only new-session creation publishes `EmergencySessionOpened`. | `EmergencyServiceTest#activeManualSessionIsLinkedToTriageWithoutDuplicateEmergency`, `#twoRedIntakesReuseOneEmergencyButKeepTwoCanonicalLinksAndReplay` | Implemented; final Story 6.10 runner evidence required |
+| `OV01-TS-62-003` | P0 | Retry/restart reclaims only expired/unfinished alert attempts, never resends a successful device, and preserves one emergency/session association. Resolution fences unfinished alert projection. | `EmergencyTriageLinkPostgresIntegrationTest#ov01E2e014RestartReclaimsExpiredAttemptWithoutResendingSuccessfulDevice`, `EmergencyServiceTest#resolvingSessionSuppressesAndFencesInFlightAlertProjection` | Implemented; final Story 6.10 runner evidence required |
+| `OV01-TS-62-004` | P0 | Unauthenticated manual open is 401, wrong role is 403, missing trigger source is 400; owner-scoped active/read/resolve never discloses another account's session. | `EmergencyControllerTest`, `EmergencyServiceTest`, `OV01-E2E-015` owner/account-switch coverage | Implemented; final Story 6.10 runner evidence required |
+| `OV01-TS-62-PERF-001` | P1 | No current measured p99 oracle is available. The historical `p99 < 200 ms` row must remain `UNKNOWN / NOT ASSESSED`; unit/integration duration is not a substitute. | No current-source load artifact | `UNKNOWN / NOT ASSESSED` |
+
+### Addendum entry and exit criteria
+
+- Entry: UC-60 deterministic RED contract is green; PostgreSQL/Flyway is current; test data is synthetic.
+- Exit: `OV01-TS-62-001..004` pass in the final source-bound runner with zero failures/skips and exact PostgreSQL cardinality checks.
+- Suspension: any duplicate ACTIVE emergency, cross-account disclosure, second AI RED decision, missing canonical intake link, or successful-device resend is an immediate release blocker.
+- No performance, legal, DPO, TLS, encryption-at-rest, or retention approval is inferred from functional test success.
+
 ## 8. CASE 2.0 Anti-Pattern Detection (AI-Assisted TCs)
 
 | AP-ID | Anti-Pattern | Dấu hiệu trong TDD spec | Check | Gate chặn |

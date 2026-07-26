@@ -834,3 +834,36 @@ Tests phải cover §13 Test Scenarios.
 | SRS UC-62 | `02_Requirements/SRS/Functional_Specifications.md §3.3.1.39` |
 | UC65 TDS | `04_Implement/UC65_SendFamilyEmergencyAlert/UC65_SendFamilyEmergencyAlert_TDS.md` |
 | EDS v2.0 Template | `08_References/Template/PHASE-3_TDS.md` |
+
+## Story 6.10 OV-01 Emergency Contract Addendum
+
+**Addendum status:** `In Review`
+**Function identity:** UC-62 Open Emergency Flow, Mother actor, Mobile + Backend.
+**Scope boundary:** This addendum reconciles the implemented OV-01 emergency contract. It does not create a new Function, change the RED-classification authority owned by UC-60, approve a retention rule, or claim an unmeasured performance SLO.
+
+### Canonical responsibility boundary
+
+| Boundary | Canonical decision | Implementation evidence |
+| --- | --- | --- |
+| RED classification | UC-60 owns deterministic RED classification and publishes `EmergencyEscalationTriggered`; UC-62 must not perform a second AI or clinical decision. | `EmergencyEscalationHandler#onEmergencyEscalationTriggered` |
+| Eligible escalation | Only a completed, owner-matching RED intake may open/reuse an emergency; ineligible or foreign intake state fails with `EMERG-006` and no emergency side effect. | `EmergencyService#requireCompletedRedIntake` |
+| Exactly-once session | The owner advisory lock serializes open/reuse. An existing intake link wins; otherwise one ACTIVE owner session is reused or created, and `linkIfAbsent` establishes the canonical intake-to-session association. | `EmergencyService#openOrReuseFromTriage`, `IEmergencySessionRepository#acquireUserLock`, `TriageEmergencyEscalationLinkRepository#linkIfAbsent` |
+| Replay and multiple RED intakes | Replaying the same RED intake returns the same linked emergency. Multiple RED intakes for the same owner may retain distinct intake links while reusing one ACTIVE emergency session. | `EmergencyServiceTest#twoRedIntakesReuseOneEmergencyButKeepTwoCanonicalLinksAndReplay`, `EmergencyTriageLinkPostgresIntegrationTest#firstRedFlushesParentSecondReusesAndReplayReturnsCanonicalEmergency` |
+| Delivery and restart | `EmergencySessionOpened` is emitted only for a newly created session. Alert delivery uses persisted attempts/leases so restart retries only unfinished delivery and does not resend a successful device. | `EmergencyTriageLinkPostgresIntegrationTest#ov01E2e014RestartReclaimsExpiredAttemptWithoutResendingSuccessfulDevice` |
+| Resolution | Resolution is owner-scoped, sets `RESOLVED`, and suppresses/fences unfinished alert projection. | `EmergencyService#resolveSession`, `EmergencyServiceTest#resolvingSessionSuppressesAndFencesInFlightAlertProjection` |
+| Manual open | `POST /api/v1/emergency/sessions` remains Mother-only and create-or-reuse for an ACTIVE owner session; optional location remains optional. | `EmergencyController#openFlow`, `EmergencyService#openFlow`, `EmergencyControllerTest` |
+
+### OV-01 trace decisions
+
+| OV-01 branch | TDS decision | Test-Spec case |
+| --- | --- | --- |
+| `OV01-B09` | A RED outcome opens or reuses exactly one owner emergency session without a second AI decision; origin linkage is retained through the UC-60/6.7 continuation contract. | `OV01-TS-62-001`, `OV01-TS-62-002` |
+| `OV01-B10` | POSTPARTUM and AI-unavailable maternal RED use the same deterministic UC-62 create-or-reuse path; retry/restart cannot duplicate session, link, alert attempt, or successful-device delivery. | `OV01-TS-62-001`, `OV01-TS-62-003` |
+| `OV01-B09/B15` authorization and owner isolation | Manual open requires authentication and the Mother role; active/read/resolve operations are owner-scoped and return neutral failures without disclosing another account's emergency state. | `OV01-TS-62-004` |
+| `OV01-B16` performance evidence boundary | No current measured p99 oracle is approved. Unit/integration elapsed time is not load evidence and cannot promote the historical target. | `OV01-TS-62-PERF-001` (`UNKNOWN / NOT ASSESSED`) |
+
+### NFR and schema reconciliation
+
+- No new schema delta is introduced by this addendum. Existing Flyway constraints and the canonical event/association tables remain authoritative.
+- The historical `p99 < 200 ms` target in this document has no current Story 6.10-bound load evidence. Its release status is `UNKNOWN / NOT ASSESSED`, not PASS.
+- Production TLS, encryption at rest, key custody, legal/DPO approval, and retention authority remain external to this technical addendum.

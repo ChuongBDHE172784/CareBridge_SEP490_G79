@@ -1,6 +1,8 @@
 # TEST-DRIVEN DEVELOPMENT SPECIFICATION
 # UC-22 Create Mother Journey
 
+> **Story 6.10 classification:** retained legacy input/superseded standalone test design. The canonical lifecycle Test-Spec and current OV-01 addendum live in `04_Implement/UC22 - Canonical Mother Lifecycle and Transition History/`. Historical evidence remains valid only where the authoritative trace matrix explicitly links it.
+
 **Document ID:** `CB-JOURNEY-TDD-001`
 **Version:** `1.0`
 **Date:** `2026-06-26`

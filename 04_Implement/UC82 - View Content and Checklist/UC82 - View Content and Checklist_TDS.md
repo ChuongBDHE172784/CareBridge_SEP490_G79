@@ -929,3 +929,16 @@ Implement only the interfaces and paths in §§8–9. Enforce C1–C8 above. Do 
 | `05_Development/CareBridgeAPI/src/main/resources/db/migration/V1__init_schema.sql` and applied migrations | Primary schema oracle |
 | `06_Testing/TestCases/mobile/OV-01-Mother-Lifecycle-Orchestration-Manual-Test-Guide.md` | OV01-MAN-009/029 manual oracle |
 | `08_References/Template/PHASE-3_TDS.md` | Mandatory skeleton |
+
+## Story 6.10 OV-01 Traceability Addendum
+
+**Addendum status:** `In Review` — technical trace contract only; no DPO/legal or retention approval is implied.
+
+This addendum is controlled by `.agents/workflows/create-specs.md` and updates the canonical spaced UC82 workspace. The underscore workspace `04_Implement/UC82_ViewContentAndChecklist/` is retained as legacy input/superseded evidence and is not an alternate Function identity.
+
+| OV-01 branch | Canonical decision | Test-Spec contract | Final evidence |
+| --- | --- | --- | --- |
+| `OV01-B12` approved stage-aware content/checklist | UC82 reads/imports only `APPROVED` records for the canonical lifecycle stage; generic browse remains explicitly non-personalized | `OV01-TS-82-610-001..004` | Official Release runner content gates, MAN-029 sealed UI/API/DB evidence |
+| `OV01-B15` privacy/account isolation | No cross-account content or lifecycle marker may survive logout/restart; denials are neutral and minimum-necessary | `OV01-TS-82-610-003/004` | Final Android MAN-032/MAN-034 bundle and security re-review |
+
+The full SRS Function allocation is canonical for UC82. Conflicting same-number rows in `3_Functional_Specification_Detailed_Scope_121UC.md` are classified as superseded allocation input, not aliases. No schema delta, endpoint, or new UC is introduced by this addendum.

@@ -519,3 +519,14 @@ curl -X POST https://[host]/api/v1/babies \
 ---
 
 *EDS v2.1 — Tích hợp CASE 2.0 AI Prompt Constraints (§17).*
+
+## Story 6.10 OV-01 Optional Baby-Linkage Addendum
+
+Story 6.5 extends the existing UC31/UC32/UC33 baby workspace with an optional Mother-journey association; it does not redefine the core profile CRUD identities.
+
+| OV-01 branch | Canonical decision | Test-Spec contract | Executable evidence |
+| --- | --- | --- | --- |
+| `OV01-B06` | A Mother may create, link, defer, or link multiple same-owner compatible babies; zero babies remains valid | `OV01-TS-31-001` | `BabyJourneyLinkServiceTest`, `BabyJourneyLinkControllerTest`, `BabyJourneyLinkagePolicyTest`, `BabyJourneyLinkSpringPostgresIntegrationTest` |
+| `OV01-B06` | Ownership and lifecycle/outcome compatibility are server-authoritative; replay is idempotent and foreign/cross-journey linkage fails closed | `OV01-TS-31-002` | the same Backend suites plus `story_6_5_baby_linkage_test.dart` |
+
+UC32 and UC33 remain downstream update/archive Functions. This addendum records their interaction boundary without creating a duplicate linkage Function.

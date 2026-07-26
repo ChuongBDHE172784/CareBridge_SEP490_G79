@@ -603,3 +603,15 @@ curl -X PUT "https://api.carebridge.local/api/v1/journeys/cccccccc-0000-0000-000
 ---
 
 *End of CB-JOURNEY-IMP-002 — UC23 Update Mother Journey TDS v1.0*
+
+## Story 6.10 OV-01 Traceability Addendum
+
+| OV-01 branch | Story AC | Canonical decision | Test-Spec contract | Executable evidence |
+| --- | --- | --- | --- | --- |
+| `OV01-B03/B04` dating/outcome revision | Story 6.3 AC1-AC5 | Outcome changes preserve provenance, actor, reason, old/new state and effective time; ongoing/unknown remain PREGNANCY, final outcomes enter POSTPARTUM under approved policy | `OV01-TS-23-001` | `JourneyPregnancyOutcomePolicyTest`, `PregnancyOutcomeServiceTest`, `PregnancyOutcomeIntegrationTest`, `PregnancyOutcomeConcurrencyIntegrationTest` |
+| `OV01-B13` complete and preserve history | Story 6.10 AC2/AC5 | Eligible ACTIVE journey may become COMPLETED; completion is excluded from active selection and records a STATUS_CHANGED history event | `OV01-TS-23-002` | `JourneyCanonicalLifecycleIntegrationTest#ov01Be019_completionPersistsStatusHistoryAndRemovesActiveSelection` |
+| `OV01-B14` archive boundary | Story 6.10 AC2/AC5 | User `ARCHIVED` remains rejected with `JOURNEY-014`; archived fixtures are inactive/immutable and retained history is not deleted. No production retention trigger is approved. | `OV01-TS-23-003` | unit user-rejection contract plus `JourneyCanonicalLifecycleIntegrationTest#ov01Be020_archivedFixtureIsInactiveImmutableAndPreservesHistory` |
+
+### `OV01-DEC-ARCHIVE-001` — current-release archive boundary
+
+`COMPLETED -> ARCHIVED` is `NOT_APPLICABLE` as an executable production transition in this release until a separately approved retention authority, threshold and trigger exist. Users may request eligible `ACTIVE -> COMPLETED`, but a user request for `ARCHIVED` remains rejected with `JOURNEY-014`. Completed or archived records are excluded from active selection, remain immutable through the user update path, and retain append-only history. The archived fixture test is boundary evidence, not a simulated system transition. Legal/DPO approval, a retention duration, and a production system trigger remain external decisions and are not inferred by this TDS.

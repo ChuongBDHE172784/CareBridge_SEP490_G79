@@ -380,3 +380,14 @@ curl -X POST "https://[host]/api/v1/journeys/[journeyId]/postpartum-logs" \
 
 *EDS v2.0 — UC-28 Add Postpartum Log*
 *Status: Draft*
+
+## Story 6.10 OV-01 Traceability Addendum
+
+The implemented Story 6.4 contract supersedes the stale draft-only evidence state for the OV-01 slice: a Mother can use postpartum recovery and add/read logs with zero linked baby profiles. Baby linkage remains optional and never becomes an authorization surrogate.
+
+| OV-01 branch | Decision | Canonical test case | Executable evidence |
+| --- | --- | --- | --- |
+| `OV01-B05` | Postpartum log ownership is the Mother journey; no baby is required | `OV01-TS-28-001` | `PostpartumLogServiceTest`, `PostpartumLogControllerTest`, `PostpartumLogPostgresIntegrationTest` |
+| `OV01-B05` | Offline draft/retry and list rendering remain account-scoped | `OV01-TS-28-002` | `postpartum_log_draft_store_test.dart`, `postpartum_log_list_screen_test.dart`, `postpartum_recovery_dashboard_test.dart` |
+
+This addendum closes technical traceability only; it does not approve clinical content or legal/DPO review.

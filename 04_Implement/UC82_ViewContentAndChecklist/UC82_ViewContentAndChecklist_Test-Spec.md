@@ -1,3 +1,5 @@
+> **Legacy input — superseded.** This underscore-named workspace is retained for provenance only. The canonical UC-82 Function workspace is `04_Implement/UC82 - View Content and Checklist/`, whose Test-Spec incorporates the approved Story 6.9 executable contract and independent review. Do not use this file as a release oracle.
+
 # TEST-DRIVEN DEVELOPMENT SPECIFICATION
 # UC-82 View Content and Checklist
 
