@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-FROM python:3.12-slim
+FROM python:3.12-alpine3.23
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -11,10 +11,10 @@ WORKDIR /opt/carebridge/evaluator
 COPY . /opt/carebridge/evaluator
 COPY --from=ai-service . /opt/carebridge/ai-service
 
-RUN python -m pip install --no-cache-dir /opt/carebridge/evaluator \
+RUN python -m pip install --no-cache-dir -e /opt/carebridge/evaluator \
     && python -m pip install --no-cache-dir -r /opt/carebridge/ai-service/requirements.txt \
-    && groupadd --system evaluator \
-    && useradd --system --gid evaluator --home-dir /home/evaluator --create-home evaluator \
+    && addgroup -S evaluator \
+    && adduser -S -G evaluator -h /home/evaluator evaluator \
     && mkdir -p /reports \
     && chown -R evaluator:evaluator /reports /opt/carebridge
 

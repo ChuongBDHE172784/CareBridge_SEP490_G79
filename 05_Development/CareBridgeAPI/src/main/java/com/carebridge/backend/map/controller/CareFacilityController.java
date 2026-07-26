@@ -28,8 +28,11 @@ public class CareFacilityController {
             @RequestParam BigDecimal lat,
             @RequestParam BigDecimal lng,
             @RequestParam(defaultValue = "5000") Integer radiusMeters,
-            @RequestParam(required = false) String type) {
-        return ResponseEntity.ok(ApiResponse.success(careFacilityService.searchNearby(lat, lng, radiusMeters, type)));
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String provinceId,
+            @RequestParam(required = false) String districtId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                careFacilityService.searchNearby(lat, lng, radiusMeters, type, provinceId, districtId)));
     }
 
     @GetMapping("/facilities")

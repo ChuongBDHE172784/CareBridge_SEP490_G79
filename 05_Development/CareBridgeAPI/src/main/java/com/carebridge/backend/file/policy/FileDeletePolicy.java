@@ -9,7 +9,7 @@ public interface FileDeletePolicy {
     /**
      * Asserts that callerId is permitted to delete the given file.
      * Strict owner-only; throws AccessDeniedBusinessException (FILE-403) for non-owners.
-     * Throws BusinessException (FILE-409) if the file is referenced by a health_record_files row.
+     * Throws BusinessException (FILE-409) if the file is referenced by a health_record_attachments row.
      */
     void assertDeletable(UploadedFile file, UUID callerId);
 }

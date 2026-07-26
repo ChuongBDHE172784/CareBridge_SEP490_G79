@@ -35,10 +35,13 @@ public class ProfileServiceImpl implements ProfileService {
             validateDateOfBirth(request.dateOfBirth());
         }
 
-        UserProfile profile = profileRepository.findByUserId(authenticatedUserId)
-                .orElse(UserProfile.builder().userId(authenticatedUserId).build());
         User user = userRepository.findById(authenticatedUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        UserProfile profile = profileRepository.findByUserId(authenticatedUserId)
+                .orElse(UserProfile.builder()
+                        .profileId(user.getPerson() == null ? authenticatedUserId : user.getPerson().getId())
+                        .userId(authenticatedUserId).build());
+        profile.setUserId(authenticatedUserId);
 
         // C2: sanitize displayName (strip HTML tags)
         if (request.displayName() != null) {
@@ -78,6 +81,7 @@ public class ProfileServiceImpl implements ProfileService {
     public ProfileResponse getProfile(UUID authenticatedUserId) {
         UserProfile profile = profileRepository.findByUserId(authenticatedUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("Profile not found"));
+        profile.setUserId(authenticatedUserId);
         User user = userRepository.findById(authenticatedUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         return toResponse(profile, user.getName());

@@ -101,7 +101,7 @@ class VerifyOtpIntegrationTest extends AbstractPostgresIntegrationTest {
         assertThat(activated.isEnabled()).isTrue();
         assertThat(activated.getAccountStatus()).isEqualTo("ACTIVE");
 
-        // otp_verifications table: no pending row remains; the consumed row is used + verified
+        // Canonical challenge: no pending row remains; the consumed row is used + verified
         assertThat(otpVerificationRepository
                 .findTopByUserIdAndUsedAtIsNullOrderByCreatedAtDescIdDesc(pending.getId()))
                 .isEmpty();
@@ -112,7 +112,7 @@ class VerifyOtpIntegrationTest extends AbstractPostgresIntegrationTest {
         assertThat(consumed.getUsedAt()).isNotNull();
         assertThat(consumed.isVerified()).isTrue();
 
-        // refresh_tokens table: a session token was issued on activation
+        // A canonical auth session token was issued on activation
         assertThat(refreshTokenRepository.findByUser_IdAndRevokedFalse(pending.getId())).hasSize(1);
     }
 }

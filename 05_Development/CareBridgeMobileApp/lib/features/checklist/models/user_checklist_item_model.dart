@@ -43,6 +43,7 @@ extension ChecklistCategoryApi on ChecklistCategory {
 
 class UserChecklistItem {
   final String itemId;
+  final String? templateItemId;
   final String itemText;
   final ChecklistCategory category;
   final bool completed;
@@ -52,6 +53,7 @@ class UserChecklistItem {
 
   const UserChecklistItem({
     required this.itemId,
+    this.templateItemId,
     required this.itemText,
     required this.category,
     required this.completed,
@@ -63,6 +65,7 @@ class UserChecklistItem {
   factory UserChecklistItem.fromJson(Map<String, dynamic> json) {
     return UserChecklistItem(
       itemId: json['itemId'] as String,
+      templateItemId: json['templateItemId'] as String?,
       itemText: json['itemText'] as String? ?? '',
       category: ChecklistCategoryApi.fromApi(json['category'] as String?),
       completed: json['completed'] as bool? ?? false,

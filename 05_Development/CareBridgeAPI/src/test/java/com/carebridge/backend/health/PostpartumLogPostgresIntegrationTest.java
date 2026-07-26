@@ -38,13 +38,17 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /** Real PostgreSQL coverage for Story 6.4 recovery invariants and idempotency. */
+@Isolated
+@Execution(ExecutionMode.SAME_THREAD)
 class PostpartumLogPostgresIntegrationTest extends AbstractPostgresIntegrationTest {
 
     private static final LocalDate RECOVERY_START = LocalDate.of(2026, 7, 1);
@@ -63,14 +67,8 @@ class PostpartumLogPostgresIntegrationTest extends AbstractPostgresIntegrationTe
 
     @BeforeEach
     void setUp() {
-        wipeUsersAndDependents();
         motherId = seedEligibleMother();
         journeyId = createDirectPostpartumJourney();
-    }
-
-    @AfterEach
-    void cleanUp() {
-        wipeUsersAndDependents();
     }
 
     @Test
@@ -89,10 +87,10 @@ class PostpartumLogPostgresIntegrationTest extends AbstractPostgresIntegrationTe
                 Long.class,
                 motherId)).isEqualTo(1L);
         assertThat(jdbcTemplate.queryForObject(
-                "select count(*) from baby_profiles where owner_user_id = ?",
+                "select count(*) from care_subjects where owner_user_id = ? and subject_type = 'BABY'",
                 Long.class,
                 motherId)).isZero();
-        assertThat(logRepository.count()).isEqualTo(1L);
+        assertThat(postpartumCount(journeyId)).isEqualTo(1L);
     }
 
     @Test
@@ -104,11 +102,15 @@ class PostpartumLogPostgresIntegrationTest extends AbstractPostgresIntegrationTe
                 UUID.fromString("00000000-0000-4000-8000-000000000003"));
         for (UUID id : ids) {
             jdbcTemplate.update("""
-                    insert into postpartum_logs (
-                        postpartum_log_id, journey_id, submission_id, log_date,
-                        pain_level, status, created_at, updated_at)
-                    values (?, ?, ?, ?, 1, 'ACTIVE', ?, ?)
+                    insert into maternal_observations (
+                        observation_id, observation_type, mother_journey_id, submission_id,
+                        observation_date, numeric_value, record_status, observed_at,
+                        payload_jsonb, source_type, legacy_source, legacy_id, created_at, updated_at)
+                    values (?, 'POSTPARTUM_LOG', ?, ?, ?, 1, 'ACTIVE', ?,
+                            '{}'::jsonb, 'POSTPARTUM_LOG', 'POSTPARTUM_LOG', ?, ?, ?)
                     """, id, journeyId, UUID.randomUUID(), RECOVERY_START,
+                    Timestamp.from(RECOVERY_START.atStartOfDay(java.time.ZoneOffset.UTC).toInstant()),
+                    id.toString(),
                     Timestamp.from(sameCreatedAt), Timestamp.from(sameCreatedAt));
         }
 
@@ -133,13 +135,13 @@ class PostpartumLogPostgresIntegrationTest extends AbstractPostgresIntegrationTe
                 motherId, journeyId, request(submissionId, (short) 3)).getPostpartumLogId();
 
         assertThat(replayId).isEqualTo(firstId);
-        assertThat(logRepository.count()).isEqualTo(1L);
+        assertThat(postpartumCount(journeyId)).isEqualTo(1L);
         assertThatThrownBy(() -> logService.addLog(
                 motherId, journeyId, request(submissionId, (short) 8)))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).getCode())
                         .isEqualTo("POSTPARTUM_SUBMISSION_CONFLICT"));
-        assertThat(logRepository.count()).isEqualTo(1L);
+        assertThat(postpartumCount(journeyId)).isEqualTo(1L);
     }
 
     @Test
@@ -170,7 +172,9 @@ class PostpartumLogPostgresIntegrationTest extends AbstractPostgresIntegrationTe
 
         assertThat(secondId).isEqualTo(firstId);
         assertThat(jdbcTemplate.queryForObject(
-                "select count(*) from postpartum_logs where journey_id = ? and submission_id = ?",
+                "select count(*) from maternal_observations "
+                        + "where legacy_source = 'POSTPARTUM_LOG' "
+                        + "and mother_journey_id = ? and submission_id = ?",
                 Long.class,
                 journeyId,
                 submissionId)).isEqualTo(1L);
@@ -178,7 +182,7 @@ class PostpartumLogPostgresIntegrationTest extends AbstractPostgresIntegrationTe
 
     private UUID seedEligibleMother() {
         User mother = userRepository.save(User.builder()
-                .email("story64-postpartum@carebridge.test")
+                .email("story64-postpartum-" + UUID.randomUUID() + "@carebridge.test")
                 .passwordHash("$2a$10$abcdefghijklmnopqrstuv")
                 .name("Story 6.4 Mother")
                 .role(Role.MOTHER)
@@ -238,7 +242,12 @@ class PostpartumLogPostgresIntegrationTest extends AbstractPostgresIntegrationTe
         return request;
     }
 
-    private void wipeUsersAndDependents() {
-        jdbcTemplate.execute("TRUNCATE TABLE users CASCADE");
+    private long postpartumCount(UUID targetJourneyId) {
+        Long count = jdbcTemplate.queryForObject(
+                "select count(*) from maternal_observations "
+                        + "where legacy_source = 'POSTPARTUM_LOG' and mother_journey_id = ?",
+                Long.class,
+                targetJourneyId);
+        return count == null ? 0 : count;
     }
 }

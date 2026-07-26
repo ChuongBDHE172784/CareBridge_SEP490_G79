@@ -13,7 +13,7 @@ public interface IZegoCloudService {
      * participant. Callers (UC-95 ConsultationSessionService) are responsible for their own
      * authorization checks before calling this.
      *
-     * @param sessionId consultation_sessions.session_id (= roomId, string form)
+     * @param sessionId archived consultation session id (= roomId, string form)
      * @param userId    caller's users.user_id, string form
      * @param userName  display name for client UI
      * @return token bundle — never persisted by the caller

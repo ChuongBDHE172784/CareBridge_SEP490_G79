@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import '../models/safety_config_model.dart';
 import '../services/fall_detection_sensor_service.dart';
@@ -6,6 +8,8 @@ import '../widgets/disable_fall_detection_sheet.dart';
 import 'enable_fall_detection_screen.dart';
 import '../../emergency/screens/emergency_contacts_screen.dart';
 import '../../emergency/services/emergency_service.dart';
+import '../../emergency/models/emergency_session_model.dart';
+import '../../privacy/services/privacy_service.dart';
 
 /// CB-023 — Safety Monitoring (UC-133..UC-141, UC-176)
 /// Hub screen for fall detection, SOS, and safety event history.
@@ -18,7 +22,8 @@ class SafetyMonitoringScreen extends StatefulWidget {
   State<SafetyMonitoringScreen> createState() => _SafetyMonitoringScreenState();
 }
 
-class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
+class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
+    with WidgetsBindingObserver {
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _surface = Color(0xFFFFF8F6);
@@ -39,6 +44,9 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
   final _fallSensorService = FallDetectionSensorService.instance;
   SafetyConfig? _config;
   List<SafetyEvent> _events = const [];
+  EmergencySession? _activeEmergency;
+  StreamSubscription<SafetyEvent>? _detectedEventSubscription;
+  String? _countdownEventId;
   bool _loading = true;
   // Local sensor-stream toggle backed by sensors_plus accelerometer/gyroscope
   // streams; backend fall detection remains controlled by SafetyConfig.
@@ -47,7 +55,34 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _detectedEventSubscription = _fallSensorService.detectedEvents.listen(
+      _onDetectedEvent,
+    );
     _load();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _detectedEventSubscription?.cancel();
+    unawaited(_fallSensorService.stop());
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_load());
+      return;
+    }
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached ||
+        state == AppLifecycleState.hidden) {
+      unawaited(_fallSensorService.stop());
+      if (mounted) setState(() => _imuSensorActive = false);
+    }
   }
 
   Future<void> _load() async {
@@ -55,8 +90,32 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
     try {
       final config = await _safetyService.getConfig();
       final events = await _safetyService.getSafetyEvents();
-      if (config.fallDetectionEnabled) {
-        await _fallSensorService.start();
+      final activeEmergency = await _emergencyService.getActive();
+      var mayShareLocation = false;
+      var mayCollectSensorData = false;
+      try {
+        final consents = await PrivacyService.instance.listConsents();
+        mayCollectSensorData = consents.any(
+          (grant) =>
+              grant.isActive &&
+              grant.dataType == 'SENSOR_DATA' &&
+              grant.purpose == 'CREATE',
+        );
+        mayShareLocation = consents.any(
+          (grant) =>
+              grant.isActive &&
+              grant.dataType == 'LOCATION' &&
+              grant.purpose == 'SHARE',
+        );
+      } catch (_) {
+        // Consent-dependent collection fails closed on lookup failure.
+      }
+      if (config.fallDetectionEnabled &&
+          config.sensorPermissionGranted &&
+          mayCollectSensorData) {
+        await _fallSensorService.start(
+          locationSharingAllowed: mayShareLocation,
+        );
       } else {
         await _fallSensorService.stop();
       }
@@ -65,7 +124,16 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
           _config = config;
           _events = events;
           _imuSensorActive = _fallSensorService.isRunning;
+          _activeEmergency = activeEmergency;
         });
+        SafetyEvent? pending;
+        for (final event in events) {
+          if (event.status == 'OPEN') {
+            pending = event;
+            break;
+          }
+        }
+        if (pending != null) unawaited(_showCountdown(pending));
       }
     } catch (_) {
       if (mounted) {
@@ -80,6 +148,95 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
     } finally {
       if (mounted) {
         setState(() => _loading = false);
+      }
+    }
+  }
+
+  void _onDetectedEvent(SafetyEvent event) {
+    if (!mounted) return;
+    setState(() {
+      _events = [event, ..._events.where((item) => item.id != event.id)];
+    });
+    unawaited(_showCountdown(event));
+  }
+
+  Future<void> _showCountdown(SafetyEvent event) async {
+    final deadline = event.countdownDeadlineAt;
+    if (!mounted ||
+        event.status != 'OPEN' ||
+        deadline == null ||
+        _countdownEventId == event.id) {
+      return;
+    }
+    _countdownEventId = event.id;
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      isDismissible: false,
+      enableDrag: false,
+      builder: (_) => SafetyCountdownSheet(event: event),
+    );
+    _countdownEventId = null;
+    try {
+      if (action == 'safe') {
+        await _confirmEventSafe(
+          event,
+          note: 'Người dùng xác nhận an toàn trong thời gian đếm ngược.',
+        );
+      } else if (action == 'help') {
+        await _safetyService.sendEmergencyAlertForEvent(event.id);
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Không thể ghi nhận phản hồi an toàn: $error'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) await _load();
+    }
+  }
+
+  Future<void> _confirmEventSafe(SafetyEvent event, {String? note}) async {
+    final updated = await _safetyService.confirmSafetyCheck(
+      event.id,
+      note: note,
+    );
+    await _resolveEventEmergency(updated);
+  }
+
+  Future<void> _reportEventFalsePositive(
+    SafetyEvent event, {
+    String? note,
+  }) async {
+    final updated = await _safetyService.reportFalsePositive(
+      event.id,
+      note: note,
+    );
+    await _resolveEventEmergency(updated);
+  }
+
+  Future<void> _resolveEventEmergency(SafetyEvent event) async {
+    final sessionId = event.emergencySessionId;
+    if (sessionId == null || sessionId.isEmpty) return;
+    await _emergencyService.resolve(sessionId);
+    if (_activeEmergency?.sessionId == sessionId && mounted) {
+      setState(() => _activeEmergency = null);
+    }
+  }
+
+  Future<void> _resolveActiveEmergency() async {
+    final active = _activeEmergency;
+    if (active == null) return;
+    try {
+      await _emergencyService.resolve(active.sessionId);
+      if (mounted) setState(() => _activeEmergency = null);
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Không thể kết thúc phiên khẩn cấp: $error')),
+        );
       }
     }
   }
@@ -107,7 +264,16 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
         );
         return;
       }
-      await _fallSensorService.start();
+      await _load();
+      if (!_fallSensorService.isRunning && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Cần consent cảm biến còn hiệu lực và quyền cảm biến đã được xác minh.',
+            ),
+          ),
+        );
+      }
     } else {
       await _fallSensorService.stop();
     }
@@ -175,6 +341,10 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
                       ),
                       const SizedBox(height: 24),
                       _buildStatusCard(fallDetectionEnabled),
+                      if (_activeEmergency != null) ...[
+                        const SizedBox(height: 16),
+                        _buildActiveEmergencyCard(),
+                      ],
                       const SizedBox(height: 24),
                       _buildSosButtons(),
                       const SizedBox(height: 24),
@@ -223,7 +393,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Text(
               'CareBridge',
               style: TextStyle(
@@ -338,6 +508,38 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
                 onChanged: _onFallDetectionToggle,
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActiveEmergencyCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _errorContainer,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.emergency, color: _onErrorContainer),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Phiên hỗ trợ khẩn cấp đang hoạt động',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                Text('Chỉ kết thúc khi bạn xác nhận hiện đã an toàn.'),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: _resolveActiveEmergency,
+            child: const Text('Tôi an toàn'),
           ),
         ],
       ),
@@ -575,8 +777,8 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
                   label: 'Tôi vẫn an toàn',
                   onTap: () => _handleEventAction(
                     event,
-                    () => _safetyService.confirmSafetyCheck(
-                      event.id,
+                    () => _confirmEventSafe(
+                      event,
                       note: 'Người dùng xác nhận an toàn từ ứng dụng.',
                     ),
                   ),
@@ -586,8 +788,8 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
                   label: 'Báo cáo phát hiện sai',
                   onTap: () => _handleEventAction(
                     event,
-                    () => _safetyService.reportFalsePositive(
-                      event.id,
+                    () => _reportEventFalsePositive(
+                      event,
                       note: 'Người dùng báo cáo phát hiện sai.',
                     ),
                   ),
@@ -644,7 +846,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
         children: [
           const Icon(Icons.verified_user_outlined, color: _tertiary),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -657,13 +859,24 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen> {
                   ),
                 ),
                 Text(
-                  'Cảm biến, thông báo đã sẵn sàng',
-                  style: TextStyle(fontSize: 12, color: _tertiary),
+                  (_config?.sensorPermissionGranted ?? false) &&
+                          _imuSensorActive
+                      ? 'Cảm biến đã được xác minh và đang hoạt động'
+                      : 'Cảm biến chưa được xác minh hoặc chưa hoạt động',
+                  style: const TextStyle(fontSize: 12, color: _tertiary),
                 ),
               ],
             ),
           ),
-          const Icon(Icons.check_circle, color: _primary),
+          Icon(
+            (_config?.sensorPermissionGranted ?? false) && _imuSensorActive
+                ? Icons.check_circle
+                : Icons.warning_amber,
+            color:
+                (_config?.sensorPermissionGranted ?? false) && _imuSensorActive
+                ? _primary
+                : _onErrorContainer,
+          ),
         ],
       ),
     );
@@ -761,6 +974,99 @@ class _BentoButton extends StatelessWidget {
               label,
               textAlign: TextAlign.center,
               style: TextStyle(color: foreground, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class SafetyCountdownSheet extends StatefulWidget {
+  const SafetyCountdownSheet({super.key, required this.event});
+
+  final SafetyEvent event;
+
+  @override
+  State<SafetyCountdownSheet> createState() => _SafetyCountdownSheetState();
+}
+
+class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
+  Timer? _timer;
+  int _remainingSeconds = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _tick();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+  }
+
+  void _tick() {
+    final deadline = widget.event.countdownDeadlineAt;
+    final remaining = deadline == null
+        ? Duration.zero
+        : deadline.difference(DateTime.now().toUtc());
+    if (remaining <= Duration.zero) {
+      _timer?.cancel();
+      if (mounted) Navigator.of(context).pop('timeout');
+      return;
+    }
+    if (mounted) {
+      setState(() => _remainingSeconds = remaining.inSeconds + 1);
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.warning_amber_rounded, size: 52),
+            const SizedBox(height: 12),
+            const Text(
+              'CareBridge phát hiện một va chạm mạnh',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Cảnh báo sẽ được xử lý sau $_remainingSeconds giây nếu bạn không phản hồi.',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    key: const Key('safety-countdown-safe'),
+                    onPressed: () => Navigator.of(context).pop('safe'),
+                    icon: const Icon(Icons.check_circle_outline),
+                    label: const Text('Tôi an toàn'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton.icon(
+                    key: const Key('safety-countdown-help'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFFBA1A1A),
+                    ),
+                    onPressed: () => Navigator.of(context).pop('help'),
+                    icon: const Icon(Icons.emergency),
+                    label: const Text('Cần trợ giúp'),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

@@ -1,4 +1,5 @@
 import '../../../core/network/api_client.dart';
+import 'package:flutter/foundation.dart';
 import '../models/safety_config_model.dart';
 
 class SafetyService {
@@ -12,14 +13,34 @@ class SafetyService {
     required bool fallDetectionEnabled,
     required String sensitivityLevel,
     required bool emergencyAutoAlert,
+    int? countdownSeconds,
+    bool? sensorPermissionGranted,
   }) async {
-    final data = await apiPut('/api/v1/safety/config', {
-      'fallDetectionEnabled': fallDetectionEnabled,
-      'sensitivityLevel': sensitivityLevel,
-      'emergencyAutoAlert': emergencyAutoAlert,
-    });
+    final request = buildConfigRequest(
+      fallDetectionEnabled: fallDetectionEnabled,
+      sensitivityLevel: sensitivityLevel,
+      emergencyAutoAlert: emergencyAutoAlert,
+      countdownSeconds: countdownSeconds,
+      sensorPermissionGranted: sensorPermissionGranted,
+    );
+    final data = await apiPut('/api/v1/safety/config', request);
     return SafetyConfig.fromJson(data['data'] as Map<String, dynamic>);
   }
+
+  @visibleForTesting
+  static Map<String, dynamic> buildConfigRequest({
+    required bool fallDetectionEnabled,
+    required String sensitivityLevel,
+    required bool emergencyAutoAlert,
+    int? countdownSeconds,
+    bool? sensorPermissionGranted,
+  }) => <String, dynamic>{
+    'fallDetectionEnabled': fallDetectionEnabled,
+    'sensitivityLevel': sensitivityLevel,
+    'emergencyAutoAlert': emergencyAutoAlert,
+    'countdownSeconds': ?countdownSeconds,
+    'sensorPermissionGranted': ?sensorPermissionGranted,
+  };
 
   // UC-134: idempotent — returns existing ACTIVE session if already enabled.
   Future<ImuMonitoringSession> enableFallDetection() async {
@@ -36,7 +57,7 @@ class SafetyService {
   }
 
   // UC-136/UC-137: send real phone IMU samples to backend fall analysis.
-  Future<void> sendImuData({
+  Future<SafetyEvent?> sendImuData({
     required double accelerometerX,
     required double accelerometerY,
     required double accelerometerZ,
@@ -44,8 +65,11 @@ class SafetyService {
     required double gyroscopeY,
     required double gyroscopeZ,
     required DateTime timestamp,
+    String? signalId,
+    double? latitude,
+    double? longitude,
   }) async {
-    await apiPost('/api/v1/safety/imu-data', {
+    final data = await apiPost('/api/v1/safety/imu-data', {
       'accelerometerX': accelerometerX,
       'accelerometerY': accelerometerY,
       'accelerometerZ': accelerometerZ,
@@ -53,7 +77,14 @@ class SafetyService {
       'gyroscopeY': gyroscopeY,
       'gyroscopeZ': gyroscopeZ,
       'timestamp': timestamp.toUtc().toIso8601String(),
+      'signalId': ?signalId,
+      'latitude': ?latitude,
+      'longitude': ?longitude,
     });
+    final payload = data['data'];
+    return payload is Map<String, dynamic>
+        ? SafetyEvent.fromJson(payload)
+        : null;
   }
 
   Future<List<SafetyEvent>> getSafetyEvents({

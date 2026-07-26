@@ -1,0 +1,37 @@
+spring:
+  config:
+    activate:
+      on-profile: hermetic
+  datasource:
+    url: ${carebridge.hermetic.datasource.url}
+    username: ${carebridge.hermetic.datasource.username}
+    password: ${carebridge.hermetic.datasource.password}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      schema: ${carebridge.hermetic.datasource.schema}
+  flyway:
+    enabled: true
+    clean-disabled: true
+    default-schema: ${carebridge.hermetic.datasource.schema}
+    schemas: ${carebridge.hermetic.datasource.schema}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+carebridge:
+  dotenv:
+    enabled: false
+  datasource-guard:
+    enabled: true
+  hermetic:
+    datasource:
+      url: ${CAREBRIDGE_HERMETIC_DB_URL}
+      username: ${CAREBRIDGE_HERMETIC_DB_USERNAME}
+      password: ${CAREBRIDGE_HERMETIC_DB_PASSWORD}
+      database-name: ${CAREBRIDGE_HERMETIC_DB_DATABASE_NAME}
+      schema: ${CAREBRIDGE_HERMETIC_DB_SCHEMA}
+  dev-seed:
+    enabled: false

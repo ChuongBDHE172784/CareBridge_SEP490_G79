@@ -5,8 +5,10 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doThrow;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -30,6 +32,7 @@ import org.springframework.context.annotation.Import;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.lang.reflect.Method;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -78,7 +81,7 @@ class CommunityTopicControllerTest {
     @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
     void getTopics_asMotherUser_shouldReturn200WithNonHiddenTopics() throws Exception {
         UUID t1 = UUID.randomUUID();
-        when(topicService.searchTopics(eq(null), eq(false), any())).thenReturn(List.of(makeTopic(t1, "Thai kỳ", false)));
+        when(topicService.searchTopics(eq(null), eq(false), eq(null), any())).thenReturn(List.of(makeTopic(t1, "Thai kỳ", false)));
 
         mockMvc.perform(get(BASE_URL))
                 .andExpect(status().isOk())
@@ -93,7 +96,7 @@ class CommunityTopicControllerTest {
     void getTopics_asModeratorWithIncludeHidden_shouldReturn200WithAllTopics() throws Exception {
         UUID t1 = UUID.randomUUID();
         UUID t2 = UUID.randomUUID();
-        when(topicService.searchTopics(eq(null), eq(true), any())).thenReturn(List.of(
+        when(topicService.searchTopics(eq(null), eq(true), eq(null), any())).thenReturn(List.of(
                 makeTopic(t1, "Thai kỳ", false),
                 makeTopic(t2, "Ẩn", true)));
 
@@ -156,7 +159,7 @@ class CommunityTopicControllerTest {
 
         mockMvc.perform(post(BASE_URL).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"name\":\"Dinh dưỡng thai kỳ\",\"sortOrder\":3}"))
+                .content("{\"name\":\"Dinh dưỡng thai kỳ\",\"type\":\"TOPIC\",\"sortOrder\":3}"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.name").value("Dinh dưỡng thai kỳ"));
@@ -237,5 +240,71 @@ class CommunityTopicControllerTest {
         mockMvc.perform(post(BASE_URL + "/" + topicId + "/follow").with(csrf()))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error").value("COM-014"));
+    }
+
+    // COM-TC-011: GET /topics?type=TOPIC forwards the type filter to the service (ADR-COM-017)
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
+    void getTopics_withTypeParam_shouldForwardTypeToService() throws Exception {
+        UUID t1 = UUID.randomUUID();
+        when(topicService.searchTopics(eq(null), eq(false),
+                eq(com.carebridge.backend.community.entity.TopicType.TOPIC), any()))
+                .thenReturn(List.of(makeTopic(t1, "Thai kỳ", false)));
+
+        mockMvc.perform(get(BASE_URL).param("type", "TOPIC"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].name").value("Thai kỳ"));
+
+        verify(topicService).searchTopics(eq(null), eq(false),
+                eq(com.carebridge.backend.community.entity.TopicType.TOPIC), any());
+    }
+
+    // COM-TC-034: privileged delete succeeds with no response body.
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "MODERATOR")
+    void deleteTopic_asModeratorWithoutDependents_shouldReturn204() throws Exception {
+        UUID topicId = UUID.randomUUID();
+
+        mockMvc.perform(delete(BASE_URL + "/" + topicId).with(csrf()))
+                .andExpect(status().isNoContent());
+    }
+
+    // COM-TC-035: service dependency conflict is exposed as COM-016/409.
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "MODERATOR")
+    void deleteTopic_withDependents_shouldReturn409Com016() throws Exception {
+        UUID topicId = UUID.randomUUID();
+        stubDeleteConflict(topicId);
+
+        mockMvc.perform(delete(BASE_URL + "/" + topicId).with(csrf()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("COM-016"));
+    }
+
+    // COM-TC-036: DELETE uses the same privileged-role boundary as CREATE/PATCH.
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
+    void deleteTopic_asMother_shouldReturn403() throws Exception {
+        UUID topicId = UUID.randomUUID();
+
+        mockMvc.perform(delete(BASE_URL + "/" + topicId).with(csrf()))
+                .andExpect(status().isForbidden());
+    }
+
+    private void stubDeleteConflict(UUID topicId) {
+        try {
+            Class<?> exceptionType = Class.forName(
+                    "com.carebridge.backend.community.exception.TopicHasDependentsException");
+            RuntimeException exception = (RuntimeException) exceptionType
+                    .getConstructor(String.class)
+                    .newInstance("Topic has dependents");
+            Method deleteMethod = topicService.getClass()
+                    .getMethod("deleteTopic", UUID.class, UUID.class);
+            doThrow(exception).when(topicService);
+            deleteMethod.invoke(topicService, topicId,
+                    UUID.fromString("00000000-0000-0000-0000-000000000001"));
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError("Missing planned DELETE/COM-016 contract", e);
+        }
     }
 }

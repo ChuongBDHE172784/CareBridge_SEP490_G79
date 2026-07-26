@@ -29,7 +29,11 @@ public class ModerationMapper {
                 report.getCreatedAt(),
                 buildReason(report),
                 report.getStatus(),
-                report.getReportSource()
+                report.getReportSource(),
+                report.getResolvedAt(),
+                report.getAssignedModeratorId(),
+                report.getRevertedAt(),
+                report.getRevertedBy()
         );
     }
 

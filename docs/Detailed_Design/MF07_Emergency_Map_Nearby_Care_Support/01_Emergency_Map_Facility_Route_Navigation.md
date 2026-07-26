@@ -111,44 +111,88 @@ actor "Mother" as M
 participant "Mobile App (Client)" as App
 participant "CareFacilityController" as Controller
 participant "CareFacilityServiceImpl" as Service
-participant "TrackAsiaRoutingClient" as Routing
+participant "TrackAsiaClient" as TrackAsia
+participant "CareFacilityRepository" as FacilityRepo
 database "PostgreSQL" as DB
 participant "Device Capability\n(Dialer / Maps)" as Device
 
 == UC-77 Open Emergency Map ==
-M -> App : Mở Emergency Map
-App -> App : Xin quyền vị trí + hiển thị\nthông báo "không phải dịch vụ cấp cứu"
-App -> App : Guard: chỉ tiếp tục khi permission granted
+M -> App : 1. Open Emergency Map
+activate App
+App -> App : 2. Request device location permission + display\ndisclaimer "not an emergency service"
+App -> App : 3. Guard — only proceed when permission granted
 
 == UC-78 Find Nearby Care Facilities ==
-App -> Controller : GET /api/v1/map/nearby-facilities?lat=&lng=&radius=
-Controller -> Service : findNearby(lat, lng, radiusKm)
-Service -> DB : SELECT * FROM care_facilities\nWHERE verification_status='VERIFIED' AND ST_DWithin(...)
-DB --> Service : facilities[]
-Service --> Controller : NearbyResponse{facilities[]}
-Controller --> App : HTTP 200 OK {facilities[]}
-App --> M : Hiển thị facility trên bản đồ
+App -> Controller : 4. GET /api/v1/map/nearby-facilities?lat=&lng=&radiusMeters=&type=
+activate Controller
+Controller -> Service : 5. searchNearby(lat, lng, radiusMeters, type)
+activate Service
+alt 6. TrackAsia returns valid result (preferred source)
+  Service -> TrackAsia : 6. searchNearby(lat, lng, radiusMeters, type)
+  activate TrackAsia
+  TrackAsia --> Service : 7. GeoJSON features[] (nearby POIs)
+  deactivate TrackAsia
+  Service -> Service : 8. parseTrackAsiaResults() → FacilityResponse[]\n(sourceType="TRACKASIA", verificationStatus="UNVERIFIED" by default)
+else 6. TrackAsia error/timeout/empty → fallback internal data
+  Service -> FacilityRepo : 6a. findNearby(lat, lng, radiusMeters)
+  activate FacilityRepo
+  FacilityRepo -> DB : 6b. SELECT * FROM care_facilities\nWHERE lat/lng NOT NULL AND earth_distance(...) <= radiusMeters*1000
+  activate DB
+  DB --> FacilityRepo : 6c. rows[] (do not filter by verification_status)
+  deactivate DB
+  FacilityRepo --> Service : 6d. facilities[]
+  deactivate FacilityRepo
+end
+Service --> Controller : 9. NearbyResponse{facilities[], totalCount}
+deactivate Service
+Controller --> App : 10. HTTP 200 OK {facilities[]}
+deactivate Controller
+App --> M : 11. Display facilities on map
+deactivate App
 
 == UC-79 View Route, ETA and Quick Call or Navigate ==
-M -> App : Chọn 1 facility
-App -> Controller : POST /api/v1/map/route\n{originLat, originLng, facilityId}
-Controller -> Service : getRoute(request)
-Service -> Routing : computeRoute(origin, destination)
-Routing --> Service : distance, eta, polyline
-Service --> Controller : RouteResponse
-Controller --> App : HTTP 200 OK {route}
-App --> M : Hiển thị route + ETA
+M -> App : 12. Select 1 facility
+activate App
+App -> Controller : 13. POST /api/v1/map/route\n{fromLat, fromLng, toLat, toLng, transportMode}
+activate Controller
+Controller -> Service : 14. getRoute(request)
+activate Service
+Service -> TrackAsia : 15. route(fromLat, fromLng, toLat, toLng, transportMode)
+activate TrackAsia
+TrackAsia --> Service : 16. GeoJSON route{routes: [{distance, duration, steps[]}]}
+deactivate TrackAsia
+Service -> Service : 17. parse first leg → distanceMeters, etaMinutes,\nRoutePoint list from steps[].maneuver
+Service --> Controller : 18. RouteResponse{distanceMeters, etaMinutes, points[]}
+deactivate Service
+Controller --> App : 19. HTTP 200 OK {route}
+deactivate Controller
+App --> M : 20. Display route + ETA
+deactivate App
 
-alt Mother chọn Gọi nhanh
-  M -> Device : gọi facilityPhone
-else Mother chọn Chỉ đường
-  M -> Device : mở app bản đồ native với toạ độ đích
+alt 21. Mother selects Quick Call
+  M -> Device : 21. call facilityPhone (native dialer)
+else 21. Mother selects Directions
+  M -> Device : 21a. open native map app with destination coordinates (maps intent)
 end
 
 @enduml
 ```
 
 **Hình 2 — Sequence Diagram: Open Map → Find Nearby Facilities → View Route/ETA → Quick Call or Navigate (Main Flow)**
+
+> **Ghi chú grounding (quan trọng — lệch với Business Rules mục 5):** Code thật của
+> `CareFacilityServiceImpl.searchNearby(...)` gọi **TrackAsia (nguồn ngoài) trước tiên**, và
+> kết quả TrackAsia được gắn cứng `verificationStatus="UNVERIFIED"` — nghĩa là trong đường
+> đi chính (happy path), UC-78 **có thể trả về facility chưa được admin xác minh**. Chỉ khi
+> TrackAsia lỗi/rỗng, hệ thống mới fallback sang `CareFacilityRepository.findNearby(...)`,
+> và truy vấn native đó **không lọc theo `verification_status='VERIFIED'`** — trả về mọi
+> facility có toạ độ trong bán kính bất kể trạng thái xác minh. Điều này khác với khẳng định
+> ở mục 5 ("chỉ facility VERIFIED được trả về") và với note trong State Machine ở mục 4 —
+> hành vi lọc theo VERIFIED hiện **không được enforce ở tầng service/repository** cho luồng
+> tìm kiếm gần đây; nó chỉ đúng cho các endpoint khác dùng `findByVerificationStatus(...)`.
+> Ngoài ra, `map/routeprovider/RouteProvider.java` tồn tại như một interface nhưng
+> `CareFacilityServiceImpl` phụ thuộc thẳng vào `TrackAsiaClient` cụ thể, không qua
+> interface này.
 
 ## 4. State Machine — `CareFacility.verificationStatus`
 

@@ -157,7 +157,7 @@ class AuthServiceRegisterTest {
         when(otpRepoMock.save(any(OtpVerification.class))).thenAnswer(inv -> {
             OtpVerification o = inv.getArgument(0);
             if (o.getId() == null) {
-                o.setId(42L);
+                o.setId(UUID.fromString("00000000-0000-0000-0000-000000000042"));
             }
             return o;
         });
@@ -231,12 +231,26 @@ class AuthServiceRegisterTest {
         when(userRepositoryMock.existsByPhone("+84912345678")).thenReturn(true);
 
         assertThatThrownBy(() -> svc.register(
-                registerRequest(null, "+84912345678", "MyP@ssw0rd123", Role.MOTHER)))
+                registerRequest(null, "0912345678", "MyP@ssw0rd123", Role.MOTHER)))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("Account already exists");
 
         verify(userRepositoryMock, never()).save(any(User.class));
         verify(otpRepoMock, never()).save(any(OtpVerification.class));
+    }
+
+    @Test
+    void register_invalidVietnamesePhone_rejectedBeforeRepositoryLookup() {
+        AuthServiceImpl svc = newUnitAuthService(mock(AuthenticationPolicy.class));
+        when(passwordComplexityPolicyMock.isComplexEnough(anyString())).thenReturn(true);
+
+        assertThatThrownBy(() -> svc.register(
+                registerRequest(null, "+84123456789", "MyP@ssw0rd123", Role.MOTHER)))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("Vietnamese mobile number");
+
+        verify(userRepositoryMock, never()).existsByPhone(anyString());
+        verify(userRepositoryMock, never()).save(any(User.class));
     }
 
     @Test

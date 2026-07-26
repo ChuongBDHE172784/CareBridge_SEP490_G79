@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.carebridge.backend.audit.service.AuditService;
@@ -60,7 +61,8 @@ class ConsultationRequestNotificationServiceImplTest {
         when(preferenceRepository.isPushEnabled(RECIPIENT_ID, NotificationType.CONSULTATION))
                 .thenReturn(true);
         when(writer.insertIfAbsent(any())).thenReturn(true);
-        when(writer.claim(any())).thenReturn(true);
+        when(writer.claim(any())).thenReturn(UUID.randomUUID());
+        when(writer.complete(any(), any())).thenReturn(true);
         when(deviceTokenRepository.findByUserIdAndActiveTrue(RECIPIENT_ID))
                 .thenReturn(List.of(DeviceToken.builder()
                         .userId(RECIPIENT_ID)
@@ -98,5 +100,22 @@ class ConsultationRequestNotificationServiceImplTest {
                 "type", "CONSULTATION_REQUEST",
                 "requestId", REQUEST_ID.toString()));
         assertThat(data.getValue()).doesNotContainKeys("topic", "description");
+    }
+
+    @Test
+    void staleCompletionDoesNotEmitSuccessAudit() {
+        UUID claimToken = UUID.randomUUID();
+        when(preferenceRepository.isPushEnabled(RECIPIENT_ID, NotificationType.CONSULTATION))
+                .thenReturn(true);
+        when(writer.insertIfAbsent(any())).thenReturn(true);
+        when(writer.claim(any())).thenReturn(claimToken);
+        when(deviceTokenRepository.findByUserIdAndActiveTrue(RECIPIENT_ID))
+                .thenReturn(List.of());
+        when(writer.complete(any(), eq(claimToken))).thenReturn(false);
+
+        service.notifyCreated(RECIPIENT_ID, UUID.randomUUID(), REQUEST_ID);
+
+        verify(writer).complete(any(), eq(claimToken));
+        verifyNoInteractions(auditService);
     }
 }

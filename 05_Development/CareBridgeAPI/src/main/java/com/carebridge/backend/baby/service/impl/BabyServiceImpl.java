@@ -111,22 +111,11 @@ public class BabyServiceImpl implements IBabyService {
     @Override
     @Transactional(readOnly = true)
     public List<BabyProfileDetailResponse> listBabyProfiles(UUID callerId) {
+        UUID activeBabyId = babyRepository.findActiveBabyId(callerId).orElse(null);
         return babyRepository
                 .findByOwnerUserIdAndStatusOrderByCreatedAtAsc(callerId, BabyProfileStatus.ACTIVE)
                 .stream()
-                .map(p -> BabyProfileDetailResponse.builder()
-                        .id(p.getId())
-                        .nickname(p.getNickname())
-                        .birthDate(p.getBirthDate())
-                        .gender(p.getGender() != null ? p.getGender().name() : null)
-                        .birthWeightKg(p.getBirthWeightKg())
-                        .birthLengthCm(p.getBirthLengthCm())
-                        .status(p.getStatus().name())
-                        .active(Boolean.TRUE.equals(p.getActive()))
-                        .createdAt(p.getCreatedAt())
-                        .updatedAt(p.getUpdatedAt())
-                        .relatedJourneyId(p.getRelatedJourneyId())
-                        .build())
+                .map(profile -> toDetailResponse(profile, activeBabyId))
                 .toList();
     }
 
@@ -144,19 +133,8 @@ public class BabyServiceImpl implements IBabyService {
         }
 
         // C2: ARCHIVED still returns 200 (BR-BABY-011)
-        return BabyProfileDetailResponse.builder()
-                .id(profile.getId())
-                .nickname(profile.getNickname())
-                .birthDate(profile.getBirthDate())
-                .gender(profile.getGender() != null ? profile.getGender().name() : null)
-                .birthWeightKg(profile.getBirthWeightKg())
-                .birthLengthCm(profile.getBirthLengthCm())
-                .status(profile.getStatus().name())
-                .active(Boolean.TRUE.equals(profile.getActive()))
-                .createdAt(profile.getCreatedAt())
-                .updatedAt(profile.getUpdatedAt())
-                .relatedJourneyId(profile.getRelatedJourneyId())
-                .build();
+        UUID activeBabyId = babyRepository.findActiveBabyId(callerId).orElse(null);
+        return toDetailResponse(profile, activeBabyId);
     }
 
     @Override
@@ -169,31 +147,17 @@ public class BabyServiceImpl implements IBabyService {
             throw new BusinessException(HttpStatus.FORBIDDEN, "BABY-003",
                     "Access denied to baby profile");
         }
-        if (profile.getStatus() != BabyProfileStatus.ACTIVE) {
+        if (profile.getStatus() == BabyProfileStatus.ARCHIVED) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "BABY-004",
                     "Cannot activate archived baby profile");
         }
 
-        babyRepository.updateActiveByOwnerUserId(callerId, false);
-        profile.setActive(true);
-        BabyProfile saved = babyRepository.save(profile);
+        babyRepository.setActiveBaby(callerId, babyId);
 
         auditService.log(AuditAction.BABY_ACTIVE_PROFILE_SWITCHED, callerId,
-                "BabyProfile", saved.getId().toString(), "active");
+                "BabyProfile", profile.getId().toString(), "active");
 
-        return BabyProfileDetailResponse.builder()
-                .id(saved.getId())
-                .nickname(saved.getNickname())
-                .birthDate(saved.getBirthDate())
-                .gender(saved.getGender() != null ? saved.getGender().name() : null)
-                .birthWeightKg(saved.getBirthWeightKg())
-                .birthLengthCm(saved.getBirthLengthCm())
-                .status(saved.getStatus().name())
-                .active(Boolean.TRUE.equals(saved.getActive()))
-                .createdAt(saved.getCreatedAt())
-                .updatedAt(saved.getUpdatedAt())
-                .relatedJourneyId(saved.getRelatedJourneyId())
-                .build();
+        return toDetailResponse(profile, babyId);
     }
 
     @Override
@@ -311,8 +275,9 @@ public class BabyServiceImpl implements IBabyService {
     public PaginatedResponse<BabyProfileDetailResponse> listJourneyBabies(UUID journeyId, int page, int size, UUID callerId) {
         linkagePolicy.requireEligibleJourneyForRead(journeyId, callerId);
         var pageable=PageRequest.of(page,size,Sort.by(Sort.Order.asc("createdAt"),Sort.Order.asc("id")));
+        UUID activeBabyId = babyRepository.findActiveBabyId(callerId).orElse(null);
         return PaginatedResponse.of(babyRepository.findByOwnerUserIdAndRelatedJourneyIdAndStatus(callerId, journeyId, BabyProfileStatus.ACTIVE, pageable)
-                .map(this::toDetailResponse));
+                .map(profile -> toDetailResponse(profile, activeBabyId)));
     }
 
     private void acquireSubmissionLock(UUID owner, BabyLinkOperation operation, UUID submission) {
@@ -340,10 +305,10 @@ public class BabyServiceImpl implements IBabyService {
                 .relatedJourneyId(p.getRelatedJourneyId()).build();
     }
 
-    private BabyProfileDetailResponse toDetailResponse(BabyProfile p) {
+    private BabyProfileDetailResponse toDetailResponse(BabyProfile p, UUID activeBabyId) {
         return BabyProfileDetailResponse.builder().id(p.getId()).nickname(p.getNickname()).birthDate(p.getBirthDate())
                 .gender(p.getGender()==null?null:p.getGender().name()).birthWeightKg(p.getBirthWeightKg())
-                .birthLengthCm(p.getBirthLengthCm()).status(p.getStatus().name()).active(Boolean.TRUE.equals(p.getActive()))
+                .birthLengthCm(p.getBirthLengthCm()).status(p.getStatus().name()).active(p.getId().equals(activeBabyId))
                 .createdAt(p.getCreatedAt()).updatedAt(p.getUpdatedAt()).relatedJourneyId(p.getRelatedJourneyId()).build();
     }
 }

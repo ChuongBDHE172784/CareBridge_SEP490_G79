@@ -7,7 +7,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "evidence_sources")
+@Table(name = "knowledge_sources")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -16,6 +16,7 @@ import java.util.UUID;
 public class EvidenceSource {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "knowledge_source_id")
     private UUID id;
 
     @Column(nullable = false, unique = true, length = 255)

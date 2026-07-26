@@ -3,18 +3,26 @@ class CommunityTopic {
   final String name;
   final String description;
   final String icon;
+  final String type;
+  final String? parentId;
   final bool isHidden;
   final int sortOrder;
   final bool isFollowed;
+  // Real count of APPROVED questions under this topic (ADR-COM-015 in
+  // CommunityTopicManagement_TDS.md) — replaces the previous sortOrder*100 fake value.
+  final int questionCount;
 
   CommunityTopic({
     required this.id,
     required this.name,
     required this.description,
     required this.icon,
+    this.type = 'TOPIC',
+    this.parentId,
     required this.isHidden,
     required this.sortOrder,
     this.isFollowed = false,
+    this.questionCount = 0,
   });
 
   factory CommunityTopic.fromJson(Map<String, dynamic> json) => CommunityTopic(
@@ -22,9 +30,12 @@ class CommunityTopic {
     name: json['name'] as String,
     description: json['description'] as String? ?? '',
     icon: json['icon'] as String? ?? 'topic',
+    type: json['type'] as String? ?? 'TOPIC',
+    parentId: json['parentId'] as String?,
     isHidden: json['isHidden'] as bool? ?? false,
     sortOrder: json['sortOrder'] as int? ?? 0,
     isFollowed: json['isFollowed'] as bool? ?? false,
+    questionCount: json['questionCount'] as int? ?? 0,
   );
 
   CommunityTopic copyWith({bool? isFollowed}) => CommunityTopic(
@@ -32,9 +43,12 @@ class CommunityTopic {
     name: name,
     description: description,
     icon: icon,
+    type: type,
+    parentId: parentId,
     isHidden: isHidden,
     sortOrder: sortOrder,
     isFollowed: isFollowed ?? this.isFollowed,
+    questionCount: questionCount,
   );
 }
 

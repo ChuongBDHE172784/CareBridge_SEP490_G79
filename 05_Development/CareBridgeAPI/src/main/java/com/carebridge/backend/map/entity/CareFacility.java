@@ -32,8 +32,20 @@ public class CareFacility {
     @Column(name = "facility_type", length = 50)
     private String facilityType;
 
+    @Column(name = "facility_level", length = 50)
+    private String facilityLevel;
+
+    @Column(name = "ownership_type", length = 30)
+    private String ownershipType;
+
     @Column(length = 500)
     private String address;
+
+    @Column(name = "province_id", length = 2)
+    private String provinceId;
+
+    @Column(name = "district_id", length = 4)
+    private String districtId;
 
     @Column(precision = 10, scale = 8)
     private BigDecimal latitude;
@@ -50,8 +62,20 @@ public class CareFacility {
     @Column(name = "source_type", length = 30)
     private String sourceType;
 
+    @Column(name = "external_source_id", length = 150)
+    private String externalSourceId;
+
+    @Builder.Default
+    @Column(name = "is_active", nullable = false)
+    private Boolean active = true;
+
+    @Builder.Default
+    @Column(name = "is_searchable", nullable = false)
+    private Boolean searchable = true;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "verification_status", nullable = false, length = 30)
+    @Builder.Default
     private FacilityStatus verificationStatus = FacilityStatus.UNVERIFIED;
 
     @CreationTimestamp

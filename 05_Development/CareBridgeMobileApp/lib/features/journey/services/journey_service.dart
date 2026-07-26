@@ -255,6 +255,22 @@ class JourneyService {
     return List.unmodifiable(transitions);
   }
 
+  Future<JourneyTimelinePage> getTimeline(
+    String journeyId, {
+    int page = 0,
+    int size = 20,
+  }) async {
+    final requestUserId = AuthState.instance.userId;
+    final data = await apiGet(
+      '/api/v1/journeys/$journeyId/timeline?page=$page&size=$size',
+    );
+    if (!_isCurrentUser(requestUserId)) {
+      throw StateError('Authenticated account changed during timeline request');
+    }
+    final payload = data['data'] as Map<String, dynamic>? ?? const {};
+    return JourneyTimelinePage.fromJson(payload);
+  }
+
   Future<PregnancyOutcomeResult> recordPregnancyOutcome(
     String journeyId,
     RecordPregnancyOutcomeRequest request,

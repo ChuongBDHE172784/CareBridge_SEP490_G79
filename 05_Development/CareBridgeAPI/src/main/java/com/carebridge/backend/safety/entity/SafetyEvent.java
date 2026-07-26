@@ -9,7 +9,8 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "imu_safety_events")
+@Table(name = "safety_events")
+@org.hibernate.annotations.SQLRestriction("record_type = 'IMU_EVENT'")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -19,12 +20,13 @@ public class SafetyEvent {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(name = "safety_event_id")
     private UUID id;
 
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    @Column(name = "imu_session_id", nullable = false)
+    @Column(name = "monitoring_session_id", nullable = false)
     private UUID imuSessionId;
 
     @Enumerated(EnumType.STRING)
@@ -43,6 +45,9 @@ public class SafetyEvent {
     @Column(name = "detected_at", nullable = false)
     private Instant detectedAt;
 
+    @Column(name = "client_detected_at")
+    private Instant clientDetectedAt;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
     @Builder.Default
@@ -54,6 +59,36 @@ public class SafetyEvent {
     @Column(name = "notes")
     private String notes;
 
-    @Column(name = "created_by", nullable = false)
+    @Column(name = "signal_key", length = 200)
+    private String signalKey;
+
+    @Column(name = "countdown_deadline_at")
+    private Instant countdownDeadlineAt;
+
+    @Column(name = "response_type", length = 30)
+    private String responseType;
+
+    @Column(name = "response_reason", length = 500)
+    private String responseReason;
+
+    @Column(name = "response_at")
+    private Instant respondedAt;
+
+    @Column(name = "escalation_started_at")
+    private Instant escalationStartedAt;
+
+    @Column(name = "emergency_session_id")
+    private UUID emergencySessionId;
+
+    @Column(name = "created_by_text", nullable = false)
     private String createdBy;
+
+    @Builder.Default
+    @Column(name = "record_type", nullable = false, updatable = false)
+    private String recordType = "IMU_EVENT";
+
+    @PrePersist
+    void prepareCanonicalEvent() {
+        recordType = "IMU_EVENT";
+    }
 }

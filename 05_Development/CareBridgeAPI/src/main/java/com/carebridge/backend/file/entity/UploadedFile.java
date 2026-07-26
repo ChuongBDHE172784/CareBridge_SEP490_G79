@@ -1,5 +1,8 @@
 package com.carebridge.backend.file.entity;
 
+import com.carebridge.backend.file.enums.FileAccessMode;
+import com.carebridge.backend.file.enums.FileKind;
+import com.carebridge.backend.file.enums.FilePurpose;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -9,7 +12,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "uploaded_files")
+@Table(name = "attachments")
 @Getter
 @Setter
 @Builder
@@ -19,7 +22,7 @@ public class UploadedFile {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "file_id", updatable = false, nullable = false)
+    @Column(name = "attachment_id", updatable = false, nullable = false)
     private UUID id;
 
     @Column(name = "owner_user_id", nullable = false)
@@ -27,6 +30,21 @@ public class UploadedFile {
 
     @Column(name = "storage_key", nullable = false, unique = true, length = 500)
     private String storageKey;
+
+    @Transient
+    @Builder.Default
+    private String storageProvider = "cloudinary";
+
+    @Transient
+    @Builder.Default
+    private FileKind kind = FileKind.IMAGE;
+
+    @Transient
+    private FilePurpose purpose;
+
+    @Transient
+    @Builder.Default
+    private FileAccessMode accessMode = FileAccessMode.PRIVATE;
 
     @Column(name = "original_name", nullable = false, length = 255)
     private String originalName;
@@ -36,6 +54,9 @@ public class UploadedFile {
 
     @Column(name = "file_size_bytes", nullable = false)
     private long fileSizeBytes;
+
+    @Column(name = "checksum", length = 64)
+    private String checksum;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)

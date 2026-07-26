@@ -48,6 +48,7 @@ void main() async {
   runApp(CareBridgeApp(firebaseEnabled: firebaseReady));
   if (firebaseReady) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      FcmService.instance.markNavigationReady();
       unawaited(FcmService.instance.initTapHandling());
     });
   }
@@ -88,7 +89,10 @@ class CareBridgeApp extends StatelessWidget {
       routerConfig: appRouter,
       builder: (context, child) {
         final app = child ?? const SizedBox.shrink();
-        return firebaseEnabled ? DirectCallHost(child: app) : app;
+        return DirectCallHost(
+          manageAuthenticatedSession: firebaseEnabled,
+          child: app,
+        );
       },
     );
   }

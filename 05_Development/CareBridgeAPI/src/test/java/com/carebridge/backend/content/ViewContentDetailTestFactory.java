@@ -6,6 +6,7 @@ import com.carebridge.backend.content.entity.ContentStatus;
 import com.carebridge.backend.content.entity.ContentType;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.UUID;
 
 public final class ViewContentDetailTestFactory {
@@ -20,6 +21,7 @@ public final class ViewContentDetailTestFactory {
                 .title("Dinh dưỡng thai kỳ").body("Nội dung chi tiết về dinh dưỡng...")
                 .stage(ContentStage.PREGNANCY).topicId(TOPIC_ID).status(ContentStatus.APPROVED)
                 .versionNo(1).sourceLabel("WHO Guidelines 2024").authorUserId(AUTHOR_ID)
+                .sources(List.of())
                 .publishedAt(Instant.now().minus(30, ChronoUnit.DAYS))
                 .updatedAt(Instant.now().minus(30, ChronoUnit.DAYS)).build();
     }

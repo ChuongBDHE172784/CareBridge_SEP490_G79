@@ -161,56 +161,139 @@ skinparam backgroundColor #FAFAFA
 
 actor "User" as U
 participant "AccountDeletionController" as DelController
+participant "AccountDeletionServiceImpl" as DelService
+participant "AccountDeletionRequestRepository" as DelRepo
 actor "System Admin" as Admin
 participant "AdminUserController" as AdminController
 participant "AdminUserServiceImpl" as AdminService
+participant "UserRepository" as UserRepo
 participant "SecurityIncidentController" as SecController
 participant "SecurityIncidentService" as SecService
+participant "SecurityEventRepository" as SecRepo
 participant "AuditService" as Audit
 database "PostgreSQL" as DB
 
 == UC-14 Deactivate or Delete Own Account ==
-U -> DelController : POST /api/v1/account/deletion-request\n{reason}
-DelController -> DB : INSERT INTO account_deletion_requests\n(status=PENDING, requested_at=now)
-DelController -> Audit : emit(SECURITY_EVENT, "deletion_requested")
-DelController --> U : HTTP 201 Created {status=PENDING}
+U -> DelController : 1. POST /api/v1/account/deletion-request\n{reason}
+activate DelController
+DelController -> DelService : 2. requestDeletion(userId, request)
+activate DelService
+DelService -> DelRepo : 3. save(AccountDeletionRequest{status=PENDING, requestedAt=now})
+activate DelRepo
+DelRepo -> DB : 4. INSERT INTO account_deletion_requests ...
+activate DB
+DB --> DelRepo : 5. saved
+deactivate DB
+DelRepo --> DelService : 6. AccountDeletionRequest
+deactivate DelRepo
+DelService -> Audit : 7. log(SECURITY_EVENT, entityType="AccountDeletionRequest")
+activate Audit
+Audit --> DelService : 8. void
+deactivate Audit
+DelService --> DelController : 9. AccountDeletionRequestResponse{status=PENDING}
+deactivate DelService
+DelController --> U : 10. HTTP 201 Created {status=PENDING}
+deactivate DelController
 
 == UC-17 Administer User Accounts and Role Access ==
-Admin -> AdminController : GET /api/v1/admin/users?status=PENDING_DELETION
-AdminController -> AdminService : listUsers(filter)
-AdminService -> DB : SELECT ... FROM users JOIN account_deletion_requests
-DB --> AdminService : users[]
-AdminService --> AdminController : users[]
-AdminController --> Admin : HTTP 200 OK {users[]}
+Admin -> AdminController : 11. GET /api/v1/admin/users?status=PENDING_ACTIVATION
+activate AdminController
+AdminController -> AdminService : 12. searchUsers(query, pageable)
+activate AdminService
+AdminService -> UserRepo : 13. findAll(spec, pageable)
+activate UserRepo
+UserRepo -> DB : 14. SELECT ... FROM users WHERE ...
+activate DB
+DB --> UserRepo : 15. rows[]
+deactivate DB
+UserRepo --> AdminService : 16. users[]
+deactivate UserRepo
+AdminService --> AdminController : 17. Page<AdminUserSummaryResponse>
+deactivate AdminService
+AdminController --> Admin : 18. HTTP 200 OK {users[]}
+deactivate AdminController
 
-Admin -> AdminController : PATCH /api/v1/admin/users/{userId}/status\n{status="DEACTIVATED"}
-AdminController -> AdminService : changeStatus(adminId, userId, "DEACTIVATED")
-AdminService -> AdminService : check adminId != userId\n(separation-of-duties)
-AdminService -> DB : UPDATE users SET account_status='DEACTIVATED'
-AdminService -> DB : UPDATE account_deletion_requests\nSET status='COMPLETED', processed_by=adminId
-AdminService -> Audit : emit(USER_ACCOUNT_STATUS_CHANGED)
-AdminService --> AdminController : void
-AdminController --> Admin : HTTP 200 OK
+Admin -> AdminController : 19. PATCH /api/v1/admin/users/{targetUserId}/status\n{status="DEACTIVATED"}
+activate AdminController
+AdminController -> AdminService : 20. updateStatus(callerUserId, targetUserId, request)
+activate AdminService
+AdminService -> AdminService : 21. check targetUserId != callerUserId\n[separation-of-duties — 403 if violated]
+AdminService -> UserRepo : 22. save(user{accountStatus="DEACTIVATED"})
+activate UserRepo
+UserRepo -> DB : 23. UPDATE users SET account_status='DEACTIVATED'
+activate DB
+DB --> UserRepo : 24. updated
+deactivate DB
+UserRepo --> AdminService : 25. void
+deactivate UserRepo
+AdminService -> Audit : 26. log(USER_ACCOUNT_STATUS_CHANGED)
+activate Audit
+Audit --> AdminService : 27. void
+deactivate Audit
+AdminService --> AdminController : 28. AdminUserSummaryResponse
+deactivate AdminService
+AdminController --> Admin : 29. HTTP 200 OK
+deactivate AdminController
 
 == UC-18 Review Sensitive Access and Security Events ==
-Admin -> SecController : GET /api/v1/admin/security-events?status=OPEN
-SecController -> SecService : listEvents(filter)
-SecService -> DB : SELECT * FROM security_events WHERE status='OPEN'
-DB --> SecService : events[]
-SecService --> SecController : events[]
-SecController --> Admin : HTTP 200 OK {events[]}
+Admin -> SecController : 30. GET /api/v1/admin/security-events?status=OPEN
+activate SecController
+SecController -> SecService : 31. listEvents(filter)
+activate SecService
+SecService -> SecRepo : 32. findByStatus(OPEN, pageable)
+activate SecRepo
+SecRepo -> DB : 33. SELECT * FROM security_events WHERE status='OPEN'
+activate DB
+DB --> SecRepo : 34. events[]
+deactivate DB
+SecRepo --> SecService : 35. events[]
+deactivate SecRepo
+SecService --> SecController : 36. events[]
+deactivate SecService
+SecController --> Admin : 37. HTTP 200 OK {events[]}
+deactivate SecController
 
-Admin -> SecController : PUT /api/v1/admin/security-events/{eventId}/review\n{status="RESOLVED"}
-SecController -> SecService : reviewEvent(adminId, eventId, "RESOLVED")
-SecService -> DB : UPDATE security_events\nSET status='RESOLVED', reviewed_by=adminId, reviewed_at=now()
-SecService -> Audit : emit(SECURITY_EVENT_REVIEWED)
-SecService --> SecController : void
-SecController --> Admin : HTTP 200 OK
+Admin -> SecController : 38. PUT /api/v1/admin/security-events/{eventId}/review\n{status="RESOLVED"}
+activate SecController
+SecController -> SecService : 39. reviewEvent(adminId, eventId, "RESOLVED")
+activate SecService
+SecService -> SecRepo : 40. findById(eventId)
+activate SecRepo
+SecRepo -> DB : 41. SELECT * FROM security_events WHERE id=?
+activate DB
+DB --> SecRepo : 42. event
+deactivate DB
+SecRepo --> SecService : 43. event
+deactivate SecRepo
+SecService -> SecRepo : 44. save(event{status=RESOLVED, reviewedBy=adminId, reviewedAt=now()})
+activate SecRepo
+SecRepo -> DB : 45. UPDATE security_events\nSET status='RESOLVED', reviewed_by=adminId, reviewed_at=now()
+activate DB
+DB --> SecRepo : 46. updated
+deactivate DB
+SecRepo --> SecService : 47. void
+deactivate SecRepo
+SecService -> Audit : 48. log(SECURITY_EVENT_REVIEWED)
+activate Audit
+Audit --> SecService : 49. void
+deactivate Audit
+SecService --> SecController : 50. void
+deactivate SecService
+SecController --> Admin : 51. HTTP 200 OK
+deactivate SecController
 
 @enduml
 ```
 
-**Hình 2 — Sequence Diagram: Deletion Request → Admin Processing → Security Event Review (Main Flow)**
+**Hình 2 — Sequence Diagram: Deletion Request → Admin User Status Change → Security Event Review (Main Flow)**
+
+> Ghi chú grounding: rà soát `AdminUserServiceImpl` (chỉ phụ thuộc `UserRepository`) và
+> `AccountDeletionController` (chỉ có 2 endpoint tự-phục vụ: tạo/huỷ yêu cầu) cho thấy
+> **hiện chưa có endpoint admin nào chuyển `AccountDeletionRequest.status` sang
+> `SCHEDULED`/`COMPLETED`** — hai luồng UC-14 và UC-17 độc lập ở tầng code hiện tại, không
+> tự động liên kết như một giao dịch chung (khác với giả định trong bản thiết kế đầu). State
+> Machine ở mục 4 mô tả vòng đời **dự kiến** theo đặc tả UC-17; write-path admin cho
+> `AccountDeletionRequest` cần được xác nhận/bổ sung riêng.
 
 ## 4. State Machine — `AccountDeletionRequest.status` & `SecurityEvent.status`
 

@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../../core/auth/auth_state.dart';
 import '../services/content_service.dart';
 import '../models/content_model.dart';
 import 'verified_content_detail_screen.dart';
 
 class VerifiedContentSearchScreen extends StatefulWidget {
-  const VerifiedContentSearchScreen({super.key});
+  const VerifiedContentSearchScreen({super.key, this.contentService});
+
+  final ContentService? contentService;
 
   @override
   State<VerifiedContentSearchScreen> createState() =>
@@ -37,57 +40,142 @@ class _VerifiedContentSearchScreenState
 
   final _searchCtrl = TextEditingController();
   Timer? _debounce;
+  late ContentService _contentService;
+  int _requestGeneration = 0;
+  String? _observedAccountId;
 
   int? _selectedAge;
   int? _selectedCategory;
   String? _selectedType;
   List<ContentListItem> _results = [];
   bool _loading = false;
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
+    _contentService = widget.contentService ?? ContentService.instance;
+    _observedAccountId = AuthState.instance.userId;
+    AuthState.instance.addListener(_onAccountChanged);
     _search();
   }
 
   @override
+  void didUpdateWidget(covariant VerifiedContentSearchScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.contentService != widget.contentService) {
+      _contentService = widget.contentService ?? ContentService.instance;
+      _debounce?.cancel();
+      _search(clearResults: true);
+    }
+  }
+
+  @override
   void dispose() {
-    _searchCtrl.dispose();
+    _requestGeneration += 1;
     _debounce?.cancel();
+    AuthState.instance.removeListener(_onAccountChanged);
+    _searchCtrl.dispose();
     super.dispose();
   }
 
-  void _onSearchChanged(String v) {
+  void _onAccountChanged() {
+    final accountId = AuthState.instance.userId;
+    if (accountId == _observedAccountId) return;
+    _observedAccountId = accountId;
     _debounce?.cancel();
+    _search(clearResults: true);
+  }
+
+  void _onSearchChanged(String v) {
+    _requestGeneration += 1;
+    _debounce?.cancel();
+    setState(() {
+      _loading = true;
+      _errorMessage = null;
+    });
     _debounce = Timer(const Duration(milliseconds: 400), _search);
   }
 
-  Future<void> _search() async {
-    setState(() => _loading = true);
+  Future<void> _search({bool clearResults = false}) async {
+    final requestGeneration = ++_requestGeneration;
+    final accountId = AuthState.instance.userId;
+    final selectedAge = _selectedAge;
+    final selectedType = _selectedType;
+    final keyword = _searchCtrl.text.trim();
+    final stage = selectedAge != null ? _ageStages[selectedAge] : null;
+    setState(() {
+      _loading = true;
+      _errorMessage = null;
+      if (clearResults) _results = [];
+    });
     try {
-      final stage = _selectedAge != null ? _ageStages[_selectedAge!] : null;
-      final keyword = _searchCtrl.text.trim();
       // The backend search endpoint requires a non-blank keyword — when the user
       // hasn't typed anything yet (e.g. on first open), browse via the plain list
       // endpoint instead so the screen never shows a false "no results" state.
       final results = keyword.isEmpty
-          ? await ContentService.instance.getContent(
-              type: _selectedType,
+          ? await _contentService.getContent(
+              type: selectedType,
               stage: stage,
               size: 20,
             )
-          : await ContentService.instance.searchContent(
+          : await _contentService.searchContent(
               keyword,
-              type: _selectedType,
+              type: selectedType,
               stage: stage,
             );
-      if (mounted) setState(() => _results = results);
+      if (_canApply(
+        requestGeneration,
+        accountId,
+        keyword,
+        selectedAge,
+        selectedType,
+      )) {
+        setState(() {
+          _results = results;
+          _errorMessage = null;
+        });
+      }
     } catch (_) {
-      if (mounted) setState(() => _results = []);
+      if (_canApply(
+        requestGeneration,
+        accountId,
+        keyword,
+        selectedAge,
+        selectedType,
+      )) {
+        setState(() {
+          _results = [];
+          _errorMessage =
+              'KhÃ´ng thá»ƒ táº£i ná»™i dung. Vui lÃ²ng thá»­ láº¡i.';
+        });
+      }
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (_canApply(
+        requestGeneration,
+        accountId,
+        keyword,
+        selectedAge,
+        selectedType,
+      )) {
+        setState(() => _loading = false);
+      }
     }
   }
+
+  bool _canApply(
+    int requestGeneration,
+    String? accountId,
+    String keyword,
+    int? selectedAge,
+    String? selectedType,
+  ) =>
+      mounted &&
+      requestGeneration == _requestGeneration &&
+      AuthState.instance.userId == accountId &&
+      _searchCtrl.text.trim() == keyword &&
+      _selectedAge == selectedAge &&
+      _selectedType == selectedType;
 
   @override
   Widget build(BuildContext context) {
@@ -238,6 +326,8 @@ class _VerifiedContentSearchScreenState
                 ? const Center(
                     child: CircularProgressIndicator(color: _primary),
                   )
+                : _errorMessage != null
+                ? _buildErrorState()
                 : _results.isEmpty
                 ? _buildEmptyState()
                 : ListView.separated(
@@ -248,6 +338,39 @@ class _VerifiedContentSearchScreenState
                   ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      key: const Key('generic-content-search-error'),
+      child: Semantics(
+        liveRegion: true,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off_rounded, size: 56, color: _primary),
+            const SizedBox(height: 12),
+            Text(
+              _errorMessage!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 16, color: _onSurfaceVariant),
+            ),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              key: const Key('generic-content-search-retry'),
+              onPressed: _search,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Thá»­ láº¡i'),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(48, 48),
+                backgroundColor: _primaryContainer,
+                shape: const StadiumBorder(),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

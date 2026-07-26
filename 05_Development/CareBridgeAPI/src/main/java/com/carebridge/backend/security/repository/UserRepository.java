@@ -8,12 +8,18 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import jakarta.persistence.LockModeType;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, java.util.UUID> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from User u where u.id = :id")
+    Optional<User> findByIdForUpdate(@Param("id") java.util.UUID id);
 
     Optional<User> findByPhone(String phone);
 
@@ -41,7 +47,7 @@ public interface UserRepository extends JpaRepository<User, java.util.UUID> {
 
     // UC-114 Manage User Accounts: admin-facing search/filter over the existing users
     // table. ADR-IAM-001: scoped to the single-entity `User` — never joins a
-    // roles/user_roles table. Each nullable filter is cast to `string`/kept typed so
+    // legacy role join tables. Each nullable filter is cast to `string`/kept typed so
     // Postgres can resolve the bind-parameter type when the value is null (avoids the
     // "could not determine data type of parameter" error seen elsewhere in the
     // codebase for null-filter JPQL against a real Postgres driver).

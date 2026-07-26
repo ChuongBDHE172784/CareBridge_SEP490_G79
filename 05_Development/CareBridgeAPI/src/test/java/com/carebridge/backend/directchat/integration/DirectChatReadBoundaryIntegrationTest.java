@@ -30,7 +30,7 @@ class DirectChatReadBoundaryIntegrationTest extends AbstractPostgresIntegrationT
         Fixture fixture = seedFixture();
 
         jdbcTemplate.update(
-                "UPDATE expert_profiles SET trust_status='REVOKED' WHERE expert_profile_id=?",
+                "UPDATE professional_profiles SET trust_status='REVOKED' WHERE professional_profile_id=?",
                 fixture.expertProfileId());
         assertThat(conversationService.getConversation(
                         fixture.conversationId(), fixture.motherId())
@@ -61,9 +61,9 @@ class DirectChatReadBoundaryIntegrationTest extends AbstractPostgresIntegrationT
 
         jdbcTemplate.update(
                 """
-                UPDATE expert_profiles
+                UPDATE professional_profiles
                    SET verification_status='REJECTED', trust_status='ACTIVE'
-                 WHERE expert_profile_id=?
+                 WHERE professional_profile_id=?
                 """,
                 fixture.expertProfileId());
         conversationService.getConversation(fixture.conversationId(), fixture.motherId());
@@ -96,32 +96,33 @@ class DirectChatReadBoundaryIntegrationTest extends AbstractPostgresIntegrationT
         seedUser(motherId, "Read Mother", "MOTHER");
         seedUser(expertUserId, "Read Expert", "EXPERT");
         jdbcTemplate.update("""
-                INSERT INTO expert_profiles
-                    (expert_profile_id, user_id, specialty, verification_status, trust_status,
+                INSERT INTO professional_profiles
+                    (professional_profile_id, user_id, specialty, verification_status, trust_status,
                      created_at, updated_at)
                 VALUES (?, ?, 'Sản khoa', 'APPROVED', 'ACTIVE', now(), now())
                 """, expertProfileId, expertUserId);
         jdbcTemplate.update("""
-                INSERT INTO direct_conversations
-                    (conversation_id, mother_user_id, expert_user_id, status,
-                     created_at, last_activity_at)
-                VALUES (?, ?, ?, 'ACTIVE', now(), now())
-                """, conversationId, motherId, expertUserId);
+                INSERT INTO archived_realtime_records
+                    (archive_id,legacy_table,legacy_id,owner_user_id,mother_user_id,
+                     expert_user_id,status,original_created_at,last_activity_at)
+                VALUES (?,'direct_conversations',?,?,?,?,'ACTIVE',now(),now())
+                """, conversationId, conversationId.toString(), motherId, motherId, expertUserId);
         jdbcTemplate.update("""
-                INSERT INTO direct_messages
-                    (message_id, conversation_id, sender_user_id, client_message_id,
-                     message_type, message_body, created_at)
-                VALUES (?, ?, ?, ?, 'TEXT', 'Existing history', now())
-                """, messageId, conversationId, motherId, UUID.randomUUID());
+                INSERT INTO archived_realtime_records
+                    (archive_id,legacy_table,legacy_id,owner_user_id,conversation_id,
+                     sender_user_id,client_message_id,message_type,message_body,original_created_at)
+                VALUES (?,'direct_messages',?,?,?,?,?,'TEXT','Existing history',now())
+                """, messageId, messageId.toString(), motherId, conversationId, motherId, UUID.randomUUID());
         return new Fixture(motherId, expertUserId, expertProfileId, conversationId, messageId);
     }
 
     private void seedUser(UUID id, String name, String role) {
+        jdbcTemplate.update("INSERT INTO persons(person_id,display_name) VALUES (?,?)", id, name);
         jdbcTemplate.update("""
                 INSERT INTO users
-                    (user_id, full_name, phone, role, enabled, locked, created_at, updated_at)
-                VALUES (?, ?, ?, ?, true, false, now(), now())
-                """, id, name, uniquePhone(), role);
+                    (user_id,person_id,full_name,phone,role,enabled,locked,created_at,updated_at)
+                VALUES (?,?,?,?,?,true,false,now(),now())
+                """, id, id, name, uniquePhone(), role);
     }
 
     private static SendDirectMessageRequest messageRequest() {

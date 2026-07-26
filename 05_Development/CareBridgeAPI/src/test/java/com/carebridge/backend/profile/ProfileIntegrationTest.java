@@ -29,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *
  * <p>Unlike UC-08's GET /profile (read-only transaction, audit never flushed), UC-09's
  * {@code ProfileServiceImpl.updateProfile} runs in a plain {@code @Transactional} write
- * transaction, so both the {@code user_profiles} row and the {@code audit_logs} row are
+ * transaction, so both the canonical person row and the {@code audit_logs} row are
  * actually committed and observable here.
  */
 @Transactional

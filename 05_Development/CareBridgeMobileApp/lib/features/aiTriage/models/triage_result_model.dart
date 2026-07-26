@@ -1,5 +1,13 @@
 /// Response from GET /api/v1/triage/intake/{sessionId} (UC-61)
 class TriageResult {
+  static const supportedStages = {
+    'PRECONCEPTION',
+    'PREGNANCY',
+    'POSTPARTUM',
+    'INFANT',
+    'TODDLER',
+  };
+
   final String sessionId;
   final String stage;
   final String? triageStatus; // COMPLETED | NEED_MORE_INFO
@@ -20,6 +28,11 @@ class TriageResult {
   final String status; // PROCESSING | NEED_MORE_INFO | COMPLETED | FAILED
   final DateTime? createdAt;
   final DateTime? completedAt;
+  final String? journeyId;
+  final String? originDashboard;
+  final String? originReferenceId;
+  final String? continuationToken;
+  final DateTime? continuationExpiresAt;
 
   const TriageResult({
     required this.sessionId,
@@ -42,12 +55,23 @@ class TriageResult {
     this.warning,
     this.createdAt,
     this.completedAt,
+    this.journeyId,
+    this.originDashboard,
+    this.originReferenceId,
+    this.continuationToken,
+    this.continuationExpiresAt,
   });
 
   factory TriageResult.fromJson(Map<String, dynamic> json) {
     final sessionId = json['sessionId']?.toString() ?? '';
-    final status = json['status']?.toString() ?? '';
+    final rawStatus = json['status']?.toString() ?? '';
+    final status = switch (rawStatus) {
+      'ASK_MORE' => 'NEED_MORE_INFO',
+      'TRIAGE_COMPLETE' => 'COMPLETED',
+      _ => rawStatus,
+    };
     final riskLevel = json['riskLevel']?.toString();
+    final stage = json['stage']?.toString() ?? 'INFANT';
     if (sessionId.isEmpty || status.isEmpty) {
       throw const FormatException('Invalid triage result identity');
     }
@@ -55,9 +79,12 @@ class TriageResult {
         !{'GREEN', 'YELLOW', 'RED'}.contains(riskLevel)) {
       throw const FormatException('Invalid completed triage result');
     }
+    if (!supportedStages.contains(stage)) {
+      throw const FormatException('Invalid triage result stage');
+    }
     return TriageResult(
       sessionId: sessionId,
-      stage: json['stage']?.toString() ?? 'INFANT',
+      stage: stage,
       status: status,
       triageStatus: json['triageStatus'] as String?,
       riskLevel: riskLevel,
@@ -95,6 +122,13 @@ class TriageResult {
       completedAt: json['completedAt'] != null
           ? DateTime.tryParse(json['completedAt'] as String)
           : null,
+      journeyId: json['journeyId']?.toString(),
+      originDashboard: json['originDashboard']?.toString(),
+      originReferenceId: json['originReferenceId']?.toString(),
+      continuationToken: json['continuationToken']?.toString(),
+      continuationExpiresAt: DateTime.tryParse(
+        json['continuationExpiresAt']?.toString() ?? '',
+      ),
     );
   }
 }
@@ -111,12 +145,12 @@ class TriageClaim {
   });
 
   factory TriageClaim.fromJson(Map<String, dynamic> json) => TriageClaim(
-        claimId: json['claimId']?.toString() ?? '',
-        text: json['text']?.toString() ?? '',
-        evidenceIds: (json['evidenceIds'] as List<dynamic>? ?? const [])
-            .map((value) => value.toString())
-            .toList(),
-      );
+    claimId: json['claimId']?.toString() ?? '',
+    text: json['text']?.toString() ?? '',
+    evidenceIds: (json['evidenceIds'] as List<dynamic>? ?? const [])
+        .map((value) => value.toString())
+        .toList(),
+  );
 }
 
 class TriageCitation {

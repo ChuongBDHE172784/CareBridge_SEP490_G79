@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../models/consultation_request.dart';
 import '../services/consultation_request_refresh_bus.dart';
@@ -230,6 +231,19 @@ class _ExpertRequestQueueScreenState extends State<ExpertRequestQueueScreen> {
                                 Text(request.topic),
                                 const SizedBox(height: 8),
                                 Chip(label: Text(_statusLabel(request.status))),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: TextButton.icon(
+                                    key: Key('view-details-${request.id}'),
+                                    onPressed: busy
+                                        ? null
+                                        : () => context.push(
+                                            '/consultation-requests/${request.id}',
+                                          ),
+                                    icon: const Icon(Icons.visibility_outlined),
+                                    label: const Text('Xem chi tiết'),
+                                  ),
+                                ),
                                 if (request.status == 'PENDING') ...[
                                   const SizedBox(height: 8),
                                   Row(

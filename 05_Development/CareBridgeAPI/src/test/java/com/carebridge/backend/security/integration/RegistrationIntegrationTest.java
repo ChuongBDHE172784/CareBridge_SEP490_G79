@@ -129,13 +129,14 @@ class RegistrationIntegrationTest {
     @Test
     void register_WithValidPhone_ShouldCreateUserAndReturnSuccess() throws Exception {
         // Given
-        String phone = "+84901234567";
+        String inputPhone = "0901234567";
+        String canonicalPhone = "+84901234567";
         String password = "MyP@ssw0rd123";
 
         RegisterRequest request = new RegisterRequest();
         request.setName("Test User");
         request.setEmail(null);
-        request.setPhone(phone);
+        request.setPhone(inputPhone);
         request.setPassword(password);
         request.setRole(Role.EXPERT);
 
@@ -148,9 +149,10 @@ class RegistrationIntegrationTest {
                 .andExpect(jsonPath("$.data.userId").exists());
 
         // Verify user was created
-        Optional<User> userOpt = userRepository.findByPhone(phone);
+        Optional<User> userOpt = userRepository.findByPhone(canonicalPhone);
         assertThat(userOpt).isPresent();
         User user = userOpt.get();
+        assertThat(user.getPhone()).isEqualTo(canonicalPhone);
         assertThat(user.isEnabled()).isFalse();
         assertThat(user.getRole()).isEqualTo(Role.EXPERT);
     }
@@ -225,7 +227,7 @@ class RegistrationIntegrationTest {
         RegisterRequest request = new RegisterRequest();
         request.setName("Test User");
         request.setEmail(null);
-        request.setPhone("0901234567"); // Not E.164
+        request.setPhone("+84123456789"); // Invalid Vietnamese mobile prefix
         request.setPassword("MyP@ssw0rd123");
         request.setRole(Role.MOTHER);
 
@@ -640,11 +642,11 @@ class RegistrationIntegrationTest {
                         .build());
 
         jdbcTemplate.update(
-                "UPDATE otp_verifications SET created_at = ? WHERE id = ?",
+                "UPDATE auth_challenges SET created_at = ? WHERE challenge_id = ?",
                 Timestamp.from(Instant.parse("2026-06-22T00:00:00Z")),
                 olderPending.getId());
         jdbcTemplate.update(
-                "UPDATE otp_verifications SET created_at = ? WHERE id = ?",
+                "UPDATE auth_challenges SET created_at = ? WHERE challenge_id = ?",
                 Timestamp.from(Instant.parse("2026-06-22T00:00:00Z")),
                 newerPending.getId());
         clearInvocations(emailService, smsService);
@@ -656,8 +658,11 @@ class RegistrationIntegrationTest {
                         .content(objectMapper.writeValueAsString(resendRequest)))
                 .andExpect(status().isOk());
 
-        assertThat(otpVerificationRepository.findById(olderPending.getId()).orElseThrow().getUsedAt()).isNull();
-        assertThat(otpVerificationRepository.findById(newerPending.getId()).orElseThrow().getUsedAt()).isNotNull();
+        OtpVerification selected = newerPending.getId().toString().compareTo(olderPending.getId().toString()) > 0
+                ? newerPending : olderPending;
+        OtpVerification remaining = selected == newerPending ? olderPending : newerPending;
+        assertThat(otpVerificationRepository.findById(selected.getId()).orElseThrow().getUsedAt()).isNotNull();
+        assertThat(otpVerificationRepository.findById(remaining.getId()).orElseThrow().getUsedAt()).isNull();
         verify(smsService).sendOtpVerificationSms(eq(phone), anyString(), eq(5));
         verifyNoInteractions(emailService);
     }

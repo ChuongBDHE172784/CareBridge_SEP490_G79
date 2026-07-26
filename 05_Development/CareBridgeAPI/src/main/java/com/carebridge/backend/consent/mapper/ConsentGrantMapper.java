@@ -13,6 +13,7 @@ public class ConsentGrantMapper {
         }
         return ConsentGrantResponse.builder()
                 .id(grant.getId())
+                .permissionId(grant.getPermissionId())
                 .userId(grant.getUserId())
                 .dataType(grant.getDataType())
                 .purpose(grant.getPurpose())
@@ -21,6 +22,7 @@ public class ConsentGrantMapper {
                 .consentGivenAt(grant.getConsentGivenAt())
                 .expiryAt(grant.getExpiryAt())
                 .revokedAt(grant.getRevokedAt())
+                .status(grant.getStatus())
                 .build();
     }
 }

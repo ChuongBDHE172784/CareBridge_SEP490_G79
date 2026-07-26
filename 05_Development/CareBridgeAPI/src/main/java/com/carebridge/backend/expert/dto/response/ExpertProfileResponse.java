@@ -17,15 +17,18 @@ public class ExpertProfileResponse {
 	private UUID userId;
 	private String displayName;
 	private String specialty;
+	private String specialtyId;
 	private String professionalTitle;
 	private Integer experienceYears;
 	private String workplace;
+	private String hospitalId;
 	private String consultationScope;
 	private VerificationStatus verificationStatus;
 	private boolean isConsultationEligible;
 	private LocalDateTime verifiedAt;
 	private UUID verifiedBy;
 	private BigDecimal ratingAvg;
+	private BigDecimal consultationFeeVnd;
 	private String avatarUrl;
 	private LocalDateTime createdAt;
 	private LocalDateTime updatedAt;

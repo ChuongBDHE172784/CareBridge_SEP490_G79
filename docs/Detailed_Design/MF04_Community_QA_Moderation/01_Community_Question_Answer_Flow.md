@@ -154,46 +154,101 @@ skinparam backgroundColor #FAFAFA
 
 actor "User" as U
 participant "CommunityFeedController" as FeedController
+participant "CommunityFeedServiceImpl" as FeedService
 participant "CommunityQuestionController" as QController
 participant "CommunityQuestionServiceImpl" as QService
+participant "CommunityQuestionRepository" as QRepo
 participant "CommunityAnswerController" as AController
 participant "CommunityAnswerServiceImpl" as AService
+participant "CommunityAnswerRepository" as ARepo
 participant "AuditService" as Audit
 database "PostgreSQL" as DB
 
 == UC-46 Browse Community Feed and Topics ==
-U -> FeedController : GET /api/v1/community/feed?topic=&keyword=&stage=
-FeedController -> DB : SELECT * FROM community_questions\nWHERE status='APPROVED' AND ...
-DB --> FeedController : questions[]
-FeedController --> U : HTTP 200 OK {questions[]}
+U -> FeedController : 1. GET /api/v1/community/feed?topic=&keyword=&stage=
+activate FeedController
+FeedController -> FeedService : 2. feed(filter)
+activate FeedService
+FeedService -> QRepo : 3. search(filter, status=APPROVED)
+activate QRepo
+QRepo -> DB : 4. SELECT * FROM community_questions\nWHERE status='APPROVED' AND ...
+activate DB
+DB --> QRepo : 5. rows[]
+deactivate DB
+QRepo --> FeedService : 6. questions[]
+deactivate QRepo
+FeedService --> FeedController : 7. questions[]
+deactivate FeedService
+FeedController --> U : 8. HTTP 200 OK {questions[]}
+deactivate FeedController
 
 == UC-48 Create Community Question ==
-U -> QController : POST /api/v1/community/questions\n{topicId, title, body, anonymous}
-QController -> QService : create(authorId, request)
-QService -> DB : INSERT INTO community_questions (status=PENDING)
-QService -> Audit : emit(COMMUNITY_QUESTION_CREATED)
-QService --> QController : CommunityQuestion{status=PENDING}
-QController --> U : HTTP 201 Created
+U -> QController : 9. POST /api/v1/community/questions\n{topicId, title, body, anonymous}
+activate QController
+QController -> QService : 10. create(authorId, request)
+activate QService
+QService -> QRepo : 11. save(CommunityQuestion{status=PENDING})
+activate QRepo
+QRepo -> DB : 12. INSERT INTO community_questions ...
+activate DB
+DB --> QRepo : 13. saved
+deactivate DB
+QRepo --> QService : 14. CommunityQuestion
+deactivate QRepo
+QService -> Audit : 15. log(COMMUNITY_QUESTION_CREATED)
+activate Audit
+Audit --> QService : 16. void
+deactivate Audit
+QService --> QController : 17. CommunityQuestion{status=PENDING}
+deactivate QService
+QController --> U : 18. HTTP 201 Created
+deactivate QController
 
 note over QService
-  status=PENDING → chờ NS-04 safety pipeline (spec 02)
-  trước khi hiển thị trên feed công khai.
+  status=PENDING → wait for NS-04 safety pipeline (spec 02)
+  before displaying on public feed.
 end note
 
 == UC-47 View Community Question Detail ==
-U -> QController : GET /api/v1/community/questions/{id}
-QController -> DB : SELECT * FROM community_questions\nJOIN community_answers WHERE ...
-DB --> QController : question + answers[]
-QController --> U : HTTP 200 OK {question, answers[]}
+U -> QController : 19. GET /api/v1/community/questions/{id}
+activate QController
+QController -> QService : 20. detail(id)
+activate QService
+QService -> QRepo : 21. findByIdWithAnswers(id)
+activate QRepo
+QRepo -> DB : 22. SELECT * FROM community_questions\nJOIN community_answers WHERE ...
+activate DB
+DB --> QRepo : 23. question + answers[]
+deactivate DB
+QRepo --> QService : 24. question + answers[]
+deactivate QRepo
+QService --> QController : 25. question + answers[]
+deactivate QService
+QController --> U : 26. HTTP 200 OK {question, answers[]}
+deactivate QController
 
 == UC-50 Post Community Answer ==
-U -> AController : POST /api/v1/community/questions/{questionId}/answers\n{body, personalExperience=true}
-AController -> AService : post(authorId, questionId, request)
-AService -> AService : lookup ExpertProfile(authorId) →\nexpertLabeled = (verified && trustStatus=ACTIVE)
-AService -> DB : INSERT INTO community_answers (status=PENDING)
-AService -> Audit : emit(COMMUNITY_ANSWER_POSTED)
-AService --> AController : CommunityAnswer{status=PENDING}
-AController --> U : HTTP 201 Created
+U -> AController : 27. POST /api/v1/community/questions/{questionId}/answers\n{body, personalExperience=true}
+activate AController
+AController -> AService : 28. post(authorId, questionId, request)
+activate AService
+AService -> AService : 29. lookup ExpertProfile(authorId) →\nexpertLabeled = (verified && trustStatus=ACTIVE)
+AService -> ARepo : 30. save(CommunityAnswer{status=PENDING, expertLabeled})
+activate ARepo
+ARepo -> DB : 31. INSERT INTO community_answers ...
+activate DB
+DB --> ARepo : 32. saved
+deactivate DB
+ARepo --> AService : 33. CommunityAnswer
+deactivate ARepo
+AService -> Audit : 34. log(COMMUNITY_ANSWER_POSTED)
+activate Audit
+Audit --> AService : 35. void
+deactivate Audit
+AService --> AController : 36. CommunityAnswer{status=PENDING}
+deactivate AService
+AController --> U : 37. HTTP 201 Created
+deactivate AController
 
 @enduml
 ```

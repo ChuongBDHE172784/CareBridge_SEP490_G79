@@ -8,6 +8,8 @@ import com.carebridge.backend.consultation.entity.ConsultationRequest;
 import com.carebridge.backend.expert.entity.ExpertProfile;
 import com.carebridge.backend.expert.truststatus.TrustStatus;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
+import com.carebridge.backend.security.entity.User;
+import java.time.Instant;
 import java.util.stream.Stream;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,6 +19,8 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 class ConsultationRequestPolicyTest {
+
+    private static final Instant NOW = Instant.parse("2026-07-23T00:00:00Z");
 
     private ConsultationRequestPolicy policy;
 
@@ -31,6 +35,46 @@ class ConsultationRequestPolicyTest {
 
         assertThatCode(() -> policy.assertExpertEligibleForConsultation(expert))
                 .doesNotThrowAnyException();
+    }
+
+    @Test
+    void eligibleExpertAccountIsAcceptedAtSubmitTime() {
+        ExpertProfile expert = expert(VerificationStatus.APPROVED, TrustStatus.ACTIVE);
+        User account = account(true, false, null);
+
+        assertThatCode(() -> policy.assertExpertEligibleForConsultation(expert, account, NOW))
+                .doesNotThrowAnyException();
+    }
+
+    @ParameterizedTest
+    @MethodSource("ineligibleAccountStates")
+    void disabledLockedOrCurrentlySuspendedExpertAccountIsRejected(
+            boolean enabled, boolean locked, Instant suspendedUntil) {
+        ExpertProfile expert = expert(VerificationStatus.APPROVED, TrustStatus.ACTIVE);
+        User account = account(enabled, locked, suspendedUntil);
+
+        assertThatThrownBy(
+                        () -> policy.assertExpertEligibleForConsultation(expert, account, NOW))
+                .isInstanceOfSatisfying(
+                        ConsultationRequestException.class,
+                        ex -> org.assertj.core.api.Assertions.assertThat(ex.getCode())
+                                .isEqualTo("CONREQ-002"));
+    }
+
+    @ParameterizedTest
+    @MethodSource("ineligibleAccountStates")
+    void disabledLockedOrCurrentlySuspendedExpertAccountIsRejectedAtAcceptTime(
+            boolean enabled, boolean locked, Instant suspendedUntil) {
+        ExpertProfile expert = expert(VerificationStatus.APPROVED, TrustStatus.ACTIVE);
+        User account = account(enabled, locked, suspendedUntil);
+
+        assertThatThrownBy(
+                        () -> policy.assertExpertStillEligibleForConsultation(
+                                expert, account, NOW))
+                .isInstanceOfSatisfying(
+                        ConsultationRequestException.class,
+                        ex -> org.assertj.core.api.Assertions.assertThat(ex.getCode())
+                                .isEqualTo("CONREQ-004"));
     }
 
     @ParameterizedTest
@@ -101,11 +145,26 @@ class ConsultationRequestPolicyTest {
                 Arguments.of(VerificationStatus.APPROVED, null));
     }
 
+    private static Stream<Arguments> ineligibleAccountStates() {
+        return Stream.of(
+                Arguments.of(false, false, null),
+                Arguments.of(true, true, null),
+                Arguments.of(true, false, NOW.plusSeconds(1)));
+    }
+
     private static ExpertProfile expert(
             VerificationStatus verificationStatus, TrustStatus trustStatus) {
         return ExpertProfile.builder()
                 .verificationStatus(verificationStatus)
                 .trustStatus(trustStatus)
+                .build();
+    }
+
+    private static User account(boolean enabled, boolean locked, Instant suspendedUntil) {
+        return User.builder()
+                .enabled(enabled)
+                .locked(locked)
+                .suspendedUntil(suspendedUntil)
                 .build();
     }
 }

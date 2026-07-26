@@ -9,6 +9,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
@@ -20,6 +21,7 @@ import com.carebridge.backend.community.entity.CommunityTopic;
 import com.carebridge.backend.community.entity.PregnancyStage;
 import com.carebridge.backend.community.entity.QuestionStatus;
 import com.carebridge.backend.community.entity.UrgencyLevel;
+import com.carebridge.backend.community.entity.TopicType;
 import com.carebridge.backend.community.exception.CommunityTopicNotFoundException;
 import com.carebridge.backend.community.mapper.CommunityQuestionMapper;
 import com.carebridge.backend.community.policy.CommunitySafetyPolicy;
@@ -109,6 +111,8 @@ class CommunityQuestionServiceImplTest {
         return CommunityTopic.builder()
                 .id(TOPIC_ID)
                 .name("Thai kỳ")
+                .type(TopicType.TOPIC)
+                .parentId(UUID.randomUUID())
                 .isHidden(isHidden)
                 .build();
     }
@@ -133,7 +137,8 @@ class CommunityQuestionServiceImplTest {
     // COM-TC-001: Happy path — MOTHER creates question, status = PENDING
     @Test
     void createQuestion_validRequest_returnsPendingStatus() {
-        when(topicRepository.findByIdAndIsHiddenFalse(TOPIC_ID)).thenReturn(Optional.of(makeTopic(false)));
+        lenient().when(topicRepository.findByIdAndTypeAndIsHiddenFalse(TOPIC_ID, TopicType.TOPIC))
+                .thenReturn(Optional.of(makeTopic(false)));
         CommunityQuestion saved = savedQuestion();
         when(questionRepository.save(any())).thenReturn(saved);
 
@@ -150,7 +155,8 @@ class CommunityQuestionServiceImplTest {
     // COM-TC-001 sub: entity defaults — likeCount=0, answerCount=0
     @Test
     void createQuestion_validRequest_entityHasZeroCountDefaults() {
-        when(topicRepository.findByIdAndIsHiddenFalse(TOPIC_ID)).thenReturn(Optional.of(makeTopic(false)));
+        lenient().when(topicRepository.findByIdAndTypeAndIsHiddenFalse(TOPIC_ID, TopicType.TOPIC))
+                .thenReturn(Optional.of(makeTopic(false)));
         CommunityQuestion saved = savedQuestion();
         when(questionRepository.save(any())).thenReturn(saved);
 
@@ -164,7 +170,8 @@ class CommunityQuestionServiceImplTest {
     // COM-TC-001 sub: audit event emitted after successful creation
     @Test
     void createQuestion_validRequest_auditLogEmitted() {
-        when(topicRepository.findByIdAndIsHiddenFalse(TOPIC_ID)).thenReturn(Optional.of(makeTopic(false)));
+        lenient().when(topicRepository.findByIdAndTypeAndIsHiddenFalse(TOPIC_ID, TopicType.TOPIC))
+                .thenReturn(Optional.of(makeTopic(false)));
         CommunityQuestion saved = savedQuestion();
         when(questionRepository.save(any())).thenReturn(saved);
 
@@ -177,11 +184,13 @@ class CommunityQuestionServiceImplTest {
     // COM-TC-003: Hidden topic → CommunityTopicNotFoundException (COM-003)
     @Test
     void createQuestion_hiddenTopic_throwsCommunityTopicNotFoundException() {
-        when(topicRepository.findByIdAndIsHiddenFalse(TOPIC_ID)).thenReturn(Optional.empty());
+        lenient().when(topicRepository.findByIdAndTypeAndIsHiddenFalse(TOPIC_ID, TopicType.TOPIC))
+                .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> questionService.createQuestion(AUTHOR_ID, makeRequest()))
                 .isInstanceOf(CommunityTopicNotFoundException.class)
                 .hasMessageContaining("COM-003");
+        verify(topicRepository).findByIdAndTypeAndIsHiddenFalse(TOPIC_ID, TopicType.TOPIC);
 
         // BR-COM-002: must not save when topic is invalid
         verify(questionRepository, never()).save(any());
@@ -191,20 +200,23 @@ class CommunityQuestionServiceImplTest {
     @Test
     void createQuestion_nonExistentTopicId_throwsCommunityTopicNotFoundException() {
         UUID unknownId = UUID.randomUUID();
-        when(topicRepository.findByIdAndIsHiddenFalse(unknownId)).thenReturn(Optional.empty());
+        lenient().when(topicRepository.findByIdAndTypeAndIsHiddenFalse(unknownId, TopicType.TOPIC))
+                .thenReturn(Optional.empty());
 
         CreateCommunityQuestionRequest req = makeRequest(r -> r.setTopicId(unknownId));
 
         assertThatThrownBy(() -> questionService.createQuestion(AUTHOR_ID, req))
                 .isInstanceOf(CommunityTopicNotFoundException.class);
 
+        verify(topicRepository).findByIdAndTypeAndIsHiddenFalse(unknownId, TopicType.TOPIC);
         verify(questionRepository, never()).save(any());
     }
 
     // COM-TC anonymous: authorId stored in DB even when isAnonymous=true
     @Test
     void createQuestion_anonymous_authorIdStoredInDb() {
-        when(topicRepository.findByIdAndIsHiddenFalse(TOPIC_ID)).thenReturn(Optional.of(makeTopic(false)));
+        lenient().when(topicRepository.findByIdAndTypeAndIsHiddenFalse(TOPIC_ID, TopicType.TOPIC))
+                .thenReturn(Optional.of(makeTopic(false)));
         CommunityQuestion saved = CommunityQuestion.builder()
                 .id(UUID.randomUUID()).topicId(TOPIC_ID).authorId(AUTHOR_ID)
                 .anonymous(true).status(QuestionStatus.PENDING).build();
@@ -215,6 +227,33 @@ class CommunityQuestionServiceImplTest {
 
         // ADR-COM-002: authorId MUST be saved to DB
         verify(questionRepository).save(argThat(q -> q.getAuthorId().equals(AUTHOR_ID)));
+    }
+
+    // COM-TC-031: CATEGORY is not a valid question target (COM-003 semantics).
+    @Test
+    void createQuestion_categoryTarget_throwsCommunityTopicNotFoundException() {
+        lenient().when(topicRepository.findByIdAndTypeAndIsHiddenFalse(TOPIC_ID, TopicType.TOPIC))
+                .thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> questionService.createQuestion(AUTHOR_ID, makeRequest()))
+                .isInstanceOf(CommunityTopicNotFoundException.class)
+                .hasMessageContaining("COM-003");
+        verify(topicRepository).findByIdAndTypeAndIsHiddenFalse(TOPIC_ID, TopicType.TOPIC);
+        verify(questionRepository, never()).save(any());
+    }
+
+    // COM-TC-037: regression — a visible TOPIC still accepts question creation.
+    @Test
+    void createQuestion_visibleTopicTarget_succeedsAfterHierarchyMigration() {
+        CommunityTopic topic = makeTopic(false);
+        lenient().when(topicRepository.findByIdAndTypeAndIsHiddenFalse(TOPIC_ID, TopicType.TOPIC))
+                .thenReturn(Optional.of(topic));
+        when(questionRepository.save(any())).thenReturn(savedQuestion());
+
+        CommunityQuestionResponse response = questionService.createQuestion(AUTHOR_ID, makeRequest());
+
+        assertThat(response.getId()).isNotNull();
+        verify(questionRepository).save(argThat(question -> TOPIC_ID.equals(question.getTopicId())));
     }
 
     // ===================== UC-199: Question Detail =====================

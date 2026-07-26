@@ -336,6 +336,18 @@ class AuthServiceLoginTest {
     }
 
     @Test
+    void login_WithInvalidVietnamesePhone_ShouldRejectBeforeLookup() {
+        LoginRequest request = new LoginRequest();
+        request.setPhone("+84123456789");
+        request.setPassword("password");
+
+        assertThatThrownBy(() -> authService.login(request))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("Vietnamese mobile number");
+        verify(userRepository, never()).findByPhone(anyString());
+    }
+
+    @Test
     void login_WhenBothIdentifiersProvided_ShouldReject() {
         LoginRequest request = new LoginRequest();
         request.setPhone("+84901234567");

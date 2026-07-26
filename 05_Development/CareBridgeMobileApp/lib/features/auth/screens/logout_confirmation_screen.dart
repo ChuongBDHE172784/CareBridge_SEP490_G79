@@ -5,6 +5,21 @@ import '../../journey/services/pregnancy_outcome_draft_store.dart';
 import '../models/auth_model.dart';
 import '../services/auth_service.dart';
 
+@visibleForTesting
+Future<void> clearLocalSessionAfterLogout({
+  required String? accountId,
+  required Future<void> Function(String accountId) clearDraft,
+  required Future<void> Function() clearAuth,
+}) async {
+  try {
+    if (accountId != null) await clearDraft(accountId);
+  } catch (_) {
+    debugPrint('[Logout] ancillary draft cleanup failed');
+  } finally {
+    await clearAuth();
+  }
+}
+
 Future<void> showLogoutConfirmationSheet(BuildContext context) {
   return showModalBottomSheet<void>(
     context: context,
@@ -54,25 +69,13 @@ class _LogoutConfirmationSheetState extends State<LogoutConfirmationSheet> {
     try {
       final accountId = AuthState.instance.userId;
       await AuthService.instance.logout();
-      if (!mounted) return;
-      Navigator.of(context).pop();
-      if (accountId != null) {
-        await SecurePregnancyOutcomeDraftStore.instance.clearForAccount(
-          accountId,
-        );
-      }
-      await AuthState.instance.clear();
+      await _clearLocalSession(accountId);
+      if (mounted) Navigator.of(context).pop();
     } on ApiException catch (error) {
       if (error.statusCode == 401) {
         final accountId = AuthState.instance.userId;
-        if (!mounted) return;
-        Navigator.of(context).pop();
-        if (accountId != null) {
-          await SecurePregnancyOutcomeDraftStore.instance.clearForAccount(
-            accountId,
-          );
-        }
-        await AuthState.instance.clear();
+        await _clearLocalSession(accountId);
+        if (mounted) Navigator.of(context).pop();
         return;
       }
 
@@ -90,6 +93,13 @@ class _LogoutConfirmationSheetState extends State<LogoutConfirmationSheet> {
       });
     }
   }
+
+  Future<void> _clearLocalSession(String? accountId) =>
+      clearLocalSessionAfterLogout(
+        accountId: accountId,
+        clearDraft: SecurePregnancyOutcomeDraftStore.instance.clearForAccount,
+        clearAuth: AuthState.instance.clear,
+      );
 
   @override
   Widget build(BuildContext context) {

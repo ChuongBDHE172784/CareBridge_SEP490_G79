@@ -15,6 +15,9 @@ import com.carebridge.backend.exercise.exception.SessionNotCompletedException;
 import com.carebridge.backend.exercise.exception.SessionOwnershipException;
 import com.carebridge.backend.community.exception.CommunityTopicNotFoundException;
 import com.carebridge.backend.community.exception.DuplicateTopicNameException;
+import com.carebridge.backend.community.exception.InvalidTopicHierarchyException;
+import com.carebridge.backend.community.exception.ImmutableTopicTypeException;
+import com.carebridge.backend.community.exception.TopicHasDependentsException;
 import com.carebridge.backend.community.exception.QuestionNotAnswerableException;
 import com.carebridge.backend.community.exception.QuestionNotFoundException;
 import com.carebridge.backend.content.exception.ContentException;
@@ -39,6 +42,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.util.List;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -133,7 +138,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<ErrorResponse> handleBusiness(BusinessException ex, HttpServletRequest request) {
-        logger.error("Business exception [{}]: {}", ex.getCode(), ex.getMessage(), ex);
+        logger.error("Business exception [{}]: {}", ex.getCode(), ex.getMessage());
         return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
     }
 
@@ -157,6 +162,19 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", ex.getMessage(), request);
     }
 
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoResourceFound(
+            NoResourceFoundException ex, HttpServletRequest request) {
+        return error(HttpStatus.NOT_FOUND, "RESOURCE_NOT_FOUND", "Resource not found", request);
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleMethodNotSupported(
+            HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
+        return error(HttpStatus.METHOD_NOT_ALLOWED, "METHOD_NOT_ALLOWED",
+                "Request method not supported", request);
+    }
+
     @ExceptionHandler(CommunityTopicNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleCommunityTopicNotFound(
             CommunityTopicNotFoundException ex, HttpServletRequest request) {
@@ -167,6 +185,24 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleDuplicateTopicName(
             DuplicateTopicNameException ex, HttpServletRequest request) {
         return error(HttpStatus.CONFLICT, "COM-009", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(InvalidTopicHierarchyException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidTopicHierarchy(
+            InvalidTopicHierarchyException ex, HttpServletRequest request) {
+        return error(HttpStatus.BAD_REQUEST, "COM-015", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(TopicHasDependentsException.class)
+    public ResponseEntity<ErrorResponse> handleTopicHasDependents(
+            TopicHasDependentsException ex, HttpServletRequest request) {
+        return error(HttpStatus.CONFLICT, "COM-016", ex.getMessage(), request);
+    }
+
+    @ExceptionHandler(ImmutableTopicTypeException.class)
+    public ResponseEntity<ErrorResponse> handleImmutableTopicType(
+            ImmutableTopicTypeException ex, HttpServletRequest request) {
+        return error(HttpStatus.BAD_REQUEST, "COM-017", ex.getMessage(), request);
     }
 
     @ExceptionHandler(QuestionNotAnswerableException.class)

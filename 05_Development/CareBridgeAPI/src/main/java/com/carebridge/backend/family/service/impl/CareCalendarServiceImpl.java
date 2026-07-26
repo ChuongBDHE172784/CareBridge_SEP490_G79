@@ -53,7 +53,7 @@ public class CareCalendarServiceImpl implements ICareCalendarService {
             }
         }
 
-        // Step 4: Query care_tasks only (ADR-FAM-004 — no reminders/vaccination in v1)
+        // Step 4: query canonical family_tasks only (ADR-FAM-004).
         List<CareTask> tasks = taskRepository
                 .findByCareGroupIdAndDueAtBetween(groupId, rangeStart, rangeEnd);
 

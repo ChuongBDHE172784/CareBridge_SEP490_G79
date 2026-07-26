@@ -9,7 +9,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity(name = "ReminderCareTask")
-@Table(name = "care_tasks")
+@Table(name = "family_tasks")
 @Getter
 @Setter
 @Builder
@@ -19,16 +19,16 @@ public class CareTask {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "care_task_id", updatable = false, nullable = false)
+    @Column(name = "task_id", updatable = false, nullable = false)
     private UUID id;
 
     @Column(name = "care_group_id", nullable = false)
     private UUID careGroupId;
 
-    @Column(name = "assigned_by")
+    @Column(name = "creator_user_id")
     private UUID assignedBy;
 
-    @Column(name = "assigned_to")
+    @Column(name = "assignee_user_id")
     private UUID assignedTo;
 
     @Column(name = "title", nullable = false, length = 255)

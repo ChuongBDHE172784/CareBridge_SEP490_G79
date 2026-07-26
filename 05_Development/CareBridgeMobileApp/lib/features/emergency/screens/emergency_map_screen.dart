@@ -1,14 +1,51 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+import '../../../core/auth/auth_state.dart';
+import '../../aiTriage/models/triage_continuation.dart';
+import '../../aiTriage/services/triage_continuation_restore_coordinator.dart';
+import '../../aiTriage/services/triage_continuation_store.dart';
+import '../../aiTriage/services/triage_service.dart';
+import '../../privacy/services/privacy_service.dart';
+import '../../safety/services/safety_permission_service.dart';
+import '../models/care_facility_model.dart';
+import '../models/emergency_session_model.dart';
+import '../services/care_facility_service.dart';
 import '../services/emergency_service.dart';
 
-/// CB-017 — Emergency Map (UC-62, UC-63, UC-64, UC-65)
-/// Opens (or resumes) an emergency session on entry, which server-side also
-/// triggers the family alert (UC-65, event-driven — no dedicated endpoint).
-/// Nearest-facility search (UC-63) has no backend endpoint yet, so the
-/// facility shown below is mock data pending that implementation.
+typedef EmergencyUriLauncher = Future<bool> Function(Uri uri);
+typedef LocationConsentProbe = Future<bool> Function();
+
+/// Emergency help remains available when location or the route provider is
+/// unavailable. Nearby results are informational and never delay emergency
+/// calling or opening the emergency session.
 class EmergencyMapScreen extends StatefulWidget {
-  const EmergencyMapScreen({super.key});
+  const EmergencyMapScreen({
+    super.key,
+    this.facilityService,
+    this.permissionService,
+    this.emergencyService,
+    this.uriLauncher,
+    this.locationConsentProbe,
+    this.existingSession,
+    this.triageHandoff = false,
+    this.stage = 'INFANT',
+    this.emergencyDialer,
+    this.continuationCoordinator,
+  });
+
+  final CareFacilityService? facilityService;
+  final SafetyPermissionService? permissionService;
+  final EmergencyService? emergencyService;
+  final EmergencyUriLauncher? uriLauncher;
+  final LocationConsentProbe? locationConsentProbe;
+  final EmergencySession? existingSession;
+  final bool triageHandoff;
+  final String stage;
+  final Future<bool> Function()? emergencyDialer;
+  final TriageContinuationRestoreCoordinator? continuationCoordinator;
 
   @override
   State<EmergencyMapScreen> createState() => _EmergencyMapScreenState();
@@ -16,538 +53,594 @@ class EmergencyMapScreen extends StatefulWidget {
 
 class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
   static const _primary = Color(0xFF845143);
-  static const _primaryContainer = Color(0xFFC98C7B);
-  static const _onPrimaryContainer = Color(0xFF51271B);
   static const _surface = Color(0xFFFFF8F6);
-  static const _surfaceContainer = Color(0xFFFFE9E3);
-  static const _surfaceContainerHigh = Color(0xFFFFE2D9);
-  static const _onSurface = Color(0xFF271812);
-  static const _onSurfaceVariant = Color(0xFF524440);
-  static const _error = Color(0xFFBA1A1A);
-  static const _errorContainer = Color(0xFFFFDAD6);
-  static const _onErrorContainer = Color(0xFF93000A);
-  static const _secondaryContainer = Color(0xFFF6DACF);
-  static const _onSecondaryContainer = Color(0xFF735E56);
+  static const _emergencyNumber = '115';
+  static const _supportedStages = {
+    'PRECONCEPTION',
+    'PREGNANCY',
+    'POSTPARTUM',
+    'INFANT',
+    'TODDLER',
+  };
 
-  // Mock nearest facility — UC-63 "Find Nearest Healthcare Facility" has no
-  // backend endpoint yet. TODO: replace with real search once implemented.
-  static const _facilityName = 'Bệnh viện Nhi Đồng 1';
-  static const _facilityAddress = '341 Sư Vạn Hạnh, Quận 10';
-  static const _facilityPhone = '02839271119';
-  static const _facilityDistanceKm = 1.2;
-  static const _facilityEtaMin = 5;
-  static const _facilityLat = 10.7626;
-  static const _facilityLng = 106.6602;
+  late final CareFacilityService _facilities =
+      widget.facilityService ?? CareFacilityService();
+  late final SafetyPermissionService _permissions =
+      widget.permissionService ?? SafetyPermissionService();
+  late final EmergencyService _emergency =
+      widget.emergencyService ?? EmergencyService();
+  late final EmergencyUriLauncher _launch =
+      widget.uriLauncher ?? ((uri) => launchUrl(uri));
+  late final LocationConsentProbe _hasLocationConsent =
+      widget.locationConsentProbe ?? _defaultLocationConsentProbe;
+  late final TriageContinuationRestoreCoordinator _continuationCoordinator =
+      widget.continuationCoordinator ??
+      TriageContinuationRestoreCoordinator(
+        store: SecureTriageContinuationStore(),
+        gateway: TriageService(),
+      );
+  late final String _stage = widget.stage.trim().toUpperCase();
+  late String? _accountId = AuthState.instance.userId;
 
-  final _emergencyService = EmergencyService();
-  bool _sendingAlert = false;
+  Position? _position;
+  List<CareFacility> _results = const [];
+  CareFacility? _selected;
+  CareRoute? _route;
+  EmergencySession? _session;
+  bool _loading = true;
+  bool _sendingFamilyAlert = false;
+  bool _familyAlertFailed = false;
+  bool _accountChanged = false;
+  bool _restoringContinuation = false;
+  bool _noticeIsDialFallback = false;
+  String? _notice;
+  String? _continuationExitError;
+  int _loadGeneration = 0;
+  int _selectionGeneration = 0;
+  int _sessionGeneration = 0;
+
+  bool get _isTriageHandoff =>
+      widget.triageHandoff ||
+      widget.existingSession?.triggerSource.trim().toUpperCase() == 'AI_TRIAGE';
+
+  bool _isActiveSession(EmergencySession? session) =>
+      session?.status.trim().toUpperCase() == 'ACTIVE';
 
   @override
   void initState() {
     super.initState();
-    _openFlow();
+    if (!_supportedStages.contains(_stage)) {
+      throw ArgumentError.value(widget.stage, 'stage', 'Unsupported stage');
+    }
+    _session = _isActiveSession(widget.existingSession)
+        ? widget.existingSession
+        : null;
+    AuthState.instance.addListener(_handleAuthChanged);
+    _load();
   }
 
-  Future<void> _openFlow() async {
+  @override
+  void dispose() {
+    AuthState.instance.removeListener(_handleAuthChanged);
+    super.dispose();
+  }
+
+  void _handleAuthChanged() {
+    final current = AuthState.instance.userId;
+    if (current == _accountId) return;
+    _accountId = current;
+    ++_loadGeneration;
+    ++_selectionGeneration;
+    ++_sessionGeneration;
+    if (!mounted) return;
+    setState(() {
+      _accountChanged = true;
+      _loading = false;
+      _sendingFamilyAlert = false;
+      _restoringContinuation = false;
+      _position = null;
+      _results = const [];
+      _selected = null;
+      _route = null;
+      _session = null;
+      _continuationExitError = null;
+      _noticeIsDialFallback = false;
+      _notice =
+          'Phiên đăng nhập đã thay đổi. Dữ liệu khẩn cấp cũ đã được xóa khỏi màn hình.';
+    });
+  }
+
+  Future<void> _load() async {
+    final generation = ++_loadGeneration;
+    ++_selectionGeneration;
+    if (mounted) {
+      setState(() {
+        _loading = true;
+        _notice = null;
+        _noticeIsDialFallback = false;
+        _route = null;
+      });
+    }
+    if (!_isActiveSession(_session)) {
+      await _ensureEmergencySession(showFeedback: false);
+    }
+    if (!mounted || generation != _loadGeneration || _accountChanged) return;
+
     try {
-      await _emergencyService.openFlow(triggerSource: 'MANUAL');
+      if (!await _hasLocationConsent()) {
+        if (mounted && generation == _loadGeneration) {
+          setState(() {
+            _loading = false;
+            _notice =
+                'Chưa có consent chia sẻ vị trí. Bạn vẫn có thể gọi cấp cứu.';
+          });
+        }
+        return;
+      }
+      if (!mounted || generation != _loadGeneration) return;
+      final position = await _permissions.readConsentedLocation();
+      if (!mounted || generation != _loadGeneration) return;
+      if (position == null) {
+        setState(() {
+          _loading = false;
+          _notice =
+              'Không có quyền vị trí. Bạn vẫn có thể gọi cấp cứu hoặc thử lại.';
+        });
+        return;
+      }
+      final results = await _facilities.searchNearby(
+        latitude: position.latitude,
+        longitude: position.longitude,
+      );
+      if (!mounted || generation != _loadGeneration) return;
+      final selectionGeneration = ++_selectionGeneration;
+      setState(() {
+        _position = position;
+        _results = results;
+        _selected = results.isEmpty ? null : results.first;
+        _loading = false;
+        _notice = results.isEmpty
+            ? 'Không tìm thấy cơ sở phù hợp. Hãy gọi cấp cứu khi cần.'
+            : null;
+      });
+      if (_selected?.hasCoordinates == true) {
+        await _loadRoute(_selected!, selectionGeneration);
+      }
     } catch (_) {
-      // Non-fatal: the map/facility info still works without a session.
+      if (mounted && generation == _loadGeneration) {
+        setState(() {
+          _loading = false;
+          _notice = 'Không thể tải cơ sở gần đây. Bạn vẫn có thể gọi cấp cứu.';
+        });
+      }
     }
   }
 
-  Future<void> _sendFamilyAlert() async {
-    setState(() => _sendingAlert = true);
+  Future<bool> _defaultLocationConsentProbe() async {
+    final grants = await PrivacyService.instance.listConsents();
+    return grants.any(
+      (grant) =>
+          grant.isActive &&
+          grant.dataType == 'LOCATION' &&
+          grant.purpose == 'SHARE' &&
+          grant.recipient == 'CAREBRIDGE_SAFETY' &&
+          grant.scope == 'SAFETY_EMERGENCY_ALERT',
+    );
+  }
+
+  Future<void> _loadRoute(
+    CareFacility facility,
+    int selectionGeneration,
+  ) async {
+    final position = _position;
+    if (position == null || !facility.hasCoordinates) return;
     try {
-      // Re-confirming open is idempotent server-side; family alert is sent
-      // as an event side-effect of session creation (UC-65).
-      await _emergencyService.openFlow(triggerSource: 'MANUAL');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã gửi báo động đến người thân')),
-        );
+      final route = await _facilities.getRoute(
+        fromLatitude: position.latitude,
+        fromLongitude: position.longitude,
+        toLatitude: facility.latitude!,
+        toLongitude: facility.longitude!,
+      );
+      if (mounted &&
+          selectionGeneration == _selectionGeneration &&
+          identical(_selected, facility)) {
+        setState(() => _route = route);
       }
-    } catch (e) {
-      if (mounted) {
+    } catch (_) {
+      // Directions can still be delegated to the installed navigation app.
+    }
+  }
+
+  Future<void> _select(CareFacility facility) async {
+    final selectionGeneration = ++_selectionGeneration;
+    setState(() {
+      _selected = facility;
+      _route = null;
+    });
+    var detail = facility;
+    if (facility.facilityId != null) {
+      try {
+        detail = await _facilities.getFacility(facility.facilityId!);
+        if (!mounted || selectionGeneration != _selectionGeneration) return;
+        setState(() {
+          _selected = detail;
+          final index = _results.indexOf(facility);
+          if (index >= 0) {
+            _results = [..._results]..[index] = detail;
+          }
+        });
+      } catch (_) {
+        // The nearby item remains usable when detail refresh is unavailable.
+      }
+    }
+    if (selectionGeneration == _selectionGeneration) {
+      await _loadRoute(detail, selectionGeneration);
+    }
+  }
+
+  Future<void> _ensureEmergencySession({bool showFeedback = true}) async {
+    if (_sendingFamilyAlert || _accountChanged) return;
+    final generation = ++_sessionGeneration;
+    final accountId = AuthState.instance.userId;
+    if (mounted) setState(() => _sendingFamilyAlert = true);
+    try {
+      final session = _isTriageHandoff || _isActiveSession(_session)
+          ? await _emergency.getActive()
+          : await _emergency.openFlow(triggerSource: 'MANUAL');
+      if (!mounted ||
+          generation != _sessionGeneration ||
+          AuthState.instance.userId != accountId) {
+        return;
+      }
+      setState(() {
+        _session = _isActiveSession(session) ? session : null;
+        _familyAlertFailed = session == null;
+      });
+      if (showFeedback && session != null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Không thể gửi báo động: $e'),
-            backgroundColor: _error,
+          const SnackBar(
+            content: Text(
+              'Yêu cầu hỗ trợ đã được gửi; thông báo gia đình đang được xử lý.',
+            ),
           ),
         );
       }
+    } catch (_) {
+      if (!mounted ||
+          generation != _sessionGeneration ||
+          AuthState.instance.userId != accountId) {
+        return;
+      }
+      setState(() => _familyAlertFailed = true);
+      if (showFeedback) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Không thể gửi báo động. Hãy thử lại.')),
+        );
+      }
     } finally {
-      if (mounted) setState(() => _sendingAlert = false);
+      if (mounted &&
+          generation == _sessionGeneration &&
+          AuthState.instance.userId == accountId) {
+        setState(() => _sendingFamilyAlert = false);
+      }
     }
   }
 
-  Future<void> _call() async {
-    final uri = Uri(scheme: 'tel', path: _facilityPhone);
-    await launchUrl(uri);
+  Future<void> _leaveEmergency() async {
+    if (!_isTriageHandoff) {
+      if (mounted) Navigator.of(context).maybePop();
+      return;
+    }
+    if (_restoringContinuation) return;
+    final userId = AuthState.instance.userId;
+    if (userId == null || userId.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _continuationExitError =
+              'Không thể xác nhận tài khoản để khôi phục điểm quay lại.';
+        });
+      }
+      return;
+    }
+    setState(() {
+      _restoringContinuation = true;
+      _continuationExitError = null;
+    });
+    try {
+      final decision = await _continuationCoordinator.restoreForUser(
+        userId,
+        resumeRedEmergency: false,
+      );
+      if (!mounted || AuthState.instance.userId != userId) return;
+      if (decision.requiresRetry) {
+        setState(() {
+          _continuationExitError =
+              'Chưa thể khôi phục điểm quay lại. Hãy thử lại hoặc về trang chủ an toàn.';
+        });
+        return;
+      }
+      final location = switch (decision.destination) {
+        TriageContinuationDestination.motherJourney =>
+          '/mother-home?tab=1&triageReturn=${Uri.encodeQueryComponent(_session?.sessionId ?? DateTime.now().microsecondsSinceEpoch.toString())}',
+        TriageContinuationDestination.babyProfile
+            when decision.originReferenceId != null =>
+          '/babies/detail/${Uri.encodeComponent(decision.originReferenceId!)}',
+        TriageContinuationDestination.safeDashboard ||
+        TriageContinuationDestination.none => '/mother-home',
+        _ => null,
+      };
+      if (location == null) {
+        setState(() {
+          _continuationExitError =
+              'Điểm quay lại không còn khả dụng. Hãy thử lại hoặc về trang chủ an toàn.';
+        });
+        return;
+      }
+      context.go(
+        location,
+        extra:
+            decision.destination ==
+                    TriageContinuationDestination.motherJourney ||
+                decision.destination ==
+                    TriageContinuationDestination.babyProfile
+            ? TriageContinuationArrival(
+                userId: userId,
+                decision: decision,
+                coordinator: _continuationCoordinator,
+              )
+            : null,
+      );
+    } catch (_) {
+      if (!mounted || AuthState.instance.userId != userId) return;
+      setState(() {
+        _continuationExitError =
+            'Chưa thể khôi phục điểm quay lại. Hãy thử lại hoặc về trang chủ an toàn.';
+      });
+    } finally {
+      if (mounted && AuthState.instance.userId == userId) {
+        setState(() => _restoringContinuation = false);
+      }
+    }
   }
 
-  Future<void> _openDirections() async {
-    final uri = Uri.parse(
-      'https://www.google.com/maps/dir/?api=1&destination=$_facilityLat,$_facilityLng',
+  Future<void> _call(String? phone) async {
+    try {
+      final launched = phone == null && widget.emergencyDialer != null
+          ? await widget.emergencyDialer!()
+          : await _launch(Uri(scheme: 'tel', path: phone ?? _emergencyNumber));
+      if (!launched && mounted) _showManualDialFallback(phone);
+    } catch (_) {
+      if (mounted) _showManualDialFallback(phone);
+    }
+  }
+
+  void _showManualDialFallback(String? phone) {
+    setState(() {
+      _noticeIsDialFallback = true;
+      _notice = phone == null
+          ? 'Không thể mở ứng dụng gọi. Hãy tự gọi 115 hoặc nhờ người bên cạnh gọi giúp.'
+          : 'Không thể mở ứng dụng gọi. Hãy tự nhập số $phone để gọi cơ sở y tế.';
+    });
+  }
+
+  Future<void> _navigate(CareFacility facility) async {
+    if (!facility.hasCoordinates) return;
+    await _launch(
+      Uri.parse(
+        'https://www.google.com/maps/dir/?api=1&destination='
+        '${facility.latitude},${facility.longitude}',
+      ),
     );
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  String _distance(CareFacility facility) {
+    final meters = identical(_selected, facility) && _route != null
+        ? _route!.distanceMeters
+        : facility.distanceMeters?.toDouble();
+    if (meters == null) return 'Khoảng cách chưa xác định';
+    return meters >= 1000
+        ? '${(meters / 1000).toStringAsFixed(1)} km'
+        : '${meters.round()} m';
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _surface,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildTopBar(),
-            Expanded(
-              child: Stack(
-                children: [
-                  _buildMapBackground(),
-                  Positioned(
-                    top: 12,
-                    right: 16,
-                    child: _buildFamilyAlertButton(),
-                  ),
-                  Align(
-                    alignment: Alignment.bottomCenter,
-                    child: _buildFacilitySheet(),
-                  ),
-                ],
-              ),
-            ),
-          ],
+      appBar: AppBar(
+        leading: IconButton(
+          tooltip: 'Quay lại',
+          onPressed: _restoringContinuation ? null : _leaveEmergency,
+          icon: const Icon(Icons.arrow_back),
         ),
+        title: const Text('Cơ sở y tế gần đây'),
+        backgroundColor: _surface,
+        foregroundColor: _primary,
       ),
-    );
-  }
-
-  Widget _buildTopBar() {
-    return SizedBox(
-      height: 48,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 48,
-              height: 48,
-              child: IconButton(
-                padding: EdgeInsets.zero,
-                icon: const Icon(Icons.arrow_back, color: _primary),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ),
-            const Expanded(
-              child: Text(
-                'Bản đồ khẩn cấp',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: _primary,
-                ),
-              ),
-            ),
-            const SizedBox(width: 48, height: 48),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // Stylized static map background — no map SDK dependency in this app yet,
-  // so this is a non-interactive placeholder matching the design's palette.
-  Widget _buildMapBackground() {
-    return Container(
-      color: const Color(0xFFFBE9DF),
-      child: CustomPaint(
-        painter: _RoadGridPainter(),
-        child: Stack(
-          children: [
-            Positioned(
-              top: 90,
-              left: 70,
-              child: _buildMarker(
-                icon: Icons.local_hospital,
-                color: _error,
-                label: 'BV Nhi Đồng',
-              ),
-            ),
-            const Positioned(top: 220, right: 60, child: _SecondaryMarker()),
-            const Align(
-              alignment: Alignment.center,
-              child: _UserLocationMarker(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMarker({
-    required IconData icon,
-    required Color color,
-    required String label,
-  }) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x1F5A463F),
-                blurRadius: 24,
-                offset: Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Icon(icon, color: Colors.white, size: 20),
-        ),
-        const SizedBox(height: 4),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-          decoration: BoxDecoration(
-            color: _surface,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            label,
-            style: const TextStyle(fontSize: 12, color: _onSurface),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFamilyAlertButton() {
-    return SizedBox(
-      height: 48,
-      child: ElevatedButton.icon(
-        onPressed: _sendingAlert ? null : _sendFamilyAlert,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: _error,
-          foregroundColor: Colors.white,
-          shape: const StadiumBorder(),
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          elevation: 4,
-        ),
-        icon: _sendingAlert
-            ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2,
-                ),
-              )
-            : const Icon(Icons.campaign, size: 20),
-        label: const Text(
-          'Báo động gia đình',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFacilitySheet() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-      decoration: const BoxDecoration(
-        color: _surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x145A463F),
-            blurRadius: 30,
-            offset: Offset(0, -8),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      body: Column(
         children: [
-          Container(
-            width: 48,
-            height: 4,
-            margin: const EdgeInsets.only(bottom: 16),
-            decoration: BoxDecoration(
-              color: _surfaceContainerHigh,
-              borderRadius: BorderRadius.circular(99),
+          if (_loading)
+            const LinearProgressIndicator(key: Key('nearby-loading')),
+          if (_session != null)
+            const MaterialBanner(
+              content: Text(
+                'Phiên hỗ trợ khẩn cấp đang hoạt động; yêu cầu thông báo đang được xử lý.',
+              ),
+              actions: [SizedBox.shrink()],
+            ),
+          if (_familyAlertFailed && _isTriageHandoff)
+            MaterialBanner(
+              key: const Key('emergency-session-status'),
+              content: const Text(
+                'Không thể xác nhận phiên hỗ trợ khẩn cấp. Vui lòng thử lại.',
+              ),
+              actions: [
+                TextButton(
+                  key: const Key('emergency-session-retry'),
+                  onPressed: _sendingFamilyAlert
+                      ? null
+                      : () => _ensureEmergencySession(showFeedback: false),
+                  child: const Text('Thử lại'),
+                ),
+              ],
+            ),
+          if (_continuationExitError != null)
+            MaterialBanner(
+              key: const Key('emergency-continuation-exit-error'),
+              content: Text(_continuationExitError!),
+              actions: [
+                TextButton(
+                  key: const Key('emergency-continuation-exit-retry'),
+                  onPressed: _restoringContinuation ? null : _leaveEmergency,
+                  child: const Text('Thử lại'),
+                ),
+                TextButton(
+                  key: const Key('emergency-continuation-safe-dashboard'),
+                  onPressed: _restoringContinuation
+                      ? null
+                      : () => context.go('/mother-home'),
+                  child: const Text('Về trang chủ'),
+                ),
+              ],
+            ),
+          if (_notice != null)
+            MaterialBanner(
+              key: const Key('nearby-notice'),
+              content: Text(_notice!),
+              actions: [
+                if (!_accountChanged && !_noticeIsDialFallback)
+                  TextButton(onPressed: _load, child: const Text('Thử lại')),
+                if (_accountChanged || _noticeIsDialFallback)
+                  const SizedBox.shrink(),
+              ],
+            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+            child: SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                key: Key(
+                  const {
+                        'PRECONCEPTION',
+                        'PREGNANCY',
+                        'POSTPARTUM',
+                      }.contains(_stage)
+                      ? 'emergency-maternal-call-115'
+                      : 'emergency-call',
+                ),
+                onPressed: () => _call(null),
+                style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                icon: const Icon(Icons.call),
+                label: const Text('Gọi cấp cứu 115'),
+              ),
             ),
           ),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      _facilityName,
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        color: _onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: const [
-                        Icon(
-                          Icons.location_on,
-                          size: 16,
-                          color: _onSurfaceVariant,
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: SizedBox(
+              width: double.infinity,
+              child: KeyedSubtree(
+                key: const Key('emergency-family-alert'),
+                child: OutlinedButton.icon(
+                  key: const Key('family-alert'),
+                  onPressed: _sendingFamilyAlert || _accountChanged
+                      ? null
+                      : () => _ensureEmergencySession(),
+                  icon: _sendingFamilyAlert
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(
+                          _familyAlertFailed ? Icons.refresh : Icons.campaign,
                         ),
-                        SizedBox(width: 4),
-                        Text(
-                          _facilityAddress,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: _onSurfaceVariant,
+                  label: Text(
+                    _familyAlertFailed
+                        ? 'Thử gửi lại báo động gia đình'
+                        : 'Báo động gia đình',
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: _results.isEmpty
+                ? const Center(
+                    child: Icon(Icons.local_hospital_outlined, size: 72),
+                  )
+                : ListView.builder(
+                    key: const Key('nearby-list'),
+                    padding: const EdgeInsets.all(12),
+                    itemCount: _results.length,
+                    itemBuilder: (_, index) {
+                      final facility = _results[index];
+                      return Card(
+                        child: ListTile(
+                          key: Key('facility-$index'),
+                          selected: identical(_selected, facility),
+                          title: Text(facility.name),
+                          subtitle: Text(
+                            [
+                              if (facility.address?.isNotEmpty == true)
+                                facility.address!,
+                              _distance(facility),
+                              facility.sourceLabel,
+                              facility.verificationLabel,
+                            ].join('\n'),
                           ),
+                          isThreeLine: true,
+                          onTap: () => _select(facility),
                         ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: _errorContainer,
-                  borderRadius: BorderRadius.circular(99),
-                ),
-                child: Column(
-                  children: const [
-                    Text(
-                      '$_facilityEtaMin',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        color: _onErrorContainer,
-                        height: 1,
-                      ),
-                    ),
-                    Text(
-                      'phút',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: _onErrorContainer,
-                        height: 1.2,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+                      );
+                    },
+                  ),
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _surfaceContainer,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(Icons.directions_car, size: 14, color: _onSurface),
-                    SizedBox(width: 4),
-                    Text(
-                      '$_facilityDistanceKm km',
-                      style: TextStyle(fontSize: 12, color: _onSurface),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _secondaryContainer,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(
-                      Icons.check_circle,
-                      size: 14,
-                      color: _onSecondaryContainer,
-                    ),
-                    SizedBox(width: 4),
-                    Text(
-                      'Mở cửa 24/7',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: _onSecondaryContainer,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: SizedBox(
-                  height: 52,
-                  child: ElevatedButton.icon(
-                    onPressed: _call,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _surfaceContainerHigh,
-                      foregroundColor: _onSurface,
-                      shape: const StadiumBorder(),
-                      elevation: 0,
-                    ),
+          if (_selected != null) _buildSelected(_selected!),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSelected(CareFacility facility) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(facility.name, style: Theme.of(context).textTheme.titleMedium),
+            if (_route != null)
+              Text('ETA ${_route!.etaMinutes} phút · ${_distance(facility)}'),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    key: const Key('facility-call'),
+                    onPressed: facility.phone == null
+                        ? null
+                        : () => _call(facility.phone),
                     icon: const Icon(Icons.call),
-                    label: const Text(
-                      'Gọi điện',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
+                    label: const Text('Gọi cơ sở'),
                   ),
                 ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: SizedBox(
-                  height: 52,
-                  child: ElevatedButton.icon(
-                    onPressed: _openDirections,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _primaryContainer,
-                      foregroundColor: _onPrimaryContainer,
-                      shape: const StadiumBorder(),
-                      elevation: 2,
-                    ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: FilledButton.icon(
+                    key: const Key('facility-navigate'),
+                    onPressed: facility.hasCoordinates
+                        ? () => _navigate(facility)
+                        : null,
                     icon: const Icon(Icons.directions),
-                    label: const Text(
-                      'Chỉ đường',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
+                    label: const Text('Chỉ đường'),
                   ),
                 ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SecondaryMarker extends StatelessWidget {
-  const _SecondaryMarker();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.85),
-        shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFFD6C2BD)),
-      ),
-      child: const Icon(
-        Icons.medical_services_outlined,
-        color: Color(0xFF845143),
-        size: 18,
-      ),
-    );
-  }
-}
-
-class _UserLocationMarker extends StatefulWidget {
-  const _UserLocationMarker();
-
-  @override
-  State<_UserLocationMarker> createState() => _UserLocationMarkerState();
-}
-
-class _UserLocationMarkerState extends State<_UserLocationMarker>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(seconds: 2),
-  )..repeat();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 48,
-      height: 48,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          AnimatedBuilder(
-            animation: _controller,
-            builder: (_, _) {
-              final scale = 0.6 + (_controller.value * 0.6);
-              return Opacity(
-                opacity: (1 - _controller.value).clamp(0.0, 1.0),
-                child: Transform.scale(
-                  scale: scale,
-                  child: Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF845143).withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-          Container(
-            width: 16,
-            height: 16,
-            decoration: BoxDecoration(
-              color: const Color(0xFF845143),
-              shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFFFFF8F6), width: 2),
+              ],
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
-}
-
-class _RoadGridPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFFF1D4CA)
-      ..strokeWidth = 3;
-    const gap = 56.0;
-    for (double x = 0; x < size.width; x += gap) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-    }
-    for (double y = 0; y < size.height; y += gap) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

@@ -21,7 +21,7 @@ from app.schemas import (
     IntakeQuestion,
     IntakeStartRequest,
 )
-from app.risk_rules import apply_red_flag_rules
+from app.risk_rules import MATERNAL_STAGES, apply_red_flag_rules
 from app.symptom_normalizer import (
     normalize_symptom_details_deterministic,
     normalize_symptom_details_with_metadata,
@@ -84,6 +84,7 @@ def _build_intake_response(
 ) -> IntakeFlowResponse:
     request_deadline = time.monotonic() + PYTHON_SERVICE_TIMEOUT_SECONDS
     client = get_gemini_client()
+    conversation_client = None if intake.stage == "POSTPARTUM" else client
     red_flag = has_red_flag(intake)
     if red_flag:
         normalized_details = normalize_symptom_details_deterministic(intake)
@@ -107,14 +108,14 @@ def _build_intake_response(
             questions,
             intake=intake,
             normalized_symptoms=[item.normalizedCode for item in normalized_details],
-            gemini_client=client,
+            gemini_client=conversation_client,
             deadline=request_deadline,
         )
         conversation_summary = _conversation_summary(
             intake, [item.normalizedCode for item in normalized_details]
         )
-        if client is not None:
-            generated_summary = client.summarize_conversation(
+        if conversation_client is not None:
+            generated_summary = conversation_client.summarize_conversation(
                 facts=_summary_facts(intake, normalized_details), deadline=request_deadline
             )
             if generated_summary is not None:
@@ -134,7 +135,18 @@ def _build_intake_response(
             conversationSummary=conversation_summary,
         )
 
-    force_cautious = bool(questions and not red_flag and reached_question_limit(round_number))
+    force_cautious = bool(
+        not red_flag
+        and reached_question_limit(round_number)
+        and (
+            questions
+            or intake.stage in MATERNAL_STAGES
+            or (
+                intake.stage in {"INFANT", "TODDLER"}
+                and not normalized_details
+            )
+        )
+    )
     triage_result = run_triage(
         intake,
         force_cautious_yellow=force_cautious,
@@ -152,7 +164,11 @@ def _build_intake_response(
         if not generic_questions:
             generic_questions = [IntakeQuestion(
                 questionKey="parentFreeText",
-                text="Vui lòng mô tả dấu hiệu cụ thể mà bạn quan sát được ở trẻ.",
+                text=(
+                    f"Vui lòng mô tả cụ thể dấu hiệu bạn đang gặp {_maternal_context(intake.stage)}."
+                    if intake.stage in MATERNAL_STAGES
+                    else "Vui lòng mô tả dấu hiệu cụ thể mà bạn quan sát được ở trẻ."
+                ),
                 answerType="TEXT",
             )]
         return IntakeFlowResponse(
@@ -161,7 +177,11 @@ def _build_intake_response(
             stage=intake.stage,
             mergedIntake=persisted_intake,
             normalizedSymptomDetails=normalized_details,
-            assistantMessage="CareBridge cần bạn mô tả rõ hơn các dấu hiệu đang quan sát được.",
+            assistantMessage=(
+                f"CareBridge cần bạn mô tả rõ hơn các dấu hiệu {_maternal_context(intake.stage)}."
+                if intake.stage in MATERNAL_STAGES
+                else "CareBridge cần bạn mô tả rõ hơn các dấu hiệu đang quan sát được."
+            ),
             questions=generic_questions[:3],
             round=min(round_number + 1, 3),
             triageResult=None,
@@ -174,8 +194,8 @@ def _build_intake_response(
     conversation_summary = _conversation_summary(
         intake, [item.normalizedCode for item in normalized_details]
     )
-    if client is not None and triage_result.riskLevel != "RED":
-        generated_summary = client.summarize_conversation(
+    if conversation_client is not None and triage_result.riskLevel != "RED":
+        generated_summary = conversation_client.summarize_conversation(
             facts=_summary_facts(intake, normalized_details), deadline=request_deadline
         )
         if generated_summary is not None:
@@ -197,19 +217,40 @@ def _build_intake_response(
 
 
 def _summary_facts(intake: ChildTriageRequest, details: list) -> dict[str, object]:
-    return {
-        "childAgeMonths": intake.childAgeMonths,
+    common = {
+        "stage": intake.stage,
         "normalizedSymptoms": [item.normalizedCode for item in details],
         "duration": intake.duration,
         "temperatureC": intake.temperatureC,
-        "feedingStatus": intake.feedingStatus,
         "breathingStatus": intake.breathingStatus,
         "consciousnessStatus": intake.consciousnessStatus,
+    }
+    if intake.stage in MATERNAL_STAGES:
+        return common
+    return {
+        **common,
+        "childAgeMonths": intake.childAgeMonths,
+        "feedingStatus": intake.feedingStatus,
     }
 
 
 def _conversation_summary(intake: ChildTriageRequest, symptoms: list[str]) -> str:
+    if intake.stage in MATERNAL_STAGES:
+        signs = ", ".join(symptoms) if symptoms else "chưa chuẩn hóa được dấu hiệu"
+        duration = intake.duration or "chưa rõ thời gian"
+        return (
+            f"Tóm tắt intake {_maternal_context(intake.stage)}: "
+            f"dấu hiệu: {signs}; thời gian: {duration}."
+        )
     age = f"{intake.childAgeMonths} tháng" if intake.childAgeMonths is not None else "chưa rõ tuổi"
     signs = ", ".join(symptoms) if symptoms else "chưa chuẩn hóa được triệu chứng"
     duration = intake.duration or "chưa rõ thời gian"
     return f"Tóm tắt intake: trẻ {age}; dấu hiệu: {signs}; thời gian: {duration}."
+
+
+def _maternal_context(stage: str) -> str:
+    return {
+        "PRECONCEPTION": "trước khi mang thai",
+        "PREGNANCY": "trong thai kỳ",
+        "POSTPARTUM": "sau sinh",
+    }[stage]

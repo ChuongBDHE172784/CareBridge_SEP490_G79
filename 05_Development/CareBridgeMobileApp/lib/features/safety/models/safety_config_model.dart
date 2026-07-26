@@ -4,12 +4,18 @@ class SafetyConfig {
   final bool fallDetectionEnabled;
   final String sensitivityLevel; // LOW | MEDIUM | HIGH
   final bool emergencyAutoAlert;
+  final int countdownSeconds;
+  final bool sensorPermissionGranted;
+  final DateTime? sensorPermissionRecordedAt;
 
   const SafetyConfig({
     this.id,
     required this.fallDetectionEnabled,
     required this.sensitivityLevel,
     required this.emergencyAutoAlert,
+    this.countdownSeconds = 30,
+    this.sensorPermissionGranted = false,
+    this.sensorPermissionRecordedAt,
   });
 
   factory SafetyConfig.fromJson(Map<String, dynamic> json) {
@@ -18,6 +24,12 @@ class SafetyConfig {
       fallDetectionEnabled: json['fallDetectionEnabled'] as bool? ?? false,
       sensitivityLevel: json['sensitivityLevel'] as String? ?? 'MEDIUM',
       emergencyAutoAlert: json['emergencyAutoAlert'] as bool? ?? true,
+      countdownSeconds: json['countdownSeconds'] as int? ?? 30,
+      sensorPermissionGranted:
+          json['sensorPermissionGranted'] as bool? ?? false,
+      sensorPermissionRecordedAt: json['sensorPermissionRecordedAt'] != null
+          ? DateTime.tryParse(json['sensorPermissionRecordedAt'].toString())
+          : null,
     );
   }
 }
@@ -56,6 +68,11 @@ class SafetyEvent {
   final DateTime? detectedAt;
   final DateTime? resolvedAt;
   final String? notes;
+  final DateTime? countdownDeadlineAt;
+  final String? responseType;
+  final String? responseReason;
+  final DateTime? respondedAt;
+  final String? emergencySessionId;
 
   const SafetyEvent({
     required this.id,
@@ -65,6 +82,11 @@ class SafetyEvent {
     this.detectedAt,
     this.resolvedAt,
     this.notes,
+    this.countdownDeadlineAt,
+    this.responseType,
+    this.responseReason,
+    this.respondedAt,
+    this.emergencySessionId,
   });
 
   factory SafetyEvent.fromJson(Map<String, dynamic> json) {
@@ -80,6 +102,15 @@ class SafetyEvent {
           ? DateTime.tryParse(json['resolvedAt'] as String)
           : null,
       notes: json['notes'] as String?,
+      countdownDeadlineAt: json['countdownDeadlineAt'] != null
+          ? DateTime.tryParse(json['countdownDeadlineAt'].toString())
+          : null,
+      responseType: json['responseType'] as String?,
+      responseReason: json['responseReason'] as String?,
+      respondedAt: json['respondedAt'] != null
+          ? DateTime.tryParse(json['respondedAt'].toString())
+          : null,
+      emergencySessionId: json['emergencySessionId'] as String?,
     );
   }
 }

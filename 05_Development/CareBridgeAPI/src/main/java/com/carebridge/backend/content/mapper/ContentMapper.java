@@ -3,6 +3,7 @@ package com.carebridge.backend.content.mapper;
 import com.carebridge.backend.content.dto.request.CreateContentRequest;
 import com.carebridge.backend.content.dto.response.ChecklistItemResponse;
 import com.carebridge.backend.content.dto.response.ChecklistTemplateResponse;
+import com.carebridge.backend.content.dto.response.AdminChecklistTemplateDetailResponse;
 import com.carebridge.backend.content.dto.response.ContentDetailResponse;
 import com.carebridge.backend.content.dto.response.ContentListResponse;
 import com.carebridge.backend.content.dto.response.ContentSearchResponse;
@@ -12,9 +13,11 @@ import com.carebridge.backend.content.entity.ChecklistTemplate;
 import com.carebridge.backend.content.entity.ContentItem;
 import com.carebridge.backend.content.entity.ContentStatus;
 import com.carebridge.backend.content.entity.ContentSource;
+import java.util.ArrayList;
 import java.util.List;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -30,8 +33,9 @@ public class ContentMapper {
                 .status(ContentStatus.DRAFT)
                 .versionNo(1)
                 .authorUserId(authorUserId)
-                .sources(request.getSources() == null ? java.util.List.of() : request.getSources().stream()
-                        .map(s -> new ContentSource(s.title(), s.url(), s.publisher())).toList())
+                .sources(request.getSources() == null ? new ArrayList<>() : request.getSources().stream()
+                        .map(s -> new ContentSource(s.title(), s.url(), s.publisher()))
+                        .collect(Collectors.toCollection(ArrayList::new)))
                 .build();
     }
 
@@ -77,7 +81,10 @@ public class ContentMapper {
                 .publishedAt(item.getPublishedAt())
                 .updatedAt(updatedAt)
                 .createdAt(item.getCreatedAt())
-                .sources(item.getSources().stream().map(s -> new com.carebridge.backend.content.dto.response.ContentSourceResponse(s.getTitle(), s.getUrl(), s.getPublisher())).toList())
+                .sources(item.getSources() == null ? List.of() : item.getSources().stream()
+                        .map(s -> new com.carebridge.backend.content.dto.response.ContentSourceResponse(
+                                s.getTitle(), s.getUrl(), s.getPublisher()))
+                        .toList())
                 .contentStale(contentStale)
                 .build();
     }
@@ -91,6 +98,21 @@ public class ContentMapper {
                 .id(template.getId())
                 .name(template.getName())
                 .stage(template.getStage())
+                .description(template.getDescription())
+                .items(itemResponses)
+                .build();
+    }
+
+    public AdminChecklistTemplateDetailResponse toAdminChecklistTemplateDetailResponse(
+            ChecklistTemplate template, List<ChecklistItem> items) {
+        List<ChecklistItemResponse> itemResponses = items.stream()
+                .map(this::toChecklistItemResponse)
+                .toList();
+        return AdminChecklistTemplateDetailResponse.builder()
+                .id(template.getId())
+                .name(template.getName())
+                .stage(template.getStage())
+                .status(template.getStatus())
                 .description(template.getDescription())
                 .items(itemResponses)
                 .build();

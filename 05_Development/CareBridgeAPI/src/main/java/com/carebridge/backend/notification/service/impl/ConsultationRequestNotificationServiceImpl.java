@@ -128,7 +128,8 @@ public class ConsultationRequestNotificationServiceImpl
     }
 
     private void deliver(NotificationRecord record) {
-        if (!writer.claim(record.getId())) {
+        UUID claimToken = writer.claim(record.getId());
+        if (claimToken == null) {
             return;
         }
         List<DeviceToken> tokens =
@@ -154,8 +155,9 @@ public class ConsultationRequestNotificationServiceImpl
                 record.setFailedAt(clock.instant());
             }
         }
-        writer.complete(record);
-        audit(record);
+        if (writer.complete(record, claimToken)) {
+            audit(record);
+        }
     }
 
     private void applyDelivery(NotificationRecord record, FcmDeliveryResult delivery) {

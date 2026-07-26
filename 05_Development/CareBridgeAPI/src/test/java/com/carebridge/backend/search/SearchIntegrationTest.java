@@ -9,6 +9,7 @@ import com.carebridge.backend.community.entity.CommunityQuestion;
 import com.carebridge.backend.community.entity.CommunityTopic;
 import com.carebridge.backend.community.entity.PregnancyStage;
 import com.carebridge.backend.community.entity.QuestionStatus;
+import com.carebridge.backend.community.entity.TopicType;
 import com.carebridge.backend.community.entity.UrgencyLevel;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
@@ -43,7 +44,7 @@ class SearchIntegrationTest extends AbstractPostgresIntegrationTest {
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private JwtTokenProvider jwtTokenProvider;
 
-    private String seedUserAndGetToken() {
+    private User seedUser() {
         User user = userRepository.save(User.builder()
                 .email(EMAIL)
                 .role(Role.MOTHER)
@@ -54,21 +55,36 @@ class SearchIntegrationTest extends AbstractPostgresIntegrationTest {
                 .phoneVerified(false)
                 .accountStatus("ACTIVE")
                 .build());
-        return jwtTokenProvider.generateAccessToken(user);
+        return user;
+    }
+
+    private CommunityTopic seedTopicUnderCategory(String name) {
+        UUID categorySuffix = UUID.randomUUID();
+        CommunityTopic category = topicRepository.save(CommunityTopic.builder()
+                .name(name + " category - " + categorySuffix)
+                .slug("search-category-" + categorySuffix)
+                .type(TopicType.CATEGORY)
+                .build());
+        UUID topicSuffix = UUID.randomUUID();
+        return topicRepository.save(CommunityTopic.builder()
+                .name(name + " - " + topicSuffix)
+                .slug("search-topic-" + topicSuffix)
+                .type(TopicType.TOPIC)
+                .parentId(category.getId())
+                .build());
     }
 
     // SEARCH-TC-013-010: page=0 and page=1 return distinct, correctly-paginated results
     @Test
     void search_pagination_returnsDistinctPagesWithCorrectTotals() throws Exception {
-        String token = seedUserAndGetToken();
-        CommunityTopic topic = topicRepository.save(CommunityTopic.builder()
-                .name("Dinh dưỡng thai kỳ - " + UUID.randomUUID())
-                .build());
+        User author = seedUser();
+        String token = jwtTokenProvider.generateAccessToken(author);
+        CommunityTopic topic = seedTopicUnderCategory("Dinh dưỡng thai kỳ");
 
         for (int i = 0; i < 25; i++) {
             questionRepository.save(CommunityQuestion.builder()
                     .topicId(topic.getId())
-                    .authorId(UUID.randomUUID())
+                    .authorId(author.getId())
                     .title("dinh dưỡng thai kỳ " + i)
                     .body("Nội dung câu hỏi số " + i)
                     .stage(PregnancyStage.PREGNANCY)
@@ -113,13 +129,12 @@ class SearchIntegrationTest extends AbstractPostgresIntegrationTest {
     // SEARCH-TC-013-009: SQL injection attempt in q — must not error or drop data
     @Test
     void search_sqlInjectionAttempt_isHandledSafely() throws Exception {
-        String token = seedUserAndGetToken();
-        CommunityTopic topic = topicRepository.save(CommunityTopic.builder()
-                .name("Safety topic - " + UUID.randomUUID())
-                .build());
+        User author = seedUser();
+        String token = jwtTokenProvider.generateAccessToken(author);
+        CommunityTopic topic = seedTopicUnderCategory("Safety topic");
         questionRepository.save(CommunityQuestion.builder()
                 .topicId(topic.getId())
-                .authorId(UUID.randomUUID())
+                .authorId(author.getId())
                 .title("Câu hỏi an toàn")
                 .body("Nội dung")
                 .stage(PregnancyStage.PREGNANCY)
@@ -127,7 +142,7 @@ class SearchIntegrationTest extends AbstractPostgresIntegrationTest {
                 .status(QuestionStatus.APPROVED)
                 .build());
 
-        String maliciousQuery = "'; DROP TABLE community_questions; --";
+        String maliciousQuery = "'; DROP TABLE community_content; --";
 
         mockMvc.perform(get("/api/v1/search")
                         .header("Authorization", "Bearer " + token)

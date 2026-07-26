@@ -14,11 +14,13 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
@@ -106,7 +108,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         JwtAuthenticationToken authentication = new JwtAuthenticationToken(
                 subject,
                 null,
-                jwtTokenProvider.getAuthorities(token),
+                user.getRole() == null
+                        ? List.of()
+                        : List.of(new SimpleGrantedAuthority(user.getRole().getAuthority())),
                 sessionId);
         authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
         org.springframework.security.core.context.SecurityContext securityContext =
@@ -120,7 +124,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private boolean isActiveSession(UserSession session, UUID userId) {
         return userId.equals(session.getUserId())
                 && !session.isRevoked()
-                && "active".equals(session.getStatus())
+                && "ACTIVE".equalsIgnoreCase(session.getStatus())
                 && session.getExpiresAt() != null
                 && session.getExpiresAt().isAfter(Instant.now());
     }

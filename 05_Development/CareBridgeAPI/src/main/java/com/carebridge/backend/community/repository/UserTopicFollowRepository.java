@@ -14,6 +14,8 @@ public interface UserTopicFollowRepository extends JpaRepository<UserTopicFollow
 
     Optional<UserTopicFollow> findByUserIdAndTopicId(UUID userId, UUID topicId);
 
+    boolean existsByTopicId(UUID topicId);
+
     // Batch follow-state check to avoid N+1 when hydrating a topic list (UC-171 hydration fix)
     @Query("SELECT f.topicId FROM UserTopicFollow f WHERE f.userId = :userId AND f.topicId IN :topicIds")
     Set<UUID> findFollowedTopicIds(@Param("userId") UUID userId, @Param("topicIds") Collection<UUID> topicIds);

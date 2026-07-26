@@ -8,6 +8,10 @@ import com.carebridge.backend.content.dto.response.ChecklistTemplateResponse;
 import com.carebridge.backend.content.dto.response.ContentDetailResponse;
 import com.carebridge.backend.content.dto.response.ContentListResponse;
 import com.carebridge.backend.content.dto.response.ContentSearchResponse;
+import com.carebridge.backend.content.dto.response.LifecycleContentEnvelope;
+import com.carebridge.backend.common.util.SecurityUtils;
+import java.security.Principal;
+import org.springframework.security.access.prepost.PreAuthorize;
 import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.content.entity.ContentType;
 import com.carebridge.backend.content.exception.ContentException;
@@ -93,10 +97,49 @@ public class ContentController {
         return ResponseEntity.ok(ApiResponse.success(result));
     }
 
+    @GetMapping("/lifecycle")
+    @PreAuthorize("hasRole('MOTHER')")
+    public ResponseEntity<ApiResponse<LifecycleContentEnvelope<PaginatedResponse<ContentListResponse>>>>
+            getLifecycleContents(
+                    @RequestParam(required = false) ContentType type,
+                    @RequestParam(required = false) UUID topicId,
+                    @RequestParam(defaultValue = "0") int page,
+                    @RequestParam(defaultValue = "20") int size,
+                    Principal principal) {
+        validatePage(page, size);
+        UUID callerId = SecurityUtils.requireCurrentUserId(principal);
+        var result = contentService.getLifecycleContents(
+                callerId, type, topicId, PageRequest.of(page, size, Sort.by("publishedAt").descending()));
+        var envelope = new LifecycleContentEnvelope<>(result.stage(), PaginatedResponse.of(result.payload()));
+        return ResponseEntity.ok(ApiResponse.success(envelope));
+    }
+
+    @GetMapping("/lifecycle/checklists")
+    @PreAuthorize("hasRole('MOTHER')")
+    public ResponseEntity<ApiResponse<LifecycleContentEnvelope<List<ChecklistTemplateResponse>>>>
+            getLifecycleChecklists(Principal principal) {
+        return ResponseEntity.ok(ApiResponse.success(contentService.getLifecycleChecklists(
+                SecurityUtils.requireCurrentUserId(principal))));
+    }
+
+    @GetMapping("/lifecycle/{id}")
+    @PreAuthorize("hasRole('MOTHER')")
+    public ResponseEntity<ApiResponse<LifecycleContentEnvelope<ContentDetailResponse>>>
+            getLifecycleContentById(@PathVariable UUID id, Principal principal) {
+        return ResponseEntity.ok(ApiResponse.success(contentService.getLifecycleContentById(
+                SecurityUtils.requireCurrentUserId(principal), id)));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<ContentDetailResponse>> getContentById(
             @PathVariable UUID id) {
         ContentDetailResponse response = contentService.getContentById(id);
         return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    private void validatePage(int page, int size) {
+        if (page < 0 || size < 1 || size > 50) {
+            throw ContentException.validationFailed("size", "must be between 1 and 50");
+        }
     }
 }

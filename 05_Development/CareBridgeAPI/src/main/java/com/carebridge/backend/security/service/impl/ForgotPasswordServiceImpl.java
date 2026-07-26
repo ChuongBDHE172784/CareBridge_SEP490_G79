@@ -4,6 +4,7 @@ import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.common.exception.RateLimitExceededException;
 import com.carebridge.backend.common.exception.ValidationException;
+import com.carebridge.backend.common.validation.VietnamesePhoneNumbers;
 import com.carebridge.backend.security.dto.request.ForgotPasswordRequest;
 import com.carebridge.backend.security.dto.response.ForgotPasswordResponse;
 import com.carebridge.backend.security.entity.PasswordResetToken;
@@ -42,6 +43,14 @@ public class ForgotPasswordServiceImpl implements ForgotPasswordService {
     @Value("${carebridge.security.password-reset.rate-limit.per-user:3}")
     private int maxPerUser;
 
+    private String normalizePhone(String phone) {
+        try {
+            return VietnamesePhoneNumbers.normalizeToE164(phone);
+        } catch (IllegalArgumentException invalidPhone) {
+            throw new ValidationException(VietnamesePhoneNumbers.INVALID_FORMAT_MESSAGE);
+        }
+    }
+
     @Override
     public ForgotPasswordResponse forgotPassword(ForgotPasswordRequest request, String ipAddress) {
         String contact = request.getContact() != null ? request.getContact().trim() : null;
@@ -49,12 +58,13 @@ public class ForgotPasswordServiceImpl implements ForgotPasswordService {
             throw new ValidationException("Contact (email or phone) is required");
         }
 
+        // Normalize phone number to E.164 format for consistent lookup
+        if (!contact.contains("@")) {
+            contact = normalizePhone(contact);
+        }
+
         boolean isEmail = contact.contains("@");
         boolean isPhone = contact.startsWith("+");
-
-        if (!isEmail && !isPhone) {
-            throw new ValidationException("Invalid contact format. Provide a valid email or phone number.");
-        }
 
         String rateLimitKey = RATE_LIMIT_PREFIX + contact.toLowerCase();
         if (!rateLimitPolicy.canAttempt(rateLimitKey)) {

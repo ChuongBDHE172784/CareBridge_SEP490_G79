@@ -30,12 +30,14 @@ public class ExpertProfileMapper {
 			.professionalTitle(entity.getProfessionalTitle())
 			.experienceYears(entity.getExperienceYears())
 			.workplace(entity.getWorkplace())
+			.hospitalId(entity.getFacilityId() != null ? entity.getFacilityId().toString() : null)
 			.consultationScope(entity.getConsultationScope())
 			.verificationStatus(entity.getVerificationStatus())
 			.isConsultationEligible(entity.isEligibleForConsultation())
 			.verifiedAt(entity.getVerifiedAt())
 			.verifiedBy(entity.getVerifiedBy())
 			.ratingAvg(entity.getRatingAvg())
+			.consultationFeeVnd(entity.getConsultationFeeVnd() != null ? java.math.BigDecimal.valueOf(entity.getConsultationFeeVnd()) : null)
 			.avatarUrl(avatarUrl)
 			.createdAt(entity.getCreatedAt())
 			.updatedAt(entity.getUpdatedAt())
@@ -51,12 +53,14 @@ public class ExpertProfileMapper {
 			.professionalTitle(entity.getProfessionalTitle())
 			.experienceYears(entity.getExperienceYears())
 			.workplace(entity.getWorkplace())
+			.hospitalId(entity.getFacilityId() != null ? entity.getFacilityId().toString() : null)
 			.consultationScope(entity.getConsultationScope())
 			.verificationStatus(entity.getVerificationStatus())
 			.isConsultationEligible(entity.isEligibleForConsultation())
 			.verifiedAt(entity.getVerifiedAt())
 			.verifiedBy(entity.getVerifiedBy())
 			.ratingAvg(entity.getRatingAvg())
+			.consultationFeeVnd(entity.getConsultationFeeVnd() != null ? java.math.BigDecimal.valueOf(entity.getConsultationFeeVnd()) : null)
 			.avatarUrl(avatarUrl)
 			.createdAt(entity.getCreatedAt())
 			.updatedAt(entity.getUpdatedAt())
@@ -72,6 +76,7 @@ public class ExpertProfileMapper {
 			.workplace(request.getWorkplace())
 			.consultationScope(request.getConsultationScope())
 			.ratingAvg(request.getRatingAvg())
+			.consultationFeeVnd(request.getConsultationFeeVnd())
 			.verificationStatus(VerificationStatus.PENDING)
 			.build();
 	}
@@ -83,6 +88,7 @@ public class ExpertProfileMapper {
 		if (request.getWorkplace() != null) entity.setWorkplace(request.getWorkplace());
 		if (request.getConsultationScope() != null) entity.setConsultationScope(request.getConsultationScope());
 		if (request.getRatingAvg() != null) entity.setRatingAvg(request.getRatingAvg());
+		if (request.getConsultationFeeVnd() != null) entity.setConsultationFeeVnd(request.getConsultationFeeVnd());
 	}
 
 	// ADR-MEDI-001 mục 3 — usersById resolved by the caller via 1 batch userRepository.findAllById(...)

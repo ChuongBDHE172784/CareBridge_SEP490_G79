@@ -69,6 +69,7 @@ class InviteTokenUniquenessIntegrationTest extends AbstractPostgresIntegrationTe
         user.setPhone(phone);
         user.setPasswordHash(passwordEncoder.encode("Test@1234"));
         user.setEmailVerified(true);
+        user.setPhoneVerified(false);
         return userRepository.saveAndFlush(user);
     }
 }

@@ -19,7 +19,8 @@ export const ROLE_DEFAULT_ROUTES: Record<UserRole, string> = {
   MODERATOR: '/moderator/reports',
   CONTENT_ADMIN: '/content/dashboard',
   PARTNER: '/partner/dashboard',
-  EXPERT: '/expert/dashboard',
+  // The server-owned onboarding aggregate decides whether an expert may enter the portal.
+  EXPERT: '/expert/onboarding',
   MOTHER: '/direct-chats',
   FAMILY: '/no-web-access',
 };

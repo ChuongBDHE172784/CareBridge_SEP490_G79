@@ -246,6 +246,7 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
                 : JourneyTransitionType.OUTCOME_RECORDED;
         MotherJourneyTransition transition = MotherJourneyTransition.builder()
                 .journeyId(journeyId)
+                .ownerUserId(ownerId)
                 .eventType(eventType)
                 .fromStage(fromStage)
                 .toStage(saved.getJourneyType())
@@ -308,8 +309,10 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
             estimatedDueDate = request.getLastMenstrualDate().plusDays(280);
         }
 
+        UUID careSubjectId = ensureMotherCareSubject(callerId);
         MotherJourney current = MotherJourney.builder()
                 .ownerUserId(callerId)
+                .careSubjectId(careSubjectId)
                 .journeyType(request.getJourneyType())
                 .startDate(request.getStartDate())
                 .lastMenstrualDate(request.getLastMenstrualDate())
@@ -323,6 +326,7 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
         MotherJourney saved;
         try {
             saved = journeyRepository.saveAndFlush(current);
+            journeyRepository.linkMotherCareSubject(careSubjectId, saved.getId());
         } catch (DataIntegrityViolationException exception) {
             throw canonicalConflict();
         }
@@ -336,6 +340,7 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
 
         MotherJourneyTransition transition = MotherJourneyTransition.builder()
                 .journeyId(saved.getId())
+                .ownerUserId(callerId)
                 .eventType(JourneyTransitionType.CREATED)
                 .toStage(saved.getJourneyType())
                 .changes(changes)
@@ -364,6 +369,17 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
                 Instant.now(clock),
                 UUID.randomUUID()));
         return toCreateResponse(saved);
+    }
+
+    private UUID ensureMotherCareSubject(UUID ownerUserId) {
+        UUID existing = journeyRepository.findMotherCareSubjectId(ownerUserId);
+        if (existing != null) {
+            return existing;
+        }
+        UUID candidate = UUID.randomUUID();
+        journeyRepository.ensureMotherCareSubject(candidate, ownerUserId);
+        existing = journeyRepository.findMotherCareSubjectId(ownerUserId);
+        return existing == null ? candidate : existing;
     }
 
     private void validateDirectPostpartumCreate(CreateJourneyRequest request) {
@@ -499,6 +515,7 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
                 notesChanged);
         MotherJourneyTransition transition = MotherJourneyTransition.builder()
                 .journeyId(saved.getId())
+                .ownerUserId(ownerId)
                 .eventType(eventType)
                 .fromStage(fromStage)
                 .toStage(saved.getJourneyType())

@@ -12,9 +12,11 @@ import com.carebridge.backend.family.repository.CareTaskRepository;
 import com.carebridge.backend.family.service.ICareCalendarService;
 import com.carebridge.backend.family.dto.SharedCareCalendarResponse;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
+import com.carebridge.backend.testsupport.CanonicalUserFixture;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -36,6 +38,7 @@ class CareCalendarIntegrationTest extends AbstractPostgresIntegrationTest {
     @Autowired private CareGroupMemberRepository memberRepository;
     @Autowired private CareTaskRepository careTaskRepository;
     @Autowired private ICareCalendarService careCalendarService;
+    @Autowired private JdbcTemplate jdbcTemplate;
 
     private UUID group1Id;
     private UUID group2Id;
@@ -45,6 +48,11 @@ class CareCalendarIntegrationTest extends AbstractPostgresIntegrationTest {
     @BeforeEach
     void setUp() {
         callerId = UUID.randomUUID();
+        UUID group2OwnerId = UUID.randomUUID();
+        CanonicalUserFixture.insertUser(jdbcTemplate, callerId, "Calendar caller", null, "MOTHER");
+        CanonicalUserFixture.insertUser(jdbcTemplate, group2OwnerId, "Other owner", null, "MOTHER");
+        CanonicalUserFixture.insertUser(jdbcTemplate, ACC_001, "Task creator", null, "MOTHER");
+        CanonicalUserFixture.insertUser(jdbcTemplate, ACC_002, "Task assignee", null, "FAMILY");
 
         // Create two groups
         CareGroup group1 = groupRepository.save(CareGroup.builder()
@@ -55,7 +63,7 @@ class CareCalendarIntegrationTest extends AbstractPostgresIntegrationTest {
         group1Id = group1.getId();
 
         CareGroup group2 = groupRepository.save(CareGroup.builder()
-                .ownerUserId(UUID.randomUUID())
+                .ownerUserId(group2OwnerId)
                 .groupName("Integration Group B")
                 .status(CareGroupStatus.ACTIVE)
                 .build());

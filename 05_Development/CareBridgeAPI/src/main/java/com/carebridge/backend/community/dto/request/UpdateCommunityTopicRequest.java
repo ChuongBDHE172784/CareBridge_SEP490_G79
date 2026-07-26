@@ -1,6 +1,8 @@
 package com.carebridge.backend.community.dto.request;
 
+import com.carebridge.backend.community.entity.TopicType;
 import jakarta.validation.constraints.Size;
+import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,6 +22,12 @@ public class UpdateCommunityTopicRequest {
 
     @Size(max = 255, message = "icon must not exceed 255 characters")
     private String icon;
+
+    // null = leave unchanged; a different value is rejected because type is immutable (COM-017).
+    private TopicType type;
+
+    // null = leave unchanged. A TOPIC may provide another visible CATEGORY id for reassignment.
+    private UUID parentId;
 
     private Boolean isHidden;
 

@@ -8,7 +8,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 @Entity
-@Table(name = "vaccination_reference_schedules")
+@Table(name = "vaccination_schedules")
 @Getter
 @Setter
 @Builder
@@ -18,7 +18,7 @@ public class VaccinationReferenceSchedule {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "ref_id", updatable = false, nullable = false)
+    @Column(name = "vaccination_schedule_id", updatable = false, nullable = false)
     private UUID id;
 
     @Column(name = "vaccine_name", nullable = false, length = 200)
@@ -36,4 +36,14 @@ public class VaccinationReferenceSchedule {
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
+
+    @Builder.Default
+    @Column(name = "schedule_version", nullable = false, length = 30)
+    private String scheduleVersion = "legacy-1";
+
+    @Column(name = "active_from")
+    private java.time.LocalDate activeFrom;
+
+    @Column(name = "active_to")
+    private java.time.LocalDate activeTo;
 }

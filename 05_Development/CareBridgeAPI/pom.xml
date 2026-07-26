@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
- xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://w .apache.org/xsd/maven-4.0.0.xsd">
+ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
  <modelVersion>4.0.0</modelVersion>
  <parent>
   <groupId>org.springframework.boot</groupId>
   <artifactId>spring-boot-starter-parent</artifactId>
   <version>4.1.0</version>
-  <relativePath/> <!-- lookup parent from repository -->
+  <relativePath/>
  </parent>
  <groupId>com.carebridge</groupId>
  <artifactId>backend</artifactId>
@@ -28,6 +28,7 @@
  </scm>
  <properties>
  <java.version>21</java.version>
+ <postgresql.version>42.7.12</postgresql.version>
  </properties>
  <dependencies>
  <dependency>
@@ -90,11 +91,41 @@
   <artifactId>lombok</artifactId>
   <optional>true</optional>
  </dependency>
+ <!-- MapStruct for DTO mapping -->
+ <dependency>
+  <groupId>org.mapstruct</groupId>
+  <artifactId>mapstruct</artifactId>
+  <version>1.6.3</version>
+ </dependency>
+ <dependency>
+  <groupId>org.mapstruct</groupId>
+  <artifactId>mapstruct-processor</artifactId>
+  <version>1.6.3</version>
+  <scope>provided</scope>
+ </dependency>
  <!-- Cloudinary for file uploads -->
  <dependency>
   <groupId>com.cloudinary</groupId>
   <artifactId>cloudinary-http5</artifactId>
   <version>2.3.0</version>
+ </dependency>
+ <!-- Cloudflare R2 uses the S3-compatible API. -->
+ <dependency>
+  <groupId>software.amazon.awssdk</groupId>
+  <artifactId>s3</artifactId>
+  <version>2.31.54</version>
+ </dependency>
+ <!-- Metadata extractor for EXIF orientation handling -->
+ <dependency>
+  <groupId>com.drewnoakes</groupId>
+  <artifactId>metadata-extractor</artifactId>
+  <version>2.18.0</version>
+ </dependency>
+ <!-- HTML sanitization for rich text content (ContentRichTextEditor_TDS ADR-RTE-005) -->
+ <dependency>
+  <groupId>com.googlecode.owasp-java-html-sanitizer</groupId>
+  <artifactId>owasp-java-html-sanitizer</artifactId>
+  <version>20260101.1</version>
  </dependency>
  <dependency>
   <groupId>org.springframework.boot</groupId>
@@ -175,6 +206,11 @@
      <groupId>org.projectlombok</groupId>
      <artifactId>lombok</artifactId>
     </path>
+    <path>
+     <groupId>org.mapstruct</groupId>
+     <artifactId>mapstruct-processor</artifactId>
+     <version>1.6.3</version>
+    </path>
    </annotationProcessorPaths>
    </configuration>
   </execution>
@@ -189,6 +225,11 @@
     <path>
      <groupId>org.projectlombok</groupId>
      <artifactId>lombok</artifactId>
+    </path>
+    <path>
+     <groupId>org.mapstruct</groupId>
+     <artifactId>mapstruct-processor</artifactId>
+     <version>1.6.3</version>
     </path>
    </annotationProcessorPaths>
    </configuration>

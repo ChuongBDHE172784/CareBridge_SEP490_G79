@@ -8,6 +8,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PreRemove;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.Instant;
@@ -20,7 +21,8 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 @Entity
-@Table(name = "audit_logs")
+@Table(name = "audit_events")
+@org.hibernate.annotations.SQLRestriction("event_origin = 'AUDIT_LOG'")
 @Getter
 @Setter
 @Builder
@@ -30,35 +32,44 @@ public class AuditLog {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "audit_log_id", updatable = false, nullable = false)
+    @Column(name = "audit_event_id", updatable = false, nullable = false)
     private java.util.UUID auditLogId;
 
-    @Column(name = "created_at", nullable = false)
+    @Column(name = "occurred_at", nullable = false)
     private Instant createdAt;
 
     @Column(name = "actor_user_id")
     private java.util.UUID actorUserId;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 80)
+    @Column(name = "event_category", nullable = false, length = 80)
     private AuditAction action;
 
-    @Column(name = "entity_type", length = 100)
+    @Column(name = "resource_type", length = 100)
     private String entityType;
 
-    @Column(name = "entity_id")
+    @Column(name = "resource_id")
     private java.util.UUID entityId;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "new_value_json", columnDefinition = "jsonb")
+    @Column(name = "after_payload_jsonb", columnDefinition = "jsonb")
     private String newValueJson;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "old_value_json", columnDefinition = "jsonb")
+    @Column(name = "before_payload_jsonb", columnDefinition = "jsonb")
     private String oldValueJson;
 
     @Column(name = "ip_address", length = 80)
     private String ipAddress;
+
+    @Builder.Default
+    @Column(name = "event_origin", nullable = false, updatable = false)
+    private String eventOrigin = "AUDIT_LOG";
+
+    @PrePersist
+    void prepareCanonicalEvent() {
+        eventOrigin = "AUDIT_LOG";
+    }
 
     @PreUpdate
     @PreRemove

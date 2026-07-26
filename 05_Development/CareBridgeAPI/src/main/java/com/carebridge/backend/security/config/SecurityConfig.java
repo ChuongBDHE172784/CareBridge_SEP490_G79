@@ -4,7 +4,6 @@ import com.carebridge.backend.security.jwt.JwtAuthenticationFilter;
 import com.carebridge.backend.baby.security.BabyLinkBoundaryAuditFilter;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -31,7 +30,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final ObjectProvider<BabyLinkBoundaryAuditFilter> babyLinkBoundaryAuditFilterProvider;
+    private final BabyLinkBoundaryAuditFilter babyLinkBoundaryAuditFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -54,13 +53,14 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/profile").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/v1/auth/profile").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/logout").authenticated()
+                        // Master data endpoints (public)
+                        .requestMatchers(HttpMethod.GET, "/api/v1/master-data/**").permitAll()
                         // All community and content read endpoints require a valid JWT.
                         // Unauthenticated requests → 401 (per CNT82-TC-SEC-001, ADR-COM-*)
                         // Admin / privileged write endpoints
                         .requestMatchers("/api/v1/consent/grants/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/admin/audit-logs").hasRole("SYSTEM_ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/admin/community/dashboard").hasRole("SYSTEM_ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/api/v1/admin/impact-report").hasRole("SYSTEM_ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/admin/moderation/queue").hasRole("MODERATOR")
                         // CB-MOD-IMP-004: added retroactively — @PreAuthorize + the /api/v1/** fallback
                         // below already enforced MODERATOR-only, so this was a convention gap, not a hole.
@@ -74,36 +74,24 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/admin/content/*/archive").hasRole("CONTENT_ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/admin/content/*/unpublish").hasRole("CONTENT_ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/admin/content/*/decision").hasRole("SYSTEM_ADMIN")
-                        .requestMatchers("/api/v1/admin/content/categories/**").hasRole("CONTENT_ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/community/topics").hasAnyRole("MODERATOR", "CONTENT_ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/partner/profile").hasRole("PARTNER")
                         .requestMatchers(HttpMethod.PUT, "/api/v1/partner/profile").hasRole("PARTNER")
-                        .requestMatchers(HttpMethod.POST, "/api/v1/partner/services").hasRole("PARTNER")
-                        .requestMatchers(HttpMethod.POST, "/api/v1/partner/campaigns").hasRole("PARTNER")
-                        .requestMatchers(HttpMethod.GET, "/api/v1/partner/performance").hasRole("PARTNER")
                         .requestMatchers(HttpMethod.POST, "/api/v1/admin/partners/*/decision").hasRole("SYSTEM_ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/v1/admin/partner-content/*/*/decision").hasRole("SYSTEM_ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/v1/admin/partner-content/*/*/remove").hasRole("SYSTEM_ADMIN")
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/community/topics/**").hasAnyRole("MODERATOR", "CONTENT_ADMIN")
                         .requestMatchers("/api/v1/**").authenticated()
                         .anyRequest().permitAll())
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-        BabyLinkBoundaryAuditFilter boundaryAuditFilter = babyLinkBoundaryAuditFilterProvider.getIfAvailable();
-        if (boundaryAuditFilter != null) {
-            http.addFilterAfter(boundaryAuditFilter, JwtAuthenticationFilter.class);
-        }
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(babyLinkBoundaryAuditFilter, JwtAuthenticationFilter.class);
         return http.build();
     }
 
     @Bean
     public FilterRegistrationBean<BabyLinkBoundaryAuditFilter> babyLinkBoundaryAuditRegistration() {
         FilterRegistrationBean<BabyLinkBoundaryAuditFilter> registration = new FilterRegistrationBean<>();
-        BabyLinkBoundaryAuditFilter boundaryAuditFilter = babyLinkBoundaryAuditFilterProvider.getIfAvailable();
-        if (boundaryAuditFilter != null) {
-            registration.setFilter(boundaryAuditFilter);
-        }
+        registration.setFilter(babyLinkBoundaryAuditFilter);
         registration.setEnabled(false);
         return registration;
     }

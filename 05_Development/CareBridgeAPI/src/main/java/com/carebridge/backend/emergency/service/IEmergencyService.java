@@ -9,6 +9,8 @@ public interface IEmergencyService {
 
     EmergencySessionResponse openFlow(OpenEmergencyRequest request, UUID userId);
 
+    EmergencySessionResponse openOrReuseFromTriage(UUID intakeSessionId, UUID userId);
+
     EmergencySessionResponse getActiveSession(UUID userId);
 
     EmergencySessionResponse resolveSession(UUID sessionId, UUID userId);

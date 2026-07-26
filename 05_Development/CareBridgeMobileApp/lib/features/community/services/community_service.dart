@@ -5,9 +5,15 @@ class CommunityService {
   static final CommunityService instance = CommunityService._();
   CommunityService._();
 
-  Future<List<CommunityTopic>> getTopics({String? keyword}) async {
+  // [type] defaults to unset (all taxonomy kinds). Directory consumers request TOPIC and
+  // CATEGORY rows separately so the CATEGORY -> TOPIC hierarchy remains explicit.
+  Future<List<CommunityTopic>> getTopics({
+    String? keyword,
+    String? type,
+  }) async {
     final params = <String, String>{};
     if (keyword != null && keyword.isNotEmpty) params['keyword'] = keyword;
+    if (type != null && type.isNotEmpty) params['type'] = type;
     final query = params.isEmpty
         ? ''
         : '?${params.entries.map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}').join('&')}';
@@ -17,6 +23,9 @@ class CommunityService {
         .map((e) => CommunityTopic.fromJson(e as Map<String, dynamic>))
         .toList();
   }
+
+  Future<List<CommunityTopic>> getTopicCategories() =>
+      getTopics(type: 'CATEGORY');
 
   Future<List<CommunityFeedItem>> getFeed({
     String? topicId,

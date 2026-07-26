@@ -15,6 +15,7 @@ import com.carebridge.backend.config.MockMvcSecurityBuilderConfig;
 import com.carebridge.backend.integration.zegocloud.IZegoCloudService;
 import com.carebridge.backend.notification.service.FcmService;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
+import com.carebridge.backend.testsupport.CanonicalUserFixture;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
@@ -84,7 +85,7 @@ class ConsultationRequestApiIntegrationTest extends AbstractPostgresIntegrationT
         UUID requestId = responseId(created);
         long auditsBefore = countCreateAudits(requestId);
         jdbcTemplate.update(
-                "UPDATE expert_profiles SET trust_status='REVOKED' WHERE expert_profile_id=?",
+                "UPDATE professional_profiles SET trust_status='REVOKED' WHERE professional_profile_id=?",
                 fixture.expertProfileId());
 
         MvcResult retry = create(fixture.motherId(), body);
@@ -205,8 +206,8 @@ class ConsultationRequestApiIntegrationTest extends AbstractPostgresIntegrationT
         seedUser(motherId, "API Mother", "MOTHER");
         seedUser(expertUserId, "API Expert", "EXPERT");
         jdbcTemplate.update("""
-                INSERT INTO expert_profiles
-                    (expert_profile_id, user_id, specialty, verification_status, trust_status,
+                INSERT INTO professional_profiles
+                    (professional_profile_id, user_id, specialty, verification_status, trust_status,
                      created_at, updated_at)
                 VALUES (?, ?, 'Sản khoa', 'APPROVED', 'ACTIVE', now(), now())
                 """, expertProfileId, expertUserId);
@@ -214,17 +215,13 @@ class ConsultationRequestApiIntegrationTest extends AbstractPostgresIntegrationT
     }
 
     private void seedUser(UUID id, String name, String role) {
-        jdbcTemplate.update("""
-                INSERT INTO users
-                    (user_id, full_name, phone, role, enabled, locked, created_at, updated_at)
-                VALUES (?, ?, ?, ?, true, false, now(), now())
-                """, id, name, uniquePhone(), role);
+        CanonicalUserFixture.insertUser(jdbcTemplate, id, name, uniquePhone(), role);
     }
 
     private int countRequests(UUID motherId, UUID clientRequestId) {
         return jdbcTemplate.queryForObject(
                 """
-                SELECT COUNT(*) FROM consultation_requests
+                SELECT COUNT(*) FROM expert_consultation_requests
                  WHERE requester_user_id=? AND client_request_id=?
                 """,
                 Integer.class,
@@ -235,10 +232,11 @@ class ConsultationRequestApiIntegrationTest extends AbstractPostgresIntegrationT
     private long countCreateAudits(UUID requestId) {
         Long count = jdbcTemplate.queryForObject(
                 """
-                SELECT COUNT(*) FROM audit_logs
-                 WHERE entity_type='CONSULTATION_REQUEST'
-                   AND entity_id=?
-                   AND action='MODERATION_ACTION'
+                SELECT COUNT(*) FROM audit_events
+                 WHERE resource_type='CONSULTATION_REQUEST'
+                   AND resource_id=?
+                   AND event_category='MODERATION_ACTION'
+                   AND event_origin='AUDIT_LOG'
                 """,
                 Long.class,
                 requestId);

@@ -78,7 +78,6 @@ public class CareCalendarTestFactory {
     /** Builds a minimal valid CareTask seeded into groupId with the given dueAt. */
     public static CareTask makeTask(UUID groupId, Instant dueAt) {
         return CareTask.builder()
-                .id(UUID.randomUUID())
                 .careGroupId(groupId)
                 .assignedBy(ACC_001)
                 .assignedTo(ACC_002)

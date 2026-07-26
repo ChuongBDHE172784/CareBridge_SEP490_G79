@@ -17,6 +17,7 @@ import com.carebridge.backend.integration.zegocloud.ZegoTokenDto;
 import com.carebridge.backend.notification.dto.FcmDeliveryResult;
 import com.carebridge.backend.notification.service.FcmService;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
+import com.carebridge.backend.testsupport.CanonicalUserFixture;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -68,24 +69,21 @@ class DirectMessageServiceImplNotificationIntegrationTest extends AbstractPostgr
         motherId = UUID.randomUUID();
         expertUserId = UUID.randomUUID();
         String phoneSuffix = String.valueOf(System.nanoTime()).substring(3, 11);
-        jdbcTemplate.update(
-                "INSERT INTO users (user_id, full_name, phone, role, enabled, locked, created_at, updated_at) "
-                        + "VALUES (?, 'Mother Notif', ?, 'MOTHER', true, false, now(), now())",
-                motherId, "07" + phoneSuffix);
-        jdbcTemplate.update(
-                "INSERT INTO users (user_id, full_name, phone, role, enabled, locked, created_at, updated_at) "
-                        + "VALUES (?, 'Expert Notif', ?, 'EXPERT', true, false, now(), now())",
-                expertUserId, "06" + phoneSuffix);
+        CanonicalUserFixture.insertUser(
+                jdbcTemplate, motherId, "Mother Notif", "07" + phoneSuffix, "MOTHER");
+        CanonicalUserFixture.insertUser(
+                jdbcTemplate, expertUserId, "Expert Notif", "06" + phoneSuffix, "EXPERT");
         UUID expertProfileId = UUID.randomUUID();
         jdbcTemplate.update(
-                "INSERT INTO expert_profiles (expert_profile_id, user_id, specialty, verification_status, created_at, updated_at) "
+                "INSERT INTO professional_profiles (professional_profile_id, user_id, specialty, verification_status, created_at, updated_at) "
                         + "VALUES (?, ?, 'Sản khoa', 'APPROVED', now(), now())",
                 expertProfileId, expertUserId);
         conversationId = UUID.randomUUID();
         jdbcTemplate.update(
-                "INSERT INTO direct_conversations (conversation_id, mother_user_id, expert_user_id, status, created_at, last_activity_at) "
-                        + "VALUES (?, ?, ?, 'ACTIVE', now(), now())",
-                conversationId, motherId, expertUserId);
+                "INSERT INTO archived_realtime_records (archive_id, legacy_table, legacy_id, mother_user_id, "
+                        + "expert_user_id, status, original_created_at, last_activity_at) "
+                        + "VALUES (?, 'direct_conversations', ?, ?, ?, 'ACTIVE', now(), now())",
+                conversationId, conversationId.toString(), motherId, expertUserId);
         jdbcTemplate.update(
                 "INSERT INTO device_tokens (id, user_id, token, platform, active, created_at, updated_at) "
                         + "VALUES (?, ?, 'expert-fcm-token', 'ANDROID', true, now(), now())",
@@ -144,7 +142,8 @@ class DirectMessageServiceImplNotificationIntegrationTest extends AbstractPostgr
         awaitNotificationTerminal(messageId);
 
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM direct_messages WHERE message_id = ?", Integer.class, messageId)).isEqualTo(1);
+                "SELECT COUNT(*) FROM archived_realtime_records WHERE legacy_table='direct_messages' AND archive_id = ?",
+                Integer.class, messageId)).isEqualTo(1);
         assertThat(notificationRowCount(messageId)).isEqualTo(1);
         Integer attemptCount = jdbcTemplate.queryForObject(
                 "SELECT attempt_count FROM notification_records WHERE reference_id = ?", Integer.class, messageId);
@@ -169,7 +168,8 @@ class DirectMessageServiceImplNotificationIntegrationTest extends AbstractPostgr
         awaitNotificationTerminal(messageId);
 
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM direct_messages WHERE message_id = ?", Integer.class, messageId)).isEqualTo(1);
+                "SELECT COUNT(*) FROM archived_realtime_records WHERE legacy_table='direct_messages' AND archive_id = ?",
+                Integer.class, messageId)).isEqualTo(1);
         assertThat(notificationRowCount(messageId)).isEqualTo(1);
         String status = jdbcTemplate.queryForObject(
                 "SELECT status FROM notification_records WHERE reference_id = ?", String.class, messageId);

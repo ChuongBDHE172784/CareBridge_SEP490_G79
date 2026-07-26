@@ -22,7 +22,7 @@ public class ExpertAvailability {
     @Column(name = "availability_id", updatable = false, nullable = false)
     private UUID availabilityId;
 
-    @Column(name = "expert_profile_id", nullable = false)
+    @Column(name = "professional_profile_id", nullable = false)
     private UUID expertProfileId;
 
     @Column(name = "start_at", nullable = false)

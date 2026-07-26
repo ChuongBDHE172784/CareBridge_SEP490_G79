@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/safety_service.dart';
+import '../services/safety_permission_service.dart';
+import '../../privacy/services/privacy_service.dart';
 
 /// CB-129 — Enable Fall Detection Confirmation (UC-134)
 /// Consent + setup screen shown before activating fall detection.
@@ -24,12 +26,15 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
   static const _error = Color(0xFFBA1A1A);
 
   final _safetyService = SafetyService();
+  final _permissionService = SafetyPermissionService();
 
-  // "Thời gian chờ" — countdown before auto-alert fires. The backend has no
-  // field for this yet; kept as local-only UI state (TODO when added).
+  // Persisted by SafetyConfigRequest.countdownSeconds.
   int _countdownSeconds = 30;
   // Mapped to SafetyConfigRequest.emergencyAutoAlert.
   bool _autoFamilyAlert = true;
+  bool _shareLocation = false;
+  bool? _sensorPermissionGranted;
+  bool? _locationPermissionGranted;
   bool _consentChecked = false;
   bool _submitting = false;
 
@@ -44,10 +49,35 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
     }
     setState(() => _submitting = true);
     try {
+      final sensorGranted = await _permissionService.attestSensorAccess();
+      if (mounted) setState(() => _sensorPermissionGranted = sensorGranted);
+      if (!sensorGranted) {
+        throw StateError(
+          'Không thể xác minh quyền truy cập cảm biến chuyển động trên thiết bị.',
+        );
+      }
+      await _ensureConsent(
+        dataType: 'SENSOR_DATA',
+        purpose: 'CREATE',
+        scope: 'SAFETY_FALL_DETECTION',
+      );
+      if (_shareLocation) {
+        await _ensureConsent(
+          dataType: 'LOCATION',
+          purpose: 'SHARE',
+          scope: 'SAFETY_EMERGENCY_ALERT',
+        );
+        final position = await _permissionService.readConsentedLocation();
+        if (mounted) {
+          setState(() => _locationPermissionGranted = position != null);
+        }
+      }
       await _safetyService.updateConfig(
         fallDetectionEnabled: true,
         sensitivityLevel: 'MEDIUM',
         emergencyAutoAlert: _autoFamilyAlert,
+        countdownSeconds: _countdownSeconds,
+        sensorPermissionGranted: true,
       );
       await _safetyService.enableFallDetection();
       if (mounted) Navigator.of(context).pop(true);
@@ -63,6 +93,27 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
+  }
+
+  Future<void> _ensureConsent({
+    required String dataType,
+    required String purpose,
+    required String scope,
+  }) async {
+    final grants = await PrivacyService.instance.listConsents();
+    final alreadyGranted = grants.any(
+      (grant) =>
+          grant.isActive &&
+          grant.dataType == dataType &&
+          grant.purpose == purpose,
+    );
+    if (alreadyGranted) return;
+    await PrivacyService.instance.grantConsent(
+      dataType: dataType,
+      purpose: purpose,
+      recipient: 'CAREBRIDGE_SAFETY',
+      scope: scope,
+    );
   }
 
   @override
@@ -200,9 +251,16 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
                 ],
               ),
               const SizedBox(height: 12),
-              const _PermissionRow('Cảm biến chuyển động & Gia tốc'),
+              _PermissionRow(
+                'Cảm biến chuyển động & Gia tốc',
+                granted: _sensorPermissionGranted,
+              ),
               const SizedBox(height: 8),
-              const _PermissionRow('Gửi thông báo khẩn cấp (Push)'),
+              _PermissionRow(
+                'Vị trí khi cảnh báo (tùy chọn)',
+                granted: _shareLocation ? _locationPermissionGranted : false,
+                optional: true,
+              ),
             ],
           ),
         ),
@@ -303,6 +361,16 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
                     onChanged: (v) => setState(() => _autoFamilyAlert = v),
                   ),
                 ],
+              ),
+              const Divider(height: 24, color: _outlineVariant),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Chia sẻ vị trí khi có cảnh báo'),
+                subtitle: const Text(
+                  'Chỉ gửi khi bạn bật tùy chọn này, cấp quyền hệ điều hành và consent LOCATION/SHARE còn hiệu lực.',
+                ),
+                value: _shareLocation,
+                onChanged: (value) => setState(() => _shareLocation = value),
               ),
             ],
           ),
@@ -455,13 +523,29 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
 
 class _PermissionRow extends StatelessWidget {
   final String label;
-  const _PermissionRow(this.label);
+  final bool? granted;
+  final bool optional;
+  const _PermissionRow(
+    this.label, {
+    required this.granted,
+    this.optional = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Icon(Icons.check_circle, color: Color(0xFF845143), size: 18),
+        Icon(
+          granted == true
+              ? Icons.check_circle
+              : granted == false
+              ? Icons.radio_button_unchecked
+              : Icons.hourglass_empty,
+          color: granted == true
+              ? const Color(0xFF845143)
+              : const Color(0xFF77706D),
+          size: 18,
+        ),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
@@ -469,6 +553,11 @@ class _PermissionRow extends StatelessWidget {
             style: const TextStyle(fontSize: 14, color: Color(0xFF524440)),
           ),
         ),
+        if (optional)
+          const Text(
+            'Tùy chọn',
+            style: TextStyle(fontSize: 12, color: Color(0xFF77706D)),
+          ),
       ],
     );
   }

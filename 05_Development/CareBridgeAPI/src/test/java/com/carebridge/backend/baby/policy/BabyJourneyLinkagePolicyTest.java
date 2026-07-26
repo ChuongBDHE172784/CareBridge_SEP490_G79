@@ -11,6 +11,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
+import java.time.LocalDate;
 import java.util.*;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
@@ -24,10 +25,11 @@ class BabyJourneyLinkagePolicyTest {
     UUID owner=UUID.randomUUID(), journeyId=UUID.randomUUID();
 
     @Test void acceptsOnlyOwnedCanonicalActivePostpartumWithMatchingLiveBirthEvidence() {
-        var journey=MotherJourney.builder().id(journeyId).ownerUserId(owner).status(JourneyStatus.ACTIVE).journeyType(JourneyType.POSTPARTUM).pregnancyOutcome(PregnancyOutcomeType.LIVE_BIRTH).build();
+        LocalDate outcomeDate = LocalDate.of(2026, 1, 1);
+        var journey=MotherJourney.builder().id(journeyId).ownerUserId(owner).status(JourneyStatus.ACTIVE).journeyType(JourneyType.POSTPARTUM).pregnancyOutcome(PregnancyOutcomeType.LIVE_BIRTH).pregnancyOutcomeDate(outcomeDate).build();
         when(users.findById(owner)).thenReturn(Optional.of(User.builder().id(owner).role(Role.MOTHER).build()));
         when(journeys.findCanonicalForUpdate(owner)).thenReturn(Optional.of(journey));
-        when(evidence.findFirstByJourneyIdOrderByRevisionNumberDesc(journeyId)).thenReturn(Optional.of(PregnancyOutcomeEvidence.builder().journeyId(journeyId).ownerUserId(owner).outcomeType(PregnancyOutcomeType.LIVE_BIRTH).build()));
+        when(evidence.findFirstByJourneyIdOrderByRevisionNumberDesc(journeyId)).thenReturn(Optional.of(PregnancyOutcomeEvidence.builder().journeyId(journeyId).ownerUserId(owner).outcomeType(PregnancyOutcomeType.LIVE_BIRTH).outcomeDate(outcomeDate).build()));
         assertThat(policy.requireEligibleJourney(journeyId, owner)).isSameAs(journey);
     }
 
@@ -38,6 +40,31 @@ class BabyJourneyLinkagePolicyTest {
         when(evidence.findFirstByJourneyIdOrderByRevisionNumberDesc(journeyId)).thenReturn(Optional.empty());
         assertThatThrownBy(()->policy.requireEligibleJourney(journeyId,owner)).isInstanceOf(BusinessException.class)
                 .satisfies(e->assertThat(((BusinessException)e).getHttpStatus()).isEqualTo(HttpStatus.CONFLICT));
+    }
+
+    @Test void outcomeDateMismatchFailsClosedForMutationAndRead() {
+        LocalDate journeyOutcomeDate = LocalDate.of(2026, 1, 2);
+        var journey=MotherJourney.builder()
+                .id(journeyId)
+                .ownerUserId(owner)
+                .status(JourneyStatus.ACTIVE)
+                .journeyType(JourneyType.POSTPARTUM)
+                .pregnancyOutcome(PregnancyOutcomeType.LIVE_BIRTH)
+                .pregnancyOutcomeDate(journeyOutcomeDate)
+                .build();
+        var latestEvidence=PregnancyOutcomeEvidence.builder()
+                .journeyId(journeyId)
+                .ownerUserId(owner)
+                .outcomeType(PregnancyOutcomeType.LIVE_BIRTH)
+                .outcomeDate(journeyOutcomeDate.minusDays(1))
+                .build();
+        when(users.findById(owner)).thenReturn(Optional.of(User.builder().id(owner).role(Role.MOTHER).build()));
+        when(journeys.findCanonicalForUpdate(owner)).thenReturn(Optional.of(journey));
+        when(evidence.findFirstByJourneyIdOrderByRevisionNumberDesc(journeyId)).thenReturn(Optional.of(latestEvidence));
+
+        assertThatThrownBy(()->policy.requireEligibleJourney(journeyId,owner)).isInstanceOf(BusinessException.class)
+                .satisfies(error->assertThat(((BusinessException)error).getCode()).isEqualTo("LINK_NOT_ELIGIBLE"));
+        assertThat(policy.isEligibleForRead(journey)).isFalse();
     }
 
     @Test void foreignJourneyUsesNeutralNotFound() {

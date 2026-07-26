@@ -1,0 +1,272 @@
+import { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { fetchStaffContentList, archiveContent } from '../services/contentApi';
+import type { ContentDetail, ContentStage, ContentStatus, ContentType } from '../models/content';
+import { STAGE_LABELS, STATUS_LABELS } from '../models/content';
+
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
+const STATUS_TABS: { key: string; label: string; status?: ContentStatus }[] = [
+  { key: 'all', label: 'Tất cả' },
+  { key: 'approved', label: 'Đã duyệt', status: 'APPROVED' },
+  { key: 'pending', label: 'Chờ duyệt', status: 'PENDING_REVIEW' },
+  { key: 'draft', label: 'Bản nháp', status: 'DRAFT' },
+];
+
+function statusBadgeClass(status: ContentStatus): string {
+  if (status === 'APPROVED') return 'bg-[#E6F4EA] text-[#137333]';
+  if (status === 'PENDING_REVIEW') return 'bg-[#FFF3E0] text-[#E65100]';
+  if (status === 'ARCHIVED') return 'bg-[#F5F5F5] text-[#616161]';
+  return 'bg-surface-container-highest text-primary';
+}
+
+function timeAgo(iso: string | null): string {
+  if (!iso) return '—';
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins} phút trước`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} giờ trước`;
+  const days = Math.floor(hours / 24);
+  return `${days} ngày trước`;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Page Component                                                     */
+/* ------------------------------------------------------------------ */
+interface ContentTypeListPageProps {
+  type: ContentType;
+  title: string;
+  subtitle: string;
+  createLabel: string;
+  emptyLabel: string;
+}
+
+export default function ContentTypeListPage({ type, title, subtitle, createLabel, emptyLabel }: ContentTypeListPageProps) {
+  const navigate = useNavigate();
+  const [items, setItems] = useState<ContentDetail[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('all');
+  const [stageFilter, setStageFilter] = useState<ContentStage | ''>('');
+  const [keyword, setKeyword] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [page, setPage] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [actionError, setActionError] = useState('');
+  const pageSize = 10;
+
+  const loadData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const tab = STATUS_TABS.find(t => t.key === activeTab);
+      const data = await fetchStaffContentList({
+        type,
+        status: tab?.status,
+        stage: stageFilter || undefined,
+        keyword: keyword || undefined,
+        page,
+        size: pageSize,
+      });
+      setItems(data.content);
+      setTotal(data.totalElements);
+    } catch {
+      setItems([]);
+      setTotal(0);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [type, activeTab, stageFilter, keyword, page]);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  const totalPages = Math.ceil(total / pageSize);
+
+  const handleSearch = () => {
+    setKeyword(searchInput);
+    setPage(0);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') handleSearch();
+  };
+
+  const handleDelete = async (item: ContentDetail) => {
+    const reason = window.prompt(`Nhập lý do xóa (lưu trữ) "${item.title}":`);
+    if (reason === null) return;
+    if (!reason.trim()) {
+      setActionError('Vui lòng nhập lý do trước khi xóa.');
+      return;
+    }
+    try {
+      await archiveContent(item.id, reason.trim());
+      setActionError('');
+      await loadData();
+    } catch {
+      setActionError('Không thể xóa nội dung. Vui lòng thử lại.');
+    }
+  };
+
+  return (
+    <div className="p-8 font-sans">
+      {/* Header */}
+      <div className="flex justify-between items-start mb-6">
+        <div>
+          <h1 className="text-[26px] font-bold text-on-surface m-0">{title}</h1>
+          <p className="text-on-surface-variant text-sm mt-1">{subtitle}</p>
+        </div>
+        <button
+          onClick={() => navigate(`/content/create?type=${type}`)}
+          className="flex items-center gap-2 py-3 px-6 rounded-full bg-primary-container text-on-primary border-0 text-sm font-semibold cursor-pointer whitespace-nowrap"
+        >
+          <span className="material-symbols-outlined text-lg">add</span>
+          {createLabel}
+        </button>
+      </div>
+
+      {actionError && <div className="bg-error-container rounded-2xl p-4 mb-4 text-error text-sm">{actionError}</div>}
+
+      {/* Status tabs + filters */}
+      <div className="flex justify-between items-center mb-5 flex-wrap gap-3">
+        <div className="flex gap-2">
+          {STATUS_TABS.map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => { setActiveTab(tab.key); setPage(0); }}
+              className={`flex items-center gap-1.5 py-2 px-[18px] rounded-full text-[13px] font-semibold cursor-pointer ${
+                activeTab === tab.key
+                  ? 'border-2 border-primary bg-surface-container-low text-primary'
+                  : 'border border-outline-variant bg-transparent text-on-surface-variant'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2 flex-1 justify-end">
+          <div className="relative max-w-[280px] flex-1">
+            <span className="material-symbols-outlined text-outline absolute left-[14px] top-1/2 -translate-y-1/2 text-xl">search</span>
+            <input
+              value={searchInput}
+              onChange={e => setSearchInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Tìm kiếm theo tiêu đề... (Enter để tìm)"
+              className="w-full py-2.5 pr-[14px] pl-[42px] rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface outline-none font-sans"
+            />
+          </div>
+          <select
+            value={stageFilter}
+            onChange={e => { setStageFilter(e.target.value as ContentStage | ''); setPage(0); }}
+            className="py-2.5 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface-variant cursor-pointer font-sans"
+          >
+            <option value="">Tất cả giai đoạn</option>
+            {Object.entries(STAGE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+        </div>
+      </div>
+
+      {/* Data table */}
+      <div className="bg-surface rounded-2xl p-6 shadow-md">
+        {isLoading ? (
+          <div className="py-12 text-center text-outline">Đang tải...</div>
+        ) : (
+          <>
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b-2 border-surface-container-highest text-left">
+                  {['TIÊU ĐỀ', 'GIAI ĐOẠN', 'TRẠNG THÁI', 'CẬP NHẬT LẦN CUỐI', 'THAO TÁC'].map(h => (
+                    <th key={h} className="py-3 px-2 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {items.map(item => (
+                  <tr key={item.id} className="border-b border-surface-container-highest hover:bg-surface-bright">
+                    <td className="py-3.5 px-2 max-w-[400px]">
+                      <div className="font-semibold text-sm text-on-surface">{item.title}</div>
+                    </td>
+                    <td className="py-3.5 px-2 text-[13px] text-on-surface-variant">{STAGE_LABELS[item.stage]}</td>
+                    <td className="py-3.5 px-2">
+                      <span className={`py-1 px-3.5 rounded-full text-xs font-semibold ${statusBadgeClass(item.status)}`}>
+                        {STATUS_LABELS[item.status]}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-2 text-[13px] text-outline">{timeAgo(item.publishedAt)}</td>
+                    <td className="py-3.5 px-2">
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => navigate(`/content/${item.id}`)}
+                          className="w-8 h-8 rounded-lg border border-outline-variant bg-transparent cursor-pointer flex items-center justify-center"
+                          title="Xem chi tiết"
+                        >
+                          <span className="material-symbols-outlined text-primary text-base">visibility</span>
+                        </button>
+                        <button
+                          onClick={() => navigate(`/content/${item.id}/edit`)}
+                          disabled={item.status !== 'DRAFT' && item.status !== 'PENDING_REVIEW'}
+                          className="w-8 h-8 rounded-lg border border-outline-variant bg-transparent cursor-pointer flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+                          title={item.status !== 'DRAFT' && item.status !== 'PENDING_REVIEW'
+                            ? 'Nội dung đã xuất bản/lưu trữ không thể chỉnh sửa trực tiếp'
+                            : 'Chỉnh sửa'}
+                        >
+                          <span className="material-symbols-outlined text-primary text-base">edit</span>
+                        </button>
+                        <button
+                          onClick={() => handleDelete(item)}
+                          className="w-8 h-8 rounded-lg border border-outline-variant bg-transparent cursor-pointer flex items-center justify-center"
+                          title="Xóa"
+                        >
+                          <span className="material-symbols-outlined text-error text-base">delete</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {items.length === 0 && (
+                  <tr><td colSpan={5} className="py-12 text-center text-outline">{emptyLabel}</td></tr>
+                )}
+              </tbody>
+            </table>
+
+            {/* Pagination */}
+            <div className="flex justify-between items-center mt-5 pt-4 border-t border-surface-container-highest">
+              <span className="text-[13px] text-outline">
+                Hiển thị {total === 0 ? 0 : page * pageSize + 1}-{Math.min((page + 1) * pageSize, total)} trong {total} kết quả
+              </span>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setPage(p => Math.max(0, p - 1))}
+                  disabled={page === 0}
+                  className={`w-9 h-9 rounded-full border border-outline-variant bg-surface flex items-center justify-center ${page === 0 ? 'opacity-40 cursor-default' : 'cursor-pointer'}`}
+                >
+                  <span className="material-symbols-outlined text-primary text-lg">chevron_left</span>
+                </button>
+                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                  const startPage = Math.max(0, Math.min(page - 2, totalPages - 5));
+                  const p = startPage + i;
+                  if (p >= totalPages) return null;
+                  return (
+                    <button
+                      key={p}
+                      onClick={() => setPage(p)}
+                      className={`w-9 h-9 rounded-full text-sm font-semibold cursor-pointer flex items-center justify-center ${page === p ? 'border-0 bg-primary-container text-on-primary' : 'border border-outline-variant bg-surface text-on-surface-variant'}`}
+                    >
+                      {p + 1}
+                    </button>
+                  );
+                })}
+                <button
+                  onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
+                  disabled={page >= totalPages - 1}
+                  className={`w-9 h-9 rounded-full border border-outline-variant bg-surface flex items-center justify-center ${page >= totalPages - 1 ? 'opacity-40 cursor-default' : 'cursor-pointer'}`}
+                >
+                  <span className="material-symbols-outlined text-primary text-lg">chevron_right</span>
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

@@ -23,6 +23,8 @@ public class MaternalPregnancyRiskRules implements StageRiskRules {
 
     @Override
     public PediatricRiskRules.RuleOutcome apply(RunIntakeRequest request, List<String> symptoms) {
+        PediatricRiskRules.RuleOutcome universalRed = UniversalMaternalRedRules.apply(request, "RED_PREGNANCY");
+        if (universalRed != null) return universalRed;
         // Maternal thresholds require obstetric clinical sign-off before production activation.
         return new PediatricRiskRules.RuleOutcome(
                 "NEED_MORE_INFO",

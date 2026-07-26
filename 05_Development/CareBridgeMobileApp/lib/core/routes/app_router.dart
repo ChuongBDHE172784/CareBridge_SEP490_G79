@@ -25,6 +25,8 @@ import '../../features/healthRecords/screens/postpartum_log_form_screen.dart';
 import '../../features/healthRecords/screens/postpartum_safety_help_screen.dart';
 import '../../features/healthRecords/models/postpartum_log_model.dart';
 import '../../features/healthRecords/screens/health_metric_trend_screen.dart';
+import '../../features/emergency/models/emergency_session_model.dart';
+import '../../features/aiTriage/models/triage_result_model.dart';
 import '../../features/healthRecords/models/health_metric_model.dart';
 import '../../features/baby/screens/edit_baby_profile_screen.dart';
 import '../../features/baby/screens/edit_baby_daily_log_screen.dart';
@@ -62,6 +64,8 @@ import '../../features/healthRecords/screens/growth_measurement_history_screen.d
 import '../../features/healthRecords/screens/add_vaccination_record_screen.dart';
 import '../../features/community/screens/view_content_screen.dart';
 import '../../features/aiTriage/models/triage_entry_context.dart';
+import '../../features/aiTriage/models/triage_continuation.dart';
+import '../../features/aiTriage/services/triage_continuation_restore_coordinator.dart';
 import '../../features/aiTriage/screens/symptom_intake_screen.dart';
 import '../../features/aiTriage/screens/risk_triage_result_screen.dart';
 import '../../features/emergency/screens/emergency_map_screen.dart';
@@ -75,14 +79,20 @@ import '../../features/expert/screens/expert_profile_setup_screen.dart';
 import '../../features/expert/screens/upload_verification_docs_screen.dart';
 import '../../features/expert/screens/verification_status_screen.dart';
 import '../../features/expert/screens/expert_public_profile_screen.dart';
-import '../../features/expert/screens/expert_contributions_screen.dart';
+import '../../features/expert/screens/expert_contribution_list_screen.dart';
+import '../../features/expert/screens/expert_contribution_draft_screen.dart';
+import '../../features/expert/screens/expert_contribution_detail_screen.dart';
 import '../../features/expert/screens/expert_calendar_screen.dart';
 import '../../features/expert/screens/expert_nearby_support_screen.dart';
+import '../../features/expert/screens/expert_onboarding_gate_screen.dart';
+import '../../features/expert/screens/expert_identity_capture_screen.dart';
+import '../../features/expert/services/expert_onboarding_store.dart';
 import '../../features/directChat/screens/expert_directory_screen.dart';
 import '../../features/directChat/screens/conversation_list_screen.dart';
 import '../../features/directChat/screens/direct_chat_screen.dart';
 import '../../features/consultation/screens/my_consultation_requests_screen.dart';
 import '../../features/consultation/screens/consultation_request_detail_screen.dart';
+import '../../features/consultation/screens/triage_expert_handoff_screen.dart';
 
 Widget _buildHomeForRole(String? role, {required int initialIndex}) {
   switch ((role ?? '').trim().toUpperCase()) {
@@ -111,10 +121,7 @@ class _InvalidRouteScreen extends StatelessWidget {
     body: Center(
       child: Padding(
         padding: EdgeInsets.all(24),
-        child: Text(
-          'Liên kết nhật ký không hợp lệ.',
-          textAlign: TextAlign.center,
-        ),
+        child: Text('Liên kết không hợp lệ.', textAlign: TextAlign.center),
       ),
     ),
   );
@@ -167,12 +174,12 @@ String? resolveAppRedirect({
   }
   if (isAuthenticated && hasAssignedRole && location == '/role-selection') {
     return role == 'EXPERT'
-        ? '/expert-home'
+        ? '/expert-onboarding'
         : (role == 'MOTHER' ? '/journey-onboarding' : '/');
   }
   if (isAuthenticated && isAuthRoute && location != '/auth-landing') {
     return role == 'EXPERT'
-        ? '/expert-home'
+        ? '/expert-onboarding'
         : (role == 'MOTHER'
               ? '/auth-landing'
               : (hasAssignedRole ? '/' : '/role-selection'));
@@ -181,7 +188,7 @@ String? resolveAppRedirect({
     return role == 'MOTHER'
         ? null
         : (role == 'EXPERT'
-              ? '/expert-home'
+              ? '/expert-onboarding'
               : (hasAssignedRole ? '/' : '/role-selection'));
   }
 
@@ -199,13 +206,31 @@ final GoRouter appRouter = GoRouter(
   refreshListenable: AuthState.instance,
   redirect: (context, state) {
     final auth = AuthState.instance;
-    return resolveAppRedirect(
+    final isExpert = auth.role?.trim().toUpperCase() == 'EXPERT';
+    final isExpertOnboardingRoute =
+        state.matchedLocation == '/expert-onboarding' ||
+        state.matchedLocation == '/expert-profile-setup' ||
+        state.matchedLocation == '/expert/identity' ||
+        state.matchedLocation == '/expert/credentials' ||
+        state.matchedLocation == '/expert-verification-status';
+
+    final baseRedirect = resolveAppRedirect(
       isAuthenticated: auth.isAuthenticated,
       isRestoring: auth.isRestoring,
       blockedReason: auth.blockedReason,
       role: auth.role,
       location: state.matchedLocation,
     );
+    if (baseRedirect != null) return baseRedirect;
+
+    if (auth.isAuthenticated &&
+        isExpert &&
+        !isExpertOnboardingRoute &&
+        !ExpertOnboardingStore.instance.approvedFor(auth.userId)) {
+      return '/expert-onboarding';
+    }
+
+    return null;
   },
   routes: [
     GoRoute(
@@ -254,7 +279,21 @@ final GoRouter appRouter = GoRouter(
       path: '/mother-home',
       builder: (context, state) {
         final tabParam = state.uri.queryParameters['tab'];
-        return HomeShell(initialIndex: int.tryParse(tabParam ?? '') ?? 0);
+        final triageReturn = state.uri.queryParameters['triageReturn'];
+        final arrival = state.extra is TriageContinuationArrival
+            ? state.extra as TriageContinuationArrival
+            : null;
+        final recoveryNotice = state.extra is TriageContinuationRecoveryNotice
+            ? state.extra as TriageContinuationRecoveryNotice
+            : null;
+        return HomeShell(
+          key: triageReturn == null
+              ? null
+              : ValueKey('mother-triage-return-$triageReturn'),
+          initialIndex: int.tryParse(tabParam ?? '') ?? 0,
+          continuationArrival: arrival,
+          continuationRecoveryNotice: recoveryNotice,
+        );
       },
     ),
     GoRoute(
@@ -372,9 +411,11 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/consultation-requests/:requestId',
-      builder: (context, state) => ConsultationRequestDetailScreen(
-        requestId: state.pathParameters['requestId'] ?? '',
-      ),
+      builder: (context, state) {
+        final requestId = state.pathParameters['requestId'];
+        if (!_isUuid(requestId)) return const _InvalidRouteScreen();
+        return ConsultationRequestDetailScreen(requestId: requestId!);
+      },
     ),
     GoRoute(
       path: '/reminders/all',
@@ -473,7 +514,13 @@ final GoRouter appRouter = GoRouter(
       path: '/babies/detail/:id',
       builder: (context, state) {
         final id = state.pathParameters['id'] ?? '';
-        return BabyProfileDetailScreen(babyId: id);
+        final arrival = state.extra is TriageContinuationArrival
+            ? state.extra as TriageContinuationArrival
+            : null;
+        return BabyProfileDetailScreen(
+          babyId: id,
+          continuationArrival: arrival,
+        );
       },
     ),
     GoRoute(
@@ -666,8 +713,34 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(
+      path: '/triage/expert-handoff',
+      builder: (context, state) {
+        final intakeSessionId = state.extra;
+        if (intakeSessionId is! String || !_isUuid(intakeSessionId)) {
+          return const _InvalidRouteScreen();
+        }
+        return TriageExpertHandoffScreen(intakeSessionId: intakeSessionId);
+      },
+    ),
+    GoRoute(
       path: '/emergency/map',
-      builder: (context, state) => const EmergencyMapScreen(),
+      builder: (context, state) {
+        final extra = state.extra;
+        if (extra != null && extra is! EmergencySession) {
+          return const _InvalidRouteScreen();
+        }
+        final mode = state.uri.queryParameters['mode'];
+        final stage = state.uri.queryParameters['stage'] ?? 'INFANT';
+        if ((mode != null && mode != 'manual' && mode != 'triage') ||
+            !TriageResult.supportedStages.contains(stage)) {
+          return const _InvalidRouteScreen();
+        }
+        return EmergencyMapScreen(
+          existingSession: extra as EmergencySession?,
+          triageHandoff: mode == 'triage',
+          stage: stage,
+        );
+      },
     ),
     GoRoute(
       path: '/emergency/alert/:sessionId',
@@ -701,8 +774,16 @@ final GoRouter appRouter = GoRouter(
     ),
     // CB-033: Expert Profile Setup (UC-87)
     GoRoute(
+      path: '/expert-onboarding',
+      builder: (context, state) => const ExpertOnboardingGateScreen(),
+    ),
+    GoRoute(
       path: '/expert-profile-setup',
       builder: (context, state) => const ExpertProfileSetupScreen(),
+    ),
+    GoRoute(
+      path: '/expert/identity',
+      builder: (context, state) => const ExpertIdentityCaptureScreen(),
     ),
     // CB-034: Upload Verification Documents (UC-89)
     GoRoute(
@@ -726,8 +807,26 @@ final GoRouter appRouter = GoRouter(
     ),
     // CB-054: Expert Contributions (UC-69)
     GoRoute(
-      path: '/expert-contributions',
-      builder: (context, state) => const ExpertContributionsScreen(),
+      path: '/expert/contributions',
+      builder: (context, state) => const ExpertContributionListScreen(),
+    ),
+    GoRoute(
+      path: '/expert/contributions/new',
+      builder: (context, state) => const ExpertContributionDraftScreen(),
+    ),
+    GoRoute(
+      path: '/expert/contributions/:id/edit',
+      builder: (context, state) {
+        final id = state.pathParameters['id'] ?? '';
+        return ExpertContributionDraftScreen(contributionId: id);
+      },
+    ),
+    GoRoute(
+      path: '/expert/contributions/:id',
+      builder: (context, state) {
+        final id = state.pathParameters['id'] ?? '';
+        return ExpertContributionDetailScreen(contributionId: id);
+      },
     ),
     // CB-061: Nearby Support Expert (UC-82)
     GoRoute(

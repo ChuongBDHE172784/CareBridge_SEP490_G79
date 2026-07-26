@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../aiTriage/models/triage_continuation.dart';
+import '../../aiTriage/services/triage_continuation_restore_coordinator.dart';
 import 'mother_home_screen.dart';
 import '../../journey/screens/mother_journey_screen.dart';
 import '../../auth/screens/account_profile_screen.dart';
@@ -15,8 +17,15 @@ import '../../directChat/services/conversation_refresh_bus.dart';
 class HomeShell extends StatefulWidget {
   /// optionally jump to a specific tab on launch (e.g. from a notification)
   final int initialIndex;
+  final TriageContinuationArrival? continuationArrival;
+  final TriageContinuationRecoveryNotice? continuationRecoveryNotice;
 
-  const HomeShell({super.key, this.initialIndex = 0});
+  const HomeShell({
+    super.key,
+    this.initialIndex = 0,
+    this.continuationArrival,
+    this.continuationRecoveryNotice,
+  });
 
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -28,6 +37,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   static const _canvas = Color(0xFFFFF8F6);
 
   late int _index;
+  late List<Widget> _continuationPages;
   int _unreadConversationCount = 0;
   StreamSubscription<void>? _refreshSubscription;
   int _unreadLoadGeneration = 0;
@@ -36,11 +46,34 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     _index = widget.initialIndex;
+    _continuationPages = _buildContinuationPages();
     WidgetsBinding.instance.addObserver(this);
     _refreshUnreadCount();
     _refreshSubscription = ConversationRefreshBus.events.listen(
       (_) => _refreshUnreadCount(),
     );
+  }
+
+  List<Widget> _buildContinuationPages() => <Widget>[
+    MotherHomeScreen(
+      recoveryNotice: widget.continuationRecoveryNotice?.message,
+    ),
+    MotherJourneyScreen(continuationArrival: widget.continuationArrival),
+    const ExpertDirectoryScreen(),
+    const ConversationListScreen(),
+    const AccountProfileScreen(),
+  ];
+
+  @override
+  void didUpdateWidget(covariant HomeShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.continuationArrival, widget.continuationArrival) ||
+        !identical(
+          oldWidget.continuationRecoveryNotice,
+          widget.continuationRecoveryNotice,
+        )) {
+      _continuationPages = _buildContinuationPages();
+    }
   }
 
   @override
@@ -88,7 +121,14 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
       backgroundColor: _canvas,
       body: SafeArea(
         bottom: false,
-        child: IndexedStack(index: _index, children: _pages),
+        child: IndexedStack(
+          index: _index,
+          children:
+              widget.continuationArrival == null &&
+                  widget.continuationRecoveryNotice == null
+              ? _pages
+              : _continuationPages,
+        ),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,

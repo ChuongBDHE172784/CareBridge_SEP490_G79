@@ -18,4 +18,6 @@ public interface IExpertAvailabilityService {
     LocationShareResponse shareLocation(UUID expertProfileId, ShareLocationRequest request);
 
     void stopLocationShare(UUID expertProfileId);
+
+    LocationShareResponse setOnlineStatus(UUID expertProfileId, Boolean online);
 }

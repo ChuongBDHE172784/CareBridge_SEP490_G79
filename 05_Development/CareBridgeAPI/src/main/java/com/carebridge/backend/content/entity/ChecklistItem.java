@@ -18,9 +18,11 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.annotations.SQLRestriction;
 
 @Entity
-@Table(name = "checklist_items")
+@Table(name = "care_item_templates")
+@SQLRestriction("entry_type = 'CHECKLIST_ENTRY'")
 @Getter
 @Setter
 @Builder
@@ -30,21 +32,29 @@ public class ChecklistItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "checklist_item_id", updatable = false, nullable = false)
+    @Column(name = "template_id", updatable = false, nullable = false)
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "checklist_template_id")
+    @JoinColumn(name = "parent_template_id")
     private ChecklistTemplate template;
 
-    @Column(name = "item_text", length = 500)
+    @Column(name = "title", length = 500)
     private String itemText;
 
-    @Column(name = "item_order")
+    @Column(name = "display_order")
     private Integer order;
 
     @Column(name = "is_required")
     private Boolean isRequired;
+
+    @Builder.Default
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive = Boolean.TRUE;
+
+    @Builder.Default
+    @Column(name = "entry_type", nullable = false, length = 30)
+    private String entryType = "CHECKLIST_ENTRY";
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

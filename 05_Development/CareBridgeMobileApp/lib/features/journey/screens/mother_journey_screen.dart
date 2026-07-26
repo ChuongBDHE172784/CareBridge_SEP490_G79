@@ -4,10 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../aiTriage/models/triage_entry_context.dart';
+import '../../aiTriage/models/triage_continuation.dart';
+import '../../aiTriage/services/triage_continuation_restore_coordinator.dart';
+import '../../aiTriage/widgets/triage_safety_entry_action.dart';
 import '../../baby/models/baby_model.dart';
 import '../../baby/screens/baby_profile_detail_screen.dart';
 import '../../baby/services/baby_profile_selection_storage.dart';
 import '../../baby/services/baby_service.dart';
+import '../../community/models/content_model.dart';
+import '../../community/screens/view_content_screen.dart';
 import '../../healthRecords/models/health_metric_model.dart';
 import '../../healthRecords/services/health_metric_service.dart';
 import '../../reminder/models/reminder_model.dart';
@@ -25,16 +31,22 @@ class MotherJourneyScreen extends StatefulWidget {
     this.initialBabyProfiles = const [],
     this.initialDashboard,
     this.initialJourneyHistory = const [],
+    this.initialTimeline = const [],
     this.journeyService,
+    this.babyService,
     this.loadSupportingData = true,
+    this.continuationArrival,
   });
 
   final bool loadData;
   final List<BabyProfile> initialBabyProfiles;
   final JourneyDashboard? initialDashboard;
   final List<JourneyTransition> initialJourneyHistory;
+  final List<JourneyTimelineItem> initialTimeline;
   final JourneyService? journeyService;
+  final BabyService? babyService;
   final bool loadSupportingData;
+  final TriageContinuationArrival? continuationArrival;
 
   @override
   State<MotherJourneyScreen> createState() => _MotherJourneyScreenState();
@@ -53,12 +65,13 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
   static const _outlineVariant = Color(0xFFD6C2BD);
 
   late final JourneyService _journeyService;
-  final _babyService = BabyService();
+  late final BabyService _babyService;
   final _babySelectionStorage = BabyProfileSelectionStorage();
   final _reminderService = ReminderService.instance;
   final _healthMetricService = HealthMetricService();
   JourneyDashboard? _dashboard;
   List<JourneyTransition> _journeyHistory = [];
+  List<JourneyTimelineItem> _journeyTimeline = [];
   List<BabyProfile> _babyProfiles = [];
   String? _selectedBabyProfileId;
   List<Reminder> _reminders = [];
@@ -69,15 +82,21 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
   bool _loading = true;
   String? _error;
   String? _historyError;
+  bool _showContinuationConfirmation = false;
+  bool _continuationAcknowledgementInProgress = false;
+  bool _continuationAcknowledged = false;
+  bool _continuationAcknowledgementFailed = false;
   int _loadGeneration = 0;
 
   @override
   void initState() {
     super.initState();
     _journeyService = widget.journeyService ?? JourneyService();
+    _babyService = widget.babyService ?? BabyService();
     WidgetsBinding.instance.addObserver(this);
     _dashboard = widget.initialDashboard;
     _journeyHistory = widget.initialJourneyHistory;
+    _journeyTimeline = widget.initialTimeline;
     _babyProfiles = widget.initialBabyProfiles;
     if (widget.loadData) {
       JourneyService.dashboardRevision.addListener(_onJourneyDashboardChanged);
@@ -89,6 +108,15 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
           : _JourneySection.babyCare;
       _didChooseInitialSection = true;
       _loading = false;
+      if (widget.initialDashboard != null &&
+          widget.initialTimeline.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _completeContinuationArrivalIfReady(
+            dashboard: widget.initialDashboard!,
+            timelineLoaded: true,
+          );
+        });
+      }
     }
   }
 
@@ -121,11 +149,10 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
 
     try {
       final dashboard = await _journeyService.getDashboard();
-      final babyProfiles = widget.loadSupportingData && !dashboard.isPostpartum
+      final babyProfiles = widget.loadSupportingData
           ? await _loadBabyProfiles()
-          : (dashboard.isPostpartum ? const <BabyProfile>[] : _babyProfiles);
-      final lastOpenedBabyProfileId =
-          widget.loadSupportingData && !dashboard.isPostpartum
+          : _babyProfiles;
+      final lastOpenedBabyProfileId = widget.loadSupportingData
           ? await _babySelectionStorage.readLastOpenedBabyProfileId()
           : null;
       final reminders = widget.loadSupportingData
@@ -138,18 +165,28 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
           !hasMaternalJourney &&
           (dashboard.journeyType == 'BABY_CARE' || babyProfiles.isNotEmpty);
       var journeyHistory = _journeyHistory;
+      var journeyTimeline = _journeyTimeline;
+      var timelineLoaded = false;
       String? historyError;
       if (hasMaternalJourney && dashboard.journeyId != null) {
         try {
-          journeyHistory = await _journeyService.getHistory(
-            dashboard.journeyId!,
-          );
+          journeyTimeline = await _loadCompleteTimeline(dashboard.journeyId!);
+          timelineLoaded = true;
         } catch (_) {
-          historyError =
-              'Không thể tải lịch sử hành trình. Dữ liệu đã tải trước đó vẫn được giữ lại.';
+          try {
+            journeyHistory = await _journeyService.getHistory(
+              dashboard.journeyId!,
+            );
+            historyError =
+                'Dòng thời gian an toàn tạm thời chưa tải được. Lịch sử chuyển giai đoạn bên dưới có thể chưa gồm kết quả kiểm tra an toàn.';
+          } catch (_) {
+            historyError =
+                'Không thể tải dòng thời gian. Dữ liệu đã tải trước đó vẫn được giữ lại.';
+          }
         }
       } else {
         journeyHistory = const <JourneyTransition>[];
+        journeyTimeline = const <JourneyTimelineItem>[];
       }
       final weightTrend =
           widget.loadSupportingData &&
@@ -167,6 +204,7 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
       setState(() {
         _dashboard = dashboard;
         _journeyHistory = journeyHistory;
+        _journeyTimeline = journeyTimeline;
         _historyError = historyError;
         _babyProfiles = babyProfiles;
         _selectedBabyProfileId = _resolveSelectedBabyProfileId(
@@ -182,6 +220,10 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
         _didChooseInitialSection = true;
         _loading = false;
       });
+      _completeContinuationArrivalIfReady(
+        dashboard: dashboard,
+        timelineLoaded: timelineLoaded,
+      );
     } on ApiException catch (_) {
       if (!mounted || generation != _loadGeneration) return;
       setState(() {
@@ -199,6 +241,82 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
         _loading = false;
       });
     }
+  }
+
+  Future<List<JourneyTimelineItem>> _loadCompleteTimeline(
+    String journeyId,
+  ) async {
+    final items = <JourneyTimelineItem>[];
+    var page = 0;
+    var totalPages = 1;
+    do {
+      final result = await _journeyService.getTimeline(
+        journeyId,
+        page: page,
+        size: 100,
+      );
+      items.addAll(result.items);
+      totalPages = result.totalPages;
+      page++;
+    } while (page < totalPages);
+    return List.unmodifiable(items);
+  }
+
+  void _completeContinuationArrivalIfReady({
+    required JourneyDashboard dashboard,
+    required bool timelineLoaded,
+  }) {
+    final arrival = widget.continuationArrival;
+    if (arrival == null ||
+        _continuationAcknowledgementInProgress ||
+        _continuationAcknowledged ||
+        _continuationAcknowledgementFailed) {
+      return;
+    }
+    final decision = arrival.decision;
+    final exactOrigin =
+        decision.destination == TriageContinuationDestination.motherJourney &&
+        dashboard.journeyId != null &&
+        dashboard.journeyId == decision.originReferenceId;
+    if (!exactOrigin) {
+      setState(() {
+        _historyError =
+            'Không thể xác nhận đúng hành trình đã bắt đầu kiểm tra an toàn. Dữ liệu tiếp tục vẫn được giữ để thử lại.';
+      });
+      return;
+    }
+    if (!timelineLoaded || !decision.showRecordedConfirmation) return;
+
+    setState(() => _showContinuationConfirmation = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _acknowledgeContinuation();
+    });
+  }
+
+  Future<void> _acknowledgeContinuation() async {
+    final arrival = widget.continuationArrival;
+    if (!mounted ||
+        arrival == null ||
+        _continuationAcknowledgementInProgress ||
+        _continuationAcknowledged) {
+      return;
+    }
+    setState(() {
+      _continuationAcknowledgementInProgress = true;
+      _continuationAcknowledgementFailed = false;
+    });
+    var acknowledged = false;
+    try {
+      acknowledged = await arrival.acknowledge();
+    } catch (_) {
+      acknowledged = false;
+    }
+    if (!mounted) return;
+    setState(() {
+      _continuationAcknowledgementInProgress = false;
+      _continuationAcknowledged = acknowledged;
+      _continuationAcknowledgementFailed = !acknowledged;
+    });
   }
 
   Future<List<BabyProfile>> _loadBabyProfiles() async {
@@ -324,6 +442,15 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
     await _load();
   }
 
+  Future<void> _openLifecycleContent() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            const ViewContentScreen(mode: ContentBrowseMode.lifecycle),
+      ),
+    );
+  }
+
   Future<void> _openBabyProfilePicker() async {
     final result = await showModalBottomSheet<_BabyPickerResult>(
       context: context,
@@ -419,6 +546,10 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
                   )
                 else ...[
                   _buildSectionTabs(),
+                  if (_showContinuationConfirmation) ...[
+                    const SizedBox(height: 16),
+                    _buildContinuationConfirmation(),
+                  ],
                   const SizedBox(height: 20),
                   if (_selectedSection == _JourneySection.pregnancy)
                     ..._buildPregnancySection()
@@ -430,6 +561,80 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildContinuationConfirmation() {
+    const confirmation =
+        'Kết quả kiểm tra an toàn đã được ghi vào dòng thời gian.';
+    return Semantics(
+      key: const Key('mother-triage-recorded-confirmation'),
+      container: true,
+      liveRegion: true,
+      label: _continuationAcknowledgementFailed
+          ? '$confirmation Chưa thể xác nhận đã nhận. Bạn có thể thử lại ngay tại đây.'
+          : confirmation,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF2EAE4),
+          borderRadius: BorderRadius.circular(20),
+          border: const Border(
+            left: BorderSide(color: Color(0xFFC98C7B), width: 4),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.verified_outlined, color: Color(0xFFC98C7B)),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    confirmation,
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF5A463F),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (_continuationAcknowledgementFailed) ...[
+              const SizedBox(height: 12),
+              const Text(
+                'Chưa thể xác nhận đã nhận. Kết quả vẫn được giữ an toàn để thử lại.',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 16,
+                  height: 1.4,
+                  color: Color(0xFF5A463F),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  key: const Key('mother-triage-acknowledgement-retry'),
+                  onPressed: _continuationAcknowledgementInProgress
+                      ? null
+                      : _acknowledgeContinuation,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Thử lại xác nhận'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                    foregroundColor: const Color(0xFF845143),
+                    shape: const StadiumBorder(),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -461,20 +666,40 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
     if (dashboard.isPrePregnancy) {
       return [
         _buildPrePregnancyCard(dashboard),
+        const SizedBox(height: 16),
+        TriageSafetyEntryAction(
+          entryContext: TriageEntryContext.locked(
+            stage: TriageStageIntent.preconception,
+            origin: TriageOriginIntent.motherJourney,
+            journeyId: dashboard.journeyId,
+            originReferenceId: dashboard.journeyId,
+          ),
+        ),
         if (_historyError != null) ...[
           const SizedBox(height: 16),
           _buildHistoryErrorCard(),
         ],
-        if (_journeyHistory.isNotEmpty) ...[
+        if (_journeyTimeline.isNotEmpty || _journeyHistory.isNotEmpty) ...[
           const SizedBox(height: 16),
-          _buildJourneyHistoryCard(),
+          _buildJourneyTimelineCard(),
         ],
+        const SizedBox(height: 16),
+        _buildLifecycleContentEntry(),
       ];
     }
 
     if (dashboard.isPostpartum) {
       return [
         _buildPostpartumCard(dashboard),
+        const SizedBox(height: 16),
+        TriageSafetyEntryAction(
+          entryContext: TriageEntryContext.locked(
+            stage: TriageStageIntent.postpartum,
+            origin: TriageOriginIntent.motherJourney,
+            journeyId: dashboard.journeyId,
+            originReferenceId: dashboard.journeyId,
+          ),
+        ),
         if (dashboard.babyActionsEligible && dashboard.journeyId != null) ...[
           const SizedBox(height: 16),
           _postpartumAction(
@@ -494,17 +719,28 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
           const SizedBox(height: 16),
           _buildHistoryErrorCard(),
         ],
-        if (_journeyHistory.isNotEmpty) ...[
+        if (_journeyTimeline.isNotEmpty || _journeyHistory.isNotEmpty) ...[
           const SizedBox(height: 16),
-          _buildJourneyHistoryCard(),
+          _buildJourneyTimelineCard(),
         ],
         const SizedBox(height: 16),
         _buildPostpartumRecoveryActions(dashboard),
+        const SizedBox(height: 16),
+        _buildLifecycleContentEntry(),
       ];
     }
 
     return [
       _buildHeroCard(dashboard),
+      const SizedBox(height: 16),
+      TriageSafetyEntryAction(
+        entryContext: TriageEntryContext.locked(
+          stage: TriageStageIntent.pregnancy,
+          origin: TriageOriginIntent.motherJourney,
+          journeyId: dashboard.journeyId,
+          originReferenceId: dashboard.journeyId,
+        ),
+      ),
       const SizedBox(height: 16),
       _buildDueDateCard(dashboard),
       const SizedBox(height: 16),
@@ -523,11 +759,90 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
         const SizedBox(height: 24),
         _buildHistoryErrorCard(),
       ],
-      if (_journeyHistory.isNotEmpty) ...[
+      if (_journeyTimeline.isNotEmpty || _journeyHistory.isNotEmpty) ...[
         const SizedBox(height: 24),
-        _buildJourneyHistoryCard(),
+        _buildJourneyTimelineCard(),
       ],
+      const SizedBox(height: 16),
+      _buildLifecycleContentEntry(),
     ];
+  }
+
+  Widget _buildLifecycleContentEntry() {
+    return Semantics(
+      key: const Key('mother-lifecycle-content-entry'),
+      button: true,
+      label: 'Mở nội dung đã kiểm duyệt theo giai đoạn hiện tại',
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(32),
+        child: InkWell(
+          onTap: _openLifecycleContent,
+          borderRadius: BorderRadius.circular(32),
+          child: Container(
+            constraints: const BoxConstraints(minHeight: 72),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(32),
+              border: Border.all(color: _outlineVariant),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x0F5A463F),
+                  blurRadius: 24,
+                  offset: Offset(0, 8),
+                ),
+              ],
+            ),
+            child: const Row(
+              children: [
+                SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Color(0x26C98C7B),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.verified_rounded,
+                      color: _primaryContainer,
+                    ),
+                  ),
+                ),
+                SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Nội dung đã kiểm duyệt',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: _onSurface,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Xem hướng dẫn phù hợp với giai đoạn hiện tại.',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 16,
+                          color: _onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SizedBox(width: 8),
+                Icon(Icons.arrow_forward_rounded, color: _primary),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildPregnancyOutcomeEntry(JourneyDashboard dashboard) {
@@ -719,6 +1034,7 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
 
   Widget _buildHistoryErrorCard() {
     return Semantics(
+      key: const Key('journey-timeline-warning'),
       liveRegion: true,
       label: _historyError,
       child: Container(
@@ -829,7 +1145,198 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
               ),
             ),
           ),
+          const SizedBox(height: 8),
+          TextButton(
+            key: const Key('mother-pre-not-yet'),
+            onPressed: () {
+              setState(() => _selectedSection = _JourneySection.pregnancy);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'Hành trình chuẩn bị mang thai được giữ nguyên.',
+                  ),
+                ),
+              );
+            },
+            style: TextButton.styleFrom(
+              minimumSize: const Size.fromHeight(48),
+              foregroundColor: _primary,
+              shape: const StadiumBorder(),
+              textStyle: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            child: const Text('Chưa mang thai, giữ nguyên hành trình'),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildJourneyTimelineCard() {
+    if (_journeyTimeline.isEmpty) return _buildJourneyHistoryCard();
+    final items = [..._journeyTimeline]
+      ..sort((a, b) {
+        final occurred = b.occurredAt.compareTo(a.occurredAt);
+        if (occurred != 0) return occurred;
+        final recorded = b.recordedAt.compareTo(a.recordedAt);
+        if (recorded != 0) return recorded;
+        return b.itemId.compareTo(a.itemId);
+      });
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: _cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.history_rounded, color: _primary),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Dòng thời gian hành trình',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: _onSurface,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          for (var index = 0; index < items.length; index++) ...[
+            _buildTimelineItem(items[index]),
+            if (index < items.length - 1)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Divider(color: _outlineVariant, height: 1),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimelineItem(JourneyTimelineItem item) {
+    if (!item.isSafetyOutcome) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(
+            width: 36,
+            height: 36,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: _surfaceContainerHigh,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.flag_rounded, size: 19, color: _primary),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _eventLabel(item.eventType ?? 'UPDATED'),
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: _onSurface,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _formatDateTime(item.occurredAt.toLocal()),
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 14,
+                    color: _onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+    final risk = item.riskLevel ?? 'UNKNOWN';
+    final stage = item.stage == null ? '' : _stageLabel(item.stage!);
+    final semanticLabel =
+        'Kết quả kiểm tra an toàn đã được ghi vào dòng thời gian. '
+        'Mức $risk${stage.isEmpty ? '' : ', giai đoạn $stage'}.';
+    return Semantics(
+      key: Key('journey-timeline-safety-${item.itemId}'),
+      liveRegion: true,
+      label: semanticLabel,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF2EAE4),
+          borderRadius: BorderRadius.circular(24),
+          border: const Border(
+            left: BorderSide(color: _primaryContainer, width: 4),
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(
+              width: 40,
+              height: 40,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Color(0xFFFFF8F6),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.health_and_safety_outlined, color: _primary),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Đã ghi kết quả kiểm tra an toàn',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: _onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Mức $risk${stage.isEmpty ? '' : ' • $stage'}',
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: _onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _formatDateTime(item.occurredAt.toLocal()),
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 14,
+                      color: _onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

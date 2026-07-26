@@ -286,7 +286,7 @@ class VaccinationServiceImplTest {
                 .satisfies(ex -> {
                     BusinessException be = (BusinessException) ex;
                     assertThat(be.getCode()).isEqualTo("VAC-008");
-                    assertThat(be.getHttpStatus()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+                    assertThat(be.getHttpStatus()).isEqualTo(HttpStatus.UNPROCESSABLE_CONTENT);
                 });
         verify(recordRepository, never()).save(any());
     }
@@ -474,7 +474,7 @@ class VaccinationServiceImplTest {
                 .thenReturn(Optional.of(makeRecord(VaccinationRecordStatus.COMPLETED)));
         assertThatThrownBy(() -> vaccinationService.updateVaccinationRecord(BABY_ID, RECORD_ID, CALLER_ID, futureRequest))
                 .isInstanceOf(BusinessException.class)
-                .satisfies(ex -> assertBusinessCode(ex, "VAC-008", HttpStatus.UNPROCESSABLE_ENTITY));
+                .satisfies(ex -> assertBusinessCode(ex, "VAC-008", HttpStatus.UNPROCESSABLE_CONTENT));
     }
 
     @Test
@@ -597,7 +597,7 @@ class VaccinationServiceImplTest {
         request.setAdministeredDate(LocalDate.now().plusDays(1));
         assertThatThrownBy(() -> vaccinationService.markVaccinationCompleted(BABY_ID, CALLER_ID, request))
                 .isInstanceOf(BusinessException.class)
-                .satisfies(ex -> assertBusinessCode(ex, "VAC-008", HttpStatus.UNPROCESSABLE_ENTITY));
+                .satisfies(ex -> assertBusinessCode(ex, "VAC-008", HttpStatus.UNPROCESSABLE_CONTENT));
     }
 
     @Test
@@ -668,7 +668,7 @@ class VaccinationServiceImplTest {
         request.setNewScheduledDate(LocalDate.now().minusDays(1));
         assertThatThrownBy(() -> vaccinationService.postponeVaccination(BABY_ID, CALLER_ID, request))
                 .isInstanceOf(BusinessException.class)
-                .satisfies(ex -> assertBusinessCode(ex, "VAC-024", HttpStatus.UNPROCESSABLE_ENTITY));
+                .satisfies(ex -> assertBusinessCode(ex, "VAC-024", HttpStatus.UNPROCESSABLE_CONTENT));
 
         when(babyRepository.findById(BABY_ID)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> vaccinationService.postponeVaccination(BABY_ID, CALLER_ID, postponeRequest()))

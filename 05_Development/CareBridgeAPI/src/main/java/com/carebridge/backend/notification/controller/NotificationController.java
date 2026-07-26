@@ -69,7 +69,7 @@ public class NotificationController {
     }
 
     @PostMapping("/send")
-    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'SYSTEM')")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<NotificationRecordResponse>> sendNotification(
             @Valid @RequestBody SendNotificationRequest request) {
         NotificationRecordResponse response = notificationService.send(request);

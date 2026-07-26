@@ -24,7 +24,7 @@ class FederatedLoginIntegrationTest extends AbstractPostgresIntegrationTest {
         when(verifier.verify("phone-login-token")).thenReturn(phoneIdentity("uid-login-1", "+84901110001"));
         service.authenticate(new FederatedAuthRequest("phone-login-token", "JUnit device"));
         Integer hashedSessions = jdbc.queryForObject("""
-                select count(*) from user_sessions
+                select count(*) from auth_sessions
                 where refresh_token_hash is not null and length(refresh_token_hash) = 64
                 """, Integer.class);
         assertThat(hashedSessions).isPositive();

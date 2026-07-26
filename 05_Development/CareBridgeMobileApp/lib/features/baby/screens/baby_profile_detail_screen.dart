@@ -7,6 +7,10 @@ import '../services/baby_profile_selection_storage.dart';
 import '../services/baby_log_service.dart';
 import '../services/baby_service.dart';
 import '../../../core/network/api_client.dart';
+import '../../aiTriage/models/triage_entry_context.dart';
+import '../../aiTriage/models/triage_continuation.dart';
+import '../../aiTriage/services/triage_continuation_restore_coordinator.dart';
+import '../../aiTriage/widgets/triage_safety_entry_action.dart';
 import '../../healthRecords/models/vaccination_model.dart';
 import '../../healthRecords/models/growth_measurement_model.dart';
 import '../../healthRecords/services/growth_measurement_service.dart';
@@ -31,6 +35,7 @@ class BabyProfileDetailScreen extends StatefulWidget {
   final Future<BabyLogSummaryResponse> Function(String babyId)? summaryLoader;
   final Future<List<GrowthMeasurement>> Function(String babyId)? growthLoader;
   final bool loadCareCollectionsData;
+  final TriageContinuationArrival? continuationArrival;
 
   const BabyProfileDetailScreen({
     super.key,
@@ -49,6 +54,7 @@ class BabyProfileDetailScreen extends StatefulWidget {
     this.summaryLoader,
     this.growthLoader,
     this.loadCareCollectionsData = true,
+    this.continuationArrival,
   });
 
   @override
@@ -88,9 +94,26 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
   int _loadGeneration = 0;
   bool _loading = true;
   String? _error;
+  bool _showContinuationConfirmation = false;
+  bool _continuationAcknowledgementInProgress = false;
+  bool _continuationAcknowledged = false;
+  bool _continuationAcknowledgementFailed = false;
   _Tab _activeTab = _Tab.growth;
 
   double get _horizontalPadding => widget.embedded ? 0 : 24;
+
+  TriageStageIntent? get _triageStage {
+    final birthDate = _profile?.birthDate;
+    if (birthDate == null) return null;
+    final now = DateTime.now();
+    if (birthDate.isAfter(now)) return null;
+    var ageMonths =
+        (now.year - birthDate.year) * 12 + now.month - birthDate.month;
+    if (now.day < birthDate.day) ageMonths--;
+    if (ageMonths < 12) return TriageStageIntent.infant;
+    if (ageMonths <= 24) return TriageStageIntent.toddler;
+    return null;
+  }
 
   @override
   void initState() {
@@ -109,6 +132,10 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
     if (widget.loadData) {
       _selectionStorage.saveLastOpenedBabyProfileId(widget.babyId);
       _loadProfile();
+    } else if (_profile != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _completeContinuationArrivalIfReady(_profile!);
+      });
     }
   }
 
@@ -203,6 +230,7 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
           _profile = p;
           _loading = false;
         });
+        _completeContinuationArrivalIfReady(p);
         await Future.wait([
           _loadSummary(requestedBabyId, generation),
           _loadGrowthHistory(requestedBabyId, generation),
@@ -234,6 +262,54 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
         });
       }
     }
+  }
+
+  void _completeContinuationArrivalIfReady(BabyProfile profile) {
+    final arrival = widget.continuationArrival;
+    if (!mounted ||
+        arrival == null ||
+        _continuationAcknowledgementInProgress ||
+        _continuationAcknowledged ||
+        _continuationAcknowledgementFailed) {
+      return;
+    }
+    final decision = arrival.decision;
+    final exactOrigin =
+        decision.destination == TriageContinuationDestination.babyProfile &&
+        decision.originReferenceId == widget.babyId &&
+        profile.id == widget.babyId;
+    if (!exactOrigin || !decision.showRecordedConfirmation) return;
+
+    setState(() => _showContinuationConfirmation = true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _acknowledgeContinuation();
+    });
+  }
+
+  Future<void> _acknowledgeContinuation() async {
+    final arrival = widget.continuationArrival;
+    if (!mounted ||
+        arrival == null ||
+        _continuationAcknowledgementInProgress ||
+        _continuationAcknowledged) {
+      return;
+    }
+    setState(() {
+      _continuationAcknowledgementInProgress = true;
+      _continuationAcknowledgementFailed = false;
+    });
+    var acknowledged = false;
+    try {
+      acknowledged = await arrival.acknowledge();
+    } catch (_) {
+      acknowledged = false;
+    }
+    if (!mounted) return;
+    setState(() {
+      _continuationAcknowledgementInProgress = false;
+      _continuationAcknowledged = acknowledged;
+      _continuationAcknowledgementFailed = !acknowledged;
+    });
   }
 
   Future<void> _loadSummary(String babyId, int generation) async {
@@ -477,7 +553,10 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
     return CustomScrollView(
       slivers: [
         SliverToBoxAdapter(child: _buildAppBar(p)),
+        if (_showContinuationConfirmation)
+          SliverToBoxAdapter(child: _buildContinuationConfirmation()),
         SliverToBoxAdapter(child: _buildIdentityHeader(p)),
+        SliverToBoxAdapter(child: _buildTriageSafetyEntry()),
         SliverToBoxAdapter(child: _buildSummary24h()),
         SliverToBoxAdapter(child: _buildQuickActions()),
         SliverToBoxAdapter(child: _buildTabBar()),
@@ -493,14 +572,99 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildEmbeddedToolbar(p),
+        if (_showContinuationConfirmation) ...[
+          const SizedBox(height: 14),
+          _buildContinuationConfirmation(),
+        ],
         const SizedBox(height: 14),
         _buildIdentityHeader(p),
+        _buildTriageSafetyEntry(),
         _buildSummary24h(),
         _buildQuickActions(),
         _buildTabBar(),
         _buildTabContent(),
         const SizedBox(height: 12),
       ],
+    );
+  }
+
+  Widget _buildContinuationConfirmation() {
+    const confirmation =
+        'Kết quả kiểm tra an toàn đã được ghi vào dòng thời gian.';
+    return Semantics(
+      key: const Key('baby-triage-recorded-confirmation'),
+      container: true,
+      liveRegion: true,
+      label: _continuationAcknowledgementFailed
+          ? '$confirmation Chưa thể xác nhận đã nhận. Bạn có thể thử lại ngay tại đây.'
+          : confirmation,
+      child: Container(
+        margin: EdgeInsets.fromLTRB(
+          _horizontalPadding,
+          12,
+          _horizontalPadding,
+          4,
+        ),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF2EAE4),
+          borderRadius: BorderRadius.circular(20),
+          border: const Border(
+            left: BorderSide(color: Color(0xFFC98C7B), width: 4),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.verified_outlined, color: Color(0xFFC98C7B)),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    confirmation,
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Color(0xFF5A463F),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (_continuationAcknowledgementFailed) ...[
+              const SizedBox(height: 12),
+              const Text(
+                'Chưa thể xác nhận đã nhận. Kết quả vẫn được giữ an toàn để thử lại.',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 16,
+                  height: 1.4,
+                  color: Color(0xFF5A463F),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  key: const Key('baby-triage-acknowledgement-retry'),
+                  onPressed: _continuationAcknowledgementInProgress
+                      ? null
+                      : _acknowledgeContinuation,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('Thử lại xác nhận'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                    foregroundColor: const Color(0xFF845143),
+                    shape: const StadiumBorder(),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 
@@ -548,6 +712,29 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
             ),
           ),
       ],
+    );
+  }
+
+  Widget _buildTriageSafetyEntry() {
+    final stage = _triageStage;
+    final profile = _profile;
+    if (stage == null || profile == null) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: EdgeInsets.only(
+        left: _horizontalPadding,
+        right: _horizontalPadding,
+        bottom: 24,
+      ),
+      child: TriageSafetyEntryAction(
+        entryContext: TriageEntryContext.locked(
+          stage: stage,
+          origin: TriageOriginIntent.babyProfile,
+          journeyId: profile.relatedJourneyId,
+          originReferenceId: profile.id,
+        ),
+      ),
     );
   }
 

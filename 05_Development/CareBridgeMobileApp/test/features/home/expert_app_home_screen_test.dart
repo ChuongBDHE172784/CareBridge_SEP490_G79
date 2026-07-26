@@ -6,9 +6,6 @@ import 'package:untitled/features/directChat/models/expert_directory_item.dart';
 import 'package:untitled/features/directChat/services/direct_chat_service.dart';
 import 'package:untitled/features/directChat/services/conversation_refresh_bus.dart';
 import 'package:untitled/features/home/screens/expert_home_shell.dart';
-import 'package:untitled/features/consultation/models/consultation_request.dart';
-import 'package:untitled/features/consultation/screens/expert_requests_tab_screen.dart';
-import 'package:untitled/features/consultation/services/consultation_request_service.dart';
 
 class _FakeDirectChatService extends DirectChatService {
   int unreadConversationCount;
@@ -39,59 +36,28 @@ class _FakeDirectChatService extends DirectChatService {
   );
 }
 
-class _FakeConsultationService extends ConsultationRequestService {
-  @override
-  Future<int> pendingCount() async => 0;
-
-  @override
-  Future<ConsultationRequestPage> listAssigned({
-    String? status,
-    int page = 0,
-    int size = 20,
-  }) async => const ConsultationRequestPage(
-    items: [],
-    page: 0,
-    size: 20,
-    totalElements: 0,
-    totalPages: 0,
-  );
-}
-
 void main() {
   late DirectChatService original;
-  late ConsultationRequestService originalConsultation;
 
   tearDown(() {
     DirectChatService.instance = original;
-    ConsultationRequestService.instance = originalConsultation;
   });
 
   // MEDI-FL-02
   testWidgets(
-    'EXPERT bottom nav shows unread badge on Trò chuyện; Yêu cầu tab actually navigates (no longer a no-op)',
+    'EXPERT bottom nav shows unread badge on Trò chuyện and retains direct chat navigation',
     (tester) async {
       original = DirectChatService.instance;
-      originalConsultation = ConsultationRequestService.instance;
       DirectChatService.instance = _FakeDirectChatService(
         unreadConversationCount: 3,
       );
-      ConsultationRequestService.instance = _FakeConsultationService();
 
       await tester.pumpWidget(const MaterialApp(home: ExpertHomeShell()));
       await tester.pumpAndSettle();
 
-      expect(
-        find.text('3'),
-        findsOneWidget,
-      ); // Badge label on the Trò chuyện destination
-
-      await tester.tap(find.text('Yêu cầu tư vấn').last);
-      await tester.pumpAndSettle();
-
-      expect(find.byType(ExpertRequestsTabScreen), findsOneWidget);
-      expect(find.text('Tư vấn'), findsOneWidget);
-      expect(find.text('Cộng đồng'), findsOneWidget);
+      expect(find.text('3'), findsOneWidget);
       expect(find.byType(NavigationBar), findsOneWidget);
+      expect(find.text('Yêu cầu tư vấn'), findsNothing);
     },
   );
 
@@ -99,10 +65,8 @@ void main() {
     'foreground conversation events refresh the Expert unread badge',
     (tester) async {
       original = DirectChatService.instance;
-      originalConsultation = ConsultationRequestService.instance;
       final service = _FakeDirectChatService();
       DirectChatService.instance = service;
-      ConsultationRequestService.instance = _FakeConsultationService();
       await tester.pumpWidget(const MaterialApp(home: ExpertHomeShell()));
       await tester.pumpAndSettle();
 
@@ -118,13 +82,8 @@ void main() {
     'EXPERT shell has no "find/message Mother" CTA anywhere across its tabs',
     (tester) async {
       original = DirectChatService.instance;
-      originalConsultation = ConsultationRequestService.instance;
       DirectChatService.instance = _FakeDirectChatService();
-      ConsultationRequestService.instance = _FakeConsultationService();
-      // Not awaited: setTokens's internal secure-storage write hangs on the unmocked platform
-      // channel in this test environment. The synchronous role/userId assignment inside
-      // setTokens runs to completion before its first `await`, so this is already visible by
-      // the very next line — no pump needed.
+      // The synchronous role/user assignment happens before the first secure-storage await.
       // ignore: unawaited_futures
       AuthState.instance.setTokens(
         accessToken: 'test-access',
@@ -136,29 +95,19 @@ void main() {
       await tester.pumpWidget(const MaterialApp(home: ExpertHomeShell()));
       await tester.pumpAndSettle();
 
-      for (final label in const [
-        'Tìm chuyên gia',
-        'Tìm Mother',
-        'Nhắn tin mới',
-      ]) {
+      for (final label in const ['Tìm Mother', 'Nhắn tin mới']) {
         expect(find.text(label), findsNothing);
       }
 
-      // Visit every tab and re-check — IndexedStack keeps them all built, but assert per tab too.
       for (final tabLabel in const [
         'Trò chuyện',
-        'Yêu cầu tư vấn',
         'Lịch',
         'Tài khoản',
         'Tổng quan',
       ]) {
         await tester.tap(find.text(tabLabel).last);
         await tester.pumpAndSettle();
-        for (final label in const [
-          'Tìm chuyên gia',
-          'Tìm Mother',
-          'Nhắn tin mới',
-        ]) {
+        for (final label in const ['Tìm Mother', 'Nhắn tin mới']) {
           expect(find.text(label), findsNothing);
         }
       }

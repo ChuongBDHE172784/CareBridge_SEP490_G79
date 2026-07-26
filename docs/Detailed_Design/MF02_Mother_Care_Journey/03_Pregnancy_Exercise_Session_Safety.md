@@ -168,65 +168,168 @@ actor "Mother" as M
 participant "ExerciseController" as ExController
 participant "ExerciseSessionController" as SessController
 participant "ExerciseSessionServiceImpl" as Service
+participant "ExerciseRepository" as ExRepo
+participant "ExerciseSafetyCheckRepository" as SafetyRepo
+participant "ExerciseSessionRepository" as SessRepo
+participant "PostureFeedbackEventRepository" as PostureRepo
 participant "PostureAnalyzer" as Posture
 database "PostgreSQL" as DB
 
 == UC-28 Browse Pregnancy Exercise Library ==
-M -> ExController : GET /api/v1/exercises?trimester=T2&difficulty=EASY
-ExController -> DB : SELECT * FROM pregnancy_exercises\nWHERE status='PUBLISHED' AND ...
-DB --> ExController : exercises[]
-ExController --> M : HTTP 200 OK {exercises[]}
+M -> ExController : 1. GET /api/v1/exercises?trimester=T2&difficulty=EASY
+activate ExController
+ExController -> Service : 2. list(filter)
+activate Service
+Service -> ExRepo : 3. findPublished(filter)
+activate ExRepo
+ExRepo -> DB : 4. SELECT * FROM pregnancy_exercises\nWHERE status='PUBLISHED' AND ...
+activate DB
+DB --> ExRepo : 5. rows[]
+deactivate DB
+ExRepo --> Service : 6. exercises[]
+deactivate ExRepo
+Service --> ExController : 7. exercises[]
+deactivate Service
+ExController --> M : 8. HTTP 200 OK {exercises[]}
+deactivate ExController
 
 == UC-29 Complete Pre-exercise Safety Check ==
-M -> ExController : POST /api/v1/exercises/{exerciseId}/safety-check\n{answers: {...}}
-ExController -> Service : submitSafetyCheck(userId, exerciseId, answers)
-Service -> Service : evaluate answers → redFlagDetected?
-alt no red flag
-  Service -> DB : INSERT INTO exercise_safety_checks\n(resultStatus=CLEARED)
-  Service --> ExController : SafetyCheck{status=CLEARED}
-  ExController --> M : HTTP 200 OK {status=CLEARED}
-else red flag detected
-  Service -> DB : INSERT INTO exercise_safety_checks\n(resultStatus=BLOCKED, blockedReason)
-  Service --> ExController : SafetyCheck{status=BLOCKED}
-  ExController --> M : HTTP 200 OK {status=BLOCKED, safetyWarning}
+M -> ExController : 9. POST /api/v1/exercises/{exerciseId}/safety-check\n{answers: {...}}
+activate ExController
+ExController -> Service : 10. submitSafetyCheck(userId, exerciseId, answers)
+activate Service
+Service -> Service : 11. evaluate answers → redFlagDetected?
+alt 11. no red flag [happy path → CLEARED]
+  Service -> SafetyRepo : 12. save(SafetyCheck{resultStatus=CLEARED})
+  activate SafetyRepo
+  SafetyRepo -> DB : 13. INSERT INTO exercise_safety_checks\n(resultStatus=CLEARED)
+  activate DB
+  DB --> SafetyRepo : 14. saved
+  deactivate DB
+  SafetyRepo --> Service : 15. SafetyCheck{status=CLEARED}
+  deactivate SafetyRepo
+  Service --> ExController : 16. SafetyCheck{status=CLEARED}
+  deactivate Service
+  ExController --> M : 17. HTTP 200 OK {status=CLEARED}
+  deactivate ExController
+else 11. red flag detected [block session creation → BLOCKED]
+  Service -> SafetyRepo : 11a. save(SafetyCheck{resultStatus=BLOCKED, blockedReason})
+  activate SafetyRepo
+  SafetyRepo -> DB : 11b. INSERT INTO exercise_safety_checks\n(resultStatus=BLOCKED, blockedReason)
+  activate DB
+  DB --> SafetyRepo : 11c. saved
+  deactivate DB
+  SafetyRepo --> Service : 11d. SafetyCheck{status=BLOCKED}
+  deactivate SafetyRepo
+  Service --> ExController : 11e. SafetyCheck{status=BLOCKED}
+  deactivate Service
+  ExController --> M : 11f. HTTP 200 OK {status=BLOCKED, safetyWarning}
+  deactivate ExController
 end
 
 == UC-30 Conduct Session with Optional Posture Feedback ==
-M -> ExController : POST /api/v1/exercises/{exerciseId}/sessions\n{safetyCheckId}
-ExController -> Service : start(userId, exerciseId, safetyCheckId)
-Service -> Service : require safetyCheck.resultStatus == CLEARED
-Service -> DB : INSERT INTO exercise_sessions (sessionStatus=IN_PROGRESS)
-Service --> ExController : ExerciseSession
-ExController --> M : HTTP 201 Created
+M -> ExController : 18. POST /api/v1/exercises/{exerciseId}/sessions\n{safetyCheckId}
+activate ExController
+ExController -> Service : 19. start(userId, exerciseId, safetyCheckId)
+activate Service
+Service -> Service : 20. require safetyCheck.resultStatus == CLEARED
+Service -> SessRepo : 21. save(ExerciseSession{sessionStatus=IN_PROGRESS})
+activate SessRepo
+SessRepo -> DB : 22. INSERT INTO exercise_sessions (sessionStatus=IN_PROGRESS)
+activate DB
+DB --> SessRepo : 23. saved
+deactivate DB
+SessRepo --> Service : 24. ExerciseSession
+deactivate SessRepo
+Service --> ExController : 25. ExerciseSession
+deactivate Service
+ExController --> M : 26. HTTP 201 Created
+deactivate ExController
 
-loop mỗi khung hình (nếu bật camera consent)
-  M -> SessController : POST /api/v1/exercises/sessions/{sessionId}/posture-events
-  SessController -> Posture : analyze(frameFeatures, postureConfig)
-  Posture --> SessController : PostureFeedbackEvent{severity, feedbackText}
-  SessController -> DB : INSERT INTO posture_feedback_events ...
-  SessController --> M : HTTP 200 OK {feedback}
+loop 27-34. each frame uploaded (if Mother enables camera consent)
+  M -> SessController : 27. POST /api/v1/exercises/sessions/{sessionId}/posture-events
+  activate SessController
+  SessController -> Posture : 28. analyze(frameFeatures, postureConfig)
+  activate Posture
+  Posture --> SessController : 29. PostureFeedbackEvent{severity, feedbackText}
+  deactivate Posture
+  SessController -> PostureRepo : 30. save(feedbackEvent)
+  activate PostureRepo
+  PostureRepo -> DB : 31. INSERT INTO posture_feedback_events ...
+  activate DB
+  DB --> PostureRepo : 32. saved
+  deactivate DB
+  PostureRepo --> SessController : 33. PostureFeedbackEvent
+  deactivate PostureRepo
+  SessController --> M : 34. HTTP 200 OK {feedback}
+  deactivate SessController
 end
 
-M -> SessController : PATCH /api/v1/exercises/sessions/{sessionId}/pause
-SessController -> Service : pause(sessionId)
-Service -> DB : UPDATE exercise_sessions SET sessionStatus='PAUSED'
+M -> SessController : 35. PATCH /api/v1/exercises/sessions/{sessionId}/pause
+activate SessController
+SessController -> Service : 36. pause(sessionId)
+activate Service
+Service -> SessRepo : 37. update(session{sessionStatus=PAUSED})
+activate SessRepo
+SessRepo -> DB : 38. UPDATE exercise_sessions SET session_status='PAUSED'
+activate DB
+DB --> SessRepo : 39. updated
+deactivate DB
+SessRepo --> Service : 40. void
+deactivate SessRepo
+Service --> SessController : 41. void
+deactivate Service
+SessController --> M : 42. HTTP 200 OK
+deactivate SessController
 
-M -> SessController : PATCH /api/v1/exercises/sessions/{sessionId}/resume
-SessController -> Service : resume(sessionId)
-Service -> DB : UPDATE exercise_sessions SET sessionStatus='IN_PROGRESS'
+M -> SessController : 43. PATCH /api/v1/exercises/sessions/{sessionId}/resume
+activate SessController
+SessController -> Service : 44. resume(sessionId)
+activate Service
+Service -> SessRepo : 45. update(session{sessionStatus=IN_PROGRESS})
+activate SessRepo
+SessRepo -> DB : 46. UPDATE exercise_sessions SET session_status='IN_PROGRESS'
+activate DB
+DB --> SessRepo : 47. updated
+deactivate DB
+SessRepo --> Service : 48. void
+deactivate SessRepo
+Service --> SessController : 49. void
+deactivate Service
+SessController --> M : 50. HTTP 200 OK
+deactivate SessController
 
-M -> SessController : PATCH /api/v1/exercises/sessions/{sessionId}/complete
-SessController -> Service : complete(sessionId)
-Service -> Service : tính completionPercent, postureScore, summaryJson
-Service -> DB : UPDATE exercise_sessions\nSET sessionStatus='COMPLETED', endedAt=now()
-Service --> SessController : ExerciseSession{sessionStatus=COMPLETED}
-SessController --> M : HTTP 200 OK
+M -> SessController : 51. PATCH /api/v1/exercises/sessions/{sessionId}/complete
+activate SessController
+SessController -> Service : 52. complete(sessionId)
+activate Service
+Service -> Service : 53. calculate completionPercent, postureScore, summaryJson
+Service -> SessRepo : 54. update(session{sessionStatus=COMPLETED, endedAt=now()})
+activate SessRepo
+SessRepo -> DB : 55. UPDATE exercise_sessions\nSET session_status='COMPLETED', ended_at=now()
+activate DB
+DB --> SessRepo : 56. updated
+deactivate DB
+SessRepo --> Service : 57. ExerciseSession{sessionStatus=COMPLETED}
+deactivate SessRepo
+Service --> SessController : 58. ExerciseSession{sessionStatus=COMPLETED}
+deactivate Service
+SessController --> M : 59. HTTP 200 OK
+deactivate SessController
 
 == UC-31 View Exercise History and Session Result ==
-M -> SessController : GET /api/v1/exercises/sessions/history
-SessController -> DB : SELECT * FROM exercise_sessions\nWHERE user_id=? ORDER BY started_at DESC
-DB --> SessController : sessions[]
-SessController --> M : HTTP 200 OK {sessions[]}
+M -> SessController : 60. GET /api/v1/exercises/sessions/history
+activate SessController
+SessController -> SessRepo : 61. findByUserId(userId)
+activate SessRepo
+SessRepo -> DB : 62. SELECT * FROM exercise_sessions\nWHERE user_id=? ORDER BY started_at DESC
+activate DB
+DB --> SessRepo : 63. rows[]
+deactivate DB
+SessRepo --> SessController : 64. sessions[]
+deactivate SessRepo
+SessController --> M : 65. HTTP 200 OK {sessions[]}
+deactivate SessController
 
 @enduml
 ```

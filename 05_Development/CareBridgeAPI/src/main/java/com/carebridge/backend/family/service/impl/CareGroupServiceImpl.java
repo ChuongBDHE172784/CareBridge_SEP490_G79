@@ -3,6 +3,7 @@ package com.carebridge.backend.family.service.impl;
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.common.exception.BusinessException;
+import com.carebridge.backend.common.validation.VietnamesePhoneNumbers;
 import com.carebridge.backend.family.dto.AcceptInvitationByTokenResponse;
 import com.carebridge.backend.family.dto.CareGroupMemberDto;
 import com.carebridge.backend.family.dto.CareGroupMembersResponse;
@@ -50,6 +51,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -363,6 +365,10 @@ public class CareGroupServiceImpl implements ICareGroupService {
                 throw new BusinessException(HttpStatus.CONFLICT, "FAM-061",
                         "The group owner cannot be removed");
             }
+            if (target.getInviteStatus() != InviteStatus.ACCEPTED) {
+                throw new BusinessException(HttpStatus.CONFLICT, "FAM-060",
+                        "Only an accepted member can be removed");
+            }
 
             UUID memberId = target.getId();
             UUID targetUserUuid = target.getUserId();
@@ -503,8 +509,13 @@ public class CareGroupServiceImpl implements ICareGroupService {
                 throw new BusinessException(HttpStatus.BAD_REQUEST, "FAM-010",
                         "Phone number or email is required for invitation.");
             }
-            User invitee = userRepository.findByPhone(phone)
-                    .or(() -> userRepository.findByEmailIgnoreCase(phone))
+            String canonicalPhone = VietnamesePhoneNumbers.isValidOrBlank(phone)
+                    ? VietnamesePhoneNumbers.normalizeToE164(phone)
+                    : null;
+            Optional<User> inviteeMatch = canonicalPhone != null
+                    ? userRepository.findByPhone(canonicalPhone)
+                    : userRepository.findByEmailIgnoreCase(phone.trim());
+            User invitee = inviteeMatch
                     .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "FAM-014",
                             "No CareBridge account was found for this phone number or email."));
 
@@ -521,7 +532,7 @@ public class CareGroupServiceImpl implements ICareGroupService {
 
             String targetPhone = (invitee.getPhone() != null && !invitee.getPhone().isBlank())
                     ? invitee.getPhone()
-                    : (phone.length() <= 20 ? phone : null);
+                    : canonicalPhone;
 
             CareGroupMember member = CareGroupMember.builder()
                     .careGroupId(groupId)

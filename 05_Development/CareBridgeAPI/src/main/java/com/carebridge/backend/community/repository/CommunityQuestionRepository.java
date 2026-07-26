@@ -19,8 +19,21 @@ import java.util.UUID;
 @Repository
 public interface CommunityQuestionRepository extends JpaRepository<CommunityQuestion, UUID> {
 
+    boolean existsByTopicId(UUID topicId);
+
     // ADR-COM-006: used to gate answer posting — only APPROVED questions accept answers
     Optional<CommunityQuestion> findByIdAndStatus(UUID id, QuestionStatus status);
+
+    // ADR-COM-015: batch count of APPROVED questions per topic (for CommunityTopicResponse.questionCount),
+    // avoids N+1 — one query for the whole topic list, same pattern as the existing follow-state hydration.
+    @Query("""
+            SELECT q.topicId AS topicId, COUNT(q) AS cnt
+            FROM CommunityQuestion q
+            WHERE q.status = com.carebridge.backend.community.entity.QuestionStatus.APPROVED
+              AND q.topicId IN :topicIds
+            GROUP BY q.topicId
+            """)
+    List<TopicQuestionCountProjection> countApprovedQuestionsByTopicIds(@Param("topicIds") List<UUID> topicIds);
 
     // Dev seed idempotency (DevDataSeeder) — identifies a previously-seeded question by author+title
     Optional<CommunityQuestion> findByAuthorIdAndTitle(UUID authorId, String title);
@@ -80,9 +93,10 @@ public interface CommunityQuestionRepository extends JpaRepository<CommunityQues
 
     // Atomic moderation transition: prevents concurrent moderators from recording duplicate LOCK actions.
     @Modifying
-    @Query(value = "UPDATE public.community_questions "
-            + "SET status = 'LOCKED', updated_at = CURRENT_TIMESTAMP "
-            + "WHERE id = :questionId AND status = 'APPROVED'", nativeQuery = true)
+    @Query(value = "UPDATE public.community_content "
+            + "SET moderation_status = 'LOCKED', updated_at = CURRENT_TIMESTAMP "
+            + "WHERE content_id = :questionId AND content_type = 'QUESTION' "
+            + "AND moderation_status = 'APPROVED'", nativeQuery = true)
     int lockIfApproved(@Param("questionId") UUID questionId);
 
     // UC-111: dashboard aggregation — question count grouped by status

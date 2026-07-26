@@ -24,7 +24,7 @@ final class UpdatePartnerProfileTestFactory {
     static UpdatePartnerProfileRequest request() {
         return UpdatePartnerProfileRequest.builder().name("Updated Clinic")
                 .type(OrganizationType.CLINIC).address("New address").city("Hanoi")
-                .phone("0907654321").email("new@clinic.vn").website("https://clinic.vn")
+                .phone("84 90 765 4321").email("new@clinic.vn").website("https://clinic.vn")
                 .logoUrl("https://clinic.vn/logo.png").description("Updated").build();
     }
 }

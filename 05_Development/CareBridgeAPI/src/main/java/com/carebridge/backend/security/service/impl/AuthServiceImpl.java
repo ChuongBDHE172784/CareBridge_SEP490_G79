@@ -11,6 +11,7 @@ import com.carebridge.backend.common.exception.ResourceNotFoundException;
 import com.carebridge.backend.common.exception.RevokedSessionException;
 import com.carebridge.backend.common.exception.SessionNotFoundException;
 import com.carebridge.backend.common.exception.ValidationException;
+import com.carebridge.backend.common.validation.VietnamesePhoneNumbers;
 import com.carebridge.backend.notification.repository.DeviceTokenRepository;
 import com.carebridge.backend.common.util.StringUtils;
 import com.carebridge.backend.identity.entity.UserSession;
@@ -114,7 +115,7 @@ public class AuthServiceImpl implements AuthService {
 
         // 2. Determine identifier (email or phone)
         String email = request.getEmail();
-        String phone = request.getPhone();
+        String phone = normalizePhone(request.getPhone());
         String identifier;
 
         if (email != null && !email.isBlank()) {
@@ -124,9 +125,6 @@ public class AuthServiceImpl implements AuthService {
             }
         } else if (phone != null && !phone.isBlank()) {
             identifier = phone;
-            if (!identifier.matches("^\\+84[1-9][0-9]{8,9}$")) {
-                throw new ValidationException("Invalid phone format. Use E.164 format (+84xxxxxxxxx)");
-            }
         } else {
             throw new ValidationException("Either email or phone must be provided");
         }
@@ -471,7 +469,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public OtpResendResponse resendOtp(ResendOtpRequest request) {
-        String phone = StringUtils.trimToNull(request.getPhone());
+        String phone = normalizePhone(request.getPhone());
         String email = StringUtils.trimToNull(request.getEmail());
 
         boolean hasPhone = phone != null;
@@ -708,7 +706,7 @@ public class AuthServiceImpl implements AuthService {
         if (session.isRevoked()) {
             throw new RevokedSessionException("Session has been revoked");
         }
-        if (session.getStatus() == null || !"active".equals(session.getStatus())) {
+        if (session.getStatus() == null || !"ACTIVE".equalsIgnoreCase(session.getStatus())) {
             throw new InvalidRefreshTokenException("Session is not active");
         }
         if (session.getExpiresAt() != null && !session.getExpiresAt().isAfter(now)) {
@@ -763,7 +761,7 @@ public class AuthServiceImpl implements AuthService {
             sessionRepository.findByRefreshTokenHashAndRevokedFalse(tokenHash)
                     .ifPresent(session -> {
                         session.setRevoked(true);
-                        session.setStatus("logged_out");
+                        session.setStatus("REVOKED");
                         session.setUpdatedAt(Instant.now());
                         sessionRepository.save(session);
                     });
@@ -790,7 +788,7 @@ public class AuthServiceImpl implements AuthService {
             sessionRepository.findByUserIdAndRevokedFalseOrderByLastActivityAtDesc(userId)
                     .forEach(session -> {
                         session.setRevoked(true);
-                        session.setStatus("logged_out");
+                        session.setStatus("REVOKED");
                         session.setUpdatedAt(Instant.now());
                         sessionRepository.save(session);
                     });
@@ -938,7 +936,11 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private String normalizePhone(String phone) {
-        return StringUtils.trimToNull(phone);
+        try {
+            return VietnamesePhoneNumbers.normalizeToE164(phone);
+        } catch (IllegalArgumentException invalidPhone) {
+            throw new ValidationException(VietnamesePhoneNumbers.INVALID_FORMAT_MESSAGE);
+        }
     }
 
     private String getRateLimitKey(User user) {

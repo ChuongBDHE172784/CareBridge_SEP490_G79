@@ -6,6 +6,8 @@ class ExpertDirectoryItem {
   final double? ratingAvg;
   final int? experienceYears;
   final String? avatarUrl;
+  final String? verificationStatus;
+  final bool? isConsultationEligible;
 
   const ExpertDirectoryItem({
     required this.expertProfileId,
@@ -15,9 +17,16 @@ class ExpertDirectoryItem {
     this.ratingAvg,
     this.experienceYears,
     this.avatarUrl,
+    this.verificationStatus,
+    this.isConsultationEligible,
   });
 
+  bool get isEligibleForTriageHandoff =>
+      verificationStatus == 'APPROVED' && isConsultationEligible == true;
+
   factory ExpertDirectoryItem.fromJson(Map<String, dynamic> json) {
+    final consultationEligible =
+        json['consultationEligible'] ?? json['isConsultationEligible'];
     return ExpertDirectoryItem(
       expertProfileId: json['expertProfileId'] as String,
       displayName: json['displayName'] as String?,
@@ -26,6 +35,10 @@ class ExpertDirectoryItem {
       ratingAvg: (json['ratingAvg'] as num?)?.toDouble(),
       experienceYears: json['experienceYears'] as int?,
       avatarUrl: json['avatarUrl'] as String?,
+      verificationStatus: json['verificationStatus'] as String?,
+      isConsultationEligible: consultationEligible is bool
+          ? consultationEligible
+          : null,
     );
   }
 }

@@ -32,4 +32,9 @@ public interface ModerationActionRepository extends JpaRepository<ModerationActi
             UUID targetId, ReportTargetType targetType);
 
     Page<ModerationAction> findByActionTypeOrderByActionAtDesc(ModerationActionType actionType, Pageable pageable);
+
+    // CB-MOD-IMP-015 (revertReport): finds the ModerationAction created when a report was resolved
+    // (reportId != null). Returns Optional.empty() for a report resolved via DISMISS, which creates
+    // no ModerationAction (BR-MOD-010).
+    Optional<ModerationAction> findTopByReportIdOrderByActionAtDesc(UUID reportId);
 }

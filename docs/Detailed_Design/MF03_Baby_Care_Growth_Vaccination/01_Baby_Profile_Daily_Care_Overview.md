@@ -148,46 +148,123 @@ skinparam backgroundColor #FAFAFA
 actor "Mother" as M
 participant "BabyController" as BabyController
 participant "BabyServiceImpl" as BabyService
+participant "BabyProfileRepository" as BabyRepo
 participant "BabyDailyLogController" as LogController
+participant "BabyDailyLogServiceImpl" as LogService
+participant "BabyDailyLogRepository" as LogRepo
 participant "BabyCareOverviewController" as OverviewController
+participant "BabyCareOverviewServiceImpl" as OverviewService
 participant "BabyLogSummaryController" as SummaryController
+participant "BabyLogSummaryServiceImpl" as SummaryService
 participant "AuditService" as Audit
 database "PostgreSQL" as DB
 
 == UC-32 Create Baby Profile ==
-M -> BabyController : POST /api/v1/babies\n{nickname, birthDate, gender}
-BabyController -> BabyService : create(ownerId, request)
-BabyService -> DB : INSERT INTO baby_profiles (status=ACTIVE, active=true)
-BabyService -> Audit : emit(BABY_PROFILE_CREATED)
-BabyService --> BabyController : BabyProfile
-BabyController --> M : HTTP 201 Created
+M -> BabyController : 1. POST /api/v1/babies\n{nickname, birthDate, gender}
+activate BabyController
+BabyController -> BabyService : 2. create(ownerId, request)
+activate BabyService
+BabyService -> BabyRepo : 3. save(BabyProfile{status=ACTIVE, active=true})
+activate BabyRepo
+BabyRepo -> DB : 4. INSERT INTO baby_profiles ...
+activate DB
+DB --> BabyRepo : 5. saved
+deactivate DB
+BabyRepo --> BabyService : 6. BabyProfile
+deactivate BabyRepo
+BabyService -> Audit : 7. log(BABY_PROFILE_CREATED)
+activate Audit
+Audit --> BabyService : 8. void
+deactivate Audit
+BabyService --> BabyController : 9. BabyProfile
+deactivate BabyService
+BabyController --> M : 10. HTTP 201 Created
+deactivate BabyController
 
 == UC-34 Switch Active Baby Profile ==
-M -> BabyController : PATCH /api/v1/babies/{babyId}/active
-BabyController -> BabyService : switchActive(ownerId, babyId)
-BabyService -> DB : UPDATE baby_profiles SET active=false\nWHERE owner_user_id=? AND active=true
-BabyService -> DB : UPDATE baby_profiles SET active=true\nWHERE id=?
-BabyService --> BabyController : void
-BabyController --> M : HTTP 200 OK
+M -> BabyController : 11. PATCH /api/v1/babies/{babyId}/active
+activate BabyController
+BabyController -> BabyService : 12. switchActive(ownerId, babyId)
+activate BabyService
+BabyService -> BabyRepo : 13. clearActiveForOwner(ownerId)
+activate BabyRepo
+BabyRepo -> DB : 14. UPDATE baby_profiles SET active=false\nWHERE owner_user_id=? AND active=true
+activate DB
+DB --> BabyRepo : 15. updated
+deactivate DB
+BabyRepo --> BabyService : 16. void
+deactivate BabyRepo
+BabyService -> BabyRepo : 17. setActive(babyId)
+activate BabyRepo
+BabyRepo -> DB : 18. UPDATE baby_profiles SET active=true\nWHERE id=?
+activate DB
+DB --> BabyRepo : 19. updated
+deactivate DB
+BabyRepo --> BabyService : 20. void
+deactivate BabyRepo
+BabyService -> Audit : 21. log(BABY_ACTIVE_PROFILE_SWITCHED)
+activate Audit
+Audit --> BabyService : 22. void
+deactivate Audit
+BabyService --> BabyController : 23. void
+deactivate BabyService
+BabyController --> M : 24. HTTP 200 OK
+deactivate BabyController
 
 == UC-36 Add Baby Daily Log ==
-M -> LogController : POST /api/v1/babies/{babyId}/daily-logs\n{logType=FEEDING, startedAt, quantity, unit}
-LogController -> DB : INSERT INTO baby_daily_logs (status=ACTIVE)
-LogController -> Audit : emit(BABY_LOG_ADDED)
-LogController --> M : HTTP 201 Created
+M -> LogController : 25. POST /api/v1/babies/{babyId}/daily-logs\n{logType=FEEDING, startedAt, quantity, unit}
+activate LogController
+LogController -> LogService : 26. add(ownerId, babyId, request)
+activate LogService
+LogService -> LogRepo : 27. save(BabyDailyLog{status=ACTIVE})
+activate LogRepo
+LogRepo -> DB : 28. INSERT INTO baby_daily_logs ...
+activate DB
+DB --> LogRepo : 29. saved
+deactivate DB
+LogRepo --> LogService : 30. BabyDailyLog
+deactivate LogRepo
+LogService -> Audit : 31. log(BABY_LOG_ADDED)
+activate Audit
+Audit --> LogService : 32. void
+deactivate Audit
+LogService --> LogController : 33. BabyDailyLog
+deactivate LogService
+LogController --> M : 34. HTTP 201 Created
+deactivate LogController
 
 == UC-35 View Baby Care Overview ==
-M -> OverviewController : GET /api/v1/babies/{babyId}/care-overview
-OverviewController -> DB : SELECT recent logs, growth, milestones, vaccination status\nWHERE baby_id=?
-DB --> OverviewController : aggregated rows
-OverviewController --> M : HTTP 200 OK {BabyCareOverviewResponse}
+M -> OverviewController : 35. GET /api/v1/babies/{babyId}/care-overview
+activate OverviewController
+OverviewController -> OverviewService : 36. overview(ownerId, babyId)
+activate OverviewService
+OverviewService -> DB : 37. SELECT recent logs, growth, milestones, vaccination status\nWHERE baby_id=?
+activate DB
+DB --> OverviewService : 38. aggregated rows
+deactivate DB
+OverviewService --> OverviewController : 39. BabyCareOverviewResponse
+deactivate OverviewService
+OverviewController --> M : 40. HTTP 200 OK {BabyCareOverviewResponse}
+deactivate OverviewController
 
 == UC-38 View Baby Log Summary ==
-M -> SummaryController : GET /api/v1/babies/{babyId}/daily-logs/summary?window=24h
-SummaryController -> DB : SELECT * FROM baby_daily_logs\nWHERE baby_id=? AND started_at >= now()-interval '24h'
-DB --> SummaryController : logs[]
-SummaryController -> SummaryController : aggregate feeding/sleep/diaper counts
-SummaryController --> M : HTTP 200 OK {BabyLogSummaryResponse}
+M -> SummaryController : 41. GET /api/v1/babies/{babyId}/daily-logs/summary?window=24h
+activate SummaryController
+SummaryController -> SummaryService : 42. summary(ownerId, babyId, window)
+activate SummaryService
+SummaryService -> LogRepo : 43. findByBabyIdAndStartedAtAfter(babyId, since)
+activate LogRepo
+LogRepo -> DB : 44. SELECT * FROM baby_daily_logs\nWHERE baby_id=? AND started_at >= now()-interval '24h'
+activate DB
+DB --> LogRepo : 45. logs[]
+deactivate DB
+LogRepo --> SummaryService : 46. logs[]
+deactivate LogRepo
+SummaryService -> SummaryService : 47. aggregate feeding/sleep/diaper counts
+SummaryService --> SummaryController : 48. BabyLogSummaryResponse
+deactivate SummaryService
+SummaryController --> M : 49. HTTP 200 OK {BabyLogSummaryResponse}
+deactivate SummaryController
 
 @enduml
 ```

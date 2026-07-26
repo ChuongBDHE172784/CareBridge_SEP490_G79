@@ -29,4 +29,19 @@ class PrivacyService {
   Future<void> revokeConsent(int consentId) async {
     await apiDelete('/api/v1/consent/grants/$consentId');
   }
+
+  Future<ConsentGrant> grantConsent({
+    required String dataType,
+    required String purpose,
+    required String recipient,
+    required String scope,
+  }) async {
+    final res = await apiPost('/api/v1/consent/grants', {
+      'dataType': dataType,
+      'purpose': purpose,
+      'recipient': recipient,
+      'scope': scope,
+    });
+    return ConsentGrant.fromJson(res['data'] as Map<String, dynamic>);
+  }
 }
