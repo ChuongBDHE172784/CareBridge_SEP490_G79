@@ -571,8 +571,21 @@ public class DevDataSeeder implements ApplicationRunner {
         if (!existing.isEmpty()) {
             return existing.get(0);
         }
-        return motherJourneyRepository.save(MotherJourney.builder()
+
+        UUID careSubjectId = motherJourneyRepository.findMotherCareSubjectId(mother.getId());
+        if (careSubjectId == null) {
+            UUID candidateSubjectId = UUID.randomUUID();
+            motherJourneyRepository.ensureMotherCareSubject(candidateSubjectId, mother.getId());
+            careSubjectId = motherJourneyRepository.findMotherCareSubjectId(mother.getId());
+        }
+        if (careSubjectId == null) {
+            throw new IllegalStateException(
+                "Unable to create canonical MOTHER care subject for seed account " + mother.getEmail());
+        }
+
+        MotherJourney journey = motherJourneyRepository.saveAndFlush(MotherJourney.builder()
             .ownerUserId(mother.getId())
+            .careSubjectId(careSubjectId)
             .journeyType(type)
             .startDate(LocalDate.now().minusMonths(3))
             .lastMenstrualDate(LocalDate.now().minusMonths(5))
@@ -581,6 +594,8 @@ public class DevDataSeeder implements ApplicationRunner {
             .status(JourneyStatus.ACTIVE)
             .notes("Seeded verified test journey")
             .build());
+        motherJourneyRepository.linkMotherCareSubject(careSubjectId, journey.getId());
+        return journey;
     }
 
     private BabyProfile seedBabyProfile(User mother, MotherJourney journey) {
@@ -690,10 +705,11 @@ public class DevDataSeeder implements ApplicationRunner {
         Timestamp now = Timestamp.from(Instant.now());
         jdbcTemplate.update("""
             INSERT INTO growth_measurements
-                (growth_measurement_id, baby_id, measured_date, weight_kg, height_cm,
+                (growth_measurement_id, care_subject_id, baby_id, measured_date, weight_kg, height_cm,
                  head_circumference_cm, source_type, note, deleted_at, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, 'HOME', '[DEV][MF-03] Dữ liệu tăng trưởng mẫu', NULL, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'HOME', '[DEV][MF-03] Dữ liệu tăng trưởng mẫu', NULL, ?, ?)
             ON CONFLICT (growth_measurement_id) DO UPDATE SET
+                care_subject_id = EXCLUDED.care_subject_id,
                 baby_id = EXCLUDED.baby_id,
                 measured_date = EXCLUDED.measured_date,
                 weight_kg = EXCLUDED.weight_kg,
@@ -703,7 +719,7 @@ public class DevDataSeeder implements ApplicationRunner {
                 note = EXCLUDED.note,
                 deleted_at = NULL,
                 updated_at = EXCLUDED.updated_at
-            """, UUID.fromString(id), baby.getId(), java.sql.Date.valueOf(measuredDate),
+            """, UUID.fromString(id), baby.getId(), baby.getId(), java.sql.Date.valueOf(measuredDate),
             new BigDecimal(weightKg), new BigDecimal(heightCm), new BigDecimal(headCm), now, now);
     }
 
