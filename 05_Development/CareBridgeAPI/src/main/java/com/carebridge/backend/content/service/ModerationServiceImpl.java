@@ -83,13 +83,32 @@ public class ModerationServiceImpl implements ModerationService {
                 Sort.by(Sort.Direction.DESC, "createdAt")
         );
 
-        // ADR-001: query ContentReport first, then fetch previews
+        // ADR-001: query ContentReport first, then fetch previews.
+        // CB-MOD-IMP-016: source/priority filters use a Specification; the legacy two-method
+        // path is preserved untouched when they are absent.
         Page<ContentReport> page;
-        if (filter.targetType() != null) {
-            page = contentReportRepository.findByStatusAndTargetType(
-                    filter.status(), filter.targetType(), pageable);
+        if (filter.source() == null && filter.priority() == null) {
+            if (filter.targetType() != null) {
+                page = contentReportRepository.findByStatusAndTargetType(
+                        filter.status(), filter.targetType(), pageable);
+            } else {
+                page = contentReportRepository.findByStatus(filter.status(), pageable);
+            }
         } else {
-            page = contentReportRepository.findByStatus(filter.status(), pageable);
+            page = contentReportRepository.findAll((root, query, cb) -> {
+                List<jakarta.persistence.criteria.Predicate> predicates = new java.util.ArrayList<>();
+                predicates.add(cb.equal(root.get("status"), filter.status()));
+                if (filter.targetType() != null) {
+                    predicates.add(cb.equal(root.get("targetType"), filter.targetType()));
+                }
+                if (filter.source() != null) {
+                    predicates.add(cb.equal(root.get("reportSource"), filter.source()));
+                }
+                if (filter.priority() != null) {
+                    predicates.add(cb.equal(root.get("priority"), filter.priority()));
+                }
+                return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+            }, pageable);
         }
 
         List<ModerationQueueItemResponse> items = page.getContent().stream()
@@ -176,8 +195,9 @@ public class ModerationServiceImpl implements ModerationService {
                 ? List.of(filter.targetType())
                 : HISTORY_TARGET_TYPES;
 
-        Page<ModerationAction> page =
-                moderationActionRepository.findByTargetTypeInOrderByActionAtDesc(targetTypes, pageable);
+        Page<ModerationAction> page = moderationActionRepository
+                .findByTargetTypeInAndActionTypeNotOrderByActionAtDesc(
+                        targetTypes, ModerationActionType.AI_FEEDBACK_SUBMITTED, pageable);
 
         // Batch-resolve moderator display names (avoid N+1)
         List<UUID> moderatorIds = page.getContent().stream()
@@ -425,8 +445,13 @@ public class ModerationServiceImpl implements ModerationService {
         ContentReport report = contentReportRepository.findById(reportId)
                 .orElseThrow(() -> ModerationException.reportNotFound(reportId));
 
-        // ADR-006: PENDING-only transition guard — re-resolution rejected
-        if (report.getStatus() != ReportStatus.PENDING) {
+        // ADR-006: PENDING-only transition guard — re-resolution rejected.
+        // CB-MOD-IMP-016: IN_REVIEW is also resolvable, but only by its claiming moderator.
+        if (report.getStatus() == ReportStatus.IN_REVIEW) {
+            if (!moderatorUserId.equals(report.getAssignedModeratorId())) {
+                throw ModerationException.reportClaimedByAnotherModerator(reportId);
+            }
+        } else if (report.getStatus() != ReportStatus.PENDING) {
             throw ModerationException.reportAlreadyResolved(reportId);
         }
 
@@ -693,7 +718,9 @@ public class ModerationServiceImpl implements ModerationService {
         }
 
         ModerationAction mostRecent = moderationActionRepository
-                .findTopByTargetIdAndTargetTypeOrderByActionAtDesc(original.getTargetId(), original.getTargetType())
+                .findTopByTargetIdAndTargetTypeAndActionTypeNotOrderByActionAtDesc(
+                        original.getTargetId(), original.getTargetType(),
+                        ModerationActionType.AI_FEEDBACK_SUBMITTED)
                 .orElseThrow(() -> ModerationException.moderationActionNotFound(actionId));
         if (!mostRecent.getId().equals(actionId)) {
             throw ModerationException.undoNotMostRecentAction(actionId);
@@ -784,8 +811,8 @@ public class ModerationServiceImpl implements ModerationService {
         ContentReport report = contentReportRepository.findById(reportId)
                 .orElseThrow(() -> ModerationException.reportNotFound(reportId));
 
-        // BR-MOD-015: only RESOLVED/DISMISSED reports can be reverted
-        if (report.getStatus() == ReportStatus.PENDING) {
+        // BR-MOD-015: only RESOLVED/DISMISSED reports can be reverted (IN_REVIEW = still open)
+        if (report.getStatus() == ReportStatus.PENDING || report.getStatus() == ReportStatus.IN_REVIEW) {
             throw ModerationException.reportNotYetResolved(reportId);
         }
 
@@ -793,7 +820,9 @@ public class ModerationServiceImpl implements ModerationService {
         String resultingStatus = null;
 
         // BR-MOD-010: DISMISS never created a ModerationAction — nothing to revert on the target
-        Optional<ModerationAction> linkedAction = moderationActionRepository.findTopByReportIdOrderByActionAtDesc(reportId);
+        Optional<ModerationAction> linkedAction = moderationActionRepository
+                .findTopByReportIdAndActionTypeNotOrderByActionAtDesc(
+                        reportId, ModerationActionType.AI_FEEDBACK_SUBMITTED);
         if (linkedAction.isPresent()) {
             ModerationAction action = linkedAction.get();
 
@@ -841,7 +870,9 @@ public class ModerationServiceImpl implements ModerationService {
     // ADR-004 guard 1 ("most recent") — mirrors CB-MOD-IMP-009 ADR-002, applied before mutating.
     private void requireMostRecentAction(ModerationAction action) {
         ModerationAction mostRecent = moderationActionRepository
-                .findTopByTargetIdAndTargetTypeOrderByActionAtDesc(action.getTargetId(), action.getTargetType())
+                .findTopByTargetIdAndTargetTypeAndActionTypeNotOrderByActionAtDesc(
+                        action.getTargetId(), action.getTargetType(),
+                        ModerationActionType.AI_FEEDBACK_SUBMITTED)
                 .orElseThrow(() -> ModerationException.revertNotMostRecentAction(action.getId()));
         if (!mostRecent.getId().equals(action.getId())) {
             throw ModerationException.revertNotMostRecentAction(action.getId());
@@ -898,6 +929,50 @@ public class ModerationServiceImpl implements ModerationService {
             communityQuestionRepository.decrementAnswerCount(answer.getQuestionId());
         }
         return AnswerStatus.PENDING.name();
+    }
+
+    // CB-MOD-IMP-016: atomic claim via status-guarded UPDATE — exactly one moderator wins.
+    @Override
+    @Transactional
+    public com.carebridge.backend.content.dto.response.ClaimReportResponse claimReport(
+            UUID reportId, Principal principal) {
+        UUID moderatorUserId = SecurityUtils.requireCurrentUserId(principal);
+        ContentReport report = contentReportRepository.findById(reportId)
+                .orElseThrow(() -> ModerationException.reportNotFound(reportId));
+
+        Instant now = Instant.now();
+        int updated = contentReportRepository.claimReport(reportId, moderatorUserId, now,
+                ReportStatus.PENDING, ReportStatus.IN_REVIEW);
+        if (updated == 0) {
+            throw ModerationException.reportClaimConflict(reportId);
+        }
+
+        auditService.log(AuditAction.REPORT_CLAIMED, moderatorUserId,
+                report.getTargetType() != null ? report.getTargetType().name() : null,
+                reportId.toString(), "claimedAt=" + now);
+        return new com.carebridge.backend.content.dto.response.ClaimReportResponse(
+                reportId, ReportStatus.IN_REVIEW, moderatorUserId, now);
+    }
+
+    @Override
+    @Transactional
+    public com.carebridge.backend.content.dto.response.ClaimReportResponse releaseReport(
+            UUID reportId, Principal principal) {
+        UUID moderatorUserId = SecurityUtils.requireCurrentUserId(principal);
+        ContentReport report = contentReportRepository.findById(reportId)
+                .orElseThrow(() -> ModerationException.reportNotFound(reportId));
+
+        int updated = contentReportRepository.releaseReport(reportId, moderatorUserId, Instant.now(),
+                ReportStatus.PENDING, ReportStatus.IN_REVIEW);
+        if (updated == 0) {
+            throw ModerationException.reportReleaseDenied(reportId);
+        }
+
+        auditService.log(AuditAction.REPORT_RELEASED, moderatorUserId,
+                report.getTargetType() != null ? report.getTargetType().name() : null,
+                reportId.toString(), "released=true");
+        return new com.carebridge.backend.content.dto.response.ClaimReportResponse(
+                reportId, ReportStatus.PENDING, null, null);
     }
 
     private static ModerationActionType mapToActionType(ResolutionOutcome outcome) {

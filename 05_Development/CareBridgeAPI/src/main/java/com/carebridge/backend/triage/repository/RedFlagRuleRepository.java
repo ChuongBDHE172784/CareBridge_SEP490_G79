@@ -22,4 +22,12 @@ public interface RedFlagRuleRepository extends JpaRepository<RedFlagRule, UUID> 
     boolean existsByKeywordIgnoreCase(String keyword);
 
     Page<RedFlagRule> findBySeverityAndActive(RedFlagSeverity severity, Boolean active, Pageable pageable);
+
+    /**
+     * Single query for the intake pre-screen (CB-TRIAGE-IMP-003 §8.2 — all severities needed:
+     * RED for short-circuit, YELLOW/RED+WARN for annotation — ADR-002/ADR-004, read-through,
+     * no cache). Property name is "Active" (not "IsActive") — same naming constraint as
+     * {@link #findBySeverityAndActiveTrue(RedFlagSeverity)} above.
+     */
+    List<RedFlagRule> findByActiveTrue();
 }

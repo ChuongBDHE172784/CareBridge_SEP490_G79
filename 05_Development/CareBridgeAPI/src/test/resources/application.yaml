@@ -25,6 +25,11 @@ logging:
     com.carebridge.backend: DEBUG
 
 carebridge:
+  triage:
+    disclaimer:
+      # CB-TRIAGE-CONSENT-IMP-001-TEST FX-005 — synthetic single-oracle values (L4).
+      version: AI_TRIAGE_DISCLAIMER_V1
+      text: SYNTHETIC DISCLAIMER TEXT V1
   zego:
     app-id: 1
     server-secret: synthetic-test-secret
@@ -42,6 +47,20 @@ carebridge:
   fcm:
     enabled: false
     credentials-base64: ""
+  gemini:
+    enabled: false
+    api-key: ""
+    timeout-ms: 1000
+    connect-timeout-ms: 500
+    base-url: http://localhost:9999
+    model: gemini-1.5-flash
+    moderation:
+      timeout-ms: 1000
+      max-attempts: 2
+      worker-delay-ms: 60000
+      batch-size: 2
+      review-confidence-threshold: 0.5
+      stale-processing-minutes: 10
 
 ai:
   triage-service:

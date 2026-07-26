@@ -1,5 +1,6 @@
 package com.carebridge.backend.content.dto.response;
 
+import com.carebridge.backend.content.entity.CasePriority;
 import com.carebridge.backend.content.entity.ReportStatus;
 import com.carebridge.backend.content.entity.ReportTargetType;
 import com.carebridge.backend.content.entity.ReportSource;
@@ -20,6 +21,8 @@ public record ModerationQueueItemResponse(
         String reportReason,
         ReportStatus status,
         ReportSource reportSource,
+        CasePriority priority,
+        Instant claimedAt,
         Instant resolvedAt,
         UUID assignedModeratorId,
         Instant revertedAt,
@@ -34,6 +37,6 @@ public record ModerationQueueItemResponse(
             String reportReason,
             ReportStatus status) {
         this(id, null, targetType, null, contentPreview, reportCount, reportedAt, reportReason, status,
-                ReportSource.USER, null, null, null, null);
+                ReportSource.USER, CasePriority.NORMAL, null, null, null, null, null);
     }
 }

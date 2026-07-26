@@ -73,11 +73,20 @@ carebridge:
     firestore:
       enabled: ${CAREBRIDGE_FIREBASE_FIRESTORE_ENABLED:false}
   gemini:
+    enabled: ${GEMINI_ENABLED:false}
     api-key: ${GEMINI_API_KEY:}
-    timeout-ms: 5000
+    timeout-ms: ${GEMINI_TIMEOUT_MS:5000}
+    connect-timeout-ms: ${GEMINI_CONNECT_TIMEOUT_MS:3000}
     max-context-chunks: 5
     base-url: https://generativelanguage.googleapis.com/v1beta
-    model: gemini-1.5-flash
+    model: ${GEMINI_MODEL:gemini-1.5-flash}
+    moderation:
+      timeout-ms: ${GEMINI_MODERATION_TIMEOUT_MS:15000}
+      max-attempts: ${AI_MODERATION_MAX_ATTEMPTS:4}
+      worker-delay-ms: ${AI_MODERATION_WORKER_DELAY_MS:15000}
+      batch-size: ${AI_MODERATION_BATCH_SIZE:3}
+      review-confidence-threshold: ${AI_MODERATION_REVIEW_THRESHOLD:0.5}
+      stale-processing-minutes: ${AI_MODERATION_STALE_PROCESSING_MINUTES:10}
   zego:
     app-id: ${ZEGO_APP_ID:0}
     server-secret: ${ZEGO_SERVER_SECRET:}
@@ -125,6 +134,25 @@ carebridge:
     detection-limit: ${COMPREFACE_DETECTION_LIMIT:2}
     connect-timeout-ms: ${COMPREFACE_CONNECT_TIMEOUT_MS:3000}
     read-timeout-ms: ${COMPREFACE_READ_TIMEOUT_MS:8000}
+
+  triage:
+    health-memory:
+      # CB-TRIAGE-THMC-IMP-001 (ADR-THMC-002/003). ttl-days default 30 is Open —
+      # pending Document Owner/DPO confirmation.
+      ttl-days: ${CAREBRIDGE_TRIAGE_HEALTH_MEMORY_TTL_DAYS:30}
+      max-context-entries: ${CAREBRIDGE_TRIAGE_HEALTH_MEMORY_MAX_CONTEXT_ENTRIES:5}
+      max-summary-chars: ${CAREBRIDGE_TRIAGE_HEALTH_MEMORY_MAX_SUMMARY_CHARS:500}
+    follow-up:
+      # CB-TYFU-IMP-001 ADR-TYFU-005 — YELLOW follow-up delay in hours (valid 1..24,
+      # out-of-range falls back to 4 with WARN TYFU-005). Default 4 is Open item O1.
+      delay-hours: ${TRIAGE_FOLLOW_UP_DELAY_HOURS:4}
+    disclaimer:
+      # CB-TRIAGE-CONSENT-IMP-001 (ADR-TDC-003) — canonical AI-triage disclaimer version/text.
+      # Bumping the version forces fleet-wide re-consent (BR-TDC-002); verify against the
+      # deployment checklist (TDS §11.4) before changing. Wording is Open pending product/DPO
+      # sign-off (not a legal text yet).
+      version: ${CAREBRIDGE_TRIAGE_DISCLAIMER_VERSION:AI_TRIAGE_DISCLAIMER_V1}
+      text: ${CAREBRIDGE_TRIAGE_DISCLAIMER_TEXT:Tôi hiểu rằng AI Triage chỉ mang tính chất tham khảo, không chẩn đoán bệnh, không kê đơn và không thay thế nhân viên y tế. Trong tình huống khẩn cấp, hãy liên hệ cấp cứu ngay.}
 
 ai:
   triage-service:

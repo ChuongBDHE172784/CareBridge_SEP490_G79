@@ -3,18 +3,25 @@ package com.carebridge.backend.content.repository;
 import com.carebridge.backend.content.entity.ContentReport;
 import com.carebridge.backend.content.entity.ReportStatus;
 import com.carebridge.backend.content.entity.ReportTargetType;
+import jakarta.persistence.LockModeType;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public interface ContentReportRepository extends JpaRepository<ContentReport, UUID> {
+public interface ContentReportRepository
+        extends JpaRepository<ContentReport, UUID>, JpaSpecificationExecutor<ContentReport> {
 
     Optional<ContentReport> findByTargetIdAndCategory(UUID targetId, String category);
 
@@ -48,4 +55,62 @@ public interface ContentReportRepository extends JpaRepository<ContentReport, UU
 
     // Dev seed idempotency (DevDataSeeder) — identifies a previously-seeded report by reporter+target+category
     Optional<ContentReport> findByReporterUserIdAndTargetIdAndCategory(UUID reporterUserId, UUID targetId, String category);
+
+    // CB-MOD-IMP-016: duplicate guard must also cover claimed (IN_REVIEW) reports
+    boolean existsByReporterUserIdAndTargetIdAndStatusIn(
+            UUID reporterUserId, UUID targetId, Collection<ReportStatus> statuses);
+
+    /**
+     * CB-MOD-IMP-016 ADR-005: open-case lookup for AI attach-first dedup. Pessimistic lock
+     * serializes concurrent workers deciding attach-vs-create for the same target.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select r from ContentReport r
+             where r.targetId = :targetId
+               and r.targetType = :targetType
+               and r.status in :statuses
+             order by r.createdAt asc
+            """)
+    List<ContentReport> findOpenCasesForUpdate(@Param("targetId") UUID targetId,
+                                               @Param("targetType") ReportTargetType targetType,
+                                               @Param("statuses") Collection<ReportStatus> statuses);
+
+    /**
+     * CB-MOD-IMP-016 ADR-006: atomic claim — exactly one moderator wins because the UPDATE is
+     * guarded by status = PENDING. Returns 0 when the report was already claimed/resolved.
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("""
+            update ContentReport r
+               set r.status = :inReview,
+                   r.assignedModeratorId = :moderatorId,
+                   r.claimedAt = :now,
+                   r.updatedAt = :now
+             where r.id = :reportId
+               and r.status = :pending
+            """)
+    int claimReport(@Param("reportId") UUID reportId,
+                    @Param("moderatorId") UUID moderatorId,
+                    @Param("now") Instant now,
+                    @Param("pending") ReportStatus pending,
+                    @Param("inReview") ReportStatus inReview);
+
+    /** Atomic release back to PENDING — only the claiming moderator may release. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("""
+            update ContentReport r
+               set r.status = :pending,
+                   r.assignedModeratorId = null,
+                   r.claimedAt = null,
+                   r.updatedAt = :now
+             where r.id = :reportId
+               and r.status = :inReview
+               and r.assignedModeratorId = :moderatorId
+            """)
+    int releaseReport(@Param("reportId") UUID reportId,
+                      @Param("moderatorId") UUID moderatorId,
+                      @Param("now") Instant now,
+                      @Param("pending") ReportStatus pending,
+                      @Param("inReview") ReportStatus inReview);
 }

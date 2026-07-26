@@ -1,5 +1,6 @@
 package com.carebridge.backend.triage.engine;
 
+import com.carebridge.backend.triage.dto.HealthMemoryContextItem;
 import com.carebridge.backend.triage.dto.request.RunIntakeRequest;
 import com.carebridge.backend.triage.TriageStage;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +42,40 @@ public class TriageGraphService {
                         new PostpartumRiskRules(),
                         new PediatricInfantRiskRules(),
                         new PediatricToddlerRiskRules()));
+    }
+
+    /**
+     * CB-TRIAGE-THMC-IMP-001 §8.1 (@version 2.0): same deterministic rule evaluation as
+     * {@link #run(RunIntakeRequest)}; healthContext is used ONLY for narrative fields
+     * (summary phrasing). It never changes rule matching, therefore never lowers
+     * riskLevel (BR-THMC-004 / ADR-THMC-003).
+     */
+    public ChildTriageResult run(RunIntakeRequest request, List<HealthMemoryContextItem> healthContext) {
+        ChildTriageResult result = run(request);
+        if (healthContext == null || healthContext.isEmpty()) {
+            return result;
+        }
+        // Narrative-only augmentation: risk level, emergency flag, red flags, matched rules,
+        // recommendations and questions are copied UNCHANGED from the deterministic run
+        // (BR-THMC-004: context can never lower — or otherwise alter — the computed risk).
+        String advisoryNote = " (Đã tham chiếu " + healthContext.size()
+                + " ghi nhớ sức khỏe trước đó — chỉ mang tính bổ trợ, không thay đổi phân loại rủi ro.)";
+        return ChildTriageResult.builder()
+                .status(result.getStatus())
+                .riskLevel(result.getRiskLevel())
+                .riskColor(result.getRiskColor())
+                .summary(result.getSummary() == null ? null : result.getSummary() + advisoryNote)
+                .possibleConcern(result.getPossibleConcern())
+                .recommendedAction(result.getRecommendedAction())
+                .emergencyActionRequired(result.isEmergencyActionRequired())
+                .redFlags(result.getRedFlags())
+                .matchedRules(result.getMatchedRules())
+                .normalizedSymptoms(result.getNormalizedSymptoms())
+                .citations(result.getCitations())
+                .disclaimer(result.getDisclaimer())
+                .questions(result.getQuestions())
+                .warning(result.getWarning())
+                .build();
     }
 
     public ChildTriageResult run(RunIntakeRequest request) {

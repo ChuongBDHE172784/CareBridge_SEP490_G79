@@ -53,6 +53,8 @@ public class ModerationController {
     public ResponseEntity<ModerationQueueResponse> getQueue(
             @RequestParam(required = false) ReportTargetType targetType,
             @RequestParam(required = false) ReportStatus status,
+            @RequestParam(required = false) com.carebridge.backend.content.entity.ReportSource source,
+            @RequestParam(required = false) com.carebridge.backend.content.entity.CasePriority priority,
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "20") @Min(1) int size,
             Principal principal) {
@@ -62,9 +64,24 @@ public class ModerationController {
             throw ModerationException.pageSizeExceeded();
         }
 
-        ModerationQueueFilter filter = new ModerationQueueFilter(targetType, status, page, size);
+        ModerationQueueFilter filter = new ModerationQueueFilter(targetType, status, source, priority, page, size);
         ModerationQueueResponse response = moderationService.getModerationQueue(filter, principal);
         return ResponseEntity.ok(response);
+    }
+
+    // CB-MOD-IMP-016: claim/release workflow (PENDING <-> IN_REVIEW)
+    @PostMapping("/reports/{reportId}/claim")
+    @PreAuthorize("hasRole('MODERATOR')")
+    public ResponseEntity<com.carebridge.backend.content.dto.response.ClaimReportResponse> claimReport(
+            @PathVariable UUID reportId, Principal principal) {
+        return ResponseEntity.ok(moderationService.claimReport(reportId, principal));
+    }
+
+    @PostMapping("/reports/{reportId}/release")
+    @PreAuthorize("hasRole('MODERATOR')")
+    public ResponseEntity<com.carebridge.backend.content.dto.response.ClaimReportResponse> releaseReport(
+            @PathVariable UUID reportId, Principal principal) {
+        return ResponseEntity.ok(moderationService.releaseReport(reportId, principal));
     }
 
     // C1: RBAC enforcement — MODERATOR only (ADR-002); CB-MOD-IMP-004 ADR-005/ADR-006

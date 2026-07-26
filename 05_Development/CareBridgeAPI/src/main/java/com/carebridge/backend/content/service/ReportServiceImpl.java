@@ -54,8 +54,9 @@ public class ReportServiceImpl implements ReportService {
             throw ReportException.rateLimitExceeded();
         }
 
-        boolean duplicatePending = contentReportRepository.existsByReporterUserIdAndTargetIdAndStatus(
-                reporterUserId, request.getTargetId(), ReportStatus.PENDING);
+        boolean duplicatePending = contentReportRepository.existsByReporterUserIdAndTargetIdAndStatusIn(
+                reporterUserId, request.getTargetId(),
+                java.util.List.of(ReportStatus.PENDING, ReportStatus.IN_REVIEW));
         if (duplicatePending) {
             throw ReportException.duplicatePending();
         }

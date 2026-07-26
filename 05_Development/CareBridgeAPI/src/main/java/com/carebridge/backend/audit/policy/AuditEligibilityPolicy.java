@@ -51,12 +51,27 @@ public class AuditEligibilityPolicy {
             AuditAction.DIRECT_CALL_MISSED_BY_TIMEOUT,
             AuditAction.FIREBASE_CUSTOM_TOKEN_ISSUED,
             AuditAction.CHECKLIST_ITEM_ADDED,
+            // CB-TYFU-TDD-001 (TriageYellowFollowUp TDS §NFR "Audit — 100% via audit_log
+            // query", Luật 91/2025): REMINDER_CREATED must persist to audit_events; without
+            // eligibility the service's auditService.log(...) call was silently dropped.
+            AuditAction.REMINDER_CREATED,
             AuditAction.SAFETY_MONITORING_ENABLED,
             AuditAction.SAFETY_MONITORING_DISABLED,
             AuditAction.SAFETY_EVENT_RECORDED,
             AuditAction.SAFETY_EVENT_RESPONDED,
             AuditAction.SAFETY_EVENT_ESCALATED,
             AuditAction.EMERGENCY_ALERT_DELIVERY,
+            AuditAction.AI_POLICY_CREATED,
+            AuditAction.AI_POLICY_UPDATED,
+            AuditAction.AI_POLICY_STATUS_CHANGED,
+            AuditAction.AI_POLICY_TEST_RUN,
+            AuditAction.AI_SCAN_COMPLETED,
+            AuditAction.AI_SCAN_FAILED,
+            AuditAction.AI_CASE_CREATED,
+            AuditAction.AI_FEEDBACK_SUBMITTED,
+            AuditAction.AI_RESCAN_REQUESTED,
+            AuditAction.REPORT_CLAIMED,
+            AuditAction.REPORT_RELEASED,
             AuditAction.VIEW_AUDIT_LOG);
 
     public boolean shouldAudit(AuditAction action) {

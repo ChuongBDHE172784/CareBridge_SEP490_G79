@@ -2,11 +2,12 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ModPortalSidebar from '../components/ModPortalSidebar';
 import ConfirmDialog from '../../../shared/components/ConfirmDialog';
-import { fetchModerationQueue, fetchRelatedReports, resolveReport, revertReport } from '../services/moderationApi';
-import type { ModerationQueueItem } from '../models/moderation';
+import { fetchAiAssessment, fetchModerationQueue, fetchRelatedReports, resolveReport, revertReport } from '../services/moderationApi';
+import type { AiAssessment, ModerationQueueItem } from '../models/moderation';
 import type { RelatedReportItem } from '../models/moderation';
 import { formatReportReason, REPORT_STATUS_LABELS } from '../models/moderation';
 import RelatedReportsCard from '../components/RelatedReportsCard';
+import AiAssessmentCard from '../components/AiAssessmentCard';
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
@@ -48,6 +49,7 @@ export default function AccountReportDetailPage() {
   const [revertTarget, setRevertTarget] = useState<ModerationQueueItem | null>(null);
   const [revertSubmitting, setRevertSubmitting] = useState(false);
   const [revertError, setRevertError] = useState('');
+  const [assessment, setAssessment] = useState<AiAssessment | null>(null);
 
   // A report can be PENDING, RESOLVED, or DISMISSED by the time this page is opened (e.g. from the
   // "Đã xử lý" tab) — the backend defaults `status` to PENDING when omitted, so all 3 must be
@@ -57,12 +59,14 @@ export default function AccountReportDetailPage() {
     setIsLoading(true);
     setError('');
     try {
-      const [pending, resolved, dismissed] = await Promise.all([
+      const [pending, inReview, resolved, dismissed] = await Promise.all([
         fetchModerationQueue({ status: 'PENDING', size: 50 }),
+        fetchModerationQueue({ status: 'IN_REVIEW', size: 50 }),
         fetchModerationQueue({ status: 'RESOLVED', size: 50 }),
         fetchModerationQueue({ status: 'DISMISSED', size: 50 }),
       ]);
-      const found = [...pending.content, ...resolved.content, ...dismissed.content].find((i) => i.id === reportId);
+      const found = [...pending.content, ...inReview.content, ...resolved.content, ...dismissed.content]
+        .find((i) => i.id === reportId);
       if (!found) setError('Không tìm thấy báo cáo tài khoản này trong hàng đợi hiện tại.');
       setItem(found ?? null);
     } catch {
@@ -73,6 +77,16 @@ export default function AccountReportDetailPage() {
   }, [reportId]);
 
   useEffect(() => { loadItem(); }, [loadItem]);
+
+  // CB-MOD-IMP-016: latest AI assessment for this report (null = purely user-reported case)
+  useEffect(() => {
+    if (!reportId) return;
+    let active = true;
+    void fetchAiAssessment(reportId)
+      .then((result) => { if (active) setAssessment(result); })
+      .catch(() => { if (active) setAssessment(null); });
+    return () => { active = false; };
+  }, [reportId]);
 
   useEffect(() => {
     if (!reportId) return;
@@ -206,8 +220,9 @@ export default function AccountReportDetailPage() {
               </div>
 
               <div className="flex flex-col gap-4">
+                {assessment && <AiAssessmentCard assessment={assessment} />}
                 <RelatedReportsCard items={relatedReports} totalElements={relatedTotal} page={relatedPage} size={20} loading={relatedLoading} error={relatedError} onPageChange={setRelatedPage} />
-                {item.status !== 'PENDING' ? (
+                {item.status !== 'PENDING' && item.status !== 'IN_REVIEW' ? (
                   <div className="portal-card-padded">
                     <p className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-3">
                       Đã xử lý

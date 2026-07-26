@@ -25,6 +25,10 @@ class TriageIntegrationTest {
     @MockitoBean private GeminiTriageClient geminiTriageClient;
     @MockitoBean private EmailService emailService;
     @MockitoBean private SmsService smsService;
+    // CB-TRIAGE-CONSENT-IMP-001: consent fixture for the elective-entry gate (Test-Spec §6 —
+    // pre-existing suites updated where the gate now applies). The mocked gate's
+    // ensureActiveConsent is a no-op, i.e. "consent granted"; this test's subject is unchanged.
+    @MockitoBean private com.carebridge.backend.triage.service.ITriageConsentService triageConsentService;
 
     @Test
     void runIntake_insufficientLegacyPayload_shouldPersistNeedMoreInfo() {

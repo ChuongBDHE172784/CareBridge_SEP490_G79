@@ -1,5 +1,10 @@
 import apiClient from '../../../shared/api/apiClient';
 import type {
+  AiAssessment,
+  AiFeedbackResult,
+  AiFeedbackVerdict,
+  CasePriority,
+  ClaimReportResult,
   ModerationQueuePage,
   RelatedReportPage,
   AccountViolationHistoryPage,
@@ -9,6 +14,7 @@ import type {
   ModerationHistoryPage,
   PendingContentQueuePage,
   ReportTargetType,
+  ReportSource,
   ReportStatus,
   ResolutionOutcome,
   ResolveReportResult,
@@ -40,6 +46,8 @@ export async function fetchRelatedReports(reportId: string, params: {
 export async function fetchModerationQueue(params: {
   targetType?: ReportTargetType;
   status?: ReportStatus;
+  source?: ReportSource;
+  priority?: CasePriority;
   page?: number;
   size?: number;
 }): Promise<ModerationQueuePage> {
@@ -47,10 +55,59 @@ export async function fetchModerationQueue(params: {
     params: {
       targetType: params.targetType,
       status: params.status,
+      source: params.source,
+      priority: params.priority,
       page: params.page ?? 0,
       size: params.size ?? 50,
     },
   });
+  return res.data;
+}
+
+// ============ CB-MOD-IMP-016: claim workflow + AI assessment ============
+
+// Atomic claim (PENDING -> IN_REVIEW). 409 MOD-036 when another moderator won the race.
+export async function claimReport(reportId: string): Promise<ClaimReportResult> {
+  const res = await apiClient.post<ClaimReportResult>(
+    `/api/v1/admin/moderation/reports/${reportId}/claim`,
+  );
+  return res.data;
+}
+
+// Release (IN_REVIEW -> PENDING) — only the claiming moderator may release (409 MOD-037).
+export async function releaseReport(reportId: string): Promise<ClaimReportResult> {
+  const res = await apiClient.post<ClaimReportResult>(
+    `/api/v1/admin/moderation/reports/${reportId}/release`,
+  );
+  return res.data;
+}
+
+// Latest AI assessment for a report (linked case first, then latest for the target).
+// Returns null when no assessment exists (404 AIM-007) — a purely user-reported case.
+export async function fetchAiAssessment(reportId: string): Promise<AiAssessment | null> {
+  try {
+    const res = await apiClient.get<AiAssessment>(
+      `/api/v1/admin/moderation/reports/${reportId}/assessment`,
+    );
+    return res.data;
+  } catch (err) {
+    if ((err as { response?: { status?: number } })?.response?.status === 404) {
+      return null;
+    }
+    throw err;
+  }
+}
+
+// Agree/disagree with the AI assessment — stored for audit/precision only, never auto-applies.
+export async function submitAiFeedback(
+  assessmentId: string,
+  verdict: AiFeedbackVerdict,
+  note?: string,
+): Promise<AiFeedbackResult> {
+  const res = await apiClient.post<AiFeedbackResult>(
+    `/api/v1/admin/moderation/assessments/${assessmentId}/feedback`,
+    { verdict, note },
+  );
   return res.data;
 }
 

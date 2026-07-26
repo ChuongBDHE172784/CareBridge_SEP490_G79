@@ -44,6 +44,9 @@ class ContentApprovalServiceImplTest {
     @Mock
     private AuditService auditService;
 
+    @Mock
+    private com.carebridge.backend.aimoderation.service.AiScanEnqueueService aiScanEnqueueService;
+
     @InjectMocks
     private ContentApprovalServiceImpl contentApprovalService;
 

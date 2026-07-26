@@ -35,6 +35,9 @@ class CommunityQuestionEditServiceImplTest {
     @Mock CommunityQuestionMapper questionMapper;
     @Mock AuditService auditService;
     @Mock CommunitySafetyPolicy communitySafetyPolicy;
+    @Mock
+    private com.carebridge.backend.aimoderation.service.AiScanEnqueueService aiScanEnqueueService;
+
     @InjectMocks CommunityQuestionServiceImpl questionService;
 
     private static final UUID AUTHOR_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");

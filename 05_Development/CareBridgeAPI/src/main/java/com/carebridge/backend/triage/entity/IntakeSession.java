@@ -77,6 +77,12 @@ public class IntakeSession {
     @Column(name = "disclaimer_text", columnDefinition = "TEXT")
     private String disclaimer;
 
+    // CB-TRIAGE-CONSENT-IMP-001 (ADR-TDC-003): maps the pre-existing baseline column
+    // triage_sessions.disclaimer_version (no schema change); stamped at session creation
+    // once the elective-entry consent gate passes.
+    @Column(name = "disclaimer_version", length = 80)
+    private String disclaimerVersion;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 

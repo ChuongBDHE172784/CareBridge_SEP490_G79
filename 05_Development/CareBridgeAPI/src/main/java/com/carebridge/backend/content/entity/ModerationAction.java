@@ -55,4 +55,11 @@ public class ModerationAction {
 
     @Column(name = "expires_at")
     private Instant expiresAt;
+
+    // CB-MOD-IMP-017: structured, sanitized event payload (feedback history etc.). The DB column
+    // pre-exists with NOT NULL DEFAULT '{}' — mapping it enables append-only feedback events.
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(name = "event_payload_jsonb", nullable = false, columnDefinition = "jsonb")
+    @lombok.Builder.Default
+    private String eventPayloadJson = "{}";
 }

@@ -9,6 +9,17 @@ RiskLevel = Literal["GREEN", "YELLOW", "RED", "NEED_MORE_INFO"]
 TriageStage = Literal["PRECONCEPTION", "PREGNANCY", "POSTPARTUM", "INFANT", "TODDLER"]
 
 
+class HealthContextItem(BaseModel):
+    """CB-TRIAGE-THMC-IMP-001 §8.2 — advisory prior-triage summary (server-populated by
+    the Java backend only). Reference material for narrative composition; NEVER an input
+    to deterministic risk rules (BR-THMC-004 / BR-SAFETY). @version 1.0"""
+
+    summaryText: str = Field(max_length=500)
+    relatedStage: TriageStage
+    createdAt: str | None = None   # ISO-8601
+    expiresAt: str | None = None   # ISO-8601
+
+
 class ChildTriageRequest(BaseModel):
     stage: TriageStage = "INFANT"
     babyProfileId: str | None = None
@@ -26,6 +37,8 @@ class ChildTriageRequest(BaseModel):
     seizure: bool | None = None
     dehydrationSigns: list[str] = Field(default_factory=list)
     parentFreeText: str | None = None
+    # Additive (CB-TRIAGE-THMC-IMP-001): defaults keep every existing client valid.
+    healthContext: list[HealthContextItem] = Field(default_factory=list, max_length=5)
 
 
 class Citation(BaseModel):
@@ -154,6 +167,8 @@ class IntakeStartRequest(BaseModel):
     intakeSessionId: str | None = None
     initialText: str | None = None
     currentIntake: ChildTriageRequest = Field(default_factory=ChildTriageRequest)
+    # Additive (CB-TRIAGE-THMC-IMP-001): defaults keep every existing client valid.
+    healthContext: list[HealthContextItem] = Field(default_factory=list, max_length=5)
 
 
 class IntakeContinueRequest(BaseModel):

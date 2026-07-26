@@ -276,6 +276,12 @@ public class GlobalExceptionHandler {
         return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
     }
 
+    @ExceptionHandler(com.carebridge.backend.aimoderation.exception.AiModerationException.class)
+    public ResponseEntity<ErrorResponse> handleAiModeration(
+            com.carebridge.backend.aimoderation.exception.AiModerationException ex, HttpServletRequest request) {
+        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
+    }
+
     @ExceptionHandler(PartnerException.class)
     public ResponseEntity<ErrorResponse> handlePartner(PartnerException ex, HttpServletRequest request) {
         return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);

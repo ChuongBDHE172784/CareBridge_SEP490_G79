@@ -31,4 +31,10 @@ public interface HealthMemoryEntryRepository extends JpaRepository<HealthMemoryE
     List<HealthMemoryEntry> findActivePediatric(@Param("userId") UUID userId, @Param("profileId") UUID profileId,
             @Param("stage") com.carebridge.backend.triage.TriageStage stage, @Param("now") Instant now);
     Optional<HealthMemoryEntry> findByIdAndUserIdAndDeletedAtIsNull(UUID id, UUID userId);
+
+    /**
+     * CB-TRIAGE-THMC-IMP-001 — idempotency guard for the write path (BR-THMC-001 /
+     * ADR-THMC-001): at most one ACTIVE memory per source triage session.
+     */
+    boolean existsBySourceSessionIdAndDeletedAtIsNull(UUID sourceSessionId);
 }

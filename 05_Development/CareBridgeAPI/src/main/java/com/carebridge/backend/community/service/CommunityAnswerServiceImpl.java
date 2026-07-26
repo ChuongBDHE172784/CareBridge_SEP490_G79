@@ -38,6 +38,7 @@ public class CommunityAnswerServiceImpl implements CommunityAnswerService {
     private final CommunityAnswerMapper answerMapper;
     private final AuditService auditService;
     private final CommunitySafetyPolicy communitySafetyPolicy;
+    private final com.carebridge.backend.aimoderation.service.AiScanEnqueueService aiScanEnqueueService;
     private final CommunityAuthorDisplayResolver authorDisplayResolver;
     private final ExpertProfileRepository expertProfileRepository;
     private final IExpertEventHandler expertEventHandler;
@@ -57,7 +58,7 @@ public class CommunityAnswerServiceImpl implements CommunityAnswerService {
         if (expertLabeled) {
             expertEventHandler.onAnswerApproved(answer.getId().toString(), authorId.toString());
         }
-        communitySafetyPolicy.autoReportIfRedFlag(authorId, answer.getId(), ReportTargetType.ANSWER, answer.getBody());
+        aiScanEnqueueService.enqueueScan(ReportTargetType.ANSWER, answer.getId(), answer.getBody());
 
         auditService.log(AuditAction.COMMUNITY_ANSWER_POSTED, authorId,
             "CommunityAnswer", answer.getId().toString(), "posted expertLabeled=" + expertLabeled);
@@ -90,7 +91,7 @@ public class CommunityAnswerServiceImpl implements CommunityAnswerService {
         if (wasApproved) {
             questionRepository.decrementAnswerCount(answer.getQuestionId());
         }
-        communitySafetyPolicy.autoReportIfRedFlag(callerId, answer.getId(), ReportTargetType.ANSWER, answer.getBody());
+        aiScanEnqueueService.enqueueScan(ReportTargetType.ANSWER, answer.getId(), answer.getBody());
         auditService.log(AuditAction.COMMUNITY_ANSWER_EDITED, callerId,
             "CommunityAnswer", answer.getId().toString(), "edited");
 

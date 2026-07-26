@@ -6,6 +6,7 @@ import com.carebridge.backend.triage.RiskLevel;
 import com.carebridge.backend.triage.TriageStage;
 import com.carebridge.backend.journey.service.LifecycleConsentValidator;
 import com.carebridge.backend.triage.TriageRecommendationCode;
+import com.carebridge.backend.triage.dto.HealthMemoryContextItem;
 import com.carebridge.backend.triage.dto.request.RunIntakeRequest;
 import com.carebridge.backend.triage.dto.request.StartIntakeConversationRequest;
 import com.carebridge.backend.triage.dto.request.ContinueIntakeConversationRequest;
@@ -20,14 +21,19 @@ import com.carebridge.backend.triage.engine.TriageGraphService;
 import com.carebridge.backend.triage.event.IntakeSessionCompleted;
 import com.carebridge.backend.triage.event.IntakeSessionFailed;
 import com.carebridge.backend.triage.exception.TriageException;
+import com.carebridge.backend.triage.policy.PreScreenOutcome;
+import com.carebridge.backend.triage.policy.PreScreenResult;
+import com.carebridge.backend.triage.policy.TriageRedFlagPreScreenPolicy;
 import com.carebridge.backend.triage.repository.IIntakeSessionRepository;
 import com.carebridge.backend.triage.repository.IntakeSessionWriter;
 import com.carebridge.backend.triage.repository.TriageSessionEvidenceWriter;
 import com.carebridge.backend.triage.service.ChildTriageAiClient;
+import com.carebridge.backend.triage.service.HealthMemoryService;
 import com.carebridge.backend.triage.service.LifecycleBinding;
 import com.carebridge.backend.triage.service.LifecycleIntakeBindingService;
 import com.carebridge.backend.triage.service.EvidenceSourceService;
 import com.carebridge.backend.triage.service.ITriageService;
+import com.carebridge.backend.triage.service.TriagePreScreenMetrics;
 import com.carebridge.backend.triage.service.TriageFallbackMetrics;
 import com.carebridge.backend.triage.service.TriageStageLegacyDefaultMetrics;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -97,6 +103,33 @@ public class TriageService implements ITriageService {
 
     @Autowired(required = false)
     private TriageSessionEvidenceWriter triageSessionEvidenceWriter;
+
+    // CB-TRIAGE-IMP-003 — red-flag pre-screen (C1). Optional wiring keeps every existing test
+    // constructor byte-compatible: when absent the intake flows behave exactly pre-feature.
+    @Autowired(required = false)
+    private TriageRedFlagPreScreenPolicy preScreenPolicy;
+
+    @Autowired(required = false)
+    private TriagePreScreenMetrics preScreenMetrics;
+
+    // CB-TRIAGE-THMC-IMP-001 — health-context memory injection (US-THMC-002). Optional wiring
+    // keeps every existing test constructor byte-compatible: when absent the intake flows
+    // behave exactly pre-feature (legacy one-arg AI/fallback calls, no context handling).
+    @Autowired(required = false)
+    private HealthMemoryService healthMemoryService;
+
+    // CB-TRIAGE-CONSENT-IMP-001 (BR-TDC-004 / C3) — disclaimer consent gate for the TWO
+    // elective entry points ONLY (runIntake, startConversation). Optional wiring keeps every
+    // existing test constructor byte-compatible (sibling pattern: preScreenPolicy above); in
+    // the real application context the @Service implementation is always present. NEVER call
+    // this from continueConversation, continuations, or any emergency/escalation path.
+    @Autowired(required = false)
+    private com.carebridge.backend.triage.service.ITriageConsentService triageConsentService;
+
+    // CB-TRIAGE-CONSENT-IMP-001 (ADR-TDC-003) — stamps triage_sessions.disclaimer_version at
+    // session creation once the gate passes. Optional for the same constructor-compat reason.
+    @Autowired(required = false)
+    private com.carebridge.backend.triage.policy.TriageDisclaimerPolicy triageDisclaimerPolicy;
 
     @Autowired
     public TriageService(
@@ -243,8 +276,36 @@ public class TriageService implements ITriageService {
         };
     }
 
+    /**
+     * CB-TRIAGE-CONSENT-IMP-001 (BR-TDC-004 / C3): elective-entry disclaimer gate. Throws
+     * {@code TriageException(409, "TRIAGE_CONSENT_REQUIRED")} when no ACTIVE consent matches
+     * the current disclaimer version. Called from {@code runIntake} and
+     * {@code startConversation} ONLY — never from continueConversation, continuations, or any
+     * emergency/escalation path (BR-SAFETY). When the optional collaborator is absent
+     * (legacy unit-test constructors), behaviour is exactly pre-feature.
+     */
+    private void ensureDisclaimerConsent(UUID userId) {
+        if (triageConsentService != null) {
+            triageConsentService.ensureActiveConsent(userId);
+        }
+    }
+
+    /**
+     * CB-TRIAGE-CONSENT-IMP-001 (ADR-TDC-003): stamps the pre-existing baseline column
+     * {@code triage_sessions.disclaimer_version} with the configured canonical version at
+     * session creation (post-gate). No-op when the optional policy is absent.
+     */
+    private void stampDisclaimerVersion(IntakeSession session) {
+        if (triageDisclaimerPolicy != null) {
+            session.setDisclaimerVersion(triageDisclaimerPolicy.currentVersion());
+        }
+    }
+
     @Override
     public synchronized IntakeConversationResponse startConversation(StartIntakeConversationRequest request, UUID userId) {
+        // CB-TRIAGE-CONSENT-IMP-001 C3: disclaimer consent gate — FIRST statement, before any
+        // validation or persistence (TDC-TC-07: no session row may leak before rejection).
+        ensureDisclaimerConsent(userId);
         validateBoundedPayload(request.getCurrentIntake(), "currentIntake");
         TriageStage stage = resolveStartStage(request.getStage(), request.getCurrentIntake(),
                 request.getBabyProfileId(), request.getMotherProfileId(), userId);
@@ -273,6 +334,7 @@ public class TriageService implements ITriageService {
                     .createdAt(Instant.now())
                     .createdBy(userId)
                     .build();
+            stampDisclaimerVersion(session);   // ADR-TDC-003 — post-gate session stamping
             applyBinding(session, requestedBinding);
             boolean databaseArbitrated = clientRequestId != null && intakeSessionWriter != null;
             boolean created = true;
@@ -304,6 +366,34 @@ public class TriageService implements ITriageService {
                 session.getStage(), session.getBabyProfileId(), session.getMotherProfileId()));
         canonicalRequest.put("intakeSessionId", session.getId().toString());
         canonicalRequest.put("stage", session.getStage().name());
+        // CB-TRIAGE-IMP-003 C1: pre-screen BEFORE the AI call (after all existing validations
+        // and idempotency arbitration). ESCALATE_RED completes through the existing
+        // persistConversationEnvelope path only (C2).
+        PreScreenResult preScreen = preScreenPolicy == null ? null : preScreenPolicy.screen(
+                preScreenText(request.getInitialText(), request.getCurrentIntake()));
+        if (preScreen != null && preScreen.outcome() == PreScreenOutcome.ESCALATE_RED) {
+            recordPreScreenShortCircuit("conversation_start", preScreen);
+            Map<String, Object> redEnvelope = buildPreScreenRedEnvelope(
+                    session, preScreen, 1, castToMap(canonicalRequest.get("currentIntake")));
+            persistConversationEnvelope(session, redEnvelope, userId);
+            return toConversationResponse(redEnvelope, session);
+        }
+        if (preScreen != null && preScreen.outcome() == PreScreenOutcome.ANNOTATE_ONLY) {
+            recordPreScreenAnnotation("conversation_start", preScreen);
+            // Additive key, tolerated by the Python contract (O1 verified: IntakeStartRequest
+            // has no extra="forbid" — pydantic ignores unknown keys).
+            canonicalRequest.put("preScreenFlags", preScreen.matchedKeywords());
+        }
+        // CB-TRIAGE-THMC-IMP-001 (US-THMC-002): server-assembled context, loaded only when
+        // proceeding to AI/fallback (pre-screen RED short-circuit above never reads memories).
+        // Additive canonical key — Python IntakeStartRequest treats it as optional (§9.2).
+        List<HealthMemoryContextItem> healthContext = loadHealthContextFailOpen(
+                userId, sessionStage(session), session.getBabyProfileId(), session.getMotherProfileId());
+        if (healthContext != null && !healthContext.isEmpty()) {
+            // Additive key only when there is real context — an absent key is contract-identical
+            // to an empty list on the Python side (default_factory=list).
+            canonicalRequest.put("healthContext", healthContextPayload(healthContext));
+        }
         Map<String, Object> envelope;
         try {
             envelope = readJsonObject(childTriageAiClient.startIntake(canonicalRequest));
@@ -365,6 +455,22 @@ public class TriageService implements ITriageService {
                     "newAnswers must answer a currently requested question");
         }
 
+        // CB-TRIAGE-IMP-003 C1: pre-screen BEFORE the AI call, AFTER the TRIAGE-010 answer filter.
+        PreScreenResult preScreen = preScreenPolicy == null ? null : preScreenPolicy.screen(
+                preScreenText(null, normalizedAnswers, castToMap(canonical.get("currentIntake"))));
+        if (preScreen != null && preScreen.outcome() == PreScreenOutcome.ESCALATE_RED) {
+            recordPreScreenShortCircuit("conversation_continue", preScreen);
+            Map<String, Object> merged = new LinkedHashMap<>(castToMap(canonical.get("currentIntake")));
+            merged.putAll(normalizedAnswers);
+            Map<String, Object> redEnvelope = buildPreScreenRedEnvelope(
+                    session, preScreen, number(previous.get("round"), 1), merged);
+            persistConversationEnvelope(session, redEnvelope, userId);
+            return toConversationResponse(redEnvelope, session);
+        }
+        if (preScreen != null && preScreen.outcome() == PreScreenOutcome.ANNOTATE_ONLY) {
+            recordPreScreenAnnotation("conversation_continue", preScreen);
+            canonical.put("preScreenFlags", preScreen.matchedKeywords());
+        }
         Map<String, Object> envelope;
         try {
             envelope = readJsonObject(childTriageAiClient.continueIntake(canonical));
@@ -383,6 +489,9 @@ public class TriageService implements ITriageService {
 
     @Override
     public IntakeSessionResponse runIntake(RunIntakeRequest request, UUID userId) {
+        // CB-TRIAGE-CONSENT-IMP-001 C3: disclaimer consent gate — FIRST statement, before any
+        // validation or persistence (TDC-TC-06: no session row may leak before rejection).
+        ensureDisclaimerConsent(userId);
         TriageStage stage = resolveStage(request.getStage(), Map.of(), request.getBabyProfileId(), request.getMotherProfileId());
         request.setStage(stage);
         ensurePostpartumEligible(stage, userId);
@@ -397,11 +506,29 @@ public class TriageService implements ITriageService {
                 .createdAt(Instant.now())
                 .createdBy(userId)
                 .build();
+        stampDisclaimerVersion(session);   // ADR-TDC-003 — post-gate session stamping
         session = intakeSessionRepository.save(session);
         log.info("Triage intake processing started flow=ONE_SHOT");
 
         try {
-            String aiResponse = triageWithAiServiceOrFallback(request);
+            String aiResponse;
+            // CB-TRIAGE-IMP-003 C1: pre-screen BEFORE the AI call; on ESCALATE_RED the AI is
+            // never invoked and the session completes through the existing statements below (C2).
+            PreScreenResult preScreen = preScreenPolicy == null ? null : preScreenPolicy.screen(request);
+            if (preScreen != null && preScreen.outcome() == PreScreenOutcome.ESCALATE_RED) {
+                recordPreScreenShortCircuit("one_shot", preScreen);
+                aiResponse = objectMapper.writeValueAsString(buildPreScreenRedResult(session, preScreen));
+            } else {
+                if (preScreen != null && preScreen.outcome() == PreScreenOutcome.ANNOTATE_ONLY) {
+                    // One-shot annotation is metadata-only in v1 (ADR-002).
+                    recordPreScreenAnnotation("one_shot", preScreen);
+                }
+                // CB-TRIAGE-THMC-IMP-001: memory context is loaded only when proceeding to
+                // AI/fallback (pre-screen RED short-circuits above never read memories).
+                List<HealthMemoryContextItem> healthContext = loadHealthContextFailOpen(
+                        userId, stage, request.getBabyProfileId(), request.getMotherProfileId());
+                aiResponse = triageWithAiServiceOrFallback(request, healthContext);
+            }
             JsonNode result = objectMapper.readTree(aiResponse);
             String triageStatus = result.path("status").asText(null);
             String riskLevel = result.path("riskLevel").isMissingNode() || result.path("riskLevel").isNull()
@@ -439,15 +566,30 @@ public class TriageService implements ITriageService {
         return toResponse(session);
     }
 
-    private String triageWithAiServiceOrFallback(RunIntakeRequest request) throws JsonProcessingException {
+    /**
+     * CB-TRIAGE-THMC-IMP-001 (BR-THMC-004): an empty/absent healthContext preserves the
+     * pre-feature one-arg calls byte-for-byte (an empty context list is wire-identical to
+     * omitting the additive field — HttpChildTriageAiClient omits it either way, and the
+     * legacy contract stays observable for pre-existing collaborator expectations). Only a
+     * NON-EMPTY server-loaded context switches to the two-arg overloads, on BOTH engines.
+     */
+    private String triageWithAiServiceOrFallback(
+            RunIntakeRequest request, List<HealthMemoryContextItem> healthContext)
+            throws JsonProcessingException {
+        boolean hasContext = healthContext != null && !healthContext.isEmpty();
         try {
-            String response = childTriageAiClient.triageChild(request);
+            String response = hasContext
+                    ? childTriageAiClient.triageChild(request, healthContext)
+                    : childTriageAiClient.triageChild(request);
             return validateAndCanonicalizeOneShotResponse(response, request.getStage());
         } catch (Exception e) {
             triageFallbackMetrics.record(fallbackReason(e), "one_shot");
             log.warn("AI triage service unavailable or unsafe; using Java fallback reason={}",
                     e.getClass().getSimpleName());
-            ChildTriageResult graphResult = triageGraphService.run(request);
+            // Same context on the fallback path (THMC-TC-11) — no context loss on degradation
+            ChildTriageResult graphResult = hasContext
+                    ? triageGraphService.run(request, healthContext)
+                    : triageGraphService.run(request);
             Map<String, Object> result = objectMapper.convertValue(
                     graphResult, new TypeReference<Map<String, Object>>() {});
             addJavaFallbackMetadata(result);
@@ -765,6 +907,144 @@ public class TriageService implements ITriageService {
         }
     }
 
+    /**
+     * One-shot RED result map for a pre-screen short-circuit (CB-TRIAGE-IMP-003 §8.3).
+     * MUST satisfy hasCanonicalRedContract (C8): emergencyActionRequired=true,
+     * recommendationCode=SEEK_EMERGENCY_CARE, non-empty matchedRules.
+     */
+    private Map<String, Object> buildPreScreenRedResult(IntakeSession session, PreScreenResult preScreen) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("status", "COMPLETED");
+        result.put("riskLevel", "RED");
+        result.put("riskColor", "#EF4444");
+        result.put("summary", "Thông tin nhập vào khớp quy tắc cảnh báo khẩn cấp do quản trị viên cấu hình.");
+        result.put("recommendedAction", TriageRedFlagPreScreenPolicy.EMERGENCY_GUIDANCE);
+        result.put("emergencyActionRequired", true);
+        result.put("recommendationCode", TriageRecommendationCode.forRisk("RED"));
+        result.put("matchedRules", List.of("RED_FLAG_RULE_PRESCREEN"));
+        result.put("redFlags", preScreen.matchedKeywords());
+        result.put("disclaimer", TriageGraphService.DISCLAIMER);
+        result.put("stage", sessionStage(session).name());
+        result.put("citations", List.of());
+        result.put("claims", List.of());
+        result.put("evidenceIds", List.of());
+        return result;
+    }
+
+    /**
+     * Conversation TRIAGE_COMPLETE envelope for a pre-screen short-circuit (CB-TRIAGE-IMP-003 §8.3).
+     * Uses only keys from CONVERSATION_RESPONSE_FIELDS so sanitizeEnvelope/toConversationResponse
+     * accept it unchanged (C8); completion side effects stay inside persistConversationEnvelope (C2).
+     */
+    private Map<String, Object> buildPreScreenRedEnvelope(
+            IntakeSession session, PreScreenResult preScreen, int round, Map<String, Object> mergedIntake) {
+        Map<String, Object> envelope = new LinkedHashMap<>();
+        envelope.put("status", "TRIAGE_COMPLETE");
+        envelope.put("intakeSessionId", session.getId().toString());
+        envelope.put("stage", sessionStage(session).name());
+        envelope.put("mergedIntake", new LinkedHashMap<>(mergedIntake));
+        envelope.put("round", round);
+        envelope.put("assistantMessage", TriageRedFlagPreScreenPolicy.EMERGENCY_GUIDANCE);
+        envelope.put("triageResult", buildPreScreenRedResult(session, preScreen));
+        return envelope;
+    }
+
+    /** Aggregates the free-text inputs a conversation flow exposes to the pre-screen (TDS §8.1). */
+    @SafeVarargs
+    private String preScreenText(String lead, Map<String, Object>... maps) {
+        List<String> parts = new ArrayList<>();
+        if (lead != null && !lead.isBlank()) {
+            parts.add(lead);
+        }
+        for (Map<String, Object> map : maps) {
+            if (map == null) {
+                continue;
+            }
+            for (Object value : map.values()) {
+                if (value instanceof String text && !text.isBlank()) {
+                    parts.add(text);
+                }
+            }
+        }
+        return String.join(" ", parts);
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> castToMap(Object value) {
+        return value instanceof Map<?, ?> map ? (Map<String, Object>) map : new LinkedHashMap<>();
+    }
+
+    /**
+     * CB-TRIAGE-THMC-IMP-001 (BR-THMC-002/004/006, ADR-THMC-003 Option B): loads the caller's
+     * active memories for the resolved subject. Fail-open — any error degrades to an empty
+     * context with a WARN (no summary text, no user identifiers); intake is NEVER blocked.
+     * Returns null when the memory feature is not wired (legacy test constructors).
+     */
+    private List<HealthMemoryContextItem> loadHealthContextFailOpen(
+            UUID userId, TriageStage stage, UUID babyProfileId, UUID motherProfileId) {
+        if (healthMemoryService == null) {
+            return null;
+        }
+        UUID profileId = stage.isMaternal() ? motherProfileId : babyProfileId;
+        try {
+            List<HealthMemoryContextItem> context =
+                    healthMemoryService.loadContextForIntake(userId, stage, profileId);
+            return context == null ? List.of() : context;
+        } catch (RuntimeException exception) {
+            log.warn("Health memory context unavailable reason={}",
+                    exception.getClass().getSimpleName());
+            return List.of();
+        }
+    }
+
+    /** Serialization-safe map form of the context for the canonical start payload (§9.2). */
+    private List<Map<String, Object>> healthContextPayload(List<HealthMemoryContextItem> healthContext) {
+        return healthContext.stream()
+                .map(item -> {
+                    Map<String, Object> entry = new LinkedHashMap<String, Object>();
+                    entry.put("summaryText", item.summaryText());
+                    entry.put("relatedStage", item.relatedStage());
+                    entry.put("createdAt", item.createdAt() == null ? null : item.createdAt().toString());
+                    entry.put("expiresAt", item.expiresAt() == null ? null : item.expiresAt().toString());
+                    return entry;
+                })
+                .toList();
+    }
+
+    /** Rehydrates canonical-map context ("healthContext" key) for the fallback graph run. */
+    private List<HealthMemoryContextItem> contextItemsFromCanonical(Object value) {
+        if (!(value instanceof List<?> list) || list.isEmpty()) {
+            return List.of();
+        }
+        return list.stream()
+                .filter(Map.class::isInstance)
+                .map(item -> {
+                    Map<?, ?> map = (Map<?, ?>) item;
+                    return new HealthMemoryContextItem(
+                            map.get("summaryText") == null ? null : String.valueOf(map.get("summaryText")),
+                            map.get("relatedStage") == null ? null : String.valueOf(map.get("relatedStage")),
+                            null, null);
+                })
+                .toList();
+    }
+
+    // No symptom free text in the pre-screen log lines (PDPA hygiene, TDS §4.3/§14.2).
+    private void recordPreScreenShortCircuit(String flow, PreScreenResult preScreen) {
+        if (preScreenMetrics != null) {
+            preScreenMetrics.recordShortCircuit(flow);
+        }
+        log.info("Triage pre-screen short-circuit flow={} ruleCount={}",
+                flow, preScreen.matchedRuleIds().size());
+    }
+
+    private void recordPreScreenAnnotation(String flow, PreScreenResult preScreen) {
+        if (preScreenMetrics != null) {
+            preScreenMetrics.recordAnnotation(flow);
+        }
+        log.info("Triage pre-screen annotation flow={} ruleCount={}",
+                flow, preScreen.matchedRuleIds().size());
+    }
+
     private void publishCompletionEvents(IntakeSession session, UUID userId) {
         if (session.getRiskLevel() == RiskLevel.RED) {
             eventPublisher.publishEvent(new EmergencyEscalationTriggered(
@@ -791,7 +1071,13 @@ public class TriageService implements ITriageService {
                     answers, new TypeReference<Map<String, Object>>() {})).forEach(current::put);
         }
         RunIntakeRequest intake = objectMapper.convertValue(current, RunIntakeRequest.class);
-        ChildTriageResult graphResult = triageGraphService.run(intake);
+        // CB-TRIAGE-THMC-IMP-001: the conversation fallback receives the same server-loaded
+        // context that was placed on the canonical request (narrative-only, BR-THMC-004).
+        List<HealthMemoryContextItem> fallbackContext =
+                contextItemsFromCanonical(request.get("healthContext"));
+        ChildTriageResult graphResult = fallbackContext.isEmpty()
+                ? triageGraphService.run(intake)
+                : triageGraphService.run(intake, fallbackContext);
         Map<String, Object> result = objectMapper.convertValue(graphResult, new TypeReference<Map<String, Object>>() {});
         addJavaFallbackMetadata(result);
         String fallbackRisk = result.get("riskLevel") == null ? null : String.valueOf(result.get("riskLevel"));

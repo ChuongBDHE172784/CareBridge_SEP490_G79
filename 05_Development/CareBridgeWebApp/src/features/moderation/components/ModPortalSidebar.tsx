@@ -12,7 +12,7 @@ const NAV_ITEMS = [
   { label: 'Nội dung mới', icon: 'fact_check', path: '/moderator/pending-content', roles: ['MODERATOR'] },
   { label: 'Báo cáo', icon: 'flag', path: '/moderator/reports', roles: ['MODERATOR'] },
   { label: 'Vi phạm', icon: 'gavel', path: '/moderator/violations', roles: ['MODERATOR'] },
-  { label: 'Quy tắc AI', icon: 'rule', path: '/moderator/safety-rules', roles: ['SYSTEM_ADMIN'] },
+  { label: 'AI & An toàn', icon: 'rule', path: '/moderator/safety-rules', roles: ['SYSTEM_ADMIN'] },
   { label: 'Cấu hình hệ thống', icon: 'tune', path: '/moderator/system-configuration', roles: ['SYSTEM_ADMIN'] },
 ] as const;
 

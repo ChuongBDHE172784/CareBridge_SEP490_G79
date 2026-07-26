@@ -70,6 +70,9 @@ class CommunityAnswerServiceImplTest {
     @Mock
     private IExpertEventHandler expertEventHandler;
 
+    @Mock
+    private com.carebridge.backend.aimoderation.service.AiScanEnqueueService aiScanEnqueueService;
+
     @InjectMocks
     private CommunityAnswerServiceImpl service;
 
@@ -161,9 +164,9 @@ class CommunityAnswerServiceImplTest {
         assertThat(response.isExpertLabeled()).isFalse();
         verify(questionRepository).incrementAnswerCount(QUESTION_ID);
         verifyNoInteractions(expertEventHandler);
-        verify(communitySafetyPolicy).autoReportIfRedFlag(
-                org.mockito.ArgumentMatchers.eq(AUTHOR_ID), org.mockito.ArgumentMatchers.eq(saved.getId()),
+        verify(aiScanEnqueueService).enqueueScan(
                 org.mockito.ArgumentMatchers.eq(com.carebridge.backend.content.entity.ReportTargetType.ANSWER),
+                org.mockito.ArgumentMatchers.eq(saved.getId()),
                 org.mockito.ArgumentMatchers.anyString());
     }
 

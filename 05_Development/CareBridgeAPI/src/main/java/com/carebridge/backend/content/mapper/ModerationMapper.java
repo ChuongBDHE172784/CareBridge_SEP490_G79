@@ -30,6 +30,8 @@ public class ModerationMapper {
                 buildReason(report),
                 report.getStatus(),
                 report.getReportSource(),
+                report.getPriority(),
+                report.getClaimedAt(),
                 report.getResolvedAt(),
                 report.getAssignedModeratorId(),
                 report.getRevertedAt(),

@@ -59,6 +59,9 @@ def start_intake(request: IntakeStartRequest) -> IntakeFlowResponse:
             "parentFreeText": request.initialText,
             "symptomList": intake.symptomList or [request.initialText],
         })
+    if request.healthContext and not intake.healthContext:
+        # CB-TRIAGE-THMC-IMP-001: advisory-only prior context (never used by risk rules).
+        intake = intake.model_copy(update={"healthContext": request.healthContext})
     return _build_intake_response(
         intake_session_id=request.intakeSessionId or new_session_id(),
         intake=intake,
@@ -101,6 +104,9 @@ def _build_intake_response(
         "symptomList": [item.normalizedCode for item in normalized_details],
         "parentFreeText": None,
         "stage": intake.stage,
+        # CB-TRIAGE-THMC-IMP-001: context is request-scoped advisory input — never echoed
+        # back through mergedIntake (the Java side re-loads it server-side per intake).
+        "healthContext": [],
     })
     questions = ask_followup_questions(intake)
     if questions and not red_flag and not reached_question_limit(round_number):

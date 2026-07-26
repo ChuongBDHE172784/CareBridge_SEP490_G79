@@ -59,6 +59,14 @@ public class Reminder {
     @Column(name = "snoozed_until")
     private Instant snoozedUntil;
 
+    // CB-TYFU-IMP-001 §5.2 — columns already exist in canonical baseline
+    // B20260724111500 (:1587-1610); mapping added here, no schema change.
+    @Column(name = "source_reference_type", length = 60)
+    private String sourceReferenceType;
+
+    @Column(name = "source_reference_id")
+    private UUID sourceReferenceId;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

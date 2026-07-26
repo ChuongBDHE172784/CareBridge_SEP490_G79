@@ -17,22 +17,25 @@ public class SymptomNormalizer {
 
     private static final Pattern DIACRITICS = Pattern.compile("\\p{M}+");
 
+    // Folk-term synonyms per TDS CB-TRIAGE-IMP-005 §5.3 (S2, S4–S13). Values are the engine's
+    // accent-stripped forms; 'đ' (U+0111) has no NFD decomposition, so đ-variants ("lu đu",
+    // "đi ngoai") are stored alongside the plain-d forms to match diacritic input.
     private static final Map<String, List<String>> KEYWORDS = Map.ofEntries(
-            Map.entry("fever", List.of("sot", "nong", "temperature", "fever")),
+            Map.entry("fever", List.of("sot", "nong", "temperature", "fever", "ham hap")),
             Map.entry("cough", List.of(" ho ", "cough")),
-            Map.entry("runny_nose", List.of("so mui", "chay mui", "runny")),
-            Map.entry("difficulty_breathing", List.of("kho tho", "tho gap", "wheeze")),
+            Map.entry("runny_nose", List.of("so mui", "chay mui", "runny", "sut sit")),
+            Map.entry("difficulty_breathing", List.of("kho tho", "tho gap", "wheeze", "kho khe", "tho rit")),
             Map.entry("chest_indrawing", List.of("rut lom")),
             Map.entry("cyanosis", List.of("tim tai", "moi tim", "da tim")),
             Map.entry("seizure", List.of("co giat", "seizure", "convulsion")),
-            Map.entry("lethargy", List.of("li bi", "lo mo", "ngu ga")),
+            Map.entry("lethargy", List.of("li bi", "lo mo", "ngu ga", "lu du", "lu đu")),
             Map.entry("difficult_to_wake", List.of("kho danh thuc", "kho giu tinh tao")),
             Map.entry("unable_to_drink", List.of("khong uong", "khong bu")),
-            Map.entry("poor_feeding", List.of("bo bu", "uong kem", "an kem")),
-            Map.entry("vomiting", List.of("non", "oi", "vomit", "vomiting")),
+            Map.entry("poor_feeding", List.of("bo bu", "uong kem", "an kem", "bieng an")),
+            Map.entry("vomiting", List.of("non", "oi", "vomit", "vomiting", "tro sua", "oc sua")),
             Map.entry("persistent_vomiting", List.of("non lien tuc", "non nhieu", "vomiting everything")),
-            Map.entry("diarrhea", List.of("tieu chay", "diarrhea")),
-            Map.entry("rash", List.of("phat ban", "noi ban", "rash")),
+            Map.entry("diarrhea", List.of("tieu chay", "diarrhea", "di ngoai", "đi ngoai", "ia chay")),
+            Map.entry("rash", List.of("phat ban", "noi ban", "rash", "rom say")),
             Map.entry("mild_dehydration", List.of("mat nuoc", "moi kho", "tieu it")),
             Map.entry("severe_dehydration", List.of("mat nuoc nang", "khoc khong co nuoc mat", "mat trung"))
     );

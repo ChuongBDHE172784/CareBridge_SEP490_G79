@@ -15,5 +15,11 @@ public enum ModerationActionType {
     // CB-MOD-IMP-009: only ever created by ModerationServiceImpl.undoModerationAction() — blocked
     // from the generic POST /actions endpoint (OUT_OF_SCOPE_ACTION_TYPES). No Flyway migration
     // moderation_events.action_type remains an extensible varchar (ADR-005).
-    UNDO
+    UNDO,
+    /**
+     * CB-MOD-IMP-017: append-only history of moderator agree/disagree feedback on an AI
+     * assessment (payload in event_payload_jsonb). Excluded from moderation history views and
+     * from the "most recent action" guards of undo/revert — it never mutates content state.
+     */
+    AI_FEEDBACK_SUBMITTED
 }

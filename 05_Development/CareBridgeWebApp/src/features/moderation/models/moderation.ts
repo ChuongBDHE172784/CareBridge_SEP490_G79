@@ -1,5 +1,7 @@
 export type ReportTargetType = 'QUESTION' | 'ANSWER' | 'CONTENT' | 'ACCOUNT' | 'EXPERT' | 'USER';
-export type ReportStatus = 'PENDING' | 'RESOLVED' | 'DISMISSED';
+export type ReportStatus = 'PENDING' | 'IN_REVIEW' | 'RESOLVED' | 'DISMISSED';
+export type ReportSource = 'USER' | 'AUTOMATED';
+export type CasePriority = 'NORMAL' | 'HIGH' | 'URGENT';
 export type ReportCategory = 'INACCURATE_INFORMATION' | 'DISGUISED_ADVERTISING' | 'HARASSMENT' | 'UNSAFE_ADVICE' | 'SPAM' | 'OTHER';
 export type ResolutionOutcome = 'DISMISS' | 'APPROVE' | 'HIDE' | 'LOCK' | 'REQUEST_REVISION' | 'WARN' | 'SUSPEND' | 'RESTRICT';
 export type ModerationActionType = 'APPROVE' | 'HIDE' | 'LOCK' | 'REQUEST_REVISION' | 'WARN' | 'SUSPEND' | 'RESTRICT' | 'ESCALATE' | 'UNDO';
@@ -21,6 +23,10 @@ export interface ModerationQueueItem {
   reportedAt: string;
   reportReason: string;
   status: ReportStatus;
+  // CB-MOD-IMP-016: provenance + AI-assisted review metadata
+  reportSource: ReportSource;
+  priority: CasePriority;
+  claimedAt: string | null;
   resolvedAt: string | null;
   assignedModeratorId: string | null;
   revertedAt: string | null;
@@ -39,7 +45,7 @@ export interface RelatedReportItem {
   category: string | null;
   reason: string | null;
   status: ReportStatus;
-  reportSource: 'USER' | 'AUTOMATED';
+  reportSource: ReportSource;
   reportedAt: string;
 }
 
@@ -193,8 +199,26 @@ export const TARGET_TYPE_LABELS: Record<ReportTargetType, string> = {
 
 export const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
   PENDING: 'Đang chờ xử lý',
+  IN_REVIEW: 'Đang xem xét',
   RESOLVED: 'Đã xử lý',
   DISMISSED: 'Đã bỏ qua',
+};
+
+export const REPORT_SOURCE_LABELS: Record<ReportSource, string> = {
+  USER: 'Người dùng báo cáo',
+  AUTOMATED: 'AI phát hiện',
+};
+
+export const CASE_PRIORITY_LABELS: Record<CasePriority, string> = {
+  NORMAL: 'Bình thường',
+  HIGH: 'Ưu tiên cao',
+  URGENT: 'Khẩn',
+};
+
+export const CASE_PRIORITY_STYLES: Record<CasePriority, string> = {
+  NORMAL: 'bg-surface-container-high text-on-surface-variant',
+  HIGH: 'bg-error-container text-error',
+  URGENT: 'bg-error text-on-primary',
 };
 
 export const REPORT_CATEGORY_LABELS: Record<ReportCategory, string> = {
@@ -217,3 +241,83 @@ export function canHideTarget(targetType: ReportTargetType): boolean {
 export function canEnforceAccount(targetType: ReportTargetType): boolean {
   return targetType === 'QUESTION' || targetType === 'ANSWER' || targetType === 'USER' || targetType === 'EXPERT' || targetType === 'ACCOUNT';
 }
+
+// ============ CB-MOD-IMP-016: AI-assisted moderation ============
+
+export type AiClassification = 'SAFE' | 'VIOLATION' | 'UNCERTAIN';
+export type AiAssessmentStatus = 'COMPLETED' | 'FAILED';
+export type AiPolicySeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+export type AiRecommendedAction = 'NO_ACTION' | 'REVIEW' | 'PRIORITY_REVIEW' | 'ESCALATE';
+export type AiFeedbackVerdict = 'AGREE' | 'DISAGREE';
+
+export interface AiAssessmentMatch {
+  // CB-MOD-IMP-017: immutable policy snapshot taken at scan time (from matches_jsonb)
+  policyId: string | null;
+  policyCode: string;
+  policyVersion: number | null;
+  category: string;
+  severity: AiPolicySeverity;
+  confidence: number;
+  evidence: string[];
+  explanation: string | null;
+}
+
+// GET /reports/{reportId}/assessment — read-only evidence view for the claiming moderator.
+// AI chỉ hỗ trợ đánh giá; quyết định cuối cùng luôn thuộc về kiểm duyệt viên.
+export interface AiAssessment {
+  assessmentId: string;
+  targetType: ReportTargetType | null;
+  targetId: string | null;
+  status: AiAssessmentStatus;
+  classification: AiClassification | null;
+  overallSeverity: AiPolicySeverity | null;
+  confidence: number | null;
+  recommendedAction: AiRecommendedAction | null;
+  explanation: string | null;
+  provider: string;
+  model: string;
+  policySetHash: string;
+  errorCode: string | null;
+  moderationCaseId: string | null;
+  createdAt: string;
+  completedAt: string | null;
+  matches: AiAssessmentMatch[];
+  myFeedbackVerdict: AiFeedbackVerdict | null;
+  myFeedbackNote: string | null;
+}
+
+export interface AiFeedbackResult {
+  feedbackId: string;
+  assessmentId: string;
+  verdict: AiFeedbackVerdict;
+  note: string | null;
+  createdAt: string;
+}
+
+// POST /reports/{reportId}/claim | /release response
+export interface ClaimReportResult {
+  reportId: string;
+  status: ReportStatus;
+  assignedModeratorId: string | null;
+  claimedAt: string | null;
+}
+
+export const AI_CLASSIFICATION_LABELS: Record<AiClassification, string> = {
+  SAFE: 'An toàn',
+  VIOLATION: 'Nghi vấn vi phạm',
+  UNCERTAIN: 'Chưa chắc chắn',
+};
+
+export const AI_SEVERITY_LABELS: Record<AiPolicySeverity, string> = {
+  LOW: 'Thấp',
+  MEDIUM: 'Trung bình',
+  HIGH: 'Cao',
+  CRITICAL: 'Nghiêm trọng',
+};
+
+export const AI_RECOMMENDED_ACTION_LABELS: Record<AiRecommendedAction, string> = {
+  NO_ACTION: 'Không cần xử lý',
+  REVIEW: 'Nên xem xét',
+  PRIORITY_REVIEW: 'Ưu tiên xem xét',
+  ESCALATE: 'Đề nghị chuyển cấp',
+};

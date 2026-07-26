@@ -79,8 +79,8 @@ class ReportServiceImplTest {
         when(communityQuestionRepository.findById(TARGET_ID)).thenReturn(java.util.Optional.of(approvedQuestion()));
         when(contentReportRepository.countByReporterUserIdAndTargetIdAndCreatedAtAfter(
                 eq(REPORTER_ID), eq(TARGET_ID), any())).thenReturn(2);
-        when(contentReportRepository.existsByReporterUserIdAndTargetIdAndStatus(
-                REPORTER_ID, TARGET_ID, ReportStatus.PENDING)).thenReturn(false);
+        when(contentReportRepository.existsByReporterUserIdAndTargetIdAndStatusIn(
+                REPORTER_ID, TARGET_ID, java.util.List.of(ReportStatus.PENDING, ReportStatus.IN_REVIEW))).thenReturn(false);
         when(contentReportRepository.save(any(ContentReport.class))).thenAnswer(invocation -> {
             ContentReport saved = invocation.getArgument(0);
             saved.setId(UUID.randomUUID());
@@ -138,8 +138,8 @@ class ReportServiceImplTest {
         when(communityQuestionRepository.findById(TARGET_ID)).thenReturn(java.util.Optional.of(approvedQuestion()));
         when(contentReportRepository.countByReporterUserIdAndTargetIdAndCreatedAtAfter(
                 eq(REPORTER_ID), eq(TARGET_ID), any())).thenReturn(0);
-        when(contentReportRepository.existsByReporterUserIdAndTargetIdAndStatus(
-                REPORTER_ID, TARGET_ID, ReportStatus.PENDING)).thenReturn(true);
+        when(contentReportRepository.existsByReporterUserIdAndTargetIdAndStatusIn(
+                REPORTER_ID, TARGET_ID, java.util.List.of(ReportStatus.PENDING, ReportStatus.IN_REVIEW))).thenReturn(true);
 
         assertThatThrownBy(() -> newService().createReport(makeRequest(), REPORTER_ID))
                 .isInstanceOf(ReportException.class)
@@ -162,8 +162,8 @@ class ReportServiceImplTest {
         when(communityQuestionRepository.findById(questionId)).thenReturn(java.util.Optional.of(question));
         when(contentReportRepository.countByReporterUserIdAndTargetIdAndCreatedAtAfter(
                 eq(REPORTER_ID), eq(TARGET_ID), any())).thenReturn(0);
-        when(contentReportRepository.existsByReporterUserIdAndTargetIdAndStatus(
-                REPORTER_ID, TARGET_ID, ReportStatus.PENDING)).thenReturn(false);
+        when(contentReportRepository.existsByReporterUserIdAndTargetIdAndStatusIn(
+                REPORTER_ID, TARGET_ID, java.util.List.of(ReportStatus.PENDING, ReportStatus.IN_REVIEW))).thenReturn(false);
         when(contentReportRepository.save(any(ContentReport.class))).thenAnswer(invocation -> {
             ContentReport saved = invocation.getArgument(0);
             saved.setId(UUID.randomUUID());

@@ -1,7 +1,5 @@
 package com.carebridge.backend.community.policy;
 
-import com.carebridge.backend.audit.entity.AuditAction;
-import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.community.entity.AnswerStatus;
 import com.carebridge.backend.community.entity.CommunityAnswer;
 import com.carebridge.backend.community.entity.CommunityQuestion;
@@ -10,24 +8,25 @@ import com.carebridge.backend.community.exception.AnswerNotFoundException;
 import com.carebridge.backend.community.exception.QuestionNotFoundException;
 import com.carebridge.backend.community.repository.CommunityAnswerRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
-import com.carebridge.backend.content.entity.ContentReport;
-import com.carebridge.backend.content.entity.ReportCategory;
-import com.carebridge.backend.content.entity.ReportSource;
-import com.carebridge.backend.content.entity.ReportStatus;
-import com.carebridge.backend.content.entity.ReportTargetType;
-import com.carebridge.backend.content.repository.ContentReportRepository;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.rbac.Role;
 import com.carebridge.backend.security.repository.UserRepository;
-import com.carebridge.backend.triage.policy.TriageRedFlagPolicy;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 
+/**
+ * Community posting gates and visibility rules ONLY. The former autoReportIfRedFlag() hook
+ * (medical red-flag keyword -> AUTOMATED ContentReport, category UNSAFE_ADVICE) was removed
+ * (CB-MOD-IMP-017): a user DESCRIBING symptoms is a medical-safety signal, not a content
+ * violation. Emergency keyword handling stays in TriageRedFlagPolicy (triage/RAG routing,
+ * untouched); content violations are detected semantically by the AI moderation scan that is
+ * enqueued in the same transactions that used to call the removed hook.
+ */
 @Component
 @RequiredArgsConstructor
 public class CommunitySafetyPolicy {
@@ -36,9 +35,6 @@ public class CommunitySafetyPolicy {
     private final ExpertProfileRepository expertProfileRepository;
     private final CommunityQuestionRepository questionRepository;
     private final CommunityAnswerRepository answerRepository;
-    private final ContentReportRepository contentReportRepository;
-    private final TriageRedFlagPolicy redFlagPolicy;
-    private final AuditService auditService;
 
     public User requirePostingAllowed(UUID userId) {
         User user = userRepository.findById(userId)
@@ -82,28 +78,4 @@ public class CommunitySafetyPolicy {
                 || (question.getStatus() == QuestionStatus.PENDING && question.getAuthorId().equals(userId));
     }
 
-    public void autoReportIfRedFlag(UUID reporterUserId, UUID targetId, ReportTargetType targetType, String text) {
-        if (text == null || text.isBlank() || !redFlagPolicy.isRedFlag(text)) {
-            return;
-        }
-        boolean duplicatePending = contentReportRepository.existsByReporterUserIdAndTargetIdAndStatus(
-                reporterUserId, targetId, ReportStatus.PENDING);
-        if (duplicatePending) {
-            return;
-        }
-        ContentReport report = ContentReport.builder()
-                .targetId(targetId)
-                .targetType(targetType)
-                .status(ReportStatus.PENDING)
-                .category(ReportCategory.UNSAFE_ADVICE.name())
-                .reportSource(ReportSource.AUTOMATED)
-                .description("Auto-flagged by community red-flag policy")
-                .reporterUserId(reporterUserId)
-                .createdAt(Instant.now())
-                .build();
-        ContentReport saved = contentReportRepository.save(report);
-        auditService.log(AuditAction.CONTENT_REPORTED, reporterUserId, "ContentReport",
-                saved.getId().toString(),
-                "auto=true targetType=" + targetType + " targetId=" + targetId);
-    }
 }

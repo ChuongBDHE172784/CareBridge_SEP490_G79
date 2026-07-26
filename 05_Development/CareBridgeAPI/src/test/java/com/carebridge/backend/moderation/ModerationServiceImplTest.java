@@ -329,8 +329,8 @@ class ModerationServiceImplTest {
                 ModerationActionType.APPROVE, modId, null);
         ModerationAction a = makeAction(UUID.randomUUID(), TARGET_ID_2, ReportTargetType.ANSWER,
                 ModerationActionType.HIDE, modId, "spam");
-        when(moderationActionRepository.findByTargetTypeInOrderByActionAtDesc(
-                eq(List.of(ReportTargetType.QUESTION, ReportTargetType.ANSWER)), any(Pageable.class)))
+        when(moderationActionRepository.findByTargetTypeInAndActionTypeNotOrderByActionAtDesc(
+                eq(List.of(ReportTargetType.QUESTION, ReportTargetType.ANSWER)), eq(ModerationActionType.AI_FEEDBACK_SUBMITTED), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(q, a)));
         when(userRepository.findAllById(any())).thenReturn(
                 List.of(User.builder().id(modId).name("Moderator Test").build()));
@@ -348,8 +348,8 @@ class ModerationServiceImplTest {
         UUID modId = UUID.randomUUID();
         ModerationAction q = makeAction(UUID.randomUUID(), TARGET_ID_1, ReportTargetType.QUESTION,
                 ModerationActionType.APPROVE, modId, null);
-        when(moderationActionRepository.findByTargetTypeInOrderByActionAtDesc(
-                eq(List.of(ReportTargetType.QUESTION)), any(Pageable.class)))
+        when(moderationActionRepository.findByTargetTypeInAndActionTypeNotOrderByActionAtDesc(
+                eq(List.of(ReportTargetType.QUESTION)), eq(ModerationActionType.AI_FEEDBACK_SUBMITTED), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(q)));
         when(userRepository.findAllById(any())).thenReturn(
                 List.of(User.builder().id(modId).name("Moderator Test").build()));
@@ -368,7 +368,7 @@ class ModerationServiceImplTest {
         UUID modId = UUID.randomUUID();
         ModerationAction q = makeAction(UUID.randomUUID(), TARGET_ID_1, ReportTargetType.QUESTION,
                 ModerationActionType.APPROVE, modId, null);
-        when(moderationActionRepository.findByTargetTypeInOrderByActionAtDesc(any(), any(Pageable.class)))
+        when(moderationActionRepository.findByTargetTypeInAndActionTypeNotOrderByActionAtDesc(any(), eq(ModerationActionType.AI_FEEDBACK_SUBMITTED), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(q)));
         when(userRepository.findAllById(any())).thenReturn(
                 List.of(User.builder().id(modId).name("Moderator Test").build()));
@@ -386,7 +386,7 @@ class ModerationServiceImplTest {
         UUID modId = UUID.randomUUID();
         ModerationAction a = makeAction(UUID.randomUUID(), TARGET_ID_1, ReportTargetType.QUESTION,
                 ModerationActionType.HIDE, modId, "Nội dung không phù hợp");
-        when(moderationActionRepository.findByTargetTypeInOrderByActionAtDesc(any(), any(Pageable.class)))
+        when(moderationActionRepository.findByTargetTypeInAndActionTypeNotOrderByActionAtDesc(any(), eq(ModerationActionType.AI_FEEDBACK_SUBMITTED), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(a)));
         when(userRepository.findAllById(any())).thenReturn(
                 List.of(User.builder().id(modId).name("Moderator Test").build()));
@@ -689,7 +689,7 @@ class ModerationServiceImplTest {
         CommunityQuestion question = makeQuestion(TARGET_ID_1, QuestionStatus.APPROVED, UUID.randomUUID(), false, 50);
 
         when(moderationActionRepository.findById(ACTION_ID_1)).thenReturn(java.util.Optional.of(original));
-        when(moderationActionRepository.findTopByTargetIdAndTargetTypeOrderByActionAtDesc(TARGET_ID_1, ReportTargetType.QUESTION))
+        when(moderationActionRepository.findTopByTargetIdAndTargetTypeAndActionTypeNotOrderByActionAtDesc(TARGET_ID_1, ReportTargetType.QUESTION, ModerationActionType.AI_FEEDBACK_SUBMITTED))
                 .thenReturn(java.util.Optional.of(original));
         when(communityQuestionRepository.findById(TARGET_ID_1)).thenReturn(java.util.Optional.of(question));
         when(moderationActionRepository.save(any(ModerationAction.class)))
@@ -715,7 +715,7 @@ class ModerationServiceImplTest {
         CommunityQuestion question = makeQuestion(TARGET_ID_1, QuestionStatus.HIDDEN, UUID.randomUUID(), false, 50);
 
         when(moderationActionRepository.findById(ACTION_ID_1)).thenReturn(java.util.Optional.of(original));
-        when(moderationActionRepository.findTopByTargetIdAndTargetTypeOrderByActionAtDesc(TARGET_ID_1, ReportTargetType.QUESTION))
+        when(moderationActionRepository.findTopByTargetIdAndTargetTypeAndActionTypeNotOrderByActionAtDesc(TARGET_ID_1, ReportTargetType.QUESTION, ModerationActionType.AI_FEEDBACK_SUBMITTED))
                 .thenReturn(java.util.Optional.of(original));
         when(communityQuestionRepository.findById(TARGET_ID_1)).thenReturn(java.util.Optional.of(question));
         when(moderationActionRepository.save(any(ModerationAction.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -733,7 +733,7 @@ class ModerationServiceImplTest {
         CommunityQuestion question = makeQuestion(TARGET_ID_1, QuestionStatus.LOCKED, UUID.randomUUID(), false, 50);
 
         when(moderationActionRepository.findById(ACTION_ID_1)).thenReturn(java.util.Optional.of(original));
-        when(moderationActionRepository.findTopByTargetIdAndTargetTypeOrderByActionAtDesc(TARGET_ID_1, ReportTargetType.QUESTION))
+        when(moderationActionRepository.findTopByTargetIdAndTargetTypeAndActionTypeNotOrderByActionAtDesc(TARGET_ID_1, ReportTargetType.QUESTION, ModerationActionType.AI_FEEDBACK_SUBMITTED))
                 .thenReturn(java.util.Optional.of(original));
         when(communityQuestionRepository.findById(TARGET_ID_1)).thenReturn(java.util.Optional.of(question));
         when(moderationActionRepository.save(any(ModerationAction.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -752,7 +752,7 @@ class ModerationServiceImplTest {
         CommunityAnswer answer = makeAnswer(TARGET_ID_2, questionId, AnswerStatus.APPROVED, UUID.randomUUID(), 50);
 
         when(moderationActionRepository.findById(ACTION_ID_1)).thenReturn(java.util.Optional.of(original));
-        when(moderationActionRepository.findTopByTargetIdAndTargetTypeOrderByActionAtDesc(TARGET_ID_2, ReportTargetType.ANSWER))
+        when(moderationActionRepository.findTopByTargetIdAndTargetTypeAndActionTypeNotOrderByActionAtDesc(TARGET_ID_2, ReportTargetType.ANSWER, ModerationActionType.AI_FEEDBACK_SUBMITTED))
                 .thenReturn(java.util.Optional.of(original));
         when(communityAnswerRepository.findById(TARGET_ID_2)).thenReturn(java.util.Optional.of(answer));
         when(moderationActionRepository.save(any(ModerationAction.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -773,7 +773,7 @@ class ModerationServiceImplTest {
         CommunityAnswer answer = makeAnswer(TARGET_ID_2, questionId, AnswerStatus.HIDDEN, UUID.randomUUID(), 50);
 
         when(moderationActionRepository.findById(ACTION_ID_1)).thenReturn(java.util.Optional.of(original));
-        when(moderationActionRepository.findTopByTargetIdAndTargetTypeOrderByActionAtDesc(TARGET_ID_2, ReportTargetType.ANSWER))
+        when(moderationActionRepository.findTopByTargetIdAndTargetTypeAndActionTypeNotOrderByActionAtDesc(TARGET_ID_2, ReportTargetType.ANSWER, ModerationActionType.AI_FEEDBACK_SUBMITTED))
                 .thenReturn(java.util.Optional.of(original));
         when(communityAnswerRepository.findById(TARGET_ID_2)).thenReturn(java.util.Optional.of(answer));
         when(moderationActionRepository.save(any(ModerationAction.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -793,7 +793,7 @@ class ModerationServiceImplTest {
                 ModerationActionType.HIDE, UUID.randomUUID(), "later action");
 
         when(moderationActionRepository.findById(ACTION_ID_1)).thenReturn(java.util.Optional.of(original));
-        when(moderationActionRepository.findTopByTargetIdAndTargetTypeOrderByActionAtDesc(TARGET_ID_1, ReportTargetType.QUESTION))
+        when(moderationActionRepository.findTopByTargetIdAndTargetTypeAndActionTypeNotOrderByActionAtDesc(TARGET_ID_1, ReportTargetType.QUESTION, ModerationActionType.AI_FEEDBACK_SUBMITTED))
                 .thenReturn(java.util.Optional.of(newer));
 
         ModerationException ex = assertThrows(ModerationException.class,
@@ -813,7 +813,7 @@ class ModerationServiceImplTest {
         CommunityQuestion question = makeQuestion(TARGET_ID_1, QuestionStatus.PENDING, UUID.randomUUID(), false, 50);
 
         when(moderationActionRepository.findById(ACTION_ID_1)).thenReturn(java.util.Optional.of(original));
-        when(moderationActionRepository.findTopByTargetIdAndTargetTypeOrderByActionAtDesc(TARGET_ID_1, ReportTargetType.QUESTION))
+        when(moderationActionRepository.findTopByTargetIdAndTargetTypeAndActionTypeNotOrderByActionAtDesc(TARGET_ID_1, ReportTargetType.QUESTION, ModerationActionType.AI_FEEDBACK_SUBMITTED))
                 .thenReturn(java.util.Optional.of(original));
         when(communityQuestionRepository.findById(TARGET_ID_1)).thenReturn(java.util.Optional.of(question));
 
@@ -920,7 +920,7 @@ class ModerationServiceImplTest {
         CommunityQuestion question = makeQuestion(TARGET_ID_1, QuestionStatus.APPROVED, UUID.randomUUID(), false, 50);
 
         when(moderationActionRepository.findById(ACTION_ID_1)).thenReturn(java.util.Optional.of(original));
-        when(moderationActionRepository.findTopByTargetIdAndTargetTypeOrderByActionAtDesc(TARGET_ID_1, ReportTargetType.QUESTION))
+        when(moderationActionRepository.findTopByTargetIdAndTargetTypeAndActionTypeNotOrderByActionAtDesc(TARGET_ID_1, ReportTargetType.QUESTION, ModerationActionType.AI_FEEDBACK_SUBMITTED))
                 .thenReturn(java.util.Optional.of(original));
         when(communityQuestionRepository.findById(TARGET_ID_1)).thenReturn(java.util.Optional.of(question));
 
@@ -962,7 +962,7 @@ class ModerationServiceImplTest {
         UUID originalAssignedModeratorId = report.getAssignedModeratorId();
 
         when(contentReportRepository.findById(REPORT_ID_1)).thenReturn(java.util.Optional.of(report));
-        when(moderationActionRepository.findTopByReportIdOrderByActionAtDesc(REPORT_ID_1))
+        when(moderationActionRepository.findTopByReportIdAndActionTypeNotOrderByActionAtDesc(REPORT_ID_1, ModerationActionType.AI_FEEDBACK_SUBMITTED))
                 .thenReturn(java.util.Optional.empty());
         when(contentReportRepository.save(any(ContentReport.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -992,9 +992,9 @@ class ModerationServiceImplTest {
         CommunityAnswer answer = makeAnswer(TARGET_ID_2, UUID.randomUUID(), AnswerStatus.HIDDEN, UUID.randomUUID(), 40);
 
         when(contentReportRepository.findById(REPORT_ID_1)).thenReturn(java.util.Optional.of(report));
-        when(moderationActionRepository.findTopByReportIdOrderByActionAtDesc(REPORT_ID_1))
+        when(moderationActionRepository.findTopByReportIdAndActionTypeNotOrderByActionAtDesc(REPORT_ID_1, ModerationActionType.AI_FEEDBACK_SUBMITTED))
                 .thenReturn(java.util.Optional.of(linkedAction));
-        when(moderationActionRepository.findTopByTargetIdAndTargetTypeOrderByActionAtDesc(TARGET_ID_2, ReportTargetType.ANSWER))
+        when(moderationActionRepository.findTopByTargetIdAndTargetTypeAndActionTypeNotOrderByActionAtDesc(TARGET_ID_2, ReportTargetType.ANSWER, ModerationActionType.AI_FEEDBACK_SUBMITTED))
                 .thenReturn(java.util.Optional.of(linkedAction));
         when(communityAnswerRepository.findById(TARGET_ID_2)).thenReturn(java.util.Optional.of(answer));
         when(moderationActionRepository.save(any(ModerationAction.class))).thenAnswer(inv -> {
@@ -1027,9 +1027,9 @@ class ModerationServiceImplTest {
         CommunityQuestion question = makeQuestion(TARGET_ID_1, QuestionStatus.APPROVED, UUID.randomUUID(), false, 50);
 
         when(contentReportRepository.findById(REPORT_ID_1)).thenReturn(java.util.Optional.of(report));
-        when(moderationActionRepository.findTopByReportIdOrderByActionAtDesc(REPORT_ID_1))
+        when(moderationActionRepository.findTopByReportIdAndActionTypeNotOrderByActionAtDesc(REPORT_ID_1, ModerationActionType.AI_FEEDBACK_SUBMITTED))
                 .thenReturn(java.util.Optional.of(linkedAction));
-        when(moderationActionRepository.findTopByTargetIdAndTargetTypeOrderByActionAtDesc(TARGET_ID_1, ReportTargetType.QUESTION))
+        when(moderationActionRepository.findTopByTargetIdAndTargetTypeAndActionTypeNotOrderByActionAtDesc(TARGET_ID_1, ReportTargetType.QUESTION, ModerationActionType.AI_FEEDBACK_SUBMITTED))
                 .thenReturn(java.util.Optional.of(linkedAction));
         when(communityQuestionRepository.findById(TARGET_ID_1)).thenReturn(java.util.Optional.of(question));
         when(moderationActionRepository.save(any(ModerationAction.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -1050,9 +1050,9 @@ class ModerationServiceImplTest {
         CommunityQuestion question = makeQuestion(TARGET_ID_1, QuestionStatus.LOCKED, UUID.randomUUID(), false, 50);
 
         when(contentReportRepository.findById(REPORT_ID_1)).thenReturn(java.util.Optional.of(report));
-        when(moderationActionRepository.findTopByReportIdOrderByActionAtDesc(REPORT_ID_1))
+        when(moderationActionRepository.findTopByReportIdAndActionTypeNotOrderByActionAtDesc(REPORT_ID_1, ModerationActionType.AI_FEEDBACK_SUBMITTED))
                 .thenReturn(java.util.Optional.of(linkedAction));
-        when(moderationActionRepository.findTopByTargetIdAndTargetTypeOrderByActionAtDesc(TARGET_ID_1, ReportTargetType.QUESTION))
+        when(moderationActionRepository.findTopByTargetIdAndTargetTypeAndActionTypeNotOrderByActionAtDesc(TARGET_ID_1, ReportTargetType.QUESTION, ModerationActionType.AI_FEEDBACK_SUBMITTED))
                 .thenReturn(java.util.Optional.of(linkedAction));
         when(communityQuestionRepository.findById(TARGET_ID_1)).thenReturn(java.util.Optional.of(question));
         when(moderationActionRepository.save(any(ModerationAction.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -1085,7 +1085,7 @@ class ModerationServiceImplTest {
 
         assertThat(ex.getCode()).isEqualTo("MOD-032");
         verify(contentReportRepository, times(0)).save(any());
-        verify(moderationActionRepository, times(0)).findTopByReportIdOrderByActionAtDesc(any());
+        verify(moderationActionRepository, times(0)).findTopByReportIdAndActionTypeNotOrderByActionAtDesc(any(), any());
     }
 
     // MRR-TC-007..009: linked action is an account-level outcome -> 400 MOD-033, no mutation
@@ -1098,7 +1098,7 @@ class ModerationServiceImplTest {
                     accountActionType, UUID.randomUUID(), "reason");
 
             when(contentReportRepository.findById(REPORT_ID_1)).thenReturn(java.util.Optional.of(report));
-            when(moderationActionRepository.findTopByReportIdOrderByActionAtDesc(REPORT_ID_1))
+            when(moderationActionRepository.findTopByReportIdAndActionTypeNotOrderByActionAtDesc(REPORT_ID_1, ModerationActionType.AI_FEEDBACK_SUBMITTED))
                     .thenReturn(java.util.Optional.of(linkedAction));
 
             ModerationException ex = assertThrows(ModerationException.class,
@@ -1120,9 +1120,9 @@ class ModerationServiceImplTest {
                 ModerationActionType.LOCK, UUID.randomUUID(), "locked after report resolved");
 
         when(contentReportRepository.findById(REPORT_ID_1)).thenReturn(java.util.Optional.of(report));
-        when(moderationActionRepository.findTopByReportIdOrderByActionAtDesc(REPORT_ID_1))
+        when(moderationActionRepository.findTopByReportIdAndActionTypeNotOrderByActionAtDesc(REPORT_ID_1, ModerationActionType.AI_FEEDBACK_SUBMITTED))
                 .thenReturn(java.util.Optional.of(linkedAction));
-        when(moderationActionRepository.findTopByTargetIdAndTargetTypeOrderByActionAtDesc(TARGET_ID_1, ReportTargetType.QUESTION))
+        when(moderationActionRepository.findTopByTargetIdAndTargetTypeAndActionTypeNotOrderByActionAtDesc(TARGET_ID_1, ReportTargetType.QUESTION, ModerationActionType.AI_FEEDBACK_SUBMITTED))
                 .thenReturn(java.util.Optional.of(newerDirectAction));
 
         ModerationException ex = assertThrows(ModerationException.class,
@@ -1144,9 +1144,9 @@ class ModerationServiceImplTest {
         CommunityQuestion question = makeQuestion(TARGET_ID_1, QuestionStatus.PENDING, UUID.randomUUID(), false, 50);
 
         when(contentReportRepository.findById(REPORT_ID_1)).thenReturn(java.util.Optional.of(report));
-        when(moderationActionRepository.findTopByReportIdOrderByActionAtDesc(REPORT_ID_1))
+        when(moderationActionRepository.findTopByReportIdAndActionTypeNotOrderByActionAtDesc(REPORT_ID_1, ModerationActionType.AI_FEEDBACK_SUBMITTED))
                 .thenReturn(java.util.Optional.of(linkedAction));
-        when(moderationActionRepository.findTopByTargetIdAndTargetTypeOrderByActionAtDesc(TARGET_ID_1, ReportTargetType.QUESTION))
+        when(moderationActionRepository.findTopByTargetIdAndTargetTypeAndActionTypeNotOrderByActionAtDesc(TARGET_ID_1, ReportTargetType.QUESTION, ModerationActionType.AI_FEEDBACK_SUBMITTED))
                 .thenReturn(java.util.Optional.of(linkedAction));
         when(communityQuestionRepository.findById(TARGET_ID_1)).thenReturn(java.util.Optional.of(question));
 
@@ -1170,9 +1170,9 @@ class ModerationServiceImplTest {
         CommunityAnswer answer = makeAnswer(TARGET_ID_2, UUID.randomUUID(), AnswerStatus.HIDDEN, UUID.randomUUID(), 40);
 
         when(contentReportRepository.findById(REPORT_ID_1)).thenReturn(java.util.Optional.of(report));
-        when(moderationActionRepository.findTopByReportIdOrderByActionAtDesc(REPORT_ID_1))
+        when(moderationActionRepository.findTopByReportIdAndActionTypeNotOrderByActionAtDesc(REPORT_ID_1, ModerationActionType.AI_FEEDBACK_SUBMITTED))
                 .thenReturn(java.util.Optional.of(linkedAction));
-        when(moderationActionRepository.findTopByTargetIdAndTargetTypeOrderByActionAtDesc(TARGET_ID_2, ReportTargetType.ANSWER))
+        when(moderationActionRepository.findTopByTargetIdAndTargetTypeAndActionTypeNotOrderByActionAtDesc(TARGET_ID_2, ReportTargetType.ANSWER, ModerationActionType.AI_FEEDBACK_SUBMITTED))
                 .thenReturn(java.util.Optional.of(linkedAction));
         when(communityAnswerRepository.findById(TARGET_ID_2)).thenReturn(java.util.Optional.of(answer));
         when(moderationActionRepository.save(any(ModerationAction.class))).thenAnswer(inv -> inv.getArgument(0));

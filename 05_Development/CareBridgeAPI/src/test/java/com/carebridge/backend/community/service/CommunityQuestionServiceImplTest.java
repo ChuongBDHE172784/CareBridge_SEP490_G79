@@ -83,6 +83,9 @@ class CommunityQuestionServiceImplTest {
     @Mock
     private ExpertProfileRepository expertProfileRepository;
 
+    @Mock
+    private com.carebridge.backend.aimoderation.service.AiScanEnqueueService aiScanEnqueueService;
+
     @InjectMocks
     private CommunityQuestionServiceImpl questionService;
 

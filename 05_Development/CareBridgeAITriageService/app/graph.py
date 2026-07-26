@@ -368,6 +368,9 @@ def compose_safe_explanation_with_gemini(state: TriageState) -> TriageState:
         recommendation_code=_recommendation_code(state["riskLevel"]),
         citations=state.get("citations", []),
         deadline=state.get("requestDeadline"),
+        # CB-TRIAGE-THMC-IMP-001: advisory prior-context summaries — narrative only.
+        # Deterministic risk scoring above never reads healthContext (BR-THMC-004).
+        health_context_notes=[item.summaryText for item in state["intake"].healthContext],
     )
     if explanation is None:
         state["assistantProvider"] = "DETERMINISTIC_FALLBACK"

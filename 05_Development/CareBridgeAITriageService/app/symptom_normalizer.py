@@ -6,25 +6,28 @@ from app.schemas import ChildTriageRequest, NormalizedSymptom
 
 
 # Only these codes may cross the deterministic rule-engine boundary.
+# Folk-term synonyms per TDS CB-TRIAGE-IMP-005 §5.3 (S2, S4–S13). Values are the engine's
+# accent-stripped forms; 'đ' (U+0111) has no NFD decomposition, so đ-variants ("lu đu",
+# "đi ngoai") are stored alongside the plain-d forms to match diacritic input.
 ONTOLOGY: dict[str, tuple[str, ...]] = {
-    "fever": ("sot", "fever", "temperature"),
+    "fever": ("sot", "fever", "temperature", "ham hap"),
     "high_fever": ("sot cao", "high fever"),
     "cough": ("ho", "cough"),
-    "runny_nose": ("so mui", "chay mui", "runny nose"),
-    "difficulty_breathing": ("kho tho", "tho gap", "wheeze", "difficulty breathing"),
+    "runny_nose": ("so mui", "chay mui", "runny nose", "sut sit"),
+    "difficulty_breathing": ("kho tho", "tho gap", "wheeze", "difficulty breathing", "kho khe", "tho rit"),
     "chest_indrawing": ("rut lom", "chest indrawing"),
     "cyanosis": ("tim tai", "moi tim", "da tim", "cyanosis"),
     "seizure": ("co giat", "seizure", "convulsion"),
-    "lethargy": ("li bi", "lo mo", "ngu ga", "lethargy"),
+    "lethargy": ("li bi", "lo mo", "ngu ga", "lethargy", "lu du", "lu đu"),
     "difficult_to_wake": ("kho danh thuc", "difficult to wake"),
     "unable_to_drink": ("khong uong", "khong bu", "unable to drink"),
-    "poor_feeding": ("bo bu", "uong kem", "an kem", "poor feeding"),
-    "vomiting": ("non", "oi", "vomit", "vomiting"),
+    "poor_feeding": ("bo bu", "uong kem", "an kem", "poor feeding", "bieng an"),
+    "vomiting": ("non", "oi", "vomit", "vomiting", "tro sua", "oc sua"),
     "persistent_vomiting": ("non lien tuc", "non nhieu", "vomiting everything", "persistent vomiting"),
-    "diarrhea": ("tieu chay", "diarrhea"),
+    "diarrhea": ("tieu chay", "diarrhea", "di ngoai", "đi ngoai", "ia chay"),
     "mild_dehydration": ("moi kho", "tieu it", "mild dehydration"),
     "severe_dehydration": ("mat nuoc nang", "mat trung", "khoc khong co nuoc mat", "severe dehydration"),
-    "rash": ("phat ban", "noi ban", "rash"),
+    "rash": ("phat ban", "noi ban", "rash", "rom say"),
     "worsening_condition": ("nang hon", "xau di", "worsening"),
 }
 

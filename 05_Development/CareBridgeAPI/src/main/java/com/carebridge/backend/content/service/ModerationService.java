@@ -168,4 +168,25 @@ public interface ModerationService {
      *         status no longer matches what the linked action produced
      */
     RevertReportResponse revertReport(UUID reportId, RevertReportRequest request, Principal principal);
+
+    /**
+     * CB-MOD-IMP-016: atomically claims a PENDING report (status -> IN_REVIEW,
+     * assigned_moderator_id + claimed_at set). Exactly one moderator can win the claim —
+     * concurrency is resolved by a status-guarded UPDATE, not application locking.
+     *
+     * @throws com.carebridge.backend.content.exception.ModerationException (MOD-003) if reportId does not exist
+     * @throws com.carebridge.backend.content.exception.ModerationException (MOD-036) if the report is not
+     *         PENDING anymore (already claimed, resolved or dismissed)
+     */
+    com.carebridge.backend.content.dto.response.ClaimReportResponse claimReport(UUID reportId, Principal principal);
+
+    /**
+     * CB-MOD-IMP-016: releases an IN_REVIEW report back to PENDING. Only the claiming
+     * moderator may release.
+     *
+     * @throws com.carebridge.backend.content.exception.ModerationException (MOD-003) if reportId does not exist
+     * @throws com.carebridge.backend.content.exception.ModerationException (MOD-037) if the report is not
+     *         IN_REVIEW or the caller is not its claimer
+     */
+    com.carebridge.backend.content.dto.response.ClaimReportResponse releaseReport(UUID reportId, Principal principal);
 }

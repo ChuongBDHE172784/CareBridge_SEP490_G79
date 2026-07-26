@@ -23,6 +23,7 @@ public class ContentApprovalServiceImpl implements ContentApprovalService {
 
     private final ContentRepository contentRepository;
     private final AuditService auditService;
+    private final com.carebridge.backend.aimoderation.service.AiScanEnqueueService aiScanEnqueueService;
 
     @Override
     @Transactional
@@ -57,6 +58,15 @@ public class ContentApprovalServiceImpl implements ContentApprovalService {
         }
 
         ContentItem saved = contentRepository.save(item);
+
+        // CB-MOD-IMP-016: published library content enters the AI moderation scan queue in the
+        // same transaction — publication itself never waits on Gemini.
+        if (request.decision() == ContentDecision.APPROVE) {
+            aiScanEnqueueService.enqueueScan(com.carebridge.backend.content.entity.ReportTargetType.CONTENT,
+                    saved.getId(),
+                    com.carebridge.backend.aimoderation.service.AiScanTargetResolver
+                            .joinTitleAndBody(saved.getTitle(), saved.getBody()));
+        }
 
         Instant decidedAt = Instant.now();
         String auditDetail = "decision=" + request.decision() + " versionNo=" + saved.getVersionNo()

@@ -51,4 +51,7 @@ public interface ReminderRepository extends JpaRepository<Reminder, UUID> {
 
     List<Reminder> findByOwnerUserIdAndReminderTypeAndStatusIn(
             UUID ownerUserId, ReminderType reminderType, List<ReminderStatus> statuses);
+
+    /** CB-TYFU-IMP-001 — idempotency probe for BR-TYFU-002 / ADR-TYFU-003. */
+    boolean existsByReminderTypeAndSourceReferenceId(ReminderType reminderType, UUID sourceReferenceId);
 }

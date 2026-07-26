@@ -1,5 +1,6 @@
 package com.carebridge.backend.triage.service.impl;
 
+import com.carebridge.backend.triage.dto.HealthMemoryContextItem;
 import com.carebridge.backend.triage.dto.request.RunIntakeRequest;
 import com.carebridge.backend.triage.service.ChildTriageAiClient;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -40,6 +41,36 @@ public class HttpChildTriageAiClient implements ChildTriageAiClient {
         } catch (JsonProcessingException e) {
             throw new IllegalArgumentException("Invalid triage request payload", e);
         }
+    }
+
+    /**
+     * CB-TRIAGE-THMC-IMP-001 §9.2 — one-shot triage with server-populated healthContext[]
+     * (additive internal contract field; BR-THMC-006: never sourced from the client request).
+     */
+    @Override
+    public String triageChild(RunIntakeRequest request, List<HealthMemoryContextItem> healthContext) {
+        try {
+            Map<String, Object> payload = toAiPayload(request);
+            if (healthContext != null && !healthContext.isEmpty()) {
+                payload.put("healthContext", toContextPayload(healthContext));
+            }
+            return postJson("/triage/child", payload);
+        } catch (JsonProcessingException e) {
+            throw new IllegalArgumentException("Invalid triage request payload", e);
+        }
+    }
+
+    private List<Map<String, Object>> toContextPayload(List<HealthMemoryContextItem> healthContext) {
+        return healthContext.stream()
+                .map(item -> {
+                    Map<String, Object> entry = new LinkedHashMap<String, Object>();
+                    entry.put("summaryText", item.summaryText());
+                    entry.put("relatedStage", item.relatedStage());
+                    entry.put("createdAt", item.createdAt() == null ? null : item.createdAt().toString());
+                    entry.put("expiresAt", item.expiresAt() == null ? null : item.expiresAt().toString());
+                    return entry;
+                })
+                .toList();
     }
 
     @Override

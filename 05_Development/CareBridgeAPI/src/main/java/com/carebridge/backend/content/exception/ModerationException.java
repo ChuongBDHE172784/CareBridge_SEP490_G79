@@ -241,4 +241,26 @@ public class ModerationException extends RuntimeException {
                 "Current status no longer matches the result of action " + actionId + " — it may have been superseded",
                 HttpStatus.CONFLICT);
     }
+
+    // CB-MOD-IMP-016 (Claim / IN_REVIEW workflow)
+    public static ModerationException reportClaimConflict(UUID reportId) {
+        return new ModerationException(
+                "MOD-036",
+                "Report " + reportId + " could not be claimed — it is already claimed or no longer PENDING",
+                HttpStatus.CONFLICT);
+    }
+
+    public static ModerationException reportReleaseDenied(UUID reportId) {
+        return new ModerationException(
+                "MOD-037",
+                "Report " + reportId + " could not be released — it is not IN_REVIEW or you are not its claimer",
+                HttpStatus.CONFLICT);
+    }
+
+    public static ModerationException reportClaimedByAnotherModerator(UUID reportId) {
+        return new ModerationException(
+                "MOD-038",
+                "Report " + reportId + " is being reviewed by another moderator",
+                HttpStatus.CONFLICT);
+    }
 }

@@ -1,0 +1,13 @@
+[
+  {"parentFreeText": "trớ sữa", "expectedCodes": ["vomiting"]},
+  {"parentFreeText": "hâm hấp", "expectedCodes": ["fever"]},
+  {"parentFreeText": "lừ đừ", "expectedCodes": ["lethargy"]},
+  {"parentFreeText": "sụt sịt", "expectedCodes": ["runny_nose"]},
+  {"parentFreeText": "khò khè", "expectedCodes": ["difficulty_breathing"]},
+  {"parentFreeText": "thở rít", "expectedCodes": ["difficulty_breathing"]},
+  {"parentFreeText": "biếng ăn", "expectedCodes": ["poor_feeding"]},
+  {"parentFreeText": "ọc sữa", "expectedCodes": ["vomiting"]},
+  {"parentFreeText": "đi ngoài", "expectedCodes": ["diarrhea"]},
+  {"parentFreeText": "ỉa chảy", "expectedCodes": ["diarrhea"]},
+  {"parentFreeText": "rôm sảy", "expectedCodes": ["rash"]}
+]

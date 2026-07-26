@@ -53,6 +53,7 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
  private final CommunityAnswerMapper answerMapper;
  private final AuditService auditService;
  private final CommunitySafetyPolicy communitySafetyPolicy;
+ private final com.carebridge.backend.aimoderation.service.AiScanEnqueueService aiScanEnqueueService;
  private final CommunityAuthorDisplayResolver authorDisplayResolver;
  private final ExpertProfileRepository expertProfileRepository;
 
@@ -123,7 +124,7 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
 
  CommunityQuestion question = questionMapper.toEntity(request, authorId);
  question = questionRepository.save(question);
- communitySafetyPolicy.autoReportIfRedFlag(authorId, question.getId(), ReportTargetType.QUESTION, question.getTitle() + "\n" + question.getBody());
+ aiScanEnqueueService.enqueueScan(ReportTargetType.QUESTION, question.getId(), question.getTitle() + "\n" + question.getBody());
 
  auditService.log(AuditAction.COMMUNITY_QUESTION_CREATED, authorId, "CommunityQuestion", question.getId().toString(), "created");
 
@@ -153,7 +154,7 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
  question.setStatus(QuestionStatus.PENDING);
 
  question = questionRepository.save(question);
- communitySafetyPolicy.autoReportIfRedFlag(authorId, question.getId(), ReportTargetType.QUESTION, question.getTitle() + "\n" + question.getBody());
+ aiScanEnqueueService.enqueueScan(ReportTargetType.QUESTION, question.getId(), question.getTitle() + "\n" + question.getBody());
  auditService.log(AuditAction.COMMUNITY_QUESTION_EDITED, authorId, "CommunityQuestion", question.getId().toString(), "edited");
 
  return questionMapper.toResponse(question);

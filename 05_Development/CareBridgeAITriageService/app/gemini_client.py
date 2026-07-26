@@ -237,29 +237,39 @@ class GeminiClient:
         recommendation_code: str,
         citations: list[Citation],
         deadline: float | None = None,
+        health_context_notes: list[str] | None = None,
     ) -> GeminiExplanation | None:
         if not self.enabled:
             return None
-        prompt = json.dumps(
-            {
-                "finalRiskLevel": risk_level,
-                "matchedRules": matched_rules,
-                "redFlags": red_flags,
-                "normalizedSymptoms": normalized_symptoms,
-                "recommendedActionCode": recommendation_code,
-                "validatedEvidence": [
-                    {
-                        "sourceId": citation.sourceId or citation.id,
-                        "title": citation.title,
-                        "organization": citation.organization or citation.source,
-                        "excerpt": citation.excerpt[:240],
-                    }
-                    for citation in citations
-                ],
-                "fixedDisclaimer": DISCLAIMER,
-            },
-            ensure_ascii=False,
-        )
+        prompt_facts: dict[str, object] = {
+            "finalRiskLevel": risk_level,
+            "matchedRules": matched_rules,
+            "redFlags": red_flags,
+            "normalizedSymptoms": normalized_symptoms,
+            "recommendedActionCode": recommendation_code,
+            "validatedEvidence": [
+                {
+                    "sourceId": citation.sourceId or citation.id,
+                    "title": citation.title,
+                    "organization": citation.organization or citation.source,
+                    "excerpt": citation.excerpt[:240],
+                }
+                for citation in citations
+            ],
+            "fixedDisclaimer": DISCLAIMER,
+        }
+        if health_context_notes:
+            # CB-TRIAGE-THMC-IMP-001 (ADR-THMC-003): clearly-delimited advisory block.
+            # The final risk level above is already decided by deterministic rules and
+            # MUST NOT be changed based on this prior context.
+            prompt_facts["priorHealthContext"] = {
+                "note": (
+                    "Prior health context — reference only, do not lower or change "
+                    "finalRiskLevel based on this."
+                ),
+                "summaries": health_context_notes[:5],
+            }
+        prompt = json.dumps(prompt_facts, ensure_ascii=False)
         result = self._generate(
             prompt,
             GeminiExplanation,

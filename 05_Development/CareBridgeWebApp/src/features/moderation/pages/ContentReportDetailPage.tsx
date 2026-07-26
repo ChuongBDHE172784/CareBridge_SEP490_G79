@@ -2,12 +2,14 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ModPortalSidebar from '../components/ModPortalSidebar';
 import ConfirmDialog from '../../../shared/components/ConfirmDialog';
-import { fetchModerationQueue, fetchRelatedReports, resolveReport, revertReport } from '../services/moderationApi';
-import type { ModerationQueueItem } from '../models/moderation';
+import { claimReport, fetchAiAssessment, fetchModerationQueue, fetchRelatedReports, releaseReport, resolveReport, revertReport } from '../services/moderationApi';
+import type { AiAssessment, ModerationQueueItem } from '../models/moderation';
 import type { RelatedReportItem } from '../models/moderation';
-import { formatReportReason, REPORT_STATUS_LABELS, TARGET_TYPE_LABELS, canEnforceAccount, canHideTarget } from '../models/moderation';
+import { formatReportReason, REPORT_SOURCE_LABELS, REPORT_STATUS_LABELS, TARGET_TYPE_LABELS, canEnforceAccount, canHideTarget } from '../models/moderation';
 import type { ResolutionOutcome } from '../models/moderation';
 import RelatedReportsCard from '../components/RelatedReportsCard';
+import AiAssessmentCard from '../components/AiAssessmentCard';
+import { useAuthStore } from '../../../shared/auth/authStore';
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
@@ -43,6 +45,9 @@ export default function ContentReportDetailPage() {
   const [revertTarget, setRevertTarget] = useState<ModerationQueueItem | null>(null);
   const [revertSubmitting, setRevertSubmitting] = useState(false);
   const [revertError, setRevertError] = useState('');
+  const currentUserId = useAuthStore((state) => state.user?.id ?? null);
+  const [assessment, setAssessment] = useState<AiAssessment | null>(null);
+  const [claimBusy, setClaimBusy] = useState(false);
 
   // A report can be PENDING, RESOLVED, or DISMISSED by the time this page is opened (e.g. from the
   // "Đã xử lý" tab) — the backend defaults `status` to PENDING when omitted, so all 3 must be
@@ -52,12 +57,14 @@ export default function ContentReportDetailPage() {
     setIsLoading(true);
     setError('');
     try {
-      const [pending, resolved, dismissed] = await Promise.all([
+      const [pending, inReview, resolved, dismissed] = await Promise.all([
         fetchModerationQueue({ status: 'PENDING', size: 50 }),
+        fetchModerationQueue({ status: 'IN_REVIEW', size: 50 }),
         fetchModerationQueue({ status: 'RESOLVED', size: 50 }),
         fetchModerationQueue({ status: 'DISMISSED', size: 50 }),
       ]);
-      const found = [...pending.content, ...resolved.content, ...dismissed.content].find((i) => i.id === reportId);
+      const found = [...pending.content, ...inReview.content, ...resolved.content, ...dismissed.content]
+        .find((i) => i.id === reportId);
       if (!found) setError('Không tìm thấy báo cáo này trong hàng đợi hiện tại.');
       setItem(found ?? null);
     } catch {
@@ -68,6 +75,50 @@ export default function ContentReportDetailPage() {
   }, [reportId]);
 
   useEffect(() => { loadItem(); }, [loadItem]);
+
+  // CB-MOD-IMP-016: latest AI assessment for this report (null = purely user-reported case)
+  useEffect(() => {
+    if (!reportId) return;
+    let active = true;
+    void fetchAiAssessment(reportId)
+      .then((result) => { if (active) setAssessment(result); })
+      .catch(() => { if (active) setAssessment(null); });
+    return () => { active = false; };
+  }, [reportId]);
+
+  const handleClaim = async () => {
+    if (!item) return;
+    setClaimBusy(true);
+    setActionError('');
+    try {
+      await claimReport(item.id);
+      await loadItem();
+    } catch (err: unknown) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setActionError(message || 'Không thể nhận xử lý báo cáo này (có thể đã có người nhận).');
+      await loadItem();
+    } finally {
+      setClaimBusy(false);
+    }
+  };
+
+  const handleRelease = async () => {
+    if (!item) return;
+    setClaimBusy(true);
+    setActionError('');
+    try {
+      await releaseReport(item.id);
+      await loadItem();
+    } catch (err: unknown) {
+      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
+      setActionError(message || 'Không thể trả lại báo cáo này.');
+    } finally {
+      setClaimBusy(false);
+    }
+  };
+
+  const claimedByMe = item?.status === 'IN_REVIEW' && item.assignedModeratorId === currentUserId;
+  const claimedByOther = item?.status === 'IN_REVIEW' && item.assignedModeratorId !== currentUserId;
 
   useEffect(() => {
     if (!reportId) return;
@@ -153,6 +204,12 @@ export default function ContentReportDetailPage() {
                   <span className="rounded-md bg-error-container px-2.5 py-1 text-xs font-semibold text-error">
                     {formatReportReason(item.reportReason)}
                   </span>
+                  {item.reportSource === 'AUTOMATED' && (
+                    <span className="inline-flex items-center gap-1 rounded-md bg-secondary-container px-2 py-0.5 text-xs font-semibold text-on-secondary-container">
+                      <span className="material-symbols-outlined text-sm leading-none">smart_toy</span>
+                      {REPORT_SOURCE_LABELS.AUTOMATED}
+                    </span>
+                  )}
                   <span className="text-xs text-outline">ID: #{item.id.slice(0, 8).toUpperCase()}</span>
                 </div>
                 <h1 className="portal-title">Chi tiết báo cáo</h1>
@@ -181,7 +238,11 @@ export default function ContentReportDetailPage() {
                     <p className="text-sm text-on-surface italic">"{formatReportReason(item.reportReason)}"</p>
                   </div>
                   <div className="flex justify-between items-center mt-4 text-xs text-outline">
-                    <span>Người báo cáo: Ẩn danh</span>
+                    <span>
+                      {item.reportSource === 'AUTOMATED' && !item.reporterUserId
+                        ? 'Nguồn: Hệ thống AI phát hiện (không có người báo cáo)'
+                        : 'Người báo cáo: Ẩn danh'}
+                    </span>
                     <span>Báo cáo lúc: {formatDateTime(item.reportedAt)}</span>
                   </div>
                 </div>
@@ -199,7 +260,37 @@ export default function ContentReportDetailPage() {
               </div>
 
               <div className="flex flex-col gap-4">
-                {item.status !== 'PENDING' ? (
+                {item.status === 'PENDING' && (
+                  <button
+                    type="button"
+                    disabled={claimBusy}
+                    onClick={handleClaim}
+                    className="flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary text-sm font-semibold text-on-primary disabled:opacity-60"
+                  >
+                    <span className="material-symbols-outlined text-lg">assignment_ind</span>
+                    {claimBusy ? 'Đang nhận...' : 'Nhận xử lý báo cáo này'}
+                  </button>
+                )}
+                {claimedByMe && (
+                  <button
+                    type="button"
+                    disabled={claimBusy}
+                    onClick={handleRelease}
+                    className="flex h-10 w-full items-center justify-center gap-2 rounded-md bg-surface-container-highest text-sm font-semibold text-on-surface disabled:opacity-60"
+                  >
+                    <span className="material-symbols-outlined text-lg">assignment_return</span>
+                    {claimBusy ? 'Đang trả...' : 'Trả lại hàng đợi'}
+                  </button>
+                )}
+                {claimedByOther ? (
+                  <div className="portal-card-padded">
+                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.05em] text-outline">Đang xem xét</p>
+                    <p className="m-0 text-sm text-on-surface-variant">
+                      Báo cáo này đang được kiểm duyệt viên khác xem xét
+                      {item.claimedAt ? ` (từ ${formatDateTime(item.claimedAt)})` : ''}. Bạn không thể xử lý cho đến khi họ trả lại hàng đợi.
+                    </p>
+                  </div>
+                ) : item.status !== 'PENDING' && item.status !== 'IN_REVIEW' ? (
                   <div className="portal-card-padded">
                     <p className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-3">
                       Đã xử lý
@@ -346,6 +437,8 @@ export default function ContentReportDetailPage() {
                   {actionError && <p className="text-error text-xs mt-2">{actionError}</p>}
                 </div>
                 )}
+
+                {assessment && <AiAssessmentCard assessment={assessment} />}
 
                 <RelatedReportsCard items={relatedReports} totalElements={relatedTotal} page={relatedPage} size={20} loading={relatedLoading} error={relatedError} onPageChange={setRelatedPage} />
               </div>

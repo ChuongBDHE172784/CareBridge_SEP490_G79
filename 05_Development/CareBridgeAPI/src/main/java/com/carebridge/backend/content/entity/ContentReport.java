@@ -60,6 +60,16 @@ public class ContentReport {
     @Column(name = "assigned_moderator_id", columnDefinition = "uuid")
     private UUID assignedModeratorId;
 
+    // CB-MOD-IMP-016: review priority (AI decision policy may raise it; users default NORMAL)
+    @Enumerated(EnumType.STRING)
+    @Column(name = "priority", nullable = false, length = 20)
+    @Builder.Default
+    private CasePriority priority = CasePriority.NORMAL;
+
+    // CB-MOD-IMP-016: set on claim (IN_REVIEW), cleared on release
+    @Column(name = "claimed_at")
+    private Instant claimedAt;
+
     @Column(name = "opened_at", nullable = false)
     private Instant createdAt;
 
@@ -68,6 +78,25 @@ public class ContentReport {
 
     @Column(name = "updated_at")
     private Instant updatedAt;
+
+    // CB-MOD-IMP-017: CURRENT (latest) moderator feedback on the linked AI assessment —
+    // consolidated from the dropped ai_assessment_feedback table. Full history is append-only
+    // in moderation_events (action_type = AI_FEEDBACK_SUBMITTED).
+    @Enumerated(EnumType.STRING)
+    @Column(name = "ai_feedback_decision", length = 20)
+    private com.carebridge.backend.aimoderation.entity.AiFeedbackVerdict aiFeedbackDecision;
+
+    @Column(name = "ai_feedback_reason", columnDefinition = "TEXT")
+    private String aiFeedbackReason;
+
+    @Column(name = "ai_feedback_by", columnDefinition = "uuid")
+    private UUID aiFeedbackBy;
+
+    @Column(name = "ai_feedback_at")
+    private Instant aiFeedbackAt;
+
+    @Column(name = "ai_feedback_assessment_id", columnDefinition = "uuid")
+    private UUID aiFeedbackAssessmentId;
 
     // CB-MOD-IMP-015: most recent revert-to-PENDING event. resolvedAt/assignedModeratorId are
     // deliberately left untouched by revert (ADR-005) — these two fields are the only trace of it.
@@ -85,6 +114,9 @@ public class ContentReport {
         }
         if (updatedAt == null) {
             updatedAt = now;
+        }
+        if (priority == null) {
+            priority = CasePriority.NORMAL;
         }
     }
 
