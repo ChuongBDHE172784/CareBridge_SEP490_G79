@@ -111,10 +111,15 @@ class _MyCareGroupsScreenState extends State<MyCareGroupsScreen> {
     try {
       setState(() => _loading = true);
       await _service.joinGroupByCode(code);
-      await _load();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã tham gia nhóm thành công!')),
+        const SnackBar(
+          content: Text(
+            'Yêu cầu đã được gửi!\nVui lòng chờ Mother của nhóm duyệt.',
+          ),
+          duration: Duration(seconds: 4),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     } catch (e) {
       if (!mounted) return;

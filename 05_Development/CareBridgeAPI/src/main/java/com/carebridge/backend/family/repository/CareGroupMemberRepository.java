@@ -37,6 +37,9 @@ public interface CareGroupMemberRepository extends JpaRepository<CareGroupMember
 
     Optional<CareGroupMember> findByIdAndCareGroupId(UUID memberId, UUID careGroupId);
 
+    /** Self-join requests: PENDING members who have no invite token (they joined by code, not invited by Mother). */
+    List<CareGroupMember> findByCareGroupIdAndInviteStatusAndInviteTokenIsNull(UUID careGroupId, InviteStatus status);
+
     /**
      * UC-83 (ADR-FAM-008): single-use conditional accept.
      * Returns 1 if the row was PENDING and was transitioned; 0 if already in a non-PENDING state (race lost).
