@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -17,11 +18,15 @@ class JourneySetupScreen extends StatefulWidget {
     this.journeyId,
     this.isEditMode = false,
     this.isPrePregnancyTransition = false,
+    this.service,
+    this.refreshSession,
   });
 
   final String? journeyId;
   final bool isEditMode;
   final bool isPrePregnancyTransition;
+  final JourneyService? service;
+  final Future<void> Function()? refreshSession;
 
   @override
   State<JourneySetupScreen> createState() => _JourneySetupScreenState();
@@ -51,7 +56,7 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
   static const _errorBg = Color(0xFFFFDAD6);
   static const _errorText = Color(0xFF93000A);
 
-  final _service = JourneyService();
+  late final JourneyService _service;
   final List<_SetupStep> _history = [];
   final ScrollController _scrollController = ScrollController();
 
@@ -67,6 +72,12 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
   bool _loading = false;
   bool _allowRoutePop = false;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _service = widget.service ?? JourneyService();
+  }
 
   String get _dateSource => _selectedMethod == _DatingMethod.dueDate
       ? 'CLINICIAN_CONFIRMED'
@@ -326,24 +337,14 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
           ),
         );
       }
-      await AuthService.instance.refreshSession();
-      if (!mounted) return;
-      if (isUpdate) {
-        context.pop();
-      } else {
-        context.go('/');
-      }
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
         _step = _SetupStep.dueDateResult;
         _loading = false;
-        _error = isUpdate
-            ? 'Không thể cập nhật hành trình. Vui lòng thử lại.'
-            : e.statusCode == 409
-            ? 'Bạn đã có một hành trình đang hoạt động.'
-            : 'Không thể tạo hành trình. Vui lòng thử lại.';
+        _error = _apiErrorMessage(e, isUpdate: isUpdate);
       });
+      return;
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -353,6 +354,57 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
             ? 'Lỗi kết nối. Không thể cập nhật hành trình.'
             : 'Lỗi kết nối. Vui lòng kiểm tra đường truyền.';
       });
+      return;
+    }
+
+    try {
+      final refreshSession = widget.refreshSession;
+      if (refreshSession == null) {
+        await AuthService.instance.refreshSession();
+      } else {
+        await refreshSession();
+      }
+    } catch (error) {
+      debugPrint(
+        '[JourneySetup] Journey mutation committed; session refresh will '
+        'reconcile later (${error.runtimeType}).',
+      );
+    }
+    if (!mounted) return;
+    if (isUpdate) {
+      context.pop();
+    } else {
+      context.go('/');
+    }
+  }
+
+  String _apiErrorMessage(ApiException error, {required bool isUpdate}) {
+    final errorCode = _apiErrorCode(error.message);
+    if (error.statusCode == 409 && errorCode == 'LIFECYCLE_CONSENT_INVALID') {
+      return 'Quyền đồng ý cho hành trình này không còn hiệu lực. '
+          'Vui lòng xác nhận lại quyền đồng ý rồi thử lại.';
+    }
+    if (error.statusCode == 409 && errorCode == 'LIFECYCLE_CONSENT_REQUIRED') {
+      return 'Bạn cần xác nhận quyền đồng ý cho hành trình trước khi tiếp tục.';
+    }
+    if (isUpdate) {
+      return 'Không thể cập nhật hành trình. Vui lòng thử lại.';
+    }
+    return error.statusCode == 409
+        ? 'Bạn đã có một hành trình đang hoạt động.'
+        : 'Không thể tạo hành trình. Vui lòng thử lại.';
+  }
+
+  String? _apiErrorCode(String body) {
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is! Map<String, dynamic>) return null;
+      final error = decoded['error'];
+      if (error is String) return error;
+      if (error is Map<String, dynamic>) return error['code']?.toString();
+      return decoded['code']?.toString();
+    } catch (_) {
+      return null;
     }
   }
 
@@ -925,25 +977,32 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (_error != null) ...[
-              Container(
-                width: double.infinity,
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: _errorBg,
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: Text(
-                  _error!,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 14,
-                    color: _errorText,
-                    height: 1.4,
+              Semantics(
+                container: true,
+                liveRegion: true,
+                label: _error,
+                child: ExcludeSemantics(
+                  child: Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _errorBg,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Text(
+                      _error!,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 14,
+                        color: _errorText,
+                        height: 1.4,
+                      ),
+                    ),
                   ),
                 ),
               ),
