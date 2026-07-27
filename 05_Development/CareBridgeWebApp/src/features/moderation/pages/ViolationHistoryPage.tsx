@@ -97,150 +97,233 @@ export default function ViolationHistoryPage() {
   return (
     <div className="portal-page">
       <ModPortalSidebar />
-      <main className="portal-content">
-        <div className="portal-contained">
-          <div className="portal-header">
+      <main className="portal-content font-sans">
+        <div className="p-8">
+          {/* Header */}
+          <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <p className="portal-eyebrow">Kiểm duyệt</p>
-              <h1 className="portal-title">Lịch sử vi phạm</h1>
-              <p className="portal-subtitle max-w-3xl">
+              <h1 className="text-[26px] font-bold text-on-surface m-0">Lịch sử vi phạm tài khoản</h1>
+              <p className="text-on-surface-variant text-sm mt-1">
                 Theo dõi cảnh cáo, hạn chế, đình chỉ và các trường hợp chuyển cấp để nắm tình trạng kỷ luật tài khoản.
               </p>
             </div>
-            <div className="flex gap-2">
-              <button type="button" onClick={() => void load()} className="portal-secondary-button" disabled={loading}>
-                <span className="material-symbols-outlined text-base">refresh</span>
+            <div className="flex items-center gap-2 self-start md:self-auto">
+              <button
+                type="button"
+                onClick={() => void load()}
+                disabled={loading}
+                className="inline-flex items-center gap-2 py-2.5 px-5 rounded-full bg-surface border border-outline-variant text-on-surface-variant text-sm font-semibold cursor-pointer hover:bg-surface-container-low disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-lg">refresh</span>
                 Làm mới
               </button>
-              <button type="button" onClick={() => navigate(-1)} className="portal-secondary-button">
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                className="inline-flex items-center gap-2 py-2.5 px-5 rounded-full bg-surface border border-outline-variant text-on-surface-variant text-sm font-semibold cursor-pointer hover:bg-surface-container-low"
+              >
                 <span className="material-symbols-outlined text-lg">arrow_back</span>
                 Quay lại
               </button>
             </div>
           </div>
 
-          <section className="mb-5 grid gap-3 md:grid-cols-4">
+          {/* Stats Bar */}
+          <div className="mb-6 grid gap-4 md:grid-cols-4">
             {[
               { label: 'Tổng bản ghi', value: totalElements, icon: 'database' },
               { label: 'Đang hiệu lực', value: stats.active, icon: 'verified' },
               { label: 'Hết hiệu lực', value: stats.expired, icon: 'event_busy' },
               { label: 'Chuyển cấp', value: stats.escalated, icon: 'upgrade' },
             ].map((stat) => (
-              <div key={stat.label} className="portal-card-padded">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs font-semibold text-on-surface-variant">{stat.label}</span>
-                  <span className="material-symbols-outlined text-[18px] text-outline">{stat.icon}</span>
+              <div key={stat.label} className="bg-surface rounded-2xl p-5 shadow-sm border border-surface-container-highest flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-semibold text-outline uppercase tracking-wider block mb-1">{stat.label}</span>
+                  <p className="text-2xl font-bold text-on-surface m-0">{stat.value}</p>
                 </div>
-                <p className="portal-metric mt-2">{stat.value}</p>
+                <span className="material-symbols-outlined text-3xl text-primary/70">{stat.icon}</span>
               </div>
             ))}
-          </section>
+          </div>
 
-          <section className="portal-card-padded mb-4">
-            <div className="grid gap-3 lg:grid-cols-[1.2fr_0.8fr_0.8fr_0.5fr_auto] lg:items-end">
-              <label>
-                <span className="portal-label">Tìm kiếm</span>
-                <div className="relative">
-                  <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-outline">search</span>
-                  <input value={search} onChange={(event) => setSearch(event.target.value)} className="portal-field w-full pl-9" placeholder="Tìm tài khoản, lý do, người xử lý..." />
-                </div>
-              </label>
-              <label>
-                <span className="portal-label">Hành động</span>
-                <select value={actionFilter} onChange={(event) => setActionFilter(event.target.value as ActionFilter)} className="portal-field w-full">
-                  <option value="ALL">Tất cả</option>
+          {/* Action & Filter Bar */}
+          <div className="bg-surface rounded-2xl p-4 shadow-sm border border-surface-container-highest mb-6">
+            <div className="flex flex-col xl:flex-row items-center gap-3">
+              <div className="flex-1 w-full relative">
+                <span className="material-symbols-outlined text-outline absolute left-[14px] top-1/2 -translate-y-1/2 text-xl">search</span>
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Tìm tài khoản, lý do, người xử lý..."
+                  className="w-full py-2.5 pr-[14px] pl-[42px] rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface outline-none font-sans"
+                />
+              </div>
+
+              <div className="flex flex-wrap md:flex-nowrap items-center gap-2 w-full xl:w-auto">
+                <select
+                  value={actionFilter}
+                  onChange={(event) => setActionFilter(event.target.value as ActionFilter)}
+                  className="py-2.5 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface-variant cursor-pointer font-sans"
+                >
+                  <option value="ALL">Tất cả hành động</option>
                   <option value="WARN">Cảnh cáo</option>
                   <option value="SUSPEND">Đình chỉ</option>
                   <option value="RESTRICT">Hạn chế đăng</option>
                   <option value="ESCALATE">Chuyển cấp</option>
                 </select>
-              </label>
-              <label>
-                <span className="portal-label">Trạng thái</span>
-                <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as StatusFilter)} className="portal-field w-full">
-                  <option value="ALL">Tất cả</option>
+
+                <select
+                  value={statusFilter}
+                  onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}
+                  className="py-2.5 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface-variant cursor-pointer font-sans"
+                >
+                  <option value="ALL">Tất cả trạng thái</option>
                   <option value="ACTIVE">Đang hiệu lực</option>
                   <option value="INDEFINITE">Không thời hạn</option>
                   <option value="EXPIRED">Đã hết hiệu lực</option>
                   <option value="ESCALATED">Đã chuyển cấp</option>
                 </select>
-              </label>
-              <label>
-                <span className="portal-label">Mỗi trang</span>
-                <select value={pageSize} onChange={(event) => setPageSize(Number(event.target.value) as typeof pageSize)} className="portal-field w-full">
-                  {PAGE_SIZE_OPTIONS.map((size) => <option key={size} value={size}>{size}</option>)}
-                </select>
-              </label>
-              <button type="button" onClick={resetFilters} className="portal-secondary-button">
-                <span className="material-symbols-outlined text-base">filter_alt_off</span>
-                Xóa lọc
-              </button>
-            </div>
-          </section>
 
-          {loading ? (
-            <div className="portal-empty">Đang tải lịch sử vi phạm...</div>
-          ) : error ? (
-            <div className="portal-error text-center">
-              <p className="text-sm text-error">{error}</p>
-              <button type="button" onClick={() => void load()} className="mt-3 rounded-md bg-error px-4 py-2 text-sm font-semibold text-on-error">Thử lại</button>
-            </div>
-          ) : items.length === 0 ? (
-            <div className="portal-card-padded text-center">
-              <span className="material-symbols-outlined text-5xl text-outline">gavel</span>
-              <h2 className="mt-4 text-base font-semibold text-on-surface">Chưa có dữ liệu lịch sử vi phạm</h2>
-              <p className="mx-auto mt-2 max-w-xl text-sm text-on-surface-variant">Chưa ghi nhận hành động kỷ luật nào đối với tài khoản.</p>
-            </div>
-          ) : (
-            <section className="portal-table-card">
-              <div className="flex flex-col gap-2 border-b border-outline-variant/70 p-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <h2 className="text-sm font-semibold text-on-surface">Bảng lịch sử kỷ luật</h2>
-                  <p className="mt-1 text-xs text-on-surface-variant">
-                    {filteredItems.length} mục phù hợp trong trang dữ liệu hiện tại. Tổng hệ thống: {totalElements} bản ghi.
-                  </p>
-                </div>
-                <span className="rounded-md bg-surface-container-low px-2.5 py-1 text-xs font-semibold text-on-surface-variant">
-                  Trang {page + 1} / {totalPages}
-                </span>
+                <select
+                  value={pageSize}
+                  onChange={(event) => setPageSize(Number(event.target.value) as typeof pageSize)}
+                  className="py-2.5 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface-variant cursor-pointer font-sans"
+                >
+                  {PAGE_SIZE_OPTIONS.map((size) => (
+                    <option key={size} value={size}>{size} / trang</option>
+                  ))}
+                </select>
+
+                {(search || actionFilter !== 'ALL' || statusFilter !== 'ALL') && (
+                  <button
+                    type="button"
+                    onClick={resetFilters}
+                    className="py-2.5 px-4 rounded-full border border-outline-variant bg-surface text-xs font-semibold text-on-surface-variant cursor-pointer hover:bg-surface-container-low flex items-center gap-1 whitespace-nowrap"
+                  >
+                    <span className="material-symbols-outlined text-base">filter_alt_off</span>
+                    Xóa lọc
+                  </button>
+                )}
               </div>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[1080px]">
-                  <thead>
-                    <tr>
-                      {['Tài khoản', 'Hành động', 'Lý do', 'Trạng thái hiệu lực', 'Người xử lý', 'Thời gian'].map((heading) => <th key={heading}>{heading}</th>)}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredItems.map((item) => {
-                      const status = getEnforcementStatus(item);
-                      return (
-                        <tr key={item.actionId}>
-                          <td>
-                            <div className="font-semibold text-on-surface">{item.targetUserName}</div>
-                            <div className="mt-1 text-[11px] text-outline">{item.targetUserId}</div>
+            </div>
+          </div>
+
+          {/* Table Container */}
+          <div className="bg-surface rounded-2xl p-6 shadow-md border border-surface-container-highest">
+            {loading ? (
+              <div className="py-12 text-center text-outline">Đang tải lịch sử vi phạm...</div>
+            ) : error ? (
+              <div className="py-12 text-center text-error">
+                <p className="text-sm">{error}</p>
+                <button
+                  type="button"
+                  onClick={() => void load()}
+                  className="mt-3 py-2 px-5 rounded-full bg-error text-on-error border-0 text-xs font-semibold cursor-pointer hover:bg-error/90"
+                >
+                  Thử lại
+                </button>
+              </div>
+            ) : items.length === 0 ? (
+              <div className="py-12 text-center">
+                <span className="material-symbols-outlined text-5xl text-outline mb-2">gavel</span>
+                <h2 className="text-base font-semibold text-on-surface m-0">Chưa có dữ liệu lịch sử vi phạm</h2>
+                <p className="mt-1 text-sm text-on-surface-variant">Chưa ghi nhận hành động kỷ luật nào đối với tài khoản.</p>
+              </div>
+            ) : (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="border-b-2 border-surface-container-highest text-left">
+                        {['TÀI KHOẢN', 'HÀNH ĐỘNG', 'LÝ DO', 'TRẠNG THÁI HIỆU LỰC', 'NGƯỜI XỬ LÝ', 'THỜI GIAN'].map((heading) => (
+                          <th key={heading} className="py-3 px-2 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">{heading}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredItems.map((item) => {
+                        const status = getEnforcementStatus(item);
+                        return (
+                          <tr key={item.actionId} className="border-b border-surface-container-highest hover:bg-surface-bright">
+                            <td className="py-3.5 px-2">
+                              <div className="font-semibold text-sm text-on-surface">{item.targetUserName}</div>
+                              <div className="text-xs text-outline mt-0.5">{item.targetUserId}</div>
+                            </td>
+                            <td className="py-3.5 px-2">
+                              <span className="inline-flex items-center py-1 px-3 rounded-full bg-[#FCE8E6] text-[#C5221F] text-xs font-semibold">
+                                {ACTION_TYPE_LABELS[item.actionType]}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-2 max-w-[320px] text-sm text-on-surface-variant">
+                              {item.reason}
+                            </td>
+                            <td className="py-3.5 px-2">
+                              <span className={`inline-flex items-center py-1 px-3 rounded-full text-xs font-semibold ${
+                                status.muted
+                                  ? 'bg-surface-container-high text-on-surface-variant'
+                                  : 'bg-[#E6F4EA] text-[#137333]'
+                              }`}>
+                                {status.label}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-2 text-[13px] text-on-surface-variant whitespace-nowrap">{item.moderatorName}</td>
+                            <td className="py-3.5 px-2 text-[13px] text-outline whitespace-nowrap">{formatDateTime(item.actionAt)}</td>
+                          </tr>
+                        );
+                      })}
+                      {filteredItems.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="py-12 text-center text-outline">
+                            Không có bản ghi nào phù hợp bộ lọc trong trang hiện tại.
                           </td>
-                          <td><span className="rounded-md bg-error-container px-2.5 py-1 text-xs font-semibold text-error">{ACTION_TYPE_LABELS[item.actionType]}</span></td>
-                          <td className="max-w-[320px] text-on-surface-variant">{item.reason}</td>
-                          <td className={status.muted ? 'text-outline' : 'text-on-surface-variant'}>{status.label}</td>
-                          <td className="text-on-surface-variant">{item.moderatorName}</td>
-                          <td className="whitespace-nowrap text-on-surface-variant">{formatDateTime(item.actionAt)}</td>
                         </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination */}
+                <div className="flex justify-between items-center mt-5 pt-4 border-t border-surface-container-highest">
+                  <span className="text-[13px] text-outline">
+                    Hiển thị trang {page + 1} / {totalPages} ({totalElements} tổng số bản ghi)
+                  </span>
+                  <div className="flex gap-1">
+                    <button
+                      type="button"
+                      disabled={page === 0}
+                      onClick={() => setPage((current) => Math.max(0, current - 1))}
+                      className={`w-9 h-9 rounded-full border border-outline-variant bg-surface flex items-center justify-center ${page === 0 ? 'opacity-40 cursor-default' : 'cursor-pointer'}`}
+                    >
+                      <span className="material-symbols-outlined text-primary text-lg">chevron_left</span>
+                    </button>
+                    {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                      const startPage = Math.max(0, Math.min(page - 2, totalPages - 5));
+                      const p = startPage + i;
+                      if (p >= totalPages) return null;
+                      return (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setPage(p)}
+                          className={`w-9 h-9 rounded-full text-sm font-semibold cursor-pointer flex items-center justify-center ${page === p ? 'border-0 bg-primary text-on-primary' : 'border border-outline-variant bg-surface text-on-surface-variant'}`}
+                        >
+                          {p + 1}
+                        </button>
                       );
                     })}
-                    {filteredItems.length === 0 && <tr><td colSpan={6} className="text-center text-outline">Không có bản ghi nào phù hợp bộ lọc trong trang hiện tại.</td></tr>}
-                  </tbody>
-                </table>
-              </div>
-              <div className="flex flex-col gap-3 border-t border-outline-variant/70 p-4 md:flex-row md:items-center md:justify-between">
-                <span className="text-xs text-on-surface-variant">Đang xem tối đa {pageSize} bản ghi mỗi trang.</span>
-                <div className="flex gap-2">
-                  <button type="button" disabled={page === 0} onClick={() => setPage((current) => Math.max(0, current - 1))} className="portal-secondary-button">Trước</button>
-                  <button type="button" disabled={!hasNext} onClick={() => setPage((current) => current + 1)} className="portal-secondary-button">Sau</button>
+                    <button
+                      type="button"
+                      disabled={!hasNext}
+                      onClick={() => setPage((current) => current + 1)}
+                      className={`w-9 h-9 rounded-full border border-outline-variant bg-surface flex items-center justify-center ${!hasNext ? 'opacity-40 cursor-default' : 'cursor-pointer'}`}
+                    >
+                      <span className="material-symbols-outlined text-primary text-lg">chevron_right</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </section>
-          )}
+              </>
+            )}
+          </div>
         </div>
       </main>
     </div>
