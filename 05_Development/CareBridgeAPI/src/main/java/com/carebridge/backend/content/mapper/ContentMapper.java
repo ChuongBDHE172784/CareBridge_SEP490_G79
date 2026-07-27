@@ -61,8 +61,10 @@ public class ContentMapper {
                 .id(item.getId())
                 .type(item.getType())
                 .title(item.getTitle())
+                .summary(item.getSummary())
                 .stage(item.getStage())
                 .topicId(item.getTopicId())
+                .tagIds(item.getTagIds() == null ? List.of() : List.copyOf(item.getTagIds()))
                 .publishedAt(item.getPublishedAt())
                 .build();
     }

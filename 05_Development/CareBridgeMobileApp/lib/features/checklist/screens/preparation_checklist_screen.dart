@@ -169,7 +169,7 @@ class _PreparationChecklistScreenState
                   else if (_items.isEmpty)
                     const _EmptyState()
                   else
-                    ...ChecklistCategory.values.map(_buildCategorySection),
+                    ..._buildGroupedSections(),
                   const SizedBox(height: 20),
                   _buildAddItemForm(),
                 ],
@@ -207,6 +207,54 @@ class _PreparationChecklistScreenState
       ),
     );
   }
+
+  List<Widget> _buildGroupedSections() {
+    final sections = <Widget>[];
+    final imported = _items.where((item) => item.templateName != null).toList();
+    final names = imported.map((item) => item.templateName!).toSet();
+    for (final name in names) {
+      final items = imported
+          .where((item) => item.templateName == name)
+          .toList();
+      sections.add(_buildNamedSection(name, items));
+    }
+    final personal = _items.where((item) => item.templateName == null).toList();
+    for (final category in ChecklistCategory.values) {
+      final items = personal
+          .where((item) => item.category == category)
+          .toList();
+      if (items.isNotEmpty)
+        sections.add(_buildNamedSection(category.label, items));
+    }
+    return sections;
+  }
+
+  Widget _buildNamedSection(String title, List<UserChecklistItem> items) =>
+      Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: _onSurface,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...items.map(
+              (item) => _ChecklistTile(
+                item: item,
+                busy: _togglingIds.contains(item.itemId),
+                onChanged: () => _toggle(item),
+              ),
+            ),
+          ],
+        ),
+      );
 
   Widget _buildAddItemForm() {
     return Container(

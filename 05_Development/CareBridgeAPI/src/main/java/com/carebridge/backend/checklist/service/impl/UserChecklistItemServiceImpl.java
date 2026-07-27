@@ -139,7 +139,7 @@ public class UserChecklistItemServiceImpl implements IUserChecklistItemService {
                 auditService.log(AuditAction.CHECKLIST_ITEM_ADDED, userId,
                         "UserChecklistItem", persisted.getId().toString(), "imported");
             }
-            return toResponse(persisted);
+            return toResponse(persisted, template);
         }).toList();
     }
 
@@ -156,9 +156,12 @@ public class UserChecklistItemServiceImpl implements IUserChecklistItemService {
     @Override
     @Transactional(readOnly = true)
     public List<ChecklistItemResponse> listItems(UUID userId, UUID journeyId, UUID babyId) {
-        return checklistRepository.findByOwnerFiltered(userId, journeyId, babyId)
-                .stream()
-                .map(this::toResponse)
+        List<UserChecklistItem> items = checklistRepository.findByOwnerFiltered(userId, journeyId, babyId);
+        Map<UUID, ChecklistItem> templates = templateItemRepository.findAllWithTemplateByIdIn(items.stream()
+                        .map(UserChecklistItem::getTemplateItemId).filter(java.util.Objects::nonNull).toList())
+                .stream().collect(Collectors.toMap(ChecklistItem::getId, Function.identity()));
+        return items.stream()
+                .map(item -> toResponse(item, templates.get(item.getTemplateItemId())))
                 .toList();
     }
 
@@ -170,7 +173,7 @@ public class UserChecklistItemServiceImpl implements IUserChecklistItemService {
         var saved = checklistRepository.save(item);
         auditService.log(AuditAction.CHECKLIST_ITEM_COMPLETED, userId,
                 "UserChecklistItem", itemId.toString(), String.valueOf(saved.isCompleted()));
-        return toResponse(saved);
+        return toResponse(saved, templateFor(saved));
     }
 
     @Override
@@ -192,7 +195,7 @@ public class UserChecklistItemServiceImpl implements IUserChecklistItemService {
         var saved = checklistRepository.save(item);
         auditService.log(AuditAction.CHECKLIST_ITEM_UPDATED, userId,
                 "UserChecklistItem", itemId.toString(), "updated");
-        return toResponse(saved);
+        return toResponse(saved, templateFor(saved));
     }
 
     @Override
@@ -212,13 +215,25 @@ public class UserChecklistItemServiceImpl implements IUserChecklistItemService {
                         "CHECKLIST-005: Checklist item not found"));
     }
 
+    private ChecklistItem templateFor(UserChecklistItem item) {
+        if (item.getTemplateItemId() == null) return null;
+        return templateItemRepository.findAllWithTemplateByIdIn(List.of(item.getTemplateItemId()))
+                .stream().findFirst().orElse(null);
+    }
+
     private ChecklistItemResponse toResponse(UserChecklistItem item) {
+        return toResponse(item, templateFor(item));
+    }
+
+    private ChecklistItemResponse toResponse(UserChecklistItem item, ChecklistItem template) {
         return new ChecklistItemResponse(
                 item.getId(),
                 item.getOwnerUserId(),
                 item.getJourneyId(),
                 item.getBabyId(),
                 item.getTemplateItemId(),
+                template == null || template.getTemplate() == null ? null : template.getTemplate().getName(),
+                template == null ? null : template.getIsRequired(),
                 item.getItemText(),
                 item.getCategory() != null ? item.getCategory().name() : null,
                 item.isCompleted(),

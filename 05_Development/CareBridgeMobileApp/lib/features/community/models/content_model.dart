@@ -74,16 +74,20 @@ class ContentListItem {
   final String id;
   final String type;
   final String title;
+  final String? summary;
   final String stage;
   final String topicId;
+  final List<String> tagIds;
   final String? publishedAt;
 
   ContentListItem({
     required this.id,
     required this.type,
     required this.title,
+    this.summary,
     required this.stage,
     required this.topicId,
+    this.tagIds = const [],
     this.publishedAt,
   });
 
@@ -92,8 +96,12 @@ class ContentListItem {
         id: json['id'] as String,
         type: json['type'] as String? ?? 'ARTICLE',
         title: json['title'] as String,
+        summary: json['summary'] as String?,
         stage: json['stage'] as String? ?? '',
         topicId: json['topicId'] as String? ?? '',
+        tagIds: (json['tagIds'] as List? ?? const [])
+            .whereType<String>()
+            .toList(growable: false),
         publishedAt: json['publishedAt'] as String?,
       );
 }

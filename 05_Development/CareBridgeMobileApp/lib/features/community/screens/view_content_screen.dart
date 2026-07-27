@@ -12,7 +12,6 @@ import '../services/community_service.dart';
 import '../services/content_service.dart';
 import '../widgets/verified_content_body.dart';
 import 'verified_content_detail_screen.dart';
-import 'verified_content_search_screen.dart';
 
 /// CB-223 — View Content and Checklist (UC-82)
 /// Displays curated articles, FAQs, and checklists filtered by pregnancy
@@ -20,7 +19,7 @@ import 'verified_content_search_screen.dart';
 class ViewContentScreen extends StatefulWidget {
   const ViewContentScreen({
     super.key,
-    this.mode = ContentBrowseMode.generic,
+    this.mode = ContentBrowseMode.lifecycle,
     this.contentService,
     this.communityService,
   });
@@ -74,14 +73,18 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
   int _selectedTypeIndex = 0; // 0=All, 1=Article, 2=FAQ, 3=Checklist
   int _selectedStageIndex = -1;
   JourneyDashboard? _dashboard;
+  List<CommunityTopic> _categories = [];
   List<CommunityTopic> _topics = [];
+  List<CommunityTopic> _tags = [];
   List<ContentListItem> _articles = [];
   List<ContentListItem> _faqs = [];
   List<ChecklistTemplate> _checklists = [];
   List<UserChecklistItem> _userChecklistItems = [];
   final Set<String> _importingChecklistIds = {};
   String _searchKeyword = '';
+  String? _selectedCategoryId;
   String? _selectedTopicId;
+  final Set<String> _selectedTagIds = <String>{};
   String? _featuredImageUrl;
   String? _featuredImageContentId;
 
@@ -93,15 +96,6 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
     'POSTPARTUM',
     'BABY_CARE',
   ];
-
-  static const _topicIcons = <String, IconData>{
-    'restaurant': Icons.restaurant,
-    'bedtime': Icons.bedtime,
-    'vaccines': Icons.vaccines,
-    'psychology': Icons.psychology,
-    'health_and_safety': Icons.health_and_safety,
-    'topic': Icons.topic,
-  };
 
   @override
   void initState() {
@@ -155,14 +149,36 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
     final keyword = _searchKeyword.trim().toLowerCase();
     return items
         .where((item) {
+          final topic = _topics
+              .where((entry) => entry.id == item.topicId)
+              .firstOrNull;
           final matchesTopic =
               _selectedTopicId == null || item.topicId == _selectedTopicId;
+          final matchesCategory =
+              _selectedCategoryId == null ||
+              topic?.parentId == _selectedCategoryId;
+          final matchesTags =
+              _selectedTagIds.isEmpty ||
+              item.tagIds.any(_selectedTagIds.contains);
+          final tagNames = item.tagIds
+              .map(_tagNameForId)
+              .whereType<String>()
+              .join(' ');
           final matchesKeyword =
-              keyword.isEmpty || item.title.toLowerCase().contains(keyword);
-          return matchesTopic && matchesKeyword;
+              keyword.isEmpty ||
+              '${item.title} ${item.summary ?? ''} $tagNames'
+                  .toLowerCase()
+                  .contains(keyword);
+          return matchesTopic &&
+              matchesCategory &&
+              matchesTags &&
+              matchesKeyword;
         })
         .toList(growable: false);
   }
+
+  String? _tagNameForId(String id) =>
+      _tags.where((tag) => tag.id == id).firstOrNull?.name;
 
   Future<(T?, bool)> _capture<T>(Future<T> request) async {
     try {
@@ -181,7 +197,9 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
       _loadError = null;
       _resolvedStage = null;
       if (widget.mode == ContentBrowseMode.lifecycle) {
+        _categories = [];
         _topics = [];
+        _tags = [];
         _articles = [];
         _faqs = [];
         _checklists = [];
@@ -190,6 +208,13 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
     });
     try {
       if (widget.mode == ContentBrowseMode.lifecycle) {
+        final categoriesFuture = _capture(
+          _communityService.getTopics(type: 'CATEGORY'),
+        );
+        final topicsFuture = _capture(
+          _communityService.getTopics(type: 'TOPIC'),
+        );
+        final tagsFuture = _capture(_communityService.getTopics(type: 'TAG'));
         final results = await Future.wait<Object>([
           _contentService.getAllLifecycleContent(
             shouldContinue: () => _canApply(generation, accountId),
@@ -197,6 +222,10 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
           _contentService.getLifecycleChecklists(),
         ]);
         if (!_canApply(generation, accountId)) return;
+
+        final categoriesResult = await categoriesFuture;
+        final topicsResult = await topicsFuture;
+        final tagsResult = await tagsFuture;
 
         final content = results[0] as LifecycleEnvelope<List<ContentListItem>>;
         final checklists =
@@ -214,6 +243,9 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
             .toList(growable: false);
         setState(() {
           _resolvedStage = content.stage;
+          _categories = categoriesResult.$1 ?? <CommunityTopic>[];
+          _topics = topicsResult.$1 ?? <CommunityTopic>[];
+          _tags = tagsResult.$1 ?? <CommunityTopic>[];
           _articles = articles;
           _faqs = content.payload
               .where((item) => item.type == 'FAQ')
@@ -243,7 +275,11 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
           ? journeyStageIndex
           : _selectedStageIndex;
       final stage = stageIndex >= 0 ? _stageValues[stageIndex] : null;
-      final topicsFuture = _capture(_communityService.getTopics());
+      final categoriesFuture = _capture(
+        _communityService.getTopics(type: 'CATEGORY'),
+      );
+      final topicsFuture = _capture(_communityService.getTopics(type: 'TOPIC'));
+      final tagsFuture = _capture(_communityService.getTopics(type: 'TAG'));
       final articlesFuture = _capture(
         _contentService.getAllContent(type: 'ARTICLE', stage: stage),
       );
@@ -258,6 +294,8 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
           ? Future.value((<UserChecklistItem>[], false))
           : _capture(_userChecklistService.listItems(journeyId: journeyId));
       final topicsResult = await topicsFuture;
+      final categoriesResult = await categoriesFuture;
+      final tagsResult = await tagsFuture;
       final articlesResult = await articlesFuture;
       final faqsResult = await faqsFuture;
       final checklistsResult = await checklistsFuture;
@@ -268,7 +306,9 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
           _dashboard = dashboard;
           _journeyLoadFailed = journeyLoadFailed;
           _selectedStageIndex = stageIndex;
+          _categories = categoriesResult.$1 ?? <CommunityTopic>[];
           _topics = topicsResult.$1 ?? <CommunityTopic>[];
+          _tags = tagsResult.$1 ?? <CommunityTopic>[];
           _articles = articles;
           _faqs = faqsResult.$1 ?? <ContentListItem>[];
           _checklists = checklistsResult.$1 ?? <ChecklistTemplate>[];
@@ -289,6 +329,8 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
       if (_canApply(generation, accountId)) {
         setState(() {
           _topics = [];
+          _categories = [];
+          _tags = [];
           _articles = [];
           _faqs = [];
           _checklists = [];
@@ -367,10 +409,7 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
               SliverToBoxAdapter(child: _buildTypeTabs()),
               if (widget.mode == ContentBrowseMode.generic)
                 SliverToBoxAdapter(child: _buildStageChips()),
-              if (widget.mode == ContentBrowseMode.generic)
-                SliverToBoxAdapter(child: _buildSearchInput())
-              else
-                SliverToBoxAdapter(child: _buildGenericBrowseEntry()),
+              SliverToBoxAdapter(child: _buildSearchInput()),
               SliverToBoxAdapter(child: _buildTopicRow()),
               if (_loading)
                 const SliverFillRemaining(
@@ -394,7 +433,6 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                   SliverToBoxAdapter(child: _buildFaqSection()),
                 if (_selectedTypeIndex == 0 || _selectedTypeIndex == 3)
                   SliverToBoxAdapter(child: _buildChecklistSection()),
-                SliverToBoxAdapter(child: _buildSafetyDisclaimer()),
               ],
               const SliverToBoxAdapter(child: SizedBox(height: 32)),
             ],
@@ -701,37 +739,6 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
     );
   }
 
-  Widget _buildGenericBrowseEntry() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-      child: Semantics(
-        button: true,
-        label: 'Mở tìm kiếm nội dung theo lựa chọn của bạn',
-        child: OutlinedButton.icon(
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) =>
-                  VerifiedContentSearchScreen(contentService: _contentService),
-            ),
-          ),
-          icon: const Icon(Icons.manage_search_rounded),
-          label: const Text('Khám phá nội dung theo lựa chọn'),
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size(double.infinity, 48),
-            foregroundColor: _primary,
-            backgroundColor: Colors.white,
-            side: const BorderSide(color: Color(0xFFD6C2BD)),
-            shape: const StadiumBorder(),
-            textStyle: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildTypeTabs() {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
@@ -847,7 +854,7 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                   color: _onSurface,
                 ),
                 decoration: const InputDecoration(
-                  hintText: 'Tìm kiếm bài viết, chủ đề...',
+                  hintText: 'Tìm bài viết, FAQ hoặc tag...',
                   hintStyle: TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 14,
@@ -868,50 +875,98 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
     );
   }
 
-  // ── Topic icon row ──
   Widget _buildTopicRow() {
-    final displayTopics = _topics.where((t) => !t.isHidden).take(5).toList();
-    if (displayTopics.isEmpty) return const SizedBox.shrink();
+    final categories = _categories.where((item) => !item.isHidden).toList();
+    final topics = _topics
+        .where(
+          (item) =>
+              !item.isHidden &&
+              (_selectedCategoryId == null ||
+                  item.parentId == _selectedCategoryId),
+        )
+        .toList();
+    final tags = _tags.where((item) => !item.isHidden).toList();
+    if (categories.isEmpty && topics.isEmpty && tags.isEmpty)
+      return const SizedBox.shrink();
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: displayTopics.map((t) {
-          final icon = _topicIcons[t.icon] ?? Icons.topic;
-          return GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedTopicId = _selectedTopicId == t.id ? null : t.id;
-              });
-            },
-            child: Column(
-              children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: _surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Icon(icon, color: _primary, size: 26),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  t.name,
-                  style: const TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 11,
-                    color: _onSurfaceVariant,
-                  ),
-                ),
-              ],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Lọc nội dung',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontWeight: FontWeight.w700,
+              color: _onSurface,
             ),
-          );
-        }).toList(),
+          ),
+          if (categories.isNotEmpty)
+            _filterDropdown(
+              'Danh mục',
+              categories,
+              _selectedCategoryId,
+              (id) => setState(() {
+                _selectedCategoryId = id;
+                if (_selectedTopicId != null &&
+                    !_topics.any(
+                      (topic) =>
+                          topic.id == _selectedTopicId && topic.parentId == id,
+                    ))
+                  _selectedTopicId = null;
+              }),
+            ),
+          if (topics.isNotEmpty)
+            _filterDropdown(
+              'Chủ đề',
+              topics,
+              _selectedTopicId,
+              (id) => setState(() => _selectedTopicId = id),
+            ),
+          if (tags.isNotEmpty)
+            _filterDropdown(
+              'Tag',
+              tags,
+              _selectedTagIds.length == 1 ? _selectedTagIds.first : null,
+              (id) => setState(() {
+                _selectedTagIds
+                  ..clear()
+                  ..addAll(id == null ? const <String>[] : [id]);
+              }),
+            ),
+        ],
       ),
     );
   }
+
+  Widget _filterDropdown(
+    String label,
+    List<CommunityTopic> items,
+    String? selectedId,
+    ValueChanged<String?> onSelect,
+  ) => Padding(
+    padding: const EdgeInsets.only(top: 10),
+    child: DropdownButtonFormField<String>(
+      value: selectedId ?? '',
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      items: [
+        const DropdownMenuItem(value: '', child: Text('Tất cả')),
+        ...items.map(
+          (item) => DropdownMenuItem(
+            value: item.id,
+            child: Text(item.name, overflow: TextOverflow.ellipsis),
+          ),
+        ),
+      ],
+      onChanged: (value) =>
+          onSelect(value == null || value.isEmpty ? null : value),
+    ),
+  );
 
   // ── Featured article section ("Gợi ý hôm nay") ──
   Widget _buildFeaturedArticle() {
@@ -1109,6 +1164,20 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                           height: 1.3,
                         ),
                       ),
+                      if (article.summary?.trim().isNotEmpty ?? false) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          article.summary!,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 13,
+                            color: _onSurfaceVariant,
+                            height: 1.4,
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 16),
                       // CTA button
                       SizedBox(
@@ -1172,6 +1241,13 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                   article.title,
                   style: const TextStyle(fontFamily: 'Lexend'),
                 ),
+                subtitle: article.summary?.trim().isNotEmpty ?? false
+                    ? Text(
+                        article.summary!,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      )
+                    : null,
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => _openContentDetail(article.id),
               ),
@@ -1205,19 +1281,32 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
     }
     if (faqs.isEmpty) return const SizedBox.shrink();
 
+    final visibleFaqs = _selectedTypeIndex == 0
+        ? faqs.take(3).toList(growable: false)
+        : faqs;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Câu hỏi thường gặp',
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-              color: _onSurface,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Câu hỏi thường gặp',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 18,
+                  fontWeight: FontWeight.w700,
+                  color: _onSurface,
+                ),
+              ),
+              if (_selectedTypeIndex == 0 && faqs.length > visibleFaqs.length)
+                TextButton(
+                  onPressed: () => setState(() => _selectedTypeIndex = 2),
+                  child: const Text('Xem tất cả'),
+                ),
+            ],
           ),
           const SizedBox(height: 12),
           Container(
@@ -1233,9 +1322,9 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
               ],
             ),
             child: Column(
-              children: List.generate(faqs.length, (i) {
-                final faq = faqs[i];
-                final isLast = i == faqs.length - 1;
+              children: List.generate(visibleFaqs.length, (i) {
+                final faq = visibleFaqs[i];
+                final isLast = i == visibleFaqs.length - 1;
                 return Column(
                   children: [
                     InkWell(
@@ -1357,7 +1446,13 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                         color: imported ? _primary : _onSurfaceVariant,
                       ),
                       title: Text(item.itemText),
-                      subtitle: item.isRequired ? const Text('Bắt buộc') : null,
+                      trailing: item.isRequired
+                          ? const Icon(
+                              Icons.star_rounded,
+                              color: Color(0xFFBA1A1A),
+                              semanticLabel: 'Mục bắt buộc',
+                            )
+                          : null,
                     );
                   },
                 ),
