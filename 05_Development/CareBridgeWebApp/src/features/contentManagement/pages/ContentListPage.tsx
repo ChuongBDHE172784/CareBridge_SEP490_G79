@@ -1,16 +1,19 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchStaffContentList } from '../services/contentApi';
-import type { ContentListItem, ContentSearchItem, ContentType } from '../models/content';
-import { TYPE_LABELS } from '../models/content';
+import type { ContentDetail, ContentType } from '../models/content';
+import { STATUS_LABELS, TYPE_LABELS } from '../models/content';
+import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
 
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
-function statusBadge(publishedAt: string | null): { label: string; className: string } {
-  if (publishedAt) return { label: 'Đã xuất bản', className: 'bg-[#E6F4EA] text-[#137333]' };
-  return { label: 'Nháp', className: 'bg-[#F5F5F5] text-[#616161]' };
+function statusBadge(item: ContentDetail): { label: string; className: string } {
+  if (item.latestReviewFeedback) return { label: 'Cần chỉnh sửa', className: 'bg-error-container text-error' };
+  if (item.status === 'APPROVED') return { label: STATUS_LABELS.APPROVED, className: 'bg-[#E6F4EA] text-[#137333]' };
+  if (item.status === 'PENDING_REVIEW') return { label: STATUS_LABELS.PENDING_REVIEW, className: 'bg-[#FFF3E0] text-[#E65100]' };
+  return { label: STATUS_LABELS[item.status], className: 'bg-[#F5F5F5] text-[#616161]' };
 }
 
 function typeIcon(type: ContentType): string {
@@ -35,7 +38,7 @@ function timeAgo(iso: string | null): string {
 /* ------------------------------------------------------------------ */
 export default function ContentListPage() {
   const navigate = useNavigate();
-  const [items, setItems] = useState<(ContentListItem | ContentSearchItem)[]>([]);
+  const [items, setItems] = useState<ContentDetail[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [pageSize] = useState(10);
@@ -134,7 +137,7 @@ export default function ContentListPage() {
               </thead>
               <tbody>
                 {items.map(item => {
-                  const status = statusBadge(item.publishedAt);
+                  const status = statusBadge(item);
                   return (
                     <tr
                       key={item.id}
@@ -142,6 +145,7 @@ export default function ContentListPage() {
                     >
                       <td className="py-3.5 px-2 max-w-[320px]">
                         <div className="font-semibold text-sm text-on-surface">{item.title}</div>
+                        <ReviewFeedbackNotice feedback={item.latestReviewFeedback} compact />
                         <div className="text-xs text-outline mt-0.5">Cập nhật: {timeAgo(item.publishedAt)}</div>
                       </td>
                       <td className="py-3.5 px-2">

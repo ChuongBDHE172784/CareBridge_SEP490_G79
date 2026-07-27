@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import apiClient from '../../../shared/api/apiClient';
+import { useNavigate } from 'react-router-dom';
 
 interface NotificationRecord {
   id: string;
@@ -13,6 +14,7 @@ interface NotificationRecord {
   isRead: boolean;
   createdAt: string;
   sentAt?: string;
+  metadata?: Record<string, string>;
 }
 
 interface PageResponse {
@@ -30,9 +32,11 @@ const TYPE_OPTIONS = [
   { label: 'Đối tác', value: 'PARTNER' },
   { label: 'Audit', value: 'AUDIT' },
   { label: 'Hệ thống', value: 'SYSTEM' },
+  { label: 'Duyệt nội dung', value: 'CONTENT_REVIEW' },
 ];
 
 export default function NotificationCenterPage() {
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
   const [totalElements, setTotalElements] = useState(0);
   const [page, setPage] = useState(0);
@@ -75,6 +79,22 @@ export default function NotificationCenterPage() {
       await fetchNotifications();
     } catch {
       setError('Không thể đánh dấu tất cả thông báo đã đọc.');
+    }
+  };
+
+  const openNotification = async (notification: NotificationRecord) => {
+    const route = notification.metadata?.route;
+    if (!notification.isRead) {
+      try {
+        await apiClient.put(`/api/v1/notifications/${notification.id}/read`, {});
+      } catch {
+        setError('Đã mở nội dung nhưng chưa thể đánh dấu thông báo là đã đọc.');
+      }
+    }
+    if (route?.startsWith('/')) {
+      navigate(route);
+    } else {
+      await fetchNotifications();
     }
   };
 
@@ -169,7 +189,7 @@ export default function NotificationCenterPage() {
               </thead>
               <tbody>
                 {filteredNotifications.map((n) => (
-                  <NotificationRow key={n.id} notification={n} />
+                  <NotificationRow key={n.id} notification={n} onOpen={() => openNotification(n)} />
                 ))}
               </tbody>
             </table>
@@ -207,13 +227,13 @@ export default function NotificationCenterPage() {
   );
 }
 
-function NotificationRow({ notification: n }: { notification: NotificationRecord }) {
+function NotificationRow({ notification: n, onOpen }: { notification: NotificationRecord; onOpen: () => void }) {
   const isUnread = !n.isRead;
   const typeLabel = getTypeLabel(n.referenceType || n.type);
   const badgeCls = getTypeBadgeClass(n.referenceType || n.type);
 
   return (
-    <tr className="cursor-pointer">
+    <tr className="cursor-pointer" onClick={onOpen}>
       <td className="flex items-start gap-3">
         {isUnread && (
           <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-error" />
@@ -244,7 +264,7 @@ function NotificationRow({ notification: n }: { notification: NotificationRecord
         </span>
       </td>
       <td className="text-center">
-        <button className="bg-transparent border-none cursor-pointer text-primary">
+        <button type="button" onClick={(event) => { event.stopPropagation(); onOpen(); }} className="bg-transparent border-none cursor-pointer text-primary" title="Mở nội dung">
           <span className="material-symbols-outlined text-xl">open_in_new</span>
         </button>
       </td>
@@ -258,6 +278,10 @@ function getTypeLabel(type: string): string {
     case 'PARTNER': return 'Đối tác';
     case 'AUDIT': return 'Audit';
     case 'SYSTEM': return 'Hệ thống';
+    case 'ARTICLE': return 'Bài viết cần sửa';
+    case 'FAQ': return 'FAQ cần sửa';
+    case 'CHECKLIST': return 'Checklist cần sửa';
+    case 'CONTENT_REVIEW': return 'Duyệt nội dung';
     default: return type || 'Chung';
   }
 }
@@ -267,6 +291,10 @@ function getTypeBadgeClass(type: string): string {
     case 'SECURITY': return 'text-error border-error/30';
     case 'PARTNER': return 'text-primary border-primary/30';
     case 'AUDIT': return 'text-on-surface-variant border-outline-variant';
+    case 'ARTICLE':
+    case 'FAQ':
+    case 'CHECKLIST':
+    case 'CONTENT_REVIEW': return 'text-error border-error/30';
     default: return 'text-outline border-outline-variant';
   }
 }
@@ -276,6 +304,10 @@ function getTypeIcon(type: string): string {
     case 'SECURITY': return 'security';
     case 'PARTNER': return 'handshake';
     case 'AUDIT': return 'schedule';
+    case 'ARTICLE': return 'article';
+    case 'FAQ': return 'quiz';
+    case 'CHECKLIST': return 'checklist';
+    case 'CONTENT_REVIEW': return 'assignment_return';
     default: return 'info';
   }
 }

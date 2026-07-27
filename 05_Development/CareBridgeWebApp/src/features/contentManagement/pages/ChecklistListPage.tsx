@@ -10,6 +10,7 @@ import {
   STAGE_LABELS,
 } from '../models/content';
 import { fetchAdminChecklists } from '../services/contentApi';
+import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
 
 const PAGE_SIZE = 10;
 
@@ -23,7 +24,8 @@ function stageBadgeClass(stage: ContentStage | null): string {
   }
 }
 
-function statusBadgeClass(status: ChecklistTemplateStatus): string {
+function statusBadgeClass(status: ChecklistTemplateStatus, returned: boolean): string {
+  if (returned) return 'bg-error-container text-error';
   switch (status) {
     case 'APPROVED': return 'bg-[#E6F4EA] text-[#137333]';
     case 'REJECTED': return 'bg-[#FDE8E5] text-[#9F3A32]';
@@ -224,6 +226,7 @@ export default function ChecklistListPage() {
                     <tr key={checklist.id} className="border-b border-surface-container-highest hover:bg-surface-bright">
                       <td className="py-3.5 px-2 max-w-[340px]">
                         <div className="font-semibold text-sm text-on-surface">{checklist.name}</div>
+                        <ReviewFeedbackNotice feedback={checklist.latestReviewFeedback} compact />
                         {checklist.description && (
                           <div className="mt-0.5 line-clamp-2 text-xs text-on-surface-variant">{checklist.description}</div>
                         )}
@@ -238,8 +241,8 @@ export default function ChecklistListPage() {
                         <span className="ml-1 text-xs text-on-surface-variant font-medium">mục</span>
                       </td>
                       <td className="py-3.5 px-2">
-                        <span className={`py-1 px-3.5 rounded-full text-xs font-semibold ${statusBadgeClass(checklist.status)}`}>
-                          {checklist.status} · {CHECKLIST_STATUS_LABELS[checklist.status]}
+                        <span className={`py-1 px-3.5 rounded-full text-xs font-semibold ${statusBadgeClass(checklist.status, Boolean(checklist.latestReviewFeedback))}`}>
+                          {checklist.latestReviewFeedback ? 'Cần chỉnh sửa' : `${checklist.status} · ${CHECKLIST_STATUS_LABELS[checklist.status]}`}
                         </span>
                       </td>
                       <td className="py-3.5 px-2 text-[13px] text-outline">{formatUpdatedAt(checklist.updatedAt)}</td>

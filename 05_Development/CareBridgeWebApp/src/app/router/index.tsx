@@ -202,6 +202,7 @@ export const router = createBrowserRouter([
                   { path: '/content/checklists/create', element: <ChecklistFormPage /> },
                   { path: '/content/checklists/:id', element: <ChecklistDetailPage /> },
                   { path: '/content/checklists/:id/edit', element: <ChecklistFormPage /> },
+                  { path: '/content/notifications', element: <NotificationCenterPage /> },
                   { path: '/content/:id/unpublish', element: <UnpublishContentPage /> },
                   { path: '/content/exercises', element: <PregnancyExerciseListPage /> },
                   { path: '/content/exercises/create', element: <CreatePregnancyExercisePage /> },

@@ -8,6 +8,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.UUID;
 import java.util.ArrayList;
@@ -63,6 +64,22 @@ public class ContentItem {
 
     @Column(name = "author_user_id")
     private UUID authorUserId;
+
+    @Column(name = "revision_reason", columnDefinition = "TEXT")
+    private String revisionReason;
+
+    @Column(name = "revision_requested_at")
+    private Instant revisionRequestedAt;
+
+    @Column(name = "revision_requested_by")
+    private UUID revisionRequestedBy;
+
+    @Column(name = "revision_requested_version")
+    private Integer revisionRequestedVersion;
+
+    @Version
+    @Column(name = "lock_version", nullable = false)
+    private long lockVersion;
 
     @Column(name = "source_label", length = 255)
     private String sourceLabel;

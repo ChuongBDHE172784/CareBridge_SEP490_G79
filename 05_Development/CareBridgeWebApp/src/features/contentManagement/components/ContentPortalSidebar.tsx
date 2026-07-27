@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { label: 'Bài tập thai kỳ', icon: 'fitness_center', path: '/content/exercises', roles: ['CONTENT_ADMIN'] },
   { label: 'FAQ', icon: 'help', path: '/content/faq', roles: ['CONTENT_ADMIN'] },
   { label: 'Checklist', icon: 'checklist', path: '/content/checklists', roles: ['CONTENT_ADMIN'] },
+  { label: 'Thông báo', icon: 'notifications', path: '/content/notifications', roles: ['CONTENT_ADMIN'] },
   { label: 'Chủ đề cộng đồng', icon: 'topic', path: '/content/topics', roles: ['CONTENT_ADMIN', 'MODERATOR'] },
 ] as const;
 

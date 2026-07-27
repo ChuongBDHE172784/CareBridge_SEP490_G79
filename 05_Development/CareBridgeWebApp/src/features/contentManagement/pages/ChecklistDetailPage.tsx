@@ -4,6 +4,7 @@ import { fetchChecklistTemplateDetail, updateChecklistTemplate, archiveChecklist
 import type { ChecklistTemplate } from '../models/content';
 import { STAGE_LABELS, STATUS_LABELS } from '../models/content';
 import { useAuth } from '../../../shared/auth/useAuth';
+import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
 
 function statusDotClass(status: string): string {
   if (status === 'APPROVED') return 'bg-[#137333]';
@@ -117,6 +118,7 @@ export default function ChecklistDetailPage() {
       </button>
 
       {actionError && <div className="bg-error-container rounded-2xl p-4 mb-4 text-error text-sm">{actionError}</div>}
+      {canManage && <ReviewFeedbackNotice feedback={detail.latestReviewFeedback} />}
 
       <div className="grid grid-cols-[1fr_340px] gap-6">
         {/* Main content area */}
@@ -177,7 +179,9 @@ export default function ChecklistDetailPage() {
             <div className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-3">TRẠNG THÁI</div>
             <div className="flex items-center gap-2 mb-2">
               <span className={`w-2.5 h-2.5 rounded-full ${statusDotClass(detail.status)}`} />
-              <span className="text-sm font-semibold text-on-surface">{STATUS_LABELS[detail.status]}</span>
+              <span className="text-sm font-semibold text-on-surface">
+                {detail.latestReviewFeedback ? 'Cần chỉnh sửa' : STATUS_LABELS[detail.status]}
+              </span>
             </div>
           </div>
 

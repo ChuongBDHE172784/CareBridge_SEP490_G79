@@ -136,7 +136,10 @@ public class ContentServiceImpl implements ContentService {
         return templates.map(template -> new AdminChecklistTemplateResponse(
                 template.getId(), template.getName(), template.getStage(), template.getStatus(),
                 template.getDescription(), template.getVersionNo(), template.getUpdatedAt(),
-                counts.getOrDefault(template.getId(), 0L)));
+                counts.getOrDefault(template.getId(), 0L),
+                contentMapper.toReviewFeedback(
+                        template.getRevisionReason(), template.getRevisionRequestedAt(),
+                        template.getRevisionRequestedBy(), template.getRevisionRequestedVersion())));
     }
 
     private List<ChecklistTemplateResponse> shapeApprovedChecklists(List<ChecklistTemplate> templates) {

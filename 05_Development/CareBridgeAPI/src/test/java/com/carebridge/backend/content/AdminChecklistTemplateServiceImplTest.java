@@ -31,6 +31,7 @@ import com.carebridge.backend.content.mapper.ContentMapper;
 import com.carebridge.backend.content.repository.ChecklistItemRepository;
 import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
 import com.carebridge.backend.content.service.AdminChecklistTemplateServiceImpl;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -260,5 +261,49 @@ class AdminChecklistTemplateServiceImplTest {
 
         ContentException ex = assertThrows(ContentException.class, () -> service.getById(TEMPLATE_ID));
         assertEquals("CHKTPL-003", ex.getCode());
+    }
+
+    @Test
+    void update_resubmitReturnedDraft_clearsLatestReviewFeedback() {
+        ChecklistTemplate template = makeTemplate();
+        template.setRevisionReason("Bổ sung mục bắt buộc");
+        template.setRevisionRequestedAt(Instant.now());
+        template.setRevisionRequestedBy(ADMIN_ID);
+        template.setRevisionRequestedVersion(1);
+        when(checklistTemplateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(template));
+        when(checklistTemplateRepository.save(any(ChecklistTemplate.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(checklistItemRepository.findByTemplate_IdOrderByOrder(TEMPLATE_ID)).thenReturn(List.of());
+
+        service.update(TEMPLATE_ID, new UpdateChecklistTemplateRequest(
+                template.getName(), template.getDescription(), template.getStage(),
+                ChecklistTemplateStatus.PENDING_REVIEW, null), ADMIN_ID);
+
+        assertEquals(ChecklistTemplateStatus.PENDING_REVIEW, template.getStatus());
+        assertEquals(null, template.getRevisionReason());
+        assertEquals(null, template.getRevisionRequestedAt());
+        assertEquals(null, template.getRevisionRequestedBy());
+        assertEquals(null, template.getRevisionRequestedVersion());
+    }
+
+    @Test
+    void update_saveReturnedDraft_retainsLatestReviewFeedback() {
+        ChecklistTemplate template = makeTemplate();
+        Instant requestedAt = Instant.now();
+        template.setRevisionReason("Bổ sung mục bắt buộc");
+        template.setRevisionRequestedAt(requestedAt);
+        template.setRevisionRequestedBy(ADMIN_ID);
+        template.setRevisionRequestedVersion(1);
+        when(checklistTemplateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(template));
+        when(checklistTemplateRepository.save(any(ChecklistTemplate.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(checklistItemRepository.findByTemplate_IdOrderByOrder(TEMPLATE_ID)).thenReturn(List.of());
+
+        service.update(TEMPLATE_ID, new UpdateChecklistTemplateRequest(
+                template.getName(), template.getDescription(), template.getStage(),
+                ChecklistTemplateStatus.DRAFT, null), ADMIN_ID);
+
+        assertEquals("Bổ sung mục bắt buộc", template.getRevisionReason());
+        assertEquals(requestedAt, template.getRevisionRequestedAt());
+        assertEquals(ADMIN_ID, template.getRevisionRequestedBy());
+        assertEquals(1, template.getRevisionRequestedVersion());
     }
 }

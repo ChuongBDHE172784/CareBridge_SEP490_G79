@@ -77,4 +77,21 @@ describe('ContentDetailPage', () => {
     expect(screen.getByText('Nội dung chỉ có chữ.')).toBeTruthy();
     expect(screen.queryByText('image')).toBeNull();
   });
+
+  it('shows the full return reason to a Content Admin', async () => {
+    harness.fetchStaffContentDetail.mockResolvedValue(contentDetail({
+      latestReviewFeedback: {
+        reason: 'Cần bổ sung nguồn y khoa đáng tin cậy',
+        requestedAt: '2026-07-27T10:00:00Z',
+        requestedBy: 'system-admin-id',
+        versionNo: 1,
+      },
+    }));
+
+    render(<ContentDetailPage />);
+
+    expect(await screen.findByText('System Admin yêu cầu chỉnh sửa')).toBeTruthy();
+    expect(screen.getByText('Cần bổ sung nguồn y khoa đáng tin cậy')).toBeTruthy();
+    expect(screen.getByText('Cần chỉnh sửa')).toBeTruthy();
+  });
 });

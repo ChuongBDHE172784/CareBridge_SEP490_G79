@@ -43,7 +43,14 @@ class NotificationCanonicalSchemaIntegrationTest extends AbstractPostgresIntegra
         assertThat(canonicalTable).isEqualTo("notification_records");
         assertThat(requiredColumns).isEqualTo(2);
         assertThat(constraints.get("type_check").toString())
-                .contains("REMINDER", "COMMUNITY_REPLY", "CONSULTATION", "EMERGENCY", "MESSAGE", "GROUP_INVITE");
+                .contains(
+                        "REMINDER",
+                        "COMMUNITY_REPLY",
+                        "CONSULTATION",
+                        "EMERGENCY",
+                        "MESSAGE",
+                        "GROUP_INVITE",
+                        "CONTENT_REVIEW");
         assertThat(constraints.get("status_check").toString())
                 .contains("PENDING", "PROCESSING", "SENT", "DELIVERED", "FAILED");
         assertThat(constraints.get("channel_check").toString())

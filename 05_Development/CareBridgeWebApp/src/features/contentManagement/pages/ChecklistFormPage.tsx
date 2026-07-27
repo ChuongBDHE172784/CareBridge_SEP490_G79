@@ -5,8 +5,9 @@ import {
   createChecklistTemplate,
   updateChecklistTemplate,
 } from '../services/contentApi';
-import type { ContentStage } from '../models/content';
+import type { ContentStage, ReviewFeedback } from '../models/content';
 import { STAGE_LABELS } from '../models/content';
+import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
 
 interface ItemRow {
   key: string;
@@ -31,6 +32,7 @@ export default function ChecklistFormPage() {
   const [loadError, setLoadError] = useState('');
   const [submitting, setSubmitting] = useState<'draft' | 'submit' | null>(null);
   const [submitError, setSubmitError] = useState('');
+  const [reviewFeedback, setReviewFeedback] = useState<ReviewFeedback | null>(null);
 
   const loadDetail = useCallback(async () => {
     if (!id) return;
@@ -41,6 +43,7 @@ export default function ChecklistFormPage() {
       setName(data.name);
       setDescription(data.description ?? '');
       setStage(data.stage);
+      setReviewFeedback(data.latestReviewFeedback ?? null);
       setItems(
         data.items.length > 0
           ? [...data.items].sort((a, b) => a.order - b.order).map(i => ({
@@ -148,6 +151,7 @@ export default function ChecklistFormPage() {
       <p className="text-on-surface-variant text-sm mt-1 mb-6">
         Xây dựng danh sách các mục để mẹ/gia đình nhập vào checklist cá nhân.
       </p>
+      <ReviewFeedbackNotice feedback={reviewFeedback} />
 
       <div className="bg-surface rounded-2xl p-6 shadow-md mb-6">
         <div className="mb-5">

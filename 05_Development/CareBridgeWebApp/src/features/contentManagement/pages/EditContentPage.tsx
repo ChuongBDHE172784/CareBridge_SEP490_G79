@@ -4,6 +4,7 @@ import { fetchStaffContentDetail, updateContent, uploadContentImage } from '../s
 import type { ContentDetail } from '../models/content';
 import { STAGE_LABELS, TYPE_LABELS } from '../models/content';
 import RichTextEditor from '../components/RichTextEditor';
+import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
 
 export default function EditContentPage() {
   const { id } = useParams<{ id: string }>();
@@ -123,6 +124,7 @@ export default function EditContentPage() {
       </div>
 
       {submitError && <div className="bg-error-container rounded-2xl p-4 mb-4 text-error text-sm">{submitError}</div>}
+      <ReviewFeedbackNotice feedback={detail.latestReviewFeedback} />
 
       <div className="grid grid-cols-[1fr_320px] gap-6">
         <div className="flex flex-col gap-5">

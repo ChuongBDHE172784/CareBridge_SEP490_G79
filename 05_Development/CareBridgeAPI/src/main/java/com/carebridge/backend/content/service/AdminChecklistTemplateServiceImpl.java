@@ -66,6 +66,7 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
                 .description(request.description())
                 .stage(request.stage())
                 .status(ChecklistTemplateStatus.DRAFT)
+                .authorUserId(adminUserId)
                 .build();
         ChecklistTemplate saved = checklistTemplateRepository.save(template);
 
@@ -103,6 +104,11 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
         template.setDescription(request.description());
         template.setStage(request.stage());
         template.setStatus(request.status());
+        int currentVersion = template.getVersionNo() == null ? 1 : template.getVersionNo();
+        template.setVersionNo(currentVersion + 1);
+        if (request.status() == ChecklistTemplateStatus.PENDING_REVIEW) {
+            clearReviewFeedback(template);
+        }
         ChecklistTemplate saved = checklistTemplateRepository.save(template);
 
         // null leaves entries untouched; a non-null list is the complete active set. Existing
@@ -138,6 +144,7 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
         // ADR-CHK-002: soft-delete only. Canonical template entries and imported personal
         // preparation_checklist_items remain stable when a template is archived.
         template.setStatus(ChecklistTemplateStatus.ARCHIVED);
+        clearReviewFeedback(template);
         ChecklistTemplate saved = checklistTemplateRepository.save(template);
 
         Instant archivedAt = Instant.now();
@@ -146,6 +153,13 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
 
         return new HideChecklistTemplateResponse(
                 saved.getId(), previousStatus, saved.getStatus(), request.reason(), adminUserId, archivedAt);
+    }
+
+    private void clearReviewFeedback(ChecklistTemplate template) {
+        template.setRevisionReason(null);
+        template.setRevisionRequestedAt(null);
+        template.setRevisionRequestedBy(null);
+        template.setRevisionRequestedVersion(null);
     }
 
     private AdminChecklistTemplateDetailResponse toResponseWithItems(ChecklistTemplate template) {

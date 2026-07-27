@@ -5,6 +5,7 @@ import type { ContentDetail } from '../models/content';
 import { STAGE_LABELS, STATUS_LABELS, TYPE_LABELS } from '../models/content';
 import { useAuth } from '../../../shared/auth/useAuth';
 import '../richContentBody.css';
+import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
 
 
 /* ------------------------------------------------------------------ */
@@ -140,6 +141,7 @@ export default function ContentDetailPage() {
       </button>
 
       {actionError && <div className="bg-error-container rounded-2xl p-4 mb-4 text-error text-sm">{actionError}</div>}
+      {canManage && <ReviewFeedbackNotice feedback={detail.latestReviewFeedback} />}
 
       <div className="grid grid-cols-[1fr_340px] gap-6">
         {/* Main content area */}
@@ -187,7 +189,9 @@ export default function ContentDetailPage() {
             <div className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-3">TRẠNG THÁI</div>
             <div className="flex items-center gap-2 mb-2">
               <span className={`w-2.5 h-2.5 rounded-full ${statusDotClass(detail.status)}`} />
-              <span className="text-sm font-semibold text-on-surface">{STATUS_LABELS[detail.status]}</span>
+              <span className="text-sm font-semibold text-on-surface">
+                {detail.latestReviewFeedback ? 'Cần chỉnh sửa' : STATUS_LABELS[detail.status]}
+              </span>
             </div>
             <div className="text-xs text-outline mb-1">Phiên bản: v{detail.version}</div>
             <div className="text-xs text-outline">Xuất bản: {formatDate(detail.publishedAt)}</div>

@@ -8,6 +8,8 @@ import com.carebridge.backend.content.dto.response.ContentDetailResponse;
 import com.carebridge.backend.content.dto.response.ContentListResponse;
 import com.carebridge.backend.content.dto.response.ContentSearchResponse;
 import com.carebridge.backend.content.dto.response.CreateContentResponse;
+import com.carebridge.backend.content.dto.response.ReviewFeedbackResponse;
+import com.carebridge.backend.content.dto.response.StaffContentDetailResponse;
 import com.carebridge.backend.content.entity.ChecklistItem;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
 import com.carebridge.backend.content.entity.ContentItem;
@@ -89,6 +91,14 @@ public class ContentMapper {
                 .build();
     }
 
+    public StaffContentDetailResponse toStaffDetailResponse(ContentItem item) {
+        return new StaffContentDetailResponse(
+                toDetailResponse(item),
+                toReviewFeedback(
+                        item.getRevisionReason(), item.getRevisionRequestedAt(),
+                        item.getRevisionRequestedBy(), item.getRevisionRequestedVersion()));
+    }
+
     public ChecklistTemplateResponse toChecklistTemplateResponse(
             ChecklistTemplate template, List<ChecklistItem> items) {
         List<ChecklistItemResponse> itemResponses = items.stream()
@@ -115,6 +125,9 @@ public class ContentMapper {
                 .status(template.getStatus())
                 .description(template.getDescription())
                 .items(itemResponses)
+                .latestReviewFeedback(toReviewFeedback(
+                        template.getRevisionReason(), template.getRevisionRequestedAt(),
+                        template.getRevisionRequestedBy(), template.getRevisionRequestedVersion()))
                 .build();
     }
 
@@ -137,5 +150,13 @@ public class ContentMapper {
                 .order(item.getOrder())
                 .isRequired(item.getIsRequired())
                 .build();
+    }
+
+    public ReviewFeedbackResponse toReviewFeedback(
+            String reason, Instant requestedAt, java.util.UUID requestedBy, Integer versionNo) {
+        if (reason == null || reason.isBlank()) {
+            return null;
+        }
+        return new ReviewFeedbackResponse(reason, requestedAt, requestedBy, versionNo);
     }
 }

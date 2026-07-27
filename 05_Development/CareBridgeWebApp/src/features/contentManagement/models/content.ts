@@ -4,6 +4,13 @@ export type ContentStatus = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'ARCHIVED'
 export type ChecklistTemplateStatus = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'ARCHIVED';
 export type ContentDecision = 'APPROVE' | 'REJECT';
 
+export interface ReviewFeedback {
+  reason: string;
+  requestedAt: string | null;
+  requestedBy: string | null;
+  versionNo: number | null;
+}
+
 export interface ContentListItem {
   id: string;
   type: ContentType;
@@ -27,6 +34,7 @@ export interface ContentDetail {
   updatedAt?: string | null;
   sourceLabel?: string | null;
   sources?: ContentSource[];
+  latestReviewFeedback?: ReviewFeedback | null;
 }
 
 export interface ContentSource { title: string; url?: string; publisher?: string; }
@@ -47,6 +55,7 @@ export interface ChecklistTemplate {
   status: ContentStatus;
   description: string;
   items: ChecklistItem[];
+  latestReviewFeedback?: ReviewFeedback | null;
 }
 
 export interface ChecklistItem {
@@ -107,6 +116,7 @@ export interface AdminChecklistTemplate {
   versionNo: number;
   updatedAt: string | null;
   itemCount: number;
+  latestReviewFeedback?: ReviewFeedback | null;
 }
 
 export interface CommunityTopic {

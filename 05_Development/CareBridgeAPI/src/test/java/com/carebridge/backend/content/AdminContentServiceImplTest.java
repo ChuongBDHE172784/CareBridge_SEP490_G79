@@ -16,6 +16,7 @@ import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
 import com.carebridge.backend.content.dto.request.CreateContentRequest;
+import com.carebridge.backend.content.dto.request.UpdateContentRequest;
 import com.carebridge.backend.content.dto.response.CreateContentResponse;
 import com.carebridge.backend.content.entity.ContentItem;
 import com.carebridge.backend.content.entity.ContentStage;
@@ -283,5 +284,58 @@ class AdminContentServiceImplTest {
         ArgumentCaptor<ContentItem> captor = forClass(ContentItem.class);
         verify(contentRepository).save(captor.capture());
         assertEquals(sanitizedBody, captor.getValue().getBody());
+    }
+
+    @Test
+    void updateContent_resubmitReturnedDraft_clearsLatestReviewFeedback() {
+        UUID contentId = UUID.randomUUID();
+        ContentItem item = ContentItem.builder()
+                .id(contentId)
+                .type(ContentType.ARTICLE)
+                .title("Nội dung cần sửa")
+                .body("Nội dung")
+                .stage(ContentStage.PREGNANCY)
+                .status(ContentStatus.DRAFT)
+                .versionNo(2)
+                .revisionReason("Bổ sung nguồn")
+                .revisionRequestedAt(Instant.now())
+                .revisionRequestedBy(UUID.randomUUID())
+                .revisionRequestedVersion(2)
+                .build();
+        when(contentRepository.findById(contentId)).thenReturn(Optional.of(item));
+        when(contentRepository.save(any(ContentItem.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        adminContentService.updateContent(contentId, new UpdateContentRequest(
+                item.getTitle(), item.getBody(), item.getStage(), null,
+                ContentStatus.PENDING_REVIEW, null, null), () -> ADMIN_USER_ID.toString());
+
+        assertEquals(ContentStatus.PENDING_REVIEW, item.getStatus());
+        assertEquals(null, item.getRevisionReason());
+        assertEquals(null, item.getRevisionRequestedAt());
+        assertEquals(null, item.getRevisionRequestedBy());
+        assertEquals(null, item.getRevisionRequestedVersion());
+    }
+
+    @Test
+    void updateContent_saveReturnedDraft_retainsLatestReviewFeedback() {
+        UUID contentId = UUID.randomUUID();
+        Instant requestedAt = Instant.now();
+        UUID requestedBy = UUID.randomUUID();
+        ContentItem item = ContentItem.builder()
+                .id(contentId).type(ContentType.FAQ).title("FAQ cần sửa").body("Nội dung")
+                .stage(ContentStage.PREGNANCY).status(ContentStatus.DRAFT).versionNo(2)
+                .revisionReason("Viết rõ câu trả lời").revisionRequestedAt(requestedAt)
+                .revisionRequestedBy(requestedBy).revisionRequestedVersion(2).build();
+        when(contentRepository.findById(contentId)).thenReturn(Optional.of(item));
+        when(contentRepository.save(any(ContentItem.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        adminContentService.updateContent(contentId, new UpdateContentRequest(
+                item.getTitle(), item.getBody(), item.getStage(), null,
+                ContentStatus.DRAFT, null, null), () -> ADMIN_USER_ID.toString());
+
+        assertEquals("Viết rõ câu trả lời", item.getRevisionReason());
+        assertEquals(requestedAt, item.getRevisionRequestedAt());
+        assertEquals(requestedBy, item.getRevisionRequestedBy());
+        assertEquals(2, item.getRevisionRequestedVersion());
     }
 }

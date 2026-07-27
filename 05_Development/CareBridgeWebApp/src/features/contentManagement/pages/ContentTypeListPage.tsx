@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { fetchStaffContentList, archiveContent } from '../services/contentApi';
 import type { ContentDetail, ContentStage, ContentStatus, ContentType } from '../models/content';
 import { STAGE_LABELS, STATUS_LABELS } from '../models/content';
+import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -14,7 +15,8 @@ const STATUS_TABS: { key: string; label: string; status?: ContentStatus }[] = [
   { key: 'draft', label: 'Bản nháp', status: 'DRAFT' },
 ];
 
-function statusBadgeClass(status: ContentStatus): string {
+function statusBadgeClass(status: ContentStatus, returned: boolean): string {
+  if (returned) return 'bg-error-container text-error';
   if (status === 'APPROVED') return 'bg-[#E6F4EA] text-[#137333]';
   if (status === 'PENDING_REVIEW') return 'bg-[#FFF3E0] text-[#E65100]';
   if (status === 'ARCHIVED') return 'bg-[#F5F5F5] text-[#616161]';
@@ -183,12 +185,13 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
                 {items.map(item => (
                   <tr key={item.id} className="border-b border-surface-container-highest hover:bg-surface-bright">
                     <td className="py-3.5 px-2 max-w-[400px]">
-                      <div className="font-semibold text-sm text-on-surface">{item.title}</div>
+                        <div className="font-semibold text-sm text-on-surface">{item.title}</div>
+                        <ReviewFeedbackNotice feedback={item.latestReviewFeedback} compact />
                     </td>
                     <td className="py-3.5 px-2 text-[13px] text-on-surface-variant">{STAGE_LABELS[item.stage]}</td>
                     <td className="py-3.5 px-2">
-                      <span className={`py-1 px-3.5 rounded-full text-xs font-semibold ${statusBadgeClass(item.status)}`}>
-                        {STATUS_LABELS[item.status]}
+                      <span className={`py-1 px-3.5 rounded-full text-xs font-semibold ${statusBadgeClass(item.status, Boolean(item.latestReviewFeedback))}`}>
+                        {item.latestReviewFeedback ? 'Cần chỉnh sửa' : STATUS_LABELS[item.status]}
                       </span>
                     </td>
                     <td className="py-3.5 px-2 text-[13px] text-outline">{timeAgo(item.publishedAt)}</td>

@@ -11,16 +11,17 @@ import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import com.carebridge.backend.content.dto.response.ContentDetailResponse;
+import com.carebridge.backend.content.dto.response.StaffContentDetailResponse;
 import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.content.entity.ContentStatus;
 import com.carebridge.backend.content.entity.ContentType;
 
 public interface AdminContentService {
 
-    Page<ContentDetailResponse> getStaffContents(
+    Page<StaffContentDetailResponse> getStaffContents(
             ContentStatus status, ContentType type, ContentStage stage, String keyword, Pageable pageable);
 
-    ContentDetailResponse getStaffContent(UUID id);
+    StaffContentDetailResponse getStaffContent(UUID id);
 
     CreateContentResponse createContent(CreateContentRequest request, java.util.UUID authorUserId);
 

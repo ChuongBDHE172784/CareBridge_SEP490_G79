@@ -30,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import com.carebridge.backend.content.dto.response.ContentDetailResponse;
+import com.carebridge.backend.content.dto.response.StaffContentDetailResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -43,17 +44,17 @@ public class AdminContentServiceImpl implements AdminContentService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<ContentDetailResponse> getStaffContents(
+    public Page<StaffContentDetailResponse> getStaffContents(
             ContentStatus status, ContentType type, ContentStage stage, String keyword, Pageable pageable) {
         String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
         Page<ContentItem> items = contentRepository.findByAdminFilters(type, stage, status, normalizedKeyword, pageable);
-        return items.map(contentMapper::toDetailResponse);
+        return items.map(contentMapper::toStaffDetailResponse);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public ContentDetailResponse getStaffContent(UUID id) {
-        return contentMapper.toDetailResponse(contentRepository.findById(id)
+    public StaffContentDetailResponse getStaffContent(UUID id) {
+        return contentMapper.toStaffDetailResponse(contentRepository.findById(id)
                 .orElseThrow(ContentException::contentNotFound));
     }
 
@@ -124,6 +125,9 @@ public class AdminContentServiceImpl implements AdminContentService {
         item.setStage(request.stage());
         item.setTopicId(request.topicId());
         item.setStatus(request.status());
+        if (request.status() == ContentStatus.PENDING_REVIEW) {
+            clearReviewFeedback(item);
+        }
         item.setSourceLabel(request.sourceLabel());
         // Omitted sources mean the client did not edit them. An explicit [] intentionally clears them.
         if (request.sources() != null) {
@@ -149,6 +153,13 @@ public class AdminContentServiceImpl implements AdminContentService {
                 saved.getTopicId(), saved.getStatus(), saved.getVersionNo(), saved.getUpdatedAt());
     }
 
+    private void clearReviewFeedback(ContentItem item) {
+        item.setRevisionReason(null);
+        item.setRevisionRequestedAt(null);
+        item.setRevisionRequestedBy(null);
+        item.setRevisionRequestedVersion(null);
+    }
+
     @Override
     @Transactional
     public HideContentResponse hideContent(UUID id, HideContentRequest request, Principal principal) {
@@ -171,6 +182,7 @@ public class AdminContentServiceImpl implements AdminContentService {
         // ADR-001: only status changes — soft-delete via existing ARCHIVED value, no hard delete,
         // no other field touched
         item.setStatus(ContentStatus.ARCHIVED);
+        clearReviewFeedback(item);
         ContentItem saved = contentRepository.save(item);
 
         Instant hiddenAt = Instant.now();

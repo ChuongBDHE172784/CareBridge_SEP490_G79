@@ -95,6 +95,27 @@ describe('UC82-69-WEB-001 admin checklist boundary', () => {
     });
   });
 
+  it('labels returned drafts and exposes the review reason', async () => {
+    harness.fetchAdminChecklists.mockResolvedValue(page([
+      checklist({
+        name: 'Checklist cần sửa',
+        status: 'DRAFT',
+        latestReviewFeedback: {
+          reason: 'Bổ sung mục khám thai bắt buộc',
+          requestedAt: '2026-07-27T10:00:00Z',
+          requestedBy: 'admin-id',
+          versionNo: 2,
+        },
+      }),
+    ]));
+
+    render(<ChecklistListPage />);
+
+    expect(await screen.findByText('Checklist cần sửa')).toBeTruthy();
+    expect(screen.getByText('Cần chỉnh sửa')).toBeTruthy();
+    expect(screen.getByText('Bổ sung mục khám thai bắt buộc')).toBeTruthy();
+  });
+
   it('does not expose an edit action when no edit route exists', async () => {
     harness.fetchAdminChecklists.mockResolvedValue(page([
       checklist({ name: 'Checklist without edit route' }),
