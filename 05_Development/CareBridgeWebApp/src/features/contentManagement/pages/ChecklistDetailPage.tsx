@@ -187,7 +187,7 @@ export default function ChecklistDetailPage() {
               {editable ? (
                 <button
                   onClick={() => navigate(`/content/checklists/${detail.id}/edit`)}
-                  className="w-full py-3.5 rounded-2xl bg-primary-container text-on-primary border-0 text-sm font-semibold cursor-pointer flex items-center justify-center gap-2"
+                  className="w-full py-3.5 rounded-2xl bg-primary text-on-primary border-0 text-sm font-semibold cursor-pointer flex items-center justify-center gap-2"
                 >
                   <span className="material-symbols-outlined text-lg">edit</span>
                   Chỉnh sửa checklist

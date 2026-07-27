@@ -117,7 +117,7 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
         </div>
         <button
           onClick={() => navigate(`/content/create?type=${type}`)}
-          className="flex items-center gap-2 py-3 px-6 rounded-full bg-primary-container text-on-primary border-0 text-sm font-semibold cursor-pointer whitespace-nowrap"
+          className="flex items-center gap-2 py-3 px-6 rounded-full bg-primary text-on-primary border-0 text-sm font-semibold cursor-pointer whitespace-nowrap"
         >
           <span className="material-symbols-outlined text-lg">add</span>
           {createLabel}
@@ -249,7 +249,7 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
                     <button
                       key={p}
                       onClick={() => setPage(p)}
-                      className={`w-9 h-9 rounded-full text-sm font-semibold cursor-pointer flex items-center justify-center ${page === p ? 'border-0 bg-primary-container text-on-primary' : 'border border-outline-variant bg-surface text-on-surface-variant'}`}
+                      className={`w-9 h-9 rounded-full text-sm font-semibold cursor-pointer flex items-center justify-center ${page === p ? 'border-0 bg-primary text-on-primary' : 'border border-outline-variant bg-surface text-on-surface-variant'}`}
                     >
                       {p + 1}
                     </button>

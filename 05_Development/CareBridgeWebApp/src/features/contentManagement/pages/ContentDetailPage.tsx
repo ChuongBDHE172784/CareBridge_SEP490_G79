@@ -206,7 +206,7 @@ export default function ContentDetailPage() {
               {(detail.status === 'DRAFT' || detail.status === 'PENDING_REVIEW') ? (
                 <button
                   onClick={() => navigate(`/content/${detail.id}/edit`)}
-                  className="w-full py-3.5 rounded-2xl bg-primary-container text-on-primary border-0 text-sm font-semibold cursor-pointer flex items-center justify-center gap-2"
+                  className="w-full py-3.5 rounded-2xl bg-primary text-on-primary border-0 text-sm font-semibold cursor-pointer flex items-center justify-center gap-2"
                 >
                   <span className="material-symbols-outlined text-lg">edit</span>
                   Chỉnh sửa nội dung

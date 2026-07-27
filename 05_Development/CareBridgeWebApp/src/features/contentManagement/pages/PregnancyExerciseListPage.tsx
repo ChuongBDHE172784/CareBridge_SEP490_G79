@@ -254,7 +254,7 @@ export default function PregnancyExerciseListPage() {
                 chevron_left
               </span>
             </button>
-            <button className="grid h-8 w-8 place-items-center rounded-full bg-primary-container font-bold text-white">
+            <button className="grid h-8 w-8 place-items-center rounded-full bg-primary font-bold text-white">
               1
             </button>
             <button className="grid h-8 w-8 place-items-center rounded-full border border-outline-variant">

@@ -78,7 +78,7 @@ export default function ContentDashboardPage() {
         </div>
         <button
           onClick={() => navigate('/content/create')}
-          className="flex items-center gap-2 py-3 px-6 rounded-full bg-primary-container text-on-primary border-0 text-sm font-semibold cursor-pointer"
+          className="flex items-center gap-2 py-3 px-6 rounded-full bg-primary text-on-primary border-0 text-sm font-semibold cursor-pointer"
         >
           <span className="material-symbols-outlined text-lg">add</span>
           Tạo nội dung mới
