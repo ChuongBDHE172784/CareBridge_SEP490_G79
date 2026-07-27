@@ -279,16 +279,14 @@ class ChecklistTemplateAdminIntegrationTest extends AbstractPostgresIntegrationT
     }
 
     private String seedUser(String email, Role role) {
-        User user = userRepository.save(User.builder()
-                .email(email)
-                .role(role)
-                .passwordHash(passwordEncoder.encode("SecureP@ss1"))
-                .enabled(true)
-                .locked(false)
-                .emailVerified(true)
-                .phoneVerified(false)
-                .accountStatus("ACTIVE")
-                .build());
+        UUID userId = UUID.randomUUID();
+        jdbcTemplate.update("""
+                INSERT INTO users (
+                    user_id, person_id, email, role, password_hash, enabled, locked,
+                    email_verified, phone_verified, account_status, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, true, false, true, false, 'ACTIVE', now(), now())
+                """, userId, userId, email, role.name(), passwordEncoder.encode("SecureP@ss1"));
+        User user = userRepository.findByEmailIgnoreCase(email).orElseThrow();
         return jwtTokenProvider.generateAccessToken(user);
     }
 
@@ -298,10 +296,9 @@ class ChecklistTemplateAdminIntegrationTest extends AbstractPostgresIntegrationT
                 INSERT INTO care_subjects (
                     care_subject_id, person_id, owner_user_id, subject_type,
                     nickname, status, created_at, updated_at)
-                SELECT ?, u.person_id, u.user_id, 'MOTHER', p.display_name,
+                SELECT ?, u.person_id, u.user_id, 'MOTHER', u.display_name,
                        'ACTIVE', now(), now()
                   FROM users u
-                  JOIN persons p ON p.person_id = u.person_id
                  WHERE u.user_id = ?
                 """, careSubjectId, owner.getId());
         return careSubjectId;

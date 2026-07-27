@@ -17,15 +17,12 @@ class DirectConversationWriter {
 
     boolean insertIfAbsent(DirectConversation conversation) {
         return jdbcTemplate.update("""
-                INSERT INTO archived_realtime_records
-                    (archive_id, legacy_table, legacy_id, owner_user_id,
-                     mother_user_id, expert_user_id, status, original_created_at)
-                VALUES (?, 'direct_conversations', ?, ?, ?, ?, ?, ?)
-                ON CONFLICT (mother_user_id, expert_user_id)
-                  WHERE legacy_table='direct_conversations' DO NOTHING
+                INSERT INTO direct_conversations
+                    (conversation_id, mother_user_id, expert_user_id, status, created_at)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT (mother_user_id, expert_user_id) DO NOTHING
                 """,
-                conversation.getId(), conversation.getId().toString(), conversation.getMotherUserId(),
-                conversation.getMotherUserId(), conversation.getExpertUserId(),
+                conversation.getId(), conversation.getMotherUserId(), conversation.getExpertUserId(),
                 conversation.getStatus(), Timestamp.from(conversation.getCreatedAt())) == 1;
     }
 }

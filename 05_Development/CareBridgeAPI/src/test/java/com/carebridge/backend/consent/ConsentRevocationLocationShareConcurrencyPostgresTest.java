@@ -131,25 +131,19 @@ class ConsentRevocationLocationShareConcurrencyPostgresTest
 
     private Fixture seedFixture() {
         UUID userId = UUID.randomUUID();
-        UUID profileId = UUID.randomUUID();
+        // Canonical schema: the professional profile id namespace is retired —
+        // the expert's profile id IS the expert's user id.
+        UUID profileId = userId;
         UUID permissionId = UUID.randomUUID();
         UUID locationShareId = UUID.randomUUID();
 
         jdbcTemplate.update("""
-                INSERT INTO persons (person_id, display_name, created_at, updated_at)
-                VALUES (?, 'Consent concurrency expert', now(), now())
-                """, userId);
-        jdbcTemplate.update("""
                 INSERT INTO users (
-                    user_id, person_id, email, role, enabled, locked, created_at, updated_at)
-                VALUES (?, ?, ?, 'EXPERT', true, false, now(), now())
+                    user_id, person_id, display_name, email, role, specialty,
+                    verification_status, trust_status, enabled, locked, created_at, updated_at)
+                VALUES (?, ?, 'Consent concurrency expert', ?, 'EXPERT', 'OBSTETRICS',
+                        'APPROVED', 'ACTIVE', true, false, now(), now())
                 """, userId, userId, "consent-race-" + userId + "@test.invalid");
-        jdbcTemplate.update("""
-                INSERT INTO professional_profiles (
-                    professional_profile_id, user_id, specialty, verification_status,
-                    trust_status, created_at, updated_at)
-                VALUES (?, ?, 'OBSTETRICS', 'APPROVED', 'ACTIVE', now(), now())
-                """, profileId, userId);
         Long legacyConsentId = jdbcTemplate.queryForObject("""
                 INSERT INTO data_permissions (
                     permission_id, owner_user_id, permission_kind, scope_type, purpose,
@@ -161,12 +155,12 @@ class ConsentRevocationLocationShareConcurrencyPostgresTest
                 """, Long.class, permissionId, userId);
         jdbcTemplate.update("""
                 INSERT INTO expert_location_shares (
-                    location_share_id, professional_profile_id, latitude, longitude,
+                    location_share_id, professional_profile_id, user_id, latitude, longitude,
                     availability_status, shared_at, expires_at, consent_reference,
                     created_at, updated_at)
-                VALUES (?, ?, 10.7769, 106.7009, 'OFFLINE', now(),
+                VALUES (?, ?, ?, 10.7769, 106.7009, 'OFFLINE', now(),
                         now() + interval '30 minutes', ?, now(), now())
-                """, locationShareId, profileId, permissionId);
+                """, locationShareId, profileId, profileId, permissionId);
 
         return new Fixture(userId, profileId, permissionId, locationShareId, legacyConsentId);
     }

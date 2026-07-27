@@ -35,8 +35,11 @@ public class Reminder {
     @Column(name = "care_subject_id")
     private UUID careSubjectId;
 
+    // Reminder kind lives in its own canonical column (legacy
+    // scheduled_care_items.item_type); source_reference_type stays free for
+    // the actual source reference (e.g. TRIAGE_SESSION).
     @Enumerated(EnumType.STRING)
-    @Column(name = "source_reference_type", length = 60)
+    @Column(name = "item_type", length = 60)
     private ReminderType reminderType;
 
     @Column(name = "title", nullable = false, length = 255)

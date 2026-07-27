@@ -26,6 +26,7 @@ import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.type.SqlTypes;
 
 @Entity
+@org.hibernate.annotations.Immutable // append-only event row: never dirty-checked or updated
 @Table(name = "audit_events")
 @SQLRestriction("event_category LIKE 'BABY_LINK_%'")
 @Getter
@@ -66,9 +67,14 @@ public class BabyLinkSubmission {
     @Column(name = "event_category", nullable = false, updatable = false, length = 80)
     private String eventCategory;
 
+    /**
+     * Baby-link events share audit_events with real audit logs. A distinct origin keeps
+     * them out of the {@code AuditLog} entity (whose event_category maps to the
+     * {@code AuditAction} enum) instead of relying on the DB default 'AUDIT_LOG'.
+     */
     @Builder.Default
-    @Transient
-    private String eventOrigin = "BABY_LINK";
+    @Column(name = "event_origin", nullable = false, updatable = false, length = 40)
+    private String eventOrigin = "JOURNEY_EVENT";
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "payload", columnDefinition = "jsonb")
@@ -78,6 +84,7 @@ public class BabyLinkSubmission {
 
     @PrePersist
     void prepareCanonicalEvent() {
+        eventOrigin = "JOURNEY_EVENT";
         if (operationType == null && eventCategory != null) {
             operationType = BabyLinkOperation.valueOf(eventCategory.substring("BABY_LINK_".length()));
         }

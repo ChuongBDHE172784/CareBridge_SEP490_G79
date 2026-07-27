@@ -17,6 +17,11 @@ spring:
     enabled: false
     clean-disabled: true
     out-of-order: true
+    # Databases migrated before the canonical convergence keep their full
+    # Flyway history; the historical SQL files were retired in favour of the
+    # single V20260727010000 convergence migration. Validation stays on —
+    # only applied-but-no-longer-shipped migrations are tolerated.
+    ignore-migration-patterns: "*:missing"
 
   docker:
     compose:

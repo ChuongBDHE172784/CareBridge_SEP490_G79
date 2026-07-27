@@ -61,14 +61,10 @@ class EmergencyTriageLinkPostgresIntegrationTest
         firstIntakeId = UUID.randomUUID();
         secondIntakeId = UUID.randomUUID();
         jdbcTemplate.update("""
-                INSERT INTO persons(person_id,display_name,created_at,updated_at)
-                VALUES (?, 'RED Link Owner', now(), now())
-                """, ownerId);
-        jdbcTemplate.update("""
                 INSERT INTO users(
-                    user_id,person_id,email,role,account_status,enabled,locked,
+                    user_id,person_id,display_name,email,role,account_status,enabled,locked,
                     email_verified,phone_verified,created_at,updated_at)
-                VALUES (?, ?, ?, 'MOTHER', 'ACTIVE', true, false, true, false,
+                VALUES (?, ?, 'RED Link Owner', ?, 'MOTHER', 'ACTIVE', true, false, true, false,
                         now(), now())
                 """, ownerId, ownerId, "red-link-" + ownerId + "@test");
         seedRedIntake(firstIntakeId, "first red intake");
@@ -89,13 +85,13 @@ class EmergencyTriageLinkPostgresIntegrationTest
                    AND status = 'ACTIVE'
                 """, Long.class, ownerId)).isOne();
         assertThat(jdbcTemplate.queryForObject("""
-                SELECT count(*) FROM safety_event_actions
-                 WHERE owner_user_id = ? AND action_type = 'TRIAGE_ESCALATION'
-                   AND safety_event_id = ?
+                SELECT count(*) FROM safety_events
+                 WHERE user_id = ? AND action_type = 'TRIAGE_ESCALATION'
+                   AND parent_event_id = ?
                 """, Long.class, ownerId, first.getSessionId())).isEqualTo(2L);
         assertThat(jdbcTemplate.queryForObject("""
-                SELECT count(*) FROM safety_event_actions
-                 WHERE owner_user_id = ? AND action_type = 'TRIAGE_ESCALATION'
+                SELECT count(*) FROM safety_events
+                 WHERE user_id = ? AND action_type = 'TRIAGE_ESCALATION'
                    AND triage_handoff_id IN (?, ?)
                 """, Long.class, ownerId, firstIntakeId, secondIntakeId))
                 .isEqualTo(2L);
@@ -260,14 +256,11 @@ class EmergencyTriageLinkPostgresIntegrationTest
 
     private void seedRetryCandidate(UUID userId, UUID eventId, Instant createdAt) {
         jdbcTemplate.update("""
-                INSERT INTO persons(person_id,display_name,created_at,updated_at)
-                VALUES (?, 'Retry Matrix Owner', ?, ?)
-                """, userId, Timestamp.from(createdAt), Timestamp.from(createdAt));
-        jdbcTemplate.update("""
                 INSERT INTO users(
-                    user_id,person_id,email,role,account_status,enabled,locked,
+                    user_id,person_id,display_name,email,role,account_status,enabled,locked,
                     email_verified,phone_verified,created_at,updated_at)
-                VALUES (?, ?, ?, 'MOTHER', 'ACTIVE', true, false, true, false, ?, ?)
+                VALUES (?, ?, 'Retry Matrix Owner', ?, 'MOTHER', 'ACTIVE', true, false,
+                        true, false, ?, ?)
                 """, userId, userId, "retry-matrix-" + userId + "@test",
                 Timestamp.from(createdAt), Timestamp.from(createdAt));
         jdbcTemplate.update("""
@@ -281,15 +274,11 @@ class EmergencyTriageLinkPostgresIntegrationTest
 
     private void seedRecipientDevice(UUID recipientId, UUID deviceId, String token) {
         jdbcTemplate.update("""
-                INSERT INTO persons(person_id,display_name,created_at,updated_at)
-                VALUES (?, 'Restart Recipient', now(), now())
-                """, recipientId);
-        jdbcTemplate.update("""
                 INSERT INTO users(
-                    user_id,person_id,email,role,account_status,enabled,locked,
+                    user_id,person_id,display_name,email,role,account_status,enabled,locked,
                     email_verified,phone_verified,created_at,updated_at)
-                VALUES (?, ?, ?, 'FAMILY', 'ACTIVE', true, false, true, false,
-                        now(), now())
+                VALUES (?, ?, 'Restart Recipient', ?, 'FAMILY', 'ACTIVE', true, false,
+                        true, false, now(), now())
                 """, recipientId, recipientId, "restart-recipient-" + recipientId + "@test");
         jdbcTemplate.update("""
                 INSERT INTO device_tokens(id,user_id,token,platform,active,created_at,updated_at)
@@ -305,8 +294,8 @@ class EmergencyTriageLinkPostgresIntegrationTest
 
     private long deliveryResultCount(UUID sessionId, UUID deviceId, String status) {
         return jdbcTemplate.queryForObject("""
-                SELECT count(*) FROM safety_event_actions
-                 WHERE safety_event_id=? AND device_token_id=?
+                SELECT count(*) FROM safety_events
+                 WHERE parent_event_id=? AND device_token_id=?
                    AND action_type='DELIVERY' AND action_phase='RESULT'
                    AND delivery_status=?
                 """, Long.class, sessionId, deviceId, status);

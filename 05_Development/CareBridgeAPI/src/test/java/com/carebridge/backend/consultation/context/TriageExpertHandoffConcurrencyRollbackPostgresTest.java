@@ -199,8 +199,8 @@ class TriageExpertHandoffConcurrencyRollbackPostgresTest
                     handoffRequest(key, fixture.expert().getExpertProfileId()),
                     fixture.mother().getId()));
             awaitBlockedQuery("triage_sessions");
-            update(locker, "UPDATE professional_profiles SET trust_status = 'REVOKED' "
-                    + "WHERE professional_profile_id = ?", fixture.expert().getExpertProfileId());
+            update(locker, "UPDATE users SET trust_status = 'REVOKED' "
+                    + "WHERE user_id = ?", fixture.expert().getExpertProfileId());
             locker.commit();
 
             assertHandoffFailure(handoff, "HANDOFF-004");
@@ -243,12 +243,18 @@ class TriageExpertHandoffConcurrencyRollbackPostgresTest
     private Fixture seedFixture(boolean withCitation) {
         User mother = seedUser("Story 6.8 race Mother", "MOTHER");
         User expertUser = seedUser("Story 6.8 race Expert", "EXPERT");
-        ExpertProfile expert = expertProfileRepository.save(ExpertProfile.builder()
-                .userId(expertUser.getId())
-                .specialty("Maternal health")
-                .verificationStatus(VerificationStatus.APPROVED)
-                .trustStatus(TrustStatus.ACTIVE)
-                .build());
+        // Canonical model: the expert profile IS the users row (profile id == user id), so
+        // enrich the already-seeded users row instead of inserting a second entity.
+        jdbcTemplate.update(
+                "UPDATE users SET specialty = ?, verification_status = ?, trust_status = ? "
+                        + "WHERE user_id = ?",
+                "Maternal health",
+                VerificationStatus.APPROVED.name(),
+                TrustStatus.ACTIVE.name(),
+                expertUser.getId());
+        ExpertProfile expert = expertProfileRepository
+                .findByUserId(expertUser.getId())
+                .orElseThrow();
         MotherJourney journey = seedJourney(mother.getId());
         IntakeSession intake = createIntake(mother.getId(), journey.getId());
         EvidenceSource evidence = withCitation ? seedEvidenceSource() : null;
@@ -272,9 +278,9 @@ class TriageExpertHandoffConcurrencyRollbackPostgresTest
                 INSERT INTO care_subjects (
                     care_subject_id, person_id, owner_user_id, subject_type,
                     nickname, status, created_at, updated_at)
-                SELECT ?, u.person_id, u.user_id, 'MOTHER', p.display_name,
+                SELECT ?, u.person_id, u.user_id, 'MOTHER', u.display_name,
                        'ACTIVE', now(), now()
-                  FROM users u JOIN persons p ON p.person_id = u.person_id
+                  FROM users u
                  WHERE u.user_id = ?
                 """, careSubjectId, ownerId);
         MotherJourney journey = motherJourneyRepository.saveAndFlush(MotherJourney.builder()

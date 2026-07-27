@@ -23,6 +23,7 @@ import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.type.SqlTypes;
 
 @Entity
+@org.hibernate.annotations.Immutable // append-only event row: never dirty-checked or updated
 @Table(name = "audit_events")
 @SQLRestriction("event_category = 'BASELINE_CONTEXT'")
 @Getter
@@ -30,7 +31,8 @@ import org.hibernate.type.SqlTypes;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class MotherBaselineContext {
+public class MotherBaselineContext
+        implements org.springframework.data.domain.Persistable<UUID> {
 
     private static final String LEGACY_SCHEMA_VERSION = "MOTHER_BASELINE_V1";
 
@@ -72,9 +74,14 @@ public class MotherBaselineContext {
     @Column(name = "event_category", nullable = false, updatable = false, length = 80)
     private String eventCategory = "BASELINE_CONTEXT";
 
+    /**
+     * Journey events share audit_events with real audit logs. A distinct origin keeps
+     * them out of the {@code AuditLog} entity (whose event_category maps to the
+     * {@code AuditAction} enum) instead of relying on the DB default 'AUDIT_LOG'.
+     */
     @Builder.Default
-    @Transient
-    private String eventOrigin = "BASELINE_CONTEXT";
+    @Column(name = "event_origin", nullable = false, updatable = false, length = 40)
+    private String eventOrigin = "JOURNEY_EVENT";
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "payload", columnDefinition = "jsonb")
@@ -82,6 +89,7 @@ public class MotherBaselineContext {
 
     @PrePersist
     void prepareCanonicalEvent() {
+        eventOrigin = "JOURNEY_EVENT";
         if (id == null) id = UUID.randomUUID();
         if (recordedAt == null) recordedAt = effectiveAt == null ? Instant.now() : effectiveAt;
         effectiveAt = recordedAt;
@@ -123,6 +131,18 @@ public class MotherBaselineContext {
     @PreRemove
     void rejectMutation() {
         throw new UnsupportedOperationException("Mother baseline context is append-only");
+    }
+
+    /**
+     * Baseline revisions are append-only rows with an application-assigned id. Reporting
+     * {@code isNew() == true} makes Spring Data {@code save()} use {@code persist()} instead of
+     * {@code merge()}; a merge would instantiate a copy and silently drop every {@code @Transient}
+     * journey field (submissionId, lifecycleGoal, revision, ...) before the payload is built.
+     */
+    @Override
+    @Transient
+    public boolean isNew() {
+        return true;
     }
 
     private String text(String key) {

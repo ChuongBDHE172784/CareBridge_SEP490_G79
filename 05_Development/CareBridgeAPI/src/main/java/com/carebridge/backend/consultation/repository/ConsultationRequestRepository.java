@@ -31,8 +31,9 @@ public interface ConsultationRequestRepository extends JpaRepository<Consultatio
     long countByExpertProfileIdAndStatus(
             UUID expertProfileId, ConsultationRequestStatus status);
 
+    // Canonical model: the expert profile IS the users row, so the profile id is the user id.
     @Query(
-            value = "select user_id from professional_profiles where professional_profile_id = :expertProfileId",
+            value = "select user_id from users where user_id = :expertProfileId and role = 'EXPERT'",
             nativeQuery = true)
     Optional<UUID> findAssignedExpertUserId(
             @Param("expertProfileId") UUID expertProfileId);

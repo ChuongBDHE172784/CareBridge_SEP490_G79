@@ -86,12 +86,9 @@ class ConsentGrantPermissionBindingPostgresTest extends AbstractPostgresIntegrat
 
     private void insertUser(UUID userId, String email) {
         jdbcTemplate.update("""
-                INSERT INTO persons (person_id, display_name, created_at, updated_at)
-                VALUES (?, 'Location consent test user', now(), now())
-                """, userId);
-        jdbcTemplate.update("""
-                INSERT INTO users (user_id, person_id, email, enabled, locked, created_at, updated_at)
-                VALUES (?, ?, ?, true, false, now(), now())
+                INSERT INTO users (
+                    user_id, person_id, display_name, email, enabled, locked, created_at, updated_at)
+                VALUES (?, ?, 'Location consent test user', ?, true, false, now(), now())
                 """, userId, userId, email);
     }
 }

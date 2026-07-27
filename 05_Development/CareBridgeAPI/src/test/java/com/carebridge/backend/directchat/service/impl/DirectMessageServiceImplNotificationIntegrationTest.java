@@ -73,17 +73,17 @@ class DirectMessageServiceImplNotificationIntegrationTest extends AbstractPostgr
                 jdbcTemplate, motherId, "Mother Notif", "07" + phoneSuffix, "MOTHER");
         CanonicalUserFixture.insertUser(
                 jdbcTemplate, expertUserId, "Expert Notif", "06" + phoneSuffix, "EXPERT");
-        UUID expertProfileId = UUID.randomUUID();
+        // Canonical model: expert profile data lives on the users row itself.
         jdbcTemplate.update(
-                "INSERT INTO professional_profiles (professional_profile_id, user_id, specialty, verification_status, created_at, updated_at) "
-                        + "VALUES (?, ?, 'Sản khoa', 'APPROVED', now(), now())",
-                expertProfileId, expertUserId);
+                "UPDATE users SET specialty = 'Sản khoa', verification_status = 'APPROVED', trust_status = 'ACTIVE' "
+                        + "WHERE user_id = ?",
+                expertUserId);
         conversationId = UUID.randomUUID();
         jdbcTemplate.update(
-                "INSERT INTO archived_realtime_records (archive_id, legacy_table, legacy_id, mother_user_id, "
-                        + "expert_user_id, status, original_created_at, last_activity_at) "
-                        + "VALUES (?, 'direct_conversations', ?, ?, ?, 'ACTIVE', now(), now())",
-                conversationId, conversationId.toString(), motherId, expertUserId);
+                "INSERT INTO direct_conversations (conversation_id, mother_user_id, "
+                        + "expert_user_id, status, created_at, last_activity_at) "
+                        + "VALUES (?, ?, ?, 'ACTIVE', now(), now())",
+                conversationId, motherId, expertUserId);
         jdbcTemplate.update(
                 "INSERT INTO device_tokens (id, user_id, token, platform, active, created_at, updated_at) "
                         + "VALUES (?, ?, 'expert-fcm-token', 'ANDROID', true, now(), now())",
@@ -142,7 +142,7 @@ class DirectMessageServiceImplNotificationIntegrationTest extends AbstractPostgr
         awaitNotificationTerminal(messageId);
 
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM archived_realtime_records WHERE legacy_table='direct_messages' AND archive_id = ?",
+                "SELECT COUNT(*) FROM direct_messages WHERE message_id = ?",
                 Integer.class, messageId)).isEqualTo(1);
         assertThat(notificationRowCount(messageId)).isEqualTo(1);
         Integer attemptCount = jdbcTemplate.queryForObject(
@@ -168,7 +168,7 @@ class DirectMessageServiceImplNotificationIntegrationTest extends AbstractPostgr
         awaitNotificationTerminal(messageId);
 
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM archived_realtime_records WHERE legacy_table='direct_messages' AND archive_id = ?",
+                "SELECT COUNT(*) FROM direct_messages WHERE message_id = ?",
                 Integer.class, messageId)).isEqualTo(1);
         assertThat(notificationRowCount(messageId)).isEqualTo(1);
         String status = jdbcTemplate.queryForObject(

@@ -36,6 +36,11 @@ public class CommunityProfile {
     @Column(name = "user_id", updatable = false, nullable = false, columnDefinition = "uuid")
     private UUID communityProfileId;
 
+    // NOT NULL UNIQUE canonical identity pointer (retired persons table);
+    // equals user_id for canonical rows — same pattern as User/Person.
+    @Column(name = "person_id", updatable = false)
+    private UUID personId;
+
     @jakarta.persistence.Transient
     private UUID userId;
 
@@ -48,8 +53,10 @@ public class CommunityProfile {
     @Column(name = "interest_stage", length = 30)
     private String interestStage;
 
+    // Canonical users.is_visible is NULLABLE: plain account rows (no community profile yet)
+    // carry NULL, so the field must be a wrapper type; NULL reads as "not visible".
     @Column(name = "is_visible")
-    private boolean visible;
+    private Boolean visible;
 
     @Column(name = "public_avatar_url", length = 500)
     private String publicAvatarUrl;
@@ -68,10 +75,16 @@ public class CommunityProfile {
     void prepareCanonicalUser() {
         if (communityProfileId == null) communityProfileId = userId;
         if (userId == null) userId = communityProfileId;
+        if (personId == null) personId = communityProfileId;
     }
 
     @PostLoad
     void hydrateCanonicalUser() {
         userId = communityProfileId;
+    }
+
+    /** Boolean-typed column (nullable in canonical); NULL means not visible. */
+    public boolean isVisible() {
+        return Boolean.TRUE.equals(visible);
     }
 }

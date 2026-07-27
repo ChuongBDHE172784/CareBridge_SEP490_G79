@@ -38,15 +38,11 @@ class SafetyMonitoringConcurrencyPostgresIntegrationTest
     void seedOwnerAndConfig() {
         cleanFixtures();
         jdbcTemplate.update("""
-                INSERT INTO persons(person_id,display_name,created_at,updated_at)
-                VALUES (?, 'Concurrent Safety Owner', now(), now())
-                """, OWNER);
-        jdbcTemplate.update("""
                 INSERT INTO users(
-                    user_id,person_id,email,role,account_status,enabled,locked,
+                    user_id,person_id,display_name,email,role,account_status,enabled,locked,
                     email_verified,phone_verified,created_at,updated_at)
-                VALUES (?, ?, 'monitoring.concurrent@test', 'MOTHER', 'ACTIVE',
-                        true, false, true, false, now(), now())
+                VALUES (?, ?, 'Concurrent Safety Owner', 'monitoring.concurrent@test',
+                        'MOTHER', 'ACTIVE', true, false, true, false, now(), now())
                 """, OWNER, OWNER);
         jdbcTemplate.update("""
                 INSERT INTO safety_configs(
@@ -104,6 +100,5 @@ class SafetyMonitoringConcurrencyPostgresIntegrationTest
                 "DELETE FROM safety_monitoring_sessions WHERE user_id = ?", OWNER);
         jdbcTemplate.update("DELETE FROM safety_configs WHERE user_id = ?", OWNER);
         jdbcTemplate.update("DELETE FROM users WHERE user_id = ?", OWNER);
-        jdbcTemplate.update("DELETE FROM persons WHERE person_id = ?", OWNER);
     }
 }

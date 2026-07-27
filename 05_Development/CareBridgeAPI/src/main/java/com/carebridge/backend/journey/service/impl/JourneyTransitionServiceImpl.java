@@ -328,6 +328,9 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
         try {
             saved = journeyRepository.saveAndFlush(current);
             journeyRepository.linkMotherCareSubject(careSubjectId, saved.getId());
+            // Canonical convention: maternal observations use care_subject_id = journey_id,
+            // so the matching MOTHER care_subjects row must exist for the FK.
+            journeyRepository.ensureJourneyObservationSubject(saved.getId());
         } catch (DataIntegrityViolationException exception) {
             throw canonicalConflict();
         }

@@ -47,15 +47,15 @@ class ConsultationRequestExpiryIntegrationTest extends AbstractPostgresIntegrati
     private Fixture seedFixture() {
         UUID motherId = UUID.randomUUID();
         UUID expertUserId = UUID.randomUUID();
-        UUID expertProfileId = UUID.randomUUID();
+        // Canonical model: the expert profile IS the users row, so the profile id is the user id.
+        UUID expertProfileId = expertUserId;
         seedUser(motherId, "Expiry Mother", "MOTHER");
         seedUser(expertUserId, "Expiry Expert", "EXPERT");
         jdbcTemplate.update("""
-                INSERT INTO professional_profiles
-                    (professional_profile_id, user_id, specialty, verification_status, trust_status,
-                     created_at, updated_at)
-                VALUES (?, ?, 'Sản khoa', 'APPROVED', 'ACTIVE', now(), now())
-                """, expertProfileId, expertUserId);
+                UPDATE users
+                   SET specialty='Sản khoa', verification_status='APPROVED', trust_status='ACTIVE'
+                 WHERE user_id=?
+                """, expertUserId);
         return new Fixture(motherId, expertProfileId, expertUserId);
     }
 

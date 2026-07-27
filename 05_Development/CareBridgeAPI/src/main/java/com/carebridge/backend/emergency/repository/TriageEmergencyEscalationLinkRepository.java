@@ -20,12 +20,12 @@ public class TriageEmergencyEscalationLinkRepository {
 
     public Optional<UUID> findEmergencySessionId(UUID intakeSessionId, UUID ownerUserId) {
         return jdbcTemplate.query("""
-                SELECT action.safety_event_id
-                  FROM safety_event_actions action
+                SELECT action.parent_event_id
+                  FROM safety_events action
                  WHERE action.action_type = 'TRIAGE_ESCALATION'
                    AND action.triage_handoff_id = ?
-                   AND action.owner_user_id = ?
-                 ORDER BY action.created_at, action.safety_event_action_id
+                   AND action.user_id = ?
+                 ORDER BY action.created_at, action.safety_event_id
                  LIMIT 1
                 """, resultSet -> resultSet.next()
                         ? Optional.of(resultSet.getObject(1, UUID.class))
@@ -38,17 +38,19 @@ public class TriageEmergencyEscalationLinkRepository {
             UUID ownerUserId,
             Instant linkedAt) {
         jdbcTemplate.update("""
-                INSERT INTO safety_event_actions (
-                    safety_event_action_id, safety_event_id, action_type,
-                    owner_user_id, triage_handoff_id, attempt_number,
-                    idempotency_key, action_phase, alert_generation, created_at
+                INSERT INTO safety_events (
+                    safety_event_id, parent_event_id, record_type, event_type,
+                    action_type, user_id, triage_handoff_id, attempt_number,
+                    idempotency_key, action_phase, alert_generation,
+                    detected_at, created_at
                 ) VALUES (
-                    gen_random_uuid(), ?, 'TRIAGE_ESCALATION', ?, ?, 1,
-                    'triage-escalation:' || CAST(? AS text), 'LINKED', 0, ?
+                    md5('triage-escalation:' || CAST(? AS text))::uuid, ?,
+                    'SAFETY_ACTION', 'ACTION', 'TRIAGE_ESCALATION', ?, ?, 1,
+                    'triage-escalation:' || CAST(? AS text), 'LINKED', 0, ?, ?
                 )
-                ON CONFLICT (idempotency_key) DO NOTHING
-                """, emergencySessionId, ownerUserId, intakeSessionId,
-                intakeSessionId, Timestamp.from(linkedAt));
+                ON CONFLICT (safety_event_id) DO NOTHING
+                """, intakeSessionId, emergencySessionId, ownerUserId, intakeSessionId,
+                intakeSessionId, Timestamp.from(linkedAt), Timestamp.from(linkedAt));
 
         return findEmergencySessionId(intakeSessionId, ownerUserId)
                 .orElseThrow(() -> new IllegalStateException(

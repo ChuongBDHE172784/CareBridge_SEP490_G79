@@ -80,23 +80,15 @@ class ExpertDirectoryEligibilityIntegrationTest extends AbstractPostgresIntegrat
             String trustStatus,
             double rating) {
         UUID userId = UUID.randomUUID();
-        UUID profileId = UUID.randomUUID();
         String phone = uniquePhone();
         jdbcTemplate.update("""
-                INSERT INTO persons(person_id, display_name, phone_number, created_at, updated_at)
-                VALUES (?, ?, ?, now(), now())
-                """, userId, name, phone);
-        jdbcTemplate.update("""
                 INSERT INTO users
-                    (user_id, person_id, full_name, phone, role, enabled, locked, created_at, updated_at)
-                VALUES (?, ?, ?, ?, 'EXPERT', true, false, now(), now())
-                """, userId, userId, name, phone);
-        jdbcTemplate.update("""
-                INSERT INTO professional_profiles
-                    (professional_profile_id, user_id, specialty, verification_status, trust_status,
-                     rating_avg, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, now(), now())
-                """, profileId, userId, specialty, verificationStatus, trustStatus, rating);
+                    (user_id, person_id, full_name, display_name, phone, phone_number, role,
+                     specialty, verification_status, trust_status, rating_avg,
+                     enabled, locked, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, 'EXPERT', ?, ?, ?, ?, true, false, now(), now())
+                """, userId, userId, name, name, phone, phone,
+                specialty, verificationStatus, trustStatus, rating);
         UUID specialtyId = UUID.nameUUIDFromBytes(
                 ("expert-directory:" + specialty).getBytes(java.nio.charset.StandardCharsets.UTF_8));
         jdbcTemplate.update("""
@@ -108,8 +100,8 @@ class ExpertDirectoryEligibilityIntegrationTest extends AbstractPostgresIntegrat
                 INSERT INTO professional_specialties
                     (professional_profile_id, specialty_id, is_primary, created_at)
                 VALUES (?, ?, true, now())
-                """, profileId, specialtyId);
-        return profileId;
+                """, userId, specialtyId);
+        return userId;
     }
 
     private static String uniquePhone() {
@@ -117,17 +109,25 @@ class ExpertDirectoryEligibilityIntegrationTest extends AbstractPostgresIntegrat
     }
 
     private void setAccountState(
-            UUID profileId, boolean enabled, boolean locked, String suspendedUntilExpression) {
+            UUID expertUserId, boolean enabled, boolean locked, String suspendedUntilExpression) {
+        // Suspension is written the way the application persists it (User.suspendedUntil is
+        // @Transient, canonically stored in users.settings_jsonb->>'suspendedUntil') AND into
+        // the physical users.suspended_until column, so every directory predicate is exercised.
         String suspendedUntil = suspendedUntilExpression == null
                 ? "NULL"
                 : suspendedUntilExpression;
+        String settingsJsonb = suspendedUntilExpression == null
+                ? "(coalesce(settings_jsonb, '{}'::jsonb) - 'suspendedUntil')"
+                : "jsonb_set(coalesce(settings_jsonb, '{}'::jsonb), '{suspendedUntil}', "
+                        + "to_jsonb((" + suspendedUntilExpression + ")::timestamptz::text))";
         jdbcTemplate.update(
                 "UPDATE users SET enabled = ?, locked = ?, suspended_until = "
                         + suspendedUntil
-                        + " WHERE user_id = (SELECT user_id FROM professional_profiles "
-                        + "WHERE professional_profile_id = ?)",
+                        + ", settings_jsonb = "
+                        + settingsJsonb
+                        + " WHERE user_id = ?",
                 enabled,
                 locked,
-                profileId);
+                expertUserId);
     }
 }

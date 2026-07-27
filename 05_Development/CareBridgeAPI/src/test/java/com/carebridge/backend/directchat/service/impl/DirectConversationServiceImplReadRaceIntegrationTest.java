@@ -56,17 +56,17 @@ class DirectConversationServiceImplReadRaceIntegrationTest extends AbstractPostg
                 jdbcTemplate, MOTHER_ID, "Mother Race", "0900100001", "MOTHER");
         CanonicalUserFixture.insertUser(
                 jdbcTemplate, EXPERT_USER_ID, "Expert Race", "0900100002", "EXPERT");
-        UUID expertProfileId = UUID.randomUUID();
+        // Canonical model: expert profile data lives on the users row itself.
         jdbcTemplate.update(
-                "INSERT INTO professional_profiles (professional_profile_id, user_id, specialty, verification_status, created_at, updated_at) "
-                        + "VALUES (?, ?, 'Sản khoa', 'APPROVED', now(), now())",
-                expertProfileId, EXPERT_USER_ID);
+                "UPDATE users SET specialty = 'Sản khoa', verification_status = 'APPROVED', trust_status = 'ACTIVE' "
+                        + "WHERE user_id = ?",
+                EXPERT_USER_ID);
         conversationId = UUID.randomUUID();
         jdbcTemplate.update(
-                "INSERT INTO archived_realtime_records (archive_id, legacy_table, legacy_id, mother_user_id, "
-                        + "expert_user_id, status, original_created_at, last_activity_at) "
-                        + "VALUES (?, 'direct_conversations', ?, ?, ?, 'ACTIVE', now(), now())",
-                conversationId, conversationId.toString(), MOTHER_ID, EXPERT_USER_ID);
+                "INSERT INTO direct_conversations (conversation_id, mother_user_id, "
+                        + "expert_user_id, status, created_at, last_activity_at) "
+                        + "VALUES (?, ?, ?, 'ACTIVE', now(), now())",
+                conversationId, MOTHER_ID, EXPERT_USER_ID);
         when(zegoCloudService.generateToken(any(), any(), any()))
                 .thenReturn(new ZegoTokenDto("room", "tok", 1L, Instant.now().plusSeconds(3600)));
     }
@@ -103,12 +103,10 @@ class DirectConversationServiceImplReadRaceIntegrationTest extends AbstractPostg
                 .andExpect(status().isOk());
 
         Instant m1CreatedAt = jdbcTemplate.queryForObject(
-                "SELECT original_created_at FROM archived_realtime_records "
-                        + "WHERE legacy_table='direct_messages' AND archive_id = ?",
+                "SELECT created_at FROM direct_messages WHERE message_id = ?",
                 Instant.class, m1Id);
         Instant expertLastReadAt = jdbcTemplate.queryForObject(
-                "SELECT expert_last_read_at FROM archived_realtime_records "
-                        + "WHERE legacy_table='direct_conversations' AND archive_id = ?",
+                "SELECT expert_last_read_at FROM direct_conversations WHERE conversation_id = ?",
                 Instant.class, conversationId);
         assertThat(expertLastReadAt).isEqualTo(m1CreatedAt); // cursor == M1.createdAt, never "now" at t3
 
@@ -125,13 +123,13 @@ class DirectConversationServiceImplReadRaceIntegrationTest extends AbstractPostg
         UUID first = UUID.fromString("10000000-0000-0000-0000-000000000001");
         UUID second = UUID.fromString("20000000-0000-0000-0000-000000000002");
         jdbcTemplate.update("""
-                INSERT INTO archived_realtime_records
-                    (archive_id, legacy_table, legacy_id, conversation_id, sender_user_id,
-                     client_message_id, message_type, message_body, original_created_at)
-                VALUES (?, 'direct_messages', ?, ?, ?, ?, 'TEXT', 'first', ?),
-                       (?, 'direct_messages', ?, ?, ?, ?, 'TEXT', 'second', ?)
-                """, first, first.toString(), conversationId, MOTHER_ID, UUID.randomUUID(),
-                java.sql.Timestamp.from(sameTime), second, second.toString(), conversationId,
+                INSERT INTO direct_messages
+                    (message_id, conversation_id, sender_user_id,
+                     client_message_id, message_type, message_body, created_at)
+                VALUES (?, ?, ?, ?, 'TEXT', 'first', ?),
+                       (?, ?, ?, ?, 'TEXT', 'second', ?)
+                """, first, conversationId, MOTHER_ID, UUID.randomUUID(),
+                java.sql.Timestamp.from(sameTime), second, conversationId,
                 MOTHER_ID, UUID.randomUUID(), java.sql.Timestamp.from(sameTime));
 
         var cursor = conversationService.markRead(conversationId, EXPERT_USER_ID, first);

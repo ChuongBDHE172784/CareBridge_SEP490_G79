@@ -1,8 +1,5 @@
 package com.carebridge.backend.profile;
 
-import com.carebridge.backend.audit.entity.AuditAction;
-import com.carebridge.backend.audit.entity.AuditLog;
-import com.carebridge.backend.audit.repository.AuditLogRepository;
 import com.carebridge.backend.profile.entity.UserProfile;
 import com.carebridge.backend.profile.repository.ProfileRepository;
 import com.carebridge.backend.security.entity.User;
@@ -10,10 +7,11 @@ import com.carebridge.backend.security.jwt.JwtTokenProvider;
 import com.carebridge.backend.security.rbac.Role;
 import com.carebridge.backend.security.repository.UserRepository;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
-import java.util.List;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,7 +38,8 @@ class ProfileIntegrationTest extends AbstractPostgresIntegrationTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private UserRepository userRepository;
     @Autowired private ProfileRepository profileRepository;
-    @Autowired private AuditLogRepository auditLogRepository;
+    @Autowired private JdbcTemplate jdbcTemplate;
+    @Autowired private EntityManager entityManager;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private JwtTokenProvider jwtTokenProvider;
 
@@ -73,15 +72,18 @@ class ProfileIntegrationTest extends AbstractPostgresIntegrationTest {
         assertThat(userRepository.findById(user.getId()).orElseThrow().getName())
                 .isEqualTo("Nguyen Test");
 
-        // DB assertion: PROFILE_UPDATED audit row recorded for this user
-        // (query directly rather than via the repository's `search` method: its optional
-        // null-date filters use "? is null or ..." params, which the real Postgres driver
-        // cannot type-infer without an explicit cast — fine on H2, fails on Postgres)
-        List<AuditLog> auditLogs = auditLogRepository.findAll().stream()
-                .filter(a -> user.getId().equals(a.getActorUserId()))
-                .filter(a -> a.getAction() == AuditAction.PROFILE_UPDATED)
-                .toList();
-        assertThat(auditLogs).hasSize(1);
-        assertThat(auditLogs.get(0).getEntityType()).isEqualTo("UserProfile");
+        // DB assertion: PROFILE_UPDATED audit row recorded for this user. Queried with raw SQL
+        // scoped to this actor: the shared audit_events table also carries canonical categories
+        // written by other suites (e.g. BASELINE_CONTEXT) that are not AuditAction constants,
+        // so hydrating every row via auditLogRepository.findAll() would fail on enum mapping.
+        entityManager.flush(); // audit row is pending JPA state inside this test transaction
+        Integer profileUpdatedAudits = jdbcTemplate.queryForObject("""
+                select count(*) from audit_events
+                 where event_origin = 'AUDIT_LOG'
+                   and actor_user_id = ?
+                   and event_category = 'PROFILE_UPDATED'
+                   and resource_type = 'UserProfile'
+                """, Integer.class, user.getId());
+        assertThat(profileUpdatedAudits).isEqualTo(1);
     }
 }

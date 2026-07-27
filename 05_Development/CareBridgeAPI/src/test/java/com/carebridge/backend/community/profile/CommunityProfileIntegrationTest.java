@@ -41,7 +41,9 @@ class CommunityProfileIntegrationTest extends AbstractPostgresIntegrationTest {
     @Autowired private EntityManager entityManager;
 
     private String seedUserAndGetToken() {
-        User user = userRepository.save(User.builder()
+        // saveAndFlush: community-profile writes below merge onto this canonical users row,
+        // so it must already exist in the database (not just the persistence context).
+        User user = userRepository.saveAndFlush(User.builder()
                 .email(EMAIL)
                 .role(Role.MOTHER)
                 .passwordHash(passwordEncoder.encode("SecureP@ss1"))
@@ -86,7 +88,7 @@ class CommunityProfileIntegrationTest extends AbstractPostgresIntegrationTest {
         String token = seedUserAndGetToken();
         User user = userRepository.findByEmail(EMAIL).orElseThrow();
 
-        User unrelatedUser = userRepository.save(User.builder()
+        User unrelatedUser = userRepository.saveAndFlush(User.builder()
                 .email("int.communityprofile.unrelated@test.com")
                 .role(Role.MOTHER)
                 .passwordHash(passwordEncoder.encode("UnrelatedP@ss1"))
@@ -97,7 +99,10 @@ class CommunityProfileIntegrationTest extends AbstractPostgresIntegrationTest {
                 .accountStatus("ACTIVE")
                 .build());
         Instant unrelatedTimestamp = Instant.now().minusSeconds(7200).truncatedTo(ChronoUnit.MICROS);
+        // Canonical model: the community profile IS the users row, so the id must be set for
+        // save() to update the existing account row instead of inserting a duplicate.
         CommunityProfile unrelated = profileRepository.saveAndFlush(CommunityProfile.builder()
+                .communityProfileId(unrelatedUser.getId())
                 .userId(unrelatedUser.getId())
                 .displayName("UnrelatedName")
                 .bio("Unrelated bio")
@@ -111,6 +116,7 @@ class CommunityProfileIntegrationTest extends AbstractPostgresIntegrationTest {
         Instant unrelatedUpdatedAt = unrelated.getUpdatedAt();
 
         CommunityProfile existing = profileRepository.save(CommunityProfile.builder()
+                .communityProfileId(user.getId())
                 .userId(user.getId())
                 .displayName("OriginalName")
                 .bio("Original bio")

@@ -43,31 +43,31 @@ class DirectMessageServiceImplExpertRevokedTest extends AbstractPostgresIntegrat
                 jdbcTemplate, motherId, "Mother Revoked", "07" + phoneSuffix, "MOTHER");
         CanonicalUserFixture.insertUser(
                 jdbcTemplate, expertUserId, "Expert Revoked", "06" + phoneSuffix, "EXPERT");
-        UUID expertProfileId = UUID.randomUUID();
+        // Canonical model: expert profile data lives on the users row itself.
         jdbcTemplate.update(
-                "INSERT INTO professional_profiles (professional_profile_id, user_id, specialty, verification_status, created_at, updated_at) "
-                        + "VALUES (?, ?, 'Sản khoa', 'APPROVED', now(), now())",
-                expertProfileId, expertUserId);
+                "UPDATE users SET specialty = 'Sản khoa', verification_status = 'APPROVED', trust_status = 'ACTIVE' "
+                        + "WHERE user_id = ?",
+                expertUserId);
         UUID conversationId = UUID.randomUUID();
         jdbcTemplate.update(
-                "INSERT INTO archived_realtime_records (archive_id, legacy_table, legacy_id, mother_user_id, "
-                        + "expert_user_id, status, original_created_at, last_activity_at) "
-                        + "VALUES (?, 'direct_conversations', ?, ?, ?, 'ACTIVE', now(), now())",
-                conversationId, conversationId.toString(), motherId, expertUserId);
+                "INSERT INTO direct_conversations (conversation_id, mother_user_id, "
+                        + "expert_user_id, status, created_at, last_activity_at) "
+                        + "VALUES (?, ?, ?, 'ACTIVE', now(), now())",
+                conversationId, motherId, expertUserId);
         UUID priorMessageId = UUID.randomUUID();
         jdbcTemplate.update(
-                "INSERT INTO archived_realtime_records (archive_id, legacy_table, legacy_id, conversation_id, "
-                        + "sender_user_id, client_message_id, message_type, message_body, original_created_at) "
-                        + "VALUES (?, 'direct_messages', ?, ?, ?, ?, 'TEXT', 'Old history', now())",
-                priorMessageId, priorMessageId.toString(), conversationId, expertUserId, UUID.randomUUID());
+                "INSERT INTO direct_messages (message_id, conversation_id, "
+                        + "sender_user_id, client_message_id, message_type, message_body, created_at) "
+                        + "VALUES (?, ?, ?, ?, 'TEXT', 'Old history', now())",
+                priorMessageId, conversationId, expertUserId, UUID.randomUUID());
         jdbcTemplate.update(
-                "UPDATE archived_realtime_records SET last_activity_at = now() "
-                        + "WHERE legacy_table='direct_conversations' AND archive_id = ?",
+                "UPDATE direct_conversations SET last_activity_at = now() "
+                        + "WHERE conversation_id = ?",
                 conversationId);
 
         // Preconditions done — now revoke.
         jdbcTemplate.update(
-                "UPDATE professional_profiles SET verification_status = 'SUSPENDED' WHERE user_id = ?", expertUserId);
+                "UPDATE users SET verification_status = 'SUSPENDED' WHERE user_id = ?", expertUserId);
 
         // Step 1 — Mother tries to send a new message: must be blocked, nothing persisted, no notification.
         SendDirectMessageRequest request = new SendDirectMessageRequest();
@@ -78,8 +78,7 @@ class DirectMessageServiceImplExpertRevokedTest extends AbstractPostgresIntegrat
                         ex -> assertThat(ex.getCode()).isEqualTo("DCC-010"));
 
         Integer messageCount = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM archived_realtime_records "
-                        + "WHERE legacy_table='direct_messages' AND conversation_id = ?",
+                "SELECT COUNT(*) FROM direct_messages WHERE conversation_id = ?",
                 Integer.class, conversationId);
         assertThat(messageCount).isEqualTo(1); // only the pre-existing history message, no new insert
         Integer notificationCount = jdbcTemplate.queryForObject(

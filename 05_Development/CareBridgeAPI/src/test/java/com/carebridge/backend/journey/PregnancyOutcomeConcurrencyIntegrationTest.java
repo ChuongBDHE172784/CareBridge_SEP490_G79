@@ -49,15 +49,11 @@ class PregnancyOutcomeConcurrencyIntegrationTest extends AbstractPostgresIntegra
                 """, OWNER_ID);
         jdbcTemplate.update("DELETE FROM public.mother_journeys WHERE journey_id = ?", JOURNEY_ID);
         jdbcTemplate.update("""
-                INSERT INTO public.persons (person_id, display_name, created_at, updated_at)
-                VALUES (?, 'Story 63 Concurrent Mother', now(), now())
-                ON CONFLICT (person_id) DO NOTHING
-                """, OWNER_ID);
-        jdbcTemplate.update("""
                 INSERT INTO public.users (
-                    user_id, person_id, email, role, account_status, enabled, locked,
-                    must_change_password, created_at, updated_at
-                ) VALUES (?, ?, ?, 'MOTHER', 'ACTIVE', true, false, false, now(), now())
+                    user_id, person_id, display_name, email, role, account_status,
+                    enabled, locked, must_change_password, created_at, updated_at
+                ) VALUES (?, ?, 'Story 63 Concurrent Mother', ?, 'MOTHER', 'ACTIVE',
+                    true, false, false, now(), now())
                 ON CONFLICT (user_id) DO NOTHING
                 """, OWNER_ID, OWNER_ID, "story63.concurrent@test.carebridge.local");
         seedLifecycleBaselineAndConsent();
@@ -103,43 +99,43 @@ class PregnancyOutcomeConcurrencyIntegrationTest extends AbstractPostgresIntegra
             assertThat(results).containsExactlyInAnyOrder("COMMITTED", "JOURNEY_VERSION_CONFLICT");
         }
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM mother_journey_events "
-                        + "WHERE mother_journey_id = ? AND legacy_source = 'PREGNANCY_OUTCOME'",
+                "SELECT count(*) FROM audit_events "
+                        + "WHERE subject_reference_id = ? AND event_category = 'PREGNANCY_OUTCOME_EVIDENCE'",
                 Long.class, JOURNEY_ID)).isEqualTo(1L);
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM mother_journey_events "
-                        + "WHERE mother_journey_id = ? AND legacy_source = 'JOURNEY_TRANSITION'",
+                "SELECT count(*) FROM audit_events "
+                        + "WHERE subject_reference_id = ? AND event_category = 'MOTHER_JOURNEY_TRANSITION'",
                 Long.class, JOURNEY_ID)).isEqualTo(1L);
     }
 
     private void deleteCanonicalEvents() {
         jdbcTemplate.execute(
-                "ALTER TABLE public.mother_journey_events DISABLE TRIGGER mother_journey_events_immutable_trg");
+                "ALTER TABLE public.audit_events DISABLE TRIGGER audit_events_immutable_trg");
         try {
             jdbcTemplate.update(
-                    "DELETE FROM public.mother_journey_events "
-                            + "WHERE mother_journey_id = ? OR "
-                            + "(owner_user_id = ? AND legacy_source = 'MOTHER_BASELINE')",
+                    "DELETE FROM public.audit_events "
+                            + "WHERE subject_reference_id = ? OR "
+                            + "(actor_user_id = ? AND event_category = 'BASELINE_CONTEXT')",
                     JOURNEY_ID, OWNER_ID);
         } finally {
             jdbcTemplate.execute(
-                    "ALTER TABLE public.mother_journey_events ENABLE TRIGGER mother_journey_events_immutable_trg");
+                    "ALTER TABLE public.audit_events ENABLE TRIGGER audit_events_immutable_trg");
         }
     }
 
     private void seedLifecycleBaselineAndConsent() {
         jdbcTemplate.update("""
-                INSERT INTO public.mother_journey_events (
-                    event_id, owner_user_id, submission_id, journey_version,
-                    schema_version, lifecycle_goal, locale, time_zone,
-                    preferences, recorded_at, event_source, event_type,
-                    event_payload_jsonb, effective_at, legacy_source, legacy_id
-                ) VALUES (?, ?, ?, 1, 'MOTHER_BASELINE_V1',
-                    'CURRENTLY_PREGNANT', 'vi-VN', 'Asia/Ho_Chi_Minh',
-                    'NUTRITION', now(), 'SELF_REPORTED', 'BASELINE_CONTEXT',
-                    '{}'::jsonb, now(), 'MOTHER_BASELINE', ?)
-                """, UUID.randomUUID(), OWNER_ID, BASELINE_SUBMISSION_ID,
-                BASELINE_SUBMISSION_ID.toString());
+                INSERT INTO public.audit_events (
+                    audit_event_id, event_category, actor_user_id, resource_type,
+                    payload, occurred_at, created_at
+                ) VALUES (?, 'BASELINE_CONTEXT', ?, 'mother_journeys', ?::jsonb, now(), now())
+                """, UUID.randomUUID(), OWNER_ID,
+                """
+                {"revision": 1, "schemaVersion": "MOTHER_BASELINE_V1",
+                 "lifecycleGoal": "CURRENTLY_PREGNANT", "locale": "vi-VN",
+                 "timeZone": "Asia/Ho_Chi_Minh", "preferences": "NUTRITION",
+                 "source": "SELF_REPORTED", "submissionId": "%s"}
+                """.formatted(BASELINE_SUBMISSION_ID));
         jdbcTemplate.update("""
                 INSERT INTO public.data_permissions (
                     permission_kind, owner_user_id, scope_type, purpose, scope_text,

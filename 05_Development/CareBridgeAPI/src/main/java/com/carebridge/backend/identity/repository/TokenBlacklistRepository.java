@@ -19,19 +19,21 @@ public class TokenBlacklistRepository {
                        AND expires_at > ?
                        AND status = 'REVOKED'
                 )
-                """, Boolean.class, tokenHash, now);
+                """, Boolean.class, tokenHash, java.sql.Timestamp.from(now));
         return Boolean.TRUE.equals(found);
     }
 
     public TokenBlacklist save(TokenBlacklist revocation) {
         revocation.canonicalDefaults();
+        // java.sql.Timestamp: the PostgreSQL driver cannot infer a SQL type for java.time.Instant.
         int updated = jdbcTemplate.update("""
                 UPDATE auth_sessions
                    SET status = 'REVOKED',
                        revoked_at = ?,
                        revoke_reason = ?
                  WHERE refresh_token_hash = ?
-                """, revocation.getRevokedAt(), revocation.getReason(), revocation.getTokenHash());
+                """, java.sql.Timestamp.from(revocation.getRevokedAt()),
+                revocation.getReason(), revocation.getTokenHash());
         if (updated == 0) {
             throw new IllegalArgumentException("No auth session exists for the supplied token hash");
         }

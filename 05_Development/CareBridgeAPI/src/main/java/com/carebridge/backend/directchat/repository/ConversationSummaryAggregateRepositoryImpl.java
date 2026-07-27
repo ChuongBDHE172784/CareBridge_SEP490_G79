@@ -24,11 +24,11 @@ class ConversationSummaryAggregateRepositoryImpl implements ConversationSummaryA
         }
         Map<UUID, LastMessageRow> result = new HashMap<>();
         jdbcTemplate.query("""
-                SELECT DISTINCT ON (conversation_id) conversation_id, archive_id AS message_id,
-                       message_body, original_created_at AS created_at
-                FROM archived_realtime_records
-                WHERE legacy_table='direct_messages' AND conversation_id IN (:ids)
-                ORDER BY conversation_id, original_created_at DESC, archive_id DESC
+                SELECT DISTINCT ON (conversation_id) conversation_id, message_id,
+                       message_body, created_at
+                FROM direct_messages
+                WHERE conversation_id IN (:ids)
+                ORDER BY conversation_id, created_at DESC, message_id DESC
                 """,
                 new MapSqlParameterSource("ids", conversationIds),
                 rs -> {
@@ -53,20 +53,19 @@ class ConversationSummaryAggregateRepositoryImpl implements ConversationSummaryA
                 .addValue("ids", conversationIds)
                 .addValue("currentUserId", currentUserId);
         jdbcTemplate.query("""
-                SELECT dc.archive_id AS conversation_id, COUNT(dm.archive_id) AS unread_count
-                FROM archived_realtime_records dc
-                LEFT JOIN archived_realtime_records dm
-                       ON dm.conversation_id = dc.archive_id
-                      AND dm.legacy_table='direct_messages'
+                SELECT dc.conversation_id AS conversation_id, COUNT(dm.message_id) AS unread_count
+                FROM direct_conversations dc
+                LEFT JOIN direct_messages dm
+                       ON dm.conversation_id = dc.conversation_id
                       AND dm.sender_user_id <> :currentUserId
-                      AND (dm.original_created_at, dm.archive_id) > (
+                      AND (dm.created_at, dm.message_id) > (
                             COALESCE(CASE WHEN dc.mother_user_id = :currentUserId THEN dc.mother_last_read_at
                                           ELSE dc.expert_last_read_at END, '-infinity'::timestamptz),
                             COALESCE(CASE WHEN dc.mother_user_id = :currentUserId THEN dc.mother_last_read_message_id
                                           ELSE dc.expert_last_read_message_id END,
                                      '00000000-0000-0000-0000-000000000000'::uuid))
-                WHERE dc.legacy_table='direct_conversations' AND dc.archive_id IN (:ids)
-                GROUP BY dc.archive_id
+                WHERE dc.conversation_id IN (:ids)
+                GROUP BY dc.conversation_id
                 """,
                 params,
                 rs -> {
@@ -82,7 +81,7 @@ class ConversationSummaryAggregateRepositoryImpl implements ConversationSummaryA
         String idColumn = mother ? "mother_last_read_message_id" : "expert_last_read_message_id";
         String userColumn = mother ? "mother_user_id" : "expert_user_id";
         String sql = """
-                UPDATE archived_realtime_records
+                UPDATE direct_conversations
                 SET %1$s = CASE WHEN (COALESCE(%1$s, '-infinity'::timestamptz),
                                            COALESCE(%2$s, '00000000-0000-0000-0000-000000000000'::uuid))
                                       < (?, ?)
@@ -91,7 +90,7 @@ class ConversationSummaryAggregateRepositoryImpl implements ConversationSummaryA
                                            COALESCE(%2$s, '00000000-0000-0000-0000-000000000000'::uuid))
                                       < (?, ?)
                                    THEN ? ELSE %2$s END
-                WHERE archive_id = ? AND legacy_table='direct_conversations' AND %3$s = ?
+                WHERE conversation_id = ? AND %3$s = ?
                 RETURNING %1$s, %2$s
                 """.formatted(timeColumn, idColumn, userColumn);
         return jdbcTemplate.getJdbcTemplate().queryForObject(sql,

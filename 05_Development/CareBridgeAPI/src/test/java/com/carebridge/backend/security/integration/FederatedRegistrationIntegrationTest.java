@@ -5,14 +5,17 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
 import com.carebridge.backend.security.dto.request.FederatedAuthRequest;
 import com.carebridge.backend.security.entity.User;
+import com.carebridge.backend.security.entity.UserIdentity;
 import com.carebridge.backend.security.exception.FederatedAuthException;
 import com.carebridge.backend.security.federation.*;
+import com.carebridge.backend.security.repository.UserIdentityRepository;
 import com.carebridge.backend.security.repository.UserRepository;
 import com.carebridge.backend.security.service.FederatedAuthService;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
@@ -22,16 +25,38 @@ class FederatedRegistrationIntegrationTest extends AbstractPostgresIntegrationTe
     @Autowired private JdbcTemplate jdbc;
     @Autowired private FederatedAuthService service;
     @Autowired private UserRepository users;
+    @Autowired private UserIdentityRepository identities;
     @MockitoBean private FirebaseTokenVerifier verifier;
 
     @Test
     void userIdentitiesSchema_enforcesUniqueProviderSubject() {
-        Integer constraints = jdbc.queryForObject("""
-                select count(*) from pg_constraint c
-                join pg_class t on t.oid = c.conrelid
-                where t.relname = 'user_identities' and c.contype = 'u'
+        // Canonical schema: the user_identities table (and its UNIQUE constraint) is gone;
+        // identities live in users.social_identities and uniqueness of (provider,
+        // providerSubject) across ALL users is enforced by UserIdentityRepository.save
+        // (advisory locks + duplicate check -> DataIntegrityViolationException).
+        when(verifier.verify("unique-subject-token")).thenReturn(new VerifiedFederatedIdentity(
+                FederatedProvider.PHONE, "unique-subject-1", null, "+84901110003",
+                "Unique Mother", false, true));
+        service.authenticate(new FederatedAuthRequest("unique-subject-token", "JUnit"));
+
+        User other = users.save(User.builder().email("unique.subject.other@example.com")
+                .name("Other Owner").accountStatus("ACTIVE").emailVerified(true)
+                .phoneVerified(false).enabled(true).locked(false).build());
+        assertThatThrownBy(() -> identities.save(UserIdentity.builder()
+                .user(other)
+                .provider(FederatedProvider.PHONE)
+                .providerSubject("unique-subject-1")
+                .build()))
+                .isInstanceOf(DataIntegrityViolationException.class);
+
+        Integer owners = jdbc.queryForObject("""
+                select count(*)
+                  from users u
+                 cross join lateral jsonb_array_elements(coalesce(u.social_identities, '[]'::jsonb)) identity
+                 where identity->>'provider' = 'PHONE'
+                   and identity->>'providerSubject' = 'unique-subject-1'
                 """, Integer.class);
-        assertThat(constraints).isGreaterThanOrEqualTo(1);
+        assertThat(owners).isEqualTo(1);
     }
 
     @Test
@@ -45,8 +70,12 @@ class FederatedRegistrationIntegrationTest extends AbstractPostgresIntegrationTe
         assertThatThrownBy(() -> service.authenticate(new FederatedAuthRequest("collision-token", "JUnit")))
                 .isInstanceOf(FederatedAuthException.class)
                 .hasMessage("Existing account requires verification");
-        Integer identityCount = jdbc.queryForObject(
-                "select count(*) from user_identities where provider_subject = 'google-collision-1'", Integer.class);
+        Integer identityCount = jdbc.queryForObject("""
+                select count(*)
+                  from users u
+                 cross join lateral jsonb_array_elements(coalesce(u.social_identities, '[]'::jsonb)) identity
+                 where identity->>'providerSubject' = 'google-collision-1'
+                """, Integer.class);
         assertThat(identityCount).isZero();
     }
 }

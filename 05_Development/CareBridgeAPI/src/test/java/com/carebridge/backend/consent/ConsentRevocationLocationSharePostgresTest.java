@@ -22,10 +22,9 @@ class ConsentRevocationLocationSharePostgresTest extends AbstractPostgresIntegra
     @Test
     void revokingCanonicalPermissionDeletesOnlyItsLocationShares() {
         UUID userId = UUID.randomUUID();
-        UUID profileId = UUID.randomUUID();
         UUID permissionId = UUID.randomUUID();
         UUID unrelatedPermissionId = UUID.randomUUID();
-        insertExpert(userId, profileId);
+        insertExpert(userId);
 
         Long legacyConsentId = jdbcTemplate.queryForObject("""
                 INSERT INTO data_permissions (
@@ -37,8 +36,8 @@ class ConsentRevocationLocationSharePostgresTest extends AbstractPostgresIntegra
                 RETURNING legacy_consent_id
                 """, Long.class, permissionId, userId);
 
-        insertLocationShare(profileId, permissionId);
-        insertLocationShare(profileId, unrelatedPermissionId);
+        insertLocationShare(userId, permissionId);
+        insertLocationShare(userId, unrelatedPermissionId);
 
         ConsentGrantResponse response = consentService.revokeConsent(userId, legacyConsentId);
         entityManager.flush();
@@ -56,33 +55,25 @@ class ConsentRevocationLocationSharePostgresTest extends AbstractPostgresIntegra
                 """, Long.class, permissionId, userId)).isOne();
     }
 
-    private void insertExpert(UUID userId, UUID profileId) {
-        jdbcTemplate.update("""
-                INSERT INTO persons (person_id, display_name, created_at, updated_at)
-                VALUES (?, 'Consent revoke expert', now(), now())
-                """, userId);
+    private void insertExpert(UUID userId) {
         jdbcTemplate.update("""
                 INSERT INTO users (
-                    user_id, person_id, email, role, enabled, locked, created_at, updated_at)
-                VALUES (?, ?, ?, 'EXPERT', true, false, now(), now())
+                    user_id, person_id, display_name, email, role, specialty,
+                    verification_status, trust_status, enabled, locked, created_at, updated_at)
+                VALUES (?, ?, 'Consent revoke expert', ?, 'EXPERT', 'OBSTETRICS',
+                        'APPROVED', 'ACTIVE', true, false, now(), now())
                 """, userId, userId, "consent-revoke-" + userId + "@test.invalid");
-        jdbcTemplate.update("""
-                INSERT INTO professional_profiles (
-                    professional_profile_id, user_id, specialty, verification_status,
-                    trust_status, created_at, updated_at)
-                VALUES (?, ?, 'OBSTETRICS', 'APPROVED', 'ACTIVE', now(), now())
-                """, profileId, userId);
     }
 
-    private void insertLocationShare(UUID profileId, UUID permissionId) {
+    private void insertLocationShare(UUID expertUserId, UUID permissionId) {
         jdbcTemplate.update("""
                 INSERT INTO expert_location_shares (
-                    location_share_id, professional_profile_id, latitude, longitude,
+                    location_share_id, professional_profile_id, user_id, latitude, longitude,
                     availability_status, shared_at, expires_at, consent_reference,
                     created_at, updated_at)
-                VALUES (?, ?, 10.7769, 106.7009, 'ONLINE', now(),
+                VALUES (?, ?, ?, 10.7769, 106.7009, 'ONLINE', now(),
                         now() + interval '30 minutes', ?, now(), now())
-                """, UUID.randomUUID(), profileId, permissionId);
+                """, UUID.randomUUID(), expertUserId, expertUserId, permissionId);
     }
 
     private long countShares(UUID permissionId) {

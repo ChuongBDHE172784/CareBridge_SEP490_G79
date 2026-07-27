@@ -51,13 +51,16 @@ public class ExpertProfile {
     @Column(name = "consultation_fee_vnd")
     private Long consultationFeeVnd;
 
+    // Canonical users.verification_status / users.trust_status are NULLABLE (the columns are
+    // shared with non-expert account rows); declaring them NOT NULL here would poison the
+    // generated H2 schema for every other entity mapped to "users".
     @Enumerated(EnumType.STRING)
-    @Column(name = "verification_status", nullable = false, length = 30)
+    @Column(name = "verification_status", length = 30)
     private VerificationStatus verificationStatus;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)
-    @Column(name = "trust_status", nullable = false, length = 20)
+    @Column(name = "trust_status", length = 20)
     private TrustStatus trustStatus = TrustStatus.ACTIVE;
 
     @Column(name = "verified_at")

@@ -104,18 +104,18 @@ class DevDataSeederPostgresIntegrationTest {
                    AND owner.role = 'MOTHER'
                    AND subject.subject_type = 'MOTHER'
                    AND subject.owner_user_id = journey.owner_user_id
-                   AND subject.person_id = owner.person_id
+                   AND subject.person_id = owner.user_id
                    AND subject.mother_journey_id = journey.journey_id
                 """.formatted(SEEDED_MOTHER_EMAILS), Integer.class)).isEqualTo(4);
         assertThat(jdbcTemplate.queryForObject("""
                 SELECT count(*)
-                  FROM mother_journey_events evidence
-                  JOIN mother_journeys journey ON journey.journey_id = evidence.mother_journey_id
+                  FROM audit_events evidence
+                  JOIN mother_journeys journey ON journey.journey_id = evidence.subject_reference_id
                   JOIN users owner ON owner.user_id = journey.owner_user_id
                  WHERE owner.email IN ('mother5@carebridge.dev', 'mother6@carebridge.dev')
-                   AND evidence.legacy_source = 'PREGNANCY_OUTCOME'
-                   AND evidence.owner_user_id = journey.owner_user_id
-                   AND evidence.journey_version = journey.version
+                   AND evidence.event_category = 'PREGNANCY_OUTCOME_EVIDENCE'
+                   AND evidence.actor_user_id = journey.owner_user_id
+                   AND (evidence.payload->>'journeyVersion')::bigint = journey.version
                 """, Integer.class)).isEqualTo(2);
         assertThat(seededGrowthMeasurementIds()).containsExactlyElementsOf(SEEDED_GROWTH_IDS);
         assertThat(jdbcTemplate.queryForObject("""
@@ -139,31 +139,29 @@ class DevDataSeederPostgresIntegrationTest {
         assertThat(count("""
                 SELECT count(*)
                   FROM expert_credentials ec
-                  JOIN professional_profiles pp
-                    ON pp.professional_profile_id = ec.professional_profile_id
-                  JOIN users u ON u.user_id = pp.user_id
+                  JOIN users u ON u.user_id = ec.user_id
                  WHERE u.email IN ('expert2@carebridge.dev', 'expert3@carebridge.dev')
+                   AND u.verification_status = 'APPROVED'
                 """)).isEqualTo(2L);
         assertThat(count("""
                 SELECT count(*)
                   FROM expert_availability ea
-                  JOIN professional_profiles pp
-                    ON pp.professional_profile_id = ea.professional_profile_id
-                  JOIN users u ON u.user_id = pp.user_id
+                  JOIN users u ON u.user_id = ea.user_id
                  WHERE u.email IN ('expert2@carebridge.dev', 'expert3@carebridge.dev')
+                   AND u.verification_status = 'APPROVED'
                 """)).isEqualTo(2L);
     }
 
     private List<Long> fixtureCounts() {
         return List.of(
                 count("SELECT count(*) FROM users"),
-                count("SELECT count(*) FROM persons"),
+                count("SELECT count(*) FROM users WHERE display_name IS NOT NULL"),
                 count("SELECT count(*) FROM care_subjects"),
                 count("SELECT count(*) FROM mother_journeys"),
-                count("SELECT count(*) FROM mother_journey_events"),
+                count("SELECT count(*) FROM audit_events"),
                 count("SELECT count(*) FROM growth_measurements"),
                 count("SELECT count(*) FROM care_logs"),
-                count("SELECT count(*) FROM professional_profiles"),
+                count("SELECT count(*) FROM users WHERE verification_status IS NOT NULL"),
                 count("SELECT count(*) FROM expert_credentials"),
                 count("SELECT count(*) FROM expert_availability"),
                 count("SELECT count(*) FROM community_content"),
@@ -187,11 +185,11 @@ class DevDataSeederPostgresIntegrationTest {
     private Integer seededStory65EvidenceCount() {
         return jdbcTemplate.queryForObject("""
                 SELECT count(*)
-                  FROM mother_journey_events evidence
-                  JOIN mother_journeys journey ON journey.journey_id = evidence.mother_journey_id
+                  FROM audit_events evidence
+                  JOIN mother_journeys journey ON journey.journey_id = evidence.subject_reference_id
                   JOIN users owner ON owner.user_id = journey.owner_user_id
                  WHERE owner.email IN ('mother5@carebridge.dev', 'mother6@carebridge.dev')
-                   AND evidence.legacy_source = 'PREGNANCY_OUTCOME'
+                   AND evidence.event_category = 'PREGNANCY_OUTCOME_EVIDENCE'
                 """, Integer.class);
     }
 

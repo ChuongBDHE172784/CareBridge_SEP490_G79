@@ -197,23 +197,23 @@ class DirectChatWriteLockConcurrencyIntegrationTest extends AbstractPostgresInte
     private Fixture seedFixture(boolean withConversation) {
         UUID motherId = UUID.randomUUID();
         UUID expertUserId = UUID.randomUUID();
-        UUID expertProfileId = UUID.randomUUID();
+        // Canonical model: the expert profile IS the users row, so the profile id is the user id.
+        UUID expertProfileId = expertUserId;
         UUID conversationId = withConversation ? UUID.randomUUID() : null;
         seedUser(motherId, "Lock Mother", "MOTHER");
         seedUser(expertUserId, "Lock Expert", "EXPERT");
         jdbcTemplate.update("""
-                INSERT INTO professional_profiles
-                    (professional_profile_id, user_id, specialty, verification_status, trust_status,
-                     created_at, updated_at)
-                VALUES (?, ?, 'Sản khoa', 'APPROVED', 'ACTIVE', now(), now())
-                """, expertProfileId, expertUserId);
+                UPDATE users
+                   SET specialty='Sản khoa', verification_status='APPROVED', trust_status='ACTIVE'
+                 WHERE user_id=?
+                """, expertUserId);
         if (withConversation) {
             jdbcTemplate.update("""
-                    INSERT INTO archived_realtime_records
-                        (archive_id, legacy_table, legacy_id, mother_user_id, expert_user_id,
-                         status, original_created_at, last_activity_at)
-                    VALUES (?, 'direct_conversations', ?, ?, ?, 'ACTIVE', now(), now())
-                    """, conversationId, conversationId.toString(), motherId, expertUserId);
+                    INSERT INTO direct_conversations
+                        (conversation_id, mother_user_id, expert_user_id,
+                         status, created_at, last_activity_at)
+                    VALUES (?, ?, ?, 'ACTIVE', now(), now())
+                    """, conversationId, motherId, expertUserId);
         }
         return new Fixture(motherId, expertUserId, expertProfileId, conversationId);
     }
@@ -225,14 +225,12 @@ class DirectChatWriteLockConcurrencyIntegrationTest extends AbstractPostgresInte
     private int count(String table, Fixture fixture) {
         String sql = switch (table) {
             case "direct_conversations" ->
-                    "SELECT COUNT(*) FROM archived_realtime_records "
-                            + "WHERE legacy_table='direct_conversations' AND mother_user_id=? AND expert_user_id=?";
+                    "SELECT COUNT(*) FROM direct_conversations "
+                            + "WHERE mother_user_id=? AND expert_user_id=?";
             case "direct_messages" ->
-                    "SELECT COUNT(*) FROM archived_realtime_records "
-                            + "WHERE legacy_table='direct_messages' AND conversation_id=?";
+                    "SELECT COUNT(*) FROM direct_messages WHERE conversation_id=?";
             case "conversation_calls" ->
-                    "SELECT COUNT(*) FROM archived_realtime_records "
-                            + "WHERE legacy_table='conversation_calls' AND conversation_id=?";
+                    "SELECT COUNT(*) FROM conversation_calls WHERE conversation_id=?";
             default -> throw new IllegalArgumentException(table);
         };
         if ("direct_conversations".equals(table)) {

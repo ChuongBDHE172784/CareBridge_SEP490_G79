@@ -22,7 +22,36 @@ import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "audit_events")
-@org.hibernate.annotations.SQLRestriction("event_origin = 'AUDIT_LOG'")
+// Belt and braces: new journey/baby event rows are written with
+// event_origin = 'JOURNEY_EVENT', but rows migrated by the canonical
+// convergence migration (and rows on the immutable live table, which cannot
+// be updated) still carry the default event_origin = 'AUDIT_LOG' with a
+// journey event_category. Those categories are not AuditAction constants, so
+// they must be excluded here or loading them through AuditLog crashes enum
+// hydration.
+@org.hibernate.annotations.SQLRestriction("""
+        event_origin = 'AUDIT_LOG'
+        AND event_category NOT IN (
+            'BASELINE_CONTEXT',
+            'MOTHER_JOURNEY_TRANSITION',
+            'PREGNANCY_OUTCOME_EVIDENCE',
+            'SAFETY_OUTCOME',
+            'DATA_MIGRATION',
+            'MODERATION_REVIEW',
+            'MODERATION_APPROVE',
+            'MODERATION_HIDE',
+            'MODERATION_LOCK',
+            'MODERATION_REQUEST_REVISION',
+            'MODERATION_LABEL',
+            'MODERATION_WARN',
+            'MODERATION_SUSPEND',
+            'MODERATION_RESTRICT',
+            'MODERATION_ESCALATE',
+            'MODERATION_UNDO',
+            'MODERATION_AI_FEEDBACK_SUBMITTED')
+        AND event_category NOT LIKE 'BABY\\_LINK\\_%'
+        AND event_category NOT LIKE 'MOTHER\\_JOURNEY\\_%'
+        """)
 @Getter
 @Setter
 @Builder

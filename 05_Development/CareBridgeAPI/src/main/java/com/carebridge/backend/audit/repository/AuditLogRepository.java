@@ -19,13 +19,15 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, java.util.UU
     // (no null-bind-parameter type-inference issue).
     List<AuditLog> findByEntityIdAndAction(java.util.UUID entityId, AuditAction action);
 
+    // CASTs keep PostgreSQL from failing with "could not determine data type of
+    // parameter" when the optional timestamp filters are bound as null.
     @Query("""
             select a
             from AuditLog a
             where (:userId is null or a.actorUserId = :userId)
               and (:action is null or a.action = :action)
-              and (:fromDate is null or a.createdAt >= :fromDate)
-              and (:toDate is null or a.createdAt <= :toDate)
+              and (cast(:fromDate as instant) is null or a.createdAt >= :fromDate)
+              and (cast(:toDate as instant) is null or a.createdAt <= :toDate)
             order by a.createdAt desc
             """)
     Page<AuditLog> search(

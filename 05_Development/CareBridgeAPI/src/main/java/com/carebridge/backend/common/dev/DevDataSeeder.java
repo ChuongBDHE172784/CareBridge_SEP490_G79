@@ -709,24 +709,38 @@ public class DevDataSeeder implements ApplicationRunner {
     private void upsertDailyLog(String id, BabyProfile baby, User recorder, String logType,
                                 Instant occurredAt, BigDecimal quantity, String unit, String note) {
         Timestamp timestamp = Timestamp.from(occurredAt);
+        // care_logs is a compatibility VIEW (canonical store: care_tasks CARE_LOG
+        // rows); ON CONFLICT is not available through INSTEAD OF triggers, so the
+        // idempotent upsert targets the canonical table directly.
         jdbcTemplate.update("""
-            INSERT INTO care_logs
-                (care_log_id, care_subject_id, log_type, started_at, quantity, unit, note,
-                 recorded_by, status, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'ACTIVE', ?, ?)
-            ON CONFLICT (care_log_id) DO UPDATE SET
+            INSERT INTO care_tasks
+                (task_id, task_type, owner_user_id, creator_user_id, care_subject_id,
+                 title, description, scheduled_at, status,
+                 source_reference_type, source_reference_id, metadata_jsonb,
+                 created_at, updated_at)
+            SELECT ?, 'CARE_LOG', cs.owner_user_id, ?, cs.care_subject_id,
+                   'Care log: ' || ?, ?, ?, 'ACTIVE',
+                   'CARE_LOG', ?,
+                   jsonb_build_object('logType', CAST(? AS text),
+                                      'quantity', CAST(? AS numeric),
+                                      'unit', CAST(? AS text),
+                                      'recordedBy', CAST(? AS uuid)),
+                   ?, ?
+              FROM care_subjects cs
+             WHERE cs.care_subject_id = ?
+            ON CONFLICT (task_id) DO UPDATE SET
                 care_subject_id = EXCLUDED.care_subject_id,
-                log_type = EXCLUDED.log_type,
-                started_at = EXCLUDED.started_at,
-                quantity = EXCLUDED.quantity,
-                unit = EXCLUDED.unit,
-                note = EXCLUDED.note,
-                recorded_by = EXCLUDED.recorded_by,
+                title = EXCLUDED.title,
+                description = EXCLUDED.description,
+                scheduled_at = EXCLUDED.scheduled_at,
                 status = 'ACTIVE',
+                creator_user_id = EXCLUDED.creator_user_id,
+                metadata_jsonb = EXCLUDED.metadata_jsonb,
                 created_at = EXCLUDED.created_at,
                 updated_at = EXCLUDED.updated_at
-            """, UUID.fromString(id), baby.getId(), logType, timestamp, quantity, unit, note,
-            recorder.getId(), timestamp, timestamp);
+            """, UUID.fromString(id), recorder.getId(), logType, note, timestamp,
+            UUID.fromString(id), logType, quantity, unit, recorder.getId(),
+            timestamp, timestamp, baby.getId());
     }
 
     private void upsertGrowthMeasurement(String id, BabyProfile baby, LocalDate measuredDate,

@@ -35,7 +35,7 @@ import java.util.regex.Pattern;
 
 /**
  * CB-TYFU-IMP-001 — creates the YELLOW triage follow-up care item in the canonical
- * {@code scheduled_care_items} table (ADR-TYFU-001..006).
+ * {@code care_tasks} table (ADR-TYFU-001..006).
  *
  * <p>Log hygiene (TDS §4.3 / §14.2): only sessionId, outcome codes and exception
  * class names are logged — never symptom text or titles.

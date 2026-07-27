@@ -81,7 +81,7 @@ public class ContentReport {
 
     // CB-MOD-IMP-017: CURRENT (latest) moderator feedback on the linked AI assessment —
     // consolidated from the dropped ai_assessment_feedback table. Full history is append-only
-    // in moderation_events (action_type = AI_FEEDBACK_SUBMITTED).
+    // in audit_events (event_category = MODERATION_AI_FEEDBACK_SUBMITTED).
     @Enumerated(EnumType.STRING)
     @Column(name = "ai_feedback_decision", length = 20)
     private com.carebridge.backend.aimoderation.entity.AiFeedbackVerdict aiFeedbackDecision;

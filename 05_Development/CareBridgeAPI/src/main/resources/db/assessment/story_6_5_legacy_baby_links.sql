@@ -1,10 +1,19 @@
 -- READ ONLY. Run and obtain Product/Data approval before any cleanup migration.
+-- Canonical form: pregnancy-outcome evidence lives in audit_events
+-- (event_category = 'PREGNANCY_OUTCOME_EVIDENCE', subject_reference_id = journey).
 WITH latest_evidence AS (
-  SELECT DISTINCT ON (mother_journey_id)
-         mother_journey_id AS journey_id, owner_user_id, outcome_type
-  FROM mother_journey_events
-  WHERE legacy_source = 'PREGNANCY_OUTCOME'
-  ORDER BY mother_journey_id, revision_number DESC
+  SELECT DISTINCT ON (subject_reference_id)
+         subject_reference_id AS journey_id,
+         -- Rows migrated from mother_journey_events carry the owner in
+         -- subject_user_id; rows written by PregnancyOutcomeEvidence leave
+         -- subject_user_id empty and use actor_user_id as the owner.
+         coalesce(subject_user_id, actor_user_id) AS owner_user_id,
+         payload ->> 'outcomeType' AS outcome_type
+  FROM audit_events
+  WHERE event_category = 'PREGNANCY_OUTCOME_EVIDENCE'
+  ORDER BY subject_reference_id,
+           coalesce((payload ->> 'revisionNumber')::int, 0) DESC,
+           occurred_at DESC
 ), classified AS (
   SELECT CASE
     WHEN j.journey_id IS NULL THEN 'MISSING_JOURNEY'

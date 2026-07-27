@@ -22,10 +22,9 @@ public interface MotherJourneyRepository extends JpaRepository<MotherJourney, UU
             INSERT INTO care_subjects (
                 care_subject_id, person_id, owner_user_id, subject_type,
                 nickname, status, created_at, updated_at)
-            SELECT :subjectId, u.person_id, u.user_id, 'MOTHER',
-                   p.display_name, 'ACTIVE', now(), now()
+            SELECT :subjectId, u.user_id, u.user_id, 'MOTHER',
+                   u.display_name, 'ACTIVE', now(), now()
               FROM users u
-              JOIN persons p ON p.person_id = u.person_id
              WHERE u.user_id = :ownerUserId
             ON CONFLICT DO NOTHING
             """, nativeQuery = true)
@@ -50,6 +49,27 @@ public interface MotherJourneyRepository extends JpaRepository<MotherJourney, UU
     int linkMotherCareSubject(
             @Param("subjectId") UUID subjectId,
             @Param("journeyId") UUID journeyId);
+
+    /**
+     * Maternal observations (postpartum logs) attach to health_observations with
+     * {@code care_subject_id = journey_id}. The canonical convergence migration
+     * guarantees such a MOTHER care_subjects row for every legacy journey that had
+     * observations (same convention documented in the migration); this keeps the
+     * invariant for journeys created or written after the convergence.
+     */
+    @Modifying
+    @Query(value = """
+            INSERT INTO care_subjects (
+                care_subject_id, person_id, owner_user_id, mother_journey_id,
+                subject_type, nickname, status, created_at, updated_at)
+            SELECT j.journey_id, u.user_id, u.user_id, j.journey_id, 'MOTHER',
+                   u.display_name, 'ACTIVE', now(), now()
+              FROM mother_journeys j
+              JOIN users u ON u.user_id = j.owner_user_id
+             WHERE j.journey_id = :journeyId
+            ON CONFLICT (care_subject_id) DO NOTHING
+            """, nativeQuery = true)
+    int ensureJourneyObservationSubject(@Param("journeyId") UUID journeyId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select j from MotherJourney j where j.id = :journeyId")

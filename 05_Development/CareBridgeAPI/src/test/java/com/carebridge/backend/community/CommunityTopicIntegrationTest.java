@@ -126,6 +126,10 @@ class CommunityTopicIntegrationTest extends AbstractPostgresIntegrationTest {
     }
 
     // COM-TC-026 + COM-TC-038: run the real migration boundary and prove follow ids survive.
+    // The historical taxonomy/inversion migrations were consolidated into the single canonical
+    // convergence migration, so the pre-migration state is now built as a synthetic legacy
+    // database (inverted hierarchy + FOLLOW rows already in community_interactions), and the
+    // one canonical migration must preserve both the existing topic ids and the follow rows.
     @Test
     void hierarchyInversion_preservesFollowRowsAndExistingTopicIds() throws Exception {
         String database = "community_topic_v2_" + UUID.randomUUID().toString().replace("-", "");
@@ -135,33 +139,86 @@ class CommunityTopicIntegrationTest extends AbstractPostgresIntegrationTest {
             statement.execute("CREATE DATABASE " + database);
         }
         String url = POSTGRES.getJdbcUrl().replace("/test?", "/" + database + "?");
-        Flyway.configure()
-                .dataSource(url, POSTGRES.getUsername(), POSTGRES.getPassword())
-                .locations("classpath:db/migration")
-                .target(MigrationVersion.fromVersion("20260721204919"))
-                .outOfOrder(true)
-                .load()
-                .migrate();
 
         List<String> beforeTopicIds;
         try (Connection connection = DriverManager.getConnection(url, POSTGRES.getUsername(), POSTGRES.getPassword());
              Statement statement = connection.createStatement()) {
             statement.execute("""
-                    INSERT INTO users(user_id, email, password_hash, full_name, created_at, updated_at)
-                    VALUES ('00000000-0000-0000-0000-000000009999', 'follow-migration@test.local', 'x', 'Follow Test', now(), now())
+                    CREATE TABLE users (
+                        user_id uuid PRIMARY KEY,
+                        person_id uuid NOT NULL,
+                        created_at timestamptz NOT NULL,
+                        updated_at timestamptz NOT NULL
+                    )
                     """);
             statement.execute("""
-                    INSERT INTO user_topic_follows(user_id, topic_id) VALUES
-                    ('00000000-0000-0000-0000-000000009999', 'a1b2c3d4-e5f6-7890-abcd-ef1234567801'),
-                    ('00000000-0000-0000-0000-000000009999', 'a1b2c3d4-e5f6-7890-abcd-ef1234567807')
+                    INSERT INTO users(user_id, person_id, created_at, updated_at)
+                    VALUES ('00000000-0000-0000-0000-000000009999',
+                            '00000000-0000-0000-0000-000000009999', now(), now())
+                    """);
+            // Same column ORDER as the canonical relation: the convergence migration
+            // re-seeds the taxonomy with positional INSERT ... VALUES statements.
+            statement.execute("""
+                    CREATE TABLE community_topics (
+                        id uuid PRIMARY KEY,
+                        created_at timestamptz NOT NULL DEFAULT now(),
+                        description text,
+                        name varchar(100) NOT NULL,
+                        updated_at timestamptz DEFAULT now(),
+                        is_hidden boolean NOT NULL DEFAULT false,
+                        icon varchar(255),
+                        sort_order integer NOT NULL DEFAULT 0,
+                        created_by uuid,
+                        type varchar(20) NOT NULL,
+                        slug varchar(140) NOT NULL UNIQUE,
+                        parent_id uuid REFERENCES community_topics(id)
+                    )
+                    """);
+            // Existing (already inverted) taxonomy with the production topic ids. The
+            // canonical migration re-seeds the same slugs with ON CONFLICT DO NOTHING,
+            // so these pre-existing ids must survive unchanged.
+            statement.execute("""
+                    INSERT INTO community_topics(id, name, type, slug, parent_id, sort_order) VALUES
+                    ('b1b2c3d4-e5f6-7890-abcd-ef1234567801', 'Chuẩn bị mang thai', 'CATEGORY', 'chuan-bi-mang-thai', NULL, 1),
+                    ('b1b2c3d4-e5f6-7890-abcd-ef1234567802', 'Mang thai', 'CATEGORY', 'mang-thai', NULL, 2),
+                    ('b1b2c3d4-e5f6-7890-abcd-ef1234567803', 'Sau sinh', 'CATEGORY', 'sau-sinh', NULL, 3),
+                    ('b1b2c3d4-e5f6-7890-abcd-ef1234567804', 'Chăm bé', 'CATEGORY', 'cham-be', NULL, 4),
+                    ('b1b2c3d4-e5f6-7890-abcd-ef1234567805', 'Khác', 'CATEGORY', 'khac', NULL, 5),
+                    ('a1b2c3d4-e5f6-7890-abcd-ef1234567801', 'Dinh dưỡng thai kỳ', 'TOPIC', 'dinh-duong-thai-ky', 'b1b2c3d4-e5f6-7890-abcd-ef1234567802', 1),
+                    ('a1b2c3d4-e5f6-7890-abcd-ef1234567802', 'Sức khỏe thai nhi', 'TOPIC', 'suc-khoe-thai-nhi', 'b1b2c3d4-e5f6-7890-abcd-ef1234567802', 2),
+                    ('a1b2c3d4-e5f6-7890-abcd-ef1234567803', 'Chăm sóc sau sinh', 'TOPIC', 'cham-soc-sau-sinh', 'b1b2c3d4-e5f6-7890-abcd-ef1234567803', 3),
+                    ('a1b2c3d4-e5f6-7890-abcd-ef1234567804', 'Nuôi con bằng sữa mẹ', 'TOPIC', 'nuoi-con-bang-sua-me', 'b1b2c3d4-e5f6-7890-abcd-ef1234567803', 4),
+                    ('a1b2c3d4-e5f6-7890-abcd-ef1234567805', 'Giấc ngủ và thể chất', 'TOPIC', 'giac-ngu-va-the-chat', 'b1b2c3d4-e5f6-7890-abcd-ef1234567802', 5),
+                    ('a1b2c3d4-e5f6-7890-abcd-ef1234567806', 'Tâm lý & Cảm xúc', 'TOPIC', 'tam-ly-va-cam-xuc', 'b1b2c3d4-e5f6-7890-abcd-ef1234567805', 6),
+                    ('a1b2c3d4-e5f6-7890-abcd-ef1234567807', 'Chăm sóc bé sơ sinh', 'TOPIC', 'cham-soc-be-so-sinh', 'b1b2c3d4-e5f6-7890-abcd-ef1234567804', 7),
+                    ('a1b2c3d4-e5f6-7890-abcd-ef1234567808', 'Hỏi đáp chung', 'TOPIC', 'hoi-dap-chung', 'b1b2c3d4-e5f6-7890-abcd-ef1234567805', 8)
+                    """);
+            statement.execute("""
+                    CREATE TABLE community_interactions (
+                        actor_user_id uuid NOT NULL,
+                        interaction_type varchar(30) NOT NULL,
+                        topic_id uuid,
+                        created_at timestamptz NOT NULL DEFAULT now()
+                    )
+                    """);
+            statement.execute("""
+                    INSERT INTO community_interactions(actor_user_id, interaction_type, topic_id) VALUES
+                    ('00000000-0000-0000-0000-000000009999', 'FOLLOW', 'a1b2c3d4-e5f6-7890-abcd-ef1234567801'),
+                    ('00000000-0000-0000-0000-000000009999', 'FOLLOW', 'a1b2c3d4-e5f6-7890-abcd-ef1234567807')
                     """);
             beforeTopicIds = queryStrings(statement,
-                    "SELECT topic_id::text FROM user_topic_follows ORDER BY topic_id");
+                    "SELECT topic_id::text FROM community_interactions "
+                            + "WHERE interaction_type='FOLLOW' ORDER BY topic_id");
         }
 
         Flyway.configure()
                 .dataSource(url, POSTGRES.getUsername(), POSTGRES.getPassword())
                 .locations("classpath:db/migration")
+                // The synthetic legacy schema pre-dates Flyway history, exactly like
+                // the real databases the convergence migration was applied to.
+                .baselineOnMigrate(true)
+                .baselineVersion(MigrationVersion.fromVersion("0"))
+                .target(MigrationVersion.fromVersion("20260727010000"))
                 .outOfOrder(true)
                 .load()
                 .migrate();

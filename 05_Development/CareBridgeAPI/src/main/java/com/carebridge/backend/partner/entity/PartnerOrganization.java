@@ -8,7 +8,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.UniqueConstraint;
 import java.time.Instant;
 import java.util.UUID;
@@ -22,13 +21,12 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
 @Table(
-        name = "archived_partner_records",
+        name = "partner_organizations",
         uniqueConstraints = {
             @UniqueConstraint(name = "uk_partner_representative", columnNames = {"representative_user_id"}),
             @UniqueConstraint(name = "uk_partner_email", columnNames = {"email"})
         }
 )
-@org.hibernate.annotations.SQLRestriction("legacy_table = 'partner_organizations'")
 @Getter
 @Setter
 @Builder
@@ -38,7 +36,7 @@ public class PartnerOrganization {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "archive_id", updatable = false, nullable = false)
+    @Column(name = "partner_id", updatable = false, nullable = false)
     private UUID id;
 
     @Column(name = "name", nullable = false, length = 200)
@@ -77,23 +75,10 @@ public class PartnerOrganization {
     private UUID representativeUserId;
 
     @CreationTimestamp
-    @Column(name = "original_created_at", nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
-
-    @Builder.Default
-    @Column(name = "legacy_table", nullable = false, updatable = false)
-    private String legacyTable = "partner_organizations";
-
-    @Column(name = "legacy_id", nullable = false, updatable = false)
-    private String legacyId;
-
-    @PrePersist
-    void prepareArchiveIdentity() {
-        legacyTable = "partner_organizations";
-        legacyId = id.toString();
-    }
 }

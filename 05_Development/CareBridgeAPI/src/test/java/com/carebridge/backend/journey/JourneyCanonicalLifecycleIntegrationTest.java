@@ -10,6 +10,7 @@ import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.journey.repository.MotherJourneyTransitionRepository;
 import com.carebridge.backend.journey.service.IJourneyTransitionService;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
+import com.carebridge.backend.testsupport.CanonicalAuditFixture;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
 import org.junit.jupiter.api.BeforeEach;
@@ -57,16 +58,7 @@ class JourneyCanonicalLifecycleIntegrationTest extends AbstractPostgresIntegrati
 
     @BeforeEach
     void seedMother() {
-        jdbcTemplate.execute(
-                "ALTER TABLE public.mother_journey_events DISABLE TRIGGER mother_journey_events_immutable_trg");
-        try {
-            jdbcTemplate.update(
-                    "DELETE FROM public.mother_journey_events WHERE owner_user_id = ?",
-                    JourneyLifecycleTestFactory.MOTHER_ID);
-        } finally {
-            jdbcTemplate.execute(
-                    "ALTER TABLE public.mother_journey_events ENABLE TRIGGER mother_journey_events_immutable_trg");
-        }
+        CanonicalAuditFixture.deleteByActor(jdbcTemplate, JourneyLifecycleTestFactory.MOTHER_ID);
         jdbcTemplate.update(
                 "UPDATE public.care_subjects SET mother_journey_id = NULL "
                         + "WHERE owner_user_id = ? AND subject_type = 'MOTHER'",
@@ -82,35 +74,30 @@ class JourneyCanonicalLifecycleIntegrationTest extends AbstractPostgresIntegrati
                         + "AND permission_kind = 'CONSENT_GRANT' AND scope_type = 'MOTHER_BASELINE'",
                 JourneyLifecycleTestFactory.MOTHER_ID);
         jdbcTemplate.update("""
-                INSERT INTO public.persons (person_id, display_name, created_at, updated_at)
-                VALUES (?, 'Story 61 Mother', now(), now())
-                ON CONFLICT (person_id) DO NOTHING
-                """, JourneyLifecycleTestFactory.MOTHER_ID);
-        jdbcTemplate.update("""
                 INSERT INTO public.users (
-                    user_id, person_id, email, role, account_status, enabled, locked,
-                    email_verified, phone_verified, created_at, updated_at
-                ) VALUES (?, ?, ?, 'MOTHER', 'ACTIVE', true, false, true, false, now(), now())
+                    user_id, person_id, display_name, email, role, account_status,
+                    enabled, locked, email_verified, phone_verified, created_at, updated_at
+                ) VALUES (?, ?, 'Story 61 Mother', ?, 'MOTHER', 'ACTIVE',
+                    true, false, true, false, now(), now())
                 ON CONFLICT (user_id) DO NOTHING
                 """,
                 JourneyLifecycleTestFactory.MOTHER_ID,
                 JourneyLifecycleTestFactory.MOTHER_ID,
                 "story61.mother@test.carebridge.local");
         jdbcTemplate.update("""
-                INSERT INTO public.mother_journey_events (
-                    event_id, owner_user_id, submission_id, journey_version,
-                    schema_version, lifecycle_goal, locale, time_zone,
-                    preferences, recorded_at, event_source, event_type,
-                    event_payload_jsonb, effective_at, legacy_source, legacy_id
-                ) VALUES (?, ?, ?, 1, 'MOTHER_BASELINE_V1',
-                    'CURRENTLY_PREGNANT', 'vi-VN', 'Asia/Ho_Chi_Minh',
-                    'NUTRITION', now(), 'SELF_REPORTED', 'BASELINE_CONTEXT',
-                    '{}'::jsonb, now(), 'MOTHER_BASELINE', ?)
+                INSERT INTO public.audit_events (
+                    audit_event_id, event_category, actor_user_id, resource_type,
+                    payload, occurred_at, created_at
+                ) VALUES (?, 'BASELINE_CONTEXT', ?, 'mother_journeys', ?::jsonb, now(), now())
                 """,
                 java.util.UUID.randomUUID(),
                 JourneyLifecycleTestFactory.MOTHER_ID,
-                ELIGIBILITY_SUBMISSION_ID,
-                ELIGIBILITY_SUBMISSION_ID.toString());
+                """
+                {"revision": 1, "schemaVersion": "MOTHER_BASELINE_V1",
+                 "lifecycleGoal": "CURRENTLY_PREGNANT", "locale": "vi-VN",
+                 "timeZone": "Asia/Ho_Chi_Minh", "preferences": "NUTRITION",
+                 "source": "SELF_REPORTED", "submissionId": "%s"}
+                """.formatted(ELIGIBILITY_SUBMISSION_ID));
         jdbcTemplate.update("""
                 INSERT INTO public.data_permissions (
                     permission_kind, owner_user_id, scope_type, purpose, scope_text,
@@ -188,10 +175,10 @@ class JourneyCanonicalLifecycleIntegrationTest extends AbstractPostgresIntegrati
                 SELECT count(*) FROM public.mother_journeys WHERE owner_user_id = ?
                 """, Long.class, JourneyLifecycleTestFactory.MOTHER_ID)).isZero();
         assertThat(jdbcTemplate.queryForObject("""
-                SELECT count(*) FROM public.mother_journey_events t
-                JOIN public.mother_journeys j ON j.journey_id = t.mother_journey_id
+                SELECT count(*) FROM public.audit_events t
+                JOIN public.mother_journeys j ON j.journey_id = t.subject_reference_id
                 WHERE j.owner_user_id = ?
-                  AND t.legacy_source = 'JOURNEY_TRANSITION'
+                  AND t.event_category = 'MOTHER_JOURNEY_TRANSITION'
                 """, Long.class, JourneyLifecycleTestFactory.MOTHER_ID)).isZero();
     }
 
@@ -220,9 +207,9 @@ class JourneyCanonicalLifecycleIntegrationTest extends AbstractPostgresIntegrati
         assertThat(journeyRepository.countByOwnerUserIdAndStatus(
                 JourneyLifecycleTestFactory.MOTHER_ID, JourneyStatus.ACTIVE)).isEqualTo(1L);
         assertThat(jdbcTemplate.queryForObject("""
-                SELECT count(*) FROM public.mother_journey_events e
-                JOIN public.mother_journeys j ON j.journey_id = e.mother_journey_id
-                WHERE j.owner_user_id = ? AND e.legacy_source = 'JOURNEY_TRANSITION'
+                SELECT count(*) FROM public.audit_events e
+                JOIN public.mother_journeys j ON j.journey_id = e.subject_reference_id
+                WHERE j.owner_user_id = ? AND e.event_category = 'MOTHER_JOURNEY_TRANSITION'
                 """, Long.class, JourneyLifecycleTestFactory.MOTHER_ID)).isEqualTo(1L);
     }
 
@@ -270,10 +257,11 @@ class JourneyCanonicalLifecycleIntegrationTest extends AbstractPostgresIntegrati
                       AND column_name IN ('version', 'date_source', 'date_confidence')
                     """)).isEqualTo(3L);
             assertThat(singleLong(statement, """
-                    SELECT count(*) FROM mother_journey_transitions
-                    WHERE event_type='MIGRATED'
-                      AND source='MIGRATION'
-                      AND journey_version=0
+                    SELECT count(*) FROM audit_events
+                    WHERE event_category='MOTHER_JOURNEY_TRANSITION'
+                      AND payload->>'eventType'='MIGRATED'
+                      AND payload->>'source'='MIGRATION'
+                      AND (payload->>'journeyVersion')::bigint=0
                     """)).isEqualTo(1L);
             assertThat(singleLong(statement, "SELECT count(*) FROM mother_journeys"))
                     .isEqualTo(1L);
@@ -287,9 +275,10 @@ class JourneyCanonicalLifecycleIntegrationTest extends AbstractPostgresIntegrati
 
         assertThatThrownBy(() -> runStoryMigration(url))
                 .hasRootCauseMessage(
-                        "ERROR: Canonical journey migration blocked: "
-                                + "duplicate ACTIVE lifecycle rows\n"
-                                + "  Where: PL/pgSQL function inline_code_block line 11 at RAISE");
+                        "ERROR: could not create unique index "
+                                + "\"uq_mother_journeys_one_canonical_active\"\n"
+                                + "  Detail: Key (owner_user_id)=(00000000-0000-0000-0000-000000000101)"
+                                + " is duplicated.");
 
         try (Connection connection = open(url);
              Statement statement = connection.createStatement()) {
@@ -346,19 +335,19 @@ class JourneyCanonicalLifecycleIntegrationTest extends AbstractPostgresIntegrati
                 JourneyLifecycleTestFactory.MOTHER_ID);
 
         assertThatThrownBy(() -> jdbcTemplate.update("""
-                UPDATE public.mother_journey_events
-                SET reason = 'tampered'
-                WHERE mother_journey_id = ? AND legacy_source = 'JOURNEY_TRANSITION'
+                UPDATE public.audit_events
+                SET payload = payload || '{"reason": "tampered"}'::jsonb
+                WHERE subject_reference_id = ? AND event_category = 'MOTHER_JOURNEY_TRANSITION'
                 """, created.getId()))
-                .hasRootCauseMessage("ERROR: IMMUTABLE_TABLE: public.mother_journey_events "
+                .hasRootCauseMessage("ERROR: IMMUTABLE_TABLE: public.audit_events "
                         + "does not allow UPDATE or DELETE\n"
                         + "  Where: PL/pgSQL function carebridge_reject_mutation() line 3 at RAISE");
 
         assertThatThrownBy(() -> jdbcTemplate.update("""
-                DELETE FROM public.mother_journey_events
-                WHERE mother_journey_id = ? AND legacy_source = 'JOURNEY_TRANSITION'
+                DELETE FROM public.audit_events
+                WHERE subject_reference_id = ? AND event_category = 'MOTHER_JOURNEY_TRANSITION'
                 """, created.getId()))
-                .hasRootCauseMessage("ERROR: IMMUTABLE_TABLE: public.mother_journey_events "
+                .hasRootCauseMessage("ERROR: IMMUTABLE_TABLE: public.audit_events "
                         + "does not allow UPDATE or DELETE\n"
                         + "  Where: PL/pgSQL function carebridge_reject_mutation() line 3 at RAISE");
         assertThat(transitionRepository.countByJourneyId(created.getId())).isEqualTo(1L);
@@ -483,26 +472,108 @@ class JourneyCanonicalLifecycleIntegrationTest extends AbstractPostgresIntegrati
              Statement statement = connection.createStatement()) {
             statement.execute("""
                     CREATE TABLE users (
-                        user_id uuid PRIMARY KEY
+                        user_id uuid PRIMARY KEY,
+                        person_id uuid NOT NULL,
+                        created_at timestamptz NOT NULL,
+                        updated_at timestamptz NOT NULL
                     )
                     """);
             statement.execute("""
                     CREATE TABLE mother_journeys (
                         journey_id uuid PRIMARY KEY,
+                        care_subject_id uuid NOT NULL,
                         owner_user_id uuid NOT NULL REFERENCES users(user_id),
                         journey_type varchar(20) NOT NULL,
                         status varchar(20) NOT NULL,
                         created_at timestamptz NOT NULL
                     )
                     """);
+            // Real pre-convergence databases already contain the MOTHER care
+            // subject referenced by mother_journeys.care_subject_id; the
+            // convergence migration only re-creates those rows when it also
+            // migrates maternal_observations. Without this table the
+            // mother_journeys_subject_fk constraint cannot be applied.
             statement.execute("""
-                    INSERT INTO users(user_id)
-                    VALUES ('00000000-0000-0000-0000-000000000101')
+                    CREATE TABLE care_subjects (
+                        care_subject_id uuid PRIMARY KEY,
+                        person_id uuid NOT NULL,
+                        owner_user_id uuid NOT NULL REFERENCES users(user_id),
+                        mother_journey_id uuid,
+                        subject_type varchar(30) NOT NULL,
+                        nickname varchar(200),
+                        status varchar(30) NOT NULL,
+                        created_at timestamptz NOT NULL,
+                        updated_at timestamptz NOT NULL
+                    )
+                    """);
+            statement.execute("""
+                    CREATE TABLE mother_journey_events (
+                        event_id uuid PRIMARY KEY,
+                        mother_journey_id uuid,
+                        owner_user_id uuid NOT NULL,
+                        actor_user_id uuid,
+                        event_type varchar(60) NOT NULL,
+                        event_payload_jsonb jsonb,
+                        from_stage varchar(20),
+                        to_stage varchar(20),
+                        schema_version varchar(40),
+                        journey_version bigint,
+                        submission_id uuid,
+                        event_source varchar(30),
+                        confidence varchar(20),
+                        reason text,
+                        lifecycle_goal varchar(40),
+                        locale varchar(20),
+                        time_zone varchar(80),
+                        preferences varchar(300),
+                        outcome_type varchar(30),
+                        outcome_date date,
+                        revision_number integer,
+                        supersedes_evidence_id uuid,
+                        semantic_hash varchar(120),
+                        correction boolean,
+                        operation_type varchar(40),
+                        semantic_intent varchar(80),
+                        care_subject_id uuid,
+                        triage_session_id uuid,
+                        emergency_session_id uuid,
+                        risk_level varchar(20),
+                        stage varchar(30),
+                        origin_dashboard varchar(30),
+                        origin_reference_id uuid,
+                        origin_action varchar(40),
+                        effective_at timestamptz NOT NULL,
+                        recorded_at timestamptz NOT NULL
+                    )
+                    """);
+            statement.execute("""
+                    INSERT INTO users(user_id, person_id, created_at, updated_at)
+                    VALUES ('00000000-0000-0000-0000-000000000101',
+                            '00000000-0000-0000-0000-000000000101',
+                            '2026-07-18T03:00:00Z',
+                            '2026-07-18T03:00:00Z')
+                    """);
+            statement.execute("""
+                    INSERT INTO care_subjects(
+                        care_subject_id, person_id, owner_user_id, mother_journey_id,
+                        subject_type, nickname, status, created_at, updated_at
+                    ) VALUES (
+                        '00000000-0000-0000-0000-000000001001',
+                        '00000000-0000-0000-0000-000000000101',
+                        '00000000-0000-0000-0000-000000000101',
+                        '00000000-0000-0000-0000-000000001001',
+                        'MOTHER',
+                        'Story 61 Legacy Mother',
+                        'ACTIVE',
+                        '2026-07-18T03:00:00Z',
+                        '2026-07-18T03:00:00Z'
+                    )
                     """);
             statement.execute("""
                     INSERT INTO mother_journeys(
-                        journey_id, owner_user_id, journey_type, status, created_at
+                        journey_id, care_subject_id, owner_user_id, journey_type, status, created_at
                     ) VALUES (
+                        '00000000-0000-0000-0000-000000001001',
                         '00000000-0000-0000-0000-000000001001',
                         '00000000-0000-0000-0000-000000000101',
                         'PREGNANCY',
@@ -510,11 +581,45 @@ class JourneyCanonicalLifecycleIntegrationTest extends AbstractPostgresIntegrati
                         '2026-07-18T03:00:00Z'
                     )
                     """);
+            statement.execute("""
+                    INSERT INTO mother_journey_events(
+                        event_id, mother_journey_id, owner_user_id, event_type,
+                        event_payload_jsonb, event_source, journey_version,
+                        effective_at, recorded_at
+                    ) VALUES (
+                        '00000000-0000-0000-0000-000000002001',
+                        '00000000-0000-0000-0000-000000001001',
+                        '00000000-0000-0000-0000-000000000101',
+                        'TRANSITION',
+                        '{"eventType": "MIGRATED"}'::jsonb,
+                        'MIGRATION',
+                        0,
+                        '2026-07-18T03:00:00Z',
+                        '2026-07-18T03:00:00Z'
+                    )
+                    """);
             if (duplicate) {
                 statement.execute("""
-                        INSERT INTO mother_journeys(
-                            journey_id, owner_user_id, journey_type, status, created_at
+                        INSERT INTO care_subjects(
+                            care_subject_id, person_id, owner_user_id, mother_journey_id,
+                            subject_type, nickname, status, created_at, updated_at
                         ) VALUES (
+                            '00000000-0000-0000-0000-000000001002',
+                            '00000000-0000-0000-0000-000000000101',
+                            '00000000-0000-0000-0000-000000000101',
+                            '00000000-0000-0000-0000-000000001002',
+                            'MOTHER',
+                            'Story 61 Legacy Mother Duplicate',
+                            'ACTIVE',
+                            '2026-07-18T03:01:00Z',
+                            '2026-07-18T03:01:00Z'
+                        )
+                        """);
+                statement.execute("""
+                        INSERT INTO mother_journeys(
+                            journey_id, care_subject_id, owner_user_id, journey_type, status, created_at
+                        ) VALUES (
+                            '00000000-0000-0000-0000-000000001002',
                             '00000000-0000-0000-0000-000000001002',
                             '00000000-0000-0000-0000-000000000101',
                             'PRE_PREGNANCY',
@@ -533,7 +638,7 @@ class JourneyCanonicalLifecycleIntegrationTest extends AbstractPostgresIntegrati
                 .locations("classpath:db/migration")
                 .baselineOnMigrate(true)
                 .baselineVersion(MigrationVersion.fromVersion("20260718089999"))
-                .target(MigrationVersion.fromVersion("20260718090000"))
+                .target(MigrationVersion.fromVersion("20260727010000"))
                 .outOfOrder(true)
                 .load()
                 .migrate();

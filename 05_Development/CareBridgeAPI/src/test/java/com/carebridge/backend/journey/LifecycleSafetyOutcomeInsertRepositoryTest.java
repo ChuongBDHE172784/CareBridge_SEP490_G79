@@ -36,13 +36,23 @@ class LifecycleSafetyOutcomeInsertRepositoryTest {
         ArgumentCaptor<Object[]> arguments = ArgumentCaptor.forClass(Object[].class);
         verify(jdbcTemplate, times(2)).update(sql.capture(), arguments.capture());
         assertThat(sql.getValue())
-                .contains("INSERT INTO mother_journey_events")
+                .contains("INSERT INTO audit_events")
                 .contains("'SAFETY_OUTCOME'")
-                .contains("triage_session_id, emergency_session_id, risk_level, stage")
-                .contains("origin_dashboard, origin_reference_id, origin_action")
-                .contains("ON CONFLICT (legacy_source, legacy_id) DO NOTHING")
-                .doesNotContain("lifecycle_safety_outcomes");
-        assertThat(arguments.getAllValues().get(0)[4])
+                .contains("audit_event_id, event_category, actor_user_id, subject_user_id")
+                .contains("subject_reference_id, resource_type, resource_id")
+                .contains("'mother_journeys'")
+                .contains("'intakeSessionId'")
+                .contains("'triageSessionId'")
+                .contains("'emergencySessionId'")
+                .contains("'riskLevel'")
+                .contains("'stage'")
+                .contains("'originDashboard'")
+                .contains("'originReferenceId'")
+                .contains("'originAction'")
+                .contains("ON CONFLICT (audit_event_id) DO NOTHING")
+                .doesNotContain("lifecycle_safety_outcomes")
+                .doesNotContain("mother_journey_events");
+        assertThat(arguments.getAllValues().get(0)[7])
                 .as("nullable emergencySessionId remains a scalar SQL null")
                 .isNull();
     }

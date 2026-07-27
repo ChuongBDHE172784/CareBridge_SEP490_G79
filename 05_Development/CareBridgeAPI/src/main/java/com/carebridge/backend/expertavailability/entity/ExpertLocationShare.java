@@ -25,6 +25,17 @@ public class ExpertLocationShare {
     @Column(name = "user_id", nullable = false)
     private UUID expertProfileId;
 
+    // Canonical mirror kept NOT NULL by the schema; equal to the owner user id
+    // since professional profiles were merged into users.
+    @Column(name = "professional_profile_id", nullable = false)
+    private UUID professionalProfileId;
+
+    @jakarta.persistence.PrePersist
+    @jakarta.persistence.PreUpdate
+    void syncCanonicalProfileReference() {
+        if (professionalProfileId == null) professionalProfileId = expertProfileId;
+    }
+
     @Column(nullable = false, precision = 10, scale = 8)
     private BigDecimal latitude;
 

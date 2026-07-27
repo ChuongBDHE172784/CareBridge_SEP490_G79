@@ -14,10 +14,8 @@ import com.carebridge.backend.journey.entity.JourneyStatus;
 import com.carebridge.backend.journey.entity.JourneyType;
 import com.carebridge.backend.journey.entity.MotherJourney;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
-import com.carebridge.backend.security.entity.User;
-import com.carebridge.backend.security.rbac.Role;
-import com.carebridge.backend.security.repository.UserRepository;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
+import com.carebridge.backend.testsupport.CanonicalAuditFixture;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -33,7 +31,6 @@ class UserChecklistItemRepositoryIntegrationTest extends AbstractPostgresIntegra
     @Autowired private ChecklistTemplateRepository templateRepository;
     @Autowired private ChecklistItemRepository templateItemRepository;
     @Autowired private MotherJourneyRepository journeyRepository;
-    @Autowired private UserRepository userRepository;
     @Autowired private JdbcTemplate jdbcTemplate;
     @Autowired private TransactionTemplate transactionTemplate;
 
@@ -96,29 +93,27 @@ class UserChecklistItemRepositoryIntegrationTest extends AbstractPostgresIntegra
     }
 
     private Scope seedScope() {
-        User owner = userRepository.saveAndFlush(User.builder()
-                .email("checklist-" + UUID.randomUUID() + "@test.local")
-                .role(Role.MOTHER)
-                .passwordHash("not-used")
-                .enabled(true)
-                .locked(false)
-                .emailVerified(true)
-                .phoneVerified(false)
-                .accountStatus("ACTIVE")
-                .build());
+        UUID ownerId = UUID.randomUUID();
+        jdbcTemplate.update("""
+                INSERT INTO users (
+                    user_id, person_id, email, full_name, display_name, role, password_hash,
+                    enabled, locked, email_verified, phone_verified, account_status,
+                    created_at, updated_at)
+                VALUES (?, ?, ?, 'Checklist Import Owner', 'Checklist Import Owner', 'MOTHER',
+                        'not-used', true, false, true, false, 'ACTIVE', now(), now())
+                """, ownerId, ownerId, "checklist-" + UUID.randomUUID() + "@test.local");
         UUID careSubjectId = UUID.randomUUID();
         jdbcTemplate.update("""
                 INSERT INTO care_subjects (
                     care_subject_id, person_id, owner_user_id, subject_type,
                     nickname, status, created_at, updated_at)
-                SELECT ?, u.person_id, u.user_id, 'MOTHER', p.display_name,
+                SELECT ?, u.person_id, u.user_id, 'MOTHER', u.display_name,
                        'ACTIVE', now(), now()
                   FROM users u
-                  JOIN persons p ON p.person_id = u.person_id
                  WHERE u.user_id = ?
-                """, careSubjectId, owner.getId());
+                """, careSubjectId, ownerId);
         MotherJourney journey = journeyRepository.saveAndFlush(MotherJourney.builder()
-                .ownerUserId(owner.getId())
+                .ownerUserId(ownerId)
                 .careSubjectId(careSubjectId)
                 .journeyType(JourneyType.PREGNANCY)
                 .status(JourneyStatus.ACTIVE)
@@ -135,8 +130,8 @@ class UserChecklistItemRepositoryIntegrationTest extends AbstractPostgresIntegra
                 .isRequired(false)
                 .build());
         return new Scope(
-                owner.getId(),
-                owner.getPerson().getId(),
+                ownerId,
+                ownerId,
                 careSubjectId,
                 journey.getId(),
                 template.getId(),
@@ -145,13 +140,12 @@ class UserChecklistItemRepositoryIntegrationTest extends AbstractPostgresIntegra
 
     private void cleanupScope(Scope scope) {
         jdbcTemplate.update("DELETE FROM preparation_checklist_items WHERE owner_user_id = ?", scope.ownerId());
-        jdbcTemplate.update("DELETE FROM mother_journey_events WHERE mother_journey_id = ?", scope.journeyId());
+        CanonicalAuditFixture.deleteByActor(jdbcTemplate, scope.ownerId());
         jdbcTemplate.update("DELETE FROM mother_journeys WHERE journey_id = ?", scope.journeyId());
         jdbcTemplate.update("DELETE FROM care_subjects WHERE care_subject_id = ?", scope.careSubjectId());
         jdbcTemplate.update("DELETE FROM care_item_templates WHERE template_id = ?", scope.templateItemId());
         jdbcTemplate.update("DELETE FROM care_item_templates WHERE template_id = ?", scope.templateId());
         jdbcTemplate.update("DELETE FROM users WHERE user_id = ?", scope.ownerId());
-        jdbcTemplate.update("DELETE FROM persons WHERE person_id = ?", scope.personId());
     }
 
     private record Scope(

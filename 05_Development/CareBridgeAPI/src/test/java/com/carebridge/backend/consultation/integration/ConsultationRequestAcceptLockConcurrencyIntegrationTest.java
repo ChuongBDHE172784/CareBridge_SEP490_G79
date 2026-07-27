@@ -91,8 +91,7 @@ class ConsultationRequestAcceptLockConcurrencyIntegrationTest
     void acceptLockFirstCommitsBeforeTrustMutationContinues() throws Exception {
         Fixture fixture = seedFixture();
         int bookingsBefore = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM archived_consultation_records "
-                        + "WHERE legacy_table = 'consultation_bookings'",
+                "SELECT COUNT(*) FROM consultation_bookings",
                 Integer.class);
         acceptBarrier.enable();
         Future<?> accept = executor.submit(
@@ -117,8 +116,7 @@ class ConsultationRequestAcceptLockConcurrencyIntegrationTest
         assertThat(requestStatus(fixture.requestId())).isEqualTo("ACCEPTED");
         assertThat(conversationCount(fixture)).isEqualTo(1);
         assertThat(jdbcTemplate.queryForObject(
-                        "SELECT COUNT(*) FROM archived_consultation_records "
-                                + "WHERE legacy_table = 'consultation_bookings'",
+                        "SELECT COUNT(*) FROM consultation_bookings",
                         Integer.class))
                 .isEqualTo(bookingsBefore);
         assertThat(expertProfileRepository
@@ -184,16 +182,16 @@ class ConsultationRequestAcceptLockConcurrencyIntegrationTest
     private Fixture seedFixture() {
         UUID motherId = UUID.randomUUID();
         UUID expertUserId = UUID.randomUUID();
-        UUID expertProfileId = UUID.randomUUID();
+        // Canonical model: the expert profile IS the users row, so the profile id is the user id.
+        UUID expertProfileId = expertUserId;
         UUID requestId = UUID.randomUUID();
         seedUser(motherId, "Accept Mother", "MOTHER");
         seedUser(expertUserId, "Accept Expert", "EXPERT");
         jdbcTemplate.update("""
-                INSERT INTO professional_profiles
-                    (professional_profile_id, user_id, specialty, verification_status, trust_status,
-                     created_at, updated_at)
-                VALUES (?, ?, 'Sản khoa', 'APPROVED', 'ACTIVE', now(), now())
-                """, expertProfileId, expertUserId);
+                UPDATE users
+                   SET specialty='Sản khoa', verification_status='APPROVED', trust_status='ACTIVE'
+                 WHERE user_id=?
+                """, expertUserId);
         jdbcTemplate.update("""
                 INSERT INTO expert_consultation_requests
                     (id, requester_user_id, expert_profile_id, client_request_id,
@@ -218,9 +216,8 @@ class ConsultationRequestAcceptLockConcurrencyIntegrationTest
     private int conversationCount(Fixture fixture) {
         return jdbcTemplate.queryForObject(
                 """
-                SELECT COUNT(*) FROM archived_realtime_records
-                 WHERE legacy_table = 'direct_conversations'
-                   AND mother_user_id=? AND expert_user_id=?
+                SELECT COUNT(*) FROM direct_conversations
+                 WHERE mother_user_id=? AND expert_user_id=?
                 """,
                 Integer.class,
                 fixture.motherId(),

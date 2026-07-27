@@ -59,7 +59,6 @@ class AiAssessmentModeratorServiceTest {
     @Mock
     private AuditService auditService;
 
-    private final ObjectMapper objectMapper = new ObjectMapper();
     private final AiModerationMapper mapper = new AiModerationMapper(new ObjectMapper());
 
     private AiAssessmentModeratorService service;
@@ -75,7 +74,7 @@ class AiAssessmentModeratorServiceTest {
     @BeforeEach
     void setUp() {
         service = new AiAssessmentModeratorService(assessmentRepository, contentReportRepository,
-                moderationActionRepository, mapper, auditService, objectMapper);
+                moderationActionRepository, mapper, auditService);
         assessment = AiContentAssessment.builder()
                 .id(ASSESSMENT_ID)
                 .targetType(ReportTargetType.QUESTION)
@@ -143,8 +142,9 @@ class AiAssessmentModeratorServiceTest {
         assertThat(event.getActionType()).isEqualTo(ModerationActionType.AI_FEEDBACK_SUBMITTED);
         assertThat(event.getReportId()).isEqualTo(CASE_ID);
         assertThat(event.getModeratorUserId()).isEqualTo(MODERATOR_ID);
-        assertThat(event.getEventPayloadJson()).contains("\"decision\":\"DISAGREE\"");
-        assertThat(event.getEventPayloadJson()).contains(ASSESSMENT_ID.toString());
+        assertThat(event.getPayload()).containsEntry("decision", "DISAGREE");
+        assertThat(event.getPayload()).containsEntry("assessmentId", ASSESSMENT_ID.toString());
+        assertThat(event.getReason()).isEqualTo("AI nhầm — đây là mô tả triệu chứng");
         verify(auditService).log(eq(AuditAction.AI_FEEDBACK_SUBMITTED), eq(MODERATOR_ID),
                 eq("AiContentAssessment"), eq(ASSESSMENT_ID.toString()), any());
     }
@@ -164,8 +164,8 @@ class AiAssessmentModeratorServiceTest {
         ArgumentCaptor<ModerationAction> captor = ArgumentCaptor.forClass(ModerationAction.class);
         verify(moderationActionRepository, org.mockito.Mockito.times(2)).save(captor.capture());
         List<ModerationAction> events = captor.getAllValues();
-        assertThat(events.get(0).getEventPayloadJson()).doesNotContain("previousDecision");
-        assertThat(events.get(1).getEventPayloadJson()).contains("\"previousDecision\":\"AGREE\"");
+        assertThat(events.get(0).getPayload()).doesNotContainKey("previousDecision");
+        assertThat(events.get(1).getPayload()).containsEntry("previousDecision", "AGREE");
     }
 
     // VII.11: an assessment that never got attached to a case cannot receive feedback

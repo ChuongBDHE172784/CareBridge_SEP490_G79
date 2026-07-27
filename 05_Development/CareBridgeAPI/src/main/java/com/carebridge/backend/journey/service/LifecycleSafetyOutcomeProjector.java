@@ -9,6 +9,7 @@ import com.carebridge.backend.triage.OriginAction;
 import com.carebridge.backend.triage.RiskLevel;
 import com.carebridge.backend.triage.repository.IIntakeSessionRepository;
 import com.carebridge.backend.triage.service.LifecycleSafetyMetrics;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
@@ -43,7 +44,7 @@ public class LifecycleSafetyOutcomeProjector implements ILifecycleSafetyOutcomeP
                         .orElse(null);
             }
             LifecycleSafetyOutcome outcome = LifecycleSafetyOutcome.builder()
-                    .id(UUID.randomUUID())
+                    .id(deterministicOutcomeId(intakeSessionId))
                     .ownerUserId(ownerUserId)
                     .journeyId(intake.getJourneyId())
                     .intakeSessionId(intakeSessionId)
@@ -75,5 +76,15 @@ public class LifecycleSafetyOutcomeProjector implements ILifecycleSafetyOutcomeP
                     LifecycleSafetyMetrics.Outcome.FAILED);
             throw exception;
         }
+    }
+
+    /**
+     * Mirrors the retired mother_journey_events (legacy_source='SAFETY_OUTCOME', legacy_id)
+     * uniqueness key: exactly one canonical SAFETY_OUTCOME audit event per completed intake,
+     * enforced through ON CONFLICT (audit_event_id) DO NOTHING.
+     */
+    private UUID deterministicOutcomeId(UUID intakeSessionId) {
+        return UUID.nameUUIDFromBytes(
+                ("SAFETY_OUTCOME:" + intakeSessionId).getBytes(StandardCharsets.UTF_8));
     }
 }

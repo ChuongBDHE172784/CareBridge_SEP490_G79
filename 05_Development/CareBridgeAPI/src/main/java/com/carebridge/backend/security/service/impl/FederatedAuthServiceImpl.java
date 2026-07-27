@@ -180,7 +180,9 @@ public class FederatedAuthServiceImpl implements FederatedAuthService {
     }
 
     private User createUser(VerifiedFederatedIdentity verified, String normalizedPhone) {
-        return userRepository.save(User.builder()
+        // saveAndFlush: UserIdentityRepository.save writes users.social_identities via plain
+        // JDBC, so the freshly created user row must already be flushed to the database.
+        return userRepository.saveAndFlush(User.builder()
 
                 .email(normalizeEmail(verified.email()))
                 .phone(normalizedPhone)

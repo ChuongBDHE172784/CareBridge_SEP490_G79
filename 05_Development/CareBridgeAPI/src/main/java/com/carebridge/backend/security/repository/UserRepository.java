@@ -37,12 +37,13 @@ public interface UserRepository extends JpaRepository<User, java.util.UUID> {
     @Query("SELECT u.role, COUNT(u) FROM User u GROUP BY u.role")
     List<Object[]> countGroupByRole();
 
-    // UC-111: dashboard aggregation — active predicate (TDS §5.2)
+    // UC-111: dashboard aggregation — active predicate (TDS §5.2).
+    // Uses the canonical users.suspended_until column (User now maps it and mirrors it into
+    // settings_jsonb); portable SQL that also runs on the H2-hosted dashboard tests.
     @Query(value = """
             SELECT count(*) FROM users u
              WHERE u.enabled = true AND u.locked = false
-               AND (nullif(u.settings_jsonb ->> 'suspendedUntil', '') IS NULL
-                    OR CAST(nullif(u.settings_jsonb ->> 'suspendedUntil', '') AS timestamptz) <= :now)
+               AND (u.suspended_until IS NULL OR u.suspended_until <= :now)
             """, nativeQuery = true)
     long countActive(@Param("now") Instant now);
 

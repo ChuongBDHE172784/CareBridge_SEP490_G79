@@ -14,6 +14,7 @@ import com.carebridge.backend.security.federation.VerifiedFederatedIdentity;
 import com.carebridge.backend.security.repository.UserRepository;
 import com.carebridge.backend.security.service.FederatedAuthService;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -28,6 +29,7 @@ class FederatedIdentityLinkIntegrationTest extends AbstractPostgresIntegrationTe
     @Autowired private UserRepository users;
     @Autowired private JdbcTemplate jdbc;
     @Autowired private MockMvc mockMvc;
+    @Autowired private EntityManager entityManager;
     @MockitoBean private FirebaseTokenVerifier verifier;
 
     @Test
@@ -69,9 +71,15 @@ class FederatedIdentityLinkIntegrationTest extends AbstractPostgresIntegrationTe
 
         assertThat(first.linked()).isTrue();
         assertThat(replay.email()).isEqualTo("linked.google@example.com");
+        // The audit row is written through JPA inside this test-managed transaction; flush it
+        // so the raw-JDBC assertions below (same connection, same transaction) can see it.
+        entityManager.flush();
+        // Canonical schema: federated identities live in users.social_identities (jsonb).
         assertThat(jdbc.queryForObject("""
-                select count(*) from user_identities
-                 where user_id = ? and provider = 'GOOGLE'
+                select count(*)
+                  from users u
+                 cross join lateral jsonb_array_elements(coalesce(u.social_identities, '[]'::jsonb)) identity
+                 where u.user_id = ? and identity->>'provider' = 'GOOGLE'
                 """, Integer.class, user.getId())).isEqualTo(1);
         assertThat(jdbc.queryForObject("""
                 select count(*) from audit_events

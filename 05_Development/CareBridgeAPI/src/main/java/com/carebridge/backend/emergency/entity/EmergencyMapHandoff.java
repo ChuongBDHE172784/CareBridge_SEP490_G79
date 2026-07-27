@@ -27,7 +27,9 @@ public class EmergencyMapHandoff {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    @Column(name = "safety_event_id")
+    // Parent linkage of this MAP_HANDOFF action row: the emergency-session
+    // safety event it belongs to (canonical single-table convention).
+    @Column(name = "parent_event_id")
     private UUID safetyEventId;
 
     @Column(name = "triage_handoff_id")

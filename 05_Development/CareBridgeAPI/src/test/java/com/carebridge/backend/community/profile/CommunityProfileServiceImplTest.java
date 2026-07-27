@@ -56,6 +56,16 @@ class CommunityProfileServiceImplTest {
         return req;
     }
 
+    /** Canonical model: the community profile IS the users row — createProfile loads the
+     * existing account row via findAccountByUserId and fills in the community fields. */
+    private CommunityProfile makeAccountRow(UUID userId) {
+        return CommunityProfile.builder()
+                .communityProfileId(userId)
+                .userId(userId)
+                .createdAt(Instant.now())
+                .build();
+    }
+
     private CommunityProfile makeSavedProfile(UUID userId) {
         return CommunityProfile.builder()
                 .communityProfileId(UUID.randomUUID())
@@ -77,6 +87,7 @@ class CommunityProfileServiceImplTest {
     @Test
     void createProfile_validRequest_returnsProfileAndEmitsAudit() {
         when(profileRepository.existsByUserId(USER_ID)).thenReturn(false);
+        when(profileRepository.findAccountByUserId(USER_ID)).thenReturn(Optional.of(makeAccountRow(USER_ID)));
         when(profileRepository.save(any(CommunityProfile.class))).thenReturn(makeSavedProfile(USER_ID));
 
         CommunityProfileResponse result = newService().createProfile(USER_ID, makeCreateRequest());
@@ -113,6 +124,7 @@ class CommunityProfileServiceImplTest {
         assertThat(request.isVisible()).isTrue();
 
         when(profileRepository.existsByUserId(USER_ID)).thenReturn(false);
+        when(profileRepository.findAccountByUserId(USER_ID)).thenReturn(Optional.of(makeAccountRow(USER_ID)));
         when(profileRepository.save(any(CommunityProfile.class))).thenReturn(makeSavedProfile(USER_ID));
 
         CommunityProfileResponse result = newService().createProfile(USER_ID, request);
@@ -127,6 +139,7 @@ class CommunityProfileServiceImplTest {
     @Test
     void createProfile_userIdFromParameter_notFromRequestBody() {
         when(profileRepository.existsByUserId(USER_ID)).thenReturn(false);
+        when(profileRepository.findAccountByUserId(USER_ID)).thenReturn(Optional.of(makeAccountRow(USER_ID)));
         when(profileRepository.save(any(CommunityProfile.class))).thenReturn(makeSavedProfile(USER_ID));
 
         newService().createProfile(USER_ID, makeCreateRequest());

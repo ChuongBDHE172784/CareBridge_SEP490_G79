@@ -54,13 +54,15 @@ class ConsultationRequestMigrationIntegrationTest extends AbstractPostgresIntegr
                 WHERE conrelid = 'public.expert_consultation_requests'::regclass
                 """,
                 String.class);
+        // Canonical schema (V20260727010000 convergence): the direct-conversation FK carries
+        // the default PostgreSQL name, not the legacy *_direct_conversation_archive_fk alias.
         assertThat(constraints).contains(
                 "expert_consultation_requests_owner_client_uk",
                 "expert_consultation_requests_status_ck",
                 "expert_consultation_requests_window_ck",
                 "expert_consultation_requests_responded_ck",
                 "expert_consultation_requests_expiry_ck",
-                "expert_consultation_requests_direct_conversation_archive_fk");
+                "expert_consultation_requests_direct_conversation_id_fkey");
 
         List<String> indexes = jdbcTemplate.queryForList(
                 """

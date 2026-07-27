@@ -14,6 +14,7 @@ spring:
     clean-disabled: true
     default-schema: ${carebridge.hermetic.datasource.schema}
     schemas: ${carebridge.hermetic.datasource.schema}
+    ignore-migration-patterns: "*:missing"
   jpa:
     hibernate:
       ddl-auto: validate

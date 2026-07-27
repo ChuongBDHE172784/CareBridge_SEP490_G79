@@ -12,6 +12,7 @@ import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.journey.repository.MotherJourneyTransitionRepository;
 import com.carebridge.backend.journey.service.IJourneyTransitionService;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
+import com.carebridge.backend.testsupport.CanonicalAuditFixture;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
@@ -48,16 +49,7 @@ class JourneyConsentMutationPostgresIntegrationTest extends AbstractPostgresInte
 
     @BeforeEach
     void seedEligibleMother() {
-        jdbcTemplate.execute(
-                "ALTER TABLE public.mother_journey_events DISABLE TRIGGER mother_journey_events_immutable_trg");
-        try {
-            jdbcTemplate.update(
-                    "DELETE FROM public.mother_journey_events WHERE owner_user_id = ?",
-                    OWNER_ID);
-        } finally {
-            jdbcTemplate.execute(
-                    "ALTER TABLE public.mother_journey_events ENABLE TRIGGER mother_journey_events_immutable_trg");
-        }
+        CanonicalAuditFixture.deleteByActor(jdbcTemplate, OWNER_ID);
         jdbcTemplate.update(
                 "UPDATE public.care_subjects SET mother_journey_id = NULL "
                         + "WHERE owner_user_id = ? AND subject_type = 'MOTHER'",
@@ -73,28 +65,25 @@ class JourneyConsentMutationPostgresIntegrationTest extends AbstractPostgresInte
                         + "AND permission_kind = 'CONSENT_GRANT' AND scope_type = 'MOTHER_BASELINE'",
                 OWNER_ID);
         jdbcTemplate.update("""
-                INSERT INTO public.persons (person_id, display_name, created_at, updated_at)
-                VALUES (?, 'Consent Mutation Mother', now(), now())
-                ON CONFLICT (person_id) DO NOTHING
-                """, OWNER_ID);
-        jdbcTemplate.update("""
                 INSERT INTO public.users (
-                    user_id, person_id, email, role, account_status, enabled, locked,
-                    email_verified, phone_verified, created_at, updated_at
-                ) VALUES (?, ?, ?, 'MOTHER', 'ACTIVE', true, false, true, false, now(), now())
+                    user_id, person_id, display_name, email, role, account_status,
+                    enabled, locked, email_verified, phone_verified, created_at, updated_at
+                ) VALUES (?, ?, 'Consent Mutation Mother', ?, 'MOTHER', 'ACTIVE',
+                    true, false, true, false, now(), now())
                 ON CONFLICT (user_id) DO NOTHING
                 """, OWNER_ID, OWNER_ID, "consent.mutation@test.carebridge.local");
         jdbcTemplate.update("""
-                INSERT INTO public.mother_journey_events (
-                    event_id, owner_user_id, submission_id, journey_version,
-                    schema_version, lifecycle_goal, locale, time_zone,
-                    preferences, recorded_at, event_source, event_type,
-                    event_payload_jsonb, effective_at, legacy_source, legacy_id
-                ) VALUES (?, ?, ?, 1, 'MOTHER_BASELINE_V1',
-                    'CURRENTLY_PREGNANT', 'vi-VN', 'Asia/Ho_Chi_Minh',
-                    'NUTRITION', now(), 'SELF_REPORTED', 'BASELINE_CONTEXT',
-                    '{}'::jsonb, now(), 'MOTHER_BASELINE', ?)
-                """, UUID.randomUUID(), OWNER_ID, SUBMISSION_ID, SUBMISSION_ID.toString());
+                INSERT INTO public.audit_events (
+                    audit_event_id, event_category, actor_user_id, resource_type,
+                    payload, occurred_at, created_at
+                ) VALUES (?, 'BASELINE_CONTEXT', ?, 'mother_journeys', ?::jsonb, now(), now())
+                """, UUID.randomUUID(), OWNER_ID,
+                """
+                {"revision": 1, "schemaVersion": "MOTHER_BASELINE_V1",
+                 "lifecycleGoal": "CURRENTLY_PREGNANT", "locale": "vi-VN",
+                 "timeZone": "Asia/Ho_Chi_Minh", "preferences": "NUTRITION",
+                 "source": "SELF_REPORTED", "submissionId": "%s"}
+                """.formatted(SUBMISSION_ID));
         jdbcTemplate.update("""
                 INSERT INTO public.data_permissions (
                     permission_kind, owner_user_id, scope_type, purpose, scope_text,
@@ -157,8 +146,8 @@ class JourneyConsentMutationPostgresIntegrationTest extends AbstractPostgresInte
         assertThat(transitionRepository.countByJourneyId(created.getId()))
                 .isEqualTo(transitionsBefore);
         assertThat(jdbcTemplate.queryForObject("""
-                SELECT count(*) FROM public.mother_journey_events
-                WHERE mother_journey_id = ? AND legacy_source = 'PREGNANCY_OUTCOME'
+                SELECT count(*) FROM public.audit_events
+                WHERE subject_reference_id = ? AND event_category = 'PREGNANCY_OUTCOME_EVIDENCE'
                 """, Long.class, created.getId())).isZero();
         assertThat(auditLogRepository.findByEntityIdAndAction(
                 created.getId(), AuditAction.PREGNANCY_OUTCOME_RECORDED)).isEmpty();

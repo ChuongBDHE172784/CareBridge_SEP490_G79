@@ -27,6 +27,7 @@ import org.hibernate.annotations.SQLRestriction;
 import org.hibernate.type.SqlTypes;
 
 @Entity
+@org.hibernate.annotations.Immutable // append-only event row: never dirty-checked or updated
 @Table(name = "audit_events")
 @SQLRestriction("event_category = 'PREGNANCY_OUTCOME_EVIDENCE'")
 @Getter
@@ -86,9 +87,14 @@ public class PregnancyOutcomeEvidence {
     @Column(name = "event_category", nullable = false, updatable = false, length = 80)
     private String eventCategory = "PREGNANCY_OUTCOME_EVIDENCE";
 
+    /**
+     * Journey events share audit_events with real audit logs. A distinct origin keeps
+     * them out of the {@code AuditLog} entity (whose event_category maps to the
+     * {@code AuditAction} enum) instead of relying on the DB default 'AUDIT_LOG'.
+     */
     @Builder.Default
-    @Transient
-    private String eventOrigin = "PREGNANCY_OUTCOME_EVIDENCE";
+    @Column(name = "event_origin", nullable = false, updatable = false, length = 40)
+    private String eventOrigin = "JOURNEY_EVENT";
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "payload", columnDefinition = "jsonb")
@@ -96,6 +102,7 @@ public class PregnancyOutcomeEvidence {
 
     @PrePersist
     void prepareCanonicalEvent() {
+        eventOrigin = "JOURNEY_EVENT";
         resourceId = journeyId;
         if (actorUserId == null) actorUserId = ownerUserId;
         if (ownerUserId == null) ownerUserId = actorUserId;

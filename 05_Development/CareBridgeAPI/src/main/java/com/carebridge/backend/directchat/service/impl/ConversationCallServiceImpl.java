@@ -354,7 +354,9 @@ public class ConversationCallServiceImpl implements IConversationCallService {
     }
 
     private static String safeDisplayName(User user) {
-        String rawName = user.getName();
+        String rawName = user.getDisplayName() != null && !user.getDisplayName().isBlank()
+                ? user.getDisplayName()
+                : user.getName();
         if (rawName == null || rawName.isBlank()) {
             return "CareBridge User";
         }

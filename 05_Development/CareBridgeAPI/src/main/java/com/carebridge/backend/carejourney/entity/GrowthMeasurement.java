@@ -24,7 +24,12 @@ public class GrowthMeasurement {
     @Column(name = "growth_measurement_id", updatable = false, nullable = false)
     private UUID growthMeasurementId;
 
-    @Transient
+    /**
+     * Legacy identifier column. The canonical growth_measurements relation keeps both
+     * baby_id and care_subject_id as NOT NULL columns; {@link #alignCanonicalCareSubject()}
+     * mirrors the two fields so either write path fills both columns.
+     */
+    @Column(name = "baby_id", nullable = false)
     private UUID babyId;
 
     @Column(name = "care_subject_id", nullable = false)

@@ -80,9 +80,9 @@ class LifecycleContentPostgresIntegrationTest extends AbstractPostgresIntegratio
                 insert into care_subjects (
                     care_subject_id, person_id, owner_user_id, subject_type,
                     nickname, status, created_at, updated_at)
-                select ?, u.person_id, u.user_id, 'MOTHER', p.display_name,
+                select ?, u.person_id, u.user_id, 'MOTHER', u.display_name,
                        'ACTIVE', now(), now()
-                  from users u join persons p on p.person_id = u.person_id
+                  from users u
                  where u.user_id = ?
                 """, careSubjectId, motherId);
         MotherJourney journey = journeyRepository.saveAndFlush(MotherJourney.builder()
@@ -185,7 +185,8 @@ class LifecycleContentPostgresIntegrationTest extends AbstractPostgresIntegratio
                         "select count(*) from flyway_schema_history where success=false", Long.class))
                 .isZero();
         assertThat(jdbcTemplate.queryForObject(
-                        "select count(*) from flyway_schema_history where version='1' and success=true", Long.class))
+                        "select count(*) from flyway_schema_history "
+                                + "where version='20260727010000' and success=true", Long.class))
                 .isEqualTo(1L);
         assertThat(Files.exists(Path.of(
                         "src/main/resources/db/migration/"
@@ -611,8 +612,8 @@ class LifecycleContentPostgresIntegrationTest extends AbstractPostgresIntegratio
     private void wipeStoryFixtures() {
         jdbcTemplate.execute(
                 "truncate table preparation_checklist_items, care_item_templates, "
-                        + "content_item_sources, content_items, mother_journey_events, "
-                        + "care_subjects, mother_journeys, audit_events, users, persons cascade");
+                        + "content_item_sources, content_items, "
+                        + "care_subjects, mother_journeys, audit_events, users cascade");
     }
 
 }

@@ -112,8 +112,9 @@ class PostpartumLogPostgresIntegrationTest extends AbstractPostgresIntegrationTe
                 motherId)).isZero();
         assertThat(postpartumCount(journeyId)).isEqualTo(1L);
         assertThat(jdbcTemplate.queryForObject(
-                "select count(*) from maternal_observations "
-                        + "where mother_journey_id = ? and submission_id = ? "
+                "select count(*) from health_observations "
+                        + "where care_subject_id = ? "
+                        + "and raw_payload_jsonb->>'submissionId' = CAST(? AS text) "
                         + "and observation_type = 'POSTPARTUM_LOG'",
                 Long.class,
                 journeyId,
@@ -202,18 +203,12 @@ class PostpartumLogPostgresIntegrationTest extends AbstractPostgresIntegrationTe
 
         assertThat(secondId).isEqualTo(firstId);
         assertThat(jdbcTemplate.queryForObject(
-<<<<<<< Updated upstream
-                "select count(*) from maternal_observations "
-                        + "where legacy_source = 'POSTPARTUM_LOG' "
-                        + "and mother_journey_id = ? and submission_id = ?",
-=======
                 """
                 select count(*) from health_observations
                  where care_subject_id = ?
                    and legacy_source = 'postpartum_logs'
                    and raw_payload_jsonb->>'submissionId' = CAST(? AS text)
                 """,
->>>>>>> Stashed changes
                 Long.class,
                 journeyId,
                 submissionId)).isEqualTo(1L);
@@ -283,8 +278,8 @@ class PostpartumLogPostgresIntegrationTest extends AbstractPostgresIntegrationTe
 
     private long postpartumCount(UUID targetJourneyId) {
         Long count = jdbcTemplate.queryForObject(
-                "select count(*) from maternal_observations "
-                        + "where legacy_source = 'POSTPARTUM_LOG' and mother_journey_id = ?",
+                "select count(*) from health_observations "
+                        + "where legacy_source = 'postpartum_logs' and care_subject_id = ?",
                 Long.class,
                 targetJourneyId);
         return count == null ? 0 : count;

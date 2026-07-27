@@ -7,36 +7,41 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.carebridge.backend.emergency.repository.EmergencyAlertAttemptRepository;
-import com.carebridge.backend.emergency.repository.IEmergencySessionRepository;
-import com.carebridge.backend.emergency.repository.IFamilyAlertLogRepository;
 import com.carebridge.backend.emergency.service.EmergencyAlertAttemptService;
+import com.carebridge.backend.emergency.service.EmergencyAlertClaim;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class EmergencyAlertAttemptServiceTest {
 
+    private static EmergencyAlertClaim claim(UUID sessionId) {
+        return new EmergencyAlertClaim(sessionId, 1L, UUID.randomUUID(),
+                Instant.now().plusSeconds(120));
+    }
+
     @Test
     void firstClaimIsAcceptedAndConcurrentDuplicateIsRejected() {
         var repository = mock(EmergencyAlertAttemptRepository.class);
-        var service = new EmergencyAlertAttemptService(repository,
-                mock(IFamilyAlertLogRepository.class), mock(IEmergencySessionRepository.class));
+        var service = new EmergencyAlertAttemptService(repository);
         UUID sessionId = UUID.randomUUID();
-        when(repository.claim(eq(sessionId), any(Instant.class))).thenReturn(1, 0);
+        when(repository.claim(eq(sessionId), any(Instant.class)))
+                .thenReturn(Optional.of(claim(sessionId)), Optional.empty());
 
-        assertThat(service.claim(sessionId)).isTrue();
-        assertThat(service.claim(sessionId)).isFalse();
+        assertThat(service.claim(sessionId)).isPresent();
+        assertThat(service.claim(sessionId)).isEmpty();
     }
 
     @Test
     void expiredOrFailedAttemptCanBeReclaimed() {
         var repository = mock(EmergencyAlertAttemptRepository.class);
-        var service = new EmergencyAlertAttemptService(repository,
-                mock(IFamilyAlertLogRepository.class), mock(IEmergencySessionRepository.class));
+        var service = new EmergencyAlertAttemptService(repository);
         UUID sessionId = UUID.randomUUID();
-        when(repository.claim(eq(sessionId), any(Instant.class))).thenReturn(1, 1);
+        when(repository.claim(eq(sessionId), any(Instant.class)))
+                .thenReturn(Optional.of(claim(sessionId)), Optional.of(claim(sessionId)));
 
-        assertThat(service.claim(sessionId)).isTrue();
-        assertThat(service.claim(sessionId)).isTrue();
+        assertThat(service.claim(sessionId)).isPresent();
+        assertThat(service.claim(sessionId)).isPresent();
     }
 }

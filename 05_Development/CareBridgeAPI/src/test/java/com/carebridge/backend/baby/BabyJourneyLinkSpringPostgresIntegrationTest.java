@@ -344,9 +344,9 @@ class BabyJourneyLinkSpringPostgresIntegrationTest extends AbstractPostgresInteg
                 INSERT INTO care_subjects (
                     care_subject_id, person_id, owner_user_id, subject_type,
                     nickname, status, created_at, updated_at)
-                SELECT ?, u.person_id, u.user_id, 'MOTHER', p.display_name,
+                SELECT ?, u.user_id, u.user_id, 'MOTHER', u.display_name,
                        'ACTIVE', now(), now()
-                  FROM users u JOIN persons p ON p.person_id = u.person_id
+                  FROM users u
                  WHERE u.user_id = ?
                 """, careSubjectId, ownerId);
         MotherJourney journey = journeyRepository.saveAndFlush(MotherJourney.builder()
@@ -465,7 +465,7 @@ class BabyJourneyLinkSpringPostgresIntegrationTest extends AbstractPostgresInteg
     }
 
     private void wipeStoryFixtures() {
-        jdbcTemplate.execute("truncate table mother_journey_events, care_subjects, "
-                + "mother_journeys, audit_events, users, persons cascade");
+        jdbcTemplate.execute("truncate table care_subjects, "
+                + "mother_journeys, audit_events, users cascade");
     }
 }

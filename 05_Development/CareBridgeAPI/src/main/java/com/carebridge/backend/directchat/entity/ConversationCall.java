@@ -7,7 +7,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.PostLoad;
 import jakarta.persistence.PostPersist;
-import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 import java.time.Instant;
@@ -20,8 +19,7 @@ import lombok.Setter;
 import org.springframework.data.domain.Persistable;
 
 @Entity
-@Table(name = "archived_realtime_records")
-@org.hibernate.annotations.SQLRestriction("legacy_table = 'conversation_calls'")
+@Table(name = "conversation_calls")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -30,7 +28,7 @@ import org.springframework.data.domain.Persistable;
 public class ConversationCall implements Persistable<UUID> {
 
     @Id
-    @Column(name = "archive_id", updatable = false, nullable = false)
+    @Column(name = "call_id", updatable = false, nullable = false)
     private UUID id;
 
     @Column(name = "conversation_id", nullable = false, updatable = false)
@@ -63,15 +61,8 @@ public class ConversationCall implements Persistable<UUID> {
     @Column(name = "duration_seconds")
     private Integer durationSeconds;
 
-    @Column(name = "original_created_at", nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
-
-    @Builder.Default
-    @Column(name = "legacy_table", nullable = false, updatable = false)
-    private String legacyTable = "conversation_calls";
-
-    @Column(name = "legacy_id", nullable = false, updatable = false)
-    private String legacyId;
 
     @Transient
     @Builder.Default
@@ -80,12 +71,6 @@ public class ConversationCall implements Persistable<UUID> {
     @Override
     public boolean isNew() {
         return newEntity;
-    }
-
-    @PrePersist
-    void prepareArchiveIdentity() {
-        legacyTable = "conversation_calls";
-        legacyId = id.toString();
     }
 
     @PostLoad

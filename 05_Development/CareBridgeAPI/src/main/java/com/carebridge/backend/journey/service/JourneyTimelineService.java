@@ -30,18 +30,21 @@ public class JourneyTimelineService implements IJourneyTimelineService {
         }
         List<JourneyTimelineItemResponse> items = jdbcTemplate.query("""
                 WITH timeline AS (
-                    SELECT CASE WHEN event_type = 'SAFETY_OUTCOME'
+                    SELECT CASE WHEN event_category = 'SAFETY_OUTCOME'
                                 THEN 'SAFETY_OUTCOME' ELSE 'LIFECYCLE_TRANSITION' END AS item_type,
-                           event_id AS item_id, effective_at AS occurred_at, recorded_at,
-                           event_type::text, from_stage::text, to_stage::text,
-                           risk_level,
-                           stage,
-                           triage_session_id AS source_intake_id,
-                           emergency_session_id AS source_emergency_id,
-                           origin_action
-                    FROM mother_journey_events
-                    WHERE mother_journey_id = ?
-                      AND (legacy_source = 'JOURNEY_TRANSITION' OR event_type = 'SAFETY_OUTCOME')
+                           audit_event_id AS item_id, occurred_at, created_at AS recorded_at,
+                           CASE WHEN event_category = 'SAFETY_OUTCOME'
+                                THEN 'SAFETY_OUTCOME' ELSE payload->>'eventType' END AS event_type,
+                           payload->>'fromStage' AS from_stage,
+                           payload->>'toStage' AS to_stage,
+                           payload->>'riskLevel' AS risk_level,
+                           payload->>'stage' AS stage,
+                           CAST(payload->>'triageSessionId' AS uuid) AS source_intake_id,
+                           CAST(payload->>'emergencySessionId' AS uuid) AS source_emergency_id,
+                           payload->>'originAction' AS origin_action
+                    FROM audit_events
+                    WHERE subject_reference_id = ?
+                      AND event_category IN ('MOTHER_JOURNEY_TRANSITION', 'SAFETY_OUTCOME')
                 )
                 SELECT * FROM timeline
                 ORDER BY occurred_at DESC, recorded_at DESC, item_id DESC
@@ -49,9 +52,9 @@ public class JourneyTimelineService implements IJourneyTimelineService {
                 """, (rs, row) -> mapItem(rs), journeyId,
                 pageable.getPageSize(), pageable.getOffset());
         Long total = jdbcTemplate.queryForObject("""
-                SELECT count(*) FROM mother_journey_events
-                WHERE mother_journey_id = ?
-                  AND (legacy_source = 'JOURNEY_TRANSITION' OR event_type = 'SAFETY_OUTCOME')
+                SELECT count(*) FROM audit_events
+                WHERE subject_reference_id = ?
+                  AND event_category IN ('MOTHER_JOURNEY_TRANSITION', 'SAFETY_OUTCOME')
                 """, Long.class, journeyId);
         long count = total == null ? 0 : total;
         int totalPages = count == 0 ? 0

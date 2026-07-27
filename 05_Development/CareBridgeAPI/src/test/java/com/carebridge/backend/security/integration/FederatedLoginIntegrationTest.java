@@ -35,15 +35,23 @@ class FederatedLoginIntegrationTest extends AbstractPostgresIntegrationTest {
         when(verifier.verify("replay-token")).thenReturn(phoneIdentity("uid-replay-1", "+84901110002"));
         service.authenticate(new FederatedAuthRequest("replay-token", "JUnit device"));
         service.authenticate(new FederatedAuthRequest("replay-token", "JUnit device"));
+        // Canonical schema: federated identities live in users.social_identities (jsonb).
         Integer duplicateSubjects = jdbc.queryForObject("""
                 select count(*) from (
-                    select provider, provider_subject from user_identities
-                    group by provider, provider_subject having count(*) > 1
+                    select identity->>'provider' as provider,
+                           identity->>'providerSubject' as provider_subject
+                      from users u
+                     cross join lateral jsonb_array_elements(coalesce(u.social_identities, '[]'::jsonb)) identity
+                     group by 1, 2 having count(*) > 1
                 ) duplicates
                 """, Integer.class);
         assertThat(duplicateSubjects).isZero();
-        Integer identities = jdbc.queryForObject(
-                "select count(*) from user_identities where provider_subject = 'uid-replay-1'", Integer.class);
+        Integer identities = jdbc.queryForObject("""
+                select count(*)
+                  from users u
+                 cross join lateral jsonb_array_elements(coalesce(u.social_identities, '[]'::jsonb)) identity
+                 where identity->>'providerSubject' = 'uid-replay-1'
+                """, Integer.class);
         assertThat(identities).isEqualTo(1);
     }
 

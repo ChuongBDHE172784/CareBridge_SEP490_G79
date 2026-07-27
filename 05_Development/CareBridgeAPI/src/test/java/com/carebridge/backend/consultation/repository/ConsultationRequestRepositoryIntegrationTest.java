@@ -25,15 +25,16 @@ class ConsultationRequestRepositoryIntegrationTest
     void maliciousTextIsPersistedAsDataAndDoesNotAlterSchema() {
         UUID motherId = UUID.randomUUID();
         UUID expertUserId = UUID.randomUUID();
-        UUID expertProfileId = UUID.randomUUID();
+        // Canonical model: the expert profile IS the users row, so the profile id is the user id.
+        UUID expertProfileId = expertUserId;
         seedUser(motherId, "MOTHER");
         seedUser(expertUserId, "EXPERT");
         jdbcTemplate.update("""
-                insert into professional_profiles
-                    (professional_profile_id, user_id, specialty, verification_status,
-                     trust_status, created_at, updated_at)
-                values (?, ?, 'Sản khoa', 'APPROVED', 'ACTIVE', now(), now())
-                """, expertProfileId, expertUserId);
+                update users
+                   set specialty = 'Sản khoa', verification_status = 'APPROVED',
+                       trust_status = 'ACTIVE'
+                 where user_id = ?
+                """, expertUserId);
         String injection = "'; DROP TABLE expert_consultation_requests; --";
         Instant now = Instant.now();
         ConsultationRequest request = ConsultationRequest.builder()

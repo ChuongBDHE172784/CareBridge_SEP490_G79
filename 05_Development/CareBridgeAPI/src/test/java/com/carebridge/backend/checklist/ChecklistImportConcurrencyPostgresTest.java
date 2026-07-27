@@ -279,9 +279,9 @@ class ChecklistImportConcurrencyPostgresTest extends AbstractPostgresIntegration
                 insert into care_subjects (
                     care_subject_id, person_id, owner_user_id, subject_type,
                     nickname, status, created_at, updated_at)
-                select ?, u.person_id, u.user_id, 'MOTHER', p.display_name,
+                select ?, u.person_id, u.user_id, 'MOTHER', u.display_name,
                        'ACTIVE', now(), now()
-                  from users u join persons p on p.person_id = u.person_id
+                  from users u
                  where u.user_id = ?
                 """, careSubjectId, motherId);
         MotherJourney journey = journeyRepository.saveAndFlush(MotherJourney.builder()
@@ -337,7 +337,7 @@ class ChecklistImportConcurrencyPostgresTest extends AbstractPostgresIntegration
     private void wipeStoryFixtures() {
         jdbcTemplate.execute(
                 "truncate table preparation_checklist_items, care_item_templates, "
-                        + "mother_journey_events, care_subjects, mother_journeys, "
-                        + "audit_events, users, persons cascade");
+                        + "care_subjects, mother_journeys, "
+                        + "audit_events, users cascade");
     }
 }

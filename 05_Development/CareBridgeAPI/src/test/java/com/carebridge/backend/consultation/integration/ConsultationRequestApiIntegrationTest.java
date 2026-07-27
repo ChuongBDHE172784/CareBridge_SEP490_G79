@@ -85,7 +85,7 @@ class ConsultationRequestApiIntegrationTest extends AbstractPostgresIntegrationT
         UUID requestId = responseId(created);
         long auditsBefore = countCreateAudits(requestId);
         jdbcTemplate.update(
-                "UPDATE professional_profiles SET trust_status='REVOKED' WHERE professional_profile_id=?",
+                "UPDATE users SET trust_status='REVOKED' WHERE user_id=?",
                 fixture.expertProfileId());
 
         MvcResult retry = create(fixture.motherId(), body);
@@ -202,15 +202,15 @@ class ConsultationRequestApiIntegrationTest extends AbstractPostgresIntegrationT
     private Fixture seedFixture() {
         UUID motherId = UUID.randomUUID();
         UUID expertUserId = UUID.randomUUID();
-        UUID expertProfileId = UUID.randomUUID();
+        // Canonical model: the expert profile IS the users row, so the profile id is the user id.
+        UUID expertProfileId = expertUserId;
         seedUser(motherId, "API Mother", "MOTHER");
         seedUser(expertUserId, "API Expert", "EXPERT");
         jdbcTemplate.update("""
-                INSERT INTO professional_profiles
-                    (professional_profile_id, user_id, specialty, verification_status, trust_status,
-                     created_at, updated_at)
-                VALUES (?, ?, 'Sản khoa', 'APPROVED', 'ACTIVE', now(), now())
-                """, expertProfileId, expertUserId);
+                UPDATE users
+                   SET specialty='Sản khoa', verification_status='APPROVED', trust_status='ACTIVE'
+                 WHERE user_id=?
+                """, expertUserId);
         return new Fixture(motherId, expertUserId, expertProfileId);
     }
 

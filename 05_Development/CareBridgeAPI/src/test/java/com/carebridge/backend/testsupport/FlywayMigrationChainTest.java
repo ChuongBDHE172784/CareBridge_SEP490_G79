@@ -5,45 +5,69 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.io.TempDir;
 
-@EnabledIfSystemProperty(named = "gate0.enabled", matches = "true")
+/**
+ * Static repository contract for the one-migration convergence: the migration
+ * directory contains exactly one versioned migration, the canonical
+ * V20260727010000 convergence script, with a valid filename and no duplicates.
+ */
 class FlywayMigrationChainTest {
-
-    private static final String BASELINE_SCRIPT =
-            "B20260724111500__canonical_70_table_baseline.sql";
 
     @TempDir
     Path temporaryDirectory;
 
     @Test
-    void repositoryMigrationChainHasNoGateFailures() throws Exception {
+    void repositoryContainsExactlyTheCanonicalConvergenceMigration() {
         var manifest = DatabaseGate0Support.inspectRepository();
-        Path manifestPath = DatabaseGate0Support.writeManifest("repository-manifest.json", manifest);
 
-        assertThat(manifestPath).exists();
         assertThat(manifest.gateFailures())
                 .as("Gate 0 repository failures: %s", manifest.gateFailures())
                 .isEmpty();
-        assertThat(manifest.migrations())
-                .extracting(DatabaseGate0Support.MigrationFile::script)
-                .contains(BASELINE_SCRIPT, "V20260724111500__remove_legacy_expert_profile_columns.sql");
+        assertThat(manifest.malformedFiles()).isEmpty();
         assertThat(manifest.duplicateVersions()).isEmpty();
+        assertThat(manifest.migrations())
+                .hasSize(1)
+                .first()
+                .satisfies(migration -> {
+                    assertThat(migration.type()).isEqualTo("V");
+                    assertThat(migration.version())
+                            .isEqualTo(DatabaseGate0Support.canonicalVersion(
+                                    DatabaseGate0Support.CANONICAL_VERSION));
+                    assertThat(migration.script())
+                            .isEqualTo(DatabaseGate0Support.CANONICAL_SCRIPT);
+                });
     }
 
     @Test
-    void duplicateChecksRemainStrictWithinEachMigrationType() throws Exception {
-        Files.writeString(temporaryDirectory.resolve("B1__baseline.sql"), "SELECT 1;");
-        Files.writeString(temporaryDirectory.resolve("V1__versioned.sql"), "SELECT 1;");
+    void duplicateVersionsAndMalformedFilenamesAreStillRejected() throws Exception {
+        Files.writeString(
+                temporaryDirectory.resolve("V20260727010000__canonical.sql"), "SELECT 1;");
 
-        var validPair = DatabaseGate0Support.inspectRepository(temporaryDirectory);
-        assertThat(validPair.gateFailures()).isEmpty();
+        var single = DatabaseGate0Support.inspectRepository(temporaryDirectory);
+        assertThat(single.gateFailures()).isEmpty();
 
-        Files.writeString(temporaryDirectory.resolve("V1__duplicate.sql"), "SELECT 1;");
-        var duplicateVersioned = DatabaseGate0Support.inspectRepository(temporaryDirectory);
-        assertThat(duplicateVersioned.gateFailures())
+        Files.writeString(
+                temporaryDirectory.resolve("V20260727010000__duplicate.sql"), "SELECT 1;");
+        var duplicate = DatabaseGate0Support.inspectRepository(temporaryDirectory);
+        assertThat(duplicate.gateFailures())
                 .anyMatch(failure -> failure.startsWith(
-                        DatabaseGate0Support.DUPLICATE_VERSION + ":V:1:"));
+                        DatabaseGate0Support.DUPLICATE_VERSION + ":V:20260727010000:"));
+
+        Files.writeString(temporaryDirectory.resolve("V_missing_version.sql"), "SELECT 1;");
+        var malformed = DatabaseGate0Support.inspectRepository(temporaryDirectory);
+        assertThat(malformed.gateFailures())
+                .anyMatch(failure -> failure.startsWith(DatabaseGate0Support.MALFORMED_FILENAME + ":"));
+    }
+
+    @Test
+    void emptyMigrationDirectoryIsRejected() throws Exception {
+        Path empty = temporaryDirectory.resolve("empty");
+        Files.createDirectories(empty);
+
+        var manifest = DatabaseGate0Support.inspectRepository(empty);
+
+        assertThat(manifest.gateFailures())
+                .contains(DatabaseGate0Support.EMPTY_REPOSITORY);
     }
 }

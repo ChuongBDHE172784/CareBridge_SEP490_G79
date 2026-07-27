@@ -26,6 +26,16 @@ public class Person {
     @Column(name = "user_id", nullable = false, updatable = false)
     private UUID id;
 
+    // NOT NULL UNIQUE canonical identity pointer (retired persons table);
+    // equals user_id for canonical rows.
+    @Column(name = "person_id", updatable = false)
+    private UUID personId;
+
+    @jakarta.persistence.PrePersist
+    void canonicalIdentity() {
+        if (personId == null) personId = id != null ? id : UUID.randomUUID();
+    }
+
     @Column(name = "display_name", length = 200)
     private String displayName;
 

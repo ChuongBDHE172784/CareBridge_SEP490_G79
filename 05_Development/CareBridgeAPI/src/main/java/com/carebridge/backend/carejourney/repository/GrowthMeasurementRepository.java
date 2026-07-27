@@ -15,25 +15,30 @@ public interface GrowthMeasurementRepository extends JpaRepository<GrowthMeasure
 
     @Query("""
             select g from GrowthMeasurement g
-            where g.babyId = :babyId
+            where g.careSubjectId = :babyId
             order by g.measuredDate asc, g.createdAt asc, g.growthMeasurementId asc
             """)
     List<GrowthMeasurement> findByBabyIdOrderByMeasuredDateAsc(@Param("babyId") UUID babyId);
 
     @Query("""
             select g from GrowthMeasurement g
-            where g.babyId = :babyId and g.deletedAt is null
+            where g.careSubjectId = :babyId and g.deletedAt is null
             order by g.measuredDate asc, g.createdAt asc, g.growthMeasurementId asc
             """)
     List<GrowthMeasurement> findByBabyIdAndDeletedAtIsNullOrderByMeasuredDateAsc(@Param("babyId") UUID babyId);
 
     @Query("""
             select g from GrowthMeasurement g
-            where g.babyId = :babyId and g.deletedAt is null
+            where g.careSubjectId = :babyId and g.deletedAt is null
             order by g.measuredDate desc, g.createdAt desc, g.growthMeasurementId desc
             """)
     Page<GrowthMeasurement> findByBabyIdAndDeletedAtIsNullOrderByMeasuredDateDesc(
             @Param("babyId") UUID babyId, Pageable pageable);
 
-    Optional<GrowthMeasurement> findByGrowthMeasurementIdAndBabyId(UUID growthMeasurementId, UUID babyId);
+    @Query("""
+            select g from GrowthMeasurement g
+            where g.growthMeasurementId = :growthMeasurementId and g.careSubjectId = :babyId
+            """)
+    Optional<GrowthMeasurement> findByGrowthMeasurementIdAndBabyId(
+            @Param("growthMeasurementId") UUID growthMeasurementId, @Param("babyId") UUID babyId);
 }

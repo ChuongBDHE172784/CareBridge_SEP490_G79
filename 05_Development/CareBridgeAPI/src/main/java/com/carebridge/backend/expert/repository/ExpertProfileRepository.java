@@ -32,29 +32,36 @@ public interface ExpertProfileRepository extends JpaRepository<ExpertProfile, UU
 
  List<ExpertProfile> findByVerificationStatus(VerificationStatus status);
 
- @Query("SELECT ep FROM ExpertProfile ep, com.carebridge.backend.security.entity.User u "
-     + "WHERE u.id = ep.userId "
-     + "AND ep.verificationStatus = 'APPROVED' "
-     + "AND ep.trustStatus = com.carebridge.backend.expert.truststatus.TrustStatus.ACTIVE "
-     + "AND u.enabled = true AND u.locked = false "
-     + "AND (u.suspendedUntil IS NULL OR u.suspendedUntil <= CURRENT_TIMESTAMP) "
-     + "ORDER BY ep.ratingAvg DESC NULLS LAST")
+ // Native: User.suspendedUntil is @Transient (canonically stored in users.settings_jsonb),
+ // so the not-currently-suspended predicate follows the UserRepository settings_jsonb pattern.
+ @Query(value = """
+     SELECT u.* FROM users u
+     WHERE u.role = 'EXPERT'
+       AND u.verification_status = 'APPROVED'
+       AND u.trust_status = 'ACTIVE'
+       AND u.enabled = true AND u.locked = false
+       AND (nullif(u.settings_jsonb ->> 'suspendedUntil', '') IS NULL
+            OR CAST(nullif(u.settings_jsonb ->> 'suspendedUntil', '') AS timestamptz) <= CURRENT_TIMESTAMP)
+     ORDER BY u.rating_avg DESC NULLS LAST
+     """, nativeQuery = true)
  List<ExpertProfile> findVerifiedPublic();
 
- @Query("SELECT ep FROM ExpertProfile ep, com.carebridge.backend.security.entity.User u "
-     + "WHERE u.id = ep.userId "
-     + "AND ep.verificationStatus = 'APPROVED' "
-     + "AND ep.trustStatus = com.carebridge.backend.expert.truststatus.TrustStatus.ACTIVE "
-     + "AND u.enabled = true AND u.locked = false "
-     + "AND (u.suspendedUntil IS NULL OR u.suspendedUntil <= CURRENT_TIMESTAMP) "
-     + "AND (:specialty IS NULL OR EXISTS (SELECT ps.professionalProfileId "
-     + "FROM com.carebridge.backend.expert.entity.ProfessionalSpecialty ps, "
-     + "com.carebridge.backend.masterdata.entity.Specialty s "
-     + "WHERE ps.professionalProfileId = ep.expertProfileId "
-     + "AND s.specialtyId = ps.specialtyId "
-     + "AND s.isActive = true "
-     + "AND (LOWER(s.code) = LOWER(:specialty) "
-     + "OR LOWER(s.name) = LOWER(:specialty))))")
+ @Query(value = """
+     SELECT u.* FROM users u
+     WHERE u.role = 'EXPERT'
+       AND u.verification_status = 'APPROVED'
+       AND u.trust_status = 'ACTIVE'
+       AND u.enabled = true AND u.locked = false
+       AND (nullif(u.settings_jsonb ->> 'suspendedUntil', '') IS NULL
+            OR CAST(nullif(u.settings_jsonb ->> 'suspendedUntil', '') AS timestamptz) <= CURRENT_TIMESTAMP)
+       AND (CAST(:specialty AS text) IS NULL OR EXISTS (
+            SELECT 1 FROM professional_specialties ps
+            JOIN specialties s ON s.specialty_id = ps.specialty_id
+            WHERE ps.professional_profile_id = u.user_id
+              AND s.is_active = true
+              AND (LOWER(s.code) = LOWER(CAST(:specialty AS text))
+                   OR LOWER(s.name) = LOWER(CAST(:specialty AS text)))))
+     """, nativeQuery = true)
  List<ExpertProfile> findVerifiedBySpecialty(@Param("specialty") String specialty);
 
  @Query("SELECT ep FROM ExpertProfile ep WHERE ep.expertProfileId IN :userIds")
@@ -68,6 +75,9 @@ public interface ExpertProfileRepository extends JpaRepository<ExpertProfile, UU
      WHERE u.role = 'EXPERT'
        AND u.verification_status = 'APPROVED'
        AND u.trust_status = 'ACTIVE'
+       AND u.enabled = true AND u.locked = false
+       AND (nullif(u.settings_jsonb ->> 'suspendedUntil', '') IS NULL
+            OR CAST(nullif(u.settings_jsonb ->> 'suspendedUntil', '') AS timestamptz) <= CURRENT_TIMESTAMP)
        AND (:specialty IS NULL OR u.specialty = :specialty)
        AND (:q IS NULL OR LOWER(u.full_name) LIKE LOWER(CONCAT('%', :q, '%'))
                        OR LOWER(u.professional_title) LIKE LOWER(CONCAT('%', :q, '%'))
@@ -79,6 +89,9 @@ public interface ExpertProfileRepository extends JpaRepository<ExpertProfile, UU
      WHERE u.role = 'EXPERT'
        AND u.verification_status = 'APPROVED'
        AND u.trust_status = 'ACTIVE'
+       AND u.enabled = true AND u.locked = false
+       AND (nullif(u.settings_jsonb ->> 'suspendedUntil', '') IS NULL
+            OR CAST(nullif(u.settings_jsonb ->> 'suspendedUntil', '') AS timestamptz) <= CURRENT_TIMESTAMP)
        AND (:specialty IS NULL OR u.specialty = :specialty)
        AND (:q IS NULL OR LOWER(u.full_name) LIKE LOWER(CONCAT('%', :q, '%'))
                        OR LOWER(u.professional_title) LIKE LOWER(CONCAT('%', :q, '%'))
@@ -90,13 +103,12 @@ public interface ExpertProfileRepository extends JpaRepository<ExpertProfile, UU
 
  @Query(value = """
      SELECT DISTINCT s.name
-     FROM professional_profiles ep
-     JOIN users u ON u.user_id = ep.user_id
+     FROM users u
      JOIN professional_specialties ps
-       ON ps.professional_profile_id = ep.professional_profile_id
+       ON ps.professional_profile_id = u.user_id
      JOIN specialties s ON s.specialty_id = ps.specialty_id
-     WHERE ep.verification_status = 'APPROVED'
-       AND ep.trust_status = 'ACTIVE'
+     WHERE u.verification_status = 'APPROVED'
+       AND u.trust_status = 'ACTIVE'
        AND u.enabled = true AND u.locked = false
        AND (u.suspended_until IS NULL OR u.suspended_until <= CURRENT_TIMESTAMP)
        AND s.is_active = true

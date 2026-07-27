@@ -46,7 +46,7 @@ public interface MotherBaselineContextRepository
                SET baseline_revision = :#{#baseline.revision},
                    baseline_schema_version = :#{#baseline.schemaVersion},
                    baseline_source = :#{#baseline.source},
-                   baseline_lifecycle_goal = CAST(:#{#baseline.lifecycleGoal.name()} AS varchar),
+                   baseline_lifecycle_goal = CAST(:#{#baseline.lifecycleGoal?.name()} AS varchar),
                    baseline_locale = :#{#baseline.locale},
                    baseline_time_zone = :#{#baseline.timeZone},
                    baseline_preferences = :#{#baseline.preferences},

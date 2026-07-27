@@ -25,6 +25,17 @@ public class ExpertAvailability {
     @Column(name = "user_id", nullable = false)
     private UUID expertProfileId;
 
+    // Canonical mirror kept NOT NULL by the schema; equal to the owner user id
+    // since professional profiles were merged into users.
+    @Column(name = "professional_profile_id", nullable = false)
+    private UUID professionalProfileId;
+
+    @jakarta.persistence.PrePersist
+    @jakarta.persistence.PreUpdate
+    void syncCanonicalProfileReference() {
+        if (professionalProfileId == null) professionalProfileId = expertProfileId;
+    }
+
     @Column(name = "start_at", nullable = false)
     private Instant startAt;
 

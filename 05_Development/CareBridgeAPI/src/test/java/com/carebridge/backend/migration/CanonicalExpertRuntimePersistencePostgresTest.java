@@ -20,6 +20,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Expert runtime persistence against the canonical schema: the retired
+ * professional_profiles table is gone, the expert identity IS the user, and all
+ * three runtime records persist through JPA keyed by the expert's user_id
+ * (expert_credentials being the compatibility view over attachments).
+ */
 @Transactional
 class CanonicalExpertRuntimePersistencePostgresTest extends AbstractPostgresIntegrationTest {
 
@@ -29,19 +35,18 @@ class CanonicalExpertRuntimePersistencePostgresTest extends AbstractPostgresInte
     @Autowired private JdbcTemplate jdbcTemplate;
 
     @Test
-    void jpaPersistsAllThreeExpertRuntimeRecordsUsingOnlyCanonicalProfileId() {
+    void jpaPersistsAllThreeExpertRuntimeRecordsUsingOnlyCanonicalUserId() {
         UUID userId = UUID.randomUUID();
-        UUID profileId = UUID.randomUUID();
-        insertExpert(userId, profileId);
+        insertExpert(userId);
 
         ExpertCredential credential = credentialRepository.saveAndFlush(ExpertCredential.builder()
-                .expertProfileId(profileId)
+                .expertProfileId(userId)
                 .credentialType("MEDICAL_LICENSE")
                 .credentialNumber("CANONICAL-" + UUID.randomUUID())
                 .reviewStatus(ReviewStatus.PENDING)
                 .build());
         ExpertAvailability availability = availabilityRepository.saveAndFlush(ExpertAvailability.builder()
-                .expertProfileId(profileId)
+                .expertProfileId(userId)
                 .startAt(Instant.now().plusSeconds(3600))
                 .endAt(Instant.now().plusSeconds(7200))
                 .channelType("VIDEO")
@@ -49,7 +54,7 @@ class CanonicalExpertRuntimePersistencePostgresTest extends AbstractPostgresInte
                 .build());
         ExpertLocationShare locationShare = locationShareRepository.saveAndFlush(
                 ExpertLocationShare.builder()
-                        .expertProfileId(profileId)
+                        .expertProfileId(userId)
                         .latitude(new BigDecimal("10.7769"))
                         .longitude(new BigDecimal("106.7009"))
                         .availabilityStatus("OFFLINE")
@@ -62,35 +67,27 @@ class CanonicalExpertRuntimePersistencePostgresTest extends AbstractPostgresInte
         assertThat(jdbcTemplate.queryForObject("""
                 SELECT count(*)
                   FROM expert_credentials
-                 WHERE credential_id = ? AND professional_profile_id = ?
-                """, Long.class, credential.getCredentialId(), profileId)).isOne();
+                 WHERE credential_id = ? AND user_id = ?
+                """, Long.class, credential.getCredentialId(), userId)).isOne();
         assertThat(jdbcTemplate.queryForObject("""
                 SELECT count(*)
                   FROM expert_availability
-                 WHERE availability_id = ? AND professional_profile_id = ?
-                """, Long.class, availability.getAvailabilityId(), profileId)).isOne();
+                 WHERE availability_id = ? AND user_id = ?
+                """, Long.class, availability.getAvailabilityId(), userId)).isOne();
         assertThat(jdbcTemplate.queryForObject("""
                 SELECT count(*)
                   FROM expert_location_shares
-                 WHERE location_share_id = ? AND professional_profile_id = ?
-                """, Long.class, locationShare.getLocationShareId(), profileId)).isOne();
+                 WHERE location_share_id = ? AND user_id = ?
+                """, Long.class, locationShare.getLocationShareId(), userId)).isOne();
     }
 
-    private void insertExpert(UUID userId, UUID profileId) {
-        jdbcTemplate.update("""
-                INSERT INTO persons (person_id, display_name, created_at, updated_at)
-                VALUES (?, 'Canonical persistence expert', now(), now())
-                """, userId);
+    private void insertExpert(UUID userId) {
         jdbcTemplate.update("""
                 INSERT INTO users (
-                    user_id, person_id, email, role, enabled, locked, created_at, updated_at)
-                VALUES (?, ?, ?, 'EXPERT', true, false, now(), now())
+                    user_id, person_id, email, display_name, role, specialty,
+                    verification_status, trust_status, enabled, locked, created_at, updated_at)
+                VALUES (?, ?, ?, 'Canonical persistence expert', 'EXPERT', 'OBSTETRICS',
+                        'APPROVED', 'ACTIVE', true, false, now(), now())
                 """, userId, userId, "canonical-persistence-" + userId + "@test.invalid");
-        jdbcTemplate.update("""
-                INSERT INTO professional_profiles (
-                    professional_profile_id, user_id, specialty, verification_status,
-                    trust_status, created_at, updated_at)
-                VALUES (?, ?, 'OBSTETRICS', 'APPROVED', 'ACTIVE', now(), now())
-                """, profileId, userId);
     }
 }

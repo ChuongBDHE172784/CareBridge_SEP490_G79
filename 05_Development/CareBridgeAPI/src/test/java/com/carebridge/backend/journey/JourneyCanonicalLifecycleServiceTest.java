@@ -416,6 +416,9 @@ class JourneyCanonicalLifecycleServiceTest {
                 .source(JourneyDateSource.SELF_REPORTED)
                 .effectiveAt(JourneyLifecycleTestFactory.NOW)
                 .journeyVersion(0L)
+                // Hydrated entities always expose a non-null changes map (@PostLoad);
+                // mocked repository rows must honour the same contract.
+                .changes(java.util.Map.of())
                 .build();
         var pageable = PageRequest.of(1, 5);
         when(transitionRepository.findByJourneyIdOrderByRecordedAtDesc(

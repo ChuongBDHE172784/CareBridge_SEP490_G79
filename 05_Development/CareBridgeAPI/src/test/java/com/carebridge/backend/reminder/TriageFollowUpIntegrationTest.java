@@ -38,8 +38,6 @@ import static org.mockito.Mockito.when;
  */
 class TriageFollowUpIntegrationTest extends AbstractPostgresIntegrationTest {
 
-    private static final UUID PERSON_A = UUID.fromString("00000000-0000-0000-0000-0000000000f1");
-
     @Autowired private ApplicationEventPublisher eventPublisher;
     @Autowired private PlatformTransactionManager transactionManager;
     @Autowired private ReminderRepository reminderRepository;
@@ -54,12 +52,12 @@ class TriageFollowUpIntegrationTest extends AbstractPostgresIntegrationTest {
         tx = new TransactionTemplate(transactionManager);
         when(notificationService.scheduleFcmPush(any(), anyString(), anyString(), any()))
                 .thenReturn("fcm-int-1");
-        jdbcTemplate.update(
-                "INSERT INTO persons (person_id) VALUES (?) ON CONFLICT DO NOTHING", PERSON_A);
+        // Canonical schema (V20260727010000): persons is folded into users;
+        // users.person_id is NOT NULL UNIQUE and always equals user_id.
         jdbcTemplate.update(
                 "INSERT INTO users (user_id, created_at, updated_at, person_id) "
                         + "VALUES (?, now(), now(), ?) ON CONFLICT DO NOTHING",
-                MOTHER_A, PERSON_A);
+                MOTHER_A, MOTHER_A);
         // FX-005 — committed YELLOW session (journey/baby omitted: FK-heavy, not asserted here).
         // Raw SQL, not intakeSessionRepository.save(): IntakeSession has a @GeneratedValue id,
         // so save() with the pre-assigned SESSION_1 takes Hibernate's detached-merge path and
@@ -79,7 +77,11 @@ class TriageFollowUpIntegrationTest extends AbstractPostgresIntegrationTest {
 
     @AfterEach
     void cleanUp() {
-        jdbcTemplate.update("DELETE FROM scheduled_care_items WHERE owner_user_id = ?", MOTHER_A);
+        // Canonical schema: scheduled_care_items -> care_tasks discriminated by
+        // task_type = 'SCHEDULED_REMINDER' (Reminder entity @SQLRestriction).
+        jdbcTemplate.update(
+                "DELETE FROM care_tasks WHERE owner_user_id = ? AND task_type = 'SCHEDULED_REMINDER'",
+                MOTHER_A);
         // audit_events is append-only (IMMUTABLE_TABLE trigger) and COMPLETED triage_sessions
         // are delete-protected on real PostgreSQL — neither is deleted. The audit assertion is
         // keyed by the per-run reminder id, so leftover rows never interfere.

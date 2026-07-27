@@ -44,6 +44,11 @@ public class User {
     @Column(name = "user_id", updatable = false, nullable = false)
     private java.util.UUID id;
 
+    // Canonical identity pointer left over from the retired persons table:
+    // NOT NULL UNIQUE in the schema, and equal to user_id for canonical rows.
+    @Column(name = "person_id", updatable = false)
+    private java.util.UUID personId;
+
     @Transient
     private Person person;
 
@@ -95,7 +100,10 @@ public class User {
     @Transient
     private Instant lockedAt;
 
-    @Transient
+    // Canonical users.suspended_until physical column (nullable). Also mirrored into
+    // settings_jsonb->>'suspendedUntil' in canonicalPerson() for jsonb-based queries
+    // (e.g. ExpertProfileRepository directory predicates).
+    @Column(name = "suspended_until")
     private Instant suspendedUntil;
 
     @Transient
@@ -110,9 +118,11 @@ public class User {
     @Column(name = "settings_jsonb", nullable = false, columnDefinition = "jsonb")
     private Map<String, Object> settings = new HashMap<>();
 
+    // Canonical users.social_identities is NULLABLE (no default); keep the column nullable so
+    // the generated H2 schema stays aligned with the canonical PostgreSQL shape.
     @Builder.Default
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "social_identities", nullable = false, columnDefinition = "jsonb")
+    @Column(name = "social_identities", columnDefinition = "jsonb")
     private List<Map<String, Object>> socialIdentities = new java.util.ArrayList<>();
 
     @CreationTimestamp
@@ -126,6 +136,7 @@ public class User {
     @PrePersist
     @PreUpdate
     void canonicalPerson() {
+        if (personId == null) personId = id != null ? id : java.util.UUID.randomUUID();
         if (displayName == null || displayName.isBlank()) displayName = name;
         if (person != null) {
             if (person.getDisplayName() != null) {
@@ -152,7 +163,9 @@ public class User {
                 .build();
         lastLoginAt = instantSetting("lastLoginAt");
         lockedAt = instantSetting("lockedAt");
-        suspendedUntil = instantSetting("suspendedUntil");
+        // suspended_until is a real column now; fall back to the settings_jsonb mirror
+        // for legacy rows where only the jsonb copy was written.
+        if (suspendedUntil == null) suspendedUntil = instantSetting("suspendedUntil");
         communityPostingRestrictedUntil = instantSetting("communityPostingRestrictedUntil");
         mustChangePassword = Boolean.TRUE.equals(settings.get("mustChangePassword"));
     }

@@ -50,8 +50,6 @@ import static org.mockito.Mockito.when;
  */
 class TriageHealthMemoryContextIntegrationTest extends AbstractPostgresIntegrationTest {
 
-    private static final UUID PERSON_A = UUID.fromString("00000000-0000-0000-0000-0000000000e1");
-
     @Autowired private ITriageService triageService;
     @Autowired private HealthMemoryEntryRepository healthMemoryEntryRepository;
     @Autowired private JdbcTemplate jdbcTemplate;
@@ -73,12 +71,12 @@ class TriageHealthMemoryContextIntegrationTest extends AbstractPostgresIntegrati
 
     @BeforeEach
     void seedOwner() {
-        jdbcTemplate.update(
-                "INSERT INTO persons (person_id) VALUES (?) ON CONFLICT DO NOTHING", PERSON_A);
+        // Canonical schema (V20260727010000): persons is folded into users;
+        // users.person_id is NOT NULL UNIQUE and always equals user_id.
         jdbcTemplate.update(
                 "INSERT INTO users (user_id, created_at, updated_at, person_id) "
                         + "VALUES (?, now(), now(), ?) ON CONFLICT DO NOTHING",
-                USER_A, PERSON_A);
+                USER_A, USER_A);
         recordedContexts.clear();
         // BR-THMC-004: an empty/absent context keeps the pre-feature ONE-ARG call
         // byte-for-byte; only a non-empty server-loaded context switches to the

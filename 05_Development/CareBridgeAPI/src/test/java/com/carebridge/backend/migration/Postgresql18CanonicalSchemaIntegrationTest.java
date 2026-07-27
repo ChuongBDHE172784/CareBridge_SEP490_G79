@@ -16,13 +16,22 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
+/**
+ * Canonical fresh-bootstrap contract: the single V20260727010000 convergence
+ * migration builds the full schema from an empty PostgreSQL 18 database —
+ * 62 base tables (including flyway_schema_history), the four compatibility
+ * views, and a schema Hibernate validates against every mapped entity.
+ */
 @Testcontainers(disabledWithoutDocker = true)
 class Postgresql18CanonicalSchemaIntegrationTest {
 
-    private static final List<String> APPROVED_RELEASE1_EXTENSIONS = List.of(
-            "consultation_context_citations",
-            "consultation_context_shares",
-            "expert_consultation_requests");
+    private static final int CANONICAL_BASE_TABLE_COUNT = 62;
+
+    private static final List<String> COMPATIBILITY_VIEWS = List.of(
+            "care_logs",
+            "emergency_contacts",
+            "expert_credentials",
+            "nearby_support_interactions");
 
     @Container
     final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:18.1-alpine");
@@ -35,35 +44,52 @@ class Postgresql18CanonicalSchemaIntegrationTest {
                 .load();
 
         assertThat(flyway.migrate().success).isTrue();
-        assertThat(tableCount()).isEqualTo(73);
-        assertThat(release1ExtensionTables())
-                .containsExactlyElementsOf(APPROVED_RELEASE1_EXTENSIONS);
+        assertThat(tableCount()).isEqualTo(CANONICAL_BASE_TABLE_COUNT);
+        assertThat(publicViews()).containsExactlyElementsOf(COMPATIBILITY_VIEWS);
+        assertThat(baseTableExists("direct_conversations")).isTrue();
+        assertThat(baseTableExists("ai_moderation_policies")).isTrue();
+        assertThat(baseTableExists("persons")).isFalse();
+        assertThat(baseTableExists("professional_profiles")).isFalse();
         assertThat(legacyExpertProfileColumnCount()).isZero();
-        assertThat(canonicalProfessionalProfileColumnCount()).isEqualTo(3);
+        assertThat(canonicalExpertUserIdColumnCount()).isEqualTo(3);
+        assertThat(canonicalProfessionalProfileMirrorColumnCount()).isEqualTo(2);
 
         validateJpaMappings();
     }
 
-    private List<String> release1ExtensionTables() throws Exception {
+    private List<String> publicViews() throws Exception {
         try (Connection connection = DriverManager.getConnection(
                         postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
                 var statement = connection.createStatement();
                 var result = statement.executeQuery("""
                         SELECT table_name
+                          FROM information_schema.views
+                         WHERE table_schema = 'public'
+                         ORDER BY table_name
+                        """)) {
+            List<String> views = new ArrayList<>();
+            while (result.next()) {
+                views.add(result.getString(1));
+            }
+            return List.copyOf(views);
+        }
+    }
+
+    private boolean baseTableExists(String tableName) throws Exception {
+        try (Connection connection = DriverManager.getConnection(
+                        postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+                var statement = connection.prepareStatement("""
+                        SELECT count(*)
                           FROM information_schema.tables
                          WHERE table_schema = 'public'
                            AND table_type = 'BASE TABLE'
-                           AND table_name IN (
-                               'consultation_context_citations',
-                               'consultation_context_shares',
-                               'expert_consultation_requests')
-                         ORDER BY table_name
+                           AND table_name = ?
                         """)) {
-            List<String> tables = new ArrayList<>();
-            while (result.next()) {
-                tables.add(result.getString(1));
+            statement.setString(1, tableName);
+            try (var result = statement.executeQuery()) {
+                assertThat(result.next()).isTrue();
+                return result.getInt(1) == 1;
             }
-            return List.copyOf(tables);
         }
     }
 
@@ -82,15 +108,26 @@ class Postgresql18CanonicalSchemaIntegrationTest {
         }
     }
 
+    /** The retired expert_profile_id namespace must not resurface anywhere. */
     private int legacyExpertProfileColumnCount() throws Exception {
-        return profileColumnCount("expert_profile_id");
+        return expertRuntimeColumnCount("expert_profile_id");
     }
 
-    private int canonicalProfessionalProfileColumnCount() throws Exception {
-        return profileColumnCount("professional_profile_id");
+    /** All three expert runtime relations expose the canonical user_id owner column. */
+    private int canonicalExpertUserIdColumnCount() throws Exception {
+        return expertRuntimeColumnCount("user_id");
     }
 
-    private int profileColumnCount(String columnName) throws Exception {
+    /**
+     * Only the two base tables keep the professional_profile_id mirror column
+     * (its value is the owning user_id); the expert_credentials compatibility
+     * view exposes user_id alone.
+     */
+    private int canonicalProfessionalProfileMirrorColumnCount() throws Exception {
+        return expertRuntimeColumnCount("professional_profile_id");
+    }
+
+    private int expertRuntimeColumnCount(String columnName) throws Exception {
         try (Connection connection = DriverManager.getConnection(
                         postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
                 var statement = connection.prepareStatement("""

@@ -1,6 +1,7 @@
 package com.carebridge.backend.journey.entity;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -12,7 +13,7 @@ class CanonicalAuditEventMappingTest {
 
     @Test
     void transitionSerializesAndHydratesCanonicalPayload() {
-        String longReason = "r".repeat(600);
+        String longReason = "r".repeat(500);
         MotherJourneyTransition transition = MotherJourneyTransition.builder()
                 .journeyId(UUID.randomUUID())
                 .eventType(JourneyTransitionType.STAGE_CHANGED)
@@ -50,6 +51,19 @@ class CanonicalAuditEventMappingTest {
         assertThat(transition.getConfidence()).isEqualTo(JourneyDateConfidence.CONFIRMED);
         assertThat(transition.getReason()).isEqualTo(longReason);
         assertThat(transition.getResourceType()).isEqualTo("mother_journeys");
+    }
+
+    @Test
+    void transitionRejectsReasonBeyondLegacyLimit() {
+        MotherJourneyTransition transition = MotherJourneyTransition.builder()
+                .journeyId(UUID.randomUUID())
+                .eventType(JourneyTransitionType.DETAILS_CHANGED)
+                .reason("r".repeat(501))
+                .build();
+
+        assertThatThrownBy(transition::prepareCanonicalEvent)
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Journey transition reason must not exceed 500 characters");
     }
 
     @Test

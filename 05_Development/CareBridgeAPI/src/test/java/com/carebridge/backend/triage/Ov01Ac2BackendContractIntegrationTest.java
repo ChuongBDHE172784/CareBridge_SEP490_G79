@@ -74,15 +74,17 @@ class Ov01Ac2BackendContractIntegrationTest extends AbstractPostgresIntegrationT
             assertThat(replay.created()).isFalse();
             assertThat(replay.outcomeId()).isNull();
             assertThat(jdbcTemplate.queryForObject(
-                    "SELECT count(*) FROM mother_journey_events "
-                            + "WHERE triage_session_id = ? AND event_type = 'SAFETY_OUTCOME'",
+                    "SELECT count(*) FROM audit_events "
+                            + "WHERE payload->>'triageSessionId' = CAST(? AS text) "
+                            + "AND event_category = 'SAFETY_OUTCOME'",
                     Long.class, intake.getId())).isOne();
             assertThat(jdbcTemplate.queryForObject(
-                    "SELECT count(*) FROM mother_journey_events "
-                            + "WHERE triage_session_id = ? AND emergency_session_id IS NOT NULL",
+                    "SELECT count(*) FROM audit_events "
+                            + "WHERE payload->>'triageSessionId' = CAST(? AS text) "
+                            + "AND payload->>'emergencySessionId' IS NOT NULL",
                     Long.class, intake.getId())).isZero();
             assertThat(jdbcTemplate.queryForObject(
-                    "SELECT count(*) FROM safety_event_actions WHERE triage_handoff_id = ?",
+                    "SELECT count(*) FROM safety_events WHERE triage_handoff_id = ?",
                     Long.class, intake.getId())).isZero();
             assertThat(auditRepository.findByEntityIdAndAction(
                     first.outcomeId(), AuditAction.AI_TRIAGE)).hasSize(1);
@@ -124,10 +126,11 @@ class Ov01Ac2BackendContractIntegrationTest extends AbstractPostgresIntegrationT
                         + "WHERE triage_session_id = ? AND continuation_acknowledged_at IS NOT NULL",
                 Long.class, intake.getId())).isZero();
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM mother_journey_events WHERE triage_session_id = ?",
+                "SELECT count(*) FROM audit_events "
+                        + "WHERE payload->>'triageSessionId' = CAST(? AS text)",
                 Long.class, intake.getId())).isZero();
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT count(*) FROM safety_event_actions WHERE triage_handoff_id = ?",
+                "SELECT count(*) FROM safety_events WHERE triage_handoff_id = ?",
                 Long.class, intake.getId())).isZero();
     }
 
@@ -181,9 +184,9 @@ class Ov01Ac2BackendContractIntegrationTest extends AbstractPostgresIntegrationT
                 INSERT INTO care_subjects (
                     care_subject_id, person_id, owner_user_id, subject_type,
                     nickname, status, created_at, updated_at)
-                SELECT ?, u.person_id, u.user_id, 'MOTHER', p.display_name,
+                SELECT ?, u.user_id, u.user_id, 'MOTHER', u.display_name,
                        'ACTIVE', now(), now()
-                  FROM users u JOIN persons p ON p.person_id = u.person_id
+                  FROM users u
                  WHERE u.user_id = ?
                 """, careSubjectId, ownerId);
         MotherJourney journey = journeyRepository.saveAndFlush(MotherJourney.builder()

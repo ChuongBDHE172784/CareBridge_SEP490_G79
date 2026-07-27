@@ -27,20 +27,15 @@ class ExpertProfileRepositorySearchIntegrationTest extends AbstractPostgresInteg
 
     @BeforeEach
     void seed() {
-        UUID personId = UUID.randomUUID();
         jdbcTemplate.update(
-                "INSERT INTO persons (person_id, display_name, created_at, updated_at) "
-                        + "VALUES (?, 'Nguyen Van A', now(), now())",
-                personId);
-        jdbcTemplate.update(
-                "INSERT INTO users (user_id, person_id, full_name, phone, role, enabled, locked, created_at, updated_at) "
-                        + "VALUES (?, ?, 'Nguyen Van A', ?, 'EXPERT', true, false, now(), now())",
-                EXPERT_USER_ID, personId,
+                "INSERT INTO users (user_id, person_id, full_name, display_name, phone, role, "
+                        + "specialty, professional_title, workplace, verification_status, "
+                        + "trust_status, enabled, locked, created_at, updated_at) "
+                        + "VALUES (?, ?, 'Nguyen Van A', 'Nguyen Van A', ?, 'EXPERT', "
+                        + "'San khoa', 'Bac si CKI', 'BV Tu Du', 'APPROVED', 'ACTIVE', "
+                        + "true, false, now(), now())",
+                EXPERT_USER_ID, EXPERT_USER_ID,
                 "09" + String.valueOf(System.nanoTime()).substring(0, 8));
-        jdbcTemplate.update(
-                "INSERT INTO professional_profiles (professional_profile_id, user_id, specialty, professional_title, workplace, verification_status, created_at, updated_at) "
-                        + "VALUES (?, ?, 'San khoa', 'Bac si CKI', 'BV Tu Du', 'APPROVED', now(), now())",
-                UUID.randomUUID(), EXPERT_USER_ID);
     }
 
     @Test
@@ -68,14 +63,14 @@ class ExpertProfileRepositorySearchIntegrationTest extends AbstractPostgresInteg
 
     @Test
     void searchDirectory_sqlInjectionAttempt_handledSafely() {
-        String malicious = "'; DROP TABLE professional_profiles; --";
+        String malicious = "'; DROP TABLE users; --";
 
         Page<ExpertProfile> result =
                 expertProfileRepository.searchDirectory(null, malicious, PageRequest.of(0, 10));
 
         assertThat(result.getContent()).isEmpty();
         Long stillExists = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM professional_profiles WHERE user_id = ?",
+                "SELECT COUNT(*) FROM users WHERE user_id = ? AND specialty IS NOT NULL",
                 Long.class, EXPERT_USER_ID);
         assertThat(stillExists).isEqualTo(1L);
     }

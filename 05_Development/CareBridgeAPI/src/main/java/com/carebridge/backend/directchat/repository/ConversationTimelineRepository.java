@@ -18,11 +18,11 @@ import org.springframework.stereotype.Repository;
 public class ConversationTimelineRepository {
 
     private static final String UNION_SQL =
-            "SELECT 'MESSAGE' AS kind, archive_id AS resource_id, original_created_at AS sort_ts "
-                    + "FROM archived_realtime_records WHERE legacy_table='direct_messages' AND conversation_id = ? "
+            "SELECT 'MESSAGE' AS kind, message_id AS resource_id, created_at AS sort_ts "
+                    + "FROM direct_messages WHERE conversation_id = ? "
                     + "UNION ALL "
-                    + "SELECT 'CALL_EVENT' AS kind, archive_id AS resource_id, initiated_at AS sort_ts "
-                    + "FROM archived_realtime_records WHERE legacy_table='conversation_calls' AND conversation_id = ?";
+                    + "SELECT 'CALL_EVENT' AS kind, call_id AS resource_id, initiated_at AS sort_ts "
+                    + "FROM conversation_calls WHERE conversation_id = ?";
 
     private final JdbcTemplate jdbcTemplate;
 

@@ -148,6 +148,10 @@ public class PostpartumLogServiceImpl implements IPostpartumLogService {
     public PostpartumLogResponse addLog(UUID userId, UUID journeyId, AddPostpartumLogRequest request) {
         consentValidator.ensureEligibleForMutation(userId);
         requireActivePostpartumOwner(journeyId, userId, true, "POST-001");
+        // Journeys created before the canonical convergence may not yet have the
+        // MOTHER care_subjects row (care_subject_id = journey_id) that the
+        // health_observations FK requires; the insert is idempotent.
+        journeyRepository.ensureJourneyObservationSubject(journeyId);
         logRepository.acquireJourneyMutationLock(journeyId);
         var existing = logRepository.findByJourneyIdAndSubmissionId(
                 journeyId, request.getSubmissionId());

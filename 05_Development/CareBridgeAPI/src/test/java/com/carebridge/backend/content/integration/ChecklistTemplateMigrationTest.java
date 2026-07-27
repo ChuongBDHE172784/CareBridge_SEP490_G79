@@ -12,12 +12,18 @@ import org.junit.jupiter.api.Test;
 /** RED/preservation contracts for INT-005. */
 class ChecklistTemplateMigrationTest {
 
+    /**
+     * The historical V1__init_schema.sql was consolidated into the single canonical
+     * convergence migration, so the byte-pin protects the release artifact: once
+     * applied, any edit would break Flyway checksum validation.
+     */
     @Test
-    void uc82_69_int_005_v1RemainsByteIdentical() throws Exception {
-        byte[] bytes = Files.readAllBytes(Path.of("src/main/resources/db/migration/V1__init_schema.sql"));
+    void uc82_69_int_005_appliedMigrationRemainsByteIdentical() throws Exception {
+        byte[] bytes = Files.readAllBytes(Path.of(
+                "src/main/resources/db/migration/V20260727010000__canonical_schema_convergence.sql"));
         String sha = HexFormat.of().withUpperCase().formatHex(
                 MessageDigest.getInstance("SHA-256").digest(bytes));
-        assertThat(sha).isEqualTo("A1B20BB1B4ED6037E853C627D8A21E4369B4CBB96B412BF068AA0E4FAFE5D021");
+        assertThat(sha).isEqualTo("A49474D4980612B02480530A703DEB34C9810ECCCAC611E21F9F5347BFB39506");
     }
 
     @Test
