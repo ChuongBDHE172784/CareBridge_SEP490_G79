@@ -361,7 +361,7 @@ export default function ReportsQueuePage() {
                             </span>
                           </td>
                           <td className="py-3.5 px-2 max-w-[340px] cursor-pointer" onClick={() => goToDetail(item)}>
-                            <div className="font-semibold text-sm text-on-surface line-clamp-2">{item.contentPreview}</div>
+                            <div className="text-sm text-on-surface line-clamp-2">{item.contentPreview}</div>
                           </td>
                           <td className="py-3.5 px-2 cursor-pointer whitespace-nowrap" onClick={() => goToDetail(item)}>
                             {tab === 'PENDING' ? (

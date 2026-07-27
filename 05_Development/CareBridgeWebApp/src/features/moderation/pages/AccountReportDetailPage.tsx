@@ -5,7 +5,7 @@ import ConfirmDialog from '../../../shared/components/ConfirmDialog';
 import { fetchAiAssessment, fetchModerationQueue, fetchRelatedReports, resolveReport, revertReport } from '../services/moderationApi';
 import type { AiAssessment, ModerationQueueItem } from '../models/moderation';
 import type { RelatedReportItem } from '../models/moderation';
-import { formatReportReason, REPORT_STATUS_LABELS } from '../models/moderation';
+import { formatReportReason, REPORT_SOURCE_LABELS, REPORT_STATUS_LABELS } from '../models/moderation';
 import RelatedReportsCard from '../components/RelatedReportsCard';
 import AiAssessmentCard from '../components/AiAssessmentCard';
 
@@ -154,8 +154,8 @@ export default function AccountReportDetailPage() {
   return (
     <div className="portal-page">
       <ModPortalSidebar />
-      <main className="portal-content">
-        <div className="portal-contained">
+      <main className="portal-content font-sans">
+        <div className="p-8">
         {isLoading ? (
           <div className="portal-empty">Đang tải...</div>
         ) : error || !item ? (
@@ -164,57 +164,68 @@ export default function AccountReportDetailPage() {
           </div>
         ) : (
           <>
-            <div className="portal-header">
+            <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
-                <p className="portal-eyebrow">
-                  <span className="cursor-pointer" onClick={() => navigate('/moderator/reports')}>Báo cáo</span>
-                  <span className="mx-1">/</span>
-                  Chi tiết báo cáo tài khoản
-                </p>
-                <h1 className="portal-title">
-                  Chi tiết Báo cáo #{item.id.slice(0, 8).toUpperCase()}
-                </h1>
-                <p className="portal-subtitle">Được tạo lúc {formatDateTime(item.reportedAt)}.</p>
+                <div className="mb-2 flex items-center gap-3">
+                  <span className="rounded-full bg-error-container px-3 py-1 text-xs font-semibold text-error">
+                    {formatReportReason(item.reportReason)}
+                  </span>
+                  {item.reportSource === 'AUTOMATED' && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-secondary-container px-3 py-1 text-xs font-semibold text-on-secondary-container">
+                      <span className="material-symbols-outlined text-sm leading-none">smart_toy</span>
+                      {REPORT_SOURCE_LABELS.AUTOMATED}
+                    </span>
+                  )}
+                  <span className="text-xs font-mono text-outline">ID: #{item.id.slice(0, 8).toUpperCase()}</span>
+                </div>
+                <h1 className="text-[26px] font-bold text-on-surface m-0">Chi tiết báo cáo tài khoản</h1>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="rounded-md bg-error-container px-2.5 py-1 text-xs font-semibold text-error">
-                  Ưu tiên cao
-                </span>
-                <button onClick={() => navigate('/moderator/reports')} className="portal-secondary-button">
-                  <span className="material-symbols-outlined text-lg">arrow_back</span>
-                  Trở lại
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => navigate('/moderator/reports')}
+                className="inline-flex items-center gap-2 py-2.5 px-5 rounded-full bg-surface border border-outline-variant text-on-surface-variant text-sm font-semibold cursor-pointer hover:bg-surface-container-low self-start md:self-auto"
+              >
+                <span className="material-symbols-outlined text-lg">arrow_back</span>
+                Trở lại danh sách
+              </button>
             </div>
 
             <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
-              <div className="flex flex-col gap-5">
-                <div className="portal-card-padded">
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="material-symbols-outlined text-primary text-xl">person</span>
-                    <h2 className="text-base font-bold text-on-surface m-0">Thông tin Tài khoản Bị báo cáo</h2>
+              <div>
+                <div className="portal-card-padded mb-5">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="material-symbols-outlined text-primary text-xl">flag</span>
+                    <h2 className="text-base font-bold text-on-surface m-0">Lý do báo cáo</h2>
                   </div>
-	                  <div className="rounded-md bg-surface-container-low p-4 text-sm text-outline">
-	                    <p className="m-0 text-on-surface-variant">
-	                      Mục tiêu: <strong>{item.contentPreview || item.targetId || '—'}</strong>
-	                    </p>
-	                    <p className="m-0 mt-2 text-xs">Target ID: {item.targetId ?? '—'}</p>
-	                    <p className="m-0 mt-1 text-xs">Reporter ID: {item.reporterUserId ?? '—'}</p>
-	                  </div>
+                  <p className="text-sm text-on-surface-variant mb-4">{formatReportReason(item.reportReason)}</p>
+                  <div className="rounded-md bg-surface-container-low p-4">
+                    <p className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-1">
+                      Chi tiết từ người dùng
+                    </p>
+                    <p className="text-sm text-on-surface italic">"{formatReportReason(item.reportReason)}"</p>
+                  </div>
+                  <div className="flex justify-between items-center mt-4 text-xs text-outline">
+                    <span>
+                      {item.reportSource === 'AUTOMATED' && !item.reporterUserId
+                        ? 'Nguồn: Hệ thống AI phát hiện (không có người báo cáo)'
+                        : 'Người báo cáo: Ẩn danh'}
+                    </span>
+                    <span>Báo cáo lúc: {formatDateTime(item.reportedAt)}</span>
+                  </div>
                 </div>
 
                 <div className="portal-card-padded">
-                  <div className="flex items-center gap-2 mb-4">
-                    <span className="material-symbols-outlined text-primary text-xl">description</span>
-                    <h2 className="text-base font-bold text-on-surface m-0">Chi tiết Báo cáo & Bằng chứng</h2>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="material-symbols-outlined text-primary text-xl">person</span>
+                    <h2 className="text-base font-bold text-on-surface m-0">Thông tin Tài khoản Bị báo cáo</h2>
                   </div>
-                  <p className="text-sm font-semibold text-on-surface mb-1">Lý do báo cáo:</p>
-                  <div className="mb-4 rounded-md bg-surface-container-low p-4">
-                    <p className="text-sm text-on-surface-variant">{formatReportReason(item.reportReason)}</p>
-                  </div>
-                  <p className="text-sm font-semibold text-on-surface mb-2">Nội dung liên quan:</p>
                   <div className="rounded-md border border-outline-variant bg-surface-container-low p-4">
-                    <p className="text-[15px] leading-7 text-on-surface whitespace-pre-wrap">{item.contentPreview}</p>
+                    <p className="text-sm text-outline mb-1">Tài khoản / Mục tiêu</p>
+                    <p className="text-[15px] font-semibold text-on-surface mb-2">{item.contentPreview || item.targetId || '—'}</p>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-outline border-t border-outline-variant/50 pt-2 mt-2">
+                      <span>Target ID: {item.targetId ?? '—'}</span>
+                      <span>Reporter ID: {item.reporterUserId ?? '—'}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -223,11 +234,11 @@ export default function AccountReportDetailPage() {
                 {assessment && <AiAssessmentCard assessment={assessment} />}
                 <RelatedReportsCard items={relatedReports} totalElements={relatedTotal} page={relatedPage} size={20} loading={relatedLoading} error={relatedError} onPageChange={setRelatedPage} />
                 {item.status !== 'PENDING' && item.status !== 'IN_REVIEW' ? (
-                  <div className="portal-card-padded">
+                  <div className="bg-surface rounded-2xl p-6 shadow-sm border border-surface-container-highest">
                     <p className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-3">
                       Đã xử lý
                     </p>
-                    <div className="rounded-md bg-surface-container-low p-4 text-sm text-on-surface-variant">
+                    <div className="rounded-xl bg-surface-container-low p-4 text-sm text-on-surface-variant">
                       <p className="m-0">
                         Trạng thái: <strong className="text-on-surface">{REPORT_STATUS_LABELS[item.status]}</strong>
                       </p>
@@ -244,14 +255,14 @@ export default function AccountReportDetailPage() {
                     <button
                       type="button"
                       onClick={() => { setRevertError(''); setRevertTarget(item); }}
-                      className="mt-4 flex h-9 w-full items-center justify-center gap-2 rounded-md border-0 bg-surface-container-highest px-3.5 text-xs font-semibold text-on-surface"
+                      className="mt-4 flex h-10 w-full items-center justify-center gap-2 rounded-xl border-0 bg-surface-container-highest px-3.5 text-xs font-semibold text-on-surface cursor-pointer hover:bg-surface-container-high"
                     >
                       <span className="material-symbols-outlined text-lg">undo</span>
                       Hoàn tác báo cáo
                     </button>
                   </div>
                 ) : (
-                <div className="portal-card-padded">
+                <div className="bg-surface rounded-2xl p-6 shadow-sm border border-surface-container-highest">
                   <div className="flex items-center gap-2 mb-3">
                     <span className="material-symbols-outlined text-primary text-xl">gavel</span>
                     <p className="text-sm font-bold text-on-surface m-0">Hành động Xử lý</p>

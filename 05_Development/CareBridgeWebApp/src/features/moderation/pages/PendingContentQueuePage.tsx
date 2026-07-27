@@ -469,7 +469,7 @@ export default function PendingContentQueuePage() {
                               </span>
                             </td>
                             <td className="py-3.5 px-2 max-w-[420px]">
-                              <div className="font-semibold text-sm text-on-surface line-clamp-2">{item.contentPreview}</div>
+                              <div className="text-sm text-on-surface line-clamp-2">{item.contentPreview}</div>
                             </td>
                             <td className="py-3.5 px-2 text-[13px] text-outline whitespace-nowrap">{formatDateTime(item.createdAt)}</td>
                             <td className="py-3.5 px-2">
