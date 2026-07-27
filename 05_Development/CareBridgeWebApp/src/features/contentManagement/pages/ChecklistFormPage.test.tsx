@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { AdminChecklistTemplateDetail } from '../models/content';
 
@@ -65,6 +65,8 @@ describe('ChecklistFormPage version', () => {
 
     expect(await screen.findByText('Chỉnh sửa Checklist')).toBeTruthy();
     expect(screen.getByText('Phiên bản hiện tại: v4')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Xem toàn bộ lịch sử' }));
+    expect(harness.navigate).toHaveBeenCalledWith('/content/checklists/checklist-123/versions');
   });
 
   it('does not show a current version while creating', () => {
@@ -72,6 +74,7 @@ describe('ChecklistFormPage version', () => {
 
     expect(screen.getByText('Tạo Checklist mới')).toBeTruthy();
     expect(screen.queryByText(/Phiên bản hiện tại:/)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Xem toàn bộ lịch sử' })).toBeNull();
     expect(harness.fetchChecklistTemplateDetail).not.toHaveBeenCalled();
   });
 });

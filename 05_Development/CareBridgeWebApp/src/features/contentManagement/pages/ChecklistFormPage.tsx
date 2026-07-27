@@ -140,7 +140,7 @@ export default function ChecklistFormPage() {
   }
 
   return (
-    <div className="p-8 font-sans max-w-[900px]">
+    <div className="p-8 font-sans max-w-[1200px]">
       <button
         onClick={() => navigate(-1)}
         className="inline-flex items-center gap-1.5 py-2 px-5 rounded-full border border-outline-variant bg-transparent text-primary text-sm font-semibold cursor-pointer mb-6"
@@ -150,13 +150,13 @@ export default function ChecklistFormPage() {
       </button>
 
       <h1 className="text-[26px] font-bold text-on-surface m-0">{isEdit ? 'Chỉnh sửa Checklist' : 'Tạo Checklist mới'}</h1>
-      {isEdit && versionNo !== null && (
-        <p className="text-xs font-semibold text-primary mt-1 mb-0">Phiên bản hiện tại: v{versionNo}</p>
-      )}
       <p className="text-on-surface-variant text-sm mt-1 mb-6">
         Xây dựng danh sách các mục để mẹ/gia đình nhập vào checklist cá nhân.
       </p>
-      <ReviewFeedbackNotice feedback={reviewFeedback} />
+
+      <div className={isEdit ? 'grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]' : 'max-w-[900px]'}>
+        <div>
+          <ReviewFeedbackNotice feedback={reviewFeedback} />
 
       <div className="bg-surface rounded-2xl p-6 shadow-md mb-6">
         <div className="mb-5">
@@ -261,6 +261,22 @@ export default function ChecklistFormPage() {
             {submitting === 'submit' ? 'Đang gửi...' : 'Gửi phê duyệt'}
           </button>
         </div>
+      </div>
+        </div>
+
+        {isEdit && versionNo !== null && id && (
+          <aside className="h-fit bg-surface rounded-2xl p-5 shadow-md">
+            <p className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-3">Lịch sử phiên bản</p>
+            <p className="text-sm text-on-surface mb-1">Phiên bản hiện tại: v{versionNo}</p>
+            <button
+              type="button"
+              onClick={() => navigate(`/content/checklists/${id}/versions`)}
+              className="text-sm text-primary font-semibold cursor-pointer border-0 bg-transparent p-0"
+            >
+              Xem toàn bộ lịch sử
+            </button>
+          </aside>
+        )}
       </div>
     </div>
   );

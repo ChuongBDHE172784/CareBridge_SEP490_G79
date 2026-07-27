@@ -63,6 +63,7 @@ import FaqListPage from '../../features/contentManagement/pages/FaqListPage';
 import ChecklistListPage from '../../features/contentManagement/pages/ChecklistListPage';
 import ChecklistDetailPage from '../../features/contentManagement/pages/ChecklistDetailPage';
 import ChecklistFormPage from '../../features/contentManagement/pages/ChecklistFormPage';
+import ChecklistVersionHistoryPage from '../../features/contentManagement/pages/ChecklistVersionHistoryPage';
 import ManageTopicsPage from '../../features/contentManagement/pages/ManageTopicsPage';
 
 // Content Management screens (CB-076, 077, 079, 087)
@@ -202,6 +203,7 @@ export const router = createBrowserRouter([
                   { path: '/content/checklists/create', element: <ChecklistFormPage /> },
                   { path: '/content/checklists/:id', element: <ChecklistDetailPage /> },
                   { path: '/content/checklists/:id/edit', element: <ChecklistFormPage /> },
+                  { path: '/content/checklists/:id/versions', element: <ChecklistVersionHistoryPage /> },
                   { path: '/content/notifications', element: <NotificationCenterPage /> },
                   { path: '/content/:id/unpublish', element: <UnpublishContentPage /> },
                   { path: '/content/exercises', element: <PregnancyExerciseListPage /> },
