@@ -45,6 +45,12 @@ export default function CreateContentPage({ contentType }: CreateContentPageProp
   const contentTypeLabel = TYPE_LABELS[contentType];
   const isValid = title.trim().length > 0 && !isRichTextEmpty(body) && stage !== '';
 
+  const toggleTag = (tagId: string) => {
+    setTagIds((selected) => selected.includes(tagId)
+      ? selected.filter((id) => id !== tagId)
+      : [...selected, tagId]);
+  };
+
   const submit = useCallback(async (sendForApproval: boolean) => {
     if (title.trim().length === 0 || isRichTextEmpty(body) || stage === '') return;
     setSubmitting(sendForApproval ? 'submit' : 'draft');
@@ -54,6 +60,7 @@ export default function CreateContentPage({ contentType }: CreateContentPageProp
         type: contentType,
         title: title.trim(),
         body,
+        summary: summary.trim() || undefined,
         stage,
         topicId: topicId || undefined,
         tagIds,
@@ -63,6 +70,7 @@ export default function CreateContentPage({ contentType }: CreateContentPageProp
         await updateContent(result.id, {
           title: title.trim(),
           body,
+          summary: summary.trim() || undefined,
           stage,
           topicId: topicId || undefined,
           tagIds,
@@ -140,18 +148,38 @@ export default function CreateContentPage({ contentType }: CreateContentPageProp
         </div>
 
         <div className="mb-5">
-          <label className="block text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-1.5">
-            Thẻ tag
-          </label>
-          <select
-            multiple
-            value={tagIds}
-            onChange={(e) => setTagIds(Array.from(e.currentTarget.selectedOptions, (option) => option.value))}
-            className="w-full min-h-28 py-3 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface font-sans"
-          >
-            {tags.map((tag) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}
-          </select>
-          <p className="text-[11px] text-outline mt-1">Giữ Ctrl/Cmd để chọn nhiều tag.</p>
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">Thẻ tag</span>
+            <span className="text-xs text-primary font-semibold">Đã chọn {tagIds.length}</span>
+          </div>
+          {tags.length > 0 ? (
+            <div className="flex flex-wrap gap-2 rounded-2xl border border-outline-variant bg-surface p-3">
+              {tags.map((tag) => {
+                const selected = tagIds.includes(tag.id);
+                return (
+                  <label
+                    key={tag.id}
+                    className={`inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-2 text-sm transition-colors ${
+                      selected ? 'border-primary bg-primary-container text-primary' : 'border-outline-variant bg-surface text-on-surface'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      onChange={() => toggleTag(tag.id)}
+                      className="h-4 w-4 accent-primary"
+                    />
+                    {tag.name}
+                  </label>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-outline-variant p-4 text-sm text-outline">
+              Chưa có tag hiển thị. Hãy tạo tag tại trang Quản lý Chủ đề &amp; Danh mục.
+            </div>
+          )}
+          <p className="text-[11px] text-outline mt-1">Có thể chọn nhiều tag cho cùng một {contentTypeLabel.toLowerCase()}.</p>
         </div>
 
         <div className="mb-5">
@@ -192,7 +220,7 @@ export default function CreateContentPage({ contentType }: CreateContentPageProp
             className="w-full py-3 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface font-sans resize-none"
           />
           <div className="flex justify-between mt-1">
-            <p className="text-[11px] text-outline">Trường này chưa được backend lưu trữ.</p>
+            <p className="text-[11px] text-outline">Hiển thị ngắn gọn trên thẻ nội dung.</p>
             <p className="text-xs text-outline">{summary.length} / 150</p>
           </div>
         </div>

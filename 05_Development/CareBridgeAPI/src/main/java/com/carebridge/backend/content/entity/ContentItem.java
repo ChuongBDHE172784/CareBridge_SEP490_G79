@@ -48,6 +48,9 @@ public class ContentItem {
     @Column(name = "body", columnDefinition = "TEXT")
     private String body;
 
+    @Column(name = "summary", length = 150)
+    private String summary;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "stage", length = 30)
     private ContentStage stage;

@@ -129,10 +129,11 @@ public class AdminContentServiceImpl implements AdminContentService {
                     });
         }
 
-        // BR-CNT-006: only title/body/stage/status/topicId/sourceLabel editable — type/authorUserId immutable
+        // BR-CNT-006: only title/body/summary/stage/status/topicId/sourceLabel editable — type/authorUserId immutable
         item.setTitle(request.title());
         // ADR-RTE-005: see note in createContent() above.
         item.setBody(htmlContentSanitizer.sanitize(request.body()));
+        item.setSummary(request.summary());
         item.setStage(request.stage());
         item.setTopicId(request.topicId());
         if (request.tagIds() != null) {

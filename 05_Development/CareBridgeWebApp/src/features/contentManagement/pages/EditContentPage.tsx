@@ -13,6 +13,7 @@ export default function EditContentPage() {
   const [detail, setDetail] = useState<ContentDetail | null>(null);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [summary, setSummary] = useState('');
   const [tags, setTags] = useState<CommunityTopic[]>([]);
   const [tagIds, setTagIds] = useState<string[]>([]);
   const [sourceTitle, setSourceTitle] = useState('');
@@ -32,6 +33,7 @@ export default function EditContentPage() {
       setDetail(data);
       setTitle(data.title);
       setBody(data.body);
+      setSummary(data.summary ?? '');
       setTags(loadedTags);
       setTagIds(data.tagIds ?? []);
       setSourceTitle(data.sources?.[0]?.title ?? '');
@@ -55,6 +57,7 @@ export default function EditContentPage() {
       await updateContent(id, {
         title: title.trim(),
         body,
+        summary: summary.trim() || undefined,
         stage: detail.stage,
         topicId: detail.topicId || undefined,
         tagIds,
@@ -146,6 +149,17 @@ export default function EditContentPage() {
               onChange={(e) => setTitle(e.target.value)}
               className="w-full py-3 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface font-sans mb-4"
             />
+            <label className="block text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-1.5">
+              Tóm tắt ngắn
+            </label>
+            <textarea
+              value={summary}
+              onChange={(e) => setSummary(e.target.value.slice(0, 150))}
+              rows={2}
+              placeholder="Đoạn mô tả ngắn hiển thị trên thẻ nội dung..."
+              className="w-full py-3 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface font-sans resize-none mb-1"
+            />
+            <p className="text-right text-xs text-outline mb-4">{summary.length} / 150</p>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-1.5">

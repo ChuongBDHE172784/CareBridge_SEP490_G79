@@ -25,6 +25,7 @@ export interface ContentDetail {
   type: ContentType;
   title: string;
   body: string;
+  summary?: string | null;
   stage: ContentStage;
   topicId: string;
   tagIds?: string[];

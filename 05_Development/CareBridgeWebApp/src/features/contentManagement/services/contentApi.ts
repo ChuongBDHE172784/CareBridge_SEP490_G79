@@ -236,6 +236,7 @@ export async function createContent(data: {
   type: ContentType;
   title: string;
   body: string;
+  summary?: string;
   stage: ContentStage;
   topicId?: string;
   tagIds?: string[];
@@ -250,6 +251,7 @@ export async function updateContent(
   data: {
     title: string;
     body: string;
+    summary?: string;
     stage: ContentStage;
     topicId?: string;
     tagIds?: string[];
