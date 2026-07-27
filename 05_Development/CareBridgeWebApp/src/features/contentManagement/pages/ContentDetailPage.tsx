@@ -172,13 +172,6 @@ export default function ContentDetailPage() {
 
           {/* Article canvas */}
           <div className="bg-surface rounded-2xl p-8 shadow-md">
-            {/* Hero image placeholder */}
-            <div
-              className="w-full h-[220px] rounded-xl flex items-center justify-center mb-6 bg-[linear-gradient(135deg,#FFE9E3_0%,#F6DACF_100%)]"
-            >
-              <span className="material-symbols-outlined text-[#C98C7B] text-5xl">image</span>
-            </div>
-
             {/* Body content */}
             <div
               className="rich-content-body text-[15px] leading-7 text-on-surface"
