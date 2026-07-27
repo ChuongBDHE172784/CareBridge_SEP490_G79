@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import ModPortalSidebar from '../components/ModPortalSidebar';
 import ConfirmDialog from '../../../shared/components/ConfirmDialog';
 import ContentDetailDialog from '../../../shared/components/ContentDetailDialog';
@@ -9,37 +9,68 @@ import {
   fetchContentDetail,
   undoModerationAction,
 } from '../services/moderationApi';
-import type { PendingContentItem, ModerationHistoryItem, ModerationContentDetail, ReportTargetType } from '../models/moderation';
-import { TARGET_TYPE_LABELS, ACTION_TYPE_LABELS, UNDOABLE_ACTION_TYPES } from '../models/moderation';
+import type {
+  ModerationContentDetail,
+  ModerationHistoryItem,
+  PendingContentItem,
+  ReportTargetType,
+} from '../models/moderation';
+import { ACTION_TYPE_LABELS, TARGET_TYPE_LABELS, UNDOABLE_ACTION_TYPES } from '../models/moderation';
 
-type PendingActionType = 'HIDE' | 'REQUEST_REVISION';
+type PendingActionType = 'APPROVE' | 'HIDE' | 'REQUEST_REVISION';
+type Tab = 'QUESTION' | 'ANSWER' | 'HISTORY';
 
-const PENDING_ACTION_CONFIG: Record<PendingActionType, { title: string; reasonLabel: string; reasonPlaceholder: string; tone: 'default' | 'danger' }> = {
+const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
+
+const PENDING_ACTION_CONFIG: Record<PendingActionType, {
+  title: string;
+  description: string;
+  confirmLabel: string;
+  icon: string;
+  tone: 'default' | 'danger';
+  reasonLabel?: string;
+  reasonPlaceholder?: string;
+}> = {
+  APPROVE: {
+    title: 'Duyệt nội dung này?',
+    description: 'Nội dung sẽ chuyển sang trạng thái đã duyệt và có thể hiển thị trong cộng đồng.',
+    confirmLabel: 'Duyệt',
+    icon: 'check_circle',
+    tone: 'default',
+  },
   HIDE: {
     title: 'Ẩn nội dung này?',
+    description: 'Nội dung sẽ bị ẩn khỏi cộng đồng. Hãy ghi lý do rõ ràng để phục vụ audit.',
+    confirmLabel: 'Ẩn nội dung',
+    icon: 'visibility_off',
+    tone: 'danger',
     reasonLabel: 'Lý do ẩn nội dung (bắt buộc)',
     reasonPlaceholder: 'Nhập lý do ẩn nội dung này...',
-    tone: 'danger',
   },
   REQUEST_REVISION: {
     title: 'Yêu cầu tác giả chỉnh sửa?',
+    description: 'Nội dung sẽ quay lại tác giả để chỉnh sửa trước khi được duyệt lại.',
+    confirmLabel: 'Yêu cầu sửa',
+    icon: 'edit_note',
+    tone: 'default',
     reasonLabel: 'Nội dung cần chỉnh sửa (bắt buộc)',
     reasonPlaceholder: 'Mô tả nội dung cần tác giả chỉnh sửa...',
-    tone: 'default',
   },
 };
+
+const TABS: { label: string; value: Tab; icon: string }[] = [
+  { label: 'Câu hỏi mới', value: 'QUESTION', icon: 'forum' },
+  { label: 'Câu trả lời mới', value: 'ANSWER', icon: 'quickreply' },
+  { label: 'Đã xử lý', value: 'HISTORY', icon: 'history' },
+];
 
 function formatDateTime(iso: string): string {
   return new Date(iso).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
 }
 
-type Tab = 'QUESTION' | 'ANSWER' | 'HISTORY';
-
-const TABS: { label: string; value: Tab }[] = [
-  { label: 'Câu hỏi mới', value: 'QUESTION' },
-  { label: 'Câu trả lời mới', value: 'ANSWER' },
-  { label: 'Đã xử lý', value: 'HISTORY' },
-];
+function matchesText(value: string | null | undefined, query: string): boolean {
+  return (value ?? '').toLowerCase().includes(query);
+}
 
 export default function PendingContentQueuePage() {
   const [tab, setTab] = useState<Tab>('QUESTION');
@@ -47,6 +78,10 @@ export default function PendingContentQueuePage() {
   const [historyItems, setHistoryItems] = useState<ModerationHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [actionFilter, setActionFilter] = useState<'ALL' | PendingActionType>('ALL');
+  const [pageSize, setPageSize] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(10);
+  const [page, setPage] = useState(0);
   const [actioningId, setActioningId] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<{ item: PendingContentItem; type: PendingActionType } | null>(null);
   const [dialogError, setDialogError] = useState('');
@@ -55,8 +90,6 @@ export default function PendingContentQueuePage() {
   const [detailData, setDetailData] = useState<ModerationContentDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState('');
-  // Set only when "Xem chi tiết" is opened from the "Đã xử lý" tab — carries the reason/moderator
-  // info that ModerationContentDetail (the content itself) doesn't have, since that's action-level data.
   const [detailHistoryItem, setDetailHistoryItem] = useState<ModerationHistoryItem | null>(null);
 
   const [undoTarget, setUndoTarget] = useState<ModerationHistoryItem | null>(null);
@@ -73,18 +106,14 @@ export default function PendingContentQueuePage() {
     setError('');
     try {
       if (tab === 'HISTORY') {
-        const page = await fetchModerationHistory({ size: 50 });
-        setHistoryItems(page.content);
+        const result = await fetchModerationHistory({ size: 50 });
+        setHistoryItems(result.content);
       } else {
-        const page = await fetchPendingContentQueue({ targetType: tab as ReportTargetType, size: 50 });
-        setItems(page.content);
+        const result = await fetchPendingContentQueue({ targetType: tab as ReportTargetType, size: 50 });
+        setItems(result.content);
       }
     } catch {
-      setError(
-        tab === 'HISTORY'
-          ? 'Không tải được lịch sử xử lý.'
-          : 'Không tải được danh sách nội dung chờ duyệt.',
-      );
+      setError(tab === 'HISTORY' ? 'Không tải được lịch sử xử lý.' : 'Không tải được danh sách nội dung chờ duyệt.');
       setItems([]);
       setHistoryItems([]);
     } finally {
@@ -92,28 +121,56 @@ export default function PendingContentQueuePage() {
     }
   }, [tab]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { setPage(0); }, [search, actionFilter, pageSize, tab]);
 
-  const handleApprove = async (item: PendingContentItem) => {
-    setActioningId(item.targetId);
-    try {
-      await moderateContentDirect(item.targetId, item.targetType, 'APPROVE');
-      setItems((prev) => prev.filter((i) => i.targetId !== item.targetId));
-    } catch {
-      setError('Duyệt nội dung thất bại, vui lòng thử lại.');
-    } finally {
-      setActioningId(null);
-    }
-  };
+  const stats = useMemo(() => {
+    const historyApprove = historyItems.filter((item) => item.actionType === 'APPROVE').length;
+    const historyHide = historyItems.filter((item) => item.actionType === 'HIDE').length;
+    const historyRevision = historyItems.filter((item) => item.actionType === 'REQUEST_REVISION').length;
+    return {
+      visiblePending: items.length,
+      processed: historyItems.length,
+      approved: historyApprove,
+      hiddenOrRevision: historyHide + historyRevision,
+    };
+  }, [historyItems, items]);
 
-  // First-time review may either reject unsafe content (HIDE) or return it to its author for revision.
+  const filteredPending = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return items.filter((item) => {
+      return query.length === 0
+        || matchesText(item.contentPreview, query)
+        || matchesText(TARGET_TYPE_LABELS[item.targetType], query);
+    });
+  }, [items, search]);
+
+  const filteredHistory = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return historyItems.filter((item) => {
+      const matchesAction = actionFilter === 'ALL' || item.actionType === actionFilter;
+      const matchesQuery = query.length === 0
+        || matchesText(item.contentPreview, query)
+        || matchesText(item.reason, query)
+        || matchesText(item.moderatorName, query)
+        || matchesText(ACTION_TYPE_LABELS[item.actionType], query)
+        || matchesText(TARGET_TYPE_LABELS[item.targetType], query);
+      return matchesAction && matchesQuery;
+    });
+  }, [actionFilter, historyItems, search]);
+
+  const filteredRows = tab === 'HISTORY' ? filteredHistory : filteredPending;
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
+  const currentPage = Math.min(page, totalPages - 1);
+  const pagedRows = filteredRows.slice(currentPage * pageSize, currentPage * pageSize + pageSize);
+  const pageStart = filteredRows.length === 0 ? 0 : currentPage * pageSize + 1;
+  const pageEnd = Math.min((currentPage + 1) * pageSize, filteredRows.length);
+
   const openPendingAction = (item: PendingContentItem, type: PendingActionType) => {
     setDialogError('');
     setPendingAction({ item, type });
   };
 
-  // CB-MOD-IMP-008: full (non-truncated) detail — used by "Xem chi tiết" on all 3 tabs. `historyItem`
-  // is only passed from the "Đã xử lý" tab, to also surface reason/moderatorName in the dialog.
   const openDetail = async (targetId: string, targetType: ReportTargetType, historyItem?: ModerationHistoryItem) => {
     setDetailTarget({ targetId, targetType });
     setDetailData(null);
@@ -121,8 +178,7 @@ export default function PendingContentQueuePage() {
     setDetailHistoryItem(historyItem ?? null);
     setDetailLoading(true);
     try {
-      const detail = await fetchContentDetail(targetType, targetId);
-      setDetailData(detail);
+      setDetailData(await fetchContentDetail(targetType, targetId));
     } catch {
       setDetailError('Không tải được nội dung chi tiết. Vui lòng thử lại.');
     } finally {
@@ -130,8 +186,22 @@ export default function PendingContentQueuePage() {
     }
   };
 
-  // CB-MOD-IMP-009: reverts a direct APPROVE/HIDE/LOCK action back to PENDING. Backend rejects
-  // (409) if this isn't the most recent action for its target, or the status was already superseded.
+  const confirmPendingAction = async (reason?: string) => {
+    if (!pendingAction) return;
+    const { item, type } = pendingAction;
+    setActioningId(item.targetId);
+    setDialogError('');
+    try {
+      await moderateContentDirect(item.targetId, item.targetType, type, reason);
+      setItems((prev) => prev.filter((entry) => entry.targetId !== item.targetId));
+      setPendingAction(null);
+    } catch {
+      setDialogError('Thao tác thất bại, vui lòng thử lại.');
+    } finally {
+      setActioningId(null);
+    }
+  };
+
   const confirmUndo = async () => {
     if (!undoTarget) return;
     setUndoSubmitting(true);
@@ -148,24 +218,6 @@ export default function PendingContentQueuePage() {
     }
   };
 
-  const confirmPendingAction = async (reason?: string) => {
-    if (!pendingAction || !reason) return;
-    const { item, type } = pendingAction;
-    setActioningId(item.targetId);
-    setDialogError('');
-    try {
-      await moderateContentDirect(item.targetId, item.targetType, type, reason);
-      setItems((prev) => prev.filter((i) => i.targetId !== item.targetId));
-      setPendingAction(null);
-    } catch {
-      setDialogError('Thao tác thất bại, vui lòng thử lại.');
-    } finally {
-      setActioningId(null);
-    }
-  };
-
-  // Lock only appears for a previously approved QUESTION in audit history. ANSWER has no LOCKED
-  // state, and a pending item is not a discussion that can be meaningfully locked.
   const confirmLock = async (reason?: string) => {
     if (!lockTarget || !reason) return;
     setLockSubmitting(true);
@@ -200,185 +252,242 @@ export default function PendingContentQueuePage() {
     }
   };
 
+  const pendingConfig = pendingAction ? PENDING_ACTION_CONFIG[pendingAction.type] : null;
+
   return (
     <div className="portal-page">
       <ModPortalSidebar />
       <main className="portal-content">
         <div className="portal-contained">
-        <div className="portal-header">
-          <div>
-            <p className="portal-eyebrow">Kiểm duyệt</p>
-            <h1 className="portal-title">Nội dung chờ duyệt lần đầu</h1>
-            <p className="portal-subtitle">
-              Câu hỏi và câu trả lời mới đăng, chưa từng bị báo cáo, cần duyệt trước khi hiển thị công khai.
-            </p>
-          </div>
-        </div>
-
-        <div className="portal-toolbar">
-          {TABS.map((t) => (
-            <button
-              key={t.value}
-              type="button"
-              onClick={() => setTab(t.value)}
-              className={`rounded-md px-3 py-2 text-sm font-semibold transition-colors ${
-                tab === t.value ? 'bg-primary text-on-primary' : 'bg-surface text-on-surface-variant hover:bg-surface-container-low'
-              }`}
-            >
-              {t.label}
+          <div className="portal-header">
+            <div>
+              <p className="portal-eyebrow">Kiểm duyệt</p>
+              <h1 className="portal-title">Nội dung chờ duyệt lần đầu</h1>
+              <p className="portal-subtitle max-w-3xl">
+                Câu hỏi và câu trả lời mới đăng, chưa từng bị báo cáo, cần duyệt trước khi hiển thị công khai.
+              </p>
+            </div>
+            <button type="button" onClick={() => void load()} className="portal-secondary-button" disabled={isLoading}>
+              <span className="material-symbols-outlined text-base">refresh</span>
+              Làm mới
             </button>
-          ))}
-        </div>
+          </div>
 
-        {isLoading ? (
-          <div className="portal-empty">Đang tải...</div>
-        ) : error ? (
-          <div className="portal-error">{error}</div>
-        ) : tab === 'HISTORY' ? (
-          <div className="portal-table-card">
-            {historyActionError && (
-              <div className="portal-error m-4">{historyActionError}</div>
-            )}
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[860px]">
-                <thead>
-                  <tr>
-                    {['LOẠI', 'NỘI DUNG', 'HÀNH ĐỘNG', 'NGƯỜI XỬ LÝ', 'THỜI GIAN', ''].map((h) => (
-                      <th key={h}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {historyItems.map((item) => (
-                    <tr key={item.actionId}>
-                      <td className="text-on-surface-variant">{TARGET_TYPE_LABELS[item.targetType]}</td>
-                      <td className="max-w-[320px] truncate text-on-surface">{item.contentPreview ?? '—'}</td>
-                      <td>
-                        <span
-                          className={`rounded-md px-2.5 py-1 text-xs font-semibold ${
-                            item.actionType === 'APPROVE'
-                              ? 'bg-primary-container text-on-primary-container'
-                              : 'bg-error-container text-error'
-                          }`}
-                        >
-                          {ACTION_TYPE_LABELS[item.actionType]}
-                        </span>
-                      </td>
-                      <td className="whitespace-nowrap text-on-surface-variant">{item.moderatorName ?? '—'}</td>
-                      <td className="whitespace-nowrap text-on-surface-variant">{formatDateTime(item.actionAt)}</td>
-                      <td>
-                        <div className="flex gap-2 flex-nowrap">
-                          <button
-                            type="button"
-                            onClick={() => openDetail(item.targetId, item.targetType, item)}
-                            className="rounded-md bg-surface-container-high px-3 py-1.5 text-xs font-semibold text-on-surface whitespace-nowrap"
-                          >
-                            Xem chi tiết
-                          </button>
-                          {UNDOABLE_ACTION_TYPES.has(item.actionType) && (
-                            <button
-                              type="button"
-                              onClick={() => { setUndoError(''); setUndoTarget(item); }}
-                              className="rounded-md bg-surface-container-highest px-3 py-1.5 text-xs font-semibold text-on-surface whitespace-nowrap"
-                            >
-                              Hoàn tác
-                            </button>
-                          )}
-                          {item.targetType === 'QUESTION' && item.actionType === 'APPROVE' && (
-                            <button
-                              type="button"
-                              disabled={lockLoadingId === item.actionId}
-                              onClick={() => void openLockDialog(item)}
-                              className="rounded-md bg-surface-container-highest px-3 py-1.5 text-xs font-semibold text-on-surface disabled:opacity-50 whitespace-nowrap"
-                            >
-                              {lockLoadingId === item.actionId ? 'Đang kiểm tra...' : 'Khóa thảo luận'}
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {historyItems.length === 0 && (
-                    <tr><td colSpan={6} className="text-center text-outline">Chưa có nội dung nào được xử lý.</td></tr>
-                  )}
-                </tbody>
-              </table>
+          <section className="mb-5 grid gap-3 md:grid-cols-4">
+            {[
+              { label: 'Đang chờ trong tab', value: stats.visiblePending, icon: 'pending_actions' },
+              { label: 'Đã xử lý gần đây', value: stats.processed, icon: 'history' },
+              { label: 'Đã duyệt', value: stats.approved, icon: 'check_circle' },
+              { label: 'Ẩn / yêu cầu sửa', value: stats.hiddenOrRevision, icon: 'rule' },
+            ].map((stat) => (
+              <div key={stat.label} className="portal-card-padded">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs font-semibold text-on-surface-variant">{stat.label}</span>
+                  <span className="material-symbols-outlined text-[18px] text-outline">{stat.icon}</span>
+                </div>
+                <p className="portal-metric mt-2">{stat.value}</p>
+              </div>
+            ))}
+          </section>
+
+          <section className="portal-card-padded mb-4">
+            <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
+              <div className="flex flex-wrap gap-2">
+                {TABS.map((tabItem) => (
+                  <button
+                    key={tabItem.value}
+                    type="button"
+                    onClick={() => setTab(tabItem.value)}
+                    className={`inline-flex h-9 items-center gap-2 rounded-md px-3 text-xs font-semibold ${
+                      tab === tabItem.value
+                        ? 'bg-primary text-on-primary'
+                        : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-base">{tabItem.icon}</span>
+                    {tabItem.label}
+                  </button>
+                ))}
+              </div>
+              <div className="grid flex-1 gap-3 md:grid-cols-[1fr_0.7fr_0.5fr_auto]">
+                <label>
+                  <span className="portal-label">Tìm kiếm</span>
+                  <div className="relative">
+                    <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-outline">search</span>
+                    <input
+                      value={search}
+                      onChange={(event) => setSearch(event.target.value)}
+                      className="portal-field w-full pl-9"
+                      placeholder="Tìm nội dung, lý do, người xử lý..."
+                    />
+                  </div>
+                </label>
+                <label>
+                  <span className="portal-label">Hành động</span>
+                  <select
+                    value={actionFilter}
+                    onChange={(event) => setActionFilter(event.target.value as typeof actionFilter)}
+                    className="portal-field w-full"
+                    disabled={tab !== 'HISTORY'}
+                  >
+                    <option value="ALL">Tất cả</option>
+                    <option value="APPROVE">Duyệt</option>
+                    <option value="HIDE">Ẩn</option>
+                    <option value="REQUEST_REVISION">Yêu cầu sửa</option>
+                  </select>
+                </label>
+                <label>
+                  <span className="portal-label">Mỗi trang</span>
+                  <select value={pageSize} onChange={(event) => setPageSize(Number(event.target.value) as typeof pageSize)} className="portal-field w-full">
+                    {PAGE_SIZE_OPTIONS.map((size) => <option key={size} value={size}>{size}</option>)}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => { setSearch(''); setActionFilter('ALL'); }}
+                  className="portal-secondary-button self-end"
+                >
+                  <span className="material-symbols-outlined text-base">filter_alt_off</span>
+                  Xóa lọc
+                </button>
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="portal-table-card">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[720px]">
-                <thead>
-                  <tr>
-                    {['LOẠI', 'NỘI DUNG XEM TRƯỚC', 'THỜI GIAN ĐĂNG', ''].map((h) => (
-                      <th key={h}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((item) => (
-                    <tr key={item.targetId}>
-                      <td className="text-on-surface-variant">{TARGET_TYPE_LABELS[item.targetType]}</td>
-                      <td className="max-w-[420px] truncate text-on-surface">{item.contentPreview}</td>
-                      <td className="whitespace-nowrap text-on-surface-variant">{formatDateTime(item.createdAt)}</td>
-                      <td>
-                        <div className="flex gap-2 flex-nowrap">
-                          <button
-                            type="button"
-                            onClick={() => openDetail(item.targetId, item.targetType)}
-                            className="rounded-md bg-surface-container-high px-3 py-1.5 text-xs font-semibold text-on-surface whitespace-nowrap"
-                          >
-                            Xem chi tiết
-                          </button>
-                          <button
-                            type="button"
-                            disabled={actioningId === item.targetId}
-                            onClick={() => handleApprove(item)}
-                            className="rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-on-primary disabled:opacity-50 whitespace-nowrap"
-                          >
-                            {actioningId === item.targetId ? 'Đang xử lý...' : 'Duyệt'}
-                          </button>
-                          <button
-                            type="button"
-                            disabled={actioningId === item.targetId}
-                            onClick={() => openPendingAction(item, 'HIDE')}
-                            className="rounded-md bg-error px-3 py-1.5 text-xs font-semibold text-on-error disabled:opacity-50 whitespace-nowrap"
-                          >
-                            {actioningId === item.targetId ? 'Đang xử lý...' : 'Ẩn'}
-                          </button>
-                          <button
-                            type="button"
-                            disabled={actioningId === item.targetId}
-                            onClick={() => openPendingAction(item, 'REQUEST_REVISION')}
-                            className="rounded-md bg-surface-container-high px-3 py-1.5 text-xs font-semibold text-on-surface disabled:opacity-50 whitespace-nowrap"
-                          >
-                            {actioningId === item.targetId ? 'Đang xử lý...' : 'Yêu cầu sửa'}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {items.length === 0 && (
-                    <tr><td colSpan={4} className="text-center text-outline">Không có nội dung nào đang chờ duyệt lần đầu.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+          </section>
+
+          {historyActionError && <div className="portal-error mb-4">{historyActionError}</div>}
+
+          {isLoading ? (
+            <div className="portal-empty">Đang tải dữ liệu kiểm duyệt...</div>
+          ) : error ? (
+            <div className="portal-error">{error}</div>
+          ) : (
+            <section className="portal-table-card">
+              <div className="flex flex-col gap-2 border-b border-outline-variant/70 p-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h2 className="text-sm font-semibold text-on-surface">{tab === 'HISTORY' ? 'Lịch sử xử lý' : 'Danh sách cần duyệt'}</h2>
+                  <p className="mt-1 text-xs text-on-surface-variant">Hiển thị {pageStart}-{pageEnd} trong {filteredRows.length} mục phù hợp.</p>
+                </div>
+                <span className="rounded-md bg-surface-container-low px-2.5 py-1 text-xs font-semibold text-on-surface-variant">
+                  {tab === 'QUESTION' ? 'Câu hỏi' : tab === 'ANSWER' ? 'Câu trả lời' : 'Đã xử lý'}
+                </span>
+              </div>
+              <div className="overflow-x-auto">
+                {tab === 'HISTORY' ? (
+                  <table className="w-full min-w-[1080px]">
+                    <thead>
+                      <tr>
+                        {['Loại', 'Nội dung', 'Hành động', 'Người xử lý', 'Lý do', 'Thời gian', ''].map((heading) => <th key={heading}>{heading}</th>)}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(pagedRows as ModerationHistoryItem[]).map((item) => (
+                        <tr key={item.actionId}>
+                          <td className="text-on-surface-variant">{TARGET_TYPE_LABELS[item.targetType]}</td>
+                          <td className="max-w-[320px] truncate font-medium text-on-surface">{item.contentPreview ?? '—'}</td>
+                          <td>
+                            <span className={`rounded-md px-2.5 py-1 text-xs font-semibold ${
+                              item.actionType === 'APPROVE' ? 'bg-primary-container text-on-primary-container' : 'bg-error-container text-error'
+                            }`}>
+                              {ACTION_TYPE_LABELS[item.actionType]}
+                            </span>
+                          </td>
+                          <td className="whitespace-nowrap text-on-surface-variant">{item.moderatorName ?? '—'}</td>
+                          <td className="max-w-[260px] truncate text-on-surface-variant">{item.reason ?? '—'}</td>
+                          <td className="whitespace-nowrap text-on-surface-variant">{formatDateTime(item.actionAt)}</td>
+                          <td>
+                            <div className="flex justify-end gap-2">
+                              <button type="button" onClick={() => openDetail(item.targetId, item.targetType, item)} className="portal-secondary-button h-8 whitespace-nowrap">Xem</button>
+                              {UNDOABLE_ACTION_TYPES.has(item.actionType) && (
+                                <button type="button" onClick={() => { setUndoError(''); setUndoTarget(item); }} className="portal-secondary-button h-8 whitespace-nowrap">Hoàn tác</button>
+                              )}
+                              {item.targetType === 'QUESTION' && item.actionType === 'APPROVE' && (
+                                <button
+                                  type="button"
+                                  disabled={lockLoadingId === item.actionId}
+                                  onClick={() => void openLockDialog(item)}
+                                  className="portal-secondary-button h-8 whitespace-nowrap disabled:opacity-50"
+                                >
+                                  {lockLoadingId === item.actionId ? 'Đang kiểm tra...' : 'Khóa'}
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {pagedRows.length === 0 && <tr><td colSpan={7} className="text-center text-outline">Không có lịch sử phù hợp bộ lọc.</td></tr>}
+                    </tbody>
+                  </table>
+                ) : (
+                  <table className="w-full min-w-[900px]">
+                    <thead>
+                      <tr>
+                        {['Loại', 'Nội dung xem trước', 'Thời gian đăng', ''].map((heading) => <th key={heading}>{heading}</th>)}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(pagedRows as PendingContentItem[]).map((item) => (
+                        <tr key={item.targetId}>
+                          <td className="whitespace-nowrap text-on-surface-variant">{TARGET_TYPE_LABELS[item.targetType]}</td>
+                          <td className="max-w-[480px] truncate font-medium text-on-surface">{item.contentPreview}</td>
+                          <td className="whitespace-nowrap text-on-surface-variant">{formatDateTime(item.createdAt)}</td>
+                          <td>
+                            <div className="flex justify-end gap-2">
+                              <button type="button" onClick={() => openDetail(item.targetId, item.targetType)} className="portal-secondary-button h-8 whitespace-nowrap">Xem</button>
+                              <button
+                                type="button"
+                                disabled={actioningId === item.targetId}
+                                onClick={() => openPendingAction(item, 'APPROVE')}
+                                className="portal-primary-button h-8 whitespace-nowrap disabled:opacity-50"
+                              >
+                                Duyệt
+                              </button>
+                              <button
+                                type="button"
+                                disabled={actioningId === item.targetId}
+                                onClick={() => openPendingAction(item, 'HIDE')}
+                                className="rounded-md bg-error px-3.5 text-xs font-semibold text-on-error disabled:opacity-50"
+                              >
+                                Ẩn
+                              </button>
+                              <button
+                                type="button"
+                                disabled={actioningId === item.targetId}
+                                onClick={() => openPendingAction(item, 'REQUEST_REVISION')}
+                                className="portal-secondary-button h-8 whitespace-nowrap disabled:opacity-50"
+                              >
+                                Yêu cầu sửa
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                      {pagedRows.length === 0 && <tr><td colSpan={4} className="text-center text-outline">Không có nội dung phù hợp bộ lọc.</td></tr>}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+              <div className="flex flex-col gap-3 border-t border-outline-variant/70 p-4 md:flex-row md:items-center md:justify-between">
+                <p className="text-xs text-on-surface-variant">Trang {currentPage + 1} / {totalPages}</p>
+                <div className="flex items-center gap-2">
+                  <button type="button" onClick={() => setPage((value) => Math.max(0, value - 1))} disabled={currentPage === 0} className="portal-secondary-button">Trước</button>
+                  <button type="button" onClick={() => setPage((value) => Math.min(totalPages - 1, value + 1))} disabled={currentPage >= totalPages - 1} className="portal-secondary-button">Sau</button>
+                </div>
+              </div>
+            </section>
+          )}
         </div>
       </main>
 
       <ConfirmDialog
         key={pendingAction ? `${pendingAction.item.targetId}-${pendingAction.type}` : 'none'}
         open={pendingAction !== null}
-        title={pendingAction ? PENDING_ACTION_CONFIG[pendingAction.type].title : ''}
-        icon={pendingAction?.type === 'HIDE' ? 'visibility_off' : 'edit_note'}
-        tone={pendingAction ? PENDING_ACTION_CONFIG[pendingAction.type].tone : 'default'}
-        reasonLabel={pendingAction ? PENDING_ACTION_CONFIG[pendingAction.type].reasonLabel : ''}
-        reasonPlaceholder={pendingAction ? PENDING_ACTION_CONFIG[pendingAction.type].reasonPlaceholder : ''}
-        confirmLabel="Xác nhận"
+        title={pendingConfig?.title ?? ''}
+        description={pendingAction && pendingConfig ? `${pendingConfig.description} Nội dung: "${pendingAction.item.contentPreview}".` : undefined}
+        icon={pendingConfig?.icon ?? 'help'}
+        tone={pendingConfig?.tone ?? 'default'}
+        reasonLabel={pendingConfig?.reasonLabel}
+        reasonPlaceholder={pendingConfig?.reasonPlaceholder}
+        confirmLabel={pendingConfig?.confirmLabel ?? 'Xác nhận'}
         submitting={pendingAction !== null && actioningId === pendingAction.item.targetId}
         errorText={dialogError}
         onConfirm={confirmPendingAction}
@@ -407,7 +516,7 @@ export default function PendingContentQueuePage() {
         title="Hoàn tác hành động này?"
         description={
           undoTarget
-            ? `Nội dung sẽ quay lại hàng đợi chờ duyệt (${TARGET_TYPE_LABELS[undoTarget.targetType]} — "${ACTION_TYPE_LABELS[undoTarget.actionType]}").`
+            ? `Nội dung sẽ quay lại hàng đợi chờ duyệt (${TARGET_TYPE_LABELS[undoTarget.targetType]} - "${ACTION_TYPE_LABELS[undoTarget.actionType]}").`
             : undefined
         }
         icon="undo"

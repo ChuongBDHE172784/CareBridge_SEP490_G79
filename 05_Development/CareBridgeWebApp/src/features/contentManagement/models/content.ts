@@ -24,6 +24,7 @@ export interface ContentDetail {
   publishedAt: string | null;
   status: ContentStatus;
   createdAt: string;
+  updatedAt?: string | null;
   sourceLabel?: string | null;
   sources?: ContentSource[];
 }
