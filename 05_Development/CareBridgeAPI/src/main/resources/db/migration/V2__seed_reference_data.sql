@@ -605,4 +605,192 @@ INSERT INTO public.ai_moderation_policies (policy_id, policy_code, name, detecti
 
 -- ============================================================================
 
+
+
+-- ============================================================================ 
+-- Application & Operational Data Seeds
+-- ============================================================================ 
+
+
+-- system_configurations
+INSERT INTO public.system_configurations (system_configuration_id, api_rate_limit, connection_timeout_ms, max_upload_size_mb, administrator_email, email_alerts, sms_alerts, webhook_alerts, ai_moderation_enabled, maintenance_mode_enabled, updated_by, row_version, created_at, updated_at) VALUES ('00000000-0000-0000-0000-000000000001', 100, 5000, 16, 'admin@carebridge.vn', true, false, true, true, false, NULL, 1, '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (system_configuration_id) DO NOTHING;
+
+-- partner_organizations
+INSERT INTO public.partner_organizations (partner_id, name, organization_type, address, city, phone, email, website, logo_url, description, organization_status, representative_user_id, created_at, updated_at) VALUES ('20000000-0000-0000-0000-000000000001', 'Hội Sản Phụ Khoa Việt Nam', 'MEDICAL_ASSOCIATION', '14 Lê Thánh Tông, Hoàn Kiếm, Hà Nội', 'Hà Nội', '02439330000', 'contact@vagog.vn', 'https://vagog.vn', 'https://carebridge.vn/logos/vagog.png', 'Tổ chức chuyên môn uy tín về chăm sóc sức khỏe sinh sản', 'ACTIVE', NULL, '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (partner_id) DO NOTHING;
+INSERT INTO public.partner_organizations (partner_id, name, organization_type, address, city, phone, email, website, logo_url, description, organization_status, representative_user_id, created_at, updated_at) VALUES ('20000000-0000-0000-0000-000000000002', 'Hội Nhi Khoa Cần Thơ', 'MEDICAL_ASSOCIATION', '120 Nguyễn Văn Cừ, Ninh Kiều, Cần Thơ', 'Cần Thơ', '02923888999', 'contact@nhikhoacantho.vn', 'https://nhikhoacantho.vn', 'https://carebridge.vn/logos/nhikhoacantho.png', 'Hội chuyên môn nhi khoa khu vực ĐBSCL', 'ACTIVE', NULL, '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (partner_id) DO NOTHING;
+
+-- users
+INSERT INTO public.users (user_id, full_name, email, phone, password_hash, role, account_status, enabled, locked, email_verified, phone_verified, display_name, created_at, updated_at) VALUES ('10000000-0000-0000-0000-000000000001', 'Quản Trị Viên Hệ Thống', 'admin@carebridge.vn', '0901000001', '$2a$10$e7x1.7vJ9nO3W4K8Z2L3ue7gZ8xX9yY0zA1bC2dE3fG4hI5jK6lM', 'ADMIN', 'ACTIVE', true, false, true, true, 'Admin CareBridge', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (user_id) DO NOTHING;
+INSERT INTO public.users (user_id, full_name, email, phone, password_hash, role, account_status, enabled, locked, email_verified, phone_verified, display_name, professional_title, workplace, experience_years, consultation_scope, verification_status, facility_id, consultation_fee_vnd, bio, interest_stage, created_at, updated_at) VALUES ('10000000-0000-0000-0000-000000000002', 'BS. Nguyễn Văn An', 'dr.an@carebridge.vn', '0901000002', '$2a$10$e7x1.7vJ9nO3W4K8Z2L3ue7gZ8xX9yY0zA1bC2dE3fG4hI5jK6lM', 'DOCTOR', 'ACTIVE', true, false, true, true, 'BS. Nguyễn Văn An', 'Bác sĩ Chuyên khoa I', 'Bệnh viện Phụ sản Trung ương Cần Thơ', 10, 'Khám thai, theo dõi thai kỳ nguy cơ cao, tư vấn sinh nở', 'VERIFIED', '00000000-0000-0000-0000-000000000101', 200000, 'Bác sĩ chuyên khoa Sản Nhi với hơn 10 năm kinh nghiệm lâm sàng.', 'PREGNANCY', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (user_id) DO NOTHING;
+INSERT INTO public.users (user_id, full_name, email, phone, password_hash, role, account_status, enabled, locked, email_verified, phone_verified, display_name, professional_title, workplace, experience_years, consultation_scope, verification_status, facility_id, consultation_fee_vnd, bio, interest_stage, created_at, updated_at) VALUES ('10000000-0000-0000-0000-000000000003', 'BS. Trần Thị Bình', 'dr.binh@carebridge.vn', '0901000003', '$2a$10$e7x1.7vJ9nO3W4K8Z2L3ue7gZ8xX9yY0zA1bC2dE3fG4hI5jK6lM', 'DOCTOR', 'ACTIVE', true, false, true, true, 'BS. Trần Thị Bình', 'Thạc sĩ Bác sĩ Nhi khoa', 'Phòng khám Nhi Cửu Long', 8, 'Tư vấn dinh dưỡng nhi, chăm sóc trẻ sơ sinh, tiêm chủng', 'VERIFIED', '00000000-0000-0000-0000-000000000104', 150000, 'Chuyên gia chăm sóc và điều trị các bệnh lý thường gặp ở trẻ nhỏ.', 'INFANT', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (user_id) DO NOTHING;
+INSERT INTO public.users (user_id, full_name, email, phone, password_hash, role, account_status, enabled, locked, email_verified, phone_verified, display_name, area, interest_stage, created_at, updated_at) VALUES ('10000000-0000-0000-0000-000000000004', 'Lê Thị Chi', 'lethi.chi@gmail.com', '0901000004', '$2a$10$e7x1.7vJ9nO3W4K8Z2L3ue7gZ8xX9yY0zA1bC2dE3fG4hI5jK6lM', 'USER', 'ACTIVE', true, false, true, true, 'Mẹ Lê Chi', 'Cần Thơ', 'PREGNANCY', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (user_id) DO NOTHING;
+INSERT INTO public.users (user_id, full_name, email, phone, password_hash, role, account_status, enabled, locked, email_verified, phone_verified, display_name, area, interest_stage, created_at, updated_at) VALUES ('10000000-0000-0000-0000-000000000005', 'Phạm Thị Dung', 'pham.dung@gmail.com', '0901000005', '$2a$10$e7x1.7vJ9nO3W4K8Z2L3ue7gZ8xX9yY0zA1bC2dE3fG4hI5jK6lM', 'USER', 'ACTIVE', true, false, true, true, 'Mẹ Phạm Dung', 'Hà Nội', 'INFANT', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (user_id) DO NOTHING;
+INSERT INTO public.users (user_id, full_name, email, phone, password_hash, role, account_status, enabled, locked, email_verified, phone_verified, display_name, area, interest_stage, created_at, updated_at) VALUES ('10000000-0000-0000-0000-000000000006', 'Hoàng Văn Em', 'hoang.em@gmail.com', '0901000006', '$2a$10$e7x1.7vJ9nO3W4K8Z2L3ue7gZ8xX9yY0zA1bC2dE3fG4hI5jK6lM', 'USER', 'ACTIVE', true, false, true, true, 'Bố Hoàng Em', 'Cần Thơ', 'PREGNANCY', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (user_id) DO NOTHING;
+
+-- professional_specialties
+INSERT INTO public.professional_specialties (professional_profile_id, specialty_id, is_primary, created_at) VALUES ('10000000-0000-0000-0000-000000000002', '7c3cd28b-3623-7a79-adce-c1b410cc7706', true, '2026-07-24 10:00:00+07') ON CONFLICT (professional_profile_id, specialty_id) DO NOTHING;
+INSERT INTO public.professional_specialties (professional_profile_id, specialty_id, is_primary, created_at) VALUES ('10000000-0000-0000-0000-000000000003', '5805de43-8235-789b-97d0-b0fed18db1b7', true, '2026-07-24 10:00:00+07') ON CONFLICT (professional_profile_id, specialty_id) DO NOTHING;
+
+-- care_subjects
+INSERT INTO public.care_subjects (care_subject_id, owner_user_id, subject_type, nickname, status, created_at, updated_at) VALUES ('30000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000004', 'MOTHER', 'Mẹ Lê Chi', 'ACTIVE', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (care_subject_id) DO NOTHING;
+INSERT INTO public.care_subjects (care_subject_id, owner_user_id, subject_type, nickname, birth_date, sex, birth_weight_kg, birth_length_cm, status, created_at, updated_at) VALUES ('30000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000005', 'BABY', 'Bé Cu Tí', '2026-01-15', 'MALE', 3.20, 50.0, 'ACTIVE', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (care_subject_id) DO NOTHING;
+
+-- mother_journeys
+INSERT INTO public.mother_journeys (journey_id, owner_user_id, journey_type, start_date, last_menstrual_date, estimated_due_date, status, care_subject_id, created_at, updated_at) VALUES ('40000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000004', 'PREGNANCY', '2026-03-01', '2026-02-15', '2026-11-22', 'ACTIVE', '30000000-0000-0000-0000-000000000001', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (journey_id) DO NOTHING;
+INSERT INTO public.mother_journeys (journey_id, owner_user_id, journey_type, start_date, delivery_date, status, care_subject_id, created_at, updated_at) VALUES ('40000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000005', 'POSTPARTUM', '2026-01-15', '2026-01-15', 'ACTIVE', NULL, '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (journey_id) DO NOTHING;
+
+-- care_groups
+INSERT INTO public.care_groups (care_group_id, owner_user_id, group_name, status, care_subject_id, journey_id, created_at, updated_at) VALUES ('50000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000004', 'Gia Đình Mẹ Chi & Bé', 'ACTIVE', '30000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (care_group_id) DO NOTHING;
+
+-- care_group_members
+INSERT INTO public.care_group_members (care_group_member_id, care_group_id, user_id, member_role, invitation_status, joined_at, created_at, updated_at) VALUES ('51000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000004', 'PRIMARY_CAREGIVER', 'ACCEPTED', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (care_group_member_id) DO NOTHING;
+INSERT INTO public.care_group_members (care_group_member_id, care_group_id, user_id, member_role, invitation_status, joined_at, created_at, updated_at) VALUES ('51000000-0000-0000-0000-000000000002', '50000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000006', 'CO_CAREGIVER', 'ACCEPTED', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (care_group_member_id) DO NOTHING;
+
+-- care_item_templates
+INSERT INTO public.care_item_templates (template_id, entry_type, title, description, stage, is_active, created_at, updated_at) VALUES ('60000000-0000-0000-0000-000000000001', 'SUPPLEMENT', 'Bổ sung Sắt & Axit Folic', 'Uống 1 viên Sắt và Axit Folic mỗi ngày sau bữa ăn sáng', 'PREGNANCY', true, '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (template_id) DO NOTHING;
+INSERT INTO public.care_item_templates (template_id, entry_type, title, description, stage, is_active, created_at, updated_at) VALUES ('60000000-0000-0000-0000-000000000002', 'MEDICAL_CHECKUP', 'Khám thai định kỳ tuần 12', 'Siêu âm độ mờ da gáy và làm xét nghiệm Double Test', 'PREGNANCY', true, '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (template_id) DO NOTHING;
+INSERT INTO public.care_item_templates (template_id, entry_type, title, description, stage, is_active, created_at, updated_at) VALUES ('60000000-0000-0000-0000-000000000003', 'BABY_CARE', 'Tắm & Chăm sóc rốn em bé', 'Tắm nước ấm 37 độ C và vệ sinh cuống rốn bằng cồn 70 độ', 'INFANT', true, '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (template_id) DO NOTHING;
+
+-- preparation_checklist_items
+INSERT INTO public.preparation_checklist_items (checklist_item_id, owner_user_id, mother_journey_id, template_entry_id, title, display_order, status, created_at, updated_at) VALUES ('61000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000004', '40000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000001', 'Uống vi chất dinh dưỡng hàng ngày', 1, 'IN_PROGRESS', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (checklist_item_id) DO NOTHING;
+INSERT INTO public.preparation_checklist_items (checklist_item_id, owner_user_id, mother_journey_id, template_entry_id, title, display_order, status, created_at, updated_at) VALUES ('61000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000004', '40000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000002', 'Chuẩn bị giỏ đồ đi sinh', 2, 'PENDING', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (checklist_item_id) DO NOTHING;
+
+-- development_milestones
+INSERT INTO public.development_milestones (milestone_id, care_subject_id, baby_id, milestone_type, achieved_date, note, recorded_by, created_at, updated_at) VALUES ('62000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000002', '30000000-0000-0000-0000-000000000002', 'MOTOR_SKILLS', '2026-04-15', 'Bé tự lật ngửa sang lật úp và ngẩng cao đầu', '10000000-0000-0000-0000-000000000005', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (milestone_id) DO NOTHING;
+INSERT INTO public.development_milestones (milestone_id, care_subject_id, baby_id, milestone_type, achieved_date, note, recorded_by, created_at, updated_at) VALUES ('62000000-0000-0000-0000-000000000002', '30000000-0000-0000-0000-000000000002', '30000000-0000-0000-0000-000000000002', 'PHYSICAL', '2026-07-10', 'Bé nhú 2 chiếc răng cửa đầu tiên', '10000000-0000-0000-0000-000000000005', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (milestone_id) DO NOTHING;
+
+-- care_tasks
+INSERT INTO public.care_tasks (task_id, owner_user_id, care_group_id, care_subject_id, title, description, task_type, status, scheduled_at, created_at, updated_at) VALUES ('63000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000004', '50000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', 'Uống viên sắt buổi sáng', '1 viên Sắt sau ăn sáng 30 phút', 'DAILY_ROUTINE', 'PENDING', '2026-07-28 08:00:00+07', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (task_id) DO NOTHING;
+INSERT INTO public.care_tasks (task_id, owner_user_id, care_group_id, care_subject_id, title, description, task_type, status, scheduled_at, created_at, updated_at) VALUES ('63000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000005', NULL, '30000000-0000-0000-0000-000000000002', 'Uống Vitamin D3 K2 cho bé', '2 giọt D3K2 vào buổi sáng', 'DAILY_ROUTINE', 'COMPLETED', '2026-07-27 07:30:00+07', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (task_id) DO NOTHING;
+
+-- health_records
+INSERT INTO public.health_records (health_record_id, owner_user_id, journey_id, care_subject_id, record_type, title, file_url, record_date, source_type, status, created_at, updated_at) VALUES ('70000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000004', '40000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', 'ULTRASOUND', 'Kết quả siêu âm 4D thai 12 tuần', 'https://carebridge.vn/files/ultrasound_w12.pdf', '2026-05-10', 'MANUAL_ENTRY', 'ACTIVE', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (health_record_id) DO NOTHING;
+
+-- health_observations
+INSERT INTO public.health_observations (health_observation_id, care_subject_id, observation_type, value_numeric, unit, observed_at, severity, source_type, subject_type, text_value, created_at, updated_at) VALUES ('71000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', 'BLOOD_PRESSURE_SYSTOLIC', 115.00, 'mmHg', '2026-07-25 09:00:00+07', 'NORMAL', 'MANUAL', 'MOTHER', '115/75 mmHg', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (health_observation_id) DO NOTHING;
+
+-- growth_measurements
+INSERT INTO public.growth_measurements (growth_measurement_id, baby_id, measured_date, weight_kg, height_cm, head_circumference_cm, source_type, note, created_at, updated_at) VALUES ('72000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000002', '2026-07-15', 7.50, 67.50, 42.00, 'CLINIC', 'Chỉ số phát triển đạt chuẩn WHO 6 tháng tuổi', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (growth_measurement_id) DO NOTHING;
+
+-- maternal_exercise_sessions
+INSERT INTO public.maternal_exercise_sessions (exercise_session_id, mother_journey_id, owner_user_id, started_at, ended_at, paused_seconds, completion_percent, posture_score, session_status, warning_count, created_at, updated_at) VALUES ('73000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000004', '2026-07-26 17:00:00+07', '2026-07-26 17:20:00+07', 0, 100.00, 92.50, 'COMPLETED', 0, '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (exercise_session_id) DO NOTHING;
+
+-- health_context_memories
+INSERT INTO public.health_context_memories (memory_id, user_id, care_subject_id, related_stage, summary_text, created_at) VALUES ('74000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000004', '30000000-0000-0000-0000-000000000001', 'PREGNANCY', 'Mẹ thai 20 tuần, chỉ số huyết áp ổn định, bổ sung sắt đều đặn.', '2026-07-24 10:00:00+07') ON CONFLICT (memory_id) DO NOTHING;
+
+-- content_items
+INSERT INTO public.content_items (content_item_id, title, body, content_type, stage, status, author_user_id, created_at, updated_at) VALUES ('80000000-0000-0000-0000-000000000001', 'Cẩm nang dinh dưỡng 3 tháng đầu thai kỳ', 'Axit folic, sắt, canxi và DHA là những chất vô cùng quan trọng giúp ngăn ngừa dị tật ống thần kinh...', 'ARTICLE', 'PREGNANCY', 'PUBLISHED', '10000000-0000-0000-0000-000000000002', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (content_item_id) DO NOTHING;
+INSERT INTO public.content_items (content_item_id, title, body, content_type, stage, status, author_user_id, created_at, updated_at) VALUES ('80000000-0000-0000-0000-000000000002', 'Lịch tiêm chủng chuẩn Bộ Y tế cho trẻ dưới 1 tuổi', 'Trẻ sơ sinh cần tiêm vắc xin Viêm gan B và BCG ngay trong 24 giờ đầu sau sinh...', 'GUIDE', 'INFANT', 'PUBLISHED', '10000000-0000-0000-0000-000000000003', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (content_item_id) DO NOTHING;
+
+-- content_item_sources
+INSERT INTO public.content_item_sources (content_item_source_id, content_item_id, knowledge_source_id, source_title, source_url, created_at) VALUES ('80100000-0000-0000-0000-000000000001', '80000000-0000-0000-0000-000000000001', '33d52c0c-0928-4807-8a57-14bfb551f0a5', 'WHO Maternal Nutrition Guidelines 2024', 'https://who.int/nutrition', '2026-07-24 10:00:00+07') ON CONFLICT (content_item_source_id) DO NOTHING;
+
+-- content_item_topics
+INSERT INTO public.content_item_topics (content_item_id, topic_id, created_at) VALUES ('80000000-0000-0000-0000-000000000001', '8f895bd3-b3c9-4672-88b5-555e71ef3e98', '2026-07-24 10:00:00+07') ON CONFLICT (content_item_id, topic_id) DO NOTHING;
+
+-- community_content
+INSERT INTO public.community_content (content_id, author_user_id, title, body, content_type, stage, moderation_status, like_count, answer_count, created_at, updated_at) VALUES ('81000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000004', 'Kinh nghiệm giảm ốm nghẹn hiệu quả cho mẹ bầu?', 'Các mẹ ơi, em bầu 10 tuần nghén nặng quá, ăn gì cũng nôn. Có mẹ nào có bí quyết dịu dạ dạ không ạ?', 'QUESTION', 'PREGNANCY', 'APPROVED', 12, 5, '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (content_id) DO NOTHING;
+INSERT INTO public.community_content (content_id, author_user_id, parent_content_id, title, body, content_type, stage, moderation_status, like_count, answer_count, created_at, updated_at) VALUES ('81000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002', '81000000-0000-0000-0000-000000000001', NULL, 'Chào em, em có thể ngậm vài lát gừng tươi, uống trà hoa cúc ấm và chia nhỏ bữa ăn làm 5-6 bữa/ngày nhé.', 'ANSWER', 'PREGNANCY', 'APPROVED', 8, 0, '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (content_id) DO NOTHING;
+
+-- community_interactions
+INSERT INTO public.community_interactions (interaction_id, actor_user_id, interaction_type, content_id, created_at) VALUES ('82000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000005', 'LIKE', '81000000-0000-0000-0000-000000000001', '2026-07-24 10:00:00+07') ON CONFLICT (interaction_id) DO NOTHING;
+
+-- expert_availability
+INSERT INTO public.expert_availability (availability_id, user_id, professional_profile_id, start_at, end_at, status, created_at, updated_at) VALUES ('90000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002', '2026-07-30 09:00:00+07', '2026-07-30 10:00:00+07', 'BOOKED', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (availability_id) DO NOTHING;
+
+-- consultation_bookings
+INSERT INTO public.consultation_bookings (booking_id, requester_user_id, expert_profile_id, availability_id, status, price_snapshot_amount, created_at, updated_at) VALUES ('91000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000002', '90000000-0000-0000-0000-000000000001', 'CONFIRMED', 200000, '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (booking_id) DO NOTHING;
+
+-- consultation_sessions
+INSERT INTO public.consultation_sessions (session_id, booking_id, session_status, started_at, created_at) VALUES ('92000000-0000-0000-0000-000000000001', '91000000-0000-0000-0000-000000000001', 'SCHEDULED', '2026-07-30 09:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (session_id) DO NOTHING;
+
+-- direct_conversations
+INSERT INTO public.direct_conversations (conversation_id, mother_user_id, expert_user_id, status, created_at, last_activity_at) VALUES ('93000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000002', 'ACTIVE', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (conversation_id) DO NOTHING;
+
+-- expert_consultation_requests
+INSERT INTO public.expert_consultation_requests (id, requester_user_id, expert_profile_id, direct_conversation_id, status, created_at, updated_at) VALUES ('94000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000002', '93000000-0000-0000-0000-000000000001', 'ACCEPTED', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (id) DO NOTHING;
+
+-- expert_location_shares
+INSERT INTO public.expert_location_shares (location_share_id, user_id, professional_profile_id, latitude, longitude, accuracy_meters, availability_status, created_at, updated_at) VALUES ('95000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002', 10.01860000, 105.78780000, 10.0, 'AVAILABLE', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (location_share_id) DO NOTHING;
+
+-- direct_messages
+INSERT INTO public.direct_messages (message_id, conversation_id, sender_user_id, message_body, message_type, created_at) VALUES ('96000000-0000-0000-0000-000000000001', '93000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000004', 'Xin chào Bác sĩ, em nhờ Bác sĩ xem giúp em kết quả siêu âm tuần 12 ạ.', 'TEXT', '2026-07-24 10:05:00+07') ON CONFLICT (message_id) DO NOTHING;
+INSERT INTO public.direct_messages (message_id, conversation_id, sender_user_id, message_body, message_type, created_at) VALUES ('96000000-0000-0000-0000-000000000002', '93000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000002', 'Chào em, em gửi hình chụp kết quả siêu âm qua đây Bác sĩ xem giúp nhé.', 'TEXT', '2026-07-24 10:06:00+07') ON CONFLICT (message_id) DO NOTHING;
+
+-- conversation_calls
+INSERT INTO public.conversation_calls (call_id, conversation_id, initiated_by_user_id, call_type, call_status, initiated_at, ended_at, duration_seconds, created_at) VALUES ('97000000-0000-0000-0000-000000000001', '93000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000004', 'VOICE', 'ENDED', '2026-07-26 15:00:00+07', '2026-07-26 15:05:30+07', 330, '2026-07-26 15:00:00+07') ON CONFLICT (call_id) DO NOTHING;
+
+-- auth_challenges
+INSERT INTO public.auth_challenges (challenge_id, user_id, subject_identifier, challenge_type, challenge_hash, expires_at, status, created_at) VALUES ('A0000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000004', '0901000004', 'PHONE_OTP', '$2a$10$HASHED_OTP_CODE_SEED', '2026-07-24 10:15:00+07', 'VERIFIED', '2026-07-24 10:10:00+07') ON CONFLICT (challenge_id) DO NOTHING;
+
+-- auth_sessions
+INSERT INTO public.auth_sessions (session_id, user_id, token_family_id, device_identifier, device_name, issued_at, expires_at, status) VALUES ('A1000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000004', 'A1100000-0000-0000-0000-000000000001', 'DEV_IPHONE_15_PRO', 'iPhone 15 Pro của Chi', '2026-07-24 10:00:00+07', '2026-08-24 10:00:00+07', 'ACTIVE') ON CONFLICT (session_id) DO NOTHING;
+
+-- device_tokens
+INSERT INTO public.device_tokens (id, user_id, token, platform, active, created_at, updated_at) VALUES ('A2000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000004', 'fcm_token_sample_lethi_chi_device_01', 'IOS', true, '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (id) DO NOTHING;
+
+-- device_connections
+INSERT INTO public.device_connections (device_connection_id, user_id, provider_name, device_name, status, created_at, updated_at) VALUES ('A3000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000004', 'BLOOD_PRESSURE_MONITOR', 'Máy đo huyết áp Omron Bluetooth', 'CONNECTED', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (device_connection_id) DO NOTHING;
+
+-- safety_configs
+INSERT INTO public.safety_configs (safety_config_id, user_id, fall_detection_enabled, sensitivity_level, emergency_auto_alert, countdown_seconds, sensor_permission_granted, updated_at) VALUES ('B0000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000004', true, 'MEDIUM', true, 15, true, '2026-07-24 10:00:00+07') ON CONFLICT (safety_config_id) DO NOTHING;
+
+-- safety_monitoring_sessions
+INSERT INTO public.safety_monitoring_sessions (monitoring_session_id, user_id, status, sensitivity_level, started_at, created_by) VALUES ('B1000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000004', 'ACTIVE', 'MEDIUM', '2026-07-27 08:00:00+07', '10000000-0000-0000-0000-000000000004') ON CONFLICT (monitoring_session_id) DO NOTHING;
+
+-- safety_events
+INSERT INTO public.safety_events (safety_event_id, user_id, monitoring_session_id, detected_at, event_type, status, alert_generation, created_at, updated_at) VALUES ('B2000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000004', 'B1000000-0000-0000-0000-000000000001', '2026-07-27 08:30:00+07', 'FALL_DETECTED', 'RESOLVED', 1, '2026-07-27 08:30:00+07', '2026-07-27 08:31:00+07') ON CONFLICT (safety_event_id) DO NOTHING;
+
+-- triage_sessions
+INSERT INTO public.triage_sessions (triage_session_id, user_id, care_subject_id, stage, risk_level, status, emergency, disclaimer_version, created_at, completed_at, updated_at) VALUES ('C0000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000004', '30000000-0000-0000-0000-000000000001', 'PREGNANCY', 'LOW', 'COMPLETED', false, '1.0', '2026-07-24 10:00:00+07', '2026-07-24 10:02:00+07', '2026-07-24 10:02:00+07') ON CONFLICT (triage_session_id) DO NOTHING;
+
+-- triage_session_evidence
+INSERT INTO public.triage_session_evidence (evidence_id, triage_session_id, evidence_type, claim_text, knowledge_source_id, citation_domain, created_at) VALUES ('C1000000-0000-0000-0000-000000000001', 'C0000000-0000-0000-0000-000000000001', 'KNOWLEDGE_SOURCE', 'Hướng dẫn xử trí nghén nhẹ ở phụ nữ mang thai 3 tháng đầu', '33d52c0c-0928-4807-8a57-14bfb551f0a5', 'who.int', '2026-07-24 10:02:00+07') ON CONFLICT (evidence_id) DO NOTHING;
+
+-- moderation_cases
+INSERT INTO public.moderation_cases (moderation_case_id, reporter_user_id, assigned_moderator_id, target_type, target_id, reason_code, description, status, opened_at, updated_at) VALUES ('D0000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000001', 'COMMUNITY_CONTENT', '81000000-0000-0000-0000-000000000001', 'INFO_VERIFICATION', 'Kiểm tra nội dung câu hỏi về triệu chứng nghén', 'CLOSED', '2026-07-24 10:30:00+07', '2026-07-24 10:35:00+07') ON CONFLICT (moderation_case_id) DO NOTHING;
+
+-- ai_content_scan_jobs
+INSERT INTO public.ai_content_scan_jobs (job_id, target_type, target_id, content_hash, status, created_at, updated_at) VALUES ('D1000000-0000-0000-0000-000000000001', 'CONTENT', '81000000-0000-0000-0000-000000000001', 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', 'COMPLETED', '2026-07-24 10:00:00+07', '2026-07-24 10:01:00+07') ON CONFLICT (job_id) DO NOTHING;
+
+-- ai_content_assessments
+INSERT INTO public.ai_content_assessments (assessment_id, job_id, target_type, target_id, classification, confidence, status, created_at) VALUES ('D2000000-0000-0000-0000-000000000001', 'D1000000-0000-0000-0000-000000000001', 'CONTENT', '81000000-0000-0000-0000-000000000001', 'SAFE', 0.99, 'COMPLETED', '2026-07-24 10:01:00+07') ON CONFLICT (assessment_id) DO NOTHING;
+
+-- attachments
+INSERT INTO public.attachments (attachment_id, health_record_id, owner_user_id, original_name, storage_key, mime_type, file_size_bytes, status, created_at, updated_at) VALUES ('E0000000-0000-0000-0000-000000000001', '70000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000004', 'phieu_sieu_am_w12.pdf', 'uploads/health_records/phieu_sieu_am_w12.pdf', 'application/pdf', 1048576, 'ACTIVE', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (attachment_id) DO NOTHING;
+
+-- audit_events
+INSERT INTO public.audit_events (audit_event_id, actor_user_id, event_category, note_text, occurred_at, created_at) VALUES ('E1000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000004', 'AUTHENTICATION', 'Người dùng Lê Thị Chi đăng nhập thành công', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (audit_event_id) DO NOTHING;
+INSERT INTO public.audit_events (audit_event_id, actor_user_id, event_category, note_text, occurred_at, created_at) VALUES ('E1000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000002', 'SECURITY', 'Xác thực hồ sơ bác sĩ Nguyễn Văn An', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (audit_event_id) DO NOTHING;
+
+-- data_permissions
+INSERT INTO public.data_permissions (permission_id, owner_user_id, grantee_user_id, purpose, status) VALUES ('E2000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000002', 'Chia sẻ dữ liệu khám thai cho bác sĩ theo dõi', 'ACTIVE') ON CONFLICT (permission_id) DO NOTHING;
+
+-- expense_entries
+INSERT INTO public.expense_entries (expense_entry_id, owner_user_id, care_subject_id, mother_journey_id, category, amount, currency, expense_date, note, created_at, updated_at) VALUES ('E3000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000004', '30000000-0000-0000-0000-000000000001', '40000000-0000-0000-0000-000000000001', 'MEDICAL_CHECKUP', 500000.00, 'VND', '2026-05-10', 'Chi phí khám thai và siêu âm tuần 12', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (expense_entry_id) DO NOTHING;
+INSERT INTO public.expense_entries (expense_entry_id, owner_user_id, care_subject_id, mother_journey_id, category, amount, currency, expense_date, note, created_at, updated_at) VALUES ('E3000000-0000-0000-0000-000000000002', '10000000-0000-0000-0000-000000000005', '30000000-0000-0000-0000-000000000002', NULL, 'NUTRITION', 450000.00, 'VND', '2026-07-20', 'Mua sữa công thức cho bé Cu Tí', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (expense_entry_id) DO NOTHING;
+
+-- knowledge_source_reviews
+INSERT INTO public.knowledge_source_reviews (review_id, knowledge_source_id, previous_status, new_status, actor_user_id, actor_role, notes, changed_at) VALUES ('F0000000-0000-0000-0000-000000000001', '33d52c0c-0928-4807-8a57-14bfb551f0a5', 'PENDING', 'APPROVED', '10000000-0000-0000-0000-000000000001', 'ADMIN', 'Phê duyệt nguồn tri thức chính thống WHO', '2026-07-24 10:00:00+07') ON CONFLICT (review_id) DO NOTHING;
+
+-- notification_records
+INSERT INTO public.notification_records (id, user_id, type, title, body, status, created_at, updated_at) VALUES ('F1000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000004', 'REMINDER', 'Nhắc nhở uống thuốc', 'Đã đến giờ uống viên Sắt & Axit Folic buổi sáng', 'SENT', '2026-07-27 08:00:00+07', '2026-07-27 08:00:00+07') ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.notification_records (id, user_id, type, title, body, status, created_at, updated_at) VALUES ('F1000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000005', 'VACCINATION', 'Nhắc lịch tiêm chủng', 'Bé Cu Tí có lịch tiêm vắc xin 6 trong 1 vào tuần tới', 'PENDING', '2026-07-27 09:00:00+07', '2026-07-27 09:00:00+07') ON CONFLICT (id) DO NOTHING;
+
+-- vaccination_records
+INSERT INTO public.vaccination_records (vaccination_record_id, baby_id, care_subject_id, vaccine_name, dose_number, scheduled_date, administered_date, status, facility_name, created_at, updated_at) VALUES ('F2000000-0000-0000-0000-000000000002', '30000000-0000-0000-0000-000000000002', '30000000-0000-0000-0000-000000000002', 'Vắc xin Viêm gan B (Liều sơ sinh)', 1, '2026-01-15', '2026-01-15', 'COMPLETED', 'Bệnh viện Phụ sản Trung ương Cần Thơ', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (vaccination_record_id) DO NOTHING;
+INSERT INTO public.vaccination_records (vaccination_record_id, baby_id, care_subject_id, vaccine_name, dose_number, scheduled_date, administered_date, status, facility_name, created_at, updated_at) VALUES ('F2000000-0000-0000-0000-000000000003', '30000000-0000-0000-0000-000000000002', '30000000-0000-0000-0000-000000000002', 'Vắc xin Lao (BCG)', 1, '2026-01-16', '2026-01-16', 'COMPLETED', 'Bệnh viện Phụ sản Trung ương Cần Thơ', '2026-07-24 10:00:00+07', '2026-07-24 10:00:00+07') ON CONFLICT (vaccination_record_id) DO NOTHING;
+
+-- account_deletion_requests
+INSERT INTO public.account_deletion_requests (id, user_id, status, reason, requested_at, created_at, updated_at) VALUES ('F3000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000006', 'CANCELLED', 'Thử nghiệm tính năng yêu cầu xóa tài khoản', '2026-07-20 10:00:00+07', '2026-07-20 10:00:00+07', '2026-07-21 10:00:00+07') ON CONFLICT (id) DO NOTHING;
+
+-- archived_records
+INSERT INTO public.archived_records (archive_id, legacy_table, legacy_id, archive_reason, checksum, archived_at) VALUES ('F4000000-0000-0000-0000-000000000001', 'old_users_table', 'USER_LEGACY_001', 'RUNTIME_COMPATIBILITY', 'd41d8cd98f00b204e9800998ecf8427e', '2026-07-24 10:00:00+07') ON CONFLICT (archive_id) DO NOTHING;
+
+-- consultation_context_shares
+INSERT INTO public.consultation_context_shares (context_share_id, owner_user_id, journey_id, origin_dashboard, triage_stage, created_at) VALUES ('F5000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000004', '40000000-0000-0000-0000-000000000001', 'MOTHER_JOURNEY', 'PREGNANCY', '2026-07-24 10:02:00+07') ON CONFLICT (context_share_id) DO NOTHING;
+
+-- consultation_context_citations
+INSERT INTO public.consultation_context_citations (citation_snapshot_id, context_share_id, organization, source_url, created_at) VALUES ('F6000000-0000-0000-0000-000000000001', 'F5000000-0000-0000-0000-000000000001', 'World Health Organization', 'https://www.who.int', '2026-07-24 10:02:00+07') ON CONFLICT (citation_snapshot_id) DO NOTHING;
+
 COMMIT;
