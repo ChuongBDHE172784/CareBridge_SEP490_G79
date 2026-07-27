@@ -9,7 +9,7 @@ import {
   CHECKLIST_STATUS_LABELS,
   STAGE_LABELS,
 } from '../models/content';
-import { fetchAdminChecklists } from '../services/contentApi';
+import { archiveChecklistTemplate, fetchAdminChecklists } from '../services/contentApi';
 import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
 
 const PAGE_SIZE = 10;
@@ -55,12 +55,15 @@ export default function ChecklistListPage() {
   const [checklists, setChecklists] = useState<AdminChecklistTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [archivingId, setArchivingId] = useState<string | null>(null);
   const [stageFilter, setStageFilter] = useState<ContentStage | ''>('');
   const [statusFilter, setStatusFilter] = useState<ChecklistTemplateStatus | ''>('');
   const [page, setPage] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const latestRequestId = useRef(0);
+  const archivingIdRef = useRef<string | null>(null);
 
   const loadData = useCallback(async () => {
     const requestId = latestRequestId.current + 1;
@@ -105,6 +108,37 @@ export default function ChecklistListPage() {
     };
   }, [loadData]);
 
+  const latestLoadData = useRef(loadData);
+  latestLoadData.current = loadData;
+
+  useEffect(() => {
+    setActionError('');
+  }, [page, stageFilter, statusFilter]);
+
+  const handleDelete = async (checklist: AdminChecklistTemplate) => {
+    if (checklist.status === 'ARCHIVED' || archivingIdRef.current !== null) return;
+
+    setActionError('');
+    const reason = window.prompt(`Nhập lý do xóa (lưu trữ) "${checklist.name}":`);
+    if (reason === null) return;
+    if (!reason.trim()) {
+      setActionError('Vui lòng nhập lý do trước khi xóa.');
+      return;
+    }
+
+    archivingIdRef.current = checklist.id;
+    setArchivingId(checklist.id);
+    try {
+      await archiveChecklistTemplate(checklist.id, reason.trim());
+      await latestLoadData.current();
+    } catch {
+      setActionError('Không thể xóa checklist. Vui lòng thử lại.');
+    } finally {
+      archivingIdRef.current = null;
+      setArchivingId(null);
+    }
+  };
+
   const from = totalElements === 0 ? 0 : page * PAGE_SIZE + 1;
   const to = Math.min((page + 1) * PAGE_SIZE, totalElements);
 
@@ -128,6 +162,12 @@ export default function ChecklistListPage() {
           Tạo Checklist
         </button>
       </div>
+
+      {actionError && (
+        <div role="alert" className="bg-error-container rounded-2xl p-4 mb-4 text-error text-sm">
+          {actionError}
+        </div>
+      )}
 
       {/* Status tabs + Filter controls */}
       <div className="flex justify-between items-center mb-5 flex-wrap gap-3">
@@ -242,7 +282,7 @@ export default function ChecklistListPage() {
                       </td>
                       <td className="py-3.5 px-2">
                         <span className={`py-1 px-3.5 rounded-full text-xs font-semibold ${statusBadgeClass(checklist.status, Boolean(checklist.latestReviewFeedback))}`}>
-                          {checklist.latestReviewFeedback ? 'Cần chỉnh sửa' : `${checklist.status} · ${CHECKLIST_STATUS_LABELS[checklist.status]}`}
+                          {checklist.latestReviewFeedback ? 'Cần chỉnh sửa' : CHECKLIST_STATUS_LABELS[checklist.status]}
                         </span>
                       </td>
                       <td className="py-3.5 px-2 text-[13px] text-outline">{formatUpdatedAt(checklist.updatedAt)}</td>
@@ -256,6 +296,32 @@ export default function ChecklistListPage() {
                             title="Xem chi tiết"
                           >
                             <span aria-hidden="true" className="material-symbols-outlined text-base">visibility</span>
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={`Chỉnh sửa checklist ${checklist.name}`}
+                            onClick={() => navigate(`/content/checklists/${checklist.id}/edit`)}
+                            disabled={checklist.status !== 'DRAFT' && checklist.status !== 'PENDING_REVIEW'}
+                            className="w-8 h-8 rounded-lg border border-outline-variant bg-transparent cursor-pointer flex items-center justify-center hover:bg-surface-container-low disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                            title={checklist.status === 'DRAFT' || checklist.status === 'PENDING_REVIEW'
+                              ? 'Chỉnh sửa'
+                              : 'Checklist ở trạng thái này không thể chỉnh sửa trực tiếp'}
+                          >
+                            <span aria-hidden="true" className="material-symbols-outlined text-primary text-base">edit</span>
+                          </button>
+                          <button
+                            type="button"
+                            aria-label={`Xóa checklist ${checklist.name}`}
+                            onClick={() => void handleDelete(checklist)}
+                            disabled={checklist.status === 'ARCHIVED' || archivingId !== null}
+                            className="w-8 h-8 rounded-lg border border-outline-variant bg-transparent cursor-pointer flex items-center justify-center hover:bg-surface-container-low disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                            title={checklist.status === 'ARCHIVED'
+                              ? 'Checklist đã xóa không thể xóa lại'
+                              : archivingId === checklist.id
+                                ? 'Đang xóa...'
+                                : archivingId !== null ? 'Đang xử lý checklist khác...' : 'Xóa'}
+                          >
+                            <span aria-hidden="true" className="material-symbols-outlined text-error text-base">delete</span>
                           </button>
                         </div>
                       </td>
