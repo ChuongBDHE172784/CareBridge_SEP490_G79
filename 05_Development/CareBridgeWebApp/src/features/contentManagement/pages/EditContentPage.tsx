@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchStaffContentDetail, updateContent, uploadContentImage } from '../services/contentApi';
-import type { ContentDetail } from '../models/content';
+import { fetchStaffContentDetail, fetchTags, updateContent, uploadContentImage } from '../services/contentApi';
+import type { CommunityTopic, ContentDetail } from '../models/content';
 import { STAGE_LABELS, TYPE_LABELS } from '../models/content';
 import RichTextEditor from '../components/RichTextEditor';
 import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
@@ -13,6 +13,8 @@ export default function EditContentPage() {
   const [detail, setDetail] = useState<ContentDetail | null>(null);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [tags, setTags] = useState<CommunityTopic[]>([]);
+  const [tagIds, setTagIds] = useState<string[]>([]);
   const [sourceTitle, setSourceTitle] = useState('');
   const [sourceUrl, setSourceUrl] = useState('');
   const [changeSummary, setChangeSummary] = useState('');
@@ -26,10 +28,12 @@ export default function EditContentPage() {
     setIsLoading(true);
     setLoadError('');
     try {
-      const data = await fetchStaffContentDetail(id);
+      const [data, loadedTags] = await Promise.all([fetchStaffContentDetail(id), fetchTags()]);
       setDetail(data);
       setTitle(data.title);
       setBody(data.body);
+      setTags(loadedTags);
+      setTagIds(data.tagIds ?? []);
       setSourceTitle(data.sources?.[0]?.title ?? '');
       setSourceUrl(data.sources?.[0]?.url ?? '');
     } catch {
@@ -53,6 +57,7 @@ export default function EditContentPage() {
         body,
         stage: detail.stage,
         topicId: detail.topicId || undefined,
+        tagIds,
         status,
         sourceLabel: detail.sourceLabel || undefined,
         sources: sourceTitle.trim() ? [{ title: sourceTitle.trim(), url: sourceUrl.trim() || undefined }] : undefined,
@@ -159,6 +164,18 @@ export default function EditContentPage() {
                 </div>
               </div>
             </div>
+            <label className="block text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mt-4 mb-1.5">
+              Thẻ tag
+            </label>
+            <select
+              multiple
+              value={tagIds}
+              onChange={(e) => setTagIds(Array.from(e.currentTarget.selectedOptions, (option) => option.value))}
+              className="w-full min-h-28 py-3 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface font-sans"
+            >
+              {tags.map((tag) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}
+            </select>
+            <p className="text-[11px] text-outline mt-1">Giữ Ctrl/Cmd để chọn nhiều tag.</p>
           </div>
 
           <div className="bg-surface rounded-2xl p-6 shadow-md">

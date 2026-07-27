@@ -27,6 +27,7 @@ export interface ContentDetail {
   body: string;
   stage: ContentStage;
   topicId: string;
+  tagIds?: string[];
   version: number;
   publishedAt: string | null;
   status: ContentStatus;

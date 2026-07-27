@@ -394,9 +394,17 @@ export default function ManageTopicsPage() {
                     <TypeBadge type={item.type} />
                   </div>
 
-                  {/* Content count — real, from backend (ADR-COM-015) */}
+                  {/* Content count — real, from backend (ADR-COM-015), aggregated for CATEGORY */}
                   <div className="w-[15%] text-center text-sm text-on-surface-variant">
-                    {item.questionCount} bài
+                    {(() => {
+                      if (item.type === 'CATEGORY') {
+                        const childCount = topics
+                          .filter((t) => t.parentId === item.id)
+                          .reduce((sum, child) => sum + (child.questionCount || 0), 0);
+                        return `${childCount} bài`;
+                      }
+                      return `${item.questionCount} bài`;
+                    })()}
                   </div>
 
                   {/* Reorder — real, persisted via PATCH (ADR-COM-019) */}

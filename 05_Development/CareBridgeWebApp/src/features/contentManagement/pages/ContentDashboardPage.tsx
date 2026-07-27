@@ -77,7 +77,7 @@ export default function ContentDashboardPage() {
           <p className="text-on-surface-variant text-sm mt-1">Quản lý và theo dõi toàn bộ nội dung trên hệ thống CareBridge</p>
         </div>
         <button
-          onClick={() => navigate('/content/create')}
+          onClick={() => navigate('/content/list')}
           className="flex items-center gap-2 py-3 px-6 rounded-full bg-primary text-on-primary border-0 text-sm font-semibold cursor-pointer"
         >
           <span className="material-symbols-outlined text-lg">add</span>

@@ -47,6 +47,7 @@ interface ContentTypeListPageProps {
 
 export default function ContentTypeListPage({ type, title, subtitle, createLabel, emptyLabel }: ContentTypeListPageProps) {
   const navigate = useNavigate();
+  const createPath = type === 'ARTICLE' ? '/content/articles/create' : '/content/faq/create';
   const [items, setItems] = useState<ContentDetail[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
@@ -118,7 +119,7 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
           <p className="text-on-surface-variant text-sm mt-1">{subtitle}</p>
         </div>
         <button
-          onClick={() => navigate(`/content/create?type=${type}`)}
+          onClick={() => navigate(createPath)}
           className="flex items-center gap-2 py-3 px-6 rounded-full bg-primary text-on-primary border-0 text-sm font-semibold cursor-pointer whitespace-nowrap"
         >
           <span className="material-symbols-outlined text-lg">add</span>

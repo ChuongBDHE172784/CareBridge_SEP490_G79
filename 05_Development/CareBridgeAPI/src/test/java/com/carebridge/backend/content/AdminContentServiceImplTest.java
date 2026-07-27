@@ -15,6 +15,8 @@ import static org.mockito.Mockito.when;
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
+import com.carebridge.backend.community.entity.CommunityTopic;
+import com.carebridge.backend.community.entity.TopicType;
 import com.carebridge.backend.content.dto.request.CreateContentRequest;
 import com.carebridge.backend.content.dto.request.UpdateContentRequest;
 import com.carebridge.backend.content.dto.response.CreateContentResponse;
@@ -30,6 +32,7 @@ import com.carebridge.backend.content.repository.ContentRepository;
 import com.carebridge.backend.content.service.AdminContentServiceImpl;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -124,6 +127,30 @@ class AdminContentServiceImplTest {
                 snapshotCaptor.capture());
         assertEquals(1, snapshotCaptor.getValue().versionNo());
         assertEquals("Dinh dưỡng thai kỳ tuần 12", snapshotCaptor.getValue().title());
+    }
+
+    @Test
+    void createContent_validTags_persistsOnlyVisibleTagIds() {
+        UUID tagId = UUID.randomUUID();
+        CreateContentRequest request = CreateContentRequest.builder()
+                .type(ContentType.ARTICLE)
+                .title("Bài viết có tag")
+                .body("Nội dung chi tiết...")
+                .stage(ContentStage.PREGNANCY)
+                .tagIds(List.of(tagId))
+                .build();
+        when(contentRepository.findByTitleIgnoreCaseAndStageAndType(any(), any(), any()))
+                .thenReturn(Optional.empty());
+        when(communityTopicRepository.findAllByIdInAndTypeAndIsHiddenFalse(any(), eq(TopicType.TAG)))
+                .thenReturn(List.of(CommunityTopic.builder().id(tagId).type(TopicType.TAG).isHidden(false).build()));
+        when(contentRepository.save(any(ContentItem.class)))
+                .thenReturn(makeSavedEntity(UUID.randomUUID(), ContentType.ARTICLE, ContentStage.PREGNANCY));
+
+        adminContentService.createContent(request, ADMIN_USER_ID);
+
+        ArgumentCaptor<ContentItem> itemCaptor = forClass(ContentItem.class);
+        verify(contentRepository).save(itemCaptor.capture());
+        assertEquals(List.of(tagId), itemCaptor.getValue().getTagIds());
     }
 
     // CNT-TC-002: Tạo FAQ hợp lệ — topicId null (TC-COND-002)

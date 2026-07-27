@@ -27,7 +27,6 @@ export async function fetchContentList(params: {
   type?: ContentType;
   stage?: ContentStage;
   topicId?: string;
-  sources?: ContentSource[];
   page?: number;
   size?: number;
 }): Promise<PaginatedResponse<ContentListItem>> {
@@ -239,6 +238,7 @@ export async function createContent(data: {
   body: string;
   stage: ContentStage;
   topicId?: string;
+  tagIds?: string[];
   sources?: ContentSource[];
 }): Promise<CreateContentResult> {
   const res = await apiClient.post<ApiResponse<CreateContentResult>>('/api/v1/admin/content', data);
@@ -252,6 +252,7 @@ export async function updateContent(
     body: string;
     stage: ContentStage;
     topicId?: string;
+    tagIds?: string[];
     status: ContentStatus;
     sourceLabel?: string;
     sources?: ContentSource[];
@@ -278,6 +279,13 @@ export async function decideContent(
 export async function fetchTopics(includeHidden = false): Promise<CommunityTopic[]> {
   const res = await apiClient.get<ApiResponse<CommunityTopic[]>>(
     `/api/v1/community/topics?includeHidden=${includeHidden}&type=TOPIC`,
+  );
+  return res.data.data;
+}
+
+export async function fetchTags(): Promise<CommunityTopic[]> {
+  const res = await apiClient.get<ApiResponse<CommunityTopic[]>>(
+    '/api/v1/community/topics?includeHidden=false&type=TAG',
   );
   return res.data.data;
 }

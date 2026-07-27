@@ -26,6 +26,7 @@ public class ContentDetailResponse {
     private String body;
     private ContentStage stage;
     private UUID topicId;
+    private List<UUID> tagIds;
     private Integer version;
     private ContentStatus status;
     private String sourceLabel;

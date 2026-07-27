@@ -46,6 +46,7 @@ export default function ContentListPage() {
   const [keyword, setKeyword] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -112,13 +113,39 @@ export default function ContentListPage() {
           <option value="CHECKLIST">Checklist</option>
         </select>
 
-        <button
-          onClick={() => navigate('/content/create')}
-          className="flex items-center gap-2 py-3 px-6 rounded-full bg-primary text-on-primary border-0 text-sm font-semibold cursor-pointer whitespace-nowrap"
-        >
-          <span className="material-symbols-outlined text-lg">add</span>
-          Tạo nội dung mới
-        </button>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setIsCreateMenuOpen((open) => !open)}
+            aria-haspopup="menu"
+            aria-expanded={isCreateMenuOpen}
+            className="flex items-center gap-2 py-3 px-6 rounded-full bg-primary text-on-primary border-0 text-sm font-semibold cursor-pointer whitespace-nowrap"
+          >
+            <span className="material-symbols-outlined text-lg">add</span>
+            Tạo nội dung mới
+            <span className="material-symbols-outlined text-lg">arrow_drop_down</span>
+          </button>
+          {isCreateMenuOpen && (
+            <div role="menu" className="absolute right-0 z-10 mt-2 w-52 overflow-hidden rounded-xl border border-outline-variant bg-surface py-1 shadow-lg">
+              {[
+                { label: 'Tạo bài viết', icon: 'article', path: '/content/articles/create' },
+                { label: 'Tạo FAQ', icon: 'quiz', path: '/content/faq/create' },
+                { label: 'Tạo checklist', icon: 'checklist', path: '/content/checklists/create' },
+              ].map((item) => (
+                <button
+                  key={item.path}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => navigate(item.path)}
+                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-on-surface hover:bg-surface-container-low"
+                >
+                  <span className="material-symbols-outlined text-lg text-primary">{item.icon}</span>
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Data table */}

@@ -33,5 +33,7 @@ public class CreateContentRequest {
 
     private UUID topicId;
 
+    private List<UUID> tagIds;
+
     private List<@jakarta.validation.Valid ContentSourceRequest> sources;
 }

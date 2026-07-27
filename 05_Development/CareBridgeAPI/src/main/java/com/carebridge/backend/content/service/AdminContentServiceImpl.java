@@ -6,6 +6,7 @@ import com.carebridge.backend.audit.entity.AuditLog;
 import com.carebridge.backend.audit.repository.AuditLogRepository;
 import com.carebridge.backend.common.util.SecurityUtils;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
+import com.carebridge.backend.community.entity.TopicType;
 import com.carebridge.backend.content.dto.request.CreateContentRequest;
 import com.carebridge.backend.content.dto.request.HideContentRequest;
 import com.carebridge.backend.content.dto.request.UpdateContentRequest;
@@ -36,6 +37,7 @@ import com.carebridge.backend.content.dto.response.StaffContentDetailResponse;
 import com.carebridge.backend.content.dto.response.ContentVersionSnapshotResponse;
 import java.util.List;
 import java.util.Set;
+import java.util.LinkedHashSet;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
@@ -81,6 +83,7 @@ public class AdminContentServiceImpl implements AdminContentService {
                 });
 
         ContentItem entity = contentMapper.toEntity(request, authorUserId);
+        entity.setTagIds(validateTagIds(request.getTagIds()));
         // ADR-RTE-005: body is rendered unescaped (web dangerouslySetInnerHTML, mobile
         // flutter_html) — must be sanitized before persisting, not just at render time.
         entity.setBody(htmlContentSanitizer.sanitize(request.getBody()));
@@ -132,6 +135,9 @@ public class AdminContentServiceImpl implements AdminContentService {
         item.setBody(htmlContentSanitizer.sanitize(request.body()));
         item.setStage(request.stage());
         item.setTopicId(request.topicId());
+        if (request.tagIds() != null) {
+            item.setTagIds(validateTagIds(request.tagIds()));
+        }
         item.setStatus(request.status());
         if (request.status() == ContentStatus.PENDING_REVIEW) {
             clearReviewFeedback(item);
@@ -159,6 +165,21 @@ public class AdminContentServiceImpl implements AdminContentService {
         return new UpdateContentResponse(
                 saved.getId(), saved.getType(), saved.getTitle(), saved.getBody(), saved.getStage(),
                 saved.getTopicId(), saved.getStatus(), saved.getVersionNo(), saved.getUpdatedAt());
+    }
+
+    private List<UUID> validateTagIds(List<UUID> tagIds) {
+        if (tagIds == null || tagIds.isEmpty()) {
+            return new ArrayList<>();
+        }
+        LinkedHashSet<UUID> uniqueTagIds = new LinkedHashSet<>(tagIds);
+        List<UUID> validatedTagIds = communityTopicRepository
+                .findAllByIdInAndTypeAndIsHiddenFalse(uniqueTagIds, TopicType.TAG).stream()
+                .map(tag -> tag.getId())
+                .toList();
+        if (validatedTagIds.size() != uniqueTagIds.size()) {
+            throw ContentException.validationFailed("tagIds", "All tags must exist, be visible, and have type TAG");
+        }
+        return new ArrayList<>(uniqueTagIds);
     }
 
     private void clearReviewFeedback(ContentItem item) {

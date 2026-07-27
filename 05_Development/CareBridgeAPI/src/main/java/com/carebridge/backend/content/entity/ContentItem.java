@@ -55,6 +55,16 @@ public class ContentItem {
     @Column(name = "topic_id")
     private UUID topicId;
 
+    /**
+     * Tags reuse the existing content_item_topics join table.  Unlike topicId (the single
+     * content category), this collection only contains CommunityTopic records of type TAG.
+     */
+    @ElementCollection
+    @CollectionTable(name = "content_item_topics", joinColumns = @JoinColumn(name = "content_item_id"))
+    @Column(name = "topic_id")
+    @Builder.Default
+    private List<UUID> tagIds = new ArrayList<>();
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private ContentStatus status;

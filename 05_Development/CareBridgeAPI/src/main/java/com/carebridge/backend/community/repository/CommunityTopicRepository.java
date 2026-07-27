@@ -3,6 +3,7 @@ package com.carebridge.backend.community.repository;
 import com.carebridge.backend.community.entity.CommunityTopic;
 import com.carebridge.backend.community.entity.TopicType;
 import java.util.List;
+import java.util.Collection;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -31,6 +32,8 @@ public interface CommunityTopicRepository extends JpaRepository<CommunityTopic, 
     boolean existsByParentId(UUID parentId);
 
     Optional<CommunityTopic> findByIdAndIsHiddenFalse(UUID id);
+
+    List<CommunityTopic> findAllByIdInAndTypeAndIsHiddenFalse(Collection<UUID> ids, TopicType type);
 
     // ADR-COM-020: typed, visible lookup used for CATEGORY parent and question-target validation.
     Optional<CommunityTopic> findByIdAndTypeAndIsHiddenFalse(UUID id, TopicType type);
