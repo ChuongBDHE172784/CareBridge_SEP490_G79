@@ -124,6 +124,7 @@ public class ContentMapper {
                 .stage(template.getStage())
                 .status(template.getStatus())
                 .description(template.getDescription())
+                .versionNo(template.getVersionNo())
                 .items(itemResponses)
                 .latestReviewFeedback(toReviewFeedback(
                         template.getRevisionReason(), template.getRevisionRequestedAt(),

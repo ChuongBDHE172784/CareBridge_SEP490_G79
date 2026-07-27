@@ -33,6 +33,7 @@ export default function ChecklistFormPage() {
   const [submitting, setSubmitting] = useState<'draft' | 'submit' | null>(null);
   const [submitError, setSubmitError] = useState('');
   const [reviewFeedback, setReviewFeedback] = useState<ReviewFeedback | null>(null);
+  const [versionNo, setVersionNo] = useState<number | null>(null);
 
   const loadDetail = useCallback(async () => {
     if (!id) return;
@@ -43,6 +44,7 @@ export default function ChecklistFormPage() {
       setName(data.name);
       setDescription(data.description ?? '');
       setStage(data.stage);
+      setVersionNo(data.versionNo);
       setReviewFeedback(data.latestReviewFeedback ?? null);
       setItems(
         data.items.length > 0
@@ -148,6 +150,9 @@ export default function ChecklistFormPage() {
       </button>
 
       <h1 className="text-[26px] font-bold text-on-surface m-0">{isEdit ? 'Chỉnh sửa Checklist' : 'Tạo Checklist mới'}</h1>
+      {isEdit && versionNo !== null && (
+        <p className="text-xs font-semibold text-primary mt-1 mb-0">Phiên bản hiện tại: v{versionNo}</p>
+      )}
       <p className="text-on-surface-variant text-sm mt-1 mb-6">
         Xây dựng danh sách các mục để mẹ/gia đình nhập vào checklist cá nhân.
       </p>

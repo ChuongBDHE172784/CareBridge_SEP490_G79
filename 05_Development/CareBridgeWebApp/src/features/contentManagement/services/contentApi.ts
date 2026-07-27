@@ -5,6 +5,7 @@ import type {
   ContentDetail,
   ContentSearchItem,
   ChecklistTemplate,
+  AdminChecklistTemplateDetail,
   CreateChecklistTemplatePayload,
   UpdateChecklistTemplatePayload,
   CommunityTopic,
@@ -107,29 +108,29 @@ export async function fetchAdminChecklistTemplates(params: {
   stage?: ContentStage;
   page?: number;
   size?: number;
-} = {}): Promise<PaginatedResponse<ChecklistTemplate>> {
-  const res = await apiClient.get<ApiResponse<PaginatedResponse<ChecklistTemplate>>>(
+} = {}): Promise<PaginatedResponse<AdminChecklistTemplateDetail>> {
+  const res = await apiClient.get<ApiResponse<PaginatedResponse<AdminChecklistTemplateDetail>>>(
     '/api/v1/admin/checklist-templates',
     { params: { ...params, page: params.page ?? 0, size: params.size ?? 20 } },
   );
   return res.data.data;
 }
 
-export async function fetchChecklistTemplateDetail(id: string): Promise<ChecklistTemplate> {
-  const res = await apiClient.get<ApiResponse<ChecklistTemplate>>(`/api/v1/admin/checklist-templates/${id}`);
+export async function fetchChecklistTemplateDetail(id: string): Promise<AdminChecklistTemplateDetail> {
+  const res = await apiClient.get<ApiResponse<AdminChecklistTemplateDetail>>(`/api/v1/admin/checklist-templates/${id}`);
   return res.data.data;
 }
 
-export async function createChecklistTemplate(data: CreateChecklistTemplatePayload): Promise<ChecklistTemplate> {
-  const res = await apiClient.post<ApiResponse<ChecklistTemplate>>('/api/v1/admin/checklist-templates', data);
+export async function createChecklistTemplate(data: CreateChecklistTemplatePayload): Promise<AdminChecklistTemplateDetail> {
+  const res = await apiClient.post<ApiResponse<AdminChecklistTemplateDetail>>('/api/v1/admin/checklist-templates', data);
   return res.data.data;
 }
 
 export async function updateChecklistTemplate(
   id: string,
   data: UpdateChecklistTemplatePayload,
-): Promise<ChecklistTemplate> {
-  const res = await apiClient.put<ApiResponse<ChecklistTemplate>>(`/api/v1/admin/checklist-templates/${id}`, data);
+): Promise<AdminChecklistTemplateDetail> {
+  const res = await apiClient.put<ApiResponse<AdminChecklistTemplateDetail>>(`/api/v1/admin/checklist-templates/${id}`, data);
   return res.data.data;
 }
 

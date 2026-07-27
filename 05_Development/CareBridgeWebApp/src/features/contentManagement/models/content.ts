@@ -58,6 +58,10 @@ export interface ChecklistTemplate {
   latestReviewFeedback?: ReviewFeedback | null;
 }
 
+export interface AdminChecklistTemplateDetail extends ChecklistTemplate {
+  versionNo: number;
+}
+
 export interface ChecklistItem {
   id: string;
   itemText: string;

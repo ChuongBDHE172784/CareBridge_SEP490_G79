@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchChecklistTemplateDetail, updateChecklistTemplate, archiveChecklistTemplate } from '../services/contentApi';
-import type { ChecklistTemplate } from '../models/content';
+import type { AdminChecklistTemplateDetail } from '../models/content';
 import { STAGE_LABELS, STATUS_LABELS } from '../models/content';
 import { useAuth } from '../../../shared/auth/useAuth';
 import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
@@ -20,7 +20,7 @@ export default function ChecklistDetailPage() {
   // System Admin can reach this page read-only from the approval queue
   // (/admin/content-review/checklists/:id) — /content/checklists/:id/edit is CONTENT_ADMIN-only.
   const canManage = hasRole('CONTENT_ADMIN');
-  const [detail, setDetail] = useState<ChecklistTemplate | null>(null);
+  const [detail, setDetail] = useState<AdminChecklistTemplateDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionError, setActionError] = useState('');
@@ -134,6 +134,10 @@ export default function ChecklistDetailPage() {
             <div>
               <div className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-1">SỐ MỤC</div>
               <div className="text-sm text-on-surface font-medium">{detail.items.length} mục</div>
+            </div>
+            <div>
+              <div className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-1">PHIÊN BẢN</div>
+              <div className="text-sm text-on-surface font-medium">v{detail.versionNo}</div>
             </div>
           </div>
 
