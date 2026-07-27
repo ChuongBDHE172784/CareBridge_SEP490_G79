@@ -19,6 +19,8 @@ import type {
   UpdateCommunityTopicPayload,
   AdminChecklistTemplate,
   ChecklistTemplateStatus,
+  ContentVersionSnapshot,
+  ChecklistTemplateVersionSnapshot,
 } from '../models/content';
 
 export async function fetchContentList(params: {
@@ -57,6 +59,11 @@ export async function fetchContentDetail(id: string): Promise<ContentDetail> {
 export async function fetchStaffContentDetail(id: string): Promise<ContentDetail> {
   const res = await apiClient.get<ApiResponse<ContentDetail>>(`/api/v1/admin/content/${id}`);
   return res.data.data;
+}
+
+export async function fetchContentVersionHistory(id: string): Promise<ContentVersionSnapshot[]> {
+  const res = await apiClient.get<ApiResponse<ContentVersionSnapshot[]>>(`/api/v1/admin/content/${id}/versions`);
+  return res.data.data ?? [];
 }
 
 export async function fetchStaffContentList(params: {
@@ -119,6 +126,13 @@ export async function fetchAdminChecklistTemplates(params: {
 export async function fetchChecklistTemplateDetail(id: string): Promise<AdminChecklistTemplateDetail> {
   const res = await apiClient.get<ApiResponse<AdminChecklistTemplateDetail>>(`/api/v1/admin/checklist-templates/${id}`);
   return res.data.data;
+}
+
+export async function fetchChecklistVersionHistory(id: string): Promise<ChecklistTemplateVersionSnapshot[]> {
+  const res = await apiClient.get<ApiResponse<ChecklistTemplateVersionSnapshot[]>>(
+    `/api/v1/admin/checklist-templates/${id}/versions`,
+  );
+  return res.data.data ?? [];
 }
 
 export async function createChecklistTemplate(data: CreateChecklistTemplatePayload): Promise<AdminChecklistTemplateDetail> {

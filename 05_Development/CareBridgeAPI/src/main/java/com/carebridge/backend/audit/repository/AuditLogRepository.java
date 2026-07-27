@@ -4,6 +4,7 @@ import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.entity.AuditLog;
 import java.time.Instant;
 import java.util.List;
+import java.util.Collection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -18,6 +19,9 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, java.util.UU
     // Both entityId and action are non-null columns, so a derived query is safe here
     // (no null-bind-parameter type-inference issue).
     List<AuditLog> findByEntityIdAndAction(java.util.UUID entityId, AuditAction action);
+
+    List<AuditLog> findByEntityIdAndEntityTypeAndActionInOrderByCreatedAtDesc(
+            java.util.UUID entityId, String entityType, Collection<AuditAction> actions);
 
     // CASTs keep PostgreSQL from failing with "could not determine data type of
     // parameter" when the optional timestamp filters are bound as null.

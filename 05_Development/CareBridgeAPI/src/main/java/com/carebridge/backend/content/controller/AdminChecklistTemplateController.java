@@ -14,6 +14,8 @@ import com.carebridge.backend.content.service.AdminChecklistTemplateService;
 import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.UUID;
+import java.util.List;
+import com.carebridge.backend.content.dto.response.ChecklistTemplateVersionSnapshotResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -57,6 +59,12 @@ public class AdminChecklistTemplateController {
     public ResponseEntity<ApiResponse<AdminChecklistTemplateDetailResponse>> getById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(
                 adminChecklistTemplateService.getById(id), "Checklist template loaded"));
+    }
+
+    @GetMapping("/{id}/versions")
+    public ResponseEntity<ApiResponse<List<ChecklistTemplateVersionSnapshotResponse>>> getVersionHistory(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success(
+                adminChecklistTemplateService.getVersionHistory(id), "Checklist version history loaded"));
     }
 
     @PostMapping

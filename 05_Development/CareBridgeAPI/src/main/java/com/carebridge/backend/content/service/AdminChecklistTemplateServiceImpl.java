@@ -2,12 +2,15 @@ package com.carebridge.backend.content.service;
 
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
+import com.carebridge.backend.audit.entity.AuditLog;
+import com.carebridge.backend.audit.repository.AuditLogRepository;
 import com.carebridge.backend.content.dto.request.ChecklistItemRequest;
 import com.carebridge.backend.content.dto.request.CreateChecklistTemplateRequest;
 import com.carebridge.backend.content.dto.request.HideChecklistTemplateRequest;
 import com.carebridge.backend.content.dto.request.UpdateChecklistTemplateRequest;
 import com.carebridge.backend.content.dto.response.AdminChecklistTemplateDetailResponse;
 import com.carebridge.backend.content.dto.response.HideChecklistTemplateResponse;
+import com.carebridge.backend.content.dto.response.ChecklistTemplateVersionSnapshotResponse;
 import com.carebridge.backend.content.entity.ChecklistItem;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
 import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
@@ -24,6 +27,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.Set;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -39,6 +44,8 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
     private final ChecklistItemRepository checklistItemRepository;
     private final ContentMapper contentMapper;
     private final AuditService auditService;
+    private final AuditLogRepository auditLogRepository;
+    private final ObjectMapper objectMapper;
 
     @Override
     @Transactional(readOnly = true)
@@ -76,7 +83,7 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
                 : checklistItemRepository.saveAll(toEntities(requestedItems, saved));
 
         auditService.log(AuditAction.CHECKLIST_TEMPLATE_CREATED, adminUserId,
-                "ChecklistTemplate", saved.getId().toString(), "created");
+                "ChecklistTemplate", saved.getId().toString(), snapshotOf(saved, savedItems.size()));
 
         return contentMapper.toAdminChecklistTemplateDetailResponse(saved, savedItems);
     }
@@ -121,7 +128,7 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
         }
 
         auditService.log(AuditAction.CHECKLIST_TEMPLATE_UPDATED, adminUserId,
-                "ChecklistTemplate", saved.getId().toString(), "updated");
+                "ChecklistTemplate", saved.getId().toString(), snapshotOf(saved, currentItems.size()));
 
         return contentMapper.toAdminChecklistTemplateDetailResponse(saved, currentItems);
     }
@@ -160,6 +167,36 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
         template.setRevisionRequestedAt(null);
         template.setRevisionRequestedBy(null);
         template.setRevisionRequestedVersion(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ChecklistTemplateVersionSnapshotResponse> getVersionHistory(UUID id) {
+        if (!checklistTemplateRepository.existsById(id)) {
+            throw ContentException.checklistTemplateNotFound();
+        }
+        return auditLogRepository.findByEntityIdAndEntityTypeAndActionInOrderByCreatedAtDesc(
+                        id, "ChecklistTemplate", Set.of(AuditAction.CHECKLIST_TEMPLATE_CREATED, AuditAction.CHECKLIST_TEMPLATE_UPDATED)).stream()
+                .map(this::toVersionResponse)
+                .flatMap(java.util.Optional::stream)
+                .toList();
+    }
+
+    private ChecklistTemplateVersionSnapshotResponse snapshotOf(ChecklistTemplate template, int itemCount) {
+        return new ChecklistTemplateVersionSnapshotResponse(template.getVersionNo(), template.getName(),
+                template.getStage() == null ? null : template.getStage().name(), template.getStatus().name(),
+                itemCount, null, Instant.now());
+    }
+
+    private java.util.Optional<ChecklistTemplateVersionSnapshotResponse> toVersionResponse(AuditLog auditLog) {
+        try {
+            ChecklistTemplateVersionSnapshotResponse snapshot = objectMapper.readValue(
+                    auditLog.getNewValueJson(), ChecklistTemplateVersionSnapshotResponse.class);
+            return java.util.Optional.of(new ChecklistTemplateVersionSnapshotResponse(snapshot.versionNo(), snapshot.name(),
+                    snapshot.stage(), snapshot.status(), snapshot.itemCount(), auditLog.getActorUserId(), auditLog.getCreatedAt()));
+        } catch (Exception ignored) {
+            return java.util.Optional.empty();
+        }
     }
 
     private AdminChecklistTemplateDetailResponse toResponseWithItems(ChecklistTemplate template) {

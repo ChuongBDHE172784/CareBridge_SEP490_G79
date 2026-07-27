@@ -6,11 +6,13 @@ import type { AdminChecklistTemplateDetail } from '../models/content';
 
 const harness = vi.hoisted(() => ({
   fetchChecklistTemplateDetail: vi.fn(),
+  fetchChecklistVersionHistory: vi.fn(),
   navigate: vi.fn(),
 }));
 
 vi.mock('../services/contentApi', () => ({
   fetchChecklistTemplateDetail: harness.fetchChecklistTemplateDetail,
+  fetchChecklistVersionHistory: harness.fetchChecklistVersionHistory,
 }));
 
 vi.mock('react-router-dom', async () => {
@@ -42,29 +44,35 @@ function checklistDetail(): AdminChecklistTemplateDetail {
 describe('ChecklistVersionHistoryPage', () => {
   beforeEach(() => {
     harness.fetchChecklistTemplateDetail.mockReset();
+    harness.fetchChecklistVersionHistory.mockReset();
     harness.navigate.mockReset();
   });
 
   afterEach(cleanup);
 
-  it('shows the current version and explains the counter-only history model', async () => {
+  it('lists persisted snapshots with the current version marked', async () => {
     harness.fetchChecklistTemplateDetail.mockResolvedValue(checklistDetail());
+    harness.fetchChecklistVersionHistory.mockResolvedValue([
+      { versionNo: 4, name: 'Checklist thai kỳ', stage: 'PREGNANCY', status: 'DRAFT', itemCount: 2, changedBy: null, createdAt: '2026-07-27T10:00:00Z' },
+      { versionNo: 3, name: 'Checklist thai kỳ cũ', stage: 'PREGNANCY', status: 'DRAFT', itemCount: 1, changedBy: null, createdAt: '2026-07-26T10:00:00Z' },
+    ]);
 
     render(<ChecklistVersionHistoryPage />);
 
-    expect(await screen.findByText('Phiên bản hiện tại: v4')).toBeTruthy();
-    expect(screen.getByText('Checklist thai kỳ · 2 mục')).toBeTruthy();
-    expect(screen.getByText(/chưa lưu snapshot lịch sử/)).toBeTruthy();
+    expect(await screen.findByText('v4')).toBeTruthy();
+    expect(screen.getByText('Hiện hành')).toBeTruthy();
+    expect(screen.getByText('Checklist thai kỳ cũ')).toBeTruthy();
   });
 
   it('shows a safe Vietnamese error without fake version data', async () => {
     harness.fetchChecklistTemplateDetail.mockRejectedValue(new Error('synthetic failure'));
+    harness.fetchChecklistVersionHistory.mockResolvedValue([]);
 
     render(<ChecklistVersionHistoryPage />);
 
     expect((await screen.findByRole('alert')).textContent).toBe(
-      'Không thể tải thông tin phiên bản checklist.',
+      'Không thể tải lịch sử phiên bản checklist. Vui lòng thử lại.',
     );
-    expect(screen.queryByText(/Phiên bản hiện tại:/)).toBeNull();
+    expect(screen.queryByText('Hiện hành')).toBeNull();
   });
 });

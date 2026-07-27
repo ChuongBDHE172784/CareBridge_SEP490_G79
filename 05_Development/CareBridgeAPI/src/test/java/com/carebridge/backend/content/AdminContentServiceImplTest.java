@@ -18,6 +18,7 @@ import com.carebridge.backend.community.repository.CommunityTopicRepository;
 import com.carebridge.backend.content.dto.request.CreateContentRequest;
 import com.carebridge.backend.content.dto.request.UpdateContentRequest;
 import com.carebridge.backend.content.dto.response.CreateContentResponse;
+import com.carebridge.backend.content.dto.response.ContentVersionSnapshotResponse;
 import com.carebridge.backend.content.entity.ContentItem;
 import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.content.entity.ContentStatus;
@@ -114,12 +115,15 @@ class AdminContentServiceImplTest {
         assertEquals(ContentType.ARTICLE, response.getType());
         assertEquals(ContentStage.PREGNANCY, response.getStage());
         verify(contentRepository).save(any(ContentItem.class));
+        ArgumentCaptor<ContentVersionSnapshotResponse> snapshotCaptor = forClass(ContentVersionSnapshotResponse.class);
         verify(auditService).log(
                 eq(AuditAction.CONTENT_CREATED),
                 eq(ADMIN_USER_ID),
                 eq("ContentItem"),
                 anyString(),
-                eq("created"));
+                snapshotCaptor.capture());
+        assertEquals(1, snapshotCaptor.getValue().versionNo());
+        assertEquals("Dinh dưỡng thai kỳ tuần 12", snapshotCaptor.getValue().title());
     }
 
     // CNT-TC-002: Tạo FAQ hợp lệ — topicId null (TC-COND-002)
@@ -254,12 +258,14 @@ class AdminContentServiceImplTest {
 
         adminContentService.createContent(request, ADMIN_USER_ID);
 
+        ArgumentCaptor<ContentVersionSnapshotResponse> snapshotCaptor = forClass(ContentVersionSnapshotResponse.class);
         verify(auditService).log(
-                AuditAction.CONTENT_CREATED,
-                ADMIN_USER_ID,
-                "ContentItem",
-                savedId.toString(),
-                "created");
+                eq(AuditAction.CONTENT_CREATED),
+                eq(ADMIN_USER_ID),
+                eq("ContentItem"),
+                eq(savedId.toString()),
+                snapshotCaptor.capture());
+        assertEquals(1, snapshotCaptor.getValue().versionNo());
     }
 
     // RTE-TC-007: createContent() gọi sanitizer đúng 1 lần, entity lưu dùng OUTPUT của sanitizer

@@ -2,6 +2,8 @@ package com.carebridge.backend.content.service;
 
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
+import com.carebridge.backend.audit.entity.AuditLog;
+import com.carebridge.backend.audit.repository.AuditLogRepository;
 import com.carebridge.backend.common.util.SecurityUtils;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
 import com.carebridge.backend.content.dto.request.CreateContentRequest;
@@ -31,6 +33,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import com.carebridge.backend.content.dto.response.ContentDetailResponse;
 import com.carebridge.backend.content.dto.response.StaffContentDetailResponse;
+import com.carebridge.backend.content.dto.response.ContentVersionSnapshotResponse;
+import java.util.List;
+import java.util.Set;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 @RequiredArgsConstructor
@@ -41,6 +47,8 @@ public class AdminContentServiceImpl implements AdminContentService {
     private final ContentMapper contentMapper;
     private final AuditService auditService;
     private final HtmlContentSanitizer htmlContentSanitizer;
+    private final AuditLogRepository auditLogRepository;
+    private final ObjectMapper objectMapper;
 
     @Override
     @Transactional(readOnly = true)
@@ -79,7 +87,7 @@ public class AdminContentServiceImpl implements AdminContentService {
         entity = contentRepository.save(entity);
 
         auditService.log(AuditAction.CONTENT_CREATED, authorUserId,
-                "ContentItem", entity.getId().toString(), "created");
+                "ContentItem", entity.getId().toString(), snapshotOf(entity));
 
         return contentMapper.toCreateResponse(entity);
     }
@@ -146,7 +154,7 @@ public class AdminContentServiceImpl implements AdminContentService {
         ContentItem saved = contentRepository.save(item);
 
         auditService.log(AuditAction.CONTENT_UPDATED, adminUserId,
-                "ContentItem", saved.getId().toString(), "versionNo=" + saved.getVersionNo());
+                "ContentItem", saved.getId().toString(), snapshotOf(saved));
 
         return new UpdateContentResponse(
                 saved.getId(), saved.getType(), saved.getTitle(), saved.getBody(), saved.getStage(),
@@ -158,6 +166,38 @@ public class AdminContentServiceImpl implements AdminContentService {
         item.setRevisionRequestedAt(null);
         item.setRevisionRequestedBy(null);
         item.setRevisionRequestedVersion(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ContentVersionSnapshotResponse> getVersionHistory(UUID id) {
+        if (!contentRepository.existsById(id)) {
+            throw ContentException.contentNotFound();
+        }
+        return auditLogRepository.findByEntityIdAndEntityTypeAndActionInOrderByCreatedAtDesc(
+                        id, "ContentItem", Set.of(AuditAction.CONTENT_CREATED, AuditAction.CONTENT_UPDATED)).stream()
+                .map(this::toVersionResponse)
+                .flatMap(java.util.Optional::stream)
+                .toList();
+    }
+
+    private ContentVersionSnapshotResponse snapshotOf(ContentItem item) {
+        return new ContentVersionSnapshotResponse(item.getVersionNo(), item.getTitle(),
+                item.getStage() == null ? null : item.getStage().name(), item.getStatus().name(),
+                item.getSources().isEmpty() ? item.getSourceLabel()
+                        : item.getSources().stream().map(ContentSource::getTitle).collect(Collectors.joining(", ")),
+                null, Instant.now());
+    }
+
+    private java.util.Optional<ContentVersionSnapshotResponse> toVersionResponse(AuditLog auditLog) {
+        try {
+            ContentVersionSnapshotResponse snapshot = objectMapper.readValue(
+                    auditLog.getNewValueJson(), ContentVersionSnapshotResponse.class);
+            return java.util.Optional.of(new ContentVersionSnapshotResponse(snapshot.versionNo(), snapshot.title(),
+                    snapshot.stage(), snapshot.status(), snapshot.sourceSummary(), auditLog.getActorUserId(), auditLog.getCreatedAt()));
+        } catch (Exception ignored) {
+            return java.util.Optional.empty();
+        }
     }
 
     @Override

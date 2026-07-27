@@ -5,9 +5,11 @@ import com.carebridge.backend.content.dto.request.HideChecklistTemplateRequest;
 import com.carebridge.backend.content.dto.request.UpdateChecklistTemplateRequest;
 import com.carebridge.backend.content.dto.response.AdminChecklistTemplateDetailResponse;
 import com.carebridge.backend.content.dto.response.HideChecklistTemplateResponse;
+import com.carebridge.backend.content.dto.response.ChecklistTemplateVersionSnapshotResponse;
 import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
 import com.carebridge.backend.content.entity.ContentStage;
 import java.util.UUID;
+import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -27,6 +29,8 @@ public interface AdminChecklistTemplateService {
 
     AdminChecklistTemplateDetailResponse update(
             UUID id, UpdateChecklistTemplateRequest request, UUID adminUserId);
+
+    List<ChecklistTemplateVersionSnapshotResponse> getVersionHistory(UUID id);
 
     HideChecklistTemplateResponse archive(UUID id, HideChecklistTemplateRequest request, UUID adminUserId);
 }

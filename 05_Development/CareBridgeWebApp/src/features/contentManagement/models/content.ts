@@ -58,6 +58,26 @@ export interface ChecklistTemplate {
   latestReviewFeedback?: ReviewFeedback | null;
 }
 
+export interface ContentVersionSnapshot {
+  versionNo: number;
+  title: string;
+  stage: string | null;
+  status: string;
+  sourceSummary: string | null;
+  changedBy: string | null;
+  createdAt: string;
+}
+
+export interface ChecklistTemplateVersionSnapshot {
+  versionNo: number;
+  name: string;
+  stage: string | null;
+  status: string;
+  itemCount: number;
+  changedBy: string | null;
+  createdAt: string;
+}
+
 export interface AdminChecklistTemplateDetail extends ChecklistTemplate {
   versionNo: number;
 }
