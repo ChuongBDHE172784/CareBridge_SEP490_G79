@@ -124,7 +124,7 @@ public interface ModerationActionRepository extends JpaRepository<ModerationActi
     // CB-MOD-IMP-009 ADR-002 (guard 1 — "most recent action"): used to reject undoing an action that
     // has since been superseded by a newer one on the same target.
     // CB-MOD-IMP-017: AI feedback events share the target's id/type but never mutate content
-    // state — they must not count as the "most recent action" for undo/revert guards.
+    // state — they must not count as the "most recent action" for direct-action undo guards.
     default Optional<ModerationAction> findTopByTargetIdAndTargetTypeAndActionTypeNotOrderByActionAtDesc(
             UUID targetId, ReportTargetType targetType, ModerationActionType excludedType) {
         return findTopByTargetIdAndTargetTypeAndEventCategoryNot(
@@ -155,26 +155,6 @@ public interface ModerationActionRepository extends JpaRepository<ModerationActi
             """)
     Page<ModerationAction> findByEventCategoryOrderByActionAtDesc(
             @Param("eventCategory") String eventCategory, Pageable pageable);
-
-    // CB-MOD-IMP-015 (revertReport): finds the ModerationAction created when a report was resolved
-    // (reportId != null). Returns Optional.empty() for a report resolved via DISMISS, which creates
-    // no ModerationAction (BR-MOD-010).
-    // CB-MOD-IMP-017: same exclusion — a feedback event on the case must not shadow the
-    // content action that revertReport() needs to undo.
-    default Optional<ModerationAction> findTopByReportIdAndActionTypeNotOrderByActionAtDesc(
-            UUID reportId, ModerationActionType excludedType) {
-        return findTopByReportIdAndEventCategoryNot(reportId, category(excludedType));
-    }
-
-    @Query("""
-            select m from ModerationAction m
-            where m.reportId = :reportId and m.eventCategory <> :excludedCategory
-            order by m.actionAt desc, m.id desc
-            limit 1
-            """)
-    Optional<ModerationAction> findTopByReportIdAndEventCategoryNot(
-            @Param("reportId") UUID reportId,
-            @Param("excludedCategory") String excludedCategory);
 
     private static String category(ModerationActionType actionType) {
         return "MODERATION_" + actionType.name();

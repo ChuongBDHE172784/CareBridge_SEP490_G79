@@ -98,8 +98,8 @@ public class ContentReport {
     @Column(name = "ai_feedback_assessment_id", columnDefinition = "uuid")
     private UUID aiFeedbackAssessmentId;
 
-    // CB-MOD-IMP-015: most recent revert-to-PENDING event. resolvedAt/assignedModeratorId are
-    // deliberately left untouched by revert (ADR-005) — these two fields are the only trace of it.
+    // Legacy audit metadata retained for reports reverted before that workflow was removed.
+    // No active service writes these fields; keeping them avoids a destructive data migration.
     @Column(name = "reverted_at")
     private Instant revertedAt;
 

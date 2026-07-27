@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ModPortalSidebar from '../components/ModPortalSidebar';
 import ConfirmDialog from '../../../shared/components/ConfirmDialog';
-import { claimReport, fetchAiAssessment, fetchModerationQueue, fetchRelatedReports, releaseReport, resolveReport, revertReport } from '../services/moderationApi';
+import { claimReport, fetchAiAssessment, fetchModerationQueue, fetchRelatedReports, releaseReport, resolveReport } from '../services/moderationApi';
 import type { AiAssessment, ModerationQueueItem } from '../models/moderation';
 import type { RelatedReportItem } from '../models/moderation';
 import { formatReportReason, REPORT_SOURCE_LABELS, REPORT_STATUS_LABELS, TARGET_TYPE_LABELS, canEnforceAccount, canHideTarget } from '../models/moderation';
@@ -42,9 +42,6 @@ export default function ContentReportDetailPage() {
   const [relatedLoading, setRelatedLoading] = useState(false);
   const [relatedError, setRelatedError] = useState(false);
 
-  const [revertTarget, setRevertTarget] = useState<ModerationQueueItem | null>(null);
-  const [revertSubmitting, setRevertSubmitting] = useState(false);
-  const [revertError, setRevertError] = useState('');
   const currentUserId = useAuthStore((state) => state.user?.id ?? null);
   const [assessment, setAssessment] = useState<AiAssessment | null>(null);
   const [claimBusy, setClaimBusy] = useState(false);
@@ -165,23 +162,6 @@ export default function ContentReportDetailPage() {
       setConfirmingOutcome(null);
     } finally {
       setSubmitting(null);
-    }
-  };
-
-  // CB-MOD-IMP-015 follow-up: a RESOLVED/DISMISSED report reopened from the "Đã xử lý" tab has no
-  // resolve action to offer — reverting it back to PENDING is the only valid action here.
-  const confirmRevert = async () => {
-    if (!revertTarget) return;
-    setRevertSubmitting(true);
-    setRevertError('');
-    try {
-      await revertReport(revertTarget.id);
-      navigate('/moderator/reports');
-    } catch (err: unknown) {
-      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setRevertError(message || 'Hoàn tác thất bại, vui lòng thử lại.');
-    } finally {
-      setRevertSubmitting(false);
     }
   };
 
@@ -306,18 +286,7 @@ export default function ContentReportDetailPage() {
                       {item.assignedModeratorId && (
                         <p className="m-0 mt-1 text-xs">Người xử lý (ID): {item.assignedModeratorId.slice(0, 8).toUpperCase()}</p>
                       )}
-                      {item.revertedAt && (
-                        <p className="m-0 mt-1 text-xs">Đã từng hoàn tác lúc: {formatDateTime(item.revertedAt)}</p>
-                      )}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => { setRevertError(''); setRevertTarget(item); }}
-                      className="mt-4 flex h-10 w-full items-center justify-center gap-2 rounded-xl border-0 bg-surface-container-highest px-3.5 text-xs font-semibold text-on-surface cursor-pointer hover:bg-surface-container-high"
-                    >
-                      <span className="material-symbols-outlined text-lg">undo</span>
-                      Hoàn tác báo cáo
-                    </button>
                   </div>
                 ) : (
                 <div className="bg-surface rounded-2xl p-6 shadow-sm border border-surface-container-highest">
@@ -462,18 +431,6 @@ export default function ContentReportDetailPage() {
         onCancel={() => setConfirmingOutcome(null)}
       />
 
-      <ConfirmDialog
-        open={revertTarget !== null}
-        title="Hoàn tác báo cáo này?"
-        description="Báo cáo sẽ quay lại hàng đợi để xử lý lại."
-        icon="undo"
-        tone="default"
-        confirmLabel="Hoàn tác"
-        submitting={revertSubmitting}
-        errorText={revertError}
-        onConfirm={confirmRevert}
-        onCancel={() => setRevertTarget(null)}
-      />
     </div>
   );
 }

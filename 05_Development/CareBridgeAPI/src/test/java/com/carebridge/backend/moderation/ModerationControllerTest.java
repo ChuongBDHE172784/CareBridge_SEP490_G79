@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -215,5 +216,12 @@ class ModerationControllerTest {
                 .andExpect(jsonPath("$.page").value(0))
                 .andExpect(jsonPath("$.size").value(20))
                 .andExpect(jsonPath("$.content[0].targetType").value("QUESTION"));
+    }
+
+    @Test
+    @WithMockUser(username = "1", roles = "MODERATOR")
+    void revertReport_removedEndpoint_shouldReturn404() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/moderation/reports/" + UUID.randomUUID() + "/revert").with(csrf()))
+                .andExpect(status().isNotFound());
     }
 }

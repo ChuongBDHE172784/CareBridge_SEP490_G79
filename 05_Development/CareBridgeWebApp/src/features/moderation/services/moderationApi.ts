@@ -21,7 +21,6 @@ import type {
   ReportStatus,
   ResolutionOutcome,
   ResolveReportResult,
-  RevertReportResult,
   UndoModerationActionResult,
 } from '../models/moderation';
 
@@ -267,17 +266,6 @@ export async function fetchContentDetail(
 export async function undoModerationAction(actionId: string): Promise<UndoModerationActionResult> {
   const res = await apiClient.post<UndoModerationActionResult>(
     `/api/v1/admin/moderation/actions/${actionId}/undo`,
-  );
-  return res.data;
-}
-
-// CB-MOD-IMP-015: reverts a RESOLVED/DISMISSED report back to PENDING. Fully separate from
-// undoModerationAction() — this endpoint never rejects on MOD-027 (report-originated actions are
-// exactly what it targets).
-export async function revertReport(reportId: string, reason?: string): Promise<RevertReportResult> {
-  const res = await apiClient.post<RevertReportResult>(
-    `/api/v1/admin/moderation/reports/${reportId}/revert`,
-    { reason },
   );
   return res.data;
 }

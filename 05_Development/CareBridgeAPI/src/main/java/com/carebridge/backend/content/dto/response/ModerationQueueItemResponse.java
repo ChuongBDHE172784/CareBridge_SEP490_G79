@@ -7,9 +7,8 @@ import com.carebridge.backend.content.entity.ReportSource;
 import java.time.Instant;
 import java.util.UUID;
 
-// resolvedAt/assignedModeratorId/revertedAt/revertedBy are null for a PENDING report; the
-// frontend detail pages use their presence to switch a report between an actionable view and a
-// read-only "already processed" view with a revert option (CB-MOD-IMP-015 follow-up).
+// status determines whether the frontend shows actionable or read-only report details.
+// revertedAt/revertedBy remain response-only legacy audit metadata for historical records.
 public record ModerationQueueItemResponse(
         UUID id,
         UUID targetId,

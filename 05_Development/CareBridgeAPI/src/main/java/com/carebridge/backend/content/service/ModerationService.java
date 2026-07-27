@@ -5,7 +5,6 @@ import com.carebridge.backend.content.dto.request.ModerationHistoryFilter;
 import com.carebridge.backend.content.dto.request.ModerationQueueFilter;
 import com.carebridge.backend.content.dto.request.PendingContentQueueFilter;
 import com.carebridge.backend.content.dto.request.ResolveReportRequest;
-import com.carebridge.backend.content.dto.request.RevertReportRequest;
 import com.carebridge.backend.content.dto.request.WarnOrSuspendAccountRequest;
 import com.carebridge.backend.content.dto.response.ModerateContentResponse;
 import com.carebridge.backend.content.dto.response.AccountViolationHistoryResponse;
@@ -16,7 +15,6 @@ import com.carebridge.backend.content.dto.response.ModerationQueueResponse;
 import com.carebridge.backend.content.dto.response.PendingContentQueueResponse;
 import com.carebridge.backend.content.dto.response.RelatedReportPageResponse;
 import com.carebridge.backend.content.dto.response.ResolveReportResponse;
-import com.carebridge.backend.content.dto.response.RevertReportResponse;
 import com.carebridge.backend.content.dto.response.UndoModerationActionResponse;
 import com.carebridge.backend.content.dto.response.WarnOrSuspendAccountResponse;
 import com.carebridge.backend.content.entity.ReportTargetType;
@@ -150,27 +148,6 @@ public interface ModerationService {
      *         status no longer matches what this action produced
      */
     UndoModerationActionResponse undoModerationAction(UUID actionId, Principal principal);
-
-    /**
-     * CB-MOD-IMP-015: reverts a RESOLVED/DISMISSED ContentReport back to PENDING. If the report was
-     * DISMISSED (no ModerationAction was ever created — BR-MOD-010), only report.status changes. If
-     * RESOLVED via a content action (APPROVE/HIDE/LOCK), the linked target's status is set back to
-     * PENDING (subject to the same "most recent action" + "status still matches" guards as
-     * undoModerationAction(), ADR-004) and a new append-only ModerationAction(actionType=UNDO) is
-     * recorded. report.resolvedAt/assignedModeratorId are never modified (ADR-005) — only
-     * reverted_at/reverted_by are set. Account-level outcomes (WARN/SUSPEND/RESTRICT/ESCALATE) are
-     * out of scope (ADR-001).
-     *
-     * @throws com.carebridge.backend.content.exception.ModerationException (MOD-003) if reportId does not exist
-     * @throws com.carebridge.backend.content.exception.ModerationException (MOD-032) if report.status is PENDING
-     * @throws com.carebridge.backend.content.exception.ModerationException (MOD-033) if the linked action is
-     *         an account-level outcome
-     * @throws com.carebridge.backend.content.exception.ModerationException (MOD-034) if the linked action is
-     *         not the most recent action for its target
-     * @throws com.carebridge.backend.content.exception.ModerationException (MOD-035) if the target's current
-     *         status no longer matches what the linked action produced
-     */
-    RevertReportResponse revertReport(UUID reportId, RevertReportRequest request, Principal principal);
 
     /**
      * CB-MOD-IMP-016: atomically claims a PENDING report (status -> IN_REVIEW,

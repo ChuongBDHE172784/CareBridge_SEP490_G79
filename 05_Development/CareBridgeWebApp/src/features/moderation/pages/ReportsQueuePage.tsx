@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ModPortalSidebar from '../components/ModPortalSidebar';
-import ConfirmDialog from '../../../shared/components/ConfirmDialog';
 import { useAuthStore } from '../../../shared/auth/authStore';
-import { claimReport, fetchModerationQueue, releaseReport, revertReport } from '../services/moderationApi';
+import { claimReport, fetchModerationQueue, releaseReport } from '../services/moderationApi';
 import type { CasePriority, ModerationQueueItem, ReportSource, ReportTargetType } from '../models/moderation';
 import {
   CASE_PRIORITY_LABELS,
@@ -48,10 +47,6 @@ export default function ReportsQueuePage() {
   const [error, setError] = useState('');
   const [actionError, setActionError] = useState('');
   const [claimingId, setClaimingId] = useState<string | null>(null);
-
-  const [revertTarget, setRevertTarget] = useState<ModerationQueueItem | null>(null);
-  const [revertSubmitting, setRevertSubmitting] = useState(false);
-  const [revertError, setRevertError] = useState('');
 
   const loadReports = useCallback(async () => {
     setIsLoading(true);
@@ -147,22 +142,6 @@ export default function ReportsQueuePage() {
       setActionError(message || 'Không thể trả lại báo cáo này.');
     } finally {
       setClaimingId(null);
-    }
-  };
-
-  const confirmRevert = async (reason?: string) => {
-    if (!revertTarget) return;
-    setRevertSubmitting(true);
-    setRevertError('');
-    try {
-      await revertReport(revertTarget.id, reason);
-      setRevertTarget(null);
-      await loadReports();
-    } catch (err: unknown) {
-      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setRevertError(message || 'Hoàn tác thất bại, vui lòng thử lại.');
-    } finally {
-      setRevertSubmitting(false);
     }
   };
 
@@ -416,16 +395,6 @@ export default function ReportsQueuePage() {
                                   Trả lại
                                 </button>
                               )}
-                              {tab === 'PROCESSED' && (
-                                <button
-                                  type="button"
-                                  onClick={() => { setRevertError(''); setRevertTarget(item); }}
-                                  className="h-8 py-1 px-3 rounded-lg border border-outline-variant bg-transparent cursor-pointer text-xs font-semibold text-on-surface-variant flex items-center gap-1 hover:bg-surface-container-low"
-                                >
-                                  <span className="material-symbols-outlined text-base">undo</span>
-                                  Hoàn tác
-                                </button>
-                              )}
                             </div>
                           </td>
                         </tr>
@@ -486,23 +455,6 @@ export default function ReportsQueuePage() {
         </div>
       </main>
 
-      <ConfirmDialog
-        key={revertTarget ? revertTarget.id : 'none'}
-        open={revertTarget !== null}
-        title="Hoàn tác báo cáo này?"
-        description={
-          revertTarget
-            ? `Báo cáo sẽ quay lại hàng đợi để xử lý lại (${TARGET_TYPE_LABELS[revertTarget.targetType]} - ${REPORT_STATUS_LABELS[revertTarget.status]}).`
-            : undefined
-        }
-        icon="undo"
-        tone="default"
-        confirmLabel="Hoàn tác"
-        submitting={revertSubmitting}
-        errorText={revertError}
-        onConfirm={confirmRevert}
-        onCancel={() => setRevertTarget(null)}
-      />
     </div>
   );
 }
