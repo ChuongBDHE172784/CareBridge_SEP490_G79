@@ -88,6 +88,17 @@ export default function EditPregnancyExercisePage() {
 
   return (
     <div className="min-h-screen bg-background p-8 font-sans text-on-surface">
+      <div className="mb-4">
+        <button
+          type="button"
+          onClick={() => navigate('/content/exercises')}
+          className="inline-flex items-center gap-1.5 py-2 px-4 rounded-full bg-surface border border-outline-variant text-xs font-semibold text-on-surface-variant hover:bg-surface-container-low transition-colors cursor-pointer"
+        >
+          <span className="material-symbols-outlined text-base">arrow_back</span>
+          Trở lại danh sách bài tập
+        </button>
+      </div>
+
       <div className="mb-8 flex items-start justify-between gap-6">
         <div>
           <h1 className="m-0 text-[28px] font-bold">{exercise.title}</h1>
