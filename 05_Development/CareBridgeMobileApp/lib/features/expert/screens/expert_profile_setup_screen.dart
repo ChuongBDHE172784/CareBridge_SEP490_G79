@@ -23,6 +23,10 @@ class _ExpertProfileSetupScreenState extends State<ExpertProfileSetupScreen> {
   List<ExpertMasterOption> _hospitals = const [];
   String? _specialtyId;
   String? _hospitalId;
+  String? _trackAsiaName;
+  String? _trackAsiaAddress;
+  double? _trackAsiaLat;
+  double? _trackAsiaLng;
   bool _loadingMasterData = true;
   bool _loading = false;
   String? _error;
@@ -76,6 +80,10 @@ class _ExpertProfileSetupScreenState extends State<ExpertProfileSetupScreen> {
         professionalTitle: _title.text.trim(),
         experienceYears: int.parse(_experience.text.trim()),
         hospitalId: _hospitalId!,
+        trackAsiaName: _trackAsiaName,
+        trackAsiaAddress: _trackAsiaAddress,
+        trackAsiaLat: _trackAsiaLat,
+        trackAsiaLng: _trackAsiaLng,
         consultationScope: _scope.text.trim(),
       );
       ExpertOnboardingStore.instance.invalidate();
@@ -128,11 +136,81 @@ class _ExpertProfileSetupScreenState extends State<ExpertProfileSetupScreen> {
                   return years == null || years < 0 || years > 80 ? 'Nhập số năm từ 0 đến 80' : null;
                 },
               ),
-              _masterDropdown(
-                label: 'Nơi công tác',
-                value: _hospitalId,
-                options: _hospitals,
-                onChanged: (value) => setState(() => _hospitalId = value),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Autocomplete<Map<String, dynamic>>(
+                  optionsBuilder: (TextEditingValue textEditingValue) async {
+                    if (textEditingValue.text.trim().length < 2) {
+                      return const Iterable<Map<String, dynamic>>.empty();
+                    }
+                    final service = widget.service ?? ExpertOnboardingService.instance;
+                    try {
+                      return await service.searchTrackAsiaHospitals(textEditingValue.text);
+                    } catch (_) {
+                      return const Iterable<Map<String, dynamic>>.empty();
+                    }
+                  },
+                  displayStringForOption: (option) => option['name'] as String,
+                  onSelected: (Map<String, dynamic> selection) {
+                    setState(() {
+                      _hospitalId = selection['id'] as String;
+                      _trackAsiaName = selection['name'] as String?;
+                      _trackAsiaAddress = selection['address'] as String?;
+                      _trackAsiaLat = selection['lat'] as double?;
+                      _trackAsiaLng = selection['lng'] as double?;
+                    });
+                  },
+                  fieldViewBuilder: (BuildContext context, TextEditingController fieldTextEditingController, FocusNode fieldFocusNode, VoidCallback onFieldSubmitted) {
+                    return TextFormField(
+                      controller: fieldTextEditingController,
+                      focusNode: fieldFocusNode,
+                      decoration: InputDecoration(
+                        labelText: 'Bệnh viện/Cơ sở y tế *',
+                        hintText: 'Tìm bệnh viện hoặc phòng khám...',
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      validator: (value) => _hospitalId == null ? 'Vui lòng chọn cơ sở từ danh sách tìm kiếm' : null,
+                      onChanged: (val) {
+                        if (_hospitalId != null) {
+                          setState(() {
+                            _hospitalId = null;
+                            _trackAsiaName = null;
+                            _trackAsiaAddress = null;
+                            _trackAsiaLat = null;
+                            _trackAsiaLng = null;
+                          });
+                        }
+                      },
+                    );
+                  },
+                  optionsViewBuilder: (BuildContext context, AutocompleteOnSelected<Map<String, dynamic>> onSelected, Iterable<Map<String, dynamic>> options) {
+                    return Align(
+                      alignment: Alignment.topLeft,
+                      child: Material(
+                        elevation: 4.0,
+                        borderRadius: BorderRadius.circular(16),
+                        child: SizedBox(
+                          height: 200.0,
+                          width: MediaQuery.of(context).size.width - 40,
+                          child: ListView.builder(
+                            padding: const EdgeInsets.all(8.0),
+                            itemCount: options.length,
+                            itemBuilder: (BuildContext context, int index) {
+                              final option = options.elementAt(index);
+                              return ListTile(
+                                title: Text(option['name'] as String, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                subtitle: Text(option['address'] as String? ?? '', maxLines: 1, overflow: TextOverflow.ellipsis),
+                                onTap: () => onSelected(option),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
               _field(_scope, 'Phạm vi tư vấn', 'Mô tả chủ đề bạn có thể hỗ trợ', maxLines: 4, validator: _required),
               if (_error != null) ...[

@@ -27,7 +27,7 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 @AutoConfigureMockMvc
 @TestPropertySource(properties = {
         "spring.flyway.enabled=true",
-        "spring.flyway.locations=classpath:db/migration",
+        "spring.flyway.locations=classpath:db/migration,classpath:db/migration/phase2",
         "spring.flyway.baseline-on-migrate=true",
         "spring.flyway.out-of-order=true",
         "spring.jpa.hibernate.ddl-auto=validate",

@@ -221,8 +221,13 @@ export async function getHospitals(params: { provinceId?: string; districtId?: s
 	return data.data;
 }
 
-export async function getWards(districtId: string): Promise<WardResponse[]> {
-	const { data } = await apiClient.get('/api/v1/master-data/wards', { params: { districtId } });
+export async function getWards(params: { districtId?: string; provinceId?: string }): Promise<WardResponse[]> {
+	const { data } = await apiClient.get('/api/v1/master-data/wards', { params });
+	return data.data;
+}
+
+export async function searchTrackAsiaHospitals(q: string): Promise<any[]> {
+	const { data } = await apiClient.get('/api/v1/master-data/hospitals/search/trackasia', { params: { q } });
 	return data.data;
 }
 

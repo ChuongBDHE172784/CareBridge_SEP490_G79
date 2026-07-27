@@ -235,8 +235,26 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 	private MasterDataSelection normalizeMasterData(CreateExpertProfileRequest request) {
 		var specialties = resolveActiveSpecialties(request.getSpecialtyId(), request.getSpecialtyIds());
 		var hospital = findActiveFacility(request.getHospitalId())
-			.orElseThrow(() -> new ExpertException(org.springframework.http.HttpStatus.BAD_REQUEST,
-				"EXPERT-HOSPITAL-INVALID", "Cơ sở y tế không hợp lệ hoặc đã ngừng sử dụng"));
+			.orElseGet(() -> {
+				if (request.getTrackAsiaName() != null && !request.getTrackAsiaName().isBlank()) {
+					CareFacility newFacility = new CareFacility();
+					newFacility.setExternalSourceId(request.getHospitalId());
+					newFacility.setSourceType("TRACKASIA");
+					newFacility.setName(request.getTrackAsiaName());
+					newFacility.setAddress(request.getTrackAsiaAddress());
+					if (request.getTrackAsiaLat() != null) {
+						newFacility.setLatitude(java.math.BigDecimal.valueOf(request.getTrackAsiaLat()));
+					}
+					if (request.getTrackAsiaLng() != null) {
+						newFacility.setLongitude(java.math.BigDecimal.valueOf(request.getTrackAsiaLng()));
+					}
+					newFacility.setActive(true);
+					newFacility.setVerificationStatus(com.carebridge.backend.map.facilitystatus.FacilityStatus.UNVERIFIED);
+					return careFacilityRepository.save(newFacility);
+				}
+				throw new ExpertException(org.springframework.http.HttpStatus.BAD_REQUEST,
+					"EXPERT-HOSPITAL-INVALID", "Cơ sở y tế không hợp lệ hoặc đã ngừng sử dụng");
+			});
 		request.setSpecialty(specialties.getFirst().getName());
 		request.setWorkplace(hospital.getName());
 		return new MasterDataSelection(hospital.getFacilityId(), specialties);
@@ -252,8 +270,26 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 		}
 		if (request.getHospitalId() != null) {
 			var hospital = findActiveFacility(request.getHospitalId())
-				.orElseThrow(() -> new ExpertException(org.springframework.http.HttpStatus.BAD_REQUEST,
-					"EXPERT-HOSPITAL-INVALID", "Cơ sở y tế không hợp lệ hoặc đã ngừng sử dụng"));
+				.orElseGet(() -> {
+					if (request.getTrackAsiaName() != null && !request.getTrackAsiaName().isBlank()) {
+						CareFacility newFacility = new CareFacility();
+						newFacility.setExternalSourceId(request.getHospitalId());
+						newFacility.setSourceType("TRACKASIA");
+						newFacility.setName(request.getTrackAsiaName());
+						newFacility.setAddress(request.getTrackAsiaAddress());
+						if (request.getTrackAsiaLat() != null) {
+							newFacility.setLatitude(java.math.BigDecimal.valueOf(request.getTrackAsiaLat()));
+						}
+						if (request.getTrackAsiaLng() != null) {
+							newFacility.setLongitude(java.math.BigDecimal.valueOf(request.getTrackAsiaLng()));
+						}
+						newFacility.setActive(true);
+						newFacility.setVerificationStatus(com.carebridge.backend.map.facilitystatus.FacilityStatus.UNVERIFIED);
+						return careFacilityRepository.save(newFacility);
+					}
+					throw new ExpertException(org.springframework.http.HttpStatus.BAD_REQUEST,
+						"EXPERT-HOSPITAL-INVALID", "Cơ sở y tế không hợp lệ hoặc đã ngừng sử dụng");
+				});
 			request.setWorkplace(hospital.getName());
 			facilityId = hospital.getFacilityId();
 		}

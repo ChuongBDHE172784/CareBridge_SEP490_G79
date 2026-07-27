@@ -47,15 +47,26 @@ class ExpertOnboardingService {
     required String professionalTitle,
     required int experienceYears,
     required String hospitalId,
+    String? trackAsiaName,
+    String? trackAsiaAddress,
+    double? trackAsiaLat,
+    double? trackAsiaLng,
     required String consultationScope,
   }) async {
-    await api.post('/api/v1/expert/profiles', {
+    final body = <String, dynamic>{
       'specialtyId': specialtyId,
       'professionalTitle': professionalTitle,
       'experienceYears': experienceYears,
       'hospitalId': hospitalId,
       'consultationScope': consultationScope,
-    });
+    };
+    if (trackAsiaName != null && trackAsiaName.isNotEmpty) {
+      body['trackAsiaName'] = trackAsiaName;
+      body['trackAsiaAddress'] = trackAsiaAddress;
+      body['trackAsiaLat'] = trackAsiaLat;
+      body['trackAsiaLng'] = trackAsiaLng;
+    }
+    await api.post('/api/v1/expert/profiles', body);
   }
 
   Future<List<ExpertMasterOption>> loadSpecialties() async {
@@ -71,8 +82,9 @@ class ExpertOnboardingService {
         .toList();
   }
 
-  Future<List<ExpertMasterOption>> loadHospitals() async {
-    final response = await api.get('/api/v1/master-data/hospitals');
+  Future<List<ExpertMasterOption>> loadHospitals({String? provinceId}) async {
+    final path = provinceId != null ? '/api/v1/master-data/hospitals?provinceId=$provinceId' : '/api/v1/master-data/hospitals';
+    final response = await api.get(path);
     final data = _unwrapList(response);
     return data
         .map(
@@ -82,6 +94,11 @@ class ExpertOnboardingService {
           ),
         )
         .toList();
+  }
+
+  Future<List<Map<String, dynamic>>> searchTrackAsiaHospitals(String q) async {
+    final response = await api.get('/api/v1/master-data/hospitals/search/trackasia?q=${Uri.encodeQueryComponent(q)}');
+    return _unwrapList(response);
   }
 
   List<Map<String, dynamic>> _unwrapList(dynamic response) {

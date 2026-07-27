@@ -18,6 +18,7 @@ import {
   type WardResponse,
   type SpecialtyResponse,
   type HospitalResponse,
+  searchTrackAsiaHospitals,
 } from '../services/expertApi';
 
 const IMAGE_LIMIT = 5 * 1024 * 1024;
@@ -109,6 +110,10 @@ function ProfileStep({ onDone }: { onDone: () => Promise<void> }) {
     districtId: '',
     wardId: '',
     hospitalId: '',
+    trackAsiaName: '',
+    trackAsiaAddress: '',
+    trackAsiaLat: undefined as number | undefined,
+    trackAsiaLng: undefined as number | undefined,
     consultationScope: '',
   });
   const [options, setOptions] = useState({
@@ -161,21 +166,17 @@ function ProfileStep({ onDone }: { onDone: () => Promise<void> }) {
     }
 
     const requestedProvince = form.provinceId;
-    const requestedDistrict = form.districtId;
     setOptions(prev => ({ ...prev, wards: [], hospitals: [] }));
-    if (requestedDistrict) {
-      getWards(requestedDistrict)
-        .then(wards => {
-          if (active) setOptions(prev => ({ ...prev, wards }));
-        })
-        .catch(() => {
-          if (active) setError('Không thể tải danh sách phường/xã.');
-        });
-    }
+    getWards({ provinceId: requestedProvince })
+      .then(wards => {
+        if (active) setOptions(prev => ({ ...prev, wards }));
+      })
+      .catch(() => {
+        if (active) setError('Không thể tải danh sách phường/xã.');
+      });
 
     getHospitals({
         provinceId: requestedProvince,
-        districtId: requestedDistrict || undefined,
       })
       .then(hospitals => {
         if (active) setOptions(prev => ({ ...prev, hospitals }));
@@ -185,7 +186,26 @@ function ProfileStep({ onDone }: { onDone: () => Promise<void> }) {
       });
 
     return () => { active = false; };
-  }, [form.districtId, form.provinceId]);
+  }, [form.provinceId]);
+
+  const [trackAsiaQuery, setTrackAsiaQuery] = useState('');
+  const [trackAsiaResults, setTrackAsiaResults] = useState<any[]>([]);
+  const [searchingHospitals, setSearchingHospitals] = useState(false);
+
+  useEffect(() => {
+    if (trackAsiaQuery.trim().length < 2) {
+      setTrackAsiaResults([]);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setSearchingHospitals(true);
+      searchTrackAsiaHospitals(trackAsiaQuery)
+        .then(res => setTrackAsiaResults(res || []))
+        .catch(() => setTrackAsiaResults([]))
+        .finally(() => setSearchingHospitals(false));
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [trackAsiaQuery]);
 
   const update =
     (key: keyof typeof form) =>
@@ -215,6 +235,10 @@ function ProfileStep({ onDone }: { onDone: () => Promise<void> }) {
         specialtyId: form.specialtyId,
         professionalTitle: form.professionalTitle.trim(),
         hospitalId: form.hospitalId,
+        trackAsiaName: form.trackAsiaName,
+        trackAsiaAddress: form.trackAsiaAddress,
+        trackAsiaLat: form.trackAsiaLat,
+        trackAsiaLng: form.trackAsiaLng,
         consultationScope: form.consultationScope.trim(),
         experienceYears: form.experienceYears ? Number(form.experienceYears) : undefined,
       });
@@ -260,7 +284,7 @@ function ProfileStep({ onDone }: { onDone: () => Promise<void> }) {
               </select>
             </label>
             <label className="grid gap-2 text-sm font-medium">
-              Quận/Huyện
+              Quận/Huyện (Không bắt buộc)
               <select value={form.districtId} onChange={update('districtId')} disabled={!form.provinceId} className="h-12 rounded-xl border border-gray-300 px-3 font-normal outline-none transition-colors focus:border-primary focus:ring-4 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-gray-100">
                 <option value="">-- Chọn Huyện --</option>
                 {options.districts.map(d => (
@@ -272,7 +296,7 @@ function ProfileStep({ onDone }: { onDone: () => Promise<void> }) {
             </label>
             <label className="grid gap-2 text-sm font-medium">
               Phường/Xã
-              <select value={form.wardId} onChange={update('wardId')} disabled={!form.districtId} className="h-12 rounded-xl border border-gray-300 px-3 font-normal outline-none transition-colors focus:border-primary focus:ring-4 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-gray-100">
+              <select value={form.wardId} onChange={update('wardId')} disabled={!form.provinceId} className="h-12 rounded-xl border border-gray-300 px-3 font-normal outline-none transition-colors focus:border-primary focus:ring-4 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-gray-100">
                 <option value="">-- Chọn Phường/Xã --</option>
                 {options.wards.map(w => (
                   <option key={w.wardId} value={w.wardId}>
@@ -281,16 +305,44 @@ function ProfileStep({ onDone }: { onDone: () => Promise<void> }) {
                 ))}
               </select>
             </label>
-            <label className="grid gap-2 text-sm font-medium">
-              Bệnh viện/Cơ sở y tế *
-              <select required value={form.hospitalId} onChange={update('hospitalId')} disabled={!form.provinceId} className="h-12 rounded-xl border border-gray-300 px-3 font-normal outline-none transition-colors focus:border-primary focus:ring-4 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-gray-100">
-                <option value="">-- Chọn cơ sở --</option>
-                {options.hospitals.map(h => (
-                  <option key={h.hospitalId} value={h.hospitalId}>{h.name}</option>
-                ))}
-              </select>
-            </label>
-          </div>
+            <div className="grid gap-2 text-sm font-medium relative">
+              <label>Bệnh viện/Cơ sở y tế *</label>
+              <input 
+                type="text" 
+                required={!form.hospitalId}
+                placeholder="Tìm bệnh viện hoặc phòng khám..." 
+                value={form.hospitalId ? (form.trackAsiaName || options.hospitals.find(h => h.hospitalId === form.hospitalId)?.name || 'Đã chọn cơ sở') : trackAsiaQuery} 
+                onChange={e => {
+                  setTrackAsiaQuery(e.target.value);
+                  if (form.hospitalId) {
+                    setForm(prev => ({...prev, hospitalId: '', trackAsiaName: '', trackAsiaAddress: '', trackAsiaLat: undefined, trackAsiaLng: undefined}));
+                  }
+                }} 
+                className="h-12 rounded-xl border border-gray-300 px-3 font-normal outline-none transition-colors focus:border-primary focus:ring-4 focus:ring-primary/20"
+              />
+              {searchingHospitals && <div className="absolute right-3 top-[38px]"><RefreshCw size={18} className="animate-spin text-gray-400" /></div>}
+              {trackAsiaResults.length > 0 && !form.hospitalId && (
+                <ul className="absolute top-[72px] z-10 w-[300px] max-h-60 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-xl">
+                  {trackAsiaResults.map(r => (
+                    <li key={r.id} className="cursor-pointer border-b px-4 py-3 hover:bg-gray-50 last:border-0" onClick={() => {
+                      setForm(prev => ({
+                        ...prev, 
+                        hospitalId: r.id, 
+                        trackAsiaName: r.name,
+                        trackAsiaAddress: r.address || '',
+                        trackAsiaLat: r.lat,
+                        trackAsiaLng: r.lng
+                      }));
+                      setTrackAsiaQuery('');
+                      setTrackAsiaResults([]);
+                    }}>
+                      <p className="font-semibold">{r.name}</p>
+                      <p className="text-xs text-gray-500 truncate">{r.address}</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
         </div>
 
         <label className="grid gap-2 text-sm font-medium sm:col-span-2">
