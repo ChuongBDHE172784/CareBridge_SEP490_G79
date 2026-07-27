@@ -4,6 +4,7 @@ import com.carebridge.backend.content.entity.ModerationAction;
 import com.carebridge.backend.content.entity.ModerationActionType;
 import com.carebridge.backend.content.entity.ReportTargetType;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -49,6 +50,61 @@ public interface ModerationActionRepository extends JpaRepository<ModerationActi
             order by m.actionAt desc, m.id desc
             """)
     Page<ModerationAction> findByTargetTypeAndEventCategoryInOrderByActionAtDesc(
+            @Param("targetType") ReportTargetType targetType,
+            @Param("eventCategories") Collection<String> eventCategories,
+            Pageable pageable);
+
+    default Page<UUID> findDistinctAccountTargetIds(
+            Collection<ModerationActionType> actionTypes, Pageable pageable) {
+        return findDistinctTargetIdsByTargetTypeAndEventCategoryIn(
+                ReportTargetType.ACCOUNT, categories(actionTypes), pageable);
+    }
+
+    @Query(value = """
+            select m.targetId from ModerationAction m
+            where m.targetType = :targetType and m.eventCategory in :eventCategories
+            group by m.targetId
+            order by max(m.actionAt) desc, m.targetId desc
+            """, countQuery = """
+            select count(distinct m.targetId) from ModerationAction m
+            where m.targetType = :targetType and m.eventCategory in :eventCategories
+            """)
+    Page<UUID> findDistinctTargetIdsByTargetTypeAndEventCategoryIn(
+            @Param("targetType") ReportTargetType targetType,
+            @Param("eventCategories") Collection<String> eventCategories,
+            Pageable pageable);
+
+    default List<ModerationAction> findAccountActionsByTargetIds(
+            Collection<UUID> targetIds, Collection<ModerationActionType> actionTypes) {
+        return findByTargetIdInAndTargetTypeAndEventCategoryInOrderByActionAtDesc(
+                targetIds, ReportTargetType.ACCOUNT, categories(actionTypes));
+    }
+
+    @Query("""
+            select m from ModerationAction m
+            where m.targetId in :targetIds and m.targetType = :targetType
+              and m.eventCategory in :eventCategories
+            order by m.actionAt desc, m.id desc
+            """)
+    List<ModerationAction> findByTargetIdInAndTargetTypeAndEventCategoryInOrderByActionAtDesc(
+            @Param("targetIds") Collection<UUID> targetIds,
+            @Param("targetType") ReportTargetType targetType,
+            @Param("eventCategories") Collection<String> eventCategories);
+
+    default Page<ModerationAction> findAccountActionsByTargetId(
+            UUID targetId, Collection<ModerationActionType> actionTypes, Pageable pageable) {
+        return findByTargetIdAndTargetTypeAndEventCategoryInOrderByActionAtDesc(
+                targetId, ReportTargetType.ACCOUNT, categories(actionTypes), pageable);
+    }
+
+    @Query("""
+            select m from ModerationAction m
+            where m.targetId = :targetId and m.targetType = :targetType
+              and m.eventCategory in :eventCategories
+            order by m.actionAt desc, m.id desc
+            """)
+    Page<ModerationAction> findByTargetIdAndTargetTypeAndEventCategoryInOrderByActionAtDesc(
+            @Param("targetId") UUID targetId,
             @Param("targetType") ReportTargetType targetType,
             @Param("eventCategories") Collection<String> eventCategories,
             Pageable pageable);

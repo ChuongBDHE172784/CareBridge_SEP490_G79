@@ -124,6 +124,20 @@ export interface AccountViolationHistoryPage {
   size: number;
 }
 
+export interface AccountViolationSummaryItem {
+  targetUserId: string;
+  targetUserName: string;
+  violationCount: number;
+  latestAction: AccountViolationHistoryItem;
+}
+
+export interface AccountViolationSummaryPage {
+  content: AccountViolationSummaryItem[];
+  totalElements: number;
+  page: number;
+  size: number;
+}
+
 export interface ResolveReportResult {
   reportId: string;
   reportStatus: ReportStatus;

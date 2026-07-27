@@ -20,6 +20,8 @@ import com.carebridge.backend.content.dto.request.WarnOrSuspendAccountRequest;
 import com.carebridge.backend.content.dto.response.ModerateContentResponse;
 import com.carebridge.backend.content.dto.response.AccountViolationHistoryItemResponse;
 import com.carebridge.backend.content.dto.response.AccountViolationHistoryResponse;
+import com.carebridge.backend.content.dto.response.AccountViolationSummaryItemResponse;
+import com.carebridge.backend.content.dto.response.AccountViolationSummaryResponse;
 import com.carebridge.backend.content.dto.response.ModerationContentDetailResponse;
 import com.carebridge.backend.content.dto.response.ModerationHistoryItemResponse;
 import com.carebridge.backend.content.dto.response.ModerationHistoryResponse;
@@ -232,36 +234,74 @@ public class ModerationServiceImpl implements ModerationService {
     }
 
     @Override
-    public AccountViolationHistoryResponse getAccountViolationHistory(int page, int size, Principal principal) {
-        Page<ModerationAction> actionPage = moderationActionRepository.findByTargetTypeAndActionTypeInOrderByActionAtDesc(
-                ReportTargetType.ACCOUNT,
+    public AccountViolationSummaryResponse getAccountViolationHistory(int page, int size, Principal principal) {
+        Page<UUID> targetUserPage = moderationActionRepository.findDistinctAccountTargetIds(
+                ACCOUNT_ACTION_TYPES, PageRequest.of(page, size));
+        List<ModerationAction> actions = targetUserPage.getContent().isEmpty()
+                ? List.of()
+                : moderationActionRepository.findAccountActionsByTargetIds(
+                        targetUserPage.getContent(), ACCOUNT_ACTION_TYPES);
+        Map<UUID, List<ModerationAction>> actionsByTargetUser = actions.stream()
+                .collect(java.util.stream.Collectors.groupingBy(ModerationAction::getTargetId));
+        Map<UUID, String> names = accountNamesFor(actions);
+
+        List<AccountViolationSummaryItemResponse> items = targetUserPage.getContent().stream()
+                .map(targetUserId -> {
+                    List<ModerationAction> accountActions = actionsByTargetUser.getOrDefault(targetUserId, List.of());
+                    ModerationAction latestAction = accountActions.getFirst();
+                    return new AccountViolationSummaryItemResponse(
+                            targetUserId,
+                            names.getOrDefault(targetUserId, "Tài khoản không còn tồn tại"),
+                            accountActions.size(),
+                            toAccountViolationHistoryItem(latestAction, names));
+                })
+                .toList();
+        return new AccountViolationSummaryResponse(
+                items, targetUserPage.getTotalElements(), targetUserPage.getNumber(), targetUserPage.getSize());
+    }
+
+    @Override
+    public AccountViolationHistoryResponse getAccountViolationHistory(
+            UUID targetUserId, int page, int size, Principal principal) {
+        Page<ModerationAction> actionPage = moderationActionRepository.findAccountActionsByTargetId(
+                targetUserId,
                 ACCOUNT_ACTION_TYPES,
                 PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "actionAt")
                         .and(Sort.by(Sort.Direction.DESC, "id"))));
+        Map<UUID, String> names = accountNamesFor(actionPage.getContent());
+        return new AccountViolationHistoryResponse(
+                accountViolationItems(actionPage.getContent(), names),
+                actionPage.getTotalElements(), actionPage.getNumber(), actionPage.getSize());
+    }
 
-        List<UUID> userIds = actionPage.getContent().stream()
+    private Map<UUID, String> accountNamesFor(List<ModerationAction> actions) {
+        List<UUID> userIds = actions.stream()
                 .flatMap(action -> java.util.stream.Stream.of(action.getTargetId(), action.getModeratorUserId()))
                 .filter(java.util.Objects::nonNull)
                 .distinct()
                 .toList();
-        Map<UUID, String> names = userRepository.findAllById(userIds).stream()
+        return userRepository.findAllById(userIds).stream()
                 .collect(java.util.stream.Collectors.toMap(User::getId, User::getName));
+    }
 
-        List<AccountViolationHistoryItemResponse> items = actionPage.getContent().stream()
-                .map(action -> new AccountViolationHistoryItemResponse(
-                        action.getId(),
-                        action.getTargetId(),
-                        names.getOrDefault(action.getTargetId(), "Tài khoản không còn tồn tại"),
-                        action.getModeratorUserId(),
-                        names.getOrDefault(action.getModeratorUserId(), "Người kiểm duyệt không còn tồn tại"),
-                        action.getActionType(),
-                        action.getReason(),
-                        action.getExpiresAt(),
-                        action.getReportId(),
-                        action.getActionAt()))
-                .toList();
-        return new AccountViolationHistoryResponse(
-                items, actionPage.getTotalElements(), actionPage.getNumber(), actionPage.getSize());
+    private List<AccountViolationHistoryItemResponse> accountViolationItems(
+            List<ModerationAction> actions, Map<UUID, String> names) {
+        return actions.stream().map(action -> toAccountViolationHistoryItem(action, names)).toList();
+    }
+
+    private AccountViolationHistoryItemResponse toAccountViolationHistoryItem(
+            ModerationAction action, Map<UUID, String> names) {
+        return new AccountViolationHistoryItemResponse(
+                action.getId(),
+                action.getTargetId(),
+                names.getOrDefault(action.getTargetId(), "Tài khoản không còn tồn tại"),
+                action.getModeratorUserId(),
+                names.getOrDefault(action.getModeratorUserId(), "Người kiểm duyệt không còn tồn tại"),
+                action.getActionType(),
+                action.getReason(),
+                action.getExpiresAt(),
+                action.getReportId(),
+                action.getActionAt());
     }
 
     @Override

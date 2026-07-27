@@ -9,6 +9,7 @@ import com.carebridge.backend.content.dto.request.RevertReportRequest;
 import com.carebridge.backend.content.dto.request.WarnOrSuspendAccountRequest;
 import com.carebridge.backend.content.dto.response.ModerateContentResponse;
 import com.carebridge.backend.content.dto.response.AccountViolationHistoryResponse;
+import com.carebridge.backend.content.dto.response.AccountViolationSummaryResponse;
 import com.carebridge.backend.content.dto.response.ModerationContentDetailResponse;
 import com.carebridge.backend.content.dto.response.ModerationHistoryResponse;
 import com.carebridge.backend.content.dto.response.ModerationQueueResponse;
@@ -46,7 +47,9 @@ public interface ModerationService {
      * Lists append-only account enforcement actions only. This is deliberately separate from the
      * content-only moderation history so account identity projection remains moderator scoped.
      */
-    AccountViolationHistoryResponse getAccountViolationHistory(int page, int size, Principal principal);
+    AccountViolationSummaryResponse getAccountViolationHistory(int page, int size, Principal principal);
+
+    AccountViolationHistoryResponse getAccountViolationHistory(UUID targetUserId, int page, int size, Principal principal);
 
     /** Lists privacy-safe reports that apply to the exact target of the selected report. */
     RelatedReportPageResponse getRelatedReports(UUID reportId, int page, int size, Principal principal);

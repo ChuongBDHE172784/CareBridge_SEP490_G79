@@ -92,6 +92,7 @@ import ReportsQueuePage from '../../features/moderation/pages/ReportsQueuePage';
 import ContentReportDetailPage from '../../features/moderation/pages/ContentReportDetailPage';
 import AccountReportDetailPage from '../../features/moderation/pages/AccountReportDetailPage';
 import ViolationHistoryPage from '../../features/moderation/pages/ViolationHistoryPage';
+import ViolationDetailPage from '../../features/moderation/pages/ViolationDetailPage';
 // CB-MOD-IMP-004: pending-content queue (first-time moderation, no ContentReport required)
 import PendingContentQueuePage from '../../features/moderation/pages/PendingContentQueuePage';
 
@@ -273,6 +274,7 @@ export const router = createBrowserRouter([
               { path: '/moderator/reports/account/:reportId', element: <AccountReportDetailPage /> },
               { path: '/moderator/reports/:reportId', element: <ContentReportDetailPage /> },
               { path: '/moderator/violations', element: <ViolationHistoryPage /> },
+              { path: '/moderator/violations/:targetUserId', element: <ViolationDetailPage /> },
             ],
           },
           {
