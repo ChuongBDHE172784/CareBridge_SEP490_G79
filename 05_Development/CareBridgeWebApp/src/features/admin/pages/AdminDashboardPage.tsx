@@ -35,81 +35,81 @@ export default function AdminDashboardPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="portal-page px-5 py-5 md:px-6 md:py-6">
-      <div className="portal-contained">
-        <header className="portal-header">
-          <div>
-            <p className="portal-eyebrow">CareBridge Admin</p>
-            <h1 className="portal-title">Trung tâm điều hành hệ thống</h1>
-            <p className="portal-subtitle">
-              Truy cập nhanh các tác vụ cần quyền System Admin. Số liệu cộng đồng và chỉ số vận hành được xem trong Hệ thống kiểm duyệt.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => navigate('/moderator/dashboard')}
-            className="portal-primary-button"
-          >
-            <span className="material-symbols-outlined text-base">monitoring</span>
-            Xem tổng quan vận hành
-          </button>
-        </header>
-
-        <section>
-          <div className="mb-3 flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-primary" />
-            <h2 className="text-xs font-semibold uppercase tracking-[0.02em] text-on-surface-variant">Tác vụ ưu tiên</h2>
-          </div>
-          <div className="grid gap-4 md:grid-cols-3">
-            {PRIORITY_ACTIONS.map((action) => (
-              <button
-                key={action.title}
-                type="button"
-                onClick={() => navigate(action.href)}
-                className="group portal-card-padded text-left transition-colors duration-150 hover:border-primary/40 hover:bg-surface-container-lowest"
-              >
-                <div className={`flex h-9 w-9 items-center justify-center rounded-md ${action.tone}`}>
-                  <span className="material-symbols-outlined text-lg">{action.icon}</span>
-                </div>
-                <h3 className="mt-3 text-sm font-semibold text-on-surface">{action.title}</h3>
-                <p className="mt-1.5 min-h-[36px] text-xs leading-relaxed text-on-surface-variant">{action.description}</p>
-                <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-primary">
-                  Mở tác vụ <span className="material-symbols-outlined text-base">arrow_forward</span>
-                </span>
-              </button>
-            ))}
-          </div>
-        </section>
-
-        <section className="mt-5 portal-card-padded">
-          <div className="flex flex-col gap-2 border-b border-outline-variant/60 pb-4 md:flex-row md:items-end md:justify-between">
-            <div>
-              <h2 className="text-sm font-semibold text-on-surface">Khu vực quản trị</h2>
-              <p className="mt-0.5 text-xs text-on-surface-variant">Các khu vực được phân quyền riêng cho System Admin.</p>
-            </div>
-            <span className="text-xs font-semibold text-outline">{ADMIN_AREAS.length} khu vực sẵn sàng</span>
-          </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            {ADMIN_AREAS.map((area) => (
-              <button
-                key={area.title}
-                type="button"
-                onClick={() => navigate(area.href)}
-                className="flex items-center gap-3 rounded-md border border-outline-variant/60 bg-surface-container-low p-3 text-left transition-colors duration-150 hover:border-primary/30 hover:bg-surface-container"
-              >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-outline-variant/60 bg-surface text-primary">
-                  <span className="material-symbols-outlined text-lg">{area.icon}</span>
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-xs font-semibold text-on-surface">{area.title}</span>
-                  <span className="mt-0.5 block truncate text-[11px] text-on-surface-variant">{area.detail}</span>
-                </span>
-                <span className="material-symbols-outlined shrink-0 text-outline text-lg">chevron_right</span>
-              </button>
-            ))}
-          </div>
-        </section>
+    <div className="p-8 font-sans">
+      {/* Header */}
+      <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-[26px] font-bold text-on-surface m-0">Trung tâm điều hành hệ thống</h1>
+          <p className="text-on-surface-variant text-sm mt-1">
+            Truy cập nhanh các tác vụ cần quyền System Admin. Số liệu cộng đồng và chỉ số vận hành được xem trong Hệ thống kiểm duyệt.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => navigate('/moderator/dashboard')}
+          className="flex items-center gap-2 py-3 px-6 rounded-full bg-primary text-on-primary border-0 text-sm font-semibold cursor-pointer whitespace-nowrap self-start md:self-auto hover:bg-primary/90"
+        >
+          <span className="material-symbols-outlined text-lg">monitoring</span>
+          Xem tổng quan vận hành
+        </button>
       </div>
+
+      {/* Priority Actions */}
+      <section className="mb-6">
+        <div className="mb-3 flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full bg-primary" />
+          <h2 className="text-xs font-semibold uppercase tracking-[0.05em] text-outline">Tác vụ ưu tiên</h2>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          {PRIORITY_ACTIONS.map((action) => (
+            <button
+              key={action.title}
+              type="button"
+              onClick={() => navigate(action.href)}
+              className="group bg-surface rounded-2xl p-6 shadow-sm border border-surface-container-highest text-left cursor-pointer transition-all hover:shadow-md hover:border-primary/40"
+            >
+              <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${action.tone}`}>
+                <span className="material-symbols-outlined text-xl">{action.icon}</span>
+              </div>
+              <h3 className="mt-4 text-base font-bold text-on-surface m-0">{action.title}</h3>
+              <p className="mt-1.5 min-h-[36px] text-xs leading-relaxed text-on-surface-variant">{action.description}</p>
+              <span className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-primary group-hover:translate-x-0.5 transition-transform">
+                Mở tác vụ <span className="material-symbols-outlined text-base">arrow_forward</span>
+              </span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* Admin Areas */}
+      <section className="bg-surface rounded-2xl p-6 shadow-md border border-surface-container-highest">
+        <div className="flex flex-col gap-2 border-b border-surface-container-highest pb-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-on-surface m-0">Khu vực quản trị</h2>
+            <p className="mt-1 text-xs text-on-surface-variant">Các khu vực được phân quyền riêng cho System Admin.</p>
+          </div>
+          <span className="text-xs font-semibold text-outline">{ADMIN_AREAS.length} khu vực sẵn sàng</span>
+        </div>
+        <div className="mt-5 grid gap-4 md:grid-cols-2">
+          {ADMIN_AREAS.map((area) => (
+            <button
+              key={area.title}
+              type="button"
+              onClick={() => navigate(area.href)}
+              className="flex items-center gap-3.5 rounded-2xl border border-surface-container-highest bg-surface-container-low p-4 text-left cursor-pointer transition-colors hover:border-primary/40 hover:bg-surface-bright"
+            >
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-outline-variant/60 bg-surface text-primary">
+                <span className="material-symbols-outlined text-xl">{area.icon}</span>
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold text-on-surface">{area.title}</span>
+                <span className="mt-0.5 block truncate text-xs text-on-surface-variant">{area.detail}</span>
+              </span>
+              <span className="material-symbols-outlined shrink-0 text-outline text-lg">chevron_right</span>
+            </button>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

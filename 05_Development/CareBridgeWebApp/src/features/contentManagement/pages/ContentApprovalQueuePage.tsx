@@ -191,23 +191,29 @@ export default function ContentApprovalQueuePage() {
     : 'Mục sẽ quay về bản nháp để Content Admin chỉnh sửa trước khi gửi duyệt lại.';
 
   return (
-    <div className="portal-page px-5 py-5 md:px-6 md:py-6">
-      <div className="portal-contained">
-        <div className="portal-header">
+    <div className="p-8 font-sans">
+      <div>
+        {/* Header */}
+        <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <p className="portal-eyebrow">Quản trị nội dung</p>
-            <h1 className="portal-title">Hàng đợi phê duyệt</h1>
-            <p className="portal-subtitle max-w-3xl">
+            <h1 className="text-[26px] font-bold text-on-surface m-0">Hàng đợi phê duyệt nội dung</h1>
+            <p className="text-on-surface-variant text-sm mt-1">
               Bảng này gom bài viết, FAQ và checklist đang chờ System Admin quyết định. Dùng bộ lọc để tách theo loại nội dung, giai đoạn chăm sóc và tìm nhanh theo tiêu đề.
             </p>
           </div>
-          <button type="button" onClick={() => void load()} className="portal-secondary-button" disabled={isLoading}>
-            <span className="material-symbols-outlined text-base">refresh</span>
+          <button
+            type="button"
+            onClick={() => void load()}
+            disabled={isLoading}
+            className="inline-flex items-center gap-2 py-2.5 px-5 rounded-full bg-surface border border-outline-variant text-on-surface-variant text-sm font-semibold cursor-pointer hover:bg-surface-container-low disabled:opacity-50 self-start md:self-auto"
+          >
+            <span className="material-symbols-outlined text-lg">refresh</span>
             Làm mới
           </button>
         </div>
 
-        <section className="mb-5 grid gap-3 md:grid-cols-5">
+        {/* Stats Bar */}
+        <div className="mb-6 grid gap-4 md:grid-cols-5">
           {[
             { label: 'Tổng chờ duyệt', value: stats.total, icon: 'pending_actions' },
             { label: 'Bài viết / FAQ', value: stats.content, icon: 'article' },
@@ -215,138 +221,143 @@ export default function ContentApprovalQueuePage() {
             { label: 'Thai kỳ', value: stats.pregnancy, icon: 'pregnant_woman' },
             { label: 'Sau sinh', value: stats.postpartum, icon: 'family_restroom' },
           ].map((stat) => (
-            <div key={stat.label} className="portal-card-padded">
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-xs font-semibold text-on-surface-variant">{stat.label}</span>
-                <span className="material-symbols-outlined text-[18px] text-outline">{stat.icon}</span>
+            <div key={stat.label} className="bg-surface rounded-2xl p-5 shadow-sm border border-surface-container-highest flex items-center justify-between">
+              <div>
+                <span className="text-xs font-semibold text-outline uppercase tracking-wider block mb-1">{stat.label}</span>
+                <p className="text-2xl font-bold text-on-surface m-0">{stat.value}</p>
               </div>
-              <p className="portal-metric mt-2">{stat.value}</p>
+              <span className="material-symbols-outlined text-3xl text-primary/70">{stat.icon}</span>
             </div>
           ))}
-        </section>
+        </div>
 
-        <section className="portal-card-padded mb-4">
-          <div className="grid gap-3 lg:grid-cols-[1.3fr_0.8fr_0.8fr_0.5fr_auto] lg:items-end">
-            <label>
-              <span className="portal-label">Tìm kiếm</span>
-              <div className="relative">
-                <span className="material-symbols-outlined pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[18px] text-outline">search</span>
-                <input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  className="portal-field w-full pl-9"
-                  placeholder="Tìm theo tiêu đề, loại, giai đoạn..."
-                />
-              </div>
-            </label>
-            <label>
-              <span className="portal-label">Loại nội dung</span>
-              <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as TypeFilter)} className="portal-field w-full">
+        {/* Action & Filter Bar */}
+        <div className="bg-surface rounded-2xl p-4 shadow-sm border border-surface-container-highest mb-6">
+          <div className="flex flex-col xl:flex-row items-center gap-3">
+            <div className="flex-1 w-full relative">
+              <span className="material-symbols-outlined text-outline absolute left-[14px] top-1/2 -translate-y-1/2 text-xl">search</span>
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Tìm theo tiêu đề, loại, giai đoạn..."
+                className="w-full py-2.5 pr-[14px] pl-[42px] rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface outline-none font-sans"
+              />
+            </div>
+
+            <div className="flex flex-wrap md:flex-nowrap items-center gap-2 w-full xl:w-auto">
+              <select
+                value={typeFilter}
+                onChange={(event) => setTypeFilter(event.target.value as TypeFilter)}
+                className="py-2.5 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface-variant cursor-pointer font-sans"
+              >
                 <option value="ALL">Tất cả loại</option>
                 <option value="ARTICLE">Bài viết</option>
                 <option value="FAQ">FAQ</option>
                 <option value="CHECKLIST">Checklist</option>
               </select>
-            </label>
-            <label>
-              <span className="portal-label">Giai đoạn</span>
-              <select value={stageFilter} onChange={(event) => setStageFilter(event.target.value as 'ALL' | ContentStage)} className="portal-field w-full">
+              <select
+                value={stageFilter}
+                onChange={(event) => setStageFilter(event.target.value as 'ALL' | ContentStage)}
+                className="py-2.5 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface-variant cursor-pointer font-sans"
+              >
                 <option value="ALL">Tất cả giai đoạn</option>
                 {Object.entries(STAGE_LABELS).map(([value, label]) => (
                   <option key={value} value={value}>{label}</option>
                 ))}
               </select>
-            </label>
-            <label>
-              <span className="portal-label">Mỗi trang</span>
-              <select value={pageSize} onChange={(event) => setPageSize(Number(event.target.value) as typeof pageSize)} className="portal-field w-full">
+
+              <select
+                value={pageSize}
+                onChange={(event) => setPageSize(Number(event.target.value) as typeof pageSize)}
+                className="py-2.5 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface-variant cursor-pointer font-sans"
+              >
                 {PAGE_SIZE_OPTIONS.map((size) => (
-                  <option key={size} value={size}>{size}</option>
+                  <option key={size} value={size}>{size} / trang</option>
                 ))}
               </select>
-            </label>
-            <button type="button" onClick={resetFilters} className="portal-secondary-button">
-              <span className="material-symbols-outlined text-base">filter_alt_off</span>
-              Xóa lọc
-            </button>
-          </div>
-        </section>
 
-        {error && <div className="portal-error mb-4">{error}</div>}
-
-        <section className="portal-table-card">
-          <div className="flex flex-col gap-2 border-b border-outline-variant/70 p-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h2 className="text-sm font-semibold text-on-surface">Danh sách chờ quyết định</h2>
-              <p className="mt-1 text-xs text-on-surface-variant">
-                Hiển thị {pageStart}-{pageEnd} trong {filteredItems.length} mục phù hợp.
-              </p>
+              {(search || typeFilter !== 'ALL' || stageFilter !== 'ALL') && (
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="py-2.5 px-4 rounded-full border border-outline-variant bg-surface text-xs font-semibold text-on-surface-variant cursor-pointer hover:bg-surface-container-low flex items-center gap-1 whitespace-nowrap"
+                >
+                  <span className="material-symbols-outlined text-base">filter_alt_off</span>
+                  Xóa lọc
+                </button>
+              )}
             </div>
-            <span className="rounded-md bg-surface-container-low px-2.5 py-1 text-xs font-semibold text-on-surface-variant">
-              Trạng thái: Chờ phê duyệt
-            </span>
           </div>
+        </div>
 
+        {error && (
+          <div className="mb-4 rounded-2xl border border-error-container bg-error-container/60 p-4 text-sm text-error">
+            {error}
+          </div>
+        )}
+
+        <div className="bg-surface rounded-2xl p-6 shadow-md border border-surface-container-highest">
           {isLoading ? (
-            <div className="portal-empty m-4">Đang tải hàng đợi phê duyệt...</div>
+            <div className="py-12 text-center text-outline">Đang tải hàng đợi phê duyệt...</div>
           ) : filteredItems.length === 0 ? (
-            <div className="portal-empty m-4">
+            <div className="py-12 text-center text-outline">
               {items.length === 0 ? 'Không có nội dung chờ duyệt.' : 'Không có mục nào khớp bộ lọc hiện tại.'}
             </div>
           ) : (
             <>
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[1080px]">
+                <table className="w-full border-collapse">
                   <thead>
-                    <tr>
-                      <th>Nội dung</th>
-                      <th>Phân loại</th>
-                      <th>Giai đoạn</th>
-                      <th>Thông tin</th>
-                      <th>Gửi duyệt</th>
-                      <th className="text-right">Hành động</th>
+                    <tr className="border-b-2 border-surface-container-highest text-left">
+                      {['NỘI DUNG', 'PHÂN LOẠI', 'GIAI ĐOẠN', 'THÔNG TIN', 'GỬI DUYỆT', 'THAO TÁC'].map((heading) => (
+                        <th key={heading} className="py-3 px-2 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">{heading}</th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
                     {pagedItems.map((entry) => {
                       const workingKey = `${entry.kind}-${entry.id}`;
                       return (
-                        <tr key={workingKey}>
-                          <td className="max-w-[360px]">
-                            <div className="font-semibold text-on-surface">{entry.title}</div>
-                            <div className="mt-1 text-[11px] text-outline">{entry.kind === 'CHECKLIST' ? 'Mẫu checklist' : 'Nội dung thư viện'}</div>
+                        <tr key={workingKey} className="border-b border-surface-container-highest hover:bg-surface-bright">
+                          <td className="py-3.5 px-2 max-w-[340px]">
+                            <div className="font-semibold text-sm text-on-surface">{entry.title}</div>
+                            <div className="text-xs text-outline mt-0.5">{entry.kind === 'CHECKLIST' ? 'Mẫu checklist' : 'Nội dung thư viện'}</div>
                           </td>
-                          <td>
-                            <span className="rounded-md bg-primary-container px-2.5 py-1 text-xs font-semibold text-primary">
+                          <td className="py-3.5 px-2">
+                            <span className="inline-flex items-center gap-1 py-1 px-3 rounded-full bg-surface-container-low text-primary text-xs font-semibold">
                               {entry.typeLabel}
                             </span>
                           </td>
-                          <td className="whitespace-nowrap text-on-surface-variant">{entry.stageLabel}</td>
-                          <td className="text-on-surface-variant">{entry.detail}</td>
-                          <td className="whitespace-nowrap text-on-surface-variant">{formatDateTime(entry.submittedAt)}</td>
-                          <td>
-                            <div className="flex justify-end gap-2">
+                          <td className="py-3.5 px-2 text-[13px] text-on-surface-variant whitespace-nowrap">{entry.stageLabel}</td>
+                          <td className="py-3.5 px-2 text-[13px] text-on-surface-variant">{entry.detail}</td>
+                          <td className="py-3.5 px-2 text-[13px] text-outline whitespace-nowrap">{formatDateTime(entry.submittedAt)}</td>
+                          <td className="py-3.5 px-2">
+                            <div className="flex items-center gap-1.5 justify-end">
                               <button
                                 type="button"
                                 onClick={() => navigate(DETAIL_PATH[entry.kind](entry.id))}
-                                className="portal-secondary-button h-8 whitespace-nowrap"
+                                className="h-8 py-1 px-3 rounded-lg border border-outline-variant bg-transparent cursor-pointer text-xs font-semibold text-primary flex items-center gap-1 hover:bg-surface-container-low"
+                                title="Xem chi tiết"
                               >
+                                <span className="material-symbols-outlined text-base">visibility</span>
                                 Xem
                               </button>
                               <button
                                 type="button"
                                 disabled={working === workingKey}
                                 onClick={() => openDecision(entry, 'APPROVE')}
-                                className="portal-primary-button h-8 whitespace-nowrap disabled:opacity-50"
+                                className="h-8 py-1 px-4 rounded-full bg-primary text-on-primary border-0 text-xs font-semibold cursor-pointer flex items-center gap-1 hover:bg-primary/90 disabled:opacity-50"
                               >
+                                <span className="material-symbols-outlined text-base">publish</span>
                                 Xuất bản
                               </button>
                               <button
                                 type="button"
                                 disabled={working === workingKey}
                                 onClick={() => openDecision(entry, 'REJECT')}
-                                className="portal-secondary-button h-8 whitespace-nowrap disabled:opacity-50"
+                                className="h-8 py-1 px-3 rounded-lg border border-outline-variant bg-surface text-on-surface-variant text-xs font-semibold cursor-pointer flex items-center gap-1 hover:bg-surface-container-low disabled:opacity-50"
                               >
+                                <span className="material-symbols-outlined text-base">undo</span>
                                 Trả nháp
                               </button>
                             </div>
@@ -358,34 +369,48 @@ export default function ContentApprovalQueuePage() {
                 </table>
               </div>
 
-              <div className="flex flex-col gap-3 border-t border-outline-variant/70 p-4 md:flex-row md:items-center md:justify-between">
-                <p className="text-xs text-on-surface-variant">
-                  Trang {currentPage + 1} / {totalPages}
-                </p>
-                <div className="flex items-center gap-2">
+              {/* Pagination */}
+              <div className="flex justify-between items-center mt-5 pt-4 border-t border-surface-container-highest">
+                <span className="text-[13px] text-outline">
+                  Hiển thị {filteredItems.length === 0 ? 0 : pageStart}-{pageEnd} trong {filteredItems.length} kết quả
+                </span>
+                <div className="flex gap-1">
                   <button
                     type="button"
-                    onClick={() => setPage((value) => Math.max(0, value - 1))}
                     disabled={currentPage === 0}
-                    className="portal-secondary-button"
+                    onClick={() => setPage((value) => Math.max(0, value - 1))}
+                    className={`w-9 h-9 rounded-full border border-outline-variant bg-surface flex items-center justify-center ${currentPage === 0 ? 'opacity-40 cursor-default' : 'cursor-pointer'}`}
                   >
-                    <span className="material-symbols-outlined text-base">chevron_left</span>
-                    Trước
+                    <span className="material-symbols-outlined text-primary text-lg">chevron_left</span>
                   </button>
+                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    const startPage = Math.max(0, Math.min(currentPage - 2, totalPages - 5));
+                    const p = startPage + i;
+                    if (p >= totalPages) return null;
+                    return (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setPage(p)}
+                        className={`w-9 h-9 rounded-full text-sm font-semibold cursor-pointer flex items-center justify-center ${currentPage === p ? 'border-0 bg-primary text-on-primary' : 'border border-outline-variant bg-surface text-on-surface-variant'}`}
+                      >
+                        {p + 1}
+                      </button>
+                    );
+                  })}
                   <button
                     type="button"
-                    onClick={() => setPage((value) => Math.min(totalPages - 1, value + 1))}
                     disabled={currentPage >= totalPages - 1}
-                    className="portal-secondary-button"
+                    onClick={() => setPage((value) => Math.min(totalPages - 1, value + 1))}
+                    className={`w-9 h-9 rounded-full border border-outline-variant bg-surface flex items-center justify-center ${currentPage >= totalPages - 1 ? 'opacity-40 cursor-default' : 'cursor-pointer'}`}
                   >
-                    Sau
-                    <span className="material-symbols-outlined text-base">chevron_right</span>
+                    <span className="material-symbols-outlined text-primary text-lg">chevron_right</span>
                   </button>
                 </div>
               </div>
             </>
           )}
-        </section>
+        </div>
       </div>
 
       <ConfirmDialog

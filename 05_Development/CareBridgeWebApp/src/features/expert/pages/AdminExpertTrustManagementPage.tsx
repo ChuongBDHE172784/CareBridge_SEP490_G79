@@ -82,22 +82,35 @@ export default function AdminExpertTrustManagementPage() {
   };
 
   return (
-    <main className="portal-page px-5 py-5 md:px-6 md:py-6">
-      <div className="portal-contained">
-        <header className="portal-header">
+    <main className="p-8 font-sans">
+      <div>
+        {/* Header */}
+        <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <p className="portal-eyebrow">Quản trị chuyên gia</p>
-            <h1 className="portal-title">Quản lý trạng thái tin cậy</h1>
-            <p className="portal-subtitle">Theo dõi trạng thái xác minh và cập nhật quyền tin cậy của chuyên gia.</p>
+            <h1 className="text-[26px] font-bold text-on-surface m-0">Quản lý trạng thái tin cậy chuyên gia</h1>
+            <p className="text-on-surface-variant text-sm mt-1">Theo dõi trạng thái xác minh và cập nhật quyền tin cậy của chuyên gia.</p>
           </div>
-        </header>
+        </div>
 
-        <section className="portal-toolbar">
-          <div className="flex flex-col gap-3 md:flex-row">
+        {/* Action / Filter bar */}
+        <div className="bg-surface rounded-2xl p-4 shadow-sm border border-surface-container-highest mb-6">
+          <div className="flex flex-col md:flex-row items-center gap-3">
+            <div className="flex-1 w-full relative">
+              <span className="material-symbols-outlined text-outline absolute left-[14px] top-1/2 -translate-y-1/2 text-xl">search</span>
+              <input
+                type="text"
+                placeholder="Tìm theo chuyên khoa hoặc tên…"
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && fetchExperts()}
+                className="w-full py-2.5 pr-[14px] pl-[42px] rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface outline-none font-sans"
+              />
+            </div>
+
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="portal-field md:w-52"
+              className="w-full md:w-52 py-2.5 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface-variant cursor-pointer font-sans"
             >
               <option value="">Tất cả trạng thái</option>
               <option value="APPROVED">Đã duyệt</option>
@@ -105,36 +118,27 @@ export default function AdminExpertTrustManagementPage() {
               <option value="REJECTED">Từ chối</option>
               <option value="SUSPENDED">Tạm ngưng</option>
             </select>
-            <input
-              type="text"
-              placeholder="Tìm theo chuyên khoa hoặc tên…"
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && fetchExperts()}
-              className="portal-field min-w-0 flex-1"
-            />
+
             <button
               onClick={fetchExperts}
-              className="portal-primary-button"
+              className="py-2.5 px-6 rounded-full bg-primary text-on-primary border-0 text-sm font-semibold cursor-pointer whitespace-nowrap hover:bg-primary/90"
             >
               Tìm kiếm
             </button>
           </div>
-        </section>
+        </div>
 
       {loading && (
-        <div className="flex justify-center rounded-lg border border-outline-variant/70 bg-surface py-16">
-          <span className="material-symbols-outlined animate-spin text-[32px] text-primary">progress_activity</span>
-        </div>
+        <div className="py-12 text-center text-outline bg-surface rounded-2xl border border-surface-container-highest">Đang tải dữ liệu…</div>
       )}
       {error && (
-        <div className="portal-error">
-          {error} <button onClick={fetchExperts} className="ml-3 underline font-semibold text-on-error">Thử lại</button>
+        <div className="py-12 text-center text-error bg-surface rounded-2xl border border-error-container">
+          {error} <button onClick={fetchExperts} className="ml-3 underline font-semibold text-error cursor-pointer">Thử lại</button>
         </div>
       )}
 
       {!loading && experts.length === 0 && !error && (
-        <div className="portal-empty">
+        <div className="bg-surface rounded-2xl p-12 text-center text-outline border border-surface-container-highest">
           <span className="material-symbols-outlined text-[48px] block mb-3 opacity-40">groups</span>
           <p className="text-base font-medium">Không tìm thấy chuyên gia</p>
         </div>

@@ -76,23 +76,23 @@ export default function AdminExpertIdentityReviewPage() {
   );
 
   return (
-    <div className="mx-auto max-w-[1600px] p-6">
-      <header className="mb-8 flex items-center justify-between">
+    <div className="p-8 font-sans">
+      <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Trung tâm Đối soát Định danh Chuyên gia</h1>
-          <p className="text-gray-500">Đối chiếu thông tin khai báo với ảnh CCCD và kết quả AI CompreFace.</p>
+          <h1 className="text-[26px] font-bold text-on-surface m-0">Trung tâm Đối soát Định danh Chuyên gia</h1>
+          <p className="text-on-surface-variant text-sm mt-1">Đối chiếu thông tin khai báo với ảnh CCCD và kết quả AI CompreFace.</p>
         </div>
-        <div className="relative w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+        <div className="relative w-full md:w-72">
+          <Search className="absolute left-[14px] top-1/2 -translate-y-1/2 text-outline" size={18} />
           <input
             type="text"
             placeholder="Tìm ID hồ sơ..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            className="w-full rounded-full border border-gray-300 pl-10 pr-4 py-2 text-sm focus:border-primary outline-none"
+            className="w-full py-2.5 pr-[14px] pl-[42px] rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface outline-none font-sans"
           />
         </div>
-      </header>
+      </div>
 
       {error && <div className="mb-6 rounded-xl bg-red-50 p-4 text-sm text-red-700 border border-red-200">{error}</div>}
 

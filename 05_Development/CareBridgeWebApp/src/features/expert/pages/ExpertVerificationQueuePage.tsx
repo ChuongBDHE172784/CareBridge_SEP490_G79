@@ -282,45 +282,46 @@ export default function ExpertVerificationQueuePage() {
   };
 
   return (
-    <main className="portal-page px-5 py-5 md:px-6 md:py-6">
-      <div className="portal-contained">
-        <header className="portal-header">
+    <main className="p-8 font-sans">
+      <div className="mx-auto max-w-7xl">
+        {/* Header */}
+        <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <p className="portal-eyebrow">Quản trị chuyên gia</p>
-            <h1 className="portal-title">Hàng đợi xác minh chuyên gia</h1>
-            <p className="portal-subtitle">Kiểm tra giấy tờ và đưa ra quyết định xác minh hồ sơ chuyên gia.</p>
+            <h1 className="text-[26px] font-bold text-on-surface m-0">Hàng đợi xác minh chuyên gia</h1>
+            <p className="text-on-surface-variant text-sm mt-1">Kiểm tra giấy tờ và đưa ra quyết định xác minh hồ sơ chuyên gia.</p>
           </div>
-        </header>
+        </div>
 
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4 text-sm">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/20 bg-primary/5 p-4 text-sm">
           <span>CCCD/ảnh chân dung được xét duyệt ở hàng đợi định danh riêng.</span>
           <a className="font-semibold text-primary" href="/admin/expert-identity-queue">Mở hàng đợi định danh →</a>
         </div>
         {finalProfileId && (
-          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-900">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-900">
             <span>Chứng chỉ đã duyệt. Chỉ hoàn tất nếu bộ định danh cũng đã được duyệt.</span>
-            <button disabled={actionId === finalProfileId} onClick={() => void finalizeExpert()} className="rounded-full bg-green-700 px-4 py-2 font-semibold text-white disabled:opacity-50">Phê duyệt chuyên gia cuối cùng</button>
+            <button disabled={actionId === finalProfileId} onClick={() => void finalizeExpert()} className="rounded-full bg-green-700 px-5 py-2.5 font-semibold text-white cursor-pointer disabled:opacity-50 hover:bg-green-800">Phê duyệt chuyên gia cuối cùng</button>
           </div>
         )}
 
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
           <div
-            className={`flex flex-col rounded-lg border border-outline-variant/70 bg-surface ${selectedId ? 'w-full lg:w-1/2' : 'w-full'}`}
+            className={`flex flex-col rounded-2xl border border-surface-container-highest bg-surface shadow-md ${selectedId ? 'w-full lg:w-1/2' : 'w-full'}`}
           >
-            <div className="p-4 pb-3 space-y-3">
-              <h2 className="text-sm font-semibold text-on-surface">Hồ sơ chờ xử lý</h2>
-              <div className="flex gap-2">
+            <div className="p-5 border-b border-surface-container-highest space-y-3">
+              <h2 className="text-base font-bold text-on-surface m-0">Hồ sơ chờ xử lý</h2>
+              <div className="flex gap-2 relative">
+                <span className="material-symbols-outlined text-outline absolute left-[14px] top-1/2 -translate-y-1/2 text-xl">search</span>
                 <input
                   type="text"
                   placeholder="Lọc theo loại bằng cấp…"
                   value={typeFilter}
                   onChange={(e) => setTypeFilter(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && fetchQueue()}
-                  className="portal-field flex-1"
+                  className="w-full py-2.5 pr-[14px] pl-[42px] rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface outline-none font-sans"
                 />
                 <button
                   onClick={fetchQueue}
-                  className="portal-primary-button"
+                  className="py-2.5 px-5 rounded-full bg-primary text-on-primary border-0 text-xs font-semibold cursor-pointer hover:bg-primary/90"
                 >
                   Tìm
                 </button>
