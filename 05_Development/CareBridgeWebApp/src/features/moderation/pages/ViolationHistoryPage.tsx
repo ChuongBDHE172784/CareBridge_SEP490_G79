@@ -13,8 +13,11 @@ import {
   getViolationStatus,
   type ViolationStatus,
 } from '../utils/violationPresentation';
+import { SortableTableHeader, type SortDirection } from '../../contentManagement/components/SortableTableHeader';
+import { nextSortDirection, sortRows } from '../../contentManagement/utils/tableSorting';
 
 type AccountAction = Extract<ModerationActionType, 'WARN' | 'SUSPEND' | 'RESTRICT' | 'ESCALATE'>;
+type ViolationSortKey = 'account' | 'violationCount' | 'latestAction' | 'status' | 'moderatorName' | 'actionAt';
 type ActionFilter = 'ALL' | AccountAction;
 type StatusFilter = 'ALL' | ViolationStatus;
 
@@ -35,6 +38,8 @@ export default function ViolationHistoryPage() {
   const [search, setSearch] = useState('');
   const [actionFilter, setActionFilter] = useState<ActionFilter>('ALL');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
+  const [sortKey, setSortKey] = useState<ViolationSortKey>('actionAt');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const latestRequest = useRef(0);
 
   const load = useCallback(async () => {
@@ -79,6 +84,23 @@ export default function ViolationHistoryPage() {
     const disciplined = items.filter((item) => ['SUSPEND', 'RESTRICT'].includes(item.latestAction.actionType)).length;
     return { active, repeat, disciplined };
   }, [items]);
+
+  const sortedItems = useMemo(() => sortRows(filteredItems, sortDirection, (item) => {
+    const latest = item.latestAction;
+    switch (sortKey) {
+      case 'account': return `${item.targetUserName} ${item.targetUserId}`;
+      case 'violationCount': return item.violationCount;
+      case 'latestAction': return ACTION_TYPE_LABELS[latest.actionType];
+      case 'status': return getViolationStatus(latest).label;
+      case 'moderatorName': return latest.moderatorName;
+      case 'actionAt': return new Date(latest.actionAt).getTime();
+    }
+  }), [filteredItems, sortDirection, sortKey]);
+
+  const changeSort = (key: ViolationSortKey) => {
+    setSortDirection(nextSortDirection(sortKey, key, sortDirection));
+    setSortKey(key);
+  };
 
   const totalPages = Math.max(1, Math.ceil(totalElements / pageSize));
   const pageStart = totalElements === 0 ? 0 : page * pageSize + 1;
@@ -214,13 +236,28 @@ export default function ViolationHistoryPage() {
                   <table className="w-full border-collapse">
                     <thead>
                       <tr className="border-b-2 border-surface-container-highest text-left">
-                        {['TÀI KHOẢN', 'SỐ LẦN VI PHẠM', 'XỬ LÝ MỚI NHẤT', 'HIỆU LỰC', 'KIỂM DUYỆT VIÊN', 'THỜI GIAN', 'THAO TÁC'].map((heading) => (
-                          <th key={heading} className="py-3 px-3 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">{heading}</th>
+                        {([
+                          ['account', 'TÀI KHOẢN'],
+                          ['violationCount', 'SỐ LẦN VI PHẠM'],
+                          ['latestAction', 'XỬ LÝ MỚI NHẤT'],
+                          ['status', 'HIỆU LỰC'],
+                          ['moderatorName', 'KIỂM DUYỆT VIÊN'],
+                          ['actionAt', 'THỜI GIAN'],
+                        ] as const).map(([key, label]) => (
+                          <SortableTableHeader
+                            key={key}
+                            label={label}
+                            active={sortKey === key}
+                            direction={sortDirection}
+                            onClick={() => changeSort(key)}
+                            className="px-3"
+                          />
                         ))}
+                        <th scope="col" className="py-3 px-3 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">THAO TÁC</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredItems.map((item) => {
+                      {sortedItems.map((item) => {
                         const latest = item.latestAction;
                         const status = getViolationStatus(latest);
                         const actionMeta = ACCOUNT_ACTION_META[latest.actionType];

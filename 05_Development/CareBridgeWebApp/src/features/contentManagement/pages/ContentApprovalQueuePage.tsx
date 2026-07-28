@@ -9,8 +9,11 @@ import {
 } from '../services/contentApi';
 import type { AdminChecklistTemplate, ContentDetail, ContentStage, ContentType } from '../models/content';
 import { STAGE_LABELS, TYPE_LABELS } from '../models/content';
+import { SortableTableHeader, type SortDirection } from '../components/SortableTableHeader';
+import { nextSortDirection, sortRows } from '../utils/tableSorting';
 
 type QueueKind = 'CONTENT' | 'CHECKLIST';
+type QueueSortKey = 'title' | 'type' | 'stage' | 'detail' | 'submittedAt';
 type TypeFilter = 'ALL' | ContentType;
 
 type QueueEntry = {
@@ -98,6 +101,8 @@ export default function ContentApprovalQueuePage() {
   const [stageFilter, setStageFilter] = useState<'ALL' | ContentStage>('ALL');
   const [pageSize, setPageSize] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(10);
   const [page, setPage] = useState(0);
+  const [sortKey, setSortKey] = useState<QueueSortKey>('submittedAt');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -141,11 +146,30 @@ export default function ContentApprovalQueuePage() {
     });
   }, [items, search, stageFilter, typeFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+  const sortedItems = useMemo(() => sortRows(filteredItems, sortDirection, (item) => {
+    switch (sortKey) {
+      case 'title': return item.title;
+      case 'type': return item.typeLabel;
+      case 'stage': return item.stageLabel;
+      case 'detail': return item.detail;
+      case 'submittedAt': {
+        const timestamp = item.submittedAt ? new Date(item.submittedAt).getTime() : null;
+        return timestamp !== null && !Number.isNaN(timestamp) ? timestamp : null;
+      }
+    }
+  }), [filteredItems, sortDirection, sortKey]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedItems.length / pageSize));
   const currentPage = Math.min(page, totalPages - 1);
-  const pagedItems = filteredItems.slice(currentPage * pageSize, currentPage * pageSize + pageSize);
-  const pageStart = filteredItems.length === 0 ? 0 : currentPage * pageSize + 1;
-  const pageEnd = Math.min((currentPage + 1) * pageSize, filteredItems.length);
+  const pagedItems = sortedItems.slice(currentPage * pageSize, currentPage * pageSize + pageSize);
+  const pageStart = sortedItems.length === 0 ? 0 : currentPage * pageSize + 1;
+  const pageEnd = Math.min((currentPage + 1) * pageSize, sortedItems.length);
+
+  const changeSort = (key: QueueSortKey) => {
+    setSortDirection(nextSortDirection(sortKey, key, sortDirection));
+    setSortKey(key);
+    setPage(0);
+  };
 
   const openDecision = (entry: QueueEntry, decision: PendingDecision['decision']) => {
     setDialogError('');
@@ -309,9 +333,22 @@ export default function ContentApprovalQueuePage() {
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="border-b-2 border-surface-container-highest text-left">
-                      {['NỘI DUNG', 'PHÂN LOẠI', 'GIAI ĐOẠN', 'THÔNG TIN', 'GỬI DUYỆT', 'THAO TÁC'].map((heading) => (
-                        <th key={heading} className="py-3 px-2 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">{heading}</th>
+                      {([
+                        ['title', 'NỘI DUNG'],
+                        ['type', 'PHÂN LOẠI'],
+                        ['stage', 'GIAI ĐOẠN'],
+                        ['detail', 'THÔNG TIN'],
+                        ['submittedAt', 'GỬI DUYỆT'],
+                      ] as const).map(([key, label]) => (
+                        <SortableTableHeader
+                          key={key}
+                          label={label}
+                          active={sortKey === key}
+                          direction={sortDirection}
+                          onClick={() => changeSort(key)}
+                        />
                       ))}
+                      <th scope="col" className="py-3 px-2 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">THAO TÁC</th>
                     </tr>
                   </thead>
                   <tbody>

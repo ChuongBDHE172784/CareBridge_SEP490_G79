@@ -12,8 +12,11 @@ import {
   REPORT_STATUS_LABELS,
   TARGET_TYPE_LABELS,
 } from '../models/moderation';
+import { SortableTableHeader, type SortDirection } from '../../contentManagement/components/SortableTableHeader';
+import { nextSortDirection, sortRows } from '../../contentManagement/utils/tableSorting';
 
 type Tab = 'PENDING' | 'PROCESSED';
+type ReportSortKey = 'reason' | 'source' | 'targetType' | 'contentPreview' | 'status' | 'reportedAt';
 type SourceFilter = 'ALL' | ReportSource;
 type PriorityFilter = 'ALL' | CasePriority;
 type TargetFilter = 'ALL' | ReportTargetType;
@@ -42,6 +45,8 @@ export default function ReportsQueuePage() {
   const [search, setSearch] = useState('');
   const [pageSize, setPageSize] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(10);
   const [page, setPage] = useState(0);
+  const [sortKey, setSortKey] = useState<ReportSortKey>('reportedAt');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [items, setItems] = useState<ModerationQueueItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -102,11 +107,30 @@ export default function ReportsQueuePage() {
     });
   }, [items, search]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+  const sortedItems = useMemo(() => sortRows(filteredItems, sortDirection, (item) => {
+    switch (sortKey) {
+      case 'reason': return `${formatReportReason(item.reportReason)} ${CASE_PRIORITY_LABELS[item.priority]}`;
+      case 'source': return REPORT_SOURCE_LABELS[item.reportSource];
+      case 'targetType': return TARGET_TYPE_LABELS[item.targetType];
+      case 'contentPreview': return item.contentPreview;
+      case 'status': return tab === 'PENDING'
+        ? (item.status === 'IN_REVIEW' ? 'Đang xem xét' : item.reportCount)
+        : REPORT_STATUS_LABELS[item.status];
+      case 'reportedAt': return new Date(item.reportedAt).getTime();
+    }
+  }), [filteredItems, sortDirection, sortKey, tab]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedItems.length / pageSize));
   const currentPage = Math.min(page, totalPages - 1);
-  const pagedItems = filteredItems.slice(currentPage * pageSize, currentPage * pageSize + pageSize);
-  const pageStart = filteredItems.length === 0 ? 0 : currentPage * pageSize + 1;
-  const pageEnd = Math.min((currentPage + 1) * pageSize, filteredItems.length);
+  const pagedItems = sortedItems.slice(currentPage * pageSize, currentPage * pageSize + pageSize);
+  const pageStart = sortedItems.length === 0 ? 0 : currentPage * pageSize + 1;
+  const pageEnd = Math.min((currentPage + 1) * pageSize, sortedItems.length);
+
+  const changeSort = (key: ReportSortKey) => {
+    setSortDirection(nextSortDirection(sortKey, key, sortDirection));
+    setSortKey(key);
+    setPage(0);
+  };
 
   const goToDetail = (item: ModerationQueueItem) => {
     if (item.targetType === 'ACCOUNT' || item.targetType === 'USER' || item.targetType === 'EXPERT') {
@@ -304,9 +328,23 @@ export default function ReportsQueuePage() {
                   <table className="w-full border-collapse">
                     <thead>
                       <tr className="border-b-2 border-surface-container-highest text-left">
-                        {['LÝ DO', 'NGUỒN', 'LOẠI', 'NỘI DUNG XEM TRƯỚC', tab === 'PENDING' ? 'TRẠNG THÁI / LƯỢT' : 'KẾT QUẢ', 'THỜI GIAN', 'THAO TÁC'].map((heading) => (
-                          <th key={heading} className="py-3 px-2 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">{heading}</th>
+                        {([
+                          ['reason', 'LÝ DO'],
+                          ['source', 'NGUỒN'],
+                          ['targetType', 'LOẠI'],
+                          ['contentPreview', 'NỘI DUNG XEM TRƯỚC'],
+                          ['status', tab === 'PENDING' ? 'TRẠNG THÁI / LƯỢT' : 'KẾT QUẢ'],
+                          ['reportedAt', 'THỜI GIAN'],
+                        ] as const).map(([key, label]) => (
+                          <SortableTableHeader
+                            key={key}
+                            label={label}
+                            active={sortKey === key}
+                            direction={sortDirection}
+                            onClick={() => changeSort(key)}
+                          />
                         ))}
+                        <th scope="col" className="py-3 px-2 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">THAO TÁC</th>
                       </tr>
                     </thead>
                     <tbody>

@@ -16,9 +16,13 @@ import type {
   ReportTargetType,
 } from '../models/moderation';
 import { ACTION_TYPE_LABELS, TARGET_TYPE_LABELS, UNDOABLE_ACTION_TYPES } from '../models/moderation';
+import { SortableTableHeader, type SortDirection } from '../../contentManagement/components/SortableTableHeader';
+import { nextSortDirection, sortRows } from '../../contentManagement/utils/tableSorting';
 
 type PendingActionType = 'APPROVE' | 'HIDE' | 'REQUEST_REVISION';
 type Tab = 'QUESTION' | 'ANSWER' | 'HISTORY';
+type PendingSortKey = 'targetType' | 'contentPreview' | 'createdAt';
+type HistorySortKey = 'targetType' | 'contentPreview' | 'actionType' | 'moderatorName' | 'reason' | 'actionAt';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
 
@@ -82,6 +86,10 @@ export default function PendingContentQueuePage() {
   const [actionFilter, setActionFilter] = useState<'ALL' | PendingActionType>('ALL');
   const [pageSize, setPageSize] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(10);
   const [page, setPage] = useState(0);
+  const [pendingSortKey, setPendingSortKey] = useState<PendingSortKey>('createdAt');
+  const [pendingSortDirection, setPendingSortDirection] = useState<SortDirection>('desc');
+  const [historySortKey, setHistorySortKey] = useState<HistorySortKey>('actionAt');
+  const [historySortDirection, setHistorySortDirection] = useState<SortDirection>('desc');
   const [actioningId, setActioningId] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<{ item: PendingContentItem; type: PendingActionType } | null>(null);
   const [dialogError, setDialogError] = useState('');
@@ -159,12 +167,43 @@ export default function PendingContentQueuePage() {
     });
   }, [actionFilter, historyItems, search]);
 
-  const filteredRows = tab === 'HISTORY' ? filteredHistory : filteredPending;
+  const sortedPending = useMemo(() => sortRows(filteredPending, pendingSortDirection, (item) => {
+    switch (pendingSortKey) {
+      case 'targetType': return TARGET_TYPE_LABELS[item.targetType];
+      case 'contentPreview': return item.contentPreview;
+      case 'createdAt': return new Date(item.createdAt).getTime();
+    }
+  }), [filteredPending, pendingSortDirection, pendingSortKey]);
+
+  const sortedHistory = useMemo(() => sortRows(filteredHistory, historySortDirection, (item) => {
+    switch (historySortKey) {
+      case 'targetType': return TARGET_TYPE_LABELS[item.targetType];
+      case 'contentPreview': return item.contentPreview;
+      case 'actionType': return ACTION_TYPE_LABELS[item.actionType];
+      case 'moderatorName': return item.moderatorName;
+      case 'reason': return item.reason;
+      case 'actionAt': return new Date(item.actionAt).getTime();
+    }
+  }), [filteredHistory, historySortDirection, historySortKey]);
+
+  const filteredRows = tab === 'HISTORY' ? sortedHistory : sortedPending;
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
   const currentPage = Math.min(page, totalPages - 1);
   const pagedRows = filteredRows.slice(currentPage * pageSize, currentPage * pageSize + pageSize);
   const pageStart = filteredRows.length === 0 ? 0 : currentPage * pageSize + 1;
   const pageEnd = Math.min((currentPage + 1) * pageSize, filteredRows.length);
+
+  const changePendingSort = (key: PendingSortKey) => {
+    setPendingSortDirection(nextSortDirection(pendingSortKey, key, pendingSortDirection));
+    setPendingSortKey(key);
+    setPage(0);
+  };
+
+  const changeHistorySort = (key: HistorySortKey) => {
+    setHistorySortDirection(nextSortDirection(historySortKey, key, historySortDirection));
+    setHistorySortKey(key);
+    setPage(0);
+  };
 
   const openPendingAction = (item: PendingContentItem, type: PendingActionType) => {
     setDialogError('');
@@ -384,9 +423,23 @@ export default function PendingContentQueuePage() {
                     <table className="w-full border-collapse">
                       <thead>
                         <tr className="border-b-2 border-surface-container-highest text-left">
-                          {['LOẠI', 'NỘI DUNG', 'HÀNH ĐỘNG', 'NGƯỜI XỬ LÝ', 'LÝ DO', 'THỜI GIAN', 'THAO TÁC'].map((heading) => (
-                            <th key={heading} className="py-3 px-2 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">{heading}</th>
+                          {([
+                            ['targetType', 'LOẠI'],
+                            ['contentPreview', 'NỘI DUNG'],
+                            ['actionType', 'HÀNH ĐỘNG'],
+                            ['moderatorName', 'NGƯỜI XỬ LÝ'],
+                            ['reason', 'LÝ DO'],
+                            ['actionAt', 'THỜI GIAN'],
+                          ] as const).map(([key, label]) => (
+                            <SortableTableHeader
+                              key={key}
+                              label={label}
+                              active={historySortKey === key}
+                              direction={historySortDirection}
+                              onClick={() => changeHistorySort(key)}
+                            />
                           ))}
+                          <th scope="col" className="py-3 px-2 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">THAO TÁC</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -455,9 +508,20 @@ export default function PendingContentQueuePage() {
                     <table className="w-full border-collapse">
                       <thead>
                         <tr className="border-b-2 border-surface-container-highest text-left">
-                          {['LOẠI', 'NỘI DUNG XEM TRƯỚC', 'THỜI GIAN ĐĂNG', 'THAO TÁC'].map((heading) => (
-                            <th key={heading} className="py-3 px-2 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">{heading}</th>
+                          {([
+                            ['targetType', 'LOẠI'],
+                            ['contentPreview', 'NỘI DUNG XEM TRƯỚC'],
+                            ['createdAt', 'THỜI GIAN ĐĂNG'],
+                          ] as const).map(([key, label]) => (
+                            <SortableTableHeader
+                              key={key}
+                              label={label}
+                              active={pendingSortKey === key}
+                              direction={pendingSortDirection}
+                              onClick={() => changePendingSort(key)}
+                            />
                           ))}
+                          <th scope="col" className="py-3 px-2 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">THAO TÁC</th>
                         </tr>
                       </thead>
                       <tbody>
