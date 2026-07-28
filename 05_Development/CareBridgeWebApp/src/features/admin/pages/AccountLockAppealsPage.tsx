@@ -31,6 +31,9 @@ export default function AccountLockAppealsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Search filter state
+  const [searchQuery, setSearchQuery] = useState('');
+
   // Pagination states
   const [page, setPage] = useState(0);
   const [pageSize] = useState(10);
@@ -70,7 +73,8 @@ export default function AccountLockAppealsPage() {
     setLoading(true);
     setError(null);
     try {
-      const result = await getAccountLockAppeals(status, page, pageSize);
+      // Fetch maximum available items for client-side realtime filtering and sorting
+      const result = await getAccountLockAppeals(status, 0, 100);
       setAppeals(result.content);
     } catch {
       setError('Không thể tải danh sách khiếu nại. Vui lòng thử lại.');
@@ -78,7 +82,7 @@ export default function AccountLockAppealsPage() {
     } finally {
       setLoading(false);
     }
-  }, [status, page, pageSize]);
+  }, [status]);
 
   useEffect(() => {
     void loadStats();
@@ -90,12 +94,26 @@ export default function AccountLockAppealsPage() {
 
   const handleTabChange = (newStatus: AccountLockAppealStatus) => {
     setStatus(newStatus);
+    setSearchQuery('');
     setPage(0);
   };
 
-  // Sorting logic matching ContentListPage & UserListPage
+  // Realtime search filtering by userName, userEmail, lockReason, or reason
+  const filteredAppeals = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return appeals;
+    return appeals.filter((item) => {
+      const nameMatch = (item.userName || '').toLowerCase().includes(q);
+      const emailMatch = (item.userEmail || '').toLowerCase().includes(q);
+      const lockReasonMatch = (item.lockReason || '').toLowerCase().includes(q);
+      const reasonMatch = (item.reason || '').toLowerCase().includes(q);
+      return nameMatch || emailMatch || lockReasonMatch || reasonMatch;
+    });
+  }, [appeals, searchQuery]);
+
+  // Sorting logic on filtered results
   const sortedAppeals = useMemo(() => {
-    return sortRows(appeals, sortDirection, (item) => {
+    return sortRows(filteredAppeals, sortDirection, (item) => {
       switch (sortKey) {
         case 'userName':
           return item.userName || item.userEmail || '';
@@ -109,20 +127,20 @@ export default function AccountLockAppealsPage() {
         }
       }
     });
-  }, [appeals, sortDirection, sortKey]);
+  }, [filteredAppeals, sortDirection, sortKey]);
+
+  // Paged items for current page
+  const pagedAppeals = useMemo(() => {
+    const start = page * pageSize;
+    return sortedAppeals.slice(start, start + pageSize);
+  }, [sortedAppeals, page, pageSize]);
 
   const changeSort = (key: AppealSortKey) => {
     setSortDirection(nextSortDirection(sortKey, key, sortDirection));
     setSortKey(key);
   };
 
-  const totalElements = useMemo(() => {
-    if (status === 'PENDING') return stats.pending;
-    if (status === 'APPROVED') return stats.approved;
-    if (status === 'REJECTED') return stats.rejected;
-    return stats.cancelled;
-  }, [status, stats]);
-
+  const totalElements = filteredAppeals.length;
   const totalPages = Math.ceil(totalElements / pageSize);
   const pageStart = totalElements === 0 ? 0 : page * pageSize + 1;
   const pageEnd = Math.min((page + 1) * pageSize, totalElements);
@@ -191,6 +209,23 @@ export default function AccountLockAppealsPage() {
         </div>
       </div>
 
+      {/* Realtime Search Bar */}
+      <div className="bg-surface rounded-2xl p-4 shadow-sm border border-surface-container-highest mb-6">
+        <div className="relative w-full">
+          <span className="material-symbols-outlined text-outline absolute left-[14px] top-1/2 -translate-y-1/2 text-xl">search</span>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setPage(0);
+            }}
+            placeholder="Tìm kiếm realtime theo tên tài khoản, email, lý do khóa hoặc nội dung giải trình..."
+            className="w-full pl-11 pr-4 py-2.5 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface outline-none focus:border-primary font-sans"
+          />
+        </div>
+      </div>
+
       {/* Filter Pill Tabs Bar */}
       <div className="mb-6 flex items-center gap-2 border-b border-surface-container-highest pb-3">
         {STATUS_TABS.map((tab) => (
@@ -198,10 +233,11 @@ export default function AccountLockAppealsPage() {
             key={tab.value}
             type="button"
             onClick={() => handleTabChange(tab.value)}
-            className={`py-2 px-5 rounded-full text-sm font-semibold cursor-pointer transition-colors flex items-center gap-2 ${status === tab.value
+            className={`py-2 px-5 rounded-full text-sm font-semibold cursor-pointer transition-colors flex items-center gap-2 ${
+              status === tab.value
                 ? 'bg-primary text-on-primary shadow-sm'
                 : 'bg-surface border border-outline-variant text-on-surface-variant hover:bg-surface-container-low'
-              }`}
+            }`}
           >
             <span className="material-symbols-outlined text-lg">{tab.icon}</span>
             {tab.label}
@@ -219,10 +255,10 @@ export default function AccountLockAppealsPage() {
       <div className="bg-surface rounded-2xl p-6 shadow-md border border-surface-container-highest">
         {loading ? (
           <div className="py-16 text-center text-outline">Đang tải danh sách khiếu nại...</div>
-        ) : appeals.length === 0 ? (
+        ) : pagedAppeals.length === 0 ? (
           <div className="py-16 text-center text-outline">
             <span className="material-symbols-outlined text-4xl block mb-2">gavel</span>
-            Không có đơn khiếu nại nào ở trạng thái này.
+            {searchQuery ? 'Không tìm thấy khiếu nại nào phù hợp với từ khóa.' : 'Không có đơn khiếu nại nào ở trạng thái này.'}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -251,7 +287,7 @@ export default function AccountLockAppealsPage() {
                 </tr>
               </thead>
               <tbody>
-                {sortedAppeals.map((appeal) => (
+                {pagedAppeals.map((appeal) => (
                   <tr key={appeal.id} className="border-b border-surface-container-highest hover:bg-surface-bright transition-colors">
                     <td className="py-3.5 px-3">
                       <div className="flex items-center gap-3">
@@ -306,8 +342,9 @@ export default function AccountLockAppealsPage() {
               type="button"
               disabled={page === 0}
               onClick={() => setPage((v) => Math.max(0, v - 1))}
-              className={`w-9 h-9 rounded-full border border-outline-variant bg-surface flex items-center justify-center ${page === 0 ? 'opacity-40 cursor-default' : 'cursor-pointer'
-                }`}
+              className={`w-9 h-9 rounded-full border border-outline-variant bg-surface flex items-center justify-center ${
+                page === 0 ? 'opacity-40 cursor-default' : 'cursor-pointer'
+              }`}
             >
               <span className="material-symbols-outlined text-primary text-lg">chevron_left</span>
             </button>
@@ -321,10 +358,11 @@ export default function AccountLockAppealsPage() {
                   key={p}
                   type="button"
                   onClick={() => setPage(p)}
-                  className={`w-9 h-9 rounded-full text-sm font-semibold cursor-pointer flex items-center justify-center ${page === p
+                  className={`w-9 h-9 rounded-full text-sm font-semibold cursor-pointer flex items-center justify-center ${
+                    page === p
                       ? 'border-0 bg-primary text-on-primary'
                       : 'border border-outline-variant bg-surface text-on-surface-variant hover:bg-surface-container-low'
-                    }`}
+                  }`}
                 >
                   {p + 1}
                 </button>
@@ -335,8 +373,9 @@ export default function AccountLockAppealsPage() {
               type="button"
               disabled={page >= totalPages - 1 || totalPages === 0}
               onClick={() => setPage((v) => Math.min(totalPages - 1, v + 1))}
-              className={`w-9 h-9 rounded-full border border-outline-variant bg-surface flex items-center justify-center ${page >= totalPages - 1 || totalPages === 0 ? 'opacity-40 cursor-default' : 'cursor-pointer'
-                }`}
+              className={`w-9 h-9 rounded-full border border-outline-variant bg-surface flex items-center justify-center ${
+                page >= totalPages - 1 || totalPages === 0 ? 'opacity-40 cursor-default' : 'cursor-pointer'
+              }`}
             >
               <span className="material-symbols-outlined text-primary text-lg">chevron_right</span>
             </button>
