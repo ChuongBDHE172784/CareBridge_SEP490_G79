@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/auth/auth_state.dart';
 import '../../../../core/network/api_client.dart';
 import '../models/federated_auth_failure.dart';
 import '../services/auth_service.dart';
@@ -66,6 +67,10 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
       context.go('/auth-landing');
     } on ApiException catch (e) {
+      if (e.statusCode == 403 && AuthState.instance.blockedAccount != null) {
+        if (mounted) context.go('/blocked');
+        return;
+      }
       String msg;
       if (e.statusCode == 403) {
         msg = 'Tài khoản bị khóa. Liên hệ hỗ trợ để mở khóa.';

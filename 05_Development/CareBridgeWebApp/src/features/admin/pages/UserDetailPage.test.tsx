@@ -41,6 +41,10 @@ function targetUser(overrides: Partial<AdminUserSummary> = {}): AdminUserSummary
     enabled: true,
     locked: false,
     lockedAt: null,
+    lockType: null,
+    lockReason: null,
+    lockedBy: null,
+    lockEpisodeId: null,
     createdAt: '2026-07-20T02:00:00Z',
     ...overrides,
   };
@@ -85,7 +89,7 @@ describe('admin user detail page', () => {
     render(<UserDetailPage />);
     await screen.findByText('Target User');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Phiên đăng nhập' }));
+    fireEvent.click(screen.getByRole('button', { name: /Phiên đăng nhập/ }));
 
     expect(await screen.findByText('Chrome on macOS')).toBeTruthy();
     expect(harness.getUserSessions).toHaveBeenCalledWith('user-target', 0, 50);

@@ -36,6 +36,10 @@ function targetUser(overrides: Partial<AdminUserSummary> = {}): AdminUserSummary
     enabled: true,
     locked: false,
     lockedAt: null,
+    lockType: null,
+    lockReason: null,
+    lockedBy: null,
+    lockEpisodeId: null,
     createdAt: '2026-07-20T02:00:00Z',
     ...overrides,
   };
@@ -70,6 +74,10 @@ describe('admin user list actions', () => {
     render(<UserListPage />);
 
     fireEvent.click(await screen.findByRole('button', { name: /Khóa tài khoản/ }));
+    fireEvent.change(screen.getByPlaceholderText(/Nhập lý do cụ thể/), {
+      target: { value: 'Locked from admin user list' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Khóa tài khoản' }));
 
     await waitFor(() => expect(harness.updateUserStatus).toHaveBeenCalledWith('user-target', {
       locked: true,

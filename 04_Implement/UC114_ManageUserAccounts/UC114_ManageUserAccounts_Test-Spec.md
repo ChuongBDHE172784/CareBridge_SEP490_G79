@@ -2,7 +2,7 @@
 # UC114 — Manage User Accounts — Test Specification
 
 **Document ID:** `CB-IDENTITY-TDD-114`
-**Version:** `1.0`
+**Version:** `1.1`
 **Date:** `2026-07-02`
 **Status:** `End-to-end implementation verified — 2026-07-28 (34 focused backend tests, 3 admin component tests, web build and lint PASS; Docker/browser smoke verification tracked below)`
 **Standard:** ISO/IEC/IEEE 29119-3:2021 — Software Testing Part 3: Test Documentation
@@ -33,6 +33,7 @@
 | `2026-07-02` | `AI Agent` | Khởi tạo tài liệu — TDD spec cho UC114 |
 | `2026-07-04` | `AI Agent` | Approved by user — proceeding to implementation |
 | `2026-07-28` | `Senior Developer` | Bổ sung test coverage end-to-end cho direct detail, session monitoring, activity timeline, web governance và browser E2E |
+| `2026-07-29` | `Senior Developer` | Bổ sung test matrix cho mandatory lock reason, session revocation, typed lock metadata, appeal token/episode, approval/rejection/cancellation và password-first disclosure |
 
 ---
 
@@ -77,6 +78,24 @@
 ---
 
 ## 2. Logic Issues Resolved
+
+### 2.0 Account-lock appeal regression matrix (v1.1)
+
+| Test ID | Scenario | Expected result |
+|---|---|---|
+| UC114-LOCK-001 | System Admin locks without a nonblank reason | `IAM-114-005`, no persistence/audit/session mutation |
+| UC114-LOCK-002 | System Admin manually locks with reason | `lock_type=ADMIN`, reason/actor/time/new episode persisted; active sessions revoked |
+| UC114-LOCK-003 | System Admin disables account | `enabled=false`; active sessions revoked; lock metadata unaffected |
+| UC114-LOCK-004 | Direct unlock with pending appeal | Lock metadata cleared and appeal becomes `CANCELLED` for the same episode |
+| UC114-APL-001 | Valid appeal token for current admin lock | One `PENDING` appeal created and audited |
+| UC114-APL-002 | Duplicate pending appeal | Rejected by service and partial unique index |
+| UC114-APL-003 | Expired/wrong-purpose/stale-episode token | Rejected; no appeal created |
+| UC114-APL-004 | System Admin approves pending appeal | Appeal `APPROVED` and account unlocked atomically |
+| UC114-APL-005 | System Admin rejects pending appeal | Appeal `REJECTED`; account remains locked |
+| UC114-WEB-001 | User list/detail manual lock | Required-reason confirmation dialog shown; no request before valid reason |
+| UC114-WEB-002 | Appeal queue/detail | Filter queue; render both reasons; approve/unlock and reject actions available only for `PENDING` |
+| UC114-MOB-001 | Mobile receives structured admin lock | Actual reason rendered; appeal form available only with valid appeal token |
+
 
 | # | Spec gốc (sai / thiếu) | Thực tế (schema / policy) | Fix áp dụng trong test |
 |---|------------------------|--------------------------|------------------------|

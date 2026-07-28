@@ -94,10 +94,10 @@ Future<_RefreshOutcome> _tryRefresh() async {
 }
 
 Future<void> _handle401(http.Response response) async {
-  final code = parseAccountBlockedCode(response);
-  if (code != null) {
-    debugPrint('[ApiClient] _handle401: account blocked → reason=$code');
-    unawaited(AuthState.instance.clearWithReason(code));
+  final blockedState = parseAccountBlockedState(response);
+  if (blockedState != null) {
+    debugPrint('[ApiClient] account blocked → code=${blockedState.code}');
+    unawaited(AuthState.instance.clearWithBlockedAccount(blockedState));
   } else {
     debugPrint(
       '[ApiClient] _handle401: clearing session (real 401 with valid token)',
@@ -129,6 +129,13 @@ Future<http.Response> _handleUnauthorized(
   }
 }
 
+Future<void> _handleBlockedResponse(http.Response response) async {
+  final state = parseAccountBlockedState(response);
+  if (state != null) {
+    await AuthState.instance.clearWithBlockedAccount(state);
+  }
+}
+
 Future<dynamic> apiGet(
   String path, {
   String? token,
@@ -150,6 +157,7 @@ Future<dynamic> apiGet(
     return jsonDecode(utf8.decode(response.bodyBytes));
   }
   if (response.statusCode == 401) await _handle401(response);
+  if (response.statusCode == 403) await _handleBlockedResponse(response);
   throw ApiException(response.statusCode, response.body);
 }
 
@@ -175,6 +183,7 @@ Future<dynamic> apiPost(
     return jsonDecode(utf8.decode(response.bodyBytes));
   }
   if (response.statusCode == 401) await _handle401(response);
+  if (response.statusCode == 403) await _handleBlockedResponse(response);
   throw ApiException(response.statusCode, response.body);
 }
 
@@ -200,6 +209,7 @@ Future<dynamic> apiPut(
     return jsonDecode(utf8.decode(response.bodyBytes));
   }
   if (response.statusCode == 401) await _handle401(response);
+  if (response.statusCode == 403) await _handleBlockedResponse(response);
   throw ApiException(response.statusCode, response.body);
 }
 
@@ -225,6 +235,7 @@ Future<dynamic> apiPatch(
     return jsonDecode(utf8.decode(response.bodyBytes));
   }
   if (response.statusCode == 401) await _handle401(response);
+  if (response.statusCode == 403) await _handleBlockedResponse(response);
   throw ApiException(response.statusCode, response.body);
 }
 
@@ -250,6 +261,7 @@ Future<dynamic> apiDelete(
     return jsonDecode(utf8.decode(response.bodyBytes));
   }
   if (response.statusCode == 401) await _handle401(response);
+  if (response.statusCode == 403) await _handleBlockedResponse(response);
   throw ApiException(response.statusCode, response.body);
 }
 
@@ -321,6 +333,7 @@ Future<dynamic> apiMultipart(
     return jsonDecode(utf8.decode(response.bodyBytes));
   }
   if (response.statusCode == 401) await _handle401(response);
+  if (response.statusCode == 403) await _handleBlockedResponse(response);
   throw ApiException(response.statusCode, response.body);
 }
 

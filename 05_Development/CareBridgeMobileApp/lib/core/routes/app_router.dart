@@ -168,7 +168,8 @@ String? resolveAppRedirect({
       location.startsWith('/login') ||
       location == '/auth-landing';
 
-  if (blockedReason != null && location != '/blocked') return '/blocked';
+  if (blockedReason != null) return location == '/blocked' ? null : '/blocked';
+  if (!isAuthenticated && location == '/blocked') return '/welcome';
   if (!isAuthenticated && !isAuthRoute) return '/welcome';
   if (isAuthenticated && !hasAssignedRole && location != '/role-selection') {
     return '/role-selection';

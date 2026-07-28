@@ -144,7 +144,7 @@ class JwtAuthenticationFilterAccountStateTest {
 
         mockMvc.perform(get("/api/v1/content").header(AUTH_HEADER, "Bearer " + FAKE_TOKEN))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.error").value("ACCOUNT_LOCKED"))
+                .andExpect(jsonPath("$.error").value("ACCOUNT_TEMPORARILY_LOCKED"))
                 .andExpect(jsonPath("$.status").value(403));
     }
 

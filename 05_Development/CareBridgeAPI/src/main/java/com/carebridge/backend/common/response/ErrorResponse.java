@@ -2,6 +2,7 @@ package com.carebridge.backend.common.response;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -16,6 +17,7 @@ public class ErrorResponse {
     private final String message;
     private final String path;
     private final List<ErrorDetail> details;
+    private final Map<String, Object> metadata;
     @Builder.Default
     private final Instant timestamp = Instant.now();
 

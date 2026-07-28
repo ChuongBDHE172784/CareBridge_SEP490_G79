@@ -9,6 +9,7 @@ import type { AuthResponse, LoginRequest } from '../models/auth';
 import { useAuthStore } from '../../../shared/auth/authStore';
 import { getDefaultRouteForRole } from '../../../shared/auth/roleRoutes';
 import logo from '../../../assets/logo.png';
+import { parseBlockedAccountError, saveBlockedAccountState } from '../models/blockedAccount';
 
 const loginSchema = z.object({
   identifier: z.string().min(1, 'Vui lòng nhập email hoặc số điện thoại'),
@@ -86,16 +87,13 @@ export default function LoginPage() {
     } catch (err: unknown) {
       const error = err as { response?: { status?: number; data?: { message?: string; error?: string } } };
       const status = error.response?.status;
-      const code = error.response?.data?.error;
+      const blockedState = parseBlockedAccountError(err);
 
-      if (status === undefined) {
+      if (blockedState) {
+        saveBlockedAccountState(blockedState);
+        navigate('/account-blocked', { replace: true });
+      } else if (status === undefined) {
         setServerError('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng hoặc thử lại sau.');
-      } else if (code === 'ACCOUNT_LOCKED') {
-        navigate('/account-blocked?reason=locked', { replace: true });
-      } else if (code === 'ACCOUNT_DISABLED') {
-        navigate('/account-blocked?reason=disabled', { replace: true });
-      } else if (code === 'ACCOUNT_SUSPENDED') {
-        navigate('/account-blocked?reason=suspended', { replace: true });
       } else if (status === 401) {
         setServerError('Email hoặc mật khẩu không chính xác. Vui lòng thử lại.');
       } else if (status === 429) {

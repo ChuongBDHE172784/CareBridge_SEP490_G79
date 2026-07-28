@@ -10,6 +10,10 @@ export interface AdminUserSummary {
   enabled: boolean;
   locked: boolean;
   lockedAt: string | null;
+  lockType: 'TEMPORARY' | 'ADMIN' | null;
+  lockReason: string | null;
+  lockedBy: string | null;
+  lockEpisodeId: string | null;
   createdAt: string;
 }
 
@@ -86,6 +90,23 @@ export interface AdminUserActivity {
   action: AdminUserActivityAction;
   timestamp: string;
   details: string | null;
+}
+
+export type AccountLockAppealStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+
+export interface AccountLockAppeal {
+  id: string;
+  userId: string;
+  userName: string | null;
+  userEmail: string | null;
+  lockEpisodeId: string;
+  lockReason: string | null;
+  reason: string;
+  status: AccountLockAppealStatus;
+  submittedAt: string;
+  reviewedBy: string | null;
+  reviewedAt: string | null;
+  reviewNote: string | null;
 }
 
 export interface PaginatedResult<T> {

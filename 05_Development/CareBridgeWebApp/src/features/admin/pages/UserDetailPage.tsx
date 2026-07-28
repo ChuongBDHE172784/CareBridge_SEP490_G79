@@ -14,6 +14,7 @@ import type {
   StaffRole,
 } from '../models/adminUser';
 import type { UserRole } from '../../../shared/auth/authStore';
+import ConfirmDialog from '../../../shared/components/ConfirmDialog';
 
 const ROLE_LABELS: Record<UserRole, string> = {
   MOTHER: 'Mẹ',
@@ -56,6 +57,7 @@ export default function UserDetailPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tabError, setTabError] = useState<string | null>(null);
+  const [showLockDialog, setShowLockDialog] = useState(false);
 
   const isSelf = Boolean(user && currentUser?.id === user.id);
   const canManageRole = Boolean(user && STAFF_ROLES.includes(user.role as StaffRole));
@@ -105,14 +107,16 @@ export default function UserDetailPage() {
     };
   }, [activeTab, userId]);
 
-  async function updateAccess(request: { enabled?: boolean; locked?: boolean; reason: string }) {
-    if (!user || isSelf) return;
+  async function updateAccess(request: { enabled?: boolean; locked?: boolean; reason: string }): Promise<boolean> {
+    if (!user || isSelf) return false;
     setIsSubmitting(true);
     setError(null);
     try {
       setUser(await updateUserStatus(user.id, request));
+      return true;
     } catch {
       setError('Không thể cập nhật trạng thái tài khoản. Vui lòng kiểm tra quyền và thử lại.');
+      return false;
     } finally {
       setIsSubmitting(false);
     }
@@ -179,7 +183,6 @@ export default function UserDetailPage() {
                 </span>
               </div>
               <p className="truncate text-sm text-on-surface-variant mt-1">{user.email}</p>
-              <p className="mt-1 text-xs font-mono text-outline">ID: {user.id}</p>
             </div>
           </div>
 
@@ -212,12 +215,13 @@ export default function UserDetailPage() {
 
             <button
               type="button"
-              onClick={() =>
-                updateAccess({
-                  locked: !user.locked,
-                  reason: user.locked ? 'Admin mở khóa tài khoản' : 'Admin khóa tài khoản',
-                })
-              }
+              onClick={() => {
+                if (user.locked) {
+                  void updateAccess({ locked: false, reason: 'System Admin mở khóa trực tiếp' });
+                } else {
+                  setShowLockDialog(true);
+                }
+              }}
               disabled={isSelf || isSubmitting}
               className={`py-2.5 px-5 rounded-full border text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-50 ${
                 user.locked
@@ -229,6 +233,19 @@ export default function UserDetailPage() {
                 {user.locked ? 'lock_open' : 'lock'}
               </span>
               {user.locked ? 'Mở khóa' : 'Khóa tài khoản'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => void updateAccess({
+                enabled: !user.enabled,
+                reason: user.enabled ? 'System Admin vô hiệu hóa tài khoản' : 'System Admin kích hoạt lại tài khoản',
+              })}
+              disabled={isSelf || isSubmitting}
+              className="py-2.5 px-5 rounded-full border border-outline-variant bg-surface text-sm font-semibold text-on-surface-variant inline-flex items-center gap-2 hover:bg-surface-container-low disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-lg">{user.enabled ? 'block' : 'check_circle'}</span>
+              {user.enabled ? 'Vô hiệu hóa' : 'Kích hoạt lại'}
             </button>
           </div>
         </div>
@@ -270,6 +287,14 @@ export default function UserDetailPage() {
               <h3 className="text-base font-bold text-on-surface m-0 mb-1">Thông tin truy cập & Quyền hạn</h3>
               <p className="text-xs text-on-surface-variant">Chi tiết trạng thái tài khoản và vai trò trong hệ thống CareBridge.</p>
             </div>
+
+            {user.locked && user.lockType === 'ADMIN' && user.lockReason && (
+              <div className="rounded-2xl border border-error-container bg-error-container/35 p-4">
+                <span className="block text-xs font-semibold uppercase tracking-wider text-error">Lý do khóa bởi System Admin</span>
+                <p className="mb-0 mt-2 text-sm leading-6 text-on-surface">{user.lockReason}</p>
+                <p className="mb-0 mt-2 text-xs text-on-surface-variant">Khóa lúc: {formatDate(user.lockedAt)}</p>
+              </div>
+            )}
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="rounded-2xl border border-surface-container-highest bg-surface-bright p-4">
@@ -375,6 +400,27 @@ export default function UserDetailPage() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        key={`lock-${user.id}-${showLockDialog ? 'open' : 'closed'}`}
+        open={showLockDialog}
+        title={`Khóa tài khoản ${user.name}?`}
+        description="Mọi phiên đăng nhập đang hoạt động sẽ bị thu hồi. Sau khi nhập đúng mật khẩu, người dùng sẽ thấy lý do này và có thể gửi khiếu nại mở khóa."
+        icon="lock"
+        tone="danger"
+        confirmLabel="Xác nhận khóa"
+        reasonLabel="Lý do khóa bắt buộc"
+        reasonPlaceholder="Mô tả rõ căn cứ khóa tài khoản..."
+        submitting={isSubmitting}
+        errorText={error ?? undefined}
+        onCancel={() => setShowLockDialog(false)}
+        onConfirm={(reason) => {
+          if (!reason) return;
+          void updateAccess({ locked: true, reason }).then((updated) => {
+            if (updated) setShowLockDialog(false);
+          });
+        }}
+      />
     </div>
   );
 }

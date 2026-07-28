@@ -246,11 +246,13 @@ class AuthServiceLoginTest {
         User user = User.builder()
                 .id(UUID.randomUUID())
                 .phone(phone)
+                .passwordHash("$2a$12$hashedpassword")
                 .enabled(false)
                 .locked(false)
                 .build();
 
         when(userRepository.findByPhone(phone)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("password", "$2a$12$hashedpassword")).thenReturn(true);
         doThrow(new AccountDisabledException("Account is disabled"))
                 .when(authenticationPolicy).ensureCanAuthenticate(user);
 
@@ -263,7 +265,8 @@ class AuthServiceLoginTest {
                 .isInstanceOf(AccountDisabledException.class)
                 .hasMessage("Account is disabled");
 
-        verifyNoInteractions(rateLimitPolicy, passwordEncoder);
+        verifyNoInteractions(rateLimitPolicy);
+        verify(passwordEncoder).matches("password", "$2a$12$hashedpassword");
     }
 
     @Test
@@ -274,12 +277,14 @@ class AuthServiceLoginTest {
         User user = User.builder()
                 .id(UUID.randomUUID())
                 .phone(phone)
+                .passwordHash("$2a$12$hashedpassword")
                 .enabled(true)
                 .locked(true)
                 .lockedAt(Instant.now())
                 .build();
 
         when(userRepository.findByPhone(phone)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("password", "$2a$12$hashedpassword")).thenReturn(true);
         doThrow(new AccountLockedException("Account is locked"))
                 .when(authenticationPolicy).ensureCanAuthenticate(user);
 
@@ -292,11 +297,12 @@ class AuthServiceLoginTest {
                 .isInstanceOf(AccountLockedException.class)
                 .hasMessage("Account is locked");
 
-        verifyNoInteractions(rateLimitPolicy, passwordEncoder);
+        verifyNoInteractions(rateLimitPolicy);
+        verify(passwordEncoder).matches("password", "$2a$12$hashedpassword");
     }
 
     @Test
-    @DisplayName("LOGIN-TC-006: 5th wrong password locks account")
+    @DisplayName("LOGIN-TC-006: 5th wrong password locks account without disclosing state")
     void login_WhenRateLimited_ShouldLockAccountAndThrow() {
         // Given
         String phone = "+84901234567";
@@ -304,13 +310,21 @@ class AuthServiceLoginTest {
         User user = User.builder()
                 .id(userId)
                 .phone(phone)
+                .passwordHash("$2a$12$hashedpassword")
                 .enabled(true)
                 .locked(false)
                 .build();
 
         when(userRepository.findByPhone(phone)).thenReturn(Optional.of(user));
-        doNothing().when(authenticationPolicy).ensureCanAuthenticate(user);
+        when(passwordEncoder.matches("password", "$2a$12$hashedpassword")).thenReturn(false);
         when(rateLimitPolicy.canAttempt(userId.toString())).thenReturn(false);
+        doAnswer(invocation -> {
+            User target = invocation.getArgument(0);
+            target.setLocked(true);
+            target.setLockedAt(invocation.getArgument(1));
+            target.setLockType(com.carebridge.backend.security.entity.AccountLockType.TEMPORARY);
+            return null;
+        }).when(authenticationPolicy).applyTemporaryLock(eq(user), any(Instant.class));
 
         LoginRequest request = new LoginRequest();
         request.setPhone(phone);
@@ -318,8 +332,8 @@ class AuthServiceLoginTest {
 
         // When/Then
         assertThatThrownBy(() -> authService.login(request))
-                .isInstanceOf(AccountLockedException.class)
-                .hasMessageContaining("Account temporarily locked");
+                .isInstanceOf(AuthenticationException.class)
+                .hasMessage("Invalid credentials");
 
         // Verify account was locked and lockedAt was set
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
@@ -328,7 +342,8 @@ class AuthServiceLoginTest {
         assertThat(savedUser.isLocked()).isTrue();
         assertThat(savedUser.getLockedAt()).isNotNull();
 
-        verifyNoInteractions(passwordEncoder);
+        verify(passwordEncoder).matches("password", "$2a$12$hashedpassword");
+        verify(authenticationPolicy).applyTemporaryLock(eq(user), any(Instant.class));
     }
 
     @Test

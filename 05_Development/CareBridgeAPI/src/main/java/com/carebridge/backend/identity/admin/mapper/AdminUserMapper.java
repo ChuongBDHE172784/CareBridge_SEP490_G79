@@ -17,6 +17,10 @@ public class AdminUserMapper {
                 .enabled(user.isEnabled())
                 .locked(user.isLocked())
                 .lockedAt(user.getLockedAt())
+                .lockType(user.getLockType())
+                .lockReason(user.getLockReason())
+                .lockedBy(user.getLockedBy())
+                .lockEpisodeId(user.getLockEpisodeId())
                 .createdAt(user.getCreatedAt())
                 .build();
     }

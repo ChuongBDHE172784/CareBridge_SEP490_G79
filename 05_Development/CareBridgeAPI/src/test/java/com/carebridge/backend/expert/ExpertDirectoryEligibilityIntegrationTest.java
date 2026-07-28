@@ -121,12 +121,14 @@ class ExpertDirectoryEligibilityIntegrationTest extends AbstractPostgresIntegrat
                 : "jsonb_set(coalesce(settings_jsonb, '{}'::jsonb), '{suspendedUntil}', "
                         + "to_jsonb((" + suspendedUntilExpression + ")::timestamptz::text))";
         jdbcTemplate.update(
-                "UPDATE users SET enabled = ?, locked = ?, suspended_until = "
+                "UPDATE users SET enabled = ?, locked = ?, lock_type = CASE WHEN ? THEN 'TEMPORARY' ELSE NULL END, locked_at = CASE WHEN ? THEN now() ELSE NULL END, suspended_until = "
                         + suspendedUntil
                         + ", settings_jsonb = "
                         + settingsJsonb
                         + " WHERE user_id = ?",
                 enabled,
+                locked,
+                locked,
                 locked,
                 expertUserId);
     }

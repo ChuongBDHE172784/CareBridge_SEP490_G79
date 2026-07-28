@@ -4,6 +4,7 @@ import { useAuth } from '../../../shared/auth/useAuth';
 import { searchUsers, updateUserStatus } from '../services/adminUserApi';
 import type { AdminUserSummary, UpdateUserStatusRequest } from '../models/adminUser';
 import type { UserRole } from '../../../shared/auth/authStore';
+import ConfirmDialog from '../../../shared/components/ConfirmDialog';
 
 const ROLE_LABELS: Record<UserRole, string> = {
   MOTHER: 'Mẹ',
@@ -46,6 +47,7 @@ export default function UserListPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [updatingAction, setUpdatingAction] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [lockTarget, setLockTarget] = useState<AdminUserSummary | null>(null);
 
   // States to hold global system counts (unfiltered)
   const [allUsersCount, setAllUsersCount] = useState<number | null>(null);
@@ -325,12 +327,13 @@ export default function UserListPage() {
 
                           <button
                             type="button"
-                            onClick={() =>
-                              updateAccess(item, 'lock', {
-                                locked: !item.locked,
-                                reason: item.locked ? 'Admin mở khóa tài khoản' : 'Admin khóa tài khoản',
-                              })
-                            }
+                            onClick={() => {
+                              if (item.locked) {
+                                void updateAccess(item, 'lock', { locked: false });
+                              } else {
+                                setLockTarget(item);
+                              }
+                            }}
                             disabled={isSelf || isLocking}
                             title={isSelf ? 'Không thể tự khóa tài khoản' : item.locked ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}
                             className={`h-8 py-1 px-3 rounded-lg border text-xs font-semibold inline-flex items-center gap-1 disabled:cursor-not-allowed disabled:opacity-50 ${
@@ -342,7 +345,7 @@ export default function UserListPage() {
                             <span className="material-symbols-outlined text-base">
                               {item.locked ? 'lock_open' : 'lock'}
                             </span>
-                            {item.locked ? 'Mở khóa' : 'Khóa'}
+                            {item.locked ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}
                           </button>
 
                           <button
@@ -360,7 +363,7 @@ export default function UserListPage() {
                             <span className="material-symbols-outlined text-base">
                               {item.enabled ? 'block' : 'check_circle'}
                             </span>
-                            {item.enabled ? 'Tắt' : 'Bật'}
+                            {item.enabled ? 'Vô hiệu hóa' : 'Kích hoạt lại'}
                           </button>
                         </div>
                       </td>
@@ -420,6 +423,25 @@ export default function UserListPage() {
           </div>
         </div>
       </div>
+
+      <ConfirmDialog
+        key={lockTarget?.id ?? 'lock-user'}
+        open={lockTarget !== null}
+        title={`Khóa tài khoản ${lockTarget?.name ?? ''}?`}
+        description="Người dùng sẽ bị đăng xuất khỏi tất cả phiên, nhìn thấy lý do này sau khi nhập đúng mật khẩu và có thể gửi khiếu nại."
+        icon="lock"
+        tone="danger"
+        confirmLabel="Khóa tài khoản"
+        reasonLabel="Lý do khóa"
+        reasonPlaceholder="Nhập lý do cụ thể để người dùng và quản trị viên xem xét..."
+        submitting={lockTarget ? updatingAction === `${lockTarget.id}:lock` : false}
+        onCancel={() => setLockTarget(null)}
+        onConfirm={(reason) => {
+          if (!lockTarget || !reason) return;
+          void updateAccess(lockTarget, 'lock', { locked: true, reason })
+            .then(() => setLockTarget(null));
+        }}
+      />
     </div>
   );
 }

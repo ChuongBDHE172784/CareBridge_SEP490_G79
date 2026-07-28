@@ -4,7 +4,7 @@
 | Field | Value |
 |-------|-------|
 | **Document ID** | `CB-IDENTITY-IMP-114` |
-| **Version** | `1.0` |
+| **Version** | `1.1` |
 | **Date** | `2026-07-02` |
 | **Status** | `Implemented` |
 | **Document Owner** | `TV1-Phương` |
@@ -12,7 +12,7 @@
 | **Reviewed by** | `[Tech Lead — Pending]` |
 | **DPO Sign-off** | `[ ] Pending` *(module lists/searches/filters PII fields — email, phone, full name — of every platform user; bulk read access requires DPO review before production)* |
 | **Approved by** | `[Principal Architect — Pending]` |
-| **Last Review** | `2026-07-02` |
+| **Last Review** | `2026-07-29` |
 | **Based on EDS** | `v2.0` |
 
 ---
@@ -25,6 +25,7 @@
 | 2026-07-04 | AI Agent | Approved by user — proceeding to implementation |
 | 2026-07-04 | AI Agent | Implemented — AdminUserController/ServiceImpl tests all green (verified independently) |
 | 2026-07-28 | Senior Developer | Mở rộng end-to-end Admin Portal: detail direct-load, session monitoring, activity/audit timeline, staff provisioning và role/status governance; tái sử dụng `users`, `auth_sessions`, `audit_logs`, không tạo bảng mới |
+| 2026-07-29 | Senior Developer | Phân loại khóa tạm thời/khóa quản trị/vô hiệu hóa/tạm ngưng; bắt buộc lý do khóa; thu hồi phiên; bổ sung khiếu nại theo lock episode và quy trình System Admin duyệt/từ chối |
 
 ---
 
@@ -112,6 +113,25 @@ lock/unlock of these two existing flags** — no new status enum or workflow is
 introduced. Hard delete of a `users` row is explicitly **out of scope** (no
 SRS text authorizes destructive user deletion from this screen; `AccountDeletionRequest`
 already exists as the user-initiated self-deletion flow and is not superseded here).
+
+### 1.4 Account-state and appeal extension (v1.1)
+
+The original Boolean-only lock design conflated security lockout with a manual governance decision. Version 1.1 introduces four non-interchangeable states:
+
+| State | Source | Persistence | User disclosure | Appeal |
+|---|---|---|---|---|
+| `TEMPORARY_LOCK` | Failed-password rate limit | `users.locked=true`, `lock_type=TEMPORARY`; auto-expires after 15 minutes | Generic credentials response for wrong password; retry time only after correct password | No |
+| `ADMIN_LOCK` | System Admin | `users.locked=true`, `lock_type=ADMIN`, mandatory reason/actor/episode | Reason only after correct password | Yes |
+| `DISABLED` | Account lifecycle decision | `users.enabled=false` | Separate disabled message only after correct password | No |
+| `SUSPENDED` | Moderation/UC102 | Existing `suspended_until` | Separate suspension message | Existing moderation process |
+
+Current-state metadata is stored on `users` through Flyway `V3`: `lock_type`, `lock_reason`, `locked_by`, `lock_episode_id`. Repeating appeal history has an independent lifecycle, therefore one new table `account_lock_appeals` is justified. A partial unique index enforces at most one `PENDING` appeal per `(user_id, lock_episode_id)`.
+
+Manual lock and disable actions revoke all active `auth_sessions`. Direct unlock cancels a pending appeal for the same episode. Approval updates the appeal and clears lock metadata atomically; rejection preserves the lock. The public appeal token is RSA-signed, purpose-scoped as `ACCOUNT_LOCK_APPEAL`, expires after ten minutes, contains the user and lock episode, and is not accepted as an API access token.
+
+### 1.5 Password-first disclosure rule
+
+To prevent account enumeration and unauthorized disclosure of governance reasons, credential login uses this strict order: locate identifier, verify password, then evaluate account state. Unknown identifier and wrong password always return `Invalid credentials`. Only a correct password may expose `ACCOUNT_ADMIN_LOCKED`, the administrative reason, and a short-lived appeal token. Refresh/JWT failures never include the reason or appeal authorization.
 
 ---
 

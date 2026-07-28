@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { useAuthStore } from '../auth/authStore';
+import { saveBlockedAccountState } from '../../features/auth/models/blockedAccount';
 
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080',
@@ -16,7 +17,7 @@ apiClient.interceptors.request.use((config) => {
 // password, locked account trying to log in, etc.), not "your session expired".
 // The calling page shows its own inline error — the interceptor must not
 // force-logout or redirect over it.
-const PUBLIC_AUTH_PATHS = ['/auth/register', '/auth/login', '/auth/verify-otp', '/auth/resend-otp', '/auth/forgot-password'];
+const PUBLIC_AUTH_PATHS = ['/auth/register', '/auth/login', '/auth/login-direct', '/auth/verify-otp', '/auth/resend-otp', '/auth/forgot-password', '/auth/lock-appeals'];
 
 function requestPath(url: string) {
   try {
@@ -57,11 +58,15 @@ apiClient.interceptors.response.use(
         window.location.href = '/login';
       } else if (
         status === 403 &&
-        (errorCode === 'ACCOUNT_DISABLED' || errorCode === 'ACCOUNT_LOCKED')
+        ['ACCOUNT_DISABLED', 'ACCOUNT_ADMIN_LOCKED', 'ACCOUNT_TEMPORARILY_LOCKED', 'ACCOUNT_SUSPENDED'].includes(errorCode)
       ) {
         useAuthStore.getState().logout();
-        const reason = errorCode === 'ACCOUNT_DISABLED' ? 'disabled' : 'locked';
-        window.location.href = `/account-blocked?reason=${reason}`;
+        saveBlockedAccountState({
+          code: errorCode,
+          message: error.response?.data?.message,
+          ...(error.response?.data?.metadata ?? {}),
+        });
+        window.location.href = '/account-blocked';
       }
     }
     return Promise.reject(error);

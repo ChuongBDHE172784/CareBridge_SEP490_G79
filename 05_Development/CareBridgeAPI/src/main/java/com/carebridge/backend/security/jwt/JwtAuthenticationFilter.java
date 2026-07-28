@@ -46,7 +46,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 path.equals("/api/v1/auth/register") ||
                 path.equals("/api/v1/auth/login") ||
                 path.equals("/api/v1/auth/verify-otp") ||
-                path.equals("/api/v1/auth/refresh")
+                path.equals("/api/v1/auth/refresh") ||
+                path.equals("/api/v1/auth/lock-appeals")
         );
     }
 
@@ -83,7 +84,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
         if (user.isLocked()) {
-            writeError(request, response, 403, "ACCOUNT_LOCKED", "This account has been locked");
+            String code = user.getLockType() == com.carebridge.backend.security.entity.AccountLockType.ADMIN
+                    ? "ACCOUNT_ADMIN_LOCKED" : "ACCOUNT_TEMPORARILY_LOCKED";
+            writeError(request, response, 403, code, "This account has been locked");
             return;
         }
         // UC-102 ADR-003 touchpoint #1: lazy, read-only expiry check — no write-back of

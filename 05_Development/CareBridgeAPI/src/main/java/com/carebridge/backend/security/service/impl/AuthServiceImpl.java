@@ -250,12 +250,13 @@ public class AuthServiceImpl implements AuthService {
 
         if (user == null) throw new AuthenticationException("Invalid credentials");
 
-        authenticationPolicy.ensureCanAuthenticate(user);
-
         String passwordHash = user.getPasswordHash();
         if (passwordHash == null || !passwordEncoder.matches(request.getPassword(), passwordHash)) {
             throw new AuthenticationException("Invalid credentials");
         }
+
+        // Only disclose administrative account state after credential proof.
+        authenticationPolicy.ensureCanAuthenticate(user);
 
         user.setLastLoginAt(Instant.now());
         userRepository.save(user);
@@ -321,32 +322,26 @@ public class AuthServiceImpl implements AuthService {
             throw new AuthenticationException("Invalid credentials");
         }
 
-        // Check account status via policy (covers enabled/disabled/locked)
+        String rateLimitKey = getRateLimitKey(user);
+
+        // Verify password before exposing disabled/locked/suspended state.
+        String passwordHash = user.getPasswordHash();
+        if (passwordHash == null || !passwordEncoder.matches(request.getPassword(), passwordHash)) {
+            if (!rateLimitPolicy.canAttempt(rateLimitKey)) {
+                authenticationPolicy.applyTemporaryLock(user, Instant.now());
+                userRepository.save(user);
+            }
+            throw new AuthenticationException("Invalid credentials");
+        }
+
         authenticationPolicy.ensureCanAuthenticate(user);
 
-        // Rate limit check
-        String rateLimitKey = getRateLimitKey(user);
-        if (!rateLimitPolicy.canAttempt(rateLimitKey)) {
-            user.setLocked(true);
-            user.setLockedAt(Instant.now());
-            userRepository.save(user);
-            throw new AccountLockedException("Account temporarily locked due to multiple failed attempts");
-        }
-
-        // Verify password
-        String passwordHash = user.getPasswordHash();
-        if (passwordHash == null) {
-            throw new AuthenticationException("Invalid credentials");
-        }
-
-        if (!passwordEncoder.matches(request.getPassword(), passwordHash)) {
-            throw new AuthenticationException("Invalid credentials");
-        }
-
-        // Password matches: reset rate limits and locks
+        // A successful password clears only an expired/temporary lock; an admin lock
+        // is rejected by the policy above and cannot be erased by authentication.
         resetRateLimit(rateLimitKey);
-        user.setLocked(false);
-        user.setLockedAt(null);
+        if (user.getLockType() == com.carebridge.backend.security.entity.AccountLockType.TEMPORARY) {
+            authenticationPolicy.clearLock(user);
+        }
 
         // Password verification never completes authentication. Even previously verified
         // identifiers must prove possession again through the login OTP challenge. Tokens and
@@ -688,7 +683,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         User user = existing.getUser();
-        authenticationPolicy.ensureCanAuthenticate(user);
+        authenticationPolicy.ensureCanAuthenticate(user, false);
 
         existing.setRevoked(true);
         RefreshToken rotated = createRefreshToken(user);

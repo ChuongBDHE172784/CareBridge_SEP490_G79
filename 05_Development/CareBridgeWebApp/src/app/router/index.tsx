@@ -48,6 +48,8 @@ import UserListPage from '../../features/admin/pages/UserListPage';
 import UserDetailPage from '../../features/admin/pages/UserDetailPage';
 import UpdateUserRolePage from '../../features/admin/pages/UpdateUserRolePage';
 import CreateStaffAccountPage from '../../features/admin/pages/CreateStaffAccountPage';
+import AccountLockAppealsPage from '../../features/admin/pages/AccountLockAppealsPage';
+import AccountLockAppealDetailPage from '../../features/admin/pages/AccountLockAppealDetailPage';
 
 // Security & admin screens (TV1 Sprint 0)
 import SecurityIncidentListPage from '../../features/security/pages/SecurityIncidentListPage';
@@ -170,6 +172,8 @@ export const router = createBrowserRouter([
               { path: '/admin/users/:userId', element: <UserDetailPage /> },
               { path: '/admin/users/:userId/role', element: <UpdateUserRolePage /> },
               { path: '/admin/staff-accounts/create', element: <CreateStaffAccountPage /> },
+              { path: '/admin/account-lock-appeals', element: <AccountLockAppealsPage /> },
+              { path: '/admin/account-lock-appeals/:appealId', element: <AccountLockAppealDetailPage /> },
               { path: '/admin/expert-verification-queue', element: <ExpertVerificationQueuePage /> },
               { path: '/admin/expert-identity-queue', element: <AdminExpertIdentityReviewPage /> },
 { path: '/admin/expert-trust-management', element: <AdminExpertTrustManagementPage /> },

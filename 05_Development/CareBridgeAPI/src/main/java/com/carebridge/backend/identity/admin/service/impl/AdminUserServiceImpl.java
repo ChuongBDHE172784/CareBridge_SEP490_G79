@@ -11,8 +11,11 @@ import com.carebridge.backend.identity.admin.dto.response.AdminUserActivityRespo
 import com.carebridge.backend.identity.admin.dto.response.AdminUserSessionResponse;
 import com.carebridge.backend.identity.admin.dto.response.AdminUserSummaryResponse;
 import com.carebridge.backend.identity.admin.mapper.AdminUserMapper;
+import com.carebridge.backend.identity.admin.repository.AccountLockAppealRepository;
 import com.carebridge.backend.identity.admin.repository.AdminUserMonitoringRepository;
 import com.carebridge.backend.identity.admin.service.AdminUserService;
+import com.carebridge.backend.identity.repository.UserSessionRepository;
+import com.carebridge.backend.security.entity.AccountLockType;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.repository.UserRepository;
 import java.time.Instant;
@@ -38,6 +41,8 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final AuditService auditService;
     private final AdminUserMapper adminUserMapper;
     private final AdminUserMonitoringRepository monitoringRepository;
+    private final UserSessionRepository userSessionRepository;
+    private final AccountLockAppealRepository appealRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -98,15 +103,41 @@ public class AdminUserServiceImpl implements AdminUserService {
         User target = userRepository.findById(targetUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("IAM-114-003: User not found"));
 
+        if (Boolean.TRUE.equals(request.getLocked())
+                && (request.getReason() == null || request.getReason().isBlank())) {
+            throw new ValidationException("IAM-114-005: lock reason is required");
+        }
+
         boolean previousEnabled = target.isEnabled();
         boolean previousLocked = target.isLocked();
 
+        Instant now = Instant.now();
         if (request.getEnabled() != null) {
             target.setEnabled(request.getEnabled());
+            if (!request.getEnabled()) userSessionRepository.revokeAllByUserId(targetUserId, now);
         }
         if (request.getLocked() != null) {
-            target.setLocked(request.getLocked());
-            target.setLockedAt(request.getLocked() ? Instant.now() : null);
+            if (request.getLocked()) {
+                target.setLocked(true);
+                target.setLockedAt(now);
+                target.setLockType(AccountLockType.ADMIN);
+                target.setLockReason(request.getReason().trim());
+                target.setLockedBy(callerUserId);
+                target.setLockEpisodeId(UUID.randomUUID());
+                userSessionRepository.revokeAllByUserId(targetUserId, now);
+            } else {
+                UUID episodeId = target.getLockEpisodeId();
+                target.setLocked(false);
+                target.setLockedAt(null);
+                target.setLockType(null);
+                target.setLockReason(null);
+                target.setLockedBy(null);
+                target.setLockEpisodeId(null);
+                if (episodeId != null) {
+                    appealRepository.cancelPending(targetUserId, episodeId, now, callerUserId,
+                            "Closed because System Admin unlocked the account directly");
+                }
+            }
         }
 
         User saved = userRepository.save(target);

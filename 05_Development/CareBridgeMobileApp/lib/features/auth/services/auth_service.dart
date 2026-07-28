@@ -216,6 +216,16 @@ class AuthService {
     return auth;
   }
 
+  Future<void> submitAccountLockAppeal({
+    required String appealToken,
+    required String reason,
+  }) async {
+    await _postRequest('/api/v1/auth/lock-appeals', {
+      'appealToken': appealToken,
+      'reason': reason,
+    });
+  }
+
   // UC-02: Verify OTP — completes login/registration and persists tokens
   Future<AuthResponse> verifyOtp({
     String? email,

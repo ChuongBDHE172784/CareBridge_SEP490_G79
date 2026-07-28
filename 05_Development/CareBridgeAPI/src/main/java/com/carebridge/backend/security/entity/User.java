@@ -97,8 +97,21 @@ public class User {
     @Column(name = "locked", nullable = false)
     private boolean locked = false;
 
-    @Transient
+    @Column(name = "locked_at")
     private Instant lockedAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "lock_type", length = 30)
+    private AccountLockType lockType;
+
+    @Column(name = "lock_reason", length = 500)
+    private String lockReason;
+
+    @Column(name = "locked_by")
+    private UUID lockedBy;
+
+    @Column(name = "lock_episode_id")
+    private UUID lockEpisodeId;
 
     // Canonical users.suspended_until physical column (nullable). Also mirrored into
     // settings_jsonb->>'suspendedUntil' in canonicalPerson() for jsonb-based queries
@@ -162,7 +175,10 @@ public class User {
                 .updatedAt(updatedAt)
                 .build();
         lastLoginAt = instantSetting("lastLoginAt");
-        lockedAt = instantSetting("lockedAt");
+        // locked_at is now canonical; retain a one-way fallback for rows written by
+        // earlier application versions that only mirrored it into settings_jsonb.
+        if (lockedAt == null) lockedAt = instantSetting("lockedAt");
+        if (locked && lockType == null) lockType = AccountLockType.TEMPORARY;
         // suspended_until is a real column now; fall back to the settings_jsonb mirror
         // for legacy rows where only the jsonb copy was written.
         if (suspendedUntil == null) suspendedUntil = instantSetting("suspendedUntil");

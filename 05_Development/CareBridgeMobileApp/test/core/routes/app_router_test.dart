@@ -47,4 +47,30 @@ void main() {
       expect(redirect, isNull);
     });
   });
+
+  group('blocked account routing', () {
+    test('keeps a blocked unauthenticated user on the blocked screen', () {
+      final redirect = resolveAppRedirect(
+        isAuthenticated: false,
+        isRestoring: false,
+        blockedReason: 'ACCOUNT_ADMIN_LOCKED',
+        role: null,
+        location: '/blocked',
+      );
+
+      expect(redirect, isNull);
+    });
+
+    test('returns to welcome only after the blocked state is cleared', () {
+      final redirect = resolveAppRedirect(
+        isAuthenticated: false,
+        isRestoring: false,
+        blockedReason: null,
+        role: null,
+        location: '/blocked',
+      );
+
+      expect(redirect, '/welcome');
+    });
+  });
 }
