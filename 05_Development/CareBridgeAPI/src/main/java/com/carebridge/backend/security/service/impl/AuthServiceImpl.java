@@ -250,7 +250,7 @@ public class AuthServiceImpl implements AuthService {
         // 2. Fetch user
         User user = hasPhone
                 ? userRepository.findByPhone(phone).orElse(null)
-                : userRepository.findByEmailIgnoreCase(email).orElse(null);
+                : userRepository.findByEmail(email).orElse(null);
 
         if (user == null) {
             throw new AuthenticationException("Invalid credentials");
