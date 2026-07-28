@@ -318,6 +318,12 @@ CREATE TABLE public.care_item_templates (
     feedback_level character varying(30),
     content_status character varying(20) DEFAULT 'DRAFT'::character varying NOT NULL,
     is_required boolean,
+    author_user_id uuid,
+    revision_reason text,
+    revision_requested_at timestamp with time zone,
+    revision_requested_by uuid,
+    revision_requested_version integer,
+    lock_version bigint DEFAULT 0 NOT NULL,
     CONSTRAINT care_item_templates_pkey PRIMARY KEY (template_id)
 );
 
@@ -520,6 +526,12 @@ CREATE TABLE public.content_items (
     updated_at timestamp(6) with time zone,
     version_no integer,
     stage character varying(30),
+    revision_reason text,
+    revision_requested_at timestamp with time zone,
+    revision_requested_by uuid,
+    revision_requested_version integer,
+    lock_version bigint DEFAULT 0 NOT NULL,
+    summary character varying(150),
     CONSTRAINT content_items_pkey PRIMARY KEY (content_item_id)
 );
 
@@ -1765,10 +1777,10 @@ BEGIN
     END IF;
     SELECT pg_get_constraintdef(oid) INTO v_existing_def FROM pg_constraint WHERE conname = 'notification_records_type_check' AND conrelid = 'public.notification_records'::regclass;
     IF v_existing_def IS NULL THEN
-        EXECUTE 'ALTER TABLE public.notification_records ADD CONSTRAINT notification_records_type_check CHECK (((type)::text = ANY (ARRAY[(''REMINDER''::character varying)::text, (''COMMUNITY_REPLY''::character varying)::text, (''CONSULTATION''::character varying)::text, (''EMERGENCY''::character varying)::text, (''MESSAGE''::character varying)::text, (''GROUP_INVITE''::character varying)::text])))';
-    ELSIF v_existing_def <> 'CHECK (((type)::text = ANY (ARRAY[(''REMINDER''::character varying)::text, (''COMMUNITY_REPLY''::character varying)::text, (''CONSULTATION''::character varying)::text, (''EMERGENCY''::character varying)::text, (''MESSAGE''::character varying)::text, (''GROUP_INVITE''::character varying)::text])))' THEN
+        EXECUTE 'ALTER TABLE public.notification_records ADD CONSTRAINT notification_records_type_check CHECK (((type)::text = ANY (ARRAY[(''REMINDER''::character varying)::text, (''COMMUNITY_REPLY''::character varying)::text, (''CONSULTATION''::character varying)::text, (''EMERGENCY''::character varying)::text, (''MESSAGE''::character varying)::text, (''GROUP_INVITE''::character varying)::text, (''CONTENT_REVIEW''::character varying)::text])))';
+    ELSIF v_existing_def <> 'CHECK (((type)::text = ANY (ARRAY[(''REMINDER''::character varying)::text, (''COMMUNITY_REPLY''::character varying)::text, (''CONSULTATION''::character varying)::text, (''EMERGENCY''::character varying)::text, (''MESSAGE''::character varying)::text, (''GROUP_INVITE''::character varying)::text, (''CONTENT_REVIEW''::character varying)::text])))' THEN
         EXECUTE 'ALTER TABLE public.notification_records DROP CONSTRAINT notification_records_type_check';
-        EXECUTE 'ALTER TABLE public.notification_records ADD CONSTRAINT notification_records_type_check CHECK (((type)::text = ANY (ARRAY[(''REMINDER''::character varying)::text, (''COMMUNITY_REPLY''::character varying)::text, (''CONSULTATION''::character varying)::text, (''EMERGENCY''::character varying)::text, (''MESSAGE''::character varying)::text, (''GROUP_INVITE''::character varying)::text])))';
+        EXECUTE 'ALTER TABLE public.notification_records ADD CONSTRAINT notification_records_type_check CHECK (((type)::text = ANY (ARRAY[(''REMINDER''::character varying)::text, (''COMMUNITY_REPLY''::character varying)::text, (''CONSULTATION''::character varying)::text, (''EMERGENCY''::character varying)::text, (''MESSAGE''::character varying)::text, (''GROUP_INVITE''::character varying)::text, (''CONTENT_REVIEW''::character varying)::text])))';
     END IF;
     SELECT pg_get_constraintdef(oid) INTO v_existing_def FROM pg_constraint WHERE conname = 'uk_partner_email' AND conrelid = 'public.partner_organizations'::regclass;
     IF v_existing_def IS NULL THEN
