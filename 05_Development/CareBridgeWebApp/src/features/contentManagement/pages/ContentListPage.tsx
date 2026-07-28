@@ -1,9 +1,12 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchStaffContentList } from '../services/contentApi';
 import type { ContentDetail, ContentType } from '../models/content';
 import { STATUS_LABELS, TYPE_LABELS } from '../models/content';
 import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
+import { SortableTableHeader, type SortDirection } from '../components/SortableTableHeader';
+import { useDebouncedValue } from '../hooks/useDebouncedValue';
+import { nextSortDirection, sortRows } from '../utils/tableSorting';
 
 
 /* ------------------------------------------------------------------ */
@@ -43,41 +46,61 @@ export default function ContentListPage() {
   const [page, setPage] = useState(0);
   const [pageSize] = useState(10);
   const [typeFilter, setTypeFilter] = useState<ContentType | ''>('');
-  const [keyword, setKeyword] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false);
+  const [sortKey, setSortKey] = useState<'title' | 'type' | 'status' | 'version' | 'updatedAt'>('updatedAt');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const latestRequestId = useRef(0);
+  const debouncedKeyword = useDebouncedValue(searchInput.trim());
+
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedKeyword]);
 
   const loadData = useCallback(async () => {
+    const requestId = latestRequestId.current + 1;
+    latestRequestId.current = requestId;
     setIsLoading(true);
     try {
       const data = await fetchStaffContentList({
-        keyword: keyword || undefined,
+        keyword: debouncedKeyword || undefined,
         type: typeFilter || undefined,
         page,
         size: pageSize,
       });
+      if (requestId !== latestRequestId.current) return;
       setItems(data.content);
       setTotal(data.totalElements);
     } catch {
+      if (requestId !== latestRequestId.current) return;
       setItems([]);
       setTotal(0);
     } finally {
-      setIsLoading(false);
+      if (requestId === latestRequestId.current) setIsLoading(false);
     }
-  }, [keyword, typeFilter, page, pageSize]);
+  }, [debouncedKeyword, typeFilter, page, pageSize]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
   const totalPages = Math.ceil(total / pageSize);
 
-  const handleSearch = () => {
-    setKeyword(searchInput);
-    setPage(0);
-  };
+  const sortedItems = useMemo(() => sortRows(items, sortDirection, (item) => {
+    switch (sortKey) {
+      case 'title': return item.title;
+      case 'type': return TYPE_LABELS[item.type];
+      case 'status': return statusBadge(item).label;
+      case 'version': return item.version;
+      case 'updatedAt': {
+        const timestamp = new Date(item.updatedAt ?? item.createdAt ?? item.publishedAt ?? 0).getTime();
+        return Number.isNaN(timestamp) ? 0 : timestamp;
+      }
+    }
+  }), [items, sortDirection, sortKey]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleSearch();
+  const changeSort = (key: typeof sortKey) => {
+    setSortDirection(nextSortDirection(sortKey, key, sortDirection));
+    setSortKey(key);
   };
 
   return (
@@ -95,8 +118,7 @@ export default function ContentListPage() {
           <input
             value={searchInput}
             onChange={e => setSearchInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Tìm kiếm theo tiêu đề, tác giả..."
+            placeholder="Tìm kiếm theo tiêu đề, nội dung..."
             className="w-full py-3 pr-[14px] pl-[42px] rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface outline-none font-sans"
           />
         </div>
@@ -157,13 +179,26 @@ export default function ContentListPage() {
             <table className="w-full border-collapse">
               <thead>
                 <tr className="border-b-2 border-surface-container-highest text-left">
-                  {['TIÊU ĐỀ', 'PHÂN LOẠI', 'TRẠNG THÁI', 'PHIÊN BẢN', 'CẬP NHẬT BỞI', 'THAO TÁC'].map(h => (
-                    <th key={h} className="py-3 px-2 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">{h}</th>
+                  {[
+                    ['title', 'TIÊU ĐỀ'],
+                    ['type', 'PHÂN LOẠI'],
+                    ['status', 'TRẠNG THÁI'],
+                    ['version', 'PHIÊN BẢN'],
+                    ['updatedAt', 'CẬP NHẬT'],
+                  ].map(([key, label]) => (
+                    <SortableTableHeader
+                      key={key}
+                      label={label}
+                      active={sortKey === key}
+                      direction={sortDirection}
+                      onClick={() => changeSort(key as typeof sortKey)}
+                    />
                   ))}
+                  <th scope="col" className="px-2 py-3 text-[11px] font-semibold uppercase tracking-[0.05em] text-outline">THAO TÁC</th>
                 </tr>
               </thead>
               <tbody>
-                {items.map(item => {
+                {sortedItems.map(item => {
                   const status = statusBadge(item);
                   return (
                     <tr
@@ -173,7 +208,7 @@ export default function ContentListPage() {
                       <td className="py-3.5 px-2 max-w-[320px]">
                         <div className="font-semibold text-sm text-on-surface">{item.title}</div>
                         <ReviewFeedbackNotice feedback={item.latestReviewFeedback} compact />
-                        <div className="text-xs text-outline mt-0.5">Cập nhật: {timeAgo(item.publishedAt)}</div>
+                        <div className="text-xs text-outline mt-0.5">Cập nhật: {timeAgo(item.updatedAt ?? item.createdAt ?? item.publishedAt)}</div>
                       </td>
                       <td className="py-3.5 px-2">
                         <span className="inline-flex items-center gap-1 py-1 px-3 rounded-full bg-surface-container-low text-primary text-xs font-semibold">
@@ -186,8 +221,8 @@ export default function ContentListPage() {
                           {status.label}
                         </span>
                       </td>
-                      <td className="py-3.5 px-2 text-[13px] text-on-surface-variant">v1</td>
-                      <td className="py-3.5 px-2 text-[13px] text-on-surface-variant">Content Admin</td>
+                      <td className="py-3.5 px-2 text-[13px] text-on-surface-variant">v{item.version}</td>
+                      <td className="py-3.5 px-2 text-[13px] text-on-surface-variant">{timeAgo(item.updatedAt ?? item.createdAt ?? item.publishedAt)}</td>
                       <td className="py-3.5 px-2">
                         <div className="flex gap-1">
                           <button

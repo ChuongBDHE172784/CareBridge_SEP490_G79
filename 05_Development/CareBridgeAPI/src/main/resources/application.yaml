@@ -78,7 +78,6 @@ carebridge:
       max-attempts: 5
   auth:
     federated-enabled: ${AUTH_FEDERATED_ENABLED:true}
-    login-direct-enabled: ${CAREBRIDGE_AUTH_LOGIN_DIRECT_ENABLED:false}
   firebase:
     project-id: ${FIREBASE_PROJECT_ID:}
     auth-emulator-enabled: ${CAREBRIDGE_FIREBASE_AUTH_EMULATOR_ENABLED:false}

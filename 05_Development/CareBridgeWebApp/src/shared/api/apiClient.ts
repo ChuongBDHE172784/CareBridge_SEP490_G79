@@ -18,6 +18,22 @@ apiClient.interceptors.request.use((config) => {
 // force-logout or redirect over it.
 const PUBLIC_AUTH_PATHS = ['/auth/register', '/auth/login', '/auth/verify-otp', '/auth/resend-otp', '/auth/forgot-password'];
 
+function requestPath(url: string) {
+  try {
+    const path = new URL(url, 'http://carebridge.local').pathname;
+    return path.length > 1 ? path.replace(/\/+$/, '') : path;
+  } catch {
+    const path = url.split(/[?#]/, 1)[0];
+    return path.length > 1 ? path.replace(/\/+$/, '') : path;
+  }
+}
+
+export function shouldRedirectToMaintenance(status: number | undefined, errorCode: string | undefined, url: string) {
+  return status === 503
+    && errorCode === 'SYSTEM_MAINTENANCE'
+    && requestPath(url) !== '/api/v1/admin/system-configuration';
+}
+
 // Clear session on 401, or 403 with ACCOUNT_DISABLED/ACCOUNT_LOCKED.
 // Plain 403 (role mismatch) must NOT trigger logout.
 apiClient.interceptors.response.use(
@@ -27,6 +43,13 @@ apiClient.interceptors.response.use(
     const errorCode = error.response?.data?.error;
     const url: string = error.config?.url ?? '';
     const isPublicAuthCall = PUBLIC_AUTH_PATHS.some((path) => url.includes(path));
+
+    if (shouldRedirectToMaintenance(status, errorCode, url)) {
+      if (window.location.pathname !== '/maintenance') {
+        window.location.replace('/maintenance');
+      }
+      return Promise.reject(error);
+    }
 
     if (!isPublicAuthCall) {
       if (status === 401) {

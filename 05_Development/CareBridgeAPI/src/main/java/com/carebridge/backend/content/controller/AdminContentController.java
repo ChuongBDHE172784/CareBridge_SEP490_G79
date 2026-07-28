@@ -33,6 +33,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.service.ContentService;
 import com.carebridge.backend.content.entity.ContentStage;
@@ -53,13 +54,16 @@ public class AdminContentController {
     public ResponseEntity<PaginatedResponse<AdminChecklistTemplateResponse>> getChecklists(
             @RequestParam(required = false) ContentStage stage,
             @RequestParam(required = false) ChecklistTemplateStatus status,
+            @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         if (page < 0 || size < 1 || size > 50) {
             throw ContentException.validationFailed("size", "must be between 1 and 50");
         }
         return ResponseEntity.ok(PaginatedResponse.of(
-                contentService.getAdminChecklists(stage, status, PageRequest.of(page, size))));
+                contentService.getAdminChecklists(
+                        stage, status, keyword,
+                        PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "updatedAt")))));
     }
 
     @GetMapping
@@ -74,7 +78,9 @@ public class AdminContentController {
             throw ContentException.validationFailed("size", "must be between 1 and 50");
         }
         return ResponseEntity.ok(ApiResponse.success(
-                adminContentService.getStaffContents(status, type, stage, keyword, PageRequest.of(page, size)),
+                adminContentService.getStaffContents(
+                        status, type, stage, keyword,
+                        PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "updatedAt"))),
                 "Content workspace loaded"));
     }
 

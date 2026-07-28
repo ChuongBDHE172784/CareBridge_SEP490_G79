@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type {
   AdminChecklistTemplate,
@@ -11,6 +11,9 @@ import {
 } from '../models/content';
 import { archiveChecklistTemplate, fetchAdminChecklists } from '../services/contentApi';
 import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
+import { SortableTableHeader, type SortDirection } from '../components/SortableTableHeader';
+import { useDebouncedValue } from '../hooks/useDebouncedValue';
+import { nextSortDirection, sortRows } from '../utils/tableSorting';
 
 const PAGE_SIZE = 10;
 
@@ -59,11 +62,19 @@ export default function ChecklistListPage() {
   const [archivingId, setArchivingId] = useState<string | null>(null);
   const [stageFilter, setStageFilter] = useState<ContentStage | ''>('');
   const [statusFilter, setStatusFilter] = useState<ChecklistTemplateStatus | ''>('');
+  const [searchInput, setSearchInput] = useState('');
   const [page, setPage] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
+  const [sortKey, setSortKey] = useState<'name' | 'stage' | 'itemCount' | 'status' | 'updatedAt'>('updatedAt');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const latestRequestId = useRef(0);
   const archivingIdRef = useRef<string | null>(null);
+  const debouncedKeyword = useDebouncedValue(searchInput.trim());
+
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedKeyword]);
 
   const loadData = useCallback(async () => {
     const requestId = latestRequestId.current + 1;
@@ -75,6 +86,7 @@ export default function ChecklistListPage() {
       const result = await fetchAdminChecklists({
         stage: stageFilter || undefined,
         status: statusFilter || undefined,
+        ...(debouncedKeyword ? { keyword: debouncedKeyword } : {}),
         page,
         size: PAGE_SIZE,
       });
@@ -99,7 +111,12 @@ export default function ChecklistListPage() {
         setIsLoading(false);
       }
     }
-  }, [page, stageFilter, statusFilter]);
+  }, [page, stageFilter, statusFilter, debouncedKeyword]);
+
+  const latestLoadData = useRef(loadData);
+  useEffect(() => {
+    latestLoadData.current = loadData;
+  }, [loadData]);
 
   useEffect(() => {
     void loadData();
@@ -108,14 +125,10 @@ export default function ChecklistListPage() {
     };
   }, [loadData]);
 
-  const latestLoadData = useRef(loadData);
-  useEffect(() => {
-    latestLoadData.current = loadData;
-  }, [loadData]);
 
   useEffect(() => {
     setActionError('');
-  }, [page, stageFilter, statusFilter]);
+  }, [page, stageFilter, statusFilter, debouncedKeyword]);
 
   const handleDelete = async (checklist: AdminChecklistTemplate) => {
     if (checklist.status === 'ARCHIVED' || archivingIdRef.current !== null) return;
@@ -143,6 +156,23 @@ export default function ChecklistListPage() {
 
   const from = totalElements === 0 ? 0 : page * PAGE_SIZE + 1;
   const to = Math.min((page + 1) * PAGE_SIZE, totalElements);
+  const sortedChecklists = useMemo(() => sortRows(checklists, sortDirection, (checklist) => {
+    switch (sortKey) {
+      case 'name': return checklist.name;
+      case 'stage': return checklist.stage ? STAGE_LABELS[checklist.stage] : '';
+      case 'itemCount': return checklist.itemCount;
+      case 'status': return checklist.latestReviewFeedback ? 'Cần chỉnh sửa' : CHECKLIST_STATUS_LABELS[checklist.status];
+      case 'updatedAt': {
+        const timestamp = new Date(checklist.updatedAt ?? 0).getTime();
+        return Number.isNaN(timestamp) ? 0 : timestamp;
+      }
+    }
+  }), [checklists, sortDirection, sortKey]);
+
+  const changeSort = (key: typeof sortKey) => {
+    setSortDirection(nextSortDirection(sortKey, key, sortDirection));
+    setSortKey(key);
+  };
 
   return (
     <div className="p-8 font-sans">
@@ -199,6 +229,16 @@ export default function ChecklistListPage() {
 
         {/* Filters */}
         <div className="flex gap-2 flex-wrap items-center">
+          <div className="relative min-w-[240px] flex-1 sm:flex-none">
+            <span aria-hidden="true" className="material-symbols-outlined absolute left-[14px] top-1/2 -translate-y-1/2 text-xl text-outline">search</span>
+            <input
+              aria-label="Tìm kiếm checklist"
+              value={searchInput}
+              onChange={(event) => setSearchInput(event.target.value)}
+              placeholder="Tìm kiếm checklist..."
+              className="w-full rounded-2xl border border-outline-variant bg-surface py-2.5 pl-[42px] pr-[14px] text-sm text-on-surface outline-none font-sans"
+            />
+          </div>
           <select
             aria-label="Lọc checklist theo giai đoạn"
             value={stageFilter}
@@ -258,13 +298,26 @@ export default function ChecklistListPage() {
                 <caption className="sr-only">Danh sách checklist quản trị theo trạng thái duyệt thật</caption>
                 <thead>
                   <tr className="border-b-2 border-surface-container-highest text-left">
-                    {['TIÊU ĐỀ', 'GIAI ĐOẠN', 'SỐ MỤC', 'TRẠNG THÁI', 'CẬP NHẬT', 'THAO TÁC'].map((heading) => (
-                      <th key={heading} scope="col" className="py-3 px-2 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">{heading}</th>
+                    {[
+                      ['name', 'TIÊU ĐỀ'],
+                      ['stage', 'GIAI ĐOẠN'],
+                      ['itemCount', 'SỐ MỤC'],
+                      ['status', 'TRẠNG THÁI'],
+                      ['updatedAt', 'CẬP NHẬT'],
+                    ].map(([key, label]) => (
+                      <SortableTableHeader
+                        key={key}
+                        label={label}
+                        active={sortKey === key}
+                        direction={sortDirection}
+                        onClick={() => changeSort(key as typeof sortKey)}
+                      />
                     ))}
+                    <th scope="col" className="px-2 py-3 text-[11px] font-semibold uppercase tracking-[0.05em] text-outline">THAO TÁC</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {checklists.map((checklist) => (
+                  {sortedChecklists.map((checklist) => (
                     <tr key={checklist.id} className="border-b border-surface-container-highest hover:bg-surface-bright">
                       <td className="py-3.5 px-2 max-w-[340px]">
                         <div className="font-semibold text-sm text-on-surface">{checklist.name}</div>

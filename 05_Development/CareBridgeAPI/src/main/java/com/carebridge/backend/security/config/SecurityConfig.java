@@ -2,6 +2,7 @@ package com.carebridge.backend.security.config;
 
 import com.carebridge.backend.security.jwt.JwtAuthenticationFilter;
 import com.carebridge.backend.baby.security.BabyLinkBoundaryAuditFilter;
+import com.carebridge.backend.systemconfiguration.security.MaintenanceModeFilter;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.security.autoconfigure.actuate.web.servlet.EndpointRequest;
@@ -32,6 +33,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final BabyLinkBoundaryAuditFilter babyLinkBoundaryAuditFilter;
+    private final MaintenanceModeFilter maintenanceModeFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -49,7 +51,6 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST,
                                 "/api/v1/auth/register",
                                 "/api/v1/auth/login",
-                                "/api/v1/auth/login-direct",
                                 "/api/v1/auth/federated",
                                 "/api/v1/auth/verify-otp",
                                 "/api/v1/auth/resend-otp",
@@ -90,8 +91,17 @@ public class SecurityConfig {
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(babyLinkBoundaryAuditFilter, JwtAuthenticationFilter.class);
+                .addFilterAfter(maintenanceModeFilter, JwtAuthenticationFilter.class)
+                .addFilterAfter(babyLinkBoundaryAuditFilter, MaintenanceModeFilter.class);
         return http.build();
+    }
+
+    @Bean
+    public FilterRegistrationBean<MaintenanceModeFilter> maintenanceModeRegistration() {
+        FilterRegistrationBean<MaintenanceModeFilter> registration = new FilterRegistrationBean<>();
+        registration.setFilter(maintenanceModeFilter);
+        registration.setEnabled(false);
+        return registration;
     }
 
     @Bean

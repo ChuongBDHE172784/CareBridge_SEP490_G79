@@ -55,4 +55,7 @@ public interface ContentService {
 
     Page<AdminChecklistTemplateResponse> getAdminChecklists(
             ContentStage stage, ChecklistTemplateStatus status, Pageable pageable);
+
+    Page<AdminChecklistTemplateResponse> getAdminChecklists(
+            ContentStage stage, ChecklistTemplateStatus status, String keyword, Pageable pageable);
 }

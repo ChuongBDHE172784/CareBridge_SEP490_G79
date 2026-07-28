@@ -89,6 +89,10 @@ class FederatedAuthFailure {
 
     if (error is FirebaseAuthException) {
       switch (error.code) {
+        case 'popup-closed-by-user':
+        case 'cancelled-popup-request':
+        case 'web-context-canceled':
+          return canceled;
         case 'invalid-credential':
         case 'invalid-id-token':
         case 'expired-id-token':

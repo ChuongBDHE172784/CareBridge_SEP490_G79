@@ -2,6 +2,10 @@ package com.carebridge.backend.config;
 
 import com.carebridge.backend.baby.security.BabyLinkBoundaryAuditFilter;
 import com.carebridge.backend.baby.service.BabyLinkRejectionAuditService;
+import com.carebridge.backend.systemconfiguration.security.MaintenanceModeFilter;
+import com.carebridge.backend.systemconfiguration.service.SystemMaintenanceModeService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.MockMvcBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
@@ -19,6 +23,25 @@ import static org.springframework.security.test.web.servlet.setup.SecurityMockMv
  */
 @TestConfiguration
 public class MockMvcSecurityBuilderConfig {
+
+    @Bean
+    @Fallback
+    SystemMaintenanceModeService mockMvcSystemMaintenanceModeService() {
+        return mock(SystemMaintenanceModeService.class);
+    }
+
+    @Bean("mockMvcJackson2ObjectMapper")
+    @Fallback
+    ObjectMapper mockMvcJackson2ObjectMapper() {
+        return new ObjectMapper().registerModule(new JavaTimeModule());
+    }
+
+    @Bean("mockMvcMaintenanceModeFilter")
+    @Fallback
+    MaintenanceModeFilter mockMvcMaintenanceModeFilter(
+            SystemMaintenanceModeService maintenanceModeService, ObjectMapper objectMapper) {
+        return new MaintenanceModeFilter(maintenanceModeService, objectMapper);
+    }
 
     @Bean("mockMvcBabyLinkBoundaryAuditFilter")
     @Fallback

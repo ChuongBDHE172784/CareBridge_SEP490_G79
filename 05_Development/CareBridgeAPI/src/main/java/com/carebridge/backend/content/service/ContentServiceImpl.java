@@ -128,8 +128,16 @@ public class ContentServiceImpl implements ContentService {
     @Transactional(readOnly = true)
     public Page<AdminChecklistTemplateResponse> getAdminChecklists(
             ContentStage stage, ChecklistTemplateStatus status, Pageable pageable) {
+        return getAdminChecklists(stage, status, null, pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<AdminChecklistTemplateResponse> getAdminChecklists(
+            ContentStage stage, ChecklistTemplateStatus status, String keyword, Pageable pageable) {
         Page<ChecklistTemplate> templates = checklistTemplateRepository
-                .findAdminByOptionalStageAndStatus(stage, status, pageable);
+                .findAdminByOptionalStageAndStatus(
+                        stage, status, keyword == null || keyword.isBlank() ? null : keyword.trim(), pageable);
         Set<UUID> ids = templates.stream().map(ChecklistTemplate::getId).collect(Collectors.toSet());
         Map<UUID, Long> counts = ids.isEmpty() ? Map.of() : checklistItemRepository.countByTemplateIds(ids)
                 .stream().collect(Collectors.toMap(TemplateItemCount::getTemplateId, TemplateItemCount::getItemCount));
