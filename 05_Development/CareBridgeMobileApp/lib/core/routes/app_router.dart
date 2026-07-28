@@ -11,9 +11,9 @@ import '../../features/home/screens/home_shell.dart';
 import '../../features/home/screens/expert_home_shell.dart';
 import '../../features/home/screens/family_member_home_screen.dart';
 import '../../features/journey/screens/mother_stage_selection_screen.dart';
-import '../../features/journey/screens/journey_onboarding_screen.dart';
 import '../../features/journey/screens/journey_setup_screen.dart';
 import '../../features/journey/screens/postpartum_recovery_setup_screen.dart';
+import '../../features/journey/services/journey_onboarding_service.dart';
 
 import '../../features/healthRecords/screens/maternal_health_metric_screen.dart';
 import '../../features/healthRecords/screens/health_record_timeline_screen.dart';
@@ -160,6 +160,12 @@ String? resolveAppRedirect({
   required String location,
 }) {
   final hasAssignedRole = role != null && role.trim().isNotEmpty;
+  const motherOnlySetupRoutes = {
+    '/journey-onboarding',
+    '/mother-stage-selection',
+    '/journey-setup',
+    '/postpartum-recovery-setup',
+  };
 
   if (isRestoring) return null;
 
@@ -173,10 +179,16 @@ String? resolveAppRedirect({
   if (isAuthenticated && !hasAssignedRole && location != '/role-selection') {
     return '/role-selection';
   }
+  if (isAuthenticated &&
+      hasAssignedRole &&
+      role != 'MOTHER' &&
+      motherOnlySetupRoutes.contains(location)) {
+    return '/';
+  }
   if (isAuthenticated && hasAssignedRole && location == '/role-selection') {
     return role == 'EXPERT'
         ? '/expert-onboarding'
-        : (role == 'MOTHER' ? '/journey-onboarding' : '/');
+        : (role == 'MOTHER' ? '/mother-stage-selection' : '/');
   }
   if (isAuthenticated && isAuthRoute && location != '/auth-landing') {
     return role == 'EXPERT'
@@ -194,18 +206,37 @@ String? resolveAppRedirect({
   }
 
   // `/` is the app-start dispatcher for mothers. The landing screen verifies
-  // both the journey and the required consent before opening the real home.
+  // the journey before opening the real home or consolidated setup screen.
   if (isAuthenticated && role == 'MOTHER' && location == '/') {
     return '/auth-landing';
   }
   return null;
 }
 
+@visibleForTesting
+Future<String?> resolveMotherOnboardingRedirect({
+  required String? role,
+  required String location,
+  required Future<bool> Function() canStartJourney,
+}) async {
+  const guardedDestinations = {'/journey-setup', '/postpartum-recovery-setup'};
+  if (role?.trim().toUpperCase() != 'MOTHER' ||
+      !guardedDestinations.contains(location)) {
+    return null;
+  }
+  try {
+    return await canStartJourney() ? null : '/mother-stage-selection';
+  } catch (_) {
+    // Deep links fail closed when consent status cannot be verified.
+    return '/mother-stage-selection';
+  }
+}
+
 final GoRouter appRouter = GoRouter(
   navigatorKey: rootNavigatorKey,
   initialLocation: '/',
   refreshListenable: AuthState.instance,
-  redirect: (context, state) {
+  redirect: (context, state) async {
     final auth = AuthState.instance;
     final isExpert = auth.role?.trim().toUpperCase() == 'EXPERT';
     final isExpertOnboardingRoute =
@@ -223,6 +254,14 @@ final GoRouter appRouter = GoRouter(
       location: state.matchedLocation,
     );
     if (baseRedirect != null) return baseRedirect;
+
+    final onboardingRedirect = await resolveMotherOnboardingRedirect(
+      role: auth.role,
+      location: state.matchedLocation,
+      canStartJourney: () async =>
+          (await JourneyOnboardingService().getStatus()).canStartJourney,
+    );
+    if (onboardingRedirect != null) return onboardingRedirect;
 
     if (auth.isAuthenticated &&
         isExpert &&
@@ -253,7 +292,7 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/journey-onboarding',
-      builder: (context, state) => const JourneyOnboardingScreen(),
+      redirect: (context, state) => '/mother-stage-selection',
     ),
     GoRoute(
       path: '/mother-stage-selection',

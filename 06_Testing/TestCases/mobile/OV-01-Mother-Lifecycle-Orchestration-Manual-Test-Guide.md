@@ -196,7 +196,7 @@ Nếu ca đang `BLOCKED`, chỉ thực thi sau khi Story tương ứng được 
 ### OV01-MAN-004 — Khởi tạo một canonical Mother journey
 
 **Fixture:** Mẹ đã xác thực, chưa có lifecycle hiện hành.  
-**Thực hiện:** Lấy token bằng `POST /api/v1/auth/login-direct` trong local/test; gửi:
+**Thực hiện:** Lấy token bằng `POST /api/v1/auth/login`; gửi:
 
 ```http
 POST {{baseUrl}}/api/v1/journeys

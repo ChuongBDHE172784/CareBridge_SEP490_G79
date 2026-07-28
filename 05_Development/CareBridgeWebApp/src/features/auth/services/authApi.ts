@@ -35,17 +35,14 @@ export async function federatedAuthenticate(idToken: string, deviceInfo = naviga
   return data.data;
 }
 
-// UC-03: Login — sends OTP, does NOT return tokens yet
-export async function login(request: LoginRequest): Promise<OtpSendResponse> {
-  const { data } = await apiClient.post<ApiResponse<OtpSendResponse>>('/api/v1/auth/login', request);
-  return data.data;
-}
-
-// Local/test-only direct login. The backend registers this route only for dev/test
-// profiles when CAREBRIDGE_AUTH_LOGIN_DIRECT_ENABLED=true.
-export async function loginDirect(request: LoginRequest): Promise<AuthResponse> {
-  const { data } = await apiClient.post<ApiResponse<AuthResponse>>('/api/v1/auth/login-direct', request);
-  return data.data;
+// UC-03: Password login returns the canonical token-backed session.
+export async function login(request: LoginRequest): Promise<AuthResponse> {
+  const { data } = await apiClient.post<ApiResponse<AuthResponse>>('/api/v1/auth/login', request);
+  const auth = data.data;
+  if (!auth?.accessToken?.trim() || !auth.refreshToken?.trim() || !auth.user?.id?.trim()) {
+    throw new Error('Login response is incomplete');
+  }
+  return auth;
 }
 
 // UC-02: Verify OTP — completes login, returns tokens + user profile

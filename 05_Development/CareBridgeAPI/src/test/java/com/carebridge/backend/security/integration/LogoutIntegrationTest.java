@@ -15,7 +15,6 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,7 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * LOGOUT-TC-INT-001 — Integration: login → logout → refresh is rejected, and the session
  * row is revoked in the real database (Testcontainers PostgreSQL).
  *
- * <p>End-to-end HTTP flow: {@code /login-direct} issues tokens, {@code /logout} (authenticated
+ * <p>End-to-end HTTP flow: {@code /login} issues tokens, {@code /logout} (authenticated
  * with the access token) blacklists the refresh token and revokes the session, and a
  * subsequent {@code /refresh} with the same token is rejected.
  *
@@ -38,7 +37,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @Transactional
 @ActiveProfiles("test")
-@TestPropertySource(properties = "carebridge.auth.login-direct-enabled=true")
 class LogoutIntegrationTest extends AbstractPostgresIntegrationTest {
 
     private static final String EMAIL = "int.logout@test.com";
@@ -79,7 +77,7 @@ class LogoutIntegrationTest extends AbstractPostgresIntegrationTest {
         LoginRequest login = new LoginRequest();
         login.setEmail(EMAIL);
         login.setPassword(PASSWORD);
-        String loginBody = mockMvc.perform(post("/api/v1/auth/login-direct")
+        String loginBody = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(login)))
                 .andExpect(status().isOk())

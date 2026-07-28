@@ -50,8 +50,18 @@ void main() {
       String? requestedPath;
       Map<String, dynamic>? requestedBody;
 
+      var sharedAcquirerCalls = 0;
       final service = AuthService.forTesting(
-        googleIdTokenProvider: () async => 'fresh-firebase-token',
+        googleIdTokenAcquirer: GoogleIdTokenAcquirer(
+          isWeb: true,
+          webProvider: () async {
+            sharedAcquirerCalls++;
+            return 'fresh-firebase-token';
+          },
+          nativeProvider: () async => throw StateError(
+            'Native Google provider must not run for the Web link flow',
+          ),
+        ),
         postRequest: (path, body) async {
           requestedPath = path;
           requestedBody = body;
@@ -69,6 +79,7 @@ void main() {
 
       expect(requestedPath, '/api/v1/auth/identities/google');
       expect(requestedBody, {'idToken': 'fresh-firebase-token'});
+      expect(sharedAcquirerCalls, 1);
       expect(result.linked, isTrue);
       expect(authState.accessToken, accessBefore);
       expect(authState.refreshToken, refreshBefore);
@@ -84,23 +95,26 @@ void main() {
     );
   });
 
-  test('linkGoogleAccount rejects a response that does not confirm linking', () async {
-    final service = AuthService.forTesting(
-      googleIdTokenProvider: () async => 'fresh-firebase-token',
-      postRequest: (_, _) async => {
-        'data': {'provider': 'GOOGLE', 'linked': false},
-      },
-    );
+  test(
+    'linkGoogleAccount rejects a response that does not confirm linking',
+    () async {
+      final service = AuthService.forTesting(
+        googleIdTokenProvider: () async => 'fresh-firebase-token',
+        postRequest: (_, _) async => {
+          'data': {'provider': 'GOOGLE', 'linked': false},
+        },
+      );
 
-    await expectLater(
-      service.linkGoogleAccount(),
-      throwsA(
-        isA<LinkedAccountException>().having(
-          (error) => error.failure.kind,
-          'failure kind',
-          LinkedAccountFailureKind.unexpected,
+      await expectLater(
+        service.linkGoogleAccount(),
+        throwsA(
+          isA<LinkedAccountException>().having(
+            (error) => error.failure.kind,
+            'failure kind',
+            LinkedAccountFailureKind.unexpected,
+          ),
         ),
-      ),
-    );
-  });
+      );
+    },
+  );
 }
