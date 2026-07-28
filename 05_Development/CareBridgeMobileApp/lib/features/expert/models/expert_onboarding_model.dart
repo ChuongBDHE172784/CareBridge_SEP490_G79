@@ -6,6 +6,7 @@ class ExpertOnboardingState {
   final bool credentialComplete;
   final String verificationStatus;
   final String identityStatus;
+  final String credentialStatus;
   final String? rejectionReason;
   final ExpertOnboardingStep nextStep;
 
@@ -15,6 +16,7 @@ class ExpertOnboardingState {
     required this.credentialComplete,
     required this.verificationStatus,
     required this.identityStatus,
+    required this.credentialStatus,
     required this.nextStep,
     this.rejectionReason,
   });
@@ -53,6 +55,8 @@ class ExpertOnboardingState {
       'REQUIRED',
       'MISSING',
       'REJECTED',
+      'RETRYABLE',
+      'RETRYABLE_ERROR',
     };
     final identityComplete = rawIdentityStatus != null
         ? !incompleteStatuses.contains(identityStatus)
@@ -90,6 +94,9 @@ class ExpertOnboardingState {
       credentialComplete: credentialComplete,
       verificationStatus: status,
       identityStatus: identityStatus,
+      credentialStatus: credentialStatus.isEmpty
+          ? (credentialComplete ? 'PENDING' : 'NOT_SUBMITTED')
+          : credentialStatus,
       rejectionReason: _firstNonBlank([
         root['rejectionReason'],
         verification['rejectionReason'],

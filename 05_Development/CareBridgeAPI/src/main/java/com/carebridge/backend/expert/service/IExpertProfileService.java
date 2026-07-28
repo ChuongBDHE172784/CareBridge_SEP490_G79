@@ -44,7 +44,8 @@ public interface IExpertProfileService {
     void setTrustStatus(UUID expertProfileId, TrustStatus newStatus, UUID adminId);
 
     // ── UC-71: Admin list all experts ──────────────────────────────────
-List<ExpertProfileResponse> getAllExperts();
+    List<ExpertProfileResponse> getAllExperts();
+    List<ExpertProfileResponse> getAllAdminExperts(String status, String keyword);
 
 // ── Shop / customisation ───────────────────────────────────────────
     void saveCategorySelection(UUID expertProfileId, List<String> categoryIds);

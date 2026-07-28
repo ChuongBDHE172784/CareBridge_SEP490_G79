@@ -7,7 +7,6 @@ import '../../aiTriage/services/triage_continuation_restore_coordinator.dart';
 import '../../aiTriage/services/triage_continuation_store.dart';
 import '../../aiTriage/services/triage_service.dart';
 import '../../journey/services/journey_service.dart';
-import '../../journey/services/journey_onboarding_service.dart';
 
 /// Routes authenticated users to the right first screen after login.
 ///
@@ -17,12 +16,10 @@ class AuthLandingScreen extends StatefulWidget {
   const AuthLandingScreen({
     super.key,
     this.journeyService,
-    this.onboardingService,
     this.continuationCoordinator,
   });
 
   final JourneyService? journeyService;
-  final JourneyOnboardingService? onboardingService;
   final TriageContinuationRestoreCoordinator? continuationCoordinator;
 
   @override
@@ -31,7 +28,6 @@ class AuthLandingScreen extends StatefulWidget {
 
 class _AuthLandingScreenState extends State<AuthLandingScreen> {
   late final JourneyService _journeyService;
-  late final JourneyOnboardingService _onboardingService;
   late final TriageContinuationRestoreCoordinator _continuationCoordinator;
   bool _loading = true;
   String? _error;
@@ -40,7 +36,6 @@ class _AuthLandingScreenState extends State<AuthLandingScreen> {
   void initState() {
     super.initState();
     _journeyService = widget.journeyService ?? JourneyService();
-    _onboardingService = widget.onboardingService ?? JourneyOnboardingService();
     final continuationStore = SecureTriageContinuationStore();
     _continuationCoordinator =
         widget.continuationCoordinator ??
@@ -83,13 +78,7 @@ class _AuthLandingScreenState extends State<AuthLandingScreen> {
         context.go('/mother-home');
         return;
       }
-      final onboarding = await _onboardingService.getStatus();
-      if (!mounted) return;
-      context.go(
-        onboarding.canStartJourney
-            ? '/mother-stage-selection'
-            : '/journey-onboarding',
-      );
+      context.go('/mother-stage-selection');
     } catch (_) {
       if (!mounted) return;
       setState(() {

@@ -17,9 +17,7 @@ public interface AuthService {
 
     OtpSendResponse register(RegisterRequest request);
 
-    OtpSendResponse login(LoginRequest request);
-
-    AuthResponse loginDirect(LoginRequest request);
+    AuthResponse login(LoginRequest request);
 
     AuthResponse verifyOtp(VerifyOtpRequest request);
 

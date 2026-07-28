@@ -7,6 +7,7 @@ import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.common.exception.ResourceNotFoundException;
 import com.carebridge.backend.file.dto.UploadFileResponse;
 import com.carebridge.backend.file.dto.ViewFileResponse;
+import com.carebridge.backend.file.dto.AuthorizedFileContent;
 import com.carebridge.backend.file.entity.FileStatus;
 import com.carebridge.backend.file.entity.UploadedFile;
 import com.carebridge.backend.file.enums.FileAccessMode;
@@ -50,6 +51,11 @@ public class FileServiceImpl implements IFileService {
             "application/pdf",
             "application/msword",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    );
+
+    private static final Set<String> HEALTH_RECORD_MIME_TYPES = Set.of(
+            "image/jpeg", "image/png", "image/webp", "image/heic", "image/gif",
+            "application/pdf"
     );
 
     private static final Set<String> ALLOWED_MIME_TYPES = Set.of(
@@ -109,6 +115,22 @@ public class FileServiceImpl implements IFileService {
         String mimeType = detectMimeType(file);
         // Private files route by MIME type
         return uploadUsing(file, callerId, determineProvider(mimeType), null, null, FileAccessMode.PRIVATE);
+    }
+
+    @Override
+    public UploadFileResponse uploadHealthRecordFile(MultipartFile file, UUID callerId) {
+        String mimeType = detectMimeType(file);
+        if (!HEALTH_RECORD_MIME_TYPES.contains(mimeType)) {
+            throw new BusinessException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "FILE-001",
+                    "Health record file upload only supports images and PDF files. Got: " + mimeType);
+        }
+
+        FileKind kind = IMAGE_MIME_TYPES.contains(mimeType) ? FileKind.IMAGE : FileKind.DOCUMENT;
+        FilePurpose purpose = kind == FileKind.IMAGE
+                ? FilePurpose.MEDICAL_CONTRIBUTION_IMAGE
+                : FilePurpose.MEDICAL_CONTRIBUTION_DOCUMENT;
+
+        return uploadUsing(file, callerId, determineProvider(mimeType), kind, purpose, FileAccessMode.PRIVATE);
     }
 
     /**
@@ -235,6 +257,7 @@ public class FileServiceImpl implements IFileService {
         try {
             UploadedFile saved = fileRepository.save(UploadedFile.builder()
                     .ownerUserId(callerId)
+                    .uploaderRole(resolveCallerRole())
                     .storageKey(persistedStorageKey)
                     .storageProvider(provider)
                     .kind(kind)
@@ -324,20 +347,9 @@ public class FileServiceImpl implements IFileService {
 
     @Override
     public ViewFileResponse viewFile(UUID fileId, UUID callerId) {
-        UploadedFile file = fileRepository.findByIdAndStatus(fileId, FileStatus.ACTIVE)
-                .orElseThrow(() -> new ResourceNotFoundException("File not found"));
+        UploadedFile file = requireViewableFile(fileId, callerId);
 
-        Set<String> authorities = java.util.Optional
-                .ofNullable(SecurityContextHolder.getContext().getAuthentication())
-                .map(auth -> auth.getAuthorities().stream()
-                        .map(GrantedAuthority::getAuthority)
-                        .collect(Collectors.toSet()))
-                .orElse(Set.of());
-
-        fileAccessPolicy.assertViewable(file, callerId, authorities);
-
-        // Generate fresh presigned URL from the stored public URL
-        String presignedUrl = storageFor(file.getStorageProvider())
+        String presignedUrl = storageFor(resolveProvider(file))
                 .generatePresignedUrl(file.getStorageKey(), 15);
 
         auditService.log(AuditAction.FILE_VIEWED, callerId,
@@ -352,6 +364,62 @@ public class FileServiceImpl implements IFileService {
                 .status(file.getStatus().name())
                 .createdAt(file.getCreatedAt())
                 .build();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AuthorizedFileContent readAuthorizedFile(UUID fileId, UUID callerId, long maxBytes) {
+        UploadedFile file = requireViewableFile(fileId, callerId);
+        if (file.getFileSizeBytes() > maxBytes) {
+            throw new BusinessException(HttpStatus.CONTENT_TOO_LARGE, "FILE-007",
+                    "File is too large to preview");
+        }
+        byte[] bytes;
+        try {
+            bytes = storageFor(resolveProvider(file)).read(file.getStorageKey(), maxBytes);
+        } catch (IllegalArgumentException ex) {
+            throw new BusinessException(HttpStatus.CONTENT_TOO_LARGE, "FILE-007",
+                    "File is too large to preview");
+        }
+        auditService.log(AuditAction.FILE_VIEWED, callerId,
+                "UploadedFile", file.getId().toString(), "previewed");
+        return new AuthorizedFileContent(
+                file.getId(), file.getOriginalName(), file.getMimeType(),
+                file.getFileSizeBytes(), bytes);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ViewFileResponse getAuthorizedFileMetadata(UUID fileId, UUID callerId) {
+        UploadedFile file = requireViewableFile(fileId, callerId);
+        return ViewFileResponse.builder()
+                .fileId(file.getId())
+                .originalName(file.getOriginalName())
+                .mimeType(file.getMimeType())
+                .fileSizeBytes(file.getFileSizeBytes())
+                .status(file.getStatus().name())
+                .createdAt(file.getCreatedAt())
+                .build();
+    }
+
+    private UploadedFile requireViewableFile(UUID fileId, UUID callerId) {
+        UploadedFile file = fileRepository.findByIdAndStatus(fileId, FileStatus.ACTIVE)
+                .orElseThrow(() -> new ResourceNotFoundException("File not found"));
+        Set<String> authorities = java.util.Optional
+                .ofNullable(SecurityContextHolder.getContext().getAuthentication())
+                .map(auth -> auth.getAuthorities().stream()
+                        .map(GrantedAuthority::getAuthority)
+                        .collect(Collectors.toSet()))
+                .orElse(Set.of());
+        fileAccessPolicy.assertViewable(file, callerId, authorities);
+        return file;
+    }
+
+    private String resolveProvider(UploadedFile file) {
+        if (DOCUMENT_MIME_TYPES.contains(file.getMimeType())) {
+            return "r2";
+        }
+        return file.getStorageProvider();
     }
 
     @Override
@@ -457,6 +525,7 @@ public class FileServiceImpl implements IFileService {
         try {
             UploadedFile saved = fileRepository.save(UploadedFile.builder()
                     .ownerUserId(callerId)
+                    .uploaderRole(resolveCallerRole())
                     .storageKey(persistedStorageKey)
                     .storageProvider(provider)
                     .kind(kind)
@@ -519,5 +588,19 @@ public class FileServiceImpl implements IFileService {
             case "application/vnd.openxmlformats-officedocument.wordprocessingml.document" -> ".docx";
             default -> "";
         };
+    }
+
+    private String resolveCallerRole() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getAuthorities() != null) {
+            for (var authority : auth.getAuthorities()) {
+                String role = authority.getAuthority();
+                if (role.startsWith("ROLE_")) {
+                    return role.substring(5);
+                }
+                return role;
+            }
+        }
+        return "PATIENT";
     }
 }

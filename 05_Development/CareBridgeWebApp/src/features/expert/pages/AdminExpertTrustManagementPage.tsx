@@ -37,7 +37,7 @@ export default function AdminExpertTrustManagementPage() {
       if (statusFilter) params.status = statusFilter;
       if (keyword.trim()) params.keyword = keyword.trim();
       const qs = new URLSearchParams(params).toString();
-      const { data } = await apiClient.get(`/api/v1/expert/directory?${qs}`);
+      const { data } = await apiClient.get(`/api/v1/expert/admin/profiles?${qs}`);
       const items: ExpertRow[] = data.data?.experts ?? data.data ?? [];
       setExperts(items);
     } catch (e: unknown) {

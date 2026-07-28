@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { User, Lock, EyeOff, Eye, ArrowRight, AlertCircle } from 'lucide-react';
-import { login, loginDirect } from '../services/authApi';
+import { login } from '../services/authApi';
 import type { AuthResponse, LoginRequest } from '../models/auth';
 import { useAuthStore } from '../../../shared/auth/authStore';
 import { getDefaultRouteForRole } from '../../../shared/auth/roleRoutes';
@@ -20,10 +20,6 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 function isEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-}
-
-function isDevSeedEmail(value: string): boolean {
-  return value.toLowerCase().endsWith('@carebridge.dev');
 }
 
 export default function LoginPage() {
@@ -60,30 +56,7 @@ export default function LoginPage() {
         ? { email: identifier, password: data.password }
         : { phone: identifier, password: data.password };
 
-      if (import.meta.env.DEV && isEmail(identifier) && isDevSeedEmail(identifier)) {
-        try {
-          completeLogin(await loginDirect(request));
-          return;
-        } catch (directErr: unknown) {
-          const directStatus = (directErr as { response?: { status?: number } }).response?.status;
-          if (directStatus !== 404) {
-            throw directErr;
-          }
-        }
-      }
-
-      const result = await login(request);
-      if (result.auth) {
-        completeLogin(result.auth);
-        return;
-      }
-      navigate('/login/otp', {
-        state: {
-          userId: result.userId,
-          otpExpiresAt: result.otpExpiresAt,
-          identifier,
-        },
-      });
+      completeLogin(await login(request));
     } catch (err: unknown) {
       const error = err as { response?: { status?: number; data?: { message?: string; error?: string } } };
       const status = error.response?.status;
@@ -92,6 +65,8 @@ export default function LoginPage() {
       if (blockedState) {
         saveBlockedAccountState(blockedState);
         navigate('/account-blocked', { replace: true });
+      } else if (err instanceof Error && err.message === 'Login response is incomplete') {
+        setServerError('Phản hồi đăng nhập không hợp lệ. Vui lòng thử lại sau.');
       } else if (status === undefined) {
         setServerError('Không thể kết nối đến máy chủ. Vui lòng kiểm tra kết nối mạng hoặc thử lại sau.');
       } else if (status === 401) {

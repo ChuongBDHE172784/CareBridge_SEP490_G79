@@ -78,15 +78,17 @@ class _EditHealthRecordScreenState extends State<EditHealthRecordScreen> {
 
   String _typeToApiValue(RecordType t) {
     switch (t) {
+      case RecordType.ultrasound:
+        return 'ULTRASOUND';
+      case RecordType.labResult:
+        return 'LAB_RESULT';
       case RecordType.vaccination:
         return 'VACCINATION_FORM';
-      case RecordType.metric:
-        return 'LAB_RESULT';
       case RecordType.prescription:
         return 'PRESCRIPTION';
-      case RecordType.checkup:
+      case RecordType.examinationResult:
         return 'EXAMINATION_RESULT';
-      default:
+      case RecordType.note:
         return 'NOTE';
     }
   }

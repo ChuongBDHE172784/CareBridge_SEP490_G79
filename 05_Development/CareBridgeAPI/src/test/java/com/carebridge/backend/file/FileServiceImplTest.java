@@ -6,6 +6,7 @@ import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.file.dto.UploadFileResponse;
 import com.carebridge.backend.file.entity.FileStatus;
 import com.carebridge.backend.file.entity.UploadedFile;
+import com.carebridge.backend.file.enums.FilePurpose;
 import com.carebridge.backend.file.repository.UploadedFileRepository;
 import com.carebridge.backend.file.service.impl.CloudinaryStorageService;
 import com.carebridge.backend.file.service.impl.R2StorageService;
@@ -78,6 +79,14 @@ class FileServiceImplTest {
                 .fileSizeBytes(1000L)
                 .status(FileStatus.ACTIVE)
                 .build();
+    }
+
+    private void saveReturnsPersistedArgument() {
+        when(fileRepository.save(any())).thenAnswer(invocation -> {
+            UploadedFile file = invocation.getArgument(0);
+            file.setId(FILE_ID);
+            return file;
+        });
     }
 
     // FILE-TC-001: Happy path JPEG upload
@@ -193,7 +202,59 @@ class FileServiceImplTest {
         verify(r2StorageService, never()).store(any(), any(), any());
     }
 
-    // FILE-TC-004: C1 — invalid MIME type → FILE-001 / 415
+    // Health record upload accepts only images and PDF.
+    @Test
+    void uploadHealthRecordFile_acceptsJpegAsPrivateMedicalImage() {
+        when(fileRepository.countByOwnerUserIdAndStatus(CALLER_ID, FileStatus.ACTIVE)).thenReturn(0L);
+        saveReturnsPersistedArgument();
+        when(cloudinaryStorageService.generatePresignedUrl(any(), eq(15))).thenReturn("https://presigned.url/image.jpg");
+
+        UploadFileResponse resp = fileService.uploadHealthRecordFile(makeFile("image/jpeg", 1000), CALLER_ID);
+
+        assertThat(resp.getFileId()).isEqualTo(FILE_ID);
+        verify(cloudinaryStorageService).store(anyString(), any(), eq("image/jpeg"));
+        verify(cloudinaryStorageService, never()).storePublic(any(), any(), any());
+        verify(fileRepository).save(argThat(file -> file.getPurpose() == FilePurpose.MEDICAL_CONTRIBUTION_IMAGE));
+        verify(r2StorageService, never()).store(any(), any(), any());
+    }
+
+    @Test
+    void uploadHealthRecordFile_acceptsPdfAsPrivateMedicalDocument() {
+        byte[] pdfBytes = new byte[100];
+        pdfBytes[0] = 0x25; pdfBytes[1] = 0x50; pdfBytes[2] = 0x44; pdfBytes[3] = 0x46; // %PDF
+        MockMultipartFile pdfFile = new MockMultipartFile("file", "report.pdf", "application/pdf", pdfBytes);
+        when(fileRepository.countByOwnerUserIdAndStatus(CALLER_ID, FileStatus.ACTIVE)).thenReturn(0L);
+        saveReturnsPersistedArgument();
+        when(r2StorageService.generatePresignedUrl(any(), eq(15))).thenReturn("https://presigned.url/report.pdf");
+
+        UploadFileResponse resp = fileService.uploadHealthRecordFile(pdfFile, CALLER_ID);
+
+        assertThat(resp.getFileId()).isEqualTo(FILE_ID);
+        verify(r2StorageService).store(anyString(), any(), eq("application/pdf"));
+        verify(fileRepository).save(argThat(file -> file.getPurpose() == FilePurpose.MEDICAL_CONTRIBUTION_DOCUMENT));
+        verify(cloudinaryStorageService, never()).store(any(), any(), any());
+    }
+
+    @Test
+    void uploadHealthRecordFile_rejectsDocxWithFile001() {
+        byte[] docxBytes = new byte[]{0x50, 0x4B, 0x03, 0x04};
+        MockMultipartFile docxFile = new MockMultipartFile("file", "report.docx",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document", docxBytes);
+
+        assertThatThrownBy(() -> fileService.uploadHealthRecordFile(docxFile, CALLER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> {
+                    BusinessException be = (BusinessException) ex;
+                    assertThat(be.getCode()).isEqualTo("FILE-001");
+                    assertThat(be.getHttpStatus()).isEqualTo(HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+                });
+
+        verify(fileRepository, never()).countByOwnerUserIdAndStatus(any(), any());
+        verify(cloudinaryStorageService, never()).store(any(), any(), any());
+        verify(r2StorageService, never()).store(any(), any(), any());
+    }
+
+    // FILE-TC-004: C1 - invalid MIME type -> FILE-001 / 415
     @Test
     void uploadFile_invalidMimeType_throwsBusinessException415() {
         byte[] exeBytes = new byte[]{0x4D, 0x5A, 0x00, 0x00}; // MZ header (Windows PE)

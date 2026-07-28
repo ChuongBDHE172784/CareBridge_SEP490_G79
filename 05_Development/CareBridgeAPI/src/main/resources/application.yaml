@@ -1,3 +1,11 @@
+server:
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+      force-response: true
+
 spring:
   application:
     name: backend
@@ -70,7 +78,6 @@ carebridge:
       max-attempts: 5
   auth:
     federated-enabled: ${AUTH_FEDERATED_ENABLED:true}
-    login-direct-enabled: ${CAREBRIDGE_AUTH_LOGIN_DIRECT_ENABLED:false}
   firebase:
     project-id: ${FIREBASE_PROJECT_ID:}
     auth-emulator-enabled: ${CAREBRIDGE_FIREBASE_AUTH_EMULATOR_ENABLED:false}
@@ -131,10 +138,10 @@ carebridge:
       region: ${R2_REGION:auto}
 
   compreface:
-    enabled: ${COMPREFACE_ENABLED:false}
-    base-url: ${COMPREFACE_BASE_URL:http://localhost:8000}
-    detection-api-key: ${COMPREFACE_DETECTION_API_KEY:}
-    verification-api-key: ${COMPREFACE_VERIFICATION_API_KEY:}
+    enabled: true
+    base-url: http://localhost:8000
+    detection-api-key: 6988a154-3dbf-417d-ae72-8b634ca37fb6
+    verification-api-key: f75cf2ae-240a-4fe6-90cc-55dafd285db5
     # Deprecated: kept for backwards compatibility if needed
     # api-key: ${COMPREFACE_API_KEY:}
     similarity-threshold: ${COMPREFACE_SIMILARITY_THRESHOLD:0.75}

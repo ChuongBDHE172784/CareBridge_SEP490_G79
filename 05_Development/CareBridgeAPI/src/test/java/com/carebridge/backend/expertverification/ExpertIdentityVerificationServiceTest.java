@@ -9,23 +9,31 @@ import static org.mockito.Mockito.*;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.expert.entity.ExpertProfile;
+import com.carebridge.backend.expert.dto.response.ExpertProfileResponse;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
+import com.carebridge.backend.expert.mapper.ExpertProfileMapper;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import com.carebridge.backend.expertverification.adapter.CompreFacePipelineAdapter;
 import com.carebridge.backend.expertverification.adapter.FaceVerificationResult;
 import com.carebridge.backend.expertverification.entity.ExpertIdentityVerification;
 import com.carebridge.backend.expertverification.enums.FaceVerificationStatus;
 import com.carebridge.backend.expertverification.enums.IdentityReviewStatus;
+import com.carebridge.backend.expertverification.dto.response.DocumentReviewResponse;
+import com.carebridge.backend.expertverification.reviewstatus.ReviewStatus;
 import com.carebridge.backend.expertverification.repository.ExpertCredentialRepository;
 import com.carebridge.backend.expertverification.repository.ExpertIdentityVerificationRepository;
+import com.carebridge.backend.expertverification.service.IExpertCredentialService;
 import com.carebridge.backend.expertverification.service.impl.ExpertIdentityVerificationServiceImpl;
+import com.carebridge.backend.security.repository.UserRepository;
 import com.carebridge.backend.file.dto.UploadFileResponse;
 import com.carebridge.backend.file.enums.FileAccessMode;
 import com.carebridge.backend.file.enums.FileKind;
 import com.carebridge.backend.file.enums.FilePurpose;
 import com.carebridge.backend.file.service.IFileService;
+import com.carebridge.backend.map.repository.CareFacilityRepository;
 import java.math.BigDecimal;
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,6 +49,10 @@ class ExpertIdentityVerificationServiceTest {
     @Mock private ExpertProfileRepository profileRepository;
     @Mock private ExpertIdentityVerificationRepository identityRepository;
     @Mock private ExpertCredentialRepository credentialRepository;
+    @Mock private IExpertCredentialService credentialService;
+    @Mock private ExpertProfileMapper profileMapper;
+    @Mock private UserRepository userRepository;
+    @Mock private CareFacilityRepository careFacilityRepository;
     @Mock private CompreFacePipelineAdapter pipelineAdapter;
     @Mock private IFileService fileService;
     @Mock private AuditService auditService;
@@ -53,6 +65,8 @@ class ExpertIdentityVerificationServiceTest {
     void setUp() {
         service = new ExpertIdentityVerificationServiceImpl(
                 profileRepository, identityRepository, credentialRepository,
+                credentialService, profileMapper, userRepository,
+                careFacilityRepository,
                 pipelineAdapter, fileService, auditService,
                 TransactionOperations.withoutTransaction());
     }
@@ -128,6 +142,38 @@ class ExpertIdentityVerificationServiceTest {
         assertThat(onboarding.isProfileExists()).isFalse();
         assertThat(onboarding.getNextStep()).isEqualTo("PROFILE");
         assertThat(onboarding.getIdentityStatus()).isEqualTo("MISSING");
+    }
+
+    @Test
+    void adminReviewCasesGroupsCredentialEvidenceByProfile() {
+        ExpertProfile profile = profile();
+        DocumentReviewResponse credential = DocumentReviewResponse.builder()
+                .credentialId(UUID.randomUUID())
+                .expertProfileId(profileId)
+                .credentialType("MEDICAL_LICENSE")
+                .reviewStatus(ReviewStatus.APPROVED)
+                .build();
+        ExpertProfileResponse profileResponse = ExpertProfileResponse.builder()
+                .expertProfileId(profileId)
+                .verificationStatus(VerificationStatus.PENDING)
+                .build();
+
+        when(profileRepository.findAll()).thenReturn(List.of(profile));
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+        when(identityRepository.findFirstByExpertProfileIdOrderByCreatedAtDesc(profileId))
+                .thenReturn(Optional.empty());
+        when(credentialService.getAdminCredentialsForProfile(profileId, userId))
+                .thenReturn(List.of(credential));
+        when(profileMapper.toResponse(profile, null, null)).thenReturn(profileResponse);
+
+        var reviewCases = service.getAdminReviewCases(userId);
+
+        assertThat(reviewCases).hasSize(1);
+        assertThat(reviewCases.get(0).getProfile().getExpertProfileId()).isEqualTo(profileId);
+        assertThat(reviewCases.get(0).getCredentials()).containsExactly(credential);
+        assertThat(reviewCases.get(0).getIdentityStatus()).isEqualTo("MISSING");
+        assertThat(reviewCases.get(0).getCredentialStatus()).isEqualTo("APPROVED");
+        assertThat(reviewCases.get(0).isReadyForFinalApproval()).isFalse();
     }
 
     private ExpertProfile profile() {

@@ -56,7 +56,7 @@ describe('expert onboarding API', () => {
       .mockResolvedValueOnce({ data: { data: wards } })
       .mockResolvedValueOnce({ data: { data: hospitals } });
 
-    await expect(getWards('district-7')).resolves.toEqual(wards);
+    await expect(getWards({ districtId: 'district-7' })).resolves.toEqual(wards);
     await expect(getHospitals({
       provinceId: 'province-3',
       districtId: 'district-7',

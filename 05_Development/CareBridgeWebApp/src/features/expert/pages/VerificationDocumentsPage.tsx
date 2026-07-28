@@ -285,8 +285,8 @@ export default function VerificationDocumentsPage() {
             </Field>
           </div>
 
-          <Field label="Tài liệu đính kèm (PDF, JPG, PNG - tối đa 20MB)">
-            <input type="file" accept=".pdf,.jpg,.jpeg,.png,.gif" className="mt-1 block w-full text-sm"
+          <Field label="Tài liệu đính kèm (PDF, DOC, DOCX, JPG, PNG - tối đa 20MB)">
+            <input type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif" className="mt-1 block w-full text-sm"
               onChange={handleFileChange} />
             {selectedFile && (
               <p className="mt-1 text-xs text-gray-500">

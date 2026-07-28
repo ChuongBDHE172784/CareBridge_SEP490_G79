@@ -125,6 +125,7 @@ export default function ChecklistListPage() {
     };
   }, [loadData]);
 
+
   useEffect(() => {
     setActionError('');
   }, [page, stageFilter, statusFilter, debouncedKeyword]);

@@ -19,7 +19,33 @@ void main() {
     );
   });
 
+  group('expert onboarding redirect', () {
+    test('authenticated experts enter the onboarding gate after auth', () {
+      final redirect = resolveAppRedirect(
+        isAuthenticated: true,
+        isRestoring: false,
+        blockedReason: null,
+        role: 'EXPERT',
+        location: '/login',
+      );
+
+      expect(redirect, '/expert-onboarding');
+    });
+  });
+
   group('mother startup consent gate', () {
+    test('newly assigned mother enters consolidated stage selection', () {
+      final redirect = resolveAppRedirect(
+        isAuthenticated: true,
+        isRestoring: false,
+        blockedReason: null,
+        role: 'MOTHER',
+        location: '/role-selection',
+      );
+
+      expect(redirect, '/mother-stage-selection');
+    });
+
     test(
       'cold start dispatches an authenticated mother through auth landing',
       () {
@@ -45,6 +71,63 @@ void main() {
       );
 
       expect(redirect, isNull);
+    });
+
+    test('legacy and consolidated mother routes remain registered', () {
+      final paths = appRouter.configuration.routes
+          .whereType<GoRoute>()
+          .map((route) => route.path)
+          .toSet();
+
+      expect(
+        paths,
+        containsAll(const {'/journey-onboarding', '/mother-stage-selection'}),
+      );
+    });
+
+    test(
+      'incomplete onboarding cannot deep-link into pregnancy setup',
+      () async {
+        final redirect = await resolveMotherOnboardingRedirect(
+          role: 'MOTHER',
+          location: '/journey-setup',
+          canStartJourney: () async => false,
+        );
+
+        expect(redirect, '/mother-stage-selection');
+      },
+    );
+
+    test('verified onboarding can open postpartum setup directly', () async {
+      final redirect = await resolveMotherOnboardingRedirect(
+        role: 'MOTHER',
+        location: '/postpartum-recovery-setup',
+        canStartJourney: () async => true,
+      );
+
+      expect(redirect, isNull);
+    });
+
+    test('status failures fail closed for guarded setup deep links', () async {
+      final redirect = await resolveMotherOnboardingRedirect(
+        role: 'MOTHER',
+        location: '/journey-setup',
+        canStartJourney: () async => throw StateError('offline'),
+      );
+
+      expect(redirect, '/mother-stage-selection');
+    });
+
+    test('non-mothers cannot open mother setup routes', () {
+      final redirect = resolveAppRedirect(
+        isAuthenticated: true,
+        isRestoring: false,
+        blockedReason: null,
+        role: 'FAMILY',
+        location: '/mother-stage-selection',
+      );
+
+      expect(redirect, '/');
     });
   });
 

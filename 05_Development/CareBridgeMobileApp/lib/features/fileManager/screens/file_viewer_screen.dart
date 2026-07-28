@@ -6,8 +6,16 @@ import '../services/file_service.dart';
 class FileViewerScreen extends StatefulWidget {
   final String fileId;
   final String? fileName;
+  final bool showDeleteAction;
+  final bool showBottomActions;
 
-  const FileViewerScreen({super.key, required this.fileId, this.fileName});
+  const FileViewerScreen({
+    super.key,
+    required this.fileId,
+    this.fileName,
+    this.showDeleteAction = true,
+    this.showBottomActions = true,
+  });
 
   @override
   State<FileViewerScreen> createState() => _FileViewerScreenState();
@@ -105,7 +113,11 @@ class _FileViewerScreenState extends State<FileViewerScreen> {
     return Scaffold(
       backgroundColor: Colors.black87,
       body: Stack(
-        children: [_buildContent(), _buildTopBar(), _buildBottomBar()],
+        children: [
+          _buildContent(),
+          _buildTopBar(),
+          if (widget.showBottomActions) _buildBottomBar(),
+        ],
       ),
     );
   }
@@ -148,7 +160,7 @@ class _FileViewerScreenState extends State<FileViewerScreen> {
                 ],
               ),
             ),
-            if (f != null)
+            if (f != null && widget.showDeleteAction)
               PopupMenuButton<String>(
                 icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
                 color: Colors.white,

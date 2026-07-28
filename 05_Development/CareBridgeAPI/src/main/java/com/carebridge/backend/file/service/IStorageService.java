@@ -28,6 +28,20 @@ public interface IStorageService {
     /** Generate a presigned URL valid for ttlMinutes (PDPA: max 15). */
     String generatePresignedUrl(String key, int ttlMinutes);
 
+    /** Read private object bytes after the domain service has authorized the caller. */
+    default byte[] read(String key) {
+        throw new UnsupportedOperationException(
+                getClass().getSimpleName() + " does not support read()");
+    }
+
+    default byte[] read(String key, long maxBytes) {
+        byte[] bytes = read(key);
+        if (bytes.length > maxBytes) {
+            throw new IllegalArgumentException("Stored object exceeds the allowed read size");
+        }
+        return bytes;
+    }
+
     /** Permanently delete object by key. */
     void delete(String key);
 }

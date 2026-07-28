@@ -17,11 +17,11 @@ import java.time.Duration;
 public class TrackAsiaClient {
 
     private static final String PLACES_URL =
-            "https://api.track-asia.com/v1/search/nearby/json";
+            "https://maps.trackasia.vn/api/v1/search/nearby/json";
     private static final String DIRECTIONS_URL =
-            "https://api.track-asia.com/v1/directions/driving/";
+            "https://maps.trackasia.vn/api/v1/directions/driving/";
     private static final String SEARCH_URL =
-            "https://api.track-asia.com/v1/search/search/json";
+            "https://maps.trackasia.vn/api/v1/search/search/json";
 
     private final HttpClient http;
     private final ObjectMapper mapper;

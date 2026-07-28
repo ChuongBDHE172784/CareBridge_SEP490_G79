@@ -24,8 +24,17 @@ public class CreateExpertProfileRequest {
     private List<@NotBlank @Size(max = 80) String> specialtyIds;
 
     @NotBlank
-    @Size(max = 36)
+    @Size(max = 150)
     private String hospitalId;
+
+    @Size(max = 255)
+    private String trackAsiaName;
+
+    @Size(max = 500)
+    private String trackAsiaAddress;
+
+    private Double trackAsiaLat;
+    private Double trackAsiaLng;
 
     @Size(max = 100)
     private String specialty;

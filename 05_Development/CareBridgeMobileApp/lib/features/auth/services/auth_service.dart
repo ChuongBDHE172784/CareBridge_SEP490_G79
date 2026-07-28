@@ -13,6 +13,67 @@ typedef AuthApiGet = Future<dynamic> Function(String path);
 typedef AuthApiPost =
     Future<dynamic> Function(String path, Map<String, dynamic> body);
 typedef GoogleIdTokenProvider = Future<String> Function();
+typedef AuthTokenPersister = Future<void> Function(AuthResponse response);
+typedef AuthPostLoginAction = Future<void> Function();
+
+class GoogleIdTokenAcquirer {
+  GoogleIdTokenAcquirer({
+    bool? isWeb,
+    TargetPlatform? platform,
+    GoogleIdTokenProvider? webProvider,
+    GoogleIdTokenProvider? nativeProvider,
+  }) : _isWeb = isWeb ?? kIsWeb,
+       _platform = platform ?? defaultTargetPlatform,
+       _webProvider = webProvider,
+       _nativeProvider = nativeProvider;
+
+  final bool _isWeb;
+  final TargetPlatform _platform;
+  final GoogleIdTokenProvider? _webProvider;
+  final GoogleIdTokenProvider? _nativeProvider;
+
+  Future<String> acquire() {
+    if (_isWeb) {
+      return (_webProvider ?? _acquireWebToken)();
+    }
+    if (_platform != TargetPlatform.android &&
+        _platform != TargetPlatform.iOS) {
+      throw const FederatedSignInException(FederatedAuthFailure.configuration);
+    }
+    return (_nativeProvider ?? _acquireNativeToken)();
+  }
+
+  static Future<String> _acquireWebToken() async {
+    final credential = await firebase.FirebaseAuth.instance.signInWithPopup(
+      firebase.GoogleAuthProvider(),
+    );
+    return _freshIdToken(credential.user);
+  }
+
+  static Future<String> _acquireNativeToken() async {
+    await GoogleSignIn.instance.initialize();
+    final googleUser = await GoogleSignIn.instance.authenticate();
+    final googleAuth = googleUser.authentication;
+    final credential = firebase.GoogleAuthProvider.credential(
+      idToken: googleAuth.idToken,
+    );
+    final result = await firebase.FirebaseAuth.instance.signInWithCredential(
+      credential,
+    );
+    return _freshIdToken(result.user);
+  }
+
+  static Future<String> _freshIdToken(firebase.User? user) async {
+    if (user == null) {
+      throw StateError('Firebase authentication returned no user');
+    }
+    final idToken = await user.getIdToken(true);
+    if (idToken == null || idToken.isEmpty) {
+      throw StateError('Firebase authentication returned no ID token');
+    }
+    return idToken;
+  }
+}
 
 class AuthService {
   static final AuthService instance = AuthService._();
@@ -21,31 +82,49 @@ class AuthService {
     AuthApiGet getRequest = apiGet,
     AuthApiPost postRequest = apiPost,
     GoogleIdTokenProvider? googleIdTokenProvider,
+    GoogleIdTokenAcquirer? googleIdTokenAcquirer,
+    AuthTokenPersister? tokenPersister,
+    AuthPostLoginAction? postLoginAction,
   }) : _getRequest = getRequest,
        _postRequest = postRequest,
-       _googleIdTokenProvider = googleIdTokenProvider;
+       _googleIdTokenProvider =
+           googleIdTokenProvider ??
+           (googleIdTokenAcquirer ?? GoogleIdTokenAcquirer()).acquire,
+       _tokenPersister = tokenPersister ?? _persistTokens,
+       _postLoginAction = postLoginAction ?? FcmService.instance.registerToken;
 
   @visibleForTesting
   factory AuthService.forTesting({
     AuthApiGet getRequest = apiGet,
     AuthApiPost postRequest = apiPost,
     GoogleIdTokenProvider? googleIdTokenProvider,
+    GoogleIdTokenAcquirer? googleIdTokenAcquirer,
+    AuthTokenPersister? tokenPersister,
+    AuthPostLoginAction? postLoginAction,
   }) {
     return AuthService._(
       getRequest: getRequest,
       postRequest: postRequest,
       googleIdTokenProvider: googleIdTokenProvider,
+      googleIdTokenAcquirer: googleIdTokenAcquirer,
+      tokenPersister: tokenPersister,
+      postLoginAction: postLoginAction,
     );
   }
 
   final AuthApiGet _getRequest;
   final AuthApiPost _postRequest;
-  final GoogleIdTokenProvider? _googleIdTokenProvider;
+  final GoogleIdTokenProvider _googleIdTokenProvider;
+  final AuthTokenPersister _tokenPersister;
+  final AuthPostLoginAction _postLoginAction;
 
   Future<AuthResponse> federatedGoogle() async {
     try {
       final idToken = await _acquireGoogleIdToken();
-      return federatedWithIdToken(idToken);
+      // Keep the backend handoff inside this try/catch so asynchronous API
+      // failures are normalized to the same safe, typed error contract as
+      // provider and Firebase failures.
+      return await federatedWithIdToken(idToken);
     } catch (error) {
       final exception = FederatedSignInException.from(error);
       debugPrint(
@@ -57,42 +136,31 @@ class AuthService {
   }
 
   Future<String> _acquireGoogleIdToken() async {
-    final injectedProvider = _googleIdTokenProvider;
-    if (injectedProvider != null) return injectedProvider();
-
-    await GoogleSignIn.instance.initialize();
-    final googleUser = await GoogleSignIn.instance.authenticate();
-    final googleAuth = googleUser.authentication;
-    final credential = firebase.GoogleAuthProvider.credential(
-      idToken: googleAuth.idToken,
-    );
-    final firebaseUser =
-        (await firebase.FirebaseAuth.instance.signInWithCredential(
-          credential,
-        )).user;
-    if (firebaseUser == null) {
-      throw StateError('Firebase authentication returned no user');
-    }
-    final idToken = await firebaseUser.getIdToken(true);
-    if (idToken == null || idToken.isEmpty) {
-      throw StateError('Firebase authentication returned no ID token');
-    }
-    return idToken;
+    return _googleIdTokenProvider();
   }
 
   Future<AuthResponse> federatedWithIdToken(String idToken) async {
-    final res = await apiPost('/api/v1/auth/federated', {
+    final res = await _postRequest('/api/v1/auth/federated', {
       'idToken': idToken,
       'deviceInfo': 'CareBridge Flutter',
     });
     final auth = AuthResponse.fromJson(res['data'] as Map<String, dynamic>);
+    if (auth.accessToken.trim().isEmpty ||
+        auth.refreshToken.trim().isEmpty ||
+        auth.user.id.trim().isEmpty) {
+      throw const FormatException('Federated response is incomplete');
+    }
+    await _tokenPersister(auth);
+    return auth;
+  }
+
+  static Future<void> _persistTokens(AuthResponse auth) async {
     await AuthState.instance.setTokens(
       accessToken: auth.accessToken,
       refreshToken: auth.refreshToken,
       userId: auth.user.id,
       role: auth.user.role,
     );
-    return auth;
   }
 
   Future<LinkedAccount> getLinkedGoogleAccount() async {
@@ -173,16 +241,18 @@ class AuthService {
     String? email,
     String? phone,
     required String password,
+    String? role,
   }) async {
     final body = <String, dynamic>{'name': name, 'password': password};
     if (email != null && email.isNotEmpty) body['email'] = email;
     if (phone != null && phone.isNotEmpty) body['phone'] = phone;
-    final res = await apiPost('/api/v1/auth/register', body);
+    if (role != null && role.isNotEmpty) body['role'] = role;
+    final res = await _postRequest('/api/v1/auth/register', body);
     return OtpSendResponse.fromJson(res['data'] as Map<String, dynamic>);
   }
 
-  // UC-03: Login — sends OTP; tokens not issued until OTP is verified
-  Future<OtpSendResponse> login({
+  // UC-03: Password login — returns and persists a token-backed session.
+  Future<AuthResponse> login({
     String? email,
     String? phone,
     required String password,
@@ -190,29 +260,17 @@ class AuthService {
     final body = <String, dynamic>{'password': password};
     if (email != null && email.isNotEmpty) body['email'] = email;
     if (phone != null && phone.isNotEmpty) body['phone'] = phone;
-    final res = await apiPost('/api/v1/auth/login', body);
-    return OtpSendResponse.fromJson(res['data'] as Map<String, dynamic>);
-  }
-
-  // Dev/test: Login without OTP — returns tokens directly
-  Future<AuthResponse> loginDirect({
-    String? email,
-    String? phone,
-    required String password,
-  }) async {
-    final body = <String, dynamic>{'password': password};
-    if (email != null && email.isNotEmpty) body['email'] = email;
-    if (phone != null && phone.isNotEmpty) body['phone'] = phone;
-    final res = await apiPost('/api/v1/auth/login-direct', body);
-    final data = res['data'];
-    final auth = AuthResponse.fromJson(data as Map<String, dynamic>);
-    await AuthState.instance.setTokens(
-      accessToken: auth.accessToken,
-      refreshToken: auth.refreshToken,
-      userId: auth.user.id,
-      role: auth.user.role,
+    final res = await _postRequest('/api/v1/auth/login', body);
+    final auth = AuthResponse.fromJson(
+      res['data'] as Map<String, dynamic>? ?? const <String, dynamic>{},
     );
-    unawaited(FcmService.instance.registerToken());
+    if (auth.accessToken.trim().isEmpty ||
+        auth.refreshToken.trim().isEmpty ||
+        auth.user.id.trim().isEmpty) {
+      throw const FormatException('Login response is incomplete');
+    }
+    await _tokenPersister(auth);
+    unawaited(_postLoginAction());
     return auth;
   }
 
