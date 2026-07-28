@@ -187,7 +187,7 @@ export default function AdminLayout() {
             <span className="material-symbols-outlined text-[16px]">logout</span>
             Đăng xuất
           </button>
-          <p className="text-center text-[10px] text-outline">CareBridge © 2025</p>
+          <p className="text-center text-[10px] text-outline">CareBridge © 2026</p>
         </div>
       </aside>
       <main className="min-h-screen flex-1 overflow-auto bg-background md:ml-64">

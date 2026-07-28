@@ -318,7 +318,7 @@ export default function PendingContentQueuePage() {
           {/* Stats Bar */}
           <div className="mb-6 grid gap-4 md:grid-cols-4">
             {[
-              { label: 'Đang chờ trong tab', value: stats.visiblePending, icon: 'pending_actions' },
+              { label: 'Chờ duyệt', value: stats.visiblePending, icon: 'pending_actions' },
               { label: 'Đã xử lý gần đây', value: stats.processed, icon: 'history' },
               { label: 'Đã duyệt', value: stats.approved, icon: 'check_circle' },
               { label: 'Ẩn / yêu cầu sửa', value: stats.hiddenOrRevision, icon: 'rule' },
@@ -342,11 +342,10 @@ export default function PendingContentQueuePage() {
                   key={tabItem.value}
                   type="button"
                   onClick={() => setTab(tabItem.value)}
-                  className={`inline-flex items-center gap-2 py-2 px-4 rounded-full text-xs font-semibold cursor-pointer transition-colors ${
-                    tab === tabItem.value
+                  className={`inline-flex items-center gap-2 py-2 px-4 rounded-full text-xs font-semibold cursor-pointer transition-colors ${tab === tabItem.value
                       ? 'bg-primary text-on-primary shadow-sm'
                       : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-highest'
-                  }`}
+                    }`}
                 >
                   <span className="material-symbols-outlined text-base">{tabItem.icon}</span>
                   {tabItem.label}
@@ -452,9 +451,8 @@ export default function PendingContentQueuePage() {
                               <div className="font-semibold text-sm text-on-surface truncate">{item.contentPreview ?? '—'}</div>
                             </td>
                             <td className="py-3.5 px-2">
-                              <span className={`py-1 px-3 rounded-full text-xs font-semibold ${
-                                item.actionType === 'APPROVE' ? 'bg-[#E6F4EA] text-[#137333]' : 'bg-[#FCE8E6] text-[#C5221F]'
-                              }`}>
+                              <span className={`py-1 px-3 rounded-full text-xs font-semibold ${item.actionType === 'APPROVE' ? 'bg-[#E6F4EA] text-[#137333]' : 'bg-[#FCE8E6] text-[#C5221F]'
+                                }`}>
                                 {ACTION_TYPE_LABELS[item.actionType]}
                               </span>
                             </td>
@@ -689,11 +687,11 @@ export default function PendingContentQueuePage() {
         moderationContext={
           detailHistoryItem
             ? {
-                actionTypeLabel: ACTION_TYPE_LABELS[detailHistoryItem.actionType],
-                reason: detailHistoryItem.reason,
-                moderatorName: detailHistoryItem.moderatorName,
-                actionAt: detailHistoryItem.actionAt,
-              }
+              actionTypeLabel: ACTION_TYPE_LABELS[detailHistoryItem.actionType],
+              reason: detailHistoryItem.reason,
+              moderatorName: detailHistoryItem.moderatorName,
+              actionAt: detailHistoryItem.actionAt,
+            }
             : undefined
         }
         onClose={() => { setDetailTarget(null); setDetailHistoryItem(null); }}
