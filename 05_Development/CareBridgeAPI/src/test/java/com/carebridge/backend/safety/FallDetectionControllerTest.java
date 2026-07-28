@@ -116,6 +116,18 @@ class FallDetectionControllerTest {
 
     @Test
     @WithMockUser(username = "00000000-0000-0000-0000-000000000030", roles = "MOTHER")
+    void reportFalsePositive_noteLongerThanResponseContract_shouldReturn400() throws Exception {
+        UUID eventId = UUID.fromString("00000000-0000-0000-0000-000000000099");
+        String oversizedNote = "x".repeat(501);
+
+        mockMvc.perform(post("/api/v1/safety/events/{id}/false-positive", eventId)
+                        .contentType("application/json")
+                        .content("{\"note\":\"" + oversizedNote + "\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000030", roles = "MOTHER")
     void sendEmergencyAlert_shouldReturn202() throws Exception {
         UUID eventId = UUID.fromString("00000000-0000-0000-0000-000000000099");
 

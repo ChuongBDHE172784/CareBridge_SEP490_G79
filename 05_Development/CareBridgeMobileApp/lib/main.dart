@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'core/auth/auth_state.dart';
 import 'core/firebase/firebase_bootstrap.dart';
 import 'core/notifications/fcm_service.dart';
@@ -7,9 +8,11 @@ import 'core/routes/app_router.dart';
 import 'features/auth/services/auth_service.dart';
 import 'features/directChat/calls/direct_call_host.dart';
 import 'features/reminder/services/reminder_service.dart';
+import 'features/safety/services/safety_foreground_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  FlutterForegroundTask.initCommunicationPort();
   late final bool firebaseReady;
   try {
     firebaseReady = await FirebaseBootstrap.initialize();
@@ -40,12 +43,14 @@ void main() async {
     }
   }
   await ReminderService.instance.loadState();
+  SafetyForegroundServiceCoordinator.instance.initialize();
   // Re-register the FCM token on relaunch for users with an existing
   // session (fresh logins register via AuthService instead).
   if (firebaseReady && AuthState.instance.isAuthenticated) {
     unawaited(FcmService.instance.registerToken());
   }
   runApp(CareBridgeApp(firebaseEnabled: firebaseReady));
+  unawaited(SafetyForegroundServiceCoordinator.instance.reconcile());
   if (firebaseReady) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FcmService.instance.markNavigationReady();

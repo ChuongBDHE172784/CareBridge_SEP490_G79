@@ -87,6 +87,18 @@ public class SafetyEvent {
     @Column(name = "record_type", nullable = false, updatable = false)
     private String recordType = "IMU_EVENT";
 
+    @Builder.Default
+    @Column(name = "alert_generation", nullable = false)
+    private long alertGeneration = 0;
+
+    @Builder.Default
+    @Column(name = "alert_successful_recipient_count", nullable = false)
+    private int alertSuccessfulRecipientCount = 0;
+
+    @Builder.Default
+    @Column(name = "alert_failed_recipient_count", nullable = false)
+    private int alertFailedRecipientCount = 0;
+
     @PrePersist
     void prepareCanonicalEvent() {
         recordType = "IMU_EVENT";

@@ -4,6 +4,7 @@ import com.carebridge.backend.safety.entity.SafetyEvent;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import java.util.UUID;
 import java.util.Optional;
 import java.time.Instant;
@@ -25,6 +26,19 @@ public interface ISafetyEventRepository extends JpaRepository<SafetyEvent, UUID>
 
     List<SafetyEvent> findTop100ByStatusAndResponseTypeIsNullAndCountdownDeadlineAtLessThanEqualOrderByCountdownDeadlineAtAsc(
             SafetyEventStatus status, Instant deadline);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            update SafetyEvent event
+               set event.status = :targetStatus
+             where event.emergencySessionId = :emergencySessionId
+               and event.status = :expectedStatus
+               and event.recordType = 'IMU_EVENT'
+            """)
+    int transitionAlertSentByEmergencySessionId(
+            @Param("emergencySessionId") UUID emergencySessionId,
+            @Param("expectedStatus") SafetyEventStatus expectedStatus,
+            @Param("targetStatus") SafetyEventStatus targetStatus);
 
     @Query(value = "SELECT 1 FROM pg_advisory_xact_lock(hashtextextended(:lockKey, 0))", nativeQuery = true)
     Integer acquireSignalLock(@Param("lockKey") String lockKey);

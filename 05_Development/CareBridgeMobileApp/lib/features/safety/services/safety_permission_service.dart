@@ -28,7 +28,10 @@ class SafetyPermissionService {
   Future<Position?> readConsentedLocation() => _locationReader();
 
   static Future<void> _defaultSensorProbe() async {
-    await accelerometerEventStream().first.timeout(const Duration(seconds: 3));
+    await Future.wait([
+      accelerometerEventStream().first.timeout(const Duration(seconds: 3)),
+      gyroscopeEventStream().first.timeout(const Duration(seconds: 3)),
+    ]);
   }
 
   static Future<Position?> _defaultLocationReader() async {

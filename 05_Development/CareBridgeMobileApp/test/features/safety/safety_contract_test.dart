@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:untitled/features/privacy/models/privacy_model.dart';
 import 'package:untitled/features/safety/models/safety_config_model.dart';
-import 'package:untitled/features/safety/screens/safety_monitoring_screen.dart';
 import 'package:untitled/features/safety/services/safety_permission_service.dart';
 import 'package:untitled/features/safety/services/safety_service.dart';
+import 'package:untitled/features/safety/widgets/safety_countdown_sheet.dart';
 
 void main() {
   test('safety config parses additive permission and countdown fields', () {
@@ -93,7 +93,7 @@ void main() {
   );
 
   testWidgets('countdown exposes safe and need-help actions', (tester) async {
-    String? result;
+    SafetyCountdownResult? result;
     final event = SafetyEvent(
       id: 'event-1',
       eventType: 'SUSPECTED_FALL',
@@ -109,8 +109,9 @@ void main() {
         home: Builder(
           builder: (context) => ElevatedButton(
             onPressed: () async {
-              result = await showModalBottomSheet<String>(
+              result = await showModalBottomSheet<SafetyCountdownResult>(
                 context: context,
+                isScrollControlled: true,
                 builder: (_) => SafetyCountdownSheet(event: event),
               );
             },
@@ -126,6 +127,6 @@ void main() {
     expect(find.byKey(const Key('safety-countdown-help')), findsOneWidget);
     await tester.tap(find.byKey(const Key('safety-countdown-safe')));
     await tester.pumpAndSettle();
-    expect(result, 'safe');
+    expect(result?.action, SafetyCountdownAction.safe);
   });
 }

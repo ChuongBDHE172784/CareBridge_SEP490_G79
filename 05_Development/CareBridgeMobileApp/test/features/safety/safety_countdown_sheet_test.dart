@@ -1,0 +1,204 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:untitled/features/safety/models/safety_config_model.dart';
+import 'package:untitled/features/safety/widgets/safety_countdown_sheet.dart';
+
+class _FakeCountdownFeedback implements SafetyCountdownFeedback {
+  int starts = 0;
+  int stops = 0;
+  final List<int> pulses = [];
+
+  @override
+  void start() => starts++;
+
+  @override
+  void pulse(int remainingSeconds) => pulses.add(remainingSeconds);
+
+  @override
+  void stop() => stops++;
+}
+
+void main() {
+  late DateTime now;
+  late SafetyEvent event;
+  late _FakeCountdownFeedback feedback;
+
+  setUp(() {
+    now = DateTime.utc(2026, 7, 28, 10);
+    event = SafetyEvent(
+      id: 'event-1',
+      eventType: 'SUSPECTED_FALL',
+      magnitude: 30,
+      status: 'OPEN',
+      countdownDeadlineAt: now.add(const Duration(seconds: 30)),
+    );
+    feedback = _FakeCountdownFeedback();
+  });
+
+  Future<SafetyCountdownResult?> openSheet(WidgetTester tester) async {
+    SafetyCountdownResult? result;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => ElevatedButton(
+            onPressed: () async {
+              result = await showModalBottomSheet<SafetyCountdownResult>(
+                context: context,
+                isDismissible: false,
+                enableDrag: false,
+                isScrollControlled: true,
+                builder: (_) => SafetyCountdownSheet(
+                  event: event,
+                  feedback: feedback,
+                  now: () => now,
+                ),
+              );
+            },
+            child: const Text('open'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    return result;
+  }
+
+  testWidgets('offers safe, false-positive, and need-help actions', (
+    tester,
+  ) async {
+    await openSheet(tester);
+
+    expect(find.byKey(const Key('safety-countdown-safe')), findsOneWidget);
+    expect(
+      find.byKey(const Key('safety-countdown-false-positive')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('safety-countdown-help')), findsOneWidget);
+    expect(find.textContaining('30 giây'), findsOneWidget);
+    expect(feedback.starts, 1);
+  });
+
+  testWidgets('returns the selected false-positive reason', (tester) async {
+    SafetyCountdownResult? result;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => ElevatedButton(
+            onPressed: () async {
+              result = await showModalBottomSheet<SafetyCountdownResult>(
+                context: context,
+                isScrollControlled: true,
+                builder: (_) => SafetyCountdownSheet(
+                  event: event,
+                  feedback: feedback,
+                  now: () => now,
+                ),
+              );
+            },
+            child: const Text('open'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    final falsePositiveButton = find.byKey(
+      const Key('safety-countdown-false-positive'),
+    );
+    await tester.ensureVisible(falsePositiveButton);
+    await tester.tap(falsePositiveButton);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('false-positive-reason-exercise')));
+    await tester.pumpAndSettle();
+
+    expect(result?.action, SafetyCountdownAction.falsePositive);
+    expect(result?.reasonCode, 'EXERCISE');
+    expect(feedback.stops, 1);
+  });
+
+  testWidgets('times out at 30 seconds and always stops feedback', (
+    tester,
+  ) async {
+    SafetyCountdownResult? result;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => ElevatedButton(
+            onPressed: () async {
+              result = await showModalBottomSheet<SafetyCountdownResult>(
+                context: context,
+                isScrollControlled: true,
+                builder: (_) => SafetyCountdownSheet(
+                  event: event,
+                  feedback: feedback,
+                  now: () => now,
+                ),
+              );
+            },
+            child: const Text('open'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pump();
+
+    now = now.add(const Duration(seconds: 29));
+    await tester.pump(const Duration(seconds: 29));
+    expect(result, isNull);
+
+    now = now.add(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
+
+    expect(result?.action, SafetyCountdownAction.timeout);
+    expect(feedback.pulses, isNotEmpty);
+    expect(feedback.stops, 1);
+  });
+
+  testWidgets('timeout closes an open false-positive dialog and the sheet', (
+    tester,
+  ) async {
+    SafetyCountdownResult? result;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => ElevatedButton(
+            onPressed: () async {
+              result = await showModalBottomSheet<SafetyCountdownResult>(
+                context: context,
+                isDismissible: false,
+                enableDrag: false,
+                isScrollControlled: true,
+                builder: (_) => SafetyCountdownSheet(
+                  event: event,
+                  feedback: feedback,
+                  now: () => now,
+                ),
+              );
+            },
+            child: const Text('open'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    final falsePositiveButton = find.byKey(
+      const Key('safety-countdown-false-positive'),
+    );
+    await tester.ensureVisible(falsePositiveButton);
+    await tester.tap(falsePositiveButton);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('cảnh báo nhầm'), findsOneWidget);
+
+    now = now.add(const Duration(seconds: 30));
+    await tester.pump(const Duration(seconds: 30));
+    await tester.pumpAndSettle();
+
+    expect(result?.action, SafetyCountdownAction.timeout);
+    expect(find.byType(SimpleDialog), findsNothing);
+    expect(feedback.stops, 1);
+  });
+}
