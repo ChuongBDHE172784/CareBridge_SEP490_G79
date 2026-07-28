@@ -18,8 +18,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,15 +32,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * LOGIN-TC-INT-001 — Integration: login issues tokens, persists a session in the real
  * database (Testcontainers PostgreSQL), and the access-token JWT carries valid claims.
  *
- * <p>The production {@code /login} endpoint issues an OTP challenge first; the token-issuing
- * path is {@code /login-direct}. This exercises that path end-to-end against a seeded ACTIVE
- * user and asserts the canonical authentication session plus the
+ * <p>The production {@code /login} endpoint issues the canonical authentication session
+ * directly for a valid password and asserts the persisted session plus the
  * JWT subject/authorities. (Role authority is the real {@code ROLE_MOTHER}, not the Test-Spec's
  * idealized bare {@code MOTHER}.)
  */
 @Transactional
 @ActiveProfiles("test")
-@TestPropertySource(properties = "carebridge.auth.login-direct-enabled=true")
 class LoginIntegrationTest extends AbstractPostgresIntegrationTest {
 
     private static final String EMAIL = "int.login@test.com";
@@ -52,6 +50,7 @@ class LoginIntegrationTest extends AbstractPostgresIntegrationTest {
     @Autowired private UserSessionRepository sessionRepository;
     @Autowired private PasswordEncoder passwordEncoder;
     @Autowired private JwtTokenProvider jwtTokenProvider;
+    @Autowired private JdbcTemplate jdbcTemplate;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -76,7 +75,7 @@ class LoginIntegrationTest extends AbstractPostgresIntegrationTest {
         request.setEmail(EMAIL);
         request.setPassword(PASSWORD);
 
-        String body = mockMvc.perform(post("/api/v1/auth/login-direct")
+        String body = mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -106,5 +105,17 @@ class LoginIntegrationTest extends AbstractPostgresIntegrationTest {
         assertThat(jwtTokenProvider.getSubject(accessToken)).isEqualTo(user.getId().toString());
         assertThat(jwtTokenProvider.getAuthorities(accessToken))
                 .contains(new SimpleGrantedAuthority("ROLE_MOTHER"));
+
+        Integer loginOtpCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM otp_verifications WHERE user_id = ? AND purpose = 'LOGIN'",
+                Integer.class,
+                user.getId());
+        assertThat(loginOtpCount).isZero();
+
+        mockMvc.perform(post("/api/v1/auth/login-direct")
+                        .header("Authorization", "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound());
     }
 }

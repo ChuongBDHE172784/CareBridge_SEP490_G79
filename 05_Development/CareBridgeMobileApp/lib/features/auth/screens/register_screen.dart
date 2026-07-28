@@ -413,29 +413,57 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Widget _buildFederatedRegistrationActions() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        OutlinedButton(
+        _buildFederatedIconButton(
           key: const Key('federated-google-register'),
+          tooltip: 'Đăng ký với Google',
           onPressed: _isLoading ? null : _federatedGoogleRegistration,
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size.fromHeight(48),
-            shape: const StadiumBorder(),
+          child: const Text(
+            'G',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: _accentPrimary,
+            ),
           ),
-          child: const Text('Sign up with Google'),
         ),
-        const SizedBox(height: 12),
-        OutlinedButton(
+        const SizedBox(width: 16),
+        _buildFederatedIconButton(
           key: const Key('federated-phone-register'),
+          tooltip: 'Đăng ký với số điện thoại',
           onPressed: _isLoading ? null : _federatedPhoneRegistration,
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size.fromHeight(48),
-            shape: const StadiumBorder(),
-          ),
-          child: const Text('Sign up with phone'),
+          child: const Icon(Icons.phone_rounded, size: 22),
         ),
       ],
+    );
+  }
+
+  Widget _buildFederatedIconButton({
+    required Key key,
+    required String tooltip,
+    required VoidCallback? onPressed,
+    required Widget child,
+  }) {
+    return Material(
+      color: _surfaceColor,
+      elevation: onPressed == null ? 0 : 2,
+      shadowColor: _textColor.withValues(alpha: 0.12),
+      shape: const CircleBorder(),
+      child: IconButton(
+        key: key,
+        tooltip: tooltip,
+        onPressed: onPressed,
+        style: IconButton.styleFrom(
+          fixedSize: const Size.square(48),
+          foregroundColor: _accentPrimary,
+          disabledForegroundColor: _mutedColor.withValues(alpha: 0.4),
+          side: BorderSide(color: _borderColor),
+          shape: const CircleBorder(),
+        ),
+        icon: child,
+      ),
     );
   }
 

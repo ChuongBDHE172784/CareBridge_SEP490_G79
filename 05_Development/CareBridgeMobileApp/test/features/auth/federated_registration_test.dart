@@ -29,6 +29,10 @@ void main() {
         findsOneWidget,
       );
       expect(find.byKey(const Key('federated-phone-register')), findsOneWidget);
+      expect(find.byTooltip('Đăng ký với Google'), findsOneWidget);
+      expect(find.byTooltip('Đăng ký với số điện thoại'), findsOneWidget);
+      expect(find.text('G'), findsOneWidget);
+      expect(find.byIcon(Icons.phone_rounded), findsOneWidget);
     },
   );
 
@@ -52,7 +56,7 @@ void main() {
     await tester.pump();
 
     expect(find.byIcon(Icons.error_outline), findsNothing);
-    expect(tester.widget<OutlinedButton>(buttonFinder).onPressed, isNotNull);
+    expect(tester.widget<IconButton>(buttonFinder).onPressed, isNotNull);
   });
 
   testWidgets('typed Google failure shows safe registration guidance', (
@@ -78,7 +82,7 @@ void main() {
       find.text(FederatedAuthFailure.configuration.userMessage),
       findsOneWidget,
     );
-    expect(tester.widget<OutlinedButton>(buttonFinder).onPressed, isNotNull);
+    expect(tester.widget<IconButton>(buttonFinder).onPressed, isNotNull);
   });
 
   testWidgets('Google registration is disabled while authentication runs', (
@@ -95,13 +99,13 @@ void main() {
     await tester.tap(buttonFinder);
     await tester.pump();
 
-    expect(tester.widget<OutlinedButton>(buttonFinder).onPressed, isNull);
+    expect(tester.widget<IconButton>(buttonFinder).onPressed, isNull);
 
     completer.completeError(
       const FederatedSignInException(FederatedAuthFailure.connectivity),
     );
     await tester.pump();
-    expect(tester.widget<OutlinedButton>(buttonFinder).onPressed, isNotNull);
+    expect(tester.widget<IconButton>(buttonFinder).onPressed, isNotNull);
   });
 
   testWidgets(

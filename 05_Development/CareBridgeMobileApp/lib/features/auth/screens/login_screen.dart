@@ -9,11 +9,12 @@ import 'forgot_password_screen.dart';
 import 'register_screen.dart';
 
 /// CB-004 — Login (UC-03)
-/// Collects email/phone + password, calls POST /api/v1/auth/login → navigates to OTP screen.
+/// Collects email/phone + password, creates a session, then routes to the authenticated app.
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key, this.onGoogleSignIn});
+  const LoginScreen({super.key, this.onGoogleSignIn, this.authService});
 
   final Future<void> Function()? onGoogleSignIn;
+  final AuthService? authService;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -41,11 +42,11 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  bool get _isEmailInput => _identifierCtrl.text.contains('@');
-
   Future<void> _submit() async {
+    if (_isLoading) return;
     final identifier = _identifierCtrl.text.trim();
     final password = _passwordCtrl.text;
+    final isEmail = identifier.contains('@');
 
     if (identifier.isEmpty || password.isEmpty) {
       setState(() => _errorMessage = 'Vui lòng nhập đầy đủ thông tin.');
@@ -58,24 +59,37 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      await AuthService.instance.loginDirect(
-        email: _isEmailInput ? identifier : null,
-        phone: !_isEmailInput ? identifier : null,
+      await (widget.authService ?? AuthService.instance).login(
+        email: isEmail ? identifier : null,
+        phone: isEmail ? null : identifier,
         password: password,
       );
       if (!mounted) return;
+      _passwordCtrl.clear();
       context.go('/auth-landing');
     } on ApiException catch (e) {
       String msg;
-      if (e.statusCode == 403) {
+      if (e.statusCode == 401) {
+        msg = 'Email/số điện thoại hoặc mật khẩu không đúng.';
+      } else if (e.statusCode == 403) {
         msg = 'Tài khoản bị khóa. Liên hệ hỗ trợ để mở khóa.';
       } else if (e.statusCode == 429) {
         msg = 'Quá nhiều lần thử. Vui lòng đợi 15 phút.';
+      } else if (e.statusCode == 404 || e.statusCode >= 500) {
+        msg = 'Dịch vụ đăng nhập hiện không khả dụng. Vui lòng thử lại sau.';
       } else {
-        msg = 'Email/số điện thoại hoặc mật khẩu không đúng.';
+        msg = 'Đăng nhập thất bại. Vui lòng thử lại sau.';
       }
+      if (!mounted) return;
       setState(() => _errorMessage = msg);
+    } on FormatException {
+      if (!mounted) return;
+      setState(
+        () => _errorMessage =
+            'Phản hồi đăng nhập không hợp lệ. Vui lòng thử lại sau.',
+      );
     } catch (_) {
+      if (!mounted) return;
       setState(
         () => _errorMessage =
             'Không thể kết nối đến máy chủ. Kiểm tra kết nối mạng.',
@@ -320,6 +334,7 @@ class _LoginScreenState extends State<LoginScreen> {
         SizedBox(
           height: 52,
           child: FilledButton(
+            key: const Key('password-login-submit'),
             onPressed: _isLoading ? null : _submit,
             style: FilledButton.styleFrom(
               backgroundColor: _primaryColor,
@@ -406,29 +421,57 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildFederatedActions() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        OutlinedButton(
+        _buildFederatedIconButton(
           key: const Key('federated-google-login'),
+          tooltip: 'Tiếp tục với Google',
           onPressed: _isLoading ? null : _federatedGoogleLogin,
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size.fromHeight(48),
-            shape: const StadiumBorder(),
+          child: const Text(
+            'G',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: _accentPrimary,
+            ),
           ),
-          child: const Text('Continue with Google'),
         ),
-        const SizedBox(height: 12),
-        OutlinedButton(
+        const SizedBox(width: 16),
+        _buildFederatedIconButton(
           key: const Key('federated-phone-login'),
+          tooltip: 'Tiếp tục với số điện thoại',
           onPressed: _isLoading ? null : _federatedPhone,
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size.fromHeight(48),
-            shape: const StadiumBorder(),
-          ),
-          child: const Text('Continue with phone'),
+          child: const Icon(Icons.phone_rounded, size: 22),
         ),
       ],
+    );
+  }
+
+  Widget _buildFederatedIconButton({
+    required Key key,
+    required String tooltip,
+    required VoidCallback? onPressed,
+    required Widget child,
+  }) {
+    return Material(
+      color: _surfaceColor,
+      elevation: onPressed == null ? 0 : 2,
+      shadowColor: _textColor.withValues(alpha: 0.12),
+      shape: const CircleBorder(),
+      child: IconButton(
+        key: key,
+        tooltip: tooltip,
+        onPressed: onPressed,
+        style: IconButton.styleFrom(
+          fixedSize: const Size.square(48),
+          foregroundColor: _accentPrimary,
+          disabledForegroundColor: _mutedColor.withValues(alpha: 0.4),
+          side: BorderSide(color: _borderColor),
+          shape: const CircleBorder(),
+        ),
+        icon: child,
+      ),
     );
   }
 

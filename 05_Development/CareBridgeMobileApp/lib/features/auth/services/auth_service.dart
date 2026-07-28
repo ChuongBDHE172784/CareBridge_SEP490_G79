@@ -14,6 +14,7 @@ typedef AuthApiPost =
     Future<dynamic> Function(String path, Map<String, dynamic> body);
 typedef GoogleIdTokenProvider = Future<String> Function();
 typedef AuthTokenPersister = Future<void> Function(AuthResponse response);
+typedef AuthPostLoginAction = Future<void> Function();
 
 class GoogleIdTokenAcquirer {
   GoogleIdTokenAcquirer({
@@ -83,12 +84,14 @@ class AuthService {
     GoogleIdTokenProvider? googleIdTokenProvider,
     GoogleIdTokenAcquirer? googleIdTokenAcquirer,
     AuthTokenPersister? tokenPersister,
+    AuthPostLoginAction? postLoginAction,
   }) : _getRequest = getRequest,
        _postRequest = postRequest,
        _googleIdTokenProvider =
            googleIdTokenProvider ??
            (googleIdTokenAcquirer ?? GoogleIdTokenAcquirer()).acquire,
-       _tokenPersister = tokenPersister ?? _persistTokens;
+       _tokenPersister = tokenPersister ?? _persistTokens,
+       _postLoginAction = postLoginAction ?? FcmService.instance.registerToken;
 
   @visibleForTesting
   factory AuthService.forTesting({
@@ -97,6 +100,7 @@ class AuthService {
     GoogleIdTokenProvider? googleIdTokenProvider,
     GoogleIdTokenAcquirer? googleIdTokenAcquirer,
     AuthTokenPersister? tokenPersister,
+    AuthPostLoginAction? postLoginAction,
   }) {
     return AuthService._(
       getRequest: getRequest,
@@ -104,6 +108,7 @@ class AuthService {
       googleIdTokenProvider: googleIdTokenProvider,
       googleIdTokenAcquirer: googleIdTokenAcquirer,
       tokenPersister: tokenPersister,
+      postLoginAction: postLoginAction,
     );
   }
 
@@ -111,6 +116,7 @@ class AuthService {
   final AuthApiPost _postRequest;
   final GoogleIdTokenProvider _googleIdTokenProvider;
   final AuthTokenPersister _tokenPersister;
+  final AuthPostLoginAction _postLoginAction;
 
   Future<AuthResponse> federatedGoogle() async {
     try {
@@ -243,8 +249,8 @@ class AuthService {
     return OtpSendResponse.fromJson(res['data'] as Map<String, dynamic>);
   }
 
-  // UC-03: Login — sends OTP; tokens not issued until OTP is verified
-  Future<OtpSendResponse> login({
+  // UC-03: Password login — returns and persists a token-backed session.
+  Future<AuthResponse> login({
     String? email,
     String? phone,
     required String password,
@@ -252,29 +258,17 @@ class AuthService {
     final body = <String, dynamic>{'password': password};
     if (email != null && email.isNotEmpty) body['email'] = email;
     if (phone != null && phone.isNotEmpty) body['phone'] = phone;
-    final res = await apiPost('/api/v1/auth/login', body);
-    return OtpSendResponse.fromJson(res['data'] as Map<String, dynamic>);
-  }
-
-  // Dev/test: Login without OTP — returns tokens directly
-  Future<AuthResponse> loginDirect({
-    String? email,
-    String? phone,
-    required String password,
-  }) async {
-    final body = <String, dynamic>{'password': password};
-    if (email != null && email.isNotEmpty) body['email'] = email;
-    if (phone != null && phone.isNotEmpty) body['phone'] = phone;
-    final res = await apiPost('/api/v1/auth/login-direct', body);
-    final data = res['data'];
-    final auth = AuthResponse.fromJson(data as Map<String, dynamic>);
-    await AuthState.instance.setTokens(
-      accessToken: auth.accessToken,
-      refreshToken: auth.refreshToken,
-      userId: auth.user.id,
-      role: auth.user.role,
+    final res = await _postRequest('/api/v1/auth/login', body);
+    final auth = AuthResponse.fromJson(
+      res['data'] as Map<String, dynamic>? ?? const <String, dynamic>{},
     );
-    unawaited(FcmService.instance.registerToken());
+    if (auth.accessToken.trim().isEmpty ||
+        auth.refreshToken.trim().isEmpty ||
+        auth.user.id.trim().isEmpty) {
+      throw const FormatException('Login response is incomplete');
+    }
+    await _tokenPersister(auth);
+    unawaited(_postLoginAction());
     return auth;
   }
 
