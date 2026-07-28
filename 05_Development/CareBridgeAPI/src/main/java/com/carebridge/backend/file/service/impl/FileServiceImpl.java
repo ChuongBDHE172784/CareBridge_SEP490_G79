@@ -53,6 +53,11 @@ public class FileServiceImpl implements IFileService {
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     );
 
+    private static final Set<String> HEALTH_RECORD_MIME_TYPES = Set.of(
+            "image/jpeg", "image/png", "image/webp", "image/heic", "image/gif",
+            "application/pdf"
+    );
+
     private static final Set<String> ALLOWED_MIME_TYPES = Set.of(
             "image/jpeg", "image/png", "image/webp", "image/heic", "image/gif",
             "application/pdf",
@@ -110,6 +115,22 @@ public class FileServiceImpl implements IFileService {
         String mimeType = detectMimeType(file);
         // Private files route by MIME type
         return uploadUsing(file, callerId, determineProvider(mimeType), null, null, FileAccessMode.PRIVATE);
+    }
+
+    @Override
+    public UploadFileResponse uploadHealthRecordFile(MultipartFile file, UUID callerId) {
+        String mimeType = detectMimeType(file);
+        if (!HEALTH_RECORD_MIME_TYPES.contains(mimeType)) {
+            throw new BusinessException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "FILE-001",
+                    "Health record file upload only supports images and PDF files. Got: " + mimeType);
+        }
+
+        FileKind kind = IMAGE_MIME_TYPES.contains(mimeType) ? FileKind.IMAGE : FileKind.DOCUMENT;
+        FilePurpose purpose = kind == FileKind.IMAGE
+                ? FilePurpose.MEDICAL_CONTRIBUTION_IMAGE
+                : FilePurpose.MEDICAL_CONTRIBUTION_DOCUMENT;
+
+        return uploadUsing(file, callerId, determineProvider(mimeType), kind, purpose, FileAccessMode.PRIVATE);
     }
 
     /**

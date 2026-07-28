@@ -23,6 +23,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -77,10 +78,22 @@ class HealthRecordServiceImplTest {
                 .build();
     }
 
+    private UploadedFile ownedDocxFile() {
+        return UploadedFile.builder()
+                .id(FILE_ID)
+                .ownerUserId(CALLER_ID)
+                .storageKey("key/" + FILE_ID)
+                .originalName("report.docx")
+                .mimeType("application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+                .fileSizeBytes(100_000L)
+                .status(FileStatus.ACTIVE)
+                .build();
+    }
+
     // HEALTH-TC-001: Happy path — no files
     @Test
     void addHealthRecord_noFiles_returns201() {
-        when(recordRepository.save(any())).thenReturn(savedRecord(RECORD_ID));
+        when(recordRepository.saveAndFlush(any())).thenReturn(savedRecord(RECORD_ID));
 
         AddHealthRecordResponse resp = healthRecordService.addHealthRecord(makeRequest(null), CALLER_ID);
 
@@ -101,13 +114,31 @@ class HealthRecordServiceImplTest {
                 .satisfies(ex -> assertThat(((BusinessException) ex).getHttpStatus())
                         .isEqualTo(HttpStatus.FORBIDDEN));
 
-        verify(recordRepository, never()).save(any());
+        verify(recordRepository, never()).saveAndFlush(any());
     }
 
-    // HEALTH-TC-003: C5 — no diagnosis in response
+    // HEALTH-TC-003: health record attachments accept only images and PDF.
+    @Test
+    void addHealthRecord_docxAttachment_throwsBusinessException415() {
+        when(uploadedFileRepository.findAllByIdInAndOwnerUserIdAndStatus(
+                List.of(FILE_ID), CALLER_ID, FileStatus.ACTIVE))
+                .thenReturn(List.of(ownedDocxFile()));
+
+        assertThatThrownBy(() -> healthRecordService.addHealthRecord(makeRequest(List.of(FILE_ID)), CALLER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> {
+                    BusinessException be = (BusinessException) ex;
+                    assertThat(be.getCode()).isEqualTo("FILE-001");
+                    assertThat(be.getHttpStatus()).isEqualTo(HttpStatus.UNSUPPORTED_MEDIA_TYPE);
+                });
+
+        verify(recordRepository, never()).saveAndFlush(any());
+    }
+
+    // HEALTH-TC-004: C5 - no diagnosis in response
     @Test
     void addHealthRecord_noMedicalDiagnosisInResponse() {
-        when(recordRepository.save(any())).thenReturn(savedRecord(RECORD_ID));
+        when(recordRepository.saveAndFlush(any())).thenReturn(savedRecord(RECORD_ID));
 
         AddHealthRecordResponse resp = healthRecordService.addHealthRecord(makeRequest(null), CALLER_ID);
 
@@ -146,6 +177,7 @@ class HealthRecordServiceImplTest {
     void getHealthRecord_withAttachedFiles_presignedUrlTtlIs15Minutes() {
         HealthRecord record = savedRecord(RECORD_ID);
         UUID fileId = UUID.fromString("00000000-0000-0000-0000-000000000004");
+        Instant uploadedAt = Instant.parse("2026-07-29T02:30:00Z");
         com.carebridge.backend.health.entity.HealthRecordFile link =
                 com.carebridge.backend.health.entity.HealthRecordFile.builder()
                         .healthRecordId(RECORD_ID)
@@ -158,6 +190,7 @@ class HealthRecordServiceImplTest {
                         .storageKey("files/" + fileId + ".jpg")
                         .originalName("scan.jpg").mimeType("image/jpeg")
                         .fileSizeBytes(100_000L)
+                        .createdAt(uploadedAt)
                         .status(com.carebridge.backend.file.entity.FileStatus.ACTIVE)
                         .build();
         when(recordRepository.findByIdAndStatus(RECORD_ID, HealthRecordStatus.ACTIVE))
@@ -168,9 +201,11 @@ class HealthRecordServiceImplTest {
                 .thenReturn(Optional.of(uploadedFile));
         when(fileService.generatePresignedUrl(eq(fileId), eq(CALLER_ID), eq(15))).thenReturn("https://presigned/url");
 
-        healthRecordService.getHealthRecord(RECORD_ID, CALLER_ID);
+        HealthRecordDetailResponse response = healthRecordService.getHealthRecord(RECORD_ID, CALLER_ID);
 
         verify(fileService).generatePresignedUrl(eq(fileId), eq(CALLER_ID), eq(15));
+        assertThat(response.getAttachments()).singleElement()
+                .satisfies(attachment -> assertThat(attachment.getCreatedAt()).isEqualTo(uploadedAt));
     }
 
     // HEALTH-TC-005: View — response must NOT contain medical diagnosis (BR-SAFETY-001)

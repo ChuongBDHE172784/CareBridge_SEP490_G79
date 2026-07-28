@@ -26,6 +26,12 @@ public interface IFileService {
     UploadFileResponse uploadPrivateFile(MultipartFile file, UUID callerId);
 
     /**
+     * Store health record attachments uploaded by mothers.
+     * Only accepts images and PDF files.
+     */
+    UploadFileResponse uploadHealthRecordFile(MultipartFile file, UUID callerId);
+
+    /**
      * Upload with explicit routing by kind/purpose/accessMode.
      * Used by domain services that know the semantic purpose.
      * Validates detected kind matches requested kind.
