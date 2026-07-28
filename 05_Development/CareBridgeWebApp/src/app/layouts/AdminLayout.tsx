@@ -43,18 +43,35 @@ const NAV_LINKS: readonly NavItem[] = [
   { to: '/security/events', label: 'Sự kiện bảo mật', icon: 'policy', roles: ['SYSTEM_ADMIN'] },
   { to: '/notifications', label: 'Thông báo', icon: 'notifications', roles: ['SYSTEM_ADMIN'] },
   { to: '/settings/privacy', label: 'Quyền riêng tư', icon: 'privacy_tip', roles: ['SYSTEM_ADMIN'] },
+  {
+    type: 'group',
+    label: 'Hệ thống kiểm duyệt',
+    icon: 'shield',
+    roles: ['SYSTEM_ADMIN'],
+    children: [
+      { to: '/admin/moderator-dashboard', label: 'Tổng quan', icon: 'dashboard', roles: ['SYSTEM_ADMIN'] },
+      { to: '/admin/safety-rules', label: 'AI & An toàn', icon: 'rule', roles: ['SYSTEM_ADMIN'] },
+      { to: '/admin/system-configuration', label: 'Cấu hình hệ thống', icon: 'tune', roles: ['SYSTEM_ADMIN'] },
+    ],
+  },
   { to: '/expert/dashboard', label: 'Expert', icon: 'stethoscope', roles: ['EXPERT'] },
   // route guard is PARTNER-only (see router/index.tsx) — SYSTEM_ADMIN has no access here.
   { to: '/partner/dashboard', label: 'Partner', icon: 'handshake', roles: ['PARTNER'] },
-  { to: '/moderator', label: 'Hệ thống kiểm duyệt', icon: 'shield', roles: ['SYSTEM_ADMIN', 'MODERATOR'] },
+  { to: '/admin/reports', label: 'Hệ thống kiểm duyệt', icon: 'shield', roles: ['MODERATOR'] },
 ];
 
 export default function AdminLayout() {
   const { user, logout, hasAnyRole } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const expertManagementActive = location.pathname.startsWith('/admin/expert-');
-  const [expertManagementOpen, setExpertManagementOpen] = useState(expertManagementActive);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => ({
+    'Quản lý chuyên gia': location.pathname.startsWith('/admin/expert-'),
+    'Hệ thống kiểm duyệt': [
+      '/admin/moderator-dashboard',
+      '/admin/safety-rules',
+      '/admin/system-configuration',
+    ].some((path) => location.pathname.startsWith(path)),
+  }));
 
   const handleLogout = () => {
     logout();
@@ -64,10 +81,19 @@ export default function AdminLayout() {
   const isVisible = (item: NavItem) => hasAnyRole(...(item.roles as Parameters<typeof hasAnyRole>));
   const visibleLinks = NAV_LINKS.filter(isVisible);
 
-  // ModPortal pages (/moderator/*) render their own full-page sidebar (ModPortalSidebar) —
+  // Moderation pages render their own full-page sidebar (ModPortalSidebar) —
   // skip this layout's sidebar/margin here to avoid a double ml-64 offset (empty gap bug).
+  const isModerationPortalRoute = [
+    '/admin/moderator-dashboard',
+    '/admin/pending-content',
+    '/admin/reports',
+    '/admin/violations',
+    '/admin/safety-rules',
+    '/admin/system-configuration',
+  ].some((path) => location.pathname.startsWith(path));
+
   if (
-    location.pathname.startsWith('/moderator') || location.pathname.startsWith('/content')
+    isModerationPortalRoute || location.pathname.startsWith('/content')
   ) {
     return <Outlet />;
   }
@@ -85,14 +111,14 @@ export default function AdminLayout() {
         <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
           {visibleLinks.map((l) => {
             if (l.type === 'group') {
-              const groupOpen = l.label === 'Quản lý chuyên gia' ? expertManagementOpen : true;
+              const groupOpen = openGroups[l.label] ?? true;
               const groupActive = l.children.some((child) => location.pathname.startsWith(child.to));
 
               return (
                 <div key={l.label} className="space-y-0.5">
                   <button
                     type="button"
-                    onClick={() => setExpertManagementOpen((open) => !open)}
+                    onClick={() => setOpenGroups((groups) => ({ ...groups, [l.label]: !groupOpen }))}
                     aria-expanded={groupOpen}
                     className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
                       groupActive

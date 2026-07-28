@@ -1,11 +1,9 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../../shared/auth/useAuth';
 
-// MODERATOR and SYSTEM_ADMIN land on different ModPortal pages by default: ModerationController
-// (queue/reports/violations) is MODERATOR-only on the backend, while
-// CommunityDashboardController is SYSTEM_ADMIN-only — see router/index.tsx.
+// Retained for backward-compatible imports; the router no longer exposes a bare moderator route.
 export default function ModeratorIndexRedirect() {
   const { hasRole } = useAuth();
-  const target = hasRole('SYSTEM_ADMIN') ? '/moderator/dashboard' : '/moderator/reports';
+  const target = hasRole('SYSTEM_ADMIN') ? '/admin/moderator-dashboard' : '/admin/reports';
   return <Navigate to={target} replace />;
 }

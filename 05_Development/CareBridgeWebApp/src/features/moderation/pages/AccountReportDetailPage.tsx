@@ -121,7 +121,7 @@ export default function AccountReportDetailPage() {
     setActionError('');
     try {
       await resolveReport(reportId, choice, note.trim(), expiresAtFor(choice));
-      navigate('/moderator/reports');
+      navigate('/admin/reports');
     } catch (err: unknown) {
       const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setActionError(message || 'Áp dụng xử lý thất bại. Vui lòng thử lại.');
@@ -162,7 +162,7 @@ export default function AccountReportDetailPage() {
               </div>
               <button
                 type="button"
-                onClick={() => navigate('/moderator/reports')}
+                onClick={() => navigate('/admin/reports')}
                 className="inline-flex items-center gap-2 py-2.5 px-5 rounded-full bg-surface border border-outline-variant text-on-surface-variant text-sm font-semibold cursor-pointer hover:bg-surface-container-low self-start md:self-auto"
               >
                 <span className="material-symbols-outlined text-lg">arrow_back</span>

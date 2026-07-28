@@ -155,7 +155,7 @@ export default function ContentReportDetailPage() {
     setActionError('');
     try {
       await resolveReport(item.id, outcome, reason || undefined, expiresAt);
-      navigate('/moderator/reports');
+      navigate('/admin/reports');
     } catch (err: unknown) {
       const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setActionError(message || 'Xử lý thất bại. Vui lòng thử lại.');
@@ -196,7 +196,7 @@ export default function ContentReportDetailPage() {
               </div>
               <button
                 type="button"
-                onClick={() => navigate('/moderator/reports')}
+                onClick={() => navigate('/admin/reports')}
                 className="inline-flex items-center gap-2 py-2.5 px-5 rounded-full bg-surface border border-outline-variant text-on-surface-variant text-sm font-semibold cursor-pointer hover:bg-surface-container-low self-start md:self-auto"
               >
                 <span className="material-symbols-outlined text-lg">arrow_back</span>

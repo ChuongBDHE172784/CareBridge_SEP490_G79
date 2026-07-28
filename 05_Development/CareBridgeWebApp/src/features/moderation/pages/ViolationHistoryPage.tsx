@@ -265,7 +265,7 @@ export default function ViolationHistoryPage() {
                           <tr
                             key={item.targetUserId}
                             className="border-b border-surface-container-highest hover:bg-surface-bright cursor-pointer"
-                            onClick={() => navigate(`/moderator/violations/${item.targetUserId}`, { state: { summary: item } })}
+                            onClick={() => navigate(`/admin/violations/${item.targetUserId}`, { state: { summary: item } })}
                           >
                             <td className="py-3.5 px-3">
                               <p className="m-0 text-sm font-semibold text-on-surface">{item.targetUserName}</p>
@@ -303,7 +303,7 @@ export default function ViolationHistoryPage() {
                               <div className="flex items-center justify-end">
                                 <button
                                   type="button"
-                                  onClick={() => navigate(`/moderator/violations/${item.targetUserId}`, { state: { summary: item } })}
+                                  onClick={() => navigate(`/admin/violations/${item.targetUserId}`, { state: { summary: item } })}
                                   className="h-8 py-1 px-3 rounded-lg border border-outline-variant bg-transparent cursor-pointer text-xs font-semibold text-primary flex items-center gap-1 hover:bg-surface-container-low"
                                   title="Xem hồ sơ chi tiết"
                                 >

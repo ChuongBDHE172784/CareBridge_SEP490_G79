@@ -8,12 +8,12 @@ import { useAuth } from '../../../shared/auth/useAuth';
 // RedFlagRuleController / CommunityDashboardController are the
 // reverse: SYSTEM_ADMIN-only on the backend, so MODERATOR must not see those entries.
 const NAV_ITEMS = [
-  { label: 'Tổng quan', icon: 'dashboard', path: '/moderator/dashboard', roles: ['SYSTEM_ADMIN'] },
-  { label: 'Nội dung mới', icon: 'fact_check', path: '/moderator/pending-content', roles: ['MODERATOR'] },
-  { label: 'Báo cáo', icon: 'flag', path: '/moderator/reports', roles: ['MODERATOR'] },
-  { label: 'Vi phạm', icon: 'gavel', path: '/moderator/violations', roles: ['MODERATOR'] },
-  { label: 'AI & An toàn', icon: 'rule', path: '/moderator/safety-rules', roles: ['SYSTEM_ADMIN'] },
-  { label: 'Cấu hình hệ thống', icon: 'tune', path: '/moderator/system-configuration', roles: ['SYSTEM_ADMIN'] },
+  { label: 'Tổng quan', icon: 'dashboard', path: '/admin/moderator-dashboard', roles: ['SYSTEM_ADMIN'] },
+  { label: 'Nội dung mới', icon: 'fact_check', path: '/admin/pending-content', roles: ['MODERATOR'] },
+  { label: 'Báo cáo', icon: 'flag', path: '/admin/reports', roles: ['MODERATOR'] },
+  { label: 'Vi phạm', icon: 'gavel', path: '/admin/violations', roles: ['MODERATOR'] },
+  { label: 'AI & An toàn', icon: 'rule', path: '/admin/safety-rules', roles: ['SYSTEM_ADMIN'] },
+  { label: 'Cấu hình hệ thống', icon: 'tune', path: '/admin/system-configuration', roles: ['SYSTEM_ADMIN'] },
 ] as const;
 
 export default function ModPortalSidebar() {

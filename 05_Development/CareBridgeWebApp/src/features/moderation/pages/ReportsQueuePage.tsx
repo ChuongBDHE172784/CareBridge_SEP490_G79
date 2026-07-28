@@ -134,9 +134,9 @@ export default function ReportsQueuePage() {
 
   const goToDetail = (item: ModerationQueueItem) => {
     if (item.targetType === 'ACCOUNT' || item.targetType === 'USER' || item.targetType === 'EXPERT') {
-      navigate(`/moderator/reports/account/${item.id}`);
+      navigate(`/admin/reports/account/${item.id}`);
     } else {
-      navigate(`/moderator/reports/${item.id}`);
+      navigate(`/admin/reports/${item.id}`);
     }
   };
 

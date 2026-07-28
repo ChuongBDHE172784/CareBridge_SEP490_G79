@@ -14,9 +14,9 @@ import type { UserRole } from './authStore';
  */
 export const ROLE_DEFAULT_ROUTES: Record<UserRole, string> = {
   SYSTEM_ADMIN: '/admin/dashboard',
-  // '/moderator/dashboard' is SYSTEM_ADMIN-only (CommunityDashboardController backend RBAC) —
+  // '/admin/moderator-dashboard' is SYSTEM_ADMIN-only (CommunityDashboardController backend RBAC) —
   // MODERATOR must land on a route their own role actually has access to.
-  MODERATOR: '/moderator/reports',
+  MODERATOR: '/admin/reports',
   CONTENT_ADMIN: '/content/dashboard',
   PARTNER: '/partner/dashboard',
   // The server-owned onboarding aggregate decides whether an expert may enter the portal.

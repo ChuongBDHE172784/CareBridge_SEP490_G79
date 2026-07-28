@@ -28,7 +28,7 @@ const ADMIN_AREAS = [
   { title: 'Chuyên gia', detail: 'Xác minh và quản lý độ tin cậy', icon: 'medical_services', href: '/admin/expert-trust-management' },
   { title: 'Đối tác', detail: 'Duyệt hồ sơ đối tác', icon: 'handshake', href: '/admin/partners/verification' },
   { title: 'Phân tích tư thế', detail: 'Quản lý cấu hình AI an toàn', icon: 'settings_accessibility', href: '/posture-configs' },
-  { title: 'Hệ thống kiểm duyệt', detail: 'Số liệu cộng đồng, quy tắc AI và vận hành', icon: 'shield', href: '/moderator/dashboard' },
+  { title: 'Hệ thống kiểm duyệt', detail: 'Số liệu cộng đồng, quy tắc AI và vận hành', icon: 'shield', href: '/admin/moderator-dashboard' },
 ];
 
 export default function AdminDashboardPage() {
@@ -46,7 +46,7 @@ export default function AdminDashboardPage() {
         </div>
         <button
           type="button"
-          onClick={() => navigate('/moderator/dashboard')}
+          onClick={() => navigate('/admin/moderator-dashboard')}
           className="flex items-center gap-2 py-3 px-6 rounded-full bg-primary text-on-primary border-0 text-sm font-semibold cursor-pointer whitespace-nowrap self-start md:self-auto hover:bg-primary/90"
         >
           <span className="material-symbols-outlined text-lg">monitoring</span>

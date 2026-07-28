@@ -5,7 +5,6 @@ import AdminLayout from '../layouts/AdminLayout';
 import ContentLayout from '../layouts/ContentLayout';
 import ProtectedRoute from '../guards/ProtectedRoute';
 import RoleAwareRedirect from '../guards/RoleAwareRedirect';
-import ModeratorIndexRedirect from '../guards/ModeratorIndexRedirect';
 import ExpertOnboardingGuard from '../guards/ExpertOnboardingGuard';
 
 // Auth screens
@@ -285,33 +284,24 @@ export const router = createBrowserRouter([
             // frontend access either (it would 403 on every data call).
             element: <ProtectedRoute requiredRoles={['MODERATOR']} />,
             children: [
-              // /moderator/queue (UC-99 View Moderation Queue) is served by ReportsQueuePage —
-              // redirect the old path so bookmarks/links keep working without a duplicate sidebar entry.
-              { path: '/moderator/queue', element: <Navigate to="/moderator/reports" replace /> },
-              { path: '/moderator/pending-content', element: <PendingContentQueuePage /> },
-              { path: '/moderator/reports', element: <ReportsQueuePage /> },
-              { path: '/moderator/reports/account/:reportId', element: <AccountReportDetailPage /> },
-              { path: '/moderator/reports/:reportId', element: <ContentReportDetailPage /> },
-              { path: '/moderator/violations', element: <ViolationHistoryPage /> },
-              { path: '/moderator/violations/:targetUserId', element: <ViolationDetailPage /> },
+              { path: '/admin/queue', element: <Navigate to="/admin/reports" replace /> },
+              { path: '/admin/pending-content', element: <PendingContentQueuePage /> },
+              { path: '/admin/reports', element: <ReportsQueuePage /> },
+              { path: '/admin/reports/account/:reportId', element: <AccountReportDetailPage /> },
+              { path: '/admin/reports/:reportId', element: <ContentReportDetailPage /> },
+              { path: '/admin/violations', element: <ViolationHistoryPage /> },
+              { path: '/admin/violations/:targetUserId', element: <ViolationDetailPage /> },
             ],
           },
           {
             // RedFlagRuleController / CommunityDashboardController
             element: <ProtectedRoute requiredRoles={['SYSTEM_ADMIN']} />,
             children: [
-              { path: '/moderator/dashboard', element: <CommunityDashboardPage /> },
-              { path: '/moderator/safety-rules', element: <SafetyRuleManagementPage /> },
-              { path: '/moderator/system-configuration', element: <SystemConfigurationPage /> },
+              { path: '/admin/moderator-dashboard', element: <CommunityDashboardPage /> },
+              { path: '/admin/safety-rules', element: <SafetyRuleManagementPage /> },
+              { path: '/admin/system-configuration', element: <SystemConfigurationPage /> },
               { path: '/admin/partners/verification', element: <PartnerVerificationQueuePage /> },
             ],
-          },
-          {
-            // Role-aware landing for the bare '/moderator' entry point — MODERATOR and
-            // SYSTEM_ADMIN each only have backend access to a disjoint subset of ModPortal
-            // pages (see the two guards above), so a single hardcoded redirect can't serve both.
-            element: <ProtectedRoute requiredRoles={['MODERATOR', 'SYSTEM_ADMIN']} />,
-            children: [{ path: '/moderator', element: <ModeratorIndexRedirect /> }],
           },
         ],
       },
