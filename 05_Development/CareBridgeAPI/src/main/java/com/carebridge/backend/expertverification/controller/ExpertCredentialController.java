@@ -6,6 +6,8 @@ import com.carebridge.backend.expertverification.dto.request.ReviewCredentialReq
 import com.carebridge.backend.expertverification.dto.request.SubmitCredentialRequest;
 import com.carebridge.backend.expertverification.dto.response.CredentialResponse;
 import com.carebridge.backend.expertverification.dto.response.DocumentReviewResponse;
+import com.carebridge.backend.expertverification.dto.response.CredentialDocumentPreviewResponse;
+import com.carebridge.backend.file.dto.ViewFileResponse;
 import com.carebridge.backend.expertverification.service.IExpertCredentialService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -84,5 +86,23 @@ public class ExpertCredentialController {
     @RequestParam(required = false) String credentialType) {
     UUID reviewerId = SecurityUtils.requireCurrentUserId(principal);
     return ResponseEntity.ok(ApiResponse.success(credentialService.getPendingReviews(credentialType, reviewerId)));
+  }
+
+  @GetMapping("/{credentialId}/preview")
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  public ResponseEntity<ApiResponse<CredentialDocumentPreviewResponse>> previewCredential(
+      Principal principal, @PathVariable UUID credentialId) {
+    UUID reviewerId = SecurityUtils.requireCurrentUserId(principal);
+    return ResponseEntity.ok(ApiResponse.success(
+        credentialService.previewCredential(credentialId, reviewerId)));
+  }
+
+  @GetMapping("/{credentialId}/file")
+  @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+  public ResponseEntity<ApiResponse<ViewFileResponse>> getCredentialFile(
+      Principal principal, @PathVariable UUID credentialId) {
+    UUID reviewerId = SecurityUtils.requireCurrentUserId(principal);
+    return ResponseEntity.ok(ApiResponse.success(
+        credentialService.getCredentialFile(credentialId, reviewerId)));
   }
 }

@@ -3,6 +3,7 @@ import apiClient from '../../../shared/api/apiClient';
 export interface ExpertProfileResponse {
 	expertProfileId: string;
 	userId: string;
+	displayName?: string | null;
 	specialtyId: string;
 	professionalTitle: string;
 	experienceYears: number | null;
@@ -11,6 +12,7 @@ export interface ExpertProfileResponse {
 	workplace?: string | null;
 	consultationScope: string;
 	verificationStatus: string;
+	trustStatus?: 'ACTIVE' | 'SUSPENDED' | 'REVOKED' | null;
 	verifiedAt: string | null;
 	ratingAvg: number | null;
 	consultationFeeVnd: number | null;
@@ -102,6 +104,10 @@ export interface DocumentReviewResponse {
 	issuedDate: string;
 	expiryDate: string | null;
 	fileUrl: string | null;
+	fileId?: string | null;
+	fileName?: string | null;
+	mimeType?: string | null;
+	fileSizeBytes?: number | null;
 	createdAt: string;
 	reviewStatus: string;
 	reviewNote: string | null;
@@ -116,6 +122,24 @@ export interface DocumentReviewResponse {
 	email?: string;
 	ratingAvg?: number | null;
 	avatarUrl?: string | null;
+}
+
+export interface ExpertReviewCaseResponse {
+	profile: ExpertProfileResponse;
+	latestIdentity: IdentityAttemptResponse | null;
+	credentials: DocumentReviewResponse[];
+	identityStatus: string;
+	credentialStatus: string;
+	readyForFinalApproval: boolean;
+}
+
+export interface CredentialDocumentPreviewResponse {
+	credentialId: string;
+	fileName: string;
+	mimeType: string;
+	fileSizeBytes: number;
+	content: string;
+	truncated: boolean;
 }
 
 export interface AvailabilityResponse {
@@ -384,6 +408,30 @@ export async function reviewCredential(
 ): Promise<DocumentReviewResponse> {
 	const { data } = await apiClient.put(`/api/v1/expert/credentials/${credentialId}/review`, body);
 	return data.data;
+}
+
+export async function getExpertReviewCases(): Promise<ExpertReviewCaseResponse[]> {
+	const { data } = await apiClient.get('/api/v1/expert/review-cases');
+	return data.data;
+}
+
+export async function getCredentialDocumentPreview(
+	credentialId: string
+): Promise<CredentialDocumentPreviewResponse> {
+	const { data } = await apiClient.get(`/api/v1/expert/credentials/${credentialId}/preview`);
+	return data.data;
+}
+
+export async function getCredentialFileUrl(credentialId: string): Promise<string> {
+	const { data } = await apiClient.get(`/api/v1/expert/credentials/${credentialId}/file`);
+	return data.data.presignedUrl;
+}
+
+export async function setExpertTrust(
+	profileId: string,
+	status: 'ACTIVE' | 'SUSPENDED' | 'REVOKED'
+): Promise<void> {
+	await apiClient.patch(`/api/v1/expert/profiles/${profileId}/trust`, {}, { params: { status } });
 }
 
 // ── PKG-03 Expert Availability ────────────────────────────────────────────

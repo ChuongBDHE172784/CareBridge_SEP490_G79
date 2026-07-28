@@ -5,6 +5,7 @@ import com.carebridge.backend.common.util.SecurityUtils;
 import com.carebridge.backend.expertverification.dto.request.ReviewIdentityRequest;
 import com.carebridge.backend.expertverification.dto.response.ExpertOnboardingResponse;
 import com.carebridge.backend.expertverification.dto.response.IdentityVerificationResponse;
+import com.carebridge.backend.expertverification.dto.response.ExpertReviewCaseResponse;
 import com.carebridge.backend.expertverification.service.IExpertIdentityVerificationService;
 import com.carebridge.backend.file.dto.ViewFileResponse;
 import jakarta.validation.Valid;
@@ -58,6 +59,15 @@ public class ExpertIdentityVerificationController {
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<List<IdentityVerificationResponse>>> getPendingReviews() {
         return ResponseEntity.ok(ApiResponse.success(identityService.getPendingReviews()));
+    }
+
+    @GetMapping("/review-cases")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    public ResponseEntity<ApiResponse<List<ExpertReviewCaseResponse>>> getReviewCases(
+            Principal principal) {
+        UUID reviewerId = SecurityUtils.requireCurrentUserId(principal);
+        return ResponseEntity.ok(ApiResponse.success(
+                identityService.getAdminReviewCases(reviewerId)));
     }
 
     @PutMapping("/identity/{attemptId}/review")

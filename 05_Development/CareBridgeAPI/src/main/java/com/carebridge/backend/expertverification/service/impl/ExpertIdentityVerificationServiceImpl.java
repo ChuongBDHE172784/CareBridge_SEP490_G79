@@ -12,6 +12,10 @@ import com.carebridge.backend.expertverification.enums.FaceDetectionStatus;
 import com.carebridge.backend.expertverification.dto.request.ReviewIdentityRequest;
 import com.carebridge.backend.expertverification.dto.response.ExpertOnboardingResponse;
 import com.carebridge.backend.expertverification.dto.response.IdentityVerificationResponse;
+import com.carebridge.backend.expertverification.dto.response.ExpertReviewCaseResponse;
+import com.carebridge.backend.expertverification.dto.response.DocumentReviewResponse;
+import com.carebridge.backend.expertverification.service.IExpertCredentialService;
+import com.carebridge.backend.expert.mapper.ExpertProfileMapper;
 import com.carebridge.backend.expertverification.entity.ExpertCredential;
 import com.carebridge.backend.expertverification.entity.ExpertIdentityVerification;
 import com.carebridge.backend.expertverification.enums.FaceVerificationStatus;
@@ -26,6 +30,8 @@ import com.carebridge.backend.file.enums.FileAccessMode;
 import com.carebridge.backend.file.enums.FileKind;
 import com.carebridge.backend.file.enums.FilePurpose;
 import com.carebridge.backend.file.service.IFileService;
+import com.carebridge.backend.map.facilitystatus.FacilityStatus;
+import com.carebridge.backend.map.repository.CareFacilityRepository;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -50,7 +56,10 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
     private final ExpertProfileRepository profileRepository;
     private final ExpertIdentityVerificationRepository identityRepository;
     private final ExpertCredentialRepository credentialRepository;
+    private final IExpertCredentialService credentialService;
+    private final ExpertProfileMapper profileMapper;
     private final UserRepository userRepository;
+    private final CareFacilityRepository careFacilityRepository;
     private final CompreFacePipelineAdapter pipelineAdapter;
     private final IFileService fileService;
     private final AuditService auditService;
@@ -250,7 +259,7 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
                     .profileExists(false)
                     .identityStatus("MISSING")
                     .credentialStatus("MISSING")
-                    .nextStep("IDENTITY")
+                    .nextStep("PROFILE")
                     .build();
         }
 
@@ -289,6 +298,50 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
                         IdentityReviewStatus.PENDING_REVIEW,
                         IdentityReviewStatus.MANUAL_REVIEW_REQUIRED))
                 .stream().map(this::toResponse).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ExpertReviewCaseResponse> getAdminReviewCases(UUID reviewerId) {
+        return profileRepository.findAll().stream()
+                .sorted(java.util.Comparator.comparing(
+                        profile -> profile.getCreatedAt() == null
+                                ? java.time.LocalDateTime.MIN : profile.getCreatedAt(),
+                        java.util.Comparator.reverseOrder()))
+                .map(profile -> {
+                    var user = userRepository.findById(profile.getUserId()).orElse(null);
+                    var latestIdentity = identityRepository
+                            .findFirstByExpertProfileIdOrderByCreatedAtDesc(
+                                    profile.getExpertProfileId())
+                            .map(this::toResponse)
+                            .orElse(null);
+                    var credentials = credentialService.getAdminCredentialsForProfile(
+                            profile.getExpertProfileId(), reviewerId);
+                    String identityStatus = latestIdentity == null
+                            ? "MISSING" : latestIdentity.getReviewStatus().name();
+                    String professionalCredentialStatus = credentialStatusFromResponses(credentials);
+                    boolean facilityReady = profile.getFacilityId() == null
+                            || careFacilityRepository.findById(profile.getFacilityId())
+                                    .map(facility -> facility.getVerificationStatus()
+                                            == FacilityStatus.VERIFIED)
+                                    .orElse(false);
+                    return ExpertReviewCaseResponse.builder()
+                            .profile(profileMapper.toResponse(
+                                    profile,
+                                    user != null ? user.getName() : null,
+                                    user != null ? user.getAvatarUrl() : null))
+                            .latestIdentity(latestIdentity)
+                            .credentials(credentials)
+                            .identityStatus(identityStatus)
+                            .credentialStatus(professionalCredentialStatus)
+                            .readyForFinalApproval(
+                                    profile.getVerificationStatus() != VerificationStatus.APPROVED
+                                    && "APPROVED".equals(identityStatus)
+                                    && "APPROVED".equals(professionalCredentialStatus)
+                                    && facilityReady)
+                            .build();
+                })
+                .toList();
     }
 
     @Override
@@ -376,6 +429,21 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
         }
         if (professional.stream().anyMatch(c -> c.getReviewStatus() == ReviewStatus.PENDING)) return "PENDING";
         if (!professional.isEmpty()) return "REJECTED";
+        return "MISSING";
+    }
+
+    private static String credentialStatusFromResponses(List<DocumentReviewResponse> credentials) {
+        if (credentials.stream().anyMatch(c -> c.getReviewStatus() == ReviewStatus.APPROVED
+                && (c.getExpiryDate() == null
+                    || !c.getExpiryDate().isBefore(java.time.LocalDate.now())))) {
+            return "APPROVED";
+        }
+        if (credentials.stream().anyMatch(c -> c.getReviewStatus() == ReviewStatus.PENDING)) {
+            return "PENDING";
+        }
+        if (!credentials.isEmpty()) {
+            return "REJECTED";
+        }
         return "MISSING";
     }
 

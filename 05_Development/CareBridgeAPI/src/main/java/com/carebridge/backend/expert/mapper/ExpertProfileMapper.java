@@ -33,6 +33,7 @@ public class ExpertProfileMapper {
 			.hospitalId(entity.getFacilityId() != null ? entity.getFacilityId().toString() : null)
 			.consultationScope(entity.getConsultationScope())
 			.verificationStatus(entity.getVerificationStatus())
+			.trustStatus(entity.getTrustStatus())
 			.isConsultationEligible(entity.isEligibleForConsultation())
 			.verifiedAt(entity.getVerifiedAt())
 			.verifiedBy(entity.getVerifiedBy())

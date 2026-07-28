@@ -9,6 +9,8 @@ import org.springframework.stereotype.Service;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.ServerSideEncryption;
 import software.amazon.awssdk.services.s3.model.S3Exception;
@@ -48,6 +50,38 @@ public class R2StorageService implements IStorageService {
                         .getObjectRequest(request -> request.bucket(bucket).key(key))
                         .build())
                 .url().toExternalForm();
+    }
+
+    @Override
+    public byte[] read(String key) {
+        try {
+            return r2S3Client.getObjectAsBytes(
+                    GetObjectRequest.builder().bucket(bucket).key(key).build()).asByteArray();
+        } catch (S3Exception e) {
+            throw new StorageException("R2 read failed", e);
+        }
+    }
+
+    @Override
+    public byte[] read(String key, long maxBytes) {
+        try {
+            long contentLength = r2S3Client.headObject(
+                    HeadObjectRequest.builder().bucket(bucket).key(key).build()).contentLength();
+            if (contentLength > maxBytes) {
+                throw new IllegalArgumentException("Stored object exceeds the allowed read size");
+            }
+            byte[] bytes = r2S3Client.getObjectAsBytes(GetObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(key)
+                    .range("bytes=0-" + maxBytes)
+                    .build()).asByteArray();
+            if (bytes.length > maxBytes) {
+                throw new IllegalArgumentException("Stored object exceeds the allowed read size");
+            }
+            return bytes;
+        } catch (S3Exception e) {
+            throw new StorageException("R2 read failed", e);
+        }
     }
 
     @Override

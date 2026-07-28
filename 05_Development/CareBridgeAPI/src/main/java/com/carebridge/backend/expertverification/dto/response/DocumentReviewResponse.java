@@ -23,6 +23,9 @@ public class DocumentReviewResponse {
 	private LocalDate expiryDate;
 	private String fileUrl;
 	private UUID fileId;
+	private String fileName;
+	private String mimeType;
+	private Long fileSizeBytes;
 	private LocalDateTime createdAt;
 	private ReviewStatus reviewStatus;
 	private String reviewNote;

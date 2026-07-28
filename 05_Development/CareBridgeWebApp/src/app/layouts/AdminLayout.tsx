@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../shared/auth/useAuth';
 
@@ -23,17 +22,7 @@ type NavItem = NavLinkItem | NavGroupItem;
 // so the Admin and ModPortal sidebars read as one consistent design system.
 const NAV_LINKS: readonly NavItem[] = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: 'dashboard', roles: ['SYSTEM_ADMIN'] },
-  {
-    type: 'group',
-    label: 'Quản lý chuyên gia',
-    icon: 'medical_services',
-    roles: ['SYSTEM_ADMIN'],
-    children: [
-      { to: '/admin/expert-verification-queue', label: 'Xét duyệt chuyên gia', icon: 'verified_user', roles: ['SYSTEM_ADMIN'] },
-      { to: '/admin/expert-identity-queue', label: 'Định danh chuyên gia', icon: 'badge', roles: ['SYSTEM_ADMIN'] },
-      { to: '/admin/expert-trust-management', label: 'Tin cậy chuyên gia', icon: 'health_and_safety', roles: ['SYSTEM_ADMIN'] },
-    ],
-  },
+  { to: '/admin/expert-verification-queue', label: 'Xét duyệt chuyên gia', icon: 'verified_user', roles: ['SYSTEM_ADMIN'] },
   { to: '/admin/content-approval-queue', label: 'Duyệt nội dung', icon: 'fact_check', roles: ['SYSTEM_ADMIN'] },
   { to: '/admin/partners/verification', label: 'Xét duyệt đối tác', icon: 'handshake', roles: ['SYSTEM_ADMIN'] },
   { to: '/posture-configs', label: 'Cấu hình tư thế', icon: 'settings_accessibility', roles: ['SYSTEM_ADMIN'] },
@@ -51,9 +40,6 @@ export default function AdminLayout() {
   const { user, logout, hasAnyRole } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const expertManagementActive = location.pathname.startsWith('/admin/expert-');
-  const [expertManagementOpen, setExpertManagementOpen] = useState(expertManagementActive);
-
   const handleLogout = () => {
     logout();
     navigate('/login');
@@ -83,15 +69,12 @@ export default function AdminLayout() {
         <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
           {visibleLinks.map((l) => {
             if (l.type === 'group') {
-              const groupOpen = l.label === 'Quản lý chuyên gia' ? expertManagementOpen : true;
+              const groupOpen = true;
               const groupActive = l.children.some((child) => location.pathname.startsWith(child.to));
 
               return (
                 <div key={l.label} className="space-y-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setExpertManagementOpen((open) => !open)}
-                    aria-expanded={groupOpen}
+                  <div
                     className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
                       groupActive
                         ? 'bg-primary-container text-primary'
@@ -100,10 +83,7 @@ export default function AdminLayout() {
                   >
                     <span className="material-symbols-outlined text-[18px]">{l.icon}</span>
                     <span className="min-w-0 flex-1 truncate text-left">{l.label}</span>
-                    <span className="material-symbols-outlined text-[16px]">
-                      {groupOpen ? 'expand_less' : 'expand_more'}
-                    </span>
-                  </button>
+                  </div>
                   {groupOpen && (
                     <div className="space-y-0.5 pl-5">
                       {l.children.filter(isVisible).map((child) => (

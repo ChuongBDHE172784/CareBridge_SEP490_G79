@@ -2,6 +2,7 @@ package com.carebridge.backend.file.service;
 
 import com.carebridge.backend.file.dto.UploadFileResponse;
 import com.carebridge.backend.file.dto.ViewFileResponse;
+import com.carebridge.backend.file.dto.AuthorizedFileContent;
 import com.carebridge.backend.file.enums.FileAccessMode;
 import com.carebridge.backend.file.enums.FileKind;
 import com.carebridge.backend.file.enums.FilePurpose;
@@ -34,6 +35,11 @@ public interface IFileService {
 
     /** @throws com.carebridge.backend.common.exception.ResourceNotFoundException (FILE-404) if not found/deleted */
     ViewFileResponse viewFile(UUID fileId, UUID callerId);
+
+    /** Read private bytes after applying the same access policy as {@link #viewFile}. */
+    AuthorizedFileContent readAuthorizedFile(UUID fileId, UUID callerId, long maxBytes);
+
+    ViewFileResponse getAuthorizedFileMetadata(UUID fileId, UUID callerId);
 
     /** @throws com.carebridge.backend.common.exception.ResourceNotFoundException (FILE-404) if not found/deleted */
     void deleteFile(UUID fileId, UUID callerId);

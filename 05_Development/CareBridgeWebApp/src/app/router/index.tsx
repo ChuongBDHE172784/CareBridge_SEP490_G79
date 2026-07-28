@@ -35,12 +35,10 @@ import AdminContributionReviewQueuePage from '../../features/expert/pages/AdminC
 
 // Expert verification queue (admin side, UC-70)
 import ExpertVerificationQueuePage from '../../features/expert/pages/ExpertVerificationQueuePage';
-import AdminExpertIdentityReviewPage from '../../features/expert/pages/AdminExpertIdentityReviewPage';
 
 // UC-144 (redesign, CB-CHAT-IMP-144D) — Direct Consult Chat & Call, Expert Portal side
 import ConversationListPage from '../../features/directChat/pages/ConversationListPage';
 import ConversationRoomPage from '../../features/directChat/pages/ConversationRoomPage';
-import AdminExpertTrustManagementPage from '../../features/expert/pages/AdminExpertTrustManagementPage';
 
 // Admin portal screens
 import AdminDashboardPage from '../../features/admin/pages/AdminDashboardPage';
@@ -161,8 +159,8 @@ export const router = createBrowserRouter([
               { path: '/admin/dashboard', element: <AdminDashboardPage /> },
               { path: '/admin', element: <Navigate to="/admin/dashboard" replace /> },
               { path: '/admin/expert-verification-queue', element: <ExpertVerificationQueuePage /> },
-              { path: '/admin/expert-identity-queue', element: <AdminExpertIdentityReviewPage /> },
-{ path: '/admin/expert-trust-management', element: <AdminExpertTrustManagementPage /> },
+              { path: '/admin/expert-identity-queue', element: <Navigate to="/admin/expert-verification-queue" replace /> },
+              { path: '/admin/expert-trust-management', element: <Navigate to="/admin/expert-verification-queue" replace /> },
               { path: '/admin/content-approval-queue', element: <ContentApprovalQueuePage /> },
               // Read-only review routes for the approval queue's "Xem chi tiết" links — System Admin
               // lacks CONTENT_ADMIN, so it cannot use /content/:id or /content/checklists/:id directly

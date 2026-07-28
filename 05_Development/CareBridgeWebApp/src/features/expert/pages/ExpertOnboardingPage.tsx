@@ -16,6 +16,7 @@ import {
 } from '../services/expertApi';
 import type {
   ExpertOnboardingResponse,
+  ExpertOnboardingStep,
   ProvinceResponse,
   DistrictResponse,
   WardResponse,
@@ -88,7 +89,7 @@ export default function ExpertOnboardingPage() {
       </div>
 
       {error && <ErrorBanner message={error} retry={reload} />}
-      {currentStep === 'IDENTITY' && (
+      {(currentStep === 'PROFILE' || currentStep === 'IDENTITY') && (
         <IdentityStep 
           needsProfile={!state?.profileExists}
           onDone={reload} 
@@ -583,7 +584,7 @@ function CredentialStep({ onDone }: { onDone: () => Promise<void> }) {
 
         <label className="grid gap-2 text-sm font-medium sm:col-span-2">
           Tệp chứng chỉ *
-          <input required type="file" accept="image/jpeg,image/png,application/pdf" onChange={event => setFile(event.target.files?.[0] ?? null)} className="rounded-xl border border-dashed border-gray-300 p-3 font-normal" />
+          <input required type="file" accept=".pdf,.doc,.docx,image/jpeg,image/png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={event => setFile(event.target.files?.[0] ?? null)} className="rounded-xl border border-dashed border-gray-300 p-3 font-normal" />
         </label>
         <SubmitButton busy={submitting}>Gửi chứng chỉ</SubmitButton>
       </form>
