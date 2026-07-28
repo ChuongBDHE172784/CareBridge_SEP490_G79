@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../models/auth_model.dart';
 import '../services/auth_service.dart';
 import 'edit_profile_screen.dart';
@@ -200,6 +201,17 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
                       ),
                     ),
                   );
+                },
+              ),
+            ]),
+          ] else ...[
+            const SizedBox(height: 16),
+            _buildMenuCard([
+              _menuItem(
+                Icons.medical_services_outlined,
+                'Đăng ký thành Chuyên gia',
+                () {
+                  context.go('/expert-onboarding');
                 },
               ),
             ]),

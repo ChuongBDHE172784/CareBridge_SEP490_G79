@@ -132,6 +132,7 @@ CREATE TABLE public.archived_records (
 CREATE TABLE public.attachments (
     attachment_id uuid DEFAULT gen_random_uuid() NOT NULL,
     owner_user_id uuid NOT NULL,
+    uploader_role character varying(30) DEFAULT 'PATIENT'::character varying NOT NULL,
     storage_key character varying(500) NOT NULL,
     original_name character varying(255) NOT NULL,
     mime_type character varying(100) NOT NULL,

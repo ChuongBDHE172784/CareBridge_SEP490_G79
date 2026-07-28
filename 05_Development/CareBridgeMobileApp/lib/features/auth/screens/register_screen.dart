@@ -8,7 +8,8 @@ import 'role_selection_screen.dart';
 /// CB-002 — Register Account (UC-01)
 /// Collects name, email/phone, password → calls POST /api/v1/auth/register → navigates to OTP screen.
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  final bool isExpert;
+  const RegisterScreen({super.key, this.isExpert = false});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -92,6 +93,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
         phone: !_isEmailInput ? identifier : null,
         password: password,
       );
+      if (widget.isExpert) {
+        try {
+          await AuthService.instance.selectRole('EXPERT');
+        } catch (_) {}
+      }
       if (!mounted) return;
       Navigator.push(
         context,
@@ -169,7 +175,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           Expanded(
             child: Text(
-              'Tạo tài khoản',
+              widget.isExpert ? 'Đăng ký Chuyên gia' : 'Tạo tài khoản',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontFamily: 'Lexend',
@@ -189,9 +195,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Chào mừng bạn! 👋',
-          style: TextStyle(
+        Text(
+          widget.isExpert ? 'Đăng ký Chuyên gia Y tế 🩺' : 'Chào mừng bạn! 👋',
+          style: const TextStyle(
             fontFamily: 'Lexend',
             fontSize: 24,
             fontWeight: FontWeight.w600,
@@ -200,8 +206,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         const SizedBox(height: 4),
         Text(
-          'Bắt đầu hành trình chăm sóc tuyệt vời cùng CareBridge.',
-          style: TextStyle(
+          widget.isExpert
+              ? 'Tạo tài khoản chuyên gia để bắt đầu xác thực hồ sơ chuyên môn.'
+              : 'Bắt đầu hành trình chăm sóc tuyệt vời cùng CareBridge.',
+          style: const TextStyle(
             fontFamily: 'Lexend',
             fontSize: 14,
             color: _mutedColor,

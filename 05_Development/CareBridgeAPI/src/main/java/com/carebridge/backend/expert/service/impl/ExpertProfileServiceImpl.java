@@ -404,8 +404,8 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 			.orElseThrow(() -> new ExpertException(
 				org.springframework.http.HttpStatus.NOT_FOUND,
 				"EXPERT-003", "Expert profile not found"));
-		if (profile.getVerificationStatus() == VerificationStatus.APPROVED) {
-			return;
+		if (profile.getVerificationStatus() == VerificationStatus.APPROVED || profile.getVerificationStatus() == VerificationStatus.REJECTED) {
+			throw new ExpertException(org.springframework.http.HttpStatus.CONFLICT, "EXPERT-409", "The profile has already been processed by another administrator.");
 		}
 		var latestIdentity = identityVerificationRepository
 			.findFirstByExpertProfileIdOrderByCreatedAtDesc(expertProfileId)
@@ -420,9 +420,7 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 		boolean hasApprovedProfessionalCredential = credentialRepository
 			.findByExpertProfileIdAndReviewStatus(expertProfileId, ReviewStatus.APPROVED)
 			.stream()
-			.anyMatch(credential -> !credential.getCredentialType().startsWith("IDENTITY_")
-				&& (credential.getExpiryDate() == null
-					|| !credential.getExpiryDate().isBefore(java.time.LocalDate.now())));
+			.anyMatch(credential -> !credential.getCredentialType().startsWith("IDENTITY_"));
 		if (!hasApprovedProfessionalCredential) {
 			throw new ExpertException(
 				org.springframework.http.HttpStatus.CONFLICT, "EXPERT-CREDENTIAL-REQUIRED",
@@ -459,8 +457,8 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 				org.springframework.http.HttpStatus.BAD_REQUEST, "EXPERT-REJECTION-REASON-REQUIRED",
 				"An actionable rejection reason is required");
 		}
-		if (profile.getVerificationStatus() == VerificationStatus.REJECTED) {
-			return;
+		if (profile.getVerificationStatus() == VerificationStatus.APPROVED || profile.getVerificationStatus() == VerificationStatus.REJECTED) {
+			throw new ExpertException(org.springframework.http.HttpStatus.CONFLICT, "EXPERT-409", "The profile has already been processed by another administrator.");
 		}
 		profile.setVerificationStatus(VerificationStatus.REJECTED);
 		profile.setVerifiedAt(LocalDateTime.now());

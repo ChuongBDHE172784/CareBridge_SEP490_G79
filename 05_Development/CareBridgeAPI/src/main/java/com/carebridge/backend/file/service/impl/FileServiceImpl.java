@@ -236,6 +236,7 @@ public class FileServiceImpl implements IFileService {
         try {
             UploadedFile saved = fileRepository.save(UploadedFile.builder()
                     .ownerUserId(callerId)
+                    .uploaderRole(resolveCallerRole())
                     .storageKey(persistedStorageKey)
                     .storageProvider(provider)
                     .kind(kind)
@@ -503,6 +504,7 @@ public class FileServiceImpl implements IFileService {
         try {
             UploadedFile saved = fileRepository.save(UploadedFile.builder()
                     .ownerUserId(callerId)
+                    .uploaderRole(resolveCallerRole())
                     .storageKey(persistedStorageKey)
                     .storageProvider(provider)
                     .kind(kind)
@@ -565,5 +567,19 @@ public class FileServiceImpl implements IFileService {
             case "application/vnd.openxmlformats-officedocument.wordprocessingml.document" -> ".docx";
             default -> "";
         };
+    }
+
+    private String resolveCallerRole() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getAuthorities() != null) {
+            for (var authority : auth.getAuthorities()) {
+                String role = authority.getAuthority();
+                if (role.startsWith("ROLE_")) {
+                    return role.substring(5);
+                }
+                return role;
+            }
+        }
+        return "PATIENT";
     }
 }

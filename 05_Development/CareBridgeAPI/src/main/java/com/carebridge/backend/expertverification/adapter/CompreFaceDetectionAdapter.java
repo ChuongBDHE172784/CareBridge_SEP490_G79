@@ -38,6 +38,10 @@ public class CompreFaceDetectionAdapter implements FaceDetectionAdapter {
             @Value("${carebridge.compreface.detection-limit:2}") int limit,
             @Value("${carebridge.compreface.connect-timeout-ms:3000}") int connectTimeoutMs,
             @Value("${carebridge.compreface.read-timeout-ms:8000}") int readTimeoutMs) {
+        System.out.println("=========================================");
+        System.out.println("CompreFaceDetectionAdapter initializing...");
+        System.out.println("INJECTED API KEY: [" + apiKey + "]");
+        System.out.println("=========================================");
         this.enabled = enabled;
         this.apiKey = apiKey;
         this.detProbThreshold = detProbThreshold;
@@ -129,6 +133,9 @@ public class CompreFaceDetectionAdapter implements FaceDetectionAdapter {
             return FaceDetectionResult.detected(faces);
 
         } catch (Exception ex) {
+            System.err.println("DETECTION PARSE ERROR: " + ex.getMessage());
+            ex.printStackTrace();
+            System.err.println("RESPONSE WAS: " + response);
             return FaceDetectionResult.providerError("DETECTION_PARSE_ERROR");
         }
     }
@@ -155,8 +162,11 @@ public class CompreFaceDetectionAdapter implements FaceDetectionAdapter {
         double height = yMax - yMin;
 
         // Validate box dimensions
-        if (width <= 0 || height <= 0 || width > 1.1 || height > 1.1) {
-            throw new IllegalStateException("Invalid face bounding box dimensions");
+        if (width <= 0 || height <= 0) {
+            throw new IllegalStateException("Invalid face bounding box dimensions (<= 0)");
+        }
+        if (normalized && (width > 1.1 || height > 1.1)) {
+            throw new IllegalStateException("Invalid face bounding box dimensions (normalized > 1.1)");
         }
 
         return new FaceBoundingBox(

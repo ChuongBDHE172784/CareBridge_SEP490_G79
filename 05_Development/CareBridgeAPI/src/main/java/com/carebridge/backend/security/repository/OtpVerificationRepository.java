@@ -14,11 +14,11 @@ import jakarta.persistence.LockModeType;
 public interface OtpVerificationRepository extends JpaRepository<OtpVerification, UUID> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @org.springframework.data.jpa.repository.Query("SELECT o FROM OtpVerification o WHERE o.subjectIdentifier=:phone AND o.purpose IN (com.carebridge.backend.security.entity.OtpVerification.OtpPurpose.REGISTER,com.carebridge.backend.security.entity.OtpVerification.OtpPurpose.LOGIN) AND o.usedAt IS NULL ORDER BY o.createdAt DESC")
+    @org.springframework.data.jpa.repository.Query("SELECT o FROM OtpVerification o WHERE o.subjectIdentifier=:phone AND o.purpose IN (com.carebridge.backend.security.entity.OtpVerification.OtpPurpose.REGISTER,com.carebridge.backend.security.entity.OtpVerification.OtpPurpose.LOGIN) AND o.usedAt IS NULL ORDER BY o.createdAt DESC LIMIT 1")
     Optional<OtpVerification> findTopByPhoneAndUsedAtIsNullOrderByCreatedAtDesc(String phone);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @org.springframework.data.jpa.repository.Query("SELECT o FROM OtpVerification o WHERE o.subjectIdentifier=:email AND o.purpose IN (com.carebridge.backend.security.entity.OtpVerification.OtpPurpose.REGISTER,com.carebridge.backend.security.entity.OtpVerification.OtpPurpose.LOGIN) AND o.usedAt IS NULL ORDER BY o.createdAt DESC")
+    @org.springframework.data.jpa.repository.Query("SELECT o FROM OtpVerification o WHERE o.subjectIdentifier=:email AND o.purpose IN (com.carebridge.backend.security.entity.OtpVerification.OtpPurpose.REGISTER,com.carebridge.backend.security.entity.OtpVerification.OtpPurpose.LOGIN) AND o.usedAt IS NULL ORDER BY o.createdAt DESC LIMIT 1")
     Optional<OtpVerification> findTopByEmailAndUsedAtIsNullOrderByCreatedAtDesc(String email);
 
     @org.springframework.data.jpa.repository.Query(value = """
@@ -33,7 +33,7 @@ public interface OtpVerificationRepository extends JpaRepository<OtpVerification
     Optional<OtpVerification> findTopByUserIdAndUsedAtIsNullOrderByCreatedAtDescIdDesc(UUID userId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @org.springframework.data.jpa.repository.Query("SELECT o FROM OtpVerification o WHERE o.subjectIdentifier=:phone AND o.purpose IN (com.carebridge.backend.security.entity.OtpVerification.OtpPurpose.REGISTER,com.carebridge.backend.security.entity.OtpVerification.OtpPurpose.LOGIN) AND o.status='PENDING' ORDER BY o.createdAt DESC")
+    @org.springframework.data.jpa.repository.Query("SELECT o FROM OtpVerification o WHERE o.subjectIdentifier=:phone AND o.purpose IN (com.carebridge.backend.security.entity.OtpVerification.OtpPurpose.REGISTER,com.carebridge.backend.security.entity.OtpVerification.OtpPurpose.LOGIN) AND o.status='PENDING' ORDER BY o.createdAt DESC LIMIT 1")
     Optional<OtpVerification> findTopByPhoneAndVerifiedFalseOrderByCreatedAtDesc(String phone);
 
     @org.springframework.data.jpa.repository.Modifying

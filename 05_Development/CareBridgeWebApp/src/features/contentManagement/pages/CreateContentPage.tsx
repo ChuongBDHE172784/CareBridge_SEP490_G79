@@ -85,7 +85,7 @@ export default function CreateContentPage({ contentType }: CreateContentPageProp
     } finally {
       setSubmitting(null);
     }
-  }, [contentType, stage, title, body, topicId, tagIds, sourceLabel, sourceUrl, sourcePublisher]);
+  }, [contentType, stage, title, summary, body, topicId, tagIds, sourceLabel, sourceUrl, sourcePublisher]);
 
   if (created) {
     return (

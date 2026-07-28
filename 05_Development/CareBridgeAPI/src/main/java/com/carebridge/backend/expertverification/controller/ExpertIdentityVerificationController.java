@@ -63,11 +63,14 @@ public class ExpertIdentityVerificationController {
 
     @GetMapping("/review-cases")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
-    public ResponseEntity<ApiResponse<List<ExpertReviewCaseResponse>>> getReviewCases(
-            Principal principal) {
+    public ResponseEntity<ApiResponse<org.springframework.data.domain.Page<ExpertReviewCaseResponse>>> getReviewCases(
+            Principal principal,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String status,
+            org.springframework.data.domain.Pageable pageable) {
         UUID reviewerId = SecurityUtils.requireCurrentUserId(principal);
         return ResponseEntity.ok(ApiResponse.success(
-                identityService.getAdminReviewCases(reviewerId)));
+                identityService.getAdminReviewCases(search, status, pageable, reviewerId)));
     }
 
     @PutMapping("/identity/{attemptId}/review")

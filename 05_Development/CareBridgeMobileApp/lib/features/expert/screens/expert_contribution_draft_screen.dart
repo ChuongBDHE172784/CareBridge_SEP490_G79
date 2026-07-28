@@ -295,7 +295,7 @@ class _ExpertContributionDraftScreenState
     }
   }
 
-  void _removeAttachment(String fileId) {
+  Future<void> _removeAttachment(String fileId) async {
     setState(() {
       _attachments.removeWhere((a) => a.fileId == fileId);
       final preview = _filePreviews.remove(fileId);
@@ -305,6 +305,13 @@ class _ExpertContributionDraftScreenState
         // Clean up local file if needed
       }
     });
+    
+    // Call API to actually delete the file from the backend (and Cloudinary/R2 eventually)
+    try {
+      await _service.deleteContributionFile(fileId);
+    } catch (e) {
+      debugPrint('Warning: failed to delete file from backend: $e');
+    }
   }
 
   bool _validateForm() {

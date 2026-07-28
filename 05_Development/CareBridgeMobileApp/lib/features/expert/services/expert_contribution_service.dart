@@ -158,6 +158,17 @@ class ExpertContributionService {
     throw ApiException(response.statusCode, response.body);
   }
 
+  /// Delete a file uploaded for contribution
+  Future<void> deleteContributionFile(String fileId) async {
+    final uri = Uri.parse('$_baseUrl/api/v1/files/$fileId');
+    final response = await http.delete(uri, headers: _headers);
+    _handleUnauthorized(response);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return;
+    }
+    throw ApiException(response.statusCode, response.body);
+  }
+
   /// Handle 401 responses
   void _handleUnauthorized(http.Response response) {
     if (response.statusCode == 401) {

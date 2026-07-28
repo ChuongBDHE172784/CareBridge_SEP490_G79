@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { createContribution, getContribution, updateContribution, submitContribution, checkContributionEligibility, uploadContributionFile, type CreateContributionRequest, type UpdateContributionRequest, type ContributionAttachmentRequest, type UploadFileResponse } from '../services/expertApi';
+import { createContribution, getContribution, updateContribution, submitContribution, checkContributionEligibility, uploadContributionFile, deleteContributionFile, type CreateContributionRequest, type UpdateContributionRequest, type ContributionAttachmentRequest, type UploadFileResponse } from '../services/expertApi';
 
 export default function ContributionDraftPage() {
   const { id } = useParams<{ id: string }>();
@@ -132,7 +132,7 @@ export default function ContributionDraftPage() {
     Array.from(files).forEach(file => handleFileUpload(file, kind));
   }
 
-  function removeAttachment(fileId: string) {
+  async function removeAttachment(fileId: string) {
     setAttachments(prev => prev.filter(a => a.fileId !== fileId));
     setFilePreviews(prev => {
       const next = new Map(prev);
@@ -141,6 +141,12 @@ export default function ContributionDraftPage() {
       next.delete(fileId);
       return next;
     });
+
+    try {
+      await deleteContributionFile(fileId);
+    } catch (err) {
+      console.warn('Failed to delete file from backend:', err);
+    }
   }
 
   function validateForm(): boolean {

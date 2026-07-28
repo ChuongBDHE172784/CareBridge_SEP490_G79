@@ -6,6 +6,8 @@ import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.expert.exception.ExpertException;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import com.carebridge.backend.expertverification.adapter.CompreFacePipelineAdapter;
 import com.carebridge.backend.expertverification.adapter.FaceVerificationResult;
 import com.carebridge.backend.expertverification.enums.FaceDetectionStatus;
@@ -302,14 +304,18 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
 
     @Override
     @Transactional(readOnly = true)
-    public List<ExpertReviewCaseResponse> getAdminReviewCases(UUID reviewerId) {
-        return profileRepository.findAll().stream()
-                .sorted(java.util.Comparator.comparing(
-                        profile -> profile.getCreatedAt() == null
-                                ? java.time.LocalDateTime.MIN : profile.getCreatedAt(),
-                        java.util.Comparator.reverseOrder()))
+    public Page<ExpertReviewCaseResponse> getAdminReviewCases(String search, String status, Pageable pageable, UUID reviewerId) {
+        VerificationStatus verificationStatus = null;
+        if (status != null && !status.isBlank()) {
+            try {
+                verificationStatus = VerificationStatus.valueOf(status);
+            } catch (IllegalArgumentException ignored) {}
+        }
+        String searchQuery = (search != null && !search.isBlank()) ? search.trim() : null;
+
+        return profileRepository.findForReview(searchQuery, verificationStatus, pageable)
                 .map(profile -> {
-                    var user = userRepository.findById(profile.getUserId()).orElse(null);
+                    var user = profile.getUser();
                     var latestIdentity = identityRepository
                             .findFirstByExpertProfileIdOrderByCreatedAtDesc(
                                     profile.getExpertProfileId())
@@ -340,8 +346,7 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
                                     && "APPROVED".equals(professionalCredentialStatus)
                                     && facilityReady)
                             .build();
-                })
-                .toList();
+                });
     }
 
     @Override
@@ -423,8 +428,7 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
         List<ExpertCredential> professional = credentials.stream()
                 .filter(c -> !c.getCredentialType().startsWith("IDENTITY_"))
                 .toList();
-        if (professional.stream().anyMatch(c -> c.getReviewStatus() == ReviewStatus.APPROVED
-                && (c.getExpiryDate() == null || !c.getExpiryDate().isBefore(java.time.LocalDate.now())))) {
+        if (professional.stream().anyMatch(c -> c.getReviewStatus() == ReviewStatus.APPROVED)) {
             return "APPROVED";
         }
         if (professional.stream().anyMatch(c -> c.getReviewStatus() == ReviewStatus.PENDING)) return "PENDING";
@@ -433,9 +437,7 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
     }
 
     private static String credentialStatusFromResponses(List<DocumentReviewResponse> credentials) {
-        if (credentials.stream().anyMatch(c -> c.getReviewStatus() == ReviewStatus.APPROVED
-                && (c.getExpiryDate() == null
-                    || !c.getExpiryDate().isBefore(java.time.LocalDate.now())))) {
+        if (credentials.stream().anyMatch(c -> c.getReviewStatus() == ReviewStatus.APPROVED)) {
             return "APPROVED";
         }
         if (credentials.stream().anyMatch(c -> c.getReviewStatus() == ReviewStatus.PENDING)) {

@@ -48,6 +48,8 @@ public class ExpertCredentialServiceImpl implements IExpertCredentialService {
             "application/msword",
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
 
+    private final java.util.concurrent.ExecutorService tikaExecutor = java.util.concurrent.Executors.newFixedThreadPool(4);
+
     private final ExpertCredentialRepository credentialRepository;
     private final ExpertProfileRepository expertProfileRepository;
     private final ExpertCredentialMapper credentialMapper;
@@ -249,30 +251,50 @@ public class ExpertCredentialServiceImpl implements IExpertCredentialService {
                     "Document is too large to preview");
         }
 
-        try (ByteArrayInputStream input = new ByteArrayInputStream(file.bytes())) {
-            Tika tika = new Tika();
-            String detectedMime = tika.detect(file.bytes(), file.originalName());
-            if (!matchesDetectedMime(file.mimeType(), detectedMime)) {
+        java.util.concurrent.Future<CredentialDocumentPreviewResponse> future = tikaExecutor.submit(() -> {
+            try (ByteArrayInputStream input = new ByteArrayInputStream(file.bytes())) {
+                Tika tika = new Tika();
+                String detectedMime = tika.detect(file.bytes(), file.originalName());
+                if (!matchesDetectedMime(file.mimeType(), detectedMime)) {
+                    throw new ExpertException(HttpStatus.UNPROCESSABLE_ENTITY, "EXPVER-013",
+                            "Document content does not match its declared type");
+                }
+                Metadata metadata = new Metadata();
+                metadata.set(Metadata.CONTENT_TYPE, file.mimeType());
+                metadata.set(org.apache.tika.metadata.TikaCoreProperties.RESOURCE_NAME_KEY, file.originalName());
+                String extracted = tika.parseToString(input, metadata, MAX_PREVIEW_CHARS);
+                String normalized = extracted
+                        .replace("\u0000", "")
+                        .replaceAll("[\\p{Cntrl}&&[^\\r\\n\\t]]", "")
+                        .trim();
+                return CredentialDocumentPreviewResponse.builder()
+                        .credentialId(credentialId)
+                        .fileName(file.originalName())
+                        .mimeType(file.mimeType())
+                        .fileSizeBytes(file.fileSizeBytes())
+                        .content(normalized)
+                        .truncated(extracted.length() >= MAX_PREVIEW_CHARS)
+                        .build();
+            } catch (java.io.IOException | TikaException ex) {
                 throw new ExpertException(HttpStatus.UNPROCESSABLE_ENTITY, "EXPVER-013",
-                        "Document content does not match its declared type");
+                        "Unable to read this document");
             }
-            Metadata metadata = new Metadata();
-            metadata.set(Metadata.CONTENT_TYPE, file.mimeType());
-            metadata.set(org.apache.tika.metadata.TikaCoreProperties.RESOURCE_NAME_KEY, file.originalName());
-            String extracted = tika.parseToString(input, metadata, MAX_PREVIEW_CHARS);
-            String normalized = extracted
-                    .replace("\u0000", "")
-                    .replaceAll("[\\p{Cntrl}&&[^\\r\\n\\t]]", "")
-                    .trim();
-            return CredentialDocumentPreviewResponse.builder()
-                    .credentialId(credentialId)
-                    .fileName(file.originalName())
-                    .mimeType(file.mimeType())
-                    .fileSizeBytes(file.fileSizeBytes())
-                    .content(normalized)
-                    .truncated(extracted.length() >= MAX_PREVIEW_CHARS)
-                    .build();
-        } catch (java.io.IOException | TikaException ex) {
+        });
+
+        try {
+            return future.get(30, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (java.util.concurrent.TimeoutException ex) {
+            future.cancel(true);
+            throw new ExpertException(HttpStatus.UNPROCESSABLE_ENTITY, "EXPVER-014",
+                    "Document parsing timed out");
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new ExpertException(HttpStatus.INTERNAL_SERVER_ERROR, "EXPVER-015",
+                    "Document parsing interrupted");
+        } catch (java.util.concurrent.ExecutionException ex) {
+            if (ex.getCause() instanceof ExpertException) {
+                throw (ExpertException) ex.getCause();
+            }
             throw new ExpertException(HttpStatus.UNPROCESSABLE_ENTITY, "EXPVER-013",
                     "Unable to read this document");
         }

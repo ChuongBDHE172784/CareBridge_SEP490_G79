@@ -109,7 +109,9 @@ export default function ChecklistListPage() {
   }, [loadData]);
 
   const latestLoadData = useRef(loadData);
-  latestLoadData.current = loadData;
+  useEffect(() => {
+    latestLoadData.current = loadData;
+  }, [loadData]);
 
   useEffect(() => {
     setActionError('');

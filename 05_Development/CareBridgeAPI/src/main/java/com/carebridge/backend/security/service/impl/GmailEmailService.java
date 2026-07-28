@@ -32,6 +32,7 @@ this.mailSender = mailSender;
 @Override
 public void sendOtpVerificationEmail(String to, String otp, int expiryMinutes) {
 String subject = "Mã xác thực CareBridge của bạn";
+logger.info("[DEV] OTP generated for {}: {}", to, otp);
 String html = """
 <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#FFF8F6;border-radius:16px;">
 <h2 style="color:#5A463F;margin-bottom:8px;">CareBridge</h2>

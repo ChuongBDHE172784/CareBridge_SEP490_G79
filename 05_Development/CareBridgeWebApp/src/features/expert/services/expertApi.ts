@@ -410,8 +410,30 @@ export async function reviewCredential(
 	return data.data;
 }
 
-export async function getExpertReviewCases(): Promise<ExpertReviewCaseResponse[]> {
-	const { data } = await apiClient.get('/api/v1/expert/review-cases');
+export interface PageResponse<T> {
+	content: T[];
+	page: {
+		size: number;
+		number: number;
+		totalElements: number;
+		totalPages: number;
+	};
+}
+
+export async function getExpertReviewCases(
+	search?: string,
+	status?: string,
+	page: number = 0,
+	size: number = 10
+): Promise<PageResponse<ExpertReviewCaseResponse>> {
+	const params = new URLSearchParams({
+		page: page.toString(),
+		size: size.toString(),
+	});
+	if (search) params.append('search', search);
+	if (status && status !== 'ALL') params.append('status', status);
+
+	const { data } = await apiClient.get(`/api/v1/expert/review-cases?${params.toString()}`);
 	return data.data;
 }
 
