@@ -1,6 +1,15 @@
 import axios from 'axios';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import { Info, ShieldCheck, Sparkles, TriangleAlert } from 'lucide-react';
+import {
+  Activity,
+  ArrowRight,
+  Bot,
+  CircleCheck,
+  Info,
+  ShieldCheck,
+  TriangleAlert,
+  Wrench,
+} from 'lucide-react';
 import ModPortalSidebar from '../../moderation/components/ModPortalSidebar';
 import {
   fetchSystemConfiguration,
@@ -229,6 +238,14 @@ export default function SystemConfigurationPage() {
   const lastUpdated = configuration.updatedAt
     ? new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(configuration.updatedAt))
     : 'Chưa có thông tin';
+  const aiModerationChanged = baseline !== null
+    && configuration.aiModerationEnabled !== baseline.aiModerationEnabled;
+  const maintenanceModeChanged = baseline !== null
+    && configuration.maintenanceModeEnabled !== baseline.maintenanceModeEnabled;
+  const pendingChangeCount = Number(aiModerationChanged) + Number(maintenanceModeChanged);
+
+  const aiModerationLabel = (enabled: boolean) => enabled ? 'Đang chạy' : 'Đang tạm dừng';
+  const maintenanceModeLabel = (enabled: boolean) => enabled ? 'Đang bảo trì' : 'Hoạt động bình thường';
 
   return (
     <div className="portal-page font-sans">
@@ -239,8 +256,8 @@ export default function SystemConfigurationPage() {
             <div>
               <h1 className="m-0 text-[26px] font-bold text-on-surface">Cấu hình hệ thống</h1>
               <p className="mt-1 max-w-3xl text-sm text-on-surface-variant">
-                Chỉ hiển thị các cấu hình đang có hiệu lực thực tế trong backend.
-                <span className="font-semibold text-error"> Mọi thay đổi đều áp dụng toàn hệ thống và được ghi audit.</span>
+                Quản lý các chế độ ảnh hưởng trực tiếp đến hoạt động của CareBridge.
+                <span className="font-semibold text-error"> Mọi thay đổi áp dụng toàn hệ thống và được ghi vào nhật ký kiểm toán.</span>
               </p>
             </div>
             <button type="button" onClick={() => void refresh()} disabled={saving || refreshing} className="inline-flex items-center gap-2 self-start rounded-full border border-outline-variant bg-surface px-5 py-2.5 text-sm font-semibold text-on-surface-variant hover:bg-surface-container-low disabled:cursor-not-allowed disabled:opacity-50 md:self-auto">
@@ -250,13 +267,13 @@ export default function SystemConfigurationPage() {
           </div>
 
           {error && <div role="alert" className="mb-4 rounded-2xl border border-error-container bg-error-container/60 p-4 text-sm text-error">{error}</div>}
-          {notice && <div role="status" className="mb-4 rounded-2xl border border-emerald-700/30 bg-emerald-950/30 p-4 text-sm font-semibold text-emerald-300">{notice}</div>}
+          {notice && <div role="status" className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-700">{notice}</div>}
 
           <div className="grid gap-6 lg:grid-cols-3">
-            <section className="rounded-2xl border border-surface-container-highest bg-surface p-6 shadow-md lg:col-span-2">
+            <section className="self-start rounded-2xl border border-surface-container-highest bg-surface p-6 shadow-md lg:col-span-2">
               <div className="mb-4 flex items-center gap-2 border-b border-surface-container-highest pb-3">
                 <ShieldCheck aria-hidden="true" className="text-primary" size={20} />
-                <h2 className="m-0 text-base font-bold text-on-surface">Cấu hình vận hành đã hoàn thiện</h2>
+                <h2 className="m-0 text-base font-bold text-on-surface">Điều khiển vận hành</h2>
               </div>
               <div className="space-y-3">
                 <Toggle
@@ -280,30 +297,89 @@ export default function SystemConfigurationPage() {
             </section>
 
             <aside className="space-y-6">
-              <section className="rounded-2xl border border-surface-container-highest bg-surface p-6 shadow-md">
-                <div className="mb-3 flex items-center gap-2">
-                  <Sparkles aria-hidden="true" className="text-primary" size={19} />
-                  <h2 className="m-0 text-base font-bold text-on-surface">Đã tinh gọn</h2>
+              <section aria-labelledby="operational-summary-title" className="rounded-2xl border border-surface-container-highest bg-surface p-6 shadow-md">
+                <div className="mb-4 flex items-center gap-2">
+                  <Activity aria-hidden="true" className="text-primary" size={19} />
+                  <div>
+                    <h2 id="operational-summary-title" className="m-0 text-base font-bold text-on-surface">Tóm tắt vận hành</h2>
+                    <p className="m-0 mt-0.5 text-[11px] text-on-surface-variant">Trạng thái sẽ áp dụng sau lần lưu tiếp theo</p>
+                  </div>
                 </div>
-                <p className="m-0 text-xs leading-relaxed text-on-surface-variant">
-                  Đã bỏ khỏi màn hình các trường chỉ lưu dữ liệu nhưng chưa có cơ chế thực thi: giới hạn API toàn cục, timeout kết nối chung, giới hạn upload động, email quản trị và các kênh Email/SMS/Slack/Teams.
-                </p>
+
+                <dl className="space-y-3">
+                  <div className={`rounded-xl border p-3 ${aiModerationChanged ? 'border-amber-300 bg-amber-50/80' : 'border-surface-container-highest bg-surface-bright'}`}>
+                    <dt className="flex items-center gap-2 text-xs font-semibold text-on-surface-variant">
+                      <Bot aria-hidden="true" size={15} /> Kiểm duyệt AI
+                    </dt>
+                    <dd className="m-0 mt-2 flex flex-wrap items-center gap-2 text-xs font-bold text-on-surface">
+                      {aiModerationChanged && baseline ? (
+                        <>
+                          <span className="text-on-surface-variant line-through">{aiModerationLabel(baseline.aiModerationEnabled)}</span>
+                          <ArrowRight aria-hidden="true" size={14} className="text-amber-400" />
+                        </>
+                      ) : null}
+                      <span>{aiModerationLabel(configuration.aiModerationEnabled)}</span>
+                      {aiModerationChanged && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] text-amber-800">Chờ lưu</span>}
+                    </dd>
+                  </div>
+
+                  <div className={`rounded-xl border p-3 ${maintenanceModeChanged ? 'border-amber-300 bg-amber-50/80' : configuration.maintenanceModeEnabled ? 'border-error/40 bg-error-container/30' : 'border-surface-container-highest bg-surface-bright'}`}>
+                    <dt className="flex items-center gap-2 text-xs font-semibold text-on-surface-variant">
+                      <Wrench aria-hidden="true" size={15} /> Truy cập hệ thống
+                    </dt>
+                    <dd className="m-0 mt-2 flex flex-wrap items-center gap-2 text-xs font-bold text-on-surface">
+                      {maintenanceModeChanged && baseline ? (
+                        <>
+                          <span className="text-on-surface-variant line-through">{maintenanceModeLabel(baseline.maintenanceModeEnabled)}</span>
+                          <ArrowRight aria-hidden="true" size={14} className="text-amber-400" />
+                        </>
+                      ) : null}
+                      <span>{maintenanceModeLabel(configuration.maintenanceModeEnabled)}</span>
+                      {maintenanceModeChanged && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] text-amber-800">Chờ lưu</span>}
+                    </dd>
+                  </div>
+                </dl>
+
+                <div aria-live="polite" className="mt-4">
+                  {!dirty && !configuration.maintenanceModeEnabled && (
+                    <div className="flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs leading-relaxed text-emerald-700">
+                      <CircleCheck aria-hidden="true" className="mt-0.5 shrink-0" size={15} />
+                      Cấu hình trên màn hình đang đồng bộ với máy chủ.
+                    </div>
+                  )}
+                  {dirty && (
+                    <div className={`flex items-start gap-2 rounded-xl border p-3 text-xs leading-relaxed ${configuration.maintenanceModeEnabled && maintenanceModeChanged ? 'border-error/40 bg-error-container/40 text-error' : 'border-amber-300 bg-amber-50 text-amber-800'}`}>
+                      <TriangleAlert aria-hidden="true" className="mt-0.5 shrink-0" size={15} />
+                      <span>
+                        <strong className="block">{pendingChangeCount} thay đổi đang chờ lưu.</strong>
+                        {configuration.maintenanceModeEnabled && maintenanceModeChanged
+                          ? 'Sau khi lưu, người dùng thông thường sẽ bị gián đoạn truy cập.'
+                          : maintenanceModeChanged
+                            ? 'Sau khi lưu, quyền truy cập bình thường sẽ được khôi phục.'
+                            : 'Thay đổi chưa tác động đến hệ thống cho đến khi bạn lưu.'}
+                      </span>
+                    </div>
+                  )}
+                  {!dirty && configuration.maintenanceModeEnabled && (
+                    <div className="flex items-start gap-2 rounded-xl border border-error/40 bg-error-container/40 p-3 text-xs leading-relaxed text-error">
+                      <TriangleAlert aria-hidden="true" className="mt-0.5 shrink-0" size={15} />
+                      Hệ thống đang bảo trì; người dùng thông thường hiện không thể truy cập API.
+                    </div>
+                  )}
+                </div>
               </section>
 
               <section className="rounded-2xl bg-primary p-6 text-on-primary shadow-md">
                 <div className="mb-2 flex items-center gap-2">
                   <span aria-hidden="true" className="material-symbols-outlined text-xl">admin_panel_settings</span>
-                  <h2 className="m-0 text-base font-bold">Trạng thái cấu hình</h2>
+                  <h2 className="m-0 text-base font-bold">Kiểm soát thay đổi</h2>
                 </div>
-                <p className="m-0 mt-2 text-xs leading-relaxed text-primary-fixed">Dữ liệu dùng singleton hiện có, khóa lạc quan bằng row version và audit riêng cho mọi lần cập nhật.</p>
+                <p className="m-0 mt-2 text-xs leading-relaxed text-primary-fixed">Hệ thống ngăn ghi đè khi có quản trị viên khác cập nhật, đồng thời ghi lại mọi lần lưu.</p>
                 <dl className="mt-4 space-y-2 rounded-xl bg-white/10 p-3 text-xs backdrop-blur-sm">
-                  <div className="flex justify-between gap-3"><dt>Phiên bản</dt><dd className="m-0 font-bold">{configuration.rowVersion}</dd></div>
+                  <div className="flex justify-between gap-3"><dt>Phiên bản cấu hình</dt><dd className="m-0 font-bold">#{configuration.rowVersion}</dd></div>
                   <div className="flex justify-between gap-3"><dt>Cập nhật cuối</dt><dd className="m-0 text-right font-bold">{lastUpdated}</dd></div>
+                  <div className="flex justify-between gap-3"><dt>Quyền thay đổi</dt><dd className="m-0 font-bold">System Admin</dd></div>
                 </dl>
-                <div className="mt-4 flex items-center gap-2 rounded-xl bg-white/10 p-2.5 text-xs font-semibold backdrop-blur-sm">
-                  <span aria-hidden="true" className="material-symbols-outlined text-base">verified</span>
-                  Chỉ System Admin có quyền thay đổi
-                </div>
               </section>
             </aside>
           </div>

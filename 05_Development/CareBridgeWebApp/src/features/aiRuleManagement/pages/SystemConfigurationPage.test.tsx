@@ -54,7 +54,9 @@ describe('system configuration page', () => {
     expect(screen.getByRole('switch', { name: 'Chế độ bảo trì hệ thống' })).toBeTruthy();
     expect(screen.queryByText('Slack / Teams Webhook')).toBeNull();
     expect(screen.queryByLabelText('Tải trọng tối đa API (req/s)')).toBeNull();
-    expect(screen.getByText('3')).toBeTruthy();
+    expect(screen.queryByText('Đã tinh gọn')).toBeNull();
+    expect(screen.getByText('Cấu hình trên màn hình đang đồng bộ với máy chủ.')).toBeTruthy();
+    expect(screen.getByText('#3')).toBeTruthy();
     expect((screen.getByRole('button', { name: 'Lưu toàn bộ cấu hình' }) as HTMLButtonElement).disabled).toBe(true);
   });
 
@@ -87,6 +89,9 @@ describe('system configuration page', () => {
     render(<SystemConfigurationPage />);
 
     fireEvent.click(await screen.findByRole('switch', { name: 'Kiểm duyệt tự động AI' }));
+
+    expect(screen.getByText('1 thay đổi đang chờ lưu.')).toBeTruthy();
+    expect(screen.getByText('Thay đổi chưa tác động đến hệ thống cho đến khi bạn lưu.')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Lưu toàn bộ cấu hình' }));
 
     await waitFor(() => expect(harness.saveSystemConfiguration).toHaveBeenCalledWith({
@@ -95,7 +100,7 @@ describe('system configuration page', () => {
       rowVersion: 3,
     }));
     expect(await screen.findByText('Đã lưu cấu hình hệ thống thành công.')).toBeTruthy();
-    expect(screen.getByText('4')).toBeTruthy();
+    expect(screen.getByText('#4')).toBeTruthy();
   });
 
   it('requires confirmation before enabling maintenance and discards locally', async () => {
@@ -106,10 +111,12 @@ describe('system configuration page', () => {
     fireEvent.click(maintenance);
     expect(window.confirm).toHaveBeenCalled();
     expect(maintenance.getAttribute('aria-checked')).toBe('true');
+    expect(screen.getByText('Sau khi lưu, người dùng thông thường sẽ bị gián đoạn truy cập.')).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Hủy thay đổi' }));
 
     expect(screen.getByRole('switch', { name: 'Chế độ bảo trì hệ thống' }).getAttribute('aria-checked')).toBe('false');
+    expect(screen.getByText('Cấu hình trên màn hình đang đồng bộ với máy chủ.')).toBeTruthy();
     expect(harness.fetchSystemConfiguration).toHaveBeenCalledTimes(1);
   });
 
@@ -136,6 +143,14 @@ describe('system configuration page', () => {
 
     await act(async () => finishRefresh(configuration({ rowVersion: 4 })));
     await waitFor(() => expect((aiToggle as HTMLButtonElement).disabled).toBe(false));
-    expect(screen.getByText('4')).toBeTruthy();
+    expect(screen.getByText('#4')).toBeTruthy();
+  });
+
+  it('shows a persistent operational warning when maintenance is already active', async () => {
+    harness.fetchSystemConfiguration.mockResolvedValue(configuration({ maintenanceModeEnabled: true }));
+    render(<SystemConfigurationPage />);
+
+    expect(await screen.findByText('Hệ thống đang bảo trì; người dùng thông thường hiện không thể truy cập API.')).toBeTruthy();
+    expect(screen.getByText('Đang bảo trì')).toBeTruthy();
   });
 });
