@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'login_screen.dart';
 import 'register_screen.dart';
-import '../../expert/screens/expert_profile_setup_screen.dart';
 
 /// CB-001 — Mobile Welcome (UC-01, UC-03)
 /// Entry point when not authenticated. Routes to Register or Login.
@@ -94,34 +93,6 @@ class WelcomeScreen extends StatelessWidget {
                         const SizedBox(height: 12),
                         SizedBox(
                           height: 52,
-                          child: FilledButton.icon(
-                            onPressed: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const ExpertProfileSetupScreen(),
-                              ),
-                            ),
-                            icon: const Icon(Icons.medical_services_outlined, size: 20),
-                            label: const Text(
-                              'Đăng ký Chuyên gia y tế',
-                              style: TextStyle(
-                                fontFamily: 'Lexend',
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            style: FilledButton.styleFrom(
-                              backgroundColor: _primaryColor,
-                              foregroundColor: Colors.white,
-                              shape: const StadiumBorder(),
-                              elevation: 0,
-                              shadowColor: Colors.transparent,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          height: 52,
                           child: OutlinedButton(
                             onPressed: () => Navigator.push(
                               context,
@@ -144,6 +115,29 @@ class WelcomeScreen extends StatelessWidget {
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                               ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextButton.icon(
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  const RegisterScreen(isExpert: true),
+                            ),
+                          ),
+                          icon: const Icon(
+                            Icons.medical_services_outlined,
+                            size: 18,
+                          ),
+                          label: const Text('Đăng ký Chuyên gia y tế'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: _primaryColor,
+                            textStyle: const TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),

@@ -45,60 +45,97 @@ class ExpertOnboardingService {
   Future<void> createProfile({
     required String specialtyId,
     required String professionalTitle,
-    required int experienceYears,
+    int? experienceYears,
     required String hospitalId,
     String? trackAsiaName,
     String? trackAsiaAddress,
     double? trackAsiaLat,
     double? trackAsiaLng,
-    required String consultationScope,
+    String? consultationScope,
   }) async {
     final body = <String, dynamic>{
       'specialtyId': specialtyId,
       'professionalTitle': professionalTitle,
-      'experienceYears': experienceYears,
       'hospitalId': hospitalId,
-      'consultationScope': consultationScope,
     };
-    if (trackAsiaName != null && trackAsiaName.isNotEmpty) {
-      body['trackAsiaName'] = trackAsiaName;
-      body['trackAsiaAddress'] = trackAsiaAddress;
+    if (experienceYears != null) body['experienceYears'] = experienceYears;
+    if (consultationScope != null && consultationScope.trim().isNotEmpty) {
+      body['consultationScope'] = consultationScope.trim();
+    }
+    if (hospitalId == 'OTHER' &&
+        trackAsiaName != null &&
+        trackAsiaName.trim().isNotEmpty) {
+      body['trackAsiaName'] = trackAsiaName.trim();
+      body['trackAsiaAddress'] = trackAsiaAddress?.trim();
       body['trackAsiaLat'] = trackAsiaLat;
       body['trackAsiaLng'] = trackAsiaLng;
     }
     await api.post('/api/v1/expert/profiles', body);
   }
 
-  Future<List<ExpertMasterOption>> loadSpecialties() async {
-    final response = await api.get('/api/v1/master-data/specialties');
-    final data = _unwrapList(response);
-    return data
-        .map(
-          (item) => ExpertMasterOption(
-            id: item['specialtyId'] as String,
-            name: item['name'] as String,
-          ),
-        )
-        .toList();
+  Future<List<ExpertMasterOption>> loadSpecialties() =>
+      _loadMasterOptions('/api/v1/master-data/specialties', 'specialtyId');
+
+  Future<List<ExpertMasterOption>> loadProvinces() =>
+      _loadMasterOptions('/api/v1/master-data/provinces', 'provinceId');
+
+  Future<List<ExpertMasterOption>> loadDistricts(
+    String provinceId,
+  ) => _loadMasterOptions(
+    '/api/v1/master-data/districts?provinceId=${Uri.encodeQueryComponent(provinceId)}',
+    'districtId',
+  );
+
+  Future<List<ExpertMasterOption>> loadWards({
+    String? provinceId,
+    String? districtId,
+  }) {
+    final query = <String, String>{};
+    if (provinceId != null && provinceId.isNotEmpty) {
+      query['provinceId'] = provinceId;
+    }
+    if (districtId != null && districtId.isNotEmpty) {
+      query['districtId'] = districtId;
+    }
+    return _loadMasterOptions(
+      '/api/v1/master-data/wards${_queryString(query)}',
+      'wardId',
+    );
   }
 
-  Future<List<ExpertMasterOption>> loadHospitals({String? provinceId}) async {
-    final path = provinceId != null ? '/api/v1/master-data/hospitals?provinceId=$provinceId' : '/api/v1/master-data/hospitals';
-    final response = await api.get(path);
-    final data = _unwrapList(response);
-    return data
-        .map(
-          (item) => ExpertMasterOption(
-            id: item['hospitalId'] as String,
-            name: item['name'] as String,
-          ),
-        )
-        .toList();
-  }
+  Future<List<ExpertMasterOption>> loadHospitals({
+    String? provinceId,
+  }) => _loadMasterOptions(
+    '/api/v1/master-data/hospitals${_queryString({if (provinceId != null && provinceId.isNotEmpty) 'provinceId': provinceId})}',
+    'hospitalId',
+  );
 
   Future<List<Map<String, dynamic>>> searchTrackAsiaHospitals(String q) async {
-    final response = await api.get('/api/v1/master-data/hospitals/search/trackasia?q=${Uri.encodeQueryComponent(q)}');
+    final response = await api.get(
+      '/api/v1/master-data/hospitals/search/trackasia${_queryString({'q': q.trim()})}',
+    );
     return _unwrapList(response);
+  }
+
+  Future<List<ExpertMasterOption>> _loadMasterOptions(
+    String path,
+    String idKey,
+  ) async {
+    final response = await api.get(path);
+    return _unwrapList(response)
+        .map(
+          (item) => ExpertMasterOption(
+            id: item[idKey]?.toString() ?? '',
+            name: item['name']?.toString() ?? '',
+          ),
+        )
+        .where((option) => option.id.isNotEmpty && option.name.isNotEmpty)
+        .toList();
+  }
+
+  String _queryString(Map<String, String> values) {
+    if (values.isEmpty) return '';
+    return '?${values.entries.map((entry) => '${Uri.encodeQueryComponent(entry.key)}=${Uri.encodeQueryComponent(entry.value)}').join('&')}';
   }
 
   List<Map<String, dynamic>> _unwrapList(dynamic response) {
@@ -186,8 +223,10 @@ class ExpertOnboardingService {
       'image/jpeg',
       'image/png',
       'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     }.contains(image.mimeType)) {
-      throw ArgumentError('Giấy tờ phải là JPEG, PNG hoặc PDF.');
+      throw ArgumentError('Giấy tờ phải là JPEG, PNG, PDF, DOC hoặc DOCX.');
     }
     if (image.bytes.isEmpty || image.bytes.length > 10 * 1024 * 1024) {
       throw ArgumentError('Giấy tờ phải có dung lượng tối đa 10 MB.');

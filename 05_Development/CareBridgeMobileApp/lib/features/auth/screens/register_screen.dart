@@ -13,11 +13,7 @@ class RegisterScreen extends StatefulWidget {
   final bool isExpert;
   final Future<void> Function()? onGoogleSignIn;
 
-  const RegisterScreen({
-    super.key,
-    this.isExpert = false,
-    this.onGoogleSignIn,
-  });
+  const RegisterScreen({super.key, this.isExpert = false, this.onGoogleSignIn});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -100,12 +96,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         email: _isEmailInput ? identifier : null,
         phone: !_isEmailInput ? identifier : null,
         password: password,
+        role: widget.isExpert ? 'EXPERT' : null,
       );
-      if (widget.isExpert) {
-        try {
-          await AuthService.instance.selectRole('EXPERT');
-        } catch (_) {}
-      }
       if (!mounted) return;
       Navigator.push(
         context,

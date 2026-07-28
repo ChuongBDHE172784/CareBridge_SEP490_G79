@@ -241,11 +241,13 @@ class AuthService {
     String? email,
     String? phone,
     required String password,
+    String? role,
   }) async {
     final body = <String, dynamic>{'name': name, 'password': password};
     if (email != null && email.isNotEmpty) body['email'] = email;
     if (phone != null && phone.isNotEmpty) body['phone'] = phone;
-    final res = await apiPost('/api/v1/auth/register', body);
+    if (role != null && role.isNotEmpty) body['role'] = role;
+    final res = await _postRequest('/api/v1/auth/register', body);
     return OtpSendResponse.fromJson(res['data'] as Map<String, dynamic>);
   }
 

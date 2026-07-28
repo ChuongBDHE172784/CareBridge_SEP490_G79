@@ -19,6 +19,20 @@ void main() {
     );
   });
 
+  group('expert onboarding redirect', () {
+    test('authenticated experts enter the onboarding gate after auth', () {
+      final redirect = resolveAppRedirect(
+        isAuthenticated: true,
+        isRestoring: false,
+        blockedReason: null,
+        role: 'EXPERT',
+        location: '/login',
+      );
+
+      expect(redirect, '/expert-onboarding');
+    });
+  });
+
   group('mother startup consent gate', () {
     test('newly assigned mother enters consolidated stage selection', () {
       final redirect = resolveAppRedirect(
