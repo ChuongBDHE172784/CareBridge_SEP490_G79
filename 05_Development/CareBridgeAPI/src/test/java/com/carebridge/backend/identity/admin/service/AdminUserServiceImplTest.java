@@ -11,15 +11,20 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.carebridge.backend.audit.entity.AuditAction;
+import com.carebridge.backend.audit.entity.AuditLog;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.common.exception.AccessDeniedBusinessException;
 import com.carebridge.backend.common.exception.ResourceNotFoundException;
 import com.carebridge.backend.common.exception.ValidationException;
 import com.carebridge.backend.identity.admin.dto.request.UpdateUserStatusRequest;
+import com.carebridge.backend.identity.admin.dto.response.AdminUserActivityResponse;
+import com.carebridge.backend.identity.admin.dto.response.AdminUserSessionResponse;
 import com.carebridge.backend.identity.admin.dto.response.AdminUserSummaryResponse;
 import com.carebridge.backend.identity.admin.mapper.AdminUserMapper;
+import com.carebridge.backend.identity.admin.repository.AdminUserMonitoringRepository;
 import com.carebridge.backend.identity.admin.service.impl.AdminUserServiceImpl;
 import com.carebridge.backend.identity.admin.testsupport.AdminGovernanceTestFactory;
+import com.carebridge.backend.identity.entity.UserSession;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.rbac.Role;
 import com.carebridge.backend.security.repository.UserRepository;
@@ -46,9 +51,10 @@ class AdminUserServiceImplTest {
 
     @Mock private UserRepository userRepository;
     @Mock private AuditService auditService;
+    @Mock private AdminUserMonitoringRepository monitoringRepository;
 
     private AdminUserServiceImpl newService() {
-        return new AdminUserServiceImpl(userRepository, auditService, new AdminUserMapper());
+        return new AdminUserServiceImpl(userRepository, auditService, new AdminUserMapper(), monitoringRepository);
     }
 
     // UC114-TC-001
@@ -71,6 +77,107 @@ class AdminUserServiceImplTest {
         assertThat(dto.getId()).isEqualTo(mother.getId());
         assertThat(dto.getEmail()).isEqualTo(mother.getEmail());
         assertThat(dto.getRole()).isEqualTo(Role.MOTHER);
+    }
+
+    // UC114-TC-015
+    @Test
+    void getUser_existingTarget_returnsSafeSummary() {
+        AdminUserServiceImpl service = newService();
+        User target = AdminGovernanceTestFactory.makeUser(Role.MOTHER);
+        target.setPasswordHash("secret-hash");
+        when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));
+
+        AdminUserSummaryResponse result = service.getUser(target.getId());
+
+        assertThat(result.getId()).isEqualTo(target.getId());
+        assertThat(result.getEmail()).isEqualTo(target.getEmail());
+        assertThat(result.getRole()).isEqualTo(target.getRole());
+    }
+
+    // UC114-TC-016
+    @Test
+    void getUser_unknownTarget_throwsResourceNotFound() {
+        AdminUserServiceImpl service = newService();
+        UUID targetId = UUID.randomUUID();
+        when(userRepository.findById(targetId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.getUser(targetId))
+                .isInstanceOf(ResourceNotFoundException.class);
+        verifyNoInteractions(monitoringRepository);
+    }
+
+    // UC114-TC-017 / TC-018
+    @Test
+    void getUserSessions_returnsPrivacyMinimizedProjection() {
+        AdminUserServiceImpl service = newService();
+        User target = AdminGovernanceTestFactory.makeUser(Role.MOTHER);
+        Pageable pageable = PageRequest.of(0, 20);
+        UserSession session = UserSession.builder()
+                .sessionId(UUID.randomUUID())
+                .userId(target.getId())
+                .refreshTokenHash("must-not-leak")
+                .deviceName("Chrome on macOS")
+                .ipAddress("127.0.0.1")
+                .status("ACTIVE")
+                .createdAt(Instant.parse("2026-07-28T01:00:00Z"))
+                .lastActivityAt(Instant.parse("2026-07-28T02:00:00Z"))
+                .expiresAt(Instant.parse("2026-08-01T01:00:00Z"))
+                .tokenFamilyId(UUID.randomUUID())
+                .deviceIdentifier("sensitive-device-id")
+                .build();
+        when(userRepository.existsById(target.getId())).thenReturn(true);
+        when(monitoringRepository.findSessions(target.getId(), pageable))
+                .thenReturn(new PageImpl<>(List.of(session), pageable, 1));
+
+        Page<AdminUserSessionResponse> result = service.getUserSessions(target.getId(), pageable);
+
+        assertThat(result.getContent()).singleElement().satisfies(dto -> {
+            assertThat(dto.getId()).isEqualTo(session.getSessionId());
+            assertThat(dto.getDeviceName()).isEqualTo("Chrome on macOS");
+            assertThat(dto.getStatus()).isEqualTo("ACTIVE");
+            assertThat(dto.getIssuedAt()).isEqualTo(session.getCreatedAt());
+        });
+    }
+
+    // UC114-TC-019
+    @Test
+    void getUserActivity_returnsGovernanceTimeline() {
+        AdminUserServiceImpl service = newService();
+        User target = AdminGovernanceTestFactory.makeUser(Role.MOTHER);
+        UUID actorId = UUID.randomUUID();
+        Pageable pageable = PageRequest.of(0, 20);
+        AuditLog log = AuditLog.builder()
+                .auditLogId(UUID.randomUUID())
+                .actorUserId(actorId)
+                .action(AuditAction.ROLE_PERMISSION_UPDATED)
+                .entityType("USER")
+                .entityId(target.getId())
+                .createdAt(Instant.parse("2026-07-28T02:00:00Z"))
+                .newValueJson("{\"newRole\":\"EXPERT\"}")
+                .build();
+        when(userRepository.existsById(target.getId())).thenReturn(true);
+        when(monitoringRepository.findActivity(target.getId(), pageable))
+                .thenReturn(new PageImpl<>(List.of(log), pageable, 1));
+
+        Page<AdminUserActivityResponse> result = service.getUserActivity(target.getId(), pageable);
+
+        assertThat(result.getContent()).singleElement().satisfies(dto -> {
+            assertThat(dto.getActorUserId()).isEqualTo(actorId);
+            assertThat(dto.getAction()).isEqualTo(AuditAction.ROLE_PERMISSION_UPDATED);
+            assertThat(dto.getDetails()).contains("newRole");
+        });
+    }
+
+    @Test
+    void getUserMonitoring_unknownTarget_throwsBeforeQueryingMonitoringData() {
+        AdminUserServiceImpl service = newService();
+        UUID targetId = UUID.randomUUID();
+        Pageable pageable = PageRequest.of(0, 20);
+        when(userRepository.existsById(targetId)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.getUserSessions(targetId, pageable))
+                .isInstanceOf(ResourceNotFoundException.class);
+        verifyNoInteractions(monitoringRepository);
     }
 
     // UC114-TC-003

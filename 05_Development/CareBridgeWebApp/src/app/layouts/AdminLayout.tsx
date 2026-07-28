@@ -23,6 +23,7 @@ type NavItem = NavLinkItem | NavGroupItem;
 // so the Admin and ModPortal sidebars read as one consistent design system.
 const NAV_LINKS: readonly NavItem[] = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: 'dashboard', roles: ['SYSTEM_ADMIN'] },
+  { to: '/admin/users', label: 'Quản lý người dùng', icon: 'manage_accounts', roles: ['SYSTEM_ADMIN'] },
   {
     type: 'group',
     label: 'Quản lý chuyên gia',

@@ -4,6 +4,7 @@ import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.common.exception.AccessDeniedBusinessException;
 import com.carebridge.backend.common.exception.ResourceNotFoundException;
+import com.carebridge.backend.common.exception.ValidationException;
 import com.carebridge.backend.identity.admin.dto.request.UpdateUserRoleRequest;
 import com.carebridge.backend.identity.admin.dto.response.UserRoleResponse;
 import com.carebridge.backend.identity.admin.mapper.UserRoleMapper;
@@ -11,6 +12,8 @@ import com.carebridge.backend.identity.admin.service.AdminRoleService;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.rbac.Role;
 import com.carebridge.backend.security.repository.UserRepository;
+import java.util.EnumSet;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -28,6 +31,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class AdminRoleServiceImpl implements AdminRoleService {
 
+    private static final Set<Role> STAFF_GOVERNANCE_ROLES =
+            EnumSet.of(Role.MODERATOR, Role.CONTENT_ADMIN, Role.SYSTEM_ADMIN);
+
     private final UserRepository userRepository;
     private final AuditService auditService;
     private final UserRoleMapper userRoleMapper;
@@ -38,6 +44,7 @@ public class AdminRoleServiceImpl implements AdminRoleService {
 
         User target = userRepository.findById(targetUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("IAM-116-003: User not found"));
+        assertStaffGovernanceScope(target.getRole(), request.getNewRole());
 
         Role previousRole = target.getRole();
         Boolean previousLocked = target.isLocked();
@@ -59,6 +66,19 @@ public class AdminRoleServiceImpl implements AdminRoleService {
     private void assertNotSelfTarget(UUID callerUserId, UUID targetUserId) {
         if (targetUserId.equals(callerUserId)) {
             throw new AccessDeniedBusinessException("IAM-116-004: Admin cannot change their own role");
+        }
+    }
+
+    private void assertStaffGovernanceScope(Role currentRole, Role requestedRole) {
+        if (!STAFF_GOVERNANCE_ROLES.contains(currentRole)) {
+            throw new ValidationException(
+                    "IAM-116-006",
+                    "Role management applies only to MODERATOR, CONTENT_ADMIN, and SYSTEM_ADMIN accounts");
+        }
+        if (!STAFF_GOVERNANCE_ROLES.contains(requestedRole)) {
+            throw new ValidationException(
+                    "IAM-116-007",
+                    "New role must be one of MODERATOR, CONTENT_ADMIN, or SYSTEM_ADMIN");
         }
     }
 

@@ -44,6 +44,10 @@ import AdminExpertTrustManagementPage from '../../features/expert/pages/AdminExp
 
 // Admin portal screens
 import AdminDashboardPage from '../../features/admin/pages/AdminDashboardPage';
+import UserListPage from '../../features/admin/pages/UserListPage';
+import UserDetailPage from '../../features/admin/pages/UserDetailPage';
+import UpdateUserRolePage from '../../features/admin/pages/UpdateUserRolePage';
+import CreateStaffAccountPage from '../../features/admin/pages/CreateStaffAccountPage';
 
 // Security & admin screens (TV1 Sprint 0)
 import SecurityIncidentListPage from '../../features/security/pages/SecurityIncidentListPage';
@@ -162,6 +166,10 @@ export const router = createBrowserRouter([
             children: [
               { path: '/admin/dashboard', element: <AdminDashboardPage /> },
               { path: '/admin', element: <Navigate to="/admin/dashboard" replace /> },
+              { path: '/admin/users', element: <UserListPage /> },
+              { path: '/admin/users/:userId', element: <UserDetailPage /> },
+              { path: '/admin/users/:userId/role', element: <UpdateUserRolePage /> },
+              { path: '/admin/staff-accounts/create', element: <CreateStaffAccountPage /> },
               { path: '/admin/expert-verification-queue', element: <ExpertVerificationQueuePage /> },
               { path: '/admin/expert-identity-queue', element: <AdminExpertIdentityReviewPage /> },
 { path: '/admin/expert-trust-management', element: <AdminExpertTrustManagementPage /> },

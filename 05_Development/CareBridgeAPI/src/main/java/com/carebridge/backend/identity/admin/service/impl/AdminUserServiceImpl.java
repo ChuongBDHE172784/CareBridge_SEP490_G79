@@ -7,8 +7,11 @@ import com.carebridge.backend.common.exception.ResourceNotFoundException;
 import com.carebridge.backend.common.exception.ValidationException;
 import com.carebridge.backend.identity.admin.dto.request.AdminUserSearchQuery;
 import com.carebridge.backend.identity.admin.dto.request.UpdateUserStatusRequest;
+import com.carebridge.backend.identity.admin.dto.response.AdminUserActivityResponse;
+import com.carebridge.backend.identity.admin.dto.response.AdminUserSessionResponse;
 import com.carebridge.backend.identity.admin.dto.response.AdminUserSummaryResponse;
 import com.carebridge.backend.identity.admin.mapper.AdminUserMapper;
+import com.carebridge.backend.identity.admin.repository.AdminUserMonitoringRepository;
 import com.carebridge.backend.identity.admin.service.AdminUserService;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.repository.UserRepository;
@@ -34,6 +37,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final UserRepository userRepository;
     private final AuditService auditService;
     private final AdminUserMapper adminUserMapper;
+    private final AdminUserMonitoringRepository monitoringRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -42,6 +46,44 @@ public class AdminUserServiceImpl implements AdminUserService {
                         query.getEmail(), query.getPhone(), query.getName(),
                         query.getRole(), query.getEnabled(), query.getLocked(), pageable)
                 .map(adminUserMapper::toSummary);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AdminUserSummaryResponse getUser(UUID userId) {
+        return userRepository.findById(userId)
+                .map(adminUserMapper::toSummary)
+                .orElseThrow(() -> new ResourceNotFoundException("IAM-114-003: User not found"));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<AdminUserSessionResponse> getUserSessions(UUID userId, Pageable pageable) {
+        requireUserExists(userId);
+        return monitoringRepository.findSessions(userId, pageable)
+                .map(session -> AdminUserSessionResponse.builder()
+                        .id(session.getSessionId())
+                        .deviceName(session.getDeviceName())
+                        .status(session.getStatus())
+                        .issuedAt(session.getCreatedAt())
+                        .lastActivityAt(session.getLastActivityAt())
+                        .expiresAt(session.getExpiresAt())
+                        .revokedAt(session.getRevokedAt())
+                        .build());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<AdminUserActivityResponse> getUserActivity(UUID userId, Pageable pageable) {
+        requireUserExists(userId);
+        return monitoringRepository.findActivity(userId, pageable)
+                .map(log -> AdminUserActivityResponse.builder()
+                        .id(log.getAuditLogId())
+                        .actorUserId(log.getActorUserId())
+                        .action(log.getAction())
+                        .timestamp(log.getCreatedAt())
+                        .details(log.getNewValueJson())
+                        .build());
     }
 
     @Override
@@ -75,6 +117,12 @@ public class AdminUserServiceImpl implements AdminUserService {
                         previousLocked, saved.isLocked(), request.getReason()));
 
         return adminUserMapper.toSummary(saved);
+    }
+
+    private void requireUserExists(UUID userId) {
+        if (!userRepository.existsById(userId)) {
+            throw new ResourceNotFoundException("IAM-114-003: User not found");
+        }
     }
 
     private record UserAccountStatusChangedPayload(

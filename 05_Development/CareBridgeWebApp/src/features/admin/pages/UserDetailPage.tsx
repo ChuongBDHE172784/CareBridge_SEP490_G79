@@ -1,12 +1,23 @@
-import { useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { updateUserStatus } from '../services/adminUserApi';
-import type { AdminUserSummary } from '../models/adminUser';
+import { useCallback, useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useAuth } from '../../../shared/auth/useAuth';
+import {
+  getUser,
+  getUserActivity,
+  getUserSessions,
+  updateUserStatus,
+} from '../services/adminUserApi';
+import type {
+  AdminUserActivity,
+  AdminUserSession,
+  AdminUserSummary,
+  StaffRole,
+} from '../models/adminUser';
 import type { UserRole } from '../../../shared/auth/authStore';
 
 const ROLE_LABELS: Record<UserRole, string> = {
-  MOTHER: 'Người dùng',
-  FAMILY: 'Người dùng',
+  MOTHER: 'Mẹ',
+  FAMILY: 'Gia đình',
   EXPERT: 'Chuyên gia',
   MODERATOR: 'Kiểm duyệt viên',
   CONTENT_ADMIN: 'Quản trị nội dung',
@@ -14,147 +25,356 @@ const ROLE_LABELS: Record<UserRole, string> = {
   PARTNER: 'Đối tác',
 };
 
-const TABS = ['Quyền hạn', 'Phiên đăng nhập', 'Lịch sử báo cáo', 'Hoạt động'] as const;
+const ACTIVITY_LABELS: Record<AdminUserActivity['action'], string> = {
+  USER_ACCOUNT_STATUS_CHANGED: 'Thay đổi trạng thái tài khoản',
+  STAFF_ACCOUNT_CREATED: 'Tạo tài khoản nhân viên',
+  ROLE_PERMISSION_UPDATED: 'Cập nhật vai trò và quyền',
+};
+
+const STAFF_ROLES: readonly StaffRole[] = ['MODERATOR', 'CONTENT_ADMIN', 'SYSTEM_ADMIN'];
+const TABS = ['Quyền hạn', 'Phiên đăng nhập', 'Hoạt động quản trị'] as const;
 type Tab = (typeof TABS)[number];
+
+function formatDate(value: string | null): string {
+  if (!value) return 'Chưa có';
+  return new Intl.DateTimeFormat('vi-VN', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value));
+}
 
 export default function UserDetailPage() {
   const { userId } = useParams<{ userId: string }>();
-  const location = useLocation();
   const navigate = useNavigate();
-
-  // No GET-by-id endpoint exists for UC114 (AdminUserController only exposes list-search).
-  // Real data is passed via router state from UserListPage's row click; a direct/refreshed
-  // visit has no way to re-fetch a single record and shows a graceful fallback instead of
-  // fabricating data.
-  const initialUser = (location.state as { user?: AdminUserSummary } | null)?.user;
-  const [user, setUser] = useState<AdminUserSummary | undefined>(initialUser);
+  const { user: currentUser } = useAuth();
+  const [user, setUser] = useState<AdminUserSummary | null>(null);
+  const [sessions, setSessions] = useState<AdminUserSession[]>([]);
+  const [activity, setActivity] = useState<AdminUserActivity[]>([]);
   const [activeTab, setActiveTab] = useState<Tab>('Quyền hạn');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isTabLoading, setIsTabLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [tabError, setTabError] = useState<string | null>(null);
 
-  if (!user) {
-    return (
-      <div className="bg-white rounded-xl shadow-[0px_4px_20px_rgba(90,70,63,0.06)] p-12 text-center border border-surface-container">
-        <p className="font-body-lg text-body-lg text-on-surface-variant mb-4">
-          Không có dữ liệu người dùng cho ID <code>{userId}</code>. Vui lòng quay lại danh sách và chọn người dùng.
-        </p>
-        <button
-          onClick={() => navigate('/admin/users')}
-          className="font-button text-button text-primary"
-        >
-          ← Quay lại Quản lý Người dùng
-        </button>
-      </div>
-    );
-  }
+  const isSelf = Boolean(user && currentUser?.id === user.id);
+  const canManageRole = Boolean(user && STAFF_ROLES.includes(user.role as StaffRole));
 
-  async function toggleLock() {
-    if (!user) return;
-    setIsSubmitting(true);
+  const loadUser = useCallback(async () => {
+    if (!userId) return;
+    setIsLoading(true);
+    setError(null);
     try {
-      const updated = await updateUserStatus(user.id, {
-        locked: !user.locked,
-        reason: user.locked ? 'Reactivated by admin' : 'Suspended by admin',
-      });
-      setUser(updated);
+      setUser(await getUser(userId));
+    } catch {
+      setError('Không thể tải thông tin người dùng hoặc tài khoản không còn tồn tại.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    void loadUser();
+  }, [loadUser]);
+
+  useEffect(() => {
+    if (!userId || activeTab === 'Quyền hạn') return;
+    let cancelled = false;
+
+    async function loadTab() {
+      setIsTabLoading(true);
+      setTabError(null);
+      try {
+        if (activeTab === 'Phiên đăng nhập') {
+          const result = await getUserSessions(userId!, 0, 50);
+          if (!cancelled) setSessions(result.content);
+        } else {
+          const result = await getUserActivity(userId!, 0, 50);
+          if (!cancelled) setActivity(result.content);
+        }
+      } catch {
+        if (!cancelled) setTabError('Không thể tải dữ liệu theo dõi. Vui lòng thử lại.');
+      } finally {
+        if (!cancelled) setIsTabLoading(false);
+      }
+    }
+
+    void loadTab();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, userId]);
+
+  async function updateAccess(request: { enabled?: boolean; locked?: boolean; reason: string }) {
+    if (!user || isSelf) return;
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      setUser(await updateUserStatus(user.id, request));
+    } catch {
+      setError('Không thể cập nhật trạng thái tài khoản. Vui lòng kiểm tra quyền và thử lại.');
     } finally {
       setIsSubmitting(false);
     }
   }
 
-  return (
-    <div>
-      <button onClick={() => navigate('/admin/users')} className="flex items-center gap-2 font-button text-button text-on-surface-variant mb-4">
-        <span className="material-symbols-outlined text-lg">arrow_back</span>
-        Chi tiết người dùng
-      </button>
+  if (isLoading) {
+    return (
+      <div className="p-6 md:p-8 font-sans">
+        <div className="h-40 animate-pulse rounded-2xl bg-surface-container-low" />
+        <div className="mt-6 h-64 animate-pulse rounded-2xl bg-surface-container-low" />
+      </div>
+    );
+  }
 
-      <div className="bg-white rounded-xl shadow-[0px_4px_20px_rgba(90,70,63,0.06)] p-6 border border-surface-container mb-6">
-        <div className="flex items-center gap-4 mb-4">
-          <div className="w-16 h-16 rounded-full bg-primary-container flex items-center justify-center font-headline-md text-headline-md text-on-primary-container">
-            {user.name.charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <h1 className="font-headline-lg text-headline-lg text-on-surface m-0">{user.name}</h1>
-            <p className="font-body-md text-body-md text-on-surface-variant">
-              ID: {user.id} • Tham gia: {new Date(user.createdAt).toLocaleDateString('vi-VN')}
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="inline-flex items-center px-3 py-1 rounded-full bg-surface-variant text-on-surface-variant font-label-md text-label-md">
-            {ROLE_LABELS[user.role]}
-          </span>
-          {user.locked ? (
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-error-container text-error font-label-md text-label-md">Đình chỉ</span>
-          ) : (
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary-container/20 text-primary font-label-md text-label-md">
-              {user.enabled ? 'Hoạt động' : 'Vô hiệu hóa'}
-            </span>
-          )}
-        </div>
-        <div className="flex gap-3 mt-5">
+  if (!user) {
+    return (
+      <div className="p-6 md:p-8 font-sans">
+        <div className="rounded-2xl border border-error-container bg-error-container/60 p-8 text-center text-error">
+          <p className="font-bold text-base">{error}</p>
           <button
-            onClick={() => navigate(`/admin/users/${user.id}/role`, { state: { user } })}
-            className="h-11 px-5 rounded-full bg-primary-container text-on-primary-container font-button text-button flex items-center gap-2"
+            type="button"
+            onClick={() => navigate('/admin/users')}
+            className="mt-4 py-2 px-5 rounded-full bg-surface border border-outline-variant text-sm font-semibold text-on-surface-variant hover:bg-surface-container-low cursor-pointer"
           >
-            <span className="material-symbols-outlined text-lg">edit</span>
-            Cập nhật quyền
-          </button>
-          <button
-            onClick={toggleLock}
-            disabled={isSubmitting}
-            className="h-11 px-5 rounded-full bg-error-container text-error font-button text-button flex items-center gap-2 disabled:opacity-50"
-          >
-            <span className="material-symbols-outlined text-lg">{user.locked ? 'lock_open' : 'block'}</span>
-            {user.locked ? 'Kích hoạt lại' : 'Đình chỉ'}
+            Quay lại quản lý người dùng
           </button>
         </div>
       </div>
+    );
+  }
 
-      <div className="flex gap-6 border-b border-surface-container-high mb-6">
+  return (
+    <div className="p-6 md:p-8 font-sans">
+      {/* Back Button */}
+      <div className="mb-6 flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => navigate('/admin/users')}
+          className="inline-flex items-center gap-2 py-1.5 px-3 rounded-full text-xs font-semibold bg-surface border border-outline-variant text-on-surface-variant hover:bg-surface-container-low cursor-pointer"
+        >
+          <span className="material-symbols-outlined text-base">arrow_back</span>
+          Quản lý người dùng
+        </button>
+      </div>
+
+      {error && (
+        <div className="mb-6 rounded-2xl border border-error-container bg-error-container/60 p-4 text-sm text-error">
+          {error}
+        </div>
+      )}
+
+      {/* Profile Header Banner */}
+      <section className="mb-6 rounded-2xl border border-surface-container-highest bg-surface p-6 shadow-md">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 items-center gap-5">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-primary-container text-on-primary-container font-bold text-2xl shadow-inner">
+              {user.name.charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-3">
+                <h1 className="m-0 truncate text-2xl font-bold text-on-surface">{user.name}</h1>
+                <span className="inline-flex items-center gap-1 py-1 px-3 rounded-full bg-surface-container-low text-primary text-xs font-semibold">
+                  {ROLE_LABELS[user.role]}
+                </span>
+              </div>
+              <p className="truncate text-sm text-on-surface-variant mt-1">{user.email}</p>
+              <p className="mt-1 text-xs font-mono text-outline">ID: {user.id}</p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 self-start lg:self-auto">
+            {user.locked ? (
+              <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-error-container text-error">
+                Đã khóa quyền
+              </span>
+            ) : user.enabled ? (
+              <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-emerald-100 text-emerald-700">
+                Đang hoạt động
+              </span>
+            ) : (
+              <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-amber-100 text-amber-700">
+                Đã vô hiệu hóa
+              </span>
+            )}
+
+            {canManageRole && (
+              <button
+                type="button"
+                onClick={() => navigate(`/admin/users/${user.id}/role`)}
+                disabled={isSelf}
+                className="py-2.5 px-5 rounded-full bg-primary text-on-primary text-sm font-semibold hover:bg-primary/90 disabled:opacity-50 cursor-pointer inline-flex items-center gap-2"
+              >
+                <span className="material-symbols-outlined text-lg">manage_accounts</span>
+                Cập nhật vai trò
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={() =>
+                updateAccess({
+                  locked: !user.locked,
+                  reason: user.locked ? 'Admin mở khóa tài khoản' : 'Admin khóa tài khoản',
+                })
+              }
+              disabled={isSelf || isSubmitting}
+              className={`py-2.5 px-5 rounded-full border text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-50 ${
+                user.locked
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 cursor-pointer'
+                  : 'border-error-container bg-surface text-error hover:bg-error-container cursor-pointer'
+              }`}
+            >
+              <span className="material-symbols-outlined text-lg">
+                {user.locked ? 'lock_open' : 'lock'}
+              </span>
+              {user.locked ? 'Mở khóa' : 'Khóa tài khoản'}
+            </button>
+          </div>
+        </div>
+
+        {isSelf && (
+          <div className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-800 flex items-center gap-2">
+            <span className="material-symbols-outlined text-base">info</span>
+            Đây là tài khoản đang đăng nhập. Hệ thống đã vô hiệu hóa thao tác tự khóa, tự vô hiệu hóa và tự đổi vai trò để tránh mất quyền quản trị.
+          </div>
+        )}
+      </section>
+
+      {/* Tabs Navigation */}
+      <div className="mb-6 flex items-center gap-2 border-b border-surface-container-highest pb-3">
         {TABS.map((tab) => (
           <button
             key={tab}
+            type="button"
             onClick={() => setActiveTab(tab)}
-            className={
+            className={`py-2 px-5 rounded-full text-sm font-semibold cursor-pointer transition-colors flex items-center gap-2 ${
               activeTab === tab
-                ? 'font-button text-button text-primary border-b-2 border-primary pb-2 px-1 whitespace-nowrap'
-                : 'font-button text-button text-on-surface-variant hover:text-on-surface pb-2 px-1 whitespace-nowrap'
-            }
+                ? 'bg-primary text-on-primary shadow-sm'
+                : 'bg-surface border border-outline-variant text-on-surface-variant hover:bg-surface-container-low'
+            }`}
           >
+            <span className="material-symbols-outlined text-lg">
+              {tab === 'Quyền hạn' ? 'admin_panel_settings' : tab === 'Phiên đăng nhập' ? 'devices' : 'history'}
+            </span>
             {tab}
           </button>
         ))}
       </div>
 
-      {activeTab === 'Quyền hạn' ? (
-        <div className="bg-white rounded-xl shadow-[0px_4px_20px_rgba(90,70,63,0.06)] p-6 border border-surface-container">
-          <h2 className="font-headline-md text-headline-md text-on-surface mb-4">Vai trò &amp; Trạng thái Truy cập</h2>
-          <div className="flex justify-between items-center py-3 border-b border-surface-container-high">
+      {/* Tab Content Cards */}
+      <div className="bg-surface rounded-2xl p-6 shadow-md border border-surface-container-highest">
+        {activeTab === 'Quyền hạn' && (
+          <div className="space-y-6">
             <div>
-              <p className="font-body-md text-body-md text-on-surface">Vai trò hiện tại</p>
-              <p className="font-body-md text-body-md text-on-surface-variant opacity-50">Quyết định các chức năng người dùng được truy cập</p>
+              <h3 className="text-base font-bold text-on-surface m-0 mb-1">Thông tin truy cập & Quyền hạn</h3>
+              <p className="text-xs text-on-surface-variant">Chi tiết trạng thái tài khoản và vai trò trong hệ thống CareBridge.</p>
             </div>
-            <span className="font-body-lg text-body-lg font-medium text-on-surface">{ROLE_LABELS[user.role]}</span>
-          </div>
-          <div className="flex justify-between items-center py-3">
-            <div>
-              <p className="font-body-md text-body-md text-on-surface">Khóa truy cập</p>
-              <p className="font-body-md text-body-md text-on-surface-variant opacity-50">Ngăn người dùng đăng nhập vào hệ thống</p>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-surface-container-highest bg-surface-bright p-4">
+                <span className="text-xs text-outline font-semibold uppercase tracking-wider block mb-1">Vai trò hiện tại</span>
+                <span className="text-sm font-bold text-on-surface block">{ROLE_LABELS[user.role]}</span>
+                <p className="text-xs text-on-surface-variant mt-1 m-0">Mã phân quyền: {user.role}</p>
+              </div>
+
+              <div className="rounded-2xl border border-surface-container-highest bg-surface-bright p-4">
+                <span className="text-xs text-outline font-semibold uppercase tracking-wider block mb-1">Trạng thái đăng nhập</span>
+                <span className="text-sm font-bold text-on-surface block">
+                  {user.locked ? 'Đã bị khóa' : user.enabled ? 'Được phép đăng nhập' : 'Vô hiệu hóa'}
+                </span>
+                <p className="text-xs text-on-surface-variant mt-1 m-0">
+                  Ngày khởi tạo: {formatDate(user.createdAt)}
+                </p>
+              </div>
             </div>
-            <span className="font-body-lg text-body-lg font-medium text-on-surface">{user.locked ? 'Đã khóa' : 'Không khóa'}</span>
           </div>
-          <p className="font-body-md text-body-md text-on-surface-variant mt-4">
-            Bấm "Cập nhật quyền" ở trên để thay đổi vai trò hoặc khóa/mở quyền truy cập.
-          </p>
-        </div>
-      ) : (
-        <div className="bg-surface-container-low rounded-lg p-6 text-center">
-          <p className="font-body-md text-body-md text-on-surface-variant">
-            Tính năng "{activeTab}" sắp ra mắt — chưa có API hỗ trợ cho tab này.
-          </p>
-        </div>
-      )}
+        )}
+
+        {activeTab === 'Phiên đăng nhập' && (
+          <div>
+            <div className="mb-4">
+              <h3 className="text-base font-bold text-on-surface m-0 mb-1">Danh sách phiên làm việc active</h3>
+              <p className="text-xs text-on-surface-variant">Theo dõi thiết bị và địa chỉ IP đăng nhập vào hệ thống.</p>
+            </div>
+
+            {isTabLoading ? (
+              <div className="py-12 text-center text-outline">Đang tải lịch sử phiên...</div>
+            ) : tabError ? (
+              <div className="rounded-2xl border border-error-container bg-error-container/60 p-4 text-sm text-error">{tabError}</div>
+            ) : sessions.length === 0 ? (
+              <div className="py-12 text-center text-outline">Không có phiên đăng nhập nào được ghi nhận.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b-2 border-surface-container-highest text-left">
+                      {['THIẾT BỊ / TRÌNH DUYỆT', 'TRẠNG THÁI', 'LẦN HOẠT ĐỘNG CUỐI', 'HẠN PHIÊN'].map((h) => (
+                        <th key={h} className="py-3 px-3 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sessions.map((s) => (
+                      <tr key={s.id} className="border-b border-surface-container-highest hover:bg-surface-bright">
+                        <td className="py-3.5 px-3 text-sm font-semibold text-on-surface">{s.deviceName || 'Thiết bị không tên'}</td>
+                        <td className="py-3.5 px-3 text-xs">
+                          <span className="inline-flex items-center rounded-full px-2.5 py-0.5 font-semibold bg-emerald-100 text-emerald-700">
+                            {s.status}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-3 text-xs text-on-surface-variant">{formatDate(s.lastActivityAt || s.issuedAt)}</td>
+                        <td className="py-3.5 px-3 text-xs text-on-surface-variant">{formatDate(s.expiresAt)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'Hoạt động quản trị' && (
+          <div>
+            <div className="mb-4">
+              <h3 className="text-base font-bold text-on-surface m-0 mb-1">Lịch sử tác động & Audit log</h3>
+              <p className="text-xs text-on-surface-variant">Nhật ký thay đổi trạng thái và vai trò của tài khoản này.</p>
+            </div>
+
+            {isTabLoading ? (
+              <div className="py-12 text-center text-outline">Đang tải lịch sử hoạt động...</div>
+            ) : tabError ? (
+              <div className="rounded-2xl border border-error-container bg-error-container/60 p-4 text-sm text-error">{tabError}</div>
+            ) : activity.length === 0 ? (
+              <div className="py-12 text-center text-outline">Chưa có nhật ký hoạt động quản trị.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b-2 border-surface-container-highest text-left">
+                      {['HÀNH ĐỘNG', 'MÃ ACTOR', 'CHI TIẾT', 'THỜI GIAN'].map((h) => (
+                        <th key={h} className="py-3 px-3 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activity.map((act) => (
+                      <tr key={act.id} className="border-b border-surface-container-highest hover:bg-surface-bright">
+                        <td className="py-3.5 px-3 text-sm font-semibold text-on-surface">
+                          {ACTIVITY_LABELS[act.action] || act.action}
+                        </td>
+                        <td className="py-3.5 px-3 text-xs font-mono text-on-surface-variant">{act.actorUserId || 'Hệ thống'}</td>
+                        <td className="py-3.5 px-3 text-xs text-on-surface-variant">{act.details || '—'}</td>
+                        <td className="py-3.5 px-3 text-xs text-on-surface-variant">{formatDate(act.timestamp)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

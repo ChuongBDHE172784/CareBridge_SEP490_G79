@@ -24,6 +24,7 @@
 | 2026-07-02 | AI Agent — Technical Architect | Tạo tài liệu lần đầu (Draft) cho UC116 |
 | 2026-07-04 | AI Agent | Approved by user — proceeding to implementation |
 | 2026-07-04 | AI Agent | Implemented — AdminRoleController/ServiceImpl tests all green (verified independently) |
+| 2026-07-28 | AI Agent | Narrowed UC116 to staff-governance accounts and destinations only: MODERATOR, CONTENT_ADMIN, SYSTEM_ADMIN |
 
 ---
 
@@ -78,7 +79,7 @@ Spring Security `GrantedAuthority` beyond `"ROLE_" + role.name()`, and no
 Per the task brief's RG-6 instruction to "not invent a permission system
 beyond what's asked," **this TDS scopes "updates permissions" to role
 reassignment (`users.role`) and scopes "locks or unlocks access rights" to
-the same `enabled`/`locked` boolean flags UC114 already manages** — this is
+the same `enabled`/`locked` boolean flags UC114 already manages. **UC116 is limited to the staff-governance role set `MODERATOR`, `CONTENT_ADMIN`, and `SYSTEM_ADMIN`: the target account must already hold one of these roles and the requested destination must also be one of these roles. Consumer/domain accounts (`MOTHER`, `FAMILY`, `EXPERT`, `PARTNER`) remain manageable through UC114 lifecycle controls but are outside UC116 role reassignment.** This is
 the same underlying `users` row mutation surface as UC114, but for the
 `role` field specifically (UC114 explicitly does not expose a `role` field in
 its `UpdateUserStatusRequest` — role reassignment is UC116's exclusive
@@ -100,8 +101,9 @@ See ADR-IAM-001 (UC114 TDS), binding on this document.
 | UC-116 (SRS §3.2.2.18) | Use Case | Assigns roles, updates permissions, locks/unlocks access rights | `AdminRoleController.PATCH /api/v1/admin/users/{userId}/role` | BR-RBAC | ADR-IAM-007 |
 | BR-RBAC | Business Rule | Users may access only functions allowed by role/permission scope | `@PreAuthorize("hasRole('SYSTEM_ADMIN')")` on `AdminRoleController` | Authorization | ADR-IAM-007 |
 | POST-3 (SRS generic postcondition) | Postcondition | Sensitive actions are recorded for audit | `AdminRoleService` emits `RolePermissionUpdated` via `AuditService` | PDPA audit trail | ADR-IAM-008 |
-| RG-4 self-escalation risk | Non-negotiable constraint | A caller must never be able to grant themselves `SYSTEM_ADMIN`, and only `SYSTEM_ADMIN` may reassign any role, including to `SYSTEM_ADMIN` | `@PreAuthorize("hasRole('SYSTEM_ADMIN')")` + `AdminRoleService` self-target guard | Privilege-escalation prevention | ADR-IAM-007 |
-| RG-6 permission-model scope | Architecture-changing unknown, resolved | "Updates permissions" = role reassignment only, no new permission-flag schema | `AdminRoleService.updateRole()` writes `users.role` exclusively | — | §1.1 |
+| RG-4 self-escalation risk | Non-negotiable constraint | A caller must never grant themselves `SYSTEM_ADMIN`; only a `SYSTEM_ADMIN` may reassign a different staff-governance account within the approved staff role set | `@PreAuthorize("hasRole('SYSTEM_ADMIN')")` + service self-target and staff-scope guards | Privilege-escalation prevention | ADR-IAM-007 |
+| RG-6 permission-model scope | Architecture-changing unknown, resolved | "Updates permissions" = staff-governance role reassignment only, no new permission-flag schema | `AdminRoleService.updateRole()` writes `users.role` exclusively after validating source and destination against `MODERATOR`, `CONTENT_ADMIN`, `SYSTEM_ADMIN` | — | §1.1 |
+| BR-IAM-116-STAFF-SCOPE | Business Rule | UC116 applies only when both the target's current role and requested destination are staff-governance roles | `AdminRoleServiceImpl.assertStaffGovernanceScope()` | Least privilege | ADR-IAM-007 |
 | Existing code reuse | Constraint | Reuse `security.entity.User`, `security.rbac.Role`, `audit.service.AuditService` | `identity.admin.*` new package | — | ADR-IAM-007 |
 
 ---
@@ -118,8 +120,8 @@ See ADR-IAM-001 (UC114 TDS), binding on this document.
 
 #### Bối cảnh (Context)
 This is the single highest-risk endpoint in the entire 4-UC cluster: it is
-the only place in the system that can change ANY user's `role` value,
-including elevating a caller's own account to `SYSTEM_ADMIN`. The task brief
+the only place in the system that can change a staff-governance user's `role` value,
+including elevating a peer staff account to `SYSTEM_ADMIN`. The task brief
 explicitly names this as the top self-escalation risk to eliminate.
 
 #### Các phương án đã xem xét (Options Considered)
@@ -365,7 +367,7 @@ deactivate Controller
 @enduml
 ```
 
-### 6.3. State Machine — `users.role` transitions (any-to-any, gated by ADR-IAM-007)
+### 6.3. State Machine — staff-governance `users.role` transitions only (gated by ADR-IAM-007)
 
 ```plantuml
 @startuml UC116_StateMachine
@@ -373,16 +375,15 @@ skinparam backgroundColor #FAFAFA
 skinparam StateBackgroundColor #D5E8F0
 skinparam StateBorderColor #2E75B6
 
-state "Any Role" as AnyRole
-AnyRole --> AnyRole : SYSTEM_ADMIN reassigns role\n(targetUserId != callerUserId)\n[RolePermissionUpdated]
+state "Staff Governance Role" as StaffRole
+StaffRole --> StaffRole : SYSTEM_ADMIN reassigns role\n(targetUserId != callerUserId)\n[source and destination in staff set]\n[RolePermissionUpdated]
 
-note right of AnyRole
-  Invariant: transition is REJECTED if
-  targetUserId == callerUserId, regardless
-  of source/destination role (ADR-IAM-007).
-  This is stricter than a typical FSM — it is
-  a caller-identity guard orthogonal to the
-  role value itself.
+note right of StaffRole
+  Allowed set:
+  MODERATOR, CONTENT_ADMIN, SYSTEM_ADMIN.
+  Reject self-targeting with IAM-116-004.
+  Reject a target outside the set with IAM-116-006.
+  Reject a destination outside the set with IAM-116-007.
 end note
 
 @enduml
@@ -392,7 +393,8 @@ end note
 > 1. `targetUserId == callerUserId` is ALWAYS rejected — no exception for any
 >    role pair (ADR-IAM-007).
 > 2. Only `SYSTEM_ADMIN` callers reach the role-mutation logic at all.
-> 3. Every accepted transition emits exactly one `ROLE_PERMISSION_UPDATED`
+> 3. Both the target's current role and requested destination must belong to `MODERATOR`, `CONTENT_ADMIN`, `SYSTEM_ADMIN`.
+> 4. Every accepted transition emits exactly one `ROLE_PERMISSION_UPDATED`
 >    audit event with both `previousRole` and `newRole` captured.
 
 ---
@@ -538,6 +540,8 @@ public interface AdminRoleService {
 | `IAM-116-003` | 404 | User not found | Không tìm thấy người dùng | `targetUserId` does not exist |
 | `IAM-116-004` | 403 | Cannot modify own role | Không thể tự thay đổi vai trò của chính mình | `targetUserId == callerUserId` (ADR-IAM-007, unconditional — this is the release-blocking self-escalation guard) |
 | `IAM-116-005` | 500 | Internal error | Lỗi hệ thống | Unexpected persistence/audit failure |
+| `IAM-116-006` | 400 | Target account is outside staff role-management scope | Tài khoản đích không thuộc phạm vi quản trị vai trò nhân viên | Target's current role is `MOTHER`, `FAMILY`, `EXPERT`, or `PARTNER` |
+| `IAM-116-007` | 400 | Requested role is outside staff role-management scope | Vai trò mới không thuộc phạm vi quản trị vai trò nhân viên | Requested role is not `MODERATOR`, `CONTENT_ADMIN`, or `SYSTEM_ADMIN` |
 
 ---
 
@@ -700,6 +704,7 @@ target their own account — the strongest guard in this 4-UC cluster.
 | C4 | Every mutation MUST emit `ROLE_PERMISSION_UPDATED` via `AuditService`, capturing BOTH `previousRole` and `newRole`, in the same transaction. | ADR-IAM-008 | 2026-07-02 |
 | C5 | Do NOT invent a new fine-grained permission-flag schema — `role` reassignment plus `enabled`/`locked` toggles are the entire scope (RG-6). | §1.1 | 2026-07-02 |
 | C6 | Controller only does `@PreAuthorize` + validation + mapping; business logic (including the self-target guard) lives in `AdminRoleServiceImpl`. | CLAUDE.md architecture rule | 2026-07-02 |
+| C7 | Role management MUST reject targets and destinations outside `MODERATOR`, `CONTENT_ADMIN`, `SYSTEM_ADMIN` before mutation or audit. | BR-IAM-116-STAFF-SCOPE | 2026-07-28 |
 
 ### 17.2 Constraint Injection Block (Copy-Paste vào AI Prompt)
 

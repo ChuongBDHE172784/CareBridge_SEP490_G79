@@ -8,6 +8,8 @@ import type {
   StaffAccountResult,
   UpdateUserRoleRequest,
   UserRoleResult,
+  AdminUserSession,
+  AdminUserActivity,
   PaginatedResult,
 } from '../models/adminUser';
 
@@ -38,6 +40,52 @@ export async function searchUsers(params: AdminUserSearchParams): Promise<Pagina
     totalPages: body.totalPages ?? 0,
     page: body.page ?? (params.page ?? 0),
     size: body.size ?? (params.size ?? 10),
+  };
+}
+
+// UC114 — GET /api/v1/admin/users/{userId}
+export async function getUser(userId: string): Promise<AdminUserSummary> {
+  const res = await apiClient.get<ApiResponse<AdminUserSummary>>(
+    `/api/v1/admin/users/${userId}`,
+  );
+  return res.data.data;
+}
+
+// UC114 — GET /api/v1/admin/users/{userId}/sessions
+export async function getUserSessions(
+  userId: string,
+  page = 0,
+  size = 20,
+): Promise<PaginatedResult<AdminUserSession>> {
+  const res = await apiClient.get<PageEnvelope<AdminUserSession>>(
+    `/api/v1/admin/users/${userId}/sessions?page=${page}&size=${size}`,
+  );
+  const body = res.data;
+  return {
+    content: body.data ?? [],
+    totalElements: body.totalElements ?? 0,
+    totalPages: body.totalPages ?? 0,
+    page: body.page ?? page,
+    size: body.size ?? size,
+  };
+}
+
+// UC114 — GET /api/v1/admin/users/{userId}/activity
+export async function getUserActivity(
+  userId: string,
+  page = 0,
+  size = 20,
+): Promise<PaginatedResult<AdminUserActivity>> {
+  const res = await apiClient.get<PageEnvelope<AdminUserActivity>>(
+    `/api/v1/admin/users/${userId}/activity?page=${page}&size=${size}`,
+  );
+  const body = res.data;
+  return {
+    content: body.data ?? [],
+    totalElements: body.totalElements ?? 0,
+    totalPages: body.totalPages ?? 0,
+    page: body.page ?? page,
+    size: body.size ?? size,
   };
 }
 

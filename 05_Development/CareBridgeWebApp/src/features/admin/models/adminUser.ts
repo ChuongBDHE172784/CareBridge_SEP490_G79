@@ -52,7 +52,7 @@ export interface StaffAccountResult {
 
 // UC116 Update Role and Permission
 export interface UpdateUserRoleRequest {
-  newRole: UserRole;
+  newRole: StaffRole;
   lockAccessRights?: boolean;
   reason?: string;
 }
@@ -63,6 +63,29 @@ export interface UserRoleResult {
   newRole: UserRole;
   locked: boolean;
   updatedAt: string;
+}
+
+export interface AdminUserSession {
+  id: string;
+  deviceName: string | null;
+  status: string;
+  issuedAt: string;
+  lastActivityAt: string | null;
+  expiresAt: string;
+  revokedAt: string | null;
+}
+
+export type AdminUserActivityAction =
+  | 'USER_ACCOUNT_STATUS_CHANGED'
+  | 'STAFF_ACCOUNT_CREATED'
+  | 'ROLE_PERMISSION_UPDATED';
+
+export interface AdminUserActivity {
+  id: string;
+  actorUserId: string | null;
+  action: AdminUserActivityAction;
+  timestamp: string;
+  details: string | null;
 }
 
 export interface PaginatedResult<T> {

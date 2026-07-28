@@ -24,6 +24,7 @@
 | 2026-07-02 | AI Agent — Technical Architect | Tạo tài liệu lần đầu (Draft) cho UC114 |
 | 2026-07-04 | AI Agent | Approved by user — proceeding to implementation |
 | 2026-07-04 | AI Agent | Implemented — AdminUserController/ServiceImpl tests all green (verified independently) |
+| 2026-07-28 | Senior Developer | Mở rộng end-to-end Admin Portal: detail direct-load, session monitoring, activity/audit timeline, staff provisioning và role/status governance; tái sử dụng `users`, `auth_sessions`, `audit_logs`, không tạo bảng mới |
 
 ---
 
@@ -967,4 +968,56 @@ Tests must cover §13 Test Scenarios / UC114_ManageUserAccounts_Test-Spec.md.
 
 ---
 
-*EDS v2.1 — Tích hợp CASE 2.0 AI Prompt Constraints (§17).*
+## 18. End-to-End Admin Portal Extension (2026-07-28)
+
+### 18.1 Gap Closure Scope
+
+| Gap | Thiết kế hoàn thiện | Nguồn dữ liệu |
+|---|---|---|
+| Refresh/direct-link trang chi tiết bị mất dữ liệu | `GET /api/v1/admin/users/{userId}` trả DTO chi tiết, không phụ thuộc router state | `users` |
+| Thiếu theo dõi phiên đăng nhập | `GET /api/v1/admin/users/{userId}/sessions`; chỉ hiển thị metadata tối thiểu, tuyệt đối không trả refresh-token hash | `auth_sessions` |
+| Thiếu lịch sử quản trị/hoạt động | `GET /api/v1/admin/users/{userId}/activity`; whitelist audit action liên quan identity và lọc `entityType=USER`, `entityId=userId` | `audit_logs` |
+| UI thiếu CRUD/governance hoàn chỉnh | Danh sách có keyword/role/status filter; chi tiết có status, role, sessions, activity; tạo mới chỉ áp dụng cho staff role theo UC115 | API UC114/115/116 |
+| Nguy cơ self-lock/self-demotion | Backend guard giữ nguyên; UI disable status/role actions trên row của caller | Auth principal |
+
+### 18.2 Database Decision
+
+**Không tạo bảng, không thêm cột và không có Flyway migration.** Mở rộng này chỉ đọc/ghi ba bảng hiện hữu:
+
+- `users`: identity, role, `enabled`, `locked`, profile và timestamps.
+- `auth_sessions`: giám sát phiên; không trả `refresh_token_hash`.
+- `audit_logs`: lịch sử thay đổi status/role/tạo staff và hành động quản trị.
+
+`UserRepository`, `UserSessionRepository` và `AuditService` có blast radius CRITICAL theo graph. Vì vậy implementation không đổi chữ ký/hành vi shared contract; query aggregate dành riêng admin được cô lập trong `identity.admin` và chỉ reuse method sẵn có.
+
+### 18.3 Business Rules bổ sung
+
+| ID | Quy tắc |
+|---|---|
+| `BR-IAM-114-E2E-01` | Chỉ `SYSTEM_ADMIN` được truy cập toàn bộ endpoint extension. |
+| `BR-IAM-114-E2E-02` | Không hard-delete user; deactivate/lock là cơ chế lifecycle chính để bảo toàn FK, audit và dữ liệu chăm sóc. |
+| `BR-IAM-114-E2E-03` | Không cho caller tự đổi role, disable hoặc lock chính mình. |
+| `BR-IAM-114-E2E-04` | Tạo user từ portal chỉ dành cho `MODERATOR`, `CONTENT_ADMIN`, `SYSTEM_ADMIN`; user nghiệp vụ đăng ký qua flow chuyên biệt. |
+| `BR-IAM-114-E2E-05` | Session response chỉ có id, device, status, issued/last-used/expires/revoked timestamps. Không trả token/hash/IP thô. |
+| `BR-IAM-114-E2E-06` | Activity endpoint chỉ trả audit record có `entityType=USER` và `entityId=userId`; không dùng actor-only filter vì sẽ trộn hành động user thực hiện lên resource khác. |
+
+### 18.4 API bổ sung
+
+| Method | Path | Response | Ghi chú |
+|---|---|---|---|
+| `GET` | `/api/v1/admin/users/{userId}` | `AdminUserDetailResponse` | Direct-load và refresh-safe |
+| `GET` | `/api/v1/admin/users/{userId}/sessions?page=0&size=20` | `PaginatedResponse<AdminUserSessionResponse>` | Sort `lastActivityAt DESC` |
+| `GET` | `/api/v1/admin/users/{userId}/activity?page=0&size=20` | `PaginatedResponse<AdminUserActivityResponse>` | Identity governance audit only |
+
+### 18.5 UI State & Error Handling
+
+- `loading`: skeleton/aria-busy; không render dữ liệu cũ của user khác.
+- `404`: thông báo user không tồn tại và link quay về danh sách.
+- `403`: access-denied nhất quán với route guard.
+- `409/400`: giữ modal mở, hiển thị API message, không optimistic-update.
+- Sau mutation thành công: cập nhật detail state từ response và reload activity để audit mới xuất hiện.
+- Responsive: desktop table; mobile stacked cards; action buttons có focus-visible và minimum target 44px.
+
+---
+
+*EDS v2.1 — Tích hợp CASE 2.0 AI Prompt Constraints (§17) + End-to-End Extension (§18).*
