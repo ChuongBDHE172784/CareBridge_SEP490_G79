@@ -57,6 +57,13 @@ public class CareGroupMember {
     @Column(name = "invited_phone", length = 20)
     private String invitedPhone;
 
+    @Builder.Default
+    @Column(name = "is_emergency_contact", nullable = false)
+    private boolean emergencyContact = false;
+
+    @Column(name = "emergency_contact_priority")
+    private Short emergencyContactPriority;
+
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "permission_json", columnDefinition = "jsonb")
     private String permissionJson;

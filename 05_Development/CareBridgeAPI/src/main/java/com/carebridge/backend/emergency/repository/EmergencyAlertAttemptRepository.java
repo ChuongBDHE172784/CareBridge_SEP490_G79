@@ -130,6 +130,16 @@ public class EmergencyAlertAttemptRepository {
                     RETURNING event.safety_event_id, event.user_id,
                               event.alert_generation, event.alert_claim_token,
                               event.alert_claimed_at
+                ), source_event_update AS (
+                    UPDATE safety_events source
+                       SET status = 'EMERGENCY_ALERT_SENT',
+                           updated_at = now()
+                      FROM finished
+                     WHERE source.emergency_session_id = finished.safety_event_id
+                       AND source.record_type = 'IMU_EVENT'
+                       AND source.status = 'ESCALATION_REQUESTED'
+                       AND ? > 0
+                    RETURNING source.safety_event_id
                 ), attempt_result AS (
                     INSERT INTO safety_events (
                         safety_event_id, parent_event_id, record_type, event_type,
@@ -182,6 +192,7 @@ public class EmergencyAlertAttemptRepository {
                 """, Integer.class,
                 status, successfulRecipients, failedRecipients,
                 claim.emergencySessionId(), claim.generation(), claim.fenceToken(),
+                successfulRecipients,
                 status, status, successfulRecipients, failedRecipients,
                 successfulRecipients, failedRecipients,
                 successfulRecipients, locationIncluded, successfulRecipients);

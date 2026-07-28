@@ -70,12 +70,25 @@ public class EmergencyMapHandoff {
     @Builder.Default
     @Column(name = "event_type", nullable = false, updatable = false)
     private String eventType = "ACTION";
+    @Builder.Default
+    @Column(name = "record_type", nullable = false, updatable = false)
+    private String recordType = "SAFETY_ACTION";
+    @Builder.Default
+    @Column(name = "alert_generation", nullable = false)
+    private long alertGeneration = 0;
+    @Builder.Default
+    @Column(name = "alert_successful_recipient_count", nullable = false)
+    private int alertSuccessfulRecipientCount = 0;
+    @Builder.Default
+    @Column(name = "alert_failed_recipient_count", nullable = false)
+    private int alertFailedRecipientCount = 0;
     @Column(name = "detected_at", nullable = false, updatable = false)
     private Instant detectedAt;
 
     @PrePersist
     void prepareCanonicalAction() {
         actionType = "MAP_HANDOFF";
+        recordType = "SAFETY_ACTION";
         if (idempotencyKey == null) idempotencyKey = "map-handoff:" + UUID.randomUUID();
         if (detectedAt == null) detectedAt = createdAt == null ? Instant.now() : createdAt;
     }

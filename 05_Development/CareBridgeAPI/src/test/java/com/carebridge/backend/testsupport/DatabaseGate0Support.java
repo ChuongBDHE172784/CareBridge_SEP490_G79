@@ -17,18 +17,16 @@ import java.util.zip.CRC32;
 import org.flywaydb.core.api.MigrationVersion;
 
 /**
- * Test-only support for the database Gate 0 checks under the one-migration
- * contract: the repository ships exactly one versioned migration
- * ({@code V20260727010000__canonical_schema_convergence.sql}) that builds the
- * full canonical schema from an empty database.
+ * Test-only support for database Gate 0 checks against the current forward-only
+ * Flyway chain. V1 builds the canonical schema and later versions evolve it.
  */
 final class DatabaseGate0Support {
 
     static final Path MIGRATION_DIRECTORY = Path.of("src/main/resources/db/migration");
 
-    static final String CANONICAL_VERSION = "20260727010000";
+    static final String CANONICAL_VERSION = "3";
     static final String CANONICAL_SCRIPT =
-            "V20260727010000__canonical_schema_convergence.sql";
+            "V3__align_safety_action_persistence.sql";
 
     static final String DUPLICATE_VERSION = "REPOSITORY_DUPLICATE_VERSION";
     static final String MALFORMED_FILENAME = "REPOSITORY_MALFORMED_FILENAME";

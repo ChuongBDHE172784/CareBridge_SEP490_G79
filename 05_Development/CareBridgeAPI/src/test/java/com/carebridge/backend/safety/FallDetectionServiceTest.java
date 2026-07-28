@@ -254,6 +254,58 @@ class FallDetectionServiceTest {
     }
 
     @Test
+    void sendEmergencyAlert_reusedSentSessionSynchronizesLinkedImuEventWithoutRepublishing() {
+        SafetyEvent event = makeSafetyEvent();
+        UUID emergencySessionId = UUID.randomUUID();
+        when(safetyEventRepository.findLockedByIdAndUserId(event.getId(), USER_ID))
+                .thenReturn(Optional.of(event));
+        when(safetyEventRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(emergencyService.openFlow(any(), eq(USER_ID))).thenReturn(
+                EmergencySessionResponse.builder()
+                        .sessionId(emergencySessionId)
+                        .userId(USER_ID)
+                        .build());
+        when(safetyEventRepository.transitionLinkedEventForSentEmergencySession(
+                event.getId(),
+                SafetyEventStatus.ESCALATION_REQUESTED,
+                SafetyEventStatus.EMERGENCY_ALERT_SENT))
+                .thenReturn(1);
+
+        fallDetectionService.sendEmergencyAlert(USER_ID, event.getId());
+
+        assertThat(event.getEmergencySessionId()).isEqualTo(emergencySessionId);
+        assertThat(event.getStatus()).isEqualTo(SafetyEventStatus.EMERGENCY_ALERT_SENT);
+        verify(safetyEventRepository).transitionLinkedEventForSentEmergencySession(
+                event.getId(),
+                SafetyEventStatus.ESCALATION_REQUESTED,
+                SafetyEventStatus.EMERGENCY_ALERT_SENT);
+        verify(eventPublisher, never()).publishEvent(any(SuspectedFallDetected.class));
+    }
+
+    @Test
+    void sendEmergencyAlert_replayedLinkedEventSynchronizesWithoutOpeningAnotherEmergency() {
+        SafetyEvent event = makeSafetyEvent();
+        event.setEmergencySessionId(UUID.randomUUID());
+        when(safetyEventRepository.findLockedByIdAndUserId(event.getId(), USER_ID))
+                .thenReturn(Optional.of(event));
+        when(safetyEventRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(safetyEventRepository.transitionLinkedEventForSentEmergencySession(
+                event.getId(),
+                SafetyEventStatus.ESCALATION_REQUESTED,
+                SafetyEventStatus.EMERGENCY_ALERT_SENT))
+                .thenReturn(1);
+
+        fallDetectionService.sendEmergencyAlert(USER_ID, event.getId());
+
+        assertThat(event.getStatus()).isEqualTo(SafetyEventStatus.EMERGENCY_ALERT_SENT);
+        verify(emergencyService, never()).openFlow(any(), eq(USER_ID));
+        verify(safetyEventRepository).transitionLinkedEventForSentEmergencySession(
+                event.getId(),
+                SafetyEventStatus.ESCALATION_REQUESTED,
+                SafetyEventStatus.EMERGENCY_ALERT_SENT);
+    }
+
+    @Test
     void enable_deniedSensorPermissionDoesNotCreateActiveSession() {
         config.setSensorPermissionGranted(false);
 

@@ -28,15 +28,35 @@ public interface ISafetyEventRepository extends JpaRepository<SafetyEvent, UUID>
             SafetyEventStatus status, Instant deadline);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
-    @Query("""
-            update SafetyEvent event
-               set event.status = :targetStatus
-             where event.emergencySessionId = :emergencySessionId
-               and event.status = :expectedStatus
-               and event.recordType = 'IMU_EVENT'
-            """)
+    @Query(value = """
+            UPDATE safety_events event
+               SET status = :#{#targetStatus.name()},
+                   updated_at = now()
+             WHERE event.emergency_session_id = :emergencySessionId
+               AND event.status = :#{#expectedStatus.name()}
+               AND event.record_type = 'IMU_EVENT'
+            """, nativeQuery = true)
     int transitionAlertSentByEmergencySessionId(
             @Param("emergencySessionId") UUID emergencySessionId,
+            @Param("expectedStatus") SafetyEventStatus expectedStatus,
+            @Param("targetStatus") SafetyEventStatus targetStatus);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = """
+            UPDATE safety_events event
+               SET status = :#{#targetStatus.name()},
+                   updated_at = now()
+              FROM safety_events session
+             WHERE event.safety_event_id = :safetyEventId
+               AND event.status = :#{#expectedStatus.name()}
+               AND event.record_type = 'IMU_EVENT'
+               AND event.emergency_session_id = session.safety_event_id
+               AND session.record_type = 'EMERGENCY_SESSION'
+               AND session.status = 'ACTIVE'
+               AND session.alert_status = 'SENT'
+            """, nativeQuery = true)
+    int transitionLinkedEventForSentEmergencySession(
+            @Param("safetyEventId") UUID safetyEventId,
             @Param("expectedStatus") SafetyEventStatus expectedStatus,
             @Param("targetStatus") SafetyEventStatus targetStatus);
 

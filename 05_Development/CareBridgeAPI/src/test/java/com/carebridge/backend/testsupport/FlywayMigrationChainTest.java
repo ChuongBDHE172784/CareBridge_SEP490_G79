@@ -8,9 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * Static repository contract for the one-migration convergence: the migration
- * directory contains exactly one versioned migration, the canonical
- * V20260727010000 convergence script, with a valid filename and no duplicates.
+ * Static repository contract for the current forward-only Flyway chain.
  */
 class FlywayMigrationChainTest {
 
@@ -18,7 +16,7 @@ class FlywayMigrationChainTest {
     Path temporaryDirectory;
 
     @Test
-    void repositoryContainsExactlyTheCanonicalConvergenceMigration() {
+    void repositoryContainsTheCurrentCanonicalMigrationChain() {
         var manifest = DatabaseGate0Support.inspectRepository();
 
         assertThat(manifest.gateFailures())
@@ -27,8 +25,13 @@ class FlywayMigrationChainTest {
         assertThat(manifest.malformedFiles()).isEmpty();
         assertThat(manifest.duplicateVersions()).isEmpty();
         assertThat(manifest.migrations())
-                .hasSize(1)
-                .first()
+                .extracting(DatabaseGate0Support.MigrationFile::script)
+                .containsExactly(
+                        "V1__init_schema.sql",
+                        "V2__seed_reference_data.sql",
+                        "V3__align_safety_action_persistence.sql");
+        assertThat(manifest.migrations())
+                .last()
                 .satisfies(migration -> {
                     assertThat(migration.type()).isEqualTo("V");
                     assertThat(migration.version())

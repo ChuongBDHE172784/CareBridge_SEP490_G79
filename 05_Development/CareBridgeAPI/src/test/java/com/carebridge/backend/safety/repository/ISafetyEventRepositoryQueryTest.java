@@ -25,9 +25,30 @@ class ISafetyEventRepositoryQueryTest {
         assertThat(modifying).isNotNull();
         assertThat(query).isNotNull();
         assertThat(normalize(query.value()))
-                .contains("event.emergencysessionid = :emergencysessionid")
-                .contains("event.status = :expectedstatus")
-                .contains("event.recordtype = 'imu_event'");
+                .contains("event.emergency_session_id = :emergencysessionid")
+                .contains("event.status = :#{#expectedstatus.name()}")
+                .contains("record_type = 'imu_event'")
+                .contains("updated_at = now()");
+    }
+
+    @Test
+    void reusedSentEmergencyTransitionChecksCanonicalSessionState() throws Exception {
+        Method method = ISafetyEventRepository.class.getMethod(
+                "transitionLinkedEventForSentEmergencySession",
+                UUID.class,
+                SafetyEventStatus.class,
+                SafetyEventStatus.class);
+
+        Query query = method.getAnnotation(Query.class);
+
+        assertThat(query).isNotNull();
+        assertThat(query.nativeQuery()).isTrue();
+        assertThat(normalize(query.value()))
+                .contains("session.record_type = 'emergency_session'")
+                .contains("session.status = 'active'")
+                .contains("session.alert_status = 'sent'")
+                .contains("event.emergency_session_id = session.safety_event_id")
+                .contains("updated_at = now()");
     }
 
     private static String normalize(String query) {

@@ -20,7 +20,7 @@ public class FamilyAlertLog {
     @Column(name = "safety_event_id")
     private UUID id;
 
-    @Column(name = "parent_event_id", nullable = false, unique = true)
+    @Column(name = "parent_event_id", nullable = false)
     private UUID sessionId;
 
     @Column(name = "user_id", nullable = false)
@@ -46,12 +46,25 @@ public class FamilyAlertLog {
     @Builder.Default
     @Column(name = "event_type", nullable = false, updatable = false)
     private String eventType = "ACTION";
+    @Builder.Default
+    @Column(name = "record_type", nullable = false, updatable = false)
+    private String recordType = "SAFETY_ACTION";
+    @Builder.Default
+    @Column(name = "alert_generation", nullable = false)
+    private long alertGeneration = 0;
+    @Builder.Default
+    @Column(name = "alert_successful_recipient_count", nullable = false)
+    private int alertSuccessfulRecipientCount = 0;
+    @Builder.Default
+    @Column(name = "alert_failed_recipient_count", nullable = false)
+    private int alertFailedRecipientCount = 0;
     @Column(name = "detected_at", nullable = false, updatable = false)
     private Instant detectedAt;
 
     @PrePersist
     void prepareCanonicalAction() {
         actionType = "FAMILY_ALERT";
+        recordType = "SAFETY_ACTION";
         if (idempotencyKey == null) idempotencyKey = "family-alert:" + UUID.randomUUID();
         if (detectedAt == null) detectedAt = sentAt == null ? Instant.now() : sentAt;
     }

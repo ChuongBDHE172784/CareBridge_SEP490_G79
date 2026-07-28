@@ -226,6 +226,7 @@ public class FallDetectionService implements IFallDetectionService {
 
     private void openEmergency(SafetyEvent saved) {
         if (saved.getEmergencySessionId() != null) {
+            synchronizeLinkedSentSession(saved);
             return;
         }
         var emergency = emergencyService.openFlow(OpenEmergencyRequest.builder()
@@ -236,8 +237,19 @@ public class FallDetectionService implements IFallDetectionService {
         saved.setEmergencySessionId(emergency.getSessionId());
         saved.setEscalationStartedAt(Instant.now());
         safetyEventRepository.save(saved);
+        synchronizeLinkedSentSession(saved);
         auditService.log(AuditAction.SAFETY_EVENT_ESCALATED, saved.getUserId(), "SafetyEvent",
                 saved.getId().toString(), Map.of("emergencySessionId", emergency.getSessionId().toString()));
+    }
+
+    private void synchronizeLinkedSentSession(SafetyEvent saved) {
+        int synchronizedEvents = safetyEventRepository.transitionLinkedEventForSentEmergencySession(
+                saved.getId(),
+                SafetyEventStatus.ESCALATION_REQUESTED,
+                SafetyEventStatus.EMERGENCY_ALERT_SENT);
+        if (synchronizedEvents > 0) {
+            saved.setStatus(SafetyEventStatus.EMERGENCY_ALERT_SENT);
+        }
     }
 
     private SafetyEventResponse respond(UUID userId, UUID eventId, String responseType,
