@@ -52,7 +52,7 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
     public Page<AdminChecklistTemplateDetailResponse> list(
             ChecklistTemplateStatus status, ContentStage stage, Pageable pageable) {
         Page<ChecklistTemplate> templates = checklistTemplateRepository
-                .findAdminByOptionalStageAndStatus(stage, status, pageable);
+                .findAdminByOptionalStageAndStatus(stage, status, null, pageable);
         return templates.map(this::toResponseWithItems);
     }
 

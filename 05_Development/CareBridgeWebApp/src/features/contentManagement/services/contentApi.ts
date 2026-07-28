@@ -194,6 +194,7 @@ export async function uploadContentImage(file: File): Promise<string> {
 export async function fetchAdminChecklists(params: {
   stage?: ContentStage;
   status?: ChecklistTemplateStatus;
+  keyword?: string;
   page?: number;
   size?: number;
 } = {}): Promise<PaginatedResponse<AdminChecklistTemplate>> {
@@ -208,6 +209,7 @@ export async function fetchAdminChecklists(params: {
     params: {
       ...(params.stage ? { stage: params.stage } : {}),
       ...(params.status ? { status: params.status } : {}),
+      ...(params.keyword ? { keyword: params.keyword } : {}),
       page: params.page ?? 0,
       size: params.size ?? 10,
     },

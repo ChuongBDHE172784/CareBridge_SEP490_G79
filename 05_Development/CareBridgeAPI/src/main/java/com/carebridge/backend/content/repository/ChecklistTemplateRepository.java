@@ -24,9 +24,12 @@ public interface ChecklistTemplateRepository extends JpaRepository<ChecklistTemp
 
     @Query("select t from ChecklistTemplate t where (:stage is null or t.stage=:stage) " +
             "and (:status is null or t.status=:status) " +
+            "and (:keyword is null or lower(t.name) like lower(concat('%', cast(:keyword as string), '%')) " +
+            "or lower(t.description) like lower(concat('%', cast(:keyword as string), '%'))) " +
             "order by t.updatedAt desc nulls last, t.id desc")
     Page<ChecklistTemplate> findAdminByOptionalStageAndStatus(
             @Param("stage") ContentStage stage,
             @Param("status") ChecklistTemplateStatus status,
+            @Param("keyword") String keyword,
             Pageable pageable);
 }
