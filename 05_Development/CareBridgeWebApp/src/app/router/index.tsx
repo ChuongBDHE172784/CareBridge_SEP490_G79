@@ -101,6 +101,7 @@ import PendingContentQueuePage from '../../features/moderation/pages/PendingCont
 import CommunityDashboardPage from '../../features/dashboard/pages/CommunityDashboardPage';
 import SafetyRuleManagementPage from '../../features/aiRuleManagement/pages/SafetyRuleManagementPage';
 import SystemConfigurationPage from '../../features/aiRuleManagement/pages/SystemConfigurationPage';
+import MaintenancePage from '../../features/system/pages/MaintenancePage';
 
 const ForbiddenPage = () => (
   <div className="p-12 text-center font-sans text-on-surface-variant">
@@ -120,6 +121,7 @@ export const router = createBrowserRouter([
     ],
   },
   { path: '/forbidden', element: <ForbiddenPage /> },
+  { path: '/maintenance', element: <MaintenancePage /> },
   { path: '/account-blocked', element: <BlockedAccountPage /> },
   { path: '/no-web-access', element: <NoWebAccessPage /> },
   { path: '/expert/register', element: <ExpertRegisterPage /> },

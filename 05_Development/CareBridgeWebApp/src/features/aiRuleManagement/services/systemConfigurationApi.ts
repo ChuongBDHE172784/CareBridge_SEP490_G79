@@ -2,15 +2,18 @@ import apiClient from '../../../shared/api/apiClient';
 import type { ApiResponse } from '../../auth/models/user';
 
 export interface SystemConfiguration {
-  apiRateLimit: number;
-  connectionTimeoutMs: number;
-  maxUploadSizeMb: number;
-  administratorEmail: string;
-  emailAlerts: boolean;
-  smsAlerts: boolean;
-  webhookAlerts: boolean;
+  id: string;
   aiModerationEnabled: boolean;
   maintenanceModeEnabled: boolean;
+  rowVersion: number;
+  updatedBy: string;
+  updatedAt: string;
+}
+
+export interface UpdateSystemConfigurationRequest {
+  aiModerationEnabled: boolean;
+  maintenanceModeEnabled: boolean;
+  rowVersion: number;
 }
 
 export async function fetchSystemConfiguration(): Promise<SystemConfiguration> {
@@ -18,7 +21,7 @@ export async function fetchSystemConfiguration(): Promise<SystemConfiguration> {
   return response.data.data;
 }
 
-export async function saveSystemConfiguration(configuration: SystemConfiguration): Promise<SystemConfiguration> {
+export async function saveSystemConfiguration(configuration: UpdateSystemConfigurationRequest): Promise<SystemConfiguration> {
   const response = await apiClient.put<ApiResponse<SystemConfiguration>>(
     '/api/v1/admin/system-configuration',
     configuration,

@@ -23,6 +23,7 @@ class AuditEligibilityPolicyTest {
         assertThat(policy.shouldAudit(AuditAction.SECURITY_EVENT)).isTrue();
         assertThat(policy.shouldAudit(AuditAction.LOGIN)).isTrue();
         assertThat(policy.shouldAudit(AuditAction.PROFILE_VIEWED)).isTrue();
+        assertThat(policy.shouldAudit(AuditAction.SYSTEM_CONFIGURATION_UPDATED)).isTrue();
     }
 
     @Test
