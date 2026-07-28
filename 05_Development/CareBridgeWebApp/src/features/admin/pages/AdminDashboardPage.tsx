@@ -19,7 +19,7 @@ const PRIORITY_ACTIONS = [
     title: 'Sự cố bảo mật',
     description: 'Theo dõi, điều tra và xử lý các sự cố an toàn hệ thống.',
     icon: 'security',
-    href: '/security/incidents',
+    href: '/admin/security/incidents',
     tone: 'bg-error-container text-error',
   },
 ];
@@ -27,8 +27,8 @@ const PRIORITY_ACTIONS = [
 const ADMIN_AREAS = [
   { title: 'Chuyên gia', detail: 'Xác minh và quản lý độ tin cậy', icon: 'medical_services', href: '/admin/expert-trust-management' },
   { title: 'Đối tác', detail: 'Duyệt hồ sơ đối tác', icon: 'handshake', href: '/admin/partners/verification' },
-  { title: 'Phân tích tư thế', detail: 'Quản lý cấu hình AI an toàn', icon: 'settings_accessibility', href: '/posture-configs' },
-  { title: 'Hệ thống kiểm duyệt', detail: 'Số liệu cộng đồng, quy tắc AI và vận hành', icon: 'shield', href: '/admin/moderator-dashboard' },
+  { title: 'Phân tích tư thế', detail: 'Quản lý cấu hình AI an toàn', icon: 'settings_accessibility', href: '/admin/posture-configs' },
+  { title: 'Hệ thống kiểm duyệt', detail: 'Quy tắc AI và cấu hình vận hành', icon: 'shield', href: '/admin/safety-rules' },
 ];
 
 export default function AdminDashboardPage() {
@@ -41,16 +41,16 @@ export default function AdminDashboardPage() {
         <div>
           <h1 className="text-[26px] font-bold text-on-surface m-0">Trung tâm điều hành hệ thống</h1>
           <p className="text-on-surface-variant text-sm mt-1">
-            Truy cập nhanh các tác vụ cần quyền System Admin. Số liệu cộng đồng và chỉ số vận hành được xem trong Hệ thống kiểm duyệt.
+            Truy cập nhanh các tác vụ cần quyền System Admin.
           </p>
         </div>
         <button
           type="button"
-          onClick={() => navigate('/admin/moderator-dashboard')}
+          onClick={() => navigate('/admin/safety-rules')}
           className="flex items-center gap-2 py-3 px-6 rounded-full bg-primary text-on-primary border-0 text-sm font-semibold cursor-pointer whitespace-nowrap self-start md:self-auto hover:bg-primary/90"
         >
-          <span className="material-symbols-outlined text-lg">monitoring</span>
-          Xem tổng quan vận hành
+          <span className="material-symbols-outlined text-lg">rule</span>
+          Mở quy tắc an toàn
         </button>
       </div>
 

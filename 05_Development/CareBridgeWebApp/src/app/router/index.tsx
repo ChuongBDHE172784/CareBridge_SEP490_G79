@@ -27,10 +27,6 @@ import ExpertQuestionQueuePage from '../../features/expert/pages/ExpertQuestionQ
 import ExpertOnboardingPage from '../../features/expert/pages/ExpertOnboardingPage';
 
 // Contribution screens
-import ContributionListPage from '../../features/expert/pages/ContributionListPage';
-import ContributionDraftPage from '../../features/expert/pages/ContributionDraftPage';
-import ContributionDetailPage from '../../features/expert/pages/ContributionDetailPage';
-import AdminContributionReviewQueuePage from '../../features/expert/pages/AdminContributionReviewQueuePage';
 
 // Expert verification queue (admin side, UC-70)
 import ExpertVerificationQueuePage from '../../features/expert/pages/ExpertVerificationQueuePage';
@@ -183,18 +179,17 @@ export const router = createBrowserRouter([
               // hide all write actions when the viewer lacks CONTENT_ADMIN (see canManage in each page).
               { path: '/admin/content-review/:id', element: <ContentDetailPage /> },
               { path: '/admin/content-review/checklists/:id', element: <ChecklistDetailPage /> },
-              { path: '/admin/contribution-review-queue', element: <AdminContributionReviewQueuePage /> },
-{ path: '/security/incidents', element: <SecurityIncidentListPage /> },
-              { path: '/security/events', element: <SecurityEventsPage /> },
-              { path: '/security/events/:eventId', element: <SecurityEventDetailPage /> },
-              { path: '/security/incidents/:eventId/investigate', element: <SecurityIncidentInvestigationPage /> },
-              { path: '/security/incidents/:eventId/resolve', element: <SecurityIncidentResolutionPage /> },
-              { path: '/notifications', element: <NotificationCenterPage /> },
-              { path: '/settings/privacy', element: <PrivacySettingsPage /> },
-              { path: '/posture-configs', element: <PostureConfigListPage /> },
-              { path: '/posture-configs/new', element: <EditPostureConfigPage /> },
-              { path: '/posture-configs/:exerciseId', element: <PostureConfigDetailPage /> },
-              { path: '/posture-configs/:exerciseId/edit', element: <EditPostureConfigPage /> },
+              { path: '/admin/security/incidents', element: <SecurityIncidentListPage /> },
+              { path: '/admin/security/events', element: <SecurityEventsPage /> },
+              { path: '/admin/security/events/:eventId', element: <SecurityEventDetailPage /> },
+              { path: '/admin/security/incidents/:eventId/investigate', element: <SecurityIncidentInvestigationPage /> },
+              { path: '/admin/security/incidents/:eventId/resolve', element: <SecurityIncidentResolutionPage /> },
+              { path: '/admin/notifications', element: <NotificationCenterPage /> },
+              { path: '/admin/settings/privacy', element: <PrivacySettingsPage /> },
+              { path: '/admin/posture-configs', element: <PostureConfigListPage /> },
+              { path: '/admin/posture-configs/new', element: <EditPostureConfigPage /> },
+              { path: '/admin/posture-configs/:exerciseId', element: <PostureConfigDetailPage /> },
+              { path: '/admin/posture-configs/:exerciseId/edit', element: <EditPostureConfigPage /> },
             ],
           },
           {
@@ -260,11 +255,6 @@ export const router = createBrowserRouter([
                   // UC-144D: Direct Consult Chat & Call
                   { path: '/expert/direct-chats', element: <ConversationListPage /> },
                   { path: '/expert/direct-chats/:conversationId', element: <ConversationRoomPage /> },
-                  // Contribution (Medical Knowledge)
-                  { path: '/expert/contributions', element: <ContributionListPage /> },
-                  { path: '/expert/contributions/new', element: <ContributionDraftPage /> },
-                  { path: '/expert/contributions/:id/edit', element: <ContributionDraftPage /> },
-                  { path: '/expert/contributions/:id', element: <ContributionDetailPage /> },
                 ],
               },
             ],
@@ -284,20 +274,21 @@ export const router = createBrowserRouter([
             // frontend access either (it would 403 on every data call).
             element: <ProtectedRoute requiredRoles={['MODERATOR']} />,
             children: [
-              { path: '/admin/queue', element: <Navigate to="/admin/reports" replace /> },
-              { path: '/admin/pending-content', element: <PendingContentQueuePage /> },
-              { path: '/admin/reports', element: <ReportsQueuePage /> },
-              { path: '/admin/reports/account/:reportId', element: <AccountReportDetailPage /> },
-              { path: '/admin/reports/:reportId', element: <ContentReportDetailPage /> },
-              { path: '/admin/violations', element: <ViolationHistoryPage /> },
-              { path: '/admin/violations/:targetUserId', element: <ViolationDetailPage /> },
+              { path: '/moderator', element: <Navigate to="/moderator/reports" replace /> },
+              { path: '/moderator/queue', element: <Navigate to="/moderator/reports" replace /> },
+              { path: '/moderator/moderator-dashboard', element: <CommunityDashboardPage /> },
+              { path: '/moderator/pending-content', element: <PendingContentQueuePage /> },
+              { path: '/moderator/reports', element: <ReportsQueuePage /> },
+              { path: '/moderator/reports/account/:reportId', element: <AccountReportDetailPage /> },
+              { path: '/moderator/reports/:reportId', element: <ContentReportDetailPage /> },
+              { path: '/moderator/violations', element: <ViolationHistoryPage /> },
+              { path: '/moderator/violations/:targetUserId', element: <ViolationDetailPage /> },
             ],
           },
           {
-            // RedFlagRuleController / CommunityDashboardController
+            // RedFlagRuleController
             element: <ProtectedRoute requiredRoles={['SYSTEM_ADMIN']} />,
             children: [
-              { path: '/admin/moderator-dashboard', element: <CommunityDashboardPage /> },
               { path: '/admin/safety-rules', element: <SafetyRuleManagementPage /> },
               { path: '/admin/system-configuration', element: <SystemConfigurationPage /> },
               { path: '/admin/partners/verification', element: <PartnerVerificationQueuePage /> },

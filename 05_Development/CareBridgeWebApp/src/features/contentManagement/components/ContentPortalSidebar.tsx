@@ -38,7 +38,7 @@ export default function ContentPortalSidebar() {
       </div>
       {hasRole('MODERATOR') && (
         <NavLink
-          to="/admin/reports"
+          to="/moderator/reports"
           className="flex items-center gap-2 border-b border-outline-variant/70 px-4 py-2 text-xs font-semibold text-primary hover:bg-surface-container-low"
         >
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>

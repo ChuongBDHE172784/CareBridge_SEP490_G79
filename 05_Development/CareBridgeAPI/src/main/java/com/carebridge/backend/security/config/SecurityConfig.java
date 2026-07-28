@@ -69,7 +69,7 @@ public class SecurityConfig {
                         // Admin / privileged write endpoints
                         .requestMatchers("/api/v1/consent/grants/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/admin/audit-logs").hasRole("SYSTEM_ADMIN")
-                        .requestMatchers(HttpMethod.GET, "/api/v1/admin/community/dashboard").hasRole("SYSTEM_ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/moderator/community/dashboard").hasRole("MODERATOR")
                         .requestMatchers(HttpMethod.GET, "/api/v1/admin/moderation/queue").hasRole("MODERATOR")
                         // CB-MOD-IMP-004: added retroactively — @PreAuthorize + the /api/v1/** fallback
                         // below already enforced MODERATOR-only, so this was a convention gap, not a hole.

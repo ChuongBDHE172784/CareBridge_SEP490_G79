@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import ModPortalSidebar from '../../moderation/components/ModPortalSidebar';
 import ConfirmDialog from '../../../shared/components/ConfirmDialog';
 import {
   fetchRedFlagRules,
@@ -410,8 +409,7 @@ export default function SafetyRuleManagementPage() {
 
   return (
     <div className="portal-page">
-      <ModPortalSidebar />
-      <main className="portal-content font-sans">
+      <main className="font-sans">
         <div className="p-8">
           {/* Header */}
         <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">

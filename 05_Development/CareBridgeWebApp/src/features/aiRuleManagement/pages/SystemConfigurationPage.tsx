@@ -10,7 +10,6 @@ import {
   TriangleAlert,
   Wrench,
 } from 'lucide-react';
-import ModPortalSidebar from '../../moderation/components/ModPortalSidebar';
 import {
   fetchSystemConfiguration,
   saveSystemConfiguration,
@@ -220,8 +219,7 @@ export default function SystemConfigurationPage() {
   if (!configuration) {
     return (
       <div className="portal-page font-sans">
-        <ModPortalSidebar />
-        <main className="portal-content grid min-h-screen place-items-center">
+        <main className="grid min-h-screen place-items-center">
           {error ? (
             <div role="alert" className="max-w-md rounded-2xl border border-error-container bg-error-container/60 p-5 text-center text-sm text-error">
               <p className="m-0">{error}</p>
@@ -249,8 +247,7 @@ export default function SystemConfigurationPage() {
 
   return (
     <div className="portal-page font-sans">
-      <ModPortalSidebar />
-      <main className="portal-content pb-28">
+      <main className="pb-28">
         <div className="p-5 md:p-8">
           <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>

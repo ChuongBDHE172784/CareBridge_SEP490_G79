@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import ModPortalSidebar from '../components/ModPortalSidebar';
 import {
   ACTION_TYPE_LABELS,
   type AccountViolationHistoryItem,
@@ -82,14 +81,13 @@ export default function ViolationDetailPage() {
 
   return (
     <div className="portal-page">
-      <ModPortalSidebar />
-      <main className="portal-content font-sans">
+      <main className="font-sans">
         <div className="p-8">
           {/* Top Bar Navigation */}
           <div className="mb-4">
             <button
               type="button"
-              onClick={() => navigate('/admin/violations')}
+              onClick={() => navigate('/moderator/violations')}
               className="inline-flex items-center gap-1.5 py-2 px-4 rounded-full bg-surface border border-outline-variant text-xs font-semibold text-on-surface-variant hover:bg-surface-container-low transition-colors cursor-pointer"
             >
               <span className="material-symbols-outlined text-base">arrow_back</span>
@@ -150,14 +148,14 @@ export default function ViolationDetailPage() {
               <p className="mb-0 mt-2 max-w-lg mx-auto text-sm text-on-surface-variant">{error}</p>
               <div className="mt-5 flex flex-wrap justify-center gap-2">
                 <button type="button" onClick={() => void load()} className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-on-primary">Thử lại</button>
-                <button type="button" onClick={() => navigate('/admin/violations')} className="rounded-full border border-outline-variant bg-surface px-5 py-2 text-sm font-semibold text-on-surface-variant">Về danh sách</button>
+                <button type="button" onClick={() => navigate('/moderator/violations')} className="rounded-full border border-outline-variant bg-surface px-5 py-2 text-sm font-semibold text-on-surface-variant">Về danh sách</button>
               </div>
             </div>
           ) : items.length === 0 ? (
             <div className="bg-surface rounded-2xl p-12 text-center border border-surface-container-highest">
               <span className="material-symbols-outlined mb-3 text-5xl text-outline">history_toggle_off</span>
               <h2 className="m-0 text-lg font-semibold text-on-surface">Không có lần xử lý nào</h2>
-              <button type="button" onClick={() => navigate('/admin/violations')} className="mt-5 rounded-full border border-outline-variant px-5 py-2 text-sm font-semibold text-primary">Về danh sách</button>
+              <button type="button" onClick={() => navigate('/moderator/violations')} className="mt-5 rounded-full border border-outline-variant px-5 py-2 text-sm font-semibold text-primary">Về danh sách</button>
             </div>
           ) : (
             <div className="grid items-start gap-6 lg:grid-cols-[1fr_360px]">
@@ -223,7 +221,7 @@ export default function ViolationDetailPage() {
                           {action.reportId && (
                             <button
                               type="button"
-                              onClick={() => navigate(`/admin/reports/${action.reportId}`)}
+                              onClick={() => navigate(`/moderator/reports/${action.reportId}`)}
                               className="inline-flex items-center gap-1 text-primary font-semibold hover:underline bg-transparent border-0 cursor-pointer"
                             >
                               <span className="material-symbols-outlined text-sm">flag</span>

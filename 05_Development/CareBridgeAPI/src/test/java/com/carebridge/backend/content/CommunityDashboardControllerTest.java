@@ -42,11 +42,11 @@ class CommunityDashboardControllerTest {
     @MockitoBean
     private UserRepository userRepository;
 
-    private static final String URL = "/api/v1/admin/community/dashboard";
+    private static final String URL = "/api/v1/moderator/community/dashboard";
 
     // DASH-TC-108: invalid range (from > to) -> 400 MOD-021
     @Test
-    @WithMockUser(username = "00000000-0000-0000-0000-0000000000aa", roles = "SYSTEM_ADMIN")
+    @WithMockUser(username = "00000000-0000-0000-0000-0000000000aa", roles = "MODERATOR")
     void getDashboard_invalidRange_returns400Mod021() throws Exception {
         org.mockito.Mockito.when(communityDashboardService.getDashboard(org.mockito.ArgumentMatchers.any()))
                 .thenThrow(ModerationException.invalidDateRange());

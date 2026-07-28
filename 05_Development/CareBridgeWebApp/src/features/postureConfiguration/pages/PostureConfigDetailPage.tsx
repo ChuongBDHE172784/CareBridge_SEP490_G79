@@ -56,7 +56,7 @@ export default function PostureConfigDetailPage() {
           {error ?? "Chưa có cấu hình cho bài tập này."}
         </p>
         <button
-          onClick={() => navigate("/posture-configs")}
+          onClick={() => navigate("/admin/posture-configs")}
           className="rounded-full border border-outline-variant px-6 py-2 text-primary"
         >
           Quay lại danh sách
@@ -83,7 +83,7 @@ export default function PostureConfigDetailPage() {
           </p>
         </div>
         <button
-          onClick={() => navigate(`/posture-configs/${config.exerciseId}/edit`)}
+          onClick={() => navigate(`/admin/posture-configs/${config.exerciseId}/edit`)}
           className="flex items-center gap-2 rounded-full bg-primary px-6 py-3 font-semibold text-on-primary"
         >
           <span className="material-symbols-outlined text-[18px]">edit</span>

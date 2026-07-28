@@ -43,10 +43,10 @@ class CommunityDashboardControllerSecurityTest {
     @MockitoBean
     private UserRepository userRepository;
 
-    private static final String URL = "/api/v1/admin/community/dashboard";
+    private static final String URL = "/api/v1/moderator/community/dashboard";
 
-    // DASH-TC-111: non-SYSTEM_ADMIN (MOTHER) -> 403. Body is empty — URL-matcher denial (SecurityConfig's
-    // explicit `.requestMatchers(GET, ".../dashboard").hasRole("SYSTEM_ADMIN")`) precedes DispatcherServlet,
+    // DASH-TC-111: non-MODERATOR (MOTHER) -> 403. Body is empty — URL-matcher denial (SecurityConfig's
+    // explicit `.requestMatchers(GET, ".../dashboard").hasRole("MODERATOR")`) precedes DispatcherServlet,
     // same verified finding as UC-100/101/102/106/107/UC-111's own ContentApprovalControllerSecurityTest.
     @Test
     @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
@@ -57,14 +57,21 @@ class CommunityDashboardControllerSecurityTest {
         verify(communityDashboardService, never()).getDashboard(any());
     }
 
-    // DASH-TC-112: MODERATOR -> 403 (no implicit RoleHierarchy) — see DASH-TC-111 note on empty body
+    // DASH-TC-112: SYSTEM_ADMIN -> 403 (no implicit RoleHierarchy) — see DASH-TC-111 note on empty body
     @Test
-    @WithMockUser(username = "00000000-0000-0000-0000-0000000000bb", roles = "MODERATOR")
-    void getDashboard_asModeratorRole_shouldReturn403() throws Exception {
+    @WithMockUser(username = "00000000-0000-0000-0000-0000000000bb", roles = "SYSTEM_ADMIN")
+    void getDashboard_asSystemAdminRole_shouldReturn403() throws Exception {
         mockMvc.perform(get(URL))
                 .andExpect(status().isForbidden());
 
         verify(communityDashboardService, never()).getDashboard(any());
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-0000000000bb", roles = "MODERATOR")
+    void getDashboard_asModeratorRole_shouldReturn200() throws Exception {
+        mockMvc.perform(get(URL))
+                .andExpect(status().isOk());
     }
 
     // DASH-TC-113: no JWT -> 401 bodiless

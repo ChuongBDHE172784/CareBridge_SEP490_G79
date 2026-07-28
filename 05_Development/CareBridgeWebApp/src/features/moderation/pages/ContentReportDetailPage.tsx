@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import ModPortalSidebar from '../components/ModPortalSidebar';
 import ConfirmDialog from '../../../shared/components/ConfirmDialog';
 import { claimReport, fetchAiAssessment, fetchModerationQueue, fetchRelatedReports, releaseReport, resolveReport } from '../services/moderationApi';
 import type { AiAssessment, ModerationQueueItem } from '../models/moderation';
@@ -155,7 +154,7 @@ export default function ContentReportDetailPage() {
     setActionError('');
     try {
       await resolveReport(item.id, outcome, reason || undefined, expiresAt);
-      navigate('/admin/reports');
+      navigate('/moderator/reports');
     } catch (err: unknown) {
       const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setActionError(message || 'Xử lý thất bại. Vui lòng thử lại.');
@@ -167,8 +166,7 @@ export default function ContentReportDetailPage() {
 
   return (
     <div className="portal-page">
-      <ModPortalSidebar />
-      <main className="portal-content font-sans">
+      <main className="font-sans">
         <div className="p-8">
         {isLoading ? (
           <div className="portal-empty">Đang tải...</div>
@@ -196,7 +194,7 @@ export default function ContentReportDetailPage() {
               </div>
               <button
                 type="button"
-                onClick={() => navigate('/admin/reports')}
+                onClick={() => navigate('/moderator/reports')}
                 className="inline-flex items-center gap-2 py-2.5 px-5 rounded-full bg-surface border border-outline-variant text-on-surface-variant text-sm font-semibold cursor-pointer hover:bg-surface-container-low self-start md:self-auto"
               >
                 <span className="material-symbols-outlined text-lg">arrow_back</span>

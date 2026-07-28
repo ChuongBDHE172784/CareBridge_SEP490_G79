@@ -15,10 +15,6 @@ vi.mock('../services/systemConfigurationApi', () => ({
   saveSystemConfiguration: harness.saveSystemConfiguration,
 }));
 
-vi.mock('../../moderation/components/ModPortalSidebar', () => ({
-  default: () => <aside>Sidebar</aside>,
-}));
-
 import SystemConfigurationPage from './SystemConfigurationPage';
 
 function configuration(overrides: Partial<SystemConfiguration> = {}): SystemConfiguration {

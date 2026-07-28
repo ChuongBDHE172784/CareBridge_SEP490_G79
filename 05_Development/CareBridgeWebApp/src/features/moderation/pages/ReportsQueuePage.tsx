@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import ModPortalSidebar from '../components/ModPortalSidebar';
 import { useAuthStore } from '../../../shared/auth/authStore';
 import { claimReport, fetchModerationQueue, releaseReport } from '../services/moderationApi';
 import type { CasePriority, ModerationQueueItem, ReportSource, ReportTargetType } from '../models/moderation';
@@ -134,9 +133,9 @@ export default function ReportsQueuePage() {
 
   const goToDetail = (item: ModerationQueueItem) => {
     if (item.targetType === 'ACCOUNT' || item.targetType === 'USER' || item.targetType === 'EXPERT') {
-      navigate(`/admin/reports/account/${item.id}`);
+      navigate(`/moderator/reports/account/${item.id}`);
     } else {
-      navigate(`/admin/reports/${item.id}`);
+      navigate(`/moderator/reports/${item.id}`);
     }
   };
 
@@ -178,8 +177,7 @@ export default function ReportsQueuePage() {
 
   return (
     <div className="portal-page">
-      <ModPortalSidebar />
-      <main className="portal-content font-sans">
+      <main className="font-sans">
         <div className="p-8">
           {/* Header */}
           <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">

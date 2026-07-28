@@ -80,9 +80,6 @@ import '../../features/expert/screens/expert_profile_setup_screen.dart';
 import '../../features/expert/screens/upload_verification_docs_screen.dart';
 import '../../features/expert/screens/verification_status_screen.dart';
 import '../../features/expert/screens/expert_public_profile_screen.dart';
-import '../../features/expert/screens/expert_contribution_list_screen.dart';
-import '../../features/expert/screens/expert_contribution_draft_screen.dart';
-import '../../features/expert/screens/expert_contribution_detail_screen.dart';
 import '../../features/expert/screens/expert_calendar_screen.dart';
 import '../../features/expert/screens/expert_nearby_support_screen.dart';
 import '../../features/expert/screens/expert_onboarding_gate_screen.dart';
@@ -807,29 +804,6 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/expert-calendar',
       builder: (context, state) => const ExpertCalendarScreen(),
-    ),
-    // CB-054: Expert Contributions (UC-69)
-    GoRoute(
-      path: '/expert/contributions',
-      builder: (context, state) => const ExpertContributionListScreen(),
-    ),
-    GoRoute(
-      path: '/expert/contributions/new',
-      builder: (context, state) => const ExpertContributionDraftScreen(),
-    ),
-    GoRoute(
-      path: '/expert/contributions/:id/edit',
-      builder: (context, state) {
-        final id = state.pathParameters['id'] ?? '';
-        return ExpertContributionDraftScreen(contributionId: id);
-      },
-    ),
-    GoRoute(
-      path: '/expert/contributions/:id',
-      builder: (context, state) {
-        final id = state.pathParameters['id'] ?? '';
-        return ExpertContributionDetailScreen(contributionId: id);
-      },
     ),
     // CB-061: Nearby Support Expert (UC-82)
     GoRoute(

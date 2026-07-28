@@ -16,7 +16,7 @@ export default function PostureConfigListPage() {
           </p>
         </div>
         <button
-          onClick={() => navigate("/posture-configs/new")}
+          onClick={() => navigate("/admin/posture-configs/new")}
           className="portal-primary-button"
         >
           <span className="material-symbols-outlined text-[20px]">add</span>

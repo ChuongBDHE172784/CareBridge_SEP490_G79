@@ -19,8 +19,7 @@ type NavGroupItem = {
 };
 type NavItem = NavLinkItem | NavGroupItem;
 
-// Icon/color palette mirrors ModPortalSidebar (features/moderation/components/ModPortalSidebar.tsx)
-// so the Admin and ModPortal sidebars read as one consistent design system.
+// Keep navigation icons and colors consistent across the administration portal.
 const NAV_LINKS: readonly NavItem[] = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: 'dashboard', roles: ['SYSTEM_ADMIN'] },
   { to: '/admin/users', label: 'Quản lý người dùng', icon: 'manage_accounts', roles: ['SYSTEM_ADMIN'] },
@@ -36,41 +35,51 @@ const NAV_LINKS: readonly NavItem[] = [
       { to: '/admin/expert-trust-management', label: 'Tin cậy chuyên gia', icon: 'health_and_safety', roles: ['SYSTEM_ADMIN'] },
     ],
   },
-  { to: '/admin/content-approval-queue', label: 'Duyệt nội dung', icon: 'fact_check', roles: ['SYSTEM_ADMIN'] },
-  { to: '/admin/partners/verification', label: 'Xét duyệt đối tác', icon: 'handshake', roles: ['SYSTEM_ADMIN'] },
-  { to: '/posture-configs', label: 'Cấu hình tư thế', icon: 'settings_accessibility', roles: ['SYSTEM_ADMIN'] },
-  { to: '/security/incidents', label: 'Sự cố bảo mật', icon: 'security', roles: ['SYSTEM_ADMIN'] },
-  { to: '/security/events', label: 'Sự kiện bảo mật', icon: 'policy', roles: ['SYSTEM_ADMIN'] },
-  { to: '/notifications', label: 'Thông báo', icon: 'notifications', roles: ['SYSTEM_ADMIN'] },
-  { to: '/settings/privacy', label: 'Quyền riêng tư', icon: 'privacy_tip', roles: ['SYSTEM_ADMIN'] },
   {
     type: 'group',
     label: 'Hệ thống kiểm duyệt',
     icon: 'shield',
     roles: ['SYSTEM_ADMIN'],
     children: [
-      { to: '/admin/moderator-dashboard', label: 'Tổng quan', icon: 'dashboard', roles: ['SYSTEM_ADMIN'] },
       { to: '/admin/safety-rules', label: 'AI & An toàn', icon: 'rule', roles: ['SYSTEM_ADMIN'] },
       { to: '/admin/system-configuration', label: 'Cấu hình hệ thống', icon: 'tune', roles: ['SYSTEM_ADMIN'] },
+    ],
+  },
+  { to: '/admin/content-approval-queue', label: 'Duyệt nội dung', icon: 'fact_check', roles: ['SYSTEM_ADMIN'] },
+  { to: '/admin/posture-configs', label: 'Cấu hình tư thế', icon: 'settings_accessibility', roles: ['SYSTEM_ADMIN'] },
+  { to: '/admin/notifications', label: 'Thông báo', icon: 'notifications', roles: ['SYSTEM_ADMIN'] },
+  { to: '/admin/settings/privacy', label: 'Quyền riêng tư', icon: 'privacy_tip', roles: ['SYSTEM_ADMIN'] },
+  {
+    type: 'group',
+    label: 'Bảo mật',
+    icon: 'security',
+    roles: ['SYSTEM_ADMIN'],
+    children: [
+      { to: '/admin/security/incidents', label: 'Sự cố bảo mật', icon: 'security', roles: ['SYSTEM_ADMIN'] },
+      { to: '/admin/security/events', label: 'Sự kiện bảo mật', icon: 'policy', roles: ['SYSTEM_ADMIN'] },
     ],
   },
   { to: '/expert/dashboard', label: 'Expert', icon: 'stethoscope', roles: ['EXPERT'] },
   // route guard is PARTNER-only (see router/index.tsx) — SYSTEM_ADMIN has no access here.
   { to: '/partner/dashboard', label: 'Partner', icon: 'handshake', roles: ['PARTNER'] },
-  { to: '/admin/reports', label: 'Hệ thống kiểm duyệt', icon: 'shield', roles: ['MODERATOR'] },
+  { to: '/moderator/moderator-dashboard', label: 'Tổng quan', icon: 'dashboard', roles: ['MODERATOR'] },
+  { to: '/moderator/pending-content', label: 'Nội dung mới', icon: 'fact_check', roles: ['MODERATOR'] },
+  { to: '/moderator/reports', label: 'Báo cáo', icon: 'flag', roles: ['MODERATOR'] },
+  { to: '/moderator/violations', label: 'Vi phạm', icon: 'gavel', roles: ['MODERATOR'] },
 ];
 
 export default function AdminLayout() {
   const { user, logout, hasAnyRole } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const isModerator = user?.role === 'MODERATOR';
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => ({
     'Quản lý chuyên gia': location.pathname.startsWith('/admin/expert-'),
     'Hệ thống kiểm duyệt': [
-      '/admin/moderator-dashboard',
       '/admin/safety-rules',
       '/admin/system-configuration',
     ].some((path) => location.pathname.startsWith(path)),
+    'Bảo mật': location.pathname.startsWith('/admin/security/'),
   }));
 
   const handleLogout = () => {
@@ -81,20 +90,7 @@ export default function AdminLayout() {
   const isVisible = (item: NavItem) => hasAnyRole(...(item.roles as Parameters<typeof hasAnyRole>));
   const visibleLinks = NAV_LINKS.filter(isVisible);
 
-  // Moderation pages render their own full-page sidebar (ModPortalSidebar) —
-  // skip this layout's sidebar/margin here to avoid a double ml-64 offset (empty gap bug).
-  const isModerationPortalRoute = [
-    '/admin/moderator-dashboard',
-    '/admin/pending-content',
-    '/admin/reports',
-    '/admin/violations',
-    '/admin/safety-rules',
-    '/admin/system-configuration',
-  ].some((path) => location.pathname.startsWith(path));
-
-  if (
-    isModerationPortalRoute || location.pathname.startsWith('/content')
-  ) {
+  if (location.pathname.startsWith('/content')) {
     return <Outlet />;
   }
 
@@ -103,10 +99,14 @@ export default function AdminLayout() {
       <aside className="fixed left-0 top-0 z-20 hidden h-screen w-64 flex-col border-r border-outline-variant/70 bg-surface md:flex">
         <div className="border-b border-outline-variant/70 p-4">
           <div className="flex items-center gap-2 mb-1">
-            <span className="material-symbols-outlined text-xl text-primary">admin_panel_settings</span>
+            <span className="material-symbols-outlined text-xl text-primary">
+              {isModerator ? 'shield' : 'admin_panel_settings'}
+            </span>
             <span className="text-sm font-semibold leading-none text-on-surface">CareBridge</span>
           </div>
-          <p className="ml-7 text-[11px] text-outline">Cổng quản trị hệ thống</p>
+          <p className="ml-7 text-[11px] text-outline">
+            {isModerator ? 'Cổng kiểm duyệt nội dung' : 'Cổng quản trị hệ thống'}
+          </p>
         </div>
         <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
           {visibleLinks.map((l) => {
