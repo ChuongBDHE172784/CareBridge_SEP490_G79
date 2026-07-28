@@ -168,8 +168,8 @@ export const router = createBrowserRouter([
               { path: '/admin/account-lock-appeals', element: <AccountLockAppealsPage /> },
               { path: '/admin/account-lock-appeals/:appealId', element: <AccountLockAppealDetailPage /> },
               { path: '/admin/expert-verification-queue', element: <ExpertVerificationQueuePage /> },
-              { path: '/admin/expert-identity-queue', element: <Navigate to="/admin/expert-verification-queue" replace /> },
-              { path: '/admin/expert-trust-management', element: <Navigate to="/admin/expert-verification-queue" replace /> },
+              { path: '/admin/expert-identity-queue', element: <ExpertVerificationQueuePage /> },
+              { path: '/admin/expert-trust-management', element: <ExpertVerificationQueuePage /> },
               { path: '/admin/content-approval-queue', element: <ContentApprovalQueuePage /> },
               // Read-only review routes for the approval queue's "Xem chi tiết" links — System Admin
               // lacks CONTENT_ADMIN, so it cannot use /content/:id or /content/checklists/:id directly

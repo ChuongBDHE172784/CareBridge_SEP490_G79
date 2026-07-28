@@ -80,16 +80,16 @@ describe('centralized expert review', () => {
     render(<ExpertVerificationQueuePage />);
 
     expect((await screen.findAllByText('BS Nguyễn An')).length).toBeGreaterThan(0);
-    expect(screen.getByText('1. Định danh chuyên gia')).toBeTruthy();
-    expect(screen.getByText('2. Chứng chỉ chuyên môn')).toBeTruthy();
-    expect(screen.getByText('3. Quyết định hồ sơ chuyên gia')).toBeTruthy();
-    expect(screen.getByDisplayValue('Trust: Hoạt động')).toBeTruthy();
+    expect(screen.getByText(/Định danh chuyên gia/)).toBeTruthy();
+    expect(screen.getByText(/Chứng chỉ chuyên môn/)).toBeTruthy();
+    expect(screen.getByText(/Quyết định hồ sơ chuyên gia/)).toBeTruthy();
+    expect(screen.getByDisplayValue('🟢 Trust: Hoạt động')).toBeTruthy();
   });
 
   it('reads a private R2 DOCX through the protected preview API', async () => {
     render(<ExpertVerificationQueuePage />);
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Đọc tài liệu' }));
+    fireEvent.click(await screen.findByRole('button', { name: /Đọc \/ Xem trước tài liệu/ }));
 
     expect(await screen.findByText('Nội dung giấy phép hành nghề')).toBeTruthy();
     expect(api.getCredentialDocumentPreview).toHaveBeenCalledWith('credential-1');

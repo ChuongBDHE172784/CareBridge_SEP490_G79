@@ -329,7 +329,7 @@ export default function ExpertVerificationQueuePage() {
   const [cases, setCases] = useState<ExpertReviewCaseResponse[]>([]);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
   const [identityUrls, setIdentityUrls] = useState<Record<string, string>>({});
-  const [document, setDocument] = useState<DocumentReviewResponse | null>(null);
+  const [selectedDocument, setSelectedDocument] = useState<DocumentReviewResponse | null>(null);
   const [lightbox, setLightbox] = useState<{ src: string; title: string } | null>(null);
   const [keyword, setKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState('PENDING');
@@ -394,7 +394,17 @@ export default function ExpertVerificationQueuePage() {
   }, [filtered, selectedProfileId]);
 
   useEffect(() => {
-    setDocument(null);
+    if (window.location.pathname.endsWith('/expert-identity-queue')) {
+      const el = window.document.getElementById('identity-verification-section');
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    } else if (window.location.pathname.endsWith('/expert-trust-management')) {
+      const el = window.document.getElementById('trust-management-section');
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [selectedProfileId]);
+
+  useEffect(() => {
+    setSelectedDocument(null);
     setReasons({ identity: '', credential: '', profile: '' });
   }, [selectedProfileId]);
 
@@ -795,7 +805,7 @@ export default function ExpertVerificationQueuePage() {
                       <StatusBadge value={selected.profile?.verificationStatus} />
                     </div>
 
-                    <div className="flex flex-col items-end gap-1">
+                    <div id="trust-management-section" className="flex flex-col items-end gap-1">
                       <span className="text-[11px] font-bold text-[#6b7882] uppercase tracking-wider">
                         Độ tin cậy (Trust)
                       </span>
@@ -819,14 +829,14 @@ export default function ExpertVerificationQueuePage() {
                 </div>
 
                 {/* 2. Step 1: Identity Verification Section */}
-                <section className="rounded-2xl border border-[#d5dde2] bg-[#f6f8fa] p-6 space-y-4">
+                <section id="identity-verification-section" className="rounded-2xl border border-[#d5dde2] bg-[#f6f8fa] p-6 space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
                       <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#0f766e] text-xs font-bold text-white shadow-xs">
                         1
                       </span>
                       <h3 className="font-bold text-[#172126] text-base">
-                        Định danh chuyên gia (CCCD & AI Face Matching)
+                        1. Định danh chuyên gia (CCCD & AI Face Matching)
                       </h3>
                     </div>
                     <StatusBadge value={selected.identityStatus} />
@@ -970,7 +980,7 @@ export default function ExpertVerificationQueuePage() {
                         2
                       </span>
                       <h3 className="font-bold text-[#172126] text-base">
-                        Chứng chỉ & Bằng cấp chuyên môn
+                        2. Chứng chỉ chuyên môn & Bằng cấp
                       </h3>
                     </div>
                     <StatusBadge value={selected.credentialStatus} />
@@ -1070,7 +1080,7 @@ export default function ExpertVerificationQueuePage() {
                           {credential.fileId && (
                             <button
                               className="inline-flex items-center gap-1.5 rounded-xl border border-[#d5dde2] bg-[#f7f9fb] px-4 py-2 text-xs font-semibold text-[#172126] hover:bg-[#eef3f6] transition"
-                              onClick={() => setDocument(credential)}
+                              onClick={() => setSelectedDocument(credential)}
                             >
                               <Eye className="w-3.5 h-3.5 text-[#0f766e]" />
                               Đọc / Xem trước tài liệu
@@ -1113,7 +1123,7 @@ export default function ExpertVerificationQueuePage() {
                       3
                     </span>
                     <h3 className="font-bold text-[#172126] text-base">
-                      Quyết định xét duyệt hồ sơ cuối cùng
+                      3. Quyết định hồ sơ chuyên gia
                     </h3>
                   </div>
 
@@ -1190,8 +1200,8 @@ export default function ExpertVerificationQueuePage() {
       )}
 
       {/* Document Modal Preview */}
-      {document && (
-        <DocumentModal credential={document} onClose={() => setDocument(null)} />
+      {selectedDocument && (
+        <DocumentModal credential={selectedDocument} onClose={() => setSelectedDocument(null)} />
       )}
     </main>
   );
