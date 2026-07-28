@@ -12,13 +12,15 @@ import {
   getWards,
   getSpecialties,
   getHospitals,
-  type ExpertOnboardingResponse,
-  type ProvinceResponse,
-  type DistrictResponse,
-  type WardResponse,
-  type SpecialtyResponse,
-  type HospitalResponse,
   searchTrackAsiaHospitals,
+} from '../services/expertApi';
+import type {
+  ExpertOnboardingResponse,
+  ProvinceResponse,
+  DistrictResponse,
+  WardResponse,
+  SpecialtyResponse,
+  HospitalResponse,
 } from '../services/expertApi';
 
 const IMAGE_LIMIT = 5 * 1024 * 1024;
@@ -27,7 +29,6 @@ type ImageSlot = 'selfie' | 'identityFront' | 'identityBack';
 type CapturedImage = { file: File; preview: string };
 
 const steps = [
-  ['PROFILE', 'Hồ sơ'],
   ['IDENTITY', 'Định danh'],
   ['CREDENTIAL', 'Chứng chỉ'],
   ['UNDER_REVIEW', 'Xét duyệt'],
@@ -36,11 +37,13 @@ const steps = [
 export default function ExpertOnboardingPage() {
   const navigate = useNavigate();
   const [state, setState] = useState<ExpertOnboardingResponse | null>(null);
+  const [overrideStep, setOverrideStep] = useState<ExpertOnboardingStep | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const reload = async () => {
     setError(null);
+    setOverrideStep(null); 
     try {
       const next = await getExpertOnboarding();
       setState(next);
@@ -56,6 +59,8 @@ export default function ExpertOnboardingPage() {
 
   if (loading) return <Loading />;
 
+  const currentStep = overrideStep || state?.nextStep;
+
   return (
     <div className="mx-auto max-w-5xl p-5 sm:p-8">
       <header className="rounded-3xl bg-gradient-to-br from-primary to-[#a96856] p-7 text-white shadow-lg">
@@ -68,9 +73,9 @@ export default function ExpertOnboardingPage() {
 
       <div className="my-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {steps.map(([key, label], index) => {
-          const activeIndex = Math.max(0, steps.findIndex(([step]) => step === state?.nextStep));
-          const complete = state?.nextStep === 'COMPLETE' || index < activeIndex;
-          const active = index === activeIndex && state?.nextStep !== 'COMPLETE';
+          const activeIndex = Math.max(0, steps.findIndex(([step]) => step === currentStep));
+          const complete = currentStep === 'COMPLETE' || index < activeIndex;
+          const active = index === activeIndex && currentStep !== 'COMPLETE';
           return (
             <div key={key} className={`rounded-2xl border p-4 ${active ? 'border-primary bg-primary/5' : 'border-gray-200 bg-white'}`}>
               <div className={`mb-2 flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${complete ? 'bg-green-600 text-white' : active ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500'}`}>
@@ -83,11 +88,20 @@ export default function ExpertOnboardingPage() {
       </div>
 
       {error && <ErrorBanner message={error} retry={reload} />}
-      {state?.nextStep === 'PROFILE' && <ProfileStep onDone={reload} />}
-      {state?.nextStep === 'IDENTITY' && <IdentityStep onDone={reload} latestReason={state.rejectionReason ?? state.latestIdentityAttempt?.reviewReason} />}
-      {state?.nextStep === 'CREDENTIAL' && <CredentialStep onDone={reload} />}
-      {state?.nextStep === 'UNDER_REVIEW' && <ReviewStep state={state} reload={reload} />}
-      {state?.nextStep === 'COMPLETE' && (
+      {currentStep === 'IDENTITY' && (
+        <IdentityStep 
+          needsProfile={!state?.profileExists}
+          onDone={reload} 
+          latestReason={
+            (state?.rejectionReason ?? state?.latestIdentityAttempt?.reviewReason)?.includes('Pipeline processing failed') 
+              ? 'Ảnh chụp của bạn chưa đạt yêu cầu hoặc khuôn mặt không khớp. Vui lòng chụp lại ảnh rõ nét, giữ giấy tờ thẳng đứng.' 
+              : (state?.rejectionReason ?? state?.latestIdentityAttempt?.reviewReason)
+          } 
+        />
+      )}
+      {currentStep === 'CREDENTIAL' && <CredentialStep onDone={reload} />}
+      {currentStep === 'UNDER_REVIEW' && state && <ReviewStep state={state} reload={reload} setOverrideStep={setOverrideStep} />}
+      {currentStep === 'COMPLETE' && (
         <section className="rounded-3xl border border-green-200 bg-green-50 p-8 text-center">
           <BadgeCheck className="mx-auto text-green-700" size={58} />
           <h2 className="mt-4 text-2xl font-semibold text-green-900">Hồ sơ đã được xác minh</h2>
@@ -101,7 +115,14 @@ export default function ExpertOnboardingPage() {
   );
 }
 
-function ProfileStep({ onDone }: { onDone: () => Promise<void> }) {
+function IdentityStep({ onDone, latestReason, needsProfile }: { onDone: () => Promise<void>; latestReason?: string | null; needsProfile?: boolean }) {
+  const [images, setImages] = useState<Partial<Record<ImageSlot, CapturedImage>>>({});
+  const [activeCamera, setActiveCamera] = useState<ImageSlot | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [aiResult, setAiResult] = useState<{ similar: boolean; similarity: number; reason?: string | null } | null>(null);
+  const imageUrls = useRef(new Set<string>());
+
   const [form, setForm] = useState({
     specialtyId: '',
     professionalTitle: '',
@@ -123,10 +144,12 @@ function ProfileStep({ onDone }: { onDone: () => Promise<void> }) {
     specialties: [] as SpecialtyResponse[],
     hospitals: [] as HospitalResponse[],
   });
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [trackAsiaQuery, setTrackAsiaQuery] = useState('');
+  const [trackAsiaResults, setTrackAsiaResults] = useState<any[]>([]);
+  const [searchingHospitals, setSearchingHospitals] = useState(false);
 
   useEffect(() => {
+    if (!needsProfile) return;
     const loadMasterData = async () => {
       try {
         const [p, s] = await Promise.all([getProvinces(), getSpecialties()]);
@@ -136,67 +159,43 @@ function ProfileStep({ onDone }: { onDone: () => Promise<void> }) {
       }
     };
     void loadMasterData();
-  }, []);
+  }, [needsProfile]);
 
   useEffect(() => {
+    if (!needsProfile) return;
     let active = true;
     if (!form.provinceId) {
       setOptions(prev => ({ ...prev, districts: [] }));
       return () => { active = false; };
     }
-
     const requestedProvince = form.provinceId;
     setOptions(prev => ({ ...prev, districts: [] }));
     getDistricts(requestedProvince)
-      .then(districts => {
-        if (active) setOptions(prev => ({ ...prev, districts }));
-      })
-      .catch(() => {
-        if (active) setError('Không thể tải danh sách quận/huyện.');
-      });
-
+      .then(districts => { if (active) setOptions(prev => ({ ...prev, districts })); })
+      .catch(() => { if (active) setError('Không thể tải danh sách quận/huyện.'); });
     return () => { active = false; };
-  }, [form.provinceId]);
+  }, [needsProfile, form.provinceId]);
 
   useEffect(() => {
+    if (!needsProfile) return;
     let active = true;
     if (!form.provinceId) {
       setOptions(prev => ({ ...prev, wards: [], hospitals: [] }));
       return () => { active = false; };
     }
-
     const requestedProvince = form.provinceId;
     setOptions(prev => ({ ...prev, wards: [], hospitals: [] }));
     getWards({ provinceId: requestedProvince })
-      .then(wards => {
-        if (active) setOptions(prev => ({ ...prev, wards }));
-      })
-      .catch(() => {
-        if (active) setError('Không thể tải danh sách phường/xã.');
-      });
-
-    getHospitals({
-        provinceId: requestedProvince,
-      })
-      .then(hospitals => {
-        if (active) setOptions(prev => ({ ...prev, hospitals }));
-      })
-      .catch(() => {
-        if (active) setError('Không thể tải danh sách cơ sở y tế.');
-      });
-
+      .then(wards => { if (active) setOptions(prev => ({ ...prev, wards })); })
+      .catch(() => { if (active) setError('Không thể tải danh sách phường/xã.'); });
+    getHospitals({ provinceId: requestedProvince })
+      .then(hospitals => { if (active) setOptions(prev => ({ ...prev, hospitals })); })
+      .catch(() => { if (active) setError('Không thể tải danh sách cơ sở y tế.'); });
     return () => { active = false; };
-  }, [form.provinceId]);
-
-  const [trackAsiaQuery, setTrackAsiaQuery] = useState('');
-  const [trackAsiaResults, setTrackAsiaResults] = useState<any[]>([]);
-  const [searchingHospitals, setSearchingHospitals] = useState(false);
+  }, [needsProfile, form.provinceId]);
 
   useEffect(() => {
-    if (trackAsiaQuery.trim().length < 2) {
-      setTrackAsiaResults([]);
-      return;
-    }
+    if (!needsProfile || trackAsiaQuery.trim().length < 2) { setTrackAsiaResults([]); return; }
     const timer = setTimeout(() => {
       setSearchingHospitals(true);
       searchTrackAsiaHospitals(trackAsiaQuery)
@@ -205,7 +204,7 @@ function ProfileStep({ onDone }: { onDone: () => Promise<void> }) {
         .finally(() => setSearchingHospitals(false));
     }, 500);
     return () => clearTimeout(timer);
-  }, [trackAsiaQuery]);
+  }, [needsProfile, trackAsiaQuery]);
 
   const update =
     (key: keyof typeof form) =>
@@ -213,175 +212,21 @@ function ProfileStep({ onDone }: { onDone: () => Promise<void> }) {
       const val = event.target.value;
       setForm(prev => {
         const next = { ...prev, [key]: val };
-        if (key === 'provinceId') {
-          next.districtId = '';
-          next.wardId = '';
-          next.hospitalId = '';
-        }
-        if (key === 'districtId') {
-          next.wardId = '';
-          next.hospitalId = '';
-        }
+        if (key === 'provinceId') { next.districtId = ''; next.wardId = ''; next.hospitalId = ''; }
+        if (key === 'districtId') { next.wardId = ''; next.hospitalId = ''; }
         return next;
       });
     };
 
-  const submit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setSubmitting(true);
-    setError(null);
-    try {
-      await createMyProfile({
-        specialtyId: form.specialtyId,
-        professionalTitle: form.professionalTitle.trim(),
-        hospitalId: form.hospitalId,
-        trackAsiaName: form.trackAsiaName,
-        trackAsiaAddress: form.trackAsiaAddress,
-        trackAsiaLat: form.trackAsiaLat,
-        trackAsiaLng: form.trackAsiaLng,
-        consultationScope: form.consultationScope.trim(),
-        experienceYears: form.experienceYears ? Number(form.experienceYears) : undefined,
-      });
-      await onDone();
-    } catch (caught: unknown) {
-      const apiError = caught as { response?: { data?: { message?: string } } };
-      setError(apiError.response?.data?.message ?? 'Không thể lưu hồ sơ.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <StepCard icon={<FileBadge />} title="Thông tin chuyên môn" description="Thông tin được chuẩn hóa theo Bộ Y Tế. Vui lòng chọn địa bàn và cơ sở y tế nơi công tác.">
-      {error && <ErrorBanner message={error} />}
-      <form className="grid gap-5 sm:grid-cols-2" onSubmit={submit}>
-        <label className="grid gap-2 text-sm font-medium">
-          Chuyên khoa *
-          <select required value={form.specialtyId} onChange={update('specialtyId')} className="h-12 rounded-xl border border-gray-300 px-3 font-normal outline-none transition-colors focus:border-primary focus:ring-4 focus:ring-primary/20">
-            <option value="">-- Chọn chuyên khoa --</option>
-            {options.specialties.map(s => (
-              <option key={s.specialtyId} value={s.specialtyId}>
-                {s.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <Input label="Chức danh *" value={form.professionalTitle} onChange={update('professionalTitle')} placeholder="Ví dụ: BS.CKII, ThS.BS..." />
-        <Input label="Số năm kinh nghiệm" type="number" min="0" max="80" value={form.experienceYears} onChange={update('experienceYears')} />
-
-        <div className="sm:col-span-2 grid gap-4 p-4 rounded-2xl bg-gray-50 border border-gray-200">
-          <p className="text-xs font-bold uppercase text-gray-500">Địa điểm công tác</p>
-          <div className="grid gap-4 sm:grid-cols-4">
-            <label className="grid gap-2 text-sm font-medium">
-              Tỉnh/Thành phố *
-              <select required value={form.provinceId} onChange={update('provinceId')} className="h-12 rounded-xl border border-gray-300 px-3 font-normal outline-none transition-colors focus:border-primary focus:ring-4 focus:ring-primary/20">
-                <option value="">-- Chọn Tỉnh/TP --</option>
-                {options.provinces.map(p => (
-                  <option key={p.provinceId} value={p.provinceId}>
-                    {p.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="grid gap-2 text-sm font-medium">
-              Quận/Huyện (Không bắt buộc)
-              <select value={form.districtId} onChange={update('districtId')} disabled={!form.provinceId} className="h-12 rounded-xl border border-gray-300 px-3 font-normal outline-none transition-colors focus:border-primary focus:ring-4 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-gray-100">
-                <option value="">-- Chọn Huyện --</option>
-                {options.districts.map(d => (
-                  <option key={d.districtId} value={d.districtId}>
-                    {d.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="grid gap-2 text-sm font-medium">
-              Phường/Xã
-              <select value={form.wardId} onChange={update('wardId')} disabled={!form.provinceId} className="h-12 rounded-xl border border-gray-300 px-3 font-normal outline-none transition-colors focus:border-primary focus:ring-4 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-gray-100">
-                <option value="">-- Chọn Phường/Xã --</option>
-                {options.wards.map(w => (
-                  <option key={w.wardId} value={w.wardId}>
-                    {w.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="grid gap-2 text-sm font-medium relative">
-              <label>Bệnh viện/Cơ sở y tế *</label>
-              <input 
-                type="text" 
-                required={!form.hospitalId}
-                placeholder="Tìm bệnh viện hoặc phòng khám..." 
-                value={form.hospitalId ? (form.trackAsiaName || options.hospitals.find(h => h.hospitalId === form.hospitalId)?.name || 'Đã chọn cơ sở') : trackAsiaQuery} 
-                onChange={e => {
-                  setTrackAsiaQuery(e.target.value);
-                  if (form.hospitalId) {
-                    setForm(prev => ({...prev, hospitalId: '', trackAsiaName: '', trackAsiaAddress: '', trackAsiaLat: undefined, trackAsiaLng: undefined}));
-                  }
-                }} 
-                className="h-12 rounded-xl border border-gray-300 px-3 font-normal outline-none transition-colors focus:border-primary focus:ring-4 focus:ring-primary/20"
-              />
-              {searchingHospitals && <div className="absolute right-3 top-[38px]"><RefreshCw size={18} className="animate-spin text-gray-400" /></div>}
-              {trackAsiaResults.length > 0 && !form.hospitalId && (
-                <ul className="absolute top-[72px] z-10 w-[300px] max-h-60 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-xl">
-                  {trackAsiaResults.map(r => (
-                    <li key={r.id} className="cursor-pointer border-b px-4 py-3 hover:bg-gray-50 last:border-0" onClick={() => {
-                      setForm(prev => ({
-                        ...prev, 
-                        hospitalId: r.id, 
-                        trackAsiaName: r.name,
-                        trackAsiaAddress: r.address || '',
-                        trackAsiaLat: r.lat,
-                        trackAsiaLng: r.lng
-                      }));
-                      setTrackAsiaQuery('');
-                      setTrackAsiaResults([]);
-                    }}>
-                      <p className="font-semibold">{r.name}</p>
-                      <p className="text-xs text-gray-500 truncate">{r.address}</p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-        </div>
-
-        <label className="grid gap-2 text-sm font-medium sm:col-span-2">
-          Phạm vi tư vấn *
-          <textarea required rows={4} value={form.consultationScope} onChange={update('consultationScope')} className="rounded-xl border border-gray-300 p-3 font-normal outline-none transition-colors focus:border-primary focus:ring-4 focus:ring-primary/20" placeholder="Mô tả chi tiết các bệnh lý hoặc lĩnh vực bạn có thể hỗ trợ..." />
-        </label>
-        <SubmitButton busy={submitting}>Lưu và tiếp tục</SubmitButton>
-      </form>
-    </StepCard>
-  );
-}
-
-function IdentityStep({ onDone, latestReason }: { onDone: () => Promise<void>; latestReason?: string | null }) {
-  const [images, setImages] = useState<Partial<Record<ImageSlot, CapturedImage>>>({});
-  const [activeCamera, setActiveCamera] = useState<ImageSlot | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [aiResult, setAiResult] = useState<{ similar: boolean; similarity: number } | null>(null);
-  const imageUrls = useRef(new Set<string>());
-
   useEffect(() => () => imageUrls.current.forEach(url => URL.revokeObjectURL(url)), []);
 
   const select = async (slot: ImageSlot, file: File) => {
-    if (!['image/jpeg', 'image/png'].includes(file.type)) {
-      setError('Chỉ chấp nhận ảnh JPEG hoặc PNG.');
-      return;
-    }
-    if (file.size > IMAGE_LIMIT) {
-      setError('Mỗi ảnh phải có dung lượng tối đa 5 MB.');
-      return;
-    }
-
+    if (!['image/jpeg', 'image/png'].includes(file.type)) { setError('Chỉ chấp nhận ảnh JPEG hoặc PNG.'); return; }
+    if (file.size > IMAGE_LIMIT) { setError('Mỗi ảnh phải có dung lượng tối đa 5 MB.'); return; }
     setAiResult(null);
     setImages(current => {
       const previous = current[slot];
-      if (previous) {
-        URL.revokeObjectURL(previous.preview);
-        imageUrls.current.delete(previous.preview);
-      }
+      if (previous) { URL.revokeObjectURL(previous.preview); imageUrls.current.delete(previous.preview); }
       const preview = URL.createObjectURL(file);
       imageUrls.current.add(preview);
       return { ...current, [slot]: { file, preview } };
@@ -395,23 +240,40 @@ function IdentityStep({ onDone, latestReason }: { onDone: () => Promise<void>; l
       if (images.selfie && images.identityFront) {
         try {
           const res = await verifyFace({ selfie: images.selfie.file, idCard: images.identityFront.file });
-          setAiResult({ similar: res.similar, similarity: res.similarity });
-        } catch (e) {
-          console.error('AI Verify failed', e);
-        }
+          setAiResult({ similar: res.similar, similarity: res.similarity, reason: res.reason });
+        } catch (e) { console.error('AI Verify failed', e); }
       }
     };
     void runVerify();
   }, [images.selfie, images.identityFront]);
 
   const submit = async () => {
+    if (needsProfile) {
+      if (!form.specialtyId || !form.professionalTitle || !form.provinceId || !form.hospitalId) {
+        setError('Vui lòng điền đầy đủ thông tin chuyên môn bắt buộc.');
+        return;
+      }
+    }
     if (!images.selfie || !images.identityFront || !images.identityBack) {
-      setError('Cần đủ ảnh chân dung và hai mặt CCCD.');
+      setError('Vui lòng chụp đầy đủ 3 ảnh.');
       return;
     }
     setSubmitting(true);
     setError(null);
     try {
+      if (needsProfile) {
+        await createMyProfile({
+          specialtyId: form.specialtyId,
+          professionalTitle: form.professionalTitle.trim(),
+          hospitalId: form.hospitalId,
+          trackAsiaName: form.trackAsiaName,
+          trackAsiaAddress: form.trackAsiaAddress,
+          trackAsiaLat: form.trackAsiaLat,
+          trackAsiaLng: form.trackAsiaLng,
+          consultationScope: form.consultationScope.trim(),
+          experienceYears: form.experienceYears ? Number(form.experienceYears) : undefined,
+        });
+      }
       await submitIdentityEvidence({
         selfie: images.selfie.file,
         identityFront: images.identityFront.file,
@@ -420,40 +282,145 @@ function IdentityStep({ onDone, latestReason }: { onDone: () => Promise<void>; l
       await onDone();
     } catch (caught: unknown) {
       const apiError = caught as { response?: { data?: { message?: string } } };
-      setError(apiError.response?.data?.message ?? 'Không thể gửi bộ ảnh định danh.');
+      setError(apiError.response?.data?.message ?? 'Lỗi hệ thống khi gửi dữ liệu.');
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <StepCard icon={<Camera />} title="Ảnh chân dung và CCCD" description="Hệ thống AI sẽ đối soát khuôn mặt bạn với CCCD để xác minh danh tính.">
+    <StepCard
+      icon={<Camera />}
+      title="Hồ sơ & Định danh"
+      description="Cung cấp thông tin chuyên môn và bộ ảnh định danh (Chân dung & CCCD) để xác minh danh tính."
+    >
       {latestReason && <div className="mb-5 rounded-xl bg-amber-50 p-4 text-sm text-amber-800">Yêu cầu bổ sung: {latestReason}</div>}
       {error && <ErrorBanner message={error} />}
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <ImageCapture title="Ảnh chân dung" hint="Nhìn thẳng, rõ mặt" facing="user" value={images.selfie} onFile={file => select('selfie', file)} onCamera={() => setActiveCamera('selfie')} />
-        <ImageCapture title="CCCD mặt trước" hint="Đầy đủ 4 góc, rõ chữ" facing="environment" value={images.identityFront} onFile={file => select('identityFront', file)} onCamera={() => setActiveCamera('identityFront')} />
-        <ImageCapture title="CCCD mặt sau" hint="Đầy đủ 4 góc, rõ chữ" facing="environment" value={images.identityBack} onFile={file => select('identityBack', file)} onCamera={() => setActiveCamera('identityBack')} />
-      </div>
-
-      {aiResult && (
-        <div className={`mt-6 flex items-center gap-3 rounded-2xl p-4 border ${aiResult.similar ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
-          {aiResult.similar ? <BadgeCheck className="text-green-600" /> : <AlertCircle className="text-red-600" />}
-          <div>
-            <p className="font-bold">{aiResult.similar ? 'Khuôn mặt trùng khớp' : 'Khuôn mặt không khớp'}</p>
-            <p className="text-xs opacity-80">Độ tương đồng: {(aiResult.similarity * 100).toFixed(1)}%</p>
+      {needsProfile && (
+        <div className="mb-8 space-y-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+          <h3 className="font-semibold text-gray-900">1. Thông tin chuyên môn</h3>
+          <div className="grid gap-5 sm:grid-cols-2">
+            <label className="grid gap-2 text-sm font-medium">
+              Chuyên khoa *
+              <select required value={form.specialtyId} onChange={update('specialtyId')} className="h-12 rounded-xl border border-gray-300 px-3 font-normal outline-none transition-colors focus:border-primary focus:ring-4 focus:ring-primary/20">
+                <option value="">-- Chọn chuyên khoa --</option>
+                {options.specialties.map(s => (
+                  <option key={s.specialtyId} value={s.specialtyId}>{s.name}</option>
+                ))}
+              </select>
+            </label>
+            <Input label="Chức danh *" value={form.professionalTitle} onChange={update('professionalTitle')} placeholder="Ví dụ: BS.CKII, ThS.BS..." />
+            <Input label="Số năm kinh nghiệm" type="number" min="0" max="80" value={form.experienceYears} onChange={update('experienceYears')} />
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium">Phạm vi tư vấn</label>
+              <textarea 
+                value={form.consultationScope} 
+                onChange={update('consultationScope')} 
+                className="h-24 resize-none rounded-xl border border-gray-300 p-3 font-normal outline-none focus:border-primary focus:ring-4 focus:ring-primary/20"
+                placeholder="Mô tả các bệnh lý và chuyên môn tư vấn chính..."
+              />
+            </div>
+            <div className="sm:col-span-2 grid gap-4 p-4 rounded-2xl bg-gray-50 border border-gray-200">
+              <p className="text-xs font-bold uppercase text-gray-500">Địa điểm công tác</p>
+              <div className="grid gap-4 sm:grid-cols-4">
+                <label className="grid gap-2 text-sm font-medium">
+                  Tỉnh/Thành phố *
+                  <select required value={form.provinceId} onChange={update('provinceId')} className="h-12 rounded-xl border border-gray-300 px-3 font-normal">
+                    <option value="">-- Chọn --</option>
+                    {options.provinces.map(p => <option key={p.provinceId} value={p.provinceId}>{p.name}</option>)}
+                  </select>
+                </label>
+                <label className="grid gap-2 text-sm font-medium">
+                  Quận/Huyện
+                  <select disabled={!form.provinceId} value={form.districtId} onChange={update('districtId')} className="h-12 rounded-xl border border-gray-300 px-3 font-normal">
+                    <option value="">-- Chọn --</option>
+                    {options.districts.map(d => <option key={d.districtId} value={d.districtId}>{d.name}</option>)}
+                  </select>
+                </label>
+                <label className="grid gap-2 text-sm font-medium sm:col-span-2">
+                  Cơ sở y tế *
+                  <select required disabled={!form.provinceId} value={form.hospitalId} onChange={update('hospitalId')} className="h-12 rounded-xl border border-gray-300 px-3 font-normal">
+                    <option value="">-- Chọn cơ sở --</option>
+                    {options.hospitals.map(h => <option key={h.hospitalId} value={h.hospitalId}>{h.name}</option>)}
+                    <option value="OTHER">-- Khác (Nhập tên cơ sở) --</option>
+                  </select>
+                </label>
+              </div>
+              {form.hospitalId === 'OTHER' && (
+                <div className="mt-2 grid gap-4 rounded-xl border border-blue-200 bg-blue-50 p-4 sm:grid-cols-2">
+                  <div className="sm:col-span-2">
+                    <p className="mb-3 text-sm font-semibold text-blue-900">Tìm kiếm cơ sở y tế trên bản đồ</p>
+                    <div className="relative">
+                      <Input
+                        label=""
+                        placeholder="Gõ tên bệnh viện/phòng khám (VD: Bệnh viện Chợ Rẫy)..."
+                        value={trackAsiaQuery}
+                        onChange={e => setTrackAsiaQuery(e.target.value)}
+                      />
+                      {searchingHospitals && <div className="absolute right-3 top-3"><RefreshCw className="animate-spin text-blue-500" size={18} /></div>}
+                      {trackAsiaResults.length > 0 && (
+                        <div className="absolute top-14 z-10 max-h-60 w-full overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-xl">
+                          {trackAsiaResults.map((r, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              className="w-full border-b p-3 text-left hover:bg-blue-50 last:border-0"
+                              onClick={() => {
+                                update('trackAsiaName')({ target: { value: r.name } } as any);
+                                update('trackAsiaAddress')({ target: { value: r.address } } as any);
+                                update('trackAsiaLat')({ target: { value: String(r.lat) } } as any);
+                                update('trackAsiaLng')({ target: { value: String(r.lng) } } as any);
+                                setTrackAsiaQuery(r.name);
+                                setTrackAsiaResults([]);
+                              }}
+                            >
+                              <p className="font-semibold">{r.name}</p>
+                              <p className="text-xs text-gray-500">{r.address}</p>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <Input label="Tên cơ sở y tế" value={form.trackAsiaName} readOnly className="bg-white/50" />
+                  <Input label="Địa chỉ" value={form.trackAsiaAddress} readOnly className="bg-white/50" />
+                  <Input label="Vĩ độ (Lat)" value={form.trackAsiaLat} readOnly className="bg-white/50" />
+                  <Input label="Kinh độ (Lng)" value={form.trackAsiaLng} readOnly className="bg-white/50" />
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
+
+      <div className="mb-2 space-y-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <h3 className="font-semibold text-gray-900">{needsProfile ? '2.' : '1.'} Ảnh định danh</h3>
+        <div className="grid gap-4 md:grid-cols-3">
+          <ImageCapture title="Ảnh chân dung" hint="Nhìn thẳng, rõ mặt" facing="user" value={images.selfie} onFile={file => select('selfie', file)} onCamera={() => setActiveCamera('selfie')} />
+          <ImageCapture title="CCCD mặt trước" hint="Đầy đủ 4 góc, rõ chữ" facing="environment" value={images.identityFront} onFile={file => select('identityFront', file)} onCamera={() => setActiveCamera('identityFront')} />
+          <ImageCapture title="CCCD mặt sau" hint="Đầy đủ 4 góc, rõ chữ" facing="environment" value={images.identityBack} onFile={file => select('identityBack', file)} onCamera={() => setActiveCamera('identityBack')} />
+        </div>
+
+        {aiResult && (
+          <div className={`mt-6 flex items-center gap-3 rounded-2xl p-4 border ${aiResult.similar ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'}`}>
+            {aiResult.similar ? <BadgeCheck className="text-green-600" /> : <AlertCircle className="text-red-600" />}
+            <div>
+              <p className="font-bold">{aiResult.similar ? 'Khuôn mặt trùng khớp' : 'Khuôn mặt không khớp'}</p>
+              <p className="text-xs opacity-80">Độ tương đồng: {(aiResult.similarity * 100).toFixed(1)}%</p>
+            </div>
+          </div>
+        )}
+      </div>
 
       <button
         onClick={submit}
         disabled={submitting}
         className="mt-5 w-full rounded-full bg-primary px-6 py-3 font-semibold text-white disabled:opacity-50"
       >
-        {submitting ? 'Đang tải bộ ảnh...' : 'Gửi bộ ảnh định danh'}
+        {submitting ? 'Đang gửi dữ liệu...' : 'Hoàn tất & Gửi hồ sơ'}
       </button>
+
       {activeCamera && (
         <CameraDialog facing={activeCamera === 'selfie' ? 'user' : 'environment'} onClose={() => setActiveCamera(null)} onCapture={file => select(activeCamera, file)} />
       )}
@@ -462,26 +429,97 @@ function IdentityStep({ onDone, latestReason }: { onDone: () => Promise<void>; l
 }
 
 function CredentialStep({ onDone }: { onDone: () => Promise<void> }) {
-  const [form, setForm] = useState({ credentialType: 'MEDICAL_LICENSE', credentialNumber: '', issuer: '', issuedDate: '', expiryDate: '' });
+  const [form, setForm] = useState({ 
+    credentialType: 'MEDICAL_LICENSE', 
+    credentialNumber: '', 
+    issuer: '', 
+    customIssuer: '',
+    issuedDate: '', 
+    expiryDate: '' 
+  });
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const commonIssuers = [
+    'Bộ Y tế',
+    'Sở Y tế TP. Hồ Chí Minh',
+    'Sở Y tế Hà Nội',
+    'Sở Y tế Đà Nẵng',
+    'Sở Y tế Cần Thơ',
+    'Sở Y tế Hải Phòng',
+    'Đại học Y Dược TP.HCM',
+    'Đại học Y Hà Nội',
+  ];
+
   const update =
     (key: keyof typeof form) =>
     (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-      setForm(current => ({ ...current, [key]: event.target.value }));
+      setForm(current => {
+        const next = { ...current, [key]: event.target.value };
+        // If switching to Degree, clear expiry date as it's permanent
+        if (key === 'credentialType' && next.credentialType === 'DEGREE') {
+          next.expiryDate = '';
+        }
+        return next;
+      });
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
+    setError(null);
+
+    // 1. Validate File
     if (!file) {
       setError('Vui lòng chọn ảnh hoặc PDF của chứng chỉ.');
       return;
     }
+
+    // 2. Validate Issuer
+    const finalIssuer = form.issuer === 'OTHER' ? form.customIssuer.trim() : form.issuer.trim();
+    if (!finalIssuer) {
+      setError('Vui lòng chọn hoặc nhập đơn vị cấp.');
+      return;
+    }
+
+    // 3. Validate Dates
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Start of today
+
+    const issued = new Date(form.issuedDate);
+    if (issued > today) {
+      setError('Ngày cấp không được vượt quá ngày hiện tại.');
+      return;
+    }
+
+    if (form.credentialType !== 'DEGREE' && !form.expiryDate) {
+      setError('Loại chứng chỉ này yêu cầu ngày hết hạn.');
+      return;
+    }
+
+    if (form.expiryDate) {
+      const expiry = new Date(form.expiryDate);
+      if (expiry <= issued) {
+        setError('Ngày hết hạn phải lớn hơn ngày cấp.');
+        return;
+      }
+      if (expiry <= today) {
+        setError('Chứng chỉ đã hết hạn. Ngày hết hạn phải là một ngày trong tương lai.');
+        return;
+      }
+    }
+
     setSubmitting(true);
-    setError(null);
     try {
-      await submitCredential({ body: form, file });
+      await submitCredential({ 
+        body: {
+          credentialType: form.credentialType,
+          credentialNumber: form.credentialNumber,
+          issuer: finalIssuer,
+          issuedDate: form.issuedDate,
+          expiryDate: form.expiryDate || undefined
+        }, 
+        file 
+      });
       await onDone();
     } catch (caught: unknown) {
       const apiError = caught as { response?: { data?: { message?: string } } };
@@ -491,6 +529,8 @@ function CredentialStep({ onDone }: { onDone: () => Promise<void> }) {
     }
   };
 
+  const todayStr = new Date().toISOString().split('T')[0];
+
   return (
     <StepCard icon={<FileBadge />} title="Chứng chỉ chuyên môn" description="Cung cấp bằng chứng về trình độ chuyên môn để quản trị viên phê duyệt.">
       {error && <ErrorBanner message={error} />}
@@ -498,17 +538,50 @@ function CredentialStep({ onDone }: { onDone: () => Promise<void> }) {
         <label className="grid gap-2 text-sm font-medium">
           Loại chứng chỉ *
           <select value={form.credentialType} onChange={update('credentialType')} className="h-12 rounded-xl border border-gray-300 px-3 font-normal">
-            <option value="MEDICAL_LICENSE">Giấy phép hành nghề y</option>
-            <option value="DEGREE">Bằng cấp chuyên môn</option>
-            <option value="CERTIFICATE">Chứng chỉ đào tạo</option>
-            <option value="PROFESSIONAL_LICENSE">Giấy phép chuyên môn</option>
+            <option value="MEDICAL_LICENSE">Giấy phép hành nghề y (CCHN Khám chữa bệnh)</option>
+            <option value="DEGREE">Bằng cấp chuyên môn (BS, ThS, TS, BSCK I/II...)</option>
+            <option value="CERTIFICATE">Chứng chỉ đào tạo liên tục (CME, Khóa học ngắn hạn)</option>
+            <option value="PROFESSIONAL_LICENSE">Giấy phép chuyên môn khác (Dược, Điều dưỡng...)</option>
+            <option value="IDENTITY_DOCUMENT">Giấy tờ định danh y tế bổ sung</option>
           </select>
         </label>
         <Input label="Số chứng chỉ *" value={form.credentialNumber} onChange={update('credentialNumber')} />
-        <Input label="Đơn vị cấp *" value={form.issuer} onChange={update('issuer')} />
-        <Input label="Ngày cấp *" type="date" value={form.issuedDate} onChange={update('issuedDate')} />
-        <Input label="Ngày hết hạn" type="date" value={form.expiryDate} onChange={update('expiryDate')} />
-        <label className="grid gap-2 text-sm font-medium">
+        
+        <div className="grid gap-2 text-sm font-medium">
+          <label>Đơn vị cấp *</label>
+          <select required value={form.issuer} onChange={update('issuer')} className="h-12 rounded-xl border border-gray-300 px-3 font-normal">
+            <option value="">-- Chọn đơn vị cấp --</option>
+            {commonIssuers.map(iss => (
+              <option key={iss} value={iss}>{iss}</option>
+            ))}
+            <option value="OTHER">Khác (Nhập tên đơn vị)</option>
+          </select>
+          {form.issuer === 'OTHER' && (
+            <input
+              required
+              type="text"
+              placeholder="Nhập tên đơn vị cấp..."
+              value={form.customIssuer}
+              onChange={update('customIssuer')}
+              className="mt-2 h-12 w-full rounded-xl border border-gray-300 px-3 font-normal focus:border-primary focus:ring-4 focus:ring-primary/20"
+            />
+          )}
+        </div>
+
+        <Input label="Ngày cấp *" type="date" max={todayStr} value={form.issuedDate} onChange={update('issuedDate')} />
+        
+        {form.credentialType !== 'DEGREE' ? (
+          <Input label="Ngày hết hạn *" type="date" min={form.issuedDate || todayStr} value={form.expiryDate} onChange={update('expiryDate')} />
+        ) : (
+          <div className="grid gap-2 text-sm font-medium text-gray-400">
+            Ngày hết hạn
+            <div className="flex h-12 items-center rounded-xl border border-gray-200 bg-gray-50 px-3 font-normal italic">
+              Bằng cấp chuyên môn không có thời hạn
+            </div>
+          </div>
+        )}
+
+        <label className="grid gap-2 text-sm font-medium sm:col-span-2">
           Tệp chứng chỉ *
           <input required type="file" accept="image/jpeg,image/png,application/pdf" onChange={event => setFile(event.target.files?.[0] ?? null)} className="rounded-xl border border-dashed border-gray-300 p-3 font-normal" />
         </label>
@@ -518,7 +591,7 @@ function CredentialStep({ onDone }: { onDone: () => Promise<void> }) {
   );
 }
 
-function ReviewStep({ state, reload }: { state: ExpertOnboardingResponse; reload: () => Promise<void> }) {
+function ReviewStep({ state, reload, setOverrideStep }: { state: ExpertOnboardingResponse; reload: () => Promise<void>; setOverrideStep: (step: ExpertOnboardingStep) => void }) {
   return (
     <StepCard icon={<ShieldCheck />} title="Đang chờ quản trị viên xét duyệt" description="CareBridge đang đối soát thông tin và bằng cấp của bạn.">
       <div className="grid gap-4 sm:grid-cols-3">
@@ -531,10 +604,24 @@ function ReviewStep({ state, reload }: { state: ExpertOnboardingResponse; reload
           Phản hồi xét duyệt: {state.rejectionReason ?? state.latestIdentityAttempt?.reviewReason}
         </div>
       )}
-      <button onClick={() => void reload()} className="mt-6 inline-flex items-center gap-2 rounded-full border border-primary px-5 py-2.5 font-semibold text-primary">
-        <RefreshCw size={17} />
-        Kiểm tra trạng thái
-      </button>
+      <div className="mt-6 flex flex-wrap gap-4">
+        <button onClick={() => void reload()} className="inline-flex items-center gap-2 rounded-full border border-primary px-5 py-2.5 font-semibold text-primary">
+          <RefreshCw size={17} />
+          Kiểm tra trạng thái
+        </button>
+        
+        {/* Cho phép chuyên gia làm lại nếu bị lỗi hoặc yêu cầu kiểm tra thủ công */}
+        {(state.identityStatus === 'REJECTED' || state.identityStatus === 'MANUAL_REVIEW_REQUIRED') && (
+          <button onClick={() => setOverrideStep('IDENTITY')} className="inline-flex items-center gap-2 rounded-full bg-red-50 border border-red-200 px-5 py-2.5 font-semibold text-red-700 hover:bg-red-100">
+            Làm lại Định danh
+          </button>
+        )}
+        {(state.credentialStatus === 'REJECTED') && (
+          <button onClick={() => setOverrideStep('CREDENTIAL')} className="inline-flex items-center gap-2 rounded-full bg-red-50 border border-red-200 px-5 py-2.5 font-semibold text-red-700 hover:bg-red-100">
+            Làm lại Chứng chỉ
+          </button>
+        )}
+      </div>
     </StepCard>
   );
 }

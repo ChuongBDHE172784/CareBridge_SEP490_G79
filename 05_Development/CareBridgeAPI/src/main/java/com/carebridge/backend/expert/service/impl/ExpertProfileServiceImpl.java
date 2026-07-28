@@ -72,17 +72,30 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 	public ExpertProfileResponse createProfile(UUID userId, CreateExpertProfileRequest request) {
 		var existing = expertProfileRepository.findByUserId(userId);
 		if (existing.isPresent()) {
-			List<ProfessionalSpecialty> mappings = professionalSpecialtyRepository
-				.findByProfessionalProfileIdOrderByPrimaryDesc(existing.get().getExpertProfileId());
-			if (mappings.isEmpty()) {
-				MasterDataSelection selection = normalizeMasterData(request);
-				synchronizeSpecialties(existing.get().getExpertProfileId(), selection.specialties());
-				mappings = professionalSpecialtyRepository
-					.findByProfessionalProfileIdOrderByPrimaryDesc(existing.get().getExpertProfileId());
+			ExpertProfile profile = existing.get();
+			MasterDataSelection selection = normalizeMasterData(request);
+			
+			profile.setSpecialty(request.getSpecialty());
+			profile.setProfessionalTitle(request.getProfessionalTitle());
+			profile.setExperienceYears(request.getExperienceYears());
+			profile.setWorkplace(request.getWorkplace());
+			profile.setConsultationScope(request.getConsultationScope());
+			if (request.getRatingAvg() != null) profile.setRatingAvg(request.getRatingAvg());
+			if (request.getConsultationFeeVnd() != null) profile.setConsultationFeeVnd(request.getConsultationFeeVnd());
+			profile.setFacilityId(selection.facilityId());
+			if (profile.getVerificationStatus() == null) {
+				profile.setVerificationStatus(VerificationStatus.PENDING);
 			}
+			
+			expertProfileRepository.save(profile);
+			synchronizeSpecialties(profile.getExpertProfileId(), selection.specialties());
+			
+			List<ProfessionalSpecialty> mappings = professionalSpecialtyRepository
+				.findByProfessionalProfileIdOrderByPrimaryDesc(profile.getExpertProfileId());
+			
 			UserInfo info = resolveUserInfo(userId);
 			ExpertProfileResponse response =
-				expertProfileMapper.toResponse(existing.get(), info.displayName(), info.avatarUrl());
+				expertProfileMapper.toResponse(profile, info.displayName(), info.avatarUrl());
 			applySpecialties(response, mappings);
 			return response;
 		}
@@ -415,6 +428,17 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 				org.springframework.http.HttpStatus.CONFLICT, "EXPERT-CREDENTIAL-REQUIRED",
 				"At least one current approved professional credential is required");
 		}
+		if (profile.getFacilityId() != null) {
+			CareFacility facility = careFacilityRepository.findById(profile.getFacilityId())
+				.orElseThrow(() -> new ExpertException(
+					org.springframework.http.HttpStatus.NOT_FOUND,
+					"EXPERT-FACILITY-NOT-FOUND", "Care facility not found"));
+			if (facility.getVerificationStatus() != com.carebridge.backend.map.facilitystatus.FacilityStatus.VERIFIED) {
+				throw new ExpertException(
+					org.springframework.http.HttpStatus.CONFLICT, "EXPERT-FACILITY-NOT-VERIFIED",
+					"The selected care facility must be verified by admin first");
+			}
+		}
 		profile.setVerificationStatus(VerificationStatus.APPROVED);
 		profile.setVerifiedAt(LocalDateTime.now());
 		profile.setVerifiedBy(adminId);
@@ -462,15 +486,35 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 			profile.setVerifiedBy(adminId);
 		}
 		expertProfileRepository.save(profile);
+		auditService.log(AuditAction.EXPERT_VERIFICATION, adminId,
+			"ExpertProfile", expertProfileId.toString(),
+			Map.of("event", "TRUST_STATUS_CHANGED", "status", newStatus.name()));
 	}
 
 	@Override
 	public List<ExpertProfileResponse> getAllExperts() {
 		return expertProfileRepository.findAll().stream()
+			.filter(ExpertProfile::isEligibleForConsultation)
 			.map(p -> {
 				UserInfo info = resolveUserInfo(p.getUserId());
 				return expertProfileMapper.toResponse(p, info.displayName(), info.avatarUrl());
 			})
+			.toList();
+	}
+
+	@Override
+	public List<ExpertProfileResponse> getAllAdminExperts(String status, String keyword) {
+		return expertProfileRepository.findAll().stream()
+			.filter(p -> status == null || status.isBlank() || 
+					(p.getVerificationStatus() != null && p.getVerificationStatus().name().equalsIgnoreCase(status)) ||
+					(p.getTrustStatus() != null && p.getTrustStatus().name().equalsIgnoreCase(status)))
+			.map(p -> {
+				UserInfo info = resolveUserInfo(p.getUserId());
+				return expertProfileMapper.toResponse(p, info.displayName(), info.avatarUrl());
+			})
+			.filter(r -> keyword == null || keyword.isBlank() || 
+					(r.getDisplayName() != null && r.getDisplayName().toLowerCase().contains(keyword.toLowerCase())) ||
+					(r.getSpecialty() != null && r.getSpecialty().toLowerCase().contains(keyword.toLowerCase())))
 			.toList();
 	}
 

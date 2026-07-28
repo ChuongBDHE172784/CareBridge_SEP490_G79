@@ -181,12 +181,26 @@ export default function AdminExpertIdentityReviewPage() {
                     <User size={16} /> Thông tin khai báo
                   </h4>
                   <div className="grid grid-cols-2 gap-y-4 gap-x-6">
+                    <InfoField label="Họ và tên" value={selected.expertName || 'N/A'} />
+                    <InfoField label="Số điện thoại" value={selected.expertPhone || 'N/A'} />
+                    <InfoField label="Email" value={selected.expertEmail || 'N/A'} />
+                    <InfoField label="Chuyên khoa" value={selected.specialty || 'N/A'} />
+                    <InfoField label="Chức danh" value={selected.professionalTitle || 'N/A'} />
+                    <InfoField label="Số năm kinh nghiệm" value={selected.experienceYears ? `${selected.experienceYears} năm` : 'N/A'} />
+                    <InfoField label="Nơi công tác" value={selected.workplace || 'N/A'} />
                     <InfoField label="ID Hồ sơ" value={selected.expertProfileId} />
                     <InfoField label="Trạng thái AI" value={selected.faceStatus} isStatus />
                     <InfoField label="Điểm tương đồng" value={`${(selected.faceSimilarity ? (selected.faceSimilarity * 100).toFixed(2) : '0')}%`} />
                     <InfoField label="Ngưỡng chấp nhận" value={`${(selected.faceThreshold ? (selected.faceThreshold * 100).toFixed(2) : '0')}%`} />
                     <InfoField label="Ngày gửi" value={selected.createdAt ? new Date(selected.createdAt).toLocaleString('vi-VN') : 'N/A'} />
                   </div>
+                  
+                  {selected.consultationScope && (
+                    <div className="mt-4 border-t pt-4">
+                      <p className="text-xs font-bold text-gray-500 uppercase mb-1">Phạm vi tư vấn</p>
+                      <p className="text-sm text-gray-800 bg-gray-50 p-3 rounded-xl border border-gray-100 whitespace-pre-wrap">{selected.consultationScope}</p>
+                    </div>
+                  )}
 
                   <div className="mt-8 p-4 rounded-2xl bg-amber-50 border border-amber-100 text-amber-800 text-xs leading-relaxed">
                     <div className="flex items-center gap-2 font-bold mb-2">

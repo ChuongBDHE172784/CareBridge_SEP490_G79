@@ -115,7 +115,7 @@ public class ExpertIdentityVerificationRepository {
                 .reviewReason(metadata.reviewReason())
                 .reviewedBy(root.getReviewedBy())
                 .reviewedAt(root.getReviewedAt() == null ? null
-                        : root.getReviewedAt().toInstant(ZoneOffset.UTC))
+                        : root.getReviewedAt().atZone(java.time.ZoneId.systemDefault()).toInstant())
                 .createdAt(toInstant(root))
                 .detectionSelfieStatus(metadata.detectionSelfieStatus())
                 .detectionIdCardStatus(metadata.detectionIdCardStatus())
@@ -183,7 +183,7 @@ public class ExpertIdentityVerificationRepository {
 
     private static Instant toInstant(ExpertCredential credential) {
         return credential.getCreatedAt() == null ? null
-                : credential.getCreatedAt().toInstant(ZoneOffset.UTC);
+                : credential.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant();
     }
 
     private static ReviewStatus toCredentialStatus(IdentityReviewStatus status) {

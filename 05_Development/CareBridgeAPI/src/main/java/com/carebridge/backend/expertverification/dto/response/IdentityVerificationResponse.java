@@ -15,6 +15,14 @@ import lombok.*;
 public class IdentityVerificationResponse {
     private UUID identityVerificationId;
     private UUID expertProfileId;
+    private String expertName;
+    private String expertEmail;
+    private String expertPhone;
+    private String specialty;
+    private String professionalTitle;
+    private Integer experienceYears;
+    private String workplace;
+    private String consultationScope;
     private UUID selfieFileId;
     private UUID identityFrontFileId;
     private UUID identityBackFileId;

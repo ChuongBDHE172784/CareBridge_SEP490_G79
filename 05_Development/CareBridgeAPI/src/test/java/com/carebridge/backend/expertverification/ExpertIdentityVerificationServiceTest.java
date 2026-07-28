@@ -19,6 +19,7 @@ import com.carebridge.backend.expertverification.enums.IdentityReviewStatus;
 import com.carebridge.backend.expertverification.repository.ExpertCredentialRepository;
 import com.carebridge.backend.expertverification.repository.ExpertIdentityVerificationRepository;
 import com.carebridge.backend.expertverification.service.impl.ExpertIdentityVerificationServiceImpl;
+import com.carebridge.backend.security.repository.UserRepository;
 import com.carebridge.backend.file.dto.UploadFileResponse;
 import com.carebridge.backend.file.enums.FileAccessMode;
 import com.carebridge.backend.file.enums.FileKind;
@@ -41,6 +42,7 @@ class ExpertIdentityVerificationServiceTest {
     @Mock private ExpertProfileRepository profileRepository;
     @Mock private ExpertIdentityVerificationRepository identityRepository;
     @Mock private ExpertCredentialRepository credentialRepository;
+    @Mock private UserRepository userRepository;
     @Mock private CompreFacePipelineAdapter pipelineAdapter;
     @Mock private IFileService fileService;
     @Mock private AuditService auditService;
@@ -52,7 +54,7 @@ class ExpertIdentityVerificationServiceTest {
     @BeforeEach
     void setUp() {
         service = new ExpertIdentityVerificationServiceImpl(
-                profileRepository, identityRepository, credentialRepository,
+                profileRepository, identityRepository, credentialRepository, userRepository,
                 pipelineAdapter, fileService, auditService,
                 TransactionOperations.withoutTransaction());
     }

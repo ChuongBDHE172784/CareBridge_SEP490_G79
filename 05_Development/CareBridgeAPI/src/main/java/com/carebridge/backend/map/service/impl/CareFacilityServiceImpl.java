@@ -46,6 +46,21 @@ public class CareFacilityServiceImpl implements ICareFacilityService {
     }
 
     @Override
+    public List<FacilityResponse> getPendingFacilities() {
+        return facilityRepository.findByVerificationStatus(com.carebridge.backend.map.facilitystatus.FacilityStatus.UNVERIFIED).stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
+    @Override
+    public void verifyFacility(UUID facilityId, com.carebridge.backend.map.facilitystatus.FacilityStatus status, UUID adminId) {
+        CareFacility facility = facilityRepository.findById(facilityId)
+                .orElseThrow(() -> new MapException(HttpStatus.NOT_FOUND, "MAP-002", "Facility not found"));
+        facility.setVerificationStatus(status);
+        facilityRepository.save(facility);
+    }
+
+    @Override
     public NearbyResponse searchNearby(BigDecimal lat, BigDecimal lng, Integer radiusMeters, String type,
                                        String provinceId, String districtId) {
         int radius = radiusMeters != null ? radiusMeters : 5000;

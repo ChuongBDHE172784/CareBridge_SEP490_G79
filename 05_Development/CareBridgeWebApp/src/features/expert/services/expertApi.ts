@@ -58,6 +58,14 @@ export interface IdentityAttemptResponse {
 	identityVerificationId?: string;
 	attemptId?: string;
 	expertProfileId?: string;
+	expertName?: string;
+	expertEmail?: string;
+	expertPhone?: string;
+	specialty?: string;
+	professionalTitle?: string;
+	experienceYears?: number;
+	workplace?: string;
+	consultationScope?: string;
 	selfieFileId?: string;
 	identityFrontFileId?: string;
 	identityBackFileId?: string;
@@ -243,6 +251,10 @@ export async function createMyProfile(body: {
 	professionalTitle: string;
 	experienceYears?: number;
 	hospitalId: string;
+	trackAsiaName?: string;
+	trackAsiaAddress?: string;
+	trackAsiaLat?: number;
+	trackAsiaLng?: number;
 	consultationScope: string;
 	consultationFeeVnd?: number;
 }): Promise<ExpertProfileResponse> {
@@ -267,23 +279,21 @@ export async function getExpertOnboarding(): Promise<ExpertOnboardingResponse> {
 	return data.data;
 }
 
-export async function verifyFace(files: {
-	selfie: File;
-	idCard: File;
-}): Promise<{ similar: boolean; similarity: number; status: string }> {
+export const verifyFace = async (files: { selfie: File; idCard: File }) => {
 	const form = new FormData();
 	form.append('selfie', files.selfie);
 	form.append('idCard', files.idCard);
 	const { data } = await apiClient.post('/api/v1/expert/verify-face', form, {
 		headers: { 'Content-Type': undefined },
 	});
-	const result = data.data as { status: string; similarity: number | null };
+	const result = data.data as { status: string; similarity: number | null; providerErrorCode: string | null };
+
 	return {
 		similar: result.status === 'MATCHED',
-		similarity: result.similarity ?? 0,
-		status: result.status,
+		similarity: result.similarity || 0,
+		reason: result.providerErrorCode || null
 	};
-}
+};
 
 export async function submitIdentityEvidence(files: {
 	selfie: File;
@@ -490,21 +500,21 @@ export interface UploadFileResponse {
 	createdAt: string;
 }
 
-export async function uploadContributionFile(
-	file: File,
-	kind: 'IMAGE' | 'DOCUMENT',
-	purpose: 'MEDICAL_CONTRIBUTION_IMAGE' | 'MEDICAL_CONTRIBUTION_DOCUMENT',
-	accessMode: 'PUBLIC' | 'AUTHENTICATED' | 'PRIVATE'
-): Promise<UploadFileResponse> {
-	const form = new FormData();
-	form.append('file', file);
-	form.append('kind', kind);
-	form.append('purpose', purpose);
-	form.append('accessMode', accessMode);
-	const { data } = await apiClient.post('/api/v1/files/upload/with-purpose', form, {
-		headers: { 'Content-Type': undefined },
+export async function uploadContributionFile(file: File, kind: 'IMAGE' | 'DOCUMENT', purpose: string, accessMode: string): Promise<UploadFileResponse> {
+	const formData = new FormData();
+	formData.append('file', file);
+	formData.append('kind', kind);
+	formData.append('purpose', purpose);
+	formData.append('accessMode', accessMode);
+
+	const { data } = await apiClient.post('/api/v1/files/upload/with-purpose', formData, {
+		headers: { 'Content-Type': 'multipart/form-data' },
 	});
 	return data.data;
+}
+
+export async function deleteContributionFile(fileId: string): Promise<void> {
+	await apiClient.delete(`/api/v1/files/${fileId}`);
 }
 
 export async function createContribution(body: CreateContributionRequest): Promise<ContributionResponse> {

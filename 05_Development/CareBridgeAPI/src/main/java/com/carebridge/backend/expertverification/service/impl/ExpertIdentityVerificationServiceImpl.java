@@ -39,6 +39,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionOperations;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.carebridge.backend.security.repository.UserRepository;
+
 @Service
 @RequiredArgsConstructor
 public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVerificationService {
@@ -48,6 +50,7 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
     private final ExpertProfileRepository profileRepository;
     private final ExpertIdentityVerificationRepository identityRepository;
     private final ExpertCredentialRepository credentialRepository;
+    private final UserRepository userRepository;
     private final CompreFacePipelineAdapter pipelineAdapter;
     private final IFileService fileService;
     private final AuditService auditService;
@@ -70,7 +73,8 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
         var existingAttempt = identityRepository
                 .findFirstByExpertProfileIdOrderByCreatedAtDesc(profile.getExpertProfileId());
         if (existingAttempt.isPresent()
-                && existingAttempt.get().getReviewStatus() != IdentityReviewStatus.REJECTED) {
+                && existingAttempt.get().getReviewStatus() != IdentityReviewStatus.REJECTED
+                && existingAttempt.get().getReviewStatus() != IdentityReviewStatus.MANUAL_REVIEW_REQUIRED) {
                 return new InitialSubmission(
                         toResponse(existingAttempt.get()), false, null, null);
         }
@@ -207,8 +211,8 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
                 attempt.setProviderErrorCode(faceResult.providerErrorCode());
                 attempt.setReviewStatus(reviewStatus);
                 attempt.setReviewReason(reviewReason);
-                attempt.setDetectionSelfieStatus(selfieDetectionStatus.name());
-                attempt.setDetectionIdCardStatus(idCardDetectionStatus.name());
+                attempt.setDetectionSelfieStatus(selfieDetectionStatus != null ? selfieDetectionStatus.name() : null);
+                attempt.setDetectionIdCardStatus(idCardDetectionStatus != null ? idCardDetectionStatus.name() : null);
                 attempt.setPipelineErrorCode(faceResult.providerErrorCode());
                 attempt.setPipelineStatus(pipelineResult.pipelineStatus());
                 attempt.setProcessedAt(Instant.now());
@@ -246,7 +250,7 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
                     .profileExists(false)
                     .identityStatus("MISSING")
                     .credentialStatus("MISSING")
-                    .nextStep("PROFILE")
+                    .nextStep("IDENTITY")
                     .build();
         }
 
@@ -288,6 +292,7 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
     }
 
     @Override
+    @Transactional
     public IdentityVerificationResponse review(
             UUID attemptId, ReviewIdentityRequest request, UUID reviewerId) {
         if (request.getReviewStatus() != IdentityReviewStatus.APPROVED
@@ -383,9 +388,20 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
     }
 
     private IdentityVerificationResponse toResponse(ExpertIdentityVerification entity) {
+        var profile = profileRepository.findById(entity.getExpertProfileId()).orElse(null);
+        var user = (profile != null) ? userRepository.findById(profile.getUserId()).orElse(null) : null;
+        
         return IdentityVerificationResponse.builder()
                 .identityVerificationId(entity.getId())
                 .expertProfileId(entity.getExpertProfileId())
+                .expertName(user != null ? user.getName() : null)
+                .expertEmail(user != null ? user.getEmail() : null)
+                .expertPhone(user != null ? user.getPhone() : null)
+                .specialty(profile != null ? profile.getSpecialty() : null)
+                .professionalTitle(profile != null ? profile.getProfessionalTitle() : null)
+                .experienceYears(profile != null ? profile.getExperienceYears() : null)
+                .workplace(profile != null ? profile.getWorkplace() : null)
+                .consultationScope(profile != null ? profile.getConsultationScope() : null)
                 .selfieFileId(entity.getSelfieFileId())
                 .identityFrontFileId(entity.getIdentityFrontFileId())
                 .identityBackFileId(entity.getIdentityBackFileId())
