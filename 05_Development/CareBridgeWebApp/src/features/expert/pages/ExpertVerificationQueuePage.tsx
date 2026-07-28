@@ -521,10 +521,18 @@ export default function ExpertVerificationQueuePage() {
                 Cổng quản trị hệ thống CareBridge
               </div>
               <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-[#172126]">
-                Trung tâm xét duyệt chuyên gia
+                {window.location.pathname.endsWith('/expert-identity-queue')
+                  ? 'Quản lý định danh chuyên gia'
+                  : window.location.pathname.endsWith('/expert-trust-management')
+                  ? 'Quản lý độ tin cậy chuyên gia'
+                  : 'Trung tâm xét duyệt chuyên gia'}
               </h1>
               <p className="mt-1 text-sm text-[#42515a] max-w-2xl leading-relaxed">
-                Định danh, chứng chỉ, quyết định cuối và trạng thái tin cậy trong cùng một màn hình.
+                {window.location.pathname.endsWith('/expert-identity-queue')
+                  ? 'Xác minh và phê duyệt giấy tờ định danh (CCCD / Mặt trước / Mặt sau / Selfie AI).'
+                  : window.location.pathname.endsWith('/expert-trust-management')
+                  ? 'Theo dõi và thay đổi cấp độ tin cậy (Active, Suspended, Revoked) của chuyên gia.'
+                  : 'Định danh, chứng chỉ, quyết định cuối và trạng thái tin cậy trong cùng một màn hình.'}
               </p>
             </div>
 
