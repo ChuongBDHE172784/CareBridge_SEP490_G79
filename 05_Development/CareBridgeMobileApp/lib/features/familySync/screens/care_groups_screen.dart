@@ -353,40 +353,21 @@ class _ActiveGroupCard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {},
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: const BorderSide(color: Colors.white, width: 1.5),
-                      shape: const StadiumBorder(),
-                    ),
-                    icon: const Icon(Icons.person_add, size: 18),
-                    label: const Text(
-                      'Mời',
-                      style: TextStyle(fontFamily: 'Lexend'),
-                    ),
-                  ),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton.icon(
+                onPressed: onTap,
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.white.withAlpha(51),
+                  foregroundColor: Colors.white,
+                  shape: const StadiumBorder(),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton.icon(
-                    onPressed: onTap,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.white.withAlpha(51),
-                      foregroundColor: Colors.white,
-                      shape: const StadiumBorder(),
-                    ),
-                    icon: const Icon(Icons.settings, size: 18),
-                    label: const Text(
-                      'Quản lý',
-                      style: TextStyle(fontFamily: 'Lexend'),
-                    ),
-                  ),
+                icon: const Icon(Icons.settings, size: 18),
+                label: const Text(
+                  'Quản lý',
+                  style: TextStyle(fontFamily: 'Lexend'),
                 ),
-              ],
+              ),
             ),
           ],
         ),
