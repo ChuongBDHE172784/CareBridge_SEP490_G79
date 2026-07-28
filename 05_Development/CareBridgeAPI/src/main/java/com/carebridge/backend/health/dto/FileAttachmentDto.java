@@ -3,6 +3,7 @@ package com.carebridge.backend.health.dto;
 import lombok.Builder;
 import lombok.Data;
 
+import java.time.Instant;
 import java.util.UUID;
 
 @Data
@@ -14,4 +15,5 @@ public class FileAttachmentDto {
     private String mimeType;
     private int displayOrder;
     private String presignedUrl;
+    private Instant createdAt;
 }

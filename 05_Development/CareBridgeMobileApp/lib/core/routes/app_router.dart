@@ -17,6 +17,7 @@ import '../../features/journey/services/journey_onboarding_service.dart';
 
 import '../../features/healthRecords/screens/maternal_health_metric_screen.dart';
 import '../../features/healthRecords/screens/health_record_timeline_screen.dart';
+import '../../features/healthRecords/screens/add_health_record_screen.dart';
 import '../../features/healthRecords/screens/add_maternal_health_metric_screen.dart';
 import '../../features/healthRecords/screens/edit_health_metric_screen.dart';
 import '../../features/healthRecords/screens/postpartum_log_list_screen.dart';
@@ -463,9 +464,7 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/health-records/add',
-      builder: (context, state) => const Scaffold(
-        body: Center(child: Text('Add Health Record Screen (3.3.1.16)')),
-      ),
+      builder: (context, state) => const AddHealthRecordScreen(),
     ),
     GoRoute(
       path: '/health-records/detail/:id',

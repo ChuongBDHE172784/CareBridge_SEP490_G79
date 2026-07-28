@@ -1,33 +1,70 @@
-enum RecordType { vaccination, metric, prescription, checkup, other }
+enum RecordType {
+  ultrasound,
+  labResult,
+  prescription,
+  vaccination,
+  examinationResult,
+  note,
+}
+
+DateTime? _parseOptionalDateTime(dynamic value) {
+  if (value == null) return null;
+  return DateTime.parse(value as String).toLocal();
+}
 
 extension RecordTypeExtension on RecordType {
   String get displayLabel {
     switch (this) {
-      case RecordType.vaccination:
-        return 'Tiêm chủng';
-      case RecordType.metric:
-        return 'Chỉ số';
+      case RecordType.ultrasound:
+        return 'Siêu âm';
+      case RecordType.labResult:
+        return 'Kết quả xét nghiệm';
       case RecordType.prescription:
         return 'Đơn thuốc';
-      case RecordType.checkup:
-        return 'Khám bệnh';
-      case RecordType.other:
-        return 'Khác';
+      case RecordType.vaccination:
+        return 'Tiêm chủng';
+      case RecordType.examinationResult:
+        return 'Kết quả khám';
+      case RecordType.note:
+        return 'Ghi chú';
     }
   }
 
   static RecordType fromApi(String? v) {
     switch (v) {
-      case 'VACCINATION':
-        return RecordType.vaccination;
+      case 'ULTRASOUND':
+        return RecordType.ultrasound;
+      case 'LAB_RESULT':
       case 'METRIC':
-        return RecordType.metric;
+        return RecordType.labResult;
       case 'PRESCRIPTION':
         return RecordType.prescription;
+      case 'VACCINATION':
+      case 'VACCINATION_FORM':
+        return RecordType.vaccination;
       case 'CHECKUP':
-        return RecordType.checkup;
+      case 'EXAMINATION_RESULT':
+        return RecordType.examinationResult;
+      case 'NOTE':
       default:
-        return RecordType.other;
+        return RecordType.note;
+    }
+  }
+
+  String get apiValue {
+    switch (this) {
+      case RecordType.ultrasound:
+        return 'ULTRASOUND';
+      case RecordType.labResult:
+        return 'LAB_RESULT';
+      case RecordType.prescription:
+        return 'PRESCRIPTION';
+      case RecordType.vaccination:
+        return 'VACCINATION_FORM';
+      case RecordType.examinationResult:
+        return 'EXAMINATION_RESULT';
+      case RecordType.note:
+        return 'NOTE';
     }
   }
 }
@@ -40,6 +77,7 @@ class HealthRecord {
   final String? facilityName;
   final String? status;
   final bool isShared;
+  final DateTime? createdAt;
 
   const HealthRecord({
     required this.id,
@@ -49,17 +87,19 @@ class HealthRecord {
     this.facilityName,
     this.status,
     this.isShared = false,
+    this.createdAt,
   });
 
   factory HealthRecord.fromJson(Map<String, dynamic> json) {
     return HealthRecord(
-      id: json['id'] as String,
+      id: (json['id'] ?? json['healthRecordId']).toString(),
       recordType: RecordTypeExtension.fromApi(json['recordType'] as String?),
       title: json['title'] as String,
       recordDate: DateTime.parse(json['recordDate'] as String),
       facilityName: json['facilityName'] as String?,
       status: json['status'] as String?,
       isShared: json['isShared'] as bool? ?? false,
+      createdAt: _parseOptionalDateTime(json['createdAt']),
     );
   }
 }
@@ -69,12 +109,14 @@ class FileAttachment {
   final String originalName;
   final String? mimeType;
   final String? presignedUrl;
+  final DateTime? createdAt;
 
   const FileAttachment({
     required this.fileId,
     required this.originalName,
     this.mimeType,
     this.presignedUrl,
+    this.createdAt,
   });
 
   factory FileAttachment.fromJson(Map<String, dynamic> json) {
@@ -83,6 +125,7 @@ class FileAttachment {
       originalName: json['originalName'] as String? ?? '',
       mimeType: json['mimeType'] as String?,
       presignedUrl: json['presignedUrl'] as String?,
+      createdAt: _parseOptionalDateTime(json['createdAt']),
     );
   }
 
@@ -93,7 +136,6 @@ class FileAttachment {
 
 class HealthRecordDetail extends HealthRecord {
   final List<FileAttachment> attachments;
-  final DateTime? createdAt;
   final DateTime? updatedAt;
 
   const HealthRecordDetail({
@@ -104,8 +146,8 @@ class HealthRecordDetail extends HealthRecord {
     super.facilityName,
     super.status,
     super.isShared,
+    super.createdAt,
     this.attachments = const [],
-    this.createdAt,
     this.updatedAt,
   });
 
@@ -121,12 +163,10 @@ class HealthRecordDetail extends HealthRecord {
       facilityName: json['facilityName'] as String?,
       status: json['status'] as String?,
       isShared: json['isShared'] as bool? ?? false,
+      createdAt: _parseOptionalDateTime(json['createdAt']),
       attachments: rawAttachments
           .map((e) => FileAttachment.fromJson(e as Map<String, dynamic>))
           .toList(),
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'] as String)
-          : null,
       updatedAt: json['updatedAt'] != null
           ? DateTime.parse(json['updatedAt'] as String)
           : null,
