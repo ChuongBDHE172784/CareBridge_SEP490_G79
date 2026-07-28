@@ -128,6 +128,9 @@ export default function AdminLayout() {
                   >
                     <span className="material-symbols-outlined text-[18px]">{l.icon}</span>
                     <span className="min-w-0 flex-1 truncate text-left">{l.label}</span>
+                    <span className="material-symbols-outlined text-[18px] transition-transform duration-200">
+                      {groupOpen ? 'expand_less' : 'expand_more'}
+                    </span>
                   </button>
                   {groupOpen && (
                     <div className="space-y-0.5 pl-5">
