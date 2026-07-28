@@ -166,14 +166,17 @@ class ExpertIdentityVerificationServiceTest {
                 .thenReturn(List.of(credential));
         when(profileMapper.toResponse(profile, null, null)).thenReturn(profileResponse);
 
-        var reviewCases = service.getAdminReviewCases(userId);
+        when(profileRepository.findForReview(null, null, org.springframework.data.domain.PageRequest.of(0, 10)))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(profile)));
 
-        assertThat(reviewCases).hasSize(1);
-        assertThat(reviewCases.get(0).getProfile().getExpertProfileId()).isEqualTo(profileId);
-        assertThat(reviewCases.get(0).getCredentials()).containsExactly(credential);
-        assertThat(reviewCases.get(0).getIdentityStatus()).isEqualTo("MISSING");
-        assertThat(reviewCases.get(0).getCredentialStatus()).isEqualTo("APPROVED");
-        assertThat(reviewCases.get(0).isReadyForFinalApproval()).isFalse();
+        var reviewCases = service.getAdminReviewCases(null, null, org.springframework.data.domain.PageRequest.of(0, 10), userId);
+
+        assertThat(reviewCases.getContent()).hasSize(1);
+        assertThat(reviewCases.getContent().get(0).getProfile().getExpertProfileId()).isEqualTo(profileId);
+        assertThat(reviewCases.getContent().get(0).getCredentials()).containsExactly(credential);
+        assertThat(reviewCases.getContent().get(0).getIdentityStatus()).isEqualTo("MISSING");
+        assertThat(reviewCases.getContent().get(0).getCredentialStatus()).isEqualTo("APPROVED");
+        assertThat(reviewCases.getContent().get(0).isReadyForFinalApproval()).isFalse();
     }
 
     private ExpertProfile profile() {

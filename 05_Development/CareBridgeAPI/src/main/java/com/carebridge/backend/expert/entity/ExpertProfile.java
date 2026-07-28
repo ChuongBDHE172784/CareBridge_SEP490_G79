@@ -34,6 +34,13 @@ public class ExpertProfile {
         return expertProfileId;
     }
 
+    public static class ExpertProfileBuilder {
+        public ExpertProfileBuilder userId(UUID userId) {
+            this.expertProfileId = userId;
+            return this;
+        }
+    }
+
     @Column(name = "specialty", length = 100)
     private String specialty;
 
