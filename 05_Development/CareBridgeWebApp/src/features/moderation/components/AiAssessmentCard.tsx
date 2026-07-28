@@ -53,7 +53,7 @@ export default function AiAssessmentCard({ assessment, onFeedbackSubmitted }: {
   };
 
   return (
-    <div className="portal-card-padded">
+    <div className="bg-surface rounded-2xl p-6 shadow-sm border border-surface-container-highest">
       <div className="mb-3 flex items-center gap-2">
         <span className="material-symbols-outlined text-xl text-primary">smart_toy</span>
         <h2 className="m-0 text-base font-bold text-on-surface">Đánh giá của AI</h2>

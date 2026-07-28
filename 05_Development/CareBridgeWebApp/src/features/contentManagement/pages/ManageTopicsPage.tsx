@@ -301,7 +301,7 @@ export default function ManageTopicsPage() {
           {/* Tạo mới button */}
           <button
             onClick={openCreateDrawer}
-            className="flex items-center gap-2 h-[52px] px-6 rounded-full bg-primary-container text-white border-none text-[15px] font-semibold cursor-pointer shadow-[0_4px_20px_rgba(90,70,63,0.12)] font-sans"
+            className="flex items-center gap-2 h-[52px] px-6 rounded-full bg-primary text-white border-none text-[15px] font-semibold cursor-pointer shadow-[0_4px_20px_rgba(90,70,63,0.12)] font-sans"
           >
             <span className="material-symbols-outlined text-xl">add</span>
             Tạo mới
@@ -394,9 +394,17 @@ export default function ManageTopicsPage() {
                     <TypeBadge type={item.type} />
                   </div>
 
-                  {/* Content count — real, from backend (ADR-COM-015) */}
+                  {/* Content count — real, from backend (ADR-COM-015), aggregated for CATEGORY */}
                   <div className="w-[15%] text-center text-sm text-on-surface-variant">
-                    {item.questionCount} bài
+                    {(() => {
+                      if (item.type === 'CATEGORY') {
+                        const childCount = topics
+                          .filter((t) => t.parentId === item.id)
+                          .reduce((sum, child) => sum + (child.questionCount || 0), 0);
+                        return `${childCount} bài`;
+                      }
+                      return `${item.questionCount} bài`;
+                    })()}
                   </div>
 
                   {/* Reorder — real, persisted via PATCH (ADR-COM-019) */}
@@ -575,7 +583,7 @@ export default function ManageTopicsPage() {
             className={`h-[52px] px-8 rounded-full text-white border-none text-[15px] font-semibold font-sans shadow-[0_2px_8px_rgba(90,70,63,0.2)] transition-[background] duration-200 ${
               isSubmitting || !form.name.trim() || (form.type === 'TOPIC' && !form.parentId)
                 ? 'bg-outline-variant cursor-not-allowed'
-                : 'bg-primary-container cursor-pointer'
+                : 'bg-primary cursor-pointer'
             }`}
           >
             {isSubmitting ? 'Đang lưu...' : 'Lưu thay đổi'}

@@ -10,6 +10,7 @@ import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
 import com.carebridge.backend.content.entity.ContentDecision;
 import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
+import com.carebridge.backend.notification.service.ContentReviewNotificationService;
 import java.security.Principal;
 import java.time.Instant;
 import java.util.UUID;
@@ -25,6 +26,7 @@ public class ChecklistTemplateApprovalServiceImpl implements ChecklistTemplateAp
 
     private final ChecklistTemplateRepository checklistTemplateRepository;
     private final AuditService auditService;
+    private final ContentReviewNotificationService contentReviewNotificationService;
 
     @Override
     @Transactional
@@ -48,15 +50,37 @@ public class ChecklistTemplateApprovalServiceImpl implements ChecklistTemplateAp
                 ? ChecklistTemplateStatus.APPROVED
                 : ChecklistTemplateStatus.DRAFT;
         template.setStatus(newStatus);
-        ChecklistTemplate saved = checklistTemplateRepository.save(template);
 
         Instant decidedAt = Instant.now();
+        if (request.decision() == ContentDecision.REJECT) {
+            template.setRevisionReason(request.reason().trim());
+            template.setRevisionRequestedAt(decidedAt);
+            template.setRevisionRequestedBy(adminUserId);
+            template.setRevisionRequestedVersion(template.getVersionNo());
+        } else {
+            clearReviewFeedback(template);
+        }
+        ChecklistTemplate saved = checklistTemplateRepository.save(template);
+
         String auditDetail = "decision=" + request.decision()
                 + (request.reason() != null ? " reason=" + request.reason() : "");
         auditService.log(AuditAction.CHECKLIST_TEMPLATE_DECIDED, adminUserId,
                 "ChecklistTemplate", saved.getId().toString(), auditDetail);
 
+        if (request.decision() == ContentDecision.REJECT) {
+            contentReviewNotificationService.notifyReturned(
+                    saved.getAuthorUserId(), saved.getId(), "CHECKLIST", saved.getName(),
+                    request.reason().trim(), "/content/checklists/" + saved.getId() + "/edit");
+        }
+
         return new ChecklistTemplateDecisionResponse(
                 saved.getId(), previousStatus, saved.getStatus(), adminUserId, request.reason(), decidedAt);
+    }
+
+    private void clearReviewFeedback(ChecklistTemplate template) {
+        template.setRevisionReason(null);
+        template.setRevisionRequestedAt(null);
+        template.setRevisionRequestedBy(null);
+        template.setRevisionRequestedVersion(null);
     }
 }

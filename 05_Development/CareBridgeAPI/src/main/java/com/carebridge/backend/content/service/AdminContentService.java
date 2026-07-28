@@ -6,21 +6,24 @@ import com.carebridge.backend.content.dto.request.UpdateContentRequest;
 import com.carebridge.backend.content.dto.response.CreateContentResponse;
 import com.carebridge.backend.content.dto.response.HideContentResponse;
 import com.carebridge.backend.content.dto.response.UpdateContentResponse;
+import com.carebridge.backend.content.dto.response.ContentVersionSnapshotResponse;
 import java.security.Principal;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import com.carebridge.backend.content.dto.response.ContentDetailResponse;
+import com.carebridge.backend.content.dto.response.StaffContentDetailResponse;
 import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.content.entity.ContentStatus;
 import com.carebridge.backend.content.entity.ContentType;
 
 public interface AdminContentService {
 
-    Page<ContentDetailResponse> getStaffContents(
+    Page<StaffContentDetailResponse> getStaffContents(
             ContentStatus status, ContentType type, ContentStage stage, String keyword, Pageable pageable);
 
-    ContentDetailResponse getStaffContent(UUID id);
+    StaffContentDetailResponse getStaffContent(UUID id);
 
     CreateContentResponse createContent(CreateContentRequest request, java.util.UUID authorUserId);
 
@@ -32,6 +35,8 @@ public interface AdminContentService {
      *         collides with another item's title+stage+type (ADR-004)
      */
     UpdateContentResponse updateContent(UUID id, UpdateContentRequest request, Principal principal);
+
+    List<ContentVersionSnapshotResponse> getVersionHistory(UUID id);
 
     /**
      * Hides/soft-deletes a content item by transitioning status to ARCHIVED (ADR-001 — reuses

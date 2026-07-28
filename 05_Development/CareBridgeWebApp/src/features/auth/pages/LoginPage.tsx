@@ -4,7 +4,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { User, Lock, EyeOff, Eye, ArrowRight, AlertCircle } from 'lucide-react';
-import { login } from '../services/authApi';
+import { login, loginDirect } from '../services/authApi';
+import type { AuthResponse, LoginRequest } from '../models/auth';
 import { useAuthStore } from '../../../shared/auth/authStore';
 import { getDefaultRouteForRole } from '../../../shared/auth/roleRoutes';
 import logo from '../../../assets/logo.png';
@@ -20,6 +21,10 @@ function isEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
+function isDevSeedEmail(value: string): boolean {
+  return value.toLowerCase().endsWith('@carebridge.dev');
+}
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
@@ -33,24 +38,42 @@ export default function LoginPage() {
     resolver: zodResolver(loginSchema),
   });
 
+  const completeLogin = (auth: AuthResponse) => {
+    const { accessToken, refreshToken, user } = auth;
+    useAuthStore.getState().setTokens(accessToken, refreshToken);
+    useAuthStore.getState().setUser({
+      id: user.id,
+      phone: user.phone ?? '',
+      name: user.name,
+      avatarUrl: user.avatarUrl,
+      role: user.role as ReturnType<typeof useAuthStore.getState>['user'] extends { role: infer R } ? R : never,
+    });
+    navigate(getDefaultRouteForRole(user.role as Parameters<typeof getDefaultRouteForRole>[0]), { replace: true });
+  };
+
   const onSubmit = async (data: LoginFormData) => {
     setServerError(null);
     try {
       const identifier = data.identifier.trim();
-      const result = await login(
-        isEmail(identifier) ? { email: identifier, password: data.password } : { phone: identifier, password: data.password },
-      );
+      const request: LoginRequest = isEmail(identifier)
+        ? { email: identifier, password: data.password }
+        : { phone: identifier, password: data.password };
+
+      if (import.meta.env.DEV && isEmail(identifier) && isDevSeedEmail(identifier)) {
+        try {
+          completeLogin(await loginDirect(request));
+          return;
+        } catch (directErr: unknown) {
+          const directStatus = (directErr as { response?: { status?: number } }).response?.status;
+          if (directStatus !== 404) {
+            throw directErr;
+          }
+        }
+      }
+
+      const result = await login(request);
       if (result.auth) {
-        const { accessToken, refreshToken, user } = result.auth;
-        useAuthStore.getState().setTokens(accessToken, refreshToken);
-        useAuthStore.getState().setUser({
-          id: user.id,
-          phone: user.phone ?? '',
-          name: user.name,
-          avatarUrl: user.avatarUrl,
-          role: user.role as ReturnType<typeof useAuthStore.getState>['user'] extends { role: infer R } ? R : never,
-        });
-        navigate(getDefaultRouteForRole(user.role as Parameters<typeof getDefaultRouteForRole>[0]), { replace: true });
+        completeLogin(result.auth);
         return;
       }
       navigate('/login/otp', {

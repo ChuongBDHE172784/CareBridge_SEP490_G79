@@ -86,6 +86,8 @@ class ModerationControllerSecurityTest {
     private static final String PENDING_CONTENT_URL = "/api/v1/admin/moderation/pending-content";
     private static final String HISTORY_URL = "/api/v1/admin/moderation/history";
     private static final String ACCOUNT_HISTORY_URL = "/api/v1/admin/moderation/account-history";
+    private static final String ACCOUNT_HISTORY_DETAIL_URL = ACCOUNT_HISTORY_URL + "/"
+            + java.util.UUID.fromString("44444444-0000-0000-0000-000000000001");
 
     // PCQ-TC-007: ROLE_MOTHER cannot access pending-content queue → 403 (same RBAC as /queue)
     @Test
@@ -107,6 +109,13 @@ class ModerationControllerSecurityTest {
     @WithMockUser(username = "1", roles = "MOTHER")
     void getAccountViolationHistory_asMotherRole_shouldReturn403() throws Exception {
         mockMvc.perform(get(ACCOUNT_HISTORY_URL))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "1", roles = "MOTHER")
+    void getAccountViolationDetail_asMotherRole_shouldReturn403() throws Exception {
+        mockMvc.perform(get(ACCOUNT_HISTORY_DETAIL_URL))
                 .andExpect(status().isForbidden());
     }
 
@@ -147,22 +156,4 @@ class ModerationControllerSecurityTest {
                 .andExpect(status().isUnauthorized());
     }
 
-    private static final String REVERT_URL = "/api/v1/admin/moderation/reports/"
-            + java.util.UUID.fromString("11111111-0000-0000-0000-000000000001") + "/revert";
-
-    // MRR-TC-013: ROLE_MOTHER cannot revert a report → 403 (CWE-862)
-    @Test
-    @WithMockUser(username = "1", roles = "MOTHER")
-    void revertReport_asMotherRole_shouldReturn403() throws Exception {
-        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(REVERT_URL)
-                        .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf()))
-                .andExpect(status().isForbidden());
-    }
-
-    // MRR-TC-014: no JWT → 401
-    @Test
-    void revertReport_withoutAuthentication_shouldReturn401() throws Exception {
-        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(REVERT_URL))
-                .andExpect(status().isUnauthorized());
-    }
 }

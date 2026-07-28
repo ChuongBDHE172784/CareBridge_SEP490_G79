@@ -23,5 +23,7 @@ public class AdminChecklistTemplateDetailResponse {
     private ContentStage stage;
     private ChecklistTemplateStatus status;
     private String description;
+    private Integer versionNo;
     private List<ChecklistItemResponse> items;
+    private ReviewFeedbackResponse latestReviewFeedback;
 }

@@ -125,4 +125,23 @@ class AdminChecklistTemplateControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.content[0].status").value("DRAFT"));
     }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "CONTENT_ADMIN")
+    void getById_adminContractIncludesPersistedVersion() throws Exception {
+        UUID templateId = UUID.fromString("69000000-0000-0000-0000-000000000702");
+        AdminChecklistTemplateDetailResponse template = AdminChecklistTemplateDetailResponse.builder()
+                .id(templateId)
+                .name("Versioned checklist")
+                .stage(ContentStage.PREGNANCY)
+                .status(ChecklistTemplateStatus.DRAFT)
+                .versionNo(3)
+                .items(List.of())
+                .build();
+        when(adminChecklistTemplateService.getById(templateId)).thenReturn(template);
+
+        mockMvc.perform(get(BASE_URL + "/" + templateId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.versionNo").value(3));
+    }
 }

@@ -63,6 +63,7 @@ import '../../features/healthRecords/models/vaccination_model.dart';
 import '../../features/healthRecords/screens/growth_measurement_history_screen.dart';
 import '../../features/healthRecords/screens/add_vaccination_record_screen.dart';
 import '../../features/community/screens/view_content_screen.dart';
+import '../../features/community/models/content_model.dart';
 import '../../features/aiTriage/models/triage_entry_context.dart';
 import '../../features/aiTriage/models/triage_continuation.dart';
 import '../../features/aiTriage/services/triage_continuation_restore_coordinator.dart';
@@ -690,7 +691,8 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/content',
-      builder: (context, state) => const ViewContentScreen(),
+      builder: (context, state) =>
+          const ViewContentScreen(mode: ContentBrowseMode.lifecycle),
     ),
     GoRoute(
       path: '/triage/intake',

@@ -1,9 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchChecklistTemplateDetail, updateChecklistTemplate, archiveChecklistTemplate } from '../services/contentApi';
-import type { ChecklistTemplate } from '../models/content';
+import type { AdminChecklistTemplateDetail } from '../models/content';
 import { STAGE_LABELS, STATUS_LABELS } from '../models/content';
 import { useAuth } from '../../../shared/auth/useAuth';
+import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
 
 function statusDotClass(status: string): string {
   if (status === 'APPROVED') return 'bg-[#137333]';
@@ -19,7 +20,7 @@ export default function ChecklistDetailPage() {
   // System Admin can reach this page read-only from the approval queue
   // (/admin/content-review/checklists/:id) — /content/checklists/:id/edit is CONTENT_ADMIN-only.
   const canManage = hasRole('CONTENT_ADMIN');
-  const [detail, setDetail] = useState<ChecklistTemplate | null>(null);
+  const [detail, setDetail] = useState<AdminChecklistTemplateDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionError, setActionError] = useState('');
@@ -117,6 +118,7 @@ export default function ChecklistDetailPage() {
       </button>
 
       {actionError && <div className="bg-error-container rounded-2xl p-4 mb-4 text-error text-sm">{actionError}</div>}
+      {canManage && <ReviewFeedbackNotice feedback={detail.latestReviewFeedback} />}
 
       <div className="grid grid-cols-[1fr_340px] gap-6">
         {/* Main content area */}
@@ -132,6 +134,10 @@ export default function ChecklistDetailPage() {
             <div>
               <div className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-1">SỐ MỤC</div>
               <div className="text-sm text-on-surface font-medium">{detail.items.length} mục</div>
+            </div>
+            <div>
+              <div className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-1">PHIÊN BẢN</div>
+              <div className="text-sm text-on-surface font-medium">v{detail.versionNo}</div>
             </div>
           </div>
 
@@ -177,7 +183,9 @@ export default function ChecklistDetailPage() {
             <div className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-3">TRẠNG THÁI</div>
             <div className="flex items-center gap-2 mb-2">
               <span className={`w-2.5 h-2.5 rounded-full ${statusDotClass(detail.status)}`} />
-              <span className="text-sm font-semibold text-on-surface">{STATUS_LABELS[detail.status]}</span>
+              <span className="text-sm font-semibold text-on-surface">
+                {detail.latestReviewFeedback ? 'Cần chỉnh sửa' : STATUS_LABELS[detail.status]}
+              </span>
             </div>
           </div>
 
@@ -187,7 +195,7 @@ export default function ChecklistDetailPage() {
               {editable ? (
                 <button
                   onClick={() => navigate(`/content/checklists/${detail.id}/edit`)}
-                  className="w-full py-3.5 rounded-2xl bg-primary-container text-on-primary border-0 text-sm font-semibold cursor-pointer flex items-center justify-center gap-2"
+                  className="w-full py-3.5 rounded-2xl bg-primary text-on-primary border-0 text-sm font-semibold cursor-pointer flex items-center justify-center gap-2"
                 >
                   <span className="material-symbols-outlined text-lg">edit</span>
                   Chỉnh sửa checklist

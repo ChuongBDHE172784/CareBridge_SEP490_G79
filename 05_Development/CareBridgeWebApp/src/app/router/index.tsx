@@ -63,6 +63,7 @@ import FaqListPage from '../../features/contentManagement/pages/FaqListPage';
 import ChecklistListPage from '../../features/contentManagement/pages/ChecklistListPage';
 import ChecklistDetailPage from '../../features/contentManagement/pages/ChecklistDetailPage';
 import ChecklistFormPage from '../../features/contentManagement/pages/ChecklistFormPage';
+import ChecklistVersionHistoryPage from '../../features/contentManagement/pages/ChecklistVersionHistoryPage';
 import ManageTopicsPage from '../../features/contentManagement/pages/ManageTopicsPage';
 
 // Content Management screens (CB-076, 077, 079, 087)
@@ -92,6 +93,7 @@ import ReportsQueuePage from '../../features/moderation/pages/ReportsQueuePage';
 import ContentReportDetailPage from '../../features/moderation/pages/ContentReportDetailPage';
 import AccountReportDetailPage from '../../features/moderation/pages/AccountReportDetailPage';
 import ViolationHistoryPage from '../../features/moderation/pages/ViolationHistoryPage';
+import ViolationDetailPage from '../../features/moderation/pages/ViolationDetailPage';
 // CB-MOD-IMP-004: pending-content queue (first-time moderation, no ContentReport required)
 import PendingContentQueuePage from '../../features/moderation/pages/PendingContentQueuePage';
 
@@ -190,17 +192,21 @@ export const router = createBrowserRouter([
                 children: [
                   { path: '/content/dashboard', element: <ContentDashboardPage /> },
                   { path: '/content', element: <Navigate to="/content/dashboard" replace /> },
-                  { path: '/content/create', element: <CreateContentPage /> },
+                  { path: '/content/create', element: <Navigate to="/content/list" replace /> },
                   { path: '/content/list', element: <ContentListPage /> },
                   { path: '/content/articles', element: <ArticleListPage /> },
+                  { path: '/content/articles/create', element: <CreateContentPage contentType="ARTICLE" /> },
                   { path: '/content/:id', element: <ContentDetailPage /> },
                   { path: '/content/:id/edit', element: <EditContentPage /> },
                   { path: '/content/:id/versions', element: <ContentVersionHistoryPage /> },
                   { path: '/content/faq', element: <FaqListPage /> },
+                  { path: '/content/faq/create', element: <CreateContentPage contentType="FAQ" /> },
                   { path: '/content/checklists', element: <ChecklistListPage /> },
                   { path: '/content/checklists/create', element: <ChecklistFormPage /> },
                   { path: '/content/checklists/:id', element: <ChecklistDetailPage /> },
                   { path: '/content/checklists/:id/edit', element: <ChecklistFormPage /> },
+                  { path: '/content/checklists/:id/versions', element: <ChecklistVersionHistoryPage /> },
+                  { path: '/content/notifications', element: <NotificationCenterPage /> },
                   { path: '/content/:id/unpublish', element: <UnpublishContentPage /> },
                   { path: '/content/exercises', element: <PregnancyExerciseListPage /> },
                   { path: '/content/exercises/create', element: <CreatePregnancyExercisePage /> },
@@ -273,6 +279,7 @@ export const router = createBrowserRouter([
               { path: '/moderator/reports/account/:reportId', element: <AccountReportDetailPage /> },
               { path: '/moderator/reports/:reportId', element: <ContentReportDetailPage /> },
               { path: '/moderator/violations', element: <ViolationHistoryPage /> },
+              { path: '/moderator/violations/:targetUserId', element: <ViolationDetailPage /> },
             ],
           },
           {

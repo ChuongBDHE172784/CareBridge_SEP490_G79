@@ -9,6 +9,8 @@ public record ChecklistItemResponse(
         UUID journeyId,
         UUID babyId,
         UUID templateItemId,
+        String templateName,
+        Boolean required,
         String itemText,
         String category,
         boolean completed,

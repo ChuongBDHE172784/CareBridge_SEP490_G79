@@ -3,11 +3,13 @@ package com.carebridge.backend.content.unit;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.carebridge.backend.content.dto.response.ChecklistItemResponse;
+import com.carebridge.backend.content.dto.response.AdminChecklistTemplateDetailResponse;
 import com.carebridge.backend.content.dto.response.ChecklistTemplateResponse;
 import com.carebridge.backend.content.dto.response.ContentDetailResponse;
 import com.carebridge.backend.content.dto.response.ContentListResponse;
 import com.carebridge.backend.content.entity.ChecklistItem;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
+import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
 import com.carebridge.backend.content.entity.ContentItem;
 import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.content.entity.ContentStatus;
@@ -198,5 +200,21 @@ class ContentMapperTest {
         ChecklistTemplateResponse response = contentMapper.toChecklistTemplateResponse(template, List.of());
 
         assertThat(response.getItems()).isNotNull().isEmpty();
+    }
+
+    @Test
+    void toAdminChecklistTemplateDetailResponse_shouldMapPersistedVersion() {
+        ChecklistTemplate template = ChecklistTemplate.builder()
+                .id(UUID.randomUUID())
+                .name("Versioned Checklist")
+                .stage(ContentStage.PREGNANCY)
+                .status(ChecklistTemplateStatus.DRAFT)
+                .versionNo(3)
+                .build();
+
+        AdminChecklistTemplateDetailResponse response =
+                contentMapper.toAdminChecklistTemplateDetailResponse(template, List.of());
+
+        assertThat(response.getVersionNo()).isEqualTo(3);
     }
 }

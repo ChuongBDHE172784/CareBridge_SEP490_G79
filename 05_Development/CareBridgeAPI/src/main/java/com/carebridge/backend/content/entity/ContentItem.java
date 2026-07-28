@@ -8,6 +8,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.UUID;
 import java.util.ArrayList;
@@ -47,12 +48,25 @@ public class ContentItem {
     @Column(name = "body", columnDefinition = "TEXT")
     private String body;
 
+    @Column(name = "summary", length = 150)
+    private String summary;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "stage", length = 30)
     private ContentStage stage;
 
     @Column(name = "topic_id")
     private UUID topicId;
+
+    /**
+     * Tags reuse the existing content_item_topics join table.  Unlike topicId (the single
+     * content category), this collection only contains CommunityTopic records of type TAG.
+     */
+    @ElementCollection
+    @CollectionTable(name = "content_item_topics", joinColumns = @JoinColumn(name = "content_item_id"))
+    @Column(name = "topic_id")
+    @Builder.Default
+    private List<UUID> tagIds = new ArrayList<>();
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
@@ -63,6 +77,22 @@ public class ContentItem {
 
     @Column(name = "author_user_id")
     private UUID authorUserId;
+
+    @Column(name = "revision_reason", columnDefinition = "TEXT")
+    private String revisionReason;
+
+    @Column(name = "revision_requested_at")
+    private Instant revisionRequestedAt;
+
+    @Column(name = "revision_requested_by")
+    private UUID revisionRequestedBy;
+
+    @Column(name = "revision_requested_version")
+    private Integer revisionRequestedVersion;
+
+    @Version
+    @Column(name = "lock_version", nullable = false)
+    private long lockVersion;
 
     @Column(name = "source_label", length = 255)
     private String sourceLabel;

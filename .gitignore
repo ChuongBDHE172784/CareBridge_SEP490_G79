@@ -77,9 +77,10 @@ out/
 .agents/
 .claude/
 .github/agents/
+bmad-output/
 _bmad/
 _bmad-output/
-bmad-output/
+_bmad-output/implementation-artifacts
 AGENTS.md
 CLAUDE.md
 GEMINI.md

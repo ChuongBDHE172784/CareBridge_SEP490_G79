@@ -24,8 +24,10 @@ public class ContentDetailResponse {
     private ContentType type;
     private String title;
     private String body;
+    private String summary;
     private ContentStage stage;
     private UUID topicId;
+    private List<UUID> tagIds;
     private Integer version;
     private ContentStatus status;
     private String sourceLabel;

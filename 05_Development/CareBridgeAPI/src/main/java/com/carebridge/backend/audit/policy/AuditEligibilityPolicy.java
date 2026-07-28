@@ -51,6 +51,12 @@ public class AuditEligibilityPolicy {
             AuditAction.DIRECT_CALL_MISSED_BY_TIMEOUT,
             AuditAction.FIREBASE_CUSTOM_TOKEN_ISSUED,
             AuditAction.CHECKLIST_ITEM_ADDED,
+            // Version history is projected from immutable audit events; these snapshots are
+            // intentionally retained for the content-management workspace.
+            AuditAction.CONTENT_CREATED,
+            AuditAction.CONTENT_UPDATED,
+            AuditAction.CHECKLIST_TEMPLATE_CREATED,
+            AuditAction.CHECKLIST_TEMPLATE_UPDATED,
             // CB-TYFU-TDD-001 (TriageYellowFollowUp TDS §NFR "Audit — 100% via audit_log
             // query", Luật 91/2025): REMINDER_CREATED must persist to audit_events; without
             // eligibility the service's auditService.log(...) call was silently dropped.

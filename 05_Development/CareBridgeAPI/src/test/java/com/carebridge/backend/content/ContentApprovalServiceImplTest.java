@@ -20,6 +20,7 @@ import com.carebridge.backend.content.entity.ContentStatus;
 import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.repository.ContentRepository;
 import com.carebridge.backend.content.service.ContentApprovalServiceImpl;
+import com.carebridge.backend.notification.service.ContentReviewNotificationService;
 import java.security.Principal;
 import java.time.Instant;
 import java.util.Optional;
@@ -47,6 +48,9 @@ class ContentApprovalServiceImplTest {
     @Mock
     private com.carebridge.backend.aimoderation.service.AiScanEnqueueService aiScanEnqueueService;
 
+    @Mock
+    private ContentReviewNotificationService contentReviewNotificationService;
+
     @InjectMocks
     private ContentApprovalServiceImpl contentApprovalService;
 
@@ -56,6 +60,10 @@ class ContentApprovalServiceImplTest {
     @Test
     void decide_approvePendingReview_transitionsToApproved() {
         ContentItem item = makeItem(ContentStatus.PENDING_REVIEW, 3);
+        item.setRevisionReason("Phản hồi cũ");
+        item.setRevisionRequestedAt(Instant.now());
+        item.setRevisionRequestedBy(ADMIN_ID);
+        item.setRevisionRequestedVersion(2);
         when(contentRepository.findById(CONTENT_ID)).thenReturn(Optional.of(item));
         when(contentRepository.save(any(ContentItem.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -64,6 +72,10 @@ class ContentApprovalServiceImplTest {
 
         assertEquals(ContentStatus.APPROVED, response.newStatus());
         assertEquals(3, response.versionNoAtDecision());
+        Assertions.assertNull(item.getRevisionReason());
+        Assertions.assertNull(item.getRevisionRequestedAt());
+        Assertions.assertNull(item.getRevisionRequestedBy());
+        Assertions.assertNull(item.getRevisionRequestedVersion());
     }
 
     // CAV-TC-1002
@@ -78,6 +90,17 @@ class ContentApprovalServiceImplTest {
 
         assertEquals(ContentStatus.DRAFT, response.newStatus());
         assertEquals("Thiếu trích dẫn", response.reason());
+        assertEquals("Thiếu trích dẫn", item.getRevisionReason());
+        assertEquals(ADMIN_ID, item.getRevisionRequestedBy());
+        assertEquals(3, item.getRevisionRequestedVersion());
+        Assertions.assertNotNull(item.getRevisionRequestedAt());
+        verify(contentReviewNotificationService).notifyReturned(
+                org.mockito.ArgumentMatchers.eq(ApproveContentVersionTestFactory.AUTHOR_ID),
+                org.mockito.ArgumentMatchers.eq(CONTENT_ID),
+                org.mockito.ArgumentMatchers.eq("ARTICLE"),
+                org.mockito.ArgumentMatchers.eq("Bài viết"),
+                org.mockito.ArgumentMatchers.eq("Thiếu trích dẫn"),
+                org.mockito.ArgumentMatchers.eq("/content/" + CONTENT_ID + "/edit"));
     }
 
     // CAV-TC-1003 (CRITICAL — transition guard)

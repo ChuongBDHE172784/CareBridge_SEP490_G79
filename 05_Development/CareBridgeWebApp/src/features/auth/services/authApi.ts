@@ -41,6 +41,13 @@ export async function login(request: LoginRequest): Promise<OtpSendResponse> {
   return data.data;
 }
 
+// Local/test-only direct login. The backend registers this route only for dev/test
+// profiles when CAREBRIDGE_AUTH_LOGIN_DIRECT_ENABLED=true.
+export async function loginDirect(request: LoginRequest): Promise<AuthResponse> {
+  const { data } = await apiClient.post<ApiResponse<AuthResponse>>('/api/v1/auth/login-direct', request);
+  return data.data;
+}
+
 // UC-02: Verify OTP — completes login, returns tokens + user profile
 export async function verifyOtp(request: VerifyOtpRequest): Promise<AuthResponse> {
   const { data } = await apiClient.post<ApiResponse<AuthResponse>>('/api/v1/auth/verify-otp', request);

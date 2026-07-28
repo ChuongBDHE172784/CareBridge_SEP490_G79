@@ -9,6 +9,7 @@ import com.carebridge.backend.content.dto.response.CreateContentResponse;
 import com.carebridge.backend.content.dto.response.HideContentResponse;
 import com.carebridge.backend.content.dto.response.UpdateContentResponse;
 import com.carebridge.backend.content.dto.response.ContentDetailResponse;
+import com.carebridge.backend.content.dto.response.StaffContentDetailResponse;
 import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.content.entity.ContentStatus;
 import com.carebridge.backend.content.entity.ContentType;
@@ -16,6 +17,8 @@ import com.carebridge.backend.content.service.AdminContentService;
 import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.UUID;
+import java.util.List;
+import com.carebridge.backend.content.dto.response.ContentVersionSnapshotResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -60,7 +63,7 @@ public class AdminContentController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<Page<ContentDetailResponse>>> getContents(
+    public ResponseEntity<ApiResponse<Page<StaffContentDetailResponse>>> getContents(
             @RequestParam(required = false) ContentStatus status,
             @RequestParam(required = false) ContentType type,
             @RequestParam(required = false) ContentStage stage,
@@ -76,8 +79,14 @@ public class AdminContentController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<ContentDetailResponse>> getContent(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<StaffContentDetailResponse>> getContent(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(adminContentService.getStaffContent(id), "Content loaded"));
+    }
+
+    @GetMapping("/{id}/versions")
+    public ResponseEntity<ApiResponse<List<ContentVersionSnapshotResponse>>> getVersionHistory(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.success(
+                adminContentService.getVersionHistory(id), "Content version history loaded"));
     }
 
     @PostMapping

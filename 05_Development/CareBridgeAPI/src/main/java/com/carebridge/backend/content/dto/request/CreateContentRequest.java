@@ -28,10 +28,15 @@ public class CreateContentRequest {
     @Size(max = 50000, message = "Body must not exceed 50000 characters")
     private String body;
 
+    @Size(max = 150, message = "Summary must not exceed 150 characters")
+    private String summary;
+
     @NotNull(message = "Stage is required")
     private ContentStage stage;
 
     private UUID topicId;
+
+    private List<UUID> tagIds;
 
     private List<@jakarta.validation.Valid ContentSourceRequest> sources;
 }

@@ -15,8 +15,12 @@ import static org.mockito.Mockito.when;
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
+import com.carebridge.backend.community.entity.CommunityTopic;
+import com.carebridge.backend.community.entity.TopicType;
 import com.carebridge.backend.content.dto.request.CreateContentRequest;
+import com.carebridge.backend.content.dto.request.UpdateContentRequest;
 import com.carebridge.backend.content.dto.response.CreateContentResponse;
+import com.carebridge.backend.content.dto.response.ContentVersionSnapshotResponse;
 import com.carebridge.backend.content.entity.ContentItem;
 import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.content.entity.ContentStatus;
@@ -28,6 +32,7 @@ import com.carebridge.backend.content.repository.ContentRepository;
 import com.carebridge.backend.content.service.AdminContentServiceImpl;
 import java.time.Instant;
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -113,12 +118,39 @@ class AdminContentServiceImplTest {
         assertEquals(ContentType.ARTICLE, response.getType());
         assertEquals(ContentStage.PREGNANCY, response.getStage());
         verify(contentRepository).save(any(ContentItem.class));
+        ArgumentCaptor<ContentVersionSnapshotResponse> snapshotCaptor = forClass(ContentVersionSnapshotResponse.class);
         verify(auditService).log(
                 eq(AuditAction.CONTENT_CREATED),
                 eq(ADMIN_USER_ID),
                 eq("ContentItem"),
                 anyString(),
-                eq("created"));
+                snapshotCaptor.capture());
+        assertEquals(1, snapshotCaptor.getValue().versionNo());
+        assertEquals("Dinh dưỡng thai kỳ tuần 12", snapshotCaptor.getValue().title());
+    }
+
+    @Test
+    void createContent_validTags_persistsOnlyVisibleTagIds() {
+        UUID tagId = UUID.randomUUID();
+        CreateContentRequest request = CreateContentRequest.builder()
+                .type(ContentType.ARTICLE)
+                .title("Bài viết có tag")
+                .body("Nội dung chi tiết...")
+                .stage(ContentStage.PREGNANCY)
+                .tagIds(List.of(tagId))
+                .build();
+        when(contentRepository.findByTitleIgnoreCaseAndStageAndType(any(), any(), any()))
+                .thenReturn(Optional.empty());
+        when(communityTopicRepository.findAllByIdInAndTypeAndIsHiddenFalse(any(), eq(TopicType.TAG)))
+                .thenReturn(List.of(CommunityTopic.builder().id(tagId).type(TopicType.TAG).isHidden(false).build()));
+        when(contentRepository.save(any(ContentItem.class)))
+                .thenReturn(makeSavedEntity(UUID.randomUUID(), ContentType.ARTICLE, ContentStage.PREGNANCY));
+
+        adminContentService.createContent(request, ADMIN_USER_ID);
+
+        ArgumentCaptor<ContentItem> itemCaptor = forClass(ContentItem.class);
+        verify(contentRepository).save(itemCaptor.capture());
+        assertEquals(List.of(tagId), itemCaptor.getValue().getTagIds());
     }
 
     // CNT-TC-002: Tạo FAQ hợp lệ — topicId null (TC-COND-002)
@@ -253,12 +285,14 @@ class AdminContentServiceImplTest {
 
         adminContentService.createContent(request, ADMIN_USER_ID);
 
+        ArgumentCaptor<ContentVersionSnapshotResponse> snapshotCaptor = forClass(ContentVersionSnapshotResponse.class);
         verify(auditService).log(
-                AuditAction.CONTENT_CREATED,
-                ADMIN_USER_ID,
-                "ContentItem",
-                savedId.toString(),
-                "created");
+                eq(AuditAction.CONTENT_CREATED),
+                eq(ADMIN_USER_ID),
+                eq("ContentItem"),
+                eq(savedId.toString()),
+                snapshotCaptor.capture());
+        assertEquals(1, snapshotCaptor.getValue().versionNo());
     }
 
     // RTE-TC-007: createContent() gọi sanitizer đúng 1 lần, entity lưu dùng OUTPUT của sanitizer
@@ -283,5 +317,58 @@ class AdminContentServiceImplTest {
         ArgumentCaptor<ContentItem> captor = forClass(ContentItem.class);
         verify(contentRepository).save(captor.capture());
         assertEquals(sanitizedBody, captor.getValue().getBody());
+    }
+
+    @Test
+    void updateContent_resubmitReturnedDraft_clearsLatestReviewFeedback() {
+        UUID contentId = UUID.randomUUID();
+        ContentItem item = ContentItem.builder()
+                .id(contentId)
+                .type(ContentType.ARTICLE)
+                .title("Nội dung cần sửa")
+                .body("Nội dung")
+                .stage(ContentStage.PREGNANCY)
+                .status(ContentStatus.DRAFT)
+                .versionNo(2)
+                .revisionReason("Bổ sung nguồn")
+                .revisionRequestedAt(Instant.now())
+                .revisionRequestedBy(UUID.randomUUID())
+                .revisionRequestedVersion(2)
+                .build();
+        when(contentRepository.findById(contentId)).thenReturn(Optional.of(item));
+        when(contentRepository.save(any(ContentItem.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        adminContentService.updateContent(contentId, new UpdateContentRequest(
+                item.getTitle(), item.getBody(), item.getStage(), null,
+                ContentStatus.PENDING_REVIEW, null, null), () -> ADMIN_USER_ID.toString());
+
+        assertEquals(ContentStatus.PENDING_REVIEW, item.getStatus());
+        assertEquals(null, item.getRevisionReason());
+        assertEquals(null, item.getRevisionRequestedAt());
+        assertEquals(null, item.getRevisionRequestedBy());
+        assertEquals(null, item.getRevisionRequestedVersion());
+    }
+
+    @Test
+    void updateContent_saveReturnedDraft_retainsLatestReviewFeedback() {
+        UUID contentId = UUID.randomUUID();
+        Instant requestedAt = Instant.now();
+        UUID requestedBy = UUID.randomUUID();
+        ContentItem item = ContentItem.builder()
+                .id(contentId).type(ContentType.FAQ).title("FAQ cần sửa").body("Nội dung")
+                .stage(ContentStage.PREGNANCY).status(ContentStatus.DRAFT).versionNo(2)
+                .revisionReason("Viết rõ câu trả lời").revisionRequestedAt(requestedAt)
+                .revisionRequestedBy(requestedBy).revisionRequestedVersion(2).build();
+        when(contentRepository.findById(contentId)).thenReturn(Optional.of(item));
+        when(contentRepository.save(any(ContentItem.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        adminContentService.updateContent(contentId, new UpdateContentRequest(
+                item.getTitle(), item.getBody(), item.getStage(), null,
+                ContentStatus.DRAFT, null, null), () -> ADMIN_USER_ID.toString());
+
+        assertEquals("Viết rõ câu trả lời", item.getRevisionReason());
+        assertEquals(requestedAt, item.getRevisionRequestedAt());
+        assertEquals(requestedBy, item.getRevisionRequestedBy());
+        assertEquals(2, item.getRevisionRequestedVersion());
     }
 }

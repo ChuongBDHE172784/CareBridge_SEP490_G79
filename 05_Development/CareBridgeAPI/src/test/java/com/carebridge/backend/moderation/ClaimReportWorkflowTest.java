@@ -14,7 +14,6 @@ import com.carebridge.backend.community.repository.CommunityAnswerRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.content.dto.request.ResolutionOutcome;
 import com.carebridge.backend.content.dto.request.ResolveReportRequest;
-import com.carebridge.backend.content.dto.request.RevertReportRequest;
 import com.carebridge.backend.content.dto.response.ClaimReportResponse;
 import com.carebridge.backend.content.entity.ContentReport;
 import com.carebridge.backend.content.entity.ReportStatus;
@@ -185,15 +184,4 @@ class ClaimReportWorkflowTest {
         assertThat(claimed.getStatus()).isEqualTo(ReportStatus.DISMISSED);
     }
 
-    // Scenario 18: IN_REVIEW is still open — revert is rejected as "not yet resolved"
-    @Test
-    void revert_inReviewReport_isRejected() {
-        when(contentReportRepository.findById(REPORT_ID))
-                .thenReturn(Optional.of(report(ReportStatus.IN_REVIEW, MODERATOR_ID)));
-
-        assertThatThrownBy(() -> service.revertReport(REPORT_ID, new RevertReportRequest(null), principal))
-                .isInstanceOf(ModerationException.class)
-                .extracting(ex -> ((ModerationException) ex).getCode())
-                .isEqualTo("MOD-032");
-    }
 }

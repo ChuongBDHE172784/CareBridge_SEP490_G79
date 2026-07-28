@@ -8,6 +8,8 @@ import com.carebridge.backend.content.dto.response.ContentDetailResponse;
 import com.carebridge.backend.content.dto.response.ContentListResponse;
 import com.carebridge.backend.content.dto.response.ContentSearchResponse;
 import com.carebridge.backend.content.dto.response.CreateContentResponse;
+import com.carebridge.backend.content.dto.response.ReviewFeedbackResponse;
+import com.carebridge.backend.content.dto.response.StaffContentDetailResponse;
 import com.carebridge.backend.content.entity.ChecklistItem;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
 import com.carebridge.backend.content.entity.ContentItem;
@@ -28,8 +30,10 @@ public class ContentMapper {
                 .type(request.getType())
                 .title(request.getTitle())
                 .body(request.getBody())
+                .summary(request.getSummary())
                 .stage(request.getStage())
                 .topicId(request.getTopicId())
+                .tagIds(new ArrayList<>())
                 .status(ContentStatus.DRAFT)
                 .versionNo(1)
                 .authorUserId(authorUserId)
@@ -57,8 +61,10 @@ public class ContentMapper {
                 .id(item.getId())
                 .type(item.getType())
                 .title(item.getTitle())
+                .summary(item.getSummary())
                 .stage(item.getStage())
                 .topicId(item.getTopicId())
+                .tagIds(item.getTagIds() == null ? List.of() : List.copyOf(item.getTagIds()))
                 .publishedAt(item.getPublishedAt())
                 .build();
     }
@@ -73,8 +79,10 @@ public class ContentMapper {
                 .type(item.getType())
                 .title(item.getTitle())
                 .body(item.getBody())
+                .summary(item.getSummary())
                 .stage(item.getStage())
                 .topicId(item.getTopicId())
+                .tagIds(item.getTagIds() == null ? List.of() : List.copyOf(item.getTagIds()))
                 .version(item.getVersionNo())
                 .status(item.getStatus())
                 .sourceLabel(item.getSourceLabel())
@@ -87,6 +95,14 @@ public class ContentMapper {
                         .toList())
                 .contentStale(contentStale)
                 .build();
+    }
+
+    public StaffContentDetailResponse toStaffDetailResponse(ContentItem item) {
+        return new StaffContentDetailResponse(
+                toDetailResponse(item),
+                toReviewFeedback(
+                        item.getRevisionReason(), item.getRevisionRequestedAt(),
+                        item.getRevisionRequestedBy(), item.getRevisionRequestedVersion()));
     }
 
     public ChecklistTemplateResponse toChecklistTemplateResponse(
@@ -114,7 +130,11 @@ public class ContentMapper {
                 .stage(template.getStage())
                 .status(template.getStatus())
                 .description(template.getDescription())
+                .versionNo(template.getVersionNo())
                 .items(itemResponses)
+                .latestReviewFeedback(toReviewFeedback(
+                        template.getRevisionReason(), template.getRevisionRequestedAt(),
+                        template.getRevisionRequestedBy(), template.getRevisionRequestedVersion()))
                 .build();
     }
 
@@ -137,5 +157,13 @@ public class ContentMapper {
                 .order(item.getOrder())
                 .isRequired(item.getIsRequired())
                 .build();
+    }
+
+    public ReviewFeedbackResponse toReviewFeedback(
+            String reason, Instant requestedAt, java.util.UUID requestedBy, Integer versionNo) {
+        if (reason == null || reason.isBlank()) {
+            return null;
+        }
+        return new ReviewFeedbackResponse(reason, requestedAt, requestedBy, versionNo);
     }
 }

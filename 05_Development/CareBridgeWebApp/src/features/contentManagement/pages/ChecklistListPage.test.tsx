@@ -6,11 +6,13 @@ import type { AdminChecklistTemplate, PaginatedResponse } from '../models/conten
 
 const harness = vi.hoisted(() => ({
   fetchAdminChecklists: vi.fn(),
+  archiveChecklistTemplate: vi.fn(),
   navigate: vi.fn(),
 }));
 
 vi.mock('../services/contentApi', () => ({
   fetchAdminChecklists: harness.fetchAdminChecklists,
+  archiveChecklistTemplate: harness.archiveChecklistTemplate,
 }));
 
 vi.mock('react-router-dom', async () => {
@@ -66,26 +68,34 @@ function deferred<T>() {
 describe('UC82-69-WEB-001 admin checklist boundary', () => {
   beforeEach(() => {
     harness.fetchAdminChecklists.mockReset();
+    harness.archiveChecklistTemplate.mockReset();
     harness.navigate.mockReset();
+    vi.spyOn(window, 'prompt').mockReturnValue(null);
   });
 
   afterEach(() => {
     cleanup();
+    vi.restoreAllMocks();
   });
 
-  it('renders true status and itemCount from a successful admin response', async () => {
+  it('renders Vietnamese-only statuses and itemCount from a successful admin response', async () => {
     harness.fetchAdminChecklists.mockResolvedValue(page([
       checklist({ id: 'draft', name: 'Draft with items', status: 'DRAFT', itemCount: 4 }),
+      checklist({ id: 'pending', name: 'Pending review', status: 'PENDING_REVIEW', itemCount: 1 }),
       checklist({ id: 'rejected', name: 'Rejected empty', status: 'REJECTED', itemCount: 0 }),
       checklist({ id: 'approved', name: 'Approved empty', status: 'APPROVED', itemCount: 0 }),
+      checklist({ id: 'archived', name: 'Archived empty', status: 'ARCHIVED', itemCount: 0 }),
     ]));
 
     render(<ChecklistListPage />);
 
     expect(await screen.findByText('Draft with items')).toBeTruthy();
-    expect(screen.getByText('DRAFT · Bản nháp')).toBeTruthy();
-    expect(screen.getByText('REJECTED · Đã từ chối')).toBeTruthy();
-    expect(screen.getByText('APPROVED · Đã duyệt')).toBeTruthy();
+    expect(screen.getAllByText('Bản nháp').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Chờ duyệt').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Đã từ chối').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Đã duyệt').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Đã lưu trữ').length).toBeGreaterThan(0);
+    expect(screen.queryByText(/DRAFT ·|PENDING_REVIEW ·|REJECTED ·|APPROVED ·|ARCHIVED ·/)).toBeNull();
     expect(screen.getByText('4')).toBeTruthy();
     expect(harness.fetchAdminChecklists).toHaveBeenCalledWith({
       stage: undefined,
@@ -95,30 +105,184 @@ describe('UC82-69-WEB-001 admin checklist boundary', () => {
     });
   });
 
-  it('does not expose an edit action when no edit route exists', async () => {
+  it('labels returned drafts and exposes the review reason', async () => {
     harness.fetchAdminChecklists.mockResolvedValue(page([
-      checklist({ name: 'Checklist without edit route' }),
+      checklist({
+        name: 'Checklist cần sửa',
+        status: 'DRAFT',
+        latestReviewFeedback: {
+          reason: 'Bổ sung mục khám thai bắt buộc',
+          requestedAt: '2026-07-27T10:00:00Z',
+          requestedBy: 'admin-id',
+          versionNo: 2,
+        },
+      }),
     ]));
 
     render(<ChecklistListPage />);
 
-    expect(await screen.findByText('Checklist without edit route')).toBeTruthy();
-    expect(
-      screen.queryByRole('button', {
-        name: 'Chỉnh sửa checklist Checklist without edit route',
-      }),
-    ).toBeNull();
+    expect(await screen.findByText('Checklist cần sửa')).toBeTruthy();
+    expect(screen.getByText('Cần chỉnh sửa')).toBeTruthy();
+    expect(screen.getByText('Bổ sung mục khám thai bắt buộc')).toBeTruthy();
+  });
+
+  it('enables actions according to the checklist lifecycle', async () => {
+    harness.fetchAdminChecklists.mockResolvedValue(page([
+      checklist({ id: 'draft', name: 'Draft checklist', status: 'DRAFT' }),
+      checklist({ id: 'pending', name: 'Pending checklist', status: 'PENDING_REVIEW' }),
+      checklist({ id: 'approved', name: 'Approved checklist', status: 'APPROVED' }),
+      checklist({ id: 'rejected', name: 'Rejected checklist', status: 'REJECTED' }),
+      checklist({ id: 'archived', name: 'Archived checklist', status: 'ARCHIVED' }),
+    ]));
+
+    render(<ChecklistListPage />);
+
+    expect(await screen.findByText('Draft checklist')).toBeTruthy();
+    const draftEdit = screen.getByRole('button', { name: 'Chỉnh sửa checklist Draft checklist' });
+    const pendingEdit = screen.getByRole('button', { name: 'Chỉnh sửa checklist Pending checklist' });
+    const approvedEdit = screen.getByRole('button', { name: 'Chỉnh sửa checklist Approved checklist' });
+    const rejectedEdit = screen.getByRole('button', { name: 'Chỉnh sửa checklist Rejected checklist' });
+    const archivedEdit = screen.getByRole('button', { name: 'Chỉnh sửa checklist Archived checklist' });
+    const archivedDelete = screen.getByRole('button', { name: 'Xóa checklist Archived checklist' });
+
+    expect((draftEdit as HTMLButtonElement).disabled).toBe(false);
+    expect((pendingEdit as HTMLButtonElement).disabled).toBe(false);
+    expect((approvedEdit as HTMLButtonElement).disabled).toBe(true);
+    expect((rejectedEdit as HTMLButtonElement).disabled).toBe(true);
+    expect((archivedEdit as HTMLButtonElement).disabled).toBe(true);
+    expect((archivedDelete as HTMLButtonElement).disabled).toBe(true);
+
+    fireEvent.click(draftEdit);
+    expect(harness.navigate).toHaveBeenCalledWith('/content/checklists/draft/edit');
     fireEvent.click(
       screen.getByRole('button', {
-        name: 'Xem checklist Checklist without edit route',
+        name: 'Xem checklist Archived checklist',
       }),
     );
-    expect(harness.navigate).toHaveBeenCalledWith(
-      '/content/checklists/synthetic-checklist-69',
-    );
+    expect(harness.navigate).toHaveBeenCalledWith('/content/checklists/archived');
+
+    fireEvent.click(archivedDelete);
+    expect(window.prompt).not.toHaveBeenCalled();
+    expect(harness.archiveChecklistTemplate).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Tạo checklist mới' }));
     expect(harness.navigate).toHaveBeenCalledWith('/content/checklists/create');
+  });
+
+  it('does not delete when the reason prompt is cancelled', async () => {
+    harness.fetchAdminChecklists.mockResolvedValue(page([
+      checklist({ name: 'Cancelled delete', status: 'DRAFT' }),
+    ]));
+
+    render(<ChecklistListPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Xóa checklist Cancelled delete' }));
+
+    expect(window.prompt).toHaveBeenCalledTimes(1);
+    expect(harness.archiveChecklistTemplate).not.toHaveBeenCalled();
+    expect(harness.fetchAdminChecklists).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects a blank delete reason without calling the archive API', async () => {
+    vi.mocked(window.prompt).mockReturnValue('   ');
+    harness.fetchAdminChecklists.mockResolvedValue(page([
+      checklist({ name: 'Blank reason', status: 'APPROVED' }),
+    ]));
+
+    render(<ChecklistListPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Xóa checklist Blank reason' }));
+
+    expect(screen.getByRole('alert').textContent).toBe('Vui lòng nhập lý do trước khi xóa.');
+    expect(harness.archiveChecklistTemplate).not.toHaveBeenCalled();
+  });
+
+  it('archives with a trimmed reason, blocks duplicate actions, and reloads the active query', async () => {
+    const archive = deferred<{ previousStatus: 'DRAFT'; newStatus: 'ARCHIVED' }>();
+    vi.mocked(window.prompt).mockReturnValue('  Nội dung không còn phù hợp  ');
+    harness.archiveChecklistTemplate.mockReturnValue(archive.promise);
+    harness.fetchAdminChecklists
+      .mockResolvedValueOnce(page([checklist({ id: 'to-delete', name: 'Delete me', status: 'DRAFT' })]))
+      .mockResolvedValueOnce(page([]));
+
+    render(<ChecklistListPage />);
+    const deleteButton = await screen.findByRole('button', { name: 'Xóa checklist Delete me' });
+    fireEvent.click(deleteButton);
+
+    expect(harness.archiveChecklistTemplate).toHaveBeenCalledWith(
+      'to-delete',
+      'Nội dung không còn phù hợp',
+    );
+    expect((deleteButton as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(deleteButton);
+    expect(harness.archiveChecklistTemplate).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      archive.resolve({ previousStatus: 'DRAFT', newStatus: 'ARCHIVED' });
+      await archive.promise;
+    });
+
+    await waitFor(() => expect(harness.fetchAdminChecklists).toHaveBeenCalledTimes(2));
+    expect(harness.fetchAdminChecklists).toHaveBeenLastCalledWith({
+      stage: undefined,
+      status: undefined,
+      page: 0,
+      size: 10,
+    });
+    expect(screen.queryByText('Delete me')).toBeNull();
+  });
+
+  it('reloads the latest filters when they change during an archive request', async () => {
+    const archive = deferred<{ previousStatus: 'DRAFT'; newStatus: 'ARCHIVED' }>();
+    vi.mocked(window.prompt).mockReturnValue('Lý do hợp lệ');
+    harness.archiveChecklistTemplate.mockReturnValue(archive.promise);
+    harness.fetchAdminChecklists.mockResolvedValue(page([
+      checklist({ id: 'changing-filter', name: 'Changing filter', status: 'DRAFT' }),
+    ]));
+
+    render(<ChecklistListPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Xóa checklist Changing filter' }));
+    fireEvent.change(screen.getByLabelText('Lọc checklist theo giai đoạn'), {
+      target: { value: 'POSTPARTUM' },
+    });
+    await waitFor(() => expect(harness.fetchAdminChecklists).toHaveBeenLastCalledWith({
+      stage: 'POSTPARTUM',
+      status: undefined,
+      page: 0,
+      size: 10,
+    }));
+
+    await act(async () => {
+      archive.resolve({ previousStatus: 'DRAFT', newStatus: 'ARCHIVED' });
+      await archive.promise;
+    });
+
+    await waitFor(() => expect(harness.fetchAdminChecklists).toHaveBeenCalledTimes(3));
+    expect(harness.fetchAdminChecklists).toHaveBeenLastCalledWith({
+      stage: 'POSTPARTUM',
+      status: undefined,
+      page: 0,
+      size: 10,
+    });
+  });
+
+  it('keeps the row, reports an archive failure, and allows retry', async () => {
+    vi.mocked(window.prompt).mockReturnValue('Lý do hợp lệ');
+    harness.archiveChecklistTemplate.mockRejectedValue(new Error('synthetic archive failure'));
+    harness.fetchAdminChecklists.mockResolvedValue(page([
+      checklist({ id: 'retry-delete', name: 'Retry delete', status: 'REJECTED' }),
+    ]));
+
+    render(<ChecklistListPage />);
+    const deleteButton = await screen.findByRole('button', { name: 'Xóa checklist Retry delete' });
+    fireEvent.click(deleteButton);
+
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'Không thể xóa checklist. Vui lòng thử lại.',
+    );
+    expect(screen.getByText('Retry delete')).toBeTruthy();
+    expect((deleteButton as HTMLButtonElement).disabled).toBe(false);
+
+    fireEvent.click(deleteButton);
+    await waitFor(() => expect(harness.archiveChecklistTemplate).toHaveBeenCalledTimes(2));
   });
 
   it('runs real filter hooks and resets the requested page to zero', async () => {

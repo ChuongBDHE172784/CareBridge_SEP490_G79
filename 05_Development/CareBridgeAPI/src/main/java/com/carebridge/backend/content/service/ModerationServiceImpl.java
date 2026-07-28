@@ -15,11 +15,12 @@ import com.carebridge.backend.content.dto.request.ModerationQueueFilter;
 import com.carebridge.backend.content.dto.request.PendingContentQueueFilter;
 import com.carebridge.backend.content.dto.request.ResolutionOutcome;
 import com.carebridge.backend.content.dto.request.ResolveReportRequest;
-import com.carebridge.backend.content.dto.request.RevertReportRequest;
 import com.carebridge.backend.content.dto.request.WarnOrSuspendAccountRequest;
 import com.carebridge.backend.content.dto.response.ModerateContentResponse;
 import com.carebridge.backend.content.dto.response.AccountViolationHistoryItemResponse;
 import com.carebridge.backend.content.dto.response.AccountViolationHistoryResponse;
+import com.carebridge.backend.content.dto.response.AccountViolationSummaryItemResponse;
+import com.carebridge.backend.content.dto.response.AccountViolationSummaryResponse;
 import com.carebridge.backend.content.dto.response.ModerationContentDetailResponse;
 import com.carebridge.backend.content.dto.response.ModerationHistoryItemResponse;
 import com.carebridge.backend.content.dto.response.ModerationHistoryResponse;
@@ -30,7 +31,6 @@ import com.carebridge.backend.content.dto.response.PendingContentQueueResponse;
 import com.carebridge.backend.content.dto.response.RelatedReportItemResponse;
 import com.carebridge.backend.content.dto.response.RelatedReportPageResponse;
 import com.carebridge.backend.content.dto.response.ResolveReportResponse;
-import com.carebridge.backend.content.dto.response.RevertReportResponse;
 import com.carebridge.backend.content.dto.response.UndoModerationActionResponse;
 import com.carebridge.backend.content.dto.response.WarnOrSuspendAccountResponse;
 import com.carebridge.backend.content.entity.ContentReport;
@@ -232,36 +232,74 @@ public class ModerationServiceImpl implements ModerationService {
     }
 
     @Override
-    public AccountViolationHistoryResponse getAccountViolationHistory(int page, int size, Principal principal) {
-        Page<ModerationAction> actionPage = moderationActionRepository.findByTargetTypeAndActionTypeInOrderByActionAtDesc(
-                ReportTargetType.ACCOUNT,
+    public AccountViolationSummaryResponse getAccountViolationHistory(int page, int size, Principal principal) {
+        Page<UUID> targetUserPage = moderationActionRepository.findDistinctAccountTargetIds(
+                ACCOUNT_ACTION_TYPES, PageRequest.of(page, size));
+        List<ModerationAction> actions = targetUserPage.getContent().isEmpty()
+                ? List.of()
+                : moderationActionRepository.findAccountActionsByTargetIds(
+                        targetUserPage.getContent(), ACCOUNT_ACTION_TYPES);
+        Map<UUID, List<ModerationAction>> actionsByTargetUser = actions.stream()
+                .collect(java.util.stream.Collectors.groupingBy(ModerationAction::getTargetId));
+        Map<UUID, String> names = accountNamesFor(actions);
+
+        List<AccountViolationSummaryItemResponse> items = targetUserPage.getContent().stream()
+                .map(targetUserId -> {
+                    List<ModerationAction> accountActions = actionsByTargetUser.getOrDefault(targetUserId, List.of());
+                    ModerationAction latestAction = accountActions.getFirst();
+                    return new AccountViolationSummaryItemResponse(
+                            targetUserId,
+                            names.getOrDefault(targetUserId, "Tài khoản không còn tồn tại"),
+                            accountActions.size(),
+                            toAccountViolationHistoryItem(latestAction, names));
+                })
+                .toList();
+        return new AccountViolationSummaryResponse(
+                items, targetUserPage.getTotalElements(), targetUserPage.getNumber(), targetUserPage.getSize());
+    }
+
+    @Override
+    public AccountViolationHistoryResponse getAccountViolationHistory(
+            UUID targetUserId, int page, int size, Principal principal) {
+        Page<ModerationAction> actionPage = moderationActionRepository.findAccountActionsByTargetId(
+                targetUserId,
                 ACCOUNT_ACTION_TYPES,
                 PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "actionAt")
                         .and(Sort.by(Sort.Direction.DESC, "id"))));
+        Map<UUID, String> names = accountNamesFor(actionPage.getContent());
+        return new AccountViolationHistoryResponse(
+                accountViolationItems(actionPage.getContent(), names),
+                actionPage.getTotalElements(), actionPage.getNumber(), actionPage.getSize());
+    }
 
-        List<UUID> userIds = actionPage.getContent().stream()
+    private Map<UUID, String> accountNamesFor(List<ModerationAction> actions) {
+        List<UUID> userIds = actions.stream()
                 .flatMap(action -> java.util.stream.Stream.of(action.getTargetId(), action.getModeratorUserId()))
                 .filter(java.util.Objects::nonNull)
                 .distinct()
                 .toList();
-        Map<UUID, String> names = userRepository.findAllById(userIds).stream()
+        return userRepository.findAllById(userIds).stream()
                 .collect(java.util.stream.Collectors.toMap(User::getId, User::getName));
+    }
 
-        List<AccountViolationHistoryItemResponse> items = actionPage.getContent().stream()
-                .map(action -> new AccountViolationHistoryItemResponse(
-                        action.getId(),
-                        action.getTargetId(),
-                        names.getOrDefault(action.getTargetId(), "Tài khoản không còn tồn tại"),
-                        action.getModeratorUserId(),
-                        names.getOrDefault(action.getModeratorUserId(), "Người kiểm duyệt không còn tồn tại"),
-                        action.getActionType(),
-                        action.getReason(),
-                        action.getExpiresAt(),
-                        action.getReportId(),
-                        action.getActionAt()))
-                .toList();
-        return new AccountViolationHistoryResponse(
-                items, actionPage.getTotalElements(), actionPage.getNumber(), actionPage.getSize());
+    private List<AccountViolationHistoryItemResponse> accountViolationItems(
+            List<ModerationAction> actions, Map<UUID, String> names) {
+        return actions.stream().map(action -> toAccountViolationHistoryItem(action, names)).toList();
+    }
+
+    private AccountViolationHistoryItemResponse toAccountViolationHistoryItem(
+            ModerationAction action, Map<UUID, String> names) {
+        return new AccountViolationHistoryItemResponse(
+                action.getId(),
+                action.getTargetId(),
+                names.getOrDefault(action.getTargetId(), "Tài khoản không còn tồn tại"),
+                action.getModeratorUserId(),
+                names.getOrDefault(action.getModeratorUserId(), "Người kiểm duyệt không còn tồn tại"),
+                action.getActionType(),
+                action.getReason(),
+                action.getExpiresAt(),
+                action.getReportId(),
+                action.getActionAt());
     }
 
     @Override
@@ -795,136 +833,6 @@ public class ModerationServiceImpl implements ModerationService {
 
         // Mirrors moderateAnswer()'s exact condition (line ~332): only APPROVED<->non-APPROVED
         // transitions touch the counter.
-        if (expectedCurrentStatus == AnswerStatus.APPROVED) {
-            communityQuestionRepository.decrementAnswerCount(answer.getQuestionId());
-        }
-        return AnswerStatus.PENDING.name();
-    }
-
-    // CB-MOD-IMP-015 ADR-002: revertReport() is a code path fully separate from
-    // undoModerationAction() — it is never blocked by MOD-027, and does not call undo internally.
-    @Override
-    @Transactional
-    public RevertReportResponse revertReport(UUID reportId, RevertReportRequest request, Principal principal) {
-        UUID moderatorUserId = SecurityUtils.requireCurrentUserId(principal);
-
-        ContentReport report = contentReportRepository.findById(reportId)
-                .orElseThrow(() -> ModerationException.reportNotFound(reportId));
-
-        // BR-MOD-015: only RESOLVED/DISMISSED reports can be reverted (IN_REVIEW = still open)
-        if (report.getStatus() == ReportStatus.PENDING || report.getStatus() == ReportStatus.IN_REVIEW) {
-            throw ModerationException.reportNotYetResolved(reportId);
-        }
-
-        UUID undoActionId = null;
-        String resultingStatus = null;
-
-        // BR-MOD-010: DISMISS never created a ModerationAction — nothing to revert on the target
-        Optional<ModerationAction> linkedAction = moderationActionRepository
-                .findTopByReportIdAndActionTypeNotOrderByActionAtDesc(
-                        reportId, ModerationActionType.AI_FEEDBACK_SUBMITTED);
-        if (linkedAction.isPresent()) {
-            ModerationAction action = linkedAction.get();
-
-            // BR-MOD-016/ADR-001: account-level (and any other non-content) outcome is out of scope
-            if (!UNDOABLE_ACTION_TYPES.contains(action.getActionType())) {
-                throw ModerationException.revertNotSupportedForAccountAction(action.getId());
-            }
-
-            resultingStatus = revertContentAction(action);
-
-            ModerationAction undoAction = ModerationAction.builder()
-                    .reportId(reportId)
-                    .targetId(action.getTargetId())
-                    .targetType(action.getTargetType())
-                    .actionType(ModerationActionType.UNDO)
-                    .moderatorUserId(moderatorUserId)
-                    .reason(request.reason() != null ? request.reason() : "Hoàn tác báo cáo đã xử lý")
-                    .actionAt(Instant.now())
-                    .build();
-            undoActionId = moderationActionRepository.save(undoAction).getId();
-        }
-
-        // ADR-005: resolvedAt/assignedModeratorId are NEVER touched here — only revertedAt/revertedBy
-        report.setStatus(ReportStatus.PENDING);
-        report.setRevertedAt(Instant.now());
-        report.setRevertedBy(moderatorUserId);
-        ContentReport savedReport = contentReportRepository.save(report);
-
-        auditService.log(AuditAction.MODERATION_ACTION, moderatorUserId,
-                savedReport.getTargetType() != null ? savedReport.getTargetType().name() : null,
-                savedReport.getTargetId() != null ? savedReport.getTargetId().toString() : null,
-                "revert reportId=" + reportId + " undoActionId=" + undoActionId + " reason=" + request.reason());
-
-        return new RevertReportResponse(
-                savedReport.getId(),
-                savedReport.getStatus(),
-                moderatorUserId,
-                savedReport.getRevertedAt(),
-                undoActionId,
-                savedReport.getTargetType(),
-                savedReport.getTargetId(),
-                resultingStatus);
-    }
-
-    // ADR-004 guard 1 ("most recent") — mirrors CB-MOD-IMP-009 ADR-002, applied before mutating.
-    private void requireMostRecentAction(ModerationAction action) {
-        ModerationAction mostRecent = moderationActionRepository
-                .findTopByTargetIdAndTargetTypeAndActionTypeNotOrderByActionAtDesc(
-                        action.getTargetId(), action.getTargetType(),
-                        ModerationActionType.AI_FEEDBACK_SUBMITTED)
-                .orElseThrow(() -> ModerationException.revertNotMostRecentAction(action.getId()));
-        if (!mostRecent.getId().equals(action.getId())) {
-            throw ModerationException.revertNotMostRecentAction(action.getId());
-        }
-    }
-
-    private String revertContentAction(ModerationAction action) {
-        requireMostRecentAction(action);
-        return switch (action.getTargetType()) {
-            case QUESTION -> revertQuestionAction(action);
-            case ANSWER -> revertAnswerAction(action);
-            default -> throw ModerationException.revertNotSupportedForAccountAction(action.getId());
-        };
-    }
-
-    // ADR-004 guard 2 ("status khớp") + mutation to PENDING for a QUESTION target.
-    private String revertQuestionAction(ModerationAction action) {
-        CommunityQuestion question = communityQuestionRepository.findById(action.getTargetId())
-                .orElseThrow(() -> ModerationException.targetNotFound(action.getTargetId(), ReportTargetType.QUESTION));
-
-        QuestionStatus expectedCurrentStatus = switch (action.getActionType()) {
-            case APPROVE -> QuestionStatus.APPROVED;
-            case HIDE -> QuestionStatus.HIDDEN;
-            case LOCK -> QuestionStatus.LOCKED;
-            default -> throw ModerationException.revertNotSupportedForAccountAction(action.getId());
-        };
-        if (question.getStatus() != expectedCurrentStatus) {
-            throw ModerationException.revertStatusSuperseded(action.getId());
-        }
-
-        question.setStatus(QuestionStatus.PENDING);
-        communityQuestionRepository.save(question);
-        return QuestionStatus.PENDING.name();
-    }
-
-    // ADR-004 guard 2 ("status khớp") + mutation to PENDING + answer_count mirror for an ANSWER target.
-    private String revertAnswerAction(ModerationAction action) {
-        CommunityAnswer answer = communityAnswerRepository.findById(action.getTargetId())
-                .orElseThrow(() -> ModerationException.targetNotFound(action.getTargetId(), ReportTargetType.ANSWER));
-
-        AnswerStatus expectedCurrentStatus = switch (action.getActionType()) {
-            case APPROVE -> AnswerStatus.APPROVED;
-            case HIDE -> AnswerStatus.HIDDEN;
-            default -> throw ModerationException.revertNotSupportedForAccountAction(action.getId());
-        };
-        if (answer.getStatus() != expectedCurrentStatus) {
-            throw ModerationException.revertStatusSuperseded(action.getId());
-        }
-
-        answer.setStatus(AnswerStatus.PENDING);
-        communityAnswerRepository.save(answer);
-
         if (expectedCurrentStatus == AnswerStatus.APPROVED) {
             communityQuestionRepository.decrementAnswerCount(answer.getQuestionId());
         }

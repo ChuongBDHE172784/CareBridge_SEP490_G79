@@ -10,6 +10,7 @@ import com.carebridge.backend.content.entity.ContentItem;
 import com.carebridge.backend.content.entity.ContentStatus;
 import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.repository.ContentRepository;
+import com.carebridge.backend.notification.service.ContentReviewNotificationService;
 import java.security.Principal;
 import java.time.Instant;
 import java.util.UUID;
@@ -24,6 +25,7 @@ public class ContentApprovalServiceImpl implements ContentApprovalService {
     private final ContentRepository contentRepository;
     private final AuditService auditService;
     private final com.carebridge.backend.aimoderation.service.AiScanEnqueueService aiScanEnqueueService;
+    private final ContentReviewNotificationService contentReviewNotificationService;
 
     @Override
     @Transactional
@@ -50,6 +52,16 @@ public class ContentApprovalServiceImpl implements ContentApprovalService {
                 : ContentStatus.DRAFT;
         item.setStatus(newStatus);
 
+        Instant decidedAt = Instant.now();
+        if (request.decision() == ContentDecision.REJECT) {
+            item.setRevisionReason(request.reason().trim());
+            item.setRevisionRequestedAt(decidedAt);
+            item.setRevisionRequestedBy(adminUserId);
+            item.setRevisionRequestedVersion(item.getVersionNo());
+        } else {
+            clearReviewFeedback(item);
+        }
+
         // TDS §6.1: on APPROVE, set publishedAt if not already set — searchByFilters() orders by
         // publishedAt DESC NULLS LAST, so a null value here would sink newly-approved content to the
         // bottom of the public feed instead of surfacing it.
@@ -68,14 +80,26 @@ public class ContentApprovalServiceImpl implements ContentApprovalService {
                             .joinTitleAndBody(saved.getTitle(), saved.getBody()));
         }
 
-        Instant decidedAt = Instant.now();
         String auditDetail = "decision=" + request.decision() + " versionNo=" + saved.getVersionNo()
                 + (request.reason() != null ? " reason=" + request.reason() : "");
         auditService.log(AuditAction.CONTENT_DECIDED, adminUserId,
                 "ContentItem", saved.getId().toString(), auditDetail);
 
+        if (request.decision() == ContentDecision.REJECT) {
+            contentReviewNotificationService.notifyReturned(
+                    saved.getAuthorUserId(), saved.getId(), saved.getType().name(), saved.getTitle(),
+                    request.reason().trim(), "/content/" + saved.getId() + "/edit");
+        }
+
         return new ContentDecisionResponse(
                 saved.getId(), previousStatus, saved.getStatus(), saved.getVersionNo(),
                 adminUserId, request.reason(), decidedAt);
+    }
+
+    private void clearReviewFeedback(ContentItem item) {
+        item.setRevisionReason(null);
+        item.setRevisionRequestedAt(null);
+        item.setRevisionRequestedBy(null);
+        item.setRevisionRequestedVersion(null);
     }
 }

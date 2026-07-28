@@ -9,7 +9,9 @@ import '../../notification/services/notification_service.dart';
 import '../../../core/network/api_client.dart';
 import '../../community/screens/community_feed_screen.dart';
 import '../../community/screens/view_content_screen.dart';
+import '../../community/models/content_model.dart';
 import '../../exercise/screens/mother_exercise_screen.dart';
+import '../../checklist/screens/preparation_checklist_screen.dart';
 
 /// CB-008 — Mother Home (UC-24, UC-49)
 /// Main home screen showing journey status card, next appointment alert,
@@ -155,6 +157,8 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
                   _buildQuickActions(),
                   const SizedBox(height: 24),
                   _buildTasksSection(),
+                  const SizedBox(height: 24),
+                  _buildPreparationChecklistSection(),
                   const SizedBox(height: 24),
                 ],
               ]),
@@ -320,7 +324,6 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
             MaterialPageRoute(builder: (_) => const CommunityFeedScreen()),
           ),
         ),
-        const SizedBox(width: 12),
         _QuickAction(
           icon: Icons.self_improvement,
           label: 'Bài tập',
@@ -328,13 +331,15 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
             MaterialPageRoute(builder: (_) => const MotherExerciseScreen()),
           ),
         ),
-        const SizedBox(width: 12),
         _QuickAction(
           icon: Icons.menu_book_outlined,
           label: 'Nội dung & FAQ',
-          onTap: () => Navigator.of(
-            context,
-          ).push(MaterialPageRoute(builder: (_) => const ViewContentScreen())),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) =>
+                  const ViewContentScreen(mode: ContentBrowseMode.lifecycle),
+            ),
+          ),
         ),
       ],
     );
@@ -671,6 +676,72 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
             );
           }),
       ],
+    );
+  }
+
+  Widget _buildPreparationChecklistSection() {
+    return Semantics(
+      button: true,
+      label: 'Mở Checklist chuẩn bị',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => const PreparationChecklistScreen(),
+            ),
+          ),
+          child: Ink(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: _surfaceContainerLow,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _secondaryContainer),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: const BoxDecoration(
+                    color: _secondaryContainer,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.checklist_rounded, color: _primary),
+                ),
+                const SizedBox(width: 14),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Checklist chuẩn bị',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: _onSurface,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Theo dõi các mục cần chuẩn bị của mẹ và bé',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 12,
+                          color: _onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_right_rounded, color: _primary),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 

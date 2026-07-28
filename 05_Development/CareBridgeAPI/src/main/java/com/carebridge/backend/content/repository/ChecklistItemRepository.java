@@ -39,6 +39,9 @@ public interface ChecklistItemRepository extends JpaRepository<ChecklistItem, UU
             @Param("status") ChecklistTemplateStatus status,
             @Param("stage") ContentStage stage);
 
+    @Query("select i from ChecklistItem i join fetch i.template where i.id in :ids")
+    List<ChecklistItem> findAllWithTemplateByIdIn(@Param("ids") List<UUID> ids);
+
     @Query("select i.template.id as templateId, count(i.id) as itemCount from ChecklistItem i " +
             "where i.template.id in :templateIds and i.isActive=true group by i.template.id")
     List<TemplateItemCount> countByTemplateIds(@Param("templateIds") Set<UUID> templateIds);

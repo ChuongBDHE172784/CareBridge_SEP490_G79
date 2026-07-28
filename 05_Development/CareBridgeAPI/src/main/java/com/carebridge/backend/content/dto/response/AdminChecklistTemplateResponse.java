@@ -15,5 +15,18 @@ public record AdminChecklistTemplateResponse(
         String description,
         Integer versionNo,
         @Nullable @Schema(nullable = true) Instant updatedAt,
-        long itemCount) {
+        long itemCount,
+        @Nullable @Schema(nullable = true) ReviewFeedbackResponse latestReviewFeedback) {
+
+    public AdminChecklistTemplateResponse(
+            UUID id,
+            String name,
+            ContentStage stage,
+            ChecklistTemplateStatus status,
+            String description,
+            Integer versionNo,
+            Instant updatedAt,
+            long itemCount) {
+        this(id, name, stage, status, description, versionNo, updatedAt, itemCount, null);
+    }
 }

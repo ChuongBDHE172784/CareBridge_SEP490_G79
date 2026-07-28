@@ -4,6 +4,7 @@ import static com.carebridge.backend.content.ChecklistTemplateTestFactory.ADMIN_
 import static com.carebridge.backend.content.ChecklistTemplateTestFactory.TEMPLATE_ID;
 import static com.carebridge.backend.content.ChecklistTemplateTestFactory.makeTemplate;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -21,6 +22,7 @@ import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
 import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
 import com.carebridge.backend.content.service.ChecklistTemplateApprovalServiceImpl;
+import com.carebridge.backend.notification.service.ContentReviewNotificationService;
 import java.security.Principal;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -41,6 +43,9 @@ class ChecklistTemplateApprovalServiceImplTest {
     @Mock
     private AuditService auditService;
 
+    @Mock
+    private ContentReviewNotificationService contentReviewNotificationService;
+
     @InjectMocks
     private ChecklistTemplateApprovalServiceImpl service;
 
@@ -50,6 +55,10 @@ class ChecklistTemplateApprovalServiceImplTest {
     @Test
     void decide_approvePendingReview_transitionsToApproved() {
         ChecklistTemplate template = makeTemplate(t -> t.setStatus(ChecklistTemplateStatus.PENDING_REVIEW));
+        template.setRevisionReason("Phản hồi cũ");
+        template.setRevisionRequestedAt(java.time.Instant.now());
+        template.setRevisionRequestedBy(ADMIN_ID);
+        template.setRevisionRequestedVersion(1);
         when(checklistTemplateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(template));
         when(checklistTemplateRepository.save(any(ChecklistTemplate.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -57,6 +66,10 @@ class ChecklistTemplateApprovalServiceImplTest {
                 TEMPLATE_ID, new ContentDecisionRequest(ContentDecision.APPROVE, null), principal);
 
         assertEquals(ChecklistTemplateStatus.APPROVED, response.newStatus());
+        assertEquals(null, template.getRevisionReason());
+        assertEquals(null, template.getRevisionRequestedAt());
+        assertEquals(null, template.getRevisionRequestedBy());
+        assertEquals(null, template.getRevisionRequestedVersion());
         verify(auditService).log(eq(AuditAction.CHECKLIST_TEMPLATE_DECIDED), eq(ADMIN_ID), eq("ChecklistTemplate"), any(), any());
     }
 
@@ -64,6 +77,7 @@ class ChecklistTemplateApprovalServiceImplTest {
     @Test
     void decide_rejectPendingReview_transitionsToDraftWithReason() {
         ChecklistTemplate template = makeTemplate(t -> t.setStatus(ChecklistTemplateStatus.PENDING_REVIEW));
+        template.setAuthorUserId(ADMIN_ID);
         when(checklistTemplateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(template));
         when(checklistTemplateRepository.save(any(ChecklistTemplate.class))).thenAnswer(inv -> inv.getArgument(0));
 
@@ -72,6 +86,13 @@ class ChecklistTemplateApprovalServiceImplTest {
 
         assertEquals(ChecklistTemplateStatus.DRAFT, response.newStatus());
         assertEquals("Thiếu mục quan trọng", response.reason());
+        assertEquals("Thiếu mục quan trọng", template.getRevisionReason());
+        assertEquals(ADMIN_ID, template.getRevisionRequestedBy());
+        assertEquals(template.getVersionNo(), template.getRevisionRequestedVersion());
+        assertNotNull(template.getRevisionRequestedAt());
+        verify(contentReviewNotificationService).notifyReturned(
+                eq(ADMIN_ID), eq(TEMPLATE_ID), eq("CHECKLIST"), eq(template.getName()),
+                eq("Thiếu mục quan trọng"), eq("/content/checklists/" + TEMPLATE_ID + "/edit"));
     }
 
     // CHKTPL-TC-012a

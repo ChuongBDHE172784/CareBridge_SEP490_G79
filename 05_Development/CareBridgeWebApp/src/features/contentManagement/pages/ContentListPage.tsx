@@ -1,16 +1,19 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchStaffContentList } from '../services/contentApi';
-import type { ContentListItem, ContentSearchItem, ContentType } from '../models/content';
-import { TYPE_LABELS } from '../models/content';
+import type { ContentDetail, ContentType } from '../models/content';
+import { STATUS_LABELS, TYPE_LABELS } from '../models/content';
+import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
 
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
 /* ------------------------------------------------------------------ */
-function statusBadge(publishedAt: string | null): { label: string; className: string } {
-  if (publishedAt) return { label: 'Đã xuất bản', className: 'bg-[#E6F4EA] text-[#137333]' };
-  return { label: 'Nháp', className: 'bg-[#F5F5F5] text-[#616161]' };
+function statusBadge(item: ContentDetail): { label: string; className: string } {
+  if (item.latestReviewFeedback) return { label: 'Cần chỉnh sửa', className: 'bg-error-container text-error' };
+  if (item.status === 'APPROVED') return { label: STATUS_LABELS.APPROVED, className: 'bg-[#E6F4EA] text-[#137333]' };
+  if (item.status === 'PENDING_REVIEW') return { label: STATUS_LABELS.PENDING_REVIEW, className: 'bg-[#FFF3E0] text-[#E65100]' };
+  return { label: STATUS_LABELS[item.status], className: 'bg-[#F5F5F5] text-[#616161]' };
 }
 
 function typeIcon(type: ContentType): string {
@@ -35,7 +38,7 @@ function timeAgo(iso: string | null): string {
 /* ------------------------------------------------------------------ */
 export default function ContentListPage() {
   const navigate = useNavigate();
-  const [items, setItems] = useState<(ContentListItem | ContentSearchItem)[]>([]);
+  const [items, setItems] = useState<ContentDetail[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [pageSize] = useState(10);
@@ -43,6 +46,7 @@ export default function ContentListPage() {
   const [keyword, setKeyword] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -109,13 +113,39 @@ export default function ContentListPage() {
           <option value="CHECKLIST">Checklist</option>
         </select>
 
-        <button
-          onClick={() => navigate('/content/create')}
-          className="flex items-center gap-2 py-3 px-6 rounded-full bg-primary-container text-on-primary border-0 text-sm font-semibold cursor-pointer whitespace-nowrap"
-        >
-          <span className="material-symbols-outlined text-lg">add</span>
-          Tạo nội dung mới
-        </button>
+        <div className="relative">
+          <button
+            type="button"
+            onClick={() => setIsCreateMenuOpen((open) => !open)}
+            aria-haspopup="menu"
+            aria-expanded={isCreateMenuOpen}
+            className="flex items-center gap-2 py-3 px-6 rounded-full bg-primary text-on-primary border-0 text-sm font-semibold cursor-pointer whitespace-nowrap"
+          >
+            <span className="material-symbols-outlined text-lg">add</span>
+            Tạo nội dung mới
+            <span className="material-symbols-outlined text-lg">arrow_drop_down</span>
+          </button>
+          {isCreateMenuOpen && (
+            <div role="menu" className="absolute right-0 z-10 mt-2 w-52 overflow-hidden rounded-xl border border-outline-variant bg-surface py-1 shadow-lg">
+              {[
+                { label: 'Tạo bài viết', icon: 'article', path: '/content/articles/create' },
+                { label: 'Tạo FAQ', icon: 'quiz', path: '/content/faq/create' },
+                { label: 'Tạo checklist', icon: 'checklist', path: '/content/checklists/create' },
+              ].map((item) => (
+                <button
+                  key={item.path}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => navigate(item.path)}
+                  className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm text-on-surface hover:bg-surface-container-low"
+                >
+                  <span className="material-symbols-outlined text-lg text-primary">{item.icon}</span>
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Data table */}
@@ -134,7 +164,7 @@ export default function ContentListPage() {
               </thead>
               <tbody>
                 {items.map(item => {
-                  const status = statusBadge(item.publishedAt);
+                  const status = statusBadge(item);
                   return (
                     <tr
                       key={item.id}
@@ -142,6 +172,7 @@ export default function ContentListPage() {
                     >
                       <td className="py-3.5 px-2 max-w-[320px]">
                         <div className="font-semibold text-sm text-on-surface">{item.title}</div>
+                        <ReviewFeedbackNotice feedback={item.latestReviewFeedback} compact />
                         <div className="text-xs text-outline mt-0.5">Cập nhật: {timeAgo(item.publishedAt)}</div>
                       </td>
                       <td className="py-3.5 px-2">
@@ -205,7 +236,7 @@ export default function ContentListPage() {
                     <button
                       key={p}
                       onClick={() => setPage(p)}
-                      className={`w-9 h-9 rounded-full text-sm font-semibold cursor-pointer flex items-center justify-center ${page === p ? 'border-0 bg-primary-container text-on-primary' : 'border border-outline-variant bg-surface text-on-surface-variant'}`}
+                      className={`w-9 h-9 rounded-full text-sm font-semibold cursor-pointer flex items-center justify-center ${page === p ? 'border-0 bg-primary text-on-primary' : 'border border-outline-variant bg-surface text-on-surface-variant'}`}
                     >
                       {p + 1}
                     </button>

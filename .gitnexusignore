@@ -1,0 +1,7 @@
+# Generated/vendor artifacts that should not be parsed into the project graph.
+05_Development/CareBridgeMobileApp/ios/Pods/
+05_Development/CareBridgeMobileApp/build/
+05_Development/CareBridgeMobileApp/.dart_tool/
+05_Development/CareBridgeWebApp/node_modules/
+05_Development/CareBridgeWebApp/dist/
+05_Development/CareBridgeAPI/target/

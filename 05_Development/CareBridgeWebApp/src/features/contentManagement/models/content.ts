@@ -4,6 +4,13 @@ export type ContentStatus = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'ARCHIVED'
 export type ChecklistTemplateStatus = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'ARCHIVED';
 export type ContentDecision = 'APPROVE' | 'REJECT';
 
+export interface ReviewFeedback {
+  reason: string;
+  requestedAt: string | null;
+  requestedBy: string | null;
+  versionNo: number | null;
+}
+
 export interface ContentListItem {
   id: string;
   type: ContentType;
@@ -18,14 +25,18 @@ export interface ContentDetail {
   type: ContentType;
   title: string;
   body: string;
+  summary?: string | null;
   stage: ContentStage;
   topicId: string;
+  tagIds?: string[];
   version: number;
   publishedAt: string | null;
   status: ContentStatus;
   createdAt: string;
+  updatedAt?: string | null;
   sourceLabel?: string | null;
   sources?: ContentSource[];
+  latestReviewFeedback?: ReviewFeedback | null;
 }
 
 export interface ContentSource { title: string; url?: string; publisher?: string; }
@@ -46,6 +57,31 @@ export interface ChecklistTemplate {
   status: ContentStatus;
   description: string;
   items: ChecklistItem[];
+  latestReviewFeedback?: ReviewFeedback | null;
+}
+
+export interface ContentVersionSnapshot {
+  versionNo: number;
+  title: string;
+  stage: string | null;
+  status: string;
+  sourceSummary: string | null;
+  changedBy: string | null;
+  createdAt: string;
+}
+
+export interface ChecklistTemplateVersionSnapshot {
+  versionNo: number;
+  name: string;
+  stage: string | null;
+  status: string;
+  itemCount: number;
+  changedBy: string | null;
+  createdAt: string;
+}
+
+export interface AdminChecklistTemplateDetail extends ChecklistTemplate {
+  versionNo: number;
 }
 
 export interface ChecklistItem {
@@ -106,6 +142,7 @@ export interface AdminChecklistTemplate {
   versionNo: number;
   updatedAt: string | null;
   itemCount: number;
+  latestReviewFeedback?: ReviewFeedback | null;
 }
 
 export interface CommunityTopic {

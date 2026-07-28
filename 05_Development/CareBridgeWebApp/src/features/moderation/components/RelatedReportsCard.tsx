@@ -18,7 +18,7 @@ function formatDateTime(value: string): string {
 export default function RelatedReportsCard({ items, totalElements, page, size, loading, error, onPageChange }: RelatedReportsCardProps) {
   const hasNext = (page + 1) * size < totalElements;
   return (
-    <div className="bg-surface rounded-2xl p-5 shadow-md">
+    <div className="bg-surface rounded-2xl p-6 shadow-sm border border-surface-container-highest">
       <p className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-3">Lịch sử báo cáo</p>
       {loading ? <p className="text-sm text-outline">Đang tải lịch sử báo cáo...</p>
         : error ? <p className="text-sm text-error">Không tải được lịch sử báo cáo.</p>

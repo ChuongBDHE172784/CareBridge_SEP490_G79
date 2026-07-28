@@ -7,7 +7,10 @@ import type {
   ClaimReportResult,
   ModerationQueuePage,
   RelatedReportPage,
+  AccountViolationHistoryItem,
   AccountViolationHistoryPage,
+  AccountViolationSummaryItem,
+  AccountViolationSummaryPage,
   ModerateContentResult,
   ModerationActionType,
   ModerationContentDetail,
@@ -18,18 +21,91 @@ import type {
   ReportStatus,
   ResolutionOutcome,
   ResolveReportResult,
-  RevertReportResult,
   UndoModerationActionResult,
 } from '../models/moderation';
+
+function isAccountViolationSummaryItem(item: AccountViolationSummaryItem | AccountViolationHistoryItem): item is AccountViolationSummaryItem {
+  return 'latestAction' in item;
+}
+
+function toAccountViolationSummaryPage(
+  response: AccountViolationSummaryPage | AccountViolationHistoryPage,
+): AccountViolationSummaryPage {
+  if (response.content.every(isAccountViolationSummaryItem)) {
+    return response as AccountViolationSummaryPage;
+  }
+
+  // During a rolling local restart, an older API can briefly return the previous flat action feed.
+  // Group the loaded page so the moderator UI remains usable until the updated API is available.
+  const grouped = new Map<string, AccountViolationSummaryItem>();
+  for (const action of response.content as AccountViolationHistoryItem[]) {
+    const existing = grouped.get(action.targetUserId);
+    if (!existing) {
+      grouped.set(action.targetUserId, {
+        targetUserId: action.targetUserId,
+        targetUserName: action.targetUserName,
+        violationCount: 1,
+        latestAction: action,
+      });
+    } else {
+      existing.violationCount += 1;
+    }
+  }
+
+  return {
+    content: [...grouped.values()],
+    totalElements: grouped.size,
+    page: response.page,
+    size: response.size,
+  };
+}
 
 export async function fetchAccountViolationHistory(params: {
   page?: number;
   size?: number;
-} = {}): Promise<AccountViolationHistoryPage> {
-  const res = await apiClient.get<AccountViolationHistoryPage>('/api/v1/admin/moderation/account-history', {
+} = {}): Promise<AccountViolationSummaryPage> {
+  const res = await apiClient.get<AccountViolationSummaryPage | AccountViolationHistoryPage>('/api/v1/admin/moderation/account-history', {
     params: { page: params.page ?? 0, size: params.size ?? 20 },
   });
-  return res.data;
+  return toAccountViolationSummaryPage(res.data);
+}
+
+export async function fetchAccountViolationDetail(
+  targetUserId: string,
+  params: { page?: number; size?: number } = {},
+): Promise<AccountViolationHistoryPage> {
+  try {
+    const res = await apiClient.get<AccountViolationHistoryPage>(
+      `/api/v1/admin/moderation/account-history/${targetUserId}`,
+      { params: { page: params.page ?? 0, size: params.size ?? 20 } },
+    );
+    return res.data;
+  } catch (error) {
+    const status = (error as { response?: { status?: number } })?.response?.status;
+    if (status !== 404) throw error;
+
+    // Keep local development usable while an older backend process is still serving the flat feed.
+    const legacy = await apiClient.get<AccountViolationHistoryPage | AccountViolationSummaryPage>(
+      '/api/v1/admin/moderation/account-history',
+      { params: { page: 0, size: 50 } },
+    );
+    if (legacy.data.content.every(isAccountViolationSummaryItem)) throw error;
+
+    const firstPage = legacy.data as AccountViolationHistoryPage;
+    const pageCount = Math.ceil(firstPage.totalElements / 50);
+    const remainingPages = pageCount > 1
+      ? await Promise.all(Array.from({ length: pageCount - 1 }, (_, index) => apiClient.get<AccountViolationHistoryPage>(
+          '/api/v1/admin/moderation/account-history',
+          { params: { page: index + 1, size: 50 } },
+        )))
+      : [];
+    const actions = [
+      ...firstPage.content,
+      ...remainingPages.flatMap((response) => response.data.content),
+    ].filter((action) => action.targetUserId === targetUserId);
+
+    return { content: actions, totalElements: actions.length, page: 0, size: actions.length || 20 };
+  }
 }
 
 export async function fetchRelatedReports(reportId: string, params: {
@@ -190,17 +266,6 @@ export async function fetchContentDetail(
 export async function undoModerationAction(actionId: string): Promise<UndoModerationActionResult> {
   const res = await apiClient.post<UndoModerationActionResult>(
     `/api/v1/admin/moderation/actions/${actionId}/undo`,
-  );
-  return res.data;
-}
-
-// CB-MOD-IMP-015: reverts a RESOLVED/DISMISSED report back to PENDING. Fully separate from
-// undoModerationAction() — this endpoint never rejects on MOD-027 (report-originated actions are
-// exactly what it targets).
-export async function revertReport(reportId: string, reason?: string): Promise<RevertReportResult> {
-  const res = await apiClient.post<RevertReportResult>(
-    `/api/v1/admin/moderation/reports/${reportId}/revert`,
-    { reason },
   );
   return res.data;
 }

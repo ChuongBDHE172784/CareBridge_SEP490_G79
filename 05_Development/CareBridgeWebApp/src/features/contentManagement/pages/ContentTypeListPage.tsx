@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { fetchStaffContentList, archiveContent } from '../services/contentApi';
 import type { ContentDetail, ContentStage, ContentStatus, ContentType } from '../models/content';
 import { STAGE_LABELS, STATUS_LABELS } from '../models/content';
+import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -14,7 +15,8 @@ const STATUS_TABS: { key: string; label: string; status?: ContentStatus }[] = [
   { key: 'draft', label: 'Bản nháp', status: 'DRAFT' },
 ];
 
-function statusBadgeClass(status: ContentStatus): string {
+function statusBadgeClass(status: ContentStatus, returned: boolean): string {
+  if (returned) return 'bg-error-container text-error';
   if (status === 'APPROVED') return 'bg-[#E6F4EA] text-[#137333]';
   if (status === 'PENDING_REVIEW') return 'bg-[#FFF3E0] text-[#E65100]';
   if (status === 'ARCHIVED') return 'bg-[#F5F5F5] text-[#616161]';
@@ -45,6 +47,7 @@ interface ContentTypeListPageProps {
 
 export default function ContentTypeListPage({ type, title, subtitle, createLabel, emptyLabel }: ContentTypeListPageProps) {
   const navigate = useNavigate();
+  const createPath = type === 'ARTICLE' ? '/content/articles/create' : '/content/faq/create';
   const [items, setItems] = useState<ContentDetail[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
@@ -116,8 +119,8 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
           <p className="text-on-surface-variant text-sm mt-1">{subtitle}</p>
         </div>
         <button
-          onClick={() => navigate(`/content/create?type=${type}`)}
-          className="flex items-center gap-2 py-3 px-6 rounded-full bg-primary-container text-on-primary border-0 text-sm font-semibold cursor-pointer whitespace-nowrap"
+          onClick={() => navigate(createPath)}
+          className="flex items-center gap-2 py-3 px-6 rounded-full bg-primary text-on-primary border-0 text-sm font-semibold cursor-pointer whitespace-nowrap"
         >
           <span className="material-symbols-outlined text-lg">add</span>
           {createLabel}
@@ -183,12 +186,13 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
                 {items.map(item => (
                   <tr key={item.id} className="border-b border-surface-container-highest hover:bg-surface-bright">
                     <td className="py-3.5 px-2 max-w-[400px]">
-                      <div className="font-semibold text-sm text-on-surface">{item.title}</div>
+                        <div className="font-semibold text-sm text-on-surface">{item.title}</div>
+                        <ReviewFeedbackNotice feedback={item.latestReviewFeedback} compact />
                     </td>
                     <td className="py-3.5 px-2 text-[13px] text-on-surface-variant">{STAGE_LABELS[item.stage]}</td>
                     <td className="py-3.5 px-2">
-                      <span className={`py-1 px-3.5 rounded-full text-xs font-semibold ${statusBadgeClass(item.status)}`}>
-                        {STATUS_LABELS[item.status]}
+                      <span className={`py-1 px-3.5 rounded-full text-xs font-semibold ${statusBadgeClass(item.status, Boolean(item.latestReviewFeedback))}`}>
+                        {item.latestReviewFeedback ? 'Cần chỉnh sửa' : STATUS_LABELS[item.status]}
                       </span>
                     </td>
                     <td className="py-3.5 px-2 text-[13px] text-outline">{timeAgo(item.publishedAt)}</td>
@@ -249,7 +253,7 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
                     <button
                       key={p}
                       onClick={() => setPage(p)}
-                      className={`w-9 h-9 rounded-full text-sm font-semibold cursor-pointer flex items-center justify-center ${page === p ? 'border-0 bg-primary-container text-on-primary' : 'border border-outline-variant bg-surface text-on-surface-variant'}`}
+                      className={`w-9 h-9 rounded-full text-sm font-semibold cursor-pointer flex items-center justify-center ${page === p ? 'border-0 bg-primary text-on-primary' : 'border border-outline-variant bg-surface text-on-surface-variant'}`}
                     >
                       {p + 1}
                     </button>

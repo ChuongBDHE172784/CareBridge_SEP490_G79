@@ -1,9 +1,11 @@
 package com.carebridge.backend.moderation;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -12,6 +14,7 @@ import com.carebridge.backend.content.controller.ModerationController;
 import com.carebridge.backend.content.dto.response.ModerationQueueItemResponse;
 import com.carebridge.backend.content.dto.response.ModerationQueueResponse;
 import com.carebridge.backend.content.dto.response.AccountViolationHistoryResponse;
+import com.carebridge.backend.content.dto.response.AccountViolationSummaryResponse;
 import com.carebridge.backend.content.dto.response.RelatedReportPageResponse;
 import com.carebridge.backend.content.dto.response.PendingContentItemResponse;
 import com.carebridge.backend.content.dto.response.PendingContentQueueResponse;
@@ -159,9 +162,22 @@ class ModerationControllerTest {
     @WithMockUser(username = "1", roles = "MODERATOR")
     void getAccountViolationHistory_validRequestAsModerator_shouldReturn200() throws Exception {
         when(moderationService.getAccountViolationHistory(any(Integer.class), any(Integer.class), any()))
-                .thenReturn(new AccountViolationHistoryResponse(List.of(), 0, 0, 20));
+                .thenReturn(new AccountViolationSummaryResponse(List.of(), 0, 0, 20));
 
         mockMvc.perform(get(ACCOUNT_HISTORY_URL + "?page=0&size=20").with(csrf()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.totalElements").value(0));
+    }
+
+    @Test
+    @WithMockUser(username = "1", roles = "MODERATOR")
+    void getAccountViolationDetail_validRequestAsModerator_shouldReturn200() throws Exception {
+        UUID targetUserId = UUID.randomUUID();
+        when(moderationService.getAccountViolationHistory(eq(targetUserId), any(Integer.class), any(Integer.class), any()))
+                .thenReturn(new AccountViolationHistoryResponse(List.of(), 0, 0, 20));
+
+        mockMvc.perform(get(ACCOUNT_HISTORY_URL + "/" + targetUserId + "?page=0&size=20").with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray())
                 .andExpect(jsonPath("$.totalElements").value(0));
@@ -200,5 +216,12 @@ class ModerationControllerTest {
                 .andExpect(jsonPath("$.page").value(0))
                 .andExpect(jsonPath("$.size").value(20))
                 .andExpect(jsonPath("$.content[0].targetType").value("QUESTION"));
+    }
+
+    @Test
+    @WithMockUser(username = "1", roles = "MODERATOR")
+    void revertReport_removedEndpoint_shouldReturn404() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/moderation/reports/" + UUID.randomUUID() + "/revert").with(csrf()))
+                .andExpect(status().isNotFound());
     }
 }

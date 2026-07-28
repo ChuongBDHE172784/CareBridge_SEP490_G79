@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import ModPortalSidebar from '../components/ModPortalSidebar';
 import ConfirmDialog from '../../../shared/components/ConfirmDialog';
-import { claimReport, fetchAiAssessment, fetchModerationQueue, fetchRelatedReports, releaseReport, resolveReport, revertReport } from '../services/moderationApi';
+import { claimReport, fetchAiAssessment, fetchModerationQueue, fetchRelatedReports, releaseReport, resolveReport } from '../services/moderationApi';
 import type { AiAssessment, ModerationQueueItem } from '../models/moderation';
 import type { RelatedReportItem } from '../models/moderation';
 import { formatReportReason, REPORT_SOURCE_LABELS, REPORT_STATUS_LABELS, TARGET_TYPE_LABELS, canEnforceAccount, canHideTarget } from '../models/moderation';
@@ -42,9 +42,6 @@ export default function ContentReportDetailPage() {
   const [relatedLoading, setRelatedLoading] = useState(false);
   const [relatedError, setRelatedError] = useState(false);
 
-  const [revertTarget, setRevertTarget] = useState<ModerationQueueItem | null>(null);
-  const [revertSubmitting, setRevertSubmitting] = useState(false);
-  const [revertError, setRevertError] = useState('');
   const currentUserId = useAuthStore((state) => state.user?.id ?? null);
   const [assessment, setAssessment] = useState<AiAssessment | null>(null);
   const [claimBusy, setClaimBusy] = useState(false);
@@ -168,28 +165,11 @@ export default function ContentReportDetailPage() {
     }
   };
 
-  // CB-MOD-IMP-015 follow-up: a RESOLVED/DISMISSED report reopened from the "Đã xử lý" tab has no
-  // resolve action to offer — reverting it back to PENDING is the only valid action here.
-  const confirmRevert = async () => {
-    if (!revertTarget) return;
-    setRevertSubmitting(true);
-    setRevertError('');
-    try {
-      await revertReport(revertTarget.id);
-      navigate('/moderator/reports');
-    } catch (err: unknown) {
-      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setRevertError(message || 'Hoàn tác thất bại, vui lòng thử lại.');
-    } finally {
-      setRevertSubmitting(false);
-    }
-  };
-
   return (
     <div className="portal-page">
       <ModPortalSidebar />
-      <main className="portal-content">
-        <div className="portal-contained">
+      <main className="portal-content font-sans">
+        <div className="p-8">
         {isLoading ? (
           <div className="portal-empty">Đang tải...</div>
         ) : error || !item ? (
@@ -198,40 +178,41 @@ export default function ContentReportDetailPage() {
           </div>
         ) : (
           <>
-            <div className="portal-header">
+            <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
                 <div className="mb-2 flex items-center gap-3">
-                  <span className="rounded-md bg-error-container px-2.5 py-1 text-xs font-semibold text-error">
+                  <span className="rounded-full bg-error-container px-3 py-1 text-xs font-semibold text-error">
                     {formatReportReason(item.reportReason)}
                   </span>
                   {item.reportSource === 'AUTOMATED' && (
-                    <span className="inline-flex items-center gap-1 rounded-md bg-secondary-container px-2 py-0.5 text-xs font-semibold text-on-secondary-container">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-secondary-container px-3 py-1 text-xs font-semibold text-on-secondary-container">
                       <span className="material-symbols-outlined text-sm leading-none">smart_toy</span>
                       {REPORT_SOURCE_LABELS.AUTOMATED}
                     </span>
                   )}
-                  <span className="text-xs text-outline">ID: #{item.id.slice(0, 8).toUpperCase()}</span>
+                  <span className="text-xs font-mono text-outline">ID: #{item.id.slice(0, 8).toUpperCase()}</span>
                 </div>
-                <h1 className="portal-title">Chi tiết báo cáo</h1>
+                <h1 className="text-[26px] font-bold text-on-surface m-0">Chi tiết báo cáo vi phạm</h1>
               </div>
               <button
+                type="button"
                 onClick={() => navigate('/moderator/reports')}
-                className="portal-secondary-button"
+                className="inline-flex items-center gap-2 py-2.5 px-5 rounded-full bg-surface border border-outline-variant text-on-surface-variant text-sm font-semibold cursor-pointer hover:bg-surface-container-low self-start md:self-auto"
               >
                 <span className="material-symbols-outlined text-lg">arrow_back</span>
                 Trở lại danh sách
               </button>
             </div>
 
-            <div className="grid gap-5 lg:grid-cols-[1fr_360px]">
+            <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
               <div>
-                <div className="portal-card-padded mb-5">
+                <div className="bg-surface rounded-2xl p-6 shadow-sm border border-surface-container-highest mb-6">
                   <div className="flex items-center gap-2 mb-3">
                     <span className="material-symbols-outlined text-primary text-xl">flag</span>
                     <h2 className="text-base font-bold text-on-surface m-0">Lý do báo cáo</h2>
                   </div>
                   <p className="text-sm text-on-surface-variant mb-4">{formatReportReason(item.reportReason)}</p>
-                  <div className="rounded-md bg-surface-container-low p-4">
+                  <div className="rounded-xl bg-surface-container-low p-4">
                     <p className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-1">
                       Chi tiết từ người dùng
                     </p>
@@ -247,12 +228,12 @@ export default function ContentReportDetailPage() {
                   </div>
                 </div>
 
-                <div className="portal-card-padded">
+                <div className="bg-surface rounded-2xl p-6 shadow-sm border border-surface-container-highest">
                   <div className="flex items-center gap-2 mb-3">
                     <span className="material-symbols-outlined text-primary text-xl">article</span>
                     <h2 className="text-base font-bold text-on-surface m-0">Nội dung bị báo cáo</h2>
                   </div>
-                  <div className="rounded-md border border-outline-variant bg-surface-container-low p-4">
+                  <div className="rounded-xl border border-outline-variant bg-surface-container-low p-4">
                     <p className="text-sm text-outline mb-1">{TARGET_TYPE_LABELS[item.targetType]}</p>
                     <p className="text-[15px] leading-7 text-on-surface whitespace-pre-wrap">{item.contentPreview}</p>
                   </div>
@@ -265,7 +246,7 @@ export default function ContentReportDetailPage() {
                     type="button"
                     disabled={claimBusy}
                     onClick={handleClaim}
-                    className="flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary text-sm font-semibold text-on-primary disabled:opacity-60"
+                    className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-primary text-sm font-semibold text-on-primary shadow-sm hover:opacity-95 disabled:opacity-60 cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-lg">assignment_ind</span>
                     {claimBusy ? 'Đang nhận...' : 'Nhận xử lý báo cáo này'}
@@ -276,14 +257,14 @@ export default function ContentReportDetailPage() {
                     type="button"
                     disabled={claimBusy}
                     onClick={handleRelease}
-                    className="flex h-10 w-full items-center justify-center gap-2 rounded-md bg-surface-container-highest text-sm font-semibold text-on-surface disabled:opacity-60"
+                    className="flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-surface-container-highest text-sm font-semibold text-on-surface hover:bg-surface-container-high disabled:opacity-60 cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-lg">assignment_return</span>
                     {claimBusy ? 'Đang trả...' : 'Trả lại hàng đợi'}
                   </button>
                 )}
                 {claimedByOther ? (
-                  <div className="portal-card-padded">
+                  <div className="bg-surface rounded-2xl p-6 shadow-sm border border-surface-container-highest">
                     <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.05em] text-outline">Đang xem xét</p>
                     <p className="m-0 text-sm text-on-surface-variant">
                       Báo cáo này đang được kiểm duyệt viên khác xem xét
@@ -291,11 +272,11 @@ export default function ContentReportDetailPage() {
                     </p>
                   </div>
                 ) : item.status !== 'PENDING' && item.status !== 'IN_REVIEW' ? (
-                  <div className="portal-card-padded">
+                  <div className="bg-surface rounded-2xl p-6 shadow-sm border border-surface-container-highest">
                     <p className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-3">
                       Đã xử lý
                     </p>
-                    <div className="rounded-md bg-surface-container-low p-4 text-sm text-on-surface-variant">
+                    <div className="rounded-xl bg-surface-container-low p-4 text-sm text-on-surface-variant">
                       <p className="m-0">
                         Trạng thái: <strong className="text-on-surface">{REPORT_STATUS_LABELS[item.status]}</strong>
                       </p>
@@ -305,21 +286,10 @@ export default function ContentReportDetailPage() {
                       {item.assignedModeratorId && (
                         <p className="m-0 mt-1 text-xs">Người xử lý (ID): {item.assignedModeratorId.slice(0, 8).toUpperCase()}</p>
                       )}
-                      {item.revertedAt && (
-                        <p className="m-0 mt-1 text-xs">Đã từng hoàn tác lúc: {formatDateTime(item.revertedAt)}</p>
-                      )}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => { setRevertError(''); setRevertTarget(item); }}
-                      className="mt-4 flex h-9 w-full items-center justify-center gap-2 rounded-md border-0 bg-surface-container-highest px-3.5 text-xs font-semibold text-on-surface"
-                    >
-                      <span className="material-symbols-outlined text-lg">undo</span>
-                      Hoàn tác báo cáo
-                    </button>
                   </div>
                 ) : (
-                <div className="portal-card-padded">
+                <div className="bg-surface rounded-2xl p-6 shadow-sm border border-surface-container-highest">
                   <p className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-3">
                     Xử lý vi phạm
                   </p>
@@ -461,18 +431,6 @@ export default function ContentReportDetailPage() {
         onCancel={() => setConfirmingOutcome(null)}
       />
 
-      <ConfirmDialog
-        open={revertTarget !== null}
-        title="Hoàn tác báo cáo này?"
-        description="Báo cáo sẽ quay lại hàng đợi để xử lý lại."
-        icon="undo"
-        tone="default"
-        confirmLabel="Hoàn tác"
-        submitting={revertSubmitting}
-        errorText={revertError}
-        onConfirm={confirmRevert}
-        onCancel={() => setRevertTarget(null)}
-      />
     </div>
   );
 }

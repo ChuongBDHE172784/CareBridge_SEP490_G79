@@ -1,9 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fetchStaffContentDetail, updateContent, uploadContentImage } from '../services/contentApi';
-import type { ContentDetail } from '../models/content';
+import { fetchStaffContentDetail, fetchTags, updateContent, uploadContentImage } from '../services/contentApi';
+import type { CommunityTopic, ContentDetail } from '../models/content';
 import { STAGE_LABELS, TYPE_LABELS } from '../models/content';
 import RichTextEditor from '../components/RichTextEditor';
+import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
 
 export default function EditContentPage() {
   const { id } = useParams<{ id: string }>();
@@ -12,6 +13,9 @@ export default function EditContentPage() {
   const [detail, setDetail] = useState<ContentDetail | null>(null);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [summary, setSummary] = useState('');
+  const [tags, setTags] = useState<CommunityTopic[]>([]);
+  const [tagIds, setTagIds] = useState<string[]>([]);
   const [sourceTitle, setSourceTitle] = useState('');
   const [sourceUrl, setSourceUrl] = useState('');
   const [changeSummary, setChangeSummary] = useState('');
@@ -25,10 +29,13 @@ export default function EditContentPage() {
     setIsLoading(true);
     setLoadError('');
     try {
-      const data = await fetchStaffContentDetail(id);
+      const [data, loadedTags] = await Promise.all([fetchStaffContentDetail(id), fetchTags()]);
       setDetail(data);
       setTitle(data.title);
       setBody(data.body);
+      setSummary(data.summary ?? '');
+      setTags(loadedTags);
+      setTagIds(data.tagIds ?? []);
       setSourceTitle(data.sources?.[0]?.title ?? '');
       setSourceUrl(data.sources?.[0]?.url ?? '');
     } catch {
@@ -50,8 +57,10 @@ export default function EditContentPage() {
       await updateContent(id, {
         title: title.trim(),
         body,
+        summary: summary.trim() || undefined,
         stage: detail.stage,
         topicId: detail.topicId || undefined,
+        tagIds,
         status,
         sourceLabel: detail.sourceLabel || undefined,
         sources: sourceTitle.trim() ? [{ title: sourceTitle.trim(), url: sourceUrl.trim() || undefined }] : undefined,
@@ -123,6 +132,7 @@ export default function EditContentPage() {
       </div>
 
       {submitError && <div className="bg-error-container rounded-2xl p-4 mb-4 text-error text-sm">{submitError}</div>}
+      <ReviewFeedbackNotice feedback={detail.latestReviewFeedback} />
 
       <div className="grid grid-cols-[1fr_320px] gap-6">
         <div className="flex flex-col gap-5">
@@ -139,6 +149,17 @@ export default function EditContentPage() {
               onChange={(e) => setTitle(e.target.value)}
               className="w-full py-3 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface font-sans mb-4"
             />
+            <label className="block text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-1.5">
+              Tóm tắt ngắn
+            </label>
+            <textarea
+              value={summary}
+              onChange={(e) => setSummary(e.target.value.slice(0, 150))}
+              rows={2}
+              placeholder="Đoạn mô tả ngắn hiển thị trên thẻ nội dung..."
+              className="w-full py-3 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface font-sans resize-none mb-1"
+            />
+            <p className="text-right text-xs text-outline mb-4">{summary.length} / 150</p>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-1.5">
@@ -157,6 +178,18 @@ export default function EditContentPage() {
                 </div>
               </div>
             </div>
+            <label className="block text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mt-4 mb-1.5">
+              Thẻ tag
+            </label>
+            <select
+              multiple
+              value={tagIds}
+              onChange={(e) => setTagIds(Array.from(e.currentTarget.selectedOptions, (option) => option.value))}
+              className="w-full min-h-28 py-3 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface font-sans"
+            >
+              {tags.map((tag) => <option key={tag.id} value={tag.id}>{tag.name}</option>)}
+            </select>
+            <p className="text-[11px] text-outline mt-1">Giữ Ctrl/Cmd để chọn nhiều tag.</p>
           </div>
 
           <div className="bg-surface rounded-2xl p-6 shadow-md">

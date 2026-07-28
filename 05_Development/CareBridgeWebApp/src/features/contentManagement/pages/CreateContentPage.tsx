@@ -1,16 +1,20 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { createContent, fetchTopics, updateContent, uploadContentImage } from '../services/contentApi';
+import { useNavigate } from 'react-router-dom';
+import { createContent, fetchTags, fetchTopics, updateContent, uploadContentImage } from '../services/contentApi';
 import type { CommunityTopic, ContentStage, ContentType } from '../models/content';
 import { TYPE_LABELS, STAGE_LABELS } from '../models/content';
 import RichTextEditor from '../components/RichTextEditor';
 import { isRichTextEmpty } from '../components/richTextUtils';
 
-export default function CreateContentPage() {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+type CreatableContentType = Exclude<ContentType, 'CHECKLIST'>;
 
-  const [type, setType] = useState<ContentType | ''>((searchParams.get('type') as ContentType) || '');
+interface CreateContentPageProps {
+  contentType: CreatableContentType;
+}
+
+export default function CreateContentPage({ contentType }: CreateContentPageProps) {
+  const navigate = useNavigate();
+
   const [stage, setStage] = useState<ContentStage | ''>('');
   const [topicId, setTopicId] = useState('');
   const [title, setTitle] = useState('');
@@ -20,35 +24,56 @@ export default function CreateContentPage() {
   const [sourceUrl, setSourceUrl] = useState('');
   const [sourcePublisher, setSourcePublisher] = useState('');
   const [topics, setTopics] = useState<CommunityTopic[]>([]);
+  const [tags, setTags] = useState<CommunityTopic[]>([]);
+  const [tagIds, setTagIds] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState<'draft' | 'submit' | null>(null);
   const [error, setError] = useState('');
   const [created, setCreated] = useState<{ id: string; title: string; sentForApproval: boolean } | null>(null);
 
   useEffect(() => {
-    fetchTopics().then(setTopics).catch(() => setTopics([]));
+    Promise.all([fetchTopics(), fetchTags()])
+      .then(([loadedTopics, loadedTags]) => {
+        setTopics(loadedTopics);
+        setTags(loadedTags);
+      })
+      .catch(() => {
+        setTopics([]);
+        setTags([]);
+      });
   }, []);
 
-  const isValid = title.trim().length > 0 && !isRichTextEmpty(body) && type !== '' && stage !== '';
+  const contentTypeLabel = TYPE_LABELS[contentType];
+  const isValid = title.trim().length > 0 && !isRichTextEmpty(body) && stage !== '';
+
+  const toggleTag = (tagId: string) => {
+    setTagIds((selected) => selected.includes(tagId)
+      ? selected.filter((id) => id !== tagId)
+      : [...selected, tagId]);
+  };
 
   const submit = useCallback(async (sendForApproval: boolean) => {
-    if (title.trim().length === 0 || isRichTextEmpty(body) || type === '' || stage === '') return;
+    if (title.trim().length === 0 || isRichTextEmpty(body) || stage === '') return;
     setSubmitting(sendForApproval ? 'submit' : 'draft');
     setError('');
     try {
       const result = await createContent({
-        type,
+        type: contentType,
         title: title.trim(),
         body,
+        summary: summary.trim() || undefined,
         stage,
         topicId: topicId || undefined,
+        tagIds,
         sources: sourceLabel.trim() ? [{ title: sourceLabel.trim(), url: sourceUrl.trim() || undefined, publisher: sourcePublisher.trim() || undefined }] : undefined,
       });
       if (sendForApproval || sourceLabel.trim()) {
         await updateContent(result.id, {
           title: title.trim(),
           body,
+          summary: summary.trim() || undefined,
           stage,
           topicId: topicId || undefined,
+          tagIds,
           status: sendForApproval ? 'PENDING_REVIEW' : 'DRAFT',
           sourceLabel: sourceLabel.trim() || undefined,
           sources: sourceLabel.trim() ? [{ title: sourceLabel.trim(), url: sourceUrl.trim() || undefined, publisher: sourcePublisher.trim() || undefined }] : undefined,
@@ -60,14 +85,14 @@ export default function CreateContentPage() {
     } finally {
       setSubmitting(null);
     }
-  }, [type, stage, title, body, topicId, sourceLabel, sourceUrl, sourcePublisher]);
+  }, [contentType, stage, title, body, topicId, tagIds, sourceLabel, sourceUrl, sourcePublisher]);
 
   if (created) {
     return (
       <div className="p-8 font-sans max-w-[700px]">
         <div className="bg-surface rounded-2xl p-8 shadow-md text-center">
           <span className="material-symbols-outlined text-primary text-5xl mb-3">check_circle</span>
-          <h1 className="text-xl font-bold text-on-surface mb-2">Đã tạo nội dung thành công</h1>
+          <h1 className="text-xl font-bold text-on-surface mb-2">Đã tạo {contentTypeLabel.toLowerCase()} thành công</h1>
           <p className="text-sm text-on-surface-variant mb-1">"{created.title}"</p>
           <p className="text-sm text-outline mb-6">
             Trạng thái: {created.sentForApproval ? 'Đang chờ phê duyệt' : 'Bản nháp'}. Nội dung chưa được duyệt sẽ
@@ -95,50 +120,66 @@ export default function CreateContentPage() {
   return (
     <div className="p-8 font-sans max-w-[900px]">
       <button
-        onClick={() => navigate(-1)}
+        onClick={() => navigate(contentType === 'ARTICLE' ? '/content/articles' : '/content/faq')}
         className="inline-flex items-center gap-1.5 py-2 px-5 rounded-full border border-outline-variant bg-transparent text-primary text-sm font-semibold cursor-pointer mb-6"
       >
         <span className="material-symbols-outlined text-lg">arrow_back</span>
         Quay lại
       </button>
 
-      <h1 className="text-[26px] font-bold text-on-surface m-0">Tạo nội dung mới</h1>
+      <h1 className="text-[26px] font-bold text-on-surface m-0">Tạo {contentTypeLabel} mới</h1>
       <p className="text-on-surface-variant text-sm mt-1 mb-6">
-        Điền thông tin chi tiết để thêm bài viết hoặc FAQ vào thư viện.
+        Điền thông tin chi tiết để thêm {contentTypeLabel.toLowerCase()} vào thư viện.
       </p>
 
       <div className="bg-surface rounded-2xl p-6 shadow-md mb-6">
-        <div className="grid grid-cols-2 gap-5 mb-5">
-          <div>
-            <label className="block text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-1.5">
-              Loại nội dung
-            </label>
-            <select
-              value={type}
-              onChange={(e) => setType(e.target.value as ContentType)}
-              className="w-full py-3 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface font-sans"
-            >
-              <option value="">Chọn loại nội dung</option>
-              {/* ADR-CHK-004 (UC-243): Checklist has its own dedicated CRUD at /content/checklists/create
-                  — creating a CHECKLIST-type ContentItem here would never be consumed by anything. */}
-              {Object.entries(TYPE_LABELS)
-                .filter(([k]) => k !== 'CHECKLIST')
-                .map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-            </select>
+        <div className="mb-5">
+          <label className="block text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-1.5">
+            Chủ đề / Danh mục
+          </label>
+          <select
+            value={topicId}
+            onChange={(e) => setTopicId(e.target.value)}
+            className="w-full py-3 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface font-sans"
+          >
+            <option value="">Chọn danh mục</option>
+            {topics.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>
+        </div>
+
+        <div className="mb-5">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">Thẻ tag</span>
+            <span className="text-xs text-primary font-semibold">Đã chọn {tagIds.length}</span>
           </div>
-          <div>
-            <label className="block text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-1.5">
-              Chủ đề / Danh mục
-            </label>
-            <select
-              value={topicId}
-              onChange={(e) => setTopicId(e.target.value)}
-              className="w-full py-3 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface font-sans"
-            >
-              <option value="">Chọn danh mục</option>
-              {topics.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-            </select>
-          </div>
+          {tags.length > 0 ? (
+            <div className="flex flex-wrap gap-2 rounded-2xl border border-outline-variant bg-surface p-3">
+              {tags.map((tag) => {
+                const selected = tagIds.includes(tag.id);
+                return (
+                  <label
+                    key={tag.id}
+                    className={`inline-flex cursor-pointer items-center gap-2 rounded-full border px-3 py-2 text-sm transition-colors ${
+                      selected ? 'border-primary bg-primary-container text-primary' : 'border-outline-variant bg-surface text-on-surface'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      onChange={() => toggleTag(tag.id)}
+                      className="h-4 w-4 accent-primary"
+                    />
+                    {tag.name}
+                  </label>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-outline-variant p-4 text-sm text-outline">
+              Chưa có tag hiển thị. Hãy tạo tag tại trang Quản lý Chủ đề &amp; Danh mục.
+            </div>
+          )}
+          <p className="text-[11px] text-outline mt-1">Có thể chọn nhiều tag cho cùng một {contentTypeLabel.toLowerCase()}.</p>
         </div>
 
         <div className="mb-5">
@@ -179,7 +220,7 @@ export default function CreateContentPage() {
             className="w-full py-3 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface font-sans resize-none"
           />
           <div className="flex justify-between mt-1">
-            <p className="text-[11px] text-outline">Trường này chưa được backend lưu trữ.</p>
+            <p className="text-[11px] text-outline">Hiển thị ngắn gọn trên thẻ nội dung.</p>
             <p className="text-xs text-outline">{summary.length} / 150</p>
           </div>
         </div>

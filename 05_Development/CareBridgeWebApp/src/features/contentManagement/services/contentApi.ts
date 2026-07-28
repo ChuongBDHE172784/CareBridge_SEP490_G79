@@ -5,6 +5,7 @@ import type {
   ContentDetail,
   ContentSearchItem,
   ChecklistTemplate,
+  AdminChecklistTemplateDetail,
   CreateChecklistTemplatePayload,
   UpdateChecklistTemplatePayload,
   CommunityTopic,
@@ -18,13 +19,14 @@ import type {
   UpdateCommunityTopicPayload,
   AdminChecklistTemplate,
   ChecklistTemplateStatus,
+  ContentVersionSnapshot,
+  ChecklistTemplateVersionSnapshot,
 } from '../models/content';
 
 export async function fetchContentList(params: {
   type?: ContentType;
   stage?: ContentStage;
   topicId?: string;
-  sources?: ContentSource[];
   page?: number;
   size?: number;
 }): Promise<PaginatedResponse<ContentListItem>> {
@@ -56,6 +58,11 @@ export async function fetchContentDetail(id: string): Promise<ContentDetail> {
 export async function fetchStaffContentDetail(id: string): Promise<ContentDetail> {
   const res = await apiClient.get<ApiResponse<ContentDetail>>(`/api/v1/admin/content/${id}`);
   return res.data.data;
+}
+
+export async function fetchContentVersionHistory(id: string): Promise<ContentVersionSnapshot[]> {
+  const res = await apiClient.get<ApiResponse<ContentVersionSnapshot[]>>(`/api/v1/admin/content/${id}/versions`);
+  return res.data.data ?? [];
 }
 
 export async function fetchStaffContentList(params: {
@@ -107,29 +114,36 @@ export async function fetchAdminChecklistTemplates(params: {
   stage?: ContentStage;
   page?: number;
   size?: number;
-} = {}): Promise<PaginatedResponse<ChecklistTemplate>> {
-  const res = await apiClient.get<ApiResponse<PaginatedResponse<ChecklistTemplate>>>(
+} = {}): Promise<PaginatedResponse<AdminChecklistTemplateDetail>> {
+  const res = await apiClient.get<ApiResponse<PaginatedResponse<AdminChecklistTemplateDetail>>>(
     '/api/v1/admin/checklist-templates',
     { params: { ...params, page: params.page ?? 0, size: params.size ?? 20 } },
   );
   return res.data.data;
 }
 
-export async function fetchChecklistTemplateDetail(id: string): Promise<ChecklistTemplate> {
-  const res = await apiClient.get<ApiResponse<ChecklistTemplate>>(`/api/v1/admin/checklist-templates/${id}`);
+export async function fetchChecklistTemplateDetail(id: string): Promise<AdminChecklistTemplateDetail> {
+  const res = await apiClient.get<ApiResponse<AdminChecklistTemplateDetail>>(`/api/v1/admin/checklist-templates/${id}`);
   return res.data.data;
 }
 
-export async function createChecklistTemplate(data: CreateChecklistTemplatePayload): Promise<ChecklistTemplate> {
-  const res = await apiClient.post<ApiResponse<ChecklistTemplate>>('/api/v1/admin/checklist-templates', data);
+export async function fetchChecklistVersionHistory(id: string): Promise<ChecklistTemplateVersionSnapshot[]> {
+  const res = await apiClient.get<ApiResponse<ChecklistTemplateVersionSnapshot[]>>(
+    `/api/v1/admin/checklist-templates/${id}/versions`,
+  );
+  return res.data.data ?? [];
+}
+
+export async function createChecklistTemplate(data: CreateChecklistTemplatePayload): Promise<AdminChecklistTemplateDetail> {
+  const res = await apiClient.post<ApiResponse<AdminChecklistTemplateDetail>>('/api/v1/admin/checklist-templates', data);
   return res.data.data;
 }
 
 export async function updateChecklistTemplate(
   id: string,
   data: UpdateChecklistTemplatePayload,
-): Promise<ChecklistTemplate> {
-  const res = await apiClient.put<ApiResponse<ChecklistTemplate>>(`/api/v1/admin/checklist-templates/${id}`, data);
+): Promise<AdminChecklistTemplateDetail> {
+  const res = await apiClient.put<ApiResponse<AdminChecklistTemplateDetail>>(`/api/v1/admin/checklist-templates/${id}`, data);
   return res.data.data;
 }
 
@@ -222,8 +236,10 @@ export async function createContent(data: {
   type: ContentType;
   title: string;
   body: string;
+  summary?: string;
   stage: ContentStage;
   topicId?: string;
+  tagIds?: string[];
   sources?: ContentSource[];
 }): Promise<CreateContentResult> {
   const res = await apiClient.post<ApiResponse<CreateContentResult>>('/api/v1/admin/content', data);
@@ -235,8 +251,10 @@ export async function updateContent(
   data: {
     title: string;
     body: string;
+    summary?: string;
     stage: ContentStage;
     topicId?: string;
+    tagIds?: string[];
     status: ContentStatus;
     sourceLabel?: string;
     sources?: ContentSource[];
@@ -263,6 +281,13 @@ export async function decideContent(
 export async function fetchTopics(includeHidden = false): Promise<CommunityTopic[]> {
   const res = await apiClient.get<ApiResponse<CommunityTopic[]>>(
     `/api/v1/community/topics?includeHidden=${includeHidden}&type=TOPIC`,
+  );
+  return res.data.data;
+}
+
+export async function fetchTags(): Promise<CommunityTopic[]> {
+  const res = await apiClient.get<ApiResponse<CommunityTopic[]>>(
+    '/api/v1/community/topics?includeHidden=false&type=TAG',
   );
   return res.data.data;
 }

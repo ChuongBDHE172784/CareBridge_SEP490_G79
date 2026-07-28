@@ -5,10 +5,10 @@ import com.carebridge.backend.content.dto.request.ModerationHistoryFilter;
 import com.carebridge.backend.content.dto.request.ModerationQueueFilter;
 import com.carebridge.backend.content.dto.request.PendingContentQueueFilter;
 import com.carebridge.backend.content.dto.request.ResolveReportRequest;
-import com.carebridge.backend.content.dto.request.RevertReportRequest;
 import com.carebridge.backend.content.dto.request.WarnOrSuspendAccountRequest;
 import com.carebridge.backend.content.dto.response.ModerateContentResponse;
 import com.carebridge.backend.content.dto.response.AccountViolationHistoryResponse;
+import com.carebridge.backend.content.dto.response.AccountViolationSummaryResponse;
 import com.carebridge.backend.content.dto.response.ModerationContentDetailResponse;
 import com.carebridge.backend.content.dto.response.ModerationHistoryResponse;
 import com.carebridge.backend.content.dto.response.UndoModerationActionResponse;
@@ -16,7 +16,6 @@ import com.carebridge.backend.content.dto.response.ModerationQueueResponse;
 import com.carebridge.backend.content.dto.response.PendingContentQueueResponse;
 import com.carebridge.backend.content.dto.response.RelatedReportPageResponse;
 import com.carebridge.backend.content.dto.response.ResolveReportResponse;
-import com.carebridge.backend.content.dto.response.RevertReportResponse;
 import com.carebridge.backend.content.dto.response.WarnOrSuspendAccountResponse;
 import com.carebridge.backend.content.entity.ReportStatus;
 import com.carebridge.backend.content.entity.ReportTargetType;
@@ -124,7 +123,7 @@ public class ModerationController {
 
     @GetMapping("/account-history")
     @PreAuthorize("hasRole('MODERATOR')")
-    public ResponseEntity<AccountViolationHistoryResponse> getAccountViolationHistory(
+    public ResponseEntity<AccountViolationSummaryResponse> getAccountViolationHistory(
             @RequestParam(defaultValue = "0") @Min(0) int page,
             @RequestParam(defaultValue = "20") @Min(1) int size,
             Principal principal) {
@@ -132,6 +131,19 @@ public class ModerationController {
             throw ModerationException.pageSizeExceeded();
         }
         return ResponseEntity.ok(moderationService.getAccountViolationHistory(page, size, principal));
+    }
+
+    @GetMapping("/account-history/{targetUserId}")
+    @PreAuthorize("hasRole('MODERATOR')")
+    public ResponseEntity<AccountViolationHistoryResponse> getAccountViolationDetail(
+            @PathVariable UUID targetUserId,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) int size,
+            Principal principal) {
+        if (size > 50) {
+            throw ModerationException.pageSizeExceeded();
+        }
+        return ResponseEntity.ok(moderationService.getAccountViolationHistory(targetUserId, page, size, principal));
     }
 
     @GetMapping("/reports/{reportId}/related")
@@ -202,16 +214,4 @@ public class ModerationController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    // C1: RBAC enforcement — MODERATOR only (ADR-002 of CB-MOD-IMP-015); controller has no business logic
-    @PostMapping("/reports/{reportId}/revert")
-    @PreAuthorize("hasRole('MODERATOR')")
-    @ResponseStatus(HttpStatus.CREATED)
-    public ResponseEntity<RevertReportResponse> revertReport(
-            @PathVariable UUID reportId,
-            @RequestBody(required = false) RevertReportRequest request,
-            Principal principal) {
-        RevertReportResponse response = moderationService.revertReport(
-                reportId, request != null ? request : new RevertReportRequest(), principal);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
-    }
 }

@@ -19,7 +19,7 @@ public enum ModerationActionType {
     /**
      * CB-MOD-IMP-017: append-only history of moderator agree/disagree feedback on an AI
      * assessment (payload in event_payload_jsonb). Excluded from moderation history views and
-     * from the "most recent action" guards of undo/revert — it never mutates content state.
+     * from the "most recent action" guard of direct-action undo — it never mutates content state.
      */
     AI_FEEDBACK_SUBMITTED
 }
