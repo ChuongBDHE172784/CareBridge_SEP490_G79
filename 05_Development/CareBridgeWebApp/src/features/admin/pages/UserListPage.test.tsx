@@ -87,6 +87,27 @@ describe('admin user list actions', () => {
     expect(screen.queryByRole('status')).toBeNull();
   });
 
+  it('requires a second confirmation before unlocking an account', async () => {
+    harness.searchUsers.mockResolvedValue({
+      content: [targetUser({ locked: true, lockedAt: '2026-07-28T14:00:00Z' })],
+      totalElements: 1,
+      totalPages: 1,
+      page: 0,
+      size: 10,
+    });
+    harness.updateUserStatus.mockResolvedValue(targetUser({ locked: false }));
+    render(<UserListPage />);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Mở khóa/ }));
+
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    expect(harness.updateUserStatus).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Xác nhận mở khóa' }));
+
+    await waitFor(() => expect(harness.updateUserStatus).toHaveBeenCalledWith('user-target', { locked: false }));
+  });
+
   it('uses distinct mother and family labels without showing abbreviated user IDs or a detail icon', async () => {
     harness.searchUsers.mockResolvedValue({
       content: [targetUser({ id: 'mother-target', role: 'MOTHER' }), targetUser({ id: 'family-target', role: 'FAMILY' })],

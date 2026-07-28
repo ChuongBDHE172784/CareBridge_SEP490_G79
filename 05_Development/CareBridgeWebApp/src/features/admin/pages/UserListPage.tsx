@@ -1,10 +1,12 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../shared/auth/useAuth';
 import { searchUsers, updateUserStatus } from '../services/adminUserApi';
 import type { AdminUserSummary, UpdateUserStatusRequest } from '../models/adminUser';
 import type { UserRole } from '../../../shared/auth/authStore';
 import ConfirmDialog from '../../../shared/components/ConfirmDialog';
+import { SortableTableHeader, type SortDirection } from '../../contentManagement/components/SortableTableHeader';
+import { nextSortDirection, sortRows } from '../../contentManagement/utils/tableSorting';
 
 const ROLE_LABELS: Record<UserRole, string> = {
   MOTHER: 'Mẹ',
@@ -15,6 +17,8 @@ const ROLE_LABELS: Record<UserRole, string> = {
   SYSTEM_ADMIN: 'Quản trị hệ thống',
   PARTNER: 'Đối tác',
 };
+
+type UserSortKey = 'name' | 'role' | 'status' | 'createdAt';
 
 function maskName(name: string): string {
   const parts = name.trim().split(/\s+/);
@@ -48,14 +52,18 @@ export default function UserListPage() {
   const [updatingAction, setUpdatingAction] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lockTarget, setLockTarget] = useState<AdminUserSummary | null>(null);
+  const [unlockTarget, setUnlockTarget] = useState<AdminUserSummary | null>(null);
 
-  // States to hold global system counts (unfiltered)
+  // Sorting state (default: createdAt desc - mới nhất lên đầu)
+  const [sortKey, setSortKey] = useState<UserSortKey>('createdAt');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+
+  // Global system counts (unfiltered)
   const [allUsersCount, setAllUsersCount] = useState<number | null>(null);
   const [activeUsersCount, setActiveUsersCount] = useState<number | null>(null);
   const [lockedUsersCount, setLockedUsersCount] = useState<number | null>(null);
   const [staffUsersCount, setStaffUsersCount] = useState<number | null>(null);
 
-  // Fetch full stats (unfiltered count) once or on initial load
   const fetchStats = useCallback(async () => {
     try {
       const [allRes, activeRes, lockedRes, modRes, contentRes, sysRes] = await Promise.all([
@@ -126,6 +134,29 @@ export default function UserListPage() {
       setUpdatingAction(null);
     }
   }
+
+  // Sorting logic matching ContentListPage & tableSorting utils
+  const sortedUsers = useMemo(() => {
+    return sortRows(users, sortDirection, (item) => {
+      switch (sortKey) {
+        case 'name':
+          return item.name;
+        case 'role':
+          return ROLE_LABELS[item.role] || item.role;
+        case 'status':
+          return item.locked ? 'Bị khóa' : item.enabled ? 'Đang hoạt động' : 'Vô hiệu hóa';
+        case 'createdAt': {
+          const timestamp = new Date(item.createdAt || 0).getTime();
+          return Number.isNaN(timestamp) ? 0 : timestamp;
+        }
+      }
+    });
+  }, [users, sortDirection, sortKey]);
+
+  const changeSort = (key: UserSortKey) => {
+    setSortDirection(nextSortDirection(sortKey, key, sortDirection));
+    setSortKey(key);
+  };
 
   const totalPages = Math.ceil(total / pageSize);
   const pageStart = total === 0 ? 0 : page * pageSize + 1;
@@ -262,18 +293,29 @@ export default function UserListPage() {
             <table className="w-full border-collapse">
               <thead>
                 <tr className="border-b-2 border-surface-container-highest text-left">
-                  {['NGƯỜI DÙNG', 'VAI TRÒ', 'TRẠNG THÁI', 'NGÀY TẠO', 'THAO TÁC'].map((heading, idx) => (
-                    <th
-                      key={heading}
-                      className={`py-3 px-3 text-[11px] font-semibold text-outline uppercase tracking-[0.05em] ${idx === 4 ? 'text-center' : ''}`}
-                    >
-                      {heading}
-                    </th>
+                  {(
+                    [
+                      ['name', 'NGƯỜI DÙNG'],
+                      ['role', 'VAI TRÒ'],
+                      ['status', 'TRẠNG THÁI'],
+                      ['createdAt', 'NGÀY TẠO'],
+                    ] as const
+                  ).map(([key, label]) => (
+                    <SortableTableHeader
+                      key={key}
+                      label={label}
+                      active={sortKey === key}
+                      direction={sortDirection}
+                      onClick={() => changeSort(key)}
+                    />
                   ))}
+                  <th scope="col" className="py-3 px-3 text-[11px] font-semibold text-outline uppercase tracking-[0.05em] text-center">
+                    THAO TÁC
+                  </th>
                 </tr>
               </thead>
               <tbody>
-                {users.map((item) => {
+                {sortedUsers.map((item) => {
                   const isSelf = currentUser?.id === item.id;
                   const isLocking = updatingAction === `${item.id}:lock`;
                   const isEnabling = updatingAction === `${item.id}:enabled`;
@@ -329,7 +371,7 @@ export default function UserListPage() {
                             type="button"
                             onClick={() => {
                               if (item.locked) {
-                                void updateAccess(item, 'lock', { locked: false });
+                                setUnlockTarget(item);
                               } else {
                                 setLockTarget(item);
                               }
@@ -375,7 +417,7 @@ export default function UserListPage() {
           </div>
         )}
 
-        {/* Pagination - Synchronized with ContentApprovalQueuePage */}
+        {/* Pagination */}
         <div className="flex justify-between items-center mt-5 pt-4 border-t border-surface-container-highest">
           <span className="text-[13px] text-outline">
             Hiển thị {total === 0 ? 0 : pageStart}-{pageEnd} trong {total} kết quả
@@ -440,6 +482,22 @@ export default function UserListPage() {
           if (!lockTarget || !reason) return;
           void updateAccess(lockTarget, 'lock', { locked: true, reason })
             .then(() => setLockTarget(null));
+        }}
+      />
+
+      <ConfirmDialog
+        key={unlockTarget?.id ?? 'unlock-user'}
+        open={unlockTarget !== null}
+        title={`Mở khóa tài khoản ${unlockTarget?.name ?? ''}?`}
+        description="Người dùng sẽ có thể đăng nhập và sử dụng lại hệ thống ngay sau khi mở khóa."
+        icon="lock_open"
+        confirmLabel="Xác nhận mở khóa"
+        submitting={unlockTarget ? updatingAction === `${unlockTarget.id}:lock` : false}
+        onCancel={() => setUnlockTarget(null)}
+        onConfirm={() => {
+          if (!unlockTarget) return;
+          void updateAccess(unlockTarget, 'lock', { locked: false })
+            .then(() => setUnlockTarget(null));
         }}
       />
     </div>
