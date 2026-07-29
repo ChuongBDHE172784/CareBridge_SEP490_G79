@@ -33,15 +33,7 @@ public class DirectConversationController {
 
     private final IDirectConversationService conversationService;
 
-    @PostMapping("/expert/{expertId}")
-    @PreAuthorize("hasRole('MOTHER')")
-    public ResponseEntity<ApiResponse<DirectConversationResponse>> findOrCreate(
-            @PathVariable UUID expertId, Principal principal) {
-        UUID motherUserId = SecurityUtils.requireCurrentUserId(principal);
-        FindOrCreateConversationResult result = conversationService.findOrCreate(motherUserId, expertId);
-        HttpStatus status = result.created() ? HttpStatus.CREATED : HttpStatus.OK;
-        return ResponseEntity.status(status).body(ApiResponse.success(result.conversation()));
-    }
+
 
     @GetMapping
     @PreAuthorize("hasAnyRole('MOTHER', 'EXPERT')")
