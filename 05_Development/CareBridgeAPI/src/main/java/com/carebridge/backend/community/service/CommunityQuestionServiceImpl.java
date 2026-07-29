@@ -200,7 +200,7 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
  @Transactional(readOnly = true)
  public PaginatedResponse<CommunityQuestionResponse> getMyQuestions(UUID authorId, int page, int size) {
  return PaginatedResponse.of(questionRepository
- .findAllByAuthorIdOrderByCreatedAtDesc(authorId, PageRequest.of(page, size))
+ .findAllByAuthorIdAndStatusNotOrderByCreatedAtDesc(authorId, QuestionStatus.DELETED, PageRequest.of(page, size))
  .map(questionMapper::toResponse));
  }
 

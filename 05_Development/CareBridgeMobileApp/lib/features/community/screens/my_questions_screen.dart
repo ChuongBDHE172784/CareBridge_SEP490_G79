@@ -56,7 +56,7 @@ class _MyQuestionsScreenState extends State<MyQuestionsScreen> {
       setState(() {
         _questions
           ..clear()
-          ..addAll(page);
+          ..addAll(page.where((item) => item.status != 'DELETED'));
         _page = 1;
         _hasMore = page.length >= 20;
       });
@@ -78,7 +78,7 @@ class _MyQuestionsScreenState extends State<MyQuestionsScreen> {
       final page = await CommunityService.instance.getMyQuestions(page: _page);
       if (!mounted) return;
       setState(() {
-        _questions.addAll(page);
+        _questions.addAll(page.where((item) => item.status != 'DELETED'));
         _page++;
         _hasMore = page.length >= 20;
       });
@@ -112,10 +112,7 @@ class _MyQuestionsScreenState extends State<MyQuestionsScreen> {
       await CommunityService.instance.deleteQuestion(question.id);
       if (!mounted) return;
       setState(() {
-        final index = _questions.indexWhere((item) => item.id == question.id);
-        if (index >= 0) {
-          _questions[index] = question.copyWith(status: 'DELETED');
-        }
+        _questions.removeWhere((item) => item.id == question.id);
       });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Đã xóa câu hỏi và hình ảnh đính kèm')),
