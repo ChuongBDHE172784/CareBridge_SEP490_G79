@@ -614,6 +614,16 @@ String _formatHistoryDateTime(DateTime dt) {
   return '$date, $time';
 }
 
+String _displayValue(MetricDataPoint point, _MetricOption metric) {
+  if (point.valueSecondary != null) {
+    if (metric.apiValue == 'BLOOD_PRESSURE_DIASTOLIC') {
+      return '${point.valueSecondary!.toStringAsFixed(0)}/${point.valueNumeric.toStringAsFixed(0)}';
+    }
+    return '${point.valueNumeric.toStringAsFixed(0)}/${point.valueSecondary!.toStringAsFixed(0)}';
+  }
+  return point.valueDisplay;
+}
+
 class _MetricOption {
   final String apiValue;
   final String label;
@@ -711,7 +721,7 @@ class _HistoryTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    '${point.valueDisplay} $unit',
+                    '${_displayValue(point, metric)} $unit',
                     style: const TextStyle(
                       fontFamily: 'Lexend',
                       fontSize: 15,
