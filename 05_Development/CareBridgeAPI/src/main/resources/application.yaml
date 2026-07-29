@@ -1,7 +1,6 @@
 server:
   servlet:
     encoding:
-      charset: UTF-8
       enabled: true
       force: true
       force-response: true
@@ -37,7 +36,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: none
     open-in-view: false
     properties:
       hibernate:
@@ -61,6 +60,8 @@ spring:
     multipart:
       max-file-size: 5MB
       max-request-size: 16MB
+    encoding:
+      charset: UTF-8
 
 carebridge:
   dev-seed:
