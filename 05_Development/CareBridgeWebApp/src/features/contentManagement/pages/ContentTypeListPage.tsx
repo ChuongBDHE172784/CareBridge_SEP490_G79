@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchStaffContentList, archiveContent } from '../services/contentApi';
 import type { ContentDetail, ContentStage, ContentStatus, ContentType } from '../models/content';
-import { STAGE_LABELS, STATUS_LABELS } from '../models/content';
+import { STAGE_LABELS, STAGE_OPTIONS, STATUS_LABELS } from '../models/content';
 import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
 import { SortableTableHeader, type SortDirection } from '../components/SortableTableHeader';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
@@ -184,7 +184,7 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
             className="py-2.5 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface-variant cursor-pointer font-sans"
           >
             <option value="">Tất cả giai đoạn</option>
-            {Object.entries(STAGE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            {STAGE_OPTIONS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
           </select>
         </div>
       </div>

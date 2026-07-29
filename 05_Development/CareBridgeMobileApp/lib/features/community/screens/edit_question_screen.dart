@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../core/constants/content_stages.dart';
 import '../models/community_model.dart';
 import '../services/community_service.dart';
 import '../widgets/community_image_attachments.dart';
@@ -78,14 +79,7 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
     _titleCtrl = TextEditingController(text: widget.initialTitle);
     _bodyCtrl = TextEditingController(text: widget.initialBody);
     _selectedTopicId = widget.initialTopicId;
-    _stage =
-        const {
-          'PREGNANCY',
-          'POSTPARTUM',
-          'BABY_CARE',
-        }.contains(widget.initialStage)
-        ? widget.initialStage
-        : 'PREGNANCY';
+    _stage = normalizeContentStage(widget.initialStage);
     _existingImageUrls = List<String>.from(widget.initialImageUrls);
     _urgency = widget.initialUrgency;
     _isAnonymous = widget.initialIsAnonymous;
@@ -324,14 +318,14 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
             DropdownButtonFormField<String>(
               initialValue: _stage,
               decoration: _inputDecoration('Chọn giai đoạn'),
-              items: const [
-                DropdownMenuItem(value: 'PREGNANCY', child: Text('Thai kỳ')),
-                DropdownMenuItem(value: 'POSTPARTUM', child: Text('Sau sinh')),
-                DropdownMenuItem(
-                  value: 'BABY_CARE',
-                  child: Text('Chăm sóc bé'),
-                ),
-              ],
+              items: contentStageOptions
+                  .map(
+                    (stage) => DropdownMenuItem(
+                      value: stage.value,
+                      child: Text(stage.label),
+                    ),
+                  )
+                  .toList(growable: false),
               onChanged: (value) {
                 if (value != null) setState(() => _stage = value);
               },

@@ -1,5 +1,6 @@
 package com.carebridge.backend.community.dto.request;
 
+import com.carebridge.backend.community.entity.PregnancyStage;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
@@ -18,7 +19,7 @@ public class UpdateCommunityProfileRequest {
     @Size(max = 500, message = "Bio must not exceed 500 characters")
     private String bio;
 
-    private String interestStage;
+    private PregnancyStage interestStage;
 
     private boolean visible;
 

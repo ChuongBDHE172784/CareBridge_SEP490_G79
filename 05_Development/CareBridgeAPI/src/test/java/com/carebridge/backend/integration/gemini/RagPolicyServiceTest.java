@@ -176,9 +176,8 @@ class RagPolicyServiceTest {
                 .isTrue();
         assertThat(source.contains("PRE_PREGNANCY")
                         && source.contains("PREGNANCY")
-                        && source.contains("POSTPARTUM")
-                        && source.contains("BABY_CARE"))
-                .as("RAG-002: canonical mapping is exhaustive and rejects BABY_CARE")
+                        && source.contains("POSTPARTUM"))
+                .as("RAG-002: canonical mapping covers all three content stages")
                 .isTrue();
     }
 
@@ -197,7 +196,7 @@ class RagPolicyServiceTest {
                 Arguments.of("FAMILY", UserStage.PRE_PREGNANCY),
                 Arguments.of("EXPERT", UserStage.PREGNANCY),
                 Arguments.of("MODERATOR", UserStage.POSTPARTUM),
-                Arguments.of("CONTENT_ADMIN", UserStage.BABY_CARE),
+                Arguments.of("CONTENT_ADMIN", UserStage.POSTPARTUM),
                 Arguments.of("SYSTEM_ADMIN", UserStage.PRE_PREGNANCY));
     }
 }

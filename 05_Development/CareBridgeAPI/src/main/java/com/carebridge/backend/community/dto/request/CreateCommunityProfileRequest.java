@@ -1,5 +1,6 @@
 package com.carebridge.backend.community.dto.request;
 
+import com.carebridge.backend.community.entity.PregnancyStage;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -17,8 +18,8 @@ public class CreateCommunityProfileRequest {
     @Size(max = 500, message = "Bio must not exceed 500 characters")
     private String bio;
 
-    /** nullable — PRE_PREGNANCY, PREGNANCY, POSTPARTUM, BABY_CARE, etc. */
-    private String interestStage;
+    /** Nullable canonical community lifecycle stage. */
+    private PregnancyStage interestStage;
 
     /** Default true (opt-out model, ADR-COMM-020-002). */
     private boolean visible = true;

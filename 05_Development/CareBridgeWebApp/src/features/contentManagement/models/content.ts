@@ -1,5 +1,5 @@
 export type ContentType = 'ARTICLE' | 'FAQ' | 'CHECKLIST';
-export type ContentStage = 'PRE_PREGNANCY' | 'PREGNANCY' | 'POSTPARTUM' | 'BABY_CARE';
+export type ContentStage = 'PRE_PREGNANCY' | 'PREGNANCY' | 'POSTPARTUM';
 export type ContentStatus = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'ARCHIVED';
 export type ChecklistTemplateStatus = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'ARCHIVED';
 export type ContentDecision = 'APPROVE' | 'REJECT';
@@ -169,11 +169,16 @@ export interface PaginatedResponse<T> {
 }
 
 export const STAGE_LABELS: Record<ContentStage, string> = {
-  PRE_PREGNANCY: 'Chuẩn bị',
+  PRE_PREGNANCY: 'Chuẩn bị mang thai',
   PREGNANCY: 'Thai kỳ',
-  POSTPARTUM: 'Sau sinh',
-  BABY_CARE: 'Chăm bé',
+  POSTPARTUM: 'Hậu sản & Chăm bé',
 };
+
+export const STAGE_OPTIONS: ReadonlyArray<{ value: ContentStage; label: string }> = [
+  { value: 'PRE_PREGNANCY', label: STAGE_LABELS.PRE_PREGNANCY },
+  { value: 'PREGNANCY', label: STAGE_LABELS.PREGNANCY },
+  { value: 'POSTPARTUM', label: STAGE_LABELS.POSTPARTUM },
+];
 
 export const TYPE_LABELS: Record<ContentType, string> = {
   ARTICLE: 'Bài viết',

@@ -8,7 +8,7 @@ import {
   fetchStaffContentList,
 } from '../services/contentApi';
 import type { AdminChecklistTemplate, ContentDetail, ContentStage, ContentType } from '../models/content';
-import { STAGE_LABELS, TYPE_LABELS } from '../models/content';
+import { STAGE_LABELS, STAGE_OPTIONS, TYPE_LABELS } from '../models/content';
 import { SortableTableHeader, type SortDirection } from '../components/SortableTableHeader';
 import { nextSortDirection, sortRows } from '../utils/tableSorting';
 
@@ -243,7 +243,7 @@ export default function ContentApprovalQueuePage() {
             { label: 'Bài viết / FAQ', value: stats.content, icon: 'article' },
             { label: 'Checklist', value: stats.checklist, icon: 'checklist' },
             { label: 'Thai kỳ', value: stats.pregnancy, icon: 'pregnant_woman' },
-            { label: 'Sau sinh', value: stats.postpartum, icon: 'family_restroom' },
+            { label: 'Hậu sản & Chăm bé', value: stats.postpartum, icon: 'family_restroom' },
           ].map((stat) => (
             <div key={stat.label} className="bg-surface rounded-2xl p-5 shadow-sm border border-surface-container-highest flex items-center justify-between">
               <div>
@@ -285,7 +285,7 @@ export default function ContentApprovalQueuePage() {
                 className="py-2.5 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface-variant cursor-pointer font-sans"
               >
                 <option value="ALL">Tất cả giai đoạn</option>
-                {Object.entries(STAGE_LABELS).map(([value, label]) => (
+                {STAGE_OPTIONS.map(({ value, label }) => (
                   <option key={value} value={value}>{label}</option>
                 ))}
               </select>

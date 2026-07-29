@@ -114,7 +114,7 @@ class ChecklistImportConcurrencyPostgresTest extends AbstractPostgresIntegration
                 .active(true)
                 .build()).getId();
         setActiveBaby(babyId);
-        UUID itemId = seedItem(ContentStage.BABY_CARE, "Baby care item");
+        UUID itemId = seedItem(ContentStage.POSTPARTUM, "Baby care item");
         CountDownLatch lockHeld = new CountDownLatch(1);
         CountDownLatch releaseLock = new CountDownLatch(1);
         CountDownLatch importStarted = new CountDownLatch(1);
@@ -166,7 +166,7 @@ class ChecklistImportConcurrencyPostgresTest extends AbstractPostgresIntegration
                 .active(true)
                 .build()).getId();
         setActiveBaby(babyId);
-        UUID itemId = seedItem(ContentStage.BABY_CARE, "Legacy baby care item");
+        UUID itemId = seedItem(ContentStage.POSTPARTUM, "Legacy baby care item");
         UUID legacyRowId = UUID.randomUUID();
         jdbcTemplate.update("""
                 insert into preparation_checklist_items (

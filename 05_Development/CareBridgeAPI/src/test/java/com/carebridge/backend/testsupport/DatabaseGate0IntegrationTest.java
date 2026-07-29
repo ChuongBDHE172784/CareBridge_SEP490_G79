@@ -10,10 +10,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 /**
- * Clean-bootstrap contract for the one-migration convergence: Flyway migrate on
- * an empty PostgreSQL applies exactly the canonical V20260727010000 migration,
- * a second migrate is a no-op, and the resulting schema keeps only canonical
- * role and triage persistence.
+ * Clean-bootstrap contract for the append-only Flyway chain: all repository
+ * migrations apply once, a second migrate is a no-op, and the resulting schema
+ * keeps canonical role and triage persistence.
  */
 @Testcontainers(disabledWithoutDocker = true)
 class DatabaseGate0IntegrationTest {
@@ -24,13 +23,12 @@ class DatabaseGate0IntegrationTest {
     final PostgreSQLContainer postgres = new PostgreSQLContainer(POSTGRES_IMAGE);
 
     @Test
-    void cleanBootstrapAppliesExactlyTheCanonicalMigrationOnce() throws Exception {
+    void cleanBootstrapAppliesTheRepositoryMigrationChainOnce() throws Exception {
         var repository = DatabaseGate0Support.inspectRepository();
         assertThat(repository.gateFailures())
                 .as("Gate 0 repository failure codes")
                 .isEmpty();
-        assertThat(repository.migrations()).hasSize(1);
-        var canonical = repository.migrations().get(0);
+        assertThat(repository.migrations()).isNotEmpty();
 
         Flyway flyway = Flyway.configure()
                 .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
@@ -39,7 +37,7 @@ class DatabaseGate0IntegrationTest {
 
         var firstRun = flyway.migrate();
         assertThat(firstRun.success).isTrue();
-        assertThat(firstRun.migrationsExecuted).isEqualTo(1);
+        assertThat(firstRun.migrationsExecuted).isEqualTo(repository.migrations().size());
 
         var secondRun = flyway.migrate();
         assertThat(secondRun.success).isTrue();
@@ -55,17 +53,17 @@ class DatabaseGate0IntegrationTest {
                           WHERE version IS NOT NULL AND type = 'SQL'
                           ORDER BY installed_rank
                          """)) {
-                assertThat(history.next()).isTrue();
-                assertThat(DatabaseGate0Support.canonicalVersion(history.getString("version")))
-                        .isEqualTo(DatabaseGate0Support.canonicalVersion(
-                                DatabaseGate0Support.CANONICAL_VERSION));
-                assertThat(history.getString("script"))
-                        .isEqualTo(DatabaseGate0Support.CANONICAL_SCRIPT);
-                assertThat((Integer) history.getObject("checksum"))
-                        .isEqualTo(canonical.flywayChecksum());
-                assertThat(history.getBoolean("success")).isTrue();
+                for (var migration : repository.migrations()) {
+                    assertThat(history.next()).isTrue();
+                    assertThat(DatabaseGate0Support.canonicalVersion(history.getString("version")))
+                            .isEqualTo(migration.version());
+                    assertThat(history.getString("script")).isEqualTo(migration.script());
+                    assertThat((Integer) history.getObject("checksum"))
+                            .isEqualTo(migration.flywayChecksum());
+                    assertThat(history.getBoolean("success")).isTrue();
+                }
                 assertThat(history.next())
-                        .as("flyway_schema_history must contain exactly one versioned migration")
+                        .as("flyway_schema_history must match the repository migration chain")
                         .isFalse();
             }
 

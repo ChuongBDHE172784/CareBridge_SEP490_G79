@@ -8,6 +8,7 @@ import type {
 import {
   CHECKLIST_STATUS_LABELS,
   STAGE_LABELS,
+  STAGE_OPTIONS,
 } from '../models/content';
 import { archiveChecklistTemplate, fetchAdminChecklists } from '../services/contentApi';
 import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
@@ -22,7 +23,6 @@ function stageBadgeClass(stage: ContentStage | null): string {
     case 'PRE_PREGNANCY': return 'bg-surface-container-high text-on-surface-variant';
     case 'PREGNANCY': return 'bg-secondary-container text-on-secondary-container';
     case 'POSTPARTUM': return 'bg-[#E6F4EA] text-[#137333]';
-    case 'BABY_CARE': return 'bg-[#FFF3E0] text-[#E65100]';
     case null: return 'bg-surface-container-high text-on-surface-variant';
   }
 }
@@ -249,10 +249,9 @@ export default function ChecklistListPage() {
             className="py-2.5 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface-variant cursor-pointer font-sans"
           >
             <option value="">Tất cả giai đoạn</option>
-            <option value="PRE_PREGNANCY">Chuẩn bị</option>
-            <option value="PREGNANCY">Thai kỳ</option>
-            <option value="POSTPARTUM">Sau sinh</option>
-            <option value="BABY_CARE">Chăm bé</option>
+            {STAGE_OPTIONS.map(({ value, label }) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
           </select>
 
           <select

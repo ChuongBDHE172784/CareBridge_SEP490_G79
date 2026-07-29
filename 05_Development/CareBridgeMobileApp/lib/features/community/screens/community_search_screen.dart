@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../../core/constants/content_stages.dart';
 import '../services/community_service.dart';
 import '../models/community_model.dart';
 import 'create_question_screen.dart';
@@ -23,11 +24,9 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
   static const _outline = Color(0xFF84736F);
   static const _outlineVariant = Color(0xFFD6C2BD);
 
-  static const _stageFilters = [
+  static final _stageFilters = [
     'Tất cả',
-    'Mang thai',
-    'Sau sinh',
-    'Chăm sóc bé',
+    ...contentStageOptions.map((stage) => stage.label),
   ];
 
   final _searchCtrl = TextEditingController();
@@ -81,12 +80,9 @@ class _CommunitySearchScreenState extends State<CommunitySearchScreen> {
     if (!_hasMore || _loading) return;
     setState(() => _loading = true);
     try {
-      final stage = switch (_selectedStage) {
-        1 => 'PREGNANCY',
-        2 => 'POSTPARTUM',
-        3 => 'BABY_CARE',
-        _ => null,
-      };
+      final stage = _selectedStage == 0
+          ? null
+          : contentStageOptions[_selectedStage - 1].value;
       final items = await CommunityService.instance.searchQuestions(
         keyword: _searchCtrl.text.trim().isEmpty
             ? null
@@ -591,7 +587,8 @@ class _QuestionResultCard extends StatelessWidget {
                 spacing: 6,
                 children: [
                   if (item.topicName.isNotEmpty) _TagBadge(item.topicName),
-                  if (item.stage.isNotEmpty) _TagBadge(_stageLabel(item.stage)),
+                  if (item.stage.isNotEmpty)
+                    _TagBadge(contentStageLabel(item.stage)),
                 ],
               ),
               const Spacer(),
@@ -690,23 +687,6 @@ class _QuestionResultCard extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  String _stageLabel(String stage) {
-    switch (stage) {
-      case 'NEWBORN':
-        return 'Sơ sinh';
-      case 'PRE_PREGNANCY':
-        return 'Chuẩn bị mang thai';
-      case 'PREGNANCY':
-        return 'Mang thai';
-      case 'POSTPARTUM':
-        return 'Sau sinh';
-      case 'BABY_CARE':
-        return 'Chăm sóc bé';
-      default:
-        return stage;
-    }
   }
 }
 

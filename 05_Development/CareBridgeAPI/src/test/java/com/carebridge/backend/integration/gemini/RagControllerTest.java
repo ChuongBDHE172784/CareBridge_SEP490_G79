@@ -227,6 +227,25 @@ class RagControllerTest {
     }
 
     @Test
+    void generateAnswer_legacyBabyCareStage_normalizesToPostpartum() throws Exception {
+        UUID callerId = UUID.fromString("69000000-0000-0000-0000-000000000805");
+        when(ragPolicyService.generateAnswer(any(), any())).thenReturn(makeNormalResponse());
+
+        mockMvc.perform(post("/api/v1/rag/answer")
+                        .with(user(callerId.toString()).roles("CONTENT_ADMIN"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"query":"synthetic legacy-stage question","userStage":"BABY_CARE"}
+                                """))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<RagAnswerRequest> request =
+                ArgumentCaptor.forClass(RagAnswerRequest.class);
+        verify(ragPolicyService).generateAnswer(request.capture(), any());
+        assertThat(request.getValue().getUserStage()).isEqualTo(UserStage.POSTPARTUM);
+    }
+
+    @Test
     void uc82_69_rag_006_validationPrecedesPolicyAndPreservesAllNumericBoundaries() {
         String source = Story69TestFactory.productionSource(
                 "com/carebridge/backend/integration/gemini/controller/RagController.java");
@@ -317,7 +336,7 @@ class RagControllerTest {
                 Arguments.of("FAMILY", false, UserStage.PRE_PREGNANCY),
                 Arguments.of("EXPERT", false, UserStage.PREGNANCY),
                 Arguments.of("MODERATOR", false, UserStage.POSTPARTUM),
-                Arguments.of("CONTENT_ADMIN", false, UserStage.BABY_CARE),
+                Arguments.of("CONTENT_ADMIN", false, UserStage.POSTPARTUM),
                 Arguments.of("SYSTEM_ADMIN", false, UserStage.PRE_PREGNANCY));
     }
 }

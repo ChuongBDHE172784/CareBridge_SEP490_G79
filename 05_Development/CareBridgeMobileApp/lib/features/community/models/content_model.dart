@@ -1,3 +1,5 @@
+import '../../../core/constants/content_stages.dart';
+
 enum ContentBrowseMode { generic, lifecycle }
 
 class LifecycleEnvelope<T> {
@@ -14,8 +16,11 @@ class LifecycleEnvelope<T> {
     if (data is! Map<String, dynamic>) {
       throw const FormatException('Lifecycle response data is missing');
     }
-    final stage = data['stage'];
-    if (stage is! String || !_canonicalMotherStages.contains(stage)) {
+    final rawStage = data['stage'];
+    final stage = rawStage is String
+        ? tryNormalizeContentStage(rawStage)
+        : null;
+    if (stage == null) {
       throw const FormatException('Lifecycle response stage is invalid');
     }
     return LifecycleEnvelope<T>(
@@ -24,12 +29,6 @@ class LifecycleEnvelope<T> {
     );
   }
 }
-
-const _canonicalMotherStages = <String>{
-  'PRE_PREGNANCY',
-  'PREGNANCY',
-  'POSTPARTUM',
-};
 
 class PaginatedContent {
   final List<ContentListItem> data;
@@ -97,7 +96,7 @@ class ContentListItem {
         type: json['type'] as String? ?? 'ARTICLE',
         title: json['title'] as String,
         summary: json['summary'] as String?,
-        stage: json['stage'] as String? ?? '',
+        stage: normalizeContentStage(json['stage'] as String?, fallback: ''),
         topicId: json['topicId'] as String? ?? '',
         tagIds: (json['tagIds'] as List? ?? const [])
             .whereType<String>()
@@ -115,7 +114,7 @@ int contentStageIndexForJourneyType(String? journeyType) {
     case 'POSTPARTUM':
       return 2;
     case 'BABY_CARE':
-      return 3;
+      return 2;
     default:
       return -1;
   }
@@ -147,7 +146,7 @@ class ContentDetail {
     type: json['type'] as String? ?? 'ARTICLE',
     title: json['title'] as String,
     body: json['body'] as String? ?? '',
-    stage: json['stage'] as String? ?? '',
+    stage: normalizeContentStage(json['stage'] as String?, fallback: ''),
     topicId: json['topicId'] as String? ?? '',
     version: json['version'] as int? ?? 1,
     publishedAt: json['publishedAt'] as String?,
@@ -185,7 +184,7 @@ class ChecklistTemplate {
       ChecklistTemplate(
         id: json['id'] as String,
         name: json['name'] as String,
-        stage: json['stage'] as String? ?? '',
+        stage: normalizeContentStage(json['stage'] as String?, fallback: ''),
         description: json['description'] as String? ?? '',
         items: (json['items'] as List? ?? [])
             .map((e) => ChecklistItem.fromJson(e as Map<String, dynamic>))

@@ -1,3 +1,5 @@
+import '../../../core/constants/content_stages.dart';
+
 class CommunityTopic {
   final String id;
   final String name;
@@ -87,7 +89,7 @@ class CommunityFeedItem {
         title: json['title'] as String,
         topicName: json['topicName'] as String? ?? '',
         authorDisplay: json['authorDisplay'] as String? ?? 'Ẩn danh',
-        stage: json['stage'] as String? ?? '',
+        stage: normalizeContentStage(json['stage'] as String?, fallback: ''),
         urgency: json['urgency'] as String? ?? 'NORMAL',
         answerCount: json['answerCount'] as int? ?? 0,
         likeCount: json['likeCount'] as int? ?? 0,
@@ -238,7 +240,7 @@ class QuestionDetail {
     imageUrls: ((json['imageUrls'] as List?) ?? const [])
         .whereType<String>()
         .toList(),
-    stage: json['stage'] as String? ?? '',
+    stage: normalizeContentStage(json['stage'] as String?, fallback: ''),
     pregnancyWeek: json['pregnancyWeek'] as int?,
     babyAgeMonths: json['babyAgeMonths'] as int?,
     urgency: json['urgency'] as String? ?? 'NORMAL',

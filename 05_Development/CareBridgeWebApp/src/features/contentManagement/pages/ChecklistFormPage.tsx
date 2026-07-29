@@ -6,7 +6,7 @@ import {
   updateChecklistTemplate,
 } from '../services/contentApi';
 import type { ContentStage, ReviewFeedback } from '../models/content';
-import { STAGE_LABELS } from '../models/content';
+import { STAGE_OPTIONS } from '../models/content';
 import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
 
 interface ItemRow {
@@ -219,9 +219,9 @@ export default function ChecklistFormPage() {
                 className="w-full py-3 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface font-sans"
               >
                 <option value="">Chọn giai đoạn</option>
-                {Object.entries(STAGE_LABELS).map(([k, v]) => (
-                  <option key={k} value={k}>
-                    {v}
+                {STAGE_OPTIONS.map(({ value, label }) => (
+                  <option key={value} value={value}>
+                    {label}
                   </option>
                 ))}
               </select>
