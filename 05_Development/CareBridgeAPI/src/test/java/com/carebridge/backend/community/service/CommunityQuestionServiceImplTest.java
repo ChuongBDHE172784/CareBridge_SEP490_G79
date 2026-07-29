@@ -315,7 +315,7 @@ class CommunityQuestionServiceImplTest {
     }
 
     private void stubEmptyHydration() {
-        when(answerRepository.findAllByQuestionIdAndStatusOrderByCreatedAtDesc(QUESTION_ID, AnswerStatus.APPROVED))
+        when(answerRepository.findVisibleAnswersForDetail(any(), any()))
                 .thenReturn(List.of());
         when(answerLikeRepository.findLikedAnswerIds(any(), any())).thenReturn(Set.of());
     }

@@ -257,26 +257,6 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                   ),
                 ),
 
-              // Recommended experts section at bottom of feed
-              if (!_loading && _items.isNotEmpty) ...[
-                const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                const SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.only(left: 20, bottom: 12),
-                    child: Text(
-                      'Chuyên gia được đề xuất',
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: _primary,
-                      ),
-                    ),
-                  ),
-                ),
-                SliverToBoxAdapter(child: _buildExpertSection()),
-              ],
-
               // Extra space for FAB
               const SliverToBoxAdapter(child: SizedBox(height: 80)),
             ],
@@ -461,25 +441,25 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 20),
         children: [
           // Dropdown 1: Topic Filter (matches question creation topics)
-          PopupMenuButton<String?>(
-            initialValue: _selectedTopicId,
+          PopupMenuButton<String>(
+            initialValue: _selectedTopicId ?? '',
             onSelected: (val) {
-              setState(() => _selectedTopicId = val);
+              setState(() => _selectedTopicId = val.isEmpty ? null : val);
               _search(refresh: true);
             },
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
             itemBuilder: (context) => [
-              const PopupMenuItem<String?>(
-                value: null,
+              const PopupMenuItem<String>(
+                value: '',
                 child: Text(
                   'Tất cả chủ đề',
                   style: TextStyle(fontFamily: 'Lexend', fontSize: 13),
                 ),
               ),
               ..._topics.where((t) => !t.isHidden).map(
-                    (t) => PopupMenuItem<String?>(
+                    (t) => PopupMenuItem<String>(
                       value: t.id,
                       child: Text(
                         t.name,
@@ -541,25 +521,25 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
           const SizedBox(width: 8),
 
           // Dropdown 2: Stage Filter
-          PopupMenuButton<String?>(
-            initialValue: _selectedStage,
+          PopupMenuButton<String>(
+            initialValue: _selectedStage ?? '',
             onSelected: (val) {
-              setState(() => _selectedStage = val);
+              setState(() => _selectedStage = val.isEmpty ? null : val);
               _search(refresh: true);
             },
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
             itemBuilder: (context) => [
-              const PopupMenuItem<String?>(
-                value: null,
+              const PopupMenuItem<String>(
+                value: '',
                 child: Text(
                   'Tất cả giai đoạn',
                   style: TextStyle(fontFamily: 'Lexend', fontSize: 13),
                 ),
               ),
               ...contentStageOptions.map(
-                (stage) => PopupMenuItem<String?>(
+                (stage) => PopupMenuItem<String>(
                   value: stage.value,
                   child: Text(
                     stage.label,
@@ -729,290 +709,197 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
     );
   }
 
-  // ── Recommended Experts Carousel ──
-  Widget _buildExpertSection() {
-    final experts = [
-      {'name': 'BS. Minh Anh', 'spec': 'Chuyên khoa Nhi'},
-      {'name': 'ThS. Lan Phương', 'spec': 'Dinh dưỡng Mẹ & Bé'},
-      {'name': 'Chuyên gia Hà Lê', 'spec': 'Tâm lý Sơ sinh'},
-    ];
-    return SizedBox(
-      height: 155,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        itemCount: experts.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 12),
-        itemBuilder: (_, i) => Container(
-          width: 140,
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFF1EC),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            children: [
-              const CircleAvatar(
-                radius: 26,
-                backgroundColor: Color(0xFFFFE9E3),
-                child: Icon(
-                  Icons.person,
-                  color: _primaryContainer,
-                  size: 26,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                experts[i]['name']!,
-                style: const TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: _onSurface,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 2),
-              Text(
-                experts[i]['spec']!,
-                style: const TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 10,
-                  color: _onSurfaceVariant,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const Spacer(),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    shape: const StadiumBorder(),
-                    textStyle: const TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    minimumSize: Size.zero,
-                  ),
-                  onPressed: () {},
-                  child: const Text('Nhắn tin'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   // ── Question Feed Post Card ──
   Widget _buildPostCard(CommunityFeedItem item) {
     final hasExpert = item.hasExpertAnswer;
     final bookmarked = item.bookmarked;
     final liked = item.liked;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Top author & bookmark row
-          Row(
-            children: [
-              // Author avatar
-              Container(
-                width: 36,
-                height: 36,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _surfaceContainerHigh,
-                ),
-                child: Center(
-                  child: Text(
-                    item.authorDisplay.isNotEmpty
-                        ? item.authorDisplay[0].toUpperCase()
-                        : '?',
-                    style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: _primary,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.authorDisplay,
-                      style: const TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: _onSurface,
-                      ),
-                    ),
-                    Text(
-                      _timeAgo(item.createdAt),
-                      style: const TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 11,
-                        color: _onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Bookmark toggle button
-              InkWell(
-                onTap: () => _toggleBookmark(item.id),
-                borderRadius: BorderRadius.circular(20),
-                child: Padding(
-                  padding: const EdgeInsets.all(6),
-                  child: Icon(
-                    bookmarked ? Icons.bookmark : Icons.bookmark_border,
-                    size: 22,
-                    color: bookmarked ? _primary : _outline,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-
-          // Tappable Card Title & Badges area -> opens details
-          GestureDetector(
-            onTap: () => _navigateToQuestionDetail(item),
-            behavior: HitTestBehavior.opaque,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Badges row (Topic & Stage)
-                if (item.topicName.isNotEmpty || item.stage.isNotEmpty) ...[
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 4,
-                    children: [
-                      if (item.topicName.isNotEmpty) _TagBadge(item.topicName),
-                      if (item.stage.isNotEmpty)
-                        _TagBadge(contentStageLabel(item.stage)),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                ],
-
-                // Question Title
-                Text(
-                  item.title,
-                  style: const TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: _onSurface,
-                    height: 1.35,
-                  ),
-                ),
-              ],
+    return GestureDetector(
+      onTap: () => _navigateToQuestionDetail(item),
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
             ),
-          ),
-          const SizedBox(height: 10),
-          const Divider(color: _surfaceContainerHighest, height: 1),
-          const SizedBox(height: 10),
-
-          // Bottom info bar: Status pill, like button, comment count, avatar stack
-          Row(
-            children: [
-              // Expert/Discussion Status Pill
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: hasExpert
-                      ? _primary.withValues(alpha: 0.1)
-                      : _surfaceContainerHigh.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(99),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      hasExpert ? Icons.verified : Icons.forum_outlined,
-                      size: 13,
-                      color: hasExpert ? _primary : _onSurfaceVariant,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      hasExpert ? 'Bác sĩ chuyên gia' : 'Thảo luận',
-                      style: TextStyle(
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top author & bookmark row
+            Row(
+              children: [
+                // Author avatar
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _surfaceContainerHigh,
+                  ),
+                  child: Center(
+                    child: Text(
+                      item.authorDisplay.isNotEmpty
+                          ? item.authorDisplay[0].toUpperCase()
+                          : '?',
+                      style: const TextStyle(
                         fontFamily: 'Lexend',
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
-                        color: hasExpert ? _primary : _onSurfaceVariant,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: _primary,
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-
-              // Interactive Like Button & Count
-              InkWell(
-                onTap: () => _toggleQuestionLike(item.id),
-                borderRadius: BorderRadius.circular(20),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        liked ? Icons.favorite : Icons.favorite_border,
-                        size: 18,
-                        color: liked ? const Color(0xFFBA1A1A) : _onSurfaceVariant,
-                      ),
-                      const SizedBox(width: 4),
                       Text(
-                        '${item.likeCount}',
-                        style: TextStyle(
+                        item.authorDisplay,
+                        style: const TextStyle(
                           fontFamily: 'Lexend',
-                          fontSize: 12,
-                          fontWeight: liked ? FontWeight.bold : FontWeight.w500,
-                          color: liked ? const Color(0xFFBA1A1A) : _onSurfaceVariant,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: _onSurface,
+                        ),
+                      ),
+                      Text(
+                        _timeAgo(item.createdAt),
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 11,
+                          color: _onSurfaceVariant,
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
+                // Bookmark toggle button
+                GestureDetector(
+                  onTap: () => _toggleBookmark(item.id),
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsets.all(6),
+                    child: Icon(
+                      bookmarked ? Icons.bookmark : Icons.bookmark_border,
+                      size: 22,
+                      color: bookmarked ? _primary : _outline,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
 
-              // Answer count text -> opens details
-              GestureDetector(
-                onTap: () => _navigateToQuestionDetail(item),
-                child: Text(
+            // Badges row (Topic & Stage)
+            if (item.topicName.isNotEmpty || item.stage.isNotEmpty) ...[
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: [
+                  if (item.topicName.isNotEmpty) _TagBadge(item.topicName),
+                  if (item.stage.isNotEmpty)
+                    _TagBadge(contentStageLabel(item.stage)),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
+
+            // Question Title
+            Text(
+              item.title,
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: _onSurface,
+                height: 1.35,
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Divider(color: _surfaceContainerHighest, height: 1),
+            const SizedBox(height: 10),
+
+            // Bottom info bar: Status pill, like button, comment count, avatar stack
+            Row(
+              children: [
+                // Expert/Discussion Status Pill
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: hasExpert
+                        ? _primary.withValues(alpha: 0.1)
+                        : _surfaceContainerHigh.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        hasExpert ? Icons.verified : Icons.forum_outlined,
+                        size: 13,
+                        color: hasExpert ? _primary : _onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        hasExpert ? 'Bác sĩ chuyên gia' : 'Thảo luận',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          color: hasExpert ? _primary : _onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+
+                // Interactive Like Button & Count
+                GestureDetector(
+                  onTap: () => _toggleQuestionLike(item.id),
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          liked ? Icons.favorite : Icons.favorite_border,
+                          size: 18,
+                          color: liked ? const Color(0xFFBA1A1A) : _onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${item.likeCount}',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 12,
+                            fontWeight: liked ? FontWeight.bold : FontWeight.w500,
+                            color: liked ? const Color(0xFFBA1A1A) : _onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+
+                // Answer count text
+                Text(
                   '• ${item.answerCount} trả lời',
                   style: const TextStyle(
                     fontFamily: 'Lexend',
@@ -1020,31 +907,31 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                     color: _onSurfaceVariant,
                   ),
                 ),
-              ),
 
-              const Spacer(),
+                const Spacer(),
 
-              // Avatar stack preview
-              Row(
-                children: List.generate(
-                  item.answerCount > 0 ? (item.answerCount > 3 ? 2 : 1) : 0,
-                  (i) => Align(
-                    widthFactor: 0.65,
-                    child: CircleAvatar(
-                      radius: 11,
-                      backgroundColor: const Color(0xFFFFE9E3),
-                      child: const Icon(
-                        Icons.person,
-                        size: 11,
-                        color: _primaryContainer,
+                // Avatar stack preview
+                Row(
+                  children: List.generate(
+                    item.answerCount > 0 ? (item.answerCount > 3 ? 2 : 1) : 0,
+                    (i) => Align(
+                      widthFactor: 0.65,
+                      child: CircleAvatar(
+                        radius: 11,
+                        backgroundColor: const Color(0xFFFFE9E3),
+                        child: const Icon(
+                          Icons.person,
+                          size: 11,
+                          color: _primaryContainer,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

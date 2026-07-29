@@ -55,8 +55,21 @@ public interface CommunityAnswerRepository extends JpaRepository<CommunityAnswer
     @Query("SELECT a FROM CommunityAnswer a WHERE a.id = :answerId")
     Optional<CommunityAnswer> findByIdForModerationUpdate(@Param("answerId") UUID answerId);
 
-    // UC-199: fetch approved answers for a question detail view
+    // UC-199: fetch approved answers or author's own pending answers for question detail view
     List<CommunityAnswer> findAllByQuestionIdAndStatusOrderByCreatedAtDesc(UUID questionId, AnswerStatus status);
+
+    @Query("""
+            SELECT a FROM CommunityAnswer a
+            WHERE a.questionId = :questionId
+              AND (
+                a.status = com.carebridge.backend.community.entity.AnswerStatus.APPROVED
+                OR (:currentUserId IS NOT NULL AND a.authorId = :currentUserId AND a.status NOT IN (com.carebridge.backend.community.entity.AnswerStatus.DELETED, com.carebridge.backend.community.entity.AnswerStatus.HIDDEN))
+              )
+            ORDER BY a.createdAt DESC
+            """)
+    List<CommunityAnswer> findVisibleAnswersForDetail(
+            @Param("questionId") UUID questionId,
+            @Param("currentUserId") UUID currentUserId);
 
     List<CommunityAnswer> findAllByQuestionId(UUID questionId);
 

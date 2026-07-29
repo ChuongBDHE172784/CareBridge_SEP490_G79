@@ -84,7 +84,7 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
  String questionAuthorDisplay = authorDisplayResolver.resolve(question.getAuthorId());
 
  List<CommunityAnswer> answerEntities = answerRepository
- .findAllByQuestionIdAndStatusOrderByCreatedAtDesc(questionId, AnswerStatus.APPROVED);
+ .findVisibleAnswersForDetail(questionId, currentUserId);
 
  // Batch fetch display names for all answer authors to avoid N+1
  Set<UUID> answerAuthorIds = answerEntities.stream()
