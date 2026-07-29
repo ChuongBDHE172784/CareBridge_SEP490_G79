@@ -9,6 +9,7 @@ import com.carebridge.backend.content.dto.request.WarnOrSuspendAccountRequest;
 import com.carebridge.backend.content.dto.response.ModerateContentResponse;
 import com.carebridge.backend.content.dto.response.AccountViolationHistoryResponse;
 import com.carebridge.backend.content.dto.response.AccountViolationSummaryResponse;
+import com.carebridge.backend.content.dto.response.CommunityContentMonitorResponse;
 import com.carebridge.backend.content.dto.response.ModerationContentDetailResponse;
 import com.carebridge.backend.content.dto.response.ModerationHistoryResponse;
 import com.carebridge.backend.content.dto.response.UndoModerationActionResponse;
@@ -100,6 +101,21 @@ public class ModerationController {
         PendingContentQueueFilter filter = new PendingContentQueueFilter(targetType, page, size);
         PendingContentQueueResponse response = moderationService.getPendingContentQueue(filter, principal);
         return ResponseEntity.ok(response);
+    }
+
+    // Read-only monitoring of exactly the posts the public community can currently see.
+    @GetMapping("/community-content")
+    @PreAuthorize("hasRole('MODERATOR')")
+    public ResponseEntity<CommunityContentMonitorResponse> getVisibleCommunityContent(
+            @RequestParam ReportTargetType targetType,
+            @RequestParam(defaultValue = "0") @Min(0) int page,
+            @RequestParam(defaultValue = "20") @Min(1) int size,
+            Principal principal) {
+        if (size > 50) {
+            throw ModerationException.pageSizeExceeded();
+        }
+        return ResponseEntity.ok(moderationService.getVisibleCommunityContent(
+                new PendingContentQueueFilter(targetType, page, size), principal));
     }
 
     // C1: RBAC enforcement — MODERATOR only (ADR-002); CB-MOD-IMP-004 §16 ADR-007

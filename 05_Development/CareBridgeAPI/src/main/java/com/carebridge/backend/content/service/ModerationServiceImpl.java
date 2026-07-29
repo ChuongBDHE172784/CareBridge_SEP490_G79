@@ -21,6 +21,8 @@ import com.carebridge.backend.content.dto.response.AccountViolationHistoryItemRe
 import com.carebridge.backend.content.dto.response.AccountViolationHistoryResponse;
 import com.carebridge.backend.content.dto.response.AccountViolationSummaryItemResponse;
 import com.carebridge.backend.content.dto.response.AccountViolationSummaryResponse;
+import com.carebridge.backend.content.dto.response.CommunityContentMonitorItemResponse;
+import com.carebridge.backend.content.dto.response.CommunityContentMonitorResponse;
 import com.carebridge.backend.content.dto.response.ModerationContentDetailResponse;
 import com.carebridge.backend.content.dto.response.ModerationHistoryItemResponse;
 import com.carebridge.backend.content.dto.response.ModerationHistoryResponse;
@@ -188,6 +190,60 @@ public class ModerationServiceImpl implements ModerationService {
                 "pending-content targetType=" + filter.targetType() + " count=" + totalElements);
 
         return new PendingContentQueueResponse(items, totalElements, pageNumber, pageSize);
+    }
+
+    @Override
+    public CommunityContentMonitorResponse getVisibleCommunityContent(
+            PendingContentQueueFilter filter, Principal principal) {
+        if (filter.targetType() != ReportTargetType.QUESTION && filter.targetType() != ReportTargetType.ANSWER) {
+            throw ModerationException.pendingContentTargetTypeUnsupported(filter.targetType());
+        }
+
+        PageRequest pageable = PageRequest.of(filter.page(), filter.size(), Sort.by(Sort.Direction.DESC, "createdAt"));
+        List<CommunityContentMonitorItemResponse> items;
+        long totalElements;
+        int pageNumber;
+        int pageSize;
+
+        if (filter.targetType() == ReportTargetType.QUESTION) {
+            Page<CommunityQuestion> page = communityQuestionRepository.findByStatus(QuestionStatus.APPROVED, pageable);
+            Map<UUID, String> previews = contentPreviewService.batchFetchPreviews(page.getContent().stream()
+                    .map(CommunityQuestion::getId).toList(), ReportTargetType.QUESTION);
+            Map<UUID, String> authorNames = resolveAuthorNames(page.getContent().stream()
+                    .map(CommunityQuestion::getAuthorId).toList());
+            items = page.getContent().stream().map(question -> new CommunityContentMonitorItemResponse(
+                    question.getId(), ReportTargetType.QUESTION, question.getTitle(),
+                    previews.get(question.getId()),
+                    question.getAuthorId(), authorNames.get(question.getAuthorId()), question.getCreatedAt(),
+                    question.getImageUrls().size())).toList();
+            totalElements = page.getTotalElements();
+            pageNumber = page.getNumber();
+            pageSize = page.getSize();
+        } else {
+            Page<CommunityAnswer> page = communityAnswerRepository.findVisibleToCommunity(pageable);
+            Map<UUID, String> previews = contentPreviewService.batchFetchPreviews(page.getContent().stream()
+                    .map(CommunityAnswer::getId).toList(), ReportTargetType.ANSWER);
+            Map<UUID, String> authorNames = resolveAuthorNames(page.getContent().stream()
+                    .map(CommunityAnswer::getAuthorId).toList());
+            items = page.getContent().stream().map(answer -> new CommunityContentMonitorItemResponse(
+                    answer.getId(), ReportTargetType.ANSWER, null,
+                    previews.get(answer.getId()),
+                    answer.getAuthorId(), authorNames.get(answer.getAuthorId()), answer.getCreatedAt(),
+                    answer.getImageUrls().size())).toList();
+            totalElements = page.getTotalElements();
+            pageNumber = page.getNumber();
+            pageSize = page.getSize();
+        }
+
+        String userId = principal != null ? principal.getName() : null;
+        auditService.log(AuditAction.MODERATION_QUEUE_VIEWED, userId, null,
+                "community-content targetType=" + filter.targetType() + " count=" + totalElements);
+        return new CommunityContentMonitorResponse(items, totalElements, pageNumber, pageSize);
+    }
+
+    private Map<UUID, String> resolveAuthorNames(List<UUID> authorIds) {
+        return userRepository.findAllById(authorIds).stream()
+                .collect(java.util.stream.Collectors.toMap(User::getId, User::getName));
     }
 
     // Excludes ACCOUNT actions — belongs to a separate account-violation history view (TDS §16 ADR-007)
@@ -705,6 +761,11 @@ public class ModerationServiceImpl implements ModerationService {
                 question.isAnonymous(),
                 null,
                 null,
+                null,
+                List.copyOf(question.getImageUrls()),
+                List.of(),
+                false,
+                false,
                 question.getCreatedAt(),
                 question.getUpdatedAt());
     }
@@ -714,8 +775,7 @@ public class ModerationServiceImpl implements ModerationService {
                 .orElseThrow(() -> ModerationException.targetNotFound(targetId, ReportTargetType.ANSWER));
 
         // Parent question title gives the moderator context for what the answer is responding to.
-        String questionTitle = communityQuestionRepository.findById(answer.getQuestionId())
-                .map(CommunityQuestion::getTitle)
+        CommunityQuestion parentQuestion = communityQuestionRepository.findById(answer.getQuestionId())
                 .orElse(null);
 
         return new ModerationContentDetailResponse(
@@ -728,7 +788,12 @@ public class ModerationServiceImpl implements ModerationService {
                 answer.getStatus().name(),
                 false,
                 answer.getQuestionId(),
-                questionTitle,
+                parentQuestion != null ? parentQuestion.getTitle() : null,
+                parentQuestion != null ? parentQuestion.getBody() : null,
+                List.copyOf(answer.getImageUrls()),
+                parentQuestion != null ? List.copyOf(parentQuestion.getImageUrls()) : List.of(),
+                answer.isExpertLabeled(),
+                answer.isPersonalExperience(),
                 answer.getCreatedAt(),
                 answer.getUpdatedAt());
     }

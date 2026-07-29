@@ -72,6 +72,24 @@ export interface PendingContentQueuePage {
   size: number;
 }
 
+export interface CommunityContentMonitorItem {
+  targetId: string;
+  targetType: Extract<ReportTargetType, 'QUESTION' | 'ANSWER'>;
+  title: string | null;
+  contentPreview: string;
+  authorId: string;
+  authorName: string | null;
+  createdAt: string;
+  imageCount: number;
+}
+
+export interface CommunityContentMonitorPage {
+  content: CommunityContentMonitorItem[];
+  totalElements: number;
+  page: number;
+  size: number;
+}
+
 // CB-MOD-IMP-004 §16: past APPROVE/HIDE/LOCK/REQUEST_REVISION actions on QUESTION/ANSWER, read from moderation_actions
 export interface ModerationHistoryItem {
   actionId: string;
@@ -160,6 +178,11 @@ export interface ModerationContentDetail {
   anonymous: boolean;
   questionId: string | null;
   questionTitle: string | null;
+  questionBody: string | null;
+  imageUrls: string[];
+  questionImageUrls: string[];
+  expertLabeled: boolean;
+  personalExperience: boolean;
   createdAt: string;
   updatedAt: string | null;
 }

@@ -35,6 +35,18 @@ public interface CommunityAnswerRepository extends JpaRepository<CommunityAnswer
     // independent of ContentReport — for first-time moderation discovery
     Page<CommunityAnswer> findByStatus(AnswerStatus status, Pageable pageable);
 
+    // The answer is public only when both the answer and its parent question are APPROVED.
+    @Query("""
+            SELECT a FROM CommunityAnswer a
+            WHERE a.status = com.carebridge.backend.community.entity.AnswerStatus.APPROVED
+              AND EXISTS (
+                    SELECT q.id FROM CommunityQuestion q
+                    WHERE q.id = a.questionId
+                      AND q.status = com.carebridge.backend.community.entity.QuestionStatus.APPROVED
+              )
+            """)
+    Page<CommunityAnswer> findVisibleToCommunity(Pageable pageable);
+
     @Query("""
             SELECT a FROM CommunityAnswer a
             WHERE a.status = :status

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ConfirmDialog from '../../../shared/components/ConfirmDialog';
-import ContentDetailDialog from '../../../shared/components/ContentDetailDialog';
 import {
   fetchPendingContentQueue,
   fetchModerationHistory,
@@ -9,7 +9,6 @@ import {
   undoModerationAction,
 } from '../services/moderationApi';
 import type {
-  ModerationContentDetail,
   ModerationHistoryItem,
   PendingContentItem,
   ReportTargetType,
@@ -76,6 +75,7 @@ function matchesText(value: string | null | undefined, query: string): boolean {
 }
 
 export default function PendingContentQueuePage() {
+  const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('QUESTION');
   const [items, setItems] = useState<PendingContentItem[]>([]);
   const [historyItems, setHistoryItems] = useState<ModerationHistoryItem[]>([]);
@@ -92,12 +92,6 @@ export default function PendingContentQueuePage() {
   const [actioningId, setActioningId] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<{ item: PendingContentItem; type: PendingActionType } | null>(null);
   const [dialogError, setDialogError] = useState('');
-
-  const [detailTarget, setDetailTarget] = useState<{ targetId: string; targetType: ReportTargetType } | null>(null);
-  const [detailData, setDetailData] = useState<ModerationContentDetail | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [detailError, setDetailError] = useState('');
-  const [detailHistoryItem, setDetailHistoryItem] = useState<ModerationHistoryItem | null>(null);
 
   const [undoTarget, setUndoTarget] = useState<ModerationHistoryItem | null>(null);
   const [undoSubmitting, setUndoSubmitting] = useState(false);
@@ -209,19 +203,10 @@ export default function PendingContentQueuePage() {
     setPendingAction({ item, type });
   };
 
-  const openDetail = async (targetId: string, targetType: ReportTargetType, historyItem?: ModerationHistoryItem) => {
-    setDetailTarget({ targetId, targetType });
-    setDetailData(null);
-    setDetailError('');
-    setDetailHistoryItem(historyItem ?? null);
-    setDetailLoading(true);
-    try {
-      setDetailData(await fetchContentDetail(targetType, targetId));
-    } catch {
-      setDetailError('Không tải được nội dung chi tiết. Vui lòng thử lại.');
-    } finally {
-      setDetailLoading(false);
-    }
+  const openDetail = (targetId: string, targetType: ReportTargetType, historyItem?: ModerationHistoryItem) => {
+    navigate(`/moderator/pending-content/${targetType}/${targetId}`, {
+      state: { historyItem },
+    });
   };
 
   const confirmPendingAction = async (reason?: string) => {
@@ -677,25 +662,6 @@ export default function PendingContentQueuePage() {
         onCancel={() => setUndoTarget(null)}
       />
 
-      <ContentDetailDialog
-        open={detailTarget !== null}
-        targetTypeLabel={detailTarget ? TARGET_TYPE_LABELS[detailTarget.targetType] : ''}
-        statusLabel={detailData ? detailData.status : undefined}
-        loading={detailLoading}
-        errorText={detailError}
-        detail={detailData}
-        moderationContext={
-          detailHistoryItem
-            ? {
-              actionTypeLabel: ACTION_TYPE_LABELS[detailHistoryItem.actionType],
-              reason: detailHistoryItem.reason,
-              moderatorName: detailHistoryItem.moderatorName,
-              actionAt: detailHistoryItem.actionAt,
-            }
-            : undefined
-        }
-        onClose={() => { setDetailTarget(null); setDetailHistoryItem(null); }}
-      />
     </div>
   );
 }

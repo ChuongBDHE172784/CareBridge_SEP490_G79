@@ -63,6 +63,7 @@ const NAV_LINKS: readonly NavItem[] = [
   { to: '/partner/dashboard', label: 'Partner', icon: 'handshake', roles: ['PARTNER'] },
   { to: '/moderator/moderator-dashboard', label: 'Tổng quan', icon: 'dashboard', roles: ['MODERATOR'] },
   { to: '/moderator/pending-content', label: 'Nội dung mới', icon: 'fact_check', roles: ['MODERATOR'] },
+  { to: '/moderator/community-content', label: 'Theo dõi cộng đồng', icon: 'visibility', roles: ['MODERATOR'] },
   { to: '/moderator/reports', label: 'Báo cáo', icon: 'flag', roles: ['MODERATOR'] },
   { to: '/moderator/violations', label: 'Vi phạm', icon: 'gavel', roles: ['MODERATOR'] },
 ];
