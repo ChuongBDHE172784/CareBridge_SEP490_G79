@@ -11,30 +11,45 @@ type FormState = {
   confirmPassword: string;
 };
 
+type FieldErrors = Partial<Record<keyof FormState, string>>;
+
 const initialForm: FormState = { name: '', email: '', phone: '', password: '', confirmPassword: '' };
 
 export default function ExpertRegisterPage() {
   const navigate = useNavigate();
   const [form, setForm] = useState(initialForm);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
 
-  const update = (key: keyof FormState) => (event: React.ChangeEvent<HTMLInputElement>) =>
+  const update = (key: keyof FormState) => (event: React.ChangeEvent<HTMLInputElement>) => {
     setForm((current) => ({ ...current, [key]: event.target.value }));
+    setFieldErrors((current) => {
+      if (!current[key]) return current;
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
+    setError(null);
+  };
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError(null);
+    setFieldErrors({});
     if (!form.name.trim() || !form.email.trim()) {
-      setError('Vui lòng nhập họ tên và email.');
+      setFieldErrors({
+        ...(!form.name.trim() ? { name: 'Vui lòng nhập họ và tên.' } : {}),
+        ...(!form.email.trim() ? { email: 'Vui lòng nhập email.' } : {}),
+      });
       return;
     }
     if (form.password.length < 8) {
-      setError('Mật khẩu phải có ít nhất 8 ký tự.');
+      setFieldErrors({ password: 'Mật khẩu phải có ít nhất 8 ký tự.' });
       return;
     }
     if (form.password !== form.confirmPassword) {
-      setError('Mật khẩu xác nhận không khớp.');
+      setFieldErrors({ confirmPassword: 'Mật khẩu xác nhận không khớp.' });
       return;
     }
 
@@ -54,8 +69,26 @@ export default function ExpertRegisterPage() {
         },
       });
     } catch (caught: unknown) {
-      const apiError = caught as { response?: { data?: { message?: string } } };
-      setError(apiError.response?.data?.message ?? 'Không thể tạo tài khoản chuyên gia. Vui lòng thử lại.');
+      const apiError = caught as {
+        response?: {
+          data?: {
+            message?: string;
+            details?: Array<{ field?: string; message?: string }>;
+          };
+        };
+      };
+      const details = apiError.response?.data?.details ?? [];
+      const backendFieldErrors = details.reduce<FieldErrors>((result, detail) => {
+        if (isFormField(detail.field) && detail.message) {
+          result[detail.field] = detail.message;
+        }
+        return result;
+      }, {});
+      if (Object.keys(backendFieldErrors).length > 0) {
+        setFieldErrors(backendFieldErrors);
+      } else {
+        setError(apiError.response?.data?.message ?? 'Không thể tạo tài khoản chuyên gia. Vui lòng thử lại.');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -111,12 +144,12 @@ export default function ExpertRegisterPage() {
           )}
 
           <form className="grid gap-5" onSubmit={submit}>
-            <Field label="Họ và tên" required value={form.name} onChange={update('name')} autoComplete="name" placeholder="Nguyễn Văn A" />
-            <Field label="Email" type="email" required value={form.email} onChange={update('email')} autoComplete="email" placeholder="email@example.com" />
-            <Field label="Số điện thoại" type="tel" value={form.phone} onChange={update('phone')} autoComplete="tel" placeholder="09xxxxxxxx (Tùy chọn)" />
+            <Field name="name" label="Họ và tên" required value={form.name} error={fieldErrors.name} onChange={update('name')} autoComplete="name" placeholder="Nguyễn Văn A" />
+            <Field name="email" label="Email" type="email" required value={form.email} error={fieldErrors.email} onChange={update('email')} autoComplete="email" placeholder="email@example.com" />
+            <Field name="phone" label="Số điện thoại" type="tel" value={form.phone} error={fieldErrors.phone} onChange={update('phone')} autoComplete="tel" placeholder="09xxxxxxxx (Tùy chọn)" />
             <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="Mật khẩu" type="password" required value={form.password} onChange={update('password')} autoComplete="new-password" placeholder="••••••••" />
-              <Field label="Nhập lại mật khẩu" type="password" required value={form.confirmPassword} onChange={update('confirmPassword')} autoComplete="new-password" placeholder="••••••••" />
+              <Field name="password" label="Mật khẩu" type="password" required value={form.password} error={fieldErrors.password} onChange={update('password')} autoComplete="new-password" placeholder="••••••••" />
+              <Field name="confirmPassword" label="Nhập lại mật khẩu" type="password" required value={form.confirmPassword} error={fieldErrors.confirmPassword} onChange={update('confirmPassword')} autoComplete="new-password" placeholder="••••••••" />
             </div>
 
             <div className="mt-4 flex items-start gap-3 rounded-xl bg-surface-variant p-4">
@@ -147,18 +180,45 @@ export default function ExpertRegisterPage() {
   );
 }
 
-function Field(props: React.InputHTMLAttributes<HTMLInputElement> & { label: string; required?: boolean }) {
-  const { label, required, ...inputProps } = props;
+function isFormField(field: string | undefined): field is keyof FormState {
+  return field === 'name'
+    || field === 'email'
+    || field === 'phone'
+    || field === 'password'
+    || field === 'confirmPassword';
+}
+
+function Field(props: React.InputHTMLAttributes<HTMLInputElement> & {
+  label: string;
+  required?: boolean;
+  error?: string;
+}) {
+  const { label, required, error, name, ...inputProps } = props;
+  const fieldId = `expert-register-${name}`;
+  const errorId = `${fieldId}-error`;
   return (
-    <label className="grid gap-2">
+    <label className="grid gap-2" htmlFor={fieldId}>
       <span className="text-[13px] font-semibold text-on-surface">
         {label} {required && <span className="text-error">*</span>}
       </span>
       <input
         {...inputProps}
+        id={fieldId}
+        name={name}
         required={required}
-        className="h-12 w-full rounded-xl border-2 border-outline-variant bg-surface-container-lowest px-4 text-[15px] text-on-surface outline-none transition-all placeholder:text-outline focus:border-primary focus:bg-surface focus:ring-4 focus:ring-primary/10"
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? errorId : undefined}
+        className={`h-12 w-full rounded-xl border-2 bg-surface-container-lowest px-4 text-[15px] text-on-surface outline-none transition-all placeholder:text-outline focus:bg-surface focus:ring-4 ${
+          error
+            ? 'border-error focus:border-error focus:ring-error/10'
+            : 'border-outline-variant focus:border-primary focus:ring-primary/10'
+        }`}
       />
+      {error && (
+        <span id={errorId} className="text-xs font-medium text-error">
+          {error}
+        </span>
+      )}
     </label>
   );
 }

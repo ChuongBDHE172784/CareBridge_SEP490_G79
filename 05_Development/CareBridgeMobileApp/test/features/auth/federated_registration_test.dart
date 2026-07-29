@@ -36,6 +36,35 @@ void main() {
     },
   );
 
+  testWidgets(
+    'expert registration is email-only and cannot escape through federated role selection',
+    (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(home: RegisterScreen(isExpert: true)),
+      );
+
+      expect(find.text('Email'), findsOneWidget);
+      expect(find.text('Email hoặc Số điện thoại'), findsNothing);
+      expect(find.byKey(const Key('federated-google-register')), findsNothing);
+      expect(find.byKey(const Key('federated-phone-register')), findsNothing);
+      expect(find.text('bacsi@example.com'), findsOneWidget);
+
+      final fields = find.byType(TextField);
+      await tester.enterText(fields.at(0), 'Bác sĩ Test');
+      await tester.enterText(fields.at(1), '0901234567');
+      await tester.enterText(fields.at(2), 'Password@1');
+      await tester.tap(find.text('Tạo tài khoản'));
+      await tester.pump();
+
+      expect(
+        find.text(
+          'Tài khoản chuyên gia cần đăng ký bằng địa chỉ email hợp lệ.',
+        ),
+        findsOneWidget,
+      );
+    },
+  );
+
   testWidgets('Google cancellation is silent and restores registration', (
     tester,
   ) async {

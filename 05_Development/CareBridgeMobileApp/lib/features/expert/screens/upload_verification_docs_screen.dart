@@ -194,7 +194,7 @@ class _UploadVerificationDocsScreenState
             file: _file!,
           );
       ExpertOnboardingStore.instance.invalidate();
-      if (mounted) context.go('/expert-verification-status');
+      if (mounted) context.go('/expert-onboarding');
     } on ArgumentError catch (e) {
       if (mounted) setState(() => _error = e.message.toString());
     } on ApiException catch (e) {

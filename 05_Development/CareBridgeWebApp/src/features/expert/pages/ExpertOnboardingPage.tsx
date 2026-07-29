@@ -793,10 +793,20 @@ function Loading() {
 function Status({ label, value }: { label: string; value: string | null }) {
   const positive = value === 'APPROVED';
   const rejected = value === 'REJECTED';
+
+  const statusTranslations: Record<string, string> = {
+    APPROVED: 'Đã duyệt',
+    REJECTED: 'Từ chối',
+    PENDING: 'Đang chờ',
+    MANUAL_REVIEW_REQUIRED: 'Chờ duyệt thủ công',
+  };
+
+  const displayValue = value ? (statusTranslations[value] || value) : 'CHƯA GỬI';
+
   return (
     <div className={`rounded-2xl border p-4 ${positive ? 'border-green-200 bg-green-50' : rejected ? 'border-red-200 bg-red-50' : 'border-amber-200 bg-amber-50'}`}>
       <p className="text-xs text-gray-500">{label}</p>
-      <p className="mt-1 font-semibold">{value ?? 'CHƯA GỬI'}</p>
+      <p className="mt-1 font-semibold">{displayValue}</p>
     </div>
   );
 }

@@ -53,6 +53,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   bool get _isEmailInput => _identifierCtrl.text.contains('@');
 
+  bool get _hasValidEmail => RegExp(
+    r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+  ).hasMatch(_identifierCtrl.text.trim());
+
   bool get _hasMinLength => _passwordCtrl.text.length >= 8;
   bool get _hasSpecialChar =>
       RegExp(r'[@#$%^&*!]').hasMatch(_passwordCtrl.text);
@@ -65,6 +69,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (name.isEmpty || identifier.isEmpty || password.isEmpty) {
       setState(() => _errorMessage = 'Vui lòng nhập đầy đủ thông tin.');
+      return;
+    }
+    if (widget.isExpert && !_hasValidEmail) {
+      setState(
+        () => _errorMessage =
+            'Tài khoản chuyên gia cần đăng ký bằng địa chỉ email hợp lệ.',
+      );
       return;
     }
     if (name.length < 2 || name.length > 120) {
@@ -111,7 +122,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } on ApiException catch (e) {
       String msg;
       if (e.statusCode == 409) {
-        msg = 'Email hoặc số điện thoại này đã được đăng ký.';
+        msg = widget.isExpert
+            ? 'Email này đã được đăng ký.'
+            : 'Email hoặc số điện thoại này đã được đăng ký.';
       } else if (e.statusCode == 400) {
         msg = 'Thông tin không hợp lệ. Vui lòng kiểm tra lại.';
       } else {
@@ -147,8 +160,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 12),
                     ],
                     _buildFormCard(),
-                    const SizedBox(height: 20),
-                    _buildFederatedRegistrationActions(),
+                    if (!widget.isExpert) ...[
+                      const SizedBox(height: 20),
+                      _buildFederatedRegistrationActions(),
+                    ],
                     const SizedBox(height: 80),
                   ],
                 ),
@@ -275,9 +290,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           // Identifier field
           _buildLabeledInput(
             id: 'contact',
-            label: 'Email hoặc Số điện thoại',
+            label: widget.isExpert ? 'Email' : 'Email hoặc Số điện thoại',
             controller: _identifierCtrl,
-            hint: '09xx xxx xxx',
+            hint: widget.isExpert ? 'bacsi@example.com' : '09xx xxx xxx',
             keyboardType: TextInputType.emailAddress,
           ),
           const SizedBox(height: 16),

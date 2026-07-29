@@ -298,6 +298,20 @@ export async function updateMyProfile(body: {
 	return data.data;
 }
 
+export async function uploadExpertAvatar(file: File): Promise<string> {
+	const form = new FormData();
+	form.append('file', file);
+	form.append('kind', 'IMAGE');
+	form.append('purpose', 'EXPERT_AVATAR');
+	form.append('accessMode', 'PUBLIC');
+	const res = await apiClient.post<{ data: { presignedUrl: string } }>(
+		'/api/v1/files/upload/with-purpose',
+		form,
+		{ headers: { 'Content-Type': undefined } },
+	);
+	return res.data.data.presignedUrl;
+}
+
 export async function getExpertOnboarding(): Promise<ExpertOnboardingResponse> {
 	const { data } = await apiClient.get('/api/v1/expert/onboarding');
 	return data.data;

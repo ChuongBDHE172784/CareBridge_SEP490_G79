@@ -159,7 +159,7 @@ class _ExpertProfileSetupScreenState extends State<ExpertProfileSetupScreen> {
         consultationScope: _scope.text.trim(),
       );
       ExpertOnboardingStore.instance.invalidate();
-      if (mounted) context.go('/expert/identity');
+      if (mounted) context.go('/expert-onboarding');
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
