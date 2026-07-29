@@ -25,6 +25,7 @@ import ExpertProfilePage from '../../features/expert/pages/ExpertProfilePage';
 import VerificationDocumentsPage from '../../features/expert/pages/VerificationDocumentsPage';
 import AvailabilityCalendarPage from '../../features/expert/pages/AvailabilityCalendarPage';
 import ExpertQuestionQueuePage from '../../features/expert/pages/ExpertQuestionQueuePage';
+import ExpertConsultationRequestsPage from '../../features/expert/pages/ExpertConsultationRequestsPage';
 import ExpertOnboardingPage from '../../features/expert/pages/ExpertOnboardingPage';
 
 // Contribution screens
@@ -253,6 +254,8 @@ export const router = createBrowserRouter([
                       { path: '/expert/calendar', element: <AvailabilityCalendarPage /> },
                       // CB-063: Expert Question Queue
                       { path: '/expert/question-queue', element: <ExpertQuestionQueuePage /> },
+                      // CB-064: Consultation Requests
+                      { path: '/expert/consultation-requests', element: <ExpertConsultationRequestsPage /> },
                       // UC-144D: Direct Consult Chat & Call
                       { path: '/expert/direct-chats', element: <ConversationListPage /> },
                       { path: '/expert/direct-chats/:conversationId', element: <ConversationRoomPage /> },

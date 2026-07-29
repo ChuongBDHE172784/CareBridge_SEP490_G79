@@ -3,6 +3,7 @@ import { useAuth } from '../../shared/auth/useAuth';
 
 const NAV_ITEMS = [
   { label: 'Tổng quan', icon: 'dashboard', path: '/expert/dashboard' },
+  { label: 'Yêu cầu tư vấn', icon: 'contact_support', path: '/expert/consultation-requests' },
   { label: 'Hồ sơ chuyên môn', icon: 'person', path: '/expert/profile' },
   { label: 'Chứng chỉ & Giấy tờ', icon: 'description', path: '/expert/credentials' },
   { label: 'Lịch rảnh', icon: 'calendar_month', path: '/expert/calendar' },
