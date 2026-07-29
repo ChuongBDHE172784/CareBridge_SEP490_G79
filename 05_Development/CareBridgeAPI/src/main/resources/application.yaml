@@ -94,7 +94,7 @@ carebridge:
     connect-timeout-ms: ${GEMINI_CONNECT_TIMEOUT_MS:3000}
     max-context-chunks: 5
     base-url: https://generativelanguage.googleapis.com/v1beta
-    model: ${GEMINI_MODEL:gemini-1.5-flash}
+    model: ${GEMINI_MODEL:gemini-flash-latest}
     moderation:
       timeout-ms: ${GEMINI_MODERATION_TIMEOUT_MS:15000}
       max-attempts: ${AI_MODERATION_MAX_ATTEMPTS:4}
