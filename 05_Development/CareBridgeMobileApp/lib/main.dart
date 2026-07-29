@@ -65,6 +65,7 @@ class CareBridgeApp extends StatelessWidget {
       title: 'CareBridge',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
+        fontFamily: 'Lexend',
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFFC98C7B),
           primary: const Color(0xFFC98C7B),
