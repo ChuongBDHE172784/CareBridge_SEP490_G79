@@ -73,6 +73,12 @@ class EmergencyTriageLinkPostgresIntegrationTest
 
     @Test
     void firstRedFlushesParentSecondReusesAndReplayReturnsCanonicalEmergency() {
+        jdbcTemplate.execute("""
+                ALTER TABLE safety_events
+                    ALTER COLUMN alert_successful_recipient_count DROP DEFAULT,
+                    ALTER COLUMN alert_failed_recipient_count DROP DEFAULT
+                """);
+
         var first = emergencyService.openOrReuseFromTriage(firstIntakeId, ownerId);
         var second = emergencyService.openOrReuseFromTriage(secondIntakeId, ownerId);
         var replay = emergencyService.openOrReuseFromTriage(firstIntakeId, ownerId);
@@ -95,6 +101,8 @@ class EmergencyTriageLinkPostgresIntegrationTest
                    AND triage_handoff_id IN (?, ?)
                 """, Long.class, ownerId, firstIntakeId, secondIntakeId))
                 .isEqualTo(2L);
+        assertEscalationCountersZero(firstIntakeId);
+        assertEscalationCountersZero(secondIntakeId);
     }
 
     @Test
@@ -299,6 +307,18 @@ class EmergencyTriageLinkPostgresIntegrationTest
                    AND action_type='DELIVERY' AND action_phase='RESULT'
                    AND delivery_status=?
                 """, Long.class, sessionId, deviceId, status);
+    }
+
+    private void assertEscalationCountersZero(UUID intakeId) {
+        assertThat(jdbcTemplate.queryForObject("""
+                SELECT count(*) FROM safety_events
+                 WHERE user_id = ? AND record_type = 'SAFETY_ACTION'
+                   AND action_type = 'TRIAGE_ESCALATION'
+                   AND triage_handoff_id = ?
+                   AND alert_successful_recipient_count = 0
+                   AND alert_failed_recipient_count = 0
+                """, Long.class, ownerId, intakeId))
+                .isOne();
     }
 
     private void seedRedIntake(UUID intakeId, String symptoms) {

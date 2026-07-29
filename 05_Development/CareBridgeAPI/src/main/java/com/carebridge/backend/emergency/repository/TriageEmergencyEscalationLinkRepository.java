@@ -42,11 +42,12 @@ public class TriageEmergencyEscalationLinkRepository {
                     safety_event_id, parent_event_id, record_type, event_type,
                     action_type, user_id, triage_handoff_id, attempt_number,
                     idempotency_key, action_phase, alert_generation,
+                    alert_successful_recipient_count, alert_failed_recipient_count,
                     detected_at, created_at
                 ) VALUES (
                     md5('triage-escalation:' || CAST(? AS text))::uuid, ?,
                     'SAFETY_ACTION', 'ACTION', 'TRIAGE_ESCALATION', ?, ?, 1,
-                    'triage-escalation:' || CAST(? AS text), 'LINKED', 0, ?, ?
+                    'triage-escalation:' || CAST(? AS text), 'LINKED', 0, 0, 0, ?, ?
                 )
                 ON CONFLICT (safety_event_id) DO NOTHING
                 """, intakeSessionId, emergencySessionId, ownerUserId, intakeSessionId,
