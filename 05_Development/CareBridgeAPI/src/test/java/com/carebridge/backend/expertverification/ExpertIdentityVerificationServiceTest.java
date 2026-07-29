@@ -23,6 +23,7 @@ import com.carebridge.backend.expertverification.reviewstatus.ReviewStatus;
 import com.carebridge.backend.expertverification.repository.ExpertCredentialRepository;
 import com.carebridge.backend.expertverification.repository.ExpertIdentityVerificationRepository;
 import com.carebridge.backend.expertverification.service.IExpertCredentialService;
+import com.carebridge.backend.expertverification.service.impl.DuplicateIdentityFaceService;
 import com.carebridge.backend.expertverification.service.impl.ExpertIdentityVerificationServiceImpl;
 import com.carebridge.backend.security.repository.UserRepository;
 import com.carebridge.backend.file.dto.UploadFileResponse;
@@ -54,6 +55,7 @@ class ExpertIdentityVerificationServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private CareFacilityRepository careFacilityRepository;
     @Mock private CompreFacePipelineAdapter pipelineAdapter;
+    @Mock private DuplicateIdentityFaceService duplicateIdentityFaceService;
     @Mock private IFileService fileService;
     @Mock private AuditService auditService;
 
@@ -67,7 +69,7 @@ class ExpertIdentityVerificationServiceTest {
                 profileRepository, identityRepository, credentialRepository,
                 credentialService, profileMapper, userRepository,
                 careFacilityRepository,
-                pipelineAdapter, fileService, auditService,
+                pipelineAdapter, duplicateIdentityFaceService, fileService, auditService,
                 TransactionOperations.withoutTransaction());
     }
 
@@ -134,6 +136,58 @@ class ExpertIdentityVerificationServiceTest {
     }
 
     @Test
+    void matchedFaceAgainstExistingIdentityRequiresManualDuplicateReview() {
+        when(profileRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(profile()));
+        byte[] selfieCrop = {9, 8, 7};
+        byte[] cardCrop = {6, 5, 4};
+        when(pipelineAdapter.verifyWithPipeline(any(), any(), any(), any()))
+                .thenReturn(new CompreFacePipelineAdapter.PipelineResult(
+                        new FaceVerificationResult(
+                                FaceVerificationStatus.MATCHED,
+                                new BigDecimal("0.91"),
+                                new BigDecimal("0.75"),
+                                null),
+                        selfieCrop, cardCrop,
+                        com.carebridge.backend.expertverification.enums.FaceDetectionStatus.DETECTED,
+                        com.carebridge.backend.expertverification.enums.FaceDetectionStatus.DETECTED,
+                        "MATCHED"));
+
+        when(fileService.uploadWithPurpose(
+                any(), eq(userId), eq(FileKind.IMAGE), any(), eq(FileAccessMode.PRIVATE)))
+                .thenAnswer(invocation -> upload());
+        when(fileService.uploadPrivateBytes(any(), eq(userId), any(), any(), any()))
+                .thenAnswer(invocation -> upload());
+        when(identityRepository.save(any())).thenAnswer(invocation -> {
+            ExpertIdentityVerification value = invocation.getArgument(0);
+            if (value.getId() == null) {
+                value.setId(UUID.randomUUID());
+            }
+            return value;
+        });
+
+        var persistedAttempt = ExpertIdentityVerification.builder()
+                .id(UUID.randomUUID())
+                .expertProfileId(profileId)
+                .build();
+        when(identityRepository.findByIdForUpdate(any()))
+                .thenReturn(Optional.of(persistedAttempt));
+        when(duplicateIdentityFaceService.findPossibleDuplicate(
+                eq(profileId), eq(selfieCrop), eq("image/jpeg")))
+                .thenReturn(Optional.of(new DuplicateIdentityFaceService.DuplicateFaceMatch(
+                        UUID.randomUUID(), UUID.randomUUID(),
+                        new BigDecimal("0.93"), new BigDecimal("0.75"))));
+
+        service.submit(userId, image("selfie"), image("front"), image("back"));
+
+        assertThat(persistedAttempt.getReviewStatus())
+                .isEqualTo(IdentityReviewStatus.MANUAL_REVIEW_REQUIRED);
+        assertThat(persistedAttempt.getReviewReason())
+                .isEqualTo("Possible duplicate identity detected; admin review is required");
+        verify(duplicateIdentityFaceService).findPossibleDuplicate(
+                profileId, selfieCrop, "image/jpeg");
+    }
+
+    @Test
     void noProfileRoutesOnboardingToProfileStep() {
         when(profileRepository.findByUserId(userId)).thenReturn(Optional.empty());
 
@@ -158,8 +212,6 @@ class ExpertIdentityVerificationServiceTest {
                 .verificationStatus(VerificationStatus.PENDING)
                 .build();
 
-        when(profileRepository.findAll()).thenReturn(List.of(profile));
-        when(userRepository.findById(userId)).thenReturn(Optional.empty());
         when(identityRepository.findFirstByExpertProfileIdOrderByCreatedAtDesc(profileId))
                 .thenReturn(Optional.empty());
         when(credentialService.getAdminCredentialsForProfile(profileId, userId))
@@ -182,7 +234,6 @@ class ExpertIdentityVerificationServiceTest {
     private ExpertProfile profile() {
         return ExpertProfile.builder()
                 .expertProfileId(profileId)
-                .userId(userId)
                 .verificationStatus(VerificationStatus.PENDING)
                 .build();
     }

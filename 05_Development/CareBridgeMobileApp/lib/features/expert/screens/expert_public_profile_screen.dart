@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/auth/auth_state.dart';
 import '../../directChat/services/direct_chat_service.dart';
 import '../../consultation/screens/consultation_request_form_screen.dart';
+import 'package:intl/intl.dart';
 
 class ExpertPublicProfileScreen extends StatefulWidget {
   final String expertProfileId;
@@ -27,7 +28,6 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
   static const _onSurfaceVariant = Color(0xFF524440);
 
   late Future<Map<String, dynamic>> _future;
-  bool _startingChat = false;
   int _generation = 0;
   late String? _accountId;
   bool _accountChanged = false;
@@ -54,7 +54,6 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
     if (!mounted) return;
     setState(() {
       _accountChanged = true;
-      _startingChat = false;
     });
   }
 
@@ -72,35 +71,12 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
     return profile;
   }
 
-  Future<void> _startChat() async {
-    final generation = _generation;
-    final requestAccountId = AuthState.instance.userId;
-    setState(() => _startingChat = true);
-    try {
-      final conversation = await DirectChatService.instance
-          .findOrCreateConversation(widget.expertProfileId);
-      if (!mounted ||
-          generation != _generation ||
-          AuthState.instance.userId != requestAccountId) {
-        return;
-      }
-      context.push('/direct-chat/${conversation.conversationId}');
-    } catch (error) {
-      if (!mounted ||
-          generation != _generation ||
-          AuthState.instance.userId != requestAccountId) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Không thể mở cuộc trò chuyện: $error')),
-      );
-    } finally {
-      if (mounted &&
-          generation == _generation &&
-          AuthState.instance.userId == requestAccountId) {
-        setState(() => _startingChat = false);
-      }
-    }
+  String _formatCurrency(dynamic amount) {
+    if (amount == null) return 'Miễn phí';
+    final number = double.tryParse(amount.toString()) ?? 0;
+    if (number == 0) return 'Miễn phí';
+    final format = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
+    return format.format(number);
   }
 
   @override
@@ -156,122 +132,299 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
                     (profile['consultationEligible'] ??
                         profile['isConsultationEligible']) ==
                     true;
+
                 final displayName = profile['displayName'] as String?;
                 final professionalTitle =
                     profile['professionalTitle'] as String?;
                 final expertDisplayName =
                     displayName ?? professionalTitle ?? 'Chuyên gia';
-                return Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: _surface,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          expertDisplayName,
-                          style: const TextStyle(
-                            color: _onSurface,
-                            fontSize: 22,
-                            fontWeight: FontWeight.w700,
-                          ),
+                final avatarUrl = profile['avatarUrl'] as String?;
+                final specialty = profile['specialty'] as String?;
+                final workplace = profile['workplace'] as String?;
+                final experienceYears = profile['experienceYears']?.toString();
+                final ratingAvg = profile['ratingAvg']?.toString();
+                final consultationFee = profile['consultationFeeVnd'];
+                final consultationScope =
+                    profile['consultationScope'] as String?;
+                final isVerified = profile['verificationStatus'] == 'APPROVED';
+
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      // Header Card
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: _surface,
+                          borderRadius: BorderRadius.circular(16),
                         ),
-                        if (displayName != null &&
-                            professionalTitle != null &&
-                            professionalTitle != displayName) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            professionalTitle,
-                            style: const TextStyle(
-                              color: _onSurfaceVariant,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 8),
-                        Text(
-                          profile['specialty'] as String? ?? '',
-                          style: const TextStyle(
-                            color: _onSurfaceVariant,
-                            fontSize: 14,
-                          ),
-                        ),
-                        if (profile['consultationScope'] != null) ...[
-                          const SizedBox(height: 16),
-                          Text(
-                            profile['consultationScope'] as String,
-                            style: const TextStyle(
-                              color: _onSurfaceVariant,
-                              fontSize: 13,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 24),
-                        Row(
+                        child: Column(
                           children: [
-                            Expanded(
-                              child: FilledButton(
-                                onPressed:
-                                    isConsultationEligible && !_startingChat
-                                    ? _startChat
-                                    : null,
-                                child: _startingChat
-                                    ? const SizedBox(
-                                        width: 18,
-                                        height: 18,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white,
-                                        ),
-                                      )
-                                    : const Text('Trò chuyện'),
-                              ),
+                            CircleAvatar(
+                              radius: 48,
+                              backgroundImage: avatarUrl != null
+                                  ? NetworkImage(avatarUrl)
+                                  : null,
+                              child: avatarUrl == null
+                                  ? Text(
+                                      expertDisplayName.isNotEmpty
+                                          ? expertDisplayName[0].toUpperCase()
+                                          : '?',
+                                      style: const TextStyle(fontSize: 32),
+                                    )
+                                  : null,
                             ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: isConsultationEligible
-                                    ? () => Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (_) =>
-                                              ConsultationRequestFormScreen(
-                                                expertProfileId:
-                                                    widget.expertProfileId,
-                                                expertDisplayName:
-                                                    expertDisplayName,
-                                              ),
-                                        ),
-                                      )
-                                    : null,
-                                child: const Text('Yêu cầu tư vấn'),
+                            const SizedBox(height: 16),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    expertDisplayName,
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      color: _onSurface,
+                                      fontSize: 22,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                                if (isVerified) ...[
+                                  const SizedBox(width: 8),
+                                  const Icon(
+                                    Icons.verified,
+                                    color: Color(0xFFC98C7B),
+                                    size: 24,
+                                  ),
+                                ],
+                              ],
+                            ),
+                            if (professionalTitle != null &&
+                                professionalTitle != displayName) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                professionalTitle,
+                                style: const TextStyle(
+                                  color: _primary,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
+                            ],
+                            const SizedBox(height: 16),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                _buildStatColumn(
+                                  icon: Icons.star_rounded,
+                                  value: ratingAvg != null
+                                      ? '$ratingAvg'
+                                      : 'Chưa có',
+                                  label: 'Đánh giá',
+                                  iconColor: Colors.amber,
+                                ),
+                                _buildStatColumn(
+                                  icon: Icons.work_history_rounded,
+                                  value: experienceYears != null
+                                      ? '$experienceYears năm'
+                                      : 'Chưa có',
+                                  label: 'Kinh nghiệm',
+                                  iconColor: _primary,
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                        if (!isConsultationEligible) ...[
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Chuyên gia hiện chưa thể nhận tương tác tư vấn mới.',
-                            style: TextStyle(
-                              color: _onSurfaceVariant,
-                              fontSize: 12,
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Details Card
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: _surface,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Thông tin công tác',
+                              style: TextStyle(
+                                color: _onSurface,
+                                fontSize: 18,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            _buildInfoRow(
+                              Icons.medical_services_outlined,
+                              'Chuyên khoa',
+                              specialty ?? 'Đang cập nhật',
+                            ),
+                            const SizedBox(height: 12),
+                            _buildInfoRow(
+                              Icons.local_hospital_outlined,
+                              'Nơi công tác',
+                              workplace ?? 'Đang cập nhật',
+                            ),
+                            const SizedBox(height: 12),
+                            _buildInfoRow(
+                              Icons.monetization_on_outlined,
+                              'Phí tư vấn',
+                              _formatCurrency(consultationFee),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Consultation Scope
+                      if (consultationScope != null &&
+                          consultationScope.isNotEmpty)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(24),
+                          decoration: BoxDecoration(
+                            color: _surface,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Phạm vi tư vấn',
+                                style: TextStyle(
+                                  color: _onSurface,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                consultationScope,
+                                style: const TextStyle(
+                                  color: _onSurfaceVariant,
+                                  fontSize: 14,
+                                  height: 1.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                      const SizedBox(height: 32),
+
+                      // Action Button
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: FilledButton(
+                          onPressed: isConsultationEligible
+                              ? () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        ConsultationRequestFormScreen(
+                                          expertProfileId:
+                                              widget.expertProfileId,
+                                          expertDisplayName: expertDisplayName,
+                                        ),
+                                  ),
+                                )
+                              : null,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: _primary,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                        ],
+                          child: const Text(
+                            'Yêu cầu tư vấn',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (!isConsultationEligible) ...[
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Chuyên gia hiện chưa thể nhận tương tác tư vấn mới.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.redAccent,
+                            fontSize: 13,
+                          ),
+                        ),
                       ],
-                    ),
+                      const SizedBox(height: 24),
+                    ],
                   ),
                 );
               },
             ),
+    );
+  }
+
+  Widget _buildStatColumn({
+    required IconData icon,
+    required String value,
+    required String label,
+    required Color iconColor,
+  }) {
+    return Column(
+      children: [
+        Icon(icon, color: iconColor, size: 28),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: const TextStyle(
+            color: _onSurface,
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: const TextStyle(color: _onSurfaceVariant, fontSize: 12),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfoRow(IconData icon, String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: _primary, size: 20),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(color: _onSurfaceVariant, fontSize: 12),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: const TextStyle(
+                  color: _onSurface,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  height: 1.4,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

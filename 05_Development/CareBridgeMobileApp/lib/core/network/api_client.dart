@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+import 'package:universal_io/io.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
@@ -12,7 +12,7 @@ const String _envBaseUrl = String.fromEnvironment('API_BASE_URL');
 
 String get _baseUrl {
   if (_envBaseUrl.isNotEmpty) return _envBaseUrl;
-  if (kIsWeb) return 'http://localhost:8080';
+  if (kIsWeb) return 'http://127.0.0.1:8080';
   if (Platform.isAndroid) return 'http://10.0.2.2:8080';
   return 'http://localhost:8080';
 }

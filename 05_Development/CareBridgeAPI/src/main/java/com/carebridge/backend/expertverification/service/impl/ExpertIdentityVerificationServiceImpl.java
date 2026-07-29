@@ -63,6 +63,7 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
     private final UserRepository userRepository;
     private final CareFacilityRepository careFacilityRepository;
     private final CompreFacePipelineAdapter pipelineAdapter;
+    private final DuplicateIdentityFaceService duplicateIdentityFaceService;
     private final IFileService fileService;
     private final AuditService auditService;
     private final TransactionOperations transactionOperations;
@@ -70,6 +71,7 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
     private record InitialSubmission(
             IdentityVerificationResponse response,
             boolean created,
+            UUID expertProfileId,
             byte[] selfieBytes,
             byte[] frontBytes) {}
 
@@ -87,7 +89,8 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
                 && existingAttempt.get().getReviewStatus() != IdentityReviewStatus.REJECTED
                 && existingAttempt.get().getReviewStatus() != IdentityReviewStatus.MANUAL_REVIEW_REQUIRED) {
                 return new InitialSubmission(
-                        toResponse(existingAttempt.get()), false, null, null);
+                        toResponse(existingAttempt.get()), false,
+                        profile.getExpertProfileId(), null, null);
         }
 
         byte[] selfieBytes = validateIdentityImage(selfie, "selfie");
@@ -96,7 +99,8 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
 
         IdentityVerificationResponse attemptResponse = submitInitialAttempt(userId, profile.getExpertProfileId(),
                 selfie, identityFront, identityBack, selfieBytes, frontBytes);
-            return new InitialSubmission(attemptResponse, true, selfieBytes, frontBytes);
+            return new InitialSubmission(
+                    attemptResponse, true, profile.getExpertProfileId(), selfieBytes, frontBytes);
         });
         if (submission == null) {
             throw new IllegalStateException("Identity submission transaction returned no result");
@@ -107,7 +111,9 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
 
         // CompreFace and crop uploads run after the short persistence transaction commits.
         UUID attemptId = submission.response().getIdentityVerificationId();
-        processIdentityVerificationAsync(attemptId, userId, submission.selfieBytes(), submission.frontBytes(),
+        processIdentityVerificationAsync(
+                attemptId, userId, submission.expertProfileId(),
+                submission.selfieBytes(), submission.frontBytes(),
                 normalizedMime(selfie), normalizedMime(identityFront));
 
         return submission.response();
@@ -158,7 +164,8 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
      * Processes the CompreFace pipeline separately from the initial transaction.
      * Called after the initial attempt is saved.
      */
-    protected void processIdentityVerificationAsync(UUID attemptId, UUID userId,
+    protected void processIdentityVerificationAsync(
+            UUID attemptId, UUID userId, UUID expertProfileId,
             byte[] selfieBytes, byte[] frontBytes,
             String selfieMimeType, String frontMimeType) {
         List<UUID> uploaded = new ArrayList<>();
@@ -190,7 +197,16 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
                 uploaded.add(idCardCropFileId);
             }
 
-            IdentityReviewStatus reviewStatus = switch (faceResult.status()) {
+            var duplicateMatch = faceResult.status() == FaceVerificationStatus.MATCHED
+                    ? duplicateIdentityFaceService.findPossibleDuplicate(
+                            expertProfileId,
+                            pipelineResult.croppedSelfie(), selfieMimeType)
+                    : java.util.Optional
+                            .<DuplicateIdentityFaceService.DuplicateFaceMatch>empty();
+
+            IdentityReviewStatus reviewStatus = duplicateMatch.isPresent()
+                    ? IdentityReviewStatus.MANUAL_REVIEW_REQUIRED
+                    : switch (faceResult.status()) {
                 case MATCHED -> IdentityReviewStatus.PENDING_REVIEW;
                 case NOT_MATCHED,
                      DISABLED,
@@ -198,7 +214,9 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
                      NO_FACE,
                      MULTIPLE_FACES -> IdentityReviewStatus.MANUAL_REVIEW_REQUIRED;
             };
-            String reviewReason = switch (faceResult.status()) {
+            String reviewReason = duplicateMatch.isPresent()
+                    ? "Possible duplicate identity detected; admin review is required"
+                    : switch (faceResult.status()) {
                 case NOT_MATCHED -> "Face similarity is below the configured threshold";
                 case DISABLED -> "CompreFace service is disabled";
                 case RETRYABLE_ERROR -> "CompreFace provider error: " + faceResult.providerErrorCode();
@@ -231,8 +249,18 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
                 ExpertIdentityVerification saved = identityRepository.save(attempt);
                 auditService.log(AuditAction.EXPERT_VERIFICATION, userId,
                         "ExpertIdentityVerification", saved.getId().toString(),
-                        Map.of("event", "IDENTITY_PROCESSED", "faceStatus", faceResult.status().name(),
-                                "pipelineStatus", pipelineResult.pipelineStatus()));
+                        duplicateMatch.<Map<String, Object>>map(match -> Map.of(
+                                "event", "IDENTITY_PROCESSED",
+                                "faceStatus", faceResult.status().name(),
+                                "pipelineStatus", pipelineResult.pipelineStatus(),
+                                "possibleDuplicate", true,
+                                "matchedExpertProfileId", match.expertProfileId().toString(),
+                                "duplicateSimilarity",
+                                match.similarity() == null ? "unknown" : match.similarity()))
+                                .orElseGet(() -> Map.of(
+                                        "event", "IDENTITY_PROCESSED",
+                                        "faceStatus", faceResult.status().name(),
+                                        "pipelineStatus", pipelineResult.pipelineStatus())));
             });
 
         } catch (RuntimeException ex) {

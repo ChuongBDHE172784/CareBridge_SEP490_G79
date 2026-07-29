@@ -30,7 +30,6 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
   int _requestGeneration = 0;
   String? _selectedSpecialty;
   List<String> _specialties = const [];
-  String? _startingChatWithExpertProfileId;
   late String? _accountId;
 
   @override
@@ -62,7 +61,6 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
       _loading = false;
       _loadingMore = false;
       _loadMoreFailed = false;
-      _startingChatWithExpertProfileId = null;
       _error =
           'Phiên đăng nhập đã thay đổi. Danh sách của tài khoản trước đã được xóa.';
     });
@@ -195,38 +193,6 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
     _load(reset: true);
   }
 
-  Future<void> _startChat(ExpertDirectoryItem expert) async {
-    if (_startingChatWithExpertProfileId != null) return;
-    final requestAccountId = AuthState.instance.userId;
-    final generation = _requestGeneration;
-    setState(() => _startingChatWithExpertProfileId = expert.expertProfileId);
-    try {
-      final conversation = await DirectChatService.instance
-          .findOrCreateConversation(expert.expertProfileId);
-      if (!mounted ||
-          generation != _requestGeneration ||
-          AuthState.instance.userId != requestAccountId) {
-        return;
-      }
-      context.push('/direct-chat/${conversation.conversationId}');
-    } catch (e) {
-      if (!mounted ||
-          generation != _requestGeneration ||
-          AuthState.instance.userId != requestAccountId) {
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Không thể mở cuộc trò chuyện: $e')),
-      );
-    } finally {
-      if (mounted &&
-          generation == _requestGeneration &&
-          AuthState.instance.userId == requestAccountId) {
-        setState(() => _startingChatWithExpertProfileId = null);
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -320,8 +286,6 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
           );
         }
         final expert = _experts[index];
-        final isStarting =
-            _startingChatWithExpertProfileId == expert.expertProfileId;
         return ListTile(
           leading: CircleAvatar(
             backgroundImage: expert.avatarUrl != null
@@ -365,17 +329,9 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
                 '★ ${expert.ratingAvg!.toStringAsFixed(1)}',
             ].join(' · '),
           ),
-          trailing: FilledButton(
-            onPressed: _startingChatWithExpertProfileId != null
-                ? null
-                : () => _startChat(expert),
-            child: isStarting
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text('Trò chuyện'),
+          trailing: OutlinedButton(
+            onPressed: () => context.push('/expert/public/${expert.expertProfileId}'),
+            child: const Text('Xem hồ sơ'),
           ),
           onTap: () => context.push('/expert/public/${expert.expertProfileId}'),
         );
