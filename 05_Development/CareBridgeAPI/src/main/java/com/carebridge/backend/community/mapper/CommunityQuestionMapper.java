@@ -114,17 +114,29 @@ public class CommunityQuestionMapper {
         return status == QuestionStatus.AI_PENDING ? QuestionStatus.PENDING.name() : status.name();
     }
 
-    // UC-162: map to lightweight summary for search results
+    // UC-162: map to summary for search results
     public CommunityQuestionSummaryResponse toSummaryResponse(
             CommunityQuestion entity, String topicName, boolean hasExpertAnswer) {
+        return toSummaryResponse(entity, topicName, null, hasExpertAnswer, false, false);
+    }
+
+    public CommunityQuestionSummaryResponse toSummaryResponse(
+            CommunityQuestion entity, String topicName, String authorDisplay,
+            boolean hasExpertAnswer, boolean isBookmarked, boolean isLiked) {
+        String finalAuthorDisplay = entity.isAnonymous() ? "Mẹ ẩn danh"
+                : ((authorDisplay != null && !authorDisplay.isBlank()) ? authorDisplay : "Người dùng");
         return new CommunityQuestionSummaryResponse(
                 entity.getId(),
                 entity.getTitle(),
                 topicName,
+                finalAuthorDisplay,
                 entity.getStage() != null ? entity.getStage().name() : null,
                 entity.getUrgency() != null ? entity.getUrgency().name() : null,
                 entity.getAnswerCount(),
+                entity.getLikeCount(),
                 hasExpertAnswer,
+                isBookmarked,
+                isLiked,
                 entity.getCreatedAt()
         );
     }

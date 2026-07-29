@@ -12,9 +12,6 @@ import 'my_questions_screen.dart';
 import 'verified_content_search_screen.dart';
 
 /// CB-014 — Community Feed with Realtime Search & Dropdown Filters (UC-54..UC-59, UC-198..UC-201)
-/// Displays search box, topic & stage dropdown filters, and scrollable list of community posts.
-/// Rendered as tab index 2 inside HomeShell's IndexedStack (no own bottom nav).
-/// Accepts [initialTopicId] when navigated from TopicDirectoryScreen (UC-163).
 class CommunityFeedScreen extends StatefulWidget {
   final String? initialTopicId;
   const CommunityFeedScreen({super.key, this.initialTopicId});
@@ -29,10 +26,8 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _canvas = Color(0xFFFFF8F6);
   static const _surfaceContainerHigh = Color(0xFFFFE2D9);
-  static const _surfaceContainerLow = Color(0xFFFFF1EC);
   static const _surfaceContainer = Color(0xFFFFE9E3);
   static const _surfaceContainerHighest = Color(0xFFFADCD3);
-  static const _secondaryContainer = Color(0xFFF6DACF);
   static const _onSurface = Color(0xFF271812);
   static const _onSurfaceVariant = Color(0xFF524440);
   static const _outline = Color(0xFF84736F);
@@ -94,7 +89,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
   Future<void> _loadTopicsAndFeed() async {
     setState(() => _loading = true);
     try {
-      final topics = await _service.getTopics();
+      final topics = await _service.getQuestionTopics();
       if (mounted) {
         setState(() => _topics = topics);
       }
@@ -465,7 +460,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 20),
         children: [
-          // Dropdown 1: Topic Filter
+          // Dropdown 1: Topic Filter (matches question creation topics)
           PopupMenuButton<String?>(
             initialValue: _selectedTopicId,
             onSelected: (val) {
@@ -665,144 +660,71 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
     );
   }
 
-  // ── Bento Cards Shortcuts Section ──
+  // ── Bento Section (Full-width Create Question Callout) ──
   Widget _buildBentoSection() {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
-      child: Row(
-        children: [
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: _primaryContainer,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.live_help, color: Colors.white, size: 26),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Chưa tìm thấy câu trả lời?',
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Đặt câu hỏi để nhận phản hồi từ cộng đồng và chuyên gia.',
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 11,
-                      color: Colors.white70,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  GestureDetector(
-                    onTap: () => Navigator.of(context)
-                        .push(
-                          MaterialPageRoute(
-                            builder: (_) => const CreateQuestionScreen(),
-                          ),
-                        )
-                        .then((_) => _search(refresh: true)),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 7,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF51271B),
-                        borderRadius: BorderRadius.circular(99),
-                      ),
-                      child: const Text(
-                        'Đặt câu hỏi',
-                        style: TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                          color: _primaryContainer,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: _primaryContainer,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.live_help, color: Colors.white, size: 26),
+            const SizedBox(height: 8),
+            const Text(
+              'Chưa tìm thấy câu trả lời?',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
               ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: _surfaceContainerLowest,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: _primaryContainer.withValues(alpha: 0.15),
+            const SizedBox(height: 4),
+            const Text(
+              'Đặt câu hỏi để nhận phản hồi từ cộng đồng và chuyên gia.',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 12,
+                color: Colors.white70,
+              ),
+            ),
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: () => Navigator.of(context)
+                  .push(
+                    MaterialPageRoute(
+                      builder: (_) => const CreateQuestionScreen(),
+                    ),
+                  )
+                  .then((_) => _search(refresh: true)),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF51271B),
+                  borderRadius: BorderRadius.circular(99),
+                ),
+                child: const Text(
+                  'Đặt câu hỏi ngay',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: _primaryContainer,
+                  ),
                 ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFF6DACF),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.groups, color: _primary, size: 20),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Tham gia nhóm',
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: _onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Kết nối với các mẹ có cùng giai đoạn phát triển.',
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 11,
-                      color: _onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  GestureDetector(
-                    onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const TopicDirectoryScreen(),
-                      ),
-                    ),
-                    child: const Row(
-                      children: [
-                        Text(
-                          'Khám phá',
-                          style: TextStyle(
-                            fontFamily: 'Lexend',
-                            fontSize: 11,
-                            color: _primary,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Icon(Icons.chevron_right, size: 14, color: _primary),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -895,222 +817,234 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
   Widget _buildPostCard(CommunityFeedItem item) {
     final hasExpert = item.hasExpertAnswer;
     final bookmarked = item.bookmarked;
+    final liked = item.liked;
 
-    return GestureDetector(
-      onTap: () => _navigateToQuestionDetail(item),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top author & bookmark row
-            Row(
-              children: [
-                // Author avatar
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: _surfaceContainerHigh,
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top author & bookmark row
+          Row(
+            children: [
+              // Author avatar
+              Container(
+                width: 36,
+                height: 36,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _surfaceContainerHigh,
+                ),
+                child: Center(
+                  child: Text(
+                    item.authorDisplay.isNotEmpty
+                        ? item.authorDisplay[0].toUpperCase()
+                        : '?',
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: _primary,
+                    ),
                   ),
-                  child: Center(
-                    child: Text(
-                      item.authorDisplay.isNotEmpty
-                          ? item.authorDisplay[0].toUpperCase()
-                          : '?',
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.authorDisplay,
                       style: const TextStyle(
                         fontFamily: 'Lexend',
-                        fontSize: 14,
+                        fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: _primary,
+                        color: _onSurface,
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.authorDisplay,
-                        style: const TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: _onSurface,
-                        ),
+                    Text(
+                      _timeAgo(item.createdAt),
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 11,
+                        color: _onSurfaceVariant,
                       ),
-                      Text(
-                        _timeAgo(item.createdAt),
-                        style: const TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 11,
-                          color: _onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Bookmark toggle button
-                GestureDetector(
-                  onTap: () => _toggleBookmark(item.id),
-                  child: Padding(
-                    padding: const EdgeInsets.all(4),
-                    child: Icon(
-                      bookmarked ? Icons.bookmark : Icons.bookmark_border,
-                      size: 20,
-                      color: bookmarked ? _primary : _outline,
                     ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 10),
-
-            // Badges row (Topic & Stage)
-            if (item.topicName.isNotEmpty || item.stage.isNotEmpty) ...[
-              Wrap(
-                spacing: 6,
-                runSpacing: 4,
-                children: [
-                  if (item.topicName.isNotEmpty) _TagBadge(item.topicName),
-                  if (item.stage.isNotEmpty)
-                    _TagBadge(contentStageLabel(item.stage)),
-                ],
               ),
-              const SizedBox(height: 8),
+              // Bookmark toggle button
+              InkWell(
+                onTap: () => _toggleBookmark(item.id),
+                borderRadius: BorderRadius.circular(20),
+                child: Padding(
+                  padding: const EdgeInsets.all(6),
+                  child: Icon(
+                    bookmarked ? Icons.bookmark : Icons.bookmark_border,
+                    size: 22,
+                    color: bookmarked ? _primary : _outline,
+                  ),
+                ),
+              ),
             ],
+          ),
+          const SizedBox(height: 10),
 
-            // Question Title
-            Text(
-              item.title,
-              style: const TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: _onSurface,
-                height: 1.35,
-              ),
-            ),
-            const SizedBox(height: 10),
-            const Divider(color: _surfaceContainerHighest, height: 1),
-            const SizedBox(height: 10),
-
-            // Bottom info bar: Status pill, like, comments, avatar stack
-            Row(
+          // Tappable Card Title & Badges area -> opens details
+          GestureDetector(
+            onTap: () => _navigateToQuestionDetail(item),
+            behavior: HitTestBehavior.opaque,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Row(
+                // Badges row (Topic & Stage)
+                if (item.topicName.isNotEmpty || item.stage.isNotEmpty) ...[
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
                     children: [
-                      // Expert/Discussion Status Pill
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: hasExpert
-                              ? _primary.withValues(alpha: 0.1)
-                              : _surfaceContainerHigh.withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.circular(99),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              hasExpert ? Icons.verified : Icons.forum_outlined,
-                              size: 13,
-                              color: hasExpert ? _primary : _onSurfaceVariant,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              hasExpert
-                                  ? 'Bác sĩ chuyên gia'
-                                  : 'Thảo luận sôi nổi',
-                              style: TextStyle(
-                                fontFamily: 'Lexend',
-                                fontSize: 10,
-                                fontWeight: FontWeight.w500,
-                                color: hasExpert ? _primary : _onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
+                      if (item.topicName.isNotEmpty) _TagBadge(item.topicName),
+                      if (item.stage.isNotEmpty)
+                        _TagBadge(contentStageLabel(item.stage)),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                ],
+
+                // Question Title
+                Text(
+                  item.title,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: _onSurface,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Divider(color: _surfaceContainerHighest, height: 1),
+          const SizedBox(height: 10),
+
+          // Bottom info bar: Status pill, like button, comment count, avatar stack
+          Row(
+            children: [
+              // Expert/Discussion Status Pill
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: hasExpert
+                      ? _primary.withValues(alpha: 0.1)
+                      : _surfaceContainerHigh.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(99),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      hasExpert ? Icons.verified : Icons.forum_outlined,
+                      size: 13,
+                      color: hasExpert ? _primary : _onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      hasExpert ? 'Bác sĩ chuyên gia' : 'Thảo luận',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 10,
+                        fontWeight: FontWeight.w500,
+                        color: hasExpert ? _primary : _onSurfaceVariant,
                       ),
-                      const SizedBox(width: 8),
-                      // Like button
-                      GestureDetector(
-                        onTap: () => _toggleQuestionLike(item.id),
-                        child: Row(
-                          children: [
-                            Icon(
-                              item.liked
-                                  ? Icons.favorite
-                                  : Icons.favorite_border,
-                              size: 16,
-                              color: item.liked ? _primary : _onSurfaceVariant,
-                            ),
-                            const SizedBox(width: 3),
-                            Text(
-                              '${item.likeCount}',
-                              style: const TextStyle(
-                                fontFamily: 'Lexend',
-                                fontSize: 11,
-                                color: _onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+
+              // Interactive Like Button & Count
+              InkWell(
+                onTap: () => _toggleQuestionLike(item.id),
+                borderRadius: BorderRadius.circular(20),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        liked ? Icons.favorite : Icons.favorite_border,
+                        size: 18,
+                        color: liked ? const Color(0xFFBA1A1A) : _onSurfaceVariant,
                       ),
-                      const SizedBox(width: 8),
-                      // Answer count text
+                      const SizedBox(width: 4),
                       Text(
-                        '• ${item.answerCount} trả lời',
-                        style: const TextStyle(
+                        '${item.likeCount}',
+                        style: TextStyle(
                           fontFamily: 'Lexend',
-                          fontSize: 11,
-                          color: _onSurfaceVariant,
+                          fontSize: 12,
+                          fontWeight: liked ? FontWeight.bold : FontWeight.w500,
+                          color: liked ? const Color(0xFFBA1A1A) : _onSurfaceVariant,
                         ),
                       ),
                     ],
                   ),
                 ),
+              ),
+              const SizedBox(width: 8),
 
-                // Avatar stack preview
-                Row(
-                  children: List.generate(
-                    item.answerCount > 0 ? (item.answerCount > 3 ? 2 : 1) : 0,
-                    (i) => Align(
-                      widthFactor: 0.65,
-                      child: CircleAvatar(
-                        radius: 11,
-                        backgroundColor: const Color(0xFFFFE9E3),
-                        child: const Icon(
-                          Icons.person,
-                          size: 11,
-                          color: _primaryContainer,
-                        ),
+              // Answer count text -> opens details
+              GestureDetector(
+                onTap: () => _navigateToQuestionDetail(item),
+                child: Text(
+                  '• ${item.answerCount} trả lời',
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 11,
+                    color: _onSurfaceVariant,
+                  ),
+                ),
+              ),
+
+              const Spacer(),
+
+              // Avatar stack preview
+              Row(
+                children: List.generate(
+                  item.answerCount > 0 ? (item.answerCount > 3 ? 2 : 1) : 0,
+                  (i) => Align(
+                    widthFactor: 0.65,
+                    child: CircleAvatar(
+                      radius: 11,
+                      backgroundColor: const Color(0xFFFFE9E3),
+                      child: const Icon(
+                        Icons.person,
+                        size: 11,
+                        color: _primaryContainer,
                       ),
                     ),
                   ),
                 ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -1152,7 +1086,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
     setState(
       () => _items[index] = _items[index].copyWith(
         liked: !wasLiked,
-        likeCount: wasLiked ? prevCount - 1 : prevCount + 1,
+        likeCount: wasLiked ? (prevCount > 0 ? prevCount - 1 : 0) : prevCount + 1,
       ),
     );
     try {

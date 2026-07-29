@@ -54,7 +54,8 @@ public class CommunityQuestionController {
             @RequestParam(required = false) PregnancyStage stage,
             @RequestParam(required = false) Boolean hasExpertAnswer,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            Principal principal) {
 
         if (size > SEARCH_MAX_SIZE || size < 1) {
             throw new CommunityFeedValidationException(
@@ -69,7 +70,9 @@ public class CommunityQuestionController {
         request.setPage(page);
         request.setSize(size);
 
-        return ResponseEntity.ok(searchService.searchQuestions(request));
+        UUID currentUserId = SecurityUtils.tryGetCurrentUserId(principal);
+
+        return ResponseEntity.ok(searchService.searchQuestions(request, currentUserId));
     }
 
     @GetMapping("/mine")
