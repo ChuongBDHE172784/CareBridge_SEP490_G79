@@ -237,19 +237,38 @@ public class HealthMetricServiceImpl implements IHealthMetricService {
         }
 
         // C2: fetch data — sorted ASC by measuredAt; empty list = 200 OK (not 404)
+        java.util.List<String> typesToQuery = isBpType(metricType)
+                ? java.util.List.of(MetricType.BLOOD_PRESSURE_SYSTOLIC.name(), MetricType.BLOOD_PRESSURE_DIASTOLIC.name())
+                : java.util.List.of(metricType.name());
+
         var metrics = metricRepository
-                .findByJourneyIdAndMetricTypeAndStatusAndMeasuredAtBetweenOrderByMeasuredAtAsc(
-                        journeyId, metricType, MetricStatus.ACTIVE, from, to);
+                .findByJourneyIdAndMetricTypeInAndStatusAndMeasuredAtBetweenOrderByMeasuredAtAsc(
+                        journeyId, typesToQuery, MetricStatus.ACTIVE, from, to);
 
         var dataPoints = metrics.stream()
-                .map(m -> com.carebridge.backend.health.dto.MetricDataPoint.builder()
-                        .metricId(m.getId())
-                        .measuredAt(m.getMeasuredAt())
-                        .valueNumeric(m.getValueNumeric())
-                        .valueSecondary(m.getValueSecondary())
-                        .sourceType(m.getSourceType() != null ? m.getSourceType().name() : null)
-                        .note(m.getNote())
-                        .build())
+                .map(m -> {
+                    java.math.BigDecimal valNum = m.getValueNumeric();
+                    java.math.BigDecimal valSec = m.getValueSecondary();
+                    if (metricType == MetricType.BLOOD_PRESSURE_DIASTOLIC) {
+                        if (m.getMetricType() == MetricType.BLOOD_PRESSURE_SYSTOLIC && valSec != null) {
+                            valNum = m.getValueSecondary();
+                            valSec = m.getValueNumeric();
+                        }
+                    } else if (metricType == MetricType.BLOOD_PRESSURE_SYSTOLIC) {
+                        if (m.getMetricType() == MetricType.BLOOD_PRESSURE_DIASTOLIC && valSec != null) {
+                            valNum = m.getValueSecondary();
+                            valSec = m.getValueNumeric();
+                        }
+                    }
+                    return com.carebridge.backend.health.dto.MetricDataPoint.builder()
+                            .metricId(m.getId())
+                            .measuredAt(m.getMeasuredAt())
+                            .valueNumeric(valNum)
+                            .valueSecondary(valSec)
+                            .sourceType(m.getSourceType() != null ? m.getSourceType().name() : null)
+                            .note(m.getNote())
+                            .build();
+                })
                 .toList();
 
         String unit = metrics.isEmpty() ? null : metrics.get(0).getUnit();

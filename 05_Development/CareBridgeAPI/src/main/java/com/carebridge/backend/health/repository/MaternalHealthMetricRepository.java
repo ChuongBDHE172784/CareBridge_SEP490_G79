@@ -57,6 +57,22 @@ public interface MaternalHealthMetricRepository extends JpaRepository<MaternalHe
             SELECT * FROM health_observations
              WHERE care_subject_id = :journeyId
                AND legacy_source = 'maternal_health_metrics'
+               AND observation_type IN (:types)
+               AND COALESCE(raw_payload_jsonb->>'recordStatus', 'ACTIVE') = :#{#status.name()}
+               AND observed_at BETWEEN :from AND :to
+             ORDER BY observed_at ASC
+            """, nativeQuery = true)
+    List<MaternalHealthMetric> findByJourneyIdAndMetricTypeInAndStatusAndMeasuredAtBetweenOrderByMeasuredAtAsc(
+            @Param("journeyId") UUID journeyId,
+            @Param("types") List<String> types,
+            @Param("status") MetricStatus status,
+            @Param("from") Instant from,
+            @Param("to") Instant to);
+
+    @Query(value = """
+            SELECT * FROM health_observations
+             WHERE care_subject_id = :journeyId
+               AND legacy_source = 'maternal_health_metrics'
                AND observation_type = :#{#metricType.name()}
                AND observed_at BETWEEN :from AND :to
                AND COALESCE(raw_payload_jsonb->>'recordStatus', 'ACTIVE') = :#{#status.name()}
