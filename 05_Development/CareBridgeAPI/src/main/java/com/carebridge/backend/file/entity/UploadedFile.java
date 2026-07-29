@@ -62,6 +62,9 @@ public class UploadedFile {
     @Column(name = "checksum", length = 64)
     private String checksum;
 
+    @Column(name = "file_url", columnDefinition = "text")
+    private String fileUrl;
+
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)

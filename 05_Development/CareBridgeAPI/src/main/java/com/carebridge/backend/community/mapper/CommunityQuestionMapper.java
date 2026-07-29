@@ -10,6 +10,7 @@ import com.carebridge.backend.community.entity.QuestionStatus;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.ArrayList;
 import java.util.UUID;
 
 @Component
@@ -21,6 +22,7 @@ public class CommunityQuestionMapper {
                 .authorId(authorId)
                 .title(request.getTitle())
                 .body(request.getBody())
+                .imageUrls(copyImageUrls(request.getImageUrls()))
                 .stage(request.getStage())
                 .pregnancyWeek(request.getPregnancyWeek() != null ? request.getPregnancyWeek().shortValue() : null)
                 .babyAgeMonths(request.getBabyAgeMonths() != null ? request.getBabyAgeMonths().shortValue() : null)
@@ -39,12 +41,16 @@ public class CommunityQuestionMapper {
                 .topicId(entity.getTopicId())
                 .title(entity.getTitle())
                 .body(entity.getBody())
+                .imageUrls(copyImageUrls(entity.getImageUrls()))
                 .stage(entity.getStage() != null ? entity.getStage().name() : null)
                 .urgency(entity.getUrgency() != null ? entity.getUrgency().name() : null)
                 .anonymous(entity.isAnonymous())
                 .authorId(exposedAuthorId)
                 .status(entity.getStatus() != null ? entity.getStatus().name() : null)
+                .answerCount(entity.getAnswerCount())
+                .likeCount(entity.getLikeCount())
                 .createdAt(entity.getCreatedAt())
+                .updatedAt(entity.getUpdatedAt())
                 .build();
     }
 
@@ -78,6 +84,7 @@ public class CommunityQuestionMapper {
                 .topicName(topicName)
                 .title(entity.getTitle())
                 .body(entity.getBody())
+                .imageUrls(copyImageUrls(entity.getImageUrls()))
                 .stage(entity.getStage() != null ? entity.getStage().name() : null)
                 .pregnancyWeek(entity.getPregnancyWeek())
                 .babyAgeMonths(entity.getBabyAgeMonths())
@@ -94,6 +101,10 @@ public class CommunityQuestionMapper {
                 .updatedAt(entity.getUpdatedAt())
                 .answers(answers)
                 .build();
+    }
+
+    private List<String> copyImageUrls(List<String> imageUrls) {
+        return imageUrls == null ? new ArrayList<>() : new ArrayList<>(imageUrls);
     }
 
     // UC-162: map to lightweight summary for search results

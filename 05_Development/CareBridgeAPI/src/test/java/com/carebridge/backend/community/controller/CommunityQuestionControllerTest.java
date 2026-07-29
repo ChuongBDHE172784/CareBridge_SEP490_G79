@@ -2,6 +2,7 @@ package com.carebridge.backend.community.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -31,6 +32,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import java.time.Instant;
 import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 
@@ -183,6 +185,37 @@ class CommunityQuestionControllerTest {
         verify(questionService, never()).createQuestion(any(), any());
     }
 
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
+    void createQuestion_moreThanThreeImages_returns400() throws Exception {
+        String body = objectMapper.writeValueAsString(makeRequest(req -> req.setImageUrls(List.of(
+                "https://res.cloudinary.com/demo/image/upload/1.jpg",
+                "https://res.cloudinary.com/demo/image/upload/2.jpg",
+                "https://res.cloudinary.com/demo/image/upload/3.jpg",
+                "https://res.cloudinary.com/demo/image/upload/4.jpg"))));
+
+        mockMvc.perform(post(BASE_URL).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+                .andExpect(status().isBadRequest());
+
+        verify(questionService, never()).createQuestion(any(), any());
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
+    void createQuestion_nonCloudinaryImage_returns400() throws Exception {
+        String body = objectMapper.writeValueAsString(makeRequest(req ->
+                req.setImageUrls(List.of("https://example.com/not-cloudinary.jpg"))));
+
+        mockMvc.perform(post(BASE_URL).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+                .andExpect(status().isBadRequest());
+
+        verify(questionService, never()).createQuestion(any(), any());
+    }
+
     // COM-TC-004 sub: title missing → 400
     @Test
     @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
@@ -316,5 +349,38 @@ class CommunityQuestionControllerTest {
         mockMvc.perform(get(BASE_URL))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
+    void getMyQuestions_motherReturnsOwnPagedQuestions() throws Exception {
+        PaginatedResponse<CommunityQuestionResponse> response = PaginatedResponse.of(
+                new PageImpl<>(List.of(mockResponse()), PageRequest.of(0, 20), 1));
+        when(questionService.getMyQuestions(
+                UUID.fromString("00000000-0000-0000-0000-000000000002"), 0, 20))
+                .thenReturn(response);
+
+        mockMvc.perform(get(BASE_URL + "/mine"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].status").value("PENDING"))
+                .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000004", roles = "EXPERT")
+    void getMyQuestions_expertReturns403() throws Exception {
+        mockMvc.perform(get(BASE_URL + "/mine"))
+                .andExpect(status().isForbidden());
+
+        verify(questionService, never()).getMyQuestions(any(), anyInt(), anyInt());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0", "101"})
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
+    void getMyQuestions_invalidSizeReturns400(String size) throws Exception {
+        mockMvc.perform(get(BASE_URL + "/mine").param("size", size))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("COM-001"));
     }
 }

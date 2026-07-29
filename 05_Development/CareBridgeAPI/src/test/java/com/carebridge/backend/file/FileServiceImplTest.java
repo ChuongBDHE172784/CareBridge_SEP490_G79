@@ -3,6 +3,7 @@ package com.carebridge.backend.file;
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.common.exception.BusinessException;
+import com.carebridge.backend.common.exception.AccessDeniedBusinessException;
 import com.carebridge.backend.file.dto.UploadFileResponse;
 import com.carebridge.backend.file.entity.FileStatus;
 import com.carebridge.backend.file.entity.UploadedFile;
@@ -25,6 +26,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -283,5 +285,56 @@ class FileServiceImplTest {
 
         verify(cloudinaryStorageService).store(argThat(key ->
                 !key.contains("photo.jpg") && key.length() > 10), any(), any());
+    }
+
+    @Test
+    void uploadCommunityQuestionImage_persistsPermanentCloudinaryUrl() {
+        String publicUrl = "https://res.cloudinary.com/demo/image/upload/v1/carebridge/question.jpg";
+        when(fileRepository.countByOwnerUserIdAndStatus(CALLER_ID, FileStatus.ACTIVE)).thenReturn(0L);
+        saveReturnsPersistedArgument();
+        when(cloudinaryStorageService.persistedKey(anyString()))
+                .thenReturn("carebridge/question|image|PUBLIC");
+        when(cloudinaryStorageService.generatePresignedUrl("carebridge/question|image|PUBLIC", 15))
+                .thenReturn(publicUrl);
+
+        UploadFileResponse response = fileService.uploadWithPurpose(
+                makeFile("image/jpeg", 1000), CALLER_ID,
+                com.carebridge.backend.file.enums.FileKind.IMAGE,
+                FilePurpose.COMMUNITY_QUESTION_IMAGE,
+                com.carebridge.backend.file.enums.FileAccessMode.PUBLIC);
+
+        assertThat(response.getPresignedUrl()).isEqualTo(publicUrl);
+        verify(fileRepository, times(2)).save(argThat(file -> publicUrl.equals(file.getFileUrl())));
+    }
+
+    @Test
+    void purgeCommunityImages_trackedImageDeletesAssetAndMarksAttachmentDeleted() {
+        String url = "https://res.cloudinary.com/demo/image/upload/v1/carebridge/question.jpg";
+        UploadedFile tracked = savedFile(FILE_ID);
+        tracked.setStorageKey("carebridge/question|image|PUBLIC");
+        tracked.setFileUrl(url);
+        when(fileRepository.findAllByOwnerUserIdAndFileUrlInAndStatus(
+                eq(CALLER_ID), anyCollection(), eq(FileStatus.ACTIVE)))
+                .thenReturn(List.of(tracked));
+
+        fileService.purgeCommunityImages(List.of(url), CALLER_ID);
+
+        verify(cloudinaryStorageService).deleteRequired("carebridge/question|image|PUBLIC");
+        verify(fileRepository).saveAll(argThat(files ->
+                files.iterator().next().getStatus() == FileStatus.DELETED));
+    }
+
+    @Test
+    void purgeCommunityImages_untrackedUrlIsRejectedInsteadOfDeletingUnownedAsset() {
+        String url = "https://res.cloudinary.com/demo/image/upload/v1/carebridge/legacy.jpg";
+        when(fileRepository.findAllByOwnerUserIdAndFileUrlInAndStatus(
+                eq(CALLER_ID), anyCollection(), eq(FileStatus.ACTIVE)))
+                .thenReturn(List.of());
+
+        assertThatThrownBy(() -> fileService.purgeCommunityImages(List.of(url), CALLER_ID))
+                .isInstanceOf(AccessDeniedBusinessException.class);
+
+        verifyNoInteractions(cloudinaryStorageService);
+        verify(fileRepository, never()).saveAll(any());
     }
 }

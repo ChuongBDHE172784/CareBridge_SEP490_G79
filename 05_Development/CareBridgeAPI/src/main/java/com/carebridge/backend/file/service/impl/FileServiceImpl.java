@@ -31,6 +31,8 @@ import java.io.IOException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Set;
+import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -270,6 +272,12 @@ public class FileServiceImpl implements IFileService {
                     .status(FileStatus.ACTIVE)
                     .build());
             String presignedUrl = storageService.generatePresignedUrl(saved.getStorageKey(), 15);
+            if (accessMode == FileAccessMode.PUBLIC
+                    && (purpose == FilePurpose.COMMUNITY_QUESTION_IMAGE
+                        || purpose == FilePurpose.COMMUNITY_ANSWER_IMAGE)) {
+                saved.setFileUrl(presignedUrl);
+                fileRepository.save(saved);
+            }
             auditService.log(AuditAction.FILE_UPLOADED, callerId,
                     "UploadedFile", saved.getId().toString(), "uploaded");
             return UploadFileResponse.builder()
@@ -446,6 +454,61 @@ public class FileServiceImpl implements IFileService {
             storageFor(file.getStorageProvider()).delete(file.getStorageKey());
             fileRepository.delete(file);
         });
+    }
+
+    @Override
+    public void purgeCommunityImages(List<String> imageUrls, UUID ownerUserId) {
+        if (imageUrls == null || imageUrls.isEmpty()) {
+            return;
+        }
+        Set<String> urls = imageUrls.stream()
+                .filter(java.util.Objects::nonNull)
+                .map(String::trim)
+                .filter(url -> url.startsWith("https://res.cloudinary.com/"))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (urls.isEmpty()) {
+            return;
+        }
+
+        List<UploadedFile> trackedFiles = fileRepository
+                .findAllByOwnerUserIdAndFileUrlInAndStatus(ownerUserId, urls, FileStatus.ACTIVE);
+        Set<String> trackedUrls = trackedFiles.stream()
+                .map(UploadedFile::getFileUrl)
+                .collect(Collectors.toSet());
+        if (!trackedUrls.equals(urls)) {
+            throw new AccessDeniedBusinessException(
+                    "Community image ownership could not be verified");
+        }
+
+        for (UploadedFile file : trackedFiles) {
+            cloudinaryStorageService.deleteRequired(file.getStorageKey());
+            file.setStatus(FileStatus.DELETED);
+        }
+        if (!trackedFiles.isEmpty()) {
+            fileRepository.saveAll(trackedFiles);
+        }
+
+    }
+
+    @Override
+    public void assertCommunityImagesOwned(List<String> imageUrls, UUID ownerUserId) {
+        if (imageUrls == null || imageUrls.isEmpty()) {
+            return;
+        }
+        Set<String> urls = imageUrls.stream()
+                .filter(java.util.Objects::nonNull)
+                .map(String::trim)
+                .filter(url -> url.startsWith("https://res.cloudinary.com/"))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        List<UploadedFile> trackedFiles = fileRepository
+                .findAllByOwnerUserIdAndFileUrlInAndStatus(ownerUserId, urls, FileStatus.ACTIVE);
+        Set<String> trackedUrls = trackedFiles.stream()
+                .map(UploadedFile::getFileUrl)
+                .collect(Collectors.toSet());
+        if (!trackedUrls.equals(urls)) {
+            throw new AccessDeniedBusinessException(
+                    "Community image ownership could not be verified");
+        }
     }
 
     @Override

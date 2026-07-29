@@ -98,6 +98,19 @@ class CommunityService {
         .toList();
   }
 
+  Future<List<MyCommunityQuestion>> getMyQuestions({
+    int page = 0,
+    int size = 20,
+  }) async {
+    final json = await apiGet(
+      '/api/v1/community/questions/mine?page=$page&size=$size',
+    );
+    final content = json['data'] as List? ?? [];
+    return content
+        .map((e) => MyCommunityQuestion.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   // Toggle like on a question
   Future<QuestionLikeToggleResult> toggleQuestionLike(String questionId) async {
     final json = await apiPost(
@@ -118,14 +131,24 @@ class CommunityService {
   // UC-55: Edit an existing question
   Future<void> editQuestion(
     String questionId, {
+    String? topicId,
     String? title,
     String? body,
+    List<String>? imageUrls,
+    String? stage,
+    int? pregnancyWeek,
+    int? babyAgeMonths,
     bool? isAnonymous,
     String? urgency,
   }) async {
     final request = <String, dynamic>{};
+    if (topicId != null) request['topicId'] = topicId;
     if (title != null) request['title'] = title;
     if (body != null) request['body'] = body;
+    if (imageUrls != null) request['imageUrls'] = imageUrls;
+    if (stage != null) request['stage'] = stage;
+    if (pregnancyWeek != null) request['pregnancyWeek'] = pregnancyWeek;
+    if (babyAgeMonths != null) request['babyAgeMonths'] = babyAgeMonths;
     if (isAnonymous != null) request['isAnonymous'] = isAnonymous;
     if (urgency != null) request['urgency'] = urgency;
     await apiPatch('/api/v1/community/questions/$questionId', request);

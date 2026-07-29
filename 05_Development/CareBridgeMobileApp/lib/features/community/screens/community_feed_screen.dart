@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
+import '../../../core/auth/auth_state.dart';
 import '../models/community_model.dart';
 import '../services/community_service.dart';
 import 'community_search_screen.dart';
 import 'create_question_screen.dart';
 import 'question_detail_screen.dart';
 import 'topic_directory_screen.dart';
-import 'verified_content_search_screen.dart';
 import 'bookmarked_questions_screen.dart';
+import 'my_questions_screen.dart';
+import 'verified_content_search_screen.dart';
 
 /// CB-014 — Community Feed (UC-54..UC-59, UC-198..UC-201)
 /// Displays topic filter chips and a scrollable list of community posts.
@@ -232,6 +234,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
   // ── Top bar: title + search + topic library + article ──
   Widget _buildTopBar() {
     final canPop = Navigator.of(context).canPop();
+    final isMother = AuthState.instance.role == 'MOTHER';
     return Padding(
       padding: EdgeInsets.fromLTRB(canPop ? 12 : 24, 12, 16, 8),
       child: Row(
@@ -319,7 +322,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
             ),
           ),
           const SizedBox(width: 8),
-          // Verified content search button (UC-224)
+          // Mother manages her questions here; other roles keep verified-content search.
           Container(
             width: 44,
             height: 44,
@@ -328,15 +331,17 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
               shape: BoxShape.circle,
             ),
             child: IconButton(
-              icon: const Icon(
-                Icons.verified_outlined,
+              icon: Icon(
+                isMother ? Icons.article_outlined : Icons.verified_outlined,
                 color: _onSurfaceVariant,
                 size: 22,
               ),
-              tooltip: 'Nội dung đã kiểm duyệt',
+              tooltip: isMother ? 'Câu hỏi của tôi' : 'Nội dung đã kiểm duyệt',
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(
-                  builder: (_) => const VerifiedContentSearchScreen(),
+                  builder: (_) => isMother
+                      ? const MyQuestionsScreen()
+                      : const VerifiedContentSearchScreen(),
                 ),
               ),
             ),

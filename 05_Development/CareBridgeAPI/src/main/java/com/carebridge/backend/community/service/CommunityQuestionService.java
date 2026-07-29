@@ -4,6 +4,7 @@ import com.carebridge.backend.community.dto.request.CreateCommunityQuestionReque
 import com.carebridge.backend.community.dto.request.UpdateCommunityQuestionRequest;
 import com.carebridge.backend.community.dto.response.CommunityQuestionDetailResponse;
 import com.carebridge.backend.community.dto.response.CommunityQuestionResponse;
+import com.carebridge.backend.common.response.PaginatedResponse;
 import java.util.UUID;
 
 public interface CommunityQuestionService {
@@ -28,6 +29,8 @@ public interface CommunityQuestionService {
      * @throws org.springframework.security.access.AccessDeniedException when caller is not the author
      */
     CommunityQuestionResponse editQuestion(UUID authorId, UUID questionId, UpdateCommunityQuestionRequest request);
+
+    PaginatedResponse<CommunityQuestionResponse> getMyQuestions(UUID authorId, int page, int size);
 
     /**
      * Soft-deletes a community question by setting status = DELETED.

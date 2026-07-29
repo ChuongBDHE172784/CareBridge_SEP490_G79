@@ -15,7 +15,8 @@ public interface ReportService {
      * @param request        already bean-validated request
      * @param reporterUserId UUID from JWT Principal — never trusted from the request body
      * @throws com.carebridge.backend.content.exception.ReportException RPT-002 target not found,
-     *         RPT-003 rate limit exceeded, RPT-004 duplicate pending report
+     *         RPT-003 rate limit exceeded, RPT-004 duplicate pending report,
+     *         RPT-005 cannot report own target
      */
     CreateReportResponse createReport(CreateReportRequest request, UUID reporterUserId);
 }

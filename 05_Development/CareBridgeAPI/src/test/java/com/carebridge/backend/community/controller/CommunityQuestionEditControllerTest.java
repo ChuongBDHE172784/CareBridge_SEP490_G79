@@ -87,4 +87,21 @@ class CommunityQuestionEditControllerTest {
                 .content("{\"title\":\"Updated title\"}"))
                 .andExpect(status().isUnauthorized());
     }
+
+    @Test
+    @WithMockUser(username = USER_UUID, roles = "MOTHER")
+    void editQuestion_moreThanThreeImages_returns400() throws Exception {
+        mockMvc.perform(patch("/api/v1/community/questions/" + QUESTION_ID)
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"imageUrls":[
+                          "https://res.cloudinary.com/demo/image/upload/1.jpg",
+                          "https://res.cloudinary.com/demo/image/upload/2.jpg",
+                          "https://res.cloudinary.com/demo/image/upload/3.jpg",
+                          "https://res.cloudinary.com/demo/image/upload/4.jpg"
+                        ]}
+                        """))
+                .andExpect(status().isBadRequest());
+    }
 }

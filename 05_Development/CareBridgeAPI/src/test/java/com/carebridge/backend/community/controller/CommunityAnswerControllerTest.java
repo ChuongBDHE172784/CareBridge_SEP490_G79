@@ -22,6 +22,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import java.time.Instant;
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 
@@ -171,6 +172,38 @@ class CommunityAnswerControllerTest {
                 .andExpect(status().isBadRequest());
 
         verify(answerService, never()).postAnswer(any(), any(), any());
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
+    void postAnswer_moreThanThreeImages_returns400() throws Exception {
+        PostCommunityAnswerRequest request = makeRequest(req -> req.setImageUrls(List.of(
+                "https://res.cloudinary.com/demo/image/upload/1.jpg",
+                "https://res.cloudinary.com/demo/image/upload/2.jpg",
+                "https://res.cloudinary.com/demo/image/upload/3.jpg",
+                "https://res.cloudinary.com/demo/image/upload/4.jpg")));
+
+        mockMvc.perform(post(BASE_URL, QUESTION_ID).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+
+        verify(answerService, never()).postAnswer(any(), any(), any());
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000003", roles = "EXPERT")
+    void postAnswer_expertWithCloudinaryImage_returns201() throws Exception {
+        when(expertProfileRepository.findByUserId(eq(UUID.fromString("00000000-0000-0000-0000-000000000003"))))
+                .thenReturn(Optional.of(mockExpertProfile()));
+        when(answerService.postAnswer(any(), eq(QUESTION_ID), any())).thenReturn(mockResponse());
+        PostCommunityAnswerRequest request = makeRequest(req -> req.setImageUrls(List.of(
+                "https://res.cloudinary.com/demo/image/upload/answer.jpg")));
+
+        mockMvc.perform(post(BASE_URL, QUESTION_ID).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated());
     }
 
     // isPersonalExperience missing → 400

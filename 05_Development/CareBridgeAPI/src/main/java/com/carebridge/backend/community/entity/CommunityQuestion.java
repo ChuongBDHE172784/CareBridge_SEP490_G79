@@ -5,8 +5,12 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -36,6 +40,11 @@ public class CommunityQuestion {
 
     @Column(name = "body", nullable = false, columnDefinition = "TEXT")
     private String body;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "image_urls", nullable = false, columnDefinition = "jsonb")
+    @Builder.Default
+    private List<String> imageUrls = new ArrayList<>();
 
     @Enumerated(EnumType.STRING)
     @Column(name = "stage", length = 30)

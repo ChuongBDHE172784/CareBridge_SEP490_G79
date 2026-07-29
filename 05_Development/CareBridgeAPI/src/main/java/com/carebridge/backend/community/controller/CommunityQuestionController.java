@@ -72,6 +72,20 @@ public class CommunityQuestionController {
         return ResponseEntity.ok(searchService.searchQuestions(request));
     }
 
+    @GetMapping("/mine")
+    @PreAuthorize("hasRole('MOTHER')")
+    public ResponseEntity<PaginatedResponse<CommunityQuestionResponse>> getMyQuestions(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            Principal principal) {
+        if (page < 0 || size < 1 || size > SEARCH_MAX_SIZE) {
+            throw new CommunityFeedValidationException(
+                    "My questions page must be >= 0 and size between 1 and " + SEARCH_MAX_SIZE);
+        }
+        UUID authorId = SecurityUtils.requireCurrentUserId(principal);
+        return ResponseEntity.ok(questionService.getMyQuestions(authorId, page, size));
+    }
+
     // UC-199: any authenticated user may view APPROVED question detail
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")

@@ -27,4 +27,9 @@ public class ReportException extends BusinessException {
         return new ReportException(HttpStatus.CONFLICT, "RPT-004",
                 "You already have a pending report for this target");
     }
+
+    public static ReportException cannotReportOwnTarget() {
+        return new ReportException(HttpStatus.FORBIDDEN, "RPT-005",
+                "You cannot report your own content or account");
+    }
 }

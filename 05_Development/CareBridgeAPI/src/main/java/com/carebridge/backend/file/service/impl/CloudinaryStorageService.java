@@ -190,6 +190,27 @@ public class CloudinaryStorageService implements IStorageService {
     }
 
     /**
+     * Required deletion path for domain-owned community media. Unlike the legacy best-effort
+     * delete method, this propagates failures so the community soft-delete transaction can abort.
+     */
+    public void deleteRequired(String key) {
+        try {
+            ParsedKey parsed = parseKey(key);
+            if (parsed != null) {
+                cloudinary.uploader().destroy(parsed.publicId,
+                        ObjectUtils.asMap("resource_type", parsed.resourceType,
+                                "type", cloudinaryDeleteType(parsed.accessMode)));
+                return;
+            }
+            String publicId = extractPublicId(key);
+            cloudinary.uploader().destroy(publicId,
+                    ObjectUtils.asMap("resource_type", "image", "type", "upload"));
+        } catch (Exception ex) {
+            throw new StorageException("Cloudinary delete failed: " + ex.getMessage(), ex);
+        }
+    }
+
+    /**
      * Delete with explicit resource type and access mode.
      * Used for proper cleanup of authenticated/private assets.
      */
@@ -259,6 +280,15 @@ public class CloudinaryStorageService implements IStorageService {
                 int slash = afterUpload.indexOf('/');
                 if (slash >= 0 && afterUpload.substring(0, slash).matches("v\\d+")) {
                     afterUpload = afterUpload.substring(slash + 1);
+                }
+                int queryIndex = afterUpload.indexOf('?');
+                if (queryIndex >= 0) afterUpload = afterUpload.substring(0, queryIndex);
+                int fragmentIndex = afterUpload.indexOf('#');
+                if (fragmentIndex >= 0) afterUpload = afterUpload.substring(0, fragmentIndex);
+                int lastSlash = afterUpload.lastIndexOf('/');
+                int extensionIndex = afterUpload.lastIndexOf('.');
+                if (extensionIndex > lastSlash) {
+                    afterUpload = afterUpload.substring(0, extensionIndex);
                 }
                 return afterUpload;
             }

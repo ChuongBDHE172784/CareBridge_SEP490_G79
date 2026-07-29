@@ -21,6 +21,7 @@ public class CommunityQuestionDetailResponse {
     private String topicName;
     private String title;
     private String body;
+    private List<String> imageUrls;
     private String stage;
     private Short pregnancyWeek;
     private Short babyAgeMonths;

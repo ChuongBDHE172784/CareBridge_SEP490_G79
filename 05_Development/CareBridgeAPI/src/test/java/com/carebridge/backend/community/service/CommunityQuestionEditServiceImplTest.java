@@ -4,7 +4,10 @@ import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.community.dto.request.UpdateCommunityQuestionRequest;
 import com.carebridge.backend.community.dto.response.CommunityQuestionResponse;
 import com.carebridge.backend.community.entity.CommunityQuestion;
+import com.carebridge.backend.community.entity.CommunityTopic;
+import com.carebridge.backend.community.entity.PregnancyStage;
 import com.carebridge.backend.community.entity.QuestionStatus;
+import com.carebridge.backend.community.entity.TopicType;
 import com.carebridge.backend.community.entity.UrgencyLevel;
 import com.carebridge.backend.community.exception.QuestionNotFoundException;
 import com.carebridge.backend.community.exception.QuestionNotEditableException;
@@ -12,6 +15,7 @@ import com.carebridge.backend.community.mapper.CommunityQuestionMapper;
 import com.carebridge.backend.community.policy.CommunitySafetyPolicy;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
+import com.carebridge.backend.file.service.IFileService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -19,6 +23,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -35,6 +40,7 @@ class CommunityQuestionEditServiceImplTest {
     @Mock CommunityQuestionMapper questionMapper;
     @Mock AuditService auditService;
     @Mock CommunitySafetyPolicy communitySafetyPolicy;
+    @Mock IFileService fileService;
     @Mock
     private com.carebridge.backend.aimoderation.service.AiScanEnqueueService aiScanEnqueueService;
 
@@ -51,6 +57,8 @@ class CommunityQuestionEditServiceImplTest {
                 .topicId(UUID.randomUUID())
                 .title("Original title")
                 .body("Original body content here")
+                .imageUrls(List.of("https://res.cloudinary.com/demo/image/upload/old.jpg"))
+                .stage(PregnancyStage.PREGNANCY)
                 .status(status)
                 .anonymous(false)
                 .build();
@@ -161,5 +169,32 @@ class CommunityQuestionEditServiceImplTest {
         verify(questionRepository).save(argThat(q ->
             "New title only".equals(q.getTitle()) && "Original body content here".equals(q.getBody())
         ));
+    }
+
+    @Test
+    void editQuestion_updatesTopicStageAndImagesAndPurgesRemovedImage() {
+        UUID newTopicId = UUID.fromString("00000000-0000-0000-0000-000000000010");
+        String oldUrl = "https://res.cloudinary.com/demo/image/upload/old.jpg";
+        String newUrl = "https://res.cloudinary.com/demo/image/upload/new.jpg";
+        CommunityQuestion question = makeQuestion(QuestionStatus.APPROVED);
+        UpdateCommunityQuestionRequest request = makeRequest();
+        request.setTopicId(newTopicId);
+        request.setStage(PregnancyStage.POSTPARTUM);
+        request.setImageUrls(List.of(newUrl));
+        when(questionRepository.findById(QUESTION_ID)).thenReturn(Optional.of(question));
+        when(topicRepository.findByIdAndTypeAndIsHiddenFalse(newTopicId, TopicType.TOPIC))
+                .thenReturn(Optional.of(CommunityTopic.builder().id(newTopicId).build()));
+        when(questionRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(questionMapper.toResponse(any())).thenReturn(
+                CommunityQuestionResponse.builder().id(QUESTION_ID).build());
+
+        questionService.editQuestion(AUTHOR_ID, QUESTION_ID, request);
+
+        verify(fileService).assertCommunityImagesOwned(List.of(newUrl), AUTHOR_ID);
+        verify(fileService).purgeCommunityImages(List.of(oldUrl), AUTHOR_ID);
+        verify(questionRepository).save(argThat(saved ->
+                newTopicId.equals(saved.getTopicId())
+                        && saved.getStage() == PregnancyStage.POSTPARTUM
+                        && saved.getImageUrls().equals(List.of(newUrl))));
     }
 }

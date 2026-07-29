@@ -28,7 +28,9 @@ import com.carebridge.backend.community.repository.CommunityAnswerRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import com.carebridge.backend.expert.handler.IExpertEventHandler;
+import com.carebridge.backend.file.service.IFileService;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -69,6 +71,9 @@ class CommunityAnswerServiceImplTest {
 
     @Mock
     private IExpertEventHandler expertEventHandler;
+
+    @Mock
+    private IFileService fileService;
 
     @Mock
     private com.carebridge.backend.aimoderation.service.AiScanEnqueueService aiScanEnqueueService;
@@ -116,6 +121,22 @@ class CommunityAnswerServiceImplTest {
         CommunityAnswerResponse response = service.postAnswer(AUTHOR_ID, QUESTION_ID, makeRequest());
 
         assertThat(response.getAuthorDisplay()).isEqualTo("Nguyễn Thị A");
+    }
+
+    @Test
+    void postAnswer_withImagesVerifiesTheyBelongToAuthor() {
+        String imageUrl = "https://res.cloudinary.com/demo/image/upload/answer.jpg";
+        when(questionRepository.findByIdAndStatus(QUESTION_ID, QuestionStatus.APPROVED))
+                .thenReturn(Optional.of(makeApprovedQuestion()));
+        CommunityAnswer saved = CommunityAnswer.builder()
+                .id(UUID.randomUUID()).questionId(QUESTION_ID).authorId(AUTHOR_ID)
+                .body("Answer").status(AnswerStatus.PENDING).build();
+        when(answerRepository.save(any())).thenReturn(saved);
+        PostCommunityAnswerRequest request = makeRequest(req -> req.setImageUrls(List.of(imageUrl)));
+
+        service.postAnswer(AUTHOR_ID, QUESTION_ID, request);
+
+        verify(fileService).assertCommunityImagesOwned(List.of(imageUrl), AUTHOR_ID);
     }
 
     // No profile anywhere in the cascade → falls back to the generic label, never null/blank
@@ -423,12 +444,14 @@ class CommunityAnswerServiceImplTest {
     @Test
     void deleteAnswer_moderatorDeletesOthersAnswer_succeeds() {
         CommunityAnswer answer = makeAnswer(AnswerStatus.APPROVED);
+        answer.setImageUrls(List.of("https://res.cloudinary.com/demo/image/upload/answer.jpg"));
         when(answerRepository.findById(ANSWER_ID)).thenReturn(Optional.of(answer));
         when(answerRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         service.deleteAnswer(ANSWER_ID, OTHER_USER_ID, true);
 
         verify(answerRepository).save(argThat(a -> a.getStatus() == AnswerStatus.DELETED));
+        verify(fileService).purgeCommunityImages(answer.getImageUrls(), AUTHOR_ID);
     }
 
     // TC-201-6: answer not found -> 404
@@ -451,6 +474,7 @@ class CommunityAnswerServiceImplTest {
 
         verify(answerRepository).save(argThat(a -> a.getStatus() == AnswerStatus.DELETED));
         verify(questionRepository, never()).decrementAnswerCount(any());
+        verifyNoInteractions(fileService);
     }
 
     // Audit log emitted with COMMUNITY_ANSWER_DELETED

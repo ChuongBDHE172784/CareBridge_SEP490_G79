@@ -33,6 +33,7 @@ import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
 import com.carebridge.backend.community.entity.AnswerStatus;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
+import com.carebridge.backend.file.service.IFileService;
 
 import java.util.List;
 import java.util.Optional;
@@ -46,6 +47,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Spy;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 @ExtendWith(MockitoExtension.class)
 class CommunityQuestionServiceImplTest {
@@ -85,6 +88,9 @@ class CommunityQuestionServiceImplTest {
 
     @Mock
     private com.carebridge.backend.aimoderation.service.AiScanEnqueueService aiScanEnqueueService;
+
+    @Mock
+    private IFileService fileService;
 
     @InjectMocks
     private CommunityQuestionServiceImpl questionService;
@@ -153,6 +159,19 @@ class CommunityQuestionServiceImplTest {
         ));
         assertThat(response.getStatus()).isEqualTo("PENDING");
         assertThat(response.getId()).isNotNull();
+    }
+
+    @Test
+    void createQuestion_withImagesVerifiesTheyBelongToAuthor() {
+        String imageUrl = "https://res.cloudinary.com/demo/image/upload/question.jpg";
+        lenient().when(topicRepository.findByIdAndTypeAndIsHiddenFalse(TOPIC_ID, TopicType.TOPIC))
+                .thenReturn(Optional.of(makeTopic(false)));
+        when(questionRepository.save(any())).thenReturn(savedQuestion());
+        CreateCommunityQuestionRequest request = makeRequest(req -> req.setImageUrls(List.of(imageUrl)));
+
+        questionService.createQuestion(AUTHOR_ID, request);
+
+        verify(fileService).assertCommunityImagesOwned(List.of(imageUrl), AUTHOR_ID);
     }
 
     // COM-TC-001 sub: entity defaults — likeCount=0, answerCount=0
@@ -321,5 +340,24 @@ class CommunityQuestionServiceImplTest {
 
         assertThat(response.getAuthorId()).isEqualTo(AUTHOR_ID);
         assertThat(response.getAuthorDisplay()).isEqualTo("Nguyễn Thị A");
+    }
+
+    @Test
+    void getMyQuestions_scopesByAuthorAndReturnsEveryStatus() {
+        CommunityQuestion pending = savedQuestion();
+        CommunityQuestion deleted = savedQuestion();
+        deleted.setStatus(QuestionStatus.DELETED);
+        when(questionRepository.findAllByAuthorIdOrderByCreatedAtDesc(
+                eq(AUTHOR_ID), eq(PageRequest.of(1, 2))))
+                .thenReturn(new PageImpl<>(List.of(pending, deleted), PageRequest.of(1, 2), 4));
+
+        var response = questionService.getMyQuestions(AUTHOR_ID, 1, 2);
+
+        assertThat(response.getData()).extracting(CommunityQuestionResponse::getStatus)
+                .containsExactly("PENDING", "DELETED");
+        assertThat(response.getPage()).isEqualTo(1);
+        assertThat(response.getTotalElements()).isEqualTo(4);
+        verify(questionRepository).findAllByAuthorIdOrderByCreatedAtDesc(
+                AUTHOR_ID, PageRequest.of(1, 2));
     }
 }

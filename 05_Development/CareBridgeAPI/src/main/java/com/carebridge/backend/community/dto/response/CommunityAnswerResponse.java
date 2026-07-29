@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 import java.util.UUID;
+import java.util.List;
 
 @Getter
 @Builder
@@ -19,6 +20,7 @@ public class CommunityAnswerResponse {
  private UUID authorId;
  private String authorDisplay;
  private String body;
+ private List<String> imageUrls;
  private boolean personalExperience;
  private boolean expertLabeled;
  private UUID expertProfileId;

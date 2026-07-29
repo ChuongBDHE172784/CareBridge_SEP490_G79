@@ -9,6 +9,7 @@ import com.carebridge.backend.file.enums.FilePurpose;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
+import java.util.List;
 
 public interface IFileService {
 
@@ -52,6 +53,11 @@ public interface IFileService {
 
     /** Internal compensation for a failed atomic workflow. Not exposed by FileController. */
     void purgeFile(UUID fileId, UUID callerId);
+
+    /** Permanently removes Cloudinary images attached to owned community content. */
+    void purgeCommunityImages(List<String> imageUrls, UUID ownerUserId);
+
+    void assertCommunityImagesOwned(List<String> imageUrls, UUID ownerUserId);
 
     /**
      * Upload raw bytes directly to private storage (for cropped face images).

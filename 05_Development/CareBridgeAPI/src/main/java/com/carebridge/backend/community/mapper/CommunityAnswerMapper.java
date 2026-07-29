@@ -8,6 +8,8 @@ import com.carebridge.backend.community.entity.CommunityAnswer;
 import org.springframework.stereotype.Component;
 
 import java.util.UUID;
+import java.util.ArrayList;
+import java.util.List;
 
 @Component
 public class CommunityAnswerMapper {
@@ -22,6 +24,7 @@ public CommunityAnswer toEntity(PostCommunityAnswerRequest request, UUID authorI
  .questionId(questionId)
  .authorId(authorId)
  .body(request.getBody())
+ .imageUrls(copyImageUrls(request.getImageUrls()))
  .personalExperience(Boolean.TRUE.equals(request.getIsPersonalExperience()))
  .expertLabeled(expertLabeled) // ADR-COM-005: never from request
  .status(AnswerStatus.APPROVED) // New answers are visible immediately; edits still re-enter moderation.
@@ -53,6 +56,7 @@ public CommunityAnswerResponse toResponse(CommunityAnswer entity, String authorD
  .authorId(entity.getAuthorId())
  .authorDisplay(finalAuthorDisplay)
  .body(entity.getBody())
+ .imageUrls(copyImageUrls(entity.getImageUrls()))
  .personalExperience(entity.isPersonalExperience())
  .expertLabeled(entity.isExpertLabeled())
  .expertProfileId(expertProfileId)
@@ -62,6 +66,10 @@ public CommunityAnswerResponse toResponse(CommunityAnswer entity, String authorD
  .createdAt(entity.getCreatedAt())
  .updatedAt(entity.getUpdatedAt())
  .build();
+}
+
+private List<String> copyImageUrls(List<String> imageUrls) {
+ return imageUrls == null ? new ArrayList<>() : new ArrayList<>(imageUrls);
 }
 
 // UC-200: apply partial edit — body and isPersonalExperience only.

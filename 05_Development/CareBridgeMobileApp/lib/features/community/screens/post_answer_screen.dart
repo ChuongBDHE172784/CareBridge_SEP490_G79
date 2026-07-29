@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/network/api_client.dart';
+import '../widgets/community_image_attachments.dart';
 
 class PostAnswerScreen extends StatefulWidget {
   final String questionId;
@@ -46,6 +48,8 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
 
   final _bodyCtrl = TextEditingController();
   final Set<int> _selectedTags = {};
+  final _imageService = CommunityImageService();
+  final List<CommunityImageAttachment> _images = [];
   bool _submitting = false;
   bool _showPublishedModal = false;
 
@@ -64,11 +68,16 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
     }
     setState(() => _submitting = true);
     try {
+      final imageUrls = await _imageService.uploadAll(
+        _images,
+        purpose: 'COMMUNITY_ANSWER_IMAGE',
+      );
       await apiPost(
         '/api/v1/community/questions/${widget.questionId}/answers',
         {
           'body': _bodyCtrl.text.trim(),
           'isPersonalExperience': _selectedTags.isNotEmpty,
+          'imageUrls': imageUrls,
         },
       );
       if (mounted) setState(() => _showPublishedModal = true);
@@ -80,6 +89,20 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    if (_images.length >= communityImageLimit) return;
+    try {
+      final image = await _imageService.pick(source);
+      if (image != null && mounted) setState(() => _images.add(image));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Không thể thêm ảnh: $e')));
+      }
     }
   }
 
@@ -390,68 +413,48 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
             }),
           ),
           const SizedBox(height: 16),
-          // Textarea
-          Stack(
-            alignment: Alignment.bottomRight,
-            children: [
-              TextField(
-                controller: _bodyCtrl,
-                maxLines: 8,
-                maxLength: 3000,
-                decoration: InputDecoration(
-                  hintText:
-                      'Hãy chia sẻ những trải nghiệm thực tế của bạn để giúp đỡ cộng đồng...',
-                  hintStyle: const TextStyle(
-                    color: _onSurfaceVariant,
-                    fontSize: 14,
-                  ),
-                  contentPadding: const EdgeInsets.fromLTRB(16, 16, 16, 48),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: _surfaceAccentMuted,
-                      width: 2,
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: _surfaceAccentMuted,
-                      width: 2,
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: _primary, width: 2),
-                  ),
-                  filled: true,
-                  fillColor: _surface,
-                  counterText: '',
+          TextField(
+            controller: _bodyCtrl,
+            maxLines: 8,
+            maxLength: 3000,
+            decoration: InputDecoration(
+              hintText:
+                  'Hãy chia sẻ những trải nghiệm thực tế của bạn để giúp đỡ cộng đồng...',
+              hintStyle: const TextStyle(
+                color: _onSurfaceVariant,
+                fontSize: 14,
+              ),
+              contentPadding: const EdgeInsets.all(16),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(
+                  color: _surfaceAccentMuted,
+                  width: 2,
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.only(right: 8, bottom: 8),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(
-                        Icons.image_outlined,
-                        color: _onSurfaceVariant,
-                      ),
-                      onPressed: () {},
-                    ),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.attach_file,
-                        color: _onSurfaceVariant,
-                      ),
-                      onPressed: () {},
-                    ),
-                  ],
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(
+                  color: _surfaceAccentMuted,
+                  width: 2,
                 ),
               ),
-            ],
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: _primary, width: 2),
+              ),
+              filled: true,
+              fillColor: _surface,
+              counterText: '',
+            ),
+          ),
+          const SizedBox(height: 12),
+          CommunityImagePickerField(
+            images: _images,
+            enabled: !_submitting,
+            onCamera: () => _pickImage(ImageSource.camera),
+            onGallery: () => _pickImage(ImageSource.gallery),
+            onRemove: (index) => setState(() => _images.removeAt(index)),
           ),
           const SizedBox(height: 16),
           const Divider(color: _outlineVariant),

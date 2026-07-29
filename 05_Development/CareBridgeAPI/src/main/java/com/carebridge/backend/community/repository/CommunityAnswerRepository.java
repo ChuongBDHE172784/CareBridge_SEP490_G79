@@ -32,6 +32,8 @@ public interface CommunityAnswerRepository extends JpaRepository<CommunityAnswer
     // UC-199: fetch approved answers for a question detail view
     List<CommunityAnswer> findAllByQuestionIdAndStatusOrderByCreatedAtDesc(UUID questionId, AnswerStatus status);
 
+    List<CommunityAnswer> findAllByQuestionId(UUID questionId);
+
     // UC-111: dashboard aggregation — answer count grouped by status
     @Query("SELECT a.status, COUNT(a) FROM CommunityAnswer a GROUP BY a.status")
     List<Object[]> countGroupByStatus();

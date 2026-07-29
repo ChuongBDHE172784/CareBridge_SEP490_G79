@@ -38,6 +38,8 @@ public interface CommunityQuestionRepository extends JpaRepository<CommunityQues
     // Dev seed idempotency (DevDataSeeder) — identifies a previously-seeded question by author+title
     Optional<CommunityQuestion> findByAuthorIdAndTitle(UUID authorId, String title);
 
+    Page<CommunityQuestion> findAllByAuthorIdOrderByCreatedAtDesc(UUID authorId, Pageable pageable);
+
     // CB-MOD-IMP-004 (Pending Content Queue, ADR-006): list PENDING questions directly,
     // independent of ContentReport — for first-time moderation discovery
     Page<CommunityQuestion> findByStatus(QuestionStatus status, Pageable pageable);

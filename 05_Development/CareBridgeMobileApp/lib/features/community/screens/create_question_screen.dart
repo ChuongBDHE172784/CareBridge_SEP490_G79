@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/network/api_client.dart';
+import '../widgets/community_image_attachments.dart';
 
 class CreateQuestionScreen extends StatefulWidget {
   const CreateQuestionScreen({super.key});
@@ -15,6 +17,8 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleCtrl = TextEditingController();
   final _bodyCtrl = TextEditingController();
+  final _imageService = CommunityImageService();
+  final List<CommunityImageAttachment> _images = [];
 
   List<dynamic> _topics = [];
   String? _selectedTopicId;
@@ -54,9 +58,14 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _submitting = true);
     try {
+      final imageUrls = await _imageService.uploadAll(
+        _images,
+        purpose: 'COMMUNITY_QUESTION_IMAGE',
+      );
       await apiPost('/api/v1/community/questions', {
         'title': _titleCtrl.text.trim(),
         'body': _bodyCtrl.text.trim(),
+        'imageUrls': imageUrls,
         if (_selectedTopicId != null) 'topicId': _selectedTopicId,
         'stage': _stage,
         'urgency': _urgency,
@@ -79,6 +88,20 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    if (_images.length >= communityImageLimit) return;
+    try {
+      final image = await _imageService.pick(source);
+      if (image != null && mounted) setState(() => _images.add(image));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Không thể thêm ảnh: $e')));
+      }
     }
   }
 
@@ -151,6 +174,15 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                           ? 'Chi tiết phải có ít nhất 20 ký tự'
                           : null,
                       maxLength: 2000,
+                    ),
+                    const SizedBox(height: 14),
+                    CommunityImagePickerField(
+                      images: _images,
+                      enabled: !_submitting,
+                      onCamera: () => _pickImage(ImageSource.camera),
+                      onGallery: () => _pickImage(ImageSource.gallery),
+                      onRemove: (index) =>
+                          setState(() => _images.removeAt(index)),
                     ),
                     const SizedBox(height: 14),
                     if (_topics.isEmpty)

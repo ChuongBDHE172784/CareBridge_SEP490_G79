@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/auth/auth_state.dart';
 import '../models/community_model.dart';
 import '../services/community_service.dart';
+import '../widgets/community_image_attachments.dart';
 import 'post_answer_screen.dart';
 import 'edit_question_screen.dart';
 
@@ -412,14 +413,15 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
             onPressed: () => context.push('/rag-chat'),
             tooltip: 'Hỏi AI CareBridge (UC-132)',
           ),
-          IconButton(
-            icon: const Icon(Icons.flag_outlined, color: _onSurfaceVariant),
-            onPressed: () => _reportTarget(
-              targetType: 'QUESTION',
-              targetId: widget.questionId,
+          if (_question != null && !_isMyQuestion)
+            IconButton(
+              icon: const Icon(Icons.flag_outlined, color: _onSurfaceVariant),
+              onPressed: () => _reportTarget(
+                targetType: 'QUESTION',
+                targetId: widget.questionId,
+              ),
+              tooltip: 'Báo cáo câu hỏi',
             ),
-            tooltip: 'Báo cáo câu hỏi',
-          ),
           if (_question?.authorId != null && !_isMyQuestion)
             IconButton(
               icon: const Icon(
@@ -451,6 +453,12 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                       questionId: widget.questionId,
                       initialTitle: _question!.title,
                       initialBody: _question!.body,
+                      initialTopicId: _question!.topicId,
+                      initialTopicName: _question!.topicName,
+                      initialStage: _question!.stage,
+                      initialImageUrls: _question!.imageUrls,
+                      initialPregnancyWeek: _question!.pregnancyWeek,
+                      initialBabyAgeMonths: _question!.babyAgeMonths,
                       initialIsAnonymous: _question!.anonymous,
                       initialUrgency: _question!.urgency,
                     ),
@@ -638,6 +646,10 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                     height: 1.5,
                   ),
                 ),
+                if (q.imageUrls.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  CommunityNetworkImageGallery(imageUrls: q.imageUrls),
+                ],
                 const SizedBox(height: 14),
                 const Divider(color: _outlineVariant, height: 1),
                 const SizedBox(height: 12),
@@ -971,6 +983,10 @@ class _AnswerCard extends StatelessWidget {
               height: 1.5,
             ),
           ),
+          if (answer.imageUrls.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            CommunityNetworkImageGallery(imageUrls: answer.imageUrls),
+          ],
           const SizedBox(height: 10),
           const Divider(color: Color(0xFFD6C2BD), height: 1),
           const SizedBox(height: 8),
@@ -1013,31 +1029,32 @@ class _AnswerCard extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              PopupMenuButton<String>(
-                tooltip: 'Báo cáo',
-                icon: const Icon(
-                  Icons.flag_outlined,
-                  size: 18,
-                  color: Color(0xFF524440),
-                ),
-                onSelected: (value) {
-                  if (value == 'answer') onReport();
-                  if (value == 'author' && onReportAuthor != null) {
-                    onReportAuthor!();
-                  }
-                },
-                itemBuilder: (ctx) => [
-                  const PopupMenuItem(
-                    value: 'answer',
-                    child: Text('Báo cáo câu trả lời'),
+              if (!isOwnAnswer)
+                PopupMenuButton<String>(
+                  tooltip: 'Báo cáo',
+                  icon: const Icon(
+                    Icons.flag_outlined,
+                    size: 18,
+                    color: Color(0xFF524440),
                   ),
-                  if (onReportAuthor != null)
+                  onSelected: (value) {
+                    if (value == 'answer') onReport();
+                    if (value == 'author' && onReportAuthor != null) {
+                      onReportAuthor!();
+                    }
+                  },
+                  itemBuilder: (ctx) => [
                     const PopupMenuItem(
-                      value: 'author',
-                      child: Text('Báo cáo tài khoản'),
+                      value: 'answer',
+                      child: Text('Báo cáo câu trả lời'),
                     ),
-                ],
-              ),
+                    if (onReportAuthor != null)
+                      const PopupMenuItem(
+                        value: 'author',
+                        child: Text('Báo cáo tài khoản'),
+                      ),
+                  ],
+                ),
             ],
           ),
         ],
