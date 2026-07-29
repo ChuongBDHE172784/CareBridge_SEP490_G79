@@ -34,6 +34,7 @@ public class ExpertAvailability {
     @jakarta.persistence.PreUpdate
     void syncCanonicalProfileReference() {
         if (professionalProfileId == null) professionalProfileId = expertProfileId;
+        if (status == null) status = AvailabilityStatus.AVAILABLE;
     }
 
     @Column(name = "start_at", nullable = false)
@@ -45,6 +46,7 @@ public class ExpertAvailability {
     @Column(name = "channel_type", nullable = false, length = 30)
     private String channelType;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private AvailabilityStatus status = AvailabilityStatus.AVAILABLE;
