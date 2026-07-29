@@ -16,6 +16,8 @@ import com.carebridge.backend.community.entity.QuestionStatus;
 import com.carebridge.backend.community.entity.UrgencyLevel;
 import com.carebridge.backend.community.mapper.CommunityQuestionMapper;
 import com.carebridge.backend.community.repository.CommunityAnswerRepository;
+import com.carebridge.backend.community.repository.CommunityBookmarkRepository;
+import com.carebridge.backend.community.repository.CommunityQuestionLikeRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
 
@@ -48,6 +50,15 @@ class CommunityQuestionSearchServiceImplTest {
 
     @Mock
     private CommunityTopicRepository topicRepository;
+
+    @Mock
+    private CommunityBookmarkRepository bookmarkRepository;
+
+    @Mock
+    private CommunityQuestionLikeRepository likeRepository;
+
+    @Mock
+    private CommunityAuthorDisplayResolver authorDisplayResolver;
 
     @Spy
     private CommunityQuestionMapper questionMapper;

@@ -156,62 +156,20 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
   bool _isOwnAnswer(CommunityAnswer answer) =>
       answer.authorId != null && answer.authorId == AuthState.instance.userId;
 
-  // UC-200: edit own answer via a simple dialog
   Future<void> _editAnswer(CommunityAnswer answer) async {
-    final controller = TextEditingController(text: answer.body);
-    bool isPersonalExperience = answer.personalExperience;
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('Chỉnh sửa câu trả lời'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: controller,
-                maxLines: 5,
-                minLines: 3,
-                decoration: const InputDecoration(border: OutlineInputBorder()),
-              ),
-              CheckboxListTile(
-                value: isPersonalExperience,
-                onChanged: (v) =>
-                    setDialogState(() => isPersonalExperience = v ?? false),
-                title: const Text('Đây là kinh nghiệm cá nhân'),
-                contentPadding: EdgeInsets.zero,
-                controlAffinity: ListTileControlAffinity.leading,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Hủy'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Lưu'),
-            ),
-          ],
+    final updated = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => PostAnswerScreen(
+          questionId: widget.questionId,
+          questionTitle: _question?.title,
+          questionBody: _question?.body,
+          authorName: _question?.authorDisplay,
+          existingAnswer: answer,
         ),
       ),
     );
-    if (saved != true) return;
-    try {
-      await _service.editAnswer(
-        widget.questionId,
-        answer.id,
-        body: controller.text,
-        isPersonalExperience: isPersonalExperience,
-      );
+    if (updated == true) {
       _loadDetail();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Không thể cập nhật câu trả lời: $e')),
-        );
-      }
     }
   }
 
@@ -892,6 +850,39 @@ class _AnswerCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (isOwnAnswer &&
+              (answer.status == 'PENDING' || answer.status == 'AI_PENDING')) ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF3CD),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFFFEEBA)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(
+                    Icons.hourglass_top_rounded,
+                    size: 16,
+                    color: Color(0xFF856404),
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Câu trả lời của bạn đang chờ AI kiểm duyệt nội dung...',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 12,
+                        color: Color(0xFF856404),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           // Author row
           Row(
             children: [

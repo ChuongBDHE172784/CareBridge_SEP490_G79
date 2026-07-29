@@ -24,6 +24,17 @@ public final class SecurityUtils {
         }
     }
 
+    public static java.util.UUID tryGetCurrentUserId(Principal principal) {
+        if (principal == null || principal.getName() == null) {
+            return null;
+        }
+        try {
+            return java.util.UUID.fromString(principal.getName());
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+    }
+
     public static boolean hasRole(String role) {
         return currentAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)

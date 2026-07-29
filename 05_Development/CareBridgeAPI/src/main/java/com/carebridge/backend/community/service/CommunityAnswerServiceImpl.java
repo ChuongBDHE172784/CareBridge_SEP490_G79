@@ -87,6 +87,10 @@ public class CommunityAnswerServiceImpl implements CommunityAnswerService {
 
         boolean wasApproved = answer.getStatus() == AnswerStatus.APPROVED;
 
+        if (request.getImageUrls() != null && !request.getImageUrls().isEmpty()) {
+            fileService.assertCommunityImagesOwned(request.getImageUrls(), callerId);
+        }
+
         answerMapper.applyEdit(answer, request);
         answer.setStatus(AnswerStatus.AI_PENDING);
 

@@ -315,7 +315,7 @@ class CommunityQuestionServiceImplTest {
     }
 
     private void stubEmptyHydration() {
-        when(answerRepository.findAllByQuestionIdAndStatusOrderByCreatedAtDesc(QUESTION_ID, AnswerStatus.APPROVED))
+        when(answerRepository.findVisibleAnswersForDetail(any(), any()))
                 .thenReturn(List.of());
         when(answerLikeRepository.findLikedAnswerIds(any(), any())).thenReturn(Set.of());
     }
@@ -376,21 +376,19 @@ class CommunityQuestionServiceImplTest {
     }
 
     @Test
-    void getMyQuestions_scopesByAuthorAndReturnsEveryStatus() {
+    void getMyQuestions_scopesByAuthorAndExcludesDeleted() {
         CommunityQuestion pending = savedQuestion();
-        CommunityQuestion deleted = savedQuestion();
-        deleted.setStatus(QuestionStatus.DELETED);
-        when(questionRepository.findAllByAuthorIdOrderByCreatedAtDesc(
-                eq(AUTHOR_ID), eq(PageRequest.of(1, 2))))
-                .thenReturn(new PageImpl<>(List.of(pending, deleted), PageRequest.of(1, 2), 4));
+        when(questionRepository.findAllByAuthorIdAndStatusNotOrderByCreatedAtDesc(
+                eq(AUTHOR_ID), eq(QuestionStatus.DELETED), eq(PageRequest.of(1, 2))))
+                .thenReturn(new PageImpl<>(List.of(pending), PageRequest.of(1, 2), 3));
 
         var response = questionService.getMyQuestions(AUTHOR_ID, 1, 2);
 
         assertThat(response.getData()).extracting(CommunityQuestionResponse::getStatus)
-                .containsExactly("PENDING", "DELETED");
+                .containsExactly("PENDING");
         assertThat(response.getPage()).isEqualTo(1);
-        assertThat(response.getTotalElements()).isEqualTo(4);
-        verify(questionRepository).findAllByAuthorIdOrderByCreatedAtDesc(
-                AUTHOR_ID, PageRequest.of(1, 2));
+        assertThat(response.getTotalElements()).isEqualTo(3);
+        verify(questionRepository).findAllByAuthorIdAndStatusNotOrderByCreatedAtDesc(
+                AUTHOR_ID, QuestionStatus.DELETED, PageRequest.of(1, 2));
     }
 }

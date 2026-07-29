@@ -5,6 +5,8 @@ import 'package:image_picker/image_picker.dart';
 import '../../../core/network/api_client.dart';
 import '../widgets/community_image_attachments.dart';
 
+import '../models/community_model.dart';
+
 String postAnswerErrorMessage(Object error) {
   if (error is ApiException && error.statusCode == 422) {
     try {
@@ -27,6 +29,7 @@ class PostAnswerScreen extends StatefulWidget {
   final String? authorAvatarUrl;
   final String? topicName;
   final String? timeAgo;
+  final CommunityAnswer? existingAnswer;
 
   const PostAnswerScreen({
     super.key,
@@ -37,6 +40,7 @@ class PostAnswerScreen extends StatefulWidget {
     this.authorAvatarUrl,
     this.topicName,
     this.timeAgo,
+    this.existingAnswer,
   });
 
   @override
@@ -66,8 +70,21 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
   final Set<int> _selectedTags = {};
   final _imageService = CommunityImageService();
   final List<CommunityImageAttachment> _images = [];
+  final List<String> _existingImageUrls = [];
   bool _submitting = false;
   bool _showPublishedModal = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.existingAnswer != null) {
+      _bodyCtrl.text = widget.existingAnswer!.body;
+      if (widget.existingAnswer!.personalExperience) {
+        _selectedTags.add(0);
+      }
+      _existingImageUrls.addAll(widget.existingAnswer!.imageUrls);
+    }
+  }
 
   @override
   void dispose() {
@@ -84,18 +101,30 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
     }
     setState(() => _submitting = true);
     try {
-      final imageUrls = await _imageService.uploadAll(
+      final newUploadedUrls = await _imageService.uploadAll(
         _images,
         purpose: 'COMMUNITY_ANSWER_IMAGE',
       );
-      await apiPost(
-        '/api/v1/community/questions/${widget.questionId}/answers',
-        {
-          'body': _bodyCtrl.text.trim(),
-          'isPersonalExperience': _selectedTags.isNotEmpty,
-          'imageUrls': imageUrls,
-        },
-      );
+      final finalImageUrls = [..._existingImageUrls, ...newUploadedUrls];
+      if (widget.existingAnswer != null) {
+        await apiPatch(
+          '/api/v1/community/questions/${widget.questionId}/answers/${widget.existingAnswer!.id}',
+          {
+            'body': _bodyCtrl.text.trim(),
+            'isPersonalExperience': _selectedTags.isNotEmpty,
+            'imageUrls': finalImageUrls,
+          },
+        );
+      } else {
+        await apiPost(
+          '/api/v1/community/questions/${widget.questionId}/answers',
+          {
+            'body': _bodyCtrl.text.trim(),
+            'isPersonalExperience': _selectedTags.isNotEmpty,
+            'imageUrls': finalImageUrls,
+          },
+        );
+      }
       if (mounted) setState(() => _showPublishedModal = true);
     } catch (e) {
       if (mounted) {
@@ -470,10 +499,13 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
           const SizedBox(height: 12),
           CommunityImagePickerField(
             images: _images,
+            existingImageUrls: _existingImageUrls,
             enabled: !_submitting,
             onCamera: () => _pickImage(ImageSource.camera),
             onGallery: () => _pickImage(ImageSource.gallery),
             onRemove: (index) => setState(() => _images.removeAt(index)),
+            onRemoveExisting: (index) =>
+                setState(() => _existingImageUrls.removeAt(index)),
           ),
           const SizedBox(height: 16),
           const Divider(color: _outlineVariant),
@@ -516,10 +548,10 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
                         strokeWidth: 2,
                       ),
                     )
-                  : const Icon(Icons.send, size: 18),
-              label: const Text(
-                'Đăng trả lời',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  : Icon(widget.existingAnswer != null ? Icons.save : Icons.send, size: 18),
+              label: Text(
+                widget.existingAnswer != null ? 'Lưu thay đổi' : 'Đăng trả lời',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),
           ),

@@ -56,6 +56,11 @@ public class AiScanEnqueueService {
     private final AiScanTargetResolver targetResolver;
     private final GeminiModerationClient geminiModerationClient;
 
+    public boolean isModerationEnabled() {
+        return businessToggleEnabled()
+                && geminiModerationClient.configState() == GeminiModerationClient.ConfigState.READY;
+    }
+
     /** Lifecycle hook whose outcome lets callers fail closed to human review. */
     @Transactional
     public EnqueueResult enqueueScan(ReportTargetType targetType, UUID targetId, String text) {

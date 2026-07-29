@@ -84,7 +84,7 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
  String questionAuthorDisplay = authorDisplayResolver.resolve(question.getAuthorId());
 
  List<CommunityAnswer> answerEntities = answerRepository
- .findAllByQuestionIdAndStatusOrderByCreatedAtDesc(questionId, AnswerStatus.APPROVED);
+ .findVisibleAnswersForDetail(questionId, currentUserId);
 
  // Batch fetch display names for all answer authors to avoid N+1
  Set<UUID> answerAuthorIds = answerEntities.stream()
@@ -200,7 +200,7 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
  @Transactional(readOnly = true)
  public PaginatedResponse<CommunityQuestionResponse> getMyQuestions(UUID authorId, int page, int size) {
  return PaginatedResponse.of(questionRepository
- .findAllByAuthorIdOrderByCreatedAtDesc(authorId, PageRequest.of(page, size))
+ .findAllByAuthorIdAndStatusNotOrderByCreatedAtDesc(authorId, QuestionStatus.DELETED, PageRequest.of(page, size))
  .map(questionMapper::toResponse));
  }
 

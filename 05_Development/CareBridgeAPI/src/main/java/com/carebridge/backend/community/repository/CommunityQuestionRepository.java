@@ -45,6 +45,9 @@ public interface CommunityQuestionRepository extends JpaRepository<CommunityQues
 
     Page<CommunityQuestion> findAllByAuthorIdOrderByCreatedAtDesc(UUID authorId, Pageable pageable);
 
+    Page<CommunityQuestion> findAllByAuthorIdAndStatusNotOrderByCreatedAtDesc(
+            UUID authorId, QuestionStatus status, Pageable pageable);
+
     // CB-MOD-IMP-004 (Pending Content Queue, ADR-006): list PENDING questions directly,
     // independent of ContentReport — for first-time moderation discovery
     Page<CommunityQuestion> findByStatus(QuestionStatus status, Pageable pageable);

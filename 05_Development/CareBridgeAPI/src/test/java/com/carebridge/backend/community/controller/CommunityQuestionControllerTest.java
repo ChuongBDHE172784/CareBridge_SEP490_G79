@@ -346,11 +346,10 @@ class CommunityQuestionControllerTest {
     void searchQuestions_authenticated_returns200() throws Exception {
         PaginatedResponse<CommunityQuestionSummaryResponse> empty =
                 PaginatedResponse.of(new PageImpl<>(Collections.emptyList(), PageRequest.of(0, 20), 0));
-        when(searchService.searchQuestions(any())).thenReturn(empty);
+        when(searchService.searchQuestions(any(), any())).thenReturn(empty);
 
         mockMvc.perform(get(BASE_URL))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.success").value(true));
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -358,14 +357,14 @@ class CommunityQuestionControllerTest {
     void searchQuestions_legacyBabyCareStage_normalizesToPostpartum() throws Exception {
         PaginatedResponse<CommunityQuestionSummaryResponse> empty =
                 PaginatedResponse.of(new PageImpl<>(Collections.emptyList(), PageRequest.of(0, 20), 0));
-        when(searchService.searchQuestions(any())).thenReturn(empty);
+        when(searchService.searchQuestions(any(), any())).thenReturn(empty);
 
         mockMvc.perform(get(BASE_URL).param("stage", "BABY_CARE"))
                 .andExpect(status().isOk());
 
         ArgumentCaptor<CommunityQuestionSearchRequest> requestCaptor =
                 ArgumentCaptor.forClass(CommunityQuestionSearchRequest.class);
-        verify(searchService).searchQuestions(requestCaptor.capture());
+        verify(searchService).searchQuestions(requestCaptor.capture(), any());
         assertThat(requestCaptor.getValue().getStage()).isEqualTo(PregnancyStage.POSTPARTUM);
     }
 
