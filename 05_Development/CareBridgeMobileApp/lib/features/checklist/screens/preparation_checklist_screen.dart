@@ -178,9 +178,13 @@ class _PreparationChecklistScreenState
     );
   }
 
-  Widget _buildCategorySection(ChecklistCategory category) {
-    final items = _items.where((item) => item.category == category).toList();
-    if (items.isEmpty) return const SizedBox.shrink();
+  Widget? _buildCategorySection(ChecklistCategory category) {
+    final items = _items
+        .where((item) => item.templateName == null && item.category == category)
+        .toList();
+    if (items.isEmpty) {
+      return null;
+    }
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Column(
@@ -218,13 +222,11 @@ class _PreparationChecklistScreenState
           .toList();
       sections.add(_buildNamedSection(name, items));
     }
-    final personal = _items.where((item) => item.templateName == null).toList();
     for (final category in ChecklistCategory.values) {
-      final items = personal
-          .where((item) => item.category == category)
-          .toList();
-      if (items.isNotEmpty)
-        sections.add(_buildNamedSection(category.label, items));
+      final section = _buildCategorySection(category);
+      if (section != null) {
+        sections.add(section);
+      }
     }
     return sections;
   }

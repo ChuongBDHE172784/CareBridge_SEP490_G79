@@ -434,6 +434,8 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                 if (_selectedTypeIndex == 0 || _selectedTypeIndex == 3)
                   SliverToBoxAdapter(child: _buildChecklistSection()),
               ],
+              if (!_loading && _loadError == null)
+                SliverToBoxAdapter(child: _buildSafetyDisclaimer()),
               const SliverToBoxAdapter(child: SizedBox(height: 32)),
             ],
           ),
@@ -886,8 +888,9 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
         )
         .toList();
     final tags = _tags.where((item) => !item.isHidden).toList();
-    if (categories.isEmpty && topics.isEmpty && tags.isEmpty)
+    if (categories.isEmpty && topics.isEmpty && tags.isEmpty) {
       return const SizedBox.shrink();
+    }
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
@@ -913,8 +916,9 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                     !_topics.any(
                       (topic) =>
                           topic.id == _selectedTopicId && topic.parentId == id,
-                    ))
+                    )) {
                   _selectedTopicId = null;
+                }
               }),
             ),
           if (topics.isNotEmpty)
@@ -948,7 +952,7 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
   ) => Padding(
     padding: const EdgeInsets.only(top: 10),
     child: DropdownButtonFormField<String>(
-      value: selectedId ?? '',
+      initialValue: selectedId ?? '',
       isExpanded: true,
       decoration: InputDecoration(
         labelText: label,
