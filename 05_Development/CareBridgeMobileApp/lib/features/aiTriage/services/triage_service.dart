@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/auth/auth_state.dart';
 import '../../../core/network/api_client.dart';
+import '../models/triage_consent_status.dart';
 import '../models/triage_continuation.dart';
 import '../models/triage_intake_flow_model.dart';
 import '../models/triage_result_model.dart';
@@ -55,6 +56,34 @@ class TriageService implements TriageContinuationGateway {
     return result;
   }
 
+  Future<TriageConsentStatus> getConsentStatus() async {
+    final requestContext = _captureContinuationContext();
+    final data = await _getRequest(
+      '/api/v1/triage/consent',
+    ).timeout(_requestTimeout);
+    final status = TriageConsentStatus.fromJson(
+      Map<String, dynamic>.from(data['data'] as Map),
+    );
+    _throwIfStale(requestContext);
+    return status;
+  }
+
+  Future<TriageConsentStatus> acceptConsent({
+    required String policyVersion,
+    String locale = 'vi',
+  }) async {
+    final requestContext = _captureContinuationContext();
+    final data = await _postRequest('/api/v1/triage/consent/accept', {
+      'policyVersion': policyVersion,
+      'locale': locale,
+    }).timeout(_requestTimeout);
+    final status = TriageConsentStatus.fromJson(
+      Map<String, dynamic>.from(data['data'] as Map),
+    );
+    _throwIfStale(requestContext);
+    return status;
+  }
+
   Future<IntakeFlowResponse> startConversation({
     required String initialText,
     required Map<String, dynamic> currentIntake,
@@ -82,16 +111,22 @@ class TriageService implements TriageContinuationGateway {
       final value = requestIntake.remove(key);
       if (value != null) lifecycleBinding[key] = value;
     }
-    final data = await _postRequest(
-      '/api/v1/triage/intake/conversation/start',
-      {
+    dynamic data;
+    try {
+      data = await _postRequest('/api/v1/triage/intake/conversation/start', {
         'initialText': initialText,
         'stage': stage,
         ...lifecycleBinding,
         'currentIntake': {...requestIntake, 'stage': stage},
         'clientRequestId': requestId,
-      },
-    ).timeout(_requestTimeout);
+      }).timeout(_requestTimeout);
+    } on ApiException catch (error) {
+      if (error.statusCode == 409 &&
+          _topLevelErrorCode(error.message) == 'TRIAGE_CONSENT_REQUIRED') {
+        throw const TriageConsentRequiredFailure();
+      }
+      rethrow;
+    }
     final payload = data['data'] as Map<String, dynamic>;
     final response = IntakeFlowResponse.fromJson(payload);
     _throwIfStale(requestContext);
@@ -241,6 +276,10 @@ class TriageService implements TriageContinuationGateway {
   }
 }
 
+class TriageConsentRequiredFailure implements Exception {
+  const TriageConsentRequiredFailure();
+}
+
 class _ContinuationRequestContext {
   const _ContinuationRequestContext({
     required this.userId,
@@ -264,6 +303,18 @@ String? _errorCode(String body) {
     if (decoded is Map<String, dynamic>) {
       return decoded['code']?.toString() ??
           (decoded['error'] as Map<String, dynamic>?)?['code']?.toString();
+    }
+  } catch (_) {
+    return null;
+  }
+  return null;
+}
+
+String? _topLevelErrorCode(String body) {
+  try {
+    final decoded = jsonDecode(body);
+    if (decoded is Map<String, dynamic> && decoded['error'] is String) {
+      return decoded['error'] as String;
     }
   } catch (_) {
     return null;

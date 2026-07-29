@@ -1,10 +1,13 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:untitled/core/auth/auth_state.dart';
+import 'package:untitled/core/network/api_client.dart';
+import 'package:untitled/features/aiTriage/models/triage_consent_status.dart';
 import 'package:untitled/features/aiTriage/models/triage_continuation.dart';
 import 'package:untitled/features/aiTriage/models/triage_intake_flow_model.dart';
 import 'package:untitled/features/aiTriage/models/triage_entry_context.dart';
@@ -181,6 +184,79 @@ class _ThrowingTriageService extends TriageService {
     required String initialText,
     required Map<String, dynamic> currentIntake,
   }) => Future.error(Exception('RAW_SECRET_BACKEND_DETAIL'));
+}
+
+class _ConsentGateTriageService extends TriageService {
+  _ConsentGateTriageService({
+    this.failStatus = false,
+    this.failAccept = false,
+    this.failRetry = false,
+    this.invalidAcceptResponse = false,
+    this.statusCompleter,
+    this.acceptCompleter,
+  });
+
+  final bool failStatus;
+  final bool failAccept;
+  final bool failRetry;
+  final bool invalidAcceptResponse;
+  final Completer<TriageConsentStatus>? statusCompleter;
+  final Completer<TriageConsentStatus>? acceptCompleter;
+  int startCalls = 0;
+  int statusCalls = 0;
+  int acceptCalls = 0;
+  String? acceptedVersion;
+
+  @override
+  Future<IntakeFlowResponse> startConversation({
+    required String initialText,
+    required Map<String, dynamic> currentIntake,
+  }) async {
+    startCalls++;
+    if (startCalls == 1) {
+      throw const TriageConsentRequiredFailure();
+    }
+    if (failRetry) throw Exception('RAW_RETRY_FAILURE');
+    return _complete(_result('GREEN'));
+  }
+
+  @override
+  Future<TriageConsentStatus> getConsentStatus() async {
+    statusCalls++;
+    if (failStatus) throw Exception('RAW_CONSENT_STATUS_FAILURE');
+    if (statusCompleter != null) return statusCompleter!.future;
+    return const TriageConsentStatus(
+      status: 'REQUIRED',
+      currentVersion: 'AI_TRIAGE_DISCLAIMER_V1',
+      disclaimerText: 'Nội dung disclaimer chính thức từ backend.',
+      reason: 'NOT_ACCEPTED',
+    );
+  }
+
+  @override
+  Future<TriageConsentStatus> acceptConsent({
+    required String policyVersion,
+    String locale = 'vi',
+  }) async {
+    acceptCalls++;
+    acceptedVersion = policyVersion;
+    if (failAccept) throw Exception('RAW_CONSENT_ACCEPT_FAILURE');
+    if (acceptCompleter != null) return acceptCompleter!.future;
+    if (invalidAcceptResponse) {
+      return const TriageConsentStatus(
+        status: 'REQUIRED',
+        currentVersion: 'AI_TRIAGE_DISCLAIMER_V2',
+        disclaimerText: 'Nội dung disclaimer mới từ backend.',
+        reason: 'POLICY_UPDATED',
+      );
+    }
+    return const TriageConsentStatus(
+      status: 'ACCEPTED',
+      currentVersion: 'AI_TRIAGE_DISCLAIMER_V1',
+      acceptedVersion: 'AI_TRIAGE_DISCLAIMER_V1',
+      disclaimerText: 'Nội dung disclaimer chính thức từ backend.',
+    );
+  }
 }
 
 class _PendingTriageService extends TriageService {
@@ -778,6 +854,307 @@ void main() {
 
     expect(find.textContaining('Không thể gửi triệu chứng'), findsOneWidget);
     expect(find.textContaining('RAW_SECRET_BACKEND_DETAIL'), findsNothing);
+    expect(find.byKey(const Key('triage-consent-dialog')), findsNothing);
+  });
+
+  test('service maps only the exact backend consent-required code', () async {
+    final service = TriageService(
+      postRequest: (_, _) => Future.error(
+        ApiException(
+          409,
+          jsonEncode({
+            'success': false,
+            'error': 'TRIAGE_CONSENT_REQUIRED',
+            'message': 'RAW_BACKEND_DETAIL',
+          }),
+        ),
+      ),
+    );
+
+    await expectLater(
+      service.startConversation(
+        initialText: 'be kho tho',
+        currentIntake: const {'stage': 'INFANT'},
+      ),
+      throwsA(isA<TriageConsentRequiredFailure>()),
+    );
+  });
+
+  test(
+    'service rejects consent codes outside the top-level error field',
+    () async {
+      for (final body in [
+        {'code': 'TRIAGE_CONSENT_REQUIRED'},
+        {
+          'error': {'code': 'TRIAGE_CONSENT_REQUIRED'},
+        },
+        {'message': 'TRIAGE_CONSENT_REQUIRED'},
+      ]) {
+        final service = TriageService(
+          postRequest: (_, _) =>
+              Future.error(ApiException(409, jsonEncode(body))),
+        );
+
+        await expectLater(
+          service.startConversation(
+            initialText: 'be kho tho',
+            currentIntake: const {'stage': 'INFANT'},
+          ),
+          throwsA(isA<ApiException>()),
+        );
+      }
+    },
+  );
+
+  test(
+    'consent payload rejects unknown, malformed, or stale accepted states',
+    () {
+      for (final body in [
+        {
+          'status': 'UNKNOWN',
+          'currentVersion': 'V1',
+          'disclaimerText': 'Canonical policy',
+        },
+        {
+          'status': 1,
+          'currentVersion': 'V1',
+          'disclaimerText': 'Canonical policy',
+        },
+        {
+          'status': 'ACCEPTED',
+          'currentVersion': 'V2',
+          'acceptedVersion': 'V1',
+          'disclaimerText': 'Canonical policy',
+        },
+      ]) {
+        expect(
+          () => TriageConsentStatus.fromJson(body),
+          throwsA(isA<FormatException>()),
+        );
+      }
+    },
+  );
+
+  testWidgets('consent dialog accepts canonical policy then retries intake', (
+    tester,
+  ) async {
+    final triage = _ConsentGateTriageService();
+    await _pumpScreen(tester, triage: triage);
+
+    await _submitInitial(tester);
+    await tester.pump();
+
+    expect(find.byKey(const Key('triage-consent-dialog')), findsOneWidget);
+    expect(
+      find.text('Nội dung disclaimer chính thức từ backend.'),
+      findsOneWidget,
+    );
+    expect(triage.startCalls, 1);
+    expect(triage.acceptCalls, 0);
+
+    await tester.tap(find.byKey(const Key('triage-consent-accept')));
+    await tester.pumpAndSettle();
+
+    expect(triage.acceptCalls, 1);
+    expect(triage.acceptedVersion, 'AI_TRIAGE_DISCLAIMER_V1');
+    expect(triage.startCalls, 2);
+    expect(find.text('Mức rủi ro: GREEN'), findsOneWidget);
+  });
+
+  testWidgets('cancelling consent keeps input and does not retry', (
+    tester,
+  ) async {
+    final triage = _ConsentGateTriageService();
+    await _pumpScreen(tester, triage: triage);
+
+    await _submitInitial(tester);
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('triage-consent-cancel')));
+    await tester.pumpAndSettle();
+
+    expect(triage.startCalls, 1);
+    expect(triage.acceptCalls, 0);
+    expect(find.textContaining('Bạn cần đồng ý'), findsOneWidget);
+    expect(find.text('be kho tho'), findsOneWidget);
+  });
+
+  testWidgets('system back cannot dismiss the consent dialog', (tester) async {
+    final triage = _ConsentGateTriageService();
+    await _pumpScreen(tester, triage: triage);
+
+    await _submitInitial(tester);
+    await tester.pump();
+    await tester.binding.handlePopRoute();
+    await tester.pump();
+
+    expect(find.byKey(const Key('triage-consent-dialog')), findsOneWidget);
+    expect(triage.acceptCalls, 0);
+    expect(triage.startCalls, 1);
+
+    await tester.tap(find.byKey(const Key('triage-consent-cancel')));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('consent status failure is safe and never renders raw detail', (
+    tester,
+  ) async {
+    final triage = _ConsentGateTriageService(failStatus: true);
+    await _pumpScreen(tester, triage: triage);
+
+    await _submitInitial(tester);
+    await tester.pump();
+
+    expect(triage.startCalls, 1);
+    expect(triage.acceptCalls, 0);
+    expect(
+      find.textContaining('Không thể xác nhận điều khoản'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('RAW_CONSENT_STATUS_FAILURE'), findsNothing);
+  });
+
+  testWidgets('consent accept failure does not retry or leak raw detail', (
+    tester,
+  ) async {
+    final triage = _ConsentGateTriageService(failAccept: true);
+    await _pumpScreen(tester, triage: triage);
+
+    await _submitInitial(tester);
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('triage-consent-accept')));
+    await tester.pumpAndSettle();
+
+    expect(triage.startCalls, 1);
+    expect(triage.acceptCalls, 1);
+    expect(
+      find.textContaining('Không thể xác nhận điều khoản'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('RAW_CONSENT_ACCEPT_FAILURE'), findsNothing);
+  });
+
+  testWidgets('changed policy response fails closed without retrying intake', (
+    tester,
+  ) async {
+    final triage = _ConsentGateTriageService(invalidAcceptResponse: true);
+    await _pumpScreen(tester, triage: triage);
+
+    await _submitInitial(tester);
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('triage-consent-accept')));
+    await tester.pumpAndSettle();
+
+    expect(triage.startCalls, 1);
+    expect(triage.acceptCalls, 1);
+    expect(
+      find.textContaining('Không thể xác nhận điều khoản'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('Nội dung disclaimer mới'), findsNothing);
+  });
+
+  testWidgets('non-consent retry failure keeps the safe send error', (
+    tester,
+  ) async {
+    final triage = _ConsentGateTriageService(failRetry: true);
+    await _pumpScreen(tester, triage: triage);
+
+    await _submitInitial(tester);
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('triage-consent-accept')));
+    await tester.pumpAndSettle();
+
+    expect(triage.startCalls, 2);
+    expect(find.textContaining('Không thể gửi triệu chứng'), findsOneWidget);
+    expect(find.textContaining('RAW_RETRY_FAILURE'), findsNothing);
+  });
+
+  testWidgets('disposed screen does not retry after consent status resolves', (
+    tester,
+  ) async {
+    final statusCompleter = Completer<TriageConsentStatus>();
+    final triage = _ConsentGateTriageService(statusCompleter: statusCompleter);
+    await _pumpScreen(tester, triage: triage);
+
+    await _submitInitial(tester);
+    await tester.pump();
+    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+    statusCompleter.complete(
+      const TriageConsentStatus(
+        status: 'REQUIRED',
+        currentVersion: 'AI_TRIAGE_DISCLAIMER_V1',
+        disclaimerText: 'Canonical policy',
+      ),
+    );
+    await tester.pump();
+
+    expect(triage.startCalls, 1);
+    expect(triage.acceptCalls, 0);
+  });
+
+  testWidgets('disposed screen does not retry after consent accept resolves', (
+    tester,
+  ) async {
+    final acceptCompleter = Completer<TriageConsentStatus>();
+    final triage = _ConsentGateTriageService(acceptCompleter: acceptCompleter);
+    await _pumpScreen(tester, triage: triage);
+
+    await _submitInitial(tester);
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('triage-consent-accept')));
+    await tester.pump();
+    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+    acceptCompleter.complete(
+      const TriageConsentStatus(
+        status: 'ACCEPTED',
+        currentVersion: 'AI_TRIAGE_DISCLAIMER_V1',
+        acceptedVersion: 'AI_TRIAGE_DISCLAIMER_V1',
+        disclaimerText: 'Canonical policy',
+      ),
+    );
+    await tester.pump();
+
+    expect(triage.startCalls, 1);
+    expect(triage.acceptCalls, 1);
+  });
+
+  testWidgets('account switch during consent lookup blocks dialog and retry', (
+    tester,
+  ) async {
+    FlutterSecureStorage.setMockInitialValues({});
+    await AuthState.instance.clear();
+    await AuthState.instance.setTokens(
+      accessToken: 'access-a',
+      refreshToken: 'refresh-a',
+      userId: 'account-a',
+      role: 'MOTHER',
+    );
+    addTearDown(AuthState.instance.clear);
+    final statusCompleter = Completer<TriageConsentStatus>();
+    final triage = _ConsentGateTriageService(statusCompleter: statusCompleter);
+    await _pumpScreen(tester, triage: triage);
+
+    await _submitInitial(tester);
+    await tester.pump();
+    await AuthState.instance.setTokens(
+      accessToken: 'access-b',
+      refreshToken: 'refresh-b',
+      userId: 'account-b',
+      role: 'MOTHER',
+    );
+    statusCompleter.complete(
+      const TriageConsentStatus(
+        status: 'REQUIRED',
+        currentVersion: 'AI_TRIAGE_DISCLAIMER_V1',
+        disclaimerText: 'Canonical policy',
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('triage-consent-dialog')), findsNothing);
+    expect(find.textContaining('Phiên đăng nhập đã thay đổi'), findsOneWidget);
+    expect(triage.startCalls, 1);
+    expect(triage.acceptCalls, 0);
   });
 
   for (final risk in ['GREEN', 'YELLOW']) {
