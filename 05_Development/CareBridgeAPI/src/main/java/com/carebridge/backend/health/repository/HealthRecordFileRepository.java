@@ -60,4 +60,10 @@ public class HealthRecordFileRepository {
                 .createdAt(rs.getTimestamp("created_at").toInstant())
                 .build(), fileId);
     }
+
+    public void unlinkAllByHealthRecordId(UUID healthRecordId) {
+        jdbcTemplate.update(
+                "UPDATE attachments SET health_record_id=NULL WHERE health_record_id=?",
+                healthRecordId);
+    }
 }

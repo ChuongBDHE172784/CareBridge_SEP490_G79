@@ -35,7 +35,10 @@ class _CareGroupMembersScreenState extends State<CareGroupMembersScreen> {
   @override
   void initState() {
     super.initState();
-    _members = List.from(widget.members);
+    // Chỉ hiển thị thành viên đã ACCEPTED — PENDING không được hiện ở đây
+    _members = widget.members
+        .where((m) => m.inviteStatus == 'ACCEPTED')
+        .toList();
     _reloadMembers();
   }
 
@@ -44,7 +47,10 @@ class _CareGroupMembersScreenState extends State<CareGroupMembersScreen> {
       final g = await _service.getGroupMembers(widget.groupId);
       if (mounted) {
         setState(() {
-          _members = g.members;
+          // Chỉ giữ lại thành viên đã được xác nhận (ACCEPTED)
+          _members = g.members
+              .where((m) => m.inviteStatus == 'ACCEPTED')
+              .toList();
         });
       }
     } catch (_) {

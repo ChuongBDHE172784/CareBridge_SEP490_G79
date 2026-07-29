@@ -35,7 +35,7 @@ public class HealthRecordController {
 
     // UC211: View health record detail
     @GetMapping("/{recordId}")
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<HealthRecordDetailResponse>> getHealthRecord(
             @PathVariable UUID recordId,
             Principal principal) {
@@ -69,7 +69,7 @@ public class HealthRecordController {
 
     // UC42: View health record timeline
     @GetMapping("/timeline")
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<TimelineResponse>> getTimeline(
             @Valid TimelineFilter filter,
             Principal principal) {

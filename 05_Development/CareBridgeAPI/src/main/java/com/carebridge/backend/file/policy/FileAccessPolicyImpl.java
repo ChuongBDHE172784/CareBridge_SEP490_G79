@@ -38,13 +38,28 @@ public class FileAccessPolicyImpl implements FileAccessPolicy {
             return;
         }
 
-        // Rule 2 (ADR-FILE-005): ACCEPTED care-group member sharing the linked baby
+        // Rule 2 (ADR-FILE-005): ACCEPTED care-group member sharing the linked health record / owner / baby
         boolean sharedAccess = healthRecordFileRepository.findByFileId(file.getId()).stream()
                 .flatMap(link -> healthRecordRepository.findById(link.getHealthRecordId()).stream())
-                .filter(hr -> hr.getBabyId() != null)
-                .flatMap(hr -> careGroupRepository.findByLinkedBabyProfileId(hr.getBabyId()).stream())
-                .anyMatch(cg -> careGroupMemberRepository
-                        .existsByCareGroupIdAndUserIdAndInviteStatus(cg.getId(), callerId, InviteStatus.ACCEPTED));
+                .anyMatch(hr -> {
+                    if (hr.getOwnerUserId().equals(callerId)) {
+                        return true;
+                    }
+                    var callerMemberships = careGroupMemberRepository
+                            .findByUserIdAndInviteStatus(callerId, InviteStatus.ACCEPTED);
+                    for (var m : callerMemberships) {
+                        var groupOpt = careGroupRepository.findById(m.getCareGroupId());
+                        if (groupOpt.isPresent() && groupOpt.get().getOwnerUserId().equals(hr.getOwnerUserId())) {
+                            return true;
+                        }
+                    }
+                    if (hr.getBabyId() != null) {
+                        return careGroupRepository.findByLinkedBabyProfileId(hr.getBabyId()).stream()
+                                .anyMatch(cg -> careGroupMemberRepository
+                                        .existsByCareGroupIdAndUserIdAndInviteStatus(cg.getId(), callerId, InviteStatus.ACCEPTED));
+                    }
+                    return false;
+                });
 
         if (sharedAccess) {
             return;

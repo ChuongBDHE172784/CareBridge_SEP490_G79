@@ -23,6 +23,13 @@ public interface UserRepository extends JpaRepository<User, java.util.UUID> {
 
     Optional<User> findByPhone(String phone);
 
+    /**
+     * Finds a user matching any of the supplied phone strings.
+     * Used to handle mixed DB formats (E.164 "+84..." vs local "0...").
+     */
+    @Query("select u from User u where u.phone in :phones")
+    java.util.List<User> findAllByPhoneIn(@Param("phones") java.util.List<String> phones);
+
     boolean existsByPhone(String phone);
 
     Optional<User> findByEmail(String email);

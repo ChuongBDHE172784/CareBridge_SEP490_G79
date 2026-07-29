@@ -179,16 +179,18 @@ class UpdateHealthRecordRequest {
   final String? recordType;
   final DateTime? recordDate;
   final String? sourceType;
-  final String? sourceName;
+  final String? facilityName;
   final String? fileUrl;
+  final List<String>? fileIds;
 
   const UpdateHealthRecordRequest({
     this.title,
     this.recordType,
     this.recordDate,
     this.sourceType,
-    this.sourceName,
+    this.facilityName,
     this.fileUrl,
+    this.fileIds,
   });
 
   Map<String, dynamic> toJson() {
@@ -201,8 +203,9 @@ class UpdateHealthRecordRequest {
           '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
     }
     if (sourceType != null) m['sourceType'] = sourceType;
-    if (sourceName != null) m['sourceName'] = sourceName;
+    if (facilityName != null) m['sourceName'] = facilityName;
     if (fileUrl != null) m['fileUrl'] = fileUrl;
+    if (fileIds != null) m['fileIds'] = fileIds;
     return m;
   }
 }

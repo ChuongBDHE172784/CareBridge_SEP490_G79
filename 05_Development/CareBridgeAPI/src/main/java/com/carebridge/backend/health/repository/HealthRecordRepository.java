@@ -15,6 +15,8 @@ public interface HealthRecordRepository extends JpaRepository<HealthRecord, UUID
 
     Optional<HealthRecord> findByIdAndStatus(UUID id, HealthRecordStatus status);
 
+    long countByOwnerUserIdAndStatus(UUID ownerUserId, HealthRecordStatus status);
+
     @Query("""
             SELECT r FROM HealthRecord r
             WHERE r.ownerUserId = :ownerUserId

@@ -79,7 +79,7 @@ class _HealthRecordTimelineScreenState
     } catch (_) {
       if (mounted) {
         Navigator.of(context, rootNavigator: true).pop();
-        _showSnack('Không thể tải tệp đính kèm.');
+        _showSnack('Không thể tải chi tiết hồ sơ.');
       }
       return;
     }
@@ -87,46 +87,16 @@ class _HealthRecordTimelineScreenState
     if (!mounted) return;
     Navigator.of(context, rootNavigator: true).pop();
 
-    if (detail.attachments.isEmpty) {
-      _showSnack('Hồ sơ này chưa có tệp đính kèm.');
-      return;
-    }
-
-    if (detail.attachments.length == 1) {
-      _openAttachmentDetail(detail, detail.attachments.first);
-      return;
-    }
-
-    _showAttachmentPicker(detail);
-  }
-
-  void _openAttachmentDetail(
-    HealthRecordDetail detail,
-    FileAttachment attachment,
-  ) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(
         builder: (_) => HealthRecordAttachmentDetailScreen(
           record: detail,
-          attachment: attachment,
         ),
       ),
     );
-  }
-
-  void _showAttachmentPicker(HealthRecordDetail detail) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => _AttachmentPickerSheet(
-        detail: detail,
-        onOpen: (attachment) {
-          Navigator.of(context).pop();
-          _openAttachmentDetail(detail, attachment);
-        },
-      ),
-    );
+    if (result == true && mounted) {
+      _load();
+    }
   }
 
   Future<void> _pickPostedDate() async {
@@ -159,8 +129,7 @@ class _HealthRecordTimelineScreenState
     ).showSnackBar(SnackBar(content: Text(message), backgroundColor: _primary));
   }
 
-  DateTime _postedAt(HealthRecord record) =>
-      record.createdAt ?? record.recordDate;
+  DateTime _postedAt(HealthRecord record) => record.recordDate;
 
   bool _isSameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
@@ -505,7 +474,7 @@ class _RecordCard extends StatelessWidget {
 
   const _RecordCard({required this.record, required this.onTap});
 
-  DateTime get _postedAt => record.createdAt ?? record.recordDate;
+  DateTime get _postedAt => record.recordDate;
 
   String _formatDate(DateTime date) =>
       '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
@@ -633,153 +602,6 @@ class _RecordCard extends StatelessWidget {
                   ),
                 ),
               ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _AttachmentPickerSheet extends StatelessWidget {
-  final HealthRecordDetail detail;
-  final void Function(FileAttachment) onOpen;
-
-  const _AttachmentPickerSheet({required this.detail, required this.onOpen});
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      child: Container(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * 0.75,
-        ),
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-        decoration: const BoxDecoration(
-          color: Color(0xFFFFF8F6),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 42,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFD6C2BD),
-                  borderRadius: BorderRadius.circular(99),
-                ),
-              ),
-            ),
-            const SizedBox(height: 18),
-            Text(
-              detail.title,
-              style: const TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF271812),
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Tệp đính kèm',
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 12,
-                color: Color(0xFF6E5A52),
-              ),
-            ),
-            const SizedBox(height: 14),
-            Flexible(
-              child: ListView.separated(
-                shrinkWrap: true,
-                itemCount: detail.attachments.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 10),
-                itemBuilder: (_, index) {
-                  final attachment = detail.attachments[index];
-                  return _AttachmentTile(
-                    attachment: attachment,
-                    onTap: () => onOpen(attachment),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AttachmentTile extends StatelessWidget {
-  final FileAttachment attachment;
-  final VoidCallback onTap;
-
-  const _AttachmentTile({required this.attachment, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final isPdf = attachment.isPdf;
-    return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF1EC),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  isPdf ? Icons.picture_as_pdf_rounded : Icons.image_rounded,
-                  color: const Color(0xFFC98C7B),
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      attachment.originalName.isEmpty
-                          ? 'Tệp đính kèm'
-                          : attachment.originalName,
-                      style: const TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF271812),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      isPdf ? 'PDF' : 'Ảnh',
-                      style: const TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 11,
-                        color: Color(0xFF6E5A52),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.chevron_right_rounded, color: Color(0xFF6E5A52)),
             ],
           ),
         ),

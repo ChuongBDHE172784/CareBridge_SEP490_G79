@@ -15,5 +15,6 @@ public class CareGroupMemberDto {
     private String displayName;
     private String memberRole;
     private String inviteStatus;
+    private Boolean isJoinRequest;
     private Instant joinedAt;
 }

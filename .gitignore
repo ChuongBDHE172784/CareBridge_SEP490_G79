@@ -143,3 +143,8 @@ tools/
 .codex_tmp/
 code-review-graph/
 
+#bach
+package-lock.json
+DropSchema.java
+V3_add_audit_events.sql
+application.yaml
