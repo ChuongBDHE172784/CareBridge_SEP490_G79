@@ -4,6 +4,11 @@ import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
 import com.carebridge.backend.file.enums.FileAccessMode;
 import com.carebridge.backend.file.service.IStorageService;
+import java.io.InputStream;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -114,6 +119,43 @@ public class CloudinaryStorageService implements IStorageService {
         }
 
         return generateSignedUrl(parsed.publicId, ttlMinutes, parsed.accessMode, parsed.resourceType);
+    }
+
+    @Override
+    public byte[] read(String key, long maxBytes) {
+        if (maxBytes < 0 || maxBytes >= Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("Invalid Cloudinary read limit");
+        }
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(generatePresignedUrl(key, 15)))
+                    .GET()
+                    .build();
+            HttpResponse<InputStream> response = HttpClient.newBuilder()
+                    .followRedirects(HttpClient.Redirect.NORMAL)
+                    .build()
+                    .send(request, HttpResponse.BodyHandlers.ofInputStream());
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                response.body().close();
+                throw new StorageException(
+                        "Cloudinary read failed with HTTP " + response.statusCode());
+            }
+            try (InputStream input = response.body()) {
+                byte[] bytes = input.readNBytes((int) maxBytes + 1);
+                if (bytes.length > maxBytes) {
+                    throw new IllegalArgumentException(
+                            "Stored object exceeds the allowed read size");
+                }
+                return bytes;
+            }
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new StorageException("Cloudinary read interrupted", ex);
+        } catch (IllegalArgumentException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new StorageException("Cloudinary read failed: " + ex.getMessage(), ex);
+        }
     }
 
     /**
