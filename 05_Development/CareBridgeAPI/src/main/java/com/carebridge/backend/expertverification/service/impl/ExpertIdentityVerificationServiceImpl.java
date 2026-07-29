@@ -305,15 +305,19 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
     @Override
     @Transactional(readOnly = true)
     public Page<ExpertReviewCaseResponse> getAdminReviewCases(String search, String status, Pageable pageable, UUID reviewerId) {
-        VerificationStatus verificationStatus = null;
+        java.util.List<VerificationStatus> verificationStatuses = null;
         if (status != null && !status.isBlank()) {
-            try {
-                verificationStatus = VerificationStatus.valueOf(status);
-            } catch (IllegalArgumentException ignored) {}
+            if ("PENDING".equals(status)) {
+                verificationStatuses = java.util.List.of(VerificationStatus.PENDING, VerificationStatus.UNDER_REVIEW);
+            } else {
+                try {
+                    verificationStatuses = java.util.List.of(VerificationStatus.valueOf(status));
+                } catch (IllegalArgumentException ignored) {}
+            }
         }
         String searchQuery = (search != null && !search.isBlank()) ? search.trim() : null;
 
-        return profileRepository.findForReview(searchQuery, verificationStatus, pageable)
+        return profileRepository.findForReview(searchQuery, verificationStatuses, pageable)
                 .map(profile -> {
                     var user = profile.getUser();
                     var latestIdentity = identityRepository

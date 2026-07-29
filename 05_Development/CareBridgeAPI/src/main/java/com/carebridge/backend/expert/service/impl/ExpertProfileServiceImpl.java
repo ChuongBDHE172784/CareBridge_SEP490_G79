@@ -102,6 +102,7 @@ public class ExpertProfileServiceImpl implements IExpertProfileService {
 		MasterDataSelection selection = normalizeMasterData(request);
 		ExpertProfile profile = expertProfileMapper.toEntity(request, userId);
 		profile.setFacilityId(selection.facilityId());
+		profile.setVerificationStatus(VerificationStatus.PENDING);
 		ExpertProfile saved = expertProfileRepository.save(profile);
 		synchronizeSpecialties(saved.getExpertProfileId(), selection.specialties());
 		UserInfo info = resolveUserInfo(userId);

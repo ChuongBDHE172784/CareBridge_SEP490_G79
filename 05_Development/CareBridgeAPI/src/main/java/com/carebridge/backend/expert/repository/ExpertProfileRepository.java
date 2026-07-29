@@ -49,8 +49,8 @@ public interface ExpertProfileRepository extends JpaRepository<ExpertProfile, UU
  @Query("SELECT ep FROM ExpertProfile ep JOIN FETCH ep.user u " +
         "WHERE (:search IS NULL OR LOWER(u.displayName) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) " +
         "OR LOWER(ep.specialty) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))) " +
-        "AND (:status IS NULL OR ep.verificationStatus = :status)")
- Page<ExpertProfile> findForReview(@Param("search") String search, @Param("status") VerificationStatus status, Pageable pageable);
+        "AND (COALESCE(:statuses, NULL) IS NULL OR ep.verificationStatus IN :statuses)")
+ Page<ExpertProfile> findForReview(@Param("search") String search, @Param("statuses") java.util.List<VerificationStatus> statuses, Pageable pageable);
 
  @Query(value = """
      SELECT u.* FROM users u
