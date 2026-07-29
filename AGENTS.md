@@ -6,7 +6,7 @@ This repository uses two remotes in parallel:
 
 - `github`: `git@github.com:ChuongBDHE172784/CareBridge_SEP490_G79.git`
 - `gitlab`: `git@gitlab.com:manhnc2/su26_sep490_g79.git`
-- Personal working branch: `LamVH1`
+- Personal working branch: `HuyND`
 - Shared integration branch: `dev`
 
 For every Git task involving branches, syncing, commits, pulls, pushes, merges,
@@ -18,15 +18,13 @@ executing commands:
 - `.claude/workflows/start-day.md`
 - `.claude/workflows/end-day.md`
 
-Treat `LamVH1` as canonical. Some examples in
-`.claude/skills/git-dual-remote-handler.md` mistakenly say `LamVH`; replace that
-with `LamVH1` when applying them.
+Treat `HuyND` as canonical.
 
 ### Non-negotiable safety rules
 
 - Never push until `dev` has first been pulled from both `github` and `gitlab`.
 - Never create feature or fix commits directly on `dev`. Work and commit on
-  `LamVH1`, then merge `LamVH1` into `dev` through the documented workflow.
+  `HuyND`, then merge `HuyND` into `dev` through the documented workflow.
 - Never use `git push origin`; always name `github` or `gitlab` explicitly.
 - Before every merge, run `git status` and inspect unpushed commits against both
   remotes with `git log github/dev..HEAD --oneline` and
@@ -41,12 +39,12 @@ with `LamVH1` when applying them.
 ### Workflow triggers
 
 - At the start of a coding session, follow `.claude/workflows/start-day.md`:
-  inspect status, sync `dev` from both remotes, merge it into `LamVH1`, and
+  inspect status, sync `dev` from both remotes, merge it into `HuyND`, and
   verify the active email.
 - When finishing work or preparing to push, follow
-  `.claude/workflows/end-day.md`: ensure work is committed on `LamVH1`, re-sync
-  `dev` from both remotes, merge `LamVH1` into `dev`, resolve every conflict,
-  then push `dev` and the `LamVH1` backup to each explicitly named remote.
+  `.claude/workflows/end-day.md`: ensure work is committed on `HuyND`, re-sync
+  `dev` from both remotes, merge `HuyND` into `dev`, resolve every conflict,
+  then push `dev` and the `HuyND` backup to each explicitly named remote.
 
 
 <!-- code-review-graph MCP tools -->
