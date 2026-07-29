@@ -6,6 +6,7 @@ import ContentLayout from '../layouts/ContentLayout';
 import ProtectedRoute from '../guards/ProtectedRoute';
 import RoleAwareRedirect from '../guards/RoleAwareRedirect';
 import ExpertOnboardingGuard from '../guards/ExpertOnboardingGuard';
+import ExpertLayout from '../layouts/ExpertLayout';
 
 // Auth screens
 import LoginPage from '../../features/auth/pages/LoginPage';
@@ -168,8 +169,7 @@ export const router = createBrowserRouter([
               { path: '/admin/account-lock-appeals', element: <AccountLockAppealsPage /> },
               { path: '/admin/account-lock-appeals/:appealId', element: <AccountLockAppealDetailPage /> },
               { path: '/admin/expert-verification-queue', element: <ExpertVerificationQueuePage /> },
-              { path: '/admin/expert-identity-queue', element: <ExpertVerificationQueuePage /> },
-              { path: '/admin/expert-trust-management', element: <ExpertVerificationQueuePage /> },
+              { path: '/admin/expert-trust-management', element: <ContentApprovalQueuePage /> },
               { path: '/admin/content-approval-queue', element: <ContentApprovalQueuePage /> },
               // Read-only review routes for the approval queue's "Xem chi tiết" links — System Admin
               // lacks CONTENT_ADMIN, so it cannot use /content/:id or /content/checklists/:id directly
@@ -236,23 +236,28 @@ export const router = createBrowserRouter([
           {
             element: <ProtectedRoute requiredRoles={['EXPERT']} />,
             children: [
-              { path: '/expert/onboarding', element: <ExpertOnboardingPage /> },
               {
-                element: <ExpertOnboardingGuard />,
+                element: <ExpertLayout />,
                 children: [
-                  { path: '/expert/dashboard', element: <ExpertDashboardPage /> },
-                  { path: '/expert', element: <Navigate to="/expert/dashboard" replace /> },
-                  // CB-055: Expert Profile
-                  { path: '/expert/profile', element: <ExpertProfilePage /> },
-                  // CB-056: Verification Documents
-                  { path: '/expert/credentials', element: <VerificationDocumentsPage /> },
-                  // CB-057: Availability Calendar
-                  { path: '/expert/calendar', element: <AvailabilityCalendarPage /> },
-                  // CB-063: Expert Question Queue
-                  { path: '/expert/question-queue', element: <ExpertQuestionQueuePage /> },
-                  // UC-144D: Direct Consult Chat & Call
-                  { path: '/expert/direct-chats', element: <ConversationListPage /> },
-                  { path: '/expert/direct-chats/:conversationId', element: <ConversationRoomPage /> },
+                  { path: '/expert/onboarding', element: <ExpertOnboardingPage /> },
+                  {
+                    element: <ExpertOnboardingGuard />,
+                    children: [
+                      { path: '/expert/dashboard', element: <ExpertDashboardPage /> },
+                      { path: '/expert', element: <Navigate to="/expert/dashboard" replace /> },
+                      // CB-055: Expert Profile
+                      { path: '/expert/profile', element: <ExpertProfilePage /> },
+                      // CB-056: Verification Documents
+                      { path: '/expert/credentials', element: <VerificationDocumentsPage /> },
+                      // CB-057: Availability Calendar
+                      { path: '/expert/calendar', element: <AvailabilityCalendarPage /> },
+                      // CB-063: Expert Question Queue
+                      { path: '/expert/question-queue', element: <ExpertQuestionQueuePage /> },
+                      // UC-144D: Direct Consult Chat & Call
+                      { path: '/expert/direct-chats', element: <ConversationListPage /> },
+                      { path: '/expert/direct-chats/:conversationId', element: <ConversationRoomPage /> },
+                    ],
+                  },
                 ],
               },
             ],
