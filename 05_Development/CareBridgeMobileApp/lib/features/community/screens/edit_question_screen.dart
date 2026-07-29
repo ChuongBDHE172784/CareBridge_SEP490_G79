@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../../core/network/api_client.dart';
+import '../models/community_model.dart';
 import '../services/community_service.dart';
 import '../widgets/community_image_attachments.dart';
 
@@ -58,7 +58,7 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
   final _imageService = CommunityImageService();
   final List<CommunityImageAttachment> _newImages = [];
   late final List<String> _existingImageUrls;
-  List<dynamic> _topics = [];
+  List<CommunityTopic> _topics = [];
   String? _selectedTopicId;
   late String _stage;
   late String _urgency;
@@ -95,29 +95,22 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
   Future<void> _loadTopics() async {
     setState(() => _loadingTopics = true);
     try {
-      final data = await apiGet('/api/v1/community/topics');
+      final topics = await CommunityService.instance.getQuestionTopics();
       if (!mounted) return;
-      final topics = data['data'] as List? ?? [];
       setState(() {
         _topics = topics;
         final selectedStillExists = topics.any(
-          (topic) => topic['id']?.toString() == _selectedTopicId,
+          (topic) => topic.id == _selectedTopicId,
         );
         if (!selectedStillExists && _selectedTopicId != null) {
-          _topics = [
-            ...topics,
-            {'id': _selectedTopicId, 'name': widget.initialTopicName},
-          ];
+          _selectedTopicId = null;
         }
       });
     } catch (error) {
       if (mounted) {
         setState(() {
-          _topics = _selectedTopicId == null
-              ? []
-              : [
-                  {'id': _selectedTopicId, 'name': widget.initialTopicName},
-                ];
+          _topics = [];
+          _selectedTopicId = null;
         });
         ScaffoldMessenger.of(
           context,
@@ -151,8 +144,12 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
     super.dispose();
   }
 
+  bool get _hasValidTopicSelection =>
+      _selectedTopicId != null &&
+      _topics.any((topic) => topic.id == _selectedTopicId);
+
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate() || !_hasValidTopicSelection) return;
     setState(() => _submitting = true);
     try {
       final uploadedUrls = await _imageService.uploadAll(
@@ -231,7 +228,9 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
             )
           else
             TextButton(
-              onPressed: _submit,
+              onPressed: (_loadingTopics || !_hasValidTopicSelection)
+                  ? null
+                  : _submit,
               child: const Text(
                 'Lưu',
                 style: TextStyle(
@@ -308,8 +307,8 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
                 items: _topics
                     .map(
                       (topic) => DropdownMenuItem<String>(
-                        value: topic['id'].toString(),
-                        child: Text(topic['name'] ?? topic['id'].toString()),
+                        value: topic.id,
+                        child: Text(topic.name),
                       ),
                     )
                     .toList(),

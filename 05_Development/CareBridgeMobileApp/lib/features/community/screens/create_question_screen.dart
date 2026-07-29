@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/network/api_client.dart';
+import '../models/community_model.dart';
+import '../services/community_service.dart';
 import '../widgets/community_image_attachments.dart';
 
 class CreateQuestionScreen extends StatefulWidget {
@@ -20,7 +22,7 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
   final _imageService = CommunityImageService();
   final List<CommunityImageAttachment> _images = [];
 
-  List<dynamic> _topics = [];
+  List<CommunityTopic> _topics = [];
   String? _selectedTopicId;
   String _stage = 'PREGNANCY';
   String _urgency = 'NORMAL';
@@ -44,13 +46,14 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
   Future<void> _loadTopics() async {
     setState(() => _loading = true);
     try {
-      final data = await apiGet('/api/v1/community/topics');
+      final topics = await CommunityService.instance.getQuestionTopics();
+      if (!mounted) return;
       setState(() {
-        _topics = (data['data'] as List? ?? []);
+        _topics = topics;
         _loading = false;
       });
     } catch (_) {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -223,8 +226,8 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                         items: _topics
                             .map(
                               (t) => DropdownMenuItem(
-                                value: t['id'].toString(),
-                                child: Text(t['name'] ?? t['id'].toString()),
+                                value: t.id,
+                                child: Text(t.name),
                               ),
                             )
                             .toList(),

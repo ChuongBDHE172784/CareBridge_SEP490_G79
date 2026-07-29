@@ -1,6 +1,16 @@
 import '../../../core/network/api_client.dart';
 import '../models/community_model.dart';
 
+typedef CommunityTopicFetcher =
+    Future<List<CommunityTopic>> Function({String? type});
+
+Future<List<CommunityTopic>> loadQuestionTopics(
+  CommunityTopicFetcher fetchTopics,
+) async {
+  final topics = await fetchTopics(type: 'TOPIC');
+  return topics.where((topic) => topic.type == 'TOPIC').toList(growable: false);
+}
+
 class CommunityService {
   static final CommunityService instance = CommunityService._();
   CommunityService._();
@@ -26,6 +36,9 @@ class CommunityService {
 
   Future<List<CommunityTopic>> getTopicCategories() =>
       getTopics(type: 'CATEGORY');
+
+  Future<List<CommunityTopic>> getQuestionTopics() =>
+      loadQuestionTopics(({String? type}) => getTopics(type: type));
 
   Future<List<CommunityFeedItem>> getFeed({
     String? topicId,
