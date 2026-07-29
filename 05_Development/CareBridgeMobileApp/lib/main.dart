@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'core/auth/auth_state.dart';
@@ -12,7 +13,9 @@ import 'features/safety/services/safety_foreground_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  FlutterForegroundTask.initCommunicationPort();
+  if (!kIsWeb) {
+    FlutterForegroundTask.initCommunicationPort();
+  }
   late final bool firebaseReady;
   try {
     firebaseReady = await FirebaseBootstrap.initialize();
@@ -50,7 +53,9 @@ void main() async {
     unawaited(FcmService.instance.registerToken());
   }
   runApp(CareBridgeApp(firebaseEnabled: firebaseReady));
-  unawaited(SafetyForegroundServiceCoordinator.instance.reconcile());
+  if (!kIsWeb) {
+    unawaited(SafetyForegroundServiceCoordinator.instance.reconcile());
+  }
   if (firebaseReady) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       FcmService.instance.markNavigationReady();
