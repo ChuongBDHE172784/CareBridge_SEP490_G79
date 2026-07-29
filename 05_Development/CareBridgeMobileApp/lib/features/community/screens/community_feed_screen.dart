@@ -6,7 +6,6 @@ import '../models/community_model.dart';
 import '../services/community_service.dart';
 import 'create_question_screen.dart';
 import 'question_detail_screen.dart';
-import 'topic_directory_screen.dart';
 import 'bookmarked_questions_screen.dart';
 import 'my_questions_screen.dart';
 import 'verified_content_search_screen.dart';
@@ -292,15 +291,6 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
               ),
             ),
           ),
-          // Topic directory button
-          _buildTopCircleButton(
-            icon: Icons.bookmarks_outlined,
-            tooltip: 'Thư viện chủ đề',
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const TopicDirectoryScreen()),
-            ),
-          ),
-          const SizedBox(width: 8),
           // Bookmarked posts
           _buildTopCircleButton(
             icon: Icons.bookmark_outline,

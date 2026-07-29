@@ -15,8 +15,8 @@ class CommunityService {
   static final CommunityService instance = CommunityService._();
   CommunityService._();
 
-  // [type] defaults to unset (all taxonomy kinds). Directory consumers request TOPIC and
-  // CATEGORY rows separately so the CATEGORY -> TOPIC hierarchy remains explicit.
+  // [type] defaults to unset (all taxonomy kinds). Callers request only the
+  // taxonomy rows required by their question or verified-content flows.
   Future<List<CommunityTopic>> getTopics({
     String? keyword,
     String? type,
@@ -33,9 +33,6 @@ class CommunityService {
         .map((e) => CommunityTopic.fromJson(e as Map<String, dynamic>))
         .toList();
   }
-
-  Future<List<CommunityTopic>> getTopicCategories() =>
-      getTopics(type: 'CATEGORY');
 
   Future<List<CommunityTopic>> getQuestionTopics() =>
       loadQuestionTopics(({String? type}) => getTopics(type: type));
@@ -195,12 +192,6 @@ class CommunityService {
     await apiDelete(
       '/api/v1/community/questions/$questionId/answers/$answerId',
     );
-  }
-
-  // UC-171: Toggle follow/unfollow on a community topic
-  Future<bool> toggleFollowTopic(String topicId) async {
-    final json = await apiPost('/api/v1/community/topics/$topicId/follow', {});
-    return json['data']?['followed'] as bool? ?? false;
   }
 
   // UC-55: Report unsafe community content or users.

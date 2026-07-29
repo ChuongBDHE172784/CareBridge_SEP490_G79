@@ -28,5 +28,9 @@ void main() {
     expect(find.text('Chủ đề'), findsOneWidget);
     expect(find.text('Giai đoạn'), findsOneWidget);
     expect(find.text('Chuyên gia'), findsOneWidget);
+
+    // The standalone topic directory was removed; question topic filtering remains.
+    expect(find.byTooltip('Thư viện chủ đề'), findsNothing);
+    expect(find.byTooltip('Bài viết đã lưu'), findsOneWidget);
   });
 }
