@@ -1,5 +1,6 @@
 package com.carebridge.backend.expertavailability.mapper;
 
+import com.carebridge.backend.expertavailability.availabilitystatus.AvailabilityStatus;
 import com.carebridge.backend.expertavailability.dto.request.CreateAvailabilityRequest;
 import com.carebridge.backend.expertavailability.dto.response.AvailabilityResponse;
 import com.carebridge.backend.expertavailability.entity.ExpertAvailability;
@@ -15,6 +16,7 @@ public class ExpertAvailabilityMapper {
                 .startAt(request.getStartAt())
                 .endAt(request.getEndAt())
                 .channelType(request.getChannelType())
+                .status(AvailabilityStatus.AVAILABLE)
                 .build();
     }
 
