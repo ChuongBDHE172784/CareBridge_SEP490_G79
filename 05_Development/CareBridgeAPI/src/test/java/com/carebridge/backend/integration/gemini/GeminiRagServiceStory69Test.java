@@ -136,7 +136,7 @@ class GeminiRagServiceStory69Test {
                 Arguments.of("FAMILY", UserStage.PRE_PREGNANCY),
                 Arguments.of("EXPERT", UserStage.PREGNANCY),
                 Arguments.of("MODERATOR", UserStage.POSTPARTUM),
-                Arguments.of("CONTENT_ADMIN", UserStage.BABY_CARE),
+                Arguments.of("CONTENT_ADMIN", UserStage.POSTPARTUM),
                 Arguments.of("SYSTEM_ADMIN", UserStage.PRE_PREGNANCY));
     }
 }

@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -13,7 +14,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.carebridge.backend.common.config.JpaAuditingConfig;
 import com.carebridge.backend.community.controller.CommunityProfileController;
+import com.carebridge.backend.community.dto.request.CreateCommunityProfileRequest;
 import com.carebridge.backend.community.dto.response.CommunityProfileResponse;
+import com.carebridge.backend.community.entity.PregnancyStage;
 import com.carebridge.backend.community.service.CommunityProfileService;
 import com.carebridge.backend.config.MockMvcSecurityBuilderConfig;
 import com.carebridge.backend.security.config.SecurityConfig;
@@ -22,6 +25,7 @@ import com.carebridge.backend.security.repository.UserRepository;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.ComponentScan.Filter;
@@ -120,6 +124,34 @@ class CommunityProfileControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.displayName").value("TestMother20"));
+    }
+
+    @Test
+    @WithMockUser(username = USER_ID, roles = "MOTHER")
+    void createProfile_legacyBabyCareStage_normalizesToPostpartum() throws Exception {
+        CommunityProfileResponse response = CommunityProfileResponse.builder()
+                .communityProfileId(UUID.randomUUID())
+                .userId(UUID.fromString(USER_ID))
+                .displayName("LegacyStageUser")
+                .interestStage(PregnancyStage.POSTPARTUM)
+                .visible(true)
+                .createdAt(Instant.now())
+                .build();
+        when(profileService.createProfile(eq(UUID.fromString(USER_ID)), any())).thenReturn(response);
+
+        mockMvc.perform(post(BASE_URL).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"displayName":"LegacyStageUser","interestStage":"BABY_CARE"}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.interestStage").value("POSTPARTUM"));
+
+        ArgumentCaptor<CreateCommunityProfileRequest> request =
+                ArgumentCaptor.forClass(CreateCommunityProfileRequest.class);
+        verify(profileService).createProfile(eq(UUID.fromString(USER_ID)), request.capture());
+        assertThat(request.getValue().getInterestStage())
+                .isEqualTo(PregnancyStage.POSTPARTUM);
     }
 
     // ── UC-21 Update ──────────────────────────────────────────────────────

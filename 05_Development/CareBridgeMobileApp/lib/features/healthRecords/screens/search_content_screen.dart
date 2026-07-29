@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../../../core/constants/content_stages.dart';
 import '../../../core/network/api_client.dart';
 
 class SearchContentScreen extends StatefulWidget {
@@ -180,27 +181,21 @@ class _SearchContentScreenState extends State<SearchContentScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    items: const [
-                      DropdownMenuItem(
+                    items: [
+                      const DropdownMenuItem(
                         value: null,
                         child: Text(
                           'Tất cả giai đoạn',
                           style: TextStyle(fontSize: 13),
                         ),
                       ),
-                      DropdownMenuItem(
-                        value: 'PREGNANCY',
-                        child: Text('Thai kỳ', style: TextStyle(fontSize: 13)),
-                      ),
-                      DropdownMenuItem(
-                        value: 'POSTPARTUM',
-                        child: Text('Sau sinh', style: TextStyle(fontSize: 13)),
-                      ),
-                      DropdownMenuItem(
-                        value: 'BABY_CARE',
-                        child: Text(
-                          'Chăm sóc bé',
-                          style: TextStyle(fontSize: 13),
+                      ...contentStageOptions.map(
+                        (stage) => DropdownMenuItem(
+                          value: stage.value,
+                          child: Text(
+                            stage.label,
+                            style: const TextStyle(fontSize: 13),
+                          ),
                         ),
                       ),
                     ],

@@ -1,5 +1,6 @@
 package com.carebridge.backend.community.dto.response;
 
+import com.carebridge.backend.community.entity.PregnancyStage;
 import java.time.Instant;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
@@ -18,7 +19,7 @@ public class CommunityProfileResponse {
     private UUID userId;
     private String displayName;
     private String bio;
-    private String interestStage;
+    private PregnancyStage interestStage;
     private boolean visible;
     private String publicAvatarUrl;
     private String region;

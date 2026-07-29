@@ -8,9 +8,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * Static repository contract for the one-migration convergence: the migration
- * directory contains exactly one versioned migration, the canonical
- * V20260727010000 convergence script, with a valid filename and no duplicates.
+ * Static repository contract for the append-only Flyway chain: migration files
+ * have valid names, unique versions, and preserve the expected V1-V4 order.
  */
 class FlywayMigrationChainTest {
 
@@ -18,7 +17,7 @@ class FlywayMigrationChainTest {
     Path temporaryDirectory;
 
     @Test
-    void repositoryContainsExactlyTheCanonicalConvergenceMigration() {
+    void repositoryContainsTheExpectedAppendOnlyMigrationChain() {
         var manifest = DatabaseGate0Support.inspectRepository();
 
         assertThat(manifest.gateFailures())
@@ -27,16 +26,15 @@ class FlywayMigrationChainTest {
         assertThat(manifest.malformedFiles()).isEmpty();
         assertThat(manifest.duplicateVersions()).isEmpty();
         assertThat(manifest.migrations())
-                .hasSize(1)
-                .first()
-                .satisfies(migration -> {
-                    assertThat(migration.type()).isEqualTo("V");
-                    assertThat(migration.version())
-                            .isEqualTo(DatabaseGate0Support.canonicalVersion(
-                                    DatabaseGate0Support.CANONICAL_VERSION));
-                    assertThat(migration.script())
-                            .isEqualTo(DatabaseGate0Support.CANONICAL_SCRIPT);
-                });
+                .extracting(DatabaseGate0Support.MigrationFile::script)
+                .containsExactly(
+                        "V1__init_schema.sql",
+                        "V2__seed_reference_data.sql",
+                        "V3__add_community_content_image_urls.sql",
+                        "V4__consolidate_content_community_stages.sql");
+        assertThat(manifest.migrations())
+                .extracting(DatabaseGate0Support.MigrationFile::type)
+                .containsOnly("V");
     }
 
     @Test

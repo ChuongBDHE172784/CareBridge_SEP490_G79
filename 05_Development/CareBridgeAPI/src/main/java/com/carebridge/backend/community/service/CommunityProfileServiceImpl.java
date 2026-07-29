@@ -6,6 +6,7 @@ import com.carebridge.backend.community.dto.request.CreateCommunityProfileReques
 import com.carebridge.backend.community.dto.request.UpdateCommunityProfileRequest;
 import com.carebridge.backend.community.dto.response.CommunityProfileResponse;
 import com.carebridge.backend.community.entity.CommunityProfile;
+import com.carebridge.backend.community.entity.PregnancyStage;
 import com.carebridge.backend.community.exception.CommunityProfileAlreadyExistsException;
 import com.carebridge.backend.community.exception.CommunityProfileNotFoundException;
 import com.carebridge.backend.community.repository.CommunityProfileRepository;
@@ -41,7 +42,7 @@ public class CommunityProfileServiceImpl implements CommunityProfileService {
                         "Account not found for user: " + userId));
         profile.setDisplayName(request.getDisplayName());
         profile.setBio(request.getBio());
-        profile.setInterestStage(request.getInterestStage());
+        profile.setInterestStage(stageName(request.getInterestStage()));
         profile.setVisible(request.isVisible());
         profile.setPublicAvatarUrl(request.getPublicAvatarUrl());
         profile.setRegion(request.getRegion());
@@ -65,7 +66,7 @@ public class CommunityProfileServiceImpl implements CommunityProfileService {
         // PUT semantics (ADR-COMM-021-001) — replace all fields; not-sent fields become null.
         profile.setDisplayName(request.getDisplayName());
         profile.setBio(request.getBio());
-        profile.setInterestStage(request.getInterestStage());
+        profile.setInterestStage(stageName(request.getInterestStage()));
         profile.setVisible(request.isVisible());
         profile.setPublicAvatarUrl(request.getPublicAvatarUrl());
         profile.setRegion(request.getRegion());
@@ -85,11 +86,19 @@ public class CommunityProfileServiceImpl implements CommunityProfileService {
                 .userId(profile.getUserId())
                 .displayName(profile.getDisplayName())
                 .bio(profile.getBio())
-                .interestStage(profile.getInterestStage())
+                .interestStage(parseStage(profile.getInterestStage()))
                 .visible(profile.isVisible())
                 .publicAvatarUrl(profile.getPublicAvatarUrl())
                 .region(profile.getRegion())
                 .createdAt(profile.getCreatedAt())
                 .build();
+    }
+
+    private String stageName(PregnancyStage stage) {
+        return stage == null ? null : stage.name();
+    }
+
+    private PregnancyStage parseStage(String stage) {
+        return stage == null ? null : PregnancyStage.fromApiValue(stage);
     }
 }

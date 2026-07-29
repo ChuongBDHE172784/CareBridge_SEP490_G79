@@ -76,7 +76,7 @@ public class UserChecklistItemServiceImpl implements IUserChecklistItemService {
             var baby = babyProfileRepository.findOwnedActiveByIdForUpdate(request.babyId(), userId)
                     .orElseThrow(this::unavailableTemplateItem);
             babyId = baby.getId();
-            contextStage = ContentStage.BABY_CARE;
+            contextStage = ContentStage.POSTPARTUM;
         } else {
             ResolvedLifecycleContext context;
             try {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/auth/auth_state.dart';
+import '../../../core/constants/content_stages.dart';
 import '../models/community_model.dart';
 import '../services/community_service.dart';
 import '../widgets/community_image_attachments.dart';
@@ -373,21 +374,6 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
     }
   }
 
-  String _stageLabel(String s) {
-    switch (s) {
-      case 'PRE_PREGNANCY':
-        return 'Chuẩn bị mang thai';
-      case 'PREGNANCY':
-        return 'Mang thai';
-      case 'POSTPARTUM':
-        return 'Sau sinh';
-      case 'BABY_CARE':
-        return 'Chăm sóc bé';
-      default:
-        return s;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -566,7 +552,7 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                   runSpacing: 6,
                   children: [
                     if (q.topicName.isNotEmpty) _Tag(q.topicName),
-                    if (q.stage.isNotEmpty) _Tag(_stageLabel(q.stage)),
+                    if (q.stage.isNotEmpty) _Tag(contentStageLabel(q.stage)),
                     if (q.urgency == 'URGENT')
                       _Tag(
                         'Khẩn cấp',

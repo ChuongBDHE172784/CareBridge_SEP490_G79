@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/auth/auth_state.dart';
+import '../../../core/constants/content_stages.dart';
 import '../services/content_service.dart';
 import '../models/content_model.dart';
 import 'verified_content_detail_screen.dart';
@@ -599,22 +600,7 @@ class _ContentCard extends StatelessWidget {
     }
   }
 
-  String _stageLabel(String stage) {
-    switch (stage) {
-      case 'NEWBORN':
-        return 'Sơ sinh';
-      case 'INFANT':
-        return '1-2 tuổi';
-      case 'TODDLER':
-        return '3-5 tuổi';
-      case 'PRESCHOOL':
-        return '6+ tuổi';
-      case 'PREGNANCY':
-        return 'Thai kỳ';
-      default:
-        return stage;
-    }
-  }
+  String _stageLabel(String stage) => contentStageLabel(stage);
 }
 
 class _TagChip extends StatelessWidget {

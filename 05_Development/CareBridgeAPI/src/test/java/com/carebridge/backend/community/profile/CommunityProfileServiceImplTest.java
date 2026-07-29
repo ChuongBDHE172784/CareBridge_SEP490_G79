@@ -14,6 +14,7 @@ import com.carebridge.backend.community.dto.request.CreateCommunityProfileReques
 import com.carebridge.backend.community.dto.request.UpdateCommunityProfileRequest;
 import com.carebridge.backend.community.dto.response.CommunityProfileResponse;
 import com.carebridge.backend.community.entity.CommunityProfile;
+import com.carebridge.backend.community.entity.PregnancyStage;
 import com.carebridge.backend.community.exception.CommunityProfileAlreadyExistsException;
 import com.carebridge.backend.community.exception.CommunityProfileNotFoundException;
 import com.carebridge.backend.community.repository.CommunityProfileRepository;
@@ -49,7 +50,7 @@ class CommunityProfileServiceImplTest {
         CreateCommunityProfileRequest req = new CreateCommunityProfileRequest();
         req.setDisplayName("TestMother20");
         req.setBio("This is a synthetic test bio");
-        req.setInterestStage("PREGNANCY");
+        req.setInterestStage(PregnancyStage.PREGNANCY);
         req.setVisible(true);
         req.setPublicAvatarUrl("https://storage.carebridge.vn/avatars/test-20.jpg");
         req.setRegion("Hà Nội, Việt Nam");
@@ -100,6 +101,21 @@ class CommunityProfileServiceImplTest {
 
         verify(auditService).log(eq(AuditAction.COMMUNITY_PROFILE_CREATED), eq(USER_ID), any(), any(), any());
         verify(profileRepository).save(any(CommunityProfile.class));
+    }
+
+    @Test
+    void createProfile_legacyBabyCareStage_isPersistedAndReturnedAsPostpartum() {
+        CreateCommunityProfileRequest request = makeCreateRequest();
+        request.setInterestStage(PregnancyStage.fromApiValue("BABY_CARE"));
+        CommunityProfile account = makeAccountRow(USER_ID);
+        when(profileRepository.existsByUserId(USER_ID)).thenReturn(false);
+        when(profileRepository.findAccountByUserId(USER_ID)).thenReturn(Optional.of(account));
+        when(profileRepository.save(any(CommunityProfile.class))).thenAnswer(i -> i.getArgument(0));
+
+        CommunityProfileResponse result = newService().createProfile(USER_ID, request);
+
+        assertThat(account.getInterestStage()).isEqualTo("POSTPARTUM");
+        assertThat(result.getInterestStage()).isEqualTo(PregnancyStage.POSTPARTUM);
     }
 
     // COMM-TC-020-002: duplicate → COMM-001
@@ -170,7 +186,7 @@ class CommunityProfileServiceImplTest {
         UpdateCommunityProfileRequest req = new UpdateCommunityProfileRequest();
         req.setDisplayName("UpdatedDisplayName21");
         req.setBio("Updated bio content");
-        req.setInterestStage("POSTPARTUM");
+        req.setInterestStage(PregnancyStage.POSTPARTUM);
         req.setVisible(true);
         req.setPublicAvatarUrl("https://storage.carebridge.vn/avatars/user-21-v2.jpg");
         req.setRegion("TP. Hồ Chí Minh");

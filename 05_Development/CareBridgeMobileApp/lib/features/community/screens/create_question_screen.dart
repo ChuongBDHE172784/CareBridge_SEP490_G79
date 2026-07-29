@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../core/constants/content_stages.dart';
 import '../../../core/network/api_client.dart';
 import '../models/community_model.dart';
 import '../services/community_service.dart';
@@ -240,20 +241,14 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                     DropdownButtonFormField<String>(
                       initialValue: _stage,
                       decoration: _inputDeco('Giai đoạn'),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'PREGNANCY',
-                          child: Text('Thai kỳ'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'POSTPARTUM',
-                          child: Text('Sau sinh'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'BABY_CARE',
-                          child: Text('Chăm sóc bé'),
-                        ),
-                      ],
+                      items: contentStageOptions
+                          .map(
+                            (stage) => DropdownMenuItem(
+                              value: stage.value,
+                              child: Text(stage.label),
+                            ),
+                          )
+                          .toList(growable: false),
                       onChanged: (v) => setState(() => _stage = v!),
                     ),
                     const SizedBox(height: 14),

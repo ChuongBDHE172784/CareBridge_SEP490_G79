@@ -1,7 +1,6 @@
 package com.carebridge.backend.integration.gemini.service;
 
 import com.carebridge.backend.content.entity.ContentStage;
-import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.policy.LifecycleContentStageResolver;
 import com.carebridge.backend.integration.gemini.dto.RagAnswerRequest;
 import com.carebridge.backend.integration.gemini.dto.RagAnswerResponse;
@@ -47,7 +46,6 @@ public class RagPolicyServiceImpl implements RagPolicyService {
             case PRE_PREGNANCY -> UserStage.PRE_PREGNANCY;
             case PREGNANCY -> UserStage.PREGNANCY;
             case POSTPARTUM -> UserStage.POSTPARTUM;
-            case BABY_CARE -> throw ContentException.lifecycleContextUnavailable();
         };
     }
 }

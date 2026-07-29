@@ -178,7 +178,7 @@ class AdminContentServiceImplTest {
         CreateContentRequest request = CreateContentRequest.builder()
                 .type(ContentType.CHECKLIST)
                 .title("Checklist khám thai tháng 1")
-                .stage(ContentStage.BABY_CARE)
+                .stage(ContentStage.POSTPARTUM)
                 .build();
 
         when(contentRepository.findByTitleIgnoreCaseAndStageAndType(any(), any(), any()))
@@ -188,7 +188,7 @@ class AdminContentServiceImplTest {
                 .id(savedId)
                 .type(ContentType.CHECKLIST)
                 .title("Checklist khám thai tháng 1")
-                .stage(ContentStage.BABY_CARE)
+                .stage(ContentStage.POSTPARTUM)
                 .status(ContentStatus.DRAFT)
                 .versionNo(1)
                 .authorUserId(ADMIN_USER_ID)

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/auth/auth_state.dart';
+import '../../../core/constants/content_stages.dart';
 import '../../checklist/models/user_checklist_item_model.dart';
 import '../../checklist/screens/preparation_checklist_screen.dart';
 import '../../checklist/services/user_checklist_service.dart';
@@ -12,6 +13,7 @@ import '../services/community_service.dart';
 import '../services/content_service.dart';
 import '../widgets/verified_content_body.dart';
 import 'verified_content_detail_screen.dart';
+import 'verified_content_search_screen.dart';
 
 /// CB-223 — View Content and Checklist (UC-82)
 /// Displays curated articles, FAQs, and checklists filtered by pregnancy
@@ -89,13 +91,12 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
   String? _featuredImageContentId;
 
   static const _typeLabels = ['Tất cả', 'Bài viết', 'FAQ', 'Checklist'];
-  static const _stageLabels = ['Chuẩn bị', 'Thai kỳ', 'Sau sinh', 'Chăm bé'];
-  static const _stageValues = [
-    'PRE_PREGNANCY',
-    'PREGNANCY',
-    'POSTPARTUM',
-    'BABY_CARE',
-  ];
+  static final _stageLabels = contentStageOptions
+      .map((stage) => stage.label)
+      .toList(growable: false);
+  static final _stageValues = contentStageOptions
+      .map((stage) => stage.value)
+      .toList(growable: false);
 
   @override
   void initState() {
@@ -682,55 +683,77 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
               ),
             ],
           ),
-          child: Row(
+          child: Column(
             children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: const BoxDecoration(
-                  color: _primaryContainer,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.pregnant_woman,
-                  color: Colors.white,
-                  size: 26,
-                ),
+              Row(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: const BoxDecoration(
+                      color: _primaryContainer,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.pregnant_woman,
+                      color: Colors.white,
+                      size: 26,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Giai đoạn nội dung hiện tại',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 12,
+                            color: _onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          stageLabel,
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: _onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    key: const Key('lifecycle-content-stage-locked'),
+                    constraints: const BoxConstraints(
+                      minWidth: 48,
+                      minHeight: 48,
+                    ),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.lock_rounded, color: _primary),
+                  ),
+                ],
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Giai đoạn nội dung hiện tại',
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 12,
-                        color: _onSurfaceVariant,
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  key: const Key('lifecycle-content-generic-browse'),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => VerifiedContentSearchScreen(
+                        contentService: _contentService,
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      stageLabel,
-                      style: const TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: _onSurface,
-                      ),
-                    ),
-                  ],
+                  ),
+                  child: const Text('Khám phá nội dung theo lựa chọn'),
                 ),
-              ),
-              Container(
-                key: const Key('lifecycle-content-stage-locked'),
-                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.lock_rounded, color: _primary),
               ),
             ],
           ),
@@ -1796,9 +1819,6 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
     );
   }
 
-  String _stageLabelFromValue(String value) {
-    final idx = _stageValues.indexOf(value);
-    if (idx >= 0) return _stageLabels[idx].toUpperCase();
-    return value;
-  }
+  String _stageLabelFromValue(String value) =>
+      contentStageLabel(value).toUpperCase();
 }
