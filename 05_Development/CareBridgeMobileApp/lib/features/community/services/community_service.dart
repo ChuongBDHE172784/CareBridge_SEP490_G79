@@ -178,10 +178,15 @@ class CommunityService {
     String answerId, {
     required String body,
     required bool isPersonalExperience,
+    List<String>? imageUrls,
   }) async {
     await apiPatch(
       '/api/v1/community/questions/$questionId/answers/$answerId',
-      {'body': body, 'isPersonalExperience': isPersonalExperience},
+      {
+        'body': body,
+        'isPersonalExperience': isPersonalExperience,
+        if (imageUrls != null) 'imageUrls': imageUrls,
+      },
     );
   }
 

@@ -82,5 +82,8 @@ private String toResponseStatus(AnswerStatus status) {
 public void applyEdit(CommunityAnswer entity, EditAnswerRequest request) {
  entity.setBody(request.getBody());
  entity.setPersonalExperience(Boolean.TRUE.equals(request.getIsPersonalExperience()));
+ if (request.getImageUrls() != null) {
+  entity.setImageUrls(copyImageUrls(request.getImageUrls()));
+ }
 }
 }

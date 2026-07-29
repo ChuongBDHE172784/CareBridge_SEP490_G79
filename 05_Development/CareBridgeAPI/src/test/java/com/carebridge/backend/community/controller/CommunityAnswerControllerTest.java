@@ -336,7 +336,7 @@ class CommunityAnswerControllerTest {
     @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
     void editAnswer_bodyTooLong_returns400() throws Exception {
         EditAnswerRequest req = makeEditRequest();
-        req.setBody("A".repeat(2001));
+        req.setBody("A".repeat(3001));
 
         mockMvc.perform(patch(ANSWER_URL, QUESTION_ID, ANSWER_ID).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
