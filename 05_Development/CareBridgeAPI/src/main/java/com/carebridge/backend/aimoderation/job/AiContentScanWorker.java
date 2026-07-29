@@ -15,9 +15,8 @@ import org.springframework.stereotype.Component;
  * notification outbox jobs). Claims happen on the scheduler thread (fast DB ops only);
  * each claimed job is dispatched via @Async so the shared single-threaded scheduler —
  * which also runs the 1s safety countdown job — is never blocked on a Gemini HTTP call.
- * Gated on both the infra flag (GEMINI_ENABLED) and the business toggle
- * (system_configurations.ai_moderation_enabled); while gated, jobs stay QUEUED and are
- * processed once scanning is re-enabled.
+ * When Gemini or the business toggle becomes unavailable after enqueue, already queued jobs
+ * are drained to human review instead of leaving community content hidden indefinitely.
  */
 @Component
 @Slf4j
@@ -42,10 +41,13 @@ public class AiContentScanWorker {
 
     @Scheduled(fixedDelayString = "${carebridge.gemini.moderation.worker-delay-ms:15000}")
     public void poll() {
-        if (geminiModerationClient.configState() != GeminiModerationClient.ConfigState.READY) {
-            return;
-        }
-        if (!businessToggleEnabled()) {
+        boolean providerReady = geminiModerationClient.configState() == GeminiModerationClient.ConfigState.READY;
+        boolean moderationEnabled = businessToggleEnabled();
+        if (!providerReady || !moderationEnabled) {
+            String reason = providerReady ? "AI_MODERATION_DISABLED" : "AI_NOT_READY";
+            for (UUID jobId : processingService.claimDueCommunityJobs(workerId, batchSize)) {
+                processingService.routeClaimedJobToHumanAsync(jobId, reason);
+            }
             return;
         }
         for (UUID jobId : processingService.claimDueJobs(workerId, batchSize)) {

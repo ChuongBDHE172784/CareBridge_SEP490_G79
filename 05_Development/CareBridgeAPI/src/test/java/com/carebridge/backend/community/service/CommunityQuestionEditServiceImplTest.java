@@ -83,6 +83,7 @@ class CommunityQuestionEditServiceImplTest {
         CommunityQuestionResponse result = questionService.editQuestion(AUTHOR_ID, QUESTION_ID, makeRequest());
 
         assertThat(result.getTitle()).isEqualTo("Updated title");
+        verify(questionRepository).save(argThat(q -> q.getStatus() == QuestionStatus.AI_PENDING));
     }
 
     @Test
@@ -95,6 +96,7 @@ class CommunityQuestionEditServiceImplTest {
         CommunityQuestionResponse result = questionService.editQuestion(AUTHOR_ID, QUESTION_ID, makeRequest());
 
         assertThat(result).isNotNull();
+        verify(questionRepository).save(argThat(q -> q.getStatus() == QuestionStatus.AI_PENDING));
     }
 
     @Test

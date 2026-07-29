@@ -14,13 +14,16 @@ import com.carebridge.backend.aimoderation.exception.AiModerationException;
 import com.carebridge.backend.aimoderation.policy.AiContentHasher;
 import com.carebridge.backend.aimoderation.repository.AiContentScanJobRepository;
 import com.carebridge.backend.aimoderation.service.AiScanEnqueueService;
+import com.carebridge.backend.aimoderation.service.AiScanEnqueueService.EnqueueResult;
 import com.carebridge.backend.aimoderation.service.AiScanTargetResolver;
 import com.carebridge.backend.content.entity.ReportTargetType;
+import com.carebridge.backend.integration.gemini.client.GeminiModerationClient;
 import com.carebridge.backend.systemconfiguration.entity.SystemConfiguration;
 import com.carebridge.backend.systemconfiguration.repository.SystemConfigurationRepository;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
@@ -39,11 +42,20 @@ class AiScanEnqueueServiceTest {
     @Mock
     private AiScanTargetResolver targetResolver;
 
+    @Mock
+    private GeminiModerationClient geminiModerationClient;
+
     @InjectMocks
     private AiScanEnqueueService enqueueService;
 
     private static final UUID TARGET_ID = UUID.randomUUID();
     private static final String TEXT = "Câu hỏi về dinh dưỡng thai kỳ";
+
+    @BeforeEach
+    void setUp() {
+        org.mockito.Mockito.lenient().when(geminiModerationClient.configState())
+                .thenReturn(GeminiModerationClient.ConfigState.READY);
+    }
 
     private void givenBusinessToggle(boolean enabled) {
         SystemConfiguration config = SystemConfiguration.builder().aiModerationEnabled(enabled).build();
@@ -56,21 +68,39 @@ class AiScanEnqueueServiceTest {
         givenBusinessToggle(true);
         when(jobRepository.existsByTargetTypeAndTargetIdAndContentHashAndStatusIn(any(), any(), anyString(), any()))
                 .thenReturn(false);
-        when(jobRepository.save(any(AiContentScanJob.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(jobRepository.save(any(AiContentScanJob.class))).thenAnswer(inv -> {
+            AiContentScanJob job = inv.getArgument(0);
+            job.setId(UUID.randomUUID());
+            return job;
+        });
 
-        enqueueService.enqueueScan(ReportTargetType.QUESTION, TARGET_ID, TEXT);
+        EnqueueResult result = enqueueService.enqueueScan(ReportTargetType.QUESTION, TARGET_ID, TEXT);
 
         ArgumentCaptor<AiContentScanJob> captor = ArgumentCaptor.forClass(AiContentScanJob.class);
         verify(jobRepository).save(captor.capture());
         assertThat(captor.getValue().getContentHash()).isEqualTo(AiContentHasher.sha256Hex(TEXT));
+        assertThat(result).isEqualTo(EnqueueResult.QUEUED);
     }
 
-    // Business toggle off → silent no-op, content creation is never blocked
+    // Business toggle off → caller must route the content to human review.
     @Test
-    void businessToggleOff_skipsEnqueueSilently() {
+    void businessToggleOff_requiresHumanReview() {
         givenBusinessToggle(false);
-        enqueueService.enqueueScan(ReportTargetType.QUESTION, TARGET_ID, TEXT);
+        EnqueueResult result = enqueueService.enqueueScan(ReportTargetType.QUESTION, TARGET_ID, TEXT);
         verify(jobRepository, never()).save(any());
+        assertThat(result.requiresHumanReview()).isTrue();
+    }
+
+    @Test
+    void geminiNotReady_requiresHumanReview() {
+        givenBusinessToggle(true);
+        when(geminiModerationClient.configState())
+                .thenReturn(GeminiModerationClient.ConfigState.NOT_CONFIGURED);
+
+        EnqueueResult result = enqueueService.enqueueScan(ReportTargetType.ANSWER, TARGET_ID, TEXT);
+
+        verify(jobRepository, never()).save(any());
+        assertThat(result.requiresHumanReview()).isTrue();
     }
 
     // Scenario E: duplicate active job for the same content version collapses
@@ -79,8 +109,9 @@ class AiScanEnqueueServiceTest {
         givenBusinessToggle(true);
         when(jobRepository.existsByTargetTypeAndTargetIdAndContentHashAndStatusIn(any(), any(), anyString(), any()))
                 .thenReturn(true);
-        enqueueService.enqueueScan(ReportTargetType.QUESTION, TARGET_ID, TEXT);
+        EnqueueResult result = enqueueService.enqueueScan(ReportTargetType.QUESTION, TARGET_ID, TEXT);
         verify(jobRepository, never()).save(any());
+        assertThat(result).isEqualTo(EnqueueResult.ALREADY_ACTIVE);
     }
 
     // Scenario 15: changed content produces a different hash → a new job is created

@@ -7,6 +7,8 @@ import '../widgets/community_image_attachments.dart';
 import 'post_answer_screen.dart';
 import 'edit_question_screen.dart';
 
+bool canAnswerCommunityQuestion(String? status) => status == 'APPROVED';
+
 /// CB-014 — UC-199 View Community Question Detail
 /// Displays a single approved community question with its answers.
 /// Supports UC-59 (like answer) and UC-58 (bookmark from header action).
@@ -59,6 +61,8 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
       _question != null &&
       _question!.authorId != null &&
       _question!.authorId == AuthState.instance.userId;
+
+  bool get _canAnswerQuestion => canAnswerCommunityQuestion(_question?.status);
 
   Future<void> _loadDetail() async {
     setState(() => _loading = true);
@@ -476,12 +480,12 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
             ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: _primary,
-        foregroundColor: Colors.white,
-        onPressed: _question == null
-            ? null
-            : () async {
+      floatingActionButton: !_canAnswerQuestion
+          ? null
+          : FloatingActionButton.extended(
+              backgroundColor: _primary,
+              foregroundColor: Colors.white,
+              onPressed: () async {
                 final answered = await Navigator.of(context).push<bool>(
                   MaterialPageRoute(
                     builder: (_) => PostAnswerScreen(
@@ -494,12 +498,12 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                 );
                 if (answered == true) _loadDetail();
               },
-        label: const Text(
-          'Trả lời',
-          style: TextStyle(fontWeight: FontWeight.w600),
-        ),
-        icon: const Icon(Icons.edit_note),
-      ),
+              label: const Text(
+                'Trả lời',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              icon: const Icon(Icons.edit_note),
+            ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: _primary))
           : _question == null
@@ -702,6 +706,30 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
           ),
         ),
 
+        if (!_canAnswerQuestion)
+          SliverToBoxAdapter(
+            child: Container(
+              margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFEFB8),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.hourglass_top_rounded, color: Color(0xFF745600)),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Câu hỏi đang chờ duyệt. Bạn có thể trả lời sau khi câu hỏi được phê duyệt.',
+                      style: TextStyle(color: Color(0xFF5C4300), height: 1.35),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
         // Answers header
         SliverToBoxAdapter(
           child: Padding(
@@ -744,9 +772,11 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                     style: TextStyle(fontSize: 14, color: _onSurfaceVariant),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
-                    'Hãy là người đầu tiên trả lời!',
-                    style: TextStyle(fontSize: 12, color: _outline),
+                  Text(
+                    _canAnswerQuestion
+                        ? 'Hãy là người đầu tiên trả lời!'
+                        : 'Câu hỏi cần được duyệt trước khi nhận câu trả lời.',
+                    style: const TextStyle(fontSize: 12, color: _outline),
                   ),
                 ],
               ),

@@ -23,6 +23,19 @@ public interface AiContentScanJobRepository extends JpaRepository<AiContentScanJ
     @Query("select j.id from AiContentScanJob j where j.status = :status and j.nextAttemptAt <= :now order by j.createdAt asc")
     List<UUID> findClaimableIds(@Param("status") AiScanJobStatus status, @Param("now") Instant now, Pageable pageable);
 
+    @Query("""
+            select j.id from AiContentScanJob j
+            where j.status = :status
+              and j.targetType in :targetTypes
+              and j.nextAttemptAt <= :now
+            order by j.createdAt asc
+            """)
+    List<UUID> findClaimableIdsByTargetTypeIn(
+            @Param("status") AiScanJobStatus status,
+            @Param("targetTypes") Collection<ReportTargetType> targetTypes,
+            @Param("now") Instant now,
+            Pageable pageable);
+
     /**
      * Atomic claim: exactly one caller wins because the UPDATE is guarded by the current
      * status. Returns 0 when another worker already claimed the job. attempt_count is

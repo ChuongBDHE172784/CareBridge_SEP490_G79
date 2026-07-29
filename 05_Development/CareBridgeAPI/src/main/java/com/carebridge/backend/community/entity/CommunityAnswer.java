@@ -54,7 +54,7 @@ public class CommunityAnswer {
     @Builder.Default
     private boolean personalExperience = false;
 
-    // Fallback for system-created/revision flows; member posts explicitly start APPROVED.
+    // Fallback for legacy/system-created flows; member posts explicitly start AI_PENDING.
     @Enumerated(EnumType.STRING)
     @Column(name = "moderation_status", nullable = false, length = 30)
     @Builder.Default

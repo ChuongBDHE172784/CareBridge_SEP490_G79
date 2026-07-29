@@ -3,9 +3,14 @@ package com.carebridge.backend.community.repository;
 import com.carebridge.backend.community.entity.CommunityQuestion;
 import com.carebridge.backend.community.entity.PregnancyStage;
 import com.carebridge.backend.community.entity.QuestionStatus;
+import com.carebridge.backend.content.entity.ReportStatus;
+import com.carebridge.backend.content.entity.ReportTargetType;
+import jakarta.persistence.LockModeType;
+import java.util.Collection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -44,20 +49,36 @@ public interface CommunityQuestionRepository extends JpaRepository<CommunityQues
     // independent of ContentReport — for first-time moderation discovery
     Page<CommunityQuestion> findByStatus(QuestionStatus status, Pageable pageable);
 
-    // UC-198 (fixed): feed shows APPROVED questions to everyone, plus the current user's own
-    // PENDING questions — previously PENDING questions from ANY author leaked to the whole feed
-    // before moderation, which is a moderation-exposure gap, not an intentional design decision.
     @Query("""
             SELECT q FROM CommunityQuestion q
-            WHERE (q.status = com.carebridge.backend.community.entity.QuestionStatus.APPROVED
-                   OR (q.status = com.carebridge.backend.community.entity.QuestionStatus.PENDING
-                       AND q.authorId = :currentUserId))
+            WHERE q.status = :status
+              AND NOT EXISTS (
+                    SELECT r.id FROM ContentReport r
+                    WHERE r.targetId = q.id
+                      AND r.targetType = :targetType
+                      AND r.status IN :openStatuses
+              )
+            """)
+    Page<CommunityQuestion> findByStatusWithoutOpenModerationCase(
+            @Param("status") QuestionStatus status,
+            @Param("targetType") ReportTargetType targetType,
+            @Param("openStatuses") Collection<ReportStatus> openStatuses,
+            Pageable pageable);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT q FROM CommunityQuestion q WHERE q.id = :questionId")
+    Optional<CommunityQuestion> findByIdForModerationUpdate(@Param("questionId") UUID questionId);
+
+    // UC-198: the shared community feed is APPROVED-only for every viewer. Authors access
+    // private AI_PENDING/PENDING questions through My Questions or the guarded detail endpoint.
+    @Query("""
+            SELECT q FROM CommunityQuestion q
+            WHERE q.status = com.carebridge.backend.community.entity.QuestionStatus.APPROVED
               AND (:topicId IS NULL OR q.topicId = :topicId)
             ORDER BY q.createdAt DESC
             """)
     Page<CommunityQuestion> findFeedVisible(
             @Param("topicId") UUID topicId,
-            @Param("currentUserId") UUID currentUserId,
             Pageable pageable);
 
     // UC-162: search — APPROVED only, multi-filter, parameterized (ADR-COM-007, OWASP A03)

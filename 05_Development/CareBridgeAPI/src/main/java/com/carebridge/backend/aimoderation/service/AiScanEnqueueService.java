@@ -6,6 +6,7 @@ import com.carebridge.backend.aimoderation.exception.AiModerationException;
 import com.carebridge.backend.aimoderation.policy.AiContentHasher;
 import com.carebridge.backend.aimoderation.repository.AiContentScanJobRepository;
 import com.carebridge.backend.content.entity.ReportTargetType;
+import com.carebridge.backend.integration.gemini.client.GeminiModerationClient;
 import com.carebridge.backend.systemconfiguration.entity.SystemConfiguration;
 import com.carebridge.backend.systemconfiguration.repository.SystemConfigurationRepository;
 import java.time.Instant;
@@ -28,6 +29,23 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class AiScanEnqueueService {
 
+    public enum EnqueueResult {
+        QUEUED(false),
+        ALREADY_ACTIVE(false),
+        HUMAN_REVIEW_REQUIRED(true),
+        NOT_SCANNABLE(true);
+
+        private final boolean humanReviewRequired;
+
+        EnqueueResult(boolean humanReviewRequired) {
+            this.humanReviewRequired = humanReviewRequired;
+        }
+
+        public boolean requiresHumanReview() {
+            return humanReviewRequired;
+        }
+    }
+
     private static final Set<ReportTargetType> SCANNABLE_TARGETS =
             EnumSet.of(ReportTargetType.QUESTION, ReportTargetType.ANSWER, ReportTargetType.CONTENT);
     private static final Set<AiScanJobStatus> ACTIVE_STATUSES =
@@ -36,17 +54,21 @@ public class AiScanEnqueueService {
     private final AiContentScanJobRepository jobRepository;
     private final SystemConfigurationRepository systemConfigurationRepository;
     private final AiScanTargetResolver targetResolver;
+    private final GeminiModerationClient geminiModerationClient;
 
-    /** Lifecycle hook — silently no-ops when the business toggle is off or content is blank. */
+    /** Lifecycle hook whose outcome lets callers fail closed to human review. */
     @Transactional
-    public void enqueueScan(ReportTargetType targetType, UUID targetId, String text) {
+    public EnqueueResult enqueueScan(ReportTargetType targetType, UUID targetId, String text) {
         if (!SCANNABLE_TARGETS.contains(targetType) || text == null || text.isBlank()) {
-            return;
+            return EnqueueResult.NOT_SCANNABLE;
         }
-        if (!businessToggleEnabled()) {
-            return;
+        if (!businessToggleEnabled()
+                || geminiModerationClient.configState() != GeminiModerationClient.ConfigState.READY) {
+            return EnqueueResult.HUMAN_REVIEW_REQUIRED;
         }
-        enqueue(targetType, targetId, text, false);
+        return enqueue(targetType, targetId, text, false) == null
+                ? EnqueueResult.ALREADY_ACTIVE
+                : EnqueueResult.QUEUED;
     }
 
     /** Admin-triggered rescan: bypasses the completed-assessment idempotency skip. */

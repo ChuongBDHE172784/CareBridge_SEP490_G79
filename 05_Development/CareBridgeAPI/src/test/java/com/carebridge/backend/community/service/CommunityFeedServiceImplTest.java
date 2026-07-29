@@ -91,7 +91,7 @@ class CommunityFeedServiceImplTest {
                 "PREGNANCY", "NORMAL", 0, 0, false, false, false, createdAt);
     }
 
-    // COM198-TC-001: Feed returns visible questions (APPROVED + own PENDING), newest first
+    // COM198-TC-001: Feed returns APPROVED questions only, newest first
     @Test
     void getFeed_noTopicFilter_returnsVisibleNewestFirst() {
         Instant t1 = Instant.now().minus(3, ChronoUnit.DAYS);
@@ -104,7 +104,7 @@ class CommunityFeedServiceImplTest {
         List<CommunityQuestion> questions = List.of(q3, q2, q1);
         Page<CommunityQuestion> pageResult = new PageImpl<>(questions, PageRequest.of(0, 20), 3L);
 
-        when(questionRepository.findFeedVisible(eq(null), eq(CURRENT_USER), any(Pageable.class)))
+        when(questionRepository.findFeedVisible(eq(null), any(Pageable.class)))
                 .thenReturn(pageResult);
         when(answerRepository.findQuestionIdsWithExpertAnswer(any())).thenReturn(Set.of());
         when(bookmarkRepository.findBookmarkedQuestionIds(any(), any())).thenReturn(Set.of());
@@ -128,7 +128,7 @@ class CommunityFeedServiceImplTest {
     // COM198-TC-004a: topicId provided → passed through to findFeedVisible
     @Test
     void getFeed_withTopicId_passesTopicIdToRepository() {
-        when(questionRepository.findFeedVisible(eq(TOPIC_A), eq(CURRENT_USER), any(Pageable.class)))
+        when(questionRepository.findFeedVisible(eq(TOPIC_A), any(Pageable.class)))
                 .thenReturn(Page.empty());
         when(answerRepository.findQuestionIdsWithExpertAnswer(any())).thenReturn(Set.of());
         when(bookmarkRepository.findBookmarkedQuestionIds(any(), any())).thenReturn(Set.of());
@@ -136,13 +136,13 @@ class CommunityFeedServiceImplTest {
         service.getFeed(TOPIC_A, CURRENT_USER, 0, 20);
 
         org.mockito.Mockito.verify(questionRepository)
-                .findFeedVisible(eq(TOPIC_A), eq(CURRENT_USER), any());
+                .findFeedVisible(eq(TOPIC_A), any());
     }
 
     // COM198-TC-004b: topicId null → passed through as null
     @Test
     void getFeed_withoutTopicId_passesNullTopicId() {
-        when(questionRepository.findFeedVisible(eq(null), eq(CURRENT_USER), any(Pageable.class)))
+        when(questionRepository.findFeedVisible(eq(null), any(Pageable.class)))
                 .thenReturn(Page.empty());
         when(answerRepository.findQuestionIdsWithExpertAnswer(any())).thenReturn(Set.of());
         when(bookmarkRepository.findBookmarkedQuestionIds(any(), any())).thenReturn(Set.of());
@@ -150,7 +150,7 @@ class CommunityFeedServiceImplTest {
         service.getFeed(null, CURRENT_USER, 0, 20);
 
         org.mockito.Mockito.verify(questionRepository)
-                .findFeedVisible(eq(null), eq(CURRENT_USER), any());
+                .findFeedVisible(eq(null), any());
     }
 
     // Regression test: the feed must pass the resolved author display name to the mapper instead
@@ -161,7 +161,7 @@ class CommunityFeedServiceImplTest {
         CommunityQuestion q1 = makeApprovedQuestion(t1, false);
         Page<CommunityQuestion> pageResult = new PageImpl<>(List.of(q1), PageRequest.of(0, 20), 1L);
 
-        when(questionRepository.findFeedVisible(eq(null), eq(CURRENT_USER), any(Pageable.class)))
+        when(questionRepository.findFeedVisible(eq(null), any(Pageable.class)))
                 .thenReturn(pageResult);
         when(answerRepository.findQuestionIdsWithExpertAnswer(any())).thenReturn(Set.of());
         when(bookmarkRepository.findBookmarkedQuestionIds(any(), any())).thenReturn(Set.of());
@@ -180,7 +180,7 @@ class CommunityFeedServiceImplTest {
     // COM198-TC-006: Empty results → no exception, empty content
     @Test
     void getFeed_emptyResults_returnsEmptyContent() {
-        when(questionRepository.findFeedVisible(any(), any(), any())).thenReturn(Page.empty());
+        when(questionRepository.findFeedVisible(any(), any())).thenReturn(Page.empty());
         when(answerRepository.findQuestionIdsWithExpertAnswer(any())).thenReturn(Set.of());
         when(bookmarkRepository.findBookmarkedQuestionIds(any(), any())).thenReturn(Set.of());
 
@@ -190,17 +190,17 @@ class CommunityFeedServiceImplTest {
         assertThat(result.getTotalElements()).isZero();
     }
 
-    // New: PENDING question authored by someone else must not surface for the current viewer —
-    // regression guard for the feed-visibility fix (previously leaked to everyone).
+    // Regression guard: viewer identity must not widen shared-feed visibility. The repository
+    // query is APPROVED-only; currentUserId remains scoped to viewer-specific hydration.
     @Test
-    void getFeed_repositoryEnforcesPendingAuthorScoping_currentUserIdPassedThrough() {
-        when(questionRepository.findFeedVisible(any(), eq(CURRENT_USER), any())).thenReturn(Page.empty());
+    void getFeed_repositoryVisibilityDoesNotDependOnCurrentUser() {
+        when(questionRepository.findFeedVisible(any(), any())).thenReturn(Page.empty());
         when(answerRepository.findQuestionIdsWithExpertAnswer(any())).thenReturn(Set.of());
         when(bookmarkRepository.findBookmarkedQuestionIds(eq(CURRENT_USER), any())).thenReturn(Set.of());
 
         service.getFeed(null, CURRENT_USER, 0, 20);
 
-        org.mockito.Mockito.verify(questionRepository).findFeedVisible(any(), eq(CURRENT_USER), any());
+        org.mockito.Mockito.verify(questionRepository).findFeedVisible(any(), any());
         org.mockito.Mockito.verify(bookmarkRepository).findBookmarkedQuestionIds(eq(CURRENT_USER), any());
     }
 
@@ -211,7 +211,7 @@ class CommunityFeedServiceImplTest {
         CommunityQuestion q1 = makeApprovedQuestion(t1, false);
         Page<CommunityQuestion> pageResult = new PageImpl<>(List.of(q1), PageRequest.of(0, 20), 1L);
 
-        when(questionRepository.findFeedVisible(eq(null), eq(CURRENT_USER), any(Pageable.class)))
+        when(questionRepository.findFeedVisible(eq(null), any(Pageable.class)))
                 .thenReturn(pageResult);
         when(answerRepository.findQuestionIdsWithExpertAnswer(any())).thenReturn(Set.of());
         when(bookmarkRepository.findBookmarkedQuestionIds(any(), any())).thenReturn(Set.of());
@@ -234,7 +234,7 @@ class CommunityFeedServiceImplTest {
         CommunityQuestion q1 = makeApprovedQuestion(t1, false);
         Page<CommunityQuestion> pageResult = new PageImpl<>(List.of(q1), PageRequest.of(0, 20), 1L);
 
-        when(questionRepository.findFeedVisible(eq(null), eq(CURRENT_USER), any(Pageable.class)))
+        when(questionRepository.findFeedVisible(eq(null), any(Pageable.class)))
                 .thenReturn(pageResult);
         when(answerRepository.findQuestionIdsWithExpertAnswer(any())).thenReturn(Set.of());
         when(bookmarkRepository.findBookmarkedQuestionIds(any(), any())).thenReturn(Set.of());

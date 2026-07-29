@@ -1,7 +1,23 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/network/api_client.dart';
 import '../widgets/community_image_attachments.dart';
+
+String postAnswerErrorMessage(Object error) {
+  if (error is ApiException && error.statusCode == 422) {
+    try {
+      final payload = jsonDecode(error.message) as Map<String, dynamic>;
+      if (payload['error'] == 'COM-007') {
+        return 'Câu hỏi đang chờ duyệt hoặc không còn mở để trả lời.';
+      }
+    } catch (_) {
+      // Fall through to the generic user-facing message.
+    }
+  }
+  return 'Không thể gửi câu trả lời. Vui lòng thử lại.';
+}
 
 class PostAnswerScreen extends StatefulWidget {
   final String questionId;
@@ -84,7 +100,10 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Thất bại: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(postAnswerErrorMessage(e)),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -470,7 +489,7 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
               const SizedBox(width: 6),
               const Expanded(
                 child: Text(
-                  'Câu trả lời của bạn sẽ hiển thị ngay sau khi đăng.',
+                  'Câu trả lời sẽ được kiểm duyệt trước khi hiển thị.',
                   style: TextStyle(fontSize: 12, color: _onSurfaceVariant),
                 ),
               ),
@@ -539,7 +558,7 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
               ),
               const SizedBox(height: 20),
               const Text(
-                'Đã đăng trả lời',
+                'Đã gửi câu trả lời',
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
@@ -548,7 +567,7 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Cảm ơn bạn đã đóng góp! Câu trả lời của bạn đã hiển thị trong cộng đồng.',
+                'Cảm ơn bạn đã đóng góp! Câu trả lời đang được kiểm duyệt trước khi hiển thị trong cộng đồng.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,

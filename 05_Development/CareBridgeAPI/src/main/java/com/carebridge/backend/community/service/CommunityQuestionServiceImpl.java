@@ -28,6 +28,7 @@ import com.carebridge.backend.community.repository.CommunityTopicRepository;
 import com.carebridge.backend.expert.entity.ExpertProfile;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import com.carebridge.backend.content.entity.ReportTargetType;
+import com.carebridge.backend.aimoderation.service.AiScanEnqueueService.EnqueueResult;
 import com.carebridge.backend.common.response.PaginatedResponse;
 import com.carebridge.backend.file.service.IFileService;
 
@@ -71,7 +72,8 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
  // detail directly by ID, bypassing the feed's per-author visibility rule.
  CommunityQuestion question = questionRepository.findById(questionId)
  .filter(q -> q.getStatus() == QuestionStatus.APPROVED
- || (q.getStatus() == QuestionStatus.PENDING && q.getAuthorId().equals(currentUserId)))
+ || ((q.getStatus() == QuestionStatus.AI_PENDING || q.getStatus() == QuestionStatus.PENDING)
+ && q.getAuthorId().equals(currentUserId)))
  .orElseThrow(() -> new QuestionNotFoundException(questionId.toString()));
 
  String topicName = topicRepository.findById(question.getTopicId())
@@ -130,7 +132,12 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
 
  CommunityQuestion question = questionMapper.toEntity(request, authorId);
  question = questionRepository.save(question);
- aiScanEnqueueService.enqueueScan(ReportTargetType.QUESTION, question.getId(), question.getTitle() + "\n" + question.getBody());
+ EnqueueResult enqueueResult = aiScanEnqueueService.enqueueScan(
+         ReportTargetType.QUESTION, question.getId(), question.getTitle() + "\n" + question.getBody());
+ if (enqueueResult != null && enqueueResult.requiresHumanReview()) {
+ question.setStatus(QuestionStatus.PENDING);
+ question = questionRepository.save(question);
+ }
 
  auditService.log(AuditAction.COMMUNITY_QUESTION_CREATED, authorId, "CommunityQuestion", question.getId().toString(), "created");
 
@@ -175,10 +182,15 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
  if (request.getBabyAgeMonths() != null) question.setBabyAgeMonths(request.getBabyAgeMonths().shortValue());
  if (request.getIsAnonymous() != null) question.setAnonymous(request.getIsAnonymous());
  if (request.getUrgency() != null) question.setUrgency(request.getUrgency());
- question.setStatus(QuestionStatus.PENDING);
+ question.setStatus(QuestionStatus.AI_PENDING);
 
  question = questionRepository.save(question);
- aiScanEnqueueService.enqueueScan(ReportTargetType.QUESTION, question.getId(), question.getTitle() + "\n" + question.getBody());
+ EnqueueResult enqueueResult = aiScanEnqueueService.enqueueScan(
+         ReportTargetType.QUESTION, question.getId(), question.getTitle() + "\n" + question.getBody());
+ if (enqueueResult != null && enqueueResult.requiresHumanReview()) {
+ question.setStatus(QuestionStatus.PENDING);
+ question = questionRepository.save(question);
+ }
  auditService.log(AuditAction.COMMUNITY_QUESTION_EDITED, authorId, "CommunityQuestion", question.getId().toString(), "edited");
 
  return questionMapper.toResponse(question);

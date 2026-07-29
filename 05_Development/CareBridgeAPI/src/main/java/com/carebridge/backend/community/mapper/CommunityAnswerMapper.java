@@ -27,7 +27,7 @@ public CommunityAnswer toEntity(PostCommunityAnswerRequest request, UUID authorI
  .imageUrls(copyImageUrls(request.getImageUrls()))
  .personalExperience(Boolean.TRUE.equals(request.getIsPersonalExperience()))
  .expertLabeled(expertLabeled) // ADR-COM-005: never from request
- .status(AnswerStatus.APPROVED) // New answers are visible immediately; edits still re-enter moderation.
+ .status(AnswerStatus.AI_PENDING)
  .build();
 }
 
@@ -60,7 +60,7 @@ public CommunityAnswerResponse toResponse(CommunityAnswer entity, String authorD
  .personalExperience(entity.isPersonalExperience())
  .expertLabeled(entity.isExpertLabeled())
  .expertProfileId(expertProfileId)
- .status(entity.getStatus() != null ? entity.getStatus().name() : null)
+ .status(toResponseStatus(entity.getStatus()))
  .likeCount(entity.getLikeCount())
  .liked(liked)
  .createdAt(entity.getCreatedAt())
@@ -70,6 +70,11 @@ public CommunityAnswerResponse toResponse(CommunityAnswer entity, String authorD
 
 private List<String> copyImageUrls(List<String> imageUrls) {
  return imageUrls == null ? new ArrayList<>() : new ArrayList<>(imageUrls);
+}
+
+private String toResponseStatus(AnswerStatus status) {
+ return status == AnswerStatus.AI_PENDING ? AnswerStatus.PENDING.name()
+         : (status != null ? status.name() : null);
 }
 
 // UC-200: apply partial edit — body and isPersonalExperience only.

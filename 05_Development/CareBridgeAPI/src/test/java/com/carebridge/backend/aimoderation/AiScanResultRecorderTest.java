@@ -2,6 +2,7 @@ package com.carebridge.backend.aimoderation;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -25,6 +26,8 @@ import com.carebridge.backend.aimoderation.policy.AiModerationDecisionPolicy.Cas
 import com.carebridge.backend.aimoderation.repository.AiContentAssessmentRepository;
 import com.carebridge.backend.aimoderation.repository.AiContentScanJobRepository;
 import com.carebridge.backend.aimoderation.service.AiModerationCaseService;
+import com.carebridge.backend.aimoderation.service.AiModerationOutcomeApplier;
+import com.carebridge.backend.aimoderation.service.AiModerationOutcomeApplier.TargetLockResult;
 import com.carebridge.backend.aimoderation.service.AiScanResultRecorder;
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
@@ -60,6 +63,8 @@ class AiScanResultRecorderTest {
     private AiModerationCaseService caseService;
     @Mock
     private AuditService auditService;
+    @Mock
+    private AiModerationOutcomeApplier outcomeApplier;
 
     private final AiModerationMapper mapper = new AiModerationMapper(new ObjectMapper());
 
@@ -70,7 +75,7 @@ class AiScanResultRecorderTest {
     @BeforeEach
     void setUp() {
         recorder = new AiScanResultRecorder(jobRepository, assessmentRepository, caseService, mapper,
-                auditService);
+                auditService, outcomeApplier);
         job = AiContentScanJob.builder()
                 .id(UUID.randomUUID())
                 .targetType(ReportTargetType.ANSWER)
@@ -81,6 +86,12 @@ class AiScanResultRecorderTest {
                 .nextAttemptAt(Instant.now())
                 .build();
         org.mockito.Mockito.lenient().when(jobRepository.findById(job.getId())).thenReturn(Optional.of(job));
+        org.mockito.Mockito.lenient().when(assessmentRepository
+                .findFirstByTargetTypeAndTargetIdAndContentHashAndPolicySetHashAndModelAndStatus(
+                        any(), any(), anyString(), anyString(), anyString(), any()))
+                .thenReturn(Optional.empty());
+        org.mockito.Mockito.lenient().when(outcomeApplier.acquireTargetLock(any(), any(), anyString(), anyBoolean()))
+                .thenReturn(TargetLockResult.READY);
     }
 
     // VII.2: an assessment without matches stores the empty JSON array — never null
@@ -97,6 +108,7 @@ class AiScanResultRecorderTest {
         recorder.recordSuccess(job, "psh", "gemini-1.5-flash", verdict, CaseDecision.none(), 90, 10, 5);
 
         verifyNoInteractions(caseService);
+        verify(outcomeApplier).applyCompleted(any(AiContentAssessment.class));
         assertThat(job.getStatus()).isEqualTo(AiScanJobStatus.COMPLETED);
         ArgumentCaptor<AiContentAssessment> captor = ArgumentCaptor.forClass(AiContentAssessment.class);
         verify(assessmentRepository).save(captor.capture());
@@ -137,6 +149,7 @@ class AiScanResultRecorderTest {
         assertThat(roundTrip).containsExactly(match);
         verify(caseService).createOrAttachCase(eq(job.getTargetType()), eq(job.getTargetId()),
                 eq(decision), eq(assessmentId), eq("harassment"));
+        verify(outcomeApplier).applyCompleted(saved);
         verify(auditService).log(eq(AuditAction.AI_SCAN_COMPLETED), isNull(UUID.class),
                 eq("AiContentAssessment"), anyString(), any());
     }
@@ -157,6 +170,7 @@ class AiScanResultRecorderTest {
         assertThat(captor.getValue().getStatus()).isEqualTo(AiAssessmentStatus.FAILED);
         assertThat(captor.getValue().getClassification()).isNull(); // FAILED is never SAFE/VIOLATION
         verifyNoInteractions(caseService);
+        verify(outcomeApplier).applyHumanReview(job.getTargetType(), job.getTargetId(), job.getContentHash());
         ArgumentCaptor<Object> details = ArgumentCaptor.forClass(Object.class);
         verify(auditService).log(eq(AuditAction.AI_SCAN_FAILED), isNull(UUID.class),
                 eq("AiContentAssessment"), anyString(), details.capture());
@@ -179,6 +193,59 @@ class AiScanResultRecorderTest {
         recorder.recordSkip(job.getId(), "TARGET_GONE");
         assertThat(job.getStatus()).isEqualTo(AiScanJobStatus.SKIPPED);
         assertThat(job.getLastErrorCode()).isEqualTo("TARGET_GONE");
+        verify(outcomeApplier).applyHumanReview(job.getTargetType(), job.getTargetId(), job.getContentHash());
+    }
+
+    @Test
+    void identicalAssessment_replaysContentOutcomeBeforeCompletingJob() {
+        AiContentAssessment existing = AiContentAssessment.builder()
+                .id(UUID.randomUUID())
+                .targetType(job.getTargetType())
+                .targetId(job.getTargetId())
+                .contentHash(job.getContentHash())
+                .classification(AiClassification.SAFE)
+                .build();
+
+        recorder.completeIdempotent(job, existing);
+
+        verify(outcomeApplier).applyCompleted(existing);
+        assertThat(job.getStatus()).isEqualTo(AiScanJobStatus.COMPLETED);
+    }
+
+    @Test
+    void targetDeletedDuringGemini_marksJobSkippedWithoutAssessmentOrCase() {
+        when(outcomeApplier.acquireTargetLock(
+                job.getTargetType(), job.getTargetId(), job.getContentHash(), false))
+                .thenReturn(TargetLockResult.TARGET_GONE);
+        AiVerdict verdict = new AiVerdict(AiClassification.VIOLATION, AiPolicySeverity.HIGH,
+                new BigDecimal("0.9"), List.of(), AiRecommendedAction.REVIEW, "violation");
+
+        recorder.recordSuccess(job, "psh", "m", verdict,
+                new CaseDecision(true, CasePriority.HIGH, ReportCategory.OTHER, "fallback"),
+                10, null, null);
+
+        assertThat(job.getStatus()).isEqualTo(AiScanJobStatus.SKIPPED);
+        assertThat(job.getLastErrorCode()).isEqualTo("TARGET_GONE");
+        verify(assessmentRepository, never()).save(any());
+        verifyNoInteractions(caseService);
+    }
+
+    @Test
+    void editedDuringGemini_skipsOldResultBeforeAssessmentOrCase() {
+        when(outcomeApplier.acquireTargetLock(
+                job.getTargetType(), job.getTargetId(), job.getContentHash(), false))
+                .thenReturn(TargetLockResult.SUPERSEDED);
+        AiVerdict verdict = new AiVerdict(AiClassification.VIOLATION, AiPolicySeverity.HIGH,
+                new BigDecimal("0.9"), List.of(), AiRecommendedAction.REVIEW, "old violation");
+
+        recorder.recordSuccess(job, "psh", "m", verdict,
+                new CaseDecision(true, CasePriority.HIGH, ReportCategory.OTHER, "fallback"),
+                10, null, null);
+
+        assertThat(job.getStatus()).isEqualTo(AiScanJobStatus.SKIPPED);
+        assertThat(job.getLastErrorCode()).isEqualTo("STALE_CONTENT");
+        verify(assessmentRepository, never()).save(any());
+        verifyNoInteractions(caseService);
     }
 
     // VII.3/VII.5: the typed read path never leaks raw JSON — corrupt stored matches degrade

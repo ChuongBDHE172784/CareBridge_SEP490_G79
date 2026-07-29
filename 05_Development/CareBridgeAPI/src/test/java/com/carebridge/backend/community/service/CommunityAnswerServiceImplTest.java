@@ -16,6 +16,7 @@ import com.carebridge.backend.community.dto.request.EditAnswerRequest;
 import com.carebridge.backend.community.dto.request.PostCommunityAnswerRequest;
 import com.carebridge.backend.community.dto.response.CommunityAnswerResponse;
 import com.carebridge.backend.community.entity.AnswerStatus;
+import com.carebridge.backend.aimoderation.service.AiScanEnqueueService.EnqueueResult;
 import com.carebridge.backend.community.entity.CommunityAnswer;
 import com.carebridge.backend.community.entity.CommunityQuestion;
 import com.carebridge.backend.community.entity.QuestionStatus;
@@ -113,7 +114,7 @@ class CommunityAnswerServiceImplTest {
                 .thenReturn(Optional.of(makeApprovedQuestion()));
         CommunityAnswer saved = CommunityAnswer.builder()
                 .id(UUID.randomUUID()).questionId(QUESTION_ID).authorId(AUTHOR_ID)
-                .status(AnswerStatus.APPROVED).expertLabeled(false).personalExperience(true)
+                .status(AnswerStatus.AI_PENDING).expertLabeled(false).personalExperience(true)
                 .build();
         when(answerRepository.save(any())).thenReturn(saved);
         when(authorDisplayResolver.resolve(AUTHOR_ID)).thenReturn("Nguyễn Thị A");
@@ -146,7 +147,7 @@ class CommunityAnswerServiceImplTest {
                 .thenReturn(Optional.of(makeApprovedQuestion()));
         CommunityAnswer saved = CommunityAnswer.builder()
                 .id(UUID.randomUUID()).questionId(QUESTION_ID).authorId(AUTHOR_ID)
-                .status(AnswerStatus.APPROVED).expertLabeled(false).personalExperience(true)
+                .status(AnswerStatus.AI_PENDING).expertLabeled(false).personalExperience(true)
                 .build();
         when(answerRepository.save(any())).thenReturn(saved);
         when(authorDisplayResolver.resolve(AUTHOR_ID)).thenReturn(null);
@@ -156,7 +157,7 @@ class CommunityAnswerServiceImplTest {
         assertThat(response.getAuthorDisplay()).isEqualTo("Thành viên");
     }
 
-    // New answers are immediately visible while preserving the governed expert label.
+    // New answers remain private in AI_PENDING until a SAFE result approves them.
     @Test
     void postAnswer_validRequest_returnsCorrectDefaults() {
         when(questionRepository.findByIdAndStatus(QUESTION_ID, QuestionStatus.APPROVED))
@@ -166,7 +167,7 @@ class CommunityAnswerServiceImplTest {
                 .questionId(QUESTION_ID)
                 .authorId(AUTHOR_ID)
                 .body("This is a valid personal experience answer with enough characters")
-                .status(AnswerStatus.APPROVED)
+                .status(AnswerStatus.AI_PENDING)
                 .expertLabeled(false)
                 .personalExperience(true)
                 .build();
@@ -174,21 +175,41 @@ class CommunityAnswerServiceImplTest {
 
         CommunityAnswerResponse response = service.postAnswer(AUTHOR_ID, QUESTION_ID, makeRequest());
 
-        // The creation transition is APPROVED; the expert label remains server-governed.
+        // API maps internal AI_PENDING to PENDING for backward compatibility.
         verify(answerRepository, times(1)).save(argThat(a ->
-                a.getStatus() == AnswerStatus.APPROVED
+                a.getStatus() == AnswerStatus.AI_PENDING
                 && !a.isExpertLabeled()
                 && a.getAuthorId().equals(AUTHOR_ID)
                 && a.getQuestionId().equals(QUESTION_ID)
         ));
-        assertThat(response.getStatus()).isEqualTo("APPROVED");
+        assertThat(response.getStatus()).isEqualTo("PENDING");
         assertThat(response.isExpertLabeled()).isFalse();
-        verify(questionRepository).incrementAnswerCount(QUESTION_ID);
+        verify(questionRepository, never()).incrementAnswerCount(QUESTION_ID);
         verifyNoInteractions(expertEventHandler);
         verify(aiScanEnqueueService).enqueueScan(
                 org.mockito.ArgumentMatchers.eq(com.carebridge.backend.content.entity.ReportTargetType.ANSWER),
                 org.mockito.ArgumentMatchers.eq(saved.getId()),
                 org.mockito.ArgumentMatchers.anyString());
+    }
+
+    @Test
+    void postAnswer_aiUnavailable_entersHumanPendingWithoutCountOrReward() {
+        when(questionRepository.findByIdAndStatus(QUESTION_ID, QuestionStatus.APPROVED))
+                .thenReturn(Optional.of(makeApprovedQuestion()));
+        when(answerRepository.save(any())).thenAnswer(inv -> {
+            CommunityAnswer answer = inv.getArgument(0);
+            if (answer.getId() == null) answer.setId(UUID.randomUUID());
+            return answer;
+        });
+        when(aiScanEnqueueService.enqueueScan(any(), any(), any()))
+                .thenReturn(EnqueueResult.HUMAN_REVIEW_REQUIRED);
+
+        CommunityAnswerResponse response = service.postAnswer(AUTHOR_ID, QUESTION_ID, makeRequest());
+
+        verify(answerRepository, times(2)).save(any());
+        assertThat(response.getStatus()).isEqualTo("PENDING");
+        verify(questionRepository, never()).incrementAnswerCount(any());
+        verifyNoInteractions(expertEventHandler);
     }
 
     // COM56-TC-001 sub: audit event emitted after successful answer post
@@ -198,7 +219,7 @@ class CommunityAnswerServiceImplTest {
                 .thenReturn(Optional.of(makeApprovedQuestion()));
         CommunityAnswer saved = CommunityAnswer.builder()
                 .id(UUID.randomUUID()).questionId(QUESTION_ID).authorId(AUTHOR_ID)
-                .status(AnswerStatus.APPROVED).expertLabeled(false).personalExperience(true)
+                .status(AnswerStatus.AI_PENDING).expertLabeled(false).personalExperience(true)
                 .build();
         when(answerRepository.save(any())).thenReturn(saved);
 
@@ -235,7 +256,7 @@ class CommunityAnswerServiceImplTest {
                 .thenReturn(Optional.of(makeApprovedQuestion()));
         CommunityAnswer saved = CommunityAnswer.builder()
                 .id(UUID.randomUUID()).questionId(QUESTION_ID).authorId(AUTHOR_ID)
-                .status(AnswerStatus.APPROVED).expertLabeled(false).personalExperience(false)
+                .status(AnswerStatus.AI_PENDING).expertLabeled(false).personalExperience(false)
                 .build();
         when(answerRepository.save(any())).thenReturn(saved);
 
@@ -247,22 +268,22 @@ class CommunityAnswerServiceImplTest {
     }
 
     @Test
-    void postAnswer_verifiedExpert_awardsApprovedAnswerContributionOnce() {
+    void postAnswer_verifiedExpert_defersContributionUntilAiApproval() {
         when(questionRepository.findByIdAndStatus(QUESTION_ID, QuestionStatus.APPROVED))
                 .thenReturn(Optional.of(makeApprovedQuestion()));
         CommunityAnswer saved = CommunityAnswer.builder()
                 .id(ANSWER_ID).questionId(QUESTION_ID).authorId(AUTHOR_ID)
-                .status(AnswerStatus.APPROVED).expertLabeled(true).personalExperience(false)
+                .status(AnswerStatus.AI_PENDING).expertLabeled(true).personalExperience(false)
                 .build();
         when(answerRepository.save(any())).thenReturn(saved);
         when(communitySafetyPolicy.isVerifiedActiveExpert(any())).thenReturn(true);
 
         CommunityAnswerResponse response = service.postAnswer(AUTHOR_ID, QUESTION_ID, makeRequest());
 
-        assertThat(response.getStatus()).isEqualTo("APPROVED");
+        assertThat(response.getStatus()).isEqualTo("PENDING");
         assertThat(response.isExpertLabeled()).isTrue();
-        verify(questionRepository).incrementAnswerCount(QUESTION_ID);
-        verify(expertEventHandler).onAnswerApproved(ANSWER_ID.toString(), AUTHOR_ID.toString());
+        verify(questionRepository, never()).incrementAnswerCount(QUESTION_ID);
+        verifyNoInteractions(expertEventHandler);
     }
 
     // ===================== UC-200: Edit Own Answer =====================
@@ -289,7 +310,7 @@ class CommunityAnswerServiceImplTest {
         return req;
     }
 
-    // TC-200-1: author edits own APPROVED answer -> status resets to PENDING
+    // An edited answer re-enters private AI screening.
     @Test
     void editAnswer_ownApprovedAnswer_resetsToPending() {
         CommunityAnswer answer = makeAnswer(AnswerStatus.APPROVED);
@@ -300,7 +321,7 @@ class CommunityAnswerServiceImplTest {
 
         assertThat(response.getStatus()).isEqualTo("PENDING");
         assertThat(response.getBody()).isEqualTo("Updated answer body");
-        verify(answerRepository).save(argThat(a -> a.getStatus() == AnswerStatus.PENDING));
+        verify(answerRepository).save(argThat(a -> a.getStatus() == AnswerStatus.AI_PENDING));
     }
 
     // Editing an APPROVED answer takes it out of the visible/counted set until re-moderated —

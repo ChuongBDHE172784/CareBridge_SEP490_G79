@@ -301,7 +301,7 @@ export default function PendingContentQueuePage() {
             <div>
               <h1 className="text-[26px] font-bold text-on-surface m-0">Nội dung chờ duyệt lần đầu</h1>
               <p className="text-on-surface-variant text-sm mt-1">
-                Câu hỏi và câu trả lời mới đăng, chưa từng bị báo cáo, cần duyệt trước khi hiển thị công khai.
+                Nội dung AI không thể tự động phê duyệt đang chờ Moderator kiểm tra trước khi hiển thị công khai.
               </p>
             </div>
             <button

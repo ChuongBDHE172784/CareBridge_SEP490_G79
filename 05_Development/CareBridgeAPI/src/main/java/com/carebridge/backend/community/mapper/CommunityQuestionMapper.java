@@ -28,7 +28,7 @@ public class CommunityQuestionMapper {
                 .babyAgeMonths(request.getBabyAgeMonths() != null ? request.getBabyAgeMonths().shortValue() : null)
                 .urgency(request.getUrgency())
                 .anonymous(Boolean.TRUE.equals(request.getIsAnonymous()))
-                .status(QuestionStatus.PENDING)
+                .status(QuestionStatus.AI_PENDING)
                 .build();
     }
 
@@ -46,7 +46,7 @@ public class CommunityQuestionMapper {
                 .urgency(entity.getUrgency() != null ? entity.getUrgency().name() : null)
                 .anonymous(entity.isAnonymous())
                 .authorId(exposedAuthorId)
-                .status(entity.getStatus() != null ? entity.getStatus().name() : null)
+                .status(toResponseStatus(entity.getStatus()))
                 .answerCount(entity.getAnswerCount())
                 .likeCount(entity.getLikeCount())
                 .createdAt(entity.getCreatedAt())
@@ -92,7 +92,7 @@ public class CommunityQuestionMapper {
                 .anonymous(entity.isAnonymous())
                 .authorId(exposedAuthorId)
                 .authorDisplay(finalAuthorDisplay)
-                .status(entity.getStatus() != null ? entity.getStatus().name() : null)
+                .status(toResponseStatus(entity.getStatus()))
                 .answerCount(entity.getAnswerCount())
                 .likeCount(entity.getLikeCount())
                 .isBookmarked(isBookmarked)
@@ -105,6 +105,13 @@ public class CommunityQuestionMapper {
 
     private List<String> copyImageUrls(List<String> imageUrls) {
         return imageUrls == null ? new ArrayList<>() : new ArrayList<>(imageUrls);
+    }
+
+    private String toResponseStatus(QuestionStatus status) {
+        if (status == null) {
+            return null;
+        }
+        return status == QuestionStatus.AI_PENDING ? QuestionStatus.PENDING.name() : status.name();
     }
 
     // UC-162: map to lightweight summary for search results

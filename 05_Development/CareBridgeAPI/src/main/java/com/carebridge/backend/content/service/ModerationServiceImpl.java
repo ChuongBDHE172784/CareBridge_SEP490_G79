@@ -150,7 +150,11 @@ public class ModerationServiceImpl implements ModerationService {
         int pageSize;
 
         if (filter.targetType() == ReportTargetType.QUESTION) {
-            Page<CommunityQuestion> page = communityQuestionRepository.findByStatus(QuestionStatus.PENDING, pageable);
+            Page<CommunityQuestion> page = communityQuestionRepository.findByStatusWithoutOpenModerationCase(
+                    QuestionStatus.PENDING,
+                    ReportTargetType.QUESTION,
+                    List.of(ReportStatus.PENDING, ReportStatus.IN_REVIEW),
+                    pageable);
             List<UUID> targetIds = page.getContent().stream().map(CommunityQuestion::getId).toList();
             Map<UUID, String> previews = contentPreviewService.batchFetchPreviews(targetIds, ReportTargetType.QUESTION);
             items = page.getContent().stream()
@@ -161,7 +165,11 @@ public class ModerationServiceImpl implements ModerationService {
             pageNumber = page.getNumber();
             pageSize = page.getSize();
         } else {
-            Page<CommunityAnswer> page = communityAnswerRepository.findByStatus(AnswerStatus.PENDING, pageable);
+            Page<CommunityAnswer> page = communityAnswerRepository.findByStatusWithoutOpenModerationCase(
+                    AnswerStatus.PENDING,
+                    ReportTargetType.ANSWER,
+                    List.of(ReportStatus.PENDING, ReportStatus.IN_REVIEW),
+                    pageable);
             List<UUID> targetIds = page.getContent().stream().map(CommunityAnswer::getId).toList();
             Map<UUID, String> previews = contentPreviewService.batchFetchPreviews(targetIds, ReportTargetType.ANSWER);
             items = page.getContent().stream()
