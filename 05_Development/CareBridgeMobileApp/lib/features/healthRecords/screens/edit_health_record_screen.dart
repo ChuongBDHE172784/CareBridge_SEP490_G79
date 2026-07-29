@@ -131,7 +131,7 @@ class _EditHealthRecordScreenState extends State<EditHealthRecordScreen> {
           title: _titleCtrl.text.trim(),
           recordType: _recordType,
           recordDate: _recordDate,
-          sourceName: _sourceNameCtrl.text.trim().isEmpty
+          facilityName: _sourceNameCtrl.text.trim().isEmpty
               ? null
               : _sourceNameCtrl.text.trim(),
           sourceType: _subjectIsMother ? 'MOTHER_SELF' : 'BABY',

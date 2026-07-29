@@ -658,33 +658,35 @@ class _CareGroupDetailScreenState extends State<CareGroupDetailScreen> {
                   color: _onSurface,
                 ),
               ),
-              TextButton.icon(
-                onPressed: () async {
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => CareGroupMembersScreen(
-                        groupId: widget.groupId,
-                        groupName: widget.groupName,
-                        members: members,
+              // Chỉ MOTHER (owner) mới được vào màn quản lý thành viên đầy đủ
+              if (_isMother)
+                TextButton.icon(
+                  onPressed: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => CareGroupMembersScreen(
+                          groupId: widget.groupId,
+                          groupName: widget.groupName,
+                          members: members,
+                        ),
                       ),
-                    ),
-                  );
-                  _load();
-                },
-                icon: const Icon(
-                  Icons.arrow_forward,
-                  size: 16,
-                  color: _primaryContainer,
-                ),
-                label: const Text(
-                  'Xem tất cả',
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
+                    );
+                    _load();
+                  },
+                  icon: const Icon(
+                    Icons.arrow_forward,
+                    size: 16,
                     color: _primaryContainer,
                   ),
+                  label: const Text(
+                    'Xem tất cả',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      color: _primaryContainer,
+                    ),
+                  ),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -693,12 +695,16 @@ class _CareGroupDetailScreenState extends State<CareGroupDetailScreen> {
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: [
-                ...members.map(
-                  (m) => Padding(
-                    padding: const EdgeInsets.only(right: 16),
-                    child: _MemberCircle(member: m),
-                  ),
-                ),
+                // Chỉ hiển thị thành viên đã được CHẤP NHẬN (ACCEPTED)
+                // Thành viên PENDING chưa vào nhóm thì không hiện ở đây
+                ...members
+                    .where((m) => m.inviteStatus == 'ACCEPTED')
+                    .map(
+                      (m) => Padding(
+                        padding: const EdgeInsets.only(right: 16),
+                        child: _MemberCircle(member: m),
+                      ),
+                    ),
                 if (_isMother)
                   GestureDetector(
                     onTap: () {

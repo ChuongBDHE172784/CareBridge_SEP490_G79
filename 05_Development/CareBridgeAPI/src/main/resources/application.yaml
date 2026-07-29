@@ -22,8 +22,9 @@ spring:
       max-lifetime: 600000
 
   flyway:
-    enabled: false
-    clean-disabled: true
+    enabled: true
+    clean-disabled: false
+    clean-on-validation-error: true
     out-of-order: true
     # Databases migrated before the canonical convergence keep their full
     # Flyway history; the historical SQL files were retired in favour of the

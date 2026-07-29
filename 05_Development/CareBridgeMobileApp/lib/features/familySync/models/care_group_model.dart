@@ -4,6 +4,7 @@ class CareGroupMember {
   final String displayName;
   final String memberRole;
   final String inviteStatus;
+  final bool isJoinRequest;
   final DateTime? joinedAt;
 
   const CareGroupMember({
@@ -12,6 +13,7 @@ class CareGroupMember {
     required this.displayName,
     required this.memberRole,
     required this.inviteStatus,
+    this.isJoinRequest = false,
     this.joinedAt,
   });
 
@@ -22,6 +24,7 @@ class CareGroupMember {
       displayName: json['displayName'] as String,
       memberRole: json['memberRole'] as String? ?? 'MEMBER',
       inviteStatus: json['inviteStatus'] as String? ?? 'ACCEPTED',
+      isJoinRequest: json['isJoinRequest'] as bool? ?? false,
       joinedAt: json['joinedAt'] != null
           ? DateTime.parse(json['joinedAt'] as String)
           : null,

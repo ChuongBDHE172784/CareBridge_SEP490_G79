@@ -34,7 +34,7 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
 
   String _recordType = 'ULTRASOUND';
   DateTime _recordDate = DateTime.now();
-  PlatformFile? _selectedFile;
+  final List<PlatformFile> _selectedFiles = [];
   bool _saving = false;
 
   @override
@@ -68,11 +68,17 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['jpg', 'jpeg', 'png', 'webp', 'heic', 'gif', 'pdf'],
-      allowMultiple: false,
+      allowMultiple: true,
       withData: true,
     );
     if (result == null || result.files.isEmpty) return;
-    setState(() => _selectedFile = result.files.single);
+    setState(() {
+      for (final f in result.files) {
+        if (!_selectedFiles.any((existing) => existing.name == f.name)) {
+          _selectedFiles.add(f);
+        }
+      }
+    });
   }
 
   String _mimeTypeFor(PlatformFile file) {
@@ -84,29 +90,34 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
 
   Future<void> _save() async {
     final title = _titleCtrl.text.trim();
-    final file = _selectedFile;
     if (title.isEmpty) {
       _showSnack('Vui lòng nhập tiêu đề hồ sơ.');
       return;
     }
-    if (file == null || file.bytes == null) {
-      _showSnack('Vui lòng chọn ảnh hoặc PDF.');
+    if (_selectedFiles.isEmpty) {
+      _showSnack('Vui lòng chọn ít nhất một ảnh hoặc PDF.');
       return;
     }
 
     setState(() => _saving = true);
     try {
-      final fileId = await _service.uploadHealthRecordAttachment(
-        bytes: file.bytes!,
-        fileName: file.name,
-        mimeType: _mimeTypeFor(file),
-      );
+      final List<String> fileIds = [];
+      for (final file in _selectedFiles) {
+        if (file.bytes == null) continue;
+        final fileId = await _service.uploadHealthRecordAttachment(
+          bytes: file.bytes!,
+          fileName: file.name,
+          mimeType: _mimeTypeFor(file),
+        );
+        fileIds.add(fileId);
+      }
+
       await _service.addHealthRecord(
         recordType: _recordType,
         title: title,
         recordDate: _recordDate,
         facilityName: _facilityCtrl.text,
-        fileIds: [fileId],
+        fileIds: fileIds,
       );
       if (!mounted) return;
       Navigator.of(context).pop(true);
@@ -178,88 +189,213 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
   }
 
   Widget _buildFileCard() {
-    final file = _selectedFile;
-    final isPdf = file?.extension?.toLowerCase() == 'pdf';
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: _cardDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Tệp đính kèm',
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: _onSurface,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Tệp đính kèm (${_selectedFiles.length})',
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: _onSurface,
+                ),
+              ),
+              if (_selectedFiles.isNotEmpty)
+                GestureDetector(
+                  onTap: _saving ? null : _pickFile,
+                  child: const Row(
+                    children: [
+                      Icon(Icons.add_circle_outline_rounded, size: 18, color: _primary),
+                      SizedBox(width: 4),
+                      Text(
+                        'Thêm tệp',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: _primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
           ),
           const SizedBox(height: 12),
-          InkWell(
-            onTap: _saving ? null : _pickFile,
-            borderRadius: BorderRadius.circular(18),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: _surface,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: const Color(0xFFD6C2BD)),
+          if (_selectedFiles.isEmpty)
+            InkWell(
+              onTap: _saving ? null : _pickFile,
+              borderRadius: BorderRadius.circular(18),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: _surface,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: const Color(0xFFD6C2BD)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.upload_file_rounded,
+                        color: _primaryContainer,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Chọn ảnh hoặc PDF',
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: _onSurface,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'JPG, PNG, WebP, HEIC, GIF, PDF (chọn nhiều tệp)',
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 11,
+                              color: _onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: _onSurfaceVariant,
+                    ),
+                  ],
+                ),
               ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
+            )
+          else
+            Column(
+              children: [
+                ..._selectedFiles.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final file = entry.value;
+                  final isPdf = file.extension?.toLowerCase() == 'pdf';
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
+                      color: _surface,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFE5D5D0)),
                     ),
-                    child: Icon(
-                      file == null
-                          ? Icons.upload_file_rounded
-                          : isPdf
-                          ? Icons.picture_as_pdf_rounded
-                          : Icons.image_rounded,
-                      color: _primaryContainer,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                    child: Row(
                       children: [
-                        Text(
-                          file?.name ?? 'Chọn ảnh hoặc PDF',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontFamily: 'Lexend',
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: _onSurface,
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(
+                            isPdf
+                                ? Icons.picture_as_pdf_rounded
+                                : Icons.image_rounded,
+                            color: isPdf ? Colors.red.shade400 : _primaryContainer,
+                            size: 22,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        const Text(
-                          'JPG, PNG, WebP, HEIC, GIF, PDF',
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                file.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontFamily: 'Lexend',
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: _onSurface,
+                                ),
+                              ),
+                              if (file.size > 0) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${(file.size / 1024).toStringAsFixed(1)} KB',
+                                  style: const TextStyle(
+                                    fontFamily: 'Lexend',
+                                    fontSize: 11,
+                                    color: _onSurfaceVariant,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded, size: 20, color: Color(0xFFBA1A1A)),
+                          onPressed: _saving
+                              ? null
+                              : () {
+                                  setState(() {
+                                    _selectedFiles.removeAt(index);
+                                  });
+                                },
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+                const SizedBox(height: 4),
+                InkWell(
+                  onTap: _saving ? null : _pickFile,
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: _primaryContainer, width: 1.5),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.add_rounded, color: _primary, size: 20),
+                        SizedBox(width: 6),
+                        Text(
+                          'Chọn thêm tệp',
                           style: TextStyle(
                             fontFamily: 'Lexend',
-                            fontSize: 11,
-                            color: _onSurfaceVariant,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: _primary,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    color: _onSurfaceVariant,
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ),
         ],
       ),
     );

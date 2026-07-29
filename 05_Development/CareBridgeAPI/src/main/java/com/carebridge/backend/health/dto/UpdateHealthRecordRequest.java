@@ -32,4 +32,6 @@ public class UpdateHealthRecordRequest {
     private UUID babyId;
 
     private UUID journeyId;
+
+    private java.util.List<UUID> fileIds;
 }
