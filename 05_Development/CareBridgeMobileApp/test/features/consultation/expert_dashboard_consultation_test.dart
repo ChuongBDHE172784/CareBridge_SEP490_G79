@@ -31,6 +31,11 @@ class _DashboardApi implements ExpertHomeApi {
     }
     throw Exception('optional dashboard dependency unavailable');
   }
+
+  @override
+  Future<dynamic> patch(String path, Map<String, dynamic> body) {
+    throw UnsupportedError('This dashboard test does not update online status');
+  }
 }
 
 void main() {
