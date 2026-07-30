@@ -315,3 +315,24 @@ deploy_staging:
     - mkdir -p ~/.ssh && chmod 700 ~/.ssh && printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts && chmod 600 ~/.ssh/known_hosts
   script:
     - ssh "$DEPLOY_USER@$DEPLOY_HOST" "cd '$DEPLOY_PATH' && BACKEND_IMAGE='$BACKEND_IMAGE' WEB_IMAGE='$WEB_IMAGE' docker compose -f docker-compose.staging.yml pull && BACKEND_IMAGE='$BACKEND_IMAGE' WEB_IMAGE='$WEB_IMAGE' docker compose -f docker-compose.staging.yml up -d --remove-orphans"
+
+pages:
+  stage: deploy
+  image: node:22-alpine
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "HuyND"'
+    - if: '$CI_COMMIT_BRANCH == "dev"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  script:
+    - cd 05_Development/CareBridgeWebApp
+    - npm ci
+    - npm run build
+    - cd ../..
+    - rm -rf public
+    - mkdir public
+    - cp -r 05_Development/CareBridgeWebApp/dist/* public/
+    - cp public/index.html public/404.html
+  artifacts:
+    paths:
+      - public
+

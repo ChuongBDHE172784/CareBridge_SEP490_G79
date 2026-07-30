@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  base: './',
   test: {
     environment: 'jsdom',
     // Playwright owns e2e/*.spec.ts; Vitest owns colocated unit/component tests.
