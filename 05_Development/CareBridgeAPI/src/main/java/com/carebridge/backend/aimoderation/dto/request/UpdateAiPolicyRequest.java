@@ -4,6 +4,8 @@ import com.carebridge.backend.aimoderation.entity.AiPolicySeverity;
 import com.carebridge.backend.aimoderation.entity.AiViolationCategory;
 import com.carebridge.backend.content.entity.ReportCategory;
 import com.carebridge.backend.content.entity.ReportTargetType;
+import com.carebridge.backend.aimoderation.dto.PolicyReferenceFile;
+import com.carebridge.backend.aimoderation.dto.PolicyReferenceLink;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.util.List;
@@ -17,6 +19,8 @@ public record UpdateAiPolicyRequest(
         AiPolicySeverity severity,
         List<ReportTargetType> applicableTargetTypes,
         BigDecimal confidenceThreshold,
-        Boolean active
+        Boolean active,
+        List<PolicyReferenceLink> referenceLinks,
+        List<PolicyReferenceFile> referenceFiles
 ) {
 }

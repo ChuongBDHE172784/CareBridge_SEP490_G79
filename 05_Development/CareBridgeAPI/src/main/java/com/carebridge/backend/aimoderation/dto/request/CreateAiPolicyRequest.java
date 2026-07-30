@@ -4,6 +4,8 @@ import com.carebridge.backend.aimoderation.entity.AiPolicySeverity;
 import com.carebridge.backend.aimoderation.entity.AiViolationCategory;
 import com.carebridge.backend.content.entity.ReportCategory;
 import com.carebridge.backend.content.entity.ReportTargetType;
+import com.carebridge.backend.aimoderation.dto.PolicyReferenceFile;
+import com.carebridge.backend.aimoderation.dto.PolicyReferenceLink;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -21,6 +23,8 @@ public record CreateAiPolicyRequest(
         @NotNull AiPolicySeverity severity,
         @NotEmpty List<ReportTargetType> applicableTargetTypes,
         @NotNull BigDecimal confidenceThreshold,
-        Boolean active
+        Boolean active,
+        List<PolicyReferenceLink> referenceLinks,
+        List<PolicyReferenceFile> referenceFiles
 ) {
 }

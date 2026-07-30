@@ -89,6 +89,12 @@ public class AiModerationPolicy {
     @Column(name = "updated_by", columnDefinition = "uuid")
     private UUID updatedBy;
 
+    @Column(name = "reference_links", columnDefinition = "TEXT")
+    private String referenceLinks;
+
+    @Column(name = "reference_files", columnDefinition = "TEXT")
+    private String referenceFiles;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 

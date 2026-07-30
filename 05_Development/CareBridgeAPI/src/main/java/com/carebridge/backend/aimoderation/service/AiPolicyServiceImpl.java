@@ -79,6 +79,9 @@ public class AiPolicyServiceImpl implements AiPolicyService {
         validateThreshold(request.confidenceThreshold());
         String targetTypes = normalizeTargetTypes(request.applicableTargetTypes());
 
+        String refLinksJson = mapper.serializeReferenceLinks(request.referenceLinks());
+        String refFilesJson = mapper.serializeReferenceFiles(request.referenceFiles());
+
         AiModerationPolicy policy = policyRepository.save(AiModerationPolicy.builder()
                 .policyCode(code)
                 .name(request.name().trim())
@@ -91,6 +94,8 @@ public class AiPolicyServiceImpl implements AiPolicyService {
                 .active(request.active() == null || request.active())
                 .systemDefault(false)
                 .version(1)
+                .referenceLinks(refLinksJson)
+                .referenceFiles(refFilesJson)
                 .createdBy(actorUserId)
                 .updatedBy(actorUserId)
                 .build());
@@ -155,6 +160,16 @@ public class AiPolicyServiceImpl implements AiPolicyService {
             policy.setActive(request.active());
             changedFields.add("active");
             classificationAffecting = true;
+        }
+        if (request.referenceLinks() != null) {
+            String newLinks = mapper.serializeReferenceLinks(request.referenceLinks());
+            policy.setReferenceLinks(newLinks);
+            changedFields.add("referenceLinks");
+        }
+        if (request.referenceFiles() != null) {
+            String newFiles = mapper.serializeReferenceFiles(request.referenceFiles());
+            policy.setReferenceFiles(newFiles);
+            changedFields.add("referenceFiles");
         }
 
         if (!changedFields.isEmpty()) {

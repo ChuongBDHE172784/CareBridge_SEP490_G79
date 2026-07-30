@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 
 import com.carebridge.backend.aimoderation.dto.request.CreateAiPolicyRequest;
 import com.carebridge.backend.aimoderation.dto.request.UpdateAiPolicyRequest;
+import com.carebridge.backend.aimoderation.dto.response.AiPolicyResponse;
 import com.carebridge.backend.aimoderation.entity.AiModerationPolicy;
 import com.carebridge.backend.aimoderation.entity.AiPolicySeverity;
 import com.carebridge.backend.aimoderation.entity.AiViolationCategory;
@@ -84,7 +85,7 @@ class AiPolicyServiceImplTest {
         when(policyRepository.existsByPolicyCodeIgnoreCase("SPAM_ADVERTISING")).thenReturn(true);
         CreateAiPolicyRequest request = new CreateAiPolicyRequest("SPAM_ADVERTISING", "Spam", "g",
                 AiViolationCategory.SPAM_ADVERTISING, ReportCategory.SPAM, AiPolicySeverity.MEDIUM,
-                List.of(ReportTargetType.QUESTION), new BigDecimal("0.7"), true);
+                List.of(ReportTargetType.QUESTION), new BigDecimal("0.7"), true, null, null);
         assertThatThrownBy(() -> service.createPolicy(request, ACTOR))
                 .isInstanceOf(AiModerationException.class)
                 .extracting(ex -> ((AiModerationException) ex).getCode())
@@ -96,7 +97,7 @@ class AiPolicyServiceImplTest {
         when(policyRepository.existsByPolicyCodeIgnoreCase(anyString())).thenReturn(false);
         CreateAiPolicyRequest request = new CreateAiPolicyRequest("NEW_POLICY", "n", "g",
                 AiViolationCategory.OTHER, ReportCategory.OTHER, AiPolicySeverity.LOW,
-                List.of(ReportTargetType.ACCOUNT), new BigDecimal("0.7"), true);
+                List.of(ReportTargetType.ACCOUNT), new BigDecimal("0.7"), true, null, null);
         assertThatThrownBy(() -> service.createPolicy(request, ACTOR))
                 .isInstanceOf(AiModerationException.class)
                 .extracting(ex -> ((AiModerationException) ex).getCode())
@@ -108,7 +109,7 @@ class AiPolicyServiceImplTest {
         when(policyRepository.existsByPolicyCodeIgnoreCase(anyString())).thenReturn(false);
         CreateAiPolicyRequest request = new CreateAiPolicyRequest("NEW_POLICY", "n", "g",
                 AiViolationCategory.OTHER, ReportCategory.OTHER, AiPolicySeverity.LOW,
-                List.of(ReportTargetType.QUESTION), new BigDecimal("1.5"), true);
+                List.of(ReportTargetType.QUESTION), new BigDecimal("1.5"), true, null, null);
         assertThatThrownBy(() -> service.createPolicy(request, ACTOR))
                 .isInstanceOf(AiModerationException.class)
                 .extracting(ex -> ((AiModerationException) ex).getCode())
@@ -123,7 +124,7 @@ class AiPolicyServiceImplTest {
         when(policyRepository.save(any(AiModerationPolicy.class))).thenAnswer(inv -> inv.getArgument(0));
 
         service.updatePolicy(policy.getId(),
-                new UpdateAiPolicyRequest(null, "guidance mới chặt chẽ hơn", null, null, null, null, null, null),
+                new UpdateAiPolicyRequest(null, "guidance mới chặt chẽ hơn", null, null, null, null, null, null, null, null),
                 ACTOR);
 
         assertThat(policy.getVersion()).isEqualTo(2);
@@ -138,7 +139,7 @@ class AiPolicyServiceImplTest {
         when(policyRepository.save(any(AiModerationPolicy.class))).thenAnswer(inv -> inv.getArgument(0));
 
         service.updatePolicy(policy.getId(),
-                new UpdateAiPolicyRequest("Tên mới", null, null, null, null, null, null, null), ACTOR);
+                new UpdateAiPolicyRequest("Tên mới", null, null, null, null, null, null, null, null, null), ACTOR);
 
         assertThat(policy.getVersion()).isEqualTo(1);
     }
@@ -157,6 +158,40 @@ class AiPolicyServiceImplTest {
         assertThat(policy.getVersion()).isEqualTo(2);
         verify(auditService).log(eq(AuditAction.AI_POLICY_STATUS_CHANGED), eq(ACTOR),
                 eq("AiModerationPolicy"), anyString(), any());
+    }
+
+    @Test
+    void create_withReferenceLinksAndFiles_persistsSuccessfully() {
+        when(policyRepository.existsByPolicyCodeIgnoreCase(anyString())).thenReturn(false);
+        when(policyRepository.save(any(AiModerationPolicy.class))).thenAnswer(inv -> {
+            AiModerationPolicy p = inv.getArgument(0);
+            p.setId(UUID.randomUUID());
+            return p;
+        });
+
+        var links = List.of(new com.carebridge.backend.aimoderation.dto.PolicyReferenceLink("Luật 1", "https://example.com/law1"));
+        var files = List.of(new com.carebridge.backend.aimoderation.dto.PolicyReferenceFile(UUID.randomUUID(), "doc.pdf", "https://r2.com/doc.pdf", 1024L));
+
+        when(mapper.serializeReferenceLinks(links)).thenReturn("[{\"title\":\"Luật 1\",\"url\":\"https://example.com/law1\"}]");
+        when(mapper.serializeReferenceFiles(files)).thenReturn("[{\"fileName\":\"doc.pdf\"}]");
+        when(mapper.toPolicyResponse(any())).thenAnswer(inv -> {
+            AiModerationPolicy p = inv.getArgument(0);
+            return new AiPolicyResponse(p.getId(), p.getPolicyCode(), p.getName(), p.getDetectionGuidance(),
+                    p.getViolationCategory(), p.getReportCategory(), p.getSeverity(), p.targetTypes(),
+                    p.getConfidenceThreshold(), p.isActive(), p.isSystemDefault(), p.getVersion(),
+                    links, files, p.getCreatedAt(), p.getUpdatedAt());
+        });
+
+        CreateAiPolicyRequest request = new CreateAiPolicyRequest("LEGAL_REF_POLICY", "Chính sách căn cứ pháp lý", "Hướng dẫn",
+                AiViolationCategory.SPAM_ADVERTISING, ReportCategory.SPAM, AiPolicySeverity.HIGH,
+                List.of(ReportTargetType.QUESTION), new BigDecimal("0.8"), true, links, files);
+
+        var response = service.createPolicy(request, ACTOR);
+        assertThat(response).isNotNull();
+        assertThat(response.referenceLinks()).hasSize(1);
+        assertThat(response.referenceLinks().get(0).title()).isEqualTo("Luật 1");
+        assertThat(response.referenceFiles()).hasSize(1);
+        assertThat(response.referenceFiles().get(0).fileName()).isEqualTo("doc.pdf");
     }
 
     // Sandbox refuses politely when Gemini is not configured (no fake results)

@@ -21,6 +21,7 @@ import {
   updateAiPolicyStatus,
   fetchAiModerationStatus,
   testAiPolicy,
+  uploadPolicyDocument,
 } from '../services/aiModerationPolicyApi';
 import {
   AI_VIOLATION_CATEGORY_LABELS,
@@ -35,6 +36,8 @@ import {
   type PolicyTargetType,
   type AiModerationStatus,
   type AiPolicyTestResult,
+  type PolicyReferenceLink,
+  type PolicyReferenceFile,
 } from '../models/aiModerationPolicy';
 
 type TabKey = 'AI_CONTENT' | 'MEDICAL';
@@ -61,6 +64,8 @@ interface PolicyFormState {
   severity: AiPolicySeverity;
   applicableTargetTypes: PolicyTargetType[];
   confidenceThreshold: string;
+  referenceLinks: PolicyReferenceLink[];
+  referenceFiles: PolicyReferenceFile[];
 }
 
 const DEFAULT_POLICY_FORM: PolicyFormState = {
@@ -72,6 +77,8 @@ const DEFAULT_POLICY_FORM: PolicyFormState = {
   severity: 'MEDIUM',
   applicableTargetTypes: ['QUESTION', 'ANSWER'],
   confidenceThreshold: '0.7',
+  referenceLinks: [],
+  referenceFiles: [],
 };
 
 const AI_STATE_META: Record<AiModerationStatus['state'], { label: string; style: string }> = {
@@ -131,6 +138,12 @@ export default function SafetyRuleManagementPage() {
   const [policySubmitting, setPolicySubmitting] = useState(false);
   const [policyStatusTarget, setPolicyStatusTarget] = useState<AiPolicy | null>(null);
   const [policyStatusSubmitting, setPolicyStatusSubmitting] = useState(false);
+
+  // Reference links & files state for modal inputs
+  const [newLinkTitle, setNewLinkTitle] = useState('');
+  const [newLinkUrl, setNewLinkUrl] = useState('');
+  const [uploadingPolicyFile, setUploadingPolicyFile] = useState(false);
+  const [policyFileError, setPolicyFileError] = useState('');
 
   const [testTargetType, setTestTargetType] = useState<PolicyTargetType>('QUESTION');
   const [testText, setTestText] = useState('');
@@ -269,6 +282,9 @@ export default function SafetyRuleManagementPage() {
     setEditingPolicy(null);
     setPolicyForm(DEFAULT_POLICY_FORM);
     setPolicyFormError('');
+    setNewLinkTitle('');
+    setNewLinkUrl('');
+    setPolicyFileError('');
     setPolicyModalOpen(true);
   };
 
@@ -283,14 +299,71 @@ export default function SafetyRuleManagementPage() {
       severity: policy.severity,
       applicableTargetTypes: [...policy.applicableTargetTypes],
       confidenceThreshold: String(policy.confidenceThreshold),
+      referenceLinks: policy.referenceLinks ? [...policy.referenceLinks] : [],
+      referenceFiles: policy.referenceFiles ? [...policy.referenceFiles] : [],
     });
     setPolicyFormError('');
+    setNewLinkTitle('');
+    setNewLinkUrl('');
+    setPolicyFileError('');
     setPolicyModalOpen(true);
   };
 
   const closePolicyModal = () => {
-    if (policySubmitting) return;
+    if (policySubmitting || uploadingPolicyFile) return;
     setPolicyModalOpen(false);
+  };
+
+  const handleAddReferenceLink = () => {
+    const url = newLinkUrl.trim();
+    if (!url) return;
+    try {
+      new URL(url);
+    } catch {
+      setPolicyFormError('Định dạng URL không hợp lệ (ví dụ: https://thuvienphapluat.vn/...).');
+      return;
+    }
+    const title = newLinkTitle.trim() || url;
+    setPolicyForm((f) => ({
+      ...f,
+      referenceLinks: [...f.referenceLinks, { title, url }],
+    }));
+    setNewLinkTitle('');
+    setNewLinkUrl('');
+    setPolicyFormError('');
+  };
+
+  const handleRemoveReferenceLink = (index: number) => {
+    setPolicyForm((f) => ({
+      ...f,
+      referenceLinks: f.referenceLinks.filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingPolicyFile(true);
+    setPolicyFileError('');
+    try {
+      const uploaded = await uploadPolicyDocument(file);
+      setPolicyForm((f) => ({
+        ...f,
+        referenceFiles: [...f.referenceFiles, uploaded],
+      }));
+    } catch (err: any) {
+      setPolicyFileError(err?.response?.data?.message ?? 'Upload tài liệu thất bại, vui lòng thử lại.');
+    } finally {
+      setUploadingPolicyFile(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleRemoveReferenceFile = (index: number) => {
+    setPolicyForm((f) => ({
+      ...f,
+      referenceFiles: f.referenceFiles.filter((_, i) => i !== index),
+    }));
   };
 
   const togglePolicyTargetType = (target: PolicyTargetType) => {
@@ -337,6 +410,8 @@ export default function SafetyRuleManagementPage() {
           severity: policyForm.severity,
           applicableTargetTypes: policyForm.applicableTargetTypes,
           confidenceThreshold: threshold,
+          referenceLinks: policyForm.referenceLinks,
+          referenceFiles: policyForm.referenceFiles,
         });
       } else {
         await createAiPolicy({
@@ -349,6 +424,8 @@ export default function SafetyRuleManagementPage() {
           applicableTargetTypes: policyForm.applicableTargetTypes,
           confidenceThreshold: threshold,
           active: true,
+          referenceLinks: policyForm.referenceLinks,
+          referenceFiles: policyForm.referenceFiles,
         });
       }
       setPolicyModalOpen(false);
@@ -626,11 +703,42 @@ export default function SafetyRuleManagementPage() {
                       <td className="py-3.5 px-2 font-mono text-xs font-semibold text-on-surface">
                         {policy.policyCode}
                       </td>
-                      <td className="py-3.5 px-2 max-w-[280px]">
+                      <td className="py-3.5 px-2 max-w-[320px]">
                         <div className="font-semibold text-sm text-on-surface">{policy.name}</div>
                         {policy.systemDefault && (
                           <div className="text-xs text-outline mt-0.5 flex items-center gap-1">
                             <span className="material-symbols-outlined text-sm">lock</span> Mặc định hệ thống
+                          </div>
+                        )}
+                        {((policy.referenceFiles && policy.referenceFiles.length > 0) ||
+                          (policy.referenceLinks && policy.referenceLinks.length > 0)) && (
+                          <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                            {policy.referenceFiles?.map((f, i) => (
+                              <a
+                                key={`file-${i}`}
+                                href={f.fileUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 transition-colors"
+                                title={`Tài liệu R2: ${f.fileName}`}
+                              >
+                                <span className="material-symbols-outlined text-[13px]">description</span>
+                                <span className="max-w-[120px] truncate">{f.fileName}</span>
+                              </a>
+                            ))}
+                            {policy.referenceLinks?.map((l, i) => (
+                              <a
+                                key={`link-${i}`}
+                                href={l.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 transition-colors"
+                                title={`Căn cứ pháp lý: ${l.url}`}
+                              >
+                                <span className="material-symbols-outlined text-[13px]">link</span>
+                                <span className="max-w-[120px] truncate">{l.title || 'Link căn cứ'}</span>
+                              </a>
+                            ))}
                           </div>
                         )}
                       </td>
@@ -1209,6 +1317,118 @@ export default function SafetyRuleManagementPage() {
                       </button>
                     );
                   })}
+                </div>
+              </div>
+
+              {/* Reference Links & Evidence Documents Section */}
+              <div className="pt-4 border-t border-surface-container-highest space-y-4">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-on-surface uppercase tracking-wider">
+                  <span className="material-symbols-outlined text-base text-primary">verified</span>
+                  Căn cứ pháp lý & Tài liệu bằng chứng thực tế
+                </div>
+
+                {/* 1. Attached Links */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-outline mb-1.5">Gắn liên kết tham chiếu (Website / Luật / Nghị định)</label>
+                  <div className="flex gap-2 mb-2">
+                    <input
+                      type="text"
+                      placeholder="Tiêu đề (ví dụ: Luật KCB 2023 - Điều 12)"
+                      value={newLinkTitle}
+                      onChange={(e) => setNewLinkTitle(e.target.value)}
+                      className="flex-1 py-2 px-3 rounded-xl border border-outline-variant bg-surface text-xs text-on-surface outline-none"
+                    />
+                    <input
+                      type="url"
+                      placeholder="URL (https://thuvienphapluat.vn/...)"
+                      value={newLinkUrl}
+                      onChange={(e) => setNewLinkUrl(e.target.value)}
+                      className="flex-1 py-2 px-3 rounded-xl border border-outline-variant bg-surface text-xs text-on-surface outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddReferenceLink}
+                      className="py-2 px-3.5 rounded-xl bg-surface-container-high hover:bg-surface-container-highest text-primary font-semibold text-xs flex items-center gap-1 cursor-pointer transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-sm">add_link</span>
+                      Thêm
+                    </button>
+                  </div>
+
+                  {policyForm.referenceLinks.length > 0 && (
+                    <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                      {policyForm.referenceLinks.map((link, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-2 rounded-xl bg-surface-container-low border border-outline-variant/60 text-xs">
+                          <div className="flex items-center gap-2 truncate mr-2">
+                            <span className="material-symbols-outlined text-purple-600 text-sm">link</span>
+                            <span className="font-semibold text-on-surface truncate">{link.title}</span>
+                            <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-outline hover:underline truncate max-w-[200px]">
+                              {link.url}
+                            </a>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveReferenceLink(idx)}
+                            className="text-error hover:bg-error-container/50 p-1 rounded-lg transition-colors cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-sm">delete</span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. Upload Document Files to Cloudflare R2 */}
+                <div>
+                  <label className="block text-[11px] font-semibold text-outline mb-1.5">Import tài liệu bằng chứng (.PDF, .DOC, .DOCX, Ảnh)</label>
+                  <div className="flex items-center gap-3">
+                    <label className={`py-2 px-4 rounded-xl border border-dashed border-primary bg-primary/5 text-primary text-xs font-semibold flex items-center gap-2 cursor-pointer hover:bg-primary/10 transition-colors ${uploadingPolicyFile ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                      <span className="material-symbols-outlined text-base">cloud_upload</span>
+                      {uploadingPolicyFile ? 'Đang upload lên R2...' : 'Tải tài liệu lên Cloudflare R2'}
+                      <input
+                        type="file"
+                        accept=".pdf,.doc,.docx,image/*"
+                        disabled={uploadingPolicyFile}
+                        onChange={(e) => void handleFileUpload(e)}
+                        className="hidden"
+                      />
+                    </label>
+                    <span className="text-[11px] text-outline">Tối đa 20MB / file. Lưu trữ bảo mật trên R2.</span>
+                  </div>
+
+                  {policyFileError && (
+                    <p className="mt-1 text-xs text-error font-medium">{policyFileError}</p>
+                  )}
+
+                  {policyForm.referenceFiles.length > 0 && (
+                    <div className="mt-2 space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                      {policyForm.referenceFiles.map((file, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-2 rounded-xl bg-surface-container-low border border-outline-variant/60 text-xs">
+                          <div className="flex items-center gap-2 truncate mr-2">
+                            <span className="material-symbols-outlined text-blue-600 text-sm">description</span>
+                            <span className="font-semibold text-on-surface truncate">{file.fileName}</span>
+                            <span className="text-outline text-[11px]">
+                              ({Math.round((file.fileSizeBytes || 0) / 1024)} KB)
+                            </span>
+                            {file.fileUrl && (
+                              <a href={file.fileUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-[11px] flex items-center gap-0.5">
+                                Xem
+                                <span className="material-symbols-outlined text-xs">open_in_new</span>
+                              </a>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveReferenceFile(idx)}
+                            className="text-error hover:bg-error-container/50 p-1 rounded-lg transition-colors cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-sm">delete</span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
