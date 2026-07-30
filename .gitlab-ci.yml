@@ -321,6 +321,10 @@ pages:
   image: node:22-alpine
   rules:
     - if: '$CI_COMMIT_BRANCH == "HuyND"'
+    - if: '$CI_COMMIT_BRANCH == "ChuongBD"'
+    - if: '$CI_COMMIT_BRANCH == "PhuongNT"'
+    - if: '$CI_COMMIT_BRANCH == "LamVH1"'
+    - if: '$CI_COMMIT_BRANCH == "BachNQ1"'
     - if: '$CI_COMMIT_BRANCH == "dev"'
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
   script:
