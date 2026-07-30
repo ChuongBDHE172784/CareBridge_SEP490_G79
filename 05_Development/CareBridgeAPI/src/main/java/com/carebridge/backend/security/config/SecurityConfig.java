@@ -3,10 +3,13 @@ package com.carebridge.backend.security.config;
 import com.carebridge.backend.security.jwt.JwtAuthenticationFilter;
 import com.carebridge.backend.baby.security.BabyLinkBoundaryAuditFilter;
 import com.carebridge.backend.systemconfiguration.security.MaintenanceModeFilter;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.security.autoconfigure.actuate.web.servlet.EndpointRequest;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -36,9 +39,11 @@ public class SecurityConfig {
     private final MaintenanceModeFilter maintenanceModeFilter;
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
+            CorsConfigurationSource corsConfigurationSource) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .cors(cors -> cors.configurationSource(corsConfigurationSource))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
@@ -119,16 +124,59 @@ public class SecurityConfig {
     }
 
     @Bean
-    public CorsConfigurationSource corsConfigurationSource() {
+    public CorsConfigurationSource corsConfigurationSource(
+            @Value("#{'${carebridge.cors.allowed-origins:http://localhost:5173,http://127.0.0.1:5173}'.split(',')}")
+            List<String> allowedOrigins) {
+        if (allowedOrigins == null) {
+            throw new IllegalStateException("At least one exact CORS origin is required");
+        }
+        List<String> validatedOrigins = allowedOrigins.stream()
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .map(SecurityConfig::validateExactCorsOrigin)
+                .distinct()
+                .toList();
+        if (validatedOrigins.isEmpty()) {
+            throw new IllegalStateException("At least one exact CORS origin is required");
+        }
+
         CorsConfiguration configuration = new CorsConfiguration();
-        // allowedOriginPatterns supports wildcards and is compatible with allowCredentials=true
-        configuration.setAllowedOriginPatterns(List.of("http://localhost:*", "http://192.168.*.*:*"));
+        configuration.setAllowedOrigins(validatedOrigins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setExposedHeaders(List.of("Authorization"));
         configuration.setAllowCredentials(true);
+        configuration.setMaxAge(3600L);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/v1/**", configuration);
         return source;
+    }
+
+    private static String validateExactCorsOrigin(String origin) {
+        if (origin.contains("*")) {
+            throw new IllegalArgumentException("CORS origins must not contain wildcards: " + origin);
+        }
+
+        final URI uri;
+        try {
+            uri = new URI(origin);
+        } catch (URISyntaxException exception) {
+            throw new IllegalArgumentException("Invalid CORS origin: " + origin, exception);
+        }
+
+        String scheme = uri.getScheme();
+        boolean validScheme = "http".equalsIgnoreCase(scheme) || "https".equalsIgnoreCase(scheme);
+        boolean hasPath = uri.getRawPath() != null && !uri.getRawPath().isEmpty();
+        if (!validScheme
+                || uri.getHost() == null
+                || uri.getRawUserInfo() != null
+                || hasPath
+                || uri.getRawQuery() != null
+                || uri.getRawFragment() != null) {
+            throw new IllegalArgumentException(
+                    "CORS origin must be an exact HTTP(S) origin without credentials, path, query, or fragment: "
+                            + origin);
+        }
+        return origin;
     }
 }

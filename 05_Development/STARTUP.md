@@ -13,6 +13,24 @@
 
 ---
 
+## 0. Canonical edge-local stack
+
+The architecture-parity workflow routes both Web and API traffic through a
+named Cloudflare Tunnel and edge Nginx. It intentionally publishes no backend
+or Vite host ports. Complete the one-time Cloudflare steps in
+`05_Development/Deployment/EDGE_TOPOLOGY.md`, then run from the repository root:
+
+```bash
+docker compose \
+  --env-file 05_Development/Deployment/.env.edge-local \
+  -f docker-compose.yml up --build
+```
+
+Use the individual service commands below only when intentionally debugging
+without the edge topology.
+
+---
+
 ## 1. Backend (Spring Boot)
 
 **Path:** `05_Development/CareBridgeAPI`

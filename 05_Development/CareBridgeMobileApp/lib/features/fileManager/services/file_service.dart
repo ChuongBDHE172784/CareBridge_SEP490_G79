@@ -1,28 +1,23 @@
 import 'package:universal_io/io.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import '../../../core/auth/auth_state.dart';
 import '../../../core/network/api_client.dart';
 import '../models/file_model.dart';
 
 class FileService {
-  String get _baseUrl {
-    if (kIsWeb) return 'http://127.0.0.1:8080';
-    if (Platform.isAndroid) return 'http://10.0.2.2:8080';
-    return 'http://127.0.0.1:8080';
-  }
+  static const Duration _uploadTimeout = Duration(seconds: 90);
 
   // UC167: Upload file as multipart
   Future<UserFile> uploadFile(File file, {String? title}) async {
     final token = AuthState.instance.accessToken;
-    final uri = Uri.parse('$_baseUrl/api/v1/files');
+    final uri = Uri.parse('$apiBaseUrl/api/v1/files');
     final request = http.MultipartRequest('POST', uri);
     if (token != null) request.headers['Authorization'] = 'Bearer $token';
     request.files.add(await http.MultipartFile.fromPath('file', file.path));
     if (title != null) request.fields['title'] = title;
 
-    final streamed = await request.send();
+    final streamed = await request.send().timeout(_uploadTimeout);
     final body = await streamed.stream.bytesToString();
     if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
       throw ApiException(streamed.statusCode, body);
