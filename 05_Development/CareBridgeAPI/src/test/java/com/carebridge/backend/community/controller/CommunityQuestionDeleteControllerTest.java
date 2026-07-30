@@ -59,6 +59,18 @@ class CommunityQuestionDeleteControllerTest {
     }
 
     @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000098", roles = "FAMILY")
+    void deleteQuestion_familyOwner_returns204() throws Exception {
+        mockMvc.perform(delete(URL, QUESTION_ID).with(csrf()))
+                .andExpect(status().isNoContent());
+
+        verify(questionService).deleteQuestion(
+                eq(QUESTION_ID),
+                eq(UUID.fromString("00000000-0000-0000-0000-000000000098")),
+                eq(false));
+    }
+
+    @Test
     void deleteQuestion_noJwt_returns401() throws Exception {
         mockMvc.perform(delete(URL, QUESTION_ID).with(csrf()))
                 .andExpect(status().isUnauthorized());

@@ -313,7 +313,12 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
               ),
             const SizedBox(height: 16),
 
-            _SectionLabel('Giai đoạn'),
+            _SectionLabel('Giai đoạn liên quan'),
+            const SizedBox(height: 4),
+            const Text(
+              'Chọn giai đoạn của mẹ hoặc em bé được nhắc đến.',
+              style: TextStyle(color: _onSurfaceVariant, fontSize: 12),
+            ),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
               initialValue: _stage,

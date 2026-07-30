@@ -33,10 +33,9 @@ public class CommunityQuestionController {
     private final CommunityQuestionService questionService;
     private final CommunityQuestionSearchService searchService;
 
-    // ADR-COM-001: Only ROLE_MOTHER can create community questions
+    // Mothers and family members may create questions under their own account.
     @PostMapping
-    
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<CommunityQuestionResponse>> createQuestion(
             @Valid @RequestBody CreateCommunityQuestionRequest request,
             Principal principal) {
@@ -76,7 +75,7 @@ public class CommunityQuestionController {
     }
 
     @GetMapping("/mine")
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<PaginatedResponse<CommunityQuestionResponse>> getMyQuestions(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -100,7 +99,7 @@ public class CommunityQuestionController {
     }
 
     @PatchMapping("/{id}")
-    
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<CommunityQuestionResponse>> editQuestion(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateCommunityQuestionRequest request,

@@ -52,7 +52,10 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
   String? _selectedStage; // null = "Tất cả giai đoạn"
   bool _verifiedOnly = false;
 
-  bool get _canCreateQuestion => AuthState.instance.role == 'MOTHER';
+  bool get _canCreateQuestion {
+    final role = AuthState.instance.role;
+    return role == 'MOTHER' || role == 'FAMILY';
+  }
 
   @override
   void initState() {
@@ -276,7 +279,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
   // ── Top Bar: Title & Navigation Shortcuts ──
   Widget _buildTopBar() {
     final canPop = Navigator.of(context).canPop();
-    final isMother = AuthState.instance.role == 'MOTHER';
+    final canManageOwnQuestions = _canCreateQuestion;
     return Padding(
       padding: EdgeInsets.fromLTRB(canPop ? 12 : 20, 12, 20, 8),
       child: Row(
@@ -312,11 +315,15 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
           const SizedBox(width: 8),
           // My Questions / Verified content
           _buildTopCircleButton(
-            icon: isMother ? Icons.article_outlined : Icons.verified_outlined,
-            tooltip: isMother ? 'Câu hỏi của tôi' : 'Nội dung đã kiểm duyệt',
+            icon: canManageOwnQuestions
+                ? Icons.article_outlined
+                : Icons.verified_outlined,
+            tooltip: canManageOwnQuestions
+                ? 'Câu hỏi của tôi'
+                : 'Nội dung đã kiểm duyệt',
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(
-                builder: (_) => isMother
+                builder: (_) => canManageOwnQuestions
                     ? const MyQuestionsScreen()
                     : const ViewContentScreen(mode: ContentBrowseMode.family),
               ),

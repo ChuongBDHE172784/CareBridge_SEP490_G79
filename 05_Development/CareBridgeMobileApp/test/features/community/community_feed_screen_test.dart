@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:untitled/core/auth/auth_state.dart';
-import 'package:untitled/features/community/models/content_model.dart';
 import 'package:untitled/features/community/screens/community_feed_screen.dart';
-import 'package:untitled/features/community/screens/view_content_screen.dart';
+import 'package:untitled/features/community/screens/my_questions_screen.dart';
 
 void main() {
   testWidgets(
@@ -35,7 +34,7 @@ void main() {
     },
   );
 
-  testWidgets('Family does not see Mother-only create-question actions', (
+  testWidgets('Family can create and manage own community questions', (
     WidgetTester tester,
   ) async {
     FlutterSecureStorage.setMockInitialValues({});
@@ -53,16 +52,14 @@ void main() {
 
     expect(
       find.byKey(const Key('community-create-question-fab')),
-      findsNothing,
+      findsOneWidget,
     );
-    expect(find.text('Đặt câu hỏi'), findsNothing);
+    expect(find.text('Đặt câu hỏi'), findsWidgets);
+    expect(find.byTooltip('Câu hỏi của tôi'), findsOneWidget);
 
-    await tester.tap(find.byIcon(Icons.verified_outlined));
+    await tester.tap(find.byTooltip('Câu hỏi của tôi'));
     await tester.pumpAndSettle();
 
-    final browse = tester.widget<ViewContentScreen>(
-      find.byType(ViewContentScreen),
-    );
-    expect(browse.mode, ContentBrowseMode.family);
+    expect(find.byType(MyQuestionsScreen), findsOneWidget);
   });
 }

@@ -109,29 +109,31 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
     }
   }
 
-  InputDecoration _inputDeco(String label, {String? hint}) => InputDecoration(
-    labelText: label,
-    hintText: hint,
-    labelStyle: const TextStyle(color: _primary),
-    focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(10),
-      borderSide: const BorderSide(color: _primary, width: 2),
-    ),
-    enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(10),
-      borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-    ),
-    errorBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(10),
-      borderSide: const BorderSide(color: Colors.red),
-    ),
-    focusedErrorBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(10),
-      borderSide: const BorderSide(color: Colors.red, width: 2),
-    ),
-    filled: true,
-    fillColor: Colors.white,
-  );
+  InputDecoration _inputDeco(String label, {String? hint, String? helper}) =>
+      InputDecoration(
+        labelText: label,
+        hintText: hint,
+        helperText: helper,
+        labelStyle: const TextStyle(color: _primary),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: _primary, width: 2),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Colors.red),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Colors.red, width: 2),
+        ),
+        filled: true,
+        fillColor: Colors.white,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -240,7 +242,11 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                     const SizedBox(height: 14),
                     DropdownButtonFormField<String>(
                       initialValue: _stage,
-                      decoration: _inputDeco('Giai đoạn'),
+                      decoration: _inputDeco(
+                        'Giai đoạn liên quan',
+                        helper:
+                            'Chọn giai đoạn của mẹ hoặc em bé được nhắc đến.',
+                      ),
                       items: contentStageOptions
                           .map(
                             (stage) => DropdownMenuItem(

@@ -158,6 +158,21 @@ class CommunityQuestionControllerTest {
                 .andExpect(jsonPath("$.data.id").isNotEmpty());
     }
 
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000005", roles = "FAMILY")
+    void createQuestion_familyRole_returns201() throws Exception {
+        UUID familyId = UUID.fromString("00000000-0000-0000-0000-000000000005");
+        when(questionService.createQuestion(eq(familyId), any())).thenReturn(mockResponse());
+
+        mockMvc.perform(post(BASE_URL).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(makeRequest())))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.success").value(true));
+
+        verify(questionService).createQuestion(eq(familyId), any());
+    }
+
     // COM-TC-004: title too short (< 5 chars) → 400 (BR-COM-003)
     @Test
     @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "MOTHER")
@@ -381,6 +396,22 @@ class CommunityQuestionControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].status").value("PENDING"))
                 .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000005", roles = "FAMILY")
+    void getMyQuestions_familyReturnsOwnPagedQuestions() throws Exception {
+        UUID familyId = UUID.fromString("00000000-0000-0000-0000-000000000005");
+        PaginatedResponse<CommunityQuestionResponse> response = PaginatedResponse.of(
+                new PageImpl<>(List.of(mockResponse()), PageRequest.of(0, 20), 1));
+        when(questionService.getMyQuestions(familyId, 0, 20)).thenReturn(response);
+
+        mockMvc.perform(get(BASE_URL + "/mine"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].status").value("PENDING"))
+                .andExpect(jsonPath("$.totalElements").value(1));
+
+        verify(questionService).getMyQuestions(familyId, 0, 20);
     }
 
     @Test

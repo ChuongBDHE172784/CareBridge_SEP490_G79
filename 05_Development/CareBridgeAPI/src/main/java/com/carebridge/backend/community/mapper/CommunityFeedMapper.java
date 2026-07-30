@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class CommunityFeedMapper {
 
-    public static final String ANONYMOUS_AUTHOR = "Mẹ ẩn danh";
+    public static final String ANONYMOUS_AUTHOR = "Thành viên ẩn danh";
     private static final String UNKNOWN_AUTHOR = "Người dùng";
 
     public CommunityFeedItemResponse toFeedItem(CommunityQuestion q, String topicName,
@@ -29,7 +29,7 @@ public class CommunityFeedMapper {
         );
     }
 
-    // ADR-COM-002: isAnonymous=true → "Mẹ ẩn danh"; never return null
+    // ADR-COM-002: anonymous authors use a role-neutral label; never return null.
     public String maskAuthorIfAnonymous(CommunityQuestion q, String displayName) {
         if (q.isAnonymous()) {
             return ANONYMOUS_AUTHOR;

@@ -332,7 +332,7 @@ class CommunityQuestionServiceImplTest {
         CommunityQuestionDetailResponse response = questionService.getQuestionDetail(QUESTION_ID, AUTHOR_ID);
 
         assertThat(response.getAuthorId()).isEqualTo(AUTHOR_ID);
-        assertThat(response.getAuthorDisplay()).isEqualTo("Mẹ ẩn danh");
+        assertThat(response.getAuthorDisplay()).isEqualTo("Thành viên ẩn danh");
     }
 
     @Test

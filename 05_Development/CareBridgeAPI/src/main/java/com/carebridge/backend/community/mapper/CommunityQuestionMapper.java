@@ -16,6 +16,8 @@ import java.util.UUID;
 @Component
 public class CommunityQuestionMapper {
 
+    private static final String ANONYMOUS_AUTHOR = "Thành viên ẩn danh";
+
     public CommunityQuestion toEntity(CreateCommunityQuestionRequest request, UUID authorId) {
         return CommunityQuestion.builder()
                 .topicId(request.getTopicId())
@@ -76,7 +78,7 @@ public class CommunityQuestionMapper {
             boolean isBookmarked, boolean isLiked, UUID currentUserId) {
         boolean viewerIsAuthor = currentUserId != null && currentUserId.equals(entity.getAuthorId());
         UUID exposedAuthorId = (entity.isAnonymous() && !viewerIsAuthor) ? null : entity.getAuthorId();
-        String finalAuthorDisplay = entity.isAnonymous() ? "Mẹ ẩn danh"
+        String finalAuthorDisplay = entity.isAnonymous() ? ANONYMOUS_AUTHOR
                 : ((authorDisplay != null && !authorDisplay.isBlank()) ? authorDisplay : "Người dùng");
         return CommunityQuestionDetailResponse.builder()
                 .id(entity.getId())
@@ -123,7 +125,7 @@ public class CommunityQuestionMapper {
     public CommunityQuestionSummaryResponse toSummaryResponse(
             CommunityQuestion entity, String topicName, String authorDisplay,
             boolean hasExpertAnswer, boolean isBookmarked, boolean isLiked) {
-        String finalAuthorDisplay = entity.isAnonymous() ? "Mẹ ẩn danh"
+        String finalAuthorDisplay = entity.isAnonymous() ? ANONYMOUS_AUTHOR
                 : ((authorDisplay != null && !authorDisplay.isBlank()) ? authorDisplay : "Người dùng");
         return new CommunityQuestionSummaryResponse(
                 entity.getId(),
