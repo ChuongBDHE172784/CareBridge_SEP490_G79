@@ -7,7 +7,7 @@ import '../widgets/verified_content_body.dart';
 
 /// CB-181 — View Verified Content Detail (UC-225)
 /// Displays the full body of a curated article or FAQ answer.
-/// Reachable from VerifiedContentSearchScreen (UC-224) and ViewContentScreen (UC-82).
+/// Reachable from ViewContentScreen (UC-82).
 class VerifiedContentDetailScreen extends StatefulWidget {
   final String contentId;
   final ContentBrowseMode mode;

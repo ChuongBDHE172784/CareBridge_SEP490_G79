@@ -1,6 +1,6 @@
 import '../../../core/constants/content_stages.dart';
 
-enum ContentBrowseMode { generic, lifecycle }
+enum ContentBrowseMode { generic, lifecycle, family }
 
 class LifecycleEnvelope<T> {
   final String stage;

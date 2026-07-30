@@ -25,6 +25,27 @@ void main() {
       expect(snapshot.selectedGroupDetail!.sharedDataSummary.totalItems, 2);
     });
 
+    testWidgets(
+      'overview exposes Community and Content FAQ without duplicating bottom navigation',
+      (tester) async {
+        await _pumpDashboard(
+          tester,
+          ({selectedCareGroupId}) async => _snapshot(
+            selectedId: 'group-a',
+            groups: [_group('group-a', 'Nhóm A')],
+            detail: _detail('group-a'),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Cộng đồng'), findsOneWidget);
+        expect(find.text('Nội dung & FAQ'), findsOneWidget);
+        expect(find.text('Chuyên gia'), findsOneWidget);
+        expect(find.text('Trò chuyện'), findsOneWidget);
+        expect(find.text('Cộng đồng / FAQ'), findsNothing);
+      },
+    );
+
     testWidgets('renders loading state', (tester) async {
       final pending = Completer<FamilyHomeSnapshot>();
 

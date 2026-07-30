@@ -3,12 +3,13 @@ import 'package:flutter/material.dart';
 import '../../../core/auth/auth_state.dart';
 import '../../../core/constants/content_stages.dart';
 import '../models/community_model.dart';
+import '../models/content_model.dart';
 import '../services/community_service.dart';
 import 'create_question_screen.dart';
 import 'question_detail_screen.dart';
 import 'bookmarked_questions_screen.dart';
 import 'my_questions_screen.dart';
-import 'verified_content_search_screen.dart';
+import 'view_content_screen.dart';
 
 /// CB-014 — Community Feed with Realtime Search & Dropdown Filters (UC-54..UC-59, UC-198..UC-201)
 class CommunityFeedScreen extends StatefulWidget {
@@ -50,6 +51,8 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
   String? _selectedTopicId; // null = "Tất cả chủ đề"
   String? _selectedStage; // null = "Tất cả giai đoạn"
   bool _verifiedOnly = false;
+
+  bool get _canCreateQuestion => AuthState.instance.role == 'MOTHER';
 
   @override
   void initState() {
@@ -203,11 +206,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(
-                          Icons.search_off,
-                          size: 48,
-                          color: _outline,
-                        ),
+                        const Icon(Icons.search_off, size: 48, color: _outline),
                         const SizedBox(height: 12),
                         Text(
                           _searchCtrl.text.isNotEmpty ||
@@ -230,17 +229,26 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                 SliverPadding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate((context, index) {
-                      // Insert Bento Section after 2nd post card
-                      if (index == 2) return _buildBentoSection();
-                      final actualIdx = index > 2 ? index - 1 : index;
-                      if (actualIdx >= _items.length) return null;
-                      final item = _items[actualIdx];
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 14),
-                        child: _buildPostCard(item),
-                      );
-                    }, childCount: _items.isEmpty ? 0 : _items.length + 1),
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        // Insert Bento Section after 2nd post card
+                        if (_canCreateQuestion && index == 2) {
+                          return _buildBentoSection();
+                        }
+                        final actualIdx = _canCreateQuestion && index > 2
+                            ? index - 1
+                            : index;
+                        if (actualIdx >= _items.length) return null;
+                        final item = _items[actualIdx];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 14),
+                          child: _buildPostCard(item),
+                        );
+                      },
+                      childCount: _items.isEmpty
+                          ? 0
+                          : _items.length + (_canCreateQuestion ? 1 : 0),
+                    ),
                   ),
                 ),
 
@@ -302,7 +310,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
             ),
           ),
           const SizedBox(width: 8),
-          // My Questions / Verified search
+          // My Questions / Verified content
           _buildTopCircleButton(
             icon: isMother ? Icons.article_outlined : Icons.verified_outlined,
             tooltip: isMother ? 'Câu hỏi của tôi' : 'Nội dung đã kiểm duyệt',
@@ -310,7 +318,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
               MaterialPageRoute(
                 builder: (_) => isMother
                     ? const MyQuestionsScreen()
-                    : const VerifiedContentSearchScreen(),
+                    : const ViewContentScreen(mode: ContentBrowseMode.family),
               ),
             ),
           ),
@@ -418,10 +426,8 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
 
     final selectedStageOption = contentStageOptions.firstWhere(
       (s) => s.value == _selectedStage,
-      orElse: () => const ContentStageOption(
-        value: '',
-        label: 'Tất cả giai đoạn',
-      ),
+      orElse: () =>
+          const ContentStageOption(value: '', label: 'Tất cả giai đoạn'),
     );
 
     return SizedBox(
@@ -448,7 +454,9 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                   style: TextStyle(fontFamily: 'Lexend', fontSize: 13),
                 ),
               ),
-              ..._topics.where((t) => !t.isHidden).map(
+              ..._topics
+                  .where((t) => !t.isHidden)
+                  .map(
                     (t) => PopupMenuItem<String>(
                       value: t.id,
                       child: Text(
@@ -484,9 +492,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    _selectedTopicId != null
-                        ? selectedTopic.name
-                        : 'Chủ đề',
+                    _selectedTopicId != null ? selectedTopic.name : 'Chủ đề',
                     style: TextStyle(
                       fontFamily: 'Lexend',
                       fontSize: 12,
@@ -533,10 +539,7 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                   value: stage.value,
                   child: Text(
                     stage.label,
-                    style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 13,
-                    ),
+                    style: const TextStyle(fontFamily: 'Lexend', fontSize: 13),
                   ),
                 ),
               ),
@@ -601,7 +604,9 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
               decoration: BoxDecoration(
                 color: _verifiedOnly ? _primary : _surfaceContainerLowest,
                 borderRadius: BorderRadius.circular(99),
-                border: _verifiedOnly ? null : Border.all(color: _outlineVariant),
+                border: _verifiedOnly
+                    ? null
+                    : Border.all(color: _outlineVariant),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -863,14 +868,19 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                   onTap: () => _toggleQuestionLike(item.id),
                   behavior: HitTestBehavior.opaque,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 4,
+                    ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
                           liked ? Icons.favorite : Icons.favorite_border,
                           size: 18,
-                          color: liked ? const Color(0xFFBA1A1A) : _onSurfaceVariant,
+                          color: liked
+                              ? const Color(0xFFBA1A1A)
+                              : _onSurfaceVariant,
                         ),
                         const SizedBox(width: 4),
                         Text(
@@ -878,8 +888,12 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
                           style: TextStyle(
                             fontFamily: 'Lexend',
                             fontSize: 12,
-                            fontWeight: liked ? FontWeight.bold : FontWeight.w500,
-                            color: liked ? const Color(0xFFBA1A1A) : _onSurfaceVariant,
+                            fontWeight: liked
+                                ? FontWeight.bold
+                                : FontWeight.w500,
+                            color: liked
+                                ? const Color(0xFFBA1A1A)
+                                : _onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -963,7 +977,9 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
     setState(
       () => _items[index] = _items[index].copyWith(
         liked: !wasLiked,
-        likeCount: wasLiked ? (prevCount > 0 ? prevCount - 1 : 0) : prevCount + 1,
+        likeCount: wasLiked
+            ? (prevCount > 0 ? prevCount - 1 : 0)
+            : prevCount + 1,
       ),
     );
     try {
@@ -990,7 +1006,9 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
 
   // ── Floating Action Button: Create New Question ──
   Widget _buildFab() {
+    if (!_canCreateQuestion) return const SizedBox.shrink();
     return Container(
+      key: const Key('community-create-question-fab'),
       height: 48,
       decoration: BoxDecoration(
         color: _primaryContainer,

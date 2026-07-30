@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../core/network/api_client.dart';
 import '../../auth/screens/account_profile_screen.dart';
 import '../../community/screens/community_feed_screen.dart';
+import '../../community/models/content_model.dart';
+import '../../community/screens/view_content_screen.dart';
 import '../../directChat/screens/conversation_list_screen.dart';
 import '../../directChat/screens/expert_directory_screen.dart';
 import '../../familySync/screens/my_care_groups_screen.dart';
@@ -177,7 +179,7 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
         Expanded(
           child: _ShortcutButton(
             icon: Icons.forum_outlined,
-            label: 'Cộng đồng / FAQ',
+            label: 'Cộng đồng',
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const CommunityFeedScreen()),
             ),
@@ -186,21 +188,9 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
         const SizedBox(width: 10),
         Expanded(
           child: _ShortcutButton(
-            icon: Icons.medical_services_outlined,
-            label: 'Chuyên gia',
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const ExpertDirectoryScreen()),
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _ShortcutButton(
-            icon: Icons.chat_bubble_outline,
-            label: 'Trò chuyện',
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const ConversationListScreen()),
-            ),
+            icon: Icons.menu_book_outlined,
+            label: 'Nội dung & FAQ',
+            onTap: _openFamilyContent,
           ),
         ),
       ],
@@ -534,6 +524,14 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => const MyCareGroupsScreen()));
+  }
+
+  void _openFamilyContent() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const ViewContentScreen(mode: ContentBrowseMode.family),
+      ),
+    );
   }
 
   String _dateLabel(DateTime? value) {

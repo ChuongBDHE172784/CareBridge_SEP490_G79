@@ -55,6 +55,93 @@ ContentService _service({int failures = 0, List<String>? paths}) {
 }
 
 void main() {
+  group('Family generic content', () {
+    testWidgets(
+      'loads all stages and supports normal search and stage filters',
+      (tester) async {
+        final paths = <String>[];
+        final service = ContentService(
+          getRequest: (path) async {
+            paths.add(path);
+            if (path == '/api/v1/content/family-article') {
+              return {
+                'data': {
+                  'id': 'family-article',
+                  'type': 'ARTICLE',
+                  'title': 'Dinh dưỡng thai kỳ',
+                  'body': 'Nội dung chi tiết',
+                  'stage': 'PREGNANCY',
+                  'version': 1,
+                },
+              };
+            }
+            final isFaq = path.contains('type=FAQ');
+            return {
+              'data': [
+                {
+                  'id': isFaq ? 'family-faq' : 'family-article',
+                  'type': isFaq ? 'FAQ' : 'ARTICLE',
+                  'title': isFaq ? 'FAQ sau sinh' : 'Dinh dưỡng thai kỳ',
+                  'stage': isFaq ? 'POSTPARTUM' : 'PREGNANCY',
+                  'topicId': 'topic-family',
+                },
+              ],
+              'page': 0,
+              'size': 50,
+              'totalElements': 1,
+              'totalPages': 1,
+            };
+          },
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: ViewContentScreen(
+              mode: ContentBrowseMode.family,
+              contentService: service,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Dinh dưỡng thai kỳ'), findsOneWidget);
+        expect(find.text('Giai đoạn nội dung'), findsNothing);
+        expect(find.text('Đang xác định từ máy chủ'), findsNothing);
+        expect(find.text('Tất cả giai đoạn'), findsOneWidget);
+        expect(find.text('Danh mục'), findsNothing);
+        expect(find.widgetWithText(ChoiceChip, 'Checklist'), findsNothing);
+        expect(paths.where((path) => path.contains('stage=')), isEmpty);
+        expect(
+          paths.where((path) => path.contains('/family/care-groups/')),
+          isEmpty,
+        );
+
+        await tester.tap(find.widgetWithText(ChoiceChip, 'FAQ'));
+        await tester.pump();
+        expect(find.text('FAQ sau sinh'), findsOneWidget);
+        await tester.tap(find.widgetWithText(ChoiceChip, 'Tất cả'));
+        await tester.pump();
+
+        await tester.enterText(find.byType(TextField), 'Dinh dưỡng');
+        await tester.pump();
+        expect(find.text('Dinh dưỡng thai kỳ'), findsOneWidget);
+        expect(find.text('FAQ sau sinh'), findsNothing);
+
+        final stageList = find.byWidgetPredicate(
+          (widget) =>
+              widget is ListView && widget.scrollDirection == Axis.horizontal,
+        );
+        await tester.drag(stageList, const Offset(-500, 0));
+        await tester.pump();
+        await tester.tap(find.text('Hậu sản & Chăm bé'));
+        await tester.pumpAndSettle();
+
+        expect(paths.any((path) => path.contains('stage=POSTPARTUM')), isTrue);
+        expect(tester.takeException(), isNull);
+      },
+    );
+  });
+
   group('UC82-69-MOB-002 lifecycle list states', () {
     testWidgets('server PRE stage is locked and lifecycle data is rendered', (
       tester,
@@ -76,6 +163,11 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Synthetic lifecycle guidance'), findsOneWidget);
+      expect(find.text('Khám phá nội dung theo lựa chọn'), findsNothing);
+      expect(
+        find.byKey(const Key('lifecycle-content-generic-browse')),
+        findsNothing,
+      );
       expect(paths, hasLength(2));
       expect(paths.first, isNot(contains('stage=')));
       expect(tester.takeException(), isNull);
@@ -329,6 +421,24 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key('lifecycle-content-stage')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('category filter is removed in lifecycle mode (mother role)', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ViewContentScreen(
+            mode: ContentBrowseMode.lifecycle,
+            contentService: _service(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Lọc nội dung'), findsNothing);
+      expect(find.text('Chủ đề'), findsNothing);
       expect(tester.takeException(), isNull);
     });
   });

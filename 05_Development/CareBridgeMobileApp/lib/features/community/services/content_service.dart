@@ -107,31 +107,6 @@ class ContentService {
     return ContentDetail.fromJson(json['data'] as Map<String, dynamic>);
   }
 
-  Future<List<ContentListItem>> searchContent(
-    String keyword, {
-    String? type,
-    String? stage,
-    int page = 0,
-  }) async {
-    final params = <String, String>{
-      'keyword': keyword,
-      'page': '$page',
-      'size': '10',
-    };
-    if (type != null) params['type'] = type;
-    if (stage != null) params['stage'] = stage;
-    final query = params.entries
-        .map(
-          (e) =>
-              '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}',
-        )
-        .join('&');
-    final json = await _getRequest('/api/v1/content/search?$query');
-    return PaginatedContent.fromApiResponse(
-      Map<String, dynamic>.from(json as Map),
-    ).data;
-  }
-
   Future<List<ChecklistTemplate>> getChecklists({String? stage}) async {
     final q = stage != null ? '?stage=$stage' : '';
     final json = await _getRequest('/api/v1/content/checklists$q');
