@@ -31,8 +31,8 @@ class TriageSafetyEntryAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final title = _isMaternal
-        ? 'Kiểm tra dấu hiệu an toàn của bạn'
-        : 'Kiểm tra dấu hiệu an toàn của bé';
+        ? 'AI Triage - Kiểm tra triệu chứng'
+        : 'AI Triage - Kiểm tra triệu chứng của bé';
     final description = _isMaternal
         ? 'Đánh giá nhanh theo đúng giai đoạn sức khỏe hiện tại.'
         : 'Đánh giá nhanh theo đúng độ tuổi hiện tại của bé.';
@@ -41,8 +41,10 @@ class TriageSafetyEntryAction extends StatelessWidget {
       key: Key(
         'triage-safety-entry-${entryContext.stage.apiValue.toLowerCase()}',
       ),
+      excludeSemantics: true,
       button: true,
       label: '$title. $description',
+      onTap: () => _openAssessment(context),
       child: Material(
         color: Colors.transparent,
         child: InkWell(

@@ -210,7 +210,21 @@ class FallDetectionServiceTest {
     }
 
     @Test
-    void sendEmergencyAlert_shouldOpenEmergencyAndPublishEscalationEvent() {
+    void reportFalsePositive_preservesResponseReasonAndCapsCanonicalNote() {
+        SafetyEvent event = makeSafetyEvent();
+        String reason = "x".repeat(500);
+        when(safetyEventRepository.findLockedByIdAndUserId(event.getId(), USER_ID))
+                .thenReturn(Optional.of(event));
+        when(safetyEventRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        fallDetectionService.reportFalsePositive(USER_ID, event.getId(), reason);
+
+        assertThat(event.getNotes()).hasSize(255);
+        assertThat(event.getResponseReason()).isEqualTo(reason);
+    }
+
+    @Test
+    void sendEmergencyAlert_shouldOpenEmergencyWithoutRepublishingDetectionEvent() {
         SafetyEvent event = makeSafetyEvent();
         when(safetyEventRepository.findLockedByIdAndUserId(event.getId(), USER_ID)).thenReturn(Optional.of(event));
         when(safetyEventRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -218,7 +232,7 @@ class FallDetectionServiceTest {
         fallDetectionService.sendEmergencyAlert(USER_ID, event.getId());
 
         verify(emergencyService).openFlow(any(), eq(USER_ID));
-        verify(eventPublisher).publishEvent(any(SuspectedFallDetected.class));
+        verify(eventPublisher, never()).publishEvent(any(SuspectedFallDetected.class));
     }
 
     @Test
@@ -236,7 +250,59 @@ class FallDetectionServiceTest {
 
         verify(safetyEventRepository, times(2)).findLockedByIdAndUserId(event.getId(), USER_ID);
         verify(emergencyService, times(1)).openFlow(any(), eq(USER_ID));
-        verify(eventPublisher, times(1)).publishEvent(any(SuspectedFallDetected.class));
+        verify(eventPublisher, never()).publishEvent(any(SuspectedFallDetected.class));
+    }
+
+    @Test
+    void sendEmergencyAlert_reusedSentSessionSynchronizesLinkedImuEventWithoutRepublishing() {
+        SafetyEvent event = makeSafetyEvent();
+        UUID emergencySessionId = UUID.randomUUID();
+        when(safetyEventRepository.findLockedByIdAndUserId(event.getId(), USER_ID))
+                .thenReturn(Optional.of(event));
+        when(safetyEventRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(emergencyService.openFlow(any(), eq(USER_ID))).thenReturn(
+                EmergencySessionResponse.builder()
+                        .sessionId(emergencySessionId)
+                        .userId(USER_ID)
+                        .build());
+        when(safetyEventRepository.transitionLinkedEventForSentEmergencySession(
+                event.getId(),
+                SafetyEventStatus.ESCALATION_REQUESTED,
+                SafetyEventStatus.EMERGENCY_ALERT_SENT))
+                .thenReturn(1);
+
+        fallDetectionService.sendEmergencyAlert(USER_ID, event.getId());
+
+        assertThat(event.getEmergencySessionId()).isEqualTo(emergencySessionId);
+        assertThat(event.getStatus()).isEqualTo(SafetyEventStatus.EMERGENCY_ALERT_SENT);
+        verify(safetyEventRepository).transitionLinkedEventForSentEmergencySession(
+                event.getId(),
+                SafetyEventStatus.ESCALATION_REQUESTED,
+                SafetyEventStatus.EMERGENCY_ALERT_SENT);
+        verify(eventPublisher, never()).publishEvent(any(SuspectedFallDetected.class));
+    }
+
+    @Test
+    void sendEmergencyAlert_replayedLinkedEventSynchronizesWithoutOpeningAnotherEmergency() {
+        SafetyEvent event = makeSafetyEvent();
+        event.setEmergencySessionId(UUID.randomUUID());
+        when(safetyEventRepository.findLockedByIdAndUserId(event.getId(), USER_ID))
+                .thenReturn(Optional.of(event));
+        when(safetyEventRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(safetyEventRepository.transitionLinkedEventForSentEmergencySession(
+                event.getId(),
+                SafetyEventStatus.ESCALATION_REQUESTED,
+                SafetyEventStatus.EMERGENCY_ALERT_SENT))
+                .thenReturn(1);
+
+        fallDetectionService.sendEmergencyAlert(USER_ID, event.getId());
+
+        assertThat(event.getStatus()).isEqualTo(SafetyEventStatus.EMERGENCY_ALERT_SENT);
+        verify(emergencyService, never()).openFlow(any(), eq(USER_ID));
+        verify(safetyEventRepository).transitionLinkedEventForSentEmergencySession(
+                event.getId(),
+                SafetyEventStatus.ESCALATION_REQUESTED,
+                SafetyEventStatus.EMERGENCY_ALERT_SENT);
     }
 
     @Test
@@ -263,6 +329,7 @@ class FallDetectionServiceTest {
         assertThat(result.getId()).isEqualTo(existing.getId());
         verify(algorithmService, never()).analyze(any(), anyString());
         verify(safetyEventRepository, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any(SuspectedFallDetected.class));
     }
 
     @Test
@@ -284,6 +351,32 @@ class FallDetectionServiceTest {
         verify(safetyEventRepository).save(argThat(event ->
                 event.getUserLatitude() == null && event.getUserLongitude() == null
                         && event.getCountdownDeadlineAt() != null));
+    }
+
+    @Test
+    void processImuData_suspectedEventPublishesDetectionExactlyOnceAfterOpenEventIsSaved() {
+        ImuMonitoringSession session = SafetyConfigTestFactory.makeActiveSession();
+        when(imuSessionRepository.findActiveForUpdateByUserId(USER_ID)).thenReturn(Optional.of(session));
+        when(safetyEventRepository.findByImuSessionIdAndSignalKey(any(), anyString())).thenReturn(Optional.empty());
+        when(algorithmService.analyze(any(), anyString()))
+                .thenReturn(new FallAnalysisResult(true, SafetyEventType.SUSPECTED_FALL, 15.2));
+        when(safetyEventRepository.save(any())).thenAnswer(invocation -> {
+            SafetyEvent event = invocation.getArgument(0);
+            event.setId(UUID.randomUUID());
+            return event;
+        });
+
+        SafetyEventResponse response = fallDetectionService.processImuData(USER_ID, payload("confirmed-candidate"));
+
+        ArgumentCaptor<SuspectedFallDetected> eventCaptor =
+                ArgumentCaptor.forClass(SuspectedFallDetected.class);
+        InOrder order = inOrder(safetyEventRepository, eventPublisher);
+        order.verify(safetyEventRepository).save(any(SafetyEvent.class));
+        order.verify(eventPublisher).publishEvent(eventCaptor.capture());
+        verify(eventPublisher, times(1)).publishEvent(any(SuspectedFallDetected.class));
+        assertThat(eventCaptor.getValue().safetyEventId()).isEqualTo(response.getId());
+        assertThat(eventCaptor.getValue().eventType()).isEqualTo("SUSPECTED_FALL");
+        assertThat(response.getStatus()).isEqualTo("OPEN");
     }
 
     @Test

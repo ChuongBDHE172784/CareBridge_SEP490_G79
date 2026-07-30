@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 class ChecklistTemplateMigrationTest {
 
     /**
+    /**
      * The applied V1 schema migration is immutable: changing it would invalidate
      * Flyway checksums for existing environments. New changes belong in a later
      * append-only migration.

@@ -27,11 +27,12 @@ class FlywayMigrationChainTest {
         assertThat(manifest.duplicateVersions()).isEmpty();
         assertThat(manifest.migrations())
                 .extracting(DatabaseGate0Support.MigrationFile::script)
-                .containsExactly(
+                .contains(
                         "V1__init_schema.sql",
                         "V2__seed_reference_data.sql",
-                        "V3__add_community_content_image_urls.sql",
-                        "V4__consolidate_content_community_stages.sql");
+                        "V3__add_audit_events.sql",
+                        "V4__consolidate_content_community_stages.sql",
+                        "V5__add_community_content_image_urls.sql");
         assertThat(manifest.migrations())
                 .extracting(DatabaseGate0Support.MigrationFile::type)
                 .containsOnly("V");

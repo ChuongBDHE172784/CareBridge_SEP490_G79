@@ -1,6 +1,7 @@
 import 'dart:ui' show SemanticsAction;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart' show DebugSemanticsDumpOrder;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:untitled/features/aiTriage/models/triage_entry_context.dart';
@@ -98,10 +99,15 @@ class _BabyListService extends BabyService {
 
 Widget _entryProbe(GoRouterState state) {
   final entry = state.extra as TriageEntryContext;
+  final lifecycleBinding = entry.toLifecycleBindingJson();
   return Scaffold(
     appBar: AppBar(leading: const BackButton()),
     body: Text(
-      '${entry.stage.apiValue}:${entry.lockStage}:${entry.origin.name}',
+      '${entry.stage.apiValue}:${entry.lockStage}:${entry.origin.name}:'
+      '${lifecycleBinding['journeyId']}:'
+      '${lifecycleBinding['originDashboard']}:'
+      '${lifecycleBinding['originReferenceId']}:'
+      '${lifecycleBinding['babyProfileId']}',
       key: const Key('triage-entry-probe'),
     ),
   );
@@ -172,6 +178,8 @@ Future<void> _openAndReturn(
   WidgetTester tester, {
   required GoRouter router,
   required Key actionKey,
+  required String expectedTitle,
+  required String expectedDescription,
   required String expectedProbe,
 }) async {
   await tester.pumpWidget(MaterialApp.router(routerConfig: router));
@@ -184,16 +192,26 @@ Future<void> _openAndReturn(
     scrollable: find.byType(Scrollable).first,
   );
   expect(action, findsOneWidget);
+  expect(find.text(expectedTitle), findsOneWidget);
   expect(tester.getSize(action).height, greaterThanOrEqualTo(48));
+  final semanticsNode = tester.getSemantics(action);
+  final semanticsData = semanticsNode.getSemanticsData();
+  expect(semanticsData.label, '$expectedTitle. $expectedDescription');
+  expect(semanticsData.hasAction(SemanticsAction.tap), isTrue);
   expect(
-    tester
-        .getSemantics(action)
-        .getSemanticsData()
-        .hasAction(SemanticsAction.tap),
-    isTrue,
+    semanticsNode.debugListChildrenInOrder(
+      DebugSemanticsDumpOrder.traversalOrder,
+    ),
+    isEmpty,
   );
 
-  await tester.tap(action);
+  // WidgetTester does not expose a public semantics-action helper on Flutter
+  // 3.38, so the test must invoke the active test pipeline's owner directly.
+  // ignore: deprecated_member_use
+  tester.binding.pipelineOwner.semanticsOwner!.performAction(
+    semanticsNode.id,
+    SemanticsAction.tap,
+  );
   await tester.pumpAndSettle();
   expect(find.byKey(const Key('triage-entry-probe')), findsOneWidget);
   expect(find.text(expectedProbe), findsOneWidget);
@@ -246,9 +264,10 @@ void main() {
     testWidgets(
       '${fixture.apiStage} origin opens a locked typed intake and returns safely',
       (tester) async {
+        final journeyId = 'journey-${fixture.apiStage.toLowerCase()}';
         final router = _maternalRouter(
           JourneyDashboard(
-            journeyId: 'journey-${fixture.apiStage.toLowerCase()}',
+            journeyId: journeyId,
             journeyType: fixture.journeyType,
             status: fixture.status,
             pregnancyWeek: fixture.apiStage == 'PREGNANCY' ? 24 : null,
@@ -262,8 +281,13 @@ void main() {
           actionKey: Key(
             'triage-safety-entry-${fixture.apiStage.toLowerCase()}',
           ),
+          expectedTitle: 'AI Triage - Kiểm tra triệu chứng',
+          expectedDescription:
+              'Đánh giá nhanh theo đúng giai đoạn sức khỏe hiện tại.',
           expectedProbe:
-              '${fixture.apiStage}:true:${TriageOriginIntent.motherJourney.name}',
+              '${fixture.apiStage}:true:'
+              '${TriageOriginIntent.motherJourney.name}:'
+              '$journeyId:MOTHER_JOURNEY:$journeyId:null',
         );
       },
     );
@@ -325,12 +349,16 @@ void main() {
     testWidgets(
       '${fixture.apiStage} origin opens a locked typed intake and returns safely',
       (tester) async {
+        final profileId = 'baby-${fixture.apiStage.toLowerCase()}';
+        final relatedJourneyId =
+            'journey-${fixture.apiStage.toLowerCase()}-baby';
         final profile = BabyProfile(
-          id: 'baby-${fixture.apiStage.toLowerCase()}',
+          id: profileId,
           nickname: 'Safety fixture',
           birthDate: DateTime.now().subtract(fixture.age),
           gender: BabyGender.unknown,
           isActive: true,
+          relatedJourneyId: relatedJourneyId,
         );
         final router = _babyRouter(profile);
         addTearDown(router.dispose);
@@ -341,8 +369,13 @@ void main() {
           actionKey: Key(
             'triage-safety-entry-${fixture.apiStage.toLowerCase()}',
           ),
+          expectedTitle: 'AI Triage - Kiểm tra triệu chứng của bé',
+          expectedDescription:
+              'Đánh giá nhanh theo đúng độ tuổi hiện tại của bé.',
           expectedProbe:
-              '${fixture.apiStage}:true:${TriageOriginIntent.babyProfile.name}',
+              '${fixture.apiStage}:true:'
+              '${TriageOriginIntent.babyProfile.name}:'
+              '$relatedJourneyId:BABY_PROFILE:$profileId:$profileId',
         );
       },
     );

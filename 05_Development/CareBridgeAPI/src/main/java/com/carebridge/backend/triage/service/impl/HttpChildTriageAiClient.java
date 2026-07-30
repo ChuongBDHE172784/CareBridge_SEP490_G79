@@ -26,6 +26,9 @@ public class HttpChildTriageAiClient implements ChildTriageAiClient {
     private final ObjectMapper objectMapper;
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(2))
+            // Uvicorn does not support Java HttpClient's cleartext HTTP/2 upgrade (h2c).
+            // The upgrade attempt can leave the retried request without its JSON body.
+            .version(HttpClient.Version.HTTP_1_1)
             .build();
 
     @Value("${ai.triage-service.url}")

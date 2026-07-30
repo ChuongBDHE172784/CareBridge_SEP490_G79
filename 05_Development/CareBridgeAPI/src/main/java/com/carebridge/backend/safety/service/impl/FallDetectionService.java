@@ -150,6 +150,15 @@ public class FallDetectionService implements IFallDetectionService {
                 .build();
 
         SafetyEvent saved = safetyEventRepository.save(event);
+        eventPublisher.publishEvent(new SuspectedFallDetected(
+                UUID.randomUUID(),
+                saved.getUserId(),
+                saved.getId(),
+                saved.getEventType().name(),
+                saved.getMagnitude().doubleValue(),
+                saved.getUserLatitude(),
+                saved.getUserLongitude(),
+                saved.getDetectedAt()));
 
         auditService.log(AuditAction.SAFETY_EVENT_RECORDED, userId, "SafetyEvent", saved.getId().toString(),
                 Map.of("eventType", saved.getEventType().name(), "countdownSeconds", config.getCountdownSeconds()));
@@ -217,6 +226,7 @@ public class FallDetectionService implements IFallDetectionService {
 
     private void openEmergency(SafetyEvent saved) {
         if (saved.getEmergencySessionId() != null) {
+            synchronizeLinkedSentSession(saved);
             return;
         }
         var emergency = emergencyService.openFlow(OpenEmergencyRequest.builder()
@@ -227,17 +237,19 @@ public class FallDetectionService implements IFallDetectionService {
         saved.setEmergencySessionId(emergency.getSessionId());
         saved.setEscalationStartedAt(Instant.now());
         safetyEventRepository.save(saved);
-        eventPublisher.publishEvent(new SuspectedFallDetected(
-                UUID.randomUUID(),
-                saved.getUserId(),
-                saved.getId(),
-                saved.getEventType().name(),
-                saved.getMagnitude().doubleValue(),
-                saved.getUserLatitude(),
-                saved.getUserLongitude(),
-                saved.getDetectedAt()));
+        synchronizeLinkedSentSession(saved);
         auditService.log(AuditAction.SAFETY_EVENT_ESCALATED, saved.getUserId(), "SafetyEvent",
                 saved.getId().toString(), Map.of("emergencySessionId", emergency.getSessionId().toString()));
+    }
+
+    private void synchronizeLinkedSentSession(SafetyEvent saved) {
+        int synchronizedEvents = safetyEventRepository.transitionLinkedEventForSentEmergencySession(
+                saved.getId(),
+                SafetyEventStatus.ESCALATION_REQUESTED,
+                SafetyEventStatus.EMERGENCY_ALERT_SENT);
+        if (synchronizedEvents > 0) {
+            saved.setStatus(SafetyEventStatus.EMERGENCY_ALERT_SENT);
+        }
     }
 
     private SafetyEventResponse respond(UUID userId, UUID eventId, String responseType,
@@ -257,7 +269,7 @@ public class FallDetectionService implements IFallDetectionService {
         Instant now = Instant.now();
         event.setStatus(status);
         event.setResolvedAt(escalation ? null : now);
-        event.setNotes(reason);
+        event.setNotes(canonicalNote(reason));
         event.setResponseType(responseType);
         event.setResponseReason(reason);
         event.setRespondedAt(now);
@@ -274,6 +286,13 @@ public class FallDetectionService implements IFallDetectionService {
         auditService.log(AuditAction.SAFETY_EVENT_RESPONDED, userId, "SafetyEvent", eventId.toString(),
                 Map.of("responseType", responseType));
         return saved;
+    }
+
+    private String canonicalNote(String reason) {
+        if (reason == null || reason.length() <= 255) {
+            return reason;
+        }
+        return reason.substring(0, 255);
     }
 
     private SafetyMonitoringConfig requireActiveConfig(UUID userId) {

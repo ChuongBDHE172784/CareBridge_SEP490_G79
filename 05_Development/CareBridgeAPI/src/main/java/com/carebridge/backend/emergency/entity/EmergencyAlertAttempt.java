@@ -49,9 +49,19 @@ public class EmergencyAlertAttempt {
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
     @Column(name = "action_type", nullable = false, updatable = false)
-    private String actionType;
+    private String actionType = "ALERT_ATTEMPT";
     @Column(name = "idempotency_key", nullable = false, updatable = false)
     private String idempotencyKey;
+    @Column(name = "event_type", nullable = false, updatable = false)
+    private String eventType = "ACTION";
+    @Column(name = "record_type", nullable = false, updatable = false)
+    private String recordType = "SAFETY_ACTION";
+    @Column(name = "alert_generation", nullable = false)
+    private long alertGeneration = 0;
+    @Column(name = "alert_successful_recipient_count", nullable = false)
+    private int alertSuccessfulRecipientCount = 0;
+    @Column(name = "alert_failed_recipient_count", nullable = false)
+    private int alertFailedRecipientCount = 0;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "location_snapshot_jsonb", nullable = false, columnDefinition = "jsonb")
@@ -60,6 +70,10 @@ public class EmergencyAlertAttempt {
     @PrePersist
     @PreUpdate
     void writeAttemptMetadata() {
+        actionType = "ALERT_ATTEMPT";
+        recordType = "SAFETY_ACTION";
+        if (idempotencyKey == null) idempotencyKey = "alert-attempt:" + UUID.randomUUID();
+        if (startedAt == null) startedAt = Instant.now();
         if (attemptMetadata == null) attemptMetadata = new HashMap<>();
         put("leaseExpiresAt", leaseExpiresAt == null ? null : leaseExpiresAt.toString());
         put("successfulRecipientCount", successfulRecipientCount);

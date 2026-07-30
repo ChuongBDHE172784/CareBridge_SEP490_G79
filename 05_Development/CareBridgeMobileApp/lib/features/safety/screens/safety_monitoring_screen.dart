@@ -2,14 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import '../models/safety_config_model.dart';
-import '../services/fall_detection_sensor_service.dart';
+import '../services/safety_foreground_service.dart';
 import '../services/safety_service.dart';
 import '../widgets/disable_fall_detection_sheet.dart';
+import '../widgets/safety_countdown_sheet.dart';
 import 'enable_fall_detection_screen.dart';
 import '../../emergency/screens/emergency_contacts_screen.dart';
 import '../../emergency/services/emergency_service.dart';
 import '../../emergency/models/emergency_session_model.dart';
-import '../../privacy/services/privacy_service.dart';
 
 /// CB-023 — Safety Monitoring (UC-133..UC-141, UC-176)
 /// Hub screen for fall detection, SOS, and safety event history.
@@ -41,7 +41,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
 
   final _safetyService = SafetyService();
   final _emergencyService = EmergencyService();
-  final _fallSensorService = FallDetectionSensorService.instance;
+  final _foregroundCoordinator = SafetyForegroundServiceCoordinator.instance;
   SafetyConfig? _config;
   List<SafetyEvent> _events = const [];
   EmergencySession? _activeEmergency;
@@ -56,7 +56,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _detectedEventSubscription = _fallSensorService.detectedEvents.listen(
+    _detectedEventSubscription = _foregroundCoordinator.detectedEvents.listen(
       _onDetectedEvent,
     );
     _load();
@@ -66,7 +66,6 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _detectedEventSubscription?.cancel();
-    unawaited(_fallSensorService.stop());
     super.dispose();
   }
 
@@ -74,14 +73,6 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       unawaited(_load());
-      return;
-    }
-    if (state == AppLifecycleState.inactive ||
-        state == AppLifecycleState.paused ||
-        state == AppLifecycleState.detached ||
-        state == AppLifecycleState.hidden) {
-      unawaited(_fallSensorService.stop());
-      if (mounted) setState(() => _imuSensorActive = false);
     }
   }
 
@@ -91,39 +82,12 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
       final config = await _safetyService.getConfig();
       final events = await _safetyService.getSafetyEvents();
       final activeEmergency = await _emergencyService.getActive();
-      var mayShareLocation = false;
-      var mayCollectSensorData = false;
-      try {
-        final consents = await PrivacyService.instance.listConsents();
-        mayCollectSensorData = consents.any(
-          (grant) =>
-              grant.isActive &&
-              grant.dataType == 'SENSOR_DATA' &&
-              grant.purpose == 'CREATE',
-        );
-        mayShareLocation = consents.any(
-          (grant) =>
-              grant.isActive &&
-              grant.dataType == 'LOCATION' &&
-              grant.purpose == 'SHARE',
-        );
-      } catch (_) {
-        // Consent-dependent collection fails closed on lookup failure.
-      }
-      if (config.fallDetectionEnabled &&
-          config.sensorPermissionGranted &&
-          mayCollectSensorData) {
-        await _fallSensorService.start(
-          locationSharingAllowed: mayShareLocation,
-        );
-      } else {
-        await _fallSensorService.stop();
-      }
+      await _foregroundCoordinator.reconcile();
       if (mounted) {
         setState(() {
           _config = config;
           _events = events;
-          _imuSensorActive = _fallSensorService.isRunning;
+          _imuSensorActive = _foregroundCoordinator.isRunning;
           _activeEmergency = activeEmergency;
         });
         SafetyEvent? pending;
@@ -165,24 +129,30 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
     if (!mounted ||
         event.status != 'OPEN' ||
         deadline == null ||
-        _countdownEventId == event.id) {
+        _countdownEventId != null) {
       return;
     }
     _countdownEventId = event.id;
-    final action = await showModalBottomSheet<String>(
+    final result = await showModalBottomSheet<SafetyCountdownResult>(
       context: context,
       isDismissible: false,
       enableDrag: false,
+      isScrollControlled: true,
       builder: (_) => SafetyCountdownSheet(event: event),
     );
-    _countdownEventId = null;
     try {
-      if (action == 'safe') {
+      if (result?.action == SafetyCountdownAction.safe) {
         await _confirmEventSafe(
           event,
           note: 'Người dùng xác nhận an toàn trong thời gian đếm ngược.',
         );
-      } else if (action == 'help') {
+      } else if (result?.action == SafetyCountdownAction.falsePositive) {
+        await _reportEventFalsePositive(
+          event,
+          note: '${result?.reasonCode}: ${result?.reason}',
+        );
+      } else if (result?.action == SafetyCountdownAction.help ||
+          result?.action == SafetyCountdownAction.timeout) {
         await _safetyService.sendEmergencyAlertForEvent(event.id);
       }
     } catch (error) {
@@ -195,6 +165,17 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
       }
     } finally {
       if (mounted) await _load();
+      _countdownEventId = null;
+      if (mounted) {
+        SafetyEvent? next;
+        for (final candidate in _events) {
+          if (candidate.status == 'OPEN' && candidate.id != event.id) {
+            next = candidate;
+            break;
+          }
+        }
+        if (next != null) unawaited(_showCountdown(next));
+      }
     }
   }
 
@@ -250,7 +231,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
     } else {
       final disabled = await showDisableFallDetectionSheet(context);
       if (disabled == true) {
-        await _fallSensorService.stop();
+        await _foregroundCoordinator.stop();
         await _load();
       }
     }
@@ -265,7 +246,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
         return;
       }
       await _load();
-      if (!_fallSensorService.isRunning && mounted) {
+      if (!_foregroundCoordinator.isRunning && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -275,10 +256,10 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
         );
       }
     } else {
-      await _fallSensorService.stop();
+      await _foregroundCoordinator.stop();
     }
     if (mounted) {
-      setState(() => _imuSensorActive = _fallSensorService.isRunning);
+      setState(() => _imuSensorActive = _foregroundCoordinator.isRunning);
     }
   }
 
@@ -974,99 +955,6 @@ class _BentoButton extends StatelessWidget {
               label,
               textAlign: TextAlign.center,
               style: TextStyle(color: foreground, fontWeight: FontWeight.w600),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class SafetyCountdownSheet extends StatefulWidget {
-  const SafetyCountdownSheet({super.key, required this.event});
-
-  final SafetyEvent event;
-
-  @override
-  State<SafetyCountdownSheet> createState() => _SafetyCountdownSheetState();
-}
-
-class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
-  Timer? _timer;
-  int _remainingSeconds = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    _tick();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
-  }
-
-  void _tick() {
-    final deadline = widget.event.countdownDeadlineAt;
-    final remaining = deadline == null
-        ? Duration.zero
-        : deadline.difference(DateTime.now().toUtc());
-    if (remaining <= Duration.zero) {
-      _timer?.cancel();
-      if (mounted) Navigator.of(context).pop('timeout');
-      return;
-    }
-    if (mounted) {
-      setState(() => _remainingSeconds = remaining.inSeconds + 1);
-    }
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.warning_amber_rounded, size: 52),
-            const SizedBox(height: 12),
-            const Text(
-              'CareBridge phát hiện một va chạm mạnh',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Cảnh báo sẽ được xử lý sau $_remainingSeconds giây nếu bạn không phản hồi.',
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: FilledButton.icon(
-                    key: const Key('safety-countdown-safe'),
-                    onPressed: () => Navigator.of(context).pop('safe'),
-                    icon: const Icon(Icons.check_circle_outline),
-                    label: const Text('Tôi an toàn'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton.icon(
-                    key: const Key('safety-countdown-help'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: const Color(0xFFBA1A1A),
-                    ),
-                    onPressed: () => Navigator.of(context).pop('help'),
-                    icon: const Icon(Icons.emergency),
-                    label: const Text('Cần trợ giúp'),
-                  ),
-                ),
-              ],
             ),
           ],
         ),

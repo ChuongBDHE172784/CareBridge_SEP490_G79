@@ -2,7 +2,6 @@ package com.carebridge.backend.emergency.adapter;
 
 import com.carebridge.backend.emergency.service.FamilyMemberPort;
 import com.carebridge.backend.family.entity.CareGroup;
-import com.carebridge.backend.family.entity.CareGroupMember;
 import com.carebridge.backend.family.entity.CareGroupStatus;
 import com.carebridge.backend.family.entity.InviteStatus;
 import com.carebridge.backend.family.repository.CareGroupMemberRepository;
@@ -30,14 +29,7 @@ public class FamilyMemberPortAdapter implements FamilyMemberPort {
 
     @Override
     public List<AlertRecipientEndpoint> getFamilyAlertRecipients(UUID userId) {
-        List<CareGroup> groups = careGroupRepository.findByOwnerUserIdAndStatus(userId, CareGroupStatus.ACTIVE);
-
-        return groups.stream()
-                .flatMap(group -> careGroupMemberRepository
-                        .findByCareGroupIdAndInviteStatusIn(group.getId(), List.of(InviteStatus.ACCEPTED))
-                        .stream())
-                .map(CareGroupMember::getUserId)
-                .distinct()
+        return careGroupMemberRepository.findEmergencyContactUserIds(userId).stream()
                 .flatMap(memberId -> deviceTokenRepository.findByUserIdAndActiveTrue(memberId).stream()
                         .map(token -> new AlertRecipientEndpoint(memberId, token.getId(), token.getToken())))
                 .distinct()

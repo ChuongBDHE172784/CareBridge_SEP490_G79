@@ -14,6 +14,21 @@ import java.util.UUID;
 
 public interface CareGroupMemberRepository extends JpaRepository<CareGroupMember, UUID> {
 
+    @Query(value = """
+            SELECT cgm.user_id
+              FROM care_groups cg
+              JOIN care_group_members cgm
+                ON cgm.care_group_id = cg.care_group_id
+             WHERE cg.owner_user_id = :ownerUserId
+               AND cg.status = 'ACTIVE'
+               AND cgm.invitation_status = 'ACCEPTED'
+               AND cgm.is_emergency_contact = TRUE
+             GROUP BY cgm.user_id
+             ORDER BY MIN(cgm.emergency_contact_priority) ASC NULLS LAST,
+                      cgm.user_id ASC
+            """, nativeQuery = true)
+    List<UUID> findEmergencyContactUserIds(@Param("ownerUserId") UUID ownerUserId);
+
     boolean existsByCareGroupIdAndUserIdAndInviteStatus(UUID careGroupId, UUID userId, InviteStatus status);
 
     List<CareGroupMember> findByCareGroupIdAndInviteStatusIn(UUID careGroupId, List<InviteStatus> statuses);

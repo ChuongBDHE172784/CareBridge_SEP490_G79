@@ -13,6 +13,7 @@ import com.carebridge.backend.triage.engine.ChildTriageResult;
 import com.carebridge.backend.triage.engine.PediatricRiskRules;
 import com.carebridge.backend.triage.engine.SourceRetriever;
 import com.carebridge.backend.triage.engine.SymptomNormalizer;
+import com.carebridge.backend.triage.engine.TriageCitation;
 import com.carebridge.backend.triage.engine.TriageGraphService;
 import com.carebridge.backend.ai.event.EmergencyEscalationTriggered;
 import com.carebridge.backend.triage.event.IntakeSessionCompleted;
@@ -21,6 +22,7 @@ import com.carebridge.backend.triage.repository.IIntakeSessionRepository;
 import com.carebridge.backend.triage.repository.IntakeSessionWriter;
 import com.carebridge.backend.triage.repository.TriageSessionEvidenceWriter;
 import com.carebridge.backend.triage.service.ChildTriageAiClient;
+import com.carebridge.backend.triage.service.EvidenceSourceService;
 import com.carebridge.backend.triage.service.TriageFallbackMetrics;
 import com.carebridge.backend.triage.service.TriageStageLegacyDefaultMetrics;
 import com.carebridge.backend.triage.service.LifecycleIntakeBindingService;
@@ -61,6 +63,7 @@ class TriageServiceTest {
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private LifecycleConsentValidator lifecycleConsentValidator;
     @Mock private TriageSessionEvidenceWriter triageSessionEvidenceWriter;
+    @Mock private EvidenceSourceService evidenceSourceService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private static final UUID USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000010");
@@ -168,6 +171,93 @@ class TriageServiceTest {
                         && "WHO_1".equals(citations.getFirst().get("sourceId"))),
                 argThat(claims -> claims.size() == 1
                         && "CLAIM-1".equals(claims.getFirst().get("claimId"))));
+    }
+
+    @Test
+    void runIntake_javaFallback_shouldPersistAndReturnOnlyApprovedLegacyCitation() {
+        when(childTriageAiClient.triageChild(any())).thenThrow(new IllegalStateException("offline"));
+        when(evidenceSourceService.isApprovedDeepLink(
+                java.net.URI.create("https://who.int/health-topics/child-health"))).thenReturn(true);
+        when(evidenceSourceService.isApprovedDeepLink(
+                java.net.URI.create("https://example.com/child-health"))).thenReturn(false);
+        when(triageGraphService.run(any())).thenReturn(ChildTriageResult.builder()
+                .status("COMPLETED")
+                .riskLevel("GREEN")
+                .riskColor("#22C55E")
+                .summary("Mild symptoms")
+                .possibleConcern("Monitor symptoms")
+                .recommendedAction("Continue home monitoring")
+                .emergencyActionRequired(false)
+                .redFlags(java.util.List.of())
+                .matchedRules(java.util.List.of("GREEN_MILD_NO_RED_FLAGS"))
+                .normalizedSymptoms(java.util.List.of("cough"))
+                .citations(java.util.List.of(
+                        TriageCitation.builder()
+                                .title("WHO child health guidance")
+                                .source("WHO")
+                                .url("https://who.int/health-topics/child-health")
+                                .excerpt("Official child health guidance")
+                                .retrievedAt("2026-07-30T00:00:00Z")
+                                .build(),
+                        TriageCitation.builder()
+                                .title("Unapproved source")
+                                .source("Unknown")
+                                .url("https://example.com/child-health")
+                                .excerpt("Must not pass the approved-source policy")
+                                .retrievedAt("2026-07-30T00:00:00Z")
+                                .build()))
+                .disclaimer("AI guidance only.")
+                .questions(java.util.List.of())
+                .build());
+        AtomicReference<IntakeSession> persisted = new AtomicReference<>();
+        when(intakeSessionRepository.save(any())).thenAnswer(invocation -> {
+            IntakeSession session = invocation.getArgument(0);
+            if (session.getId() == null) {
+                session.setId(UUID.randomUUID());
+            }
+            persisted.set(session);
+            return session;
+        });
+        TriageService triageService = new TriageService(
+                intakeSessionRepository,
+                childTriageAiClient,
+                triageGraphService,
+                evidenceSourceService,
+                objectMapper,
+                eventPublisher,
+                new TriageFallbackMetrics(),
+                new TriageStageLegacyDefaultMetrics());
+        ReflectionTestUtils.setField(
+                triageService, "triageSessionEvidenceWriter", triageSessionEvidenceWriter);
+
+        triageService.runIntake(TriageTestFactory.makeRunIntakeRequest(), USER_ID);
+
+        IntakeSession saved = persisted.get();
+        assertThat(saved.getSchemaVersion()).isEqualTo("1.0");
+        when(intakeSessionRepository.findByIdAndUserId(saved.getId(), USER_ID))
+                .thenReturn(Optional.of(saved));
+
+        TriageResultResponse response = triageService.getResult(saved.getId(), USER_ID);
+
+        assertThat(response.getCitations()).singleElement().satisfies(citation -> {
+            assertThat(citation)
+                    .containsEntry("title", "WHO child health guidance")
+                    .containsEntry("source", "WHO")
+                    .containsEntry("url", "https://who.int/health-topics/child-health")
+                    .containsEntry("sourceStatus", "APPROVED")
+                    .containsEntry("retrievalMode", "LOCAL");
+            assertThat(citation.get("sourceId")).isNotNull();
+        });
+        verify(triageSessionEvidenceWriter).writeValidated(
+                eq(saved.getId()),
+                argThat(citations -> citations.size() == 1
+                        && "WHO".equals(citations.getFirst().get("source"))
+                        && "APPROVED".equals(citations.getFirst().get("sourceStatus"))),
+                argThat(java.util.List::isEmpty));
+        verify(evidenceSourceService, times(2)).isApprovedDeepLink(
+                java.net.URI.create("https://who.int/health-topics/child-health"));
+        verify(evidenceSourceService, times(2)).isApprovedDeepLink(
+                java.net.URI.create("https://example.com/child-health"));
     }
 
     @Test
@@ -939,13 +1029,14 @@ class TriageServiceTest {
     }
 
     @Test
-    void getResult_shouldUnwrapConversationExplainabilityAndFilterMalformedCitation() {
+    void getResult_shouldUnwrapConversationExplainabilityAndKeepSchemaTwoStrict() {
         IntakeSession session = conversationSession(IntakeStatus.COMPLETED, """
                 {"status":"TRIAGE_COMPLETE","triageResult":{"riskLevel":"RED","emergencyActionRequired":true,
                  "normalizedSymptoms":["difficulty_breathing"],"matchedRules":["RED_BREATHING_DISTRESS"],
                  "evidenceIds":["WHO_1"],"recommendationCode":"SEEK_EMERGENCY_CARE","ruleSetVersion":"rules-1","responseSchemaVersion":"2.0",
                  "citations":[
                    {"sourceId":"WHO_1","title":"WHO danger signs","organization":"WHO","url":"https://who.int/health-topics/child-health","domain":"who.int","excerpt":"danger signs","sourceVersion":"1","lastReviewed":"2026-07-10","section":"Danger signs","matchedSymptoms":["difficulty_breathing"],"matchedRules":["RED_BREATHING_DISTRESS"],"sourceStatus":"APPROVED","retrievedAt":"2026-07-10T00:00:00Z","retrievalMode":"LOCAL"},
+                   {"title":"Incomplete WHO citation","source":"WHO","url":"https://who.int/health-topics/child-health","excerpt":"missing schema 2 provenance"},
                    {"title":"Bad","source":"Blog","url":"https://example.com/post","excerpt":"bad"}]}}
                 """);
         session.setRiskLevel(RiskLevel.RED);

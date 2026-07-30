@@ -778,14 +778,18 @@ public class DevDataSeeder implements ApplicationRunner {
                 .build())
             : groups.get(0);
 
-        careGroupMemberRepository.findByCareGroupIdAndUserId(group.getId(), familyMember.getId())
-            .orElseGet(() -> careGroupMemberRepository.save(CareGroupMember.builder()
+        CareGroupMember member = careGroupMemberRepository
+            .findByCareGroupIdAndUserId(group.getId(), familyMember.getId())
+            .orElseGet(() -> CareGroupMember.builder()
                 .careGroupId(group.getId())
                 .userId(familyMember.getId())
                 .memberRole(GroupMemberRole.MEMBER)
                 .inviteStatus(InviteStatus.ACCEPTED)
                 .joinedAt(Instant.now())
-                .build()));
+                .build());
+        member.setEmergencyContact(true);
+        member.setEmergencyContactPriority((short) 1);
+        careGroupMemberRepository.save(member);
     }
 
     private void seedVerifiedExpert(User expertUser, User admin, String specialty,

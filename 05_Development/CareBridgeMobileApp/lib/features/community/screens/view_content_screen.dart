@@ -416,6 +416,8 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                     (_selectedTypeIndex == 0 || _selectedTypeIndex == 3))
                   SliverToBoxAdapter(child: _buildChecklistSection()),
               ],
+              if (!_loading && _loadError == null)
+                SliverToBoxAdapter(child: _buildSafetyDisclaimer()),
               const SliverToBoxAdapter(child: SizedBox(height: 32)),
             ],
           ),
@@ -927,7 +929,7 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
   ) => Padding(
     padding: const EdgeInsets.only(top: 10),
     child: DropdownButtonFormField<String>(
-      value: selectedId ?? '',
+      initialValue: selectedId ?? '',
       isExpanded: true,
       decoration: InputDecoration(
         labelText: label,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/safety_service.dart';
+import '../services/safety_foreground_service.dart';
 import '../services/safety_permission_service.dart';
 import '../../privacy/services/privacy_service.dart';
 
@@ -27,9 +28,10 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
 
   final _safetyService = SafetyService();
   final _permissionService = SafetyPermissionService();
+  final _foregroundCoordinator = SafetyForegroundServiceCoordinator.instance;
 
   // Persisted by SafetyConfigRequest.countdownSeconds.
-  int _countdownSeconds = 30;
+  static const int _countdownSeconds = 30;
   // Mapped to SafetyConfigRequest.emergencyAutoAlert.
   bool _autoFamilyAlert = true;
   bool _shareLocation = false;
@@ -39,6 +41,16 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
   bool _submitting = false;
 
   Future<void> _enable() async {
+    if (!_foregroundCoordinator.isSupported) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Giám sát phát hiện ngã ở chế độ nền hiện chỉ hỗ trợ Android.',
+          ),
+        ),
+      );
+      return;
+    }
     if (!_consentChecked) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -48,6 +60,7 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
       return;
     }
     setState(() => _submitting = true);
+    var configurationEnabled = false;
     try {
       final sensorGranted = await _permissionService.attestSensorAccess();
       if (mounted) setState(() => _sensorPermissionGranted = sensorGranted);
@@ -61,6 +74,13 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
         purpose: 'CREATE',
         scope: 'SAFETY_FALL_DETECTION',
       );
+      final foregroundPermissionsGranted = await _foregroundCoordinator
+          .requestRequiredPermissions();
+      if (!foregroundPermissionsGranted) {
+        throw StateError(
+          'Cần cấp quyền thông báo để CareBridge duy trì giám sát an toàn.',
+        );
+      }
       if (_shareLocation) {
         await _ensureConsent(
           dataType: 'LOCATION',
@@ -79,9 +99,32 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
         countdownSeconds: _countdownSeconds,
         sensorPermissionGranted: true,
       );
+      configurationEnabled = true;
       await _safetyService.enableFallDetection();
+      await _foregroundCoordinator.reconcile();
+      if (!_foregroundCoordinator.isRunning) {
+        throw StateError(
+          'Không thể khởi động dịch vụ giám sát an toàn trên thiết bị.',
+        );
+      }
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
+      if (configurationEnabled) {
+        try {
+          await _safetyService.updateConfig(
+            fallDetectionEnabled: false,
+            sensitivityLevel: 'MEDIUM',
+            emergencyAutoAlert: _autoFamilyAlert,
+            countdownSeconds: _countdownSeconds,
+            sensorPermissionGranted: true,
+          );
+          await _safetyService.disableFallDetection();
+          await _foregroundCoordinator.stop();
+        } catch (_) {
+          // Preserve the original setup error; the monitoring screen will
+          // reconcile the fail-closed state on the next resume.
+        }
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -317,19 +360,12 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
                       ),
                     ],
                   ),
-                  DropdownButton<int>(
-                    value: _countdownSeconds,
-                    underline: const SizedBox.shrink(),
-                    items: const [15, 30, 60]
-                        .map(
-                          (v) => DropdownMenuItem(
-                            value: v,
-                            child: Text('$v giây'),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (v) =>
-                        setState(() => _countdownSeconds = v ?? 30),
+                  const Text(
+                    '30 giây',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: _onSurface,
+                    ),
                   ),
                 ],
               ),

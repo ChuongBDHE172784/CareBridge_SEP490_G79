@@ -113,4 +113,19 @@ class SafetyEvent {
       emergencySessionId: json['emergencySessionId'] as String?,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'eventType': eventType,
+    'magnitude': magnitude,
+    'status': status,
+    'detectedAt': detectedAt?.toUtc().toIso8601String(),
+    'resolvedAt': resolvedAt?.toUtc().toIso8601String(),
+    'notes': notes,
+    'countdownDeadlineAt': countdownDeadlineAt?.toUtc().toIso8601String(),
+    'responseType': responseType,
+    'responseReason': responseReason,
+    'respondedAt': respondedAt?.toUtc().toIso8601String(),
+    'emergencySessionId': emergencySessionId,
+  };
 }

@@ -124,10 +124,86 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
     super.dispose();
   }
 
+  bool _guardConsentContext(String? expectedUserId) {
+    if (!mounted) return false;
+    if (AuthState.instance.userId == expectedUserId) return true;
+    setState(() {
+      _error = 'Phiên đăng nhập đã thay đổi. Vui lòng thử lại.';
+    });
+    return false;
+  }
+
+  Future<bool> _requestTriageConsent(String? expectedUserId) async {
+    if (!_guardConsentContext(expectedUserId)) return false;
+    final consent = await _service.getConsentStatus();
+    if (!_guardConsentContext(expectedUserId)) return false;
+    if (consent.isAccepted) return true;
+    if (!mounted) return false;
+
+    final accepted = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          key: const Key('triage-consent-dialog'),
+          title: const Text('Xác nhận sử dụng AI Triage'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  consent.disclaimerText,
+                  key: const Key('triage-consent-text'),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Phiên bản: ${consent.currentVersion}',
+                  style: Theme.of(dialogContext).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              key: const Key('triage-consent-cancel'),
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Để sau'),
+            ),
+            FilledButton(
+              key: const Key('triage-consent-accept'),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Tôi hiểu và đồng ý'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!_guardConsentContext(expectedUserId)) return false;
+    if (accepted != true) {
+      setState(() {
+        _error = 'Bạn cần đồng ý với thông tin sử dụng AI Triage để tiếp tục.';
+      });
+      return false;
+    }
+
+    final acceptedConsent = await _service.acceptConsent(
+      policyVersion: consent.currentVersion,
+    );
+    if (!_guardConsentContext(expectedUserId)) return false;
+    if (!acceptedConsent.isAccepted ||
+        acceptedConsent.currentVersion != consent.currentVersion) {
+      throw const FormatException('Invalid triage consent acceptance');
+    }
+    return true;
+  }
+
   Future<void> _start() async {
     if (_loading) return;
     final text = _initialController.text.trim();
     if (text.isEmpty) return;
+    final triageUserId = AuthState.instance.userId;
     setState(() {
       _loading = true;
       _error = null;
@@ -143,6 +219,40 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
         currentIntake: _currentIntake,
       );
       if (mounted) _applyResponse(response, userMessage: text);
+    } on TriageConsentRequiredFailure {
+      bool accepted;
+      try {
+        accepted = await _requestTriageConsent(triageUserId);
+      } catch (_) {
+        if (mounted) {
+          setState(() {
+            _error =
+                'Không thể xác nhận điều khoản AI Triage. Vui lòng thử lại.';
+          });
+        }
+        return;
+      }
+      if (!accepted || !_guardConsentContext(triageUserId)) return;
+      try {
+        final response = await _service.startConversation(
+          initialText: text,
+          currentIntake: _currentIntake,
+        );
+        if (mounted) _applyResponse(response, userMessage: text);
+      } on TriageConsentRequiredFailure {
+        if (mounted) {
+          setState(() {
+            _error =
+                'Không thể xác nhận điều khoản AI Triage. Vui lòng thử lại.';
+          });
+        }
+      } catch (_) {
+        if (mounted) {
+          setState(
+            () => _error = 'Không thể gửi triệu chứng. Vui lòng thử lại.',
+          );
+        }
+      }
     } catch (_) {
       if (mounted) {
         setState(() => _error = 'Không thể gửi triệu chứng. Vui lòng thử lại.');
