@@ -6,7 +6,7 @@
 | Use Cases Covered | UC-22 Add Maternal Health Metric, UC-24 View Maternal Health Trend, UC-25 Add Postpartum Recovery Log |
 | Primary Actor(s) | Mother |
 | Platform | Mother Mobile App |
-| Main Flow Summary | A Mother records a maternal indicator (weight, blood pressure, glucose, fetal movement...) or a postpartum recovery observation (pain, mood, sleep, bleeding...) against the active journey, and views the resulting trend over time with clear source labels and non-diagnostic framing. |
+| Main Flow Summary | A Mother records a maternal indicator (weight, water intake, mood, blood pressure, glucose, fetal movement...) or a postpartum recovery observation (pain, mood, sleep, bleeding...) against the active journey, and views the resulting trend over time with clear source labels and non-diagnostic framing. |
 | Grounding (source code) | `health/entity/MaternalHealthMetric.java`, `MetricType.java`, `MetricStatus.java`, `health/entity/PostpartumLog.java`, `PostpartumLogStatus.java`, `BleedingLevel.java`, `health/controller/JourneyMetricController.java` (`/api/v1/journeys/{journeyId}/metrics`), `health/controller/PostpartumLogController.java` (`/api/v1/journeys/{journeyId}/postpartum-logs`) |
 
 ## 1. Tổng quan luồng chính (Main Flow Overview)
@@ -18,6 +18,18 @@ vào một spec thay vì tách UC-22/23 và UC-25/26 thành bốn spec riêng. C
 biệt dữ liệu người dùng tự nhập với dữ liệu đồng bộ từ thiết bị (MF-13). UC-24 (xem xu
 hướng) là read-model tổng hợp nhiều `MaternalHealthMetric` theo `metricType` theo thời
 gian — không phải entity riêng.
+
+### Ghi chú nhanh trên Mother Home
+
+CB-008 hiển thị bốn lối tắt để giảm số bước khi ghi nhận dữ liệu hằng ngày:
+**Cân nặng** (`WEIGHT`, kg), **Nước** (`HYDRATION`, ml), **Tâm trạng**
+(`MOOD`, thang 1–5) và **Cử động** (`FETAL_MOVEMENT_COUNT`, số nguyên). Mỗi
+lối tắt mở cùng biểu mẫu ghi chỉ số và lưu vào `health_observations` qua API
+metric hiện hữu; không tạo thêm bảng hoặc endpoint. Cử động chỉ mở được khi
+hành trình thai kỳ đang hoạt động; ở hành trình khác app nêu rõ lý do. Tâm
+trạng là self-report phi chẩn đoán và khác với `PostpartumLog.moodLevel`: bản
+ghi nhanh là một observation theo thời điểm, còn postpartum log là nhật ký hồi
+phục tổng hợp.
 
 ## 2. Class Diagram
 
@@ -49,6 +61,8 @@ class MaternalHealthMetric {
 
 enum MetricType {
   WEIGHT
+  HYDRATION
+  MOOD
   BLOOD_PRESSURE_SYSTOLIC
   BLOOD_PRESSURE_DIASTOLIC
   BLOOD_GLUCOSE

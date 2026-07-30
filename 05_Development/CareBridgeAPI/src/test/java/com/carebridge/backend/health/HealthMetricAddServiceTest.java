@@ -17,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 
 import java.util.Optional;
+import java.math.BigDecimal;
 import java.util.concurrent.CompletableFuture;
 
 import static org.assertj.core.api.Assertions.*;
@@ -57,6 +58,31 @@ class HealthMetricAddServiceTest {
         verify(metricRepository).save(any());
         verify(auditService).log(eq(AuditAction.HEALTH_METRIC_ADDED), eq(MetricTestFactory.MOTHER_ID),
                 eq("MaternalHealthMetric"), any(), any());
+    }
+
+    @Test
+    void addMetric_hydrationHappyPath_persistsExistingObservationModel() {
+        var journey = MetricTestFactory.makeActiveJourney();
+        var req = MetricTestFactory.makeWeightRequest();
+        req.setMetricType(MetricType.HYDRATION);
+        req.setValueNumeric(new BigDecimal("350"));
+        req.setUnit("ml");
+        var saved = MetricTestFactory.makeSavedMetric();
+        saved.setMetricType(MetricType.HYDRATION);
+        saved.setValueNumeric(new BigDecimal("350"));
+        saved.setUnit("ml");
+        when(journeyRepository.findById(MetricTestFactory.JOURNEY_ID)).thenReturn(Optional.of(journey));
+        when(metricRepository.save(any())).thenReturn(saved);
+        when(metricAiAnalyzer.analyze(eq(MetricType.HYDRATION), any(), any()))
+                .thenReturn(CompletableFuture.completedFuture(null));
+
+        MetricResponse response = metricService.addMetric(
+                MetricTestFactory.MOTHER_ID, MetricTestFactory.JOURNEY_ID, req);
+
+        assertThat(response.getMetricType()).isEqualTo(MetricType.HYDRATION.name());
+        assertThat(response.getValueNumeric()).isEqualByComparingTo("350");
+        assertThat(response.getUnit()).isEqualTo("ml");
+        verify(metricRepository).save(any());
     }
 
     /** METRIC-TC-025-002: CRITICAL — BP requires both valueNumeric AND valueSecondary → METRIC-005 (400). */

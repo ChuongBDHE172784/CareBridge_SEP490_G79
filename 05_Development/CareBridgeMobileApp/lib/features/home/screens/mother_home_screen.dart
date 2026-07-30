@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../journey/models/journey_model.dart';
 import '../../journey/services/journey_service.dart';
 import '../../reminder/models/reminder_model.dart';
@@ -606,22 +607,59 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
             _QuickAction(
               icon: Icons.monitor_weight,
               label: 'Cân nặng',
-              onTap: () {},
+              onTap: () => _openQuickMetric('WEIGHT'),
             ),
             const SizedBox(width: 12),
-            _QuickAction(icon: Icons.water_drop, label: 'Nước', onTap: () {}),
-            const SizedBox(width: 12),
-            _QuickAction(icon: Icons.mood, label: 'Tâm trạng', onTap: () {}),
+            _QuickAction(
+              icon: Icons.water_drop_rounded,
+              label: 'Nước',
+              onTap: () => _openQuickMetric('HYDRATION'),
+            ),
             const SizedBox(width: 12),
             _QuickAction(
-              icon: Icons.child_care,
+              icon: Icons.sentiment_satisfied_alt_rounded,
+              label: 'Tâm trạng',
+              onTap: () => _openQuickMetric('MOOD'),
+            ),
+            const SizedBox(width: 12),
+            _QuickAction(
+              icon: Icons.favorite_rounded,
               label: 'Cử động',
-              onTap: () {},
+              onTap: () => _openQuickMetric('FETAL_MOVEMENT_COUNT'),
             ),
           ],
         ),
       ],
     );
+  }
+
+  Future<void> _openQuickMetric(String metricType) async {
+    final dashboard = _dashboard;
+    if (dashboard?.journeyId == null || dashboard?.hasActiveJourney != true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Hãy thiết lập hành trình của mẹ trước khi ghi chú.'),
+        ),
+      );
+      return;
+    }
+    if (metricType == 'FETAL_MOVEMENT_COUNT' &&
+        dashboard?.isPregnancy != true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Cử động thai chỉ áp dụng cho hành trình thai kỳ đang hoạt động.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final saved = await context.push<bool>(
+      '/journeys/${Uri.encodeComponent(dashboard!.journeyId!)}'
+      '/metrics/add?metricType=${Uri.encodeQueryComponent(metricType)}',
+    );
+    if (saved == true && mounted) await _load();
   }
 
   Widget _buildTasksSection() {
@@ -779,44 +817,52 @@ class _QuickAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFF8F6),
+      child: Semantics(
+        button: true,
+        label: 'Ghi chú $label',
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF5A463F).withAlpha(15),
-                blurRadius: 20,
-                offset: const Offset(0, 4),
+            child: Ink(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF8F6),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF5A463F).withAlpha(15),
+                    blurRadius: 20,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: Column(
-            children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF6DACF),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, color: const Color(0xFF735E56)),
+              child: Column(
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF6DACF),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(icon, color: const Color(0xFF735E56)),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF524440),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
-              Text(
-                label,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF524440),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),

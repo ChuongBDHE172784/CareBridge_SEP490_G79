@@ -56,6 +56,10 @@ class _AddMaternalHealthMetricScreenState
       _isBloodPressure ? 'Tâm thu (mmHg)' : '$_metricLabel ($_unit)';
   String get _unit {
     switch (_metricType) {
+      case 'HYDRATION':
+        return 'ml';
+      case 'MOOD':
+        return 'điểm';
       case 'BLOOD_PRESSURE_SYSTOLIC':
         return 'mmHg';
       case 'HEART_RATE':
@@ -72,6 +76,12 @@ class _AddMaternalHealthMetricScreenState
 
   String get _metricLabel {
     switch (_metricType) {
+      case 'HYDRATION':
+        return 'lượng nước đã uống';
+      case 'MOOD':
+        return 'tâm trạng';
+      case 'FETAL_MOVEMENT_COUNT':
+        return 'số cử động thai';
       case 'HEART_RATE':
         return 'nhịp tim';
       case 'BLOOD_GLUCOSE':
@@ -86,6 +96,9 @@ class _AddMaternalHealthMetricScreenState
 
   static const _supportedMetricTypes = {
     'WEIGHT',
+    'HYDRATION',
+    'MOOD',
+    'FETAL_MOVEMENT_COUNT',
     'HEART_RATE',
     'BLOOD_GLUCOSE',
     'TEMPERATURE',
@@ -149,6 +162,21 @@ class _AddMaternalHealthMetricScreenState
   String? _requiredPositive(String? value) {
     final parsed = double.tryParse(value?.trim() ?? '');
     if (parsed == null || parsed <= 0) return 'Nhập giá trị hợp lệ';
+    return null;
+  }
+
+  String? _validatePrimaryValue(String? value) {
+    final baseError = _requiredPositive(value);
+    if (baseError != null) return baseError;
+
+    final parsed = double.parse(value!.trim());
+    if (_metricType == 'MOOD' &&
+        (parsed < 1 || parsed > 5 || parsed % 1 != 0)) {
+      return 'Chọn mức từ 1 đến 5';
+    }
+    if (_metricType == 'FETAL_MOVEMENT_COUNT' && parsed % 1 != 0) {
+      return 'Nhập số nguyên';
+    }
     return null;
   }
 
@@ -230,9 +258,17 @@ class _AddMaternalHealthMetricScreenState
                   inputFormatters: [
                     FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
                   ],
-                  validator: _requiredPositive,
+                  validator: _validatePrimaryValue,
                   decoration: _inputDecoration(_primaryLabel),
                 ),
+                if (_metricType == 'MOOD') ...[
+                  const SizedBox(height: 14),
+                  _MoodSelector(
+                    selectedValue: _primaryCtrl.text,
+                    onSelected: (value) =>
+                        setState(() => _primaryCtrl.text = value.toString()),
+                  ),
+                ],
                 if (_isBloodPressure) ...[
                   const SizedBox(height: 14),
                   TextFormField(
@@ -385,6 +421,62 @@ class _PickerTile extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _MoodSelector extends StatelessWidget {
+  final String selectedValue;
+  final ValueChanged<int> onSelected;
+
+  const _MoodSelector({required this.selectedValue, required this.onSelected});
+
+  static const _moods = [
+    (1, 'Rất tệ', Icons.sentiment_very_dissatisfied_rounded),
+    (2, 'Chưa ổn', Icons.sentiment_dissatisfied_rounded),
+    (3, 'Bình thường', Icons.sentiment_neutral_rounded),
+    (4, 'Khá tốt', Icons.sentiment_satisfied_rounded),
+    (5, 'Rất tốt', Icons.sentiment_very_satisfied_rounded),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: 'Chọn tâm trạng từ 1 đến 5',
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: _moods
+            .map((mood) {
+              final selected = selectedValue == mood.$1.toString();
+              return ChoiceChip(
+                avatar: Icon(
+                  mood.$3,
+                  size: 18,
+                  color: selected
+                      ? Colors.white
+                      : _AddMaternalHealthMetricScreenState._primary,
+                ),
+                label: Text(mood.$2),
+                selected: selected,
+                onSelected: (_) => onSelected(mood.$1),
+                selectedColor: _AddMaternalHealthMetricScreenState._primary,
+                labelStyle: TextStyle(
+                  fontFamily: 'Lexend',
+                  color: selected
+                      ? Colors.white
+                      : _AddMaternalHealthMetricScreenState._onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
+                side: BorderSide(
+                  color: selected
+                      ? _AddMaternalHealthMetricScreenState._primary
+                      : _AddMaternalHealthMetricScreenState._outline,
+                ),
+              );
+            })
+            .toList(growable: false),
       ),
     );
   }

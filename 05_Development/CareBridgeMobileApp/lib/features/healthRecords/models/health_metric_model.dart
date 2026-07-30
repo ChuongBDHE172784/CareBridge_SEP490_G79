@@ -133,6 +133,8 @@ class MetricTrend {
 
 enum MetricType {
   weight,
+  hydration,
+  mood,
   bloodPressure,
   bloodSugar,
   temperature,
@@ -146,6 +148,10 @@ extension MetricTypeExtension on MetricType {
     switch (this) {
       case MetricType.weight:
         return 'Cân nặng';
+      case MetricType.hydration:
+        return 'Nước';
+      case MetricType.mood:
+        return 'Tâm trạng';
       case MetricType.bloodPressure:
         return 'Huyết áp';
       case MetricType.bloodSugar:
@@ -165,6 +171,10 @@ extension MetricTypeExtension on MetricType {
     switch (value) {
       case 'WEIGHT':
         return MetricType.weight;
+      case 'HYDRATION':
+        return MetricType.hydration;
+      case 'MOOD':
+        return MetricType.mood;
       case 'BLOOD_PRESSURE':
       case 'BLOOD_PRESSURE_SYSTOLIC':
       case 'BLOOD_PRESSURE_DIASTOLIC':
