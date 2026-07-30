@@ -29,9 +29,37 @@ Base.
 
 ## Run
 
+For local citation retrieval, start CareBridgeAPI first so the DB-backed
+approved-source registry is available, then start this Python service. Copy
+each service's `.env.example` to its uncommitted `.env` and set the same
+non-empty `AI_TRIAGE_INTERNAL_API_KEY` in both files. Generate that shared key
+locally, do not paste it into documentation or logs, and never commit either
+`.env` file.
+
+CareBridgeAPI local `.env`:
+
+```dotenv
+AI_TRIAGE_SERVICE_URL=http://localhost:8001
+AI_TRIAGE_INTERNAL_API_KEY=
+```
+
+AI Triage local `.env`:
+
+```dotenv
+AI_TRIAGE_EVIDENCE_REGISTRY_URL=http://localhost:8080
+AI_TRIAGE_INTERNAL_API_KEY=
+AI_TRIAGE_EVIDENCE_REGISTRY_CACHE_SECONDS=300
+```
+
+The blank key values above are placeholders. The registry deliberately
+fails closed when the URL/key is missing, the backend is unavailable, or the
+backend rejects the credential; in those cases no source is treated as
+approved.
+
 ```powershell
 Copy-Item .env.example .env
-# Edit .env and set a NEW Gemini API key.
+# Edit .env and set the shared internal key. Set a NEW Gemini API key only
+# when GEMINI_ENABLED=true.
 pip install -r requirements.txt
 python scripts/test_gemini_connection.py
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
@@ -43,6 +71,8 @@ Minimum `.env` configuration:
 GEMINI_API_KEY=YOUR_NEW_KEY
 GEMINI_MODEL=gemini-2.5-flash
 GEMINI_ENABLED=true
+AI_TRIAGE_EVIDENCE_REGISTRY_URL=http://localhost:8080
+AI_TRIAGE_INTERNAL_API_KEY=YOUR_UNCOMMITTED_SHARED_KEY
 ```
 
 Set `GEMINI_ENABLED=false` to run the complete deterministic-only flow without
@@ -116,17 +146,21 @@ conversation passthrough.
 
 ## Demo Flow
 
-1. Start Spring Boot CareBridgeAPI.
-2. Start this Python AI Triage Service on port `8001`.
-3. Start the Flutter app.
-4. Open AI Symptom Intake and enter: `Be bi sot va ho`.
-5. The assistant asks follow-up questions such as age, temperature, breathing,
+1. Start Spring Boot CareBridgeAPI on port `8080` with a non-empty
+   `AI_TRIAGE_INTERNAL_API_KEY`.
+2. Confirm the API readiness endpoint is healthy and the database contains an
+   `APPROVED` evidence source for the intended triage stage.
+3. Start this Python AI Triage Service on port `8001` with
+   `AI_TRIAGE_EVIDENCE_REGISTRY_URL=http://localhost:8080` and the same key.
+4. Start the Flutter app.
+5. Open AI Symptom Intake and enter: `Be bi sot va ho`.
+6. The assistant asks follow-up questions such as age, temperature, breathing,
    alertness, feeding, seizure status, or dehydration signs.
-6. Answer: `8 thang`, `38.5`, `khong kho tho`, `tinh tao`, `bu/uong tot`.
-7. The app returns GREEN/YELLOW depending on deterministic rules and displays
+7. Answer: `8 thang`, `38.5`, `khong kho tho`, `tinh tao`, `bu/uong tot`.
+8. The app returns GREEN/YELLOW depending on deterministic rules and displays
    WHO/MOH/CDC/UNICEF citations when matched.
-8. Enter: `Be kho tho va tim tai`.
-9. The app returns RED with `emergencyActionRequired=true` and official
+9. Enter: `Be kho tho va tim tai`.
+10. The app returns RED with `emergencyActionRequired=true` and official
    citations. This is still risk classification, not a diagnosis.
 
 For immediate RED inputs, deterministic emergency scanning runs before Gemini

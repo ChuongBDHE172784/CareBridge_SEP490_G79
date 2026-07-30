@@ -1253,7 +1253,7 @@ public class TriageService implements ITriageService {
         result.putIfAbsent("graphVersion", "java-fallback-1.0");
         result.putIfAbsent("ruleSetVersion", "java-stage-risk-rules-1.0");
         result.putIfAbsent("ontologyVersion", "java-stage-symptoms-1.0");
-        result.putIfAbsent("responseSchemaVersion", "2.0");
+        result.putIfAbsent("responseSchemaVersion", "1.0");
         result.put("fallbackUsed", true);
         result.putIfAbsent("normalizedSymptoms", List.of());
         result.putIfAbsent("evidenceIds", List.of());
