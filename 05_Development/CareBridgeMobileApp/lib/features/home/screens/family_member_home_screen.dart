@@ -291,15 +291,15 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
           style: const TextStyle(color: _onSurfaceVariant),
         ),
         const SizedBox(height: 24),
-        const _SectionTitle('Nhiệm vụ của bạn'),
+        _SectionTitle('Lịch nhắc của ${detail.motherDisplayName}'),
         const SizedBox(height: 10),
-        if (detail.tasks.isEmpty)
-          const _EmptyCard(
-            key: Key('family-dashboard-empty-tasks'),
-            message: 'Bạn chưa có nhiệm vụ trong nhóm này.',
+        if (detail.todayReminders.isEmpty)
+          _EmptyCard(
+            key: Key('family-dashboard-empty-reminders'),
+            message: 'Hôm nay ${detail.motherDisplayName} chưa có lịch nhắc.',
           )
         else
-          ...detail.tasks.map(_buildTaskCard),
+          ...detail.todayReminders.map(_buildReminderCard),
         const SizedBox(height: 24),
         const _SectionTitle('Cảnh báo theo nhóm'),
         const SizedBox(height: 10),
@@ -314,27 +314,20 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
         const _SectionTitle('Thành viên đã tham gia'),
         const SizedBox(height: 10),
         ...detail.members.map(_buildMemberCard),
-        const SizedBox(height: 24),
-        const _SectionTitle('Quyền được chia sẻ'),
-        const SizedBox(height: 10),
-        _buildPermissionCard(detail.permissionScope),
-        const SizedBox(height: 24),
-        const _SectionTitle('Dữ liệu chia sẻ'),
-        const SizedBox(height: 10),
-        _buildSharedData(detail.sharedDataSummary),
       ],
     );
   }
 
-  Widget _buildTaskCard(FamilyHomeTask task) {
+  Widget _buildReminderCard(FamilyHomeTodayReminder reminder) {
     return _DashboardCard(
-      key: Key('family-task-${task.id}'),
+      key: Key('family-reminder-${reminder.id}'),
       child: ListTile(
         contentPadding: EdgeInsets.zero,
-        leading: const Icon(Icons.assignment_outlined, color: _primary),
-        title: Text(task.title),
+        leading: Icon(_reminderIcon(reminder.type), color: _primary),
+        title: Text(reminder.title),
         subtitle: Text(
-          '${_statusLabel(task.status)} • ${_dateLabel(task.dueAt)}',
+          '${_reminderTypeLabel(reminder.type)} • '
+          '${_statusLabel(reminder.status)} • ${_dateLabel(reminder.dueAt)}',
         ),
       ),
     );
@@ -373,47 +366,6 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
           '${_relationshipLabel(member.relationshipRole, member.customRelationshipRole)}'
           ' • ${_systemRoleLabel(member.systemRole)}',
         ),
-      ),
-    );
-  }
-
-  Widget _buildPermissionCard(FamilyHomePermission permission) {
-    final enabled = <String>[
-      if (permission.calendar) 'Nhiệm vụ chia sẻ',
-      if (permission.logs) 'Nhật ký',
-      if (permission.alerts) 'Cảnh báo',
-      if (permission.records) 'Hồ sơ',
-    ];
-    return _DashboardCard(
-      key: const Key('family-dashboard-permission-summary'),
-      child: Text(
-        enabled.isEmpty
-            ? 'Chưa có phạm vi dữ liệu được chia sẻ.'
-            : enabled.join(' • '),
-      ),
-    );
-  }
-
-  Widget _buildSharedData(FamilyHomeSharedDataSummary summary) {
-    if (summary.totalItems == 0) {
-      return const _EmptyCard(
-        key: Key('family-dashboard-empty-shared-data'),
-        message: 'Chưa có dữ liệu chia sẻ trong phạm vi bạn được xem.',
-      );
-    }
-    return _DashboardCard(
-      key: const Key('family-dashboard-shared-data-summary'),
-      child: Column(
-        children: summary.categories
-            .where((category) => category.permitted)
-            .map(
-              (category) => ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(_sharedCategoryLabel(category.category)),
-                trailing: Text('${category.itemCount}'),
-              ),
-            )
-            .toList(growable: false),
       ),
     );
   }
@@ -572,18 +524,31 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
       'OPEN' => 'Chưa bắt đầu',
       'IN_PROGRESS' => 'Đang thực hiện',
       'DONE' => 'Đã hoàn thành',
+      'PENDING' => 'Đang chờ',
+      'SNOOZED' => 'Đã hoãn',
+      'COMPLETED' => 'Đã hoàn thành',
+      'SKIPPED' => 'Đã bỏ qua',
       'CANCELLED' => 'Đã hủy',
       'NEEDS_SUPPORT' => 'Cần hỗ trợ',
       _ => status,
     };
   }
 
-  String _sharedCategoryLabel(String category) {
-    return switch (category) {
-      'CALENDAR' => 'Nhiệm vụ chia sẻ',
-      'LOGS' => 'Nhật ký',
-      'ALERTS' => 'Cảnh báo',
-      _ => category,
+  String _reminderTypeLabel(String type) {
+    return switch (type) {
+      'VACCINATION' => 'Tiêm chủng',
+      'MEDICATION' => 'Thuốc',
+      'APPOINTMENT' => 'Lịch hẹn',
+      _ => 'Lịch nhắc',
+    };
+  }
+
+  IconData _reminderIcon(String type) {
+    return switch (type) {
+      'VACCINATION' => Icons.vaccines_outlined,
+      'MEDICATION' => Icons.medication_outlined,
+      'APPOINTMENT' => Icons.event_outlined,
+      _ => Icons.notifications_none_outlined,
     };
   }
 }

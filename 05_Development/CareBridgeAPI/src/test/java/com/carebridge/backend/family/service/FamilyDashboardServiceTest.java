@@ -26,12 +26,16 @@ import com.carebridge.backend.family.repository.CareGroupMemberRepository;
 import com.carebridge.backend.notification.entity.NotificationRecord;
 import com.carebridge.backend.notification.entity.NotificationType;
 import com.carebridge.backend.notification.repository.NotificationRecordRepository;
+import com.carebridge.backend.reminder.entity.Reminder;
+import com.carebridge.backend.reminder.entity.ReminderStatus;
+import com.carebridge.backend.reminder.entity.ReminderType;
+import com.carebridge.backend.reminder.repository.ReminderRepository;
+import com.carebridge.backend.reminder.service.ReminderRecurrenceService;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.repository.UserRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -59,10 +63,14 @@ class FamilyDashboardServiceTest {
     private ISharedDataService sharedDataService;
     @Mock
     private UserRepository userRepository;
+    @Mock
+    private ReminderRepository reminderRepository;
+    @Mock
+    private ReminderRecurrenceService reminderRecurrenceService;
 
     private final UUID userId = UUID.randomUUID();
+    private final UUID motherId = UUID.randomUUID();
     private final Map<UUID, List<CareTask>> tasksByGroup = new HashMap<>();
-    private final List<Object> requesterQueryParameters = new ArrayList<>();
     private FamilyDashboardService service;
 
     @BeforeEach
@@ -73,7 +81,9 @@ class FamilyDashboardServiceTest {
                 entityManager,
                 authorizationPolicy,
                 sharedDataService,
-                userRepository);
+                userRepository,
+                reminderRepository,
+                reminderRecurrenceService);
         stubTaskQuery();
     }
 
@@ -149,33 +159,49 @@ class FamilyDashboardServiceTest {
     }
 
     @Test
-    void selectedDetailContainsOnlyRequesterTasksFromSelectedGroup() {
-        UUID firstGroupId = UUID.randomUUID();
-        UUID selectedGroupId = UUID.randomUUID();
-        CareGroupMember firstMembership = membership(firstGroupId, userId, Instant.now().minusSeconds(100));
-        CareGroupMember selectedMembership = membership(selectedGroupId, userId, Instant.now());
-        CareTask firstTask = task(firstGroupId, CareTaskStatus.OPEN, Instant.now().plusSeconds(7200), Instant.now());
-        CareTask selectedTask = task(
-                selectedGroupId, CareTaskStatus.IN_PROGRESS, Instant.now().plusSeconds(3600), Instant.now());
-        tasksByGroup.put(firstGroupId, List.of(firstTask));
-        tasksByGroup.put(selectedGroupId, List.of(selectedTask));
-        stubAcceptedGroups(
-                List.of(firstMembership, selectedMembership),
-                Map.of(
-                        firstGroupId, group(firstGroupId, "A"),
-                        selectedGroupId, group(selectedGroupId, "B")));
+    void selectedDetailContainsOnlySelectedGroupMotherTodayReminders() {
+        UUID groupId = UUID.randomUUID();
+        CareGroupMember membership = membership(groupId, userId, Instant.now());
+        Instant scheduledAt = Instant.parse("2026-07-30T02:00:00Z");
+        Reminder reminder = Reminder.builder()
+                .id(UUID.randomUUID())
+                .ownerUserId(motherId)
+                .reminderType(ReminderType.MEDICATION)
+                .title("Uống vitamin")
+                .scheduledAt(scheduledAt)
+                .status(ReminderStatus.PENDING)
+                .build();
+        stubAcceptedGroups(List.of(membership), Map.of(groupId, group(groupId, "A")));
         when(memberRepository.findByCareGroupIdAndInviteStatusIn(
-                        selectedGroupId, List.of(InviteStatus.ACCEPTED)))
-                .thenReturn(List.of(selectedMembership));
+                        groupId, List.of(InviteStatus.ACCEPTED)))
+                .thenReturn(List.of(membership));
+        lenient().when(userRepository.findById(motherId))
+                .thenReturn(Optional.of(User.builder()
+                        .id(motherId)
+                        .displayName("Nguyễn Lan")
+                        .build()));
+        when(reminderRepository.findByOwnerUserIdAndStatusNot(motherId, ReminderStatus.CANCELLED))
+                .thenReturn(List.of(reminder));
+        when(reminderRecurrenceService.occurrenceForDate(any(), any(), any()))
+                .thenReturn(Optional.of(new ReminderRecurrenceService.GeneratedOccurrence(
+                        reminder,
+                        scheduledAt,
+                        scheduledAt,
+                        ReminderStatus.PENDING,
+                        null)));
 
-        var response = service.get(userId, selectedGroupId);
+        var response = service.get(userId, groupId);
 
-        assertThat(response.selectedGroupDetail().tasks())
-                .extracting(task -> task.id())
-                .containsExactly(selectedTask.getId());
-        assertThat(response.selectedGroupDetail().tasks())
-                .allMatch(task -> task.careGroupId().equals(selectedGroupId));
-        assertThat(requesterQueryParameters).containsOnly(userId);
+        assertThat(response.selectedGroupDetail().motherDisplayName()).isEqualTo("Nguyễn Lan");
+        assertThat(response.selectedGroupDetail().todayReminders())
+                .singleElement()
+                .satisfies(todayReminder -> {
+                    assertThat(todayReminder.id()).isEqualTo(reminder.getId());
+                    assertThat(todayReminder.title()).isEqualTo("Uống vitamin");
+                    assertThat(todayReminder.type()).isEqualTo("MEDICATION");
+                });
+        verify(reminderRepository)
+                .findByOwnerUserIdAndStatusNot(motherId, ReminderStatus.CANCELLED);
     }
 
     @Test
@@ -356,8 +382,6 @@ class FamilyDashboardServiceTest {
                 Object value = parameterInvocation.getArgument(1);
                 if ("groupId".equals(name)) {
                     groupId.set((UUID) value);
-                } else if ("userId".equals(name)) {
-                    requesterQueryParameters.add(value);
                 }
                 return query;
             });
@@ -390,7 +414,11 @@ class FamilyDashboardServiceTest {
     }
 
     private CareGroup group(UUID groupId, String name) {
-        return CareGroup.builder().id(groupId).groupName(name).build();
+        return CareGroup.builder()
+                .id(groupId)
+                .ownerUserId(motherId)
+                .groupName(name)
+                .build();
     }
 
     private CareTask task(UUID groupId, CareTaskStatus status, Instant dueAt, Instant updatedAt) {

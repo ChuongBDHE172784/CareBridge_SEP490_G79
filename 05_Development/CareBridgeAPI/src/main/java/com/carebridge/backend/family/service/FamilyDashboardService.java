@@ -15,10 +15,15 @@ import com.carebridge.backend.family.repository.CareGroupMemberRepository;
 import com.carebridge.backend.notification.entity.NotificationRecord;
 import com.carebridge.backend.notification.entity.NotificationType;
 import com.carebridge.backend.notification.repository.NotificationRecordRepository;
+import com.carebridge.backend.reminder.entity.ReminderStatus;
+import com.carebridge.backend.reminder.repository.ReminderRepository;
+import com.carebridge.backend.reminder.service.ReminderRecurrenceService;
 import com.carebridge.backend.security.repository.UserRepository;
 import jakarta.persistence.EntityManager;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -33,6 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class FamilyDashboardService {
 
     private static final int DASHBOARD_SHARED_DATA_PAGE_SIZE = Integer.MAX_VALUE;
+    private static final ZoneId DASHBOARD_TIMEZONE = ZoneId.of("Asia/Ho_Chi_Minh");
 
     private final CareGroupMemberRepository memberRepository;
     private final NotificationRecordRepository notificationRepository;
@@ -40,6 +46,8 @@ public class FamilyDashboardService {
     private final CareGroupAuthorizationPolicy authorizationPolicy;
     private final ISharedDataService sharedDataService;
     private final UserRepository userRepository;
+    private final ReminderRepository reminderRepository;
+    private final ReminderRecurrenceService reminderRecurrenceService;
 
     public FamilyDashboardService(
             CareGroupMemberRepository memberRepository,
@@ -47,13 +55,17 @@ public class FamilyDashboardService {
             EntityManager entityManager,
             CareGroupAuthorizationPolicy authorizationPolicy,
             ISharedDataService sharedDataService,
-            UserRepository userRepository) {
+            UserRepository userRepository,
+            ReminderRepository reminderRepository,
+            ReminderRecurrenceService reminderRecurrenceService) {
         this.memberRepository = memberRepository;
         this.notificationRepository = notificationRepository;
         this.entityManager = entityManager;
         this.authorizationPolicy = authorizationPolicy;
         this.sharedDataService = sharedDataService;
         this.userRepository = userRepository;
+        this.reminderRepository = reminderRepository;
+        this.reminderRecurrenceService = reminderRecurrenceService;
     }
 
     public FamilyDashboardResponse get(UUID userId, UUID requestedCareGroupId) {
@@ -189,7 +201,8 @@ public class FamilyDashboardService {
 
         return new FamilyDashboardResponse.Detail(
                 groupId,
-                context.tasks().stream().map(this::toTaskResponse).toList(),
+                motherDisplayName(context.group().getOwnerUserId()),
+                loadMotherTodayReminders(context.group().getOwnerUserId()),
                 context.alerts(),
                 acceptedMembers.size(),
                 acceptedMembers,
@@ -284,14 +297,57 @@ public class FamilyDashboardService {
                 .toList();
     }
 
-    private FamilyDashboardResponse.Task toTaskResponse(CareTask task) {
-        return new FamilyDashboardResponse.Task(
-                task.getId(),
-                task.getCareGroupId(),
-                task.getTitle(),
-                task.getStatus().name(),
-                task.getDueAt(),
-                task.getUpdatedAt());
+    private String motherDisplayName(UUID motherId) {
+        return userRepository.findById(motherId)
+                .map(user -> {
+                    if (user.getDisplayName() != null && !user.getDisplayName().isBlank()) {
+                        return user.getDisplayName();
+                    }
+                    if (user.getName() != null && !user.getName().isBlank()) {
+                        return user.getName();
+                    }
+                    return "Mẹ";
+                })
+                .orElse("Mẹ");
+    }
+
+    private List<FamilyDashboardResponse.TodayReminder> loadMotherTodayReminders(UUID motherId) {
+        LocalDate today = LocalDate.now(DASHBOARD_TIMEZONE);
+        return reminderRepository
+                .findByOwnerUserIdAndStatusNot(motherId, ReminderStatus.CANCELLED)
+                .stream()
+                .map(reminder -> reminderRecurrenceService.occurrenceForDate(
+                        reminder, today, DASHBOARD_TIMEZONE))
+                .flatMap(java.util.Optional::stream)
+                .map(occurrence -> {
+                    String type = occurrence.reminder().getReminderType() == null
+                            ? "OTHER"
+                            : occurrence.reminder().getReminderType().name();
+                    return new FamilyDashboardResponse.TodayReminder(
+                            occurrence.reminder().getId(),
+                            occurrence.reminder().getTitle(),
+                            type,
+                            occurrence.status().name(),
+                            occurrence.scheduledAt(),
+                            occurrence.dueAt(),
+                            occurrence.snoozedUntil(),
+                            reminderPriority(type));
+                })
+                .sorted(Comparator
+                        .comparingInt(FamilyDashboardResponse.TodayReminder::priority)
+                        .thenComparing(
+                                FamilyDashboardResponse.TodayReminder::dueAt,
+                                Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
+    }
+
+    private int reminderPriority(String reminderType) {
+        return switch (reminderType) {
+            case "VACCINATION" -> 1;
+            case "MEDICATION" -> 2;
+            case "APPOINTMENT" -> 3;
+            default -> 4;
+        };
     }
 
     private FamilyDashboardResponse.Aggregate aggregate(

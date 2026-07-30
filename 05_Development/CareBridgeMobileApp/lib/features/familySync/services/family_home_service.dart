@@ -113,7 +113,8 @@ class FamilyHomeGroup {
 class FamilyHomeGroupDetail {
   const FamilyHomeGroupDetail({
     required this.careGroupId,
-    required this.tasks,
+    required this.motherDisplayName,
+    required this.todayReminders,
     required this.alerts,
     required this.memberCount,
     required this.members,
@@ -124,7 +125,8 @@ class FamilyHomeGroupDetail {
   });
 
   final String careGroupId;
-  final List<FamilyHomeTask> tasks;
+  final String motherDisplayName;
+  final List<FamilyHomeTodayReminder> todayReminders;
   final List<FamilyHomeAlert> alerts;
   final int memberCount;
   final List<FamilyHomeMember> members;
@@ -136,10 +138,11 @@ class FamilyHomeGroupDetail {
   factory FamilyHomeGroupDetail.fromJson(Map<String, dynamic> json) {
     return FamilyHomeGroupDetail(
       careGroupId: _requiredString(json, 'careGroupId'),
-      tasks: _requiredMapList(
+      motherDisplayName: _requiredString(json, 'motherDisplayName'),
+      todayReminders: _requiredMapList(
         json,
-        'tasks',
-      ).map(FamilyHomeTask.fromJson).toList(growable: false),
+        'todayReminders',
+      ).map(FamilyHomeTodayReminder.fromJson).toList(growable: false),
       alerts: _requiredMapList(
         json,
         'alerts',
@@ -161,31 +164,37 @@ class FamilyHomeGroupDetail {
   }
 }
 
-class FamilyHomeTask {
-  const FamilyHomeTask({
+class FamilyHomeTodayReminder {
+  const FamilyHomeTodayReminder({
     required this.id,
-    required this.careGroupId,
     required this.title,
+    required this.type,
     required this.status,
+    required this.scheduledAt,
     required this.dueAt,
-    required this.updatedAt,
+    required this.snoozedUntil,
+    required this.priority,
   });
 
   final String id;
-  final String careGroupId;
   final String title;
+  final String type;
   final String status;
+  final DateTime? scheduledAt;
   final DateTime? dueAt;
-  final DateTime? updatedAt;
+  final DateTime? snoozedUntil;
+  final int priority;
 
-  factory FamilyHomeTask.fromJson(Map<String, dynamic> json) {
-    return FamilyHomeTask(
+  factory FamilyHomeTodayReminder.fromJson(Map<String, dynamic> json) {
+    return FamilyHomeTodayReminder(
       id: _requiredString(json, 'id'),
-      careGroupId: _requiredString(json, 'careGroupId'),
       title: _requiredString(json, 'title'),
+      type: _requiredString(json, 'type'),
       status: _requiredString(json, 'status'),
+      scheduledAt: _optionalDateTime(json, 'scheduledAt'),
       dueAt: _optionalDateTime(json, 'dueAt'),
-      updatedAt: _optionalDateTime(json, 'updatedAt'),
+      snoozedUntil: _optionalDateTime(json, 'snoozedUntil'),
+      priority: _requiredInt(json, 'priority'),
     );
   }
 }

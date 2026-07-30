@@ -16,7 +16,11 @@ void main() {
       expect(snapshot.groups.first.permissionScope.alerts, isTrue);
       expect(snapshot.selectedCareGroupId, 'group-a');
       expect(snapshot.selectedGroupDetail!.careGroupId, 'group-a');
-      expect(snapshot.selectedGroupDetail!.tasks.single.careGroupId, 'group-a');
+      expect(snapshot.selectedGroupDetail!.motherDisplayName, 'Nguyễn Lan');
+      expect(
+        snapshot.selectedGroupDetail!.todayReminders.single.type,
+        'MEDICATION',
+      );
       expect(
         snapshot.selectedGroupDetail!.alerts.single.careGroupId,
         'group-a',
@@ -99,7 +103,13 @@ void main() {
         find.byKey(const Key('family-selected-group-group-a')),
         findsOneWidget,
       );
-      expect(find.byKey(const Key('family-task-task-a')), findsOneWidget);
+      expect(find.text('Lịch nhắc của Nguyễn Lan'), findsOneWidget);
+      expect(
+        find.byKey(const Key('family-reminder-reminder-a')),
+        findsOneWidget,
+      );
+      expect(find.text('Quyền được chia sẻ'), findsNothing);
+      expect(find.text('Dữ liệu chia sẻ'), findsNothing);
     });
 
     testWidgets(
@@ -148,7 +158,10 @@ void main() {
           find.byKey(const Key('family-selected-group-group-b')),
           findsOneWidget,
         );
-        expect(find.byKey(const Key('family-task-task-b')), findsOneWidget);
+        expect(
+          find.byKey(const Key('family-reminder-reminder-b')),
+          findsOneWidget,
+        );
         await tester.scrollUntilVisible(
           find.byKey(const Key('family-global-overdue')),
           -250,
@@ -164,7 +177,7 @@ void main() {
       },
     );
 
-    testWidgets('renders honest empty task, alert, and shared-data states', (
+    testWidgets('renders honest empty reminder and alert states', (
       tester,
     ) async {
       await _pumpDashboard(
@@ -178,12 +191,12 @@ void main() {
       await tester.pump();
 
       await tester.scrollUntilVisible(
-        find.byKey(const Key('family-dashboard-empty-tasks')),
+        find.byKey(const Key('family-dashboard-empty-reminders')),
         250,
         scrollable: find.byType(Scrollable).first,
       );
       expect(
-        find.byKey(const Key('family-dashboard-empty-tasks')),
+        find.byKey(const Key('family-dashboard-empty-reminders')),
         findsOneWidget,
       );
       await tester.scrollUntilVisible(
@@ -195,15 +208,8 @@ void main() {
         find.byKey(const Key('family-dashboard-empty-alerts')),
         findsOneWidget,
       );
-      await tester.scrollUntilVisible(
-        find.byKey(const Key('family-dashboard-empty-shared-data')),
-        250,
-        scrollable: find.byType(Scrollable).first,
-      );
-      expect(
-        find.byKey(const Key('family-dashboard-empty-shared-data')),
-        findsOneWidget,
-      );
+      expect(find.text('Quyền được chia sẻ'), findsNothing);
+      expect(find.text('Dữ liệu chia sẻ'), findsNothing);
     });
 
     testWidgets('renders generic error and retries loader', (tester) async {
@@ -300,16 +306,19 @@ FamilyHomeGroupDetail _detail(String groupId, {bool empty = false}) {
   final suffix = groupId == 'group-a' ? 'a' : 'b';
   return FamilyHomeGroupDetail(
     careGroupId: groupId,
-    tasks: empty
+    motherDisplayName: 'Nguyễn Lan',
+    todayReminders: empty
         ? []
         : [
-            FamilyHomeTask(
-              id: 'task-$suffix',
-              careGroupId: groupId,
-              title: 'Mua thuốc',
-              status: 'OPEN',
+            FamilyHomeTodayReminder(
+              id: 'reminder-$suffix',
+              title: 'Uống vitamin',
+              type: 'MEDICATION',
+              status: 'PENDING',
+              scheduledAt: DateTime.utc(2026, 7, 30, 2),
               dueAt: DateTime.utc(2026, 7, 31),
-              updatedAt: DateTime.utc(2026, 7, 30),
+              snoozedUntil: null,
+              priority: 2,
             ),
           ],
     alerts: empty
@@ -407,14 +416,17 @@ Map<String, dynamic> _dashboardJson() {
     'selectedCareGroupId': 'group-a',
     'selectedGroupDetail': {
       'careGroupId': 'group-a',
-      'tasks': [
+      'motherDisplayName': 'Nguyễn Lan',
+      'todayReminders': [
         {
-          'id': 'task-a',
-          'careGroupId': 'group-a',
-          'title': 'Mua thuốc',
-          'status': 'OPEN',
-          'dueAt': '2026-07-31T00:00:00Z',
-          'updatedAt': '2026-07-30T00:00:00Z',
+          'id': 'reminder-a',
+          'title': 'Uống vitamin',
+          'type': 'MEDICATION',
+          'status': 'PENDING',
+          'scheduledAt': '2026-07-30T02:00:00Z',
+          'dueAt': '2026-07-30T02:00:00Z',
+          'snoozedUntil': null,
+          'priority': 2,
         },
       ],
       'alerts': [

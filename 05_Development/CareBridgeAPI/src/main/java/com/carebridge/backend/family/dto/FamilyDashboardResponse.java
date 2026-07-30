@@ -24,13 +24,15 @@ public record FamilyDashboardResponse(
             Aggregate aggregate) {
     }
 
-    public record Task(
+    public record TodayReminder(
             UUID id,
-            UUID careGroupId,
             String title,
+            String type,
             String status,
+            Instant scheduledAt,
             Instant dueAt,
-            Instant updatedAt) {
+            Instant snoozedUntil,
+            int priority) {
     }
 
     public record Alert(
@@ -63,7 +65,8 @@ public record FamilyDashboardResponse(
 
     public record Detail(
             UUID careGroupId,
-            List<Task> tasks,
+            String motherDisplayName,
+            List<TodayReminder> todayReminders,
             List<Alert> alerts,
             int memberCount,
             List<Member> members,
