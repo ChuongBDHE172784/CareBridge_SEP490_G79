@@ -17,7 +17,6 @@ import java.util.zip.CRC32;
 import org.flywaydb.core.api.MigrationVersion;
 
 /**
-/**
  * Test-only support for database Gate 0 checks on the append-only Flyway
  * migration chain. The repository must contain valid, uniquely versioned SQL
  * migrations that can build the canonical schema from an empty database.

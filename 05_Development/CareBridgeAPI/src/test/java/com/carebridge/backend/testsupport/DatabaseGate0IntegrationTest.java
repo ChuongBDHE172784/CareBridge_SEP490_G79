@@ -10,7 +10,6 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 /**
-/**
  * Clean-bootstrap contract for the append-only Flyway chain: all repository
  * migrations apply once, a second migrate is a no-op, and the resulting schema
  * keeps canonical role and triage persistence.
