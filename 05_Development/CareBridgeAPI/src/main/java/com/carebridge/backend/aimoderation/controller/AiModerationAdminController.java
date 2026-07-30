@@ -41,7 +41,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/v1/admin/ai-moderation")
-@PreAuthorize("hasRole('SYSTEM_ADMIN')")
+@PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ADMIN', 'MODERATOR', 'CONTENT_ADMIN')")
 @RequiredArgsConstructor
 public class AiModerationAdminController {
 

@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/admin/red-flag-rules")
-@PreAuthorize("hasRole('SYSTEM_ADMIN')")
+@PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ADMIN', 'MODERATOR', 'CONTENT_ADMIN')")
 @RequiredArgsConstructor
 public class RedFlagRuleController {
 

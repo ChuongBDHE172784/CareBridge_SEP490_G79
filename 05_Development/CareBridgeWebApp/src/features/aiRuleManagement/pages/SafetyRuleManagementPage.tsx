@@ -192,8 +192,9 @@ export default function SafetyRuleManagementPage() {
     setStatusError('');
     try {
       setAiStatus(await fetchAiModerationStatus());
-    } catch {
-      setStatusError('Không tải được trạng thái Gemini.');
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || 'Không tải được trạng thái Gemini.';
+      setStatusError(msg);
       setAiStatus(null);
     }
   }, []);
