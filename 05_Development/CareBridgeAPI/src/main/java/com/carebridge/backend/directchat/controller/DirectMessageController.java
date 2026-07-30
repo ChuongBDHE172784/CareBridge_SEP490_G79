@@ -30,7 +30,7 @@ public class DirectMessageController {
     private final IDirectMessageService messageService;
 
     @PostMapping("/messages")
-    @PreAuthorize("hasAnyRole('MOTHER', 'EXPERT')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY', 'EXPERT')")
     public ResponseEntity<ApiResponse<TimelineItemResponse>> sendMessage(
             @PathVariable UUID conversationId,
             @Valid @RequestBody SendDirectMessageRequest request,
@@ -42,7 +42,7 @@ public class DirectMessageController {
     }
 
     @GetMapping("/timeline")
-    @PreAuthorize("hasAnyRole('MOTHER', 'EXPERT')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY', 'EXPERT')")
     public ResponseEntity<ApiResponse<TimelinePageResponse>> getTimeline(
             @PathVariable UUID conversationId,
             @RequestParam(required = false) String after,

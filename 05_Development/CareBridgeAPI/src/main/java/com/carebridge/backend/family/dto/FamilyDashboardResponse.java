@@ -1,0 +1,75 @@
+package com.carebridge.backend.family.dto;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+
+public record FamilyDashboardResponse(
+        List<Group> groups,
+        Aggregate globalAggregate,
+        UUID selectedCareGroupId,
+        Detail selectedGroupDetail) {
+
+    public record Aggregate(long overdue, long dueSoon, long inProgress, long alerts) {
+    }
+
+    public record Group(
+            UUID id,
+            String name,
+            Instant joinedAt,
+            Instant lastActivityAt,
+            String relationshipRole,
+            String customRelationshipRole,
+            Permission permissionScope,
+            Aggregate aggregate) {
+    }
+
+    public record Task(
+            UUID id,
+            UUID careGroupId,
+            String title,
+            String status,
+            Instant dueAt,
+            Instant updatedAt) {
+    }
+
+    public record Alert(
+            UUID id,
+            UUID careGroupId,
+            String title,
+            String body,
+            Instant createdAt,
+            boolean read) {
+    }
+
+    public record Permission(boolean calendar, boolean logs, boolean alerts, boolean records) {
+    }
+
+    public record Member(
+            UUID memberId,
+            UUID userId,
+            String displayName,
+            String systemRole,
+            String relationshipRole,
+            String customRelationshipRole,
+            Instant joinedAt) {
+    }
+
+    public record SharedDataCategory(String category, boolean permitted, int itemCount) {
+    }
+
+    public record SharedDataSummary(int totalItems, List<SharedDataCategory> categories) {
+    }
+
+    public record Detail(
+            UUID careGroupId,
+            List<Task> tasks,
+            List<Alert> alerts,
+            int memberCount,
+            List<Member> members,
+            String relationshipRole,
+            String customRelationshipRole,
+            Permission permissionScope,
+            SharedDataSummary sharedDataSummary) {
+    }
+}

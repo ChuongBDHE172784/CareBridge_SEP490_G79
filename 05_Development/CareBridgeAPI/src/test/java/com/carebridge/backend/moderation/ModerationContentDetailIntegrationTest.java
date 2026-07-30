@@ -60,6 +60,7 @@ class ModerationContentDetailIntegrationTest {
         ModerationContentDetailResponse response = new ModerationContentDetailResponse(
                 QUESTION_ID, ReportTargetType.QUESTION, UUID.randomUUID(), "Nguyen Thi A",
                 "Tieu de", fullBody, QuestionStatus.HIDDEN.name(), false, null, null,
+                null, java.util.List.of(), java.util.List.of(), false, false,
                 Instant.now(), Instant.now());
         when(moderationService.getContentDetail(any(), any(), any())).thenReturn(response);
 

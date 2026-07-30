@@ -3,6 +3,8 @@ class CareGroupMember {
   final String? userId;
   final String displayName;
   final String memberRole;
+  final String? familyRelationshipRole;
+  final String? customFamilyRelationshipRole;
   final String inviteStatus;
   final bool isJoinRequest;
   final DateTime? joinedAt;
@@ -12,6 +14,8 @@ class CareGroupMember {
     this.userId,
     required this.displayName,
     required this.memberRole,
+    this.familyRelationshipRole,
+    this.customFamilyRelationshipRole,
     required this.inviteStatus,
     this.isJoinRequest = false,
     this.joinedAt,
@@ -23,6 +27,9 @@ class CareGroupMember {
       userId: json['userId'] as String?,
       displayName: json['displayName'] as String,
       memberRole: json['memberRole'] as String? ?? 'MEMBER',
+      familyRelationshipRole: json['familyRelationshipRole'] as String?,
+      customFamilyRelationshipRole:
+          json['customFamilyRelationshipRole'] as String?,
       inviteStatus: json['inviteStatus'] as String? ?? 'ACCEPTED',
       isJoinRequest: json['isJoinRequest'] as bool? ?? false,
       joinedAt: json['joinedAt'] != null
@@ -35,7 +42,22 @@ class CareGroupMember {
   bool get isPending => inviteStatus == 'PENDING';
 
   String get roleLabel => careGroupRoleLabel(memberRole);
+
+  String? get familyRelationshipLabel => familyRelationshipRole == 'KHAC'
+      ? customFamilyRelationshipRole
+      : familyRelationshipLabels[familyRelationshipRole];
 }
+
+const familyRelationshipLabels = <String, String>{
+  'CHONG': 'Chồng',
+  'BO': 'Bố',
+  'ME': 'Mẹ',
+  'ONG_NOI': 'Ông nội',
+  'BA_NOI': 'Bà nội',
+  'ONG_NGOAI': 'Ông ngoại',
+  'BA_NGOAI': 'Bà ngoại',
+  'KHAC': 'Khác',
+};
 
 /// Shared role label mapping for OWNER/ADMIN/MEMBER/VIEWER (backend GroupMemberRole enum).
 String careGroupRoleLabel(String role) {
@@ -150,4 +172,3 @@ class JoinRequest {
     );
   }
 }
-

@@ -5,7 +5,6 @@ import com.carebridge.backend.config.MockMvcSecurityBuilderConfig;
 import com.carebridge.backend.family.dto.InviteFamilyMemberRequest;
 import com.carebridge.backend.family.dto.InviteFamilyMemberResponse;
 import com.carebridge.backend.family.entity.InviteChannel;
-import com.carebridge.backend.family.service.ICareCalendarService;
 import com.carebridge.backend.family.service.ICareGroupService;
 import com.carebridge.backend.family.service.ICareTaskService;
 import com.carebridge.backend.security.config.SecurityConfig;
@@ -51,7 +50,6 @@ class CareGroupControllerInviteTest {
 
     @MockitoBean private ICareGroupService careGroupService;
     @MockitoBean private ICareTaskService careTaskService;
-    @MockitoBean private ICareCalendarService careCalendarService;
     @MockitoBean private JwtTokenProvider jwtTokenProvider;
     @MockitoBean private UserRepository userRepository;
 

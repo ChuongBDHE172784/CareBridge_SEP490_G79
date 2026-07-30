@@ -21,7 +21,7 @@ public class ActiveConversationCallController {
     private final IConversationCallService callService;
 
     @GetMapping("/active")
-    @PreAuthorize("hasAnyRole('MOTHER', 'EXPERT')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY', 'EXPERT')")
     public ResponseEntity<ApiResponse<List<ConversationCallResponse>>> listActiveCalls(
             Principal principal) {
         return ResponseEntity.ok(ApiResponse.success(

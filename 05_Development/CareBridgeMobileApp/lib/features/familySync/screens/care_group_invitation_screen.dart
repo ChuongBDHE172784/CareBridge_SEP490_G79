@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/care_group_model.dart';
 import '../services/care_group_service.dart';
 import 'reject_invitation_confirmation_screen.dart';
+import '../widgets/family_relationship_role_picker.dart';
 
 class CareGroupInvitationScreen extends StatefulWidget {
   final PendingInvitation invitation;
@@ -18,18 +19,24 @@ class _CareGroupInvitationScreenState extends State<CareGroupInvitationScreen> {
   bool _isLoading = false;
 
   Future<void> _accept() async {
+    final relationship = await showFamilyRelationshipRolePicker(context);
+    if (relationship == null || !mounted) return;
     setState(() => _isLoading = true);
     try {
-      await _service.acceptInvite(widget.invitation.groupId);
+      await _service.acceptInvite(
+        widget.invitation.groupId,
+        familyRelationshipRole: relationship.role,
+        customFamilyRelationshipRole: relationship.customRole,
+      );
       if (mounted) {
         Navigator.pop(context, true); // Return true on success
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
       }
     } finally {
       if (mounted) {

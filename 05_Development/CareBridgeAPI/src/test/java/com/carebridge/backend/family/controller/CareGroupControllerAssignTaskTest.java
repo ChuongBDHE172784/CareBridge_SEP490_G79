@@ -5,7 +5,6 @@ import com.carebridge.backend.config.MockMvcSecurityBuilderConfig;
 import com.carebridge.backend.family.dto.AssignFamilyTaskRequest;
 import com.carebridge.backend.family.dto.AssignFamilyTaskResponse;
 import com.carebridge.backend.family.dto.CareTasksResponse;
-import com.carebridge.backend.family.service.ICareCalendarService;
 import com.carebridge.backend.family.service.ICareGroupService;
 import com.carebridge.backend.family.service.ICareTaskService;
 import com.carebridge.backend.security.config.SecurityConfig;
@@ -52,7 +51,6 @@ class CareGroupControllerAssignTaskTest {
 
     @MockitoBean private ICareGroupService careGroupService;
     @MockitoBean private ICareTaskService careTaskService;
-    @MockitoBean private ICareCalendarService careCalendarService;
     @MockitoBean private JwtTokenProvider jwtTokenProvider;
     @MockitoBean private UserRepository userRepository;
 

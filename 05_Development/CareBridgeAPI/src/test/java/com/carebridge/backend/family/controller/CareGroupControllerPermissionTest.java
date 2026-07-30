@@ -2,7 +2,6 @@ package com.carebridge.backend.family.controller;
 
 import com.carebridge.backend.common.config.JpaAuditingConfig;
 import com.carebridge.backend.config.MockMvcSecurityBuilderConfig;
-import com.carebridge.backend.family.service.ICareCalendarService;
 import com.carebridge.backend.family.service.ICareGroupService;
 import com.carebridge.backend.family.service.ICareTaskService;
 import com.carebridge.backend.security.config.SecurityConfig;
@@ -37,7 +36,6 @@ class CareGroupControllerPermissionTest {
 
     @MockitoBean private ICareGroupService careGroupService;
     @MockitoBean private ICareTaskService careTaskService;
-    @MockitoBean private ICareCalendarService careCalendarService;
     @MockitoBean private JwtTokenProvider jwtTokenProvider;
     @MockitoBean private UserRepository userRepository;
 

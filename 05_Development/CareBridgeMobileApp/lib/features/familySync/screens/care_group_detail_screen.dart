@@ -18,7 +18,7 @@ import '../models/family_permission_model.dart';
 
 /// CB-027 — Shared Care Group Detail (UC-83, UC-84, UC-71, UC-73, UC-216)
 /// Shows group info, member circles (64x64 with star for owner),
-/// bento grid sections (calendar, tasks, shared data, alerts).
+/// Shows tasks, shared data, alerts, and accepted-member context.
 /// Calls GET /api/v1/care-groups/{id}/members.
 class CareGroupDetailScreen extends StatefulWidget {
   final String groupId;
@@ -195,7 +195,9 @@ class _CareGroupDetailScreenState extends State<CareGroupDetailScreen> {
                   ),
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
-                    sliver: SliverToBoxAdapter(child: _buildMotherJourneySection()),
+                    sliver: SliverToBoxAdapter(
+                      child: _buildMotherJourneySection(),
+                    ),
                   ),
                 ],
               ),
@@ -562,7 +564,9 @@ class _CareGroupDetailScreenState extends State<CareGroupDetailScreen> {
                 Clipboard.setData(ClipboardData(text: widget.groupId));
                 if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Đã sao chép mã nhóm vào bộ nhớ tạm!')),
+                  const SnackBar(
+                    content: Text('Đã sao chép mã nhóm vào bộ nhớ tạm!'),
+                  ),
                 );
               } else if (val == 'pending_invites') {
                 Navigator.push(
@@ -787,9 +791,7 @@ class _CareGroupDetailScreenState extends State<CareGroupDetailScreen> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => SharedDataScreen(
-                    groupId: widget.groupId,
-                  ),
+                  builder: (_) => SharedDataScreen(groupId: widget.groupId),
                 ),
               );
             },
@@ -914,11 +916,7 @@ class _BentoCard extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Icon(
-                    icon,
-                    color: const Color(0xFF845143),
-                    size: 24,
-                  ),
+                  Icon(icon, color: const Color(0xFF845143), size: 24),
                   if (!isEnabled)
                     const Icon(
                       Icons.lock_outline,

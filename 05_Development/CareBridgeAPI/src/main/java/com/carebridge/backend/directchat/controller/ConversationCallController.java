@@ -29,7 +29,7 @@ public class ConversationCallController {
     private final IConversationCallService callService;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('MOTHER', 'EXPERT')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY', 'EXPERT')")
     public ResponseEntity<ApiResponse<ConversationCallResponse>> initiateCall(
             @PathVariable UUID conversationId,
             @Valid @RequestBody InitiateCallRequest request,
@@ -40,7 +40,7 @@ public class ConversationCallController {
     }
 
     @GetMapping("/{callId}")
-    @PreAuthorize("hasAnyRole('MOTHER', 'EXPERT')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY', 'EXPERT')")
     public ResponseEntity<ApiResponse<ConversationCallResponse>> getCall(
             @PathVariable UUID conversationId, @PathVariable UUID callId, Principal principal) {
         UUID currentUserId = SecurityUtils.requireCurrentUserId(principal);
@@ -49,7 +49,7 @@ public class ConversationCallController {
     }
 
     @PatchMapping("/{callId}/ringing")
-    @PreAuthorize("hasAnyRole('MOTHER', 'EXPERT')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY', 'EXPERT')")
     public ResponseEntity<ApiResponse<ConversationCallResponse>> markRinging(
             @PathVariable UUID conversationId, @PathVariable UUID callId, Principal principal) {
         UUID currentUserId = SecurityUtils.requireCurrentUserId(principal);
@@ -57,7 +57,7 @@ public class ConversationCallController {
     }
 
     @PatchMapping("/{callId}/answer")
-    @PreAuthorize("hasAnyRole('MOTHER', 'EXPERT')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY', 'EXPERT')")
     public ResponseEntity<ApiResponse<ConversationCallResponse>> answer(
             @PathVariable UUID conversationId, @PathVariable UUID callId, Principal principal) {
         UUID currentUserId = SecurityUtils.requireCurrentUserId(principal);
@@ -65,7 +65,7 @@ public class ConversationCallController {
     }
 
     @PatchMapping("/{callId}/decline")
-    @PreAuthorize("hasAnyRole('MOTHER', 'EXPERT')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY', 'EXPERT')")
     public ResponseEntity<ApiResponse<ConversationCallResponse>> decline(
             @PathVariable UUID conversationId, @PathVariable UUID callId, Principal principal) {
         UUID currentUserId = SecurityUtils.requireCurrentUserId(principal);
@@ -73,7 +73,7 @@ public class ConversationCallController {
     }
 
     @PatchMapping("/{callId}/end")
-    @PreAuthorize("hasAnyRole('MOTHER', 'EXPERT')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY', 'EXPERT')")
     public ResponseEntity<ApiResponse<ConversationCallResponse>> end(
             @PathVariable UUID conversationId, @PathVariable UUID callId, Principal principal) {
         UUID currentUserId = SecurityUtils.requireCurrentUserId(principal);
@@ -81,7 +81,7 @@ public class ConversationCallController {
     }
 
     @PostMapping("/{callId}/join-credentials")
-    @PreAuthorize("hasAnyRole('MOTHER', 'EXPERT')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY', 'EXPERT')")
     public ResponseEntity<ApiResponse<ZegoJoinCredentialsResponse>> issueJoinCredentials(
             @PathVariable UUID conversationId, @PathVariable UUID callId, Principal principal) {
         UUID currentUserId = SecurityUtils.requireCurrentUserId(principal);

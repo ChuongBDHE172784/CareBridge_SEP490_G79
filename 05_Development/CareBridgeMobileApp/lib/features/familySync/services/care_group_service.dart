@@ -36,17 +36,18 @@ class CareGroupService {
     String? phone,
     String? memberRole,
   }) async {
-    final body = <String, dynamic>{
-      'channel': channel,
-    };
+    final body = <String, dynamic>{'channel': channel};
     if (phone != null && phone.isNotEmpty) {
       body['phone'] = phone;
     }
     if (memberRole != null) {
       body['memberRole'] = memberRole;
     }
-    
-    final data = await apiPost('/api/v1/care-groups/$groupId/invitations', body);
+
+    final data = await apiPost(
+      '/api/v1/care-groups/$groupId/invitations',
+      body,
+    );
     return data['data'] as Map<String, dynamic>;
   }
 
@@ -59,11 +60,18 @@ class CareGroupService {
   }
 
   // UC-83: Accept a pending invitation.
-  Future<CareGroupMember> acceptInvite(String groupId) async {
-    final data = await apiPost(
-      '/api/v1/care-groups/$groupId/invitations/accept',
-      const {},
-    );
+  Future<CareGroupMember> acceptInvite(
+    String groupId, {
+    required String familyRelationshipRole,
+    String? customFamilyRelationshipRole,
+  }) async {
+    final data =
+        await apiPost('/api/v1/care-groups/$groupId/invitations/accept', {
+          'familyRelationshipRole': familyRelationshipRole,
+          if (customFamilyRelationshipRole != null &&
+              customFamilyRelationshipRole.trim().isNotEmpty)
+            'customFamilyRelationshipRole': customFamilyRelationshipRole.trim(),
+        });
     return CareGroupMember.fromJson(data['data'] as Map<String, dynamic>);
   }
 
@@ -73,11 +81,18 @@ class CareGroupService {
   }
 
   // Join care group by invite code (or groupId UUID)
-  Future<Map<String, dynamic>> joinGroupByCode(String code) async {
-    final data = await apiPost(
-      '/api/v1/care-groups/join',
-      {'code': code},
-    );
+  Future<Map<String, dynamic>> joinGroupByCode(
+    String code, {
+    required String familyRelationshipRole,
+    String? customFamilyRelationshipRole,
+  }) async {
+    final data = await apiPost('/api/v1/care-groups/join', {
+      'code': code,
+      'familyRelationshipRole': familyRelationshipRole,
+      if (customFamilyRelationshipRole != null &&
+          customFamilyRelationshipRole.trim().isNotEmpty)
+        'customFamilyRelationshipRole': customFamilyRelationshipRole.trim(),
+    });
     return data['data'] as Map<String, dynamic>;
   }
 
@@ -90,12 +105,17 @@ class CareGroupService {
   Future<List<JoinRequest>> listJoinRequests(String groupId) async {
     final data = await apiGet('/api/v1/care-groups/$groupId/join-requests');
     final list = data['data'] as List<dynamic>? ?? [];
-    return list.map((item) => JoinRequest.fromJson(item as Map<String, dynamic>)).toList();
+    return list
+        .map((item) => JoinRequest.fromJson(item as Map<String, dynamic>))
+        .toList();
   }
 
   // Mother approves or rejects a join request
   Future<void> respondJoinRequest(
-      String groupId, String memberId, bool approve) async {
+    String groupId,
+    String memberId,
+    bool approve,
+  ) async {
     await apiPost(
       '/api/v1/care-groups/$groupId/join-requests/$memberId/respond?approve=$approve',
       const {},
@@ -153,23 +173,6 @@ class CareGroupService {
     return FamilyPermission.fromJson(data['data'] as Map<String, dynamic>);
   }
 
-  // UC74: View Shared Care Calendar
-  Future<List<Map<String, dynamic>>> getSharedCalendar(
-    String groupId,
-    DateTime start,
-    DateTime end,
-  ) async {
-    final data = await apiGet(
-      '/api/v1/care-groups/$groupId/calendar',
-      queryParams: {
-        'rangeStart': start.toUtc().toIso8601String(),
-        'rangeEnd': end.toUtc().toIso8601String(),
-      },
-    );
-    final items = data['data']['items'] as List<dynamic>? ?? [];
-    return items.cast<Map<String, dynamic>>();
-  }
-
   // UC86: View Family Alerts
   Future<List<Map<String, dynamic>>> getFamilyAlerts(
     String groupId, {
@@ -183,28 +186,8 @@ class CareGroupService {
       );
       final alerts = data['data']['alerts'] as List<dynamic>? ?? [];
       return alerts.cast<Map<String, dynamic>>();
-    } catch (e) {
-      // Fallback for UI testing if backend fails
-      return [
-        {
-          'alertId': 'mock-1',
-          'title': 'Bé Mỡ đã ngủ ngon',
-          'body': 'Nhiệt độ phòng ổn định',
-          'isRead': false,
-          'createdAt': DateTime.now()
-              .subtract(const Duration(minutes: 5))
-              .toIso8601String(),
-        },
-        {
-          'alertId': 'mock-2',
-          'title': 'Nhiệt độ phòng bé hơi lạnh',
-          'body': 'Dưới 24 độ C',
-          'isRead': true,
-          'createdAt': DateTime.now()
-              .subtract(const Duration(hours: 1))
-              .toIso8601String(),
-        },
-      ];
+    } catch (_) {
+      rethrow;
     }
   }
 
