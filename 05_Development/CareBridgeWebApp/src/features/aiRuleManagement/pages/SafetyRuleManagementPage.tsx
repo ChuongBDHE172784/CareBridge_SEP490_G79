@@ -52,7 +52,6 @@ interface RuleFormState {
   severity: RedFlagSeverity;
   action: RedFlagAction;
 }
-
 const DEFAULT_FORM: RuleFormState = { keyword: '', severity: 'YELLOW', action: 'WARN' };
 
 interface PolicyFormState {
@@ -1386,7 +1385,7 @@ export default function SafetyRuleManagementPage() {
                   <div className="flex items-center gap-3">
                     <label className={`py-2 px-4 rounded-xl border border-dashed border-primary bg-primary/5 text-primary text-xs font-semibold flex items-center gap-2 cursor-pointer hover:bg-primary/10 transition-colors ${uploadingPolicyFile ? 'opacity-50 cursor-not-allowed' : ''}`}>
                       <span className="material-symbols-outlined text-base">cloud_upload</span>
-                      {uploadingPolicyFile ? 'Đang upload lên R2...' : 'Tải tài liệu lên Cloudflare R2'}
+                      {uploadingPolicyFile ? 'Đang upload lên R2...' : 'Tải tài liệu lên'}
                       <input
                         type="file"
                         accept=".pdf,.doc,.docx,image/*"
