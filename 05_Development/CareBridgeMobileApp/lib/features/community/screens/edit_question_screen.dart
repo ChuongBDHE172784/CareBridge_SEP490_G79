@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../../core/constants/content_stages.dart';
+import '../models/community_model.dart';
 import '../services/community_service.dart';
+import '../widgets/community_image_attachments.dart';
 
 /// UC-55 — Edit Community Post
 /// Allows a MOTHER to edit their own community question.
@@ -9,6 +13,12 @@ class EditQuestionScreen extends StatefulWidget {
   final String questionId;
   final String initialTitle;
   final String initialBody;
+  final String? initialTopicId;
+  final String initialTopicName;
+  final String initialStage;
+  final List<String> initialImageUrls;
+  final int? initialPregnancyWeek;
+  final int? initialBabyAgeMonths;
   final bool initialIsAnonymous;
   final String initialUrgency;
 
@@ -17,6 +27,12 @@ class EditQuestionScreen extends StatefulWidget {
     required this.questionId,
     required this.initialTitle,
     required this.initialBody,
+    required this.initialTopicId,
+    required this.initialTopicName,
+    required this.initialStage,
+    this.initialImageUrls = const [],
+    this.initialPregnancyWeek,
+    this.initialBabyAgeMonths,
     required this.initialIsAnonymous,
     required this.initialUrgency,
   });
@@ -40,11 +56,19 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _titleCtrl;
   late final TextEditingController _bodyCtrl;
+  final _imageService = CommunityImageService();
+  final List<CommunityImageAttachment> _newImages = [];
+  late final List<String> _existingImageUrls;
+  List<CommunityTopic> _topics = [];
+  String? _selectedTopicId;
+  late String _stage;
   late String _urgency;
   late bool _isAnonymous;
+  bool _loadingTopics = false;
   bool _submitting = false;
 
   static const _urgencyOptions = [
+    {'value': 'LOW', 'label': 'Không gấp'},
     {'value': 'NORMAL', 'label': 'Bình thường'},
     {'value': 'URGENT', 'label': 'Khẩn cấp'},
   ];
@@ -54,8 +78,57 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
     super.initState();
     _titleCtrl = TextEditingController(text: widget.initialTitle);
     _bodyCtrl = TextEditingController(text: widget.initialBody);
+    _selectedTopicId = widget.initialTopicId;
+    _stage = normalizeContentStage(widget.initialStage);
+    _existingImageUrls = List<String>.from(widget.initialImageUrls);
     _urgency = widget.initialUrgency;
     _isAnonymous = widget.initialIsAnonymous;
+    _loadTopics();
+  }
+
+  Future<void> _loadTopics() async {
+    setState(() => _loadingTopics = true);
+    try {
+      final topics = await CommunityService.instance.getQuestionTopics();
+      if (!mounted) return;
+      setState(() {
+        _topics = topics;
+        final selectedStillExists = topics.any(
+          (topic) => topic.id == _selectedTopicId,
+        );
+        if (!selectedStillExists && _selectedTopicId != null) {
+          _selectedTopicId = null;
+        }
+      });
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _topics = [];
+          _selectedTopicId = null;
+        });
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Không thể tải chủ đề: $error')));
+      }
+    } finally {
+      if (mounted) setState(() => _loadingTopics = false);
+    }
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    if (_existingImageUrls.length + _newImages.length >= communityImageLimit) {
+      return;
+    }
+    try {
+      final image = await _imageService.pick(source);
+      if (image != null && mounted) setState(() => _newImages.add(image));
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Không thể thêm ảnh: $error')));
+      }
+    }
   }
 
   @override
@@ -65,14 +138,27 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
     super.dispose();
   }
 
+  bool get _hasValidTopicSelection =>
+      _selectedTopicId != null &&
+      _topics.any((topic) => topic.id == _selectedTopicId);
+
   Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate() || !_hasValidTopicSelection) return;
     setState(() => _submitting = true);
     try {
+      final uploadedUrls = await _imageService.uploadAll(
+        _newImages,
+        purpose: 'COMMUNITY_QUESTION_IMAGE',
+      );
       await CommunityService.instance.editQuestion(
         widget.questionId,
+        topicId: _selectedTopicId,
         title: _titleCtrl.text.trim(),
         body: _bodyCtrl.text.trim(),
+        imageUrls: [..._existingImageUrls, ...uploadedUrls],
+        stage: _stage,
+        pregnancyWeek: widget.initialPregnancyWeek,
+        babyAgeMonths: widget.initialBabyAgeMonths,
         isAnonymous: _isAnonymous,
         urgency: _urgency,
       );
@@ -136,7 +222,9 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
             )
           else
             TextButton(
-              onPressed: _submit,
+              onPressed: (_loadingTopics || !_hasValidTopicSelection)
+                  ? null
+                  : _submit,
               child: const Text(
                 'Lưu',
                 style: TextStyle(
@@ -184,6 +272,67 @@ class _EditQuestionScreenState extends State<EditQuestionScreen> {
                   return 'Nội dung cần ít nhất 10 ký tự';
                 }
                 return null;
+              },
+            ),
+            const SizedBox(height: 16),
+
+            _SectionLabel('Hình ảnh'),
+            const SizedBox(height: 8),
+            CommunityImagePickerField(
+              images: _newImages,
+              existingImageUrls: _existingImageUrls,
+              enabled: !_submitting,
+              onCamera: () => _pickImage(ImageSource.camera),
+              onGallery: () => _pickImage(ImageSource.gallery),
+              onRemove: (index) => setState(() => _newImages.removeAt(index)),
+              onRemoveExisting: (index) =>
+                  setState(() => _existingImageUrls.removeAt(index)),
+            ),
+            const SizedBox(height: 16),
+
+            _SectionLabel('Chủ đề'),
+            const SizedBox(height: 8),
+            if (_loadingTopics)
+              const Center(child: CircularProgressIndicator(color: _primary))
+            else
+              DropdownButtonFormField<String>(
+                initialValue: _selectedTopicId,
+                decoration: _inputDecoration('Chọn chủ đề'),
+                items: _topics
+                    .map(
+                      (topic) => DropdownMenuItem<String>(
+                        value: topic.id,
+                        child: Text(topic.name),
+                      ),
+                    )
+                    .toList(),
+                validator: (value) => value == null || value.isEmpty
+                    ? 'Vui lòng chọn chủ đề'
+                    : null,
+                onChanged: (value) => setState(() => _selectedTopicId = value),
+              ),
+            const SizedBox(height: 16),
+
+            _SectionLabel('Giai đoạn liên quan'),
+            const SizedBox(height: 4),
+            const Text(
+              'Chọn giai đoạn của mẹ hoặc em bé được nhắc đến.',
+              style: TextStyle(color: _onSurfaceVariant, fontSize: 12),
+            ),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<String>(
+              initialValue: _stage,
+              decoration: _inputDecoration('Chọn giai đoạn'),
+              items: contentStageOptions
+                  .map(
+                    (stage) => DropdownMenuItem(
+                      value: stage.value,
+                      child: Text(stage.label),
+                    ),
+                  )
+                  .toList(growable: false),
+              onChanged: (value) {
+                if (value != null) setState(() => _stage = value);
               },
             ),
             const SizedBox(height: 16),

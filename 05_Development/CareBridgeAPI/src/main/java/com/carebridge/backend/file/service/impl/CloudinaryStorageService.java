@@ -4,6 +4,11 @@ import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
 import com.carebridge.backend.file.enums.FileAccessMode;
 import com.carebridge.backend.file.service.IStorageService;
+import java.io.InputStream;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -116,6 +121,43 @@ public class CloudinaryStorageService implements IStorageService {
         return generateSignedUrl(parsed.publicId, ttlMinutes, parsed.accessMode, parsed.resourceType);
     }
 
+    @Override
+    public byte[] read(String key, long maxBytes) {
+        if (maxBytes < 0 || maxBytes >= Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("Invalid Cloudinary read limit");
+        }
+        try {
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(generatePresignedUrl(key, 15)))
+                    .GET()
+                    .build();
+            HttpResponse<InputStream> response = HttpClient.newBuilder()
+                    .followRedirects(HttpClient.Redirect.NORMAL)
+                    .build()
+                    .send(request, HttpResponse.BodyHandlers.ofInputStream());
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                response.body().close();
+                throw new StorageException(
+                        "Cloudinary read failed with HTTP " + response.statusCode());
+            }
+            try (InputStream input = response.body()) {
+                byte[] bytes = input.readNBytes((int) maxBytes + 1);
+                if (bytes.length > maxBytes) {
+                    throw new IllegalArgumentException(
+                            "Stored object exceeds the allowed read size");
+                }
+                return bytes;
+            }
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new StorageException("Cloudinary read interrupted", ex);
+        } catch (IllegalArgumentException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new StorageException("Cloudinary read failed: " + ex.getMessage(), ex);
+        }
+    }
+
     /**
      * Generate a URL for Cloudinary assets.
      * @param publicId The Cloudinary public ID
@@ -190,6 +232,27 @@ public class CloudinaryStorageService implements IStorageService {
     }
 
     /**
+     * Required deletion path for domain-owned community media. Unlike the legacy best-effort
+     * delete method, this propagates failures so the community soft-delete transaction can abort.
+     */
+    public void deleteRequired(String key) {
+        try {
+            ParsedKey parsed = parseKey(key);
+            if (parsed != null) {
+                cloudinary.uploader().destroy(parsed.publicId,
+                        ObjectUtils.asMap("resource_type", parsed.resourceType,
+                                "type", cloudinaryDeleteType(parsed.accessMode)));
+                return;
+            }
+            String publicId = extractPublicId(key);
+            cloudinary.uploader().destroy(publicId,
+                    ObjectUtils.asMap("resource_type", "image", "type", "upload"));
+        } catch (Exception ex) {
+            throw new StorageException("Cloudinary delete failed: " + ex.getMessage(), ex);
+        }
+    }
+
+    /**
      * Delete with explicit resource type and access mode.
      * Used for proper cleanup of authenticated/private assets.
      */
@@ -259,6 +322,15 @@ public class CloudinaryStorageService implements IStorageService {
                 int slash = afterUpload.indexOf('/');
                 if (slash >= 0 && afterUpload.substring(0, slash).matches("v\\d+")) {
                     afterUpload = afterUpload.substring(slash + 1);
+                }
+                int queryIndex = afterUpload.indexOf('?');
+                if (queryIndex >= 0) afterUpload = afterUpload.substring(0, queryIndex);
+                int fragmentIndex = afterUpload.indexOf('#');
+                if (fragmentIndex >= 0) afterUpload = afterUpload.substring(0, fragmentIndex);
+                int lastSlash = afterUpload.lastIndexOf('/');
+                int extensionIndex = afterUpload.lastIndexOf('.');
+                if (extensionIndex > lastSlash) {
+                    afterUpload = afterUpload.substring(0, extensionIndex);
                 }
                 return afterUpload;
             }

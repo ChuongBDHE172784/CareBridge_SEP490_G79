@@ -6,15 +6,23 @@ import com.carebridge.backend.expertverification.dto.request.ReviewCredentialReq
 import com.carebridge.backend.expertverification.dto.request.SubmitCredentialRequest;
 import com.carebridge.backend.expertverification.dto.response.CredentialResponse;
 import com.carebridge.backend.expertverification.dto.response.DocumentReviewResponse;
+import com.carebridge.backend.expertverification.dto.response.CredentialDocumentPreviewResponse;
 import com.carebridge.backend.expertverification.entity.ExpertCredential;
 import com.carebridge.backend.expertverification.mapper.ExpertCredentialMapper;
 import com.carebridge.backend.expertverification.repository.ExpertCredentialRepository;
 import com.carebridge.backend.expertverification.reviewstatus.ReviewStatus;
 import com.carebridge.backend.expertverification.service.IExpertCredentialService;
 import com.carebridge.backend.file.dto.UploadFileResponse;
+import com.carebridge.backend.file.dto.AuthorizedFileContent;
+import com.carebridge.backend.file.dto.ViewFileResponse;
 import com.carebridge.backend.file.service.IFileService;
+import java.io.ByteArrayInputStream;
+import org.apache.tika.Tika;
+import org.apache.tika.metadata.Metadata;
+import org.apache.tika.exception.TikaException;
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
+import com.carebridge.backend.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -32,6 +40,15 @@ import java.util.stream.Collectors;
 @Transactional
 @RequiredArgsConstructor
 public class ExpertCredentialServiceImpl implements IExpertCredentialService {
+
+    private static final long MAX_PREVIEW_FILE_BYTES = 10L * 1024 * 1024;
+    private static final int MAX_PREVIEW_CHARS = 100_000;
+    private static final java.util.Set<String> PREVIEW_MIME_TYPES = java.util.Set.of(
+            "application/pdf",
+            "application/msword",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+
+    private final java.util.concurrent.ExecutorService tikaExecutor = java.util.concurrent.Executors.newFixedThreadPool(4);
 
     private final ExpertCredentialRepository credentialRepository;
     private final ExpertProfileRepository expertProfileRepository;
@@ -202,6 +219,143 @@ public class ExpertCredentialServiceImpl implements IExpertCredentialService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public CredentialDocumentPreviewResponse previewCredential(UUID credentialId, UUID reviewerId) {
+        ExpertCredential credential = credentialRepository.findByCredentialId(credentialId)
+                .orElseThrow(() -> new ExpertException(
+                        HttpStatus.NOT_FOUND, "EXPVER-004", "Credential not found"));
+        rejectIdentityEvidence(credential);
+        if (credential.getFileId() == null) {
+            throw new ExpertException(HttpStatus.NOT_FOUND, "EXPVER-010",
+                    "Credential document not found");
+        }
+
+        AuthorizedFileContent file;
+        try {
+            file = fileService.readAuthorizedFile(
+                    credential.getFileId(), reviewerId, MAX_PREVIEW_FILE_BYTES);
+        } catch (BusinessException ex) {
+            if ("FILE-007".equals(ex.getCode())) {
+                throw new ExpertException(HttpStatus.CONTENT_TOO_LARGE, "EXPVER-012",
+                        "Document is too large to preview");
+            }
+            throw ex;
+        }
+        if (!PREVIEW_MIME_TYPES.contains(file.mimeType())) {
+            throw new ExpertException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "EXPVER-011",
+                    "Document preview supports PDF, DOC and DOCX only");
+        }
+        if (file.fileSizeBytes() > MAX_PREVIEW_FILE_BYTES || file.bytes().length > MAX_PREVIEW_FILE_BYTES) {
+            throw new ExpertException(HttpStatus.CONTENT_TOO_LARGE, "EXPVER-012",
+                    "Document is too large to preview");
+        }
+
+        java.util.concurrent.Future<CredentialDocumentPreviewResponse> future = tikaExecutor.submit(() -> {
+            try (ByteArrayInputStream input = new ByteArrayInputStream(file.bytes())) {
+                Tika tika = new Tika();
+                String detectedMime = tika.detect(file.bytes(), file.originalName());
+                if (!matchesDetectedMime(file.mimeType(), detectedMime)) {
+                    throw new ExpertException(HttpStatus.UNPROCESSABLE_ENTITY, "EXPVER-013",
+                            "Document content does not match its declared type");
+                }
+                Metadata metadata = new Metadata();
+                metadata.set(Metadata.CONTENT_TYPE, file.mimeType());
+                metadata.set(org.apache.tika.metadata.TikaCoreProperties.RESOURCE_NAME_KEY, file.originalName());
+                String extracted = tika.parseToString(input, metadata, MAX_PREVIEW_CHARS);
+                String normalized = extracted
+                        .replace("\u0000", "")
+                        .replaceAll("[\\p{Cntrl}&&[^\\r\\n\\t]]", "")
+                        .trim();
+                return CredentialDocumentPreviewResponse.builder()
+                        .credentialId(credentialId)
+                        .fileName(file.originalName())
+                        .mimeType(file.mimeType())
+                        .fileSizeBytes(file.fileSizeBytes())
+                        .content(normalized)
+                        .truncated(extracted.length() >= MAX_PREVIEW_CHARS)
+                        .build();
+            } catch (java.io.IOException | TikaException ex) {
+                throw new ExpertException(HttpStatus.UNPROCESSABLE_ENTITY, "EXPVER-013",
+                        "Unable to read this document");
+            }
+        });
+
+        try {
+            return future.get(30, java.util.concurrent.TimeUnit.SECONDS);
+        } catch (java.util.concurrent.TimeoutException ex) {
+            future.cancel(true);
+            throw new ExpertException(HttpStatus.UNPROCESSABLE_ENTITY, "EXPVER-014",
+                    "Document parsing timed out");
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+            throw new ExpertException(HttpStatus.INTERNAL_SERVER_ERROR, "EXPVER-015",
+                    "Document parsing interrupted");
+        } catch (java.util.concurrent.ExecutionException ex) {
+            if (ex.getCause() instanceof ExpertException) {
+                throw (ExpertException) ex.getCause();
+            }
+            throw new ExpertException(HttpStatus.UNPROCESSABLE_ENTITY, "EXPVER-013",
+                    "Unable to read this document");
+        }
+    }
+
+    private static boolean matchesDetectedMime(String declaredMime, String detectedMime) {
+        if (declaredMime == null || detectedMime == null) {
+            return false;
+        }
+        if (declaredMime.equals(detectedMime)) {
+            return true;
+        }
+        if ("application/msword".equals(declaredMime)) {
+            return "application/x-tika-msoffice".equals(detectedMime);
+        }
+        if ("application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                .equals(declaredMime)) {
+            return "application/x-tika-ooxml".equals(detectedMime)
+                    || "application/zip".equals(detectedMime);
+        }
+        return false;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ViewFileResponse getCredentialFile(UUID credentialId, UUID reviewerId) {
+        ExpertCredential credential = credentialRepository.findByCredentialId(credentialId)
+                .orElseThrow(() -> new ExpertException(
+                        HttpStatus.NOT_FOUND, "EXPVER-004", "Credential not found"));
+        rejectIdentityEvidence(credential);
+        if (credential.getFileId() == null) {
+            throw new ExpertException(HttpStatus.NOT_FOUND, "EXPVER-010",
+                    "Credential document not found");
+        }
+        return fileService.viewFile(credential.getFileId(), reviewerId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DocumentReviewResponse> getAdminCredentialsForProfile(
+            UUID expertProfileId, UUID reviewerId) {
+        return credentialRepository.findProfessionalByExpertProfileId(expertProfileId).stream()
+                .map(credential -> {
+                    DocumentReviewResponse response =
+                            credentialMapper.toDocumentReviewResponse(credential);
+                    if (credential.getFileId() != null) {
+                        try {
+                            ViewFileResponse metadata = fileService.getAuthorizedFileMetadata(
+                                    credential.getFileId(), reviewerId);
+                            response.setFileName(metadata.getOriginalName());
+                            response.setMimeType(metadata.getMimeType());
+                            response.setFileSizeBytes(metadata.getFileSizeBytes());
+                        } catch (RuntimeException ignored) {
+                            // Keep the credential visible even when its attachment is stale.
+                        }
+                    }
+                    return response;
+                })
+                .toList();
+    }
+
     private CredentialResponse withAuthorizedUrl(
             CredentialResponse response, ExpertCredential credential, UUID callerId) {
         if (credential.getFileId() != null) {
@@ -221,7 +375,11 @@ public class ExpertCredentialServiceImpl implements IExpertCredentialService {
     private void applyAuthorizedUrl(
             DocumentReviewResponse response, ExpertCredential credential, UUID callerId) {
         if (credential.getFileId() != null) {
-            response.setFileUrl(fileService.viewFile(credential.getFileId(), callerId).getPresignedUrl());
+            var file = fileService.viewFile(credential.getFileId(), callerId);
+            response.setFileUrl(file.getPresignedUrl());
+            response.setFileName(file.getOriginalName());
+            response.setMimeType(file.getMimeType());
+            response.setFileSizeBytes(file.getFileSizeBytes());
         }
     }
 }

@@ -162,7 +162,7 @@ Không export môi trường có chứa mật khẩu hoặc token.
 Request:
 
 ```http
-POST {{baseUrl}}/api/v1/auth/login-direct
+POST {{baseUrl}}/api/v1/auth/login
 Content-Type: application/json
 ```
 
@@ -186,8 +186,6 @@ pm.environment.set("motherAUserId", body.data.user.id);
 ```
 
 Sử dụng tên biến tương ứng cho Mother B và Expert A.
-
-`login-direct` là endpoint phục vụ dev/test. Hãy sử dụng luồng xác thực chuẩn được phê duyệt bên ngoài môi trường local/test.
 
 ## 6. Header Request Chung
 

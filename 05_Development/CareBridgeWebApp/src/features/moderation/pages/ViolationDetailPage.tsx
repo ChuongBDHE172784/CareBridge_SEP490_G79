@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import ModPortalSidebar from '../components/ModPortalSidebar';
 import {
   ACTION_TYPE_LABELS,
   type AccountViolationHistoryItem,
@@ -82,8 +81,7 @@ export default function ViolationDetailPage() {
 
   return (
     <div className="portal-page">
-      <ModPortalSidebar />
-      <main className="portal-content font-sans">
+      <main className="font-sans">
         <div className="p-8">
           {/* Top Bar Navigation */}
           <div className="mb-4">

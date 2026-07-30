@@ -36,6 +36,13 @@ public class CareGroupMember {
     @Column(name = "member_role", length = 50)
     private GroupMemberRole memberRole;
 
+    /** Human family relationship; deliberately separate from memberRole authorization. */
+    @Column(name = "family_relationship_role", length = 50)
+    private String familyRelationshipRole;
+
+    @Column(name = "custom_family_relationship_role", length = 100)
+    private String customFamilyRelationshipRole;
+
     /** Maps to V1 column invitation_status. */
     @Enumerated(EnumType.STRING)
     @Column(name = "invitation_status", nullable = false, length = 20)
@@ -54,7 +61,7 @@ public class CareGroupMember {
     @Column(name = "invite_expires_at")
     private Instant inviteExpiresAt;
 
-    @Column(name = "invited_phone", length = 20)
+    @Column(name = "invited_phone", length = 255)
     private String invitedPhone;
 
     @Builder.Default

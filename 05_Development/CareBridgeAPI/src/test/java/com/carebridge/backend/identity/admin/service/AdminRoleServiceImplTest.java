@@ -14,6 +14,7 @@ import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.common.exception.AccessDeniedBusinessException;
 import com.carebridge.backend.common.exception.ResourceNotFoundException;
+import com.carebridge.backend.common.exception.ValidationException;
 import com.carebridge.backend.identity.admin.dto.response.UserRoleResponse;
 import com.carebridge.backend.identity.admin.mapper.UserRoleMapper;
 import com.carebridge.backend.identity.admin.service.impl.AdminRoleServiceImpl;
@@ -162,6 +163,38 @@ class AdminRoleServiceImplTest {
         assertThatThrownBy(() -> service.updateRole(adminId, unknownId,
                 AdminGovernanceTestFactory.makeUpdateRoleRequest(r -> {})))
                 .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void updateRole_nonStaffTarget_rejectedWithoutMutationOrAudit() {
+        AdminRoleServiceImpl service = newService();
+        User admin = AdminGovernanceTestFactory.makeSystemAdmin();
+        User target = AdminGovernanceTestFactory.makeUser(Role.MOTHER);
+        when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));
+
+        assertThatThrownBy(() -> service.updateRole(admin.getId(), target.getId(),
+                AdminGovernanceTestFactory.makeUpdateRoleRequest(r -> r.setNewRole(Role.MODERATOR))))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("MODERATOR, CONTENT_ADMIN, and SYSTEM_ADMIN accounts");
+
+        verify(userRepository, never()).save(any());
+        verifyNoInteractions(auditService);
+    }
+
+    @Test
+    void updateRole_nonStaffDestination_rejectedWithoutMutationOrAudit() {
+        AdminRoleServiceImpl service = newService();
+        User admin = AdminGovernanceTestFactory.makeSystemAdmin();
+        User target = AdminGovernanceTestFactory.makeUser(Role.CONTENT_ADMIN);
+        when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));
+
+        assertThatThrownBy(() -> service.updateRole(admin.getId(), target.getId(),
+                AdminGovernanceTestFactory.makeUpdateRoleRequest(r -> r.setNewRole(Role.FAMILY))))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("New role must be one of MODERATOR, CONTENT_ADMIN, or SYSTEM_ADMIN");
+
+        verify(userRepository, never()).save(any());
+        verifyNoInteractions(auditService);
     }
 
     // UC116-TC-011 — no-op reassignment: TDS is silent, spec decision = allowed + audited

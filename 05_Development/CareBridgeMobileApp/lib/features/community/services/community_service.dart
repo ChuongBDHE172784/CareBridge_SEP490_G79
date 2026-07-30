@@ -1,12 +1,22 @@
 import '../../../core/network/api_client.dart';
 import '../models/community_model.dart';
 
+typedef CommunityTopicFetcher =
+    Future<List<CommunityTopic>> Function({String? type});
+
+Future<List<CommunityTopic>> loadQuestionTopics(
+  CommunityTopicFetcher fetchTopics,
+) async {
+  final topics = await fetchTopics(type: 'TOPIC');
+  return topics.where((topic) => topic.type == 'TOPIC').toList(growable: false);
+}
+
 class CommunityService {
   static final CommunityService instance = CommunityService._();
   CommunityService._();
 
-  // [type] defaults to unset (all taxonomy kinds). Directory consumers request TOPIC and
-  // CATEGORY rows separately so the CATEGORY -> TOPIC hierarchy remains explicit.
+  // [type] defaults to unset (all taxonomy kinds). Callers request only the
+  // taxonomy rows required by their question or verified-content flows.
   Future<List<CommunityTopic>> getTopics({
     String? keyword,
     String? type,
@@ -24,8 +34,8 @@ class CommunityService {
         .toList();
   }
 
-  Future<List<CommunityTopic>> getTopicCategories() =>
-      getTopics(type: 'CATEGORY');
+  Future<List<CommunityTopic>> getQuestionTopics() =>
+      loadQuestionTopics(({String? type}) => getTopics(type: type));
 
   Future<List<CommunityFeedItem>> getFeed({
     String? topicId,
@@ -98,6 +108,19 @@ class CommunityService {
         .toList();
   }
 
+  Future<List<MyCommunityQuestion>> getMyQuestions({
+    int page = 0,
+    int size = 20,
+  }) async {
+    final json = await apiGet(
+      '/api/v1/community/questions/mine?page=$page&size=$size',
+    );
+    final content = json['data'] as List? ?? [];
+    return content
+        .map((e) => MyCommunityQuestion.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   // Toggle like on a question
   Future<QuestionLikeToggleResult> toggleQuestionLike(String questionId) async {
     final json = await apiPost(
@@ -118,14 +141,24 @@ class CommunityService {
   // UC-55: Edit an existing question
   Future<void> editQuestion(
     String questionId, {
+    String? topicId,
     String? title,
     String? body,
+    List<String>? imageUrls,
+    String? stage,
+    int? pregnancyWeek,
+    int? babyAgeMonths,
     bool? isAnonymous,
     String? urgency,
   }) async {
     final request = <String, dynamic>{};
+    if (topicId != null) request['topicId'] = topicId;
     if (title != null) request['title'] = title;
     if (body != null) request['body'] = body;
+    if (imageUrls != null) request['imageUrls'] = imageUrls;
+    if (stage != null) request['stage'] = stage;
+    if (pregnancyWeek != null) request['pregnancyWeek'] = pregnancyWeek;
+    if (babyAgeMonths != null) request['babyAgeMonths'] = babyAgeMonths;
     if (isAnonymous != null) request['isAnonymous'] = isAnonymous;
     if (urgency != null) request['urgency'] = urgency;
     await apiPatch('/api/v1/community/questions/$questionId', request);
@@ -142,10 +175,15 @@ class CommunityService {
     String answerId, {
     required String body,
     required bool isPersonalExperience,
+    List<String>? imageUrls,
   }) async {
     await apiPatch(
       '/api/v1/community/questions/$questionId/answers/$answerId',
-      {'body': body, 'isPersonalExperience': isPersonalExperience},
+      {
+        'body': body,
+        'isPersonalExperience': isPersonalExperience,
+        if (imageUrls != null) 'imageUrls': imageUrls,
+      },
     );
   }
 
@@ -154,12 +192,6 @@ class CommunityService {
     await apiDelete(
       '/api/v1/community/questions/$questionId/answers/$answerId',
     );
-  }
-
-  // UC-171: Toggle follow/unfollow on a community topic
-  Future<bool> toggleFollowTopic(String topicId) async {
-    final json = await apiPost('/api/v1/community/topics/$topicId/follow', {});
-    return json['data']?['followed'] as bool? ?? false;
   }
 
   // UC-55: Report unsafe community content or users.

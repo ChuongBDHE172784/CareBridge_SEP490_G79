@@ -141,7 +141,7 @@ class ChecklistImportBoundaryTest {
                 .build();
         ChecklistTemplate approved = ChecklistTemplate.builder()
                 .id(UUID.randomUUID())
-                .stage(ContentStage.BABY_CARE)
+                .stage(ContentStage.POSTPARTUM)
                 .status(ChecklistTemplateStatus.APPROVED)
                 .build();
         ChecklistItem item = ChecklistItem.builder()
@@ -153,7 +153,7 @@ class ChecklistImportBoundaryTest {
         when(babyProfileRepository.findOwnedActiveByIdForUpdate(babyId, userId))
                 .thenReturn(Optional.of(baby));
         when(templateItemRepository.findAllAvailableByIdInForUpdate(
-                List.of(itemId), ChecklistTemplateStatus.APPROVED, ContentStage.BABY_CARE))
+                List.of(itemId), ChecklistTemplateStatus.APPROVED, ContentStage.POSTPARTUM))
                 .thenReturn(List.of(item));
         UUID persistedId = UUID.randomUUID();
         when(checklistRepository.insertBabyImportedIfAbsent(
@@ -209,7 +209,7 @@ class ChecklistImportBoundaryTest {
                 .id(itemId)
                 .template(ChecklistTemplate.builder()
                         .id(UUID.randomUUID())
-                        .stage(ContentStage.BABY_CARE)
+                        .stage(ContentStage.POSTPARTUM)
                         .status(ChecklistTemplateStatus.APPROVED)
                         .build())
                 .itemText("Legacy database text")
@@ -227,7 +227,7 @@ class ChecklistImportBoundaryTest {
         when(babyProfileRepository.findOwnedActiveByIdForUpdate(babyId, userId))
                 .thenReturn(Optional.of(baby));
         when(templateItemRepository.findAllAvailableByIdInForUpdate(
-                List.of(itemId), ChecklistTemplateStatus.APPROVED, ContentStage.BABY_CARE))
+                List.of(itemId), ChecklistTemplateStatus.APPROVED, ContentStage.POSTPARTUM))
                 .thenReturn(List.of(item));
         when(checklistRepository.insertBabyImportedIfAbsent(
                 org.mockito.ArgumentMatchers.any(),

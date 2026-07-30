@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import apiClient from '../../../shared/api/apiClient';
 import type { ApiResponse } from '../../auth/models/user';
 import type {
@@ -9,6 +9,8 @@ import type {
 } from '../models/content';
 import { getTopicMutationErrorMessage } from './topicErrors';
 import { buildTopicTree } from './topicTree';
+import { SortButton, type SortDirection } from '../components/SortableTableHeader';
+import { nextSortDirection, sortRows } from '../utils/tableSorting';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -28,6 +30,19 @@ const DEFAULT_FORM: TopicFormState = {
   sortOrder: 0,
   description: '',
 };
+
+const TOPIC_TYPE_LABELS: Record<CommunityTopicType, string> = {
+  CATEGORY: 'Danh mục',
+  TAG: 'Thẻ (Tag)',
+  TOPIC: 'Chủ đề',
+};
+
+function formatUpdatedAt(value: string): string {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? 'Chưa cập nhật'
+    : new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium' }).format(date);
+}
 
 /* ------------------------------------------------------------------ */
 /*  Sub-components                                                     */
@@ -106,6 +121,8 @@ export default function ManageTopicsPage() {
 
   // Row hover tracking
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<'name' | 'type' | 'questionCount' | 'updatedAt' | 'isHidden'>('updatedAt');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   const loadTopics = useCallback(async () => {
     setIsLoading(true);
@@ -125,11 +142,56 @@ export default function ManageTopicsPage() {
   useEffect(() => { loadTopics(); }, [loadTopics]);
 
   /* ── Filter + tree ── */
-  const filteredTopics = topics.filter((t) =>
-    t.name.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
+  const normalizedSearchQuery = searchQuery.trim().toLocaleLowerCase('vi');
+  const matchingTopicIds = useMemo(() => new Set(
+    topics
+      .filter((topic) => topic.name.toLocaleLowerCase('vi').includes(normalizedSearchQuery))
+      .map((topic) => topic.id),
+  ), [normalizedSearchQuery, topics]);
+  const matchingCategoryIds = useMemo(() => new Set(
+    topics
+      .filter((topic) => topic.parentId !== null && matchingTopicIds.has(topic.id))
+      .map((topic) => topic.parentId as string),
+  ), [matchingTopicIds, topics]);
+  const filteredTopics = useMemo(() => {
+    if (!normalizedSearchQuery) return topics;
+    return topics.filter((topic) => matchingTopicIds.has(topic.id) || matchingCategoryIds.has(topic.id));
+  }, [matchingCategoryIds, matchingTopicIds, normalizedSearchQuery, topics]);
   const categoryItems = topics.filter((topic) => topic.type === 'CATEGORY');
-  const renderRows = buildTopicTree(filteredTopics, expandedIds);
+  const visibleExpandedIds = useMemo(() => {
+    if (!normalizedSearchQuery) return expandedIds;
+    return new Set([...expandedIds, ...matchingCategoryIds]);
+  }, [expandedIds, matchingCategoryIds, normalizedSearchQuery]);
+  const contentCounts = useMemo(() => new Map(
+    topics
+      .filter((topic) => topic.type === 'CATEGORY')
+      .map((category) => [
+        category.id,
+        topics
+          .filter((topic) => topic.parentId === category.id)
+          .reduce((sum, topic) => sum + (topic.questionCount || 0), 0),
+      ]),
+  ), [topics]);
+  const sortTopics = useCallback((rows: CommunityTopic[]) => sortRows(rows, sortDirection, (topic) => {
+    switch (sortKey) {
+      case 'name': return topic.name;
+      case 'type': return TOPIC_TYPE_LABELS[topic.type];
+      case 'questionCount': return topic.type === 'CATEGORY'
+        ? contentCounts.get(topic.id) ?? 0
+        : topic.questionCount;
+      case 'updatedAt': {
+        const timestamp = new Date(topic.updatedAt ?? topic.createdAt).getTime();
+        return Number.isNaN(timestamp) ? 0 : timestamp;
+      }
+      case 'isHidden': return topic.isHidden ? 'Đã ẩn' : 'Đang hoạt động';
+    }
+  }), [contentCounts, sortDirection, sortKey]);
+  const renderRows = buildTopicTree(filteredTopics, visibleExpandedIds, sortTopics);
+
+  const changeSort = (key: typeof sortKey) => {
+    setSortDirection(nextSortDirection(sortKey, key, sortDirection));
+    setSortKey(key);
+  };
 
   /* ── Drawer helpers ── */
   function openCreateDrawer() {
@@ -319,12 +381,13 @@ export default function ManageTopicsPage() {
       <div className="bg-surface rounded-3xl shadow-[0_4px_20px_rgba(90,70,63,0.06)] overflow-hidden">
 
         {/* Table header */}
-        <div className="flex px-6 py-[14px] bg-surface-container-low border-b border-surface-container-high text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">
-          <div className="w-[30%]">Tên / Chủ đề</div>
-          <div className="w-[15%]">Loại</div>
-          <div className="w-[15%] text-center">Nội dung</div>
-          <div className="w-[15%] text-center">Sắp xếp</div>
-          <div className="w-[25%] text-right">Trạng thái &amp; Thao tác</div>
+        <div className="flex px-6 py-[14px] bg-surface-container-low border-b border-surface-container-high">
+          <div className="w-[25%]"><SortButton label="Tên / Chủ đề" active={sortKey === 'name'} direction={sortDirection} onClick={() => changeSort('name')} /></div>
+          <div className="w-[14%]"><SortButton label="Loại" active={sortKey === 'type'} direction={sortDirection} onClick={() => changeSort('type')} /></div>
+          <div className="w-[13%] text-center"><SortButton label="Nội dung" active={sortKey === 'questionCount'} direction={sortDirection} onClick={() => changeSort('questionCount')} /></div>
+          <div className="w-[16%]"><SortButton label="Cập nhật" active={sortKey === 'updatedAt'} direction={sortDirection} onClick={() => changeSort('updatedAt')} /></div>
+          <div className="w-[14%]"><SortButton label="Trạng thái" active={sortKey === 'isHidden'} direction={sortDirection} onClick={() => changeSort('isHidden')} /></div>
+          <div className="w-[18%] px-1 py-0.5 text-[11px] font-semibold uppercase tracking-[0.05em] text-outline">Thao tác</div>
         </div>
 
         {/* Table body */}
@@ -364,7 +427,7 @@ export default function ManageTopicsPage() {
               >
                 <div className={`flex items-center ${isChild ? 'py-3 pr-6 pl-16' : 'py-4 px-6'}`}>
                   {/* Name column */}
-                  <div className="w-[30%] flex items-center gap-3">
+                  <div className="w-[25%] flex items-center gap-3">
                     {isCategory && (
                       <button
                         onClick={() => toggleExpand(item.id)}
@@ -390,12 +453,12 @@ export default function ManageTopicsPage() {
                   </div>
 
                   {/* Type badge */}
-                  <div className="w-[15%]">
+                  <div className="w-[14%]">
                     <TypeBadge type={item.type} />
                   </div>
 
                   {/* Content count — real, from backend (ADR-COM-015), aggregated for CATEGORY */}
-                  <div className="w-[15%] text-center text-sm text-on-surface-variant">
+                  <div className="w-[13%] text-center text-sm text-on-surface-variant">
                     {(() => {
                       if (item.type === 'CATEGORY') {
                         const childCount = topics
@@ -407,8 +470,18 @@ export default function ManageTopicsPage() {
                     })()}
                   </div>
 
-                  {/* Reorder — real, persisted via PATCH (ADR-COM-019) */}
-                  <div className="w-[15%] flex items-center justify-center gap-1">
+                  <div className="w-[16%] text-sm text-on-surface-variant">
+                    {formatUpdatedAt(item.updatedAt)}
+                  </div>
+
+                  <div className="w-[14%]">
+                    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${isActive ? 'bg-primary-container text-primary' : 'bg-surface-container-highest text-on-surface-variant'}`}>
+                      {isActive ? 'Đang hoạt động' : 'Đã ẩn'}
+                    </span>
+                  </div>
+
+                  {/* Actions, including persisted manual sibling order. */}
+                  <div className="w-[18%] flex items-center justify-end gap-2">
                     <button
                       onClick={() => handleMove(item, 'up')}
                       disabled={siblingIndex <= 0}
@@ -425,10 +498,6 @@ export default function ManageTopicsPage() {
                     >
                       <span className="material-symbols-outlined text-lg">arrow_downward</span>
                     </button>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="w-[25%] flex items-center justify-end gap-3">
                     <Toggle checked={isActive} onChange={() => handleToggleHidden(item)} />
                     <button
                       onClick={() => openEditDrawer(item)}

@@ -2,6 +2,23 @@ import { useState, useEffect } from 'react';
 import { getMyProfile, updateMyProfile } from '../services/expertApi';
 import { updateUserProfile } from '../../auth/services/authApi';
 import type { UserProfile } from '../../auth/models/user';
+import { searchTrackAsiaHospitals, uploadExpertAvatar } from '../services/expertApi';
+import { RefreshCw, Camera } from 'lucide-react';
+
+const TITLES = [
+  'Bác sĩ',
+  'Thạc sĩ - Bác sĩ',
+  'Tiến sĩ - Bác sĩ',
+  'BS.CKI',
+  'BS.CKII',
+  'PGS.TS.BS',
+  'GS.TS.BS',
+  'Chuyên gia Tâm lý',
+  'Chuyên gia Dinh dưỡng',
+  'Điều dưỡng',
+  'Kỹ thuật viên',
+  'Chuyên gia Y tế khác'
+];
 import './ExpertProfilePage.css';
 
 function getInitials(name: string | null | undefined): string {
@@ -27,10 +44,12 @@ export default function ExpertProfilePage() {
     consultationScope: '',
   });
 
-  const [editingAvatar, setEditingAvatar] = useState(false);
-  const [avatarUrlDraft, setAvatarUrlDraft] = useState('');
   const [avatarSaving, setAvatarSaving] = useState(false);
   const [avatarSuccess, setAvatarSuccess] = useState(false);
+
+  const [trackAsiaQuery, setTrackAsiaQuery] = useState('');
+  const [trackAsiaResults, setTrackAsiaResults] = useState<any[]>([]);
+  const [searchingHospitals, setSearchingHospitals] = useState(false);
 
   const load = async () => {
     try {
@@ -48,7 +67,7 @@ export default function ExpertProfilePage() {
         workplace: profileData.workplace ?? '',
         consultationScope: profileData.consultationScope ?? '',
       });
-      setAvatarUrlDraft(profileData.avatarUrl ?? '');
+      setTrackAsiaQuery(profileData.workplace ?? '');
     } catch (e: any) {
       setError(e.response?.data?.message ?? 'Không thể tải hồ sơ');
     } finally {
@@ -57,6 +76,48 @@ export default function ExpertProfilePage() {
   };
 
   useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    if (trackAsiaQuery.trim().length < 2 || trackAsiaQuery === form.workplace) {
+      setTrackAsiaResults([]);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setSearchingHospitals(true);
+      searchTrackAsiaHospitals(trackAsiaQuery)
+        .then(res => setTrackAsiaResults(res || []))
+        .catch(() => setTrackAsiaResults([]))
+        .finally(() => setSearchingHospitals(false));
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [trackAsiaQuery, form.workplace]);
+
+  const handleAvatarSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!['image/jpeg', 'image/png'].includes(file.type)) {
+      alert('Chỉ chấp nhận ảnh JPEG hoặc PNG.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Ảnh phải có dung lượng tối đa 5 MB.');
+      return;
+    }
+    setAvatarSaving(true);
+    try {
+      const url = await uploadExpertAvatar(file);
+      const updated = await updateUserProfile({ avatarUrl: url });
+      setProfile((prev: any) => ({ ...prev, avatarUrl: updated.avatarUrl }));
+      setUser((prev: any) => ({ ...prev, avatarUrl: updated.avatarUrl }));
+      setAvatarSuccess(true);
+      setTimeout(() => setAvatarSuccess(false), 3000);
+    } catch (err: any) {
+      alert(err.response?.data?.message ?? 'Lưu ảnh thất bại');
+    } finally {
+      setAvatarSaving(false);
+      e.target.value = '';
+    }
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -119,78 +180,29 @@ export default function ExpertProfilePage() {
       )}
 
       <div className="expert-avatar-section">
-        {!editingAvatar ? (
-          <>
-            {profile?.avatarUrl ? (
-              <img
-                src={profile.avatarUrl}
-                alt="Avatar"
-                className="expert-avatar-img"
-                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-              />
-            ) : (
-              <div className="expert-avatar-placeholder">
-                {getInitials(user?.name ?? null)}
-              </div>
-            )}
-            <button
-              type="button"
-              onClick={() => { setAvatarUrlDraft(profile?.avatarUrl ?? ''); setEditingAvatar(true); }}
-              className="expert-avatar-edit-btn"
-            >
-              Cập nhật ảnh
-            </button>
-          </>
+        {profile?.avatarUrl ? (
+          <img
+            src={profile.avatarUrl}
+            alt="Avatar"
+            className="expert-avatar-img"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
         ) : (
-          <div className="expert-avatar-form">
-            {profile?.avatarUrl && (
-              <img
-                src={profile.avatarUrl}
-                alt="Avatar"
-                className="expert-avatar-img"
-                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-              />
-            )}
-            <input
-              type="url"
-              className="expert-avatar-input"
-              value={avatarUrlDraft}
-              onChange={(e) => setAvatarUrlDraft(e.target.value)}
-              placeholder="https://res.cloudinary.com/..."
-            />
-            <div className="expert-avatar-actions">
-              <button
-                type="button"
-                onClick={async () => {
-                  setAvatarSaving(true);
-                  try {
-                    const updated = await updateUserProfile({ avatarUrl: avatarUrlDraft || null });
-                    setProfile((prev: any) => ({ ...prev, avatarUrl: updated.avatarUrl }));
-                    setUser((prev: any) => ({ ...prev, avatarUrl: updated.avatarUrl }));
-                    setAvatarSuccess(true);
-                    setTimeout(() => setAvatarSuccess(false), 3000);
-                  } catch (e: any) {
-                    alert(e.response?.data?.message ?? 'Lưu ảnh thất bại');
-                  } finally {
-                    setAvatarSaving(false);
-                    setEditingAvatar(false);
-                  }
-                }}
-                disabled={avatarSaving}
-                className="expert-avatar-save-btn"
-              >
-                {avatarSaving ? 'Đang lưu...' : 'Lưu ảnh'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setEditingAvatar(false)}
-                className="expert-avatar-cancel-btn"
-              >
-                Hủy
-              </button>
-            </div>
+          <div className="expert-avatar-placeholder">
+            {getInitials(user?.name ?? null)}
           </div>
         )}
+        <label className={`expert-avatar-edit-btn ${avatarSaving ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
+          <Camera size={16} className="mr-2 inline-block" />
+          {avatarSaving ? 'Đang lưu...' : 'Cập nhật ảnh'}
+          <input
+            type="file"
+            accept="image/jpeg,image/png"
+            className="hidden"
+            onChange={handleAvatarSelect}
+            disabled={avatarSaving}
+          />
+        </label>
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm divide-y divide-gray-100">
@@ -205,12 +217,18 @@ export default function ExpertProfilePage() {
           </Field>
 
           <Field label="Chức danh chuyên môn">
-            <input
-              className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 focus:border-primary focus:ring-1 focus:ring-primary"
+            <select
+              className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 bg-white focus:border-primary focus:ring-1 focus:ring-primary"
               value={form.professionalTitle}
               onChange={(e) => setForm({ ...form, professionalTitle: e.target.value })}
-              placeholder="VD: Bác sĩ, Nha sĩ..."
-            />
+            >
+              <option value="">-- Chọn chức danh --</option>
+              {TITLES.map((title) => (
+                <option key={title} value={title}>
+                  {title}
+                </option>
+              ))}
+            </select>
           </Field>
 
           <Field label="Số năm kinh nghiệm">
@@ -224,12 +242,38 @@ export default function ExpertProfilePage() {
           </Field>
 
           <Field label="Nơi công tác">
-            <input
-              className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 focus:border-primary focus:ring-1 focus:ring-primary"
-              value={form.workplace}
-              onChange={(e) => setForm({ ...form, workplace: e.target.value })}
-              placeholder="VD: BV Phụ sản Hà Nội"
-            />
+            <div className="relative">
+              <input
+                className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 focus:border-primary focus:ring-1 focus:ring-primary"
+                value={trackAsiaQuery}
+                onChange={(e) => setTrackAsiaQuery(e.target.value)}
+                placeholder="Gõ tên bệnh viện/phòng khám (VD: Bệnh viện Chợ Rẫy)..."
+              />
+              {searchingHospitals && (
+                <div className="absolute right-3 top-4">
+                  <RefreshCw className="animate-spin text-primary" size={16} />
+                </div>
+              )}
+              {trackAsiaResults.length > 0 && (
+                <div className="absolute top-12 z-10 max-h-60 w-full overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg">
+                  {trackAsiaResults.map((r, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      className="w-full border-b p-3 text-left hover:bg-gray-50 last:border-0"
+                      onClick={() => {
+                        setForm({ ...form, workplace: r.name });
+                        setTrackAsiaQuery(r.name);
+                        setTrackAsiaResults([]);
+                      }}
+                    >
+                      <p className="font-semibold text-sm">{r.name}</p>
+                      <p className="text-xs text-gray-500">{r.address}</p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </Field>
 
           <Field label="Lĩnh vực tư vấn">

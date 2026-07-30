@@ -1,5 +1,6 @@
 package com.carebridge.backend.identity.admin.dto.response;
 
+import com.carebridge.backend.security.entity.AccountLockType;
 import com.carebridge.backend.security.rbac.Role;
 import java.time.Instant;
 import java.util.UUID;
@@ -24,5 +25,9 @@ public class AdminUserSummaryResponse {
     private boolean enabled;
     private boolean locked;
     private Instant lockedAt;
+    private AccountLockType lockType;
+    private String lockReason;
+    private UUID lockedBy;
+    private UUID lockEpisodeId;
     private Instant createdAt;
 }

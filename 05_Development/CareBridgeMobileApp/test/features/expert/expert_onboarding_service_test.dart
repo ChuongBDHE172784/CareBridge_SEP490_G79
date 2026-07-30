@@ -18,6 +18,7 @@ void main() {
 
       expect(state.profileComplete, isTrue);
       expect(state.identityComplete, isFalse);
+      expect(state.credentialStatus, 'NOT_SUBMITTED');
       expect(state.nextStep, ExpertOnboardingStep.identity);
       expect(state.approved, isFalse);
     });
@@ -65,17 +66,20 @@ void main() {
       expect(state.nextStep, ExpertOnboardingStep.identity);
     });
 
-    test('honors identityComplete when legacy payload omits identityStatus', () {
-      final state = ExpertOnboardingState.fromJson({
-        'profileExists': true,
-        'identityComplete': true,
-        'credentialStatus': 'NOT_SUBMITTED',
-        'verificationStatus': 'PENDING',
-      });
+    test(
+      'honors identityComplete when legacy payload omits identityStatus',
+      () {
+        final state = ExpertOnboardingState.fromJson({
+          'profileExists': true,
+          'identityComplete': true,
+          'credentialStatus': 'NOT_SUBMITTED',
+          'verificationStatus': 'PENDING',
+        });
 
-      expect(state.identityComplete, isTrue);
-      expect(state.nextStep, ExpertOnboardingStep.credential);
-    });
+        expect(state.identityComplete, isTrue);
+        expect(state.nextStep, ExpertOnboardingStep.credential);
+      },
+    );
   });
 
   group('ExpertOnboardingService', () {
@@ -155,6 +159,51 @@ void main() {
       expect(api.files.single.fieldName, 'file');
     });
 
+    test('accepts DOCX credentials used by the web portal', () async {
+      final api = _FakeApi();
+      final service = ExpertOnboardingService(api: api);
+      const file = ExpertEvidenceImage(
+        bytes: [1, 2, 3],
+        fileName: 'degree.docx',
+        mimeType:
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      );
+
+      await service.submitCredential(
+        credentialType: 'DEGREE',
+        credentialNumber: 'DEG-1',
+        issuer: 'Đại học Y Hà Nội',
+        issuedDate: '2020-01-01',
+        file: file,
+      );
+
+      expect(api.files.single.mimeType, file.mimeType);
+    });
+
+    test(
+      'omits optional profile fields and preserves OTHER workplace metadata',
+      () async {
+        final api = _FakeApi();
+        final service = ExpertOnboardingService(api: api);
+
+        await service.createProfile(
+          specialtyId: 'specialty-1',
+          professionalTitle: 'Bác sĩ',
+          hospitalId: 'OTHER',
+          trackAsiaName: 'Phòng khám An Tâm',
+          trackAsiaAddress: 'Hà Nội',
+          trackAsiaLat: 21.02,
+          trackAsiaLng: 105.84,
+        );
+
+        expect(api.postPath, '/api/v1/expert/profiles');
+        expect(api.postBody['hospitalId'], 'OTHER');
+        expect(api.postBody['trackAsiaName'], 'Phòng khám An Tâm');
+        expect(api.postBody.containsKey('experienceYears'), isFalse);
+        expect(api.postBody.containsKey('consultationScope'), isFalse);
+      },
+    );
+
     test('uses authenticated multipart abstraction for face preview', () async {
       final api = _FakeApi()
         ..multipartResponse = {
@@ -187,6 +236,8 @@ void main() {
 
 class _FakeApi implements ExpertOnboardingApi {
   String? multipartPath;
+  String? postPath;
+  Map<String, dynamic> postBody = {};
   Map<String, String> fields = {};
   List<MultipartUploadFile> files = [];
   dynamic multipartResponse = const {'data': <String, dynamic>{}};
@@ -209,7 +260,9 @@ class _FakeApi implements ExpertOnboardingApi {
   }
 
   @override
-  Future<dynamic> post(String path, Map<String, dynamic> body) async => {
-    'data': {},
-  };
+  Future<dynamic> post(String path, Map<String, dynamic> body) async {
+    postPath = path;
+    postBody = body;
+    return {'data': {}};
+  }
 }

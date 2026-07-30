@@ -2,6 +2,7 @@ package com.carebridge.backend.expertverification.repository;
 
 import com.carebridge.backend.expertverification.entity.ExpertCredential;
 import com.carebridge.backend.expertverification.entity.ExpertIdentityVerification;
+import com.carebridge.backend.expertverification.enums.FaceVerificationStatus;
 import com.carebridge.backend.expertverification.enums.IdentityReviewStatus;
 import com.carebridge.backend.expertverification.reviewstatus.ReviewStatus;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -51,6 +52,27 @@ public class ExpertIdentityVerificationRepository {
                         ROOT_TYPE, ReviewStatus.PENDING)
                 .stream().map(this::assemble)
                 .filter(attempt -> statuses.contains(attempt.getReviewStatus()))
+                .toList();
+    }
+
+    /**
+     * Returns trusted/current identity references that can be used for duplicate-face screening.
+     * Rejected attempts and attempts without a successful selfie-to-document match are excluded.
+     */
+    public List<ExpertIdentityVerification> findFaceDuplicateCandidates(UUID excludedProfileId) {
+        List<ExpertCredential> approved =
+                credentials.findByCredentialTypeAndReviewStatusOrderByCreatedAtAsc(
+                        ROOT_TYPE, ReviewStatus.APPROVED);
+        List<ExpertCredential> pending =
+                credentials.findByCredentialTypeAndReviewStatusOrderByCreatedAtAsc(
+                        ROOT_TYPE, ReviewStatus.PENDING);
+
+        return java.util.stream.Stream.concat(approved.stream(), pending.stream())
+                .filter(root -> !root.getExpertProfileId().equals(excludedProfileId))
+                .map(this::assemble)
+                .filter(attempt -> FaceVerificationStatus.MATCHED.name()
+                        .equals(attempt.getFaceStatus()))
+                .filter(attempt -> attempt.getIdCardCropFileId() != null)
                 .toList();
     }
 
@@ -115,7 +137,7 @@ public class ExpertIdentityVerificationRepository {
                 .reviewReason(metadata.reviewReason())
                 .reviewedBy(root.getReviewedBy())
                 .reviewedAt(root.getReviewedAt() == null ? null
-                        : root.getReviewedAt().toInstant(ZoneOffset.UTC))
+                        : root.getReviewedAt().atZone(java.time.ZoneId.systemDefault()).toInstant())
                 .createdAt(toInstant(root))
                 .detectionSelfieStatus(metadata.detectionSelfieStatus())
                 .detectionIdCardStatus(metadata.detectionIdCardStatus())
@@ -183,7 +205,7 @@ public class ExpertIdentityVerificationRepository {
 
     private static Instant toInstant(ExpertCredential credential) {
         return credential.getCreatedAt() == null ? null
-                : credential.getCreatedAt().toInstant(ZoneOffset.UTC);
+                : credential.getCreatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant();
     }
 
     private static ReviewStatus toCredentialStatus(IdentityReviewStatus status) {

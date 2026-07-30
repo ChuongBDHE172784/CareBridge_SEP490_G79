@@ -8,7 +8,6 @@ import com.carebridge.backend.family.dto.InviteFamilyMemberResponse;
 import com.carebridge.backend.family.entity.CareGroup;
 import com.carebridge.backend.family.entity.CareGroupMember;
 import com.carebridge.backend.family.entity.CareGroupStatus;
-import com.carebridge.backend.family.entity.GroupMemberRole;
 import com.carebridge.backend.family.entity.InviteChannel;
 import com.carebridge.backend.family.entity.InviteStatus;
 import com.carebridge.backend.family.event.FamilyMemberInvited;
@@ -18,6 +17,7 @@ import com.carebridge.backend.family.repository.CareGroupRepository;
 import com.carebridge.backend.family.service.impl.CareGroupServiceImpl;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.repository.UserRepository;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -77,16 +77,22 @@ class CareGroupServiceImplInviteTest {
             User user = new User();
             user.setId(INVITEE_ID);
             user.setPhone(PHONE);
-            when(userRepository.findByPhone(PHONE)).thenReturn(Optional.of(user));
+            String localPhone = "0" + PHONE.substring(3);
+            lenient().when(userRepository.findAllByPhoneIn(List.of(PHONE, localPhone))).thenReturn(List.of(user));
+            lenient().when(userRepository.findByPhone(PHONE)).thenReturn(Optional.of(user));
         } else {
-            when(userRepository.findByPhone(PHONE)).thenReturn(Optional.empty());
+            String localPhone = "0" + PHONE.substring(3);
+            lenient().when(userRepository.findAllByPhoneIn(List.of(PHONE, localPhone))).thenReturn(List.of());
+            lenient().when(userRepository.findByPhone(PHONE)).thenReturn(Optional.empty());
         }
     }
 
     private void stubNoDuplicatePending() {
-        when(memberRepository.existsByCareGroupIdAndUserIdAndInviteStatus(
+        lenient().when(memberRepository.existsByCareGroupIdAndUserIdAndInviteStatus(
                 GROUP_ID, INVITEE_ID, InviteStatus.PENDING)).thenReturn(false);
-        when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, INVITEE_ID))
+        lenient().when(memberRepository.existsByCareGroupIdAndUserIdAndInviteStatus(
+                GROUP_ID, INVITEE_ID, InviteStatus.ACCEPTED)).thenReturn(false);
+        lenient().when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, INVITEE_ID))
                 .thenReturn(Optional.empty());
     }
 
@@ -150,7 +156,7 @@ class CareGroupServiceImplInviteTest {
         service.inviteFamilyMember(GROUP_ID, request, OWNER_ID);
 
         ArgumentCaptor<CareGroupMember> captor = ArgumentCaptor.forClass(CareGroupMember.class);
-        verify(userRepository).findByPhone(PHONE);
+        verify(userRepository).findAllByPhoneIn(List.of(PHONE, "0912345678"));
         verify(memberRepository).save(captor.capture());
         assertThat(captor.getValue().getInvitedPhone()).isEqualTo(PHONE);
     }
@@ -178,7 +184,33 @@ class CareGroupServiceImplInviteTest {
         verify(userRepository).findByEmailIgnoreCase(email);
         verify(userRepository, never()).findByPhone(any());
         verify(memberRepository).save(captor.capture());
-        assertThat(captor.getValue().getInvitedPhone()).isNull();
+        assertThat(captor.getValue().getInvitedPhone()).isEqualTo(email);
+    }
+
+    @Test
+    void inviteFamilyMember_longEmailAddress_savesFullEmailInInvitedPhone() {
+        String longEmail = "mother.carebridge.family.sync.longemail@example.com";
+        stubActiveGroup();
+        stubOwnerCheck(true);
+        stubPendingCount(0);
+        User invitee = new User();
+        invitee.setId(INVITEE_ID);
+        invitee.setEmail(longEmail);
+        when(userRepository.findByEmailIgnoreCase(longEmail)).thenReturn(Optional.of(invitee));
+        stubNoDuplicatePending();
+        captureAndReturnSaved();
+        when(tokenGenerator.generate()).thenReturn(TOKEN);
+
+        InviteFamilyMemberResponse response = service.inviteFamilyMember(
+                GROUP_ID,
+                new InviteFamilyMemberRequest(InviteChannel.PHONE, longEmail),
+                OWNER_ID);
+
+        ArgumentCaptor<CareGroupMember> captor = ArgumentCaptor.forClass(CareGroupMember.class);
+        verify(userRepository).findByEmailIgnoreCase(longEmail);
+        verify(memberRepository).save(captor.capture());
+        assertThat(captor.getValue().getInvitedPhone()).isEqualTo(longEmail);
+        assertThat(response.getInvitedPhone()).isEqualTo(longEmail);
     }
 
     @Test
@@ -310,7 +342,8 @@ class CareGroupServiceImplInviteTest {
         stubActiveGroup();
         stubOwnerCheck(true);
         stubPendingCount(0);
-        when(userRepository.findByPhone("+84900000000")).thenReturn(Optional.empty());
+        lenient().when(userRepository.findAllByPhoneIn(any())).thenReturn(List.of());
+        lenient().when(userRepository.findByPhone(any())).thenReturn(Optional.empty());
 
         assertThatThrownBy(() ->
                 service.inviteFamilyMember(GROUP_ID, new InviteFamilyMemberRequest(InviteChannel.PHONE, "+84900000000"), OWNER_ID))
@@ -331,6 +364,8 @@ class CareGroupServiceImplInviteTest {
         stubOwnerCheck(true);
         stubPendingCount(0);
         stubInviteePhone(true);
+        lenient().when(memberRepository.existsByCareGroupIdAndUserIdAndInviteStatus(
+                GROUP_ID, INVITEE_ID, InviteStatus.ACCEPTED)).thenReturn(false);
         when(memberRepository.existsByCareGroupIdAndUserIdAndInviteStatus(
                 GROUP_ID, INVITEE_ID, InviteStatus.PENDING)).thenReturn(true);
 
@@ -353,14 +388,9 @@ class CareGroupServiceImplInviteTest {
         stubPendingCount(0);
         stubInviteePhone(true);
         when(memberRepository.existsByCareGroupIdAndUserIdAndInviteStatus(
+                GROUP_ID, INVITEE_ID, InviteStatus.ACCEPTED)).thenReturn(true);
+        lenient().when(memberRepository.existsByCareGroupIdAndUserIdAndInviteStatus(
                 GROUP_ID, INVITEE_ID, InviteStatus.PENDING)).thenReturn(false);
-        CareGroupMember existing = CareGroupTestFactory.makeCareGroupMember(m -> {
-            m.setCareGroupId(GROUP_ID);
-            m.setUserId(INVITEE_ID);
-            m.setInviteStatus(InviteStatus.ACCEPTED);
-        });
-        when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, INVITEE_ID))
-                .thenReturn(Optional.of(existing));
 
         assertThatThrownBy(() ->
                 service.inviteFamilyMember(GROUP_ID, new InviteFamilyMemberRequest(InviteChannel.PHONE, PHONE), OWNER_ID))

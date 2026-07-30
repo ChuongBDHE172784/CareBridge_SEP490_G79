@@ -61,46 +61,98 @@ class _MyCareGroupsScreenState extends State<MyCareGroupsScreen> {
 
   Future<void> _joinGroupWithCode() async {
     final codeCtrl = TextEditingController();
+    final customRoleCtrl = TextEditingController();
+    String relationshipRole = 'CHONG';
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text(
-          'Tham gia nhóm',
-          style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Nhập mã nhóm (UUID hoặc mã mời) được chia sẻ từ Mẹ bầu:',
-              style: TextStyle(fontFamily: 'Lexend', fontSize: 13, color: Color(0xFF524440)),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: codeCtrl,
-              decoration: InputDecoration(
-                labelText: 'Mã nhóm chăm sóc',
-                hintText: 'VD: cb51dfb1-c615-41af-ae16-47df06cbca80',
-                prefixIcon: const Icon(Icons.key, color: _primaryContainer),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      builder: (_) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text(
+            'Tham gia nhóm',
+            style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Nhập mã nhóm (UUID hoặc mã mời) được chia sẻ từ Mẹ bầu:',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 13,
+                  color: Color(0xFF524440),
+                ),
               ),
-              style: const TextStyle(fontFamily: 'Lexend'),
+              const SizedBox(height: 12),
+              TextField(
+                controller: codeCtrl,
+                decoration: InputDecoration(
+                  labelText: 'Mã nhóm chăm sóc',
+                  hintText: 'VD: cb51dfb1-c615-41af-ae16-47df06cbca80',
+                  prefixIcon: const Icon(Icons.key, color: _primaryContainer),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                style: const TextStyle(fontFamily: 'Lexend'),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                value: relationshipRole,
+                decoration: InputDecoration(
+                  labelText: 'Vai trò trong gia đình',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                items: familyRelationshipLabels.entries
+                    .map(
+                      (entry) => DropdownMenuItem(
+                        value: entry.key,
+                        child: Text(entry.value),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) =>
+                    setDialogState(() => relationshipRole = value!),
+              ),
+              if (relationshipRole == 'KHAC') ...[
+                const SizedBox(height: 12),
+                TextField(
+                  controller: customRoleCtrl,
+                  decoration: InputDecoration(
+                    labelText: 'Vai trò tùy chỉnh',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Hủy', style: TextStyle(fontFamily: 'Lexend')),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (relationshipRole == 'KHAC' &&
+                    customRoleCtrl.text.trim().isEmpty)
+                  return;
+                Navigator.pop(context, true);
+              },
+              style: FilledButton.styleFrom(backgroundColor: _primaryContainer),
+              child: const Text(
+                'Tham gia',
+                style: TextStyle(fontFamily: 'Lexend'),
+              ),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Hủy', style: TextStyle(fontFamily: 'Lexend')),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(backgroundColor: _primaryContainer),
-            child: const Text('Tham gia', style: TextStyle(fontFamily: 'Lexend')),
-          ),
-        ],
       ),
     );
 
@@ -110,7 +162,11 @@ class _MyCareGroupsScreenState extends State<MyCareGroupsScreen> {
 
     try {
       setState(() => _loading = true);
-      await _service.joinGroupByCode(code);
+      await _service.joinGroupByCode(
+        code,
+        familyRelationshipRole: relationshipRole,
+        customFamilyRelationshipRole: customRoleCtrl.text.trim(),
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -144,9 +200,9 @@ class _MyCareGroupsScreenState extends State<MyCareGroupsScreen> {
           errorMsg = 'Nhóm không tồn tại';
         }
       }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(errorMsg)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(errorMsg)));
     } finally {
       if (mounted) setState(() => _loading = false);
     }

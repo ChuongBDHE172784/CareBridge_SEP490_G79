@@ -1,3 +1,5 @@
+import '../../../core/constants/content_stages.dart';
+
 class CommunityTopic {
   final String id;
   final String name;
@@ -87,7 +89,7 @@ class CommunityFeedItem {
         title: json['title'] as String,
         topicName: json['topicName'] as String? ?? '',
         authorDisplay: json['authorDisplay'] as String? ?? 'Ẩn danh',
-        stage: json['stage'] as String? ?? '',
+        stage: normalizeContentStage(json['stage'] as String?, fallback: ''),
         urgency: json['urgency'] as String? ?? 'NORMAL',
         answerCount: json['answerCount'] as int? ?? 0,
         likeCount: json['likeCount'] as int? ?? 0,
@@ -121,6 +123,7 @@ class CommunityAnswer {
   final String? authorId;
   final String? authorDisplay;
   final String body;
+  final List<String> imageUrls;
   final bool personalExperience;
   final bool expertLabeled;
   final String? expertProfileId;
@@ -135,6 +138,7 @@ class CommunityAnswer {
     this.authorId,
     this.authorDisplay,
     required this.body,
+    this.imageUrls = const [],
     required this.personalExperience,
     required this.expertLabeled,
     this.expertProfileId,
@@ -151,6 +155,9 @@ class CommunityAnswer {
         authorId: json['authorId'] as String?,
         authorDisplay: json['authorDisplay'] as String?,
         body: json['body'] as String? ?? '',
+        imageUrls: ((json['imageUrls'] as List?) ?? const [])
+            .whereType<String>()
+            .toList(),
         personalExperience: json['personalExperience'] as bool? ?? false,
         expertLabeled: json['expertLabeled'] as bool? ?? false,
         expertProfileId: json['expertProfileId'] as String?,
@@ -166,6 +173,7 @@ class CommunityAnswer {
     authorId: authorId,
     authorDisplay: authorDisplay,
     body: body,
+    imageUrls: imageUrls,
     personalExperience: personalExperience,
     expertLabeled: expertLabeled,
     expertProfileId: expertProfileId,
@@ -182,6 +190,7 @@ class QuestionDetail {
   final String topicName;
   final String title;
   final String body;
+  final List<String> imageUrls;
   final String stage;
   final int? pregnancyWeek;
   final int? babyAgeMonths;
@@ -204,6 +213,7 @@ class QuestionDetail {
     required this.topicName,
     required this.title,
     required this.body,
+    this.imageUrls = const [],
     required this.stage,
     this.pregnancyWeek,
     this.babyAgeMonths,
@@ -227,7 +237,10 @@ class QuestionDetail {
     topicName: json['topicName'] as String? ?? '',
     title: json['title'] as String,
     body: json['body'] as String? ?? '',
-    stage: json['stage'] as String? ?? '',
+    imageUrls: ((json['imageUrls'] as List?) ?? const [])
+        .whereType<String>()
+        .toList(),
+    stage: normalizeContentStage(json['stage'] as String?, fallback: ''),
     pregnancyWeek: json['pregnancyWeek'] as int?,
     babyAgeMonths: json['babyAgeMonths'] as int?,
     urgency: json['urgency'] as String? ?? 'NORMAL',
@@ -244,6 +257,57 @@ class QuestionDetail {
     answers: ((json['answers'] as List?) ?? [])
         .map((e) => CommunityAnswer.fromJson(e as Map<String, dynamic>))
         .toList(),
+  );
+}
+
+class MyCommunityQuestion {
+  final String id;
+  final String title;
+  final String body;
+  final List<String> imageUrls;
+  final String status;
+  final int answerCount;
+  final int likeCount;
+  final String createdAt;
+  final String updatedAt;
+
+  const MyCommunityQuestion({
+    required this.id,
+    required this.title,
+    required this.body,
+    required this.imageUrls,
+    required this.status,
+    required this.answerCount,
+    required this.likeCount,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory MyCommunityQuestion.fromJson(Map<String, dynamic> json) =>
+      MyCommunityQuestion(
+        id: json['id'] as String,
+        title: json['title'] as String? ?? '',
+        body: json['body'] as String? ?? '',
+        imageUrls: ((json['imageUrls'] as List?) ?? const [])
+            .whereType<String>()
+            .toList(),
+        status: json['status'] as String? ?? 'PENDING',
+        answerCount: json['answerCount'] as int? ?? 0,
+        likeCount: json['likeCount'] as int? ?? 0,
+        createdAt: json['createdAt'] as String? ?? '',
+        updatedAt: json['updatedAt'] as String? ?? '',
+      );
+
+  MyCommunityQuestion copyWith({String? status}) => MyCommunityQuestion(
+    id: id,
+    title: title,
+    body: body,
+    imageUrls: imageUrls,
+    status: status ?? this.status,
+    answerCount: answerCount,
+    likeCount: likeCount,
+    createdAt: createdAt,
+    updatedAt: updatedAt,
   );
 }
 

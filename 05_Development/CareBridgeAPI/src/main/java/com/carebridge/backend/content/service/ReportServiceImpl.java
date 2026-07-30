@@ -87,18 +87,32 @@ public class ReportServiceImpl implements ReportService {
     private void validateTarget(ReportTargetType targetType, UUID targetId, UUID reporterUserId) {
         boolean exists = switch (targetType) {
             case QUESTION -> communityQuestionRepository.findById(targetId)
-                    .filter(q -> q.getStatus() == QuestionStatus.APPROVED
-                            || (q.getStatus() == QuestionStatus.PENDING
-                            && q.getAuthorId().equals(reporterUserId)))
+                    .filter(q -> {
+                        if (reporterUserId.equals(q.getAuthorId())) {
+                            throw ReportException.cannotReportOwnTarget();
+                        }
+                        return q.getStatus() == QuestionStatus.APPROVED;
+                    })
                     .isPresent();
             case ANSWER -> communityAnswerRepository.findById(targetId)
                     .filter(a -> a.getStatus() == AnswerStatus.APPROVED)
+                    .map(a -> {
+                        if (reporterUserId.equals(a.getAuthorId())) {
+                            throw ReportException.cannotReportOwnTarget();
+                        }
+                        return a;
+                    })
                     .map(CommunityAnswer::getQuestionId)
                     .flatMap(communityQuestionRepository::findById)
                     .filter(q -> q.getStatus() == QuestionStatus.APPROVED)
                     .isPresent();
             case CONTENT -> contentRepository.existsById(targetId);
-            case EXPERT, USER -> userRepository.existsById(targetId);
+            case EXPERT, USER -> {
+                if (targetId.equals(reporterUserId)) {
+                    throw ReportException.cannotReportOwnTarget();
+                }
+                yield userRepository.existsById(targetId);
+            }
             case ACCOUNT -> throw ReportException.targetNotFound(targetId.toString());
         };
         if (!exists) {

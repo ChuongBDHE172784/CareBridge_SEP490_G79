@@ -16,11 +16,12 @@ import com.carebridge.backend.community.policy.CommunitySafetyPolicy;
 import com.carebridge.backend.community.repository.CommunityAnswerRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.content.entity.ReportTargetType;
+import com.carebridge.backend.aimoderation.service.AiScanEnqueueService.EnqueueResult;
 import com.carebridge.backend.expert.entity.ExpertProfile;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
-import com.carebridge.backend.expert.handler.IExpertEventHandler;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import com.carebridge.backend.security.entity.User;
+import com.carebridge.backend.file.service.IFileService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
@@ -41,7 +42,7 @@ public class CommunityAnswerServiceImpl implements CommunityAnswerService {
     private final com.carebridge.backend.aimoderation.service.AiScanEnqueueService aiScanEnqueueService;
     private final CommunityAuthorDisplayResolver authorDisplayResolver;
     private final ExpertProfileRepository expertProfileRepository;
-    private final IExpertEventHandler expertEventHandler;
+    private final IFileService fileService;
 
     @Override
     @Transactional
@@ -50,15 +51,17 @@ public class CommunityAnswerServiceImpl implements CommunityAnswerService {
 
         questionRepository.findByIdAndStatus(questionId, QuestionStatus.APPROVED)
             .orElseThrow(() -> new QuestionNotAnswerableException(questionId.toString()));
+        fileService.assertCommunityImagesOwned(request.getImageUrls(), authorId);
 
         boolean expertLabeled = communitySafetyPolicy.isVerifiedActiveExpert(author);
         CommunityAnswer answer = answerMapper.toEntity(request, authorId, questionId, expertLabeled);
         answer = answerRepository.save(answer);
-        questionRepository.incrementAnswerCount(questionId);
-        if (expertLabeled) {
-            expertEventHandler.onAnswerApproved(answer.getId().toString(), authorId.toString());
+        EnqueueResult enqueueResult = aiScanEnqueueService.enqueueScan(
+                ReportTargetType.ANSWER, answer.getId(), answer.getBody());
+        if (enqueueResult != null && enqueueResult.requiresHumanReview()) {
+            answer.setStatus(AnswerStatus.PENDING);
+            answer = answerRepository.save(answer);
         }
-        aiScanEnqueueService.enqueueScan(ReportTargetType.ANSWER, answer.getId(), answer.getBody());
 
         auditService.log(AuditAction.COMMUNITY_ANSWER_POSTED, authorId,
             "CommunityAnswer", answer.getId().toString(), "posted expertLabeled=" + expertLabeled);
@@ -84,14 +87,23 @@ public class CommunityAnswerServiceImpl implements CommunityAnswerService {
 
         boolean wasApproved = answer.getStatus() == AnswerStatus.APPROVED;
 
+        if (request.getImageUrls() != null && !request.getImageUrls().isEmpty()) {
+            fileService.assertCommunityImagesOwned(request.getImageUrls(), callerId);
+        }
+
         answerMapper.applyEdit(answer, request);
-        answer.setStatus(AnswerStatus.PENDING);
+        answer.setStatus(AnswerStatus.AI_PENDING);
 
         answer = answerRepository.save(answer);
         if (wasApproved) {
             questionRepository.decrementAnswerCount(answer.getQuestionId());
         }
-        aiScanEnqueueService.enqueueScan(ReportTargetType.ANSWER, answer.getId(), answer.getBody());
+        EnqueueResult enqueueResult = aiScanEnqueueService.enqueueScan(
+                ReportTargetType.ANSWER, answer.getId(), answer.getBody());
+        if (enqueueResult != null && enqueueResult.requiresHumanReview()) {
+            answer.setStatus(AnswerStatus.PENDING);
+            answer = answerRepository.save(answer);
+        }
         auditService.log(AuditAction.COMMUNITY_ANSWER_EDITED, callerId,
             "CommunityAnswer", answer.getId().toString(), "edited");
 
@@ -112,6 +124,10 @@ public class CommunityAnswerServiceImpl implements CommunityAnswerService {
 
         boolean wasDeleted = answer.getStatus() == AnswerStatus.DELETED;
         boolean wasApproved = answer.getStatus() == AnswerStatus.APPROVED;
+
+        if (!wasDeleted) {
+            fileService.purgeCommunityImages(answer.getImageUrls(), answer.getAuthorId());
+        }
 
         answer.setStatus(AnswerStatus.DELETED);
         answerRepository.save(answer);

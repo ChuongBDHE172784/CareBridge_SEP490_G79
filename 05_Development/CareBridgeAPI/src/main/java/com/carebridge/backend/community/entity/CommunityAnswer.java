@@ -5,8 +5,12 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -34,6 +38,11 @@ public class CommunityAnswer {
     @Column(name = "body", nullable = false, columnDefinition = "TEXT")
     private String body;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "image_urls", nullable = false, columnDefinition = "jsonb")
+    @Builder.Default
+    private List<String> imageUrls = new ArrayList<>();
+
     // ADR-COM-005: only set by Moderator/System, never from request body
     @Column(name = "is_expert_labeled", nullable = false)
     @ColumnDefault("false")
@@ -45,7 +54,7 @@ public class CommunityAnswer {
     @Builder.Default
     private boolean personalExperience = false;
 
-    // Fallback for system-created/revision flows; member posts explicitly start APPROVED.
+    // Fallback for legacy/system-created flows; member posts explicitly start AI_PENDING.
     @Enumerated(EnumType.STRING)
     @Column(name = "moderation_status", nullable = false, length = 30)
     @Builder.Default

@@ -33,6 +33,7 @@ public class ExpertProfileMapper {
 			.hospitalId(entity.getFacilityId() != null ? entity.getFacilityId().toString() : null)
 			.consultationScope(entity.getConsultationScope())
 			.verificationStatus(entity.getVerificationStatus())
+			.trustStatus(entity.getTrustStatus())
 			.isConsultationEligible(entity.isEligibleForConsultation())
 			.verifiedAt(entity.getVerifiedAt())
 			.verifiedBy(entity.getVerifiedBy())
@@ -70,7 +71,6 @@ public class ExpertProfileMapper {
 	public ExpertProfile toEntity(CreateExpertProfileRequest request, UUID userId) {
 		return ExpertProfile.builder()
 			.expertProfileId(userId)
-			.userId(userId)
 			.specialty(request.getSpecialty())
 			.professionalTitle(request.getProfessionalTitle())
 			.experienceYears(request.getExperienceYears())

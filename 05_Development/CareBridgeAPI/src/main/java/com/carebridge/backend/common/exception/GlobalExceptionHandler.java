@@ -39,7 +39,9 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -271,6 +273,13 @@ public class GlobalExceptionHandler {
         return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
     }
 
+    @ExceptionHandler(com.carebridge.backend.expert.exception.ExpertException.class)
+    public ResponseEntity<ErrorResponse> handleExpert(
+            com.carebridge.backend.expert.exception.ExpertException ex,
+            HttpServletRequest request) {
+        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
+    }
+
     @ExceptionHandler(ModerationException.class)
     public ResponseEntity<ErrorResponse> handleModeration(ModerationException ex, HttpServletRequest request) {
         return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
@@ -396,8 +405,25 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AccountLockedException.class)
     public ResponseEntity<ErrorResponse> handleAccountLocked(AccountLockedException ex, HttpServletRequest request) {
-        logger.error("Account locked: {}", ex.getMessage(), ex);
-        return error(HttpStatus.FORBIDDEN, "ACCOUNT_LOCKED", ex.getMessage(), request);
+        logger.error("Account locked: {}", ex.getMessage());
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("lockType", ex.getLockType().name());
+        if (ex.getReason() != null) metadata.put("reason", ex.getReason());
+        if (ex.getRetryAt() != null) metadata.put("retryAt", ex.getRetryAt());
+        metadata.put("appealAllowed", ex.isAppealAllowed());
+        metadata.put("appealPending", ex.isAppealPending());
+        if (ex.getAppealStatus() != null) metadata.put("appealStatus", ex.getAppealStatus().name());
+        if (ex.getAppealToken() != null) metadata.put("appealToken", ex.getAppealToken());
+        String code = ex.getLockType() == com.carebridge.backend.security.entity.AccountLockType.ADMIN
+                ? "ACCOUNT_ADMIN_LOCKED" : "ACCOUNT_TEMPORARILY_LOCKED";
+        ErrorResponse response = ErrorResponse.builder()
+                .status(HttpStatus.FORBIDDEN.value())
+                .error(code)
+                .message(ex.getMessage())
+                .path(request.getRequestURI())
+                .metadata(metadata)
+                .build();
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
     }
 
     @ExceptionHandler(AccountSuspendedException.class)

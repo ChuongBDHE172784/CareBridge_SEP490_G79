@@ -20,8 +20,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 
 import java.util.List;
@@ -79,6 +77,7 @@ class SharedDataServiceImplTest {
                 .id(UUID.randomUUID())
                 .userId(CALLER_ID)
                 .type(NotificationType.EMERGENCY)
+                .careGroupId(GROUP_ID)
                 .title("Emergency Alert")
                 .body("Possible fall detected")
                 .isRead(false)
@@ -144,8 +143,8 @@ class SharedDataServiceImplTest {
     void getSharedData_alerts_withPermission_returnsEmergencyNotifications() {
         stubMember(true, false, true);
         NotificationRecord rec = makeEmergencyNotification();
-        when(notificationRepository.findByUserIdAndType(eq(CALLER_ID), eq(NotificationType.EMERGENCY), any(Pageable.class)))
-                .thenReturn(new PageImpl<>(List.of(rec)));
+        when(notificationRepository.findByUserIdAndTypeAndCareGroupId(
+                CALLER_ID, NotificationType.EMERGENCY, GROUP_ID)).thenReturn(List.of(rec));
 
         SharedDataResponse response = service.getSharedData(GROUP_ID, CALLER_ID, SharedDataCategory.ALERTS, 0, 20);
 

@@ -21,16 +21,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 /**
- * Unit tests for UC-74 PDPA-critical permission checks in CareGroupAuthorizationPolicy.
+ * PDPA-critical default-deny permission checks in CareGroupAuthorizationPolicy.
  *
- * <p>FAM-UC74-TC-008 and FAM-UC74-TC-009 both test the default-deny behavior of
+ * <p>These tests cover the default-deny behavior of
  * {@link CareGroupAuthorizationPolicy#hasPermission(UUID, UUID, PermissionFlag)}.
  * A wrong default (allowing access) is a PII exposure bug under BR-PRIVACY / PDPA.
  *
- * <p>Note: these tests directly test a method that IS already implemented (not a stub),
- * so they may PASS in the Red Gate run. This is acceptable because the policy class
- * was implemented as part of shared UC72/73/74 infrastructure — the Red Gate stubs
- * apply specifically to {@code CareCalendarServiceImpl} / {@code CareTaskServiceImpl}.
+ * A wrong default would expose family data beyond the granted scope.
  */
 @ExtendWith(MockitoExtension.class)
 class CareGroupAccessPolicyTest {
@@ -39,15 +36,15 @@ class CareGroupAccessPolicyTest {
     @Spy  private ObjectMapper objectMapper;
     @InjectMocks private CareGroupAuthorizationPolicy policy;
 
-    private static final UUID GROUP_ID = CareCalendarTestFactory.GROUP_CG_001;
-    private static final UUID ACC_006   = CareCalendarTestFactory.ACC_006; // permission_json = NULL
-    private static final UUID ACC_007   = CareCalendarTestFactory.ACC_007; // missing "calendar" key
+    private static final UUID GROUP_ID = FamilyTaskTestFactory.GROUP_CG_001;
+    private static final UUID ACC_006   = FamilyTaskTestFactory.ACC_006; // permission_json = NULL
+    private static final UUID ACC_007   = FamilyTaskTestFactory.ACC_007; // missing "calendar" key
 
     // ── FAM-UC74-TC-008: permission_json is NULL → default-deny ──────────────
 
     @Test
     void hasPermission_permissionJsonNull_returnsFalse() {
-        CareGroupMember member = CareCalendarTestFactory.makeMember(
+        CareGroupMember member = FamilyTaskTestFactory.makeMember(
                 GROUP_ID, ACC_006, InviteStatus.ACCEPTED, null); // FX-009: NULL json
         when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, ACC_006))
                 .thenReturn(Optional.of(member));
@@ -61,7 +58,7 @@ class CareGroupAccessPolicyTest {
 
     @Test
     void hasPermission_missingCalendarKey_returnsFalse() {
-        CareGroupMember member = CareCalendarTestFactory.makeMember(
+        CareGroupMember member = FamilyTaskTestFactory.makeMember(
                 GROUP_ID, ACC_007, InviteStatus.ACCEPTED, "{\"tasks\":true}"); // FX-010
         when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, ACC_007))
                 .thenReturn(Optional.of(member));
@@ -76,7 +73,7 @@ class CareGroupAccessPolicyTest {
     @Test
     void hasPermission_calendarTrue_returnsTrue() {
         UUID userId = UUID.randomUUID();
-        CareGroupMember member = CareCalendarTestFactory.makeMember(
+        CareGroupMember member = FamilyTaskTestFactory.makeMember(
                 GROUP_ID, userId, InviteStatus.ACCEPTED, "{\"calendar\":true}");
         when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, userId))
                 .thenReturn(Optional.of(member));
@@ -91,7 +88,7 @@ class CareGroupAccessPolicyTest {
     @Test
     void hasPermission_malformedJson_returnsFalseNoException() {
         UUID userId = UUID.randomUUID();
-        CareGroupMember member = CareCalendarTestFactory.makeMember(
+        CareGroupMember member = FamilyTaskTestFactory.makeMember(
                 GROUP_ID, userId, InviteStatus.ACCEPTED, "{not valid json}");
         when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, userId))
                 .thenReturn(Optional.of(member));

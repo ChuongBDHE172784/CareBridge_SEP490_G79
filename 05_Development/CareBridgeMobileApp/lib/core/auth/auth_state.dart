@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../storage/token_storage.dart';
+import 'blocked_account_state.dart';
 
 class AuthState extends ChangeNotifier {
   AuthState._({TokenStorage? storage})
@@ -21,7 +22,7 @@ class AuthState extends ChangeNotifier {
   String? _userId;
   String? _role;
   bool _isRestoring = true;
-  String? _blockedReason;
+  BlockedAccountState? _blockedAccount;
 
   String? get accessToken => _accessToken;
   String? get refreshToken => _refreshToken;
@@ -29,7 +30,8 @@ class AuthState extends ChangeNotifier {
   String? get userId => _userId;
   bool get isRestoring => _isRestoring;
   bool get isAuthenticated => _accessToken != null && !_isRestoring;
-  String? get blockedReason => _blockedReason;
+  BlockedAccountState? get blockedAccount => _blockedAccount;
+  String? get blockedReason => _blockedAccount?.code;
 
   /// Hydrate auth state from secure storage on app start.
   /// Validates the stored access token locally (JWT expiry check).
@@ -122,24 +124,25 @@ class AuthState extends ChangeNotifier {
   /// Also resets any blocked reason so a normal 401 logout never strands
   /// the user on the blocked screen.
   Future<void> clear() async {
-    _blockedReason = null;
+    _blockedAccount = null;
     clearState();
     await _storage.clear();
   }
 
-  /// Called when the backend returns 403 ACCOUNT_DISABLED or ACCOUNT_LOCKED.
-  /// Sets the reason BEFORE clearState() so the first rebuild routes to
-  /// BlockedAccountScreen instead of LoginScreen.
-  Future<void> clearWithReason(String reason) async {
-    _blockedReason = reason;
+  /// Sets structured restriction state before clearing credentials so routing
+  /// transitions directly to BlockedAccountScreen.
+  Future<void> clearWithBlockedAccount(BlockedAccountState state) async {
+    _blockedAccount = state;
     clearState();
     unawaited(_storage.clear());
   }
 
-  /// Called when the user taps "Return to Login" on BlockedAccountScreen.
-  /// Clears the reason so the ListenableBuilder transitions to LoginScreen.
+  /// Compatibility entry point for older tests and callers.
+  Future<void> clearWithReason(String reason) =>
+      clearWithBlockedAccount(BlockedAccountState(code: reason));
+
   void clearBlockedReason() {
-    _blockedReason = null;
+    _blockedAccount = null;
     notifyListeners();
   }
 

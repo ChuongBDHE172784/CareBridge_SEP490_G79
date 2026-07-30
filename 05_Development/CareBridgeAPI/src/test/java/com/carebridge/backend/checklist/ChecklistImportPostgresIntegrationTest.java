@@ -198,7 +198,7 @@ class ChecklistImportPostgresIntegrationTest extends AbstractPostgresIntegration
                 .active(true)
                 .build()).getId();
         UUID babyItem = seedItem(
-                ChecklistTemplateStatus.APPROVED, ContentStage.BABY_CARE, "Foreign baby item");
+                ChecklistTemplateStatus.APPROVED, ContentStage.POSTPARTUM, "Foreign baby item");
 
         assertThatThrownBy(() -> checklistService.importFromTemplate(
                         new ImportFromTemplateRequest(journeyId, null, List.of(pregnancyItem)),
@@ -290,7 +290,7 @@ class ChecklistImportPostgresIntegrationTest extends AbstractPostgresIntegration
                 .active(false)
                 .build()).getId();
         UUID babyCareItemId = seedItem(
-                ChecklistTemplateStatus.APPROVED, ContentStage.BABY_CARE,
+                ChecklistTemplateStatus.APPROVED, ContentStage.POSTPARTUM,
                 "Approved baby care item");
 
         assertThatThrownBy(() -> checklistService.importFromTemplate(

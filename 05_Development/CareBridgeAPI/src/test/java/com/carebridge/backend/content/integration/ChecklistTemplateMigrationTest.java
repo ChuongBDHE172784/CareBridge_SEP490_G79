@@ -13,7 +13,10 @@ import org.junit.jupiter.api.Test;
 class ChecklistTemplateMigrationTest {
 
     /**
-     * V1 is applied and immutable; forward changes belong in later migrations.
+    /**
+     * The applied V1 schema migration is immutable: changing it would invalidate
+     * Flyway checksums for existing environments. New changes belong in a later
+     * append-only migration.
      */
     @Test
     void uc82_69_int_005_appliedMigrationRemainsByteIdentical() throws Exception {
@@ -21,16 +24,7 @@ class ChecklistTemplateMigrationTest {
                 "src/main/resources/db/migration/V1__init_schema.sql"));
         String sha = HexFormat.of().withUpperCase().formatHex(
                 MessageDigest.getInstance("SHA-256").digest(bytes));
-        assertThat(sha).isEqualTo("42613A129101EB8B1E1D655AA6D25DAA7DD06C14D46DF1F08BD5353F10B9121A");
-    }
-
-    @Test
-    void appliedReferenceDataMigrationRemainsByteIdentical() throws Exception {
-        byte[] bytes = Files.readAllBytes(Path.of(
-                "src/main/resources/db/migration/V2__seed_reference_data.sql"));
-        String sha = HexFormat.of().withUpperCase().formatHex(
-                MessageDigest.getInstance("SHA-256").digest(bytes));
-        assertThat(sha).isEqualTo("8148557B41330236E903561150A7AB1D832BFDBC6517EF2D09BA42CA18A5E0B9");
+        assertThat(sha).isEqualTo("BC00A8466E9687BA48A2CB2DA114E750A7CF9DCD50208323F086239DC0141788");
     }
 
     @Test

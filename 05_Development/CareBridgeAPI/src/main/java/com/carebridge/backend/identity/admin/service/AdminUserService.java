@@ -2,6 +2,8 @@ package com.carebridge.backend.identity.admin.service;
 
 import com.carebridge.backend.identity.admin.dto.request.AdminUserSearchQuery;
 import com.carebridge.backend.identity.admin.dto.request.UpdateUserStatusRequest;
+import com.carebridge.backend.identity.admin.dto.response.AdminUserActivityResponse;
+import com.carebridge.backend.identity.admin.dto.response.AdminUserSessionResponse;
 import com.carebridge.backend.identity.admin.dto.response.AdminUserSummaryResponse;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -16,6 +18,15 @@ public interface AdminUserService {
      * Search/filter/paginate platform user accounts for the admin portal.
      */
     Page<AdminUserSummaryResponse> searchUsers(AdminUserSearchQuery query, Pageable pageable);
+
+    /** Load one user directly so the admin detail route is refresh-safe. */
+    AdminUserSummaryResponse getUser(UUID userId);
+
+    /** List privacy-minimized authentication sessions for the target user. */
+    Page<AdminUserSessionResponse> getUserSessions(UUID userId, Pageable pageable);
+
+    /** List identity-governance changes whose resource is the target user. */
+    Page<AdminUserActivityResponse> getUserActivity(UUID userId, Pageable pageable);
 
     /**
      * Enable/disable or lock/unlock a target user's account.

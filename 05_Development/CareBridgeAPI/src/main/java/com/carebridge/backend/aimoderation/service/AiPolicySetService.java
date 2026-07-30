@@ -47,20 +47,30 @@ public class AiPolicySetService {
     }
 
     private static Map<String, AiModerationPolicy> byCode(List<AiModerationPolicy> policies) {
-        return policies.stream().collect(Collectors.toUnmodifiableMap(AiModerationPolicy::getPolicyCode,
-                Function.identity()));
+        if (policies == null) return Map.of();
+        return policies.stream()
+                .filter(p -> p != null && p.getPolicyCode() != null)
+                .collect(Collectors.toMap(
+                        p -> p.getPolicyCode().trim().toUpperCase(java.util.Locale.ROOT),
+                        Function.identity(),
+                        (existing, replacement) -> existing
+                ));
     }
 
     static String fingerprint(List<AiModerationPolicy> policies) {
+        if (policies == null || policies.isEmpty()) {
+            return AiContentHasher.sha256Hex("");
+        }
         String joined = policies.stream()
+                .filter(p -> p != null && p.getPolicyCode() != null)
                 .sorted(java.util.Comparator.comparing(AiModerationPolicy::getPolicyCode))
                 .map(p -> String.join(":",
                         p.getPolicyCode(),
                         String.valueOf(p.getVersion()),
-                        p.getSeverity().name(),
-                        p.getViolationCategory().name(),
-                        p.getConfidenceThreshold().stripTrailingZeros().toPlainString(),
-                        p.getApplicableTargetTypes()))
+                        p.getSeverity() != null ? p.getSeverity().name() : "MEDIUM",
+                        p.getViolationCategory() != null ? p.getViolationCategory().name() : "OTHER",
+                        p.getConfidenceThreshold() != null ? p.getConfidenceThreshold().stripTrailingZeros().toPlainString() : "0.7",
+                        p.getApplicableTargetTypes() != null ? p.getApplicableTargetTypes() : ""))
                 .collect(Collectors.joining("|"));
         return AiContentHasher.sha256Hex(joined);
     }

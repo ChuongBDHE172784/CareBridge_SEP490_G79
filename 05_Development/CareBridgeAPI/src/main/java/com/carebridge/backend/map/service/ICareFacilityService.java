@@ -19,4 +19,8 @@ public interface ICareFacilityService {
     FacilityResponse getFacilityById(UUID id);
 
     RouteResponse getRoute(RouteRequest request);
+
+    List<FacilityResponse> getPendingFacilities();
+
+    void verifyFacility(UUID facilityId, com.carebridge.backend.map.facilitystatus.FacilityStatus status, UUID adminId);
 }

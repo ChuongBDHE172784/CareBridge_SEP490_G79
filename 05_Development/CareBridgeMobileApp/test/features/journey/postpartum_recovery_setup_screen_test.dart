@@ -4,8 +4,26 @@ import 'package:go_router/go_router.dart';
 
 import 'package:untitled/core/network/api_client.dart';
 import 'package:untitled/features/journey/models/journey_model.dart';
+import 'package:untitled/features/journey/models/journey_onboarding_model.dart';
 import 'package:untitled/features/journey/screens/mother_stage_selection_screen.dart';
 import 'package:untitled/features/journey/screens/postpartum_recovery_setup_screen.dart';
+import 'package:untitled/features/journey/services/journey_onboarding_draft_storage.dart';
+import 'package:untitled/features/journey/services/journey_onboarding_service.dart';
+
+class _CompleteOnboardingService extends JourneyOnboardingService {
+  @override
+  Future<JourneyOnboardingStatus> getStatus() async =>
+      const JourneyOnboardingStatus(
+        baselineComplete: true,
+        consentValid: true,
+        baselineRevision: 1,
+      );
+}
+
+class _EmptyDraftStorage extends JourneyOnboardingDraftStorage {
+  @override
+  Future<Map<String, dynamic>?> read() async => null;
+}
 
 void main() {
   testWidgets('stage selection exposes a peer postpartum recovery route', (
@@ -16,7 +34,10 @@ void main() {
       routes: [
         GoRoute(
           path: '/mother-stage-selection',
-          builder: (_, _) => const MotherStageSelectionScreen(),
+          builder: (_, _) => MotherStageSelectionScreen(
+            onboardingService: _CompleteOnboardingService(),
+            draftStorage: _EmptyDraftStorage(),
+          ),
         ),
         GoRoute(
           path: '/postpartum-recovery-setup',

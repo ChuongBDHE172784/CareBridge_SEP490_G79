@@ -1,14 +1,16 @@
-import 'dart:io';
+import 'package:universal_io/io.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import '../../../core/auth/auth_state.dart';
 import '../../../core/network/api_client.dart';
 import '../models/file_model.dart';
 
 class FileService {
   String get _baseUrl {
+    if (kIsWeb) return 'http://127.0.0.1:8080';
     if (Platform.isAndroid) return 'http://10.0.2.2:8080';
-    return 'http://localhost:8080';
+    return 'http://127.0.0.1:8080';
   }
 
   // UC167: Upload file as multipart

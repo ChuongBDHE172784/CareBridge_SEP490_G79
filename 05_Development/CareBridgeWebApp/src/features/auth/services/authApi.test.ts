@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import apiClient from '../../../shared/api/apiClient';
-import { loginDirect, registerExpert } from './authApi';
+import { login, registerExpert } from './authApi';
 
 vi.mock('../../../shared/api/apiClient', () => ({ default: { post: vi.fn() } }));
 vi.mock('../../../shared/auth/authStore', () => ({ useAuthStore: { getState: vi.fn() } }));
@@ -14,7 +14,7 @@ describe('expert registration API', () => {
     expect(apiClient.post).toHaveBeenCalledWith('/api/v1/auth/register', expect.objectContaining({ role: 'EXPERT' }));
   });
 
-  it('calls the local/test direct login endpoint', async () => {
+  it('calls the canonical password login endpoint and returns the session', async () => {
     vi.mocked(apiClient.post).mockResolvedValue({
       data: {
         data: {
@@ -36,11 +36,21 @@ describe('expert registration API', () => {
       },
     });
 
-    await loginDirect({ email: 'admin@carebridge.dev', password: 'Test@1234' });
+    const response = await login({ email: 'user@example.com', password: 'Password@123' });
 
-    expect(apiClient.post).toHaveBeenCalledWith('/api/v1/auth/login-direct', {
-      email: 'admin@carebridge.dev',
-      password: 'Test@1234',
+    expect(apiClient.post).toHaveBeenCalledWith('/api/v1/auth/login', {
+      email: 'user@example.com',
+      password: 'Password@123',
     });
+    expect(response.accessToken).toBe('access');
+  });
+
+  it('rejects an incomplete password-login response', async () => {
+    vi.mocked(apiClient.post).mockResolvedValue({
+      data: { data: { accessToken: '', refreshToken: 'refresh', user: { id: 'u1' } } },
+    });
+
+    await expect(login({ email: 'user@example.com', password: 'Password@123' }))
+      .rejects.toThrow('Login response is incomplete');
   });
 });

@@ -28,6 +28,10 @@ public class UploadedFile {
     @Column(name = "owner_user_id", nullable = false)
     private UUID ownerUserId;
 
+    @Builder.Default
+    @Column(name = "uploader_role", nullable = false, length = 30)
+    private String uploaderRole = "PATIENT";
+
     @Column(name = "storage_key", nullable = false, unique = true, length = 500)
     private String storageKey;
 
@@ -57,6 +61,9 @@ public class UploadedFile {
 
     @Column(name = "checksum", length = 64)
     private String checksum;
+
+    @Column(name = "file_url", columnDefinition = "text")
+    private String fileUrl;
 
     @Builder.Default
     @Enumerated(EnumType.STRING)

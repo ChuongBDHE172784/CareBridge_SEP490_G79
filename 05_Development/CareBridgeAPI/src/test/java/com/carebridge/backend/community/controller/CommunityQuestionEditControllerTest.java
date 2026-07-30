@@ -67,6 +67,21 @@ class CommunityQuestionEditControllerTest {
     }
 
     @Test
+    @WithMockUser(username = USER_UUID, roles = "FAMILY")
+    void editQuestion_familyRole_returns200() throws Exception {
+        CommunityQuestionResponse response = CommunityQuestionResponse.builder()
+                .id(QUESTION_ID).title("Family updated title").build();
+        when(questionService.editQuestion(any(), eq(QUESTION_ID), any())).thenReturn(response);
+
+        mockMvc.perform(patch("/api/v1/community/questions/" + QUESTION_ID)
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"Family updated title\",\"body\":\"Updated body content here\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.title").value("Family updated title"));
+    }
+
+    @Test
     @WithMockUser(username = USER_UUID, roles = "MOTHER")
     void editQuestion_questionNotFound_returns404() throws Exception {
         when(questionService.editQuestion(any(), eq(QUESTION_ID), any()))
@@ -86,5 +101,22 @@ class CommunityQuestionEditControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"title\":\"Updated title\"}"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(username = USER_UUID, roles = "MOTHER")
+    void editQuestion_moreThanThreeImages_returns400() throws Exception {
+        mockMvc.perform(patch("/api/v1/community/questions/" + QUESTION_ID)
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"imageUrls":[
+                          "https://res.cloudinary.com/demo/image/upload/1.jpg",
+                          "https://res.cloudinary.com/demo/image/upload/2.jpg",
+                          "https://res.cloudinary.com/demo/image/upload/3.jpg",
+                          "https://res.cloudinary.com/demo/image/upload/4.jpg"
+                        ]}
+                        """))
+                .andExpect(status().isBadRequest());
     }
 }

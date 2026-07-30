@@ -2,12 +2,14 @@ package com.carebridge.backend.file.service;
 
 import com.carebridge.backend.file.dto.UploadFileResponse;
 import com.carebridge.backend.file.dto.ViewFileResponse;
+import com.carebridge.backend.file.dto.AuthorizedFileContent;
 import com.carebridge.backend.file.enums.FileAccessMode;
 import com.carebridge.backend.file.enums.FileKind;
 import com.carebridge.backend.file.enums.FilePurpose;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
+import java.util.List;
 
 public interface IFileService {
 
@@ -25,6 +27,12 @@ public interface IFileService {
     UploadFileResponse uploadPrivateFile(MultipartFile file, UUID callerId);
 
     /**
+     * Store health record attachments uploaded by mothers.
+     * Only accepts images and PDF files.
+     */
+    UploadFileResponse uploadHealthRecordFile(MultipartFile file, UUID callerId);
+
+    /**
      * Upload with explicit routing by kind/purpose/accessMode.
      * Used by domain services that know the semantic purpose.
      * Validates detected kind matches requested kind.
@@ -35,11 +43,21 @@ public interface IFileService {
     /** @throws com.carebridge.backend.common.exception.ResourceNotFoundException (FILE-404) if not found/deleted */
     ViewFileResponse viewFile(UUID fileId, UUID callerId);
 
+    /** Read private bytes after applying the same access policy as {@link #viewFile}. */
+    AuthorizedFileContent readAuthorizedFile(UUID fileId, UUID callerId, long maxBytes);
+
+    ViewFileResponse getAuthorizedFileMetadata(UUID fileId, UUID callerId);
+
     /** @throws com.carebridge.backend.common.exception.ResourceNotFoundException (FILE-404) if not found/deleted */
     void deleteFile(UUID fileId, UUID callerId);
 
     /** Internal compensation for a failed atomic workflow. Not exposed by FileController. */
     void purgeFile(UUID fileId, UUID callerId);
+
+    /** Permanently removes Cloudinary images attached to owned community content. */
+    void purgeCommunityImages(List<String> imageUrls, UUID ownerUserId);
+
+    void assertCommunityImagesOwned(List<String> imageUrls, UUID ownerUserId);
 
     /**
      * Upload raw bytes directly to private storage (for cropped face images).

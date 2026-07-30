@@ -4,7 +4,7 @@
 | Field | Value |
 |-------|-------|
 | **Document ID** | `CB-IDENTITY-IMP-114` |
-| **Version** | `1.0` |
+| **Version** | `1.1` |
 | **Date** | `2026-07-02` |
 | **Status** | `Implemented` |
 | **Document Owner** | `TV1-Phương` |
@@ -12,7 +12,7 @@
 | **Reviewed by** | `[Tech Lead — Pending]` |
 | **DPO Sign-off** | `[ ] Pending` *(module lists/searches/filters PII fields — email, phone, full name — of every platform user; bulk read access requires DPO review before production)* |
 | **Approved by** | `[Principal Architect — Pending]` |
-| **Last Review** | `2026-07-02` |
+| **Last Review** | `2026-07-29` |
 | **Based on EDS** | `v2.0` |
 
 ---
@@ -24,6 +24,8 @@
 | 2026-07-02 | AI Agent — Technical Architect | Tạo tài liệu lần đầu (Draft) cho UC114 |
 | 2026-07-04 | AI Agent | Approved by user — proceeding to implementation |
 | 2026-07-04 | AI Agent | Implemented — AdminUserController/ServiceImpl tests all green (verified independently) |
+| 2026-07-28 | Senior Developer | Mở rộng end-to-end Admin Portal: detail direct-load, session monitoring, activity/audit timeline, staff provisioning và role/status governance; tái sử dụng `users`, `auth_sessions`, `audit_logs`, không tạo bảng mới |
+| 2026-07-29 | Senior Developer | Phân loại khóa tạm thời/khóa quản trị/vô hiệu hóa/tạm ngưng; bắt buộc lý do khóa; thu hồi phiên; bổ sung khiếu nại theo lock episode và quy trình System Admin duyệt/từ chối |
 
 ---
 
@@ -111,6 +113,25 @@ lock/unlock of these two existing flags** — no new status enum or workflow is
 introduced. Hard delete of a `users` row is explicitly **out of scope** (no
 SRS text authorizes destructive user deletion from this screen; `AccountDeletionRequest`
 already exists as the user-initiated self-deletion flow and is not superseded here).
+
+### 1.4 Account-state and appeal extension (v1.1)
+
+The original Boolean-only lock design conflated security lockout with a manual governance decision. Version 1.1 introduces four non-interchangeable states:
+
+| State | Source | Persistence | User disclosure | Appeal |
+|---|---|---|---|---|
+| `TEMPORARY_LOCK` | Failed-password rate limit | `users.locked=true`, `lock_type=TEMPORARY`; auto-expires after 15 minutes | Generic credentials response for wrong password; retry time only after correct password | No |
+| `ADMIN_LOCK` | System Admin | `users.locked=true`, `lock_type=ADMIN`, mandatory reason/actor/episode | Reason only after correct password | Yes |
+| `DISABLED` | Account lifecycle decision | `users.enabled=false` | Separate disabled message only after correct password | No |
+| `SUSPENDED` | Moderation/UC102 | Existing `suspended_until` | Separate suspension message | Existing moderation process |
+
+Current-state metadata is stored on `users` through Flyway `V3`: `lock_type`, `lock_reason`, `locked_by`, `lock_episode_id`. Repeating appeal history has an independent lifecycle, therefore one new table `account_lock_appeals` is justified. A partial unique index enforces at most one `PENDING` appeal per `(user_id, lock_episode_id)`.
+
+Manual lock and disable actions revoke all active `auth_sessions`. Direct unlock cancels a pending appeal for the same episode. Approval updates the appeal and clears lock metadata atomically; rejection preserves the lock. The public appeal token is RSA-signed, purpose-scoped as `ACCOUNT_LOCK_APPEAL`, expires after ten minutes, contains the user and lock episode, and is not accepted as an API access token.
+
+### 1.5 Password-first disclosure rule
+
+To prevent account enumeration and unauthorized disclosure of governance reasons, credential login uses this strict order: locate identifier, verify password, then evaluate account state. Unknown identifier and wrong password always return `Invalid credentials`. Only a correct password may expose `ACCOUNT_ADMIN_LOCKED`, the administrative reason, and a short-lived appeal token. Refresh/JWT failures never include the reason or appeal authorization.
 
 ---
 
@@ -967,4 +988,56 @@ Tests must cover §13 Test Scenarios / UC114_ManageUserAccounts_Test-Spec.md.
 
 ---
 
-*EDS v2.1 — Tích hợp CASE 2.0 AI Prompt Constraints (§17).*
+## 18. End-to-End Admin Portal Extension (2026-07-28)
+
+### 18.1 Gap Closure Scope
+
+| Gap | Thiết kế hoàn thiện | Nguồn dữ liệu |
+|---|---|---|
+| Refresh/direct-link trang chi tiết bị mất dữ liệu | `GET /api/v1/admin/users/{userId}` trả DTO chi tiết, không phụ thuộc router state | `users` |
+| Thiếu theo dõi phiên đăng nhập | `GET /api/v1/admin/users/{userId}/sessions`; chỉ hiển thị metadata tối thiểu, tuyệt đối không trả refresh-token hash | `auth_sessions` |
+| Thiếu lịch sử quản trị/hoạt động | `GET /api/v1/admin/users/{userId}/activity`; whitelist audit action liên quan identity và lọc `entityType=USER`, `entityId=userId` | `audit_logs` |
+| UI thiếu CRUD/governance hoàn chỉnh | Danh sách có keyword/role/status filter; chi tiết có status, role, sessions, activity; tạo mới chỉ áp dụng cho staff role theo UC115 | API UC114/115/116 |
+| Nguy cơ self-lock/self-demotion | Backend guard giữ nguyên; UI disable status/role actions trên row của caller | Auth principal |
+
+### 18.2 Database Decision
+
+**Không tạo bảng, không thêm cột và không có Flyway migration.** Mở rộng này chỉ đọc/ghi ba bảng hiện hữu:
+
+- `users`: identity, role, `enabled`, `locked`, profile và timestamps.
+- `auth_sessions`: giám sát phiên; không trả `refresh_token_hash`.
+- `audit_logs`: lịch sử thay đổi status/role/tạo staff và hành động quản trị.
+
+`UserRepository`, `UserSessionRepository` và `AuditService` có blast radius CRITICAL theo graph. Vì vậy implementation không đổi chữ ký/hành vi shared contract; query aggregate dành riêng admin được cô lập trong `identity.admin` và chỉ reuse method sẵn có.
+
+### 18.3 Business Rules bổ sung
+
+| ID | Quy tắc |
+|---|---|
+| `BR-IAM-114-E2E-01` | Chỉ `SYSTEM_ADMIN` được truy cập toàn bộ endpoint extension. |
+| `BR-IAM-114-E2E-02` | Không hard-delete user; deactivate/lock là cơ chế lifecycle chính để bảo toàn FK, audit và dữ liệu chăm sóc. |
+| `BR-IAM-114-E2E-03` | Không cho caller tự đổi role, disable hoặc lock chính mình. |
+| `BR-IAM-114-E2E-04` | Tạo user từ portal chỉ dành cho `MODERATOR`, `CONTENT_ADMIN`, `SYSTEM_ADMIN`; user nghiệp vụ đăng ký qua flow chuyên biệt. |
+| `BR-IAM-114-E2E-05` | Session response chỉ có id, device, status, issued/last-used/expires/revoked timestamps. Không trả token/hash/IP thô. |
+| `BR-IAM-114-E2E-06` | Activity endpoint chỉ trả audit record có `entityType=USER` và `entityId=userId`; không dùng actor-only filter vì sẽ trộn hành động user thực hiện lên resource khác. |
+
+### 18.4 API bổ sung
+
+| Method | Path | Response | Ghi chú |
+|---|---|---|---|
+| `GET` | `/api/v1/admin/users/{userId}` | `AdminUserDetailResponse` | Direct-load và refresh-safe |
+| `GET` | `/api/v1/admin/users/{userId}/sessions?page=0&size=20` | `PaginatedResponse<AdminUserSessionResponse>` | Sort `lastActivityAt DESC` |
+| `GET` | `/api/v1/admin/users/{userId}/activity?page=0&size=20` | `PaginatedResponse<AdminUserActivityResponse>` | Identity governance audit only |
+
+### 18.5 UI State & Error Handling
+
+- `loading`: skeleton/aria-busy; không render dữ liệu cũ của user khác.
+- `404`: thông báo user không tồn tại và link quay về danh sách.
+- `403`: access-denied nhất quán với route guard.
+- `409/400`: giữ modal mở, hiển thị API message, không optimistic-update.
+- Sau mutation thành công: cập nhật detail state từ response và reload activity để audit mới xuất hiện.
+- Responsive: desktop table; mobile stacked cards; action buttons có focus-visible và minimum target 44px.
+
+---
+
+*EDS v2.1 — Tích hợp CASE 2.0 AI Prompt Constraints (§17) + End-to-End Extension (§18).*

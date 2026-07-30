@@ -44,6 +44,7 @@ class DirectConversationControllerSecurityTest {
 
     private static final UUID CONVERSATION_ID = UUID.fromString("cccccccc-0000-0000-0000-000000000001");
     private static final UUID EXPERT_ID = UUID.fromString("cccccccc-0000-0000-0000-000000000002");
+    private static final UUID FAMILY_ID = UUID.fromString("cccccccc-0000-0000-0000-000000000004");
     private static final UUID STRANGER_ID = UUID.fromString("cccccccc-0000-0000-0000-000000000099");
     private static final UUID MESSAGE_ID = UUID.fromString("cccccccc-0000-0000-0000-000000000003");
 
@@ -51,12 +52,12 @@ class DirectConversationControllerSecurityTest {
         return "{\"lastSeenMessageId\":\"" + lastSeenMessageId + "\"}";
     }
 
-    // MEDI-TC-006 — EXPERT cannot self-initiate a conversation
+    // The direct find-or-create route was intentionally removed; it must remain unavailable.
     @Test
     @WithMockUser(username = "cccccccc-0000-0000-0000-000000000002", roles = "EXPERT")
     void findOrCreate_asExpert_forbidden() throws Exception {
         mockMvc.perform(post("/api/v1/direct-conversations/expert/" + EXPERT_ID).with(csrf()))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isNotFound());
     }
 
     // MEDI-TC-007 — non-participant is rejected on every participant-scoped endpoint
@@ -116,7 +117,7 @@ class DirectConversationControllerSecurityTest {
                 .andExpect(jsonPath("$.error").value("DCC-006"));
     }
 
-    // Regression guard — listMyConversations / getUnreadSummary still reachable for both roles
+    // Regression guard — participant-scoped endpoints remain reachable for every chat role.
     @Test
     @WithMockUser(username = "cccccccc-0000-0000-0000-000000000002", roles = "EXPERT")
     void listMyConversations_asExpert_ok() throws Exception {
@@ -124,6 +125,26 @@ class DirectConversationControllerSecurityTest {
 
         mockMvc.perform(get("/api/v1/direct-conversations"))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "cccccccc-0000-0000-0000-000000000004", roles = "FAMILY")
+    void listMyConversations_asFamily_ok() throws Exception {
+        when(conversationService.listMyConversations(FAMILY_ID)).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/v1/direct-conversations"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "cccccccc-0000-0000-0000-000000000004", roles = "FAMILY")
+    void getConversation_asFamilyNonParticipant_forbiddenByParticipantPolicy() throws Exception {
+        when(conversationService.getConversation(CONVERSATION_ID, FAMILY_ID))
+                .thenThrow(DirectChatException.notParticipant());
+
+        mockMvc.perform(get("/api/v1/direct-conversations/" + CONVERSATION_ID))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error").value("DCC-003"));
     }
 
     @Test

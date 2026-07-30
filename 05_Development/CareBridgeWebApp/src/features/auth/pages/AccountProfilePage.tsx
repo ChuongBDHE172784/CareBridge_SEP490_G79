@@ -12,7 +12,7 @@ import {
   AlertCircle,
   ShieldCheck,
 } from 'lucide-react';
-import { fetchProfile } from '../services/authApi';
+import { fetchProfile, updateUserProfile } from '../services/authApi';
 import type { UserProfile } from '../models/user';
 import { ROLE_LABELS } from '../models/user';
 import './AccountProfilePage.css';
@@ -21,6 +21,10 @@ export default function AccountProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const loadProfile = () => {
     setLoading(true);
@@ -41,6 +45,24 @@ export default function AccountProfilePage() {
       .join('')
       .toUpperCase()
       .slice(0, 2);
+  };
+
+  const handleEditClick = () => {
+    setEditName(profile?.name || '');
+    setIsEditing(true);
+  };
+
+  const handleSaveProfile = async () => {
+    setSaving(true);
+    try {
+      const updated = await updateUserProfile({ displayName: editName });
+      setProfile(updated);
+      setIsEditing(false);
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Không thể lưu thông tin');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -133,12 +155,48 @@ export default function AccountProfilePage() {
               </div>
 
               {/* Edit Button */}
-              <button className="profile-edit-btn">
+              <button className="profile-edit-btn" onClick={handleEditClick}>
                 <Pencil /> Edit Profile
               </button>
             </>
           ) : null}
         </div>
+
+        {/* ── Edit Modal ── */}
+        {isEditing && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" role="dialog" aria-modal="true">
+            <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl">
+              <h3 className="text-xl font-bold mb-4">Chỉnh sửa hồ sơ</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Họ và tên</label>
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="w-full rounded-xl border border-gray-300 px-4 py-2 focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none"
+                    placeholder="Nhập họ và tên..."
+                  />
+                </div>
+              </div>
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  onClick={() => setIsEditing(false)}
+                  className="px-5 py-2.5 rounded-full border border-gray-300 font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Hủy
+                </button>
+                <button
+                  disabled={saving}
+                  onClick={handleSaveProfile}
+                  className="px-5 py-2.5 rounded-full bg-primary font-semibold text-white hover:bg-primary/90 disabled:opacity-50"
+                >
+                  {saving ? 'Đang lưu...' : 'Lưu thay đổi'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── Settings Shortcuts ── */}
         {!loading && !error && profile && (

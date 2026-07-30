@@ -2,165 +2,377 @@ import '../../../core/network/api_client.dart';
 
 class FamilyHomeService {
   static final FamilyHomeService instance = FamilyHomeService._();
+
   FamilyHomeService._();
 
-  Future<FamilyHomeSnapshot> loadSnapshot() async {
-    String? groupId;
-    String? groupName;
-    FamilyHomeTask? nextTask;
-    FamilyHomeSchedule? nextSchedule;
-    FamilyHomeAlert? latestAlert;
-
-    try {
-      final groupsJson = await apiGet('/api/v1/care-groups');
-      final groups = groupsJson['data'] as List? ?? [];
-      if (groups.isNotEmpty) {
-        final first = groups.first as Map<String, dynamic>;
-        groupId = (first['groupId'] ?? first['id'])?.toString();
-        groupName = first['groupName'] as String?;
-      }
-    } catch (_) {
-      groupId = null;
-    }
-
-    if (groupId != null) {
-      try {
-        final tasksJson = await apiGet('/api/v1/care-groups/$groupId/tasks');
-        final data = tasksJson['data'] as Map<String, dynamic>? ?? {};
-        final tasks = data['tasks'] as List? ?? [];
-        if (tasks.isNotEmpty) {
-          final raw = tasks.cast<Map<String, dynamic>>().firstWhere(
-                (task) => task['status']?.toString() != 'COMPLETED',
-                orElse: () => tasks.first as Map<String, dynamic>,
-              );
-          nextTask = FamilyHomeTask.fromJson(raw);
-        }
-      } catch (_) {}
-
-      try {
-        final now = DateTime.now().toUtc();
-        final rangeEnd = now.add(const Duration(days: 7));
-        final query = Uri(
-          queryParameters: {
-            'rangeStart': now.toIso8601String(),
-            'rangeEnd': rangeEnd.toIso8601String(),
-          },
-        ).query;
-        final calendarJson = await apiGet(
-          '/api/v1/care-groups/$groupId/calendar?$query',
-        );
-        final data = calendarJson['data'] as Map<String, dynamic>? ?? {};
-        final items = data['items'] as List? ?? [];
-        if (items.isNotEmpty) {
-          nextSchedule = FamilyHomeSchedule.fromJson(
-            items.first as Map<String, dynamic>,
-          );
-        }
-      } catch (_) {}
-    }
-
-    try {
-      final alertsJson = await apiGet('/api/v1/family-alerts?page=0&size=1');
-      final data = alertsJson['data'] as Map<String, dynamic>? ?? {};
-      final alerts = data['alerts'] as List? ?? [];
-      if (alerts.isNotEmpty) {
-        latestAlert = FamilyHomeAlert.fromJson(
-          alerts.first as Map<String, dynamic>,
-        );
-      }
-    } catch (_) {}
-
-    return FamilyHomeSnapshot(
-      groupId: groupId,
-      groupName: groupName,
-      nextTask: nextTask,
-      nextSchedule: nextSchedule,
-      latestAlert: latestAlert,
+  Future<FamilyHomeSnapshot> loadSnapshot({String? selectedCareGroupId}) async {
+    final response = await apiGet(
+      '/api/v1/family/dashboard',
+      queryParams: {
+        if (selectedCareGroupId != null)
+          'selectedCareGroupId': selectedCareGroupId,
+      },
     );
+    return FamilyHomeSnapshot.fromJson(_requiredMap(response, 'data'));
   }
 }
 
 class FamilyHomeSnapshot {
-  final String? groupId;
-  final String? groupName;
-  final FamilyHomeTask? nextTask;
-  final FamilyHomeSchedule? nextSchedule;
-  final FamilyHomeAlert? latestAlert;
-
   const FamilyHomeSnapshot({
-    this.groupId,
-    this.groupName,
-    this.nextTask,
-    this.nextSchedule,
-    this.latestAlert,
-  });
-}
-
-class FamilyHomeTask {
-  final String id;
-  final String title;
-  final String category;
-  final String status;
-
-  const FamilyHomeTask({
-    required this.id,
-    required this.title,
-    required this.category,
-    required this.status,
+    required this.groups,
+    required this.globalAggregate,
+    required this.selectedCareGroupId,
+    required this.selectedGroupDetail,
   });
 
-  factory FamilyHomeTask.fromJson(Map<String, dynamic> json) {
-    return FamilyHomeTask(
-      id: json['careTaskId']?.toString() ?? '',
-      title: json['title'] as String? ?? 'Nhiệm vụ chăm sóc',
-      category: _inferTaskCategory(json['title'] as String? ?? ''),
-      status: json['status'] as String? ?? 'OPEN',
+  final List<FamilyHomeGroup> groups;
+  final FamilyHomeAggregate globalAggregate;
+  final String? selectedCareGroupId;
+  final FamilyHomeGroupDetail? selectedGroupDetail;
+
+  factory FamilyHomeSnapshot.fromJson(Map<String, dynamic> json) {
+    final selectedDetail = json['selectedGroupDetail'];
+    return FamilyHomeSnapshot(
+      groups: _requiredMapList(
+        json,
+        'groups',
+      ).map(FamilyHomeGroup.fromJson).toList(growable: false),
+      globalAggregate: FamilyHomeAggregate.fromJson(
+        _requiredMap(json, 'globalAggregate'),
+      ),
+      selectedCareGroupId: _optionalString(json, 'selectedCareGroupId'),
+      selectedGroupDetail: selectedDetail == null
+          ? null
+          : FamilyHomeGroupDetail.fromJson(
+              _asMap(selectedDetail, 'selectedGroupDetail'),
+            ),
     );
   }
 }
 
-class FamilyHomeSchedule {
+class FamilyHomeAggregate {
+  const FamilyHomeAggregate({
+    required this.overdue,
+    required this.dueSoon,
+    required this.inProgress,
+    required this.alerts,
+  });
+
+  final int overdue;
+  final int dueSoon;
+  final int inProgress;
+  final int alerts;
+
+  factory FamilyHomeAggregate.fromJson(Map<String, dynamic> json) {
+    return FamilyHomeAggregate(
+      overdue: _requiredInt(json, 'overdue'),
+      dueSoon: _requiredInt(json, 'dueSoon'),
+      inProgress: _requiredInt(json, 'inProgress'),
+      alerts: _requiredInt(json, 'alerts'),
+    );
+  }
+}
+
+class FamilyHomeGroup {
+  const FamilyHomeGroup({
+    required this.id,
+    required this.name,
+    required this.joinedAt,
+    required this.lastActivityAt,
+    required this.relationshipRole,
+    required this.customRelationshipRole,
+    required this.permissionScope,
+    required this.aggregate,
+  });
+
+  final String id;
+  final String name;
+  final DateTime? joinedAt;
+  final DateTime? lastActivityAt;
+  final String? relationshipRole;
+  final String? customRelationshipRole;
+  final FamilyHomePermission permissionScope;
+  final FamilyHomeAggregate aggregate;
+
+  factory FamilyHomeGroup.fromJson(Map<String, dynamic> json) {
+    return FamilyHomeGroup(
+      id: _requiredString(json, 'id'),
+      name: _requiredString(json, 'name'),
+      joinedAt: _optionalDateTime(json, 'joinedAt'),
+      lastActivityAt: _optionalDateTime(json, 'lastActivityAt'),
+      relationshipRole: _optionalString(json, 'relationshipRole'),
+      customRelationshipRole: _optionalString(json, 'customRelationshipRole'),
+      permissionScope: FamilyHomePermission.fromJson(
+        _requiredMap(json, 'permissionScope'),
+      ),
+      aggregate: FamilyHomeAggregate.fromJson(_requiredMap(json, 'aggregate')),
+    );
+  }
+}
+
+class FamilyHomeGroupDetail {
+  const FamilyHomeGroupDetail({
+    required this.careGroupId,
+    required this.motherDisplayName,
+    required this.todayReminders,
+    required this.alerts,
+    required this.memberCount,
+    required this.members,
+    required this.relationshipRole,
+    required this.customRelationshipRole,
+    required this.permissionScope,
+    required this.sharedDataSummary,
+  });
+
+  final String careGroupId;
+  final String motherDisplayName;
+  final List<FamilyHomeTodayReminder> todayReminders;
+  final List<FamilyHomeAlert> alerts;
+  final int memberCount;
+  final List<FamilyHomeMember> members;
+  final String? relationshipRole;
+  final String? customRelationshipRole;
+  final FamilyHomePermission permissionScope;
+  final FamilyHomeSharedDataSummary sharedDataSummary;
+
+  factory FamilyHomeGroupDetail.fromJson(Map<String, dynamic> json) {
+    return FamilyHomeGroupDetail(
+      careGroupId: _requiredString(json, 'careGroupId'),
+      motherDisplayName: _requiredString(json, 'motherDisplayName'),
+      todayReminders: _requiredMapList(
+        json,
+        'todayReminders',
+      ).map(FamilyHomeTodayReminder.fromJson).toList(growable: false),
+      alerts: _requiredMapList(
+        json,
+        'alerts',
+      ).map(FamilyHomeAlert.fromJson).toList(growable: false),
+      memberCount: _requiredInt(json, 'memberCount'),
+      members: _requiredMapList(
+        json,
+        'members',
+      ).map(FamilyHomeMember.fromJson).toList(growable: false),
+      relationshipRole: _optionalString(json, 'relationshipRole'),
+      customRelationshipRole: _optionalString(json, 'customRelationshipRole'),
+      permissionScope: FamilyHomePermission.fromJson(
+        _requiredMap(json, 'permissionScope'),
+      ),
+      sharedDataSummary: FamilyHomeSharedDataSummary.fromJson(
+        _requiredMap(json, 'sharedDataSummary'),
+      ),
+    );
+  }
+}
+
+class FamilyHomeTodayReminder {
+  const FamilyHomeTodayReminder({
+    required this.id,
+    required this.title,
+    required this.type,
+    required this.status,
+    required this.scheduledAt,
+    required this.dueAt,
+    required this.snoozedUntil,
+    required this.priority,
+  });
+
+  final String id;
   final String title;
+  final String type;
+  final String status;
+  final DateTime? scheduledAt;
   final DateTime? dueAt;
+  final DateTime? snoozedUntil;
+  final int priority;
 
-  const FamilyHomeSchedule({required this.title, this.dueAt});
-
-  factory FamilyHomeSchedule.fromJson(Map<String, dynamic> json) {
-    return FamilyHomeSchedule(
-      title: json['title'] as String? ?? 'Lịch chăm sóc',
-      dueAt: DateTime.tryParse(json['dueAt'] as String? ?? ''),
+  factory FamilyHomeTodayReminder.fromJson(Map<String, dynamic> json) {
+    return FamilyHomeTodayReminder(
+      id: _requiredString(json, 'id'),
+      title: _requiredString(json, 'title'),
+      type: _requiredString(json, 'type'),
+      status: _requiredString(json, 'status'),
+      scheduledAt: _optionalDateTime(json, 'scheduledAt'),
+      dueAt: _optionalDateTime(json, 'dueAt'),
+      snoozedUntil: _optionalDateTime(json, 'snoozedUntil'),
+      priority: _requiredInt(json, 'priority'),
     );
   }
 }
 
 class FamilyHomeAlert {
+  const FamilyHomeAlert({
+    required this.id,
+    required this.careGroupId,
+    required this.title,
+    required this.body,
+    required this.createdAt,
+    required this.read,
+  });
+
   final String id;
+  final String careGroupId;
   final String title;
   final String body;
   final DateTime? createdAt;
-
-  const FamilyHomeAlert({
-    required this.id,
-    required this.title,
-    required this.body,
-    this.createdAt,
-  });
+  final bool read;
 
   factory FamilyHomeAlert.fromJson(Map<String, dynamic> json) {
     return FamilyHomeAlert(
-      id: json['alertId']?.toString() ?? '',
-      title: json['title'] as String? ?? 'Thông báo mới',
-      body: json['body'] as String? ?? '',
-      createdAt: DateTime.tryParse(json['createdAt'] as String? ?? ''),
+      id: _requiredString(json, 'id'),
+      careGroupId: _requiredString(json, 'careGroupId'),
+      title: _requiredString(json, 'title'),
+      body: _requiredString(json, 'body'),
+      createdAt: _optionalDateTime(json, 'createdAt'),
+      read: _requiredBool(json, 'read'),
     );
   }
 }
 
-String _inferTaskCategory(String title) {
-  final lower = title.toLowerCase();
-  if (lower.contains('mua') || lower.contains('bỉm') || lower.contains('sữa')) {
-    return 'Mua sắm';
+class FamilyHomeMember {
+  const FamilyHomeMember({
+    required this.memberId,
+    required this.userId,
+    required this.displayName,
+    required this.systemRole,
+    required this.relationshipRole,
+    required this.customRelationshipRole,
+    required this.joinedAt,
+  });
+
+  final String memberId;
+  final String userId;
+  final String displayName;
+  final String? systemRole;
+  final String? relationshipRole;
+  final String? customRelationshipRole;
+  final DateTime? joinedAt;
+
+  factory FamilyHomeMember.fromJson(Map<String, dynamic> json) {
+    return FamilyHomeMember(
+      memberId: _requiredString(json, 'memberId'),
+      userId: _requiredString(json, 'userId'),
+      displayName: _requiredString(json, 'displayName'),
+      systemRole: _optionalString(json, 'systemRole'),
+      relationshipRole: _optionalString(json, 'relationshipRole'),
+      customRelationshipRole: _optionalString(json, 'customRelationshipRole'),
+      joinedAt: _optionalDateTime(json, 'joinedAt'),
+    );
   }
-  if (lower.contains('thuốc') || lower.contains('khám')) return 'Y tế';
-  return 'Chăm sóc';
+}
+
+class FamilyHomePermission {
+  const FamilyHomePermission({
+    required this.calendar,
+    required this.logs,
+    required this.alerts,
+    required this.records,
+  });
+
+  final bool calendar;
+  final bool logs;
+  final bool alerts;
+  final bool records;
+
+  factory FamilyHomePermission.fromJson(Map<String, dynamic> json) {
+    return FamilyHomePermission(
+      calendar: _requiredBool(json, 'calendar'),
+      logs: _requiredBool(json, 'logs'),
+      alerts: _requiredBool(json, 'alerts'),
+      records: _requiredBool(json, 'records'),
+    );
+  }
+}
+
+class FamilyHomeSharedDataSummary {
+  const FamilyHomeSharedDataSummary({
+    required this.totalItems,
+    required this.categories,
+  });
+
+  final int totalItems;
+  final List<FamilyHomeSharedDataCategory> categories;
+
+  factory FamilyHomeSharedDataSummary.fromJson(Map<String, dynamic> json) {
+    return FamilyHomeSharedDataSummary(
+      totalItems: _requiredInt(json, 'totalItems'),
+      categories: _requiredMapList(
+        json,
+        'categories',
+      ).map(FamilyHomeSharedDataCategory.fromJson).toList(growable: false),
+    );
+  }
+}
+
+class FamilyHomeSharedDataCategory {
+  const FamilyHomeSharedDataCategory({
+    required this.category,
+    required this.permitted,
+    required this.itemCount,
+  });
+
+  final String category;
+  final bool permitted;
+  final int itemCount;
+
+  factory FamilyHomeSharedDataCategory.fromJson(Map<String, dynamic> json) {
+    return FamilyHomeSharedDataCategory(
+      category: _requiredString(json, 'category'),
+      permitted: _requiredBool(json, 'permitted'),
+      itemCount: _requiredInt(json, 'itemCount'),
+    );
+  }
+}
+
+Map<String, dynamic> _requiredMap(Map<String, dynamic> json, String key) {
+  return _asMap(json[key], key);
+}
+
+Map<String, dynamic> _asMap(Object? value, String key) {
+  if (value is Map<String, dynamic>) return value;
+  throw FormatException('Expected object for "$key".');
+}
+
+List<Map<String, dynamic>> _requiredMapList(
+  Map<String, dynamic> json,
+  String key,
+) {
+  final value = json[key];
+  if (value is! List) throw FormatException('Expected list for "$key".');
+  return value.map((item) => _asMap(item, key)).toList(growable: false);
+}
+
+String _requiredString(Map<String, dynamic> json, String key) {
+  final value = json[key];
+  if (value is String) return value;
+  throw FormatException('Expected string for "$key".');
+}
+
+String? _optionalString(Map<String, dynamic> json, String key) {
+  final value = json[key];
+  if (value == null) return null;
+  if (value is String) return value;
+  throw FormatException('Expected nullable string for "$key".');
+}
+
+int _requiredInt(Map<String, dynamic> json, String key) {
+  final value = json[key];
+  if (value is num) return value.toInt();
+  throw FormatException('Expected number for "$key".');
+}
+
+bool _requiredBool(Map<String, dynamic> json, String key) {
+  final value = json[key];
+  if (value is bool) return value;
+  throw FormatException('Expected boolean for "$key".');
+}
+
+DateTime? _optionalDateTime(Map<String, dynamic> json, String key) {
+  final value = json[key];
+  if (value == null) return null;
+  if (value is! String) {
+    throw FormatException('Expected nullable date string for "$key".');
+  }
+  final parsed = DateTime.tryParse(value);
+  if (parsed == null) throw FormatException('Invalid date for "$key".');
+  return parsed;
 }

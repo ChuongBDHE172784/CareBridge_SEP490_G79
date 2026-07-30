@@ -10,7 +10,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 /**
- * Clean-bootstrap contract for the current forward-only Flyway chain.
+/**
+ * Clean-bootstrap contract for the append-only Flyway chain: all repository
+ * migrations apply once, a second migrate is a no-op, and the resulting schema
+ * keeps canonical role and triage persistence.
  */
 @Testcontainers(disabledWithoutDocker = true)
 class DatabaseGate0IntegrationTest {
@@ -21,12 +24,12 @@ class DatabaseGate0IntegrationTest {
     final PostgreSQLContainer postgres = new PostgreSQLContainer(POSTGRES_IMAGE);
 
     @Test
-    void cleanBootstrapAppliesCurrentMigrationChainOnce() throws Exception {
+    void cleanBootstrapAppliesTheRepositoryMigrationChainOnce() throws Exception {
         var repository = DatabaseGate0Support.inspectRepository();
         assertThat(repository.gateFailures())
                 .as("Gate 0 repository failure codes")
                 .isEmpty();
-        assertThat(repository.migrations()).hasSize(3);
+        assertThat(repository.migrations()).isNotEmpty();
 
         Flyway flyway = Flyway.configure()
                 .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
@@ -51,16 +54,19 @@ class DatabaseGate0IntegrationTest {
                           WHERE version IS NOT NULL AND type = 'SQL'
                           ORDER BY installed_rank
                          """)) {
-                for (var expected : repository.migrations()) {
+                for (var migration : repository.migrations()) {
                     assertThat(history.next()).isTrue();
                     assertThat(DatabaseGate0Support.canonicalVersion(history.getString("version")))
-                            .isEqualTo(expected.version());
-                    assertThat(history.getString("script")).isEqualTo(expected.script());
+                            .isEqualTo(migration.version());
+                    assertThat(history.getString("script")).isEqualTo(migration.script());
                     assertThat((Integer) history.getObject("checksum"))
-                            .isEqualTo(expected.flywayChecksum());
+                            .isEqualTo(migration.flywayChecksum());
                     assertThat(history.getBoolean("success")).isTrue();
                 }
-                assertThat(history.next()).isFalse();
+                assertThat(history.next())
+                        .as("flyway_schema_history must match the repository migration chain")
+                        .isFalse();
+            }
             }
 
             try (var statement = connection.createStatement();

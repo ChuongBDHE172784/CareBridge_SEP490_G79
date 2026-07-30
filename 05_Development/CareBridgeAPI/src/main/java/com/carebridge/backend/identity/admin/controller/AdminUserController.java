@@ -6,6 +6,8 @@ import com.carebridge.backend.common.response.PaginatedResponse;
 import com.carebridge.backend.common.util.SecurityUtils;
 import com.carebridge.backend.identity.admin.dto.request.AdminUserSearchQuery;
 import com.carebridge.backend.identity.admin.dto.request.UpdateUserStatusRequest;
+import com.carebridge.backend.identity.admin.dto.response.AdminUserActivityResponse;
+import com.carebridge.backend.identity.admin.dto.response.AdminUserSessionResponse;
 import com.carebridge.backend.identity.admin.dto.response.AdminUserSummaryResponse;
 import com.carebridge.backend.identity.admin.service.AdminUserService;
 import com.carebridge.backend.security.rbac.Role;
@@ -59,6 +61,31 @@ public class AdminUserController {
         int pageSize = Math.min(size, AppConstants.MAX_PAGE_SIZE);
         Pageable pageable = PageRequest.of(page, pageSize);
         return ResponseEntity.ok(PaginatedResponse.of(adminUserService.searchUsers(query, pageable)));
+    }
+
+    @GetMapping("/{userId}")
+    public ResponseEntity<ApiResponse<AdminUserSummaryResponse>> getUser(@PathVariable UUID userId) {
+        return ResponseEntity.ok(ApiResponse.success(adminUserService.getUser(userId)));
+    }
+
+    @GetMapping("/{userId}/sessions")
+    public ResponseEntity<PaginatedResponse<AdminUserSessionResponse>> getUserSessions(
+            @PathVariable UUID userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        int pageSize = Math.min(size, AppConstants.MAX_PAGE_SIZE);
+        Pageable pageable = PageRequest.of(page, pageSize);
+        return ResponseEntity.ok(PaginatedResponse.of(adminUserService.getUserSessions(userId, pageable)));
+    }
+
+    @GetMapping("/{userId}/activity")
+    public ResponseEntity<PaginatedResponse<AdminUserActivityResponse>> getUserActivity(
+            @PathVariable UUID userId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        int pageSize = Math.min(size, AppConstants.MAX_PAGE_SIZE);
+        Pageable pageable = PageRequest.of(page, pageSize);
+        return ResponseEntity.ok(PaginatedResponse.of(adminUserService.getUserActivity(userId, pageable)));
     }
 
     @PatchMapping("/{userId}/status")

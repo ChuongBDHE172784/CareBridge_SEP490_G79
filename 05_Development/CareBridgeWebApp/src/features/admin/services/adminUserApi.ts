@@ -8,7 +8,11 @@ import type {
   StaffAccountResult,
   UpdateUserRoleRequest,
   UserRoleResult,
+  AdminUserSession,
+  AdminUserActivity,
   PaginatedResult,
+  AccountLockAppeal,
+  AccountLockAppealStatus,
 } from '../models/adminUser';
 
 type PageEnvelope<T> = ApiResponse<T[]> & {
@@ -41,6 +45,52 @@ export async function searchUsers(params: AdminUserSearchParams): Promise<Pagina
   };
 }
 
+// UC114 — GET /api/v1/admin/users/{userId}
+export async function getUser(userId: string): Promise<AdminUserSummary> {
+  const res = await apiClient.get<ApiResponse<AdminUserSummary>>(
+    `/api/v1/admin/users/${userId}`,
+  );
+  return res.data.data;
+}
+
+// UC114 — GET /api/v1/admin/users/{userId}/sessions
+export async function getUserSessions(
+  userId: string,
+  page = 0,
+  size = 20,
+): Promise<PaginatedResult<AdminUserSession>> {
+  const res = await apiClient.get<PageEnvelope<AdminUserSession>>(
+    `/api/v1/admin/users/${userId}/sessions?page=${page}&size=${size}`,
+  );
+  const body = res.data;
+  return {
+    content: body.data ?? [],
+    totalElements: body.totalElements ?? 0,
+    totalPages: body.totalPages ?? 0,
+    page: body.page ?? page,
+    size: body.size ?? size,
+  };
+}
+
+// UC114 — GET /api/v1/admin/users/{userId}/activity
+export async function getUserActivity(
+  userId: string,
+  page = 0,
+  size = 20,
+): Promise<PaginatedResult<AdminUserActivity>> {
+  const res = await apiClient.get<PageEnvelope<AdminUserActivity>>(
+    `/api/v1/admin/users/${userId}/activity?page=${page}&size=${size}`,
+  );
+  const body = res.data;
+  return {
+    content: body.data ?? [],
+    totalElements: body.totalElements ?? 0,
+    totalPages: body.totalPages ?? 0,
+    page: body.page ?? page,
+    size: body.size ?? size,
+  };
+}
+
 // UC114 — PATCH /api/v1/admin/users/{userId}/status
 export async function updateUserStatus(
   userId: string,
@@ -66,6 +116,32 @@ export async function updateUserRole(
 }
 
 // UC115 — POST /api/v1/admin/staff-accounts
+export async function getAccountLockAppeals(
+  status: AccountLockAppealStatus = 'PENDING', page = 0, size = 20,
+): Promise<PaginatedResult<AccountLockAppeal>> {
+  const res = await apiClient.get<PageEnvelope<AccountLockAppeal>>(
+    `/api/v1/admin/account-lock-appeals?status=${status}&page=${page}&size=${size}`,
+  );
+  return {
+    content: res.data.data ?? [], totalElements: res.data.totalElements,
+    totalPages: res.data.totalPages, page: res.data.page, size: res.data.size,
+  };
+}
+
+export async function getAccountLockAppeal(id: string): Promise<AccountLockAppeal> {
+  const res = await apiClient.get<ApiResponse<AccountLockAppeal>>(`/api/v1/admin/account-lock-appeals/${id}`);
+  return res.data.data;
+}
+
+export async function reviewAccountLockAppeal(
+  id: string, decision: 'APPROVE' | 'REJECT', reviewNote?: string,
+): Promise<AccountLockAppeal> {
+  const res = await apiClient.patch<ApiResponse<AccountLockAppeal>>(
+    `/api/v1/admin/account-lock-appeals/${id}/review`, { decision, reviewNote },
+  );
+  return res.data.data;
+}
+
 export async function createStaffAccount(
   request: CreateStaffAccountRequest,
 ): Promise<StaffAccountResult> {

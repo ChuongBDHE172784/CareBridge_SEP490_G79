@@ -25,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -33,11 +34,18 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class HealthRecordServiceImpl implements IHealthRecordService {
 
+    private static final Set<String> HEALTH_RECORD_ATTACHMENT_MIME_TYPES = Set.of(
+            "image/jpeg", "image/png", "image/webp", "image/heic", "image/gif",
+            "application/pdf"
+    );
+
     private final HealthRecordRepository recordRepository;
     private final HealthRecordFileRepository recordFileRepository;
     private final UploadedFileRepository uploadedFileRepository;
     private final IFileService fileService;
     private final AuditService auditService;
+    private final com.carebridge.backend.family.repository.CareGroupRepository careGroupRepository;
+    private final com.carebridge.backend.family.repository.CareGroupMemberRepository careGroupMemberRepository;
 
     @Override
     public AddHealthRecordResponse addHealthRecord(AddHealthRecordRequest request, UUID callerId) {
@@ -51,6 +59,13 @@ public class HealthRecordServiceImpl implements IHealthRecordService {
                 throw new BusinessException(HttpStatus.FORBIDDEN, "HEALTH-005",
                         "One or more files do not belong to the caller");
             }
+            ownedFiles.stream()
+                    .filter(file -> !HEALTH_RECORD_ATTACHMENT_MIME_TYPES.contains(file.getMimeType()))
+                    .findFirst()
+                    .ifPresent(file -> {
+                        throw new BusinessException(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "FILE-001",
+                                "Health record attachments only support images and PDF files");
+                    });
         }
 
         // C4: accountId from JWT
@@ -64,7 +79,7 @@ public class HealthRecordServiceImpl implements IHealthRecordService {
                 .sourceName(request.getFacilityName())
                 .build();
 
-        HealthRecord saved = recordRepository.save(record);
+        HealthRecord saved = recordRepository.saveAndFlush(record);
 
         // Link files to record
         for (int i = 0; i < fileIds.size(); i++) {
@@ -100,10 +115,22 @@ public class HealthRecordServiceImpl implements IHealthRecordService {
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "HEALTH-008",
                         "Health record not found or archived: " + recordId));
 
-        // C1: ownership check
+        // C1: ownership check or care group membership check
         if (!record.getOwnerUserId().equals(callerId)) {
-            throw new BusinessException(HttpStatus.FORBIDDEN, "HEALTH-004",
-                    "Access denied to health record");
+            List<com.carebridge.backend.family.entity.CareGroupMember> memberships =
+                    careGroupMemberRepository.findByUserIdAndInviteStatus(callerId, com.carebridge.backend.family.entity.InviteStatus.ACCEPTED);
+            boolean isMemberOfOwnerGroup = false;
+            for (var m : memberships) {
+                var groupOpt = careGroupRepository.findById(m.getCareGroupId());
+                if (groupOpt.isPresent() && groupOpt.get().getOwnerUserId().equals(record.getOwnerUserId())) {
+                    isMemberOfOwnerGroup = true;
+                    break;
+                }
+            }
+            if (!isMemberOfOwnerGroup) {
+                throw new BusinessException(HttpStatus.FORBIDDEN, "HEALTH-004",
+                        "Access denied to health record");
+            }
         }
 
         // C2: build attachments with presigned URLs (TTL=15min)
@@ -120,6 +147,7 @@ public class HealthRecordServiceImpl implements IHealthRecordService {
                     .mimeType(f.getMimeType())
                     .displayOrder(link.getDisplayOrder())
                     .presignedUrl(fileService.generatePresignedUrl(f.getId(), callerId, 15))
+                    .createdAt(f.getCreatedAt())
                     .build();
         }).filter(a -> a != null).collect(Collectors.toList());
 
@@ -164,6 +192,17 @@ public class HealthRecordServiceImpl implements IHealthRecordService {
         if (request.getFileUrl() != null) record.setFileUrl(request.getFileUrl());
         if (request.getBabyId() != null) record.setBabyId(request.getBabyId());
         if (request.getJourneyId() != null) record.setJourneyId(request.getJourneyId());
+
+        if (request.getFileIds() != null) {
+            recordFileRepository.unlinkAllByHealthRecordId(record.getId());
+            for (UUID fileId : request.getFileIds()) {
+                HealthRecordFile link = HealthRecordFile.builder()
+                        .healthRecordId(record.getId())
+                        .fileId(fileId)
+                        .build();
+                recordFileRepository.save(link);
+            }
+        }
 
         HealthRecord saved = recordRepository.save(record);
 
@@ -224,12 +263,24 @@ public class HealthRecordServiceImpl implements IHealthRecordService {
     @Override
     @Transactional(readOnly = true)
     public TimelineResponse getTimeline(UUID ownerUserId, TimelineFilter filter) {
+        UUID targetOwnerId = ownerUserId;
+        if (recordRepository.countByOwnerUserIdAndStatus(ownerUserId, HealthRecordStatus.ACTIVE) == 0) {
+            List<com.carebridge.backend.family.entity.CareGroupMember> memberships =
+                    careGroupMemberRepository.findByUserIdAndInviteStatus(ownerUserId, com.carebridge.backend.family.entity.InviteStatus.ACCEPTED);
+            if (!memberships.isEmpty()) {
+                var groupOpt = careGroupRepository.findById(memberships.get(0).getCareGroupId());
+                if (groupOpt.isPresent()) {
+                    targetOwnerId = groupOpt.get().getOwnerUserId();
+                }
+            }
+        }
+
         org.springframework.data.domain.Pageable pageable =
                 org.springframework.data.domain.PageRequest.of(filter.getPage(), filter.getSize());
 
         org.springframework.data.domain.Page<HealthRecord> page =
                 recordRepository.findActiveByOwnerFiltered(
-                        ownerUserId,
+                        targetOwnerId,
                         filter.getRecordType(),
                         filter.getJourneyId(),
                         filter.getBabyId(),

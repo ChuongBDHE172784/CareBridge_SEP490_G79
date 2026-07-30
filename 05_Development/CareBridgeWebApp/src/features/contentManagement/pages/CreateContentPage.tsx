@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createContent, fetchTags, fetchTopics, updateContent, uploadContentImage } from '../services/contentApi';
 import type { CommunityTopic, ContentStage, ContentType } from '../models/content';
-import { TYPE_LABELS, STAGE_LABELS } from '../models/content';
+import { TYPE_LABELS, STAGE_OPTIONS } from '../models/content';
 import RichTextEditor from '../components/RichTextEditor';
 import { isRichTextEmpty } from '../components/richTextUtils';
 
@@ -85,7 +85,7 @@ export default function CreateContentPage({ contentType }: CreateContentPageProp
     } finally {
       setSubmitting(null);
     }
-  }, [contentType, stage, title, body, topicId, tagIds, sourceLabel, sourceUrl, sourcePublisher]);
+  }, [contentType, stage, title, summary, body, topicId, tagIds, sourceLabel, sourceUrl, sourcePublisher]);
 
   if (created) {
     return (
@@ -192,7 +192,7 @@ export default function CreateContentPage({ contentType }: CreateContentPageProp
             className="w-full py-3 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface font-sans"
           >
             <option value="">Chọn giai đoạn</option>
-            {Object.entries(STAGE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            {STAGE_OPTIONS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
           </select>
         </div>
 

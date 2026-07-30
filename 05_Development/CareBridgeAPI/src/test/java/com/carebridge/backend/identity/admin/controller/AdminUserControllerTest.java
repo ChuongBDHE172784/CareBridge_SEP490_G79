@@ -2,6 +2,7 @@ package com.carebridge.backend.identity.admin.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -83,6 +84,47 @@ class AdminUserControllerTest {
         mockMvc.perform(get(BASE_URL))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data[0].email").value("mother1@example.com"));
+    }
+
+    // UC114-TC-015
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "SYSTEM_ADMIN")
+    void getUser_asSystemAdmin_returnsSafeDetail() throws Exception {
+        UUID targetId = UUID.randomUUID();
+        when(adminUserService.getUser(targetId)).thenReturn(AdminUserSummaryResponse.builder()
+                .id(targetId)
+                .email("target@example.com")
+                .role(Role.MOTHER)
+                .enabled(true)
+                .createdAt(Instant.now())
+                .build());
+
+        mockMvc.perform(get(BASE_URL + "/" + targetId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.id").value(targetId.toString()))
+                .andExpect(jsonPath("$.data.email").value("target@example.com"))
+                .andExpect(jsonPath("$.data.passwordHash").doesNotExist());
+    }
+
+    // UC114-TC-020
+    @ParameterizedTest
+    @EnumSource(value = Role.class, names = {"SYSTEM_ADMIN"}, mode = EnumSource.Mode.EXCLUDE)
+    void monitoringEndpoints_nonAdminRole_areRejected(Role role) throws Exception {
+        var actor = org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors
+                .user(UUID.randomUUID().toString()).roles(role.name());
+        UUID targetId = UUID.randomUUID();
+
+        mockMvc.perform(get(BASE_URL + "/" + targetId).with(actor))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get(BASE_URL + "/" + targetId + "/sessions").with(
+                        org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors
+                                .user(UUID.randomUUID().toString()).roles(role.name())))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get(BASE_URL + "/" + targetId + "/activity").with(
+                        org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors
+                                .user(UUID.randomUUID().toString()).roles(role.name())))
+                .andExpect(status().isForbidden());
+        verifyNoInteractions(adminUserService);
     }
 
     // UC114-TC-009

@@ -29,6 +29,7 @@
  <properties>
  <java.version>21</java.version>
  <postgresql.version>42.7.12</postgresql.version>
+ <tika.version>3.3.2</tika.version>
  </properties>
  <dependencies>
  <dependency>
@@ -124,6 +125,17 @@
   <groupId>com.drewnoakes</groupId>
   <artifactId>metadata-extractor</artifactId>
   <version>2.18.0</version>
+ </dependency>
+ <!-- Read-only text preview for private PDF/DOC/DOCX expert credentials. -->
+ <dependency>
+  <groupId>org.apache.tika</groupId>
+  <artifactId>tika-core</artifactId>
+  <version>${tika.version}</version>
+ </dependency>
+ <dependency>
+  <groupId>org.apache.tika</groupId>
+  <artifactId>tika-parsers-standard-package</artifactId>
+  <version>${tika.version}</version>
  </dependency>
  <!-- HTML sanitization for rich text content (ContentRichTextEditor_TDS ADR-RTE-005) -->
  <dependency>

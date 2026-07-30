@@ -176,4 +176,35 @@ class ReportServiceImplTest {
         assertThat(response.getStatus()).isEqualTo(ReportStatus.PENDING);
         verify(communityAnswerRepository).findById(TARGET_ID);
     }
+
+    @Test
+    void createReport_ownQuestion_isForbidden() {
+        CommunityQuestion ownQuestion = CommunityQuestion.builder()
+                .id(TARGET_ID).authorId(REPORTER_ID).status(QuestionStatus.APPROVED).build();
+        when(communityQuestionRepository.findById(TARGET_ID))
+                .thenReturn(java.util.Optional.of(ownQuestion));
+
+        assertThatThrownBy(() -> newService().createReport(makeRequest(), REPORTER_ID))
+                .isInstanceOf(ReportException.class)
+                .satisfies(ex -> assertThat(((ReportException) ex).getCode()).isEqualTo("RPT-005"));
+
+        verify(contentReportRepository, never()).save(any());
+    }
+
+    @Test
+    void createReport_ownAnswer_isForbidden() {
+        CreateReportRequest request = makeRequest();
+        request.setTargetType(ReportTargetType.ANSWER);
+        CommunityAnswer ownAnswer = CommunityAnswer.builder()
+                .id(TARGET_ID).authorId(REPORTER_ID).questionId(UUID.randomUUID())
+                .status(AnswerStatus.APPROVED).build();
+        when(communityAnswerRepository.findById(TARGET_ID))
+                .thenReturn(java.util.Optional.of(ownAnswer));
+
+        assertThatThrownBy(() -> newService().createReport(request, REPORTER_ID))
+                .isInstanceOf(ReportException.class)
+                .satisfies(ex -> assertThat(((ReportException) ex).getCode()).isEqualTo("RPT-005"));
+
+        verify(contentReportRepository, never()).save(any());
+    }
 }

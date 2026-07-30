@@ -2,7 +2,7 @@
 # Mẫu Đặc tả Kiểm thử — UC-03 Login
 
 **Document ID:** `CB-AUTH-TEST-003`
-**Version:** `1.0`
+**Version:** `1.2`
 **Date:** `2026-06-26`
 **Status:** `Approved — v1.1 Firebase federated-login extension; existing 10/10 password-login tests remain GREEN, new FED-LOGIN tests are Not written.`
 **Standard:** ISO/IEC/IEEE 29119-3:2021
@@ -25,6 +25,7 @@
 |------|-----------------|-------------------|
 | 2026-06-26 | AI Agent | Khởi tạo TDD spec cho UC-03 Login |
 | 2026-06-27 | AI Agent | Sync: mapped 7/10 TCs to existing AuthServiceLoginTest.java. LOGIN-TC-007, 008, INT-001 not yet covered. |
+| 2026-07-29 | Senior Developer | v1.2 regression matrix: password-first disclosure, generic wrong-password response, distinct blocked states, admin reason/appeal authorization privacy |
 
 ---
 
@@ -69,6 +70,22 @@
 ---
 
 ## 2. Logic Issues Resolved
+
+### 2.0 Account-state disclosure regression matrix (v1.2)
+
+| Test ID | Credential/state combination | Expected result |
+|---|---|---|
+| LOGIN-STATE-001 | Unknown identifier | Generic `Invalid credentials`; no state lookup disclosure |
+| LOGIN-STATE-002 | Existing disabled/admin-locked account + wrong password | Generic `Invalid credentials`; no reason, retry time, or appeal token |
+| LOGIN-STATE-003 | Correct password + disabled | HTTP 403 `ACCOUNT_DISABLED`; disabled-specific UI; no appeal |
+| LOGIN-STATE-004 | Correct password + temporary lock | HTTP 403 `ACCOUNT_TEMPORARILY_LOCKED`; `retryAt`; no appeal |
+| LOGIN-STATE-005 | Correct password + admin lock | HTTP 403 `ACCOUNT_ADMIN_LOCKED`; administrative reason and ten-minute appeal token |
+| LOGIN-STATE-006 | Correct password + suspension | HTTP 403 `ACCOUNT_SUSPENDED`; moderation-specific message |
+| LOGIN-STATE-007 | Fifth wrong password | Temporary lock persisted but response remains generic credentials failure |
+| LOGIN-STATE-008 | Expired temporary lock + correct password | Temporary metadata cleared; authentication may continue |
+| LOGIN-STATE-009 | Active access/refresh token after admin lock/disable | Session revoked; protected failure omits reason and appeal token |
+| LOGIN-STATE-010 | Appeal token used as Bearer access token | Rejected because token purpose is not `ACCESS` |
+
 
 | # | Spec gốc (sai / thiếu) | Thực tế (schema / policy) | Fix áp dụng trong test |
 |---|------------------------|--------------------------|------------------------|

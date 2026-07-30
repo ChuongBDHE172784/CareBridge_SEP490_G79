@@ -5,12 +5,9 @@ import '../../auth/screens/account_profile_screen.dart';
 import '../../directChat/screens/conversation_list_screen.dart';
 import '../../directChat/services/direct_chat_service.dart';
 import '../../directChat/services/conversation_refresh_bus.dart';
+import '../../consultation/screens/expert_requests_tab_screen.dart';
 import '../../expert/screens/expert_calendar_screen.dart';
 
-/// EXPERT app shell — ADR-MEDI-005: converts the EXPERT role from a single Scaffold with a
-/// custom-drawn bottom row + Navigator.push per tab (no state retention, navigator stack could
-/// grow unbounded) to the same IndexedStack + NavigationBar pattern already used by MOTHER's
-/// [HomeShell]. [ExpertAppHomeScreen] (unchanged dashboard content) becomes tab 0 "Tổng quan".
 class ExpertHomeShell extends StatefulWidget {
   const ExpertHomeShell({super.key});
 
@@ -72,10 +69,11 @@ class _ExpertHomeShellState extends State<ExpertHomeShell>
   }
 
   static const _pages = <Widget>[
-    ExpertAppHomeScreen(), // 0: Tổng quan (unchanged dashboard content)
-    ConversationListScreen(), // 1: Trò chuyện (shared with MOTHER)
-    ExpertCalendarScreen(), // 2: Lịch
-    AccountProfileScreen(), // 3: Tài khoản
+    ExpertAppHomeScreen(), // 0: Tổng quan
+    ConversationListScreen(), // 1: Trò chuyện
+    ExpertRequestsTabScreen(), // 2: Yêu cầu
+    ExpertCalendarScreen(), // 3: Lịch rảnh
+    AccountProfileScreen(), // 4: Tài khoản
   ];
 
   @override
@@ -113,9 +111,14 @@ class _ExpertHomeShellState extends State<ExpertHomeShell>
             label: 'Trò chuyện',
           ),
           const NavigationDestination(
+            icon: Icon(Icons.assignment_outlined),
+            selectedIcon: Icon(Icons.assignment, color: _primary),
+            label: 'Yêu cầu',
+          ),
+          const NavigationDestination(
             icon: Icon(Icons.calendar_month_outlined),
             selectedIcon: Icon(Icons.calendar_month, color: _primary),
-            label: 'Lịch',
+            label: 'Lịch rảnh',
           ),
           const NavigationDestination(
             icon: Icon(Icons.person_outlined),

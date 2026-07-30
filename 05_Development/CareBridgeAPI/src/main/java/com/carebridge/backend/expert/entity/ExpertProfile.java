@@ -26,8 +26,20 @@ public class ExpertProfile {
     @Column(name = "user_id", updatable = false, nullable = false)
     private UUID expertProfileId;
 
-    @Transient
-    private UUID userId;
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", insertable = false, updatable = false)
+    private com.carebridge.backend.security.entity.User user;
+
+    public UUID getUserId() {
+        return expertProfileId;
+    }
+
+    public static class ExpertProfileBuilder {
+        public ExpertProfileBuilder userId(UUID userId) {
+            this.expertProfileId = userId;
+            return this;
+        }
+    }
 
     @Column(name = "specialty", length = 100)
     private String specialty;
@@ -85,16 +97,5 @@ public class ExpertProfile {
                 && trustStatus == TrustStatus.ACTIVE;
     }
 
-    @PrePersist
-    @PreUpdate
-    void canonicalIdentity() {
-        if (expertProfileId == null) expertProfileId = userId;
-        if (userId == null) userId = expertProfileId;
-    }
-
-    @PostLoad
-    void hydrateUserAlias() {
-        userId = expertProfileId;
-    }
 }
 

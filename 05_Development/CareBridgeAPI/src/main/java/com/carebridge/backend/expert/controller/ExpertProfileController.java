@@ -22,9 +22,22 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import com.carebridge.backend.expertverification.adapter.CompreFacePipelineAdapter;
+import com.carebridge.backend.expertverification.adapter.CompreFacePipelineAdapter.PipelineResult;
+import com.carebridge.backend.expertverification.adapter.FaceVerificationResult;
+import com.carebridge.backend.common.response.ApiResponse;
+import com.carebridge.backend.expert.dto.request.UpdateExpertProfileRequest;
+import com.carebridge.backend.expert.dto.response.ExpertProfileResponse;
+import com.carebridge.backend.expert.service.IExpertProfileService;
+import com.carebridge.backend.common.util.SecurityUtils;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
 import java.security.Principal;
 import java.util.List;
 import java.util.UUID;
@@ -35,7 +48,7 @@ import java.util.UUID;
 public class ExpertProfileController {
 
     private final IExpertProfileService expertProfileService;
-    private final FaceVerificationAdapter faceVerificationAdapter;
+    private final CompreFacePipelineAdapter compreFacePipelineAdapter;
 
     // NEW: AI Face Verification Endpoint for Quick Feedback (Tích xanh)
     @PostMapping(value = "/verify-face", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -46,9 +59,27 @@ public class ExpertProfileController {
         try {
             validatePreviewImage(selfie, "selfie");
             validatePreviewImage(idCard, "idCard");
-            var result = faceVerificationAdapter.verify(
+            
+            PipelineResult pipelineResult = compreFacePipelineAdapter.verifyWithPipeline(
                     selfie.getBytes(), selfie.getContentType(),
                     idCard.getBytes(), idCard.getContentType());
+                    
+            FaceVerificationResult result = pipelineResult.verificationResult();
+            
+            // If the pipeline returned a reason/status, append it to the verification result reason if it exists
+            String providerErr = result.providerErrorCode();
+            String pipelineErr = pipelineResult.pipelineStatus();
+            
+            if (pipelineErr != null && !pipelineErr.isBlank() && !pipelineErr.equals("DETECTED")) {
+                String existingReason = providerErr != null ? providerErr + " - " : "";
+                result = new FaceVerificationResult(
+                        result.status(),
+                        result.similarity(),
+                        result.threshold(),
+                        existingReason + pipelineErr
+                );
+            }
+            
             return ResponseEntity.ok(ApiResponse.success(result));
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(ApiResponse.error("Lỗi khi xác thực khuôn mặt: " + e.getMessage()));
@@ -163,6 +194,18 @@ public class ExpertProfileController {
         UUID adminId = SecurityUtils.requireCurrentUserId(principal);
         expertProfileService.setTrustStatus(expertProfileId, status, adminId);
         return ResponseEntity.ok(ApiResponse.success(null, "Trạng thái đã cập nhật"));
+    }
+
+    // Admin view of all experts for trust management
+    @GetMapping("/admin/profiles")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    public ResponseEntity<ApiResponse<List<ExpertProfileResponse>>> getAdminProfiles(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String keyword) {
+        // We will just return getAllExperts() here and optionally filter it in the service
+        // Since we modified getAllExperts earlier to filter for isEligibleForConsultation,
+        // we should add a new method for the admin to get all profiles without filters.
+        return ResponseEntity.ok(ApiResponse.success(expertProfileService.getAllAdminExperts(status, keyword)));
     }
 
     // Helper: get list of verified experts (for integration)

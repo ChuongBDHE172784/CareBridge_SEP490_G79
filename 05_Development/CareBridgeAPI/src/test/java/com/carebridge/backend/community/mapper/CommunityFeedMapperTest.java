@@ -38,7 +38,7 @@ class CommunityFeedMapperTest {
                 .build();
     }
 
-    // COM198-TC-002a: isAnonymous=true → authorDisplay = "Mẹ ẩn danh"
+    // COM198-TC-002a: isAnonymous=true → generic anonymous member label
     @Test
     void toFeedItem_anonymousQuestion_authorDisplayIsMasked() {
         CommunityQuestion entity = makeQuestion(true);
@@ -46,6 +46,7 @@ class CommunityFeedMapperTest {
         CommunityFeedItemResponse response = mapper.toFeedItem(entity, "Thai kỳ", "Nguyễn Thị A", false, false, false);
 
         assertThat(response.authorDisplay()).isEqualTo(CommunityFeedMapper.ANONYMOUS_AUTHOR);
+        assertThat(response.authorDisplay()).isEqualTo("Thành viên ẩn danh");
         assertThat(response.authorDisplay()).doesNotContain("Nguyễn Thị A");
         assertThat(response.authorDisplay()).doesNotContain(entity.getAuthorId().toString());
     }

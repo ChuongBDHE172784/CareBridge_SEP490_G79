@@ -3,6 +3,7 @@ import apiClient from '../../../shared/api/apiClient';
 export interface ExpertProfileResponse {
 	expertProfileId: string;
 	userId: string;
+	displayName?: string | null;
 	specialtyId: string;
 	professionalTitle: string;
 	experienceYears: number | null;
@@ -11,6 +12,7 @@ export interface ExpertProfileResponse {
 	workplace?: string | null;
 	consultationScope: string;
 	verificationStatus: string;
+	trustStatus?: 'ACTIVE' | 'SUSPENDED' | 'REVOKED' | null;
 	verifiedAt: string | null;
 	ratingAvg: number | null;
 	consultationFeeVnd: number | null;
@@ -58,6 +60,14 @@ export interface IdentityAttemptResponse {
 	identityVerificationId?: string;
 	attemptId?: string;
 	expertProfileId?: string;
+	expertName?: string;
+	expertEmail?: string;
+	expertPhone?: string;
+	specialty?: string;
+	professionalTitle?: string;
+	experienceYears?: number;
+	workplace?: string;
+	consultationScope?: string;
 	selfieFileId?: string;
 	identityFrontFileId?: string;
 	identityBackFileId?: string;
@@ -94,6 +104,10 @@ export interface DocumentReviewResponse {
 	issuedDate: string;
 	expiryDate: string | null;
 	fileUrl: string | null;
+	fileId?: string | null;
+	fileName?: string | null;
+	mimeType?: string | null;
+	fileSizeBytes?: number | null;
 	createdAt: string;
 	reviewStatus: string;
 	reviewNote: string | null;
@@ -108,6 +122,24 @@ export interface DocumentReviewResponse {
 	email?: string;
 	ratingAvg?: number | null;
 	avatarUrl?: string | null;
+}
+
+export interface ExpertReviewCaseResponse {
+	profile: ExpertProfileResponse;
+	latestIdentity: IdentityAttemptResponse | null;
+	credentials: DocumentReviewResponse[];
+	identityStatus: string;
+	credentialStatus: string;
+	readyForFinalApproval: boolean;
+}
+
+export interface CredentialDocumentPreviewResponse {
+	credentialId: string;
+	fileName: string;
+	mimeType: string;
+	fileSizeBytes: number;
+	content: string;
+	truncated: boolean;
 }
 
 export interface AvailabilityResponse {
@@ -221,8 +253,13 @@ export async function getHospitals(params: { provinceId?: string; districtId?: s
 	return data.data;
 }
 
-export async function getWards(districtId: string): Promise<WardResponse[]> {
-	const { data } = await apiClient.get('/api/v1/master-data/wards', { params: { districtId } });
+export async function getWards(params: { districtId?: string; provinceId?: string }): Promise<WardResponse[]> {
+	const { data } = await apiClient.get('/api/v1/master-data/wards', { params });
+	return data.data;
+}
+
+export async function searchTrackAsiaHospitals(q: string): Promise<any[]> {
+	const { data } = await apiClient.get('/api/v1/master-data/hospitals/search/trackasia', { params: { q } });
 	return data.data;
 }
 
@@ -238,6 +275,10 @@ export async function createMyProfile(body: {
 	professionalTitle: string;
 	experienceYears?: number;
 	hospitalId: string;
+	trackAsiaName?: string;
+	trackAsiaAddress?: string;
+	trackAsiaLat?: number;
+	trackAsiaLng?: number;
 	consultationScope: string;
 	consultationFeeVnd?: number;
 }): Promise<ExpertProfileResponse> {
@@ -257,28 +298,40 @@ export async function updateMyProfile(body: {
 	return data.data;
 }
 
+export async function uploadExpertAvatar(file: File): Promise<string> {
+	const form = new FormData();
+	form.append('file', file);
+	form.append('kind', 'IMAGE');
+	form.append('purpose', 'EXPERT_AVATAR');
+	form.append('accessMode', 'PUBLIC');
+	const res = await apiClient.post<{ data: { presignedUrl: string } }>(
+		'/api/v1/files/upload/with-purpose',
+		form,
+		{ headers: { 'Content-Type': undefined } },
+	);
+	return res.data.data.presignedUrl;
+}
+
 export async function getExpertOnboarding(): Promise<ExpertOnboardingResponse> {
 	const { data } = await apiClient.get('/api/v1/expert/onboarding');
 	return data.data;
 }
 
-export async function verifyFace(files: {
-	selfie: File;
-	idCard: File;
-}): Promise<{ similar: boolean; similarity: number; status: string }> {
+export const verifyFace = async (files: { selfie: File; idCard: File }) => {
 	const form = new FormData();
 	form.append('selfie', files.selfie);
 	form.append('idCard', files.idCard);
 	const { data } = await apiClient.post('/api/v1/expert/verify-face', form, {
 		headers: { 'Content-Type': undefined },
 	});
-	const result = data.data as { status: string; similarity: number | null };
+	const result = data.data as { status: string; similarity: number | null; providerErrorCode: string | null };
+
 	return {
 		similar: result.status === 'MATCHED',
-		similarity: result.similarity ?? 0,
-		status: result.status,
+		similarity: result.similarity || 0,
+		reason: result.providerErrorCode || null
 	};
-}
+};
 
 export async function submitIdentityEvidence(files: {
 	selfie: File;
@@ -371,6 +424,52 @@ export async function reviewCredential(
 	return data.data;
 }
 
+export interface PageResponse<T> {
+	content: T[];
+	page: {
+		size: number;
+		number: number;
+		totalElements: number;
+		totalPages: number;
+	};
+}
+
+export async function getExpertReviewCases(
+	search?: string,
+	status?: string,
+	page: number = 0,
+	size: number = 10
+): Promise<PageResponse<ExpertReviewCaseResponse>> {
+	const params = new URLSearchParams({
+		page: page.toString(),
+		size: size.toString(),
+	});
+	if (search) params.append('search', search);
+	if (status && status !== 'ALL') params.append('status', status);
+
+	const { data } = await apiClient.get(`/api/v1/expert/review-cases?${params.toString()}`);
+	return data.data;
+}
+
+export async function getCredentialDocumentPreview(
+	credentialId: string
+): Promise<CredentialDocumentPreviewResponse> {
+	const { data } = await apiClient.get(`/api/v1/expert/credentials/${credentialId}/preview`);
+	return data.data;
+}
+
+export async function getCredentialFileUrl(credentialId: string): Promise<string> {
+	const { data } = await apiClient.get(`/api/v1/expert/credentials/${credentialId}/file`);
+	return data.data.presignedUrl;
+}
+
+export async function setExpertTrust(
+	profileId: string,
+	status: 'ACTIVE' | 'SUSPENDED' | 'REVOKED'
+): Promise<void> {
+	await apiClient.patch(`/api/v1/expert/profiles/${profileId}/trust`, {}, { params: { status } });
+}
+
 // ── PKG-03 Expert Availability ────────────────────────────────────────────
 
 export async function createAvailability(body: CreateAvailabilityRequest): Promise<AvailabilityResponse> {
@@ -411,143 +510,3 @@ export async function postCommunityAnswer(
 	return data.data;
 }
 
-// ── Contribution (Medical Knowledge) ────────────────────────────────────────
-
-export type ContributionStatus = 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
-
-export interface ContributionAttachmentRequest {
-	fileId: string;
-	kind: 'IMAGE' | 'DOCUMENT';
-	purpose: 'MEDICAL_CONTRIBUTION_IMAGE' | 'MEDICAL_CONTRIBUTION_DOCUMENT';
-	accessMode: 'PUBLIC' | 'AUTHENTICATED' | 'PRIVATE';
-	displayOrder?: number;
-}
-
-export interface CreateContributionRequest {
-	title: string;
-	content: string;
-	specialtyId?: string;
-	hospitalId?: string;
-	attachments?: ContributionAttachmentRequest[];
-}
-
-export interface UpdateContributionRequest {
-	title: string;
-	content: string;
-	specialtyId?: string;
-	hospitalId?: string;
-	attachments?: ContributionAttachmentRequest[];
-}
-
-export interface ContributionAttachmentResponse {
-	id: string;
-	fileId: string;
-	contributionId: string;
-	kind: 'IMAGE' | 'DOCUMENT';
-	purpose: 'MEDICAL_CONTRIBUTION_IMAGE' | 'MEDICAL_CONTRIBUTION_DOCUMENT';
-	accessMode: 'PUBLIC' | 'AUTHENTICATED' | 'PRIVATE';
-	displayOrder: number;
-	originalName: string | null;
-	mimeType: string;
-	fileSizeBytes: number;
-	presignedUrl: string | null;
-}
-
-export interface ContributionResponse {
-	id: string;
-	expertUserId: string;
-	title: string;
-	content: string;
-	specialtyId?: string;
-	hospitalId?: string;
-	status: 'DRAFT' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
-	rejectionReason?: string;
-	version: number;
-	createdAt: string;
-	updatedAt: string;
-	attachments?: ContributionAttachmentResponse[];
-}
-
-export interface PaginatedContributionResponse {
-	content: ContributionResponse[];
-	page: number;
-	size: number;
-	totalElements: number;
-	totalPages: number;
-}
-
-export interface UploadFileResponse {
-	fileId: string;
-	originalName: string;
-	mimeType: string;
-	fileSizeBytes: number;
-	presignedUrl: string;
-	createdAt: string;
-}
-
-export async function uploadContributionFile(
-	file: File,
-	kind: 'IMAGE' | 'DOCUMENT',
-	purpose: 'MEDICAL_CONTRIBUTION_IMAGE' | 'MEDICAL_CONTRIBUTION_DOCUMENT',
-	accessMode: 'PUBLIC' | 'AUTHENTICATED' | 'PRIVATE'
-): Promise<UploadFileResponse> {
-	const form = new FormData();
-	form.append('file', file);
-	form.append('kind', kind);
-	form.append('purpose', purpose);
-	form.append('accessMode', accessMode);
-	const { data } = await apiClient.post('/api/v1/files/upload/with-purpose', form, {
-		headers: { 'Content-Type': undefined },
-	});
-	return data.data;
-}
-
-export async function createContribution(body: CreateContributionRequest): Promise<ContributionResponse> {
-	const { data } = await apiClient.post('/api/v1/contributions', body);
-	return data.data;
-}
-
-export async function getContribution(contributionId: string): Promise<ContributionResponse> {
-	const { data } = await apiClient.get(`/api/v1/contributions/${contributionId}`);
-	return data.data;
-}
-
-export async function listMyContributions(params: { page?: number; size?: number }): Promise<PaginatedContributionResponse> {
-	const { data } = await apiClient.get('/api/v1/contributions/me', { params });
-	return data.data;
-}
-
-export async function updateContribution(contributionId: string, body: UpdateContributionRequest): Promise<ContributionResponse> {
-	const { data } = await apiClient.put(`/api/v1/contributions/${contributionId}`, body);
-	return data.data;
-}
-
-export async function submitContribution(contributionId: string): Promise<ContributionResponse> {
-	const { data } = await apiClient.post(`/api/v1/contributions/${contributionId}/submit`);
-	return data.data;
-}
-
-export async function deleteContribution(contributionId: string): Promise<void> {
-	await apiClient.delete(`/api/v1/contributions/${contributionId}`);
-}
-
-export async function checkContributionEligibility(): Promise<boolean> {
-	const { data } = await apiClient.get('/api/v1/contributions/eligibility');
-	return data.data;
-}
-
-// Admin functions
-export async function listContributionsForReview(params: { status: 'SUBMITTED' | 'APPROVED' | 'REJECTED' | 'DRAFT'; page?: number; size?: number }): Promise<PaginatedContributionResponse> {
-	const { data } = await apiClient.get('/api/v1/contributions/review-queue', { params });
-	return data.data;
-}
-
-export async function approveContribution(contributionId: string): Promise<ContributionResponse> {
-	const { data } = await apiClient.post(`/api/v1/contributions/${contributionId}/approve`);
-	return data.data;
-}
-
-export async function rejectContribution(contributionId: string, reason: string): Promise<ContributionResponse> {
-	const { data } = await apiClient.post(`/api/v1/contributions/${contributionId}/reject`, null, { params: { reason } });
-	return data.data;
-}

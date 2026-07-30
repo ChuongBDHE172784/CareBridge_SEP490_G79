@@ -1,5 +1,25 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/network/api_client.dart';
+import '../widgets/community_image_attachments.dart';
+
+import '../models/community_model.dart';
+
+String postAnswerErrorMessage(Object error) {
+  if (error is ApiException && error.statusCode == 422) {
+    try {
+      final payload = jsonDecode(error.message) as Map<String, dynamic>;
+      if (payload['error'] == 'COM-007') {
+        return 'Câu hỏi đang chờ duyệt hoặc không còn mở để trả lời.';
+      }
+    } catch (_) {
+      // Fall through to the generic user-facing message.
+    }
+  }
+  return 'Không thể gửi câu trả lời. Vui lòng thử lại.';
+}
 
 class PostAnswerScreen extends StatefulWidget {
   final String questionId;
@@ -9,6 +29,7 @@ class PostAnswerScreen extends StatefulWidget {
   final String? authorAvatarUrl;
   final String? topicName;
   final String? timeAgo;
+  final CommunityAnswer? existingAnswer;
 
   const PostAnswerScreen({
     super.key,
@@ -19,6 +40,7 @@ class PostAnswerScreen extends StatefulWidget {
     this.authorAvatarUrl,
     this.topicName,
     this.timeAgo,
+    this.existingAnswer,
   });
 
   @override
@@ -46,8 +68,23 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
 
   final _bodyCtrl = TextEditingController();
   final Set<int> _selectedTags = {};
+  final _imageService = CommunityImageService();
+  final List<CommunityImageAttachment> _images = [];
+  final List<String> _existingImageUrls = [];
   bool _submitting = false;
   bool _showPublishedModal = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.existingAnswer != null) {
+      _bodyCtrl.text = widget.existingAnswer!.body;
+      if (widget.existingAnswer!.personalExperience) {
+        _selectedTags.add(0);
+      }
+      _existingImageUrls.addAll(widget.existingAnswer!.imageUrls);
+    }
+  }
 
   @override
   void dispose() {
@@ -64,22 +101,56 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
     }
     setState(() => _submitting = true);
     try {
-      await apiPost(
-        '/api/v1/community/questions/${widget.questionId}/answers',
-        {
-          'body': _bodyCtrl.text.trim(),
-          'isPersonalExperience': _selectedTags.isNotEmpty,
-        },
+      final newUploadedUrls = await _imageService.uploadAll(
+        _images,
+        purpose: 'COMMUNITY_ANSWER_IMAGE',
       );
+      final finalImageUrls = [..._existingImageUrls, ...newUploadedUrls];
+      if (widget.existingAnswer != null) {
+        await apiPatch(
+          '/api/v1/community/questions/${widget.questionId}/answers/${widget.existingAnswer!.id}',
+          {
+            'body': _bodyCtrl.text.trim(),
+            'isPersonalExperience': _selectedTags.isNotEmpty,
+            'imageUrls': finalImageUrls,
+          },
+        );
+      } else {
+        await apiPost(
+          '/api/v1/community/questions/${widget.questionId}/answers',
+          {
+            'body': _bodyCtrl.text.trim(),
+            'isPersonalExperience': _selectedTags.isNotEmpty,
+            'imageUrls': finalImageUrls,
+          },
+        );
+      }
       if (mounted) setState(() => _showPublishedModal = true);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Thất bại: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(postAnswerErrorMessage(e)),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
       if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    if (_images.length >= communityImageLimit) return;
+    try {
+      final image = await _imageService.pick(source);
+      if (image != null && mounted) setState(() => _images.add(image));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Không thể thêm ảnh: $e')));
+      }
     }
   }
 
@@ -390,68 +461,51 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
             }),
           ),
           const SizedBox(height: 16),
-          // Textarea
-          Stack(
-            alignment: Alignment.bottomRight,
-            children: [
-              TextField(
-                controller: _bodyCtrl,
-                maxLines: 8,
-                maxLength: 3000,
-                decoration: InputDecoration(
-                  hintText:
-                      'Hãy chia sẻ những trải nghiệm thực tế của bạn để giúp đỡ cộng đồng...',
-                  hintStyle: const TextStyle(
-                    color: _onSurfaceVariant,
-                    fontSize: 14,
-                  ),
-                  contentPadding: const EdgeInsets.fromLTRB(16, 16, 16, 48),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: _surfaceAccentMuted,
-                      width: 2,
-                    ),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(
-                      color: _surfaceAccentMuted,
-                      width: 2,
-                    ),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: const BorderSide(color: _primary, width: 2),
-                  ),
-                  filled: true,
-                  fillColor: _surface,
-                  counterText: '',
+          TextField(
+            controller: _bodyCtrl,
+            maxLines: 8,
+            maxLength: 3000,
+            decoration: InputDecoration(
+              hintText:
+                  'Hãy chia sẻ những trải nghiệm thực tế của bạn để giúp đỡ cộng đồng...',
+              hintStyle: const TextStyle(
+                color: _onSurfaceVariant,
+                fontSize: 14,
+              ),
+              contentPadding: const EdgeInsets.all(16),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(
+                  color: _surfaceAccentMuted,
+                  width: 2,
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.only(right: 8, bottom: 8),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: const Icon(
-                        Icons.image_outlined,
-                        color: _onSurfaceVariant,
-                      ),
-                      onPressed: () {},
-                    ),
-                    IconButton(
-                      icon: const Icon(
-                        Icons.attach_file,
-                        color: _onSurfaceVariant,
-                      ),
-                      onPressed: () {},
-                    ),
-                  ],
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(
+                  color: _surfaceAccentMuted,
+                  width: 2,
                 ),
               ),
-            ],
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: const BorderSide(color: _primary, width: 2),
+              ),
+              filled: true,
+              fillColor: _surface,
+              counterText: '',
+            ),
+          ),
+          const SizedBox(height: 12),
+          CommunityImagePickerField(
+            images: _images,
+            existingImageUrls: _existingImageUrls,
+            enabled: !_submitting,
+            onCamera: () => _pickImage(ImageSource.camera),
+            onGallery: () => _pickImage(ImageSource.gallery),
+            onRemove: (index) => setState(() => _images.removeAt(index)),
+            onRemoveExisting: (index) =>
+                setState(() => _existingImageUrls.removeAt(index)),
           ),
           const SizedBox(height: 16),
           const Divider(color: _outlineVariant),
@@ -467,7 +521,7 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
               const SizedBox(width: 6),
               const Expanded(
                 child: Text(
-                  'Câu trả lời của bạn sẽ hiển thị ngay sau khi đăng.',
+                  'Câu trả lời sẽ được kiểm duyệt trước khi hiển thị.',
                   style: TextStyle(fontSize: 12, color: _onSurfaceVariant),
                 ),
               ),
@@ -494,10 +548,10 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
                         strokeWidth: 2,
                       ),
                     )
-                  : const Icon(Icons.send, size: 18),
-              label: const Text(
-                'Đăng trả lời',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  : Icon(widget.existingAnswer != null ? Icons.save : Icons.send, size: 18),
+              label: Text(
+                widget.existingAnswer != null ? 'Lưu thay đổi' : 'Đăng trả lời',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
             ),
           ),
@@ -536,7 +590,7 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
               ),
               const SizedBox(height: 20),
               const Text(
-                'Đã đăng trả lời',
+                'Đã gửi câu trả lời',
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
@@ -545,7 +599,7 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Cảm ơn bạn đã đóng góp! Câu trả lời của bạn đã hiển thị trong cộng đồng.',
+                'Cảm ơn bạn đã đóng góp! Câu trả lời đang được kiểm duyệt trước khi hiển thị trong cộng đồng.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 14,

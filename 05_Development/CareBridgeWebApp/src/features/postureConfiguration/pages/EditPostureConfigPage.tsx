@@ -71,7 +71,7 @@ export default function EditPostureConfigPage() {
     } else {
       await createPostureConfigVersion(targetExerciseId.trim(), form);
     }
-    navigate(`/posture-configs/${targetExerciseId.trim()}`);
+    navigate(`/admin/posture-configs/${targetExerciseId.trim()}`);
   };
 
   if (isLoading) {
@@ -87,7 +87,7 @@ export default function EditPostureConfigPage() {
       <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
         <div>
           <button
-            onClick={() => navigate("/posture-configs")}
+            onClick={() => navigate("/admin/posture-configs")}
             className="mb-3 flex items-center gap-2 text-sm text-on-surface-variant hover:text-primary"
           >
             <span className="material-symbols-outlined text-[18px]">

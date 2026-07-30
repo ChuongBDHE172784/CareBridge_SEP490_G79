@@ -28,7 +28,11 @@ import com.carebridge.backend.community.repository.CommunityTopicRepository;
 import com.carebridge.backend.expert.entity.ExpertProfile;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import com.carebridge.backend.content.entity.ReportTargetType;
+import com.carebridge.backend.aimoderation.service.AiScanEnqueueService.EnqueueResult;
+import com.carebridge.backend.common.response.PaginatedResponse;
+import com.carebridge.backend.file.service.IFileService;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -38,6 +42,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.PageRequest;
 
 @Service
 @RequiredArgsConstructor
@@ -56,6 +61,7 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
  private final com.carebridge.backend.aimoderation.service.AiScanEnqueueService aiScanEnqueueService;
  private final CommunityAuthorDisplayResolver authorDisplayResolver;
  private final ExpertProfileRepository expertProfileRepository;
+ private final IFileService fileService;
 
  @Override
  @Transactional(readOnly = true)
@@ -66,7 +72,8 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
  // detail directly by ID, bypassing the feed's per-author visibility rule.
  CommunityQuestion question = questionRepository.findById(questionId)
  .filter(q -> q.getStatus() == QuestionStatus.APPROVED
- || (q.getStatus() == QuestionStatus.PENDING && q.getAuthorId().equals(currentUserId)))
+ || ((q.getStatus() == QuestionStatus.AI_PENDING || q.getStatus() == QuestionStatus.PENDING)
+ && q.getAuthorId().equals(currentUserId)))
  .orElseThrow(() -> new QuestionNotFoundException(questionId.toString()));
 
  String topicName = topicRepository.findById(question.getTopicId())
@@ -77,7 +84,7 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
  String questionAuthorDisplay = authorDisplayResolver.resolve(question.getAuthorId());
 
  List<CommunityAnswer> answerEntities = answerRepository
- .findAllByQuestionIdAndStatusOrderByCreatedAtDesc(questionId, AnswerStatus.APPROVED);
+ .findVisibleAnswersForDetail(questionId, currentUserId);
 
  // Batch fetch display names for all answer authors to avoid N+1
  Set<UUID> answerAuthorIds = answerEntities.stream()
@@ -121,10 +128,16 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
  // ADR-COM-021: questions may target only visible TOPIC rows.
  topicRepository.findByIdAndTypeAndIsHiddenFalse(request.getTopicId(), TopicType.TOPIC)
  .orElseThrow(() -> new CommunityTopicNotFoundException(request.getTopicId().toString()));
+ fileService.assertCommunityImagesOwned(request.getImageUrls(), authorId);
 
  CommunityQuestion question = questionMapper.toEntity(request, authorId);
  question = questionRepository.save(question);
- aiScanEnqueueService.enqueueScan(ReportTargetType.QUESTION, question.getId(), question.getTitle() + "\n" + question.getBody());
+ EnqueueResult enqueueResult = aiScanEnqueueService.enqueueScan(
+         ReportTargetType.QUESTION, question.getId(), question.getTitle() + "\n" + question.getBody());
+ if (enqueueResult != null && enqueueResult.requiresHumanReview()) {
+ question.setStatus(QuestionStatus.PENDING);
+ question = questionRepository.save(question);
+ }
 
  auditService.log(AuditAction.COMMUNITY_QUESTION_CREATED, authorId, "CommunityQuestion", question.getId().toString(), "created");
 
@@ -147,17 +160,48 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
  throw new QuestionNotEditableException(questionId.toString());
  }
 
+ if (request.getTopicId() != null) {
+ topicRepository.findByIdAndTypeAndIsHiddenFalse(request.getTopicId(), TopicType.TOPIC)
+ .orElseThrow(() -> new CommunityTopicNotFoundException(request.getTopicId().toString()));
+ question.setTopicId(request.getTopicId());
+ }
+
  if (request.getTitle() != null) question.setTitle(request.getTitle());
  if (request.getBody() != null) question.setBody(request.getBody());
+ if (request.getImageUrls() != null) {
+ fileService.assertCommunityImagesOwned(request.getImageUrls(), authorId);
+ List<String> retainedUrls = request.getImageUrls();
+ List<String> removedUrls = question.getImageUrls() == null ? List.of() : question.getImageUrls().stream()
+ .filter(url -> !retainedUrls.contains(url))
+ .toList();
+ fileService.purgeCommunityImages(removedUrls, authorId);
+ question.setImageUrls(new ArrayList<>(retainedUrls));
+ }
+ if (request.getStage() != null) question.setStage(request.getStage());
+ if (request.getPregnancyWeek() != null) question.setPregnancyWeek(request.getPregnancyWeek().shortValue());
+ if (request.getBabyAgeMonths() != null) question.setBabyAgeMonths(request.getBabyAgeMonths().shortValue());
  if (request.getIsAnonymous() != null) question.setAnonymous(request.getIsAnonymous());
  if (request.getUrgency() != null) question.setUrgency(request.getUrgency());
- question.setStatus(QuestionStatus.PENDING);
+ question.setStatus(QuestionStatus.AI_PENDING);
 
  question = questionRepository.save(question);
- aiScanEnqueueService.enqueueScan(ReportTargetType.QUESTION, question.getId(), question.getTitle() + "\n" + question.getBody());
+ EnqueueResult enqueueResult = aiScanEnqueueService.enqueueScan(
+         ReportTargetType.QUESTION, question.getId(), question.getTitle() + "\n" + question.getBody());
+ if (enqueueResult != null && enqueueResult.requiresHumanReview()) {
+ question.setStatus(QuestionStatus.PENDING);
+ question = questionRepository.save(question);
+ }
  auditService.log(AuditAction.COMMUNITY_QUESTION_EDITED, authorId, "CommunityQuestion", question.getId().toString(), "edited");
 
  return questionMapper.toResponse(question);
+ }
+
+ @Override
+ @Transactional(readOnly = true)
+ public PaginatedResponse<CommunityQuestionResponse> getMyQuestions(UUID authorId, int page, int size) {
+ return PaginatedResponse.of(questionRepository
+ .findAllByAuthorIdAndStatusNotOrderByCreatedAtDesc(authorId, QuestionStatus.DELETED, PageRequest.of(page, size))
+ .map(questionMapper::toResponse));
  }
 
  @Override
@@ -172,6 +216,13 @@ public class CommunityQuestionServiceImpl implements CommunityQuestionService {
 
  if (!question.getAuthorId().equals(callerId) && !isModeratorCaller) {
  throw new AccessDeniedException("You do not own this question");
+ }
+
+ boolean wasDeleted = question.getStatus() == QuestionStatus.DELETED;
+ if (!wasDeleted) {
+ fileService.purgeCommunityImages(question.getImageUrls(), question.getAuthorId());
+ answerRepository.findAllByQuestionId(questionId).forEach(answer ->
+ fileService.purgeCommunityImages(answer.getImageUrls(), answer.getAuthorId()));
  }
 
  question.setStatus(QuestionStatus.DELETED);

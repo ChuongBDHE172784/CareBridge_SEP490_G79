@@ -38,6 +38,18 @@ public class FileController {
                 .body(ApiResponse.success(response, "File uploaded successfully"));
     }
 
+    // UC39: Upload health record attachment (MOTHER only, images/PDF)
+    @PostMapping(value = "/health-records", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('MOTHER')")
+    public ResponseEntity<ApiResponse<UploadFileResponse>> uploadHealthRecordFile(
+            @RequestPart("file") MultipartFile file,
+            Principal principal) {
+        var callerId = SecurityUtils.requireCurrentUserId(principal);
+        var response = fileService.uploadHealthRecordFile(file, callerId);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success(response, "Health record file uploaded successfully"));
+    }
+
     // UC167-EXT: Upload file with explicit purpose (EXPERT, ADMIN, etc.)
     @PostMapping(value = "/upload/with-purpose", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasAnyRole('EXPERT', 'ADMIN', 'SYSTEM_ADMIN', 'MODERATOR', 'CONTENT_ADMIN', 'PARTNER', 'MOTHER')")

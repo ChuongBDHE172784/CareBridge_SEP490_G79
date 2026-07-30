@@ -9,7 +9,9 @@ export default defineConfig({
   use: {
     baseURL: process.env.MF03_WEB_BASE_URL ?? 'http://127.0.0.1:5173',
     trace: 'on-first-retry',
-    ...devices['Desktop Chrome'],
+    ...devices['Desktop Edge'],
+    channel: 'msedge',
+    headless: false,
   },
   webServer: {
     command: 'npm run dev -- --host 127.0.0.1',

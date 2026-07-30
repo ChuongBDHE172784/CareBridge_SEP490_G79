@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:untitled/core/constants/content_stages.dart';
 import 'package:untitled/features/community/models/content_model.dart';
 
 void main() {
@@ -6,8 +7,28 @@ void main() {
     expect(contentStageIndexForJourneyType('PRE_PREGNANCY'), 0);
     expect(contentStageIndexForJourneyType('PREGNANCY'), 1);
     expect(contentStageIndexForJourneyType('POSTPARTUM'), 2);
-    expect(contentStageIndexForJourneyType('BABY_CARE'), 3);
+    expect(contentStageIndexForJourneyType('BABY_CARE'), 2);
     expect(contentStageIndexForJourneyType(null), -1);
+  });
+
+  test('normalizes the legacy baby-care content stage', () {
+    expect(normalizeContentStage('BABY_CARE'), postpartumContentStage);
+    expect(contentStageLabel('BABY_CARE'), 'Hậu sản & Chăm bé');
+    expect(contentStageOptions.map((stage) => stage.value), [
+      prePregnancyContentStage,
+      pregnancyContentStage,
+      postpartumContentStage,
+    ]);
+  });
+
+  test('normalizes legacy content response payloads', () {
+    final content = ContentListItem.fromJson({
+      'id': 'content-legacy',
+      'title': 'Chăm sóc bé',
+      'stage': 'BABY_CARE',
+    });
+
+    expect(content.stage, postpartumContentStage);
   });
 
   test('extracts image sources from the server-sanitized content body', () {

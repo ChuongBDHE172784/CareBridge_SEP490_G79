@@ -80,11 +80,23 @@ public class ExpertAvailabilityServiceImpl implements IExpertAvailabilityService
         if (request.getEndAt().isBefore(request.getStartAt()) || request.getEndAt().equals(request.getStartAt())) {
             throw new ExpertException(HttpStatus.BAD_REQUEST, "EXPERT-011", "endAt must be after startAt");
         }
+        
+        if (request.getStartAt().isBefore(java.time.Instant.now(clock))) {
+            throw new ExpertException(HttpStatus.BAD_REQUEST, "EXPERT-011", "startAt must not be in the past");
+        }
 
         var profile = expertProfileRepository.findById(expertProfileId)
                 .orElseThrow(() -> new ExpertException(HttpStatus.NOT_FOUND, "EXPERT-004", "Expert profile not found"));
         if (profile.getVerificationStatus() != VerificationStatus.APPROVED) {
             throw new ExpertException(HttpStatus.FORBIDDEN, "EXPERT-010", "Expert profile not verified");
+        }
+
+        var overlapping = availabilityRepository.findByExpertProfileId(expertProfileId).stream()
+                .filter(a -> a.getStartAt().isBefore(request.getEndAt()) && request.getStartAt().isBefore(a.getEndAt()))
+                .findFirst();
+        
+        if (overlapping.isPresent()) {
+            throw new ExpertException(HttpStatus.BAD_REQUEST, "EXPERT-012", "Availability slots overlap");
         }
 
         var availability = availabilityMapper.toEntity(expertProfileId, request);

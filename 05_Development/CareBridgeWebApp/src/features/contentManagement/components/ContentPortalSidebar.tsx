@@ -38,7 +38,7 @@ export default function ContentPortalSidebar() {
       </div>
       {hasRole('MODERATOR') && (
         <NavLink
-          to="/moderator"
+          to="/moderator/reports"
           className="flex items-center gap-2 border-b border-outline-variant/70 px-4 py-2 text-xs font-semibold text-primary hover:bg-surface-container-low"
         >
           <span className="material-symbols-outlined text-[18px]">arrow_back</span>
@@ -76,7 +76,7 @@ export default function ContentPortalSidebar() {
           <span className="material-symbols-outlined text-[16px]">logout</span>
           Đăng xuất
         </button>
-        <p className="text-center text-[10px] text-outline">CareBridge © 2025</p>
+        <p className="text-center text-[10px] text-outline">CareBridge © 2026</p>
       </div>
     </aside>
   );

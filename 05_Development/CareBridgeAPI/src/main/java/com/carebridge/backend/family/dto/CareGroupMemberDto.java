@@ -14,6 +14,9 @@ public class CareGroupMemberDto {
     private UUID userId;
     private String displayName;
     private String memberRole;
+    private String familyRelationshipRole;
+    private String customFamilyRelationshipRole;
     private String inviteStatus;
+    private Boolean isJoinRequest;
     private Instant joinedAt;
 }

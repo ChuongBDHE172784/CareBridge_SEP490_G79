@@ -6,6 +6,7 @@ import jakarta.validation.constraints.*;
 import lombok.Data;
 
 import java.util.UUID;
+import java.util.List;
 
 @Data
 public class CreateCommunityQuestionRequest {
@@ -20,6 +21,11 @@ public class CreateCommunityQuestionRequest {
     @NotBlank(message = "body is required")
     @Size(min = 10, max = 5000, message = "body must be between 10 and 5000 characters")
     private String body;
+
+    @Size(max = 3, message = "imageUrls must contain at most 3 images")
+    private List<@NotBlank @Pattern(
+            regexp = "^https://res\\.cloudinary\\.com/.+",
+            message = "image URL must be hosted by Cloudinary") String> imageUrls;
 
     @NotNull(message = "stage is required")
     private PregnancyStage stage;

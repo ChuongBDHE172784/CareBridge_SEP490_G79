@@ -34,6 +34,7 @@
 |------|-----------------|-------------------|
 | `2026-07-02` | `AI Agent` | Khởi tạo tài liệu — TDD spec cho UC116 |
 | `2026-07-04` | `AI Agent` | Approved by user — proceeding to implementation |
+| `2026-07-28` | `AI Agent` | Added staff-governance source/destination scope tests for MODERATOR, CONTENT_ADMIN, SYSTEM_ADMIN only |
 
 ---
 
@@ -85,6 +86,7 @@
 | L2 | UC114's `UpdateUserStatusRequest` also mutates `enabled`/`locked` — risk of overlapping write surfaces between UC114 and UC116 | TDS §1.1 explicitly scopes UC116's `role` reassignment as exclusive to this UC; UC114 never exposes `role` in its request DTO | Cross-check test (UC116-TC-013) asserts `UpdateUserStatusRequest` (UC114's DTO) has no `role`/`newRole` field — write-surface non-overlap verified structurally |
 | L3 | ADR-IAM-003 (UC114) only blocks self-targeting for `enabled`/`locked`; a naive reader could assume UC116 reuses the SAME conditional guard | ADR-IAM-007 explicitly strengthens this to an UNCONDITIONAL block — no exception for any role direction, including self-demotion | UC116-TC-006 (self-escalation) AND UC116-TC-007 (self-demotion) are both tested and BOTH must be rejected — proving the guard is stricter than UC114's, not identical to it |
 | L4 | No SRS text defines what happens if `newRole` equals the target's current role (no-op role "change") | Not addressed by any ADR — TDS is silent | Test UC116-TC-011 (boundary) exercises `newRole == currentRole` and documents the observed behavior (still audited as a mutation event, since TDS does not special-case a no-op) as an Open item to confirm with Tech Lead, not silently assumed |
+| L5 | Earlier UC116 design allowed any of the seven roles as source and destination | Role/permission administration is a staff-governance workflow; UC115 already defines the staff set as `MODERATOR`, `CONTENT_ADMIN`, `SYSTEM_ADMIN` | Add service and web tests that reject non-staff targets and non-staff destinations before save/audit |
 
 ---
 
@@ -135,14 +137,17 @@ Identity.Admin.Role module bao gồm các layer:
 | TC-COND-016 | Web: RoleAssignmentModal disables submission when target === current admin session user | React component | `UC116-WEB-TC-001` |
 | TC-COND-017 | Web: RoleAssignmentModal renders confirmation after successful role change | React component | `UC116-WEB-TC-002` |
 | TC-COND-018 | Web: RoleAssignmentModal renders 403 error UI (self-escalation or non-admin) | React component | `UC116-WEB-TC-003` |
+| TC-COND-019 | Target current role is outside staff-governance scope | `AdminRoleServiceImpl.assertStaffGovernanceScope()` | `UC116-TC-014` |
+| TC-COND-020 | Requested destination is outside staff-governance scope | `AdminRoleServiceImpl.assertStaffGovernanceScope()` | `UC116-TC-015` |
+| TC-COND-021 | Web exposes only three staff destinations and blocks direct URL access for non-staff target | `UpdateUserRolePage` | `UC116-WEB-TC-004`, `UC116-WEB-TC-005` |
 
 ### TDS-04 — Test Techniques / Kỹ thuật Kiểm thử
 
 | Technique (ISO 29119-4) | Applied To | Rationale |
 |------------------------|------------|-----------|
-| Equivalence Partitioning | Role partitions (7 `Role` enum values) × caller-is-target vs. caller-is-not-target | Full role matrix combined with the self-target axis is the core risk surface |
+| Equivalence Partitioning | Staff roles (`MODERATOR`, `CONTENT_ADMIN`, `SYSTEM_ADMIN`) vs. non-staff roles (`MOTHER`, `FAMILY`, `EXPERT`, `PARTNER`) × caller-is-target vs. caller-is-not-target | Separates the accepted staff-governance role matrix from explicitly rejected domain/consumer roles |
 | Boundary Value Analysis | `reason` length (500/501); `newRole == currentRole` no-op boundary | Schema/DTO-driven from §8; explicit Open item per Logic Issue L4 |
-| State Transition Testing | `users.role` any-to-any FSM (TDS §6.3), gated unconditionally by caller identity | Documented as "stricter than a typical FSM" in TDS itself |
+| State Transition Testing | Staff-governance role transitions within `MODERATOR`, `CONTENT_ADMIN`, `SYSTEM_ADMIN` (TDS §6.3), gated by caller identity and source/destination scope | Verifies the accepted staff matrix and rejection boundaries |
 | Error Guessing | Self-escalation via own-id targeting (both up AND down); non-admin caller; injection in `reason` | Highest-severity risk named explicitly as "top self-escalation risk" in TDS §3 ADR-IAM-007 |
 
 ### TDS-05 — Test Data Requirements

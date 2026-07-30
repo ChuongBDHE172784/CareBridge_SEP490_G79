@@ -33,10 +33,9 @@ public class CommunityQuestionController {
     private final CommunityQuestionService questionService;
     private final CommunityQuestionSearchService searchService;
 
-    // ADR-COM-001: Only ROLE_MOTHER can create community questions
+    // Mothers and family members may create questions under their own account.
     @PostMapping
-    
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<CommunityQuestionResponse>> createQuestion(
             @Valid @RequestBody CreateCommunityQuestionRequest request,
             Principal principal) {
@@ -54,7 +53,8 @@ public class CommunityQuestionController {
             @RequestParam(required = false) PregnancyStage stage,
             @RequestParam(required = false) Boolean hasExpertAnswer,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            Principal principal) {
 
         if (size > SEARCH_MAX_SIZE || size < 1) {
             throw new CommunityFeedValidationException(
@@ -69,7 +69,23 @@ public class CommunityQuestionController {
         request.setPage(page);
         request.setSize(size);
 
-        return ResponseEntity.ok(searchService.searchQuestions(request));
+        UUID currentUserId = SecurityUtils.tryGetCurrentUserId(principal);
+
+        return ResponseEntity.ok(searchService.searchQuestions(request, currentUserId));
+    }
+
+    @GetMapping("/mine")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
+    public ResponseEntity<PaginatedResponse<CommunityQuestionResponse>> getMyQuestions(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            Principal principal) {
+        if (page < 0 || size < 1 || size > SEARCH_MAX_SIZE) {
+            throw new CommunityFeedValidationException(
+                    "My questions page must be >= 0 and size between 1 and " + SEARCH_MAX_SIZE);
+        }
+        UUID authorId = SecurityUtils.requireCurrentUserId(principal);
+        return ResponseEntity.ok(questionService.getMyQuestions(authorId, page, size));
     }
 
     // UC-199: any authenticated user may view APPROVED question detail
@@ -83,7 +99,7 @@ public class CommunityQuestionController {
     }
 
     @PatchMapping("/{id}")
-    
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<CommunityQuestionResponse>> editQuestion(
             @PathVariable UUID id,
             @Valid @RequestBody UpdateCommunityQuestionRequest request,

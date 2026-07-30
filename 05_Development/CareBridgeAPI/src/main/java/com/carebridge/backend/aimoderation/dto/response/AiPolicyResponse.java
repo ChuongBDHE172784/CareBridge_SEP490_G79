@@ -9,6 +9,9 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import com.carebridge.backend.aimoderation.dto.PolicyReferenceFile;
+import com.carebridge.backend.aimoderation.dto.PolicyReferenceLink;
+
 public record AiPolicyResponse(
         UUID id,
         String policyCode,
@@ -22,6 +25,8 @@ public record AiPolicyResponse(
         boolean active,
         boolean systemDefault,
         int version,
+        List<PolicyReferenceLink> referenceLinks,
+        List<PolicyReferenceFile> referenceFiles,
         Instant createdAt,
         Instant updatedAt
 ) {

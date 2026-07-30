@@ -1,9 +1,12 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchStaffContentList, archiveContent } from '../services/contentApi';
 import type { ContentDetail, ContentStage, ContentStatus, ContentType } from '../models/content';
-import { STAGE_LABELS, STATUS_LABELS } from '../models/content';
+import { STAGE_LABELS, STAGE_OPTIONS, STATUS_LABELS } from '../models/content';
 import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
+import { SortableTableHeader, type SortDirection } from '../components/SortableTableHeader';
+import { useDebouncedValue } from '../hooks/useDebouncedValue';
+import { nextSortDirection, sortRows } from '../utils/tableSorting';
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -52,14 +55,23 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
   const [stageFilter, setStageFilter] = useState<ContentStage | ''>('');
-  const [keyword, setKeyword] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
   const [actionError, setActionError] = useState('');
+  const [sortKey, setSortKey] = useState<'title' | 'stage' | 'status' | 'updatedAt'>('updatedAt');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const latestRequestId = useRef(0);
+  const debouncedKeyword = useDebouncedValue(searchInput.trim());
   const pageSize = 10;
 
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedKeyword]);
+
   const loadData = useCallback(async () => {
+    const requestId = latestRequestId.current + 1;
+    latestRequestId.current = requestId;
     setIsLoading(true);
     try {
       const tab = STATUS_TABS.find(t => t.key === activeTab);
@@ -67,31 +79,41 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
         type,
         status: tab?.status,
         stage: stageFilter || undefined,
-        keyword: keyword || undefined,
+        keyword: debouncedKeyword || undefined,
         page,
         size: pageSize,
       });
+      if (requestId !== latestRequestId.current) return;
       setItems(data.content);
       setTotal(data.totalElements);
     } catch {
+      if (requestId !== latestRequestId.current) return;
       setItems([]);
       setTotal(0);
     } finally {
-      setIsLoading(false);
+      if (requestId === latestRequestId.current) setIsLoading(false);
     }
-  }, [type, activeTab, stageFilter, keyword, page]);
+  }, [type, activeTab, stageFilter, debouncedKeyword, page]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
   const totalPages = Math.ceil(total / pageSize);
 
-  const handleSearch = () => {
-    setKeyword(searchInput);
-    setPage(0);
-  };
+  const sortedItems = useMemo(() => sortRows(items, sortDirection, (item) => {
+    switch (sortKey) {
+      case 'title': return item.title;
+      case 'stage': return STAGE_LABELS[item.stage];
+      case 'status': return item.latestReviewFeedback ? 'Cần chỉnh sửa' : STATUS_LABELS[item.status];
+      case 'updatedAt': {
+        const timestamp = new Date(item.updatedAt ?? item.createdAt ?? item.publishedAt ?? 0).getTime();
+        return Number.isNaN(timestamp) ? 0 : timestamp;
+      }
+    }
+  }), [items, sortDirection, sortKey]);
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') handleSearch();
+  const changeSort = (key: typeof sortKey) => {
+    setSortDirection(nextSortDirection(sortKey, key, sortDirection));
+    setSortKey(key);
   };
 
   const handleDelete = async (item: ContentDetail) => {
@@ -152,8 +174,7 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
             <input
               value={searchInput}
               onChange={e => setSearchInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Tìm kiếm theo tiêu đề... (Enter để tìm)"
+              placeholder="Tìm kiếm theo tiêu đề..."
               className="w-full py-2.5 pr-[14px] pl-[42px] rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface outline-none font-sans"
             />
           </div>
@@ -163,7 +184,7 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
             className="py-2.5 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface-variant cursor-pointer font-sans"
           >
             <option value="">Tất cả giai đoạn</option>
-            {Object.entries(STAGE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+            {STAGE_OPTIONS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
           </select>
         </div>
       </div>
@@ -177,13 +198,25 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
             <table className="w-full border-collapse">
               <thead>
                 <tr className="border-b-2 border-surface-container-highest text-left">
-                  {['TIÊU ĐỀ', 'GIAI ĐOẠN', 'TRẠNG THÁI', 'CẬP NHẬT LẦN CUỐI', 'THAO TÁC'].map(h => (
-                    <th key={h} className="py-3 px-2 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">{h}</th>
+                  {[
+                    ['title', 'TIÊU ĐỀ'],
+                    ['stage', 'GIAI ĐOẠN'],
+                    ['status', 'TRẠNG THÁI'],
+                    ['updatedAt', 'CẬP NHẬT LẦN CUỐI'],
+                  ].map(([key, label]) => (
+                    <SortableTableHeader
+                      key={key}
+                      label={label}
+                      active={sortKey === key}
+                      direction={sortDirection}
+                      onClick={() => changeSort(key as typeof sortKey)}
+                    />
                   ))}
+                  <th scope="col" className="px-2 py-3 text-[11px] font-semibold uppercase tracking-[0.05em] text-outline">THAO TÁC</th>
                 </tr>
               </thead>
               <tbody>
-                {items.map(item => (
+                {sortedItems.map(item => (
                   <tr key={item.id} className="border-b border-surface-container-highest hover:bg-surface-bright">
                     <td className="py-3.5 px-2 max-w-[400px]">
                         <div className="font-semibold text-sm text-on-surface">{item.title}</div>
@@ -195,7 +228,7 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
                         {item.latestReviewFeedback ? 'Cần chỉnh sửa' : STATUS_LABELS[item.status]}
                       </span>
                     </td>
-                    <td className="py-3.5 px-2 text-[13px] text-outline">{timeAgo(item.publishedAt)}</td>
+                    <td className="py-3.5 px-2 text-[13px] text-outline">{timeAgo(item.updatedAt ?? item.createdAt ?? item.publishedAt)}</td>
                     <td className="py-3.5 px-2">
                       <div className="flex gap-1">
                         <button

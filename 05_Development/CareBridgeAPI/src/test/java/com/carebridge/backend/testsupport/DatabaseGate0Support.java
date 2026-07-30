@@ -17,16 +17,14 @@ import java.util.zip.CRC32;
 import org.flywaydb.core.api.MigrationVersion;
 
 /**
- * Test-only support for database Gate 0 checks against the current forward-only
- * Flyway chain. V1 builds the canonical schema and later versions evolve it.
+/**
+ * Test-only support for database Gate 0 checks on the append-only Flyway
+ * migration chain. The repository must contain valid, uniquely versioned SQL
+ * migrations that can build the canonical schema from an empty database.
  */
 final class DatabaseGate0Support {
 
     static final Path MIGRATION_DIRECTORY = Path.of("src/main/resources/db/migration");
-
-    static final String CANONICAL_VERSION = "3";
-    static final String CANONICAL_SCRIPT =
-            "V3__align_safety_action_persistence.sql";
 
     static final String DUPLICATE_VERSION = "REPOSITORY_DUPLICATE_VERSION";
     static final String MALFORMED_FILENAME = "REPOSITORY_MALFORMED_FILENAME";

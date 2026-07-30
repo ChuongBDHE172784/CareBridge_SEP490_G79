@@ -7,6 +7,8 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doThrow;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.carebridge.backend.file.enums.FileAccessMode;
 import com.carebridge.backend.file.service.impl.CloudinaryStorageService;
@@ -86,5 +88,35 @@ class CloudinaryStorageServiceTest {
         svc.storePublic("files/x.jpg", new byte[]{1, 2, 3}, "image/jpeg");
 
         verify(mockUploader).upload(any(), argThat((Map<?, ?> opts) -> "upload".equals(opts.get("type"))));
+    }
+
+    @Test
+    void deleteRequired_publicUrlDestroysUploadAssetWithoutExtension() throws Exception {
+        Cloudinary mockCloudinary = mock(Cloudinary.class);
+        Uploader mockUploader = mock(Uploader.class);
+        when(mockCloudinary.uploader()).thenReturn(mockUploader);
+        CloudinaryStorageService svc = serviceWithMockClient(mockCloudinary);
+
+        svc.deleteRequired(
+                "https://res.cloudinary.com/demo/image/upload/v123/carebridge/question.jpg?cache=1");
+
+        verify(mockUploader).destroy(
+                org.mockito.ArgumentMatchers.eq("carebridge/question"),
+                argThat((Map<?, ?> opts) -> "image".equals(opts.get("resource_type"))
+                        && "upload".equals(opts.get("type"))));
+    }
+
+    @Test
+    void deleteRequired_cloudinaryFailureIsPropagated() throws Exception {
+        Cloudinary mockCloudinary = mock(Cloudinary.class);
+        Uploader mockUploader = mock(Uploader.class);
+        when(mockCloudinary.uploader()).thenReturn(mockUploader);
+        doThrow(new java.io.IOException("destroy failed"))
+                .when(mockUploader).destroy(any(), any());
+        CloudinaryStorageService svc = serviceWithMockClient(mockCloudinary);
+
+        assertThatThrownBy(() -> svc.deleteRequired("carebridge/question|image|PUBLIC"))
+                .isInstanceOf(CloudinaryStorageService.StorageException.class)
+                .hasMessageContaining("destroy failed");
     }
 }

@@ -6,16 +6,22 @@ export interface TopicTreeRow {
 }
 
 // Amendment 2 (ADR-COM-020): CATEGORY is the root, TOPIC is its child, and TAG stays flat.
-const bySortOrder = (a: CommunityTopic, b: CommunityTopic) => a.sortOrder - b.sortOrder;
+export type TopicSorter = (topics: CommunityTopic[]) => CommunityTopic[];
+
+const bySortOrder: TopicSorter = (topics) => [...topics].sort((a, b) => a.sortOrder - b.sortOrder);
 
 // Callers update `sortOrder` via PATCH and merge the response back into the `topics` array in
 // place (same array index), so the array's own order can lag behind `sortOrder` until a refetch.
 // Sorting here — rather than relying on caller order — keeps the ▲/▼ move buttons reflected
 // immediately without requiring a full list refetch after every swap.
-export function buildTopicTree(topics: CommunityTopic[], expandedIds: Set<string>): TopicTreeRow[] {
-  const categories = topics.filter((topic) => topic.type === 'CATEGORY').sort(bySortOrder);
-  const topicItems = topics.filter((topic) => topic.type === 'TOPIC').sort(bySortOrder);
-  const tags = topics.filter((topic) => topic.type === 'TAG').sort(bySortOrder);
+export function buildTopicTree(
+  topics: CommunityTopic[],
+  expandedIds: Set<string>,
+  sortTopics: TopicSorter = bySortOrder,
+): TopicTreeRow[] {
+  const categories = sortTopics(topics.filter((topic) => topic.type === 'CATEGORY'));
+  const topicItems = sortTopics(topics.filter((topic) => topic.type === 'TOPIC'));
+  const tags = sortTopics(topics.filter((topic) => topic.type === 'TAG'));
 
   const rows: TopicTreeRow[] = [];
 

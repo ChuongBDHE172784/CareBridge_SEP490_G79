@@ -14,14 +14,12 @@ import com.carebridge.backend.notification.entity.NotificationRecord;
 import com.carebridge.backend.notification.entity.NotificationType;
 import com.carebridge.backend.notification.repository.NotificationRecordRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -63,7 +61,7 @@ public class SharedDataServiceImpl implements ISharedDataService {
         List<SharedDataItemDto> items = switch (category) {
             case CALENDAR -> getCalendarItems(groupId);
             case LOGS -> getLogItems(groupId);
-            case ALERTS -> getAlertItems(callerId, page, size);
+            case ALERTS -> getAlertItems(groupId, callerId, page, size);
         };
 
         return SharedDataResponse.builder()
@@ -106,11 +104,18 @@ public class SharedDataServiceImpl implements ISharedDataService {
         return List.of();
     }
 
-    private List<SharedDataItemDto> getAlertItems(UUID callerId, int page, int size) {
-        PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
-        Page<NotificationRecord> records = notificationRepository
-                .findByUserIdAndType(callerId, NotificationType.EMERGENCY, pageable);
-        return records.getContent().stream()
+    private List<SharedDataItemDto> getAlertItems(UUID groupId, UUID callerId, int page, int size) {
+        List<NotificationRecord> records = notificationRepository
+                .findByUserIdAndTypeAndCareGroupId(callerId, NotificationType.EMERGENCY, groupId)
+                .stream()
+                .sorted(Comparator.comparing(
+                        NotificationRecord::getCreatedAt,
+                        Comparator.nullsLast(Comparator.reverseOrder())))
+                .toList();
+        long requestedOffset = (long) page * size;
+        int fromIndex = (int) Math.min(requestedOffset, records.size());
+        int toIndex = (int) Math.min(requestedOffset + size, records.size());
+        return records.subList(fromIndex, toIndex).stream()
                 .map(this::notificationToAlertItem)
                 .collect(Collectors.toList());
     }

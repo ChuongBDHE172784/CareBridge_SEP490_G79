@@ -33,25 +33,17 @@ public class DirectConversationController {
 
     private final IDirectConversationService conversationService;
 
-    @PostMapping("/expert/{expertId}")
-    @PreAuthorize("hasRole('MOTHER')")
-    public ResponseEntity<ApiResponse<DirectConversationResponse>> findOrCreate(
-            @PathVariable UUID expertId, Principal principal) {
-        UUID motherUserId = SecurityUtils.requireCurrentUserId(principal);
-        FindOrCreateConversationResult result = conversationService.findOrCreate(motherUserId, expertId);
-        HttpStatus status = result.created() ? HttpStatus.CREATED : HttpStatus.OK;
-        return ResponseEntity.status(status).body(ApiResponse.success(result.conversation()));
-    }
+
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('MOTHER', 'EXPERT')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY', 'EXPERT')")
     public ResponseEntity<ApiResponse<List<DirectConversationSummaryResponse>>> listMyConversations(Principal principal) {
         UUID currentUserId = SecurityUtils.requireCurrentUserId(principal);
         return ResponseEntity.ok(ApiResponse.success(conversationService.listMyConversations(currentUserId)));
     }
 
     @GetMapping("/{conversationId}")
-    @PreAuthorize("hasAnyRole('MOTHER', 'EXPERT')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY', 'EXPERT')")
     public ResponseEntity<ApiResponse<DirectConversationResponse>> getConversation(
             @PathVariable UUID conversationId, Principal principal) {
         UUID currentUserId = SecurityUtils.requireCurrentUserId(principal);
@@ -60,7 +52,7 @@ public class DirectConversationController {
 
     // ADR-MEDI-003 — participant-only, lastSeenMessageId required and validated server-side.
     @PatchMapping("/{conversationId}/read")
-    @PreAuthorize("hasAnyRole('MOTHER', 'EXPERT')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY', 'EXPERT')")
     public ResponseEntity<ApiResponse<MarkReadResponse>> markRead(
             @PathVariable UUID conversationId,
             @Valid @RequestBody MarkReadRequest request,
@@ -71,7 +63,7 @@ public class DirectConversationController {
     }
 
     @GetMapping("/unread-summary")
-    @PreAuthorize("hasAnyRole('MOTHER', 'EXPERT')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY', 'EXPERT')")
     public ResponseEntity<ApiResponse<UnreadSummaryResponse>> getUnreadSummary(Principal principal) {
         UUID currentUserId = SecurityUtils.requireCurrentUserId(principal);
         return ResponseEntity.ok(ApiResponse.success(conversationService.getUnreadSummary(currentUserId)));

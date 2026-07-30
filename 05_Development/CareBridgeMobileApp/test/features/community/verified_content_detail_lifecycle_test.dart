@@ -33,6 +33,37 @@ Map<String, dynamic> _envelope({
 
 void main() {
   group('UC82-69-MOB-006 lifecycle detail boundary', () {
+    testWidgets('family detail uses the generic approved-content route', (
+      tester,
+    ) async {
+      final paths = <String>[];
+      final service = ContentService(
+        getRequest: (path) async {
+          paths.add(path);
+          return {'data': _payload()};
+        },
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: VerifiedContentDetailScreen(
+            contentId: 'detail-69',
+            mode: ContentBrowseMode.family,
+            contentService: service,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Synthetic lifecycle body'), findsOneWidget);
+      expect(paths.single, '/api/v1/content/detail-69');
+      expect(
+        find.byKey(const Key('lifecycle-content-detail-stage')),
+        findsNothing,
+      );
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets('lifecycle route renders only same-stage detail', (
       tester,
     ) async {

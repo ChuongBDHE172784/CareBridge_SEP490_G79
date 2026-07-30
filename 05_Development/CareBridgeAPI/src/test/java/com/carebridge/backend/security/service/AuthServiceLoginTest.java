@@ -3,14 +3,15 @@ package com.carebridge.backend.security.service;
 import com.carebridge.backend.common.exception.AccountDisabledException;
 import com.carebridge.backend.common.exception.AccountLockedException;
 import com.carebridge.backend.common.exception.AuthenticationException;
+import com.carebridge.backend.common.exception.RateLimitExceededException;
 import com.carebridge.backend.common.exception.ValidationException;
+import com.carebridge.backend.audit.entity.AuditAction;
+import com.carebridge.backend.identity.entity.UserSession;
 import com.carebridge.backend.identity.repository.TokenBlacklistRepository;
 import com.carebridge.backend.security.dto.request.LoginRequest;
 import com.carebridge.backend.security.dto.response.AuthResponse;
-import com.carebridge.backend.security.dto.response.OtpSendResponse;
 import com.carebridge.backend.security.dto.response.UserProfileResponse;
 import com.carebridge.backend.security.entity.RefreshToken;
-import com.carebridge.backend.security.entity.OtpVerification;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.repository.OtpVerificationRepository;
 import com.carebridge.backend.security.repository.RefreshTokenRepository;
@@ -20,13 +21,17 @@ import com.carebridge.backend.security.policy.PasswordComplexityPolicy;
 import com.carebridge.backend.security.policy.RateLimitPolicy;
 import com.carebridge.backend.security.rbac.Role;
 import com.carebridge.backend.security.service.impl.AuthServiceImpl;
+import com.carebridge.backend.security.util.TokenUtils;
+import jakarta.servlet.http.HttpServletRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -119,6 +124,10 @@ class AuthServiceLoginTest {
         });
         when(jwtTokenProvider.generateAccessToken(eq(user), any(UUID.class))).thenReturn("access-token");
         when(userMapper.toProfileResponse(user)).thenReturn(new UserProfileResponse());
+        HttpServletRequest httpRequest = mock(HttpServletRequest.class);
+        when(httpRequest.getRemoteAddr()).thenReturn("127.0.0.1");
+        when(httpRequest.getHeader("User-Agent")).thenReturn("JUnit");
+        ReflectionTestUtils.setField(authService, "request", httpRequest);
 
         LoginRequest request = new LoginRequest();
         request.setPhone(phone);
@@ -126,18 +135,27 @@ class AuthServiceLoginTest {
         request.setPassword(password);
 
         // When
-        OtpSendResponse response = authService.login(request);
+        AuthResponse response = authService.login(request);
 
         // Then
         assertThat(response).isNotNull();
-        assertThat(response.getMessage()).isEqualTo("OTP sent");
-        assertThat(response.getExpiresIn()).isGreaterThanOrEqualTo(0);
+        assertThat(response.getAccessToken()).isEqualTo("access-token");
+        assertThat(response.getRefreshToken()).isNotBlank();
+        verify(refreshTokenRepository).save(any(RefreshToken.class));
+        verify(sessionRepository).save(any(UserSession.class));
+        verify(auditService).log(
+                AuditAction.LOGIN,
+                userId,
+                "User",
+                userId.toString(),
+                Map.of("ipAddress", "127.0.0.1", "userAgent", "JUnit"));
+        verifyNoInteractions(otpVerificationRepository, emailService, smsService);
 
         verify(rateLimitPolicy).reset(userId.toString());
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(userCaptor.capture());
         User savedUser = userCaptor.getValue();
-        assertThat(savedUser.getLastLoginAt()).isNull();
+        assertThat(savedUser.getLastLoginAt()).isNotNull();
         assertThat(savedUser.isLocked()).isFalse();
         assertThat(savedUser.getLockedAt()).isNull();
     }
@@ -179,11 +197,14 @@ class AuthServiceLoginTest {
         request.setPassword(password);
 
         // When
-        OtpSendResponse response = authService.login(request);
+        AuthResponse response = authService.login(request);
 
         // Then
         assertThat(response).isNotNull();
-        assertThat(response.getMessage()).isEqualTo("OTP sent");
+        assertThat(response.getAccessToken()).isEqualTo("access-token");
+        assertThat(response.getRefreshToken()).isNotBlank();
+        verify(sessionRepository).save(any(UserSession.class));
+        verifyNoInteractions(otpVerificationRepository, emailService, smsService);
     }
 
     @Test
@@ -246,11 +267,13 @@ class AuthServiceLoginTest {
         User user = User.builder()
                 .id(UUID.randomUUID())
                 .phone(phone)
+                .passwordHash("$2a$12$hashedpassword")
                 .enabled(false)
                 .locked(false)
                 .build();
 
         when(userRepository.findByPhone(phone)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("password", "$2a$12$hashedpassword")).thenReturn(true);
         doThrow(new AccountDisabledException("Account is disabled"))
                 .when(authenticationPolicy).ensureCanAuthenticate(user);
 
@@ -263,7 +286,8 @@ class AuthServiceLoginTest {
                 .isInstanceOf(AccountDisabledException.class)
                 .hasMessage("Account is disabled");
 
-        verifyNoInteractions(rateLimitPolicy, passwordEncoder);
+        verifyNoInteractions(rateLimitPolicy);
+        verify(passwordEncoder).matches("password", "$2a$12$hashedpassword");
     }
 
     @Test
@@ -274,12 +298,14 @@ class AuthServiceLoginTest {
         User user = User.builder()
                 .id(UUID.randomUUID())
                 .phone(phone)
+                .passwordHash("$2a$12$hashedpassword")
                 .enabled(true)
                 .locked(true)
                 .lockedAt(Instant.now())
                 .build();
 
         when(userRepository.findByPhone(phone)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("password", "$2a$12$hashedpassword")).thenReturn(true);
         doThrow(new AccountLockedException("Account is locked"))
                 .when(authenticationPolicy).ensureCanAuthenticate(user);
 
@@ -292,11 +318,12 @@ class AuthServiceLoginTest {
                 .isInstanceOf(AccountLockedException.class)
                 .hasMessage("Account is locked");
 
-        verifyNoInteractions(rateLimitPolicy, passwordEncoder);
+        verifyNoInteractions(rateLimitPolicy);
+        verify(passwordEncoder).matches("password", "$2a$12$hashedpassword");
     }
 
     @Test
-    @DisplayName("LOGIN-TC-006: 5th wrong password locks account")
+    @DisplayName("LOGIN-TC-006: 5th wrong password locks account without disclosing state")
     void login_WhenRateLimited_ShouldLockAccountAndThrow() {
         // Given
         String phone = "+84901234567";
@@ -304,13 +331,21 @@ class AuthServiceLoginTest {
         User user = User.builder()
                 .id(userId)
                 .phone(phone)
+                .passwordHash("$2a$12$hashedpassword")
                 .enabled(true)
                 .locked(false)
                 .build();
 
         when(userRepository.findByPhone(phone)).thenReturn(Optional.of(user));
-        doNothing().when(authenticationPolicy).ensureCanAuthenticate(user);
+        when(passwordEncoder.matches("password", "$2a$12$hashedpassword")).thenReturn(false);
         when(rateLimitPolicy.canAttempt(userId.toString())).thenReturn(false);
+        doAnswer(invocation -> {
+            User target = invocation.getArgument(0);
+            target.setLocked(true);
+            target.setLockedAt(invocation.getArgument(1));
+            target.setLockType(com.carebridge.backend.security.entity.AccountLockType.TEMPORARY);
+            return null;
+        }).when(authenticationPolicy).applyTemporaryLock(eq(user), any(Instant.class));
 
         LoginRequest request = new LoginRequest();
         request.setPhone(phone);
@@ -318,8 +353,8 @@ class AuthServiceLoginTest {
 
         // When/Then
         assertThatThrownBy(() -> authService.login(request))
-                .isInstanceOf(AccountLockedException.class)
-                .hasMessageContaining("Account temporarily locked");
+                .isInstanceOf(AuthenticationException.class)
+                .hasMessage("Invalid credentials");
 
         // Verify account was locked and lockedAt was set
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
@@ -328,7 +363,8 @@ class AuthServiceLoginTest {
         assertThat(savedUser.isLocked()).isTrue();
         assertThat(savedUser.getLockedAt()).isNotNull();
 
-        verifyNoInteractions(passwordEncoder);
+        verify(passwordEncoder).matches("password", "$2a$12$hashedpassword");
+        verify(authenticationPolicy).applyTemporaryLock(eq(user), any(Instant.class));
     }
 
     @Test
@@ -394,7 +430,7 @@ class AuthServiceLoginTest {
             }
             return token;
         });
-        when(jwtTokenProvider.generateAccessToken(user)).thenReturn("token");
+        when(jwtTokenProvider.generateAccessToken(eq(user), any(UUID.class))).thenReturn("token");
         when(userMapper.toProfileResponse(user)).thenReturn(new UserProfileResponse());
 
         LoginRequest request = new LoginRequest();
@@ -403,7 +439,7 @@ class AuthServiceLoginTest {
         request.setPassword("password");
 
         // When
-        OtpSendResponse response = authService.login(request);
+        AuthResponse response = authService.login(request);
 
         // Then
         assertThat(response).isNotNull();
@@ -500,11 +536,11 @@ class AuthServiceLoginTest {
         request.setPassword(password);
 
         // When
-        OtpSendResponse response = realAuthService.login(request);
+        AuthResponse response = realAuthService.login(request);
 
         // Then
         assertThat(response).isNotNull();
-        assertThat(response.getMessage()).isEqualTo("OTP sent");
+        assertThat(response.getAccessToken()).isEqualTo("access-token");
 
         // Verify user was unlocked and persisted
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
@@ -515,12 +551,10 @@ class AuthServiceLoginTest {
     }
 
     @Test
-    @DisplayName("LOGIN-TC-007: JWT access token has correct TTL")
-    void login_jwtAccessToken_hasCorrectTtl() {
-        // The login() method returns OtpSendResponse (OTP flow), not tokens directly.
-        // Token issuance occurs in completeLogin() after OTP verification.
-        // This test verifies that a successful login produces a valid OTP response
-        // with a positive expiresIn value, confirming the TTL configuration is applied.
+    @DisplayName("LOGIN-TC-007: Login uses the session-aware JWT provider")
+    void login_usesSessionAwareJwtProvider() {
+        // The provider owns the access-token TTL; login must invoke its
+        // canonical session-aware token generation path.
         String email = "ttl-check@example.com";
         String password = "MyP@ssw0rd123";
         UUID userId = UUID.randomUUID();
@@ -554,21 +588,17 @@ class AuthServiceLoginTest {
         request.setPassword(password);
 
         // When
-        OtpSendResponse response = authService.login(request);
+        AuthResponse response = authService.login(request);
 
-        // Then — OTP response has a positive TTL (expiresIn), confirming server-side TTL config
+        // Then — the provider owns token TTL and receives the newly-created session id.
         assertThat(response).isNotNull();
-        assertThat(response.getMessage()).isEqualTo("OTP sent");
-        assertThat(response.getExpiresIn()).isGreaterThanOrEqualTo(0);
+        assertThat(response.getAccessToken()).isEqualTo("access-token");
+        verify(jwtTokenProvider).generateAccessToken(eq(user), any(UUID.class));
     }
 
     @Test
     @DisplayName("LOGIN-TC-008: Session stores SHA-256 hash of refresh token")
     void login_session_storesRefreshTokenHash() {
-        // The login() method validates credentials and triggers OTP — tokens/sessions
-        // are created in completeLogin() after OTP verification.
-        // This test verifies that login persists the user record (userRepository.save)
-        // and that the saved user state is correctly reset (unlocked, no lockedAt).
         String phone = "+84901234567";
         String password = "MyP@ssw0rd123";
         UUID userId = UUID.randomUUID();
@@ -602,19 +632,17 @@ class AuthServiceLoginTest {
         request.setPassword(password);
 
         // When
-        OtpSendResponse response = authService.login(request);
+        AuthResponse response = authService.login(request);
 
         // Then — verify user record was persisted after successful credential check
         assertThat(response).isNotNull();
-        verify(userRepository).save(any(User.class));
-
-        // Capture the saved user and verify state is correctly reset
-        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
-        verify(userRepository).save(userCaptor.capture());
-        User savedUser = userCaptor.getValue();
-        assertThat(savedUser.isLocked()).isFalse();
-        assertThat(savedUser.getLockedAt()).isNull();
-        assertThat(savedUser.getId()).isEqualTo(userId);
+        ArgumentCaptor<UserSession> sessionCaptor = ArgumentCaptor.forClass(UserSession.class);
+        verify(sessionRepository).save(sessionCaptor.capture());
+        UserSession savedSession = sessionCaptor.getValue();
+        assertThat(savedSession.getUserId()).isEqualTo(userId);
+        assertThat(savedSession.getRefreshTokenHash())
+                .isEqualTo(TokenUtils.hashSha256(response.getRefreshToken()));
+        assertThat(savedSession.getExpiresAt()).isNotNull();
     }
 
     @Test
@@ -669,8 +697,8 @@ class AuthServiceLoginTest {
     }
 
     @Test
-    @DisplayName("LOGIN-TC-008b: Verified identifier still requires a fresh login OTP")
-    void login_verifiedIdentifier_stillIssuesOtpWithoutSessionOrTokens() {
+    @DisplayName("LOGIN-TC-008b: Verified identifier logs in without creating OTP")
+    void login_verifiedIdentifier_issuesSessionWithoutOtp() {
         String email = "verified@example.com";
         String password = "MyP@ssw0rd123";
         UUID userId = UUID.randomUUID();
@@ -689,19 +717,21 @@ class AuthServiceLoginTest {
         doNothing().when(authenticationPolicy).ensureCanAuthenticate(user);
         when(rateLimitPolicy.canAttempt(userId.toString())).thenReturn(true);
         when(passwordEncoder.matches(password, "$2a$12$hashedpassword")).thenReturn(true);
+        when(refreshTokenRepository.save(any(RefreshToken.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(jwtTokenProvider.generateAccessToken(eq(user), any(UUID.class))).thenReturn("access-token");
+        when(userMapper.toProfileResponse(user)).thenReturn(new UserProfileResponse());
 
         LoginRequest request = new LoginRequest();
         request.setPhone(null);
         request.setEmail(email);
         request.setPassword(password);
 
-        OtpSendResponse response = authService.login(request);
+        AuthResponse response = authService.login(request);
 
         assertThat(response).isNotNull();
-        assertThat(response.getMessage()).isEqualTo("OTP sent");
-        assertThat(response.getAuth()).isNull();
-        verify(otpVerificationRepository).save(any(OtpVerification.class));
-        verify(emailService).sendOtpVerificationEmail(eq(email), anyString(), anyInt());
-        verifyNoInteractions(refreshTokenRepository, sessionRepository, jwtTokenProvider);
+        assertThat(response.getAccessToken()).isEqualTo("access-token");
+        verify(refreshTokenRepository).save(any(RefreshToken.class));
+        verify(sessionRepository).save(any(UserSession.class));
+        verifyNoInteractions(otpVerificationRepository, emailService, smsService);
     }
 }

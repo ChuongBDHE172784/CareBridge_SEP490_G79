@@ -78,6 +78,7 @@ public class AuditEligibilityPolicy {
             AuditAction.AI_RESCAN_REQUESTED,
             AuditAction.REPORT_CLAIMED,
             AuditAction.REPORT_RELEASED,
+            AuditAction.SYSTEM_CONFIGURATION_UPDATED,
             AuditAction.VIEW_AUDIT_LOG);
 
     public boolean shouldAudit(AuditAction action) {

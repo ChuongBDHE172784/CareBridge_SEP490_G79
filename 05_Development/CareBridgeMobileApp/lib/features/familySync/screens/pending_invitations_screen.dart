@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/care_group_model.dart';
 import '../services/care_group_service.dart';
+import '../widgets/family_relationship_role_picker.dart';
 
 /// CB-024 — Pending Care Group Invitations (UC-83)
 /// Lists invitations the current user has not yet accepted/declined.
@@ -49,7 +50,16 @@ class _PendingInvitationsScreenState extends State<PendingInvitationsScreen> {
     setState(() => _busyGroupIds.add(invite.groupId));
     try {
       if (accept) {
-        await _service.acceptInvite(invite.groupId);
+        final relationship = await showFamilyRelationshipRolePicker(context);
+        if (relationship == null) {
+          if (mounted) setState(() => _busyGroupIds.remove(invite.groupId));
+          return;
+        }
+        await _service.acceptInvite(
+          invite.groupId,
+          familyRelationshipRole: relationship.role,
+          customFamilyRelationshipRole: relationship.customRole,
+        );
       } else {
         await _service.declineInvite(invite.groupId);
       }
@@ -71,9 +81,9 @@ class _PendingInvitationsScreenState extends State<PendingInvitationsScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _busyGroupIds.remove(invite.groupId));
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
       }
     }
   }

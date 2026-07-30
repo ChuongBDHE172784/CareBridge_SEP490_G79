@@ -90,7 +90,7 @@ class WelcomeScreen extends StatelessWidget {
                             ),
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                         SizedBox(
                           height: 52,
                           child: OutlinedButton(
@@ -102,9 +102,9 @@ class WelcomeScreen extends StatelessWidget {
                             ),
                             style: OutlinedButton.styleFrom(
                               foregroundColor: _textColor,
-                              side: const BorderSide(
-                                color: _primaryColor,
-                                width: 2,
+                              side: BorderSide(
+                                color: _textColor.withValues(alpha: 0.4),
+                                width: 1.5,
                               ),
                               shape: const StadiumBorder(),
                             ),
@@ -115,6 +115,29 @@ class WelcomeScreen extends StatelessWidget {
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                               ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextButton.icon(
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  const RegisterScreen(isExpert: true),
+                            ),
+                          ),
+                          icon: const Icon(
+                            Icons.medical_services_outlined,
+                            size: 18,
+                          ),
+                          label: const Text('Đăng ký Chuyên gia y tế'),
+                          style: TextButton.styleFrom(
+                            foregroundColor: _primaryColor,
+                            textStyle: const TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),

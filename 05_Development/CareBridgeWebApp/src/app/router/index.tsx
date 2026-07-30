@@ -5,8 +5,8 @@ import AdminLayout from '../layouts/AdminLayout';
 import ContentLayout from '../layouts/ContentLayout';
 import ProtectedRoute from '../guards/ProtectedRoute';
 import RoleAwareRedirect from '../guards/RoleAwareRedirect';
-import ModeratorIndexRedirect from '../guards/ModeratorIndexRedirect';
 import ExpertOnboardingGuard from '../guards/ExpertOnboardingGuard';
+import ExpertLayout from '../layouts/ExpertLayout';
 
 // Auth screens
 import LoginPage from '../../features/auth/pages/LoginPage';
@@ -25,25 +25,26 @@ import ExpertProfilePage from '../../features/expert/pages/ExpertProfilePage';
 import VerificationDocumentsPage from '../../features/expert/pages/VerificationDocumentsPage';
 import AvailabilityCalendarPage from '../../features/expert/pages/AvailabilityCalendarPage';
 import ExpertQuestionQueuePage from '../../features/expert/pages/ExpertQuestionQueuePage';
+import ExpertConsultationRequestsPage from '../../features/expert/pages/ExpertConsultationRequestsPage';
 import ExpertOnboardingPage from '../../features/expert/pages/ExpertOnboardingPage';
 
 // Contribution screens
-import ContributionListPage from '../../features/expert/pages/ContributionListPage';
-import ContributionDraftPage from '../../features/expert/pages/ContributionDraftPage';
-import ContributionDetailPage from '../../features/expert/pages/ContributionDetailPage';
-import AdminContributionReviewQueuePage from '../../features/expert/pages/AdminContributionReviewQueuePage';
 
 // Expert verification queue (admin side, UC-70)
 import ExpertVerificationQueuePage from '../../features/expert/pages/ExpertVerificationQueuePage';
-import AdminExpertIdentityReviewPage from '../../features/expert/pages/AdminExpertIdentityReviewPage';
 
 // UC-144 (redesign, CB-CHAT-IMP-144D) — Direct Consult Chat & Call, Expert Portal side
 import ConversationListPage from '../../features/directChat/pages/ConversationListPage';
 import ConversationRoomPage from '../../features/directChat/pages/ConversationRoomPage';
-import AdminExpertTrustManagementPage from '../../features/expert/pages/AdminExpertTrustManagementPage';
 
 // Admin portal screens
 import AdminDashboardPage from '../../features/admin/pages/AdminDashboardPage';
+import UserListPage from '../../features/admin/pages/UserListPage';
+import UserDetailPage from '../../features/admin/pages/UserDetailPage';
+import UpdateUserRolePage from '../../features/admin/pages/UpdateUserRolePage';
+import CreateStaffAccountPage from '../../features/admin/pages/CreateStaffAccountPage';
+import AccountLockAppealsPage from '../../features/admin/pages/AccountLockAppealsPage';
+import AccountLockAppealDetailPage from '../../features/admin/pages/AccountLockAppealDetailPage';
 
 // Security & admin screens (TV1 Sprint 0)
 import SecurityIncidentListPage from '../../features/security/pages/SecurityIncidentListPage';
@@ -96,11 +97,14 @@ import ViolationHistoryPage from '../../features/moderation/pages/ViolationHisto
 import ViolationDetailPage from '../../features/moderation/pages/ViolationDetailPage';
 // CB-MOD-IMP-004: pending-content queue (first-time moderation, no ContentReport required)
 import PendingContentQueuePage from '../../features/moderation/pages/PendingContentQueuePage';
+import ModerationContentDetailPage from '../../features/moderation/pages/ModerationContentDetailPage';
+import CommunityContentMonitorPage from '../../features/moderation/pages/CommunityContentMonitorPage';
 
 // SYSTEM_ADMIN-only ModPortal screens (CB-066, 090, 091)
 import CommunityDashboardPage from '../../features/dashboard/pages/CommunityDashboardPage';
 import SafetyRuleManagementPage from '../../features/aiRuleManagement/pages/SafetyRuleManagementPage';
 import SystemConfigurationPage from '../../features/aiRuleManagement/pages/SystemConfigurationPage';
+import MaintenancePage from '../../features/system/pages/MaintenancePage';
 
 const ForbiddenPage = () => (
   <div className="p-12 text-center font-sans text-on-surface-variant">
@@ -120,6 +124,7 @@ export const router = createBrowserRouter([
     ],
   },
   { path: '/forbidden', element: <ForbiddenPage /> },
+  { path: '/maintenance', element: <MaintenancePage /> },
   { path: '/account-blocked', element: <BlockedAccountPage /> },
   { path: '/no-web-access', element: <NoWebAccessPage /> },
   { path: '/expert/register', element: <ExpertRegisterPage /> },
@@ -160,9 +165,14 @@ export const router = createBrowserRouter([
             children: [
               { path: '/admin/dashboard', element: <AdminDashboardPage /> },
               { path: '/admin', element: <Navigate to="/admin/dashboard" replace /> },
+              { path: '/admin/users', element: <UserListPage /> },
+              { path: '/admin/users/:userId', element: <UserDetailPage /> },
+              { path: '/admin/users/:userId/role', element: <UpdateUserRolePage /> },
+              { path: '/admin/staff-accounts/create', element: <CreateStaffAccountPage /> },
+              { path: '/admin/account-lock-appeals', element: <AccountLockAppealsPage /> },
+              { path: '/admin/account-lock-appeals/:appealId', element: <AccountLockAppealDetailPage /> },
               { path: '/admin/expert-verification-queue', element: <ExpertVerificationQueuePage /> },
-              { path: '/admin/expert-identity-queue', element: <AdminExpertIdentityReviewPage /> },
-{ path: '/admin/expert-trust-management', element: <AdminExpertTrustManagementPage /> },
+              { path: '/admin/expert-trust-management', element: <ContentApprovalQueuePage /> },
               { path: '/admin/content-approval-queue', element: <ContentApprovalQueuePage /> },
               // Read-only review routes for the approval queue's "Xem chi tiết" links — System Admin
               // lacks CONTENT_ADMIN, so it cannot use /content/:id or /content/checklists/:id directly
@@ -170,18 +180,17 @@ export const router = createBrowserRouter([
               // hide all write actions when the viewer lacks CONTENT_ADMIN (see canManage in each page).
               { path: '/admin/content-review/:id', element: <ContentDetailPage /> },
               { path: '/admin/content-review/checklists/:id', element: <ChecklistDetailPage /> },
-              { path: '/admin/contribution-review-queue', element: <AdminContributionReviewQueuePage /> },
-{ path: '/security/incidents', element: <SecurityIncidentListPage /> },
-              { path: '/security/events', element: <SecurityEventsPage /> },
-              { path: '/security/events/:eventId', element: <SecurityEventDetailPage /> },
-              { path: '/security/incidents/:eventId/investigate', element: <SecurityIncidentInvestigationPage /> },
-              { path: '/security/incidents/:eventId/resolve', element: <SecurityIncidentResolutionPage /> },
-              { path: '/notifications', element: <NotificationCenterPage /> },
-              { path: '/settings/privacy', element: <PrivacySettingsPage /> },
-              { path: '/posture-configs', element: <PostureConfigListPage /> },
-              { path: '/posture-configs/new', element: <EditPostureConfigPage /> },
-              { path: '/posture-configs/:exerciseId', element: <PostureConfigDetailPage /> },
-              { path: '/posture-configs/:exerciseId/edit', element: <EditPostureConfigPage /> },
+              { path: '/admin/security/incidents', element: <SecurityIncidentListPage /> },
+              { path: '/admin/security/events', element: <SecurityEventsPage /> },
+              { path: '/admin/security/events/:eventId', element: <SecurityEventDetailPage /> },
+              { path: '/admin/security/incidents/:eventId/investigate', element: <SecurityIncidentInvestigationPage /> },
+              { path: '/admin/security/incidents/:eventId/resolve', element: <SecurityIncidentResolutionPage /> },
+              { path: '/admin/notifications', element: <NotificationCenterPage /> },
+              { path: '/admin/settings/privacy', element: <PrivacySettingsPage /> },
+              { path: '/admin/posture-configs', element: <PostureConfigListPage /> },
+              { path: '/admin/posture-configs/new', element: <EditPostureConfigPage /> },
+              { path: '/admin/posture-configs/:exerciseId', element: <PostureConfigDetailPage /> },
+              { path: '/admin/posture-configs/:exerciseId/edit', element: <EditPostureConfigPage /> },
             ],
           },
           {
@@ -230,28 +239,30 @@ export const router = createBrowserRouter([
           {
             element: <ProtectedRoute requiredRoles={['EXPERT']} />,
             children: [
-              { path: '/expert/onboarding', element: <ExpertOnboardingPage /> },
               {
-                element: <ExpertOnboardingGuard />,
+                element: <ExpertLayout />,
                 children: [
-                  { path: '/expert/dashboard', element: <ExpertDashboardPage /> },
-                  { path: '/expert', element: <Navigate to="/expert/dashboard" replace /> },
-                  // CB-055: Expert Profile
-                  { path: '/expert/profile', element: <ExpertProfilePage /> },
-                  // CB-056: Verification Documents
-                  { path: '/expert/credentials', element: <VerificationDocumentsPage /> },
-                  // CB-057: Availability Calendar
-                  { path: '/expert/calendar', element: <AvailabilityCalendarPage /> },
-                  // CB-063: Expert Question Queue
-                  { path: '/expert/question-queue', element: <ExpertQuestionQueuePage /> },
-                  // UC-144D: Direct Consult Chat & Call
-                  { path: '/expert/direct-chats', element: <ConversationListPage /> },
-                  { path: '/expert/direct-chats/:conversationId', element: <ConversationRoomPage /> },
-                  // Contribution (Medical Knowledge)
-                  { path: '/expert/contributions', element: <ContributionListPage /> },
-                  { path: '/expert/contributions/new', element: <ContributionDraftPage /> },
-                  { path: '/expert/contributions/:id/edit', element: <ContributionDraftPage /> },
-                  { path: '/expert/contributions/:id', element: <ContributionDetailPage /> },
+                  { path: '/expert/onboarding', element: <ExpertOnboardingPage /> },
+                  {
+                    element: <ExpertOnboardingGuard />,
+                    children: [
+                      { path: '/expert/dashboard', element: <ExpertDashboardPage /> },
+                      { path: '/expert', element: <Navigate to="/expert/dashboard" replace /> },
+                      // CB-055: Expert Profile
+                      { path: '/expert/profile', element: <ExpertProfilePage /> },
+                      // CB-056: Verification Documents
+                      { path: '/expert/credentials', element: <VerificationDocumentsPage /> },
+                      // CB-057: Availability Calendar
+                      { path: '/expert/calendar', element: <AvailabilityCalendarPage /> },
+                      // CB-063: Expert Question Queue
+                      { path: '/expert/question-queue', element: <ExpertQuestionQueuePage /> },
+                      // CB-064: Consultation Requests
+                      { path: '/expert/consultation-requests', element: <ExpertConsultationRequestsPage /> },
+                      // UC-144D: Direct Consult Chat & Call
+                      { path: '/expert/direct-chats', element: <ConversationListPage /> },
+                      { path: '/expert/direct-chats/:conversationId', element: <ConversationRoomPage /> },
+                    ],
+                  },
                 ],
               },
             ],
@@ -271,10 +282,12 @@ export const router = createBrowserRouter([
             // frontend access either (it would 403 on every data call).
             element: <ProtectedRoute requiredRoles={['MODERATOR']} />,
             children: [
-              // /moderator/queue (UC-99 View Moderation Queue) is served by ReportsQueuePage —
-              // redirect the old path so bookmarks/links keep working without a duplicate sidebar entry.
+              { path: '/moderator', element: <Navigate to="/moderator/reports" replace /> },
               { path: '/moderator/queue', element: <Navigate to="/moderator/reports" replace /> },
+              { path: '/moderator/moderator-dashboard', element: <CommunityDashboardPage /> },
               { path: '/moderator/pending-content', element: <PendingContentQueuePage /> },
+              { path: '/moderator/pending-content/:targetType/:targetId', element: <ModerationContentDetailPage /> },
+              { path: '/moderator/community-content', element: <CommunityContentMonitorPage /> },
               { path: '/moderator/reports', element: <ReportsQueuePage /> },
               { path: '/moderator/reports/account/:reportId', element: <AccountReportDetailPage /> },
               { path: '/moderator/reports/:reportId', element: <ContentReportDetailPage /> },
@@ -283,21 +296,13 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            // RedFlagRuleController / CommunityDashboardController
+            // RedFlagRuleController
             element: <ProtectedRoute requiredRoles={['SYSTEM_ADMIN']} />,
             children: [
-              { path: '/moderator/dashboard', element: <CommunityDashboardPage /> },
-              { path: '/moderator/safety-rules', element: <SafetyRuleManagementPage /> },
-              { path: '/moderator/system-configuration', element: <SystemConfigurationPage /> },
+              { path: '/admin/safety-rules', element: <SafetyRuleManagementPage /> },
+              { path: '/admin/system-configuration', element: <SystemConfigurationPage /> },
               { path: '/admin/partners/verification', element: <PartnerVerificationQueuePage /> },
             ],
-          },
-          {
-            // Role-aware landing for the bare '/moderator' entry point — MODERATOR and
-            // SYSTEM_ADMIN each only have backend access to a disjoint subset of ModPortal
-            // pages (see the two guards above), so a single hardcoded redirect can't serve both.
-            element: <ProtectedRoute requiredRoles={['MODERATOR', 'SYSTEM_ADMIN']} />,
-            children: [{ path: '/moderator', element: <ModeratorIndexRedirect /> }],
           },
         ],
       },

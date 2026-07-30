@@ -24,6 +24,18 @@ export type ReportCategory =
 
 export type PolicyTargetType = 'QUESTION' | 'ANSWER' | 'CONTENT';
 
+export interface PolicyReferenceLink {
+  title: string;
+  url: string;
+}
+
+export interface PolicyReferenceFile {
+  fileId: string;
+  fileName: string;
+  fileUrl: string;
+  fileSizeBytes: number;
+}
+
 export interface AiPolicy {
   id: string;
   policyCode: string;
@@ -37,6 +49,8 @@ export interface AiPolicy {
   active: boolean;
   systemDefault: boolean;
   version: number;
+  referenceLinks?: PolicyReferenceLink[];
+  referenceFiles?: PolicyReferenceFile[];
   createdAt: string;
   updatedAt: string;
 }
@@ -94,6 +108,8 @@ export interface CreateAiPolicyRequest {
   applicableTargetTypes: PolicyTargetType[];
   confidenceThreshold: number;
   active: boolean;
+  referenceLinks?: PolicyReferenceLink[];
+  referenceFiles?: PolicyReferenceFile[];
 }
 
 export interface UpdateAiPolicyRequest {
@@ -105,6 +121,8 @@ export interface UpdateAiPolicyRequest {
   applicableTargetTypes?: PolicyTargetType[];
   confidenceThreshold?: number;
   active?: boolean;
+  referenceLinks?: PolicyReferenceLink[];
+  referenceFiles?: PolicyReferenceFile[];
 }
 
 export interface AiPolicyTestRequest {

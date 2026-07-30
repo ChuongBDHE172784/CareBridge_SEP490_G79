@@ -16,13 +16,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.UUID;
 
-import static com.carebridge.backend.family.CareCalendarTestFactory.*;
+import static com.carebridge.backend.family.FamilyTaskTestFactory.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Integration tests for CareTaskRepository — UC-74 date-range query correctness.
- *
- * Tests: FAM-UC74-TC-010, FAM-UC74-TC-011
+ * Integration tests for CareTaskRepository date-range query correctness.
  * Uses Testcontainers PostgreSQL via AbstractPostgresIntegrationTest.
  */
 @Transactional
@@ -38,8 +36,8 @@ class CareTaskRepositoryIntegrationTest extends AbstractPostgresIntegrationTest 
 
     @BeforeEach
     void setUp() {
-        CanonicalUserFixture.insertUser(jdbcTemplate, ACC_001, "Calendar owner", null, "MOTHER");
-        CanonicalUserFixture.insertUser(jdbcTemplate, ACC_002, "Calendar member", null, "FAMILY");
+        CanonicalUserFixture.insertUser(jdbcTemplate, ACC_001, "Family owner", null, "MOTHER");
+        CanonicalUserFixture.insertUser(jdbcTemplate, ACC_002, "Family member", null, "FAMILY");
         // Create two groups
         CareGroup group1 = groupRepository.save(CareGroup.builder()
                 .ownerUserId(ACC_001)
@@ -66,8 +64,6 @@ class CareTaskRepositoryIntegrationTest extends AbstractPostgresIntegrationTest 
         careTaskRepository.save(makeTask(group2Id, JULY_TASK_DUE_AT));
     }
 
-    // ── FAM-UC74-TC-010: Query respects date-range boundaries ────────────────
-
     @Test
     void findByCareGroupIdAndDueAtBetween_onlyReturnsTasksInRange() {
         List<CareTask> results = careTaskRepository
@@ -78,8 +74,6 @@ class CareTaskRepositoryIntegrationTest extends AbstractPostgresIntegrationTest 
         // FX-007 (August task) must NOT appear
         assertThat(results).noneMatch(t -> t.getDueAt().equals(AUGUST_TASK_DUE_AT));
     }
-
-    // ── FAM-UC74-TC-011: Query excludes tasks from other groups ───────────────
 
     @Test
     void findByCareGroupIdAndDueAtBetween_excludesOtherGroupTasks() {

@@ -1,3 +1,10 @@
+server:
+  servlet:
+    encoding:
+      enabled: true
+      force: true
+      force-response: true
+
 spring:
   application:
     name: backend
@@ -14,8 +21,9 @@ spring:
       max-lifetime: 600000
 
   flyway:
-    enabled: false
-    clean-disabled: true
+    enabled: true
+    clean-disabled: false
+    clean-on-validation-error: true
     out-of-order: true
     # Databases migrated before the canonical convergence keep their full
     # Flyway history; the historical SQL files were retired in favour of the
@@ -29,7 +37,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: none
     open-in-view: false
     properties:
       hibernate:
@@ -53,6 +61,8 @@ spring:
     multipart:
       max-file-size: 5MB
       max-request-size: 16MB
+    encoding:
+      charset: UTF-8
 
 carebridge:
   dev-seed:
@@ -70,7 +80,6 @@ carebridge:
       max-attempts: 5
   auth:
     federated-enabled: ${AUTH_FEDERATED_ENABLED:true}
-    login-direct-enabled: ${CAREBRIDGE_AUTH_LOGIN_DIRECT_ENABLED:false}
   firebase:
     project-id: ${FIREBASE_PROJECT_ID:}
     auth-emulator-enabled: ${CAREBRIDGE_FIREBASE_AUTH_EMULATOR_ENABLED:false}
@@ -87,7 +96,7 @@ carebridge:
     connect-timeout-ms: ${GEMINI_CONNECT_TIMEOUT_MS:3000}
     max-context-chunks: 5
     base-url: https://generativelanguage.googleapis.com/v1beta
-    model: ${GEMINI_MODEL:gemini-1.5-flash}
+    model: ${GEMINI_MODEL:gemini-flash-latest}
     moderation:
       timeout-ms: ${GEMINI_MODERATION_TIMEOUT_MS:15000}
       max-attempts: ${AI_MODERATION_MAX_ATTEMPTS:4}
@@ -131,10 +140,10 @@ carebridge:
       region: ${R2_REGION:auto}
 
   compreface:
-    enabled: ${COMPREFACE_ENABLED:false}
-    base-url: ${COMPREFACE_BASE_URL:http://localhost:8000}
-    detection-api-key: ${COMPREFACE_DETECTION_API_KEY:}
-    verification-api-key: ${COMPREFACE_VERIFICATION_API_KEY:}
+    enabled: true
+    base-url: http://localhost:8000
+    detection-api-key: 6988a154-3dbf-417d-ae72-8b634ca37fb6
+    verification-api-key: f75cf2ae-240a-4fe6-90cc-55dafd285db5
     # Deprecated: kept for backwards compatibility if needed
     # api-key: ${COMPREFACE_API_KEY:}
     similarity-threshold: ${COMPREFACE_SIMILARITY_THRESHOLD:0.75}

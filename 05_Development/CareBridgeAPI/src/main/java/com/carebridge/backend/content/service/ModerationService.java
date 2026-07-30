@@ -9,6 +9,7 @@ import com.carebridge.backend.content.dto.request.WarnOrSuspendAccountRequest;
 import com.carebridge.backend.content.dto.response.ModerateContentResponse;
 import com.carebridge.backend.content.dto.response.AccountViolationHistoryResponse;
 import com.carebridge.backend.content.dto.response.AccountViolationSummaryResponse;
+import com.carebridge.backend.content.dto.response.CommunityContentMonitorResponse;
 import com.carebridge.backend.content.dto.response.ModerationContentDetailResponse;
 import com.carebridge.backend.content.dto.response.ModerationHistoryResponse;
 import com.carebridge.backend.content.dto.response.ModerationQueueResponse;
@@ -34,6 +35,12 @@ public interface ModerationService {
      *         filter.targetType() is not QUESTION or ANSWER
      */
     PendingContentQueueResponse getPendingContentQueue(PendingContentQueueFilter filter, Principal principal);
+
+    /**
+     * Lists the exact QUESTION or ANSWER records currently visible to community members
+     * (moderation status APPROVED). This is independent from the pending queue and audit history.
+     */
+    CommunityContentMonitorResponse getVisibleCommunityContent(PendingContentQueueFilter filter, Principal principal);
 
     /**
      * Lists past APPROVE/HIDE/LOCK actions on QUESTION/ANSWER targets from audit_events

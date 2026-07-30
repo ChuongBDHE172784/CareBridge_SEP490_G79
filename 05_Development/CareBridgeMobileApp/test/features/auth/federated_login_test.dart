@@ -14,6 +14,10 @@ void main() {
       await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
       expect(find.byKey(const Key('federated-google-login')), findsOneWidget);
       expect(find.byKey(const Key('federated-phone-login')), findsOneWidget);
+      expect(find.byTooltip('Tiếp tục với Google'), findsOneWidget);
+      expect(find.byTooltip('Tiếp tục với số điện thoại'), findsOneWidget);
+      expect(find.text('G'), findsOneWidget);
+      expect(find.byIcon(Icons.phone_rounded), findsOneWidget);
     },
   );
 
@@ -37,7 +41,7 @@ void main() {
     await tester.pump();
 
     expect(find.byIcon(Icons.error_outline), findsNothing);
-    final button = tester.widget<OutlinedButton>(
+    final button = tester.widget<IconButton>(
       find.byKey(const Key('federated-google-login')),
     );
     expect(button.onPressed, isNotNull);
@@ -88,7 +92,7 @@ void main() {
       find.text(FederatedAuthFailure.invalidCredential.userMessage),
       findsOneWidget,
     );
-    final button = tester.widget<OutlinedButton>(
+    final button = tester.widget<IconButton>(
       find.byKey(const Key('federated-google-login')),
     );
     expect(button.onPressed, isNotNull);
@@ -108,7 +112,7 @@ void main() {
     await tester.tap(googleButton);
     await tester.pump();
 
-    var button = tester.widget<OutlinedButton>(
+    var button = tester.widget<IconButton>(
       find.byKey(const Key('federated-google-login')),
     );
     expect(button.onPressed, isNull);
@@ -118,7 +122,7 @@ void main() {
     );
     await tester.pump();
 
-    button = tester.widget<OutlinedButton>(
+    button = tester.widget<IconButton>(
       find.byKey(const Key('federated-google-login')),
     );
     expect(button.onPressed, isNotNull);

@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
+import 'package:universal_io/io.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
@@ -12,7 +12,7 @@ const String _envBaseUrl = String.fromEnvironment('API_BASE_URL');
 
 String get _baseUrl {
   if (_envBaseUrl.isNotEmpty) return _envBaseUrl;
-  if (kIsWeb) return 'http://localhost:8080';
+  if (kIsWeb) return 'http://127.0.0.1:8080';
   if (Platform.isAndroid) return 'http://10.0.2.2:8080';
   return 'http://localhost:8080';
 }
@@ -94,10 +94,10 @@ Future<_RefreshOutcome> _tryRefresh() async {
 }
 
 Future<void> _handle401(http.Response response) async {
-  final code = parseAccountBlockedCode(response);
-  if (code != null) {
-    debugPrint('[ApiClient] _handle401: account blocked → reason=$code');
-    unawaited(AuthState.instance.clearWithReason(code));
+  final blockedState = parseAccountBlockedState(response);
+  if (blockedState != null) {
+    debugPrint('[ApiClient] account blocked → code=${blockedState.code}');
+    unawaited(AuthState.instance.clearWithBlockedAccount(blockedState));
   } else {
     debugPrint(
       '[ApiClient] _handle401: clearing session (real 401 with valid token)',
@@ -129,6 +129,31 @@ Future<http.Response> _handleUnauthorized(
   }
 }
 
+Future<void> _handleBlockedResponse(http.Response response) async {
+  final state = parseAccountBlockedState(response);
+  if (state != null) {
+    await AuthState.instance.clearWithBlockedAccount(state);
+  }
+}
+
+dynamic _decodeResponse(http.Response response) {
+  if (response.body.isEmpty) return null;
+  try {
+    final decoded = utf8.decode(response.bodyBytes);
+    if (!decoded.contains('') && !decoded.contains('?')) {
+      return jsonDecode(decoded);
+    }
+    // Fallback if browser client corrupted bytes via Latin1 default
+    return jsonDecode(utf8.decode(latin1.encode(response.body)));
+  } catch (_) {
+    try {
+      return jsonDecode(utf8.decode(latin1.encode(response.body)));
+    } catch (_) {
+      return jsonDecode(response.body);
+    }
+  }
+}
+
 Future<dynamic> apiGet(
   String path, {
   String? token,
@@ -147,9 +172,10 @@ Future<dynamic> apiGet(
     () => http.get(uri, headers: _headers()),
   );
   if (response.statusCode >= 200 && response.statusCode < 300) {
-    return jsonDecode(utf8.decode(response.bodyBytes));
+    return _decodeResponse(response);
   }
   if (response.statusCode == 401) await _handle401(response);
+  if (response.statusCode == 403) await _handleBlockedResponse(response);
   throw ApiException(response.statusCode, response.body);
 }
 
@@ -171,10 +197,10 @@ Future<dynamic> apiPost(
     () => http.post(uri, headers: _headers(), body: encoded),
   );
   if (response.statusCode >= 200 && response.statusCode < 300) {
-    if (response.body.isEmpty) return null;
-    return jsonDecode(utf8.decode(response.bodyBytes));
+    return _decodeResponse(response);
   }
   if (response.statusCode == 401) await _handle401(response);
+  if (response.statusCode == 403) await _handleBlockedResponse(response);
   throw ApiException(response.statusCode, response.body);
 }
 
@@ -196,10 +222,10 @@ Future<dynamic> apiPut(
     () => http.put(uri, headers: _headers(), body: encoded),
   );
   if (response.statusCode >= 200 && response.statusCode < 300) {
-    if (response.body.isEmpty) return null;
-    return jsonDecode(utf8.decode(response.bodyBytes));
+    return _decodeResponse(response);
   }
   if (response.statusCode == 401) await _handle401(response);
+  if (response.statusCode == 403) await _handleBlockedResponse(response);
   throw ApiException(response.statusCode, response.body);
 }
 
@@ -221,10 +247,10 @@ Future<dynamic> apiPatch(
     () => http.patch(uri, headers: _headers(), body: encoded),
   );
   if (response.statusCode >= 200 && response.statusCode < 300) {
-    if (response.body.isEmpty) return null;
-    return jsonDecode(utf8.decode(response.bodyBytes));
+    return _decodeResponse(response);
   }
   if (response.statusCode == 401) await _handle401(response);
+  if (response.statusCode == 403) await _handleBlockedResponse(response);
   throw ApiException(response.statusCode, response.body);
 }
 
@@ -246,10 +272,10 @@ Future<dynamic> apiDelete(
     () => http.delete(uri, headers: _headers(), body: encoded),
   );
   if (response.statusCode >= 200 && response.statusCode < 300) {
-    if (response.body.isEmpty) return null;
-    return jsonDecode(utf8.decode(response.bodyBytes));
+    return _decodeResponse(response);
   }
   if (response.statusCode == 401) await _handle401(response);
+  if (response.statusCode == 403) await _handleBlockedResponse(response);
   throw ApiException(response.statusCode, response.body);
 }
 
@@ -321,6 +347,7 @@ Future<dynamic> apiMultipart(
     return jsonDecode(utf8.decode(response.bodyBytes));
   }
   if (response.statusCode == 401) await _handle401(response);
+  if (response.statusCode == 403) await _handleBlockedResponse(response);
   throw ApiException(response.statusCode, response.body);
 }
 

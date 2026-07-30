@@ -2,6 +2,7 @@ package com.carebridge.backend.content.dto.response;
 
 import com.carebridge.backend.content.entity.ReportTargetType;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 // CB-MOD-IMP-008: full (non-truncated) body of a CommunityQuestion/CommunityAnswer, regardless of
@@ -18,6 +19,11 @@ public record ModerationContentDetailResponse(
         boolean anonymous,
         UUID questionId,
         String questionTitle,
+        String questionBody,
+        List<String> imageUrls,
+        List<String> questionImageUrls,
+        boolean expertLabeled,
+        boolean personalExperience,
         Instant createdAt,
         Instant updatedAt) {
 }

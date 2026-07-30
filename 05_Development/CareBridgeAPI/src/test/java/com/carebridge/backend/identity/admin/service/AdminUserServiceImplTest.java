@@ -11,15 +11,23 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.carebridge.backend.audit.entity.AuditAction;
+import com.carebridge.backend.audit.entity.AuditLog;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.common.exception.AccessDeniedBusinessException;
 import com.carebridge.backend.common.exception.ResourceNotFoundException;
 import com.carebridge.backend.common.exception.ValidationException;
 import com.carebridge.backend.identity.admin.dto.request.UpdateUserStatusRequest;
+import com.carebridge.backend.identity.admin.dto.response.AdminUserActivityResponse;
+import com.carebridge.backend.identity.admin.dto.response.AdminUserSessionResponse;
 import com.carebridge.backend.identity.admin.dto.response.AdminUserSummaryResponse;
 import com.carebridge.backend.identity.admin.mapper.AdminUserMapper;
+import com.carebridge.backend.identity.admin.repository.AccountLockAppealRepository;
+import com.carebridge.backend.identity.admin.repository.AdminUserMonitoringRepository;
 import com.carebridge.backend.identity.admin.service.impl.AdminUserServiceImpl;
 import com.carebridge.backend.identity.admin.testsupport.AdminGovernanceTestFactory;
+import com.carebridge.backend.identity.entity.UserSession;
+import com.carebridge.backend.identity.repository.UserSessionRepository;
+import com.carebridge.backend.security.entity.AccountLockType;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.rbac.Role;
 import com.carebridge.backend.security.repository.UserRepository;
@@ -46,9 +54,18 @@ class AdminUserServiceImplTest {
 
     @Mock private UserRepository userRepository;
     @Mock private AuditService auditService;
+    @Mock private AdminUserMonitoringRepository monitoringRepository;
+    @Mock private UserSessionRepository userSessionRepository;
+    @Mock private AccountLockAppealRepository appealRepository;
 
     private AdminUserServiceImpl newService() {
-        return new AdminUserServiceImpl(userRepository, auditService, new AdminUserMapper());
+        return new AdminUserServiceImpl(
+                userRepository,
+                auditService,
+                new AdminUserMapper(),
+                monitoringRepository,
+                userSessionRepository,
+                appealRepository);
     }
 
     // UC114-TC-001
@@ -73,6 +90,107 @@ class AdminUserServiceImplTest {
         assertThat(dto.getRole()).isEqualTo(Role.MOTHER);
     }
 
+    // UC114-TC-015
+    @Test
+    void getUser_existingTarget_returnsSafeSummary() {
+        AdminUserServiceImpl service = newService();
+        User target = AdminGovernanceTestFactory.makeUser(Role.MOTHER);
+        target.setPasswordHash("secret-hash");
+        when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));
+
+        AdminUserSummaryResponse result = service.getUser(target.getId());
+
+        assertThat(result.getId()).isEqualTo(target.getId());
+        assertThat(result.getEmail()).isEqualTo(target.getEmail());
+        assertThat(result.getRole()).isEqualTo(target.getRole());
+    }
+
+    // UC114-TC-016
+    @Test
+    void getUser_unknownTarget_throwsResourceNotFound() {
+        AdminUserServiceImpl service = newService();
+        UUID targetId = UUID.randomUUID();
+        when(userRepository.findById(targetId)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.getUser(targetId))
+                .isInstanceOf(ResourceNotFoundException.class);
+        verifyNoInteractions(monitoringRepository);
+    }
+
+    // UC114-TC-017 / TC-018
+    @Test
+    void getUserSessions_returnsPrivacyMinimizedProjection() {
+        AdminUserServiceImpl service = newService();
+        User target = AdminGovernanceTestFactory.makeUser(Role.MOTHER);
+        Pageable pageable = PageRequest.of(0, 20);
+        UserSession session = UserSession.builder()
+                .sessionId(UUID.randomUUID())
+                .userId(target.getId())
+                .refreshTokenHash("must-not-leak")
+                .deviceName("Chrome on macOS")
+                .ipAddress("127.0.0.1")
+                .status("ACTIVE")
+                .createdAt(Instant.parse("2026-07-28T01:00:00Z"))
+                .lastActivityAt(Instant.parse("2026-07-28T02:00:00Z"))
+                .expiresAt(Instant.parse("2026-08-01T01:00:00Z"))
+                .tokenFamilyId(UUID.randomUUID())
+                .deviceIdentifier("sensitive-device-id")
+                .build();
+        when(userRepository.existsById(target.getId())).thenReturn(true);
+        when(monitoringRepository.findSessions(target.getId(), pageable))
+                .thenReturn(new PageImpl<>(List.of(session), pageable, 1));
+
+        Page<AdminUserSessionResponse> result = service.getUserSessions(target.getId(), pageable);
+
+        assertThat(result.getContent()).singleElement().satisfies(dto -> {
+            assertThat(dto.getId()).isEqualTo(session.getSessionId());
+            assertThat(dto.getDeviceName()).isEqualTo("Chrome on macOS");
+            assertThat(dto.getStatus()).isEqualTo("ACTIVE");
+            assertThat(dto.getIssuedAt()).isEqualTo(session.getCreatedAt());
+        });
+    }
+
+    // UC114-TC-019
+    @Test
+    void getUserActivity_returnsGovernanceTimeline() {
+        AdminUserServiceImpl service = newService();
+        User target = AdminGovernanceTestFactory.makeUser(Role.MOTHER);
+        UUID actorId = UUID.randomUUID();
+        Pageable pageable = PageRequest.of(0, 20);
+        AuditLog log = AuditLog.builder()
+                .auditLogId(UUID.randomUUID())
+                .actorUserId(actorId)
+                .action(AuditAction.ROLE_PERMISSION_UPDATED)
+                .entityType("USER")
+                .entityId(target.getId())
+                .createdAt(Instant.parse("2026-07-28T02:00:00Z"))
+                .newValueJson("{\"newRole\":\"EXPERT\"}")
+                .build();
+        when(userRepository.existsById(target.getId())).thenReturn(true);
+        when(monitoringRepository.findActivity(target.getId(), pageable))
+                .thenReturn(new PageImpl<>(List.of(log), pageable, 1));
+
+        Page<AdminUserActivityResponse> result = service.getUserActivity(target.getId(), pageable);
+
+        assertThat(result.getContent()).singleElement().satisfies(dto -> {
+            assertThat(dto.getActorUserId()).isEqualTo(actorId);
+            assertThat(dto.getAction()).isEqualTo(AuditAction.ROLE_PERMISSION_UPDATED);
+            assertThat(dto.getDetails()).contains("newRole");
+        });
+    }
+
+    @Test
+    void getUserMonitoring_unknownTarget_throwsBeforeQueryingMonitoringData() {
+        AdminUserServiceImpl service = newService();
+        UUID targetId = UUID.randomUUID();
+        Pageable pageable = PageRequest.of(0, 20);
+        when(userRepository.existsById(targetId)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.getUserSessions(targetId, pageable))
+                .isInstanceOf(ResourceNotFoundException.class);
+        verifyNoInteractions(monitoringRepository);
+    }
+
     // UC114-TC-003
     @Test
     void updateStatus_disablesTargetAndEmitsAudit() {
@@ -90,6 +208,7 @@ class AdminUserServiceImplTest {
         verify(userRepository).save(savedCaptor.capture());
         assertThat(savedCaptor.getValue().isEnabled()).isFalse();
         assertThat(response.isEnabled()).isFalse();
+        verify(userSessionRepository).revokeAllByUserId(eq(target.getId()), any(Instant.class));
 
         verify(auditService, times(1)).log(
                 eq(AuditAction.USER_ACCOUNT_STATUS_CHANGED), eq(admin.getId()), eq("USER"),
@@ -115,7 +234,12 @@ class AdminUserServiceImplTest {
         verify(userRepository).save(savedCaptor.capture());
         assertThat(savedCaptor.getValue().isLocked()).isTrue();
         assertThat(savedCaptor.getValue().getLockedAt()).isNotNull();
+        assertThat(savedCaptor.getValue().getLockType()).isEqualTo(AccountLockType.ADMIN);
+        assertThat(savedCaptor.getValue().getLockReason()).isEqualTo("Suspected policy violation — pending review");
+        assertThat(savedCaptor.getValue().getLockedBy()).isEqualTo(admin.getId());
+        assertThat(savedCaptor.getValue().getLockEpisodeId()).isNotNull();
         assertThat(savedCaptor.getValue().isEnabled()).isTrue(); // unchanged
+        verify(userSessionRepository).revokeAllByUserId(eq(target.getId()), any(Instant.class));
     }
 
     // UC114-TC-005
@@ -123,9 +247,15 @@ class AdminUserServiceImplTest {
     void updateStatus_reEnablesAndUnlocksPreviouslyDisabledAccount() {
         AdminUserServiceImpl service = newService();
         User admin = AdminGovernanceTestFactory.makeSystemAdmin();
+        UUID lockEpisodeId = UUID.randomUUID();
         User target = AdminGovernanceTestFactory.makeUser(Role.MOTHER, u -> {
             u.setEnabled(false);
             u.setLocked(true);
+            u.setLockedAt(Instant.now());
+            u.setLockType(AccountLockType.ADMIN);
+            u.setLockReason("Administrative review");
+            u.setLockedBy(admin.getId());
+            u.setLockEpisodeId(lockEpisodeId);
         });
         when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));
         when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -140,6 +270,33 @@ class AdminUserServiceImplTest {
         verify(userRepository).save(savedCaptor.capture());
         assertThat(savedCaptor.getValue().isEnabled()).isTrue();
         assertThat(savedCaptor.getValue().isLocked()).isFalse();
+        assertThat(savedCaptor.getValue().getLockedAt()).isNull();
+        assertThat(savedCaptor.getValue().getLockType()).isNull();
+        assertThat(savedCaptor.getValue().getLockReason()).isNull();
+        assertThat(savedCaptor.getValue().getLockedBy()).isNull();
+        assertThat(savedCaptor.getValue().getLockEpisodeId()).isNull();
+        verify(appealRepository).cancelPending(
+                eq(target.getId()), eq(lockEpisodeId), any(Instant.class), eq(admin.getId()), any(String.class));
+    }
+
+    @Test
+    void updateStatus_lockWithoutReason_isRejected() {
+        AdminUserServiceImpl service = newService();
+        User admin = AdminGovernanceTestFactory.makeSystemAdmin();
+        User target = AdminGovernanceTestFactory.makeUser(Role.MODERATOR);
+        when(userRepository.findById(target.getId())).thenReturn(Optional.of(target));
+
+        assertThatThrownBy(() -> service.updateStatus(admin.getId(), target.getId(),
+                AdminGovernanceTestFactory.makeStatusRequest(r -> {
+                    r.setEnabled(null);
+                    r.setLocked(true);
+                    r.setReason("   ");
+                })))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("lock reason is required");
+
+        verify(userRepository, never()).save(any());
+        verifyNoInteractions(userSessionRepository);
     }
 
     // UC114-TC-006

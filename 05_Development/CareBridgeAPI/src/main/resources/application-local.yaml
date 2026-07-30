@@ -6,3 +6,6 @@ spring:
     url: ${CAREBRIDGE_DB_URL:jdbc:postgresql://localhost:5433/carebridge}
     username: ${CAREBRIDGE_DB_USERNAME:carebridge}
     password: ${CAREBRIDGE_DB_PASSWORD:carebridge}
+  jpa:
+    hibernate:
+      ddl-auto: update

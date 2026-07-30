@@ -44,6 +44,15 @@ public interface CareGroupMemberRepository extends JpaRepository<CareGroupMember
         return list.isEmpty() ? Optional.empty() : Optional.of(list.get(0));
     }
 
+    /**
+     * Finds the first member row matching groupId + userId + a specific status.
+     * Avoids the ambiguity of findByCareGroupIdAndUserId when a user has multiple
+     * rows in the same group (e.g. an OWNER row AND a PENDING invite row).
+     */
+    Optional<CareGroupMember> findFirstByCareGroupIdAndUserIdAndInviteStatus(
+            UUID careGroupId, UUID userId, InviteStatus inviteStatus);
+
+
     List<CareGroupMember> findByUserIdAndInviteStatus(UUID userId, InviteStatus status);
 
     Optional<CareGroupMember> findByInviteToken(String inviteToken);

@@ -81,6 +81,32 @@ void main() {
       );
     });
 
+    test('maps Web popup cancellation and configuration failures', () {
+      for (final code in [
+        'popup-closed-by-user',
+        'cancelled-popup-request',
+        'web-context-canceled',
+      ]) {
+        final failure = FederatedAuthFailure.from(
+          FirebaseAuthException(code: code, message: 'raw popup detail'),
+        );
+        expect(failure.kind, FederatedAuthFailureKind.canceled, reason: code);
+        expect(failure.userMessage, isEmpty, reason: code);
+      }
+
+      for (final code in ['operation-not-allowed', 'unauthorized-domain']) {
+        final failure = FederatedAuthFailure.from(
+          FirebaseAuthException(code: code, message: 'raw project detail'),
+        );
+        expect(
+          failure.kind,
+          FederatedAuthFailureKind.configuration,
+          reason: code,
+        );
+        expect(failure.userMessage, isNot(contains('raw')), reason: code);
+      }
+    });
+
     test('maps backend rejection, throttling, and service failures', () {
       expect(
         FederatedAuthFailure.from(ApiException(400, 'raw backend body')).kind,

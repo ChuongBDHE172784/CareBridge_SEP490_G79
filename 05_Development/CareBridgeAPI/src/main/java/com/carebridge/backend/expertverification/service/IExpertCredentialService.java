@@ -4,6 +4,8 @@ import com.carebridge.backend.expertverification.dto.request.SubmitCredentialReq
 import com.carebridge.backend.expertverification.dto.request.ReviewCredentialRequest;
 import com.carebridge.backend.expertverification.dto.response.CredentialResponse;
 import com.carebridge.backend.expertverification.dto.response.DocumentReviewResponse;
+import com.carebridge.backend.expertverification.dto.response.CredentialDocumentPreviewResponse;
+import com.carebridge.backend.file.dto.ViewFileResponse;
 import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 import java.util.UUID;
@@ -20,5 +22,11 @@ public interface IExpertCredentialService {
 
  DocumentReviewResponse reviewCredential(UUID credentialId, ReviewCredentialRequest request, UUID reviewerId);
 
- List<DocumentReviewResponse> getPendingReviews(String credentialType, UUID reviewerId);
+    List<DocumentReviewResponse> getPendingReviews(String credentialType, UUID reviewerId);
+
+    CredentialDocumentPreviewResponse previewCredential(UUID credentialId, UUID reviewerId);
+
+    ViewFileResponse getCredentialFile(UUID credentialId, UUID reviewerId);
+
+    List<DocumentReviewResponse> getAdminCredentialsForProfile(UUID expertProfileId, UUID reviewerId);
 }

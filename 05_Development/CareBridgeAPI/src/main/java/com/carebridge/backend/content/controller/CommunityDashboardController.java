@@ -14,14 +14,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/v1/admin/community/dashboard")
+@RequestMapping("/api/v1/moderator/community/dashboard")
 @RequiredArgsConstructor
 public class CommunityDashboardController {
 
     private final CommunityDashboardService communityDashboardService;
 
     @GetMapping
-    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    @PreAuthorize("hasRole('MODERATOR')")
     public ResponseEntity<CommunityDashboardResponse> getDashboard(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {

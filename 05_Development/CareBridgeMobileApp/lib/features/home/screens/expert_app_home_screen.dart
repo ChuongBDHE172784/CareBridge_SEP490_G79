@@ -27,6 +27,7 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
   ExpertHomeSnapshot? _snapshot;
   bool _loading = true;
   bool _onlineBusy = false;
+  int _onlineMutationGeneration = 0;
 
   @override
   void initState() {
@@ -35,11 +36,16 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
   }
 
   Future<void> _load() async {
+    final onlineGeneration = _onlineMutationGeneration;
     setState(() => _loading = true);
     final snapshot = await ExpertHomeService.instance.loadSnapshot();
     if (!mounted) return;
     setState(() {
-      _snapshot = snapshot;
+      final current = _snapshot;
+      _snapshot =
+          current != null && onlineGeneration != _onlineMutationGeneration
+          ? snapshot.copyWith(online: current.online)
+          : snapshot;
       _loading = false;
     });
   }
@@ -48,27 +54,29 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
     final snapshot = _snapshot;
     if (snapshot == null || _onlineBusy) return;
     final nextOnline = !snapshot.online;
-    setState(() {
-      _onlineBusy = true;
-      _snapshot = ExpertHomeSnapshot(
-        profile: snapshot.profile,
-        online: nextOnline,
-        questionCount: snapshot.questionCount,
-        supportRequests: snapshot.supportRequests,
-      );
-    });
-    final ok = await ExpertHomeService.instance.setOnline(nextOnline);
+    _onlineMutationGeneration++;
+    setState(() => _onlineBusy = true);
+    final result = await ExpertHomeService.instance.setOnline(nextOnline);
     if (!mounted) return;
-    setState(() => _onlineBusy = false);
-    if (!ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Trạng thái đã đổi tạm thời. Backend UC-142 chưa sẵn sàng.',
-            style: TextStyle(fontFamily: 'Lexend'),
-          ),
+    setState(() {
+      _onlineBusy = false;
+      if (result.success) {
+        _snapshot = (_snapshot ?? snapshot).copyWith(
+          online: result.online ?? nextOnline,
+        );
+      }
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          result.message,
+          style: const TextStyle(fontFamily: 'Lexend'),
         ),
-      );
+        duration: Duration(seconds: result.success ? 2 : 4),
+      ),
+    );
+    if (!result.success) {
+      return;
     }
   }
 
@@ -314,6 +322,7 @@ class _OnlineToggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      key: const Key('expert-online-toggle'),
       onTap: busy ? null : onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),

@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../../core/auth/auth_state.dart';
+import '../../../core/constants/content_stages.dart';
 import '../models/content_model.dart';
 import '../services/content_service.dart';
 import '../widgets/verified_content_body.dart';
 
 /// CB-181 — View Verified Content Detail (UC-225)
 /// Displays the full body of a curated article or FAQ answer.
-/// Reachable from VerifiedContentSearchScreen (UC-224) and ViewContentScreen (UC-82).
+/// Reachable from ViewContentScreen (UC-82).
 class VerifiedContentDetailScreen extends StatefulWidget {
   final String contentId;
   final ContentBrowseMode mode;
@@ -126,26 +127,7 @@ class _VerifiedContentDetailScreenState
       requestGeneration == _loadGeneration &&
       AuthState.instance.userId == accountId;
 
-  String _stageLabel(String stage) {
-    switch (stage) {
-      case 'NEWBORN':
-        return 'Sơ sinh';
-      case 'INFANT':
-        return '1-2 tuổi';
-      case 'TODDLER':
-        return '3-5 tuổi';
-      case 'PRESCHOOL':
-        return '6+ tuổi';
-      case 'PREGNANCY':
-        return 'Thai kỳ';
-      case 'POSTPARTUM':
-        return 'Sau sinh';
-      case 'PRE_PREGNANCY':
-        return 'Chuẩn bị';
-      default:
-        return stage;
-    }
-  }
+  String _stageLabel(String stage) => contentStageLabel(stage);
 
   String _typeLabel(String type) {
     switch (type) {

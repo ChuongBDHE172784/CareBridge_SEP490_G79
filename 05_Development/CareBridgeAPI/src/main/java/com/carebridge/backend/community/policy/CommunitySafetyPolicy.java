@@ -75,7 +75,9 @@ public class CommunitySafetyPolicy {
 
     public boolean isQuestionVisibleTo(CommunityQuestion question, UUID userId) {
         return question.getStatus() == QuestionStatus.APPROVED
-                || (question.getStatus() == QuestionStatus.PENDING && question.getAuthorId().equals(userId));
+                || ((question.getStatus() == QuestionStatus.AI_PENDING
+                        || question.getStatus() == QuestionStatus.PENDING)
+                    && question.getAuthorId().equals(userId));
     }
 
 }

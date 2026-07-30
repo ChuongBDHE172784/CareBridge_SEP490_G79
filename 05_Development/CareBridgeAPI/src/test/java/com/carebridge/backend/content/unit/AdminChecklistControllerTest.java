@@ -98,7 +98,7 @@ class AdminChecklistControllerTest {
                 Instant.parse("2026-07-23T00:00:00Z"),
                 12L);
         when(contentService.getAdminChecklists(
-                        eq(ContentStage.PREGNANCY), eq(ChecklistTemplateStatus.PENDING_REVIEW), any()))
+                        eq(ContentStage.PREGNANCY), eq(ChecklistTemplateStatus.PENDING_REVIEW), eq(null), any()))
                 .thenReturn(new PageImpl<>(List.of(dto), PageRequest.of(0, 20), 1));
 
         mockMvc.perform(get(URL)
@@ -114,7 +114,21 @@ class AdminChecklistControllerTest {
                 .andExpect(content().string(not(containsString("\"body\""))));
 
         verify(contentService).getAdminChecklists(
-                eq(ContentStage.PREGNANCY), eq(ChecklistTemplateStatus.PENDING_REVIEW), any());
+                eq(ContentStage.PREGNANCY), eq(ChecklistTemplateStatus.PENDING_REVIEW), eq(null), any());
+    }
+
+    @Test
+    void checklistKeywordIsForwardedToTheAdminQuery() throws Exception {
+        when(contentService.getAdminChecklists(eq(null), eq(null), eq("pregnancy"), any()))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get(URL)
+                        .with(user(USER_ID).roles("CONTENT_ADMIN"))
+                        .param("keyword", "pregnancy"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isEmpty());
+
+        verify(contentService).getAdminChecklists(eq(null), eq(null), eq("pregnancy"), any());
     }
 
     @ParameterizedTest
@@ -140,7 +154,7 @@ class AdminChecklistControllerTest {
     @Test
     void uc82_69_tc_022_sizeOneAndFiftySucceedWithStageAndStatusFilters() throws Exception {
         when(contentService.getAdminChecklists(
-                        eq(ContentStage.PREGNANCY), eq(ChecklistTemplateStatus.APPROVED), any()))
+                        eq(ContentStage.PREGNANCY), eq(ChecklistTemplateStatus.APPROVED), eq(null), any()))
                 .thenReturn(new PageImpl<>(List.of()));
 
         for (int size : List.of(1, 50)) {
@@ -154,7 +168,7 @@ class AdminChecklistControllerTest {
         }
 
         verify(contentService, times(2)).getAdminChecklists(
-                eq(ContentStage.PREGNANCY), eq(ChecklistTemplateStatus.APPROVED), any());
+                eq(ContentStage.PREGNANCY), eq(ChecklistTemplateStatus.APPROVED), eq(null), any());
     }
 
     @Test

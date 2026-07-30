@@ -20,6 +20,7 @@ import com.carebridge.backend.community.entity.CommunityQuestion;
 import com.carebridge.backend.community.entity.CommunityTopic;
 import com.carebridge.backend.community.entity.PregnancyStage;
 import com.carebridge.backend.community.entity.QuestionStatus;
+import com.carebridge.backend.aimoderation.service.AiScanEnqueueService.EnqueueResult;
 import com.carebridge.backend.community.entity.UrgencyLevel;
 import com.carebridge.backend.community.entity.TopicType;
 import com.carebridge.backend.community.exception.CommunityTopicNotFoundException;
@@ -33,6 +34,7 @@ import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
 import com.carebridge.backend.community.entity.AnswerStatus;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
+import com.carebridge.backend.file.service.IFileService;
 
 import java.util.List;
 import java.util.Optional;
@@ -46,6 +48,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Spy;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 @ExtendWith(MockitoExtension.class)
 class CommunityQuestionServiceImplTest {
@@ -85,6 +89,9 @@ class CommunityQuestionServiceImplTest {
 
     @Mock
     private com.carebridge.backend.aimoderation.service.AiScanEnqueueService aiScanEnqueueService;
+
+    @Mock
+    private IFileService fileService;
 
     @InjectMocks
     private CommunityQuestionServiceImpl questionService;
@@ -131,13 +138,13 @@ class CommunityQuestionServiceImplTest {
                 .pregnancyWeek((short) 20)
                 .urgency(UrgencyLevel.NORMAL)
                 .anonymous(false)
-                .status(QuestionStatus.PENDING)
+                .status(QuestionStatus.AI_PENDING)
                 .likeCount(0)
                 .answerCount(0)
                 .build();
     }
 
-    // COM-TC-001: Happy path — MOTHER creates question, status = PENDING
+    // AI-first: storage starts AI_PENDING while the backward-compatible API says PENDING.
     @Test
     void createQuestion_validRequest_returnsPendingStatus() {
         lenient().when(topicRepository.findByIdAndTypeAndIsHiddenFalse(TOPIC_ID, TopicType.TOPIC))
@@ -147,12 +154,43 @@ class CommunityQuestionServiceImplTest {
 
         CommunityQuestionResponse response = questionService.createQuestion(AUTHOR_ID, makeRequest());
 
-        // ADR-COM-003: status must always be PENDING
+        // AI_PENDING is private and must not enter the Moderator PENDING queue.
         verify(questionRepository, times(1)).save(argThat(q ->
-                q.getStatus() == QuestionStatus.PENDING && q.getAuthorId().equals(AUTHOR_ID)
+                q.getStatus() == QuestionStatus.AI_PENDING && q.getAuthorId().equals(AUTHOR_ID)
         ));
         assertThat(response.getStatus()).isEqualTo("PENDING");
         assertThat(response.getId()).isNotNull();
+    }
+
+    @Test
+    void createQuestion_aiUnavailable_entersHumanPendingQueue() {
+        lenient().when(topicRepository.findByIdAndTypeAndIsHiddenFalse(TOPIC_ID, TopicType.TOPIC))
+                .thenReturn(Optional.of(makeTopic(false)));
+        when(questionRepository.save(any())).thenAnswer(inv -> {
+            CommunityQuestion question = inv.getArgument(0);
+            if (question.getId() == null) question.setId(UUID.randomUUID());
+            return question;
+        });
+        when(aiScanEnqueueService.enqueueScan(any(), any(), any()))
+                .thenReturn(EnqueueResult.HUMAN_REVIEW_REQUIRED);
+
+        CommunityQuestionResponse response = questionService.createQuestion(AUTHOR_ID, makeRequest());
+
+        verify(questionRepository, times(2)).save(any());
+        assertThat(response.getStatus()).isEqualTo("PENDING");
+    }
+
+    @Test
+    void createQuestion_withImagesVerifiesTheyBelongToAuthor() {
+        String imageUrl = "https://res.cloudinary.com/demo/image/upload/question.jpg";
+        lenient().when(topicRepository.findByIdAndTypeAndIsHiddenFalse(TOPIC_ID, TopicType.TOPIC))
+                .thenReturn(Optional.of(makeTopic(false)));
+        when(questionRepository.save(any())).thenReturn(savedQuestion());
+        CreateCommunityQuestionRequest request = makeRequest(req -> req.setImageUrls(List.of(imageUrl)));
+
+        questionService.createQuestion(AUTHOR_ID, request);
+
+        verify(fileService).assertCommunityImagesOwned(List.of(imageUrl), AUTHOR_ID);
     }
 
     // COM-TC-001 sub: entity defaults — likeCount=0, answerCount=0
@@ -277,7 +315,7 @@ class CommunityQuestionServiceImplTest {
     }
 
     private void stubEmptyHydration() {
-        when(answerRepository.findAllByQuestionIdAndStatusOrderByCreatedAtDesc(QUESTION_ID, AnswerStatus.APPROVED))
+        when(answerRepository.findVisibleAnswersForDetail(any(), any()))
                 .thenReturn(List.of());
         when(answerLikeRepository.findLikedAnswerIds(any(), any())).thenReturn(Set.of());
     }
@@ -294,7 +332,21 @@ class CommunityQuestionServiceImplTest {
         CommunityQuestionDetailResponse response = questionService.getQuestionDetail(QUESTION_ID, AUTHOR_ID);
 
         assertThat(response.getAuthorId()).isEqualTo(AUTHOR_ID);
-        assertThat(response.getAuthorDisplay()).isEqualTo("Mẹ ẩn danh");
+        assertThat(response.getAuthorDisplay()).isEqualTo("Thành viên ẩn danh");
+    }
+
+    @Test
+    void getQuestionDetail_ownAiPendingQuestion_remainsPrivatelyVisibleToAuthor() {
+        CommunityQuestion question = makeApprovedQuestion(false);
+        question.setStatus(QuestionStatus.AI_PENDING);
+        when(questionRepository.findById(QUESTION_ID)).thenReturn(Optional.of(question));
+        when(topicRepository.findById(TOPIC_ID)).thenReturn(Optional.of(makeTopic(false)));
+        stubEmptyHydration();
+
+        CommunityQuestionDetailResponse response = questionService.getQuestionDetail(QUESTION_ID, AUTHOR_ID);
+
+        assertThat(response.getId()).isEqualTo(QUESTION_ID);
+        assertThat(response.getStatus()).isEqualTo("PENDING");
     }
 
     // A different viewer must never see the real authorId of an anonymous question (ADR-COM-002).
@@ -321,5 +373,22 @@ class CommunityQuestionServiceImplTest {
 
         assertThat(response.getAuthorId()).isEqualTo(AUTHOR_ID);
         assertThat(response.getAuthorDisplay()).isEqualTo("Nguyễn Thị A");
+    }
+
+    @Test
+    void getMyQuestions_scopesByAuthorAndExcludesDeleted() {
+        CommunityQuestion pending = savedQuestion();
+        when(questionRepository.findAllByAuthorIdAndStatusNotOrderByCreatedAtDesc(
+                eq(AUTHOR_ID), eq(QuestionStatus.DELETED), eq(PageRequest.of(1, 2))))
+                .thenReturn(new PageImpl<>(List.of(pending), PageRequest.of(1, 2), 3));
+
+        var response = questionService.getMyQuestions(AUTHOR_ID, 1, 2);
+
+        assertThat(response.getData()).extracting(CommunityQuestionResponse::getStatus)
+                .containsExactly("PENDING");
+        assertThat(response.getPage()).isEqualTo(1);
+        assertThat(response.getTotalElements()).isEqualTo(3);
+        verify(questionRepository).findAllByAuthorIdAndStatusNotOrderByCreatedAtDesc(
+                AUTHOR_ID, QuestionStatus.DELETED, PageRequest.of(1, 2));
     }
 }

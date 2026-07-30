@@ -216,7 +216,8 @@ class ModerationServiceImplTest {
         CommunityQuestion q2 = PendingContentTestFactory.pendingQuestion();
         Page<CommunityQuestion> page = new PageImpl<>(List.of(q1, q2));
 
-        when(communityQuestionRepository.findByStatus(eq(QuestionStatus.PENDING), any(Pageable.class)))
+        when(communityQuestionRepository.findByStatusWithoutOpenModerationCase(
+                eq(QuestionStatus.PENDING), eq(ReportTargetType.QUESTION), any(), any(Pageable.class)))
                 .thenReturn(page);
         when(contentPreviewService.batchFetchPreviews(any(), eq(ReportTargetType.QUESTION)))
                 .thenReturn(Map.of(q1.getId(), q1.getBody(), q2.getId(), q2.getBody()));
@@ -227,7 +228,9 @@ class ModerationServiceImplTest {
         assertThat(response.content()).hasSize(2);
         assertThat(response.content().get(0).targetType()).isEqualTo(ReportTargetType.QUESTION);
         assertThat(response.totalElements()).isEqualTo(2);
-        verify(communityQuestionRepository, times(1)).findByStatus(eq(QuestionStatus.PENDING), any(Pageable.class));
+        verify(communityQuestionRepository, times(1)).findByStatusWithoutOpenModerationCase(
+                eq(QuestionStatus.PENDING), eq(ReportTargetType.QUESTION),
+                eq(List.of(ReportStatus.PENDING, ReportStatus.IN_REVIEW)), any(Pageable.class));
         verify(communityAnswerRepository, times(0)).findByStatus(any(), any());
     }
 
@@ -237,7 +240,8 @@ class ModerationServiceImplTest {
         CommunityAnswer a1 = PendingContentTestFactory.pendingAnswer();
         Page<CommunityAnswer> page = new PageImpl<>(List.of(a1));
 
-        when(communityAnswerRepository.findByStatus(eq(AnswerStatus.PENDING), any(Pageable.class)))
+        when(communityAnswerRepository.findByStatusWithoutOpenModerationCase(
+                eq(AnswerStatus.PENDING), eq(ReportTargetType.ANSWER), any(), any(Pageable.class)))
                 .thenReturn(page);
         when(contentPreviewService.batchFetchPreviews(any(), eq(ReportTargetType.ANSWER)))
                 .thenReturn(Map.of(a1.getId(), a1.getBody()));
@@ -247,7 +251,9 @@ class ModerationServiceImplTest {
 
         assertThat(response.content()).hasSize(1);
         assertThat(response.content().get(0).targetType()).isEqualTo(ReportTargetType.ANSWER);
-        verify(communityAnswerRepository, times(1)).findByStatus(eq(AnswerStatus.PENDING), any(Pageable.class));
+        verify(communityAnswerRepository, times(1)).findByStatusWithoutOpenModerationCase(
+                eq(AnswerStatus.PENDING), eq(ReportTargetType.ANSWER),
+                eq(List.of(ReportStatus.PENDING, ReportStatus.IN_REVIEW)), any(Pageable.class));
         verify(communityQuestionRepository, times(0)).findByStatus(any(), any());
     }
 
@@ -282,7 +288,8 @@ class ModerationServiceImplTest {
         CommunityQuestion q1 = PendingContentTestFactory.pendingQuestion();
         Page<CommunityQuestion> page = new PageImpl<>(List.of(q1));
 
-        when(communityQuestionRepository.findByStatus(eq(QuestionStatus.PENDING), any(Pageable.class)))
+        when(communityQuestionRepository.findByStatusWithoutOpenModerationCase(
+                eq(QuestionStatus.PENDING), eq(ReportTargetType.QUESTION), any(), any(Pageable.class)))
                 .thenReturn(page);
         when(contentPreviewService.batchFetchPreviews(any(), eq(ReportTargetType.QUESTION)))
                 .thenReturn(Map.of(q1.getId(), "truncated preview only"));
@@ -297,7 +304,8 @@ class ModerationServiceImplTest {
     // PCQ-TC-009: no PENDING content → empty content list, no exception
     @Test
     void getPendingContentQueue_withNoPendingContent_returnsEmptyList() {
-        when(communityQuestionRepository.findByStatus(eq(QuestionStatus.PENDING), any(Pageable.class)))
+        when(communityQuestionRepository.findByStatusWithoutOpenModerationCase(
+                eq(QuestionStatus.PENDING), eq(ReportTargetType.QUESTION), any(), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of()));
 
         PendingContentQueueFilter filter = new PendingContentQueueFilter(ReportTargetType.QUESTION, 0, 20);

@@ -9,23 +9,32 @@ import static org.mockito.Mockito.*;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.expert.entity.ExpertProfile;
+import com.carebridge.backend.expert.dto.response.ExpertProfileResponse;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
+import com.carebridge.backend.expert.mapper.ExpertProfileMapper;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import com.carebridge.backend.expertverification.adapter.CompreFacePipelineAdapter;
 import com.carebridge.backend.expertverification.adapter.FaceVerificationResult;
 import com.carebridge.backend.expertverification.entity.ExpertIdentityVerification;
 import com.carebridge.backend.expertverification.enums.FaceVerificationStatus;
 import com.carebridge.backend.expertverification.enums.IdentityReviewStatus;
+import com.carebridge.backend.expertverification.dto.response.DocumentReviewResponse;
+import com.carebridge.backend.expertverification.reviewstatus.ReviewStatus;
 import com.carebridge.backend.expertverification.repository.ExpertCredentialRepository;
 import com.carebridge.backend.expertverification.repository.ExpertIdentityVerificationRepository;
+import com.carebridge.backend.expertverification.service.IExpertCredentialService;
+import com.carebridge.backend.expertverification.service.impl.DuplicateIdentityFaceService;
 import com.carebridge.backend.expertverification.service.impl.ExpertIdentityVerificationServiceImpl;
+import com.carebridge.backend.security.repository.UserRepository;
 import com.carebridge.backend.file.dto.UploadFileResponse;
 import com.carebridge.backend.file.enums.FileAccessMode;
 import com.carebridge.backend.file.enums.FileKind;
 import com.carebridge.backend.file.enums.FilePurpose;
 import com.carebridge.backend.file.service.IFileService;
+import com.carebridge.backend.map.repository.CareFacilityRepository;
 import java.math.BigDecimal;
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,7 +50,12 @@ class ExpertIdentityVerificationServiceTest {
     @Mock private ExpertProfileRepository profileRepository;
     @Mock private ExpertIdentityVerificationRepository identityRepository;
     @Mock private ExpertCredentialRepository credentialRepository;
+    @Mock private IExpertCredentialService credentialService;
+    @Mock private ExpertProfileMapper profileMapper;
+    @Mock private UserRepository userRepository;
+    @Mock private CareFacilityRepository careFacilityRepository;
     @Mock private CompreFacePipelineAdapter pipelineAdapter;
+    @Mock private DuplicateIdentityFaceService duplicateIdentityFaceService;
     @Mock private IFileService fileService;
     @Mock private AuditService auditService;
 
@@ -53,7 +67,9 @@ class ExpertIdentityVerificationServiceTest {
     void setUp() {
         service = new ExpertIdentityVerificationServiceImpl(
                 profileRepository, identityRepository, credentialRepository,
-                pipelineAdapter, fileService, auditService,
+                credentialService, profileMapper, userRepository,
+                careFacilityRepository,
+                pipelineAdapter, duplicateIdentityFaceService, fileService, auditService,
                 TransactionOperations.withoutTransaction());
     }
 
@@ -120,6 +136,58 @@ class ExpertIdentityVerificationServiceTest {
     }
 
     @Test
+    void matchedFaceAgainstExistingIdentityRequiresManualDuplicateReview() {
+        when(profileRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(profile()));
+        byte[] selfieCrop = {9, 8, 7};
+        byte[] cardCrop = {6, 5, 4};
+        when(pipelineAdapter.verifyWithPipeline(any(), any(), any(), any()))
+                .thenReturn(new CompreFacePipelineAdapter.PipelineResult(
+                        new FaceVerificationResult(
+                                FaceVerificationStatus.MATCHED,
+                                new BigDecimal("0.91"),
+                                new BigDecimal("0.75"),
+                                null),
+                        selfieCrop, cardCrop,
+                        com.carebridge.backend.expertverification.enums.FaceDetectionStatus.DETECTED,
+                        com.carebridge.backend.expertverification.enums.FaceDetectionStatus.DETECTED,
+                        "MATCHED"));
+
+        when(fileService.uploadWithPurpose(
+                any(), eq(userId), eq(FileKind.IMAGE), any(), eq(FileAccessMode.PRIVATE)))
+                .thenAnswer(invocation -> upload());
+        when(fileService.uploadPrivateBytes(any(), eq(userId), any(), any(), any()))
+                .thenAnswer(invocation -> upload());
+        when(identityRepository.save(any())).thenAnswer(invocation -> {
+            ExpertIdentityVerification value = invocation.getArgument(0);
+            if (value.getId() == null) {
+                value.setId(UUID.randomUUID());
+            }
+            return value;
+        });
+
+        var persistedAttempt = ExpertIdentityVerification.builder()
+                .id(UUID.randomUUID())
+                .expertProfileId(profileId)
+                .build();
+        when(identityRepository.findByIdForUpdate(any()))
+                .thenReturn(Optional.of(persistedAttempt));
+        when(duplicateIdentityFaceService.findPossibleDuplicate(
+                eq(profileId), eq(selfieCrop), eq("image/jpeg")))
+                .thenReturn(Optional.of(new DuplicateIdentityFaceService.DuplicateFaceMatch(
+                        UUID.randomUUID(), UUID.randomUUID(),
+                        new BigDecimal("0.93"), new BigDecimal("0.75"))));
+
+        service.submit(userId, image("selfie"), image("front"), image("back"));
+
+        assertThat(persistedAttempt.getReviewStatus())
+                .isEqualTo(IdentityReviewStatus.MANUAL_REVIEW_REQUIRED);
+        assertThat(persistedAttempt.getReviewReason())
+                .isEqualTo("Possible duplicate identity detected; admin review is required");
+        verify(duplicateIdentityFaceService).findPossibleDuplicate(
+                profileId, selfieCrop, "image/jpeg");
+    }
+
+    @Test
     void noProfileRoutesOnboardingToProfileStep() {
         when(profileRepository.findByUserId(userId)).thenReturn(Optional.empty());
 
@@ -130,10 +198,42 @@ class ExpertIdentityVerificationServiceTest {
         assertThat(onboarding.getIdentityStatus()).isEqualTo("MISSING");
     }
 
+    @Test
+    void adminReviewCasesGroupsCredentialEvidenceByProfile() {
+        ExpertProfile profile = profile();
+        DocumentReviewResponse credential = DocumentReviewResponse.builder()
+                .credentialId(UUID.randomUUID())
+                .expertProfileId(profileId)
+                .credentialType("MEDICAL_LICENSE")
+                .reviewStatus(ReviewStatus.APPROVED)
+                .build();
+        ExpertProfileResponse profileResponse = ExpertProfileResponse.builder()
+                .expertProfileId(profileId)
+                .verificationStatus(VerificationStatus.PENDING)
+                .build();
+
+        when(identityRepository.findFirstByExpertProfileIdOrderByCreatedAtDesc(profileId))
+                .thenReturn(Optional.empty());
+        when(credentialService.getAdminCredentialsForProfile(profileId, userId))
+                .thenReturn(List.of(credential));
+        when(profileMapper.toResponse(profile, null, null)).thenReturn(profileResponse);
+
+        when(profileRepository.findForReview(null, null, org.springframework.data.domain.PageRequest.of(0, 10)))
+                .thenReturn(new org.springframework.data.domain.PageImpl<>(List.of(profile)));
+
+        var reviewCases = service.getAdminReviewCases(null, null, org.springframework.data.domain.PageRequest.of(0, 10), userId);
+
+        assertThat(reviewCases.getContent()).hasSize(1);
+        assertThat(reviewCases.getContent().get(0).getProfile().getExpertProfileId()).isEqualTo(profileId);
+        assertThat(reviewCases.getContent().get(0).getCredentials()).containsExactly(credential);
+        assertThat(reviewCases.getContent().get(0).getIdentityStatus()).isEqualTo("MISSING");
+        assertThat(reviewCases.getContent().get(0).getCredentialStatus()).isEqualTo("APPROVED");
+        assertThat(reviewCases.getContent().get(0).isReadyForFinalApproval()).isFalse();
+    }
+
     private ExpertProfile profile() {
         return ExpertProfile.builder()
                 .expertProfileId(profileId)
-                .userId(userId)
                 .verificationStatus(VerificationStatus.PENDING)
                 .build();
     }

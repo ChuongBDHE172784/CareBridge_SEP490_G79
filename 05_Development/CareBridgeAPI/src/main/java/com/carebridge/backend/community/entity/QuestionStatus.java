@@ -1,5 +1,5 @@
 package com.carebridge.backend.community.entity;
 
 public enum QuestionStatus {
-    PENDING, APPROVED, HIDDEN, LOCKED, DELETED
+    AI_PENDING, PENDING, APPROVED, HIDDEN, LOCKED, DELETED
 }

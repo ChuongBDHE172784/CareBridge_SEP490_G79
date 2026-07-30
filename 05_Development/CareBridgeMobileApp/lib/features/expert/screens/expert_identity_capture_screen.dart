@@ -106,7 +106,7 @@ class _ExpertIdentityCaptureScreenState
         identityBack: _back!,
       );
       ExpertOnboardingStore.instance.invalidate();
-      if (mounted) context.go('/expert/credentials');
+      if (mounted) context.go('/expert-onboarding');
     } on ArgumentError catch (e) {
       setState(() => _error = e.message.toString());
     } on ApiException catch (e) {

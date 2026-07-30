@@ -1,6 +1,7 @@
 package com.carebridge.backend.expert.dto.response;
 
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
+import com.carebridge.backend.expert.truststatus.TrustStatus;
 import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -26,6 +27,7 @@ public class ExpertProfileResponse {
 	private String hospitalId;
 	private String consultationScope;
 	private VerificationStatus verificationStatus;
+	private TrustStatus trustStatus;
 	private boolean isConsultationEligible;
 	private LocalDateTime verifiedAt;
 	private UUID verifiedBy;

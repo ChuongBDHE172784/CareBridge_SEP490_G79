@@ -1,5 +1,6 @@
 package com.carebridge.backend.expertavailability.mapper;
 
+import com.carebridge.backend.expertavailability.availabilitystatus.AvailabilityStatus;
 import com.carebridge.backend.expertavailability.dto.request.CreateAvailabilityRequest;
 import com.carebridge.backend.expertavailability.dto.response.AvailabilityResponse;
 import com.carebridge.backend.expertavailability.entity.ExpertAvailability;
@@ -10,11 +11,19 @@ import java.util.UUID;
 public class ExpertAvailabilityMapper {
 
     public ExpertAvailability toEntity(UUID expertProfileId, CreateAvailabilityRequest request) {
+        AvailabilityStatus status = AvailabilityStatus.AVAILABLE;
+        if (request.getStatus() != null && !request.getStatus().isBlank()) {
+            try {
+                status = AvailabilityStatus.valueOf(request.getStatus().toUpperCase());
+            } catch (Exception ignored) {}
+        }
         return ExpertAvailability.builder()
                 .expertProfileId(expertProfileId)
+                .professionalProfileId(expertProfileId)
                 .startAt(request.getStartAt())
                 .endAt(request.getEndAt())
                 .channelType(request.getChannelType())
+                .status(status)
                 .build();
     }
 

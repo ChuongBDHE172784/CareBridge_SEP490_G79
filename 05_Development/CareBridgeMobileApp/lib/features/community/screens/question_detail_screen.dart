@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/auth/auth_state.dart';
+import '../../../core/constants/content_stages.dart';
 import '../models/community_model.dart';
 import '../services/community_service.dart';
+import '../widgets/community_image_attachments.dart';
 import 'post_answer_screen.dart';
 import 'edit_question_screen.dart';
+
+bool canAnswerCommunityQuestion(String? status) => status == 'APPROVED';
 
 /// CB-014 — UC-199 View Community Question Detail
 /// Displays a single approved community question with its answers.
@@ -58,6 +62,8 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
       _question != null &&
       _question!.authorId != null &&
       _question!.authorId == AuthState.instance.userId;
+
+  bool get _canAnswerQuestion => canAnswerCommunityQuestion(_question?.status);
 
   Future<void> _loadDetail() async {
     setState(() => _loading = true);
@@ -150,62 +156,20 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
   bool _isOwnAnswer(CommunityAnswer answer) =>
       answer.authorId != null && answer.authorId == AuthState.instance.userId;
 
-  // UC-200: edit own answer via a simple dialog
   Future<void> _editAnswer(CommunityAnswer answer) async {
-    final controller = TextEditingController(text: answer.body);
-    bool isPersonalExperience = answer.personalExperience;
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('Chỉnh sửa câu trả lời'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: controller,
-                maxLines: 5,
-                minLines: 3,
-                decoration: const InputDecoration(border: OutlineInputBorder()),
-              ),
-              CheckboxListTile(
-                value: isPersonalExperience,
-                onChanged: (v) =>
-                    setDialogState(() => isPersonalExperience = v ?? false),
-                title: const Text('Đây là kinh nghiệm cá nhân'),
-                contentPadding: EdgeInsets.zero,
-                controlAffinity: ListTileControlAffinity.leading,
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('Hủy'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('Lưu'),
-            ),
-          ],
+    final updated = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => PostAnswerScreen(
+          questionId: widget.questionId,
+          questionTitle: _question?.title,
+          questionBody: _question?.body,
+          authorName: _question?.authorDisplay,
+          existingAnswer: answer,
         ),
       ),
     );
-    if (saved != true) return;
-    try {
-      await _service.editAnswer(
-        widget.questionId,
-        answer.id,
-        body: controller.text,
-        isPersonalExperience: isPersonalExperience,
-      );
+    if (updated == true) {
       _loadDetail();
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Không thể cập nhật câu trả lời: $e')),
-        );
-      }
     }
   }
 
@@ -368,21 +332,6 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
     }
   }
 
-  String _stageLabel(String s) {
-    switch (s) {
-      case 'PRE_PREGNANCY':
-        return 'Chuẩn bị mang thai';
-      case 'PREGNANCY':
-        return 'Mang thai';
-      case 'POSTPARTUM':
-        return 'Sau sinh';
-      case 'BABY_CARE':
-        return 'Chăm sóc bé';
-      default:
-        return s;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -412,14 +361,15 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
             onPressed: () => context.push('/rag-chat'),
             tooltip: 'Hỏi AI CareBridge (UC-132)',
           ),
-          IconButton(
-            icon: const Icon(Icons.flag_outlined, color: _onSurfaceVariant),
-            onPressed: () => _reportTarget(
-              targetType: 'QUESTION',
-              targetId: widget.questionId,
+          if (_question != null && !_isMyQuestion)
+            IconButton(
+              icon: const Icon(Icons.flag_outlined, color: _onSurfaceVariant),
+              onPressed: () => _reportTarget(
+                targetType: 'QUESTION',
+                targetId: widget.questionId,
+              ),
+              tooltip: 'Báo cáo câu hỏi',
             ),
-            tooltip: 'Báo cáo câu hỏi',
-          ),
           if (_question?.authorId != null && !_isMyQuestion)
             IconButton(
               icon: const Icon(
@@ -451,6 +401,12 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                       questionId: widget.questionId,
                       initialTitle: _question!.title,
                       initialBody: _question!.body,
+                      initialTopicId: _question!.topicId,
+                      initialTopicName: _question!.topicName,
+                      initialStage: _question!.stage,
+                      initialImageUrls: _question!.imageUrls,
+                      initialPregnancyWeek: _question!.pregnancyWeek,
+                      initialBabyAgeMonths: _question!.babyAgeMonths,
                       initialIsAnonymous: _question!.anonymous,
                       initialUrgency: _question!.urgency,
                     ),
@@ -468,12 +424,12 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
             ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: _primary,
-        foregroundColor: Colors.white,
-        onPressed: _question == null
-            ? null
-            : () async {
+      floatingActionButton: !_canAnswerQuestion
+          ? null
+          : FloatingActionButton.extended(
+              backgroundColor: _primary,
+              foregroundColor: Colors.white,
+              onPressed: () async {
                 final answered = await Navigator.of(context).push<bool>(
                   MaterialPageRoute(
                     builder: (_) => PostAnswerScreen(
@@ -486,12 +442,12 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                 );
                 if (answered == true) _loadDetail();
               },
-        label: const Text(
-          'Trả lời',
-          style: TextStyle(fontWeight: FontWeight.w600),
-        ),
-        icon: const Icon(Icons.edit_note),
-      ),
+              label: const Text(
+                'Trả lời',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              icon: const Icon(Icons.edit_note),
+            ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: _primary))
           : _question == null
@@ -554,7 +510,7 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                   runSpacing: 6,
                   children: [
                     if (q.topicName.isNotEmpty) _Tag(q.topicName),
-                    if (q.stage.isNotEmpty) _Tag(_stageLabel(q.stage)),
+                    if (q.stage.isNotEmpty) _Tag(contentStageLabel(q.stage)),
                     if (q.urgency == 'URGENT')
                       _Tag(
                         'Khẩn cấp',
@@ -638,6 +594,10 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                     height: 1.5,
                   ),
                 ),
+                if (q.imageUrls.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  CommunityNetworkImageGallery(imageUrls: q.imageUrls),
+                ],
                 const SizedBox(height: 14),
                 const Divider(color: _outlineVariant, height: 1),
                 const SizedBox(height: 12),
@@ -690,6 +650,30 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
           ),
         ),
 
+        if (!_canAnswerQuestion)
+          SliverToBoxAdapter(
+            child: Container(
+              margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFEFB8),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.hourglass_top_rounded, color: Color(0xFF745600)),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Câu hỏi đang chờ duyệt. Bạn có thể trả lời sau khi câu hỏi được phê duyệt.',
+                      style: TextStyle(color: Color(0xFF5C4300), height: 1.35),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
         // Answers header
         SliverToBoxAdapter(
           child: Padding(
@@ -732,9 +716,11 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                     style: TextStyle(fontSize: 14, color: _onSurfaceVariant),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
-                    'Hãy là người đầu tiên trả lời!',
-                    style: TextStyle(fontSize: 12, color: _outline),
+                  Text(
+                    _canAnswerQuestion
+                        ? 'Hãy là người đầu tiên trả lời!'
+                        : 'Câu hỏi cần được duyệt trước khi nhận câu trả lời.',
+                    style: const TextStyle(fontSize: 12, color: _outline),
                   ),
                 ],
               ),
@@ -864,6 +850,39 @@ class _AnswerCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (isOwnAnswer &&
+              (answer.status == 'PENDING' || answer.status == 'AI_PENDING')) ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF3CD),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFFFEEBA)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(
+                    Icons.hourglass_top_rounded,
+                    size: 16,
+                    color: Color(0xFF856404),
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Câu trả lời của bạn đang chờ AI kiểm duyệt nội dung...',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 12,
+                        color: Color(0xFF856404),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           // Author row
           Row(
             children: [
@@ -971,6 +990,10 @@ class _AnswerCard extends StatelessWidget {
               height: 1.5,
             ),
           ),
+          if (answer.imageUrls.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            CommunityNetworkImageGallery(imageUrls: answer.imageUrls),
+          ],
           const SizedBox(height: 10),
           const Divider(color: Color(0xFFD6C2BD), height: 1),
           const SizedBox(height: 8),
@@ -1013,31 +1036,32 @@ class _AnswerCard extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              PopupMenuButton<String>(
-                tooltip: 'Báo cáo',
-                icon: const Icon(
-                  Icons.flag_outlined,
-                  size: 18,
-                  color: Color(0xFF524440),
-                ),
-                onSelected: (value) {
-                  if (value == 'answer') onReport();
-                  if (value == 'author' && onReportAuthor != null) {
-                    onReportAuthor!();
-                  }
-                },
-                itemBuilder: (ctx) => [
-                  const PopupMenuItem(
-                    value: 'answer',
-                    child: Text('Báo cáo câu trả lời'),
+              if (!isOwnAnswer)
+                PopupMenuButton<String>(
+                  tooltip: 'Báo cáo',
+                  icon: const Icon(
+                    Icons.flag_outlined,
+                    size: 18,
+                    color: Color(0xFF524440),
                   ),
-                  if (onReportAuthor != null)
+                  onSelected: (value) {
+                    if (value == 'answer') onReport();
+                    if (value == 'author' && onReportAuthor != null) {
+                      onReportAuthor!();
+                    }
+                  },
+                  itemBuilder: (ctx) => [
                     const PopupMenuItem(
-                      value: 'author',
-                      child: Text('Báo cáo tài khoản'),
+                      value: 'answer',
+                      child: Text('Báo cáo câu trả lời'),
                     ),
-                ],
-              ),
+                    if (onReportAuthor != null)
+                      const PopupMenuItem(
+                        value: 'author',
+                        child: Text('Báo cáo tài khoản'),
+                      ),
+                  ],
+                ),
             ],
           ),
         ],

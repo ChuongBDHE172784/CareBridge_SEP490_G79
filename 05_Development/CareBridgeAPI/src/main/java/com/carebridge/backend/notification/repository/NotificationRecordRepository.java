@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
 import java.util.Optional;
+import java.util.List;
 import java.util.UUID;
 
 @Repository
@@ -20,6 +21,10 @@ public interface NotificationRecordRepository extends JpaRepository<Notification
     Page<NotificationRecord> findByUserId(UUID userId, Pageable pageable);
 
     Page<NotificationRecord> findByUserIdAndType(UUID userId, NotificationType type, Pageable pageable);
+
+    /** Dashboard-only: legacy notifications without a care-group scope are excluded. */
+    List<NotificationRecord> findByUserIdAndTypeAndCareGroupId(
+            UUID userId, NotificationType type, UUID careGroupId);
 
     @Query("SELECT r FROM NotificationRecord r WHERE r.userId = :userId "
             + "AND r.status NOT IN ('PENDING', 'PROCESSING')")

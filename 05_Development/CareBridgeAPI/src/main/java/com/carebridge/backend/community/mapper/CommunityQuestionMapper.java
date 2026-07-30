@@ -10,10 +10,13 @@ import com.carebridge.backend.community.entity.QuestionStatus;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.ArrayList;
 import java.util.UUID;
 
 @Component
 public class CommunityQuestionMapper {
+
+    private static final String ANONYMOUS_AUTHOR = "Thành viên ẩn danh";
 
     public CommunityQuestion toEntity(CreateCommunityQuestionRequest request, UUID authorId) {
         return CommunityQuestion.builder()
@@ -21,12 +24,13 @@ public class CommunityQuestionMapper {
                 .authorId(authorId)
                 .title(request.getTitle())
                 .body(request.getBody())
+                .imageUrls(copyImageUrls(request.getImageUrls()))
                 .stage(request.getStage())
                 .pregnancyWeek(request.getPregnancyWeek() != null ? request.getPregnancyWeek().shortValue() : null)
                 .babyAgeMonths(request.getBabyAgeMonths() != null ? request.getBabyAgeMonths().shortValue() : null)
                 .urgency(request.getUrgency())
                 .anonymous(Boolean.TRUE.equals(request.getIsAnonymous()))
-                .status(QuestionStatus.PENDING)
+                .status(QuestionStatus.AI_PENDING)
                 .build();
     }
 
@@ -39,12 +43,16 @@ public class CommunityQuestionMapper {
                 .topicId(entity.getTopicId())
                 .title(entity.getTitle())
                 .body(entity.getBody())
+                .imageUrls(copyImageUrls(entity.getImageUrls()))
                 .stage(entity.getStage() != null ? entity.getStage().name() : null)
                 .urgency(entity.getUrgency() != null ? entity.getUrgency().name() : null)
                 .anonymous(entity.isAnonymous())
                 .authorId(exposedAuthorId)
-                .status(entity.getStatus() != null ? entity.getStatus().name() : null)
+                .status(toResponseStatus(entity.getStatus()))
+                .answerCount(entity.getAnswerCount())
+                .likeCount(entity.getLikeCount())
                 .createdAt(entity.getCreatedAt())
+                .updatedAt(entity.getUpdatedAt())
                 .build();
     }
 
@@ -70,7 +78,7 @@ public class CommunityQuestionMapper {
             boolean isBookmarked, boolean isLiked, UUID currentUserId) {
         boolean viewerIsAuthor = currentUserId != null && currentUserId.equals(entity.getAuthorId());
         UUID exposedAuthorId = (entity.isAnonymous() && !viewerIsAuthor) ? null : entity.getAuthorId();
-        String finalAuthorDisplay = entity.isAnonymous() ? "Mẹ ẩn danh"
+        String finalAuthorDisplay = entity.isAnonymous() ? ANONYMOUS_AUTHOR
                 : ((authorDisplay != null && !authorDisplay.isBlank()) ? authorDisplay : "Người dùng");
         return CommunityQuestionDetailResponse.builder()
                 .id(entity.getId())
@@ -78,6 +86,7 @@ public class CommunityQuestionMapper {
                 .topicName(topicName)
                 .title(entity.getTitle())
                 .body(entity.getBody())
+                .imageUrls(copyImageUrls(entity.getImageUrls()))
                 .stage(entity.getStage() != null ? entity.getStage().name() : null)
                 .pregnancyWeek(entity.getPregnancyWeek())
                 .babyAgeMonths(entity.getBabyAgeMonths())
@@ -85,7 +94,7 @@ public class CommunityQuestionMapper {
                 .anonymous(entity.isAnonymous())
                 .authorId(exposedAuthorId)
                 .authorDisplay(finalAuthorDisplay)
-                .status(entity.getStatus() != null ? entity.getStatus().name() : null)
+                .status(toResponseStatus(entity.getStatus()))
                 .answerCount(entity.getAnswerCount())
                 .likeCount(entity.getLikeCount())
                 .isBookmarked(isBookmarked)
@@ -96,17 +105,40 @@ public class CommunityQuestionMapper {
                 .build();
     }
 
-    // UC-162: map to lightweight summary for search results
+    private List<String> copyImageUrls(List<String> imageUrls) {
+        return imageUrls == null ? new ArrayList<>() : new ArrayList<>(imageUrls);
+    }
+
+    private String toResponseStatus(QuestionStatus status) {
+        if (status == null) {
+            return null;
+        }
+        return status == QuestionStatus.AI_PENDING ? QuestionStatus.PENDING.name() : status.name();
+    }
+
+    // UC-162: map to summary for search results
     public CommunityQuestionSummaryResponse toSummaryResponse(
             CommunityQuestion entity, String topicName, boolean hasExpertAnswer) {
+        return toSummaryResponse(entity, topicName, null, hasExpertAnswer, false, false);
+    }
+
+    public CommunityQuestionSummaryResponse toSummaryResponse(
+            CommunityQuestion entity, String topicName, String authorDisplay,
+            boolean hasExpertAnswer, boolean isBookmarked, boolean isLiked) {
+        String finalAuthorDisplay = entity.isAnonymous() ? ANONYMOUS_AUTHOR
+                : ((authorDisplay != null && !authorDisplay.isBlank()) ? authorDisplay : "Người dùng");
         return new CommunityQuestionSummaryResponse(
                 entity.getId(),
                 entity.getTitle(),
                 topicName,
+                finalAuthorDisplay,
                 entity.getStage() != null ? entity.getStage().name() : null,
                 entity.getUrgency() != null ? entity.getUrgency().name() : null,
                 entity.getAnswerCount(),
+                entity.getLikeCount(),
                 hasExpertAnswer,
+                isBookmarked,
+                isLiked,
                 entity.getCreatedAt()
         );
     }

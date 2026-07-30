@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 
 const navItems = [
+  { to: '/expert/consultation-requests', label: 'Yêu cầu tư vấn', icon: '📞', desc: 'CB-064: Quản lý các yêu cầu tư vấn' },
   { to: '/expert/profile', label: 'Hồ sơ chuyên môn', icon: '👤', desc: 'CB-055: Xem & cập nhật thông tin cá nhân' },
   { to: '/expert/credentials', label: 'Chứng chỉ & Giấy tờ', icon: '📄', desc: 'CB-056: Tải lên & theo dõi trạng thái xét duyệt' },
   { to: '/expert/calendar', label: 'Lịch rảnh', icon: '📅', desc: 'CB-057: Quản lý khung giờ hoạt động' },

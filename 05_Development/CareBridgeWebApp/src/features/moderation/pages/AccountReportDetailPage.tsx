@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import ModPortalSidebar from '../components/ModPortalSidebar';
 import ConfirmDialog from '../../../shared/components/ConfirmDialog';
 import { fetchAiAssessment, fetchModerationQueue, fetchRelatedReports, resolveReport } from '../services/moderationApi';
 import type { AiAssessment, ModerationQueueItem } from '../models/moderation';
@@ -133,8 +132,7 @@ export default function AccountReportDetailPage() {
 
   return (
     <div className="portal-page">
-      <ModPortalSidebar />
-      <main className="portal-content font-sans">
+      <main className="font-sans">
         <div className="p-8">
         {isLoading ? (
           <div className="portal-empty">Đang tải...</div>

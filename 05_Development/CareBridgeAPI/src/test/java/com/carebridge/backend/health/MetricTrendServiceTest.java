@@ -48,8 +48,8 @@ class MetricTrendServiceTest {
         var journey = MetricTrendTestFactory.makeJourney();
         var metrics = MetricTrendTestFactory.makeWeightMetrics(5);
         when(journeyRepository.findById(MetricTrendTestFactory.JOURNEY_ID)).thenReturn(Optional.of(journey));
-        when(metricRepository.findByJourneyIdAndMetricTypeAndStatusAndMeasuredAtBetweenOrderByMeasuredAtAsc(
-                eq(MetricTrendTestFactory.JOURNEY_ID), eq(MetricType.WEIGHT), eq(MetricStatus.ACTIVE),
+        when(metricRepository.findByJourneyIdAndMetricTypeInAndStatusAndMeasuredAtBetweenOrderByMeasuredAtAsc(
+                eq(MetricTrendTestFactory.JOURNEY_ID), eq(List.of(MetricType.WEIGHT.name())), eq(MetricStatus.ACTIVE),
                 any(Instant.class), any(Instant.class)))
                 .thenReturn(metrics);
 
@@ -73,7 +73,7 @@ class MetricTrendServiceTest {
     void getMetricTrend_noData_returns200WithEmptyList() {
         var journey = MetricTrendTestFactory.makeJourney();
         when(journeyRepository.findById(MetricTrendTestFactory.JOURNEY_ID)).thenReturn(Optional.of(journey));
-        when(metricRepository.findByJourneyIdAndMetricTypeAndStatusAndMeasuredAtBetweenOrderByMeasuredAtAsc(
+        when(metricRepository.findByJourneyIdAndMetricTypeInAndStatusAndMeasuredAtBetweenOrderByMeasuredAtAsc(
                 any(), any(), any(), any(), any()))
                 .thenReturn(Collections.emptyList());
 
@@ -124,8 +124,8 @@ class MetricTrendServiceTest {
         var journey = MetricTrendTestFactory.makeJourney();
         var bpMetrics = MetricTrendTestFactory.makeBloodPressureMetrics(3);
         when(journeyRepository.findById(MetricTrendTestFactory.JOURNEY_ID)).thenReturn(Optional.of(journey));
-        when(metricRepository.findByJourneyIdAndMetricTypeAndStatusAndMeasuredAtBetweenOrderByMeasuredAtAsc(
-                any(), eq(MetricType.BLOOD_PRESSURE_DIASTOLIC), any(), any(), any()))
+        when(metricRepository.findByJourneyIdAndMetricTypeInAndStatusAndMeasuredAtBetweenOrderByMeasuredAtAsc(
+                any(), eq(List.of(MetricType.BLOOD_PRESSURE_SYSTOLIC.name(), MetricType.BLOOD_PRESSURE_DIASTOLIC.name())), any(), any(), any()))
                 .thenReturn(bpMetrics);
 
         MetricTrendResponse response = metricService.getMetricTrend(

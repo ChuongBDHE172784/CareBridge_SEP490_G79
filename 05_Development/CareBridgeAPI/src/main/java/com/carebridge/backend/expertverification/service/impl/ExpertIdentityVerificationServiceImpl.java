@@ -6,12 +6,18 @@ import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.expert.exception.ExpertException;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import com.carebridge.backend.expertverification.adapter.CompreFacePipelineAdapter;
 import com.carebridge.backend.expertverification.adapter.FaceVerificationResult;
 import com.carebridge.backend.expertverification.enums.FaceDetectionStatus;
 import com.carebridge.backend.expertverification.dto.request.ReviewIdentityRequest;
 import com.carebridge.backend.expertverification.dto.response.ExpertOnboardingResponse;
 import com.carebridge.backend.expertverification.dto.response.IdentityVerificationResponse;
+import com.carebridge.backend.expertverification.dto.response.ExpertReviewCaseResponse;
+import com.carebridge.backend.expertverification.dto.response.DocumentReviewResponse;
+import com.carebridge.backend.expertverification.service.IExpertCredentialService;
+import com.carebridge.backend.expert.mapper.ExpertProfileMapper;
 import com.carebridge.backend.expertverification.entity.ExpertCredential;
 import com.carebridge.backend.expertverification.entity.ExpertIdentityVerification;
 import com.carebridge.backend.expertverification.enums.FaceVerificationStatus;
@@ -26,6 +32,8 @@ import com.carebridge.backend.file.enums.FileAccessMode;
 import com.carebridge.backend.file.enums.FileKind;
 import com.carebridge.backend.file.enums.FilePurpose;
 import com.carebridge.backend.file.service.IFileService;
+import com.carebridge.backend.map.facilitystatus.FacilityStatus;
+import com.carebridge.backend.map.repository.CareFacilityRepository;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -39,6 +47,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionOperations;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.carebridge.backend.security.repository.UserRepository;
+
 @Service
 @RequiredArgsConstructor
 public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVerificationService {
@@ -48,7 +58,12 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
     private final ExpertProfileRepository profileRepository;
     private final ExpertIdentityVerificationRepository identityRepository;
     private final ExpertCredentialRepository credentialRepository;
+    private final IExpertCredentialService credentialService;
+    private final ExpertProfileMapper profileMapper;
+    private final UserRepository userRepository;
+    private final CareFacilityRepository careFacilityRepository;
     private final CompreFacePipelineAdapter pipelineAdapter;
+    private final DuplicateIdentityFaceService duplicateIdentityFaceService;
     private final IFileService fileService;
     private final AuditService auditService;
     private final TransactionOperations transactionOperations;
@@ -56,6 +71,7 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
     private record InitialSubmission(
             IdentityVerificationResponse response,
             boolean created,
+            UUID expertProfileId,
             byte[] selfieBytes,
             byte[] frontBytes) {}
 
@@ -70,9 +86,11 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
         var existingAttempt = identityRepository
                 .findFirstByExpertProfileIdOrderByCreatedAtDesc(profile.getExpertProfileId());
         if (existingAttempt.isPresent()
-                && existingAttempt.get().getReviewStatus() != IdentityReviewStatus.REJECTED) {
+                && existingAttempt.get().getReviewStatus() != IdentityReviewStatus.REJECTED
+                && existingAttempt.get().getReviewStatus() != IdentityReviewStatus.MANUAL_REVIEW_REQUIRED) {
                 return new InitialSubmission(
-                        toResponse(existingAttempt.get()), false, null, null);
+                        toResponse(existingAttempt.get()), false,
+                        profile.getExpertProfileId(), null, null);
         }
 
         byte[] selfieBytes = validateIdentityImage(selfie, "selfie");
@@ -81,7 +99,8 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
 
         IdentityVerificationResponse attemptResponse = submitInitialAttempt(userId, profile.getExpertProfileId(),
                 selfie, identityFront, identityBack, selfieBytes, frontBytes);
-            return new InitialSubmission(attemptResponse, true, selfieBytes, frontBytes);
+            return new InitialSubmission(
+                    attemptResponse, true, profile.getExpertProfileId(), selfieBytes, frontBytes);
         });
         if (submission == null) {
             throw new IllegalStateException("Identity submission transaction returned no result");
@@ -92,7 +111,9 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
 
         // CompreFace and crop uploads run after the short persistence transaction commits.
         UUID attemptId = submission.response().getIdentityVerificationId();
-        processIdentityVerificationAsync(attemptId, userId, submission.selfieBytes(), submission.frontBytes(),
+        processIdentityVerificationAsync(
+                attemptId, userId, submission.expertProfileId(),
+                submission.selfieBytes(), submission.frontBytes(),
                 normalizedMime(selfie), normalizedMime(identityFront));
 
         return submission.response();
@@ -143,7 +164,8 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
      * Processes the CompreFace pipeline separately from the initial transaction.
      * Called after the initial attempt is saved.
      */
-    protected void processIdentityVerificationAsync(UUID attemptId, UUID userId,
+    protected void processIdentityVerificationAsync(
+            UUID attemptId, UUID userId, UUID expertProfileId,
             byte[] selfieBytes, byte[] frontBytes,
             String selfieMimeType, String frontMimeType) {
         List<UUID> uploaded = new ArrayList<>();
@@ -175,7 +197,16 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
                 uploaded.add(idCardCropFileId);
             }
 
-            IdentityReviewStatus reviewStatus = switch (faceResult.status()) {
+            var duplicateMatch = faceResult.status() == FaceVerificationStatus.MATCHED
+                    ? duplicateIdentityFaceService.findPossibleDuplicate(
+                            expertProfileId,
+                            pipelineResult.croppedSelfie(), selfieMimeType)
+                    : java.util.Optional
+                            .<DuplicateIdentityFaceService.DuplicateFaceMatch>empty();
+
+            IdentityReviewStatus reviewStatus = duplicateMatch.isPresent()
+                    ? IdentityReviewStatus.MANUAL_REVIEW_REQUIRED
+                    : switch (faceResult.status()) {
                 case MATCHED -> IdentityReviewStatus.PENDING_REVIEW;
                 case NOT_MATCHED,
                      DISABLED,
@@ -183,7 +214,9 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
                      NO_FACE,
                      MULTIPLE_FACES -> IdentityReviewStatus.MANUAL_REVIEW_REQUIRED;
             };
-            String reviewReason = switch (faceResult.status()) {
+            String reviewReason = duplicateMatch.isPresent()
+                    ? "Possible duplicate identity detected; admin review is required"
+                    : switch (faceResult.status()) {
                 case NOT_MATCHED -> "Face similarity is below the configured threshold";
                 case DISABLED -> "CompreFace service is disabled";
                 case RETRYABLE_ERROR -> "CompreFace provider error: " + faceResult.providerErrorCode();
@@ -207,8 +240,8 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
                 attempt.setProviderErrorCode(faceResult.providerErrorCode());
                 attempt.setReviewStatus(reviewStatus);
                 attempt.setReviewReason(reviewReason);
-                attempt.setDetectionSelfieStatus(selfieDetectionStatus.name());
-                attempt.setDetectionIdCardStatus(idCardDetectionStatus.name());
+                attempt.setDetectionSelfieStatus(selfieDetectionStatus != null ? selfieDetectionStatus.name() : null);
+                attempt.setDetectionIdCardStatus(idCardDetectionStatus != null ? idCardDetectionStatus.name() : null);
                 attempt.setPipelineErrorCode(faceResult.providerErrorCode());
                 attempt.setPipelineStatus(pipelineResult.pipelineStatus());
                 attempt.setProcessedAt(Instant.now());
@@ -216,8 +249,18 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
                 ExpertIdentityVerification saved = identityRepository.save(attempt);
                 auditService.log(AuditAction.EXPERT_VERIFICATION, userId,
                         "ExpertIdentityVerification", saved.getId().toString(),
-                        Map.of("event", "IDENTITY_PROCESSED", "faceStatus", faceResult.status().name(),
-                                "pipelineStatus", pipelineResult.pipelineStatus()));
+                        duplicateMatch.<Map<String, Object>>map(match -> Map.of(
+                                "event", "IDENTITY_PROCESSED",
+                                "faceStatus", faceResult.status().name(),
+                                "pipelineStatus", pipelineResult.pipelineStatus(),
+                                "possibleDuplicate", true,
+                                "matchedExpertProfileId", match.expertProfileId().toString(),
+                                "duplicateSimilarity",
+                                match.similarity() == null ? "unknown" : match.similarity()))
+                                .orElseGet(() -> Map.of(
+                                        "event", "IDENTITY_PROCESSED",
+                                        "faceStatus", faceResult.status().name(),
+                                        "pipelineStatus", pipelineResult.pipelineStatus())));
             });
 
         } catch (RuntimeException ex) {
@@ -288,6 +331,58 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public Page<ExpertReviewCaseResponse> getAdminReviewCases(String search, String status, Pageable pageable, UUID reviewerId) {
+        java.util.List<VerificationStatus> verificationStatuses = null;
+        if (status != null && !status.isBlank()) {
+            if ("PENDING".equals(status)) {
+                verificationStatuses = java.util.List.of(VerificationStatus.PENDING, VerificationStatus.UNDER_REVIEW);
+            } else {
+                try {
+                    verificationStatuses = java.util.List.of(VerificationStatus.valueOf(status));
+                } catch (IllegalArgumentException ignored) {}
+            }
+        }
+        String searchQuery = (search != null && !search.isBlank()) ? search.trim() : null;
+
+        return profileRepository.findForReview(searchQuery, verificationStatuses, pageable)
+                .map(profile -> {
+                    var user = profile.getUser();
+                    var latestIdentity = identityRepository
+                            .findFirstByExpertProfileIdOrderByCreatedAtDesc(
+                                    profile.getExpertProfileId())
+                            .map(this::toResponse)
+                            .orElse(null);
+                    var credentials = credentialService.getAdminCredentialsForProfile(
+                            profile.getExpertProfileId(), reviewerId);
+                    String identityStatus = latestIdentity == null
+                            ? "MISSING" : latestIdentity.getReviewStatus().name();
+                    String professionalCredentialStatus = credentialStatusFromResponses(credentials);
+                    boolean facilityReady = profile.getFacilityId() == null
+                            || careFacilityRepository.findById(profile.getFacilityId())
+                                    .map(facility -> facility.getVerificationStatus()
+                                            == FacilityStatus.VERIFIED)
+                                    .orElse(false);
+                    return ExpertReviewCaseResponse.builder()
+                            .profile(profileMapper.toResponse(
+                                    profile,
+                                    user != null ? user.getName() : null,
+                                    user != null ? user.getAvatarUrl() : null))
+                            .latestIdentity(latestIdentity)
+                            .credentials(credentials)
+                            .identityStatus(identityStatus)
+                            .credentialStatus(professionalCredentialStatus)
+                            .readyForFinalApproval(
+                                    profile.getVerificationStatus() != VerificationStatus.APPROVED
+                                    && "APPROVED".equals(identityStatus)
+                                    && "APPROVED".equals(professionalCredentialStatus)
+                                    && facilityReady)
+                            .build();
+                });
+    }
+
+    @Override
+    @Transactional
     public IdentityVerificationResponse review(
             UUID attemptId, ReviewIdentityRequest request, UUID reviewerId) {
         if (request.getReviewStatus() != IdentityReviewStatus.APPROVED
@@ -365,12 +460,24 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
         List<ExpertCredential> professional = credentials.stream()
                 .filter(c -> !c.getCredentialType().startsWith("IDENTITY_"))
                 .toList();
-        if (professional.stream().anyMatch(c -> c.getReviewStatus() == ReviewStatus.APPROVED
-                && (c.getExpiryDate() == null || !c.getExpiryDate().isBefore(java.time.LocalDate.now())))) {
+        if (professional.stream().anyMatch(c -> c.getReviewStatus() == ReviewStatus.APPROVED)) {
             return "APPROVED";
         }
         if (professional.stream().anyMatch(c -> c.getReviewStatus() == ReviewStatus.PENDING)) return "PENDING";
         if (!professional.isEmpty()) return "REJECTED";
+        return "MISSING";
+    }
+
+    private static String credentialStatusFromResponses(List<DocumentReviewResponse> credentials) {
+        if (credentials.stream().anyMatch(c -> c.getReviewStatus() == ReviewStatus.APPROVED)) {
+            return "APPROVED";
+        }
+        if (credentials.stream().anyMatch(c -> c.getReviewStatus() == ReviewStatus.PENDING)) {
+            return "PENDING";
+        }
+        if (!credentials.isEmpty()) {
+            return "REJECTED";
+        }
         return "MISSING";
     }
 
@@ -383,9 +490,20 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
     }
 
     private IdentityVerificationResponse toResponse(ExpertIdentityVerification entity) {
+        var profile = profileRepository.findById(entity.getExpertProfileId()).orElse(null);
+        var user = (profile != null) ? userRepository.findById(profile.getUserId()).orElse(null) : null;
+        
         return IdentityVerificationResponse.builder()
                 .identityVerificationId(entity.getId())
                 .expertProfileId(entity.getExpertProfileId())
+                .expertName(user != null ? user.getName() : null)
+                .expertEmail(user != null ? user.getEmail() : null)
+                .expertPhone(user != null ? user.getPhone() : null)
+                .specialty(profile != null ? profile.getSpecialty() : null)
+                .professionalTitle(profile != null ? profile.getProfessionalTitle() : null)
+                .experienceYears(profile != null ? profile.getExperienceYears() : null)
+                .workplace(profile != null ? profile.getWorkplace() : null)
+                .consultationScope(profile != null ? profile.getConsultationScope() : null)
                 .selfieFileId(entity.getSelfieFileId())
                 .identityFrontFileId(entity.getIdentityFrontFileId())
                 .identityBackFileId(entity.getIdentityBackFileId())

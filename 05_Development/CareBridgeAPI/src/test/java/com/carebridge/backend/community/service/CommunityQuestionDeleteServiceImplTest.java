@@ -10,6 +10,7 @@ import com.carebridge.backend.community.mapper.CommunityQuestionMapper;
 import com.carebridge.backend.community.repository.CommunityAnswerRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
+import com.carebridge.backend.file.service.IFileService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -17,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.access.AccessDeniedException;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -34,6 +36,7 @@ class CommunityQuestionDeleteServiceImplTest {
     @Mock CommunityAnswerRepository answerRepository;
     @Mock CommunityQuestionMapper questionMapper;
     @Mock AuditService auditService;
+    @Mock IFileService fileService;
     @InjectMocks CommunityQuestionServiceImpl questionService;
 
     private static final UUID AUTHOR_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
@@ -47,6 +50,7 @@ class CommunityQuestionDeleteServiceImplTest {
                 .topicId(UUID.randomUUID())
                 .title("Title")
                 .body("Body content here")
+                .imageUrls(List.of("https://res.cloudinary.com/demo/image/upload/question.jpg"))
                 .status(status)
                 .build();
     }
@@ -121,6 +125,26 @@ class CommunityQuestionDeleteServiceImplTest {
         questionService.deleteQuestion(QUESTION_ID, OTHER_USER_ID, true);
 
         verify(questionRepository).save(argThat(q -> q.getStatus() == QuestionStatus.DELETED));
+        verify(fileService).purgeCommunityImages(question.getImageUrls(), AUTHOR_ID);
+    }
+
+    @Test
+    void deleteQuestion_purgesQuestionAndAnswerImagesUsingEachContentAuthor() {
+        UUID answerAuthorId = UUID.fromString("00000000-0000-0000-0000-000000000003");
+        CommunityQuestion question = makeQuestion(QuestionStatus.APPROVED);
+        var answer = com.carebridge.backend.community.entity.CommunityAnswer.builder()
+                .questionId(QUESTION_ID)
+                .authorId(answerAuthorId)
+                .imageUrls(List.of("https://res.cloudinary.com/demo/image/upload/answer.jpg"))
+                .build();
+        when(questionRepository.findById(QUESTION_ID)).thenReturn(Optional.of(question));
+        when(answerRepository.findAllByQuestionId(QUESTION_ID)).thenReturn(List.of(answer));
+        when(questionRepository.save(any())).thenReturn(question);
+
+        questionService.deleteQuestion(QUESTION_ID, OTHER_USER_ID, true);
+
+        verify(fileService).purgeCommunityImages(question.getImageUrls(), AUTHOR_ID);
+        verify(fileService).purgeCommunityImages(answer.getImageUrls(), answerAuthorId);
     }
 
     // TC-170-6: question not found -> 404
@@ -142,6 +166,7 @@ class CommunityQuestionDeleteServiceImplTest {
         questionService.deleteQuestion(QUESTION_ID, AUTHOR_ID, false);
 
         verify(questionRepository).save(argThat(q -> q.getStatus() == QuestionStatus.DELETED));
+        verifyNoInteractions(fileService);
     }
 
     // Audit log emitted with COMMUNITY_QUESTION_DELETED

@@ -131,6 +131,25 @@ class AiScanProcessingServiceTest {
         when(promptBuilder.responseSchema()).thenReturn(Map.of("type", "OBJECT"));
     }
 
+    @Test
+    void unavailableAiClaim_onlyClaimsCommunityPublicationTargets() {
+        UUID jobId = UUID.randomUUID();
+        when(jobRepository.findClaimableIdsByTargetTypeIn(
+                eq(AiScanJobStatus.QUEUED),
+                eq(List.of(ReportTargetType.QUESTION, ReportTargetType.ANSWER)),
+                any(Instant.class),
+                any()))
+                .thenReturn(List.of(jobId));
+        when(jobRepository.claim(eq(jobId), anyString(), any(Instant.class),
+                eq(AiScanJobStatus.QUEUED), eq(AiScanJobStatus.PROCESSING)))
+                .thenReturn(1);
+
+        List<UUID> claimed = service.claimDueCommunityJobs("worker", 3);
+
+        assertThat(claimed).containsExactly(jobId);
+        verify(jobRepository, never()).findClaimableIds(any(), any(), any());
+    }
+
     // Scenario 12/A: SAFE persists the assessment and creates no case
     @Test
     void safeResult_recordsSuccessWithoutCase() {
@@ -179,14 +198,15 @@ class AiScanProcessingServiceTest {
         givenClaimedJobWithTarget();
         when(policySetService.activeSnapshotFor(job.getTargetType())).thenReturn(policySet);
         when(geminiModerationClient.model()).thenReturn(MODEL);
+        AiContentAssessment existing = AiContentAssessment.builder().id(UUID.randomUUID()).build();
         when(assessmentRepository
                 .findFirstByTargetTypeAndTargetIdAndContentHashAndPolicySetHashAndModelAndStatus(
                         any(), any(), anyString(), anyString(), anyString(), any()))
-                .thenReturn(Optional.of(AiContentAssessment.builder().id(UUID.randomUUID()).build()));
+                .thenReturn(Optional.of(existing));
 
         service.processJob(job.getId());
 
-        verify(recorder).completeIdempotent(job.getId());
+        verify(recorder).completeIdempotent(job, existing);
         verify(geminiModerationClient, never()).classify(anyString(), anyString(), any());
         verify(recorder, never()).recordSuccess(any(), any(), any(), any(), any(), eq(0L), any(), any());
     }

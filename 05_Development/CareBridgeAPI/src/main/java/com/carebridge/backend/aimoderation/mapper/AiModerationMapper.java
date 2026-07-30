@@ -17,6 +17,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Component;
 
+import com.carebridge.backend.aimoderation.dto.PolicyReferenceFile;
+import com.carebridge.backend.aimoderation.dto.PolicyReferenceLink;
+
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -38,8 +41,50 @@ public class AiModerationMapper {
                 policy.isActive(),
                 policy.isSystemDefault(),
                 policy.getVersion(),
+                parseReferenceLinks(policy.getReferenceLinks()),
+                parseReferenceFiles(policy.getReferenceFiles()),
                 policy.getCreatedAt(),
                 policy.getUpdatedAt());
+    }
+
+    public String serializeReferenceLinks(List<PolicyReferenceLink> links) {
+        if (links == null || links.isEmpty()) return null;
+        try {
+            return objectMapper.writeValueAsString(links);
+        } catch (JsonProcessingException ex) {
+            log.warn("Failed to serialize referenceLinks: {}", ex.getMessage());
+            return null;
+        }
+    }
+
+    public List<PolicyReferenceLink> parseReferenceLinks(String json) {
+        if (json == null || json.isBlank()) return List.of();
+        try {
+            return objectMapper.readValue(json, new TypeReference<List<PolicyReferenceLink>>() {});
+        } catch (JsonProcessingException ex) {
+            log.warn("Unparseable reference_links: {}", ex.getMessage());
+            return List.of();
+        }
+    }
+
+    public String serializeReferenceFiles(List<PolicyReferenceFile> files) {
+        if (files == null || files.isEmpty()) return null;
+        try {
+            return objectMapper.writeValueAsString(files);
+        } catch (JsonProcessingException ex) {
+            log.warn("Failed to serialize referenceFiles: {}", ex.getMessage());
+            return null;
+        }
+    }
+
+    public List<PolicyReferenceFile> parseReferenceFiles(String json) {
+        if (json == null || json.isBlank()) return List.of();
+        try {
+            return objectMapper.readValue(json, new TypeReference<List<PolicyReferenceFile>>() {});
+        } catch (JsonProcessingException ex) {
+            log.warn("Unparseable reference_files: {}", ex.getMessage());
+            return List.of();
+        }
     }
 
     public AiPolicyPageResponse toPolicyPageResponse(Page<AiModerationPolicy> page) {

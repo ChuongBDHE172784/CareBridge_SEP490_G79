@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/constants/content_stages.dart';
 import '../../../core/network/api_client.dart';
 
 class ViewContentScreen extends StatefulWidget {
@@ -137,20 +138,14 @@ class _ViewContentScreenState extends State<ViewContentScreen>
                         borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
                       ),
                     ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'PREGNANCY',
-                        child: Text('Thai kỳ'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'POSTPARTUM',
-                        child: Text('Sau sinh'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'BABY_CARE',
-                        child: Text('Chăm sóc bé'),
-                      ),
-                    ],
+                    items: contentStageOptions
+                        .map(
+                          (stage) => DropdownMenuItem(
+                            value: stage.value,
+                            child: Text(stage.label),
+                          ),
+                        )
+                        .toList(growable: false),
                     onChanged: _onStageChanged,
                   ),
                 ),

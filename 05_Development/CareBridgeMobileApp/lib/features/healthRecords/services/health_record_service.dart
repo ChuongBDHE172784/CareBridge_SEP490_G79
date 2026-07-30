@@ -26,14 +26,62 @@ class HealthRecordService {
   }
 
   // UC-40/41/42: List health records visible to the current user.
-  Future<List<HealthRecord>> listHealthRecords({RecordType? filter}) async {
-    final query = filter == null
-        ? ''
-        : '?recordType=${filter.name.toUpperCase()}';
-    final data = await apiGet('/api/v1/health-records$query');
-    final list = data['data'] as List? ?? [];
+  Future<List<HealthRecord>> listHealthRecords({int size = 100}) async {
+    final data = await apiGet(
+      '/api/v1/health-records/timeline',
+      queryParams: {'size': size},
+    );
+    final payload = data['data'];
+    final list = payload is Map<String, dynamic>
+        ? payload['items'] as List? ?? []
+        : payload as List? ?? [];
     return list
         .map((e) => HealthRecord.fromJson(e as Map<String, dynamic>))
         .toList();
+  }
+
+  Future<String> uploadHealthRecordAttachment({
+    required List<int> bytes,
+    required String fileName,
+    required String mimeType,
+  }) async {
+    final upload = MultipartUploadFile(
+      fieldName: 'file',
+      bytes: bytes,
+      fileName: fileName,
+      mimeType: mimeType,
+    );
+    dynamic data;
+    try {
+      data = await apiMultipart(
+        '/api/v1/files/health-records',
+        const {},
+        files: [upload],
+      );
+    } on ApiException catch (e) {
+      if (e.statusCode != 404 && e.statusCode != 405) rethrow;
+      data = await apiMultipart('/api/v1/files', const {}, files: [upload]);
+    }
+    return data['data']['fileId'].toString();
+  }
+
+  Future<HealthRecord> addHealthRecord({
+    required String recordType,
+    required String title,
+    required DateTime recordDate,
+    String? facilityName,
+    List<String> fileIds = const [],
+  }) async {
+    final d = recordDate;
+    final data = await apiPost('/api/v1/health-records', {
+      'recordType': recordType,
+      'title': title,
+      'recordDate':
+          '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}',
+      if (facilityName != null && facilityName.trim().isNotEmpty)
+        'facilityName': facilityName.trim(),
+      if (fileIds.isNotEmpty) 'fileIds': fileIds,
+    });
+    return HealthRecord.fromJson(data['data'] as Map<String, dynamic>);
   }
 }

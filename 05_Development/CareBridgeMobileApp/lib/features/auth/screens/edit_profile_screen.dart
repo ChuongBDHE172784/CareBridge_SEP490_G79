@@ -22,6 +22,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   static const _surfaceContainerLowest = Color(0xFFFFFFFF);
 
   final _nameController = TextEditingController();
+  final _phoneController = TextEditingController();
   String? _email;
   String? _phone;
   String? _avatarUrl;
@@ -51,6 +52,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         _nameController.text = data['displayName'] as String? ?? '';
         _email = email;
         _phone = data['phoneNumber'] as String?;
+        _phoneController.text = _phone ?? '';
         _avatarUrl = data['avatarUrl'] as String?;
         _selectedArea = data['area'] as String?;
         _isLoading = false;
@@ -66,6 +68,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     try {
       final body = <String, dynamic>{
         'displayName': _nameController.text.trim(),
+        'phoneNumber': _phoneController.text.trim(),
         if (_selectedArea != null && _selectedArea!.isNotEmpty)
           'area': _selectedArea,
       };
@@ -99,6 +102,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
@@ -224,7 +228,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         const SizedBox(height: 20),
         _buildLabel('Số điện thoại'),
         const SizedBox(height: 8),
-        _buildReadOnlyField(_phone ?? '', Icons.lock_outline),
+        _buildTextField(
+          _phoneController,
+          'Nhập số điện thoại',
+          keyboardType: TextInputType.phone,
+        ),
         const SizedBox(height: 20),
         _buildLabel('Khu vực'),
         const SizedBox(height: 8),
@@ -245,9 +253,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
-  Widget _buildTextField(TextEditingController controller, String hint) {
+  Widget _buildTextField(
+    TextEditingController controller,
+    String hint, {
+    TextInputType keyboardType = TextInputType.text,
+  }) {
     return TextField(
       controller: controller,
+      keyboardType: keyboardType,
       style: const TextStyle(
         fontFamily: 'Lexend',
         fontSize: 16,

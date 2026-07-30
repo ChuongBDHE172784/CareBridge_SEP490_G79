@@ -54,3 +54,36 @@ export async function testAiPolicy(request: AiPolicyTestRequest): Promise<AiPoli
   const res = await apiClient.post<ApiResponse<AiPolicyTestResult>>(`${BASE}/test`, request);
   return res.data.data;
 }
+
+export async function uploadPolicyDocument(file: File): Promise<{
+  fileId: string;
+  fileName: string;
+  fileUrl: string;
+  fileSizeBytes: number;
+}> {
+  const isImage = file.type.startsWith('image/');
+  const kind = isImage ? 'IMAGE' : 'DOCUMENT';
+  const form = new FormData();
+  form.append('file', file);
+  form.append('kind', kind);
+  form.append('purpose', 'AI_MODERATION_POLICY_DOCUMENT');
+  form.append('accessMode', 'PRIVATE');
+
+  const res = await apiClient.post<ApiResponse<{
+    fileId: string;
+    originalName: string;
+    mimeType: string;
+    fileSizeBytes: number;
+    presignedUrl: string;
+  }>>('/api/v1/files/upload/with-purpose', form, {
+    headers: { 'Content-Type': undefined },
+  });
+
+  const d = res.data.data;
+  return {
+    fileId: d.fileId,
+    fileName: d.originalName,
+    fileUrl: d.presignedUrl,
+    fileSizeBytes: d.fileSizeBytes,
+  };
+}

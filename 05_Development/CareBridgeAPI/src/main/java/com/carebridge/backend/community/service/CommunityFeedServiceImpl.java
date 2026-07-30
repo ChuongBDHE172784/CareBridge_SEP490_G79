@@ -39,9 +39,9 @@ public class CommunityFeedServiceImpl implements CommunityFeedService {
     public PaginatedResponse<CommunityFeedItemResponse> getFeed(UUID topicId, UUID currentUserId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
 
-        // UC-198 (fixed): APPROVED visible to everyone, PENDING visible only to its own author —
-        // previously every user's PENDING question leaked to the whole feed (see repository note).
-        Page<CommunityQuestion> questions = questionRepository.findFeedVisible(topicId, currentUserId, pageable);
+        // UC-198: the shared feed is APPROVED-only. Pending questions remain available to
+        // their author through My Questions and the guarded detail endpoint.
+        Page<CommunityQuestion> questions = questionRepository.findFeedVisible(topicId, pageable);
 
         // Batch fetch topic names to avoid N+1
         Set<UUID> topicIds = questions.stream()

@@ -42,7 +42,7 @@ class _SentPendingInvitationsScreenState
       if (mounted) {
         setState(() {
           _pendingMembers = group.members
-              .where((m) => m.inviteStatus == 'PENDING')
+              .where((m) => m.inviteStatus == 'PENDING' && !m.isJoinRequest)
               .toList();
           _joinRequests = requests;
           _isLoading = false;
@@ -363,54 +363,27 @@ class _SentPendingInvitationsScreenState
             const Color(0xFF524440),
           ),
           const SizedBox(height: 24),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => _revoke(member.memberId),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: const Color(0xFF845143),
-                    side: const BorderSide(color: Color(0xFF845143), width: 2),
-                    minimumSize: const Size(0, 48),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                  ),
-                  icon: const Icon(Icons.cancel, size: 20),
-                  label: const Text(
-                    'Hủy lời mời',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'Quicksand',
-                    ),
-                  ),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => _revoke(member.userId ?? member.memberId),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF845143),
+                side: const BorderSide(color: Color(0xFF845143), width: 2),
+                minimumSize: const Size(0, 48),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(999),
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () => _resend(member),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF845143),
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(0, 48),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    shadowColor: const Color(0x26845143),
-                    elevation: 4,
-                  ),
-                  icon: const Icon(Icons.send, size: 20),
-                  label: const Text(
-                    'Gửi lại',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'Quicksand',
-                    ),
-                  ),
+              icon: const Icon(Icons.cancel, size: 20),
+              label: const Text(
+                'Hủy lời mời',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'Quicksand',
                 ),
               ),
-            ],
+            ),
           ),
         ],
       ),

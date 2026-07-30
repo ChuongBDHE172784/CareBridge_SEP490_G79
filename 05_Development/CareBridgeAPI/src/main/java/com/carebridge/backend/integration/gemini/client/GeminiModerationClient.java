@@ -47,7 +47,7 @@ public class GeminiModerationClient {
             @Value("${carebridge.gemini.enabled:false}") boolean enabled,
             @Value("${carebridge.gemini.api-key:}") String apiKey,
             @Value("${carebridge.gemini.base-url:https://generativelanguage.googleapis.com/v1beta}") String baseUrl,
-            @Value("${carebridge.gemini.model:gemini-1.5-flash}") String model,
+            @Value("${carebridge.gemini.model:gemini-flash-latest}") String model,
             @Value("${carebridge.gemini.connect-timeout-ms:3000}") int connectTimeoutMs,
             @Value("${carebridge.gemini.moderation.timeout-ms:15000}") int readTimeoutMs) {
         this.enabled = enabled;

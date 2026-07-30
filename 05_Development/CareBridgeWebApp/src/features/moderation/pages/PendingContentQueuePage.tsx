@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import ModPortalSidebar from '../components/ModPortalSidebar';
+import { useNavigate } from 'react-router-dom';
 import ConfirmDialog from '../../../shared/components/ConfirmDialog';
-import ContentDetailDialog from '../../../shared/components/ContentDetailDialog';
 import {
   fetchPendingContentQueue,
   fetchModerationHistory,
@@ -10,15 +9,18 @@ import {
   undoModerationAction,
 } from '../services/moderationApi';
 import type {
-  ModerationContentDetail,
   ModerationHistoryItem,
   PendingContentItem,
   ReportTargetType,
 } from '../models/moderation';
 import { ACTION_TYPE_LABELS, TARGET_TYPE_LABELS, UNDOABLE_ACTION_TYPES } from '../models/moderation';
+import { SortableTableHeader, type SortDirection } from '../../contentManagement/components/SortableTableHeader';
+import { nextSortDirection, sortRows } from '../../contentManagement/utils/tableSorting';
 
 type PendingActionType = 'APPROVE' | 'HIDE' | 'REQUEST_REVISION';
 type Tab = 'QUESTION' | 'ANSWER' | 'HISTORY';
+type PendingSortKey = 'targetType' | 'contentPreview' | 'createdAt';
+type HistorySortKey = 'targetType' | 'contentPreview' | 'actionType' | 'moderatorName' | 'reason' | 'actionAt';
 
 const PAGE_SIZE_OPTIONS = [10, 20, 50] as const;
 
@@ -73,6 +75,7 @@ function matchesText(value: string | null | undefined, query: string): boolean {
 }
 
 export default function PendingContentQueuePage() {
+  const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('QUESTION');
   const [items, setItems] = useState<PendingContentItem[]>([]);
   const [historyItems, setHistoryItems] = useState<ModerationHistoryItem[]>([]);
@@ -82,15 +85,13 @@ export default function PendingContentQueuePage() {
   const [actionFilter, setActionFilter] = useState<'ALL' | PendingActionType>('ALL');
   const [pageSize, setPageSize] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(10);
   const [page, setPage] = useState(0);
+  const [pendingSortKey, setPendingSortKey] = useState<PendingSortKey>('createdAt');
+  const [pendingSortDirection, setPendingSortDirection] = useState<SortDirection>('desc');
+  const [historySortKey, setHistorySortKey] = useState<HistorySortKey>('actionAt');
+  const [historySortDirection, setHistorySortDirection] = useState<SortDirection>('desc');
   const [actioningId, setActioningId] = useState<string | null>(null);
   const [pendingAction, setPendingAction] = useState<{ item: PendingContentItem; type: PendingActionType } | null>(null);
   const [dialogError, setDialogError] = useState('');
-
-  const [detailTarget, setDetailTarget] = useState<{ targetId: string; targetType: ReportTargetType } | null>(null);
-  const [detailData, setDetailData] = useState<ModerationContentDetail | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [detailError, setDetailError] = useState('');
-  const [detailHistoryItem, setDetailHistoryItem] = useState<ModerationHistoryItem | null>(null);
 
   const [undoTarget, setUndoTarget] = useState<ModerationHistoryItem | null>(null);
   const [undoSubmitting, setUndoSubmitting] = useState(false);
@@ -159,31 +160,53 @@ export default function PendingContentQueuePage() {
     });
   }, [actionFilter, historyItems, search]);
 
-  const filteredRows = tab === 'HISTORY' ? filteredHistory : filteredPending;
+  const sortedPending = useMemo(() => sortRows(filteredPending, pendingSortDirection, (item) => {
+    switch (pendingSortKey) {
+      case 'targetType': return TARGET_TYPE_LABELS[item.targetType];
+      case 'contentPreview': return item.contentPreview;
+      case 'createdAt': return new Date(item.createdAt).getTime();
+    }
+  }), [filteredPending, pendingSortDirection, pendingSortKey]);
+
+  const sortedHistory = useMemo(() => sortRows(filteredHistory, historySortDirection, (item) => {
+    switch (historySortKey) {
+      case 'targetType': return TARGET_TYPE_LABELS[item.targetType];
+      case 'contentPreview': return item.contentPreview;
+      case 'actionType': return ACTION_TYPE_LABELS[item.actionType];
+      case 'moderatorName': return item.moderatorName;
+      case 'reason': return item.reason;
+      case 'actionAt': return new Date(item.actionAt).getTime();
+    }
+  }), [filteredHistory, historySortDirection, historySortKey]);
+
+  const filteredRows = tab === 'HISTORY' ? sortedHistory : sortedPending;
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
   const currentPage = Math.min(page, totalPages - 1);
   const pagedRows = filteredRows.slice(currentPage * pageSize, currentPage * pageSize + pageSize);
   const pageStart = filteredRows.length === 0 ? 0 : currentPage * pageSize + 1;
   const pageEnd = Math.min((currentPage + 1) * pageSize, filteredRows.length);
 
+  const changePendingSort = (key: PendingSortKey) => {
+    setPendingSortDirection(nextSortDirection(pendingSortKey, key, pendingSortDirection));
+    setPendingSortKey(key);
+    setPage(0);
+  };
+
+  const changeHistorySort = (key: HistorySortKey) => {
+    setHistorySortDirection(nextSortDirection(historySortKey, key, historySortDirection));
+    setHistorySortKey(key);
+    setPage(0);
+  };
+
   const openPendingAction = (item: PendingContentItem, type: PendingActionType) => {
     setDialogError('');
     setPendingAction({ item, type });
   };
 
-  const openDetail = async (targetId: string, targetType: ReportTargetType, historyItem?: ModerationHistoryItem) => {
-    setDetailTarget({ targetId, targetType });
-    setDetailData(null);
-    setDetailError('');
-    setDetailHistoryItem(historyItem ?? null);
-    setDetailLoading(true);
-    try {
-      setDetailData(await fetchContentDetail(targetType, targetId));
-    } catch {
-      setDetailError('Không tải được nội dung chi tiết. Vui lòng thử lại.');
-    } finally {
-      setDetailLoading(false);
-    }
+  const openDetail = (targetId: string, targetType: ReportTargetType, historyItem?: ModerationHistoryItem) => {
+    navigate(`/moderator/pending-content/${targetType}/${targetId}`, {
+      state: { historyItem },
+    });
   };
 
   const confirmPendingAction = async (reason?: string) => {
@@ -256,15 +279,14 @@ export default function PendingContentQueuePage() {
 
   return (
     <div className="portal-page">
-      <ModPortalSidebar />
-      <main className="portal-content font-sans">
+      <main className="font-sans">
         <div className="p-8">
           {/* Header */}
           <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <h1 className="text-[26px] font-bold text-on-surface m-0">Nội dung chờ duyệt lần đầu</h1>
               <p className="text-on-surface-variant text-sm mt-1">
-                Câu hỏi và câu trả lời mới đăng, chưa từng bị báo cáo, cần duyệt trước khi hiển thị công khai.
+                Nội dung AI không thể tự động phê duyệt đang chờ Moderator kiểm tra trước khi hiển thị công khai.
               </p>
             </div>
             <button
@@ -281,7 +303,7 @@ export default function PendingContentQueuePage() {
           {/* Stats Bar */}
           <div className="mb-6 grid gap-4 md:grid-cols-4">
             {[
-              { label: 'Đang chờ trong tab', value: stats.visiblePending, icon: 'pending_actions' },
+              { label: 'Chờ duyệt', value: stats.visiblePending, icon: 'pending_actions' },
               { label: 'Đã xử lý gần đây', value: stats.processed, icon: 'history' },
               { label: 'Đã duyệt', value: stats.approved, icon: 'check_circle' },
               { label: 'Ẩn / yêu cầu sửa', value: stats.hiddenOrRevision, icon: 'rule' },
@@ -305,11 +327,10 @@ export default function PendingContentQueuePage() {
                   key={tabItem.value}
                   type="button"
                   onClick={() => setTab(tabItem.value)}
-                  className={`inline-flex items-center gap-2 py-2 px-4 rounded-full text-xs font-semibold cursor-pointer transition-colors ${
-                    tab === tabItem.value
+                  className={`inline-flex items-center gap-2 py-2 px-4 rounded-full text-xs font-semibold cursor-pointer transition-colors ${tab === tabItem.value
                       ? 'bg-primary text-on-primary shadow-sm'
                       : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-highest'
-                  }`}
+                    }`}
                 >
                   <span className="material-symbols-outlined text-base">{tabItem.icon}</span>
                   {tabItem.label}
@@ -384,9 +405,23 @@ export default function PendingContentQueuePage() {
                     <table className="w-full border-collapse">
                       <thead>
                         <tr className="border-b-2 border-surface-container-highest text-left">
-                          {['LOẠI', 'NỘI DUNG', 'HÀNH ĐỘNG', 'NGƯỜI XỬ LÝ', 'LÝ DO', 'THỜI GIAN', 'THAO TÁC'].map((heading) => (
-                            <th key={heading} className="py-3 px-2 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">{heading}</th>
+                          {([
+                            ['targetType', 'LOẠI'],
+                            ['contentPreview', 'NỘI DUNG'],
+                            ['actionType', 'HÀNH ĐỘNG'],
+                            ['moderatorName', 'NGƯỜI XỬ LÝ'],
+                            ['reason', 'LÝ DO'],
+                            ['actionAt', 'THỜI GIAN'],
+                          ] as const).map(([key, label]) => (
+                            <SortableTableHeader
+                              key={key}
+                              label={label}
+                              active={historySortKey === key}
+                              direction={historySortDirection}
+                              onClick={() => changeHistorySort(key)}
+                            />
                           ))}
+                          <th scope="col" className="py-3 px-2 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">THAO TÁC</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -401,9 +436,8 @@ export default function PendingContentQueuePage() {
                               <div className="font-semibold text-sm text-on-surface truncate">{item.contentPreview ?? '—'}</div>
                             </td>
                             <td className="py-3.5 px-2">
-                              <span className={`py-1 px-3 rounded-full text-xs font-semibold ${
-                                item.actionType === 'APPROVE' ? 'bg-[#E6F4EA] text-[#137333]' : 'bg-[#FCE8E6] text-[#C5221F]'
-                              }`}>
+                              <span className={`py-1 px-3 rounded-full text-xs font-semibold ${item.actionType === 'APPROVE' ? 'bg-[#E6F4EA] text-[#137333]' : 'bg-[#FCE8E6] text-[#C5221F]'
+                                }`}>
                                 {ACTION_TYPE_LABELS[item.actionType]}
                               </span>
                             </td>
@@ -455,9 +489,20 @@ export default function PendingContentQueuePage() {
                     <table className="w-full border-collapse">
                       <thead>
                         <tr className="border-b-2 border-surface-container-highest text-left">
-                          {['LOẠI', 'NỘI DUNG XEM TRƯỚC', 'THỜI GIAN ĐĂNG', 'THAO TÁC'].map((heading) => (
-                            <th key={heading} className="py-3 px-2 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">{heading}</th>
+                          {([
+                            ['targetType', 'LOẠI'],
+                            ['contentPreview', 'NỘI DUNG XEM TRƯỚC'],
+                            ['createdAt', 'THỜI GIAN ĐĂNG'],
+                          ] as const).map(([key, label]) => (
+                            <SortableTableHeader
+                              key={key}
+                              label={label}
+                              active={pendingSortKey === key}
+                              direction={pendingSortDirection}
+                              onClick={() => changePendingSort(key)}
+                            />
                           ))}
+                          <th scope="col" className="py-3 px-2 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">THAO TÁC</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -617,25 +662,6 @@ export default function PendingContentQueuePage() {
         onCancel={() => setUndoTarget(null)}
       />
 
-      <ContentDetailDialog
-        open={detailTarget !== null}
-        targetTypeLabel={detailTarget ? TARGET_TYPE_LABELS[detailTarget.targetType] : ''}
-        statusLabel={detailData ? detailData.status : undefined}
-        loading={detailLoading}
-        errorText={detailError}
-        detail={detailData}
-        moderationContext={
-          detailHistoryItem
-            ? {
-                actionTypeLabel: ACTION_TYPE_LABELS[detailHistoryItem.actionType],
-                reason: detailHistoryItem.reason,
-                moderatorName: detailHistoryItem.moderatorName,
-                actionAt: detailHistoryItem.actionAt,
-              }
-            : undefined
-        }
-        onClose={() => { setDetailTarget(null); setDetailHistoryItem(null); }}
-      />
     </div>
   );
 }

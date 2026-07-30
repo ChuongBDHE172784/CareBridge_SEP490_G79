@@ -6,6 +6,8 @@ import com.carebridge.backend.community.dto.response.CommunityQuestionSummaryRes
 import com.carebridge.backend.community.entity.CommunityQuestion;
 import com.carebridge.backend.community.mapper.CommunityQuestionMapper;
 import com.carebridge.backend.community.repository.CommunityAnswerRepository;
+import com.carebridge.backend.community.repository.CommunityBookmarkRepository;
+import com.carebridge.backend.community.repository.CommunityQuestionLikeRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
 import lombok.RequiredArgsConstructor;
@@ -28,12 +30,22 @@ public class CommunityQuestionSearchServiceImpl implements CommunityQuestionSear
     private final CommunityQuestionRepository questionRepository;
     private final CommunityAnswerRepository answerRepository;
     private final CommunityTopicRepository topicRepository;
+    private final CommunityBookmarkRepository bookmarkRepository;
+    private final CommunityQuestionLikeRepository likeRepository;
     private final CommunityQuestionMapper questionMapper;
+    private final CommunityAuthorDisplayResolver authorDisplayResolver;
 
     @Override
     @Transactional(readOnly = true)
     public PaginatedResponse<CommunityQuestionSummaryResponse> searchQuestions(
             CommunityQuestionSearchRequest request) {
+        return searchQuestions(request, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PaginatedResponse<CommunityQuestionSummaryResponse> searchQuestions(
+            CommunityQuestionSearchRequest request, UUID currentUserId) {
 
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
 
@@ -59,10 +71,27 @@ public class CommunityQuestionSearchServiceImpl implements CommunityQuestionSear
                 .collect(Collectors.toList());
         Set<UUID> expertAnsweredIds = answerRepository.findQuestionIdsWithExpertAnswer(questionIds);
 
+        // Batch check bookmark state to avoid N+1
+        Set<UUID> bookmarkedIds = (currentUserId != null && !questionIds.isEmpty())
+                ? bookmarkRepository.findBookmarkedQuestionIds(currentUserId, questionIds)
+                : Set.of();
+
+        // Batch check like state to avoid N+1
+        Set<UUID> likedIds = (currentUserId != null && !questionIds.isEmpty())
+                ? likeRepository.findLikedQuestionIds(currentUserId, questionIds)
+                : Set.of();
+
+        // Batch fetch question author display names to avoid N+1
+        Set<UUID> authorIds = questions.stream().map(CommunityQuestion::getAuthorId).collect(Collectors.toSet());
+        Map<UUID, String> authorDisplayNames = authorDisplayResolver.resolveBatch(authorIds);
+
         Page<CommunityQuestionSummaryResponse> responsePage = questions.map(q -> {
             String topicName = topicNames.getOrDefault(q.getTopicId(), "");
             boolean hasExpert = expertAnsweredIds.contains(q.getId());
-            return questionMapper.toSummaryResponse(q, topicName, hasExpert);
+            boolean isBookmarked = bookmarkedIds.contains(q.getId());
+            boolean isLiked = likedIds.contains(q.getId());
+            String authorDisplay = authorDisplayNames.get(q.getAuthorId());
+            return questionMapper.toSummaryResponse(q, topicName, authorDisplay, hasExpert, isBookmarked, isLiked);
         });
 
         return PaginatedResponse.of(responsePage);

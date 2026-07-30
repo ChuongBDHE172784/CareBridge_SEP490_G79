@@ -2,9 +2,9 @@
 # UC114 — Manage User Accounts — Test Specification
 
 **Document ID:** `CB-IDENTITY-TDD-114`
-**Version:** `1.0`
+**Version:** `1.1`
 **Date:** `2026-07-02`
-**Status:** `Implemented — 2026-07-04 (AdminUserController/ServiceImpl/MapperTest all PASS, verified independently)`
+**Status:** `End-to-end implementation verified — 2026-07-28 (34 focused backend tests, 3 admin component tests, web build and lint PASS; Docker/browser smoke verification tracked below)`
 **Standard:** ISO/IEC/IEEE 29119-3:2021 — Software Testing Part 3: Test Documentation
 **Author:** `AI Agent — Test Designer`
 **Reviewed by:** `[ ] Tech Lead — Pending`
@@ -32,6 +32,8 @@
 |------|-----------------|-------------------|
 | `2026-07-02` | `AI Agent` | Khởi tạo tài liệu — TDD spec cho UC114 |
 | `2026-07-04` | `AI Agent` | Approved by user — proceeding to implementation |
+| `2026-07-28` | `Senior Developer` | Bổ sung test coverage end-to-end cho direct detail, session monitoring, activity timeline, web governance và browser E2E |
+| `2026-07-29` | `Senior Developer` | Bổ sung test matrix cho mandatory lock reason, session revocation, typed lock metadata, appeal token/episode, approval/rejection/cancellation và password-first disclosure |
 
 ---
 
@@ -76,6 +78,24 @@
 ---
 
 ## 2. Logic Issues Resolved
+
+### 2.0 Account-lock appeal regression matrix (v1.1)
+
+| Test ID | Scenario | Expected result |
+|---|---|---|
+| UC114-LOCK-001 | System Admin locks without a nonblank reason | `IAM-114-005`, no persistence/audit/session mutation |
+| UC114-LOCK-002 | System Admin manually locks with reason | `lock_type=ADMIN`, reason/actor/time/new episode persisted; active sessions revoked |
+| UC114-LOCK-003 | System Admin disables account | `enabled=false`; active sessions revoked; lock metadata unaffected |
+| UC114-LOCK-004 | Direct unlock with pending appeal | Lock metadata cleared and appeal becomes `CANCELLED` for the same episode |
+| UC114-APL-001 | Valid appeal token for current admin lock | One `PENDING` appeal created and audited |
+| UC114-APL-002 | Duplicate pending appeal | Rejected by service and partial unique index |
+| UC114-APL-003 | Expired/wrong-purpose/stale-episode token | Rejected; no appeal created |
+| UC114-APL-004 | System Admin approves pending appeal | Appeal `APPROVED` and account unlocked atomically |
+| UC114-APL-005 | System Admin rejects pending appeal | Appeal `REJECTED`; account remains locked |
+| UC114-WEB-001 | User list/detail manual lock | Required-reason confirmation dialog shown; no request before valid reason |
+| UC114-WEB-002 | Appeal queue/detail | Filter queue; render both reasons; approve/unlock and reject actions available only for `PENDING` |
+| UC114-MOB-001 | Mobile receives structured admin lock | Actual reason rendered; appeal form available only with valid appeal token |
+
 
 | # | Spec gốc (sai / thiếu) | Thực tế (schema / policy) | Fix áp dụng trong test |
 |---|------------------------|--------------------------|------------------------|
@@ -807,4 +827,100 @@ git checkout -- 05_Development/CareBridgeWebApp/src/features/adminGovernance/
 
 ---
 
-*Test-Spec based on TDD Template v2.0 + CASE 2.0. Status: Draft — pending Tech Lead review and Red Gate execution at implementation time.*
+## 9. End-to-End Extension Test Specification (2026-07-28)
+
+### 9.1 Test Conditions
+
+| Condition ID | Test Condition | Coverage | TC ID |
+|---|---|---|---|
+| `TC-COND-E2E-01` | GET detail trả user hiện hữu và không leak password/settings/social identities | Controller + service + DTO | `UC114-TC-015` |
+| `TC-COND-E2E-02` | GET detail với UUID không tồn tại trả 404 | Service guard | `UC114-TC-016` |
+| `TC-COND-E2E-03` | Session list chỉ trả session thuộc target, phân trang, sort mới nhất | Admin aggregate service | `UC114-TC-017` |
+| `TC-COND-E2E-04` | Session JSON không chứa refresh token/hash/IP raw | DTO serialization | `UC114-TC-018` |
+| `TC-COND-E2E-05` | Activity list chỉ chứa audit record có entity USER + target id | Admin aggregate service | `UC114-TC-019` |
+| `TC-COND-E2E-06` | Non-admin bị 403 trên cả 3 endpoint mới | Method security | `UC114-TC-020` |
+| `TC-COND-E2E-07` | Detail page refresh/direct URL tự fetch dữ liệu | React component | `UC114-WEB-TC-004` |
+| `TC-COND-E2E-08` | Self row không cho status/role mutation | React component | `UC114-WEB-TC-005` |
+| `TC-COND-E2E-09` | Tabs session/activity có loading, empty, error và pagination state | React component | `UC114-WEB-TC-006` |
+| `TC-COND-E2E-10` | Search keyword debounce/filter/pagination gọi đúng API params | React component | `UC114-WEB-TC-007` |
+| `TC-COND-E2E-11` | Admin hoàn thành list → detail → lock → role update → xem audit | Browser E2E | `UC114-E2E-001` |
+| `TC-COND-E2E-12` | Refresh detail và back/forward navigation không mất dữ liệu | Browser E2E | `UC114-E2E-002` |
+
+### 9.2 Backend Test Cases
+
+#### UC114-TC-015 — Detail DTO tối thiểu, không leak secret
+
+- **Given:** user có `passwordHash`, `settings`, `socialIdentities` và dữ liệu profile.
+- **When:** SYSTEM_ADMIN gọi `GET /api/v1/admin/users/{id}`.
+- **Then:** 200; có identity/role/status/timestamps cần thiết; JSON không chứa `passwordHash`, `refreshToken`, `settings`, `socialIdentities`.
+
+#### UC114-TC-016 — Detail target not found
+
+- **Given:** UUID hợp lệ nhưng không có trong `users`.
+- **When:** gọi detail endpoint.
+- **Then:** 404; service không query session/audit.
+
+#### UC114-TC-017/018 — Session monitoring privacy boundary
+
+- **Given:** target có active/revoked sessions và một user khác cũng có sessions.
+- **When:** gọi `/sessions?page=0&size=20`.
+- **Then:** chỉ target sessions; newest first; response không chứa `refreshTokenHash`, `ipAddress`, `createdIpHash`; size tối đa 100.
+
+#### UC114-TC-019 — Activity resource scoping
+
+- **Given:** audit logs gồm (a) admin mutate target, (b) target là actor trên resource khác, (c) mutate user khác.
+- **When:** gọi `/activity` cho target.
+- **Then:** chỉ (a) xuất hiện. Điều kiện oracle là `entityType=USER AND entityId=targetId`, không phải `actorUserId=targetId`.
+
+#### UC114-TC-020 — Authorization matrix extension
+
+Parameterized `MOTHER`, `FAMILY`, `EXPERT`, `MODERATOR`, `CONTENT_ADMIN`, `PARTNER` trên detail/sessions/activity đều 403 và service không được gọi.
+
+### 9.3 Web Component Tests
+
+#### UC114-WEB-TC-004 — Direct URL refresh
+
+Render route `/admin/users/{id}` không có `location.state`; mock `getUser(id)` thành công; assert profile hiển thị và fallback cũ không xuất hiện.
+
+#### UC114-WEB-TC-005 — Self protection
+
+Auth user id trùng target id; assert nút khóa/vô hiệu hóa/cập nhật role disabled, có tooltip giải thích, không gọi mutation API.
+
+#### UC114-WEB-TC-006 — Monitoring tabs
+
+Mỗi tab verify đủ 4 state: loading, content, empty, error; session/action items accessible bằng heading/list semantics; pagination không gọi page ngoài biên.
+
+#### UC114-WEB-TC-007 — Search/filter contract
+
+Nhập keyword, chọn role/status, chuyển page; assert API nhận `name/email/phone` keyword strategy nhất quán, filter boolean chính xác và page reset về 0 khi filter đổi.
+
+### 9.4 Browser End-to-End Cases
+
+#### UC114-E2E-001 — Governance happy path
+
+1. Login `SYSTEM_ADMIN` synthetic dev account.
+2. Mở `/admin/users`; tìm một non-admin target.
+3. Mở detail; đổi trạng thái với reason bắt buộc.
+4. Đổi role trên target không phải caller.
+5. Mở Activity và xác minh hai audit record mới.
+6. Mở Sessions và xác minh không có token/hash trong DOM/network response.
+
+#### UC114-E2E-002 — Resilience/navigation
+
+1. Mở trực tiếp `/admin/users/{id}` trong tab mới.
+2. Reload trang.
+3. Back về list rồi forward tới detail.
+4. Kỳ vọng dữ liệu luôn fetch lại đúng, không phụ thuộc router memory.
+
+### 9.5 Exit Criteria bổ sung
+
+- [x] Backend unit/controller tests mới PASS — 34 focused tests on 2026-07-28.
+- [x] Web Vitest mới PASS — 3 focused `UserDetailPage` tests on 2026-07-28.
+- [x] Relevant Maven tests, `npm run build`, and `npm run lint -- --quiet` PASS.
+- [x] Docker stack healthy after rebuild on 2026-07-28; backend readiness reports `db=UP`, web health is healthy, and no Flyway migration was added for this extension. The local Docker backend datasource was corrected from container-local `localhost:5432` to `host.docker.internal:5432` in the uncommitted `.env` runtime configuration.
+- [ ] Browser E2E UC114-E2E-001/002 PASS trên Chrome desktop và responsive viewport. Browser automation executable remains unavailable in the current environment; HTTP smoke verification confirms `/admin/users` returns 200 and all unauthenticated admin API routes return 401.
+- [x] DTO/service/component verification confirms password, refresh-token hash, device identifier, token family, and raw IP are not exposed by the new monitoring contract.
+
+---
+
+*Test-Spec based on TDD Template v2.0 + CASE 2.0. Extended end-to-end on 2026-07-28.*

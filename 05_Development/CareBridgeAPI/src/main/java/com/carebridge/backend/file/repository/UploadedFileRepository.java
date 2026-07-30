@@ -21,6 +21,9 @@ public interface UploadedFileRepository extends JpaRepository<UploadedFile, UUID
 
     Optional<UploadedFile> findByIdAndStatus(UUID id, FileStatus status);
 
+    List<UploadedFile> findAllByOwnerUserIdAndFileUrlInAndStatus(
+            UUID ownerUserId, java.util.Collection<String> fileUrls, FileStatus status);
+
     // ContentImageOrphanCleanup_TDS.md ADR-CLEAN-001: purpose alone is NOT a safe filter — see
     // ADR-CLEAN-001 phương án A0 (bị loại). accessMode=PUBLIC is required to exclude images
     // uploaded through generic upload paths that happen to default to the same purpose label.

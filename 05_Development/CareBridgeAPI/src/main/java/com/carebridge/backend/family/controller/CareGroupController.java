@@ -22,12 +22,10 @@ import com.carebridge.backend.family.dto.CareTasksResponse;
 import com.carebridge.backend.family.dto.LeaveCareGroupResponse;
 import com.carebridge.backend.family.dto.RemoveMemberResponse;
 import com.carebridge.backend.family.dto.RevokeInvitationResponse;
-import com.carebridge.backend.family.dto.SharedCareCalendarResponse;
 import com.carebridge.backend.family.dto.UpdateFamilyTaskRequest;
 import com.carebridge.backend.family.dto.UpdateFamilyTaskResponse;
 import com.carebridge.backend.family.dto.UpdateTaskStatusRequest;
 import com.carebridge.backend.family.dto.UpdateTaskStatusResponse;
-import com.carebridge.backend.family.service.ICareCalendarService;
 import com.carebridge.backend.family.service.ICareGroupService;
 import com.carebridge.backend.family.service.ICareTaskService;
 import jakarta.validation.Valid;
@@ -38,7 +36,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
-import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -49,7 +46,6 @@ public class CareGroupController {
 
     private final ICareGroupService careGroupService;
     private final ICareTaskService careTaskService;
-    private final ICareCalendarService careCalendarService;
 
     // UC70: Create care group
     @PostMapping
@@ -119,9 +115,11 @@ public class CareGroupController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<CareGroupMemberDto>> acceptInvite(
             @PathVariable UUID groupId,
+            @Valid @RequestBody com.carebridge.backend.family.dto.FamilyRelationshipRoleRequest request,
             Principal principal) {
         var callerId = SecurityUtils.requireCurrentUserId(principal);
-        var response = careGroupService.acceptInvite(groupId, callerId);
+        var response = careGroupService.acceptInvite(groupId, request.getFamilyRelationshipRole(),
+                request.getCustomFamilyRelationshipRole(), callerId);
         return ResponseEntity.ok(ApiResponse.success(response, "Invitation accepted"));
     }
 
@@ -176,9 +174,11 @@ public class CareGroupController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<AcceptInvitationByTokenResponse>> acceptInvitationByToken(
             @PathVariable("token") String token,
+            @Valid @RequestBody com.carebridge.backend.family.dto.FamilyRelationshipRoleRequest request,
             Principal principal) {
         var callerId = SecurityUtils.requireCurrentUserId(principal);
-        var response = careGroupService.acceptInvitationByToken(token, callerId);
+        var response = careGroupService.acceptInvitationByToken(token, request.getFamilyRelationshipRole(),
+                request.getCustomFamilyRelationshipRole(), callerId);
         return ResponseEntity.ok(ApiResponse.success(response, "Invitation accepted"));
     }
 
@@ -189,7 +189,8 @@ public class CareGroupController {
             @Valid @RequestBody JoinCareGroupRequest request,
             Principal principal) {
         var callerId = SecurityUtils.requireCurrentUserId(principal);
-        var response = careGroupService.joinGroupByCode(request.getCode(), callerId);
+        var response = careGroupService.joinGroupByCode(request.getCode(), request.getFamilyRelationshipRole(),
+                request.getCustomFamilyRelationshipRole(), callerId);
         return ResponseEntity.ok(ApiResponse.success(response, "Yêu cầu tham gia đã được gửi, vui lòng chờ Mother duyệt."));
     }
 
@@ -316,16 +317,4 @@ public class CareGroupController {
         return ResponseEntity.ok(ApiResponse.success(response, "Task status updated"));
     }
 
-    // UC74: View shared care calendar filtered by member permissions
-    @GetMapping("/{groupId}/calendar")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<ApiResponse<SharedCareCalendarResponse>> getCalendar(
-            @PathVariable UUID groupId,
-            @RequestParam Instant rangeStart,
-            @RequestParam Instant rangeEnd,
-            Principal principal) {
-        var callerId = SecurityUtils.requireCurrentUserId(principal);
-        var response = careCalendarService.getCalendar(groupId, callerId, rangeStart, rangeEnd);
-        return ResponseEntity.ok(ApiResponse.success(response));
-    }
 }

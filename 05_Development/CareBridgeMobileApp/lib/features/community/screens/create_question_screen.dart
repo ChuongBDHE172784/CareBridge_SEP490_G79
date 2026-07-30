@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../../core/constants/content_stages.dart';
 import '../../../core/network/api_client.dart';
+import '../models/community_model.dart';
+import '../services/community_service.dart';
+import '../widgets/community_image_attachments.dart';
 
 class CreateQuestionScreen extends StatefulWidget {
   const CreateQuestionScreen({super.key});
@@ -15,8 +20,10 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleCtrl = TextEditingController();
   final _bodyCtrl = TextEditingController();
+  final _imageService = CommunityImageService();
+  final List<CommunityImageAttachment> _images = [];
 
-  List<dynamic> _topics = [];
+  List<CommunityTopic> _topics = [];
   String? _selectedTopicId;
   String _stage = 'PREGNANCY';
   String _urgency = 'NORMAL';
@@ -40,13 +47,14 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
   Future<void> _loadTopics() async {
     setState(() => _loading = true);
     try {
-      final data = await apiGet('/api/v1/community/topics');
+      final topics = await CommunityService.instance.getQuestionTopics();
+      if (!mounted) return;
       setState(() {
-        _topics = (data['data'] as List? ?? []);
+        _topics = topics;
         _loading = false;
       });
     } catch (_) {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -54,9 +62,14 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _submitting = true);
     try {
+      final imageUrls = await _imageService.uploadAll(
+        _images,
+        purpose: 'COMMUNITY_QUESTION_IMAGE',
+      );
       await apiPost('/api/v1/community/questions', {
         'title': _titleCtrl.text.trim(),
         'body': _bodyCtrl.text.trim(),
+        'imageUrls': imageUrls,
         if (_selectedTopicId != null) 'topicId': _selectedTopicId,
         'stage': _stage,
         'urgency': _urgency,
@@ -82,29 +95,45 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
     }
   }
 
-  InputDecoration _inputDeco(String label, {String? hint}) => InputDecoration(
-    labelText: label,
-    hintText: hint,
-    labelStyle: const TextStyle(color: _primary),
-    focusedBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(10),
-      borderSide: const BorderSide(color: _primary, width: 2),
-    ),
-    enabledBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(10),
-      borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-    ),
-    errorBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(10),
-      borderSide: const BorderSide(color: Colors.red),
-    ),
-    focusedErrorBorder: OutlineInputBorder(
-      borderRadius: BorderRadius.circular(10),
-      borderSide: const BorderSide(color: Colors.red, width: 2),
-    ),
-    filled: true,
-    fillColor: Colors.white,
-  );
+  Future<void> _pickImage(ImageSource source) async {
+    if (_images.length >= communityImageLimit) return;
+    try {
+      final image = await _imageService.pick(source);
+      if (image != null && mounted) setState(() => _images.add(image));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Không thể thêm ảnh: $e')));
+      }
+    }
+  }
+
+  InputDecoration _inputDeco(String label, {String? hint, String? helper}) =>
+      InputDecoration(
+        labelText: label,
+        hintText: hint,
+        helperText: helper,
+        labelStyle: const TextStyle(color: _primary),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: _primary, width: 2),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Colors.red),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Colors.red, width: 2),
+        ),
+        filled: true,
+        fillColor: Colors.white,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -153,6 +182,15 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                       maxLength: 2000,
                     ),
                     const SizedBox(height: 14),
+                    CommunityImagePickerField(
+                      images: _images,
+                      enabled: !_submitting,
+                      onCamera: () => _pickImage(ImageSource.camera),
+                      onGallery: () => _pickImage(ImageSource.gallery),
+                      onRemove: (index) =>
+                          setState(() => _images.removeAt(index)),
+                    ),
+                    const SizedBox(height: 14),
                     if (_topics.isEmpty)
                       Container(
                         padding: const EdgeInsets.symmetric(
@@ -191,8 +229,8 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                         items: _topics
                             .map(
                               (t) => DropdownMenuItem(
-                                value: t['id'].toString(),
-                                child: Text(t['name'] ?? t['id'].toString()),
+                                value: t.id,
+                                child: Text(t.name),
                               ),
                             )
                             .toList(),
@@ -204,21 +242,19 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                     const SizedBox(height: 14),
                     DropdownButtonFormField<String>(
                       initialValue: _stage,
-                      decoration: _inputDeco('Giai đoạn'),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'PREGNANCY',
-                          child: Text('Thai kỳ'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'POSTPARTUM',
-                          child: Text('Sau sinh'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'BABY_CARE',
-                          child: Text('Chăm sóc bé'),
-                        ),
-                      ],
+                      decoration: _inputDeco(
+                        'Giai đoạn liên quan',
+                        helper:
+                            'Chọn giai đoạn của mẹ hoặc em bé được nhắc đến.',
+                      ),
+                      items: contentStageOptions
+                          .map(
+                            (stage) => DropdownMenuItem(
+                              value: stage.value,
+                              child: Text(stage.label),
+                            ),
+                          )
+                          .toList(growable: false),
                       onChanged: (v) => setState(() => _stage = v!),
                     ),
                     const SizedBox(height: 14),

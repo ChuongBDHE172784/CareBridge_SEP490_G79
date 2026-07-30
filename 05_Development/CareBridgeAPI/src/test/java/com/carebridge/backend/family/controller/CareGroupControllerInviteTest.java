@@ -5,7 +5,6 @@ import com.carebridge.backend.config.MockMvcSecurityBuilderConfig;
 import com.carebridge.backend.family.dto.InviteFamilyMemberRequest;
 import com.carebridge.backend.family.dto.InviteFamilyMemberResponse;
 import com.carebridge.backend.family.entity.InviteChannel;
-import com.carebridge.backend.family.service.ICareCalendarService;
 import com.carebridge.backend.family.service.ICareGroupService;
 import com.carebridge.backend.family.service.ICareTaskService;
 import com.carebridge.backend.security.config.SecurityConfig;
@@ -51,7 +50,6 @@ class CareGroupControllerInviteTest {
 
     @MockitoBean private ICareGroupService careGroupService;
     @MockitoBean private ICareTaskService careTaskService;
-    @MockitoBean private ICareCalendarService careCalendarService;
     @MockitoBean private JwtTokenProvider jwtTokenProvider;
     @MockitoBean private UserRepository userRepository;
 
@@ -74,12 +72,25 @@ class CareGroupControllerInviteTest {
 
     @Test
     @WithMockUser(username = "00000000-0000-0000-0000-000000000011", roles = "MOTHER")
-    void inviteFamilyMember_malformedPhone_returns400() throws Exception {
+    void inviteFamilyMember_emailInput_delegatesToService() throws Exception {
+        InviteFamilyMemberResponse mockResponse = InviteFamilyMemberResponse.builder()
+                .careGroupMemberId(UUID.randomUUID())
+                .channel(InviteChannel.PHONE)
+                .inviteToken("sometoken123")
+                .inviteExpiresAt(Instant.now().plus(7, ChronoUnit.DAYS))
+                .invitedPhone("mother.carebridge@gmail.com")
+                .build();
+
+        when(careGroupService.inviteFamilyMember(eq(GROUP_ID), any(InviteFamilyMemberRequest.class), any(UUID.class)))
+                .thenReturn(mockResponse);
+
         mockMvc.perform(post(BASE_URL)
                         .with(csrf())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"channel\": \"PHONE\", \"phone\": \"not-a-phone!!\"}"))
-                .andExpect(status().isBadRequest());
+                        .content("{\"channel\": \"PHONE\", \"phone\": \"mother.carebridge@gmail.com\"}"))
+                .andExpect(status().isCreated());
+
+        verify(careGroupService).inviteFamilyMember(eq(GROUP_ID), any(InviteFamilyMemberRequest.class), any(UUID.class));
     }
 
     // ── TC-021: Controller delegates to service (no business logic) ───────────

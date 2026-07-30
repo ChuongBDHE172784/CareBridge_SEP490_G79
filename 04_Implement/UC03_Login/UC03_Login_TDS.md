@@ -4,7 +4,7 @@
 | Field | Value |
 |-------|-------|
 | **Document ID** | `CB-AUTH-IMP-003` |
-| **Version** | `1.1` |
+| **Version** | `1.2` |
 | **Date** | `2026-07-16` |
 | **Status** | `Approved` |
 | **Document Owner** | `PhuongNT` |
@@ -12,7 +12,7 @@
 | **Reviewed by** | `[Tech Lead]` |
 | **DPO Sign-off** | `[ ] Pending` |
 | **Approved by** | `[Principal Architect]` |
-| **Last Review** | `2026-06-26` |
+| **Last Review** | `2026-07-29` |
 | **Based on EDS** | `v2.0` |
 
 ---
@@ -24,6 +24,7 @@
 | 2026-06-26 | AI Agent | Tạo tài liệu lần đầu cho UC-03 Login |
 | 2026-07-16 | AI Agent | Đề xuất mở rộng đăng nhập Google và Firebase Phone Auth; chờ phê duyệt |
 | 2026-07-16 | User | Approved v1.1 federated login extension |
+| 2026-07-29 | Senior Developer | v1.2: password-first account-state disclosure; phân biệt admin lock, temporary lock, disabled và suspended; hỗ trợ purpose-scoped appeal token |
 
 ---
 
@@ -64,7 +65,18 @@
 | **Upstream Dependencies** | `UC-02 VerifyOTP (Account phải ACTIVE)` |
 | **Downstream Consumers** | `All protected endpoints, audit (SecurityEventLog), UC-04 Logout` |
 
-**Mô tả:** Người dùng đã kích hoạt tài khoản đăng nhập bằng email/phone + password. Hệ thống xác thực credentials, phát hành access token JWT ký RS256 (TTL 15 phút) và refresh token opaque ngẫu nhiên (TTL 7 ngày), tạo session record trong `user_sessions`. Sau 5 lần đăng nhập thất bại liên tiếp, tài khoản bị khóa (`LOCKED`) và ghi sự kiện `LOGIN_FAILED`.
+**Mô tả:** Người dùng đã kích hoạt tài khoản đăng nhập bằng email/phone + password. Hệ thống xác thực credentials, phát hành access token JWT ký RS256 (TTL 15 phút) và refresh token opaque ngẫu nhiên (TTL 7 ngày), tạo session record trong `user_sessions`. Sau 5 lần đăng nhập thất bại liên tiếp, tài khoản bị khóa tạm thời và ghi sự kiện `LOGIN_FAILED`.
+
+### 1.1 Password-first account-state disclosure (v1.2)
+
+Direct credential login and password-plus-OTP initiation verify the password before disclosing account state. Unknown identifier and incorrect password always return the same generic `Invalid credentials` response. Only after password correctness is proven may the backend return one of:
+
+- `ACCOUNT_TEMPORARILY_LOCKED`: rate-limit lock, includes `retryAt`, no appeal.
+- `ACCOUNT_ADMIN_LOCKED`: manual System Admin lock, includes the administrative reason and a ten-minute purpose-scoped appeal token.
+- `ACCOUNT_DISABLED`: lifecycle deactivation, separate message, no appeal.
+- `ACCOUNT_SUSPENDED`: moderation suspension, separate message.
+
+Administrative lock reasons and appeal tokens are deliberately excluded from refresh-token and ordinary JWT-protected failures. Web stores blocked context in `sessionStorage`; mobile stores it in in-memory `AuthState`. Neither platform puts the reason or appeal token in the URL.
 
 ---
 

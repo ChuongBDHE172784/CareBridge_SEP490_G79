@@ -7,6 +7,7 @@ import com.carebridge.backend.community.entity.CommunityQuestion;
 import com.carebridge.backend.community.entity.QuestionStatus;
 
 import java.util.UUID;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
@@ -70,5 +71,20 @@ class CommunityQuestionMapperTest {
         CommunityQuestionResponse response = mapper.toResponse(entity);
 
         assertThat(response.getStatus()).isEqualTo("PENDING");
+    }
+
+    @Test
+    void toResponse_questionWithCloudinaryImages_preservesUrls() {
+        List<String> imageUrls = List.of(
+                "https://res.cloudinary.com/carebridge/image/upload/question-1.jpg");
+        CommunityQuestion entity = CommunityQuestion.builder()
+                .id(UUID.randomUUID())
+                .imageUrls(imageUrls)
+                .build();
+
+        CommunityQuestionResponse response = mapper.toResponse(entity);
+
+        assertThat(response.getImageUrls()).containsExactlyElementsOf(imageUrls);
+        assertThat(response.getImageUrls()).isNotSameAs(imageUrls);
     }
 }

@@ -183,7 +183,10 @@ public class CareGroupServiceImpl implements ICareGroupService {
                             .userId(m.getUserId())
                             .displayName(displayName)
                             .memberRole(m.getMemberRole() != null ? m.getMemberRole().name() : null)
+                            .familyRelationshipRole(m.getFamilyRelationshipRole())
+                            .customFamilyRelationshipRole(m.getCustomFamilyRelationshipRole())
                             .inviteStatus(m.getInviteStatus().name())
+                            .isJoinRequest(m.getInviteToken() == null)
                             .joinedAt(m.getJoinedAt())
                             .build();
                 })
@@ -205,7 +208,8 @@ public class CareGroupServiceImpl implements ICareGroupService {
                 .map(m -> {
                     CareGroup group = groupRepository.findById(m.getCareGroupId()).orElse(null);
                     if (group == null) return null;
-                    long count = memberRepository.countByCareGroupId(group.getId());
+                    long count = memberRepository.countByCareGroupIdAndInviteStatus(
+                            group.getId(), InviteStatus.ACCEPTED);
                     return CareGroupSummaryDto.builder()
                             .groupId(group.getId())
                             .groupName(group.getGroupName())
@@ -269,7 +273,11 @@ public class CareGroupServiceImpl implements ICareGroupService {
     @Override
     @Transactional(readOnly = true)
     public List<PendingInvitationDto> listMyInvitations(UUID callerId) {
+        // Only show real invitations (sent by Owner via PHONE channel → inviteToken IS NOT NULL).
+        // Self-submitted join requests (joinGroupByCode → inviteToken IS NULL) are NOT
+        // shown here — they appear in the group's join-requests list for the Owner to review.
         return memberRepository.findByUserIdAndInviteStatus(callerId, InviteStatus.PENDING).stream()
+                .filter(member -> member.getInviteToken() != null) // exclude join requests
                 .map(member -> {
                     CareGroup group = groupRepository.findById(member.getCareGroupId()).orElse(null);
                     return PendingInvitationDto.builder()
@@ -283,8 +291,12 @@ public class CareGroupServiceImpl implements ICareGroupService {
     }
 
     @Override
-    public CareGroupMemberDto acceptInvite(UUID groupId, UUID callerId) {
+    public CareGroupMemberDto acceptInvite(UUID groupId, String familyRelationshipRole,
+                                           String customFamilyRelationshipRole, UUID callerId) {
+        validateFamilyRelationshipRole(familyRelationshipRole, customFamilyRelationshipRole);
         CareGroupMember member = pendingInviteOrThrow(groupId, callerId);
+        member.setFamilyRelationshipRole(familyRelationshipRole.trim().toUpperCase());
+        member.setCustomFamilyRelationshipRole(normalizeCustomFamilyRelationshipRole(customFamilyRelationshipRole));
         member.setInviteStatus(InviteStatus.ACCEPTED);
         member.setJoinedAt(Instant.now());
         CareGroupMember saved = memberRepository.save(member);
@@ -293,6 +305,12 @@ public class CareGroupServiceImpl implements ICareGroupService {
                 "CareGroup", groupId.toString(), "invite accepted");
 
         return toMemberDto(saved);
+    }
+
+    /** Legacy in-process test helper; HTTP contract always requires a relationship role. */
+    @Deprecated
+    public CareGroupMemberDto acceptInvite(UUID groupId, UUID callerId) {
+        return acceptInvite(groupId, "KHAC", "Chưa xác định", callerId);
     }
 
     @Override
@@ -318,13 +336,10 @@ public class CareGroupServiceImpl implements ICareGroupService {
 
         requireOwner(groupId, callerId, "FAM-050", "Only the care group owner can revoke invitations");
 
-        CareGroupMember target = memberRepository.findByCareGroupIdAndUserId(groupId, targetUserId)
+        CareGroupMember target = memberRepository.findFirstByCareGroupIdAndUserIdAndInviteStatus(
+                        groupId, targetUserId, InviteStatus.PENDING)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "FAM-051",
-                        "No invitation found for this user in this group"));
-        if (target.getInviteStatus() != InviteStatus.PENDING) {
-            throw new BusinessException(HttpStatus.CONFLICT, "FAM-052",
-                    "Invitation is not pending and cannot be revoked");
-        }
+                        "No pending invitation found for this user in this group"));
 
         target.setInviteStatus(InviteStatus.REVOKED);
         CareGroupMember saved = memberRepository.save(target);
@@ -466,20 +481,18 @@ public class CareGroupServiceImpl implements ICareGroupService {
     }
 
     private CareGroupMember pendingInviteOrThrow(UUID groupId, UUID callerId) {
-        CareGroupMember member = memberRepository.findByCareGroupIdAndUserId(groupId, callerId)
+        // Use status-specific lookup to avoid ambiguity: a user may have multiple rows
+        // in the same group (e.g. OWNER row + a PENDING invite row after being re-invited).
+        return memberRepository
+                .findFirstByCareGroupIdAndUserIdAndInviteStatus(groupId, callerId, InviteStatus.PENDING)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "FAM-009",
                         "No pending invitation found for this group"));
-        if (member.getInviteStatus() != InviteStatus.PENDING) {
-            throw new BusinessException(HttpStatus.NOT_FOUND, "FAM-009",
-                    "No pending invitation found for this group");
-        }
-        return member;
     }
 
     @Override
     public InviteFamilyMemberResponse inviteFamilyMember(UUID groupId, InviteFamilyMemberRequest request, UUID callerId) {
         // Guard: group must exist and be ACTIVE
-        groupRepository.findById(groupId)
+        CareGroup group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "FAM-005",
                         "Care group not found: " + groupId));
 
@@ -509,30 +522,50 @@ public class CareGroupServiceImpl implements ICareGroupService {
                 throw new BusinessException(HttpStatus.BAD_REQUEST, "FAM-010",
                         "Phone number or email is required for invitation.");
             }
-            String canonicalPhone = VietnamesePhoneNumbers.isValidOrBlank(phone)
-                    ? VietnamesePhoneNumbers.normalizeToE164(phone)
-                    : null;
-            Optional<User> inviteeMatch = canonicalPhone != null
-                    ? userRepository.findByPhone(canonicalPhone)
-                    : userRepository.findByEmailIgnoreCase(phone.trim());
+            String trimmedInput = phone.trim();
+            boolean isEmail = trimmedInput.contains("@");
+
+            Optional<User> inviteeMatch;
+            if (isEmail) {
+                // Input is an email address — look up by email
+                inviteeMatch = userRepository.findByEmailIgnoreCase(trimmedInput);
+            } else {
+                // Input is a phone number — try E.164 first, then local (0...) format
+                // to handle DB rows that were manually set without normalization
+                String canonicalPhone = VietnamesePhoneNumbers.isValidOrBlank(trimmedInput)
+                        ? VietnamesePhoneNumbers.normalizeToE164(trimmedInput)
+                        : null;
+                if (canonicalPhone != null) {
+                    // Build both variants: E.164 (+84xxxxxxxxx) and local (0xxxxxxxxx)
+                    String localPhone = "0" + canonicalPhone.substring(3); // strip +84, prepend 0
+                    java.util.List<User> matches = userRepository
+                            .findAllByPhoneIn(java.util.List.of(canonicalPhone, localPhone));
+                    inviteeMatch = matches.isEmpty() ? Optional.empty() : Optional.of(matches.get(0));
+                } else {
+                    // Not a valid Vietnamese phone — try as-is (may be stored raw)
+                    inviteeMatch = userRepository.findByPhone(trimmedInput);
+                }
+            }
+
             User invitee = inviteeMatch
                     .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "FAM-014",
                             "No CareBridge account was found for this phone number or email."));
 
-            // Duplicate check: PENDING invite already exists
+            // Check 1: Target user is owner or already an accepted member
+            if (group.getOwnerUserId().equals(invitee.getId()) ||
+                    memberRepository.existsByCareGroupIdAndUserIdAndInviteStatus(groupId, invitee.getId(), InviteStatus.ACCEPTED)) {
+                throw new BusinessException(HttpStatus.CONFLICT, "FAM-011",
+                        "Thành viên này đã tồn tại trong nhóm.");
+            }
+            // Check 2: Pending invite already exists for this person
             if (memberRepository.existsByCareGroupIdAndUserIdAndInviteStatus(groupId, invitee.getId(), InviteStatus.PENDING)) {
                 throw new BusinessException(HttpStatus.CONFLICT, "FAM-011",
-                        "A pending invite already exists for this person in this care group.");
+                        "Lời mời cho người này đang chờ xử lý.");
             }
-            // Already-accepted check
-            memberRepository.findByCareGroupIdAndUserId(groupId, invitee.getId())
-                    .filter(m -> m.getInviteStatus() == InviteStatus.ACCEPTED)
-                    .ifPresent(m -> { throw new BusinessException(HttpStatus.CONFLICT, "FAM-011",
-                            "This person is already an accepted member of the group."); });
 
             String targetPhone = (invitee.getPhone() != null && !invitee.getPhone().isBlank())
                     ? invitee.getPhone()
-                    : canonicalPhone;
+                    : trimmedInput;
 
             CareGroupMember member = CareGroupMember.builder()
                     .careGroupId(groupId)
@@ -605,7 +638,9 @@ public class CareGroupServiceImpl implements ICareGroupService {
 
     @Override
     @Transactional
-    public AcceptInvitationByTokenResponse acceptInvitationByToken(String inviteToken, UUID callerId) {
+    public AcceptInvitationByTokenResponse acceptInvitationByToken(String inviteToken, String familyRelationshipRole,
+                                                                    String customFamilyRelationshipRole, UUID callerId) {
+        validateFamilyRelationshipRole(familyRelationshipRole, customFamilyRelationshipRole);
         // Step 1: look up member row by token (only PHONE-channel invites have a DB row)
         CareGroupMember member = memberRepository.findByInviteToken(inviteToken)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "FAM-040",
@@ -647,6 +682,9 @@ public class CareGroupServiceImpl implements ICareGroupService {
         member.setUserId(callerId);
         member.setInviteStatus(InviteStatus.ACCEPTED);
         member.setJoinedAt(now);
+        member.setFamilyRelationshipRole(familyRelationshipRole.trim().toUpperCase());
+        member.setCustomFamilyRelationshipRole(normalizeCustomFamilyRelationshipRole(customFamilyRelationshipRole));
+        memberRepository.save(member);
 
         // Step 7: audit log
         auditService.log(AuditAction.CARE_GROUP_INVITATION_ACCEPTED, callerId,
@@ -676,9 +714,17 @@ public class CareGroupServiceImpl implements ICareGroupService {
                 .build();
     }
 
+    /** Legacy in-process test helper; HTTP contract always requires a relationship role. */
+    @Deprecated
+    public AcceptInvitationByTokenResponse acceptInvitationByToken(String inviteToken, UUID callerId) {
+        return acceptInvitationByToken(inviteToken, "KHAC", "Chưa xác định", callerId);
+    }
+
     @Override
     @Transactional
-    public CareGroupSummaryDto joinGroupByCode(String code, UUID callerId) {
+    public CareGroupSummaryDto joinGroupByCode(String code, String familyRelationshipRole,
+                                               String customFamilyRelationshipRole, UUID callerId) {
+        validateFamilyRelationshipRole(familyRelationshipRole, customFamilyRelationshipRole);
         if (code == null || code.trim().isEmpty()) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "FAM-060", "Mã mời không được để trống.");
         }
@@ -690,7 +736,7 @@ public class CareGroupServiceImpl implements ICareGroupService {
         } catch (IllegalArgumentException e) {
             // Not a UUID — try accepting via invite token (old LINK/QR/PHONE flow)
             try {
-                var res = acceptInvitationByToken(cleanCode, callerId);
+                var res = acceptInvitationByToken(cleanCode, familyRelationshipRole, customFamilyRelationshipRole, callerId);
                 groupId = res.getCareGroupId();
                 CareGroup tokenGroup = groupRepository.findById(groupId).orElseThrow();
                 return toGroupSummaryDto(tokenGroup, GroupMemberRole.MEMBER.name());
@@ -706,23 +752,27 @@ public class CareGroupServiceImpl implements ICareGroupService {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "FAM-061", "Nhóm chăm sóc này hiện không hoạt động.");
         }
 
-        // If caller is the group owner, they are already a member
-        if (group.getOwnerUserId().equals(callerId)) {
-            return toGroupSummaryDto(group, GroupMemberRole.OWNER.name());
+        // 1. If caller is group owner or already an ACCEPTED member
+        if (group.getOwnerUserId().equals(callerId) ||
+                memberRepository.existsByCareGroupIdAndUserIdAndInviteStatus(groupId, callerId, InviteStatus.ACCEPTED)) {
+            throw new BusinessException(HttpStatus.CONFLICT, "FAM-007", "Bạn đã là thành viên của nhóm này.");
         }
 
-        var existingOpt = memberRepository.findByCareGroupIdAndUserId(groupId, callerId);
-        if (existingOpt.isPresent()) {
-            CareGroupMember existing = existingOpt.get();
-            if (existing.getInviteStatus() == InviteStatus.ACCEPTED) {
-                throw new BusinessException(HttpStatus.CONFLICT, "FAM-007", "Bạn đã là thành viên của nhóm này.");
-            }
-            if (existing.getInviteStatus() == InviteStatus.PENDING) {
-                throw new BusinessException(HttpStatus.CONFLICT, "FAM-007", "Yêu cầu tham gia đã được gửi, vui lòng chờ Mother duyệt.");
-            }
-            // REJECTED / REVOKED / EXPIRED — allow re-requesting
+        // 2. If caller already has a PENDING join request
+        if (memberRepository.existsByCareGroupIdAndUserIdAndInviteStatus(groupId, callerId, InviteStatus.PENDING)) {
+            throw new BusinessException(HttpStatus.CONFLICT, "FAM-007", "Yêu cầu tham gia đã được gửi, vui lòng chờ Mother duyệt.");
+        }
+
+        // 3. If user had an inactive row (REJECTED / REVOKED / EXPIRED), re-activate to PENDING
+        java.util.List<CareGroupMember> oldRows = memberRepository.findAllByCareGroupIdAndUserId(groupId, callerId);
+        if (!oldRows.isEmpty()) {
+            CareGroupMember existing = oldRows.get(0);
             existing.setInviteStatus(InviteStatus.PENDING);
+            existing.setInviteToken(null);
+            existing.setInviteExpiresAt(null);
             existing.setJoinedAt(null);
+            existing.setFamilyRelationshipRole(familyRelationshipRole.trim().toUpperCase());
+            existing.setCustomFamilyRelationshipRole(normalizeCustomFamilyRelationshipRole(customFamilyRelationshipRole));
             memberRepository.save(existing);
             auditService.log(AuditAction.CARE_GROUP_MEMBER_INVITED, callerId,
                     "CareGroup", group.getId().toString(), "Re-submitted join request via code");
@@ -734,6 +784,8 @@ public class CareGroupServiceImpl implements ICareGroupService {
                 .careGroupId(groupId)
                 .userId(callerId)
                 .memberRole(GroupMemberRole.MEMBER)
+                .familyRelationshipRole(familyRelationshipRole.trim().toUpperCase())
+                .customFamilyRelationshipRole(normalizeCustomFamilyRelationshipRole(customFamilyRelationshipRole))
                 .inviteStatus(InviteStatus.PENDING)
                 .build();
         memberRepository.save(joinRequest);
@@ -742,6 +794,21 @@ public class CareGroupServiceImpl implements ICareGroupService {
                 "CareGroup", group.getId().toString(), "Join request submitted via invite code");
 
         return toGroupSummaryDto(group, GroupMemberRole.MEMBER.name());
+    }
+
+    private void validateFamilyRelationshipRole(String role, String customRole) {
+        if (role == null || role.isBlank()) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "FAM-062", "Vai trò trong gia đình không được để trống.");
+        }
+        var allowed = java.util.Set.of("CHONG", "BO", "ME", "ONG_NOI", "BA_NOI", "ONG_NGOAI", "BA_NGOAI", "KHAC");
+        var normalized = role.trim().toUpperCase();
+        if (!allowed.contains(normalized) || ("KHAC".equals(normalized) && (customRole == null || customRole.isBlank()))) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "FAM-062", "Vai trò gia đình không hợp lệ.");
+        }
+    }
+
+    private String normalizeCustomFamilyRelationshipRole(String customRole) {
+        return customRole == null ? null : customRole.trim();
     }
 
     @Override
@@ -806,7 +873,8 @@ public class CareGroupServiceImpl implements ICareGroupService {
     }
 
     private CareGroupSummaryDto toGroupSummaryDto(CareGroup group, String roleName) {
-        long count = memberRepository.countByCareGroupId(group.getId());
+        long count = memberRepository.countByCareGroupIdAndInviteStatus(
+                group.getId(), InviteStatus.ACCEPTED);
         return CareGroupSummaryDto.builder()
                 .groupId(group.getId())
                 .groupName(group.getGroupName())
@@ -822,7 +890,10 @@ public class CareGroupServiceImpl implements ICareGroupService {
                 .memberId(member.getId())
                 .displayName("Member")
                 .memberRole(member.getMemberRole() != null ? member.getMemberRole().name() : null)
+                .familyRelationshipRole(member.getFamilyRelationshipRole())
+                .customFamilyRelationshipRole(member.getCustomFamilyRelationshipRole())
                 .inviteStatus(member.getInviteStatus().name())
+                .isJoinRequest(member.getInviteToken() == null)
                 .joinedAt(member.getJoinedAt())
                 .build();
     }

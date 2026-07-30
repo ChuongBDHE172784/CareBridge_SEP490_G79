@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/network/api_client.dart';
+import '../models/federated_auth_failure.dart';
 import '../services/auth_service.dart';
 import 'otp_verification_screen.dart';
 import 'login_screen.dart';
@@ -8,7 +10,10 @@ import 'role_selection_screen.dart';
 /// CB-002 — Register Account (UC-01)
 /// Collects name, email/phone, password → calls POST /api/v1/auth/register → navigates to OTP screen.
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  final bool isExpert;
+  final Future<void> Function()? onGoogleSignIn;
+
+  const RegisterScreen({super.key, this.isExpert = false, this.onGoogleSignIn});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -48,6 +53,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   bool get _isEmailInput => _identifierCtrl.text.contains('@');
 
+  bool get _hasValidEmail => RegExp(
+    r'^[^@\s]+@[^@\s]+\.[^@\s]+$',
+  ).hasMatch(_identifierCtrl.text.trim());
+
   bool get _hasMinLength => _passwordCtrl.text.length >= 8;
   bool get _hasSpecialChar =>
       RegExp(r'[@#$%^&*!]').hasMatch(_passwordCtrl.text);
@@ -60,6 +69,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
     if (name.isEmpty || identifier.isEmpty || password.isEmpty) {
       setState(() => _errorMessage = 'Vui lòng nhập đầy đủ thông tin.');
+      return;
+    }
+    if (widget.isExpert && !_hasValidEmail) {
+      setState(
+        () => _errorMessage =
+            'Tài khoản chuyên gia cần đăng ký bằng địa chỉ email hợp lệ.',
+      );
       return;
     }
     if (name.length < 2 || name.length > 120) {
@@ -91,6 +107,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         email: _isEmailInput ? identifier : null,
         phone: !_isEmailInput ? identifier : null,
         password: password,
+        role: widget.isExpert ? 'EXPERT' : null,
       );
       if (!mounted) return;
       Navigator.push(
@@ -105,7 +122,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } on ApiException catch (e) {
       String msg;
       if (e.statusCode == 409) {
-        msg = 'Email hoặc số điện thoại này đã được đăng ký.';
+        msg = widget.isExpert
+            ? 'Email này đã được đăng ký.'
+            : 'Email hoặc số điện thoại này đã được đăng ký.';
       } else if (e.statusCode == 400) {
         msg = 'Thông tin không hợp lệ. Vui lòng kiểm tra lại.';
       } else {
@@ -141,8 +160,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 12),
                     ],
                     _buildFormCard(),
-                    const SizedBox(height: 20),
-                    _buildFederatedRegistrationActions(),
+                    if (!widget.isExpert) ...[
+                      const SizedBox(height: 20),
+                      _buildFederatedRegistrationActions(),
+                    ],
                     const SizedBox(height: 80),
                   ],
                 ),
@@ -169,7 +190,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           Expanded(
             child: Text(
-              'Tạo tài khoản',
+              widget.isExpert ? 'Đăng ký Chuyên gia' : 'Tạo tài khoản',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontFamily: 'Lexend',
@@ -189,9 +210,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Chào mừng bạn! 👋',
-          style: TextStyle(
+        Text(
+          widget.isExpert ? 'Đăng ký Chuyên gia Y tế 🩺' : 'Chào mừng bạn! 👋',
+          style: const TextStyle(
             fontFamily: 'Lexend',
             fontSize: 24,
             fontWeight: FontWeight.w600,
@@ -200,8 +221,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         const SizedBox(height: 4),
         Text(
-          'Bắt đầu hành trình chăm sóc tuyệt vời cùng CareBridge.',
-          style: TextStyle(
+          widget.isExpert
+              ? 'Tạo tài khoản chuyên gia để bắt đầu xác thực hồ sơ chuyên môn.'
+              : 'Bắt đầu hành trình chăm sóc tuyệt vời cùng CareBridge.',
+          style: const TextStyle(
             fontFamily: 'Lexend',
             fontSize: 14,
             color: _mutedColor,
@@ -267,9 +290,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
           // Identifier field
           _buildLabeledInput(
             id: 'contact',
-            label: 'Email hoặc Số điện thoại',
+            label: widget.isExpert ? 'Email' : 'Email hoặc Số điện thoại',
             controller: _identifierCtrl,
-            hint: '09xx xxx xxx',
+            hint: widget.isExpert ? 'bacsi@example.com' : '09xx xxx xxx',
             keyboardType: TextInputType.emailAddress,
           ),
           const SizedBox(height: 16),
@@ -380,52 +403,86 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return value;
   }
 
+  Future<void> _federatedGoogleRegistration() async {
+    if (_isLoading) return;
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final callback = widget.onGoogleSignIn;
+      if (callback != null) {
+        await callback();
+      } else {
+        await AuthService.instance.federatedGoogle();
+      }
+      if (mounted) context.go('/auth-landing');
+    } on FederatedSignInException catch (error) {
+      if (mounted && !error.failure.isCanceled) {
+        setState(() => _errorMessage = error.failure.userMessage);
+      }
+    } catch (error) {
+      final failure = FederatedAuthFailure.from(error);
+      if (mounted && !failure.isCanceled) {
+        setState(() => _errorMessage = failure.userMessage);
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   Widget _buildFederatedRegistrationActions() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        OutlinedButton(
+        _buildFederatedIconButton(
           key: const Key('federated-google-register'),
-          onPressed: _isLoading
-              ? null
-              : () async {
-                  setState(() => _isLoading = true);
-                  try {
-                    await AuthService.instance.federatedGoogle();
-                    if (mounted) {
-                      Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(
-                          builder: (_) => const RoleSelectionScreen(),
-                        ),
-                      );
-                    }
-                  } catch (_) {
-                    if (mounted) {
-                      setState(
-                        () => _errorMessage = 'Unable to register with Google.',
-                      );
-                    }
-                  } finally {
-                    if (mounted) setState(() => _isLoading = false);
-                  }
-                },
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size.fromHeight(48),
-            shape: const StadiumBorder(),
+          tooltip: 'Đăng ký với Google',
+          onPressed: _isLoading ? null : _federatedGoogleRegistration,
+          child: const Text(
+            'G',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              color: _accentPrimary,
+            ),
           ),
-          child: const Text('Sign up with Google'),
         ),
-        const SizedBox(height: 12),
-        OutlinedButton(
+        const SizedBox(width: 16),
+        _buildFederatedIconButton(
           key: const Key('federated-phone-register'),
+          tooltip: 'Đăng ký với số điện thoại',
           onPressed: _isLoading ? null : _federatedPhoneRegistration,
-          style: OutlinedButton.styleFrom(
-            minimumSize: const Size.fromHeight(48),
-            shape: const StadiumBorder(),
-          ),
-          child: const Text('Sign up with phone'),
+          child: const Icon(Icons.phone_rounded, size: 22),
         ),
       ],
+    );
+  }
+
+  Widget _buildFederatedIconButton({
+    required Key key,
+    required String tooltip,
+    required VoidCallback? onPressed,
+    required Widget child,
+  }) {
+    return Material(
+      color: _surfaceColor,
+      elevation: onPressed == null ? 0 : 2,
+      shadowColor: _textColor.withValues(alpha: 0.12),
+      shape: const CircleBorder(),
+      child: IconButton(
+        key: key,
+        tooltip: tooltip,
+        onPressed: onPressed,
+        style: IconButton.styleFrom(
+          fixedSize: const Size.square(48),
+          foregroundColor: _accentPrimary,
+          disabledForegroundColor: _mutedColor.withValues(alpha: 0.4),
+          side: BorderSide(color: _borderColor),
+          shape: const CircleBorder(),
+        ),
+        icon: child,
+      ),
     );
   }
 

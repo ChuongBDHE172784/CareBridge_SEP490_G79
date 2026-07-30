@@ -13,6 +13,56 @@ void main() {
   }
 
   group('parseAccountBlockedCode', () {
+    test('parses administrative lock metadata and appeal authorization', () {
+      final response = makeResponse(403, {
+        'error': 'ACCOUNT_ADMIN_LOCKED',
+        'status': 403,
+        'metadata': {
+          'lockType': 'ADMIN',
+          'reason': 'Vi phạm quy định cộng đồng',
+          'appealAllowed': true,
+          'appealToken': 'appeal-token',
+        },
+      });
+
+      final state = parseAccountBlockedState(response);
+      expect(state?.code, 'ACCOUNT_ADMIN_LOCKED');
+      expect(state?.lockType, 'ADMIN');
+      expect(state?.reason, 'Vi phạm quy định cộng đồng');
+      expect(state?.canAppeal, isTrue);
+      expect(state?.appealToken, 'appeal-token');
+    });
+
+    test('parses temporary-lock retry time without appeal permission', () {
+      final response = makeResponse(403, {
+        'error': 'ACCOUNT_TEMPORARILY_LOCKED',
+        'status': 403,
+        'metadata': {
+          'lockType': 'TEMPORARY',
+          'retryAt': '2026-07-29T02:00:00Z',
+          'appealAllowed': false,
+        },
+      });
+
+      final state = parseAccountBlockedState(response);
+      expect(state?.retryAt, DateTime.parse('2026-07-29T02:00:00Z'));
+      expect(state?.canAppeal, isFalse);
+    });
+
+    test(
+      'parses a rejected administrative appeal without allowing another submission',
+      () {
+        final response = makeResponse(403, {
+          'error': 'ACCOUNT_ADMIN_LOCKED',
+          'metadata': {'appealAllowed': false, 'appealStatus': 'REJECTED'},
+        });
+
+        final state = parseAccountBlockedState(response);
+        expect(state?.appealStatus, 'REJECTED');
+        expect(state?.canAppeal, isFalse);
+      },
+    );
+
     test('returns ACCOUNT_DISABLED for 403 with matching error code', () {
       final response = makeResponse(403, {
         'error': 'ACCOUNT_DISABLED',

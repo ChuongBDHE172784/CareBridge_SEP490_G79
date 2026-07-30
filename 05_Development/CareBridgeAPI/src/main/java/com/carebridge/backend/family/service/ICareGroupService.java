@@ -50,7 +50,8 @@ public interface ICareGroupService {
     List<PendingInvitationDto> listMyInvitations(UUID callerId);
 
     /** @throws com.carebridge.backend.common.exception.BusinessException (FAM-009/404) if no pending invite for caller */
-    CareGroupMemberDto acceptInvite(UUID groupId, UUID callerId);
+    CareGroupMemberDto acceptInvite(UUID groupId, String familyRelationshipRole,
+                                    String customFamilyRelationshipRole, UUID callerId);
 
     /** @throws com.carebridge.backend.common.exception.BusinessException (FAM-009/404) if no pending invite for caller */
     void declineInvite(UUID groupId, UUID callerId);
@@ -100,13 +101,15 @@ public interface ICareGroupService {
      * @throws com.carebridge.backend.common.exception.BusinessException (FAM-042/409) already non-PENDING or lost concurrency race
      * @throws com.carebridge.backend.common.exception.BusinessException (FAM-043/403) PHONE channel — phone mismatch
      */
-    AcceptInvitationByTokenResponse acceptInvitationByToken(String inviteToken, UUID callerId);
+    AcceptInvitationByTokenResponse acceptInvitationByToken(String inviteToken, String familyRelationshipRole,
+                                                            String customFamilyRelationshipRole, UUID callerId);
 
     /**
      * Joins a care group using an invite code (groupId UUID or invite token).
      * Creates a PENDING join request; the Mother must approve before the member can access the group.
      */
-    CareGroupSummaryDto joinGroupByCode(String code, UUID callerId);
+    CareGroupSummaryDto joinGroupByCode(String code, String familyRelationshipRole,
+                                        String customFamilyRelationshipRole, UUID callerId);
 
     /**
      * Lists all self-initiated join requests (PENDING, no invite token) for a care group.

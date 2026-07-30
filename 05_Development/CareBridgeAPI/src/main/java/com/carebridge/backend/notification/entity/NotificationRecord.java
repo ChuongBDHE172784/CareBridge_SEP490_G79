@@ -52,6 +52,10 @@ public class NotificationRecord {
     @Column(name = "reference_id")
     private UUID referenceId;
 
+    /** Optional care-group scope for Family emergency alerts; legacy records remain unscoped. */
+    @Column(name = "care_group_id")
+    private UUID careGroupId;
+
     @Column(name = "reference_type", length = 50)
     private String referenceType;
 

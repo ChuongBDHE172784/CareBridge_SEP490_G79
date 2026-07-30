@@ -4,6 +4,7 @@ import type {
   AiFeedbackResult,
   AiFeedbackVerdict,
   CasePriority,
+  CommunityContentMonitorPage,
   ClaimReportResult,
   ModerationQueuePage,
   RelatedReportPage,
@@ -68,6 +69,17 @@ export async function fetchAccountViolationHistory(params: {
     params: { page: params.page ?? 0, size: params.size ?? 20 },
   });
   return toAccountViolationSummaryPage(res.data);
+}
+
+export async function fetchVisibleCommunityContent(params: {
+  targetType: Extract<ReportTargetType, 'QUESTION' | 'ANSWER'>;
+  page?: number;
+  size?: number;
+}): Promise<CommunityContentMonitorPage> {
+  const res = await apiClient.get<CommunityContentMonitorPage>('/api/v1/admin/moderation/community-content', {
+    params: { targetType: params.targetType, page: params.page ?? 0, size: params.size ?? 20 },
+  });
+  return res.data;
 }
 
 export async function fetchAccountViolationDetail(
