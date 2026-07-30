@@ -15,9 +15,11 @@ while IFS= read -r line || [[ -n "$line" ]]; do
     # Split on first = only
     key="${trimmed%%=*}"
     val="${trimmed#*=}"
-    # Strip surrounding quotes from value
+    # Strip surrounding quotes (double or single) from value
     val="${val#\"}"
     val="${val%\"}"
+    val="${val#\'}"
+    val="${val%\'}"
     export "$key=$val"
 done < .env
 
