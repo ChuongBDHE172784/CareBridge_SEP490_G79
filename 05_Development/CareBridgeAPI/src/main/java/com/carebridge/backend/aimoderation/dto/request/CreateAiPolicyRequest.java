@@ -17,7 +17,7 @@ import java.util.List;
 public record CreateAiPolicyRequest(
         @NotBlank @Pattern(regexp = "[A-Z0-9_]{3,60}") String policyCode,
         @NotBlank @Size(max = 150) String name,
-        @NotBlank @Size(max = 2000) String detectionGuidance,
+        @NotBlank @Size(max = 3000) String detectionGuidance,
         @NotNull AiViolationCategory violationCategory,
         @NotNull ReportCategory reportCategory,
         @NotNull AiPolicySeverity severity,

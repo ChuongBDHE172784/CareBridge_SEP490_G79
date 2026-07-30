@@ -116,6 +116,19 @@ class AiPolicyServiceImplTest {
                 .isEqualTo("AIM-004");
     }
 
+    @Test
+    void create_guidanceLongerThan3000Characters_isRejected() {
+        when(policyRepository.existsByPolicyCodeIgnoreCase(anyString())).thenReturn(false);
+        CreateAiPolicyRequest request = new CreateAiPolicyRequest("LONG_GUIDANCE", "Long guidance", "g".repeat(3001),
+                AiViolationCategory.OTHER, ReportCategory.OTHER, AiPolicySeverity.LOW,
+                List.of(ReportTargetType.QUESTION), new BigDecimal("0.7"), true, null, null);
+
+        assertThatThrownBy(() -> service.createPolicy(request, ACTOR))
+                .isInstanceOf(AiModerationException.class)
+                .extracting(ex -> ((AiModerationException) ex).getCode())
+                .isEqualTo("AIM-006");
+    }
+
     // Version bumps only for classification-affecting changes — and is audited
     @Test
     void update_guidanceChange_bumpsVersionAndAudits() {
@@ -130,6 +143,19 @@ class AiPolicyServiceImplTest {
         assertThat(policy.getVersion()).isEqualTo(2);
         verify(auditService).log(eq(AuditAction.AI_POLICY_UPDATED), eq(ACTOR), eq("AiModerationPolicy"),
                 anyString(), any());
+    }
+
+    @Test
+    void update_guidanceLongerThan3000Characters_isRejected() {
+        AiModerationPolicy policy = existingPolicy(false);
+        when(policyRepository.findById(policy.getId())).thenReturn(Optional.of(policy));
+
+        assertThatThrownBy(() -> service.updatePolicy(policy.getId(),
+                new UpdateAiPolicyRequest(null, "g".repeat(3001), null, null, null, null, null, null, null, null),
+                ACTOR))
+                .isInstanceOf(AiModerationException.class)
+                .extracting(ex -> ((AiModerationException) ex).getCode())
+                .isEqualTo("AIM-006");
     }
 
     @Test
@@ -182,7 +208,7 @@ class AiPolicyServiceImplTest {
                     links, files, p.getCreatedAt(), p.getUpdatedAt());
         });
 
-        CreateAiPolicyRequest request = new CreateAiPolicyRequest("LEGAL_REF_POLICY", "Chính sách căn cứ pháp lý", "Hướng dẫn",
+        CreateAiPolicyRequest request = new CreateAiPolicyRequest("LEGAL_REF_POLICY", "Chính sách căn cứ pháp lý", "H".repeat(3000),
                 AiViolationCategory.SPAM_ADVERTISING, ReportCategory.SPAM, AiPolicySeverity.HIGH,
                 List.of(ReportTargetType.QUESTION), new BigDecimal("0.8"), true, links, files);
 

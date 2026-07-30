@@ -47,7 +47,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AiPolicyServiceImpl implements AiPolicyService {
 
-    private static final int MAX_GUIDANCE_LENGTH = 2000;
+    private static final int MAX_GUIDANCE_LENGTH = 3000;
 
     private final AiModerationPolicyRepository policyRepository;
     private final AiModerationMapper mapper;

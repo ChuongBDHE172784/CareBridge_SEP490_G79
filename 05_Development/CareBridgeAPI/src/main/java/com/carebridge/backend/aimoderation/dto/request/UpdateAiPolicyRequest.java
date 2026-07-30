@@ -13,7 +13,7 @@ import java.util.List;
 /** Null-tolerant PATCH semantics (same convention as UpdateRedFlagRuleRequest). policyCode is immutable. */
 public record UpdateAiPolicyRequest(
         @Size(max = 150) String name,
-        @Size(max = 2000) String detectionGuidance,
+        @Size(max = 3000) String detectionGuidance,
         AiViolationCategory violationCategory,
         ReportCategory reportCategory,
         AiPolicySeverity severity,
