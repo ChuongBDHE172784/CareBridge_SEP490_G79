@@ -43,13 +43,15 @@ class _InviteMemberSheetState extends State<_InviteMemberSheet> {
     super.dispose();
   }
 
-  bool get _phoneValid {
+  bool get _contactValid {
     final v = _phoneCtrl.text.trim();
-    return v.length >= 8 && v.length <= 15 && RegExp(r'^\+?[0-9]+$').hasMatch(v);
+    final isPhone = v.length >= 8 && v.length <= 15 && RegExp(r'^\+?[0-9]+$').hasMatch(v);
+    final isEmail = v.contains('@') && v.contains('.');
+    return isPhone || isEmail;
   }
 
   Future<void> _submit() async {
-    if (!_phoneValid || _submitting) return;
+    if (!_contactValid || _submitting) return;
     setState(() {
       _submitting = true;
       _errorText = null;
@@ -68,7 +70,7 @@ class _InviteMemberSheetState extends State<_InviteMemberSheet> {
       String message;
       switch (e.statusCode) {
         case 404:
-          message = 'Không tìm thấy tài khoản CareBridge với số điện thoại này.';
+          message = 'Không tìm thấy tài khoản CareBridge với số điện thoại hoặc email này.';
           break;
         case 409:
           message = 'Người này đã là thành viên hoặc đã được mời.';
@@ -134,7 +136,7 @@ class _InviteMemberSheetState extends State<_InviteMemberSheet> {
               ),
               const SizedBox(height: 4),
               const Text(
-                'Nhập số điện thoại tài khoản CareBridge của người bạn muốn mời.',
+                'Nhập số điện thoại hoặc email tài khoản CareBridge của người bạn muốn mời.',
                 style: TextStyle(
                   fontFamily: 'Lexend',
                   fontSize: 13,
@@ -144,12 +146,12 @@ class _InviteMemberSheetState extends State<_InviteMemberSheet> {
               const SizedBox(height: 20),
               TextField(
                 controller: _phoneCtrl,
-                keyboardType: TextInputType.phone,
+                keyboardType: TextInputType.emailAddress,
                 onChanged: (_) => setState(() {}),
                 style: const TextStyle(fontFamily: 'Lexend'),
                 decoration: InputDecoration(
-                  labelText: 'Số điện thoại',
-                  hintText: '0987654321',
+                  labelText: 'Số điện thoại hoặc Email',
+                  hintText: '0987654321 hoặc example@gmail.com',
                   filled: true,
                   fillColor: _surfaceContainerLow,
                   border: OutlineInputBorder(
@@ -204,7 +206,7 @@ class _InviteMemberSheetState extends State<_InviteMemberSheet> {
                 width: double.infinity,
                 height: 48,
                 child: ElevatedButton(
-                  onPressed: (_phoneValid && !_submitting) ? _submit : null,
+                  onPressed: (_contactValid && !_submitting) ? _submit : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _primaryContainer,
                     foregroundColor: Colors.white,
