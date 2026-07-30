@@ -61,7 +61,7 @@ public class CareGroupMember {
     @Column(name = "invite_expires_at")
     private Instant inviteExpiresAt;
 
-    @Column(name = "invited_phone", length = 20)
+    @Column(name = "invited_phone", length = 255)
     private String invitedPhone;
 
     @JdbcTypeCode(SqlTypes.JSON)
