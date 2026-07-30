@@ -40,7 +40,7 @@ public class ConsultationRequestController {
     private final IConsultationRequestService service;
 
     @PostMapping
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<ConsultationRequestResponse>> create(
             @Valid @RequestBody CreateConsultationRequestRequest request,
             Principal principal) {
@@ -50,7 +50,7 @@ public class ConsultationRequestController {
     }
 
     @GetMapping("/mine")
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<PaginatedResponse<ConsultationRequestSummaryResponse>> listMine(
             @RequestParam(required = false) ConsultationRequestStatus status,
             @RequestParam(defaultValue = "0") @Min(0) int page,
@@ -74,7 +74,7 @@ public class ConsultationRequestController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('MOTHER', 'EXPERT')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY', 'EXPERT')")
     public ResponseEntity<ApiResponse<ConsultationRequestResponse>> getById(
             @PathVariable UUID id, Principal principal) {
         return ResponseEntity.ok(ApiResponse.success(
@@ -100,7 +100,7 @@ public class ConsultationRequestController {
     }
 
     @PatchMapping("/{id}/cancel")
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<ConsultationRequestResponse>> cancel(
             @PathVariable UUID id, Principal principal) {
         return ResponseEntity.ok(ApiResponse.success(

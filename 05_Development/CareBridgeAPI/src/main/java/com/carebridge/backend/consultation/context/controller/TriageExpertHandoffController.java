@@ -28,7 +28,7 @@ public class TriageExpertHandoffController {
     }
 
     @GetMapping("/api/v1/triage/intake/{intakeSessionId}/expert-handoff-preview")
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<HandoffPreviewResponse>> preview(
             @PathVariable UUID intakeSessionId, Principal principal) {
         UUID ownerUserId = SecurityUtils.requireCurrentUserId(principal);
@@ -36,7 +36,7 @@ public class TriageExpertHandoffController {
     }
 
     @PostMapping("/api/v1/triage/intake/{intakeSessionId}/expert-handoffs")
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<HandoffCreateResponse>> create(
             @PathVariable UUID intakeSessionId,
             @RequestBody TriageExpertHandoffCreateRequest request,
@@ -48,7 +48,7 @@ public class TriageExpertHandoffController {
     }
 
     @GetMapping("/api/v1/consultation-requests/{requestId}/triage-context")
-    @PreAuthorize("hasAnyRole('MOTHER', 'EXPERT')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY', 'EXPERT')")
     public ResponseEntity<ApiResponse<HandoffParticipantResponse>> read(
             @PathVariable UUID requestId, Principal principal) {
         UUID currentUserId = SecurityUtils.requireCurrentUserId(principal);
