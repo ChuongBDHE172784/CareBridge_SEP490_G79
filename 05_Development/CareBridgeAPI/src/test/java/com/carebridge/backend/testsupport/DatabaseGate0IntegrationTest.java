@@ -66,7 +66,6 @@ class DatabaseGate0IntegrationTest {
                         .as("flyway_schema_history must match the repository migration chain")
                         .isFalse();
             }
-            }
 
             try (var statement = connection.createStatement();
                  var structure = statement.executeQuery("""
