@@ -47,11 +47,11 @@ public interface UserRepository extends JpaRepository<User, java.util.UUID> {
     // UC-111: dashboard aggregation — active predicate (TDS §5.2).
     // Uses the canonical users.suspended_until column (User now maps it and mirrors it into
     // settings_jsonb); portable SQL that also runs on the H2-hosted dashboard tests.
-    @Query(value = """
-            SELECT count(*) FROM users u
+    @Query("""
+            SELECT COUNT(u) FROM User u
              WHERE u.enabled = true AND u.locked = false
-               AND (u.suspended_until IS NULL OR u.suspended_until <= :now)
-            """, nativeQuery = true)
+               AND (u.suspendedUntil IS NULL OR u.suspendedUntil <= :now)
+            """)
     long countActive(@Param("now") Instant now);
 
     // UC-113: impact report — mothers served

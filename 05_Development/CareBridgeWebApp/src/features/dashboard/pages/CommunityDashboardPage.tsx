@@ -310,8 +310,8 @@ export default function CommunityDashboardPage() {
     loadAll();
   }, [loadAll]);
 
-  const pendingReports = data?.reportMetrics.byStatus['PENDING'] ?? 0;
-  const resolvedReports = data?.reportMetrics.byStatus['RESOLVED'] ?? 0;
+  const pendingReports = (data?.reportMetrics.byStatus['PENDING'] ?? 0) + (data?.reportMetrics.byStatus['IN_REVIEW'] ?? 0);
+  const resolvedReports = (data?.reportMetrics.byStatus['RESOLVED'] ?? 0) + (data?.reportMetrics.byStatus['CLOSED'] ?? 0);
   const dismissedReports = data?.reportMetrics.byStatus['DISMISSED'] ?? 0;
   const totalReports = pendingReports + resolvedReports + dismissedReports;
   const resolutionRate = totalReports > 0 ? ((resolvedReports / totalReports) * 100).toFixed(1) : '100.0';

@@ -6,5 +6,6 @@ public enum ReportStatus {
     // only PENDING -> IN_REVIEW -> RESOLVED/DISMISSED (or release back to PENDING) is legal.
     IN_REVIEW,
     RESOLVED,
-    DISMISSED
+    DISMISSED,
+    CLOSED
 }

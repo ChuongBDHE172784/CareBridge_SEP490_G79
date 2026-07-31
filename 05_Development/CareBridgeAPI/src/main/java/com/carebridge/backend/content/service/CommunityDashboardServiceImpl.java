@@ -93,8 +93,11 @@ public class CommunityDashboardServiceImpl implements CommunityDashboardService 
             double totalSeconds = 0;
             int validSamples = 0;
             for (Object[] row : resolvedTimestamps) {
-                Instant createdAt = (Instant) row[0];
-                Instant resolvedAt = (Instant) row[1];
+                Instant createdAt = toInstant(row[0]);
+                Instant resolvedAt = toInstant(row[1]);
+                if (createdAt == null || resolvedAt == null) {
+                    continue;
+                }
                 long seconds = Duration.between(createdAt, resolvedAt).getSeconds();
                 if (seconds < 0) {
                     continue;
@@ -114,8 +117,18 @@ public class CommunityDashboardServiceImpl implements CommunityDashboardService 
         List<Object[]> rows = communityQuestionRepository.findTrendingTopics(
                 from, to, PageRequest.of(0, TRENDING_TOP_N));
         return rows.stream()
-                .map(row -> new TrendingTopic((java.util.UUID) row[0], (String) row[1], (Long) row[2]))
+                .map(row -> new TrendingTopic((java.util.UUID) row[0], (String) row[1], ((Number) row[2]).longValue()))
                 .toList();
+    }
+
+    private Instant toInstant(Object obj) {
+        if (obj == null) return null;
+        if (obj instanceof Instant i) return i;
+        if (obj instanceof java.sql.Timestamp ts) return ts.toInstant();
+        if (obj instanceof java.time.OffsetDateTime odt) return odt.toInstant();
+        if (obj instanceof java.time.ZonedDateTime zdt) return zdt.toInstant();
+        if (obj instanceof java.util.Date d) return d.toInstant();
+        return null;
     }
 
     private Map<String, Long> groupCountsToMap(List<Object[]> rows) {
