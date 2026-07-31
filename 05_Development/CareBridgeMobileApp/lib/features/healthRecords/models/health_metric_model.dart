@@ -135,6 +135,7 @@ enum MetricType {
   weight,
   hydration,
   mood,
+  epds,
   bloodPressure,
   bloodSugar,
   temperature,
@@ -152,6 +153,8 @@ extension MetricTypeExtension on MetricType {
         return 'Nước';
       case MetricType.mood:
         return 'Tâm trạng';
+      case MetricType.epds:
+        return 'Sàng lọc EPDS';
       case MetricType.bloodPressure:
         return 'Huyết áp';
       case MetricType.bloodSugar:
@@ -175,6 +178,8 @@ extension MetricTypeExtension on MetricType {
         return MetricType.hydration;
       case 'MOOD':
         return MetricType.mood;
+      case 'EPDS_SCORE':
+        return MetricType.epds;
       case 'BLOOD_PRESSURE':
       case 'BLOOD_PRESSURE_SYSTOLIC':
       case 'BLOOD_PRESSURE_DIASTOLIC':

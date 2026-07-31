@@ -4,6 +4,7 @@ public enum MetricType {
     WEIGHT,
     HYDRATION,
     MOOD,
+    EPDS_SCORE,
     BLOOD_PRESSURE_SYSTOLIC,
     BLOOD_PRESSURE_DIASTOLIC,
     BLOOD_GLUCOSE,

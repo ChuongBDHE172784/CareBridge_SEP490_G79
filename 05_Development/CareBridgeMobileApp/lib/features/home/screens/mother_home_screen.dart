@@ -13,6 +13,8 @@ import '../../community/screens/view_content_screen.dart';
 import '../../community/models/content_model.dart';
 import '../../exercise/screens/mother_exercise_screen.dart';
 import '../../checklist/screens/preparation_checklist_screen.dart';
+import '../../healthRecords/screens/fetal_movement_tracker_screen.dart';
+import '../../healthRecords/screens/epds_screen.dart';
 
 /// CB-008 — Mother Home (UC-24, UC-49)
 /// Main home screen showing journey status card, next appointment alert,
@@ -650,6 +652,35 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
           content: Text(
             'Cử động thai chỉ áp dụng cho hành trình thai kỳ đang hoạt động.',
           ),
+        ),
+      );
+      return;
+    }
+
+    if (metricType == 'FETAL_MOVEMENT_COUNT') {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) =>
+              FetalMovementTrackerScreen(journeyId: dashboard!.journeyId!),
+        ),
+      );
+      return;
+    }
+
+    if (metricType == 'MOOD') {
+      if (dashboard?.isPregnancy != true && dashboard?.isPostpartum != true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'EPDS áp dụng cho hành trình mang thai hoặc sau sinh.',
+            ),
+          ),
+        );
+        return;
+      }
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => EpdsScreen(journeyId: dashboard!.journeyId!),
         ),
       );
       return;

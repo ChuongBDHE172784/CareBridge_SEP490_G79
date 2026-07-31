@@ -13,11 +13,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 
 import java.util.Optional;
 import java.math.BigDecimal;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
 import static org.assertj.core.api.Assertions.*;
@@ -41,6 +43,8 @@ class HealthMetricAddServiceTest {
     @Test
     void addMetric_weightHappyPath_returnsMetricResponse() {
         var journey = MetricTestFactory.makeActiveJourney();
+        var careSubjectId = UUID.fromString("aaaaaaaa-0000-0000-0000-000000000025");
+        journey.setCareSubjectId(careSubjectId);
         var req = MetricTestFactory.makeWeightRequest();
         var saved = MetricTestFactory.makeSavedMetric();
         when(journeyRepository.findById(MetricTestFactory.JOURNEY_ID)).thenReturn(Optional.of(journey));
@@ -55,7 +59,10 @@ class HealthMetricAddServiceTest {
         assertThat(response.getMetricId()).isEqualTo(MetricTestFactory.METRIC_ID);
         assertThat(response.getMetricType()).isEqualTo(MetricType.WEIGHT.name());
         assertThat(response.getJourneyId()).isEqualTo(MetricTestFactory.JOURNEY_ID);
-        verify(metricRepository).save(any());
+        var metricCaptor = ArgumentCaptor.forClass(com.carebridge.backend.health.entity.MaternalHealthMetric.class);
+        verify(metricRepository).save(metricCaptor.capture());
+        assertThat(metricCaptor.getValue().getJourneyId()).isEqualTo(MetricTestFactory.JOURNEY_ID);
+        assertThat(metricCaptor.getValue().getCareSubjectId()).isEqualTo(careSubjectId);
         verify(auditService).log(eq(AuditAction.HEALTH_METRIC_ADDED), eq(MetricTestFactory.MOTHER_ID),
                 eq("MaternalHealthMetric"), any(), any());
     }

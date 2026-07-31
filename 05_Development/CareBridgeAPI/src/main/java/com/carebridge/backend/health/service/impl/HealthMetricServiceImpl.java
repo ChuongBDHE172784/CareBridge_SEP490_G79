@@ -134,6 +134,7 @@ public class HealthMetricServiceImpl implements IHealthMetricService {
 
         MaternalHealthMetric metric = MaternalHealthMetric.builder()
                 .journeyId(journeyId)
+                .careSubjectId(journey.getCareSubjectId())
                 .metricType(request.getMetricType())
                 .valueNumeric(request.getValueNumeric())
                 .valueSecondary(request.getValueSecondary())

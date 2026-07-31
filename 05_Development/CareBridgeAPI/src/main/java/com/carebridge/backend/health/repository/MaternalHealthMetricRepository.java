@@ -28,7 +28,7 @@ public interface MaternalHealthMetricRepository extends JpaRepository<MaternalHe
     @Query(value = """
             SELECT * FROM health_observations
              WHERE health_observation_id = :id
-               AND care_subject_id = :journeyId
+               AND raw_payload_jsonb->>'journeyId' = CAST(:journeyId AS text)
                AND legacy_source = 'maternal_health_metrics'
                AND COALESCE(raw_payload_jsonb->>'recordStatus', 'ACTIVE') = :#{#status.name()}
             """, nativeQuery = true)
@@ -39,7 +39,7 @@ public interface MaternalHealthMetricRepository extends JpaRepository<MaternalHe
 
     @Query(value = """
             SELECT * FROM health_observations
-             WHERE care_subject_id = :journeyId
+             WHERE raw_payload_jsonb->>'journeyId' = CAST(:journeyId AS text)
                AND legacy_source = 'maternal_health_metrics'
                AND observation_type = :#{#metricType.name()}
                AND COALESCE(raw_payload_jsonb->>'recordStatus', 'ACTIVE') = :#{#status.name()}
@@ -55,7 +55,7 @@ public interface MaternalHealthMetricRepository extends JpaRepository<MaternalHe
 
     @Query(value = """
             SELECT * FROM health_observations
-             WHERE care_subject_id = :journeyId
+             WHERE raw_payload_jsonb->>'journeyId' = CAST(:journeyId AS text)
                AND legacy_source = 'maternal_health_metrics'
                AND observation_type IN (:types)
                AND COALESCE(raw_payload_jsonb->>'recordStatus', 'ACTIVE') = :#{#status.name()}
@@ -71,7 +71,7 @@ public interface MaternalHealthMetricRepository extends JpaRepository<MaternalHe
 
     @Query(value = """
             SELECT * FROM health_observations
-             WHERE care_subject_id = :journeyId
+             WHERE raw_payload_jsonb->>'journeyId' = CAST(:journeyId AS text)
                AND legacy_source = 'maternal_health_metrics'
                AND observation_type = :#{#metricType.name()}
                AND observed_at BETWEEN :from AND :to

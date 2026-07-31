@@ -39,6 +39,8 @@ class _AddMaternalHealthMetricScreenState
   DateTime _measuredDate = DateTime.now();
   TimeOfDay _measuredTime = TimeOfDay.now();
   bool _isSaving = false;
+  List<MetricDataPoint> _history = [];
+  DateTime _historyDate = DateTime.now();
 
   bool get _isBloodPressure =>
       widget.initialMetricType.startsWith('BLOOD_PRESSURE');
@@ -119,6 +121,47 @@ class _AddMaternalHealthMetricScreenState
     _noteCtrl.dispose();
     super.dispose();
   }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHistory();
+  }
+
+  Future<void> _loadHistory() async {
+    final day = DateTime(
+      _historyDate.year,
+      _historyDate.month,
+      _historyDate.day,
+    );
+    try {
+      final trend = await _service.getMetricTrend(
+        journeyId: widget.journeyId,
+        metricType: _metricType,
+        from: day,
+        to: day.add(const Duration(days: 1)),
+      );
+      if (mounted)
+        setState(() => _history = trend.dataPoints.reversed.toList());
+    } catch (_) {}
+  }
+
+  Future<void> _pickHistoryDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _historyDate,
+      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) {
+      setState(() => _historyDate = picked);
+      await _loadHistory();
+    }
+  }
+
+  double get _waterToday => _metricType == 'HYDRATION'
+      ? _history.fold(0, (sum, item) => sum + item.valueNumeric)
+      : 0;
 
   Future<void> _pickDate() async {
     final now = DateTime.now();
@@ -211,7 +254,10 @@ class _AddMaternalHealthMetricScreenState
           backgroundColor: _primary,
         ),
       );
-      Navigator.of(context).pop(true);
+      _primaryCtrl.clear();
+      _secondaryCtrl.clear();
+      _noteCtrl.clear();
+      await _loadHistory();
     } catch (_) {
       _showError('Không thể lưu chỉ số. Vui lòng thử lại.');
     } finally {
@@ -339,6 +385,75 @@ class _AddMaternalHealthMetricScreenState
                           ),
                         ),
                 ),
+                if (_metricType == 'HYDRATION') ...[
+                  const SizedBox(height: 24),
+                  Text(
+                    '${DateUtils.isSameDay(_historyDate, DateTime.now()) ? 'Tổng nước hôm nay' : 'Tổng nước ngày đã chọn'}: ${_waterToday.toStringAsFixed(0)} ml',
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: _primary,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Lịch sử',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: _pickHistoryDate,
+                      icon: const Icon(Icons.calendar_month_rounded),
+                      label: Text(
+                        '${_historyDate.day.toString().padLeft(2, '0')}/${_historyDate.month.toString().padLeft(2, '0')}',
+                      ),
+                    ),
+                  ],
+                ),
+                if (_history.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    child: Text(
+                      'Chưa có bản ghi trong ngày đã chọn.',
+                      style: TextStyle(fontFamily: 'Lexend'),
+                    ),
+                  )
+                else
+                  ..._history.map(
+                    (item) => ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(
+                        Icons.history_rounded,
+                        color: _primary,
+                      ),
+                      title: Text(
+                        '${item.valueDisplay} ${_unit}',
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      subtitle: item.note == null
+                          ? null
+                          : Text(
+                              item.note!,
+                              style: const TextStyle(fontFamily: 'Lexend'),
+                            ),
+                      trailing: Text(
+                        TimeOfDay.fromDateTime(item.measuredAt).format(context),
+                        style: const TextStyle(fontFamily: 'Lexend'),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),

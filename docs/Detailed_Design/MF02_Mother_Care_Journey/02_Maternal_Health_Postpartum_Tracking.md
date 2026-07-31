@@ -23,13 +23,25 @@ gian — không phải entity riêng.
 
 CB-008 hiển thị bốn lối tắt để giảm số bước khi ghi nhận dữ liệu hằng ngày:
 **Cân nặng** (`WEIGHT`, kg), **Nước** (`HYDRATION`, ml), **Tâm trạng**
-(`MOOD`, thang 1–5) và **Cử động** (`FETAL_MOVEMENT_COUNT`, số nguyên). Mỗi
-lối tắt mở cùng biểu mẫu ghi chỉ số và lưu vào `health_observations` qua API
-metric hiện hữu; không tạo thêm bảng hoặc endpoint. Cử động chỉ mở được khi
-hành trình thai kỳ đang hoạt động; ở hành trình khác app nêu rõ lý do. Tâm
-trạng là self-report phi chẩn đoán và khác với `PostpartumLog.moodLevel`: bản
-ghi nhanh là một observation theo thời điểm, còn postpartum log là nhật ký hồi
-phục tổng hợp.
+(`EPDS_SCORE`) và **Cử động**. Cân nặng và nước mở biểu mẫu ghi chỉ số. Cử
+động mở bộ đếm thai máy trong ngày: mỗi lần cảm nhận thai máy,
+Mother chạm một kiểu sự kiện (**đạp**, **xoay người**, **co duỗi**, hoặc **nấc
+cụt**). Mỗi chạm tạo một `FETAL_MOVEMENT_COUNT` có giá trị `1`, thời điểm hiện
+tại và mã kiểu cử động trong ghi chú; màn hình cộng tổng ngày và liệt kê các lần
+gần đây. Toàn bộ dùng `health_observations` và API metric hiện hữu, không tạo
+thêm bảng hoặc endpoint. Cử động chỉ mở được khi hành trình thai kỳ đang hoạt
+động; ở hành trình khác app nêu rõ lý do.
+
+Nút **Tâm trạng** mở bộ sàng lọc EPDS Việt ngữ gồm 10 câu về 7 ngày gần nhất,
+áp dụng cho cả thai kỳ và sau sinh. Mỗi lần hoàn tất lưu một `EPDS_SCORE` vào
+`health_observations`: `value_numeric` là tổng điểm 0–30,
+`value_secondary` là điểm câu 10 và `text_value` chứa phiên bản bộ câu hỏi cùng
+10 câu trả lời. Điểm 0–9 hiển thị nguy cơ hiện tại thấp; 10–12 yêu cầu theo dõi
+và làm lại sau 2–4 tuần; từ 13 trở lên khuyến nghị đánh giá chuyên sâu. Điểm câu
+10 lớn hơn 0 luôn kích hoạt hỗ trợ khẩn bất kể tổng điểm. EPDS là công cụ sàng
+lọc, không phải chẩn đoán, và khác với `PostpartumLog.moodLevel` trước đây.
+Mỗi mục lịch sử có thể mở thành danh sách cuộn 10 câu; cả bốn phương án được
+hiển thị lại, trong đó phương án người dùng đã chọn được đánh dấu kèm điểm câu.
 
 ## 2. Class Diagram
 
@@ -63,6 +75,7 @@ enum MetricType {
   WEIGHT
   HYDRATION
   MOOD
+  EPDS_SCORE
   BLOOD_PRESSURE_SYSTOLIC
   BLOOD_PRESSURE_DIASTOLIC
   BLOOD_GLUCOSE

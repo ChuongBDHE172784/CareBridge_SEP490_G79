@@ -26,8 +26,11 @@ public class MaternalHealthMetric {
     @Column(name = "health_observation_id", updatable = false, nullable = false)
     private UUID id;
 
-    @Column(name = "care_subject_id", nullable = false)
+    @Transient
     private UUID journeyId;
+
+    @Column(name = "care_subject_id", nullable = false)
+    private UUID careSubjectId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "observation_type", nullable = false, length = 60)
@@ -91,6 +94,7 @@ public class MaternalHealthMetric {
             sourceType = DataSource.MANUAL;
         }
         if (payloadJson == null) payloadJson = new LinkedHashMap<>();
+        putPayload("journeyId", journeyId);
         putPayload("sourceReferenceId", sourceReferenceId);
         putPayload("recordStatus", status == null ? null : status.name());
     }
@@ -98,6 +102,9 @@ public class MaternalHealthMetric {
     @PostLoad
     void hydrateCanonicalObservation() {
         if (payloadJson == null) return;
+        Object journey = payloadJson.get("journeyId");
+        journeyId = journey == null || journey.toString().isBlank()
+                ? null : UUID.fromString(journey.toString());
         Object reference = payloadJson.get("sourceReferenceId");
         sourceReferenceId = reference == null || reference.toString().isBlank()
                 ? null : UUID.fromString(reference.toString());
