@@ -16,6 +16,7 @@ import type {
 import { ACTION_TYPE_LABELS, TARGET_TYPE_LABELS, UNDOABLE_ACTION_TYPES } from '../models/moderation';
 import { SortableTableHeader, type SortDirection } from '../../contentManagement/components/SortableTableHeader';
 import { nextSortDirection, sortRows } from '../../contentManagement/utils/tableSorting';
+import { fetchAiModerationStatus } from '../../aiRuleManagement/services/aiModerationPolicyApi';
 
 type PendingActionType = 'APPROVE' | 'HIDE' | 'REQUEST_REVISION';
 type Tab = 'QUESTION' | 'ANSWER' | 'HISTORY';
@@ -102,9 +103,12 @@ export default function PendingContentQueuePage() {
   const [lockLoadingId, setLockLoadingId] = useState<string | null>(null);
   const [historyActionError, setHistoryActionError] = useState('');
 
+  const [aiEnabled, setAiEnabled] = useState<boolean | null>(null);
+
   const load = useCallback(async () => {
     setIsLoading(true);
     setError('');
+    fetchAiModerationStatus().then(st => setAiEnabled(st.enabled)).catch(() => setAiEnabled(null));
     try {
       if (tab === 'HISTORY') {
         const result = await fetchModerationHistory({ size: 50 });
@@ -284,9 +288,24 @@ export default function PendingContentQueuePage() {
           {/* Header */}
           <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <h1 className="text-[26px] font-bold text-on-surface m-0">Nội dung chờ duyệt lần đầu</h1>
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="text-[26px] font-bold text-on-surface m-0">Nội dung chờ duyệt thủ công</h1>
+                {aiEnabled === false ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                    <span className="w-2 h-2 rounded-full bg-amber-500" />
+                    AI Moderation: Đã tắt (Duyệt thủ công)
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    AI Auto-Approve: Tự động phê duyệt
+                  </span>
+                )}
+              </div>
               <p className="text-on-surface-variant text-sm mt-1">
-                Nội dung AI không thể tự động phê duyệt đang chờ Moderator kiểm tra trước khi hiển thị công khai.
+                {aiEnabled === false
+                  ? 'Hệ thống AI Moderation đang TẮT. Toàn bộ nội dung mới từ người dùng được giữ lại chờ Moderator duyệt thủ công trước khi xuất bản.'
+                  : 'Các nội dung cần duyệt tay trước khi công khai (khi bật kiểm duyệt trước hoặc khi hệ thống AI cần xác minh thủ công).'}
               </p>
             </div>
             <button
@@ -560,7 +579,38 @@ export default function PendingContentQueuePage() {
                           </tr>
                         ))}
                         {pagedRows.length === 0 && (
-                          <tr><td colSpan={4} className="py-12 text-center text-outline">Không có nội dung phù hợp bộ lọc.</td></tr>
+                          <tr>
+                            <td colSpan={4} className="py-14 text-center">
+                              {aiEnabled === false ? (
+                                <div className="max-w-md mx-auto flex flex-col items-center justify-center">
+                                  <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center mb-3 border border-amber-200">
+                                    <span className="material-symbols-outlined text-2xl">rule</span>
+                                  </div>
+                                  <h3 className="text-base font-bold text-on-surface mb-1">Không có nội dung chờ duyệt thủ công</h3>
+                                  <p className="text-xs text-on-surface-variant leading-relaxed">
+                                    Hệ thống AI Moderation đang <strong>TẮT</strong> (chế độ Kiểm duyệt thủ công trước khi đăng). Các bài viết/câu hỏi mới từ người dùng sẽ xuất hiện tại đây để bạn duyệt trước khi công khai.
+                                  </p>
+                                </div>
+                              ) : (
+                                <div className="max-w-md mx-auto flex flex-col items-center justify-center">
+                                  <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3 border border-emerald-200">
+                                    <span className="material-symbols-outlined text-2xl">verified_user</span>
+                                  </div>
+                                  <h3 className="text-base font-bold text-on-surface mb-1">Không có nội dung chờ duyệt thủ công</h3>
+                                  <p className="text-xs text-on-surface-variant leading-relaxed">
+                                    Hệ thống AI Moderation đang tự động phê duyệt các bài viết an toàn. Những câu hỏi/bài viết chứa dấu hiệu vi phạm sẽ được AI tạo báo cáo và chuyển sang trang{' '}
+                                    <button
+                                      type="button"
+                                      onClick={() => navigate('/moderator/reports')}
+                                      className="text-primary font-semibold underline hover:text-primary/80 cursor-pointer"
+                                    >
+                                      Báo cáo vi phạm
+                                    </button>.
+                                  </p>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
                         )}
                       </tbody>
                     </table>
