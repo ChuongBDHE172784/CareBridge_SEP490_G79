@@ -64,7 +64,7 @@
 | **Upstream Dependencies** | `auth (JWT), UC-31 (baby_profiles table must exist)` |
 | **Downstream Consumers** | `baby daily log, growth tracking, audit` |
 
-**Mo ta:** Cho phep Mother cap nhat thong tin ho so em be da ton tai. Chi cap nhat duoc cac truong: nickname, birth_date, sex, birth_weight_kg, birth_length_cm. Khong duoc thay doi owner_user_id, status (dung UC-33 de archive), hoac related_journey_id. Baby phai dang o trang thai ACTIVE.
+**Mo ta:** Cho phep Mother cap nhat thong tin ho so em be standalone da ton tai. Chi cap nhat duoc cac truong: nickname, birth_date, sex, birth_weight_kg, birth_length_cm. Khong duoc thay doi owner_user_id hoac status (dung UC-33 de archive). Baby phai dang o trang thai ACTIVE va khong co quan he Mother Journey.
 
 ---
 
@@ -76,7 +76,7 @@
 | BR-BABY-010 | Business Rule | Baby phai ton tai | `BabyService.findById()` | Data Integrity | — |
 | BR-BABY-011 | Business Rule | owner_user_id phai match JWT userId | `BabyService.checkOwnership()` | BR-RBAC, PDPA | — |
 | BR-BABY-012 | Business Rule | Baby phai ACTIVE, khong duoc ARCHIVED | `BabyService.checkActiveStatus()` | Data Integrity | ADR-BABY-003 |
-| BR-BABY-013 | Business Rule | Khong duoc cap nhat owner_user_id, status, related_journey_id | `UpdateBabyProfileRequest` (immutable fields excluded) | Data Integrity | ADR-BABY-003 |
+| BR-BABY-013 | Business Rule | Khong duoc cap nhat owner_user_id hoac status; profile khong co truong Mother Journey | `UpdateBabyProfileRequest` (immutable fields excluded) | Data Integrity | ADR-BABY-003 |
 | BR-BABY-014 | Business Rule | Ghi audit event BABY_PROFILE_UPDATED | `AuditService.emit()` | PDPA | — |
 
 ---
@@ -91,7 +91,7 @@
 | **Date** | `2026-06-26` |
 
 #### Boi canh (Context)
-Khi Mother cap nhat baby profile, mot so truong khong duoc phep thay doi de dam bao tinh nhat quan du lieu va an toan: owner_user_id (da thuoc ve Mother), status (chi thay doi qua UC-33 Archive), va related_journey_id (linked khi tao profile).
+Khi Mother cap nhat baby profile, owner_user_id (da thuoc ve Mother) va status (chi thay doi qua UC-33 Archive) khong duoc phep thay doi. Baby profile la standalone; UC-32 khong doc, ghi hoac suy dien quan he Mother Journey.
 
 #### Cac phuong an da xem xet
 
@@ -101,7 +101,7 @@ Khi Mother cap nhat baby profile, mot so truong khong duoc phep thay doi de dam 
 | B | DTO chi chua truong cho phep update | An toan, immutable fields loai tru | Client phai biet truong nao immutable |
 
 #### Quyet dinh
-Chon **Phuong an B**. UpdateBabyProfileRequest DTO chi chua nickname, birth_date, sex, birth_weight_kg, birth_length_cm. Cac truong owner_user_id, status, related_journey_id KHONG co trong DTO.
+Chon **Phuong an B**. UpdateBabyProfileRequest DTO chi chua nickname, birth_date, sex, birth_weight_kg, birth_length_cm. Cac truong owner_user_id va status KHONG co trong DTO; khong co truong Mother Journey trong contract.
 
 #### He qua
 **Tich cuc:** Ngan chan viec thay doi ownership hoac bypass archive flow.
@@ -147,7 +147,6 @@ Baby profile da ARCHIVED khong duoc phep cap nhat. Tra ve loi BABY-012 (400). Ne
 class BabyProfile {
   + babyId: UUID
   + ownerUserId: UUID
-  + relatedJourneyId: UUID
   + nickname: String
   + birthDate: LocalDate
   + sex: String
@@ -188,7 +187,8 @@ No new migration required. UC-32 operates on the existing `baby_profiles` table 
 ```sql
 -- Existing table: baby_profiles
 -- Updatable columns: nickname, birth_date, sex, birth_weight_kg, birth_length_cm, updated_at
--- Immutable columns: baby_id, owner_user_id, related_journey_id, status, created_at
+-- Immutable columns: baby_id, owner_user_id, status, created_at
+-- Baby profiles are standalone and have no Mother Journey relationship.
 ```
 
 ---
@@ -328,7 +328,8 @@ public class UpdateBabyProfileRequest {
     @DecimalMin("0.00")
     private BigDecimal birthLengthCm;  // optional — update if provided
 
-    // NOTE: owner_user_id, status, related_journey_id are NOT in this DTO (immutable)
+    // NOTE: owner_user_id and status are NOT in this DTO (immutable).
+    // No Mother Journey relationship field exists in this contract.
     // getters / setters
 }
 
@@ -541,10 +542,10 @@ FROM baby_profiles
 WHERE baby_id = '[uuid]';
 
 -- Verify immutable fields unchanged
-SELECT owner_user_id, related_journey_id, status, created_at
+SELECT owner_user_id, status, created_at
 FROM baby_profiles
 WHERE baby_id = '[uuid]';
--- owner_user_id, related_journey_id, status, created_at must remain unchanged
+-- owner_user_id, status, created_at must remain unchanged
 ```
 
 ---
@@ -600,7 +601,7 @@ curl -X PUT https://[host]/api/v1/babies/bbbbbbbb-0000-0000-0000-000000000001 \
 |---|-----------|--------|---------------|
 | C1 | Ownership check: owner_user_id PHAI match JWT userId truoc khi update | BR-RBAC, PDPA | 2026-06-26 |
 | C2 | ACTIVE status check: chi update baby co status = ACTIVE; reject ARCHIVED voi BABY-012 | ADR-BABY-004, BR-BABY-012 | 2026-06-26 |
-| C3 | Immutable fields: DTO KHONG chua owner_user_id, status, related_journey_id | ADR-BABY-003, BR-BABY-013 | 2026-06-26 |
+| C3 | Immutable fields: DTO KHONG chua owner_user_id hoac status; khong co truong Mother Journey | ADR-BABY-003, BR-BABY-013 | 2026-07-28 |
 | C4 | Emit BABY_PROFILE_UPDATED audit event sau save thanh cong | BR-BABY-014, PDPA | 2026-06-26 |
 | C5 | Controller chi validate DTO va map — business logic thuoc ve Service | CLAUDE.md | 2026-06-26 |
 
@@ -612,7 +613,7 @@ Theo TDS CB-BABY-IMP-002 va cac ADR lien quan:
 
 1. Ownership check: owner_user_id PHAI match JWT userId (SecurityUtils.requireCurrentUserId) — BABY-011 neu vi pham — BR-RBAC
 2. ACTIVE status check: reject update neu status = ARCHIVED — tra ve BABY-012 — ADR-BABY-004
-3. DTO chi chua nickname, birthDate, sex, birthWeightKg, birthLengthCm — KHONG co owner_user_id, status, related_journey_id — ADR-BABY-003
+3. DTO chi chua nickname, birthDate, sex, birthWeightKg, birthLengthCm — KHONG co owner_user_id, status hay truong Mother Journey — ADR-BABY-003
 4. Emit BABY_PROFILE_UPDATED audit event sau moi update thanh cong — PDPA
 5. Controller chi validate DTO va delegate cho Service — KHONG co business logic — CLAUDE.md
 

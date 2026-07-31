@@ -9,6 +9,7 @@ import com.carebridge.backend.notification.entity.NotificationPreference;
 import com.carebridge.backend.notification.entity.NotificationType;
 import com.carebridge.backend.notification.repository.NotificationPreferenceRepository;
 import com.carebridge.backend.notification.service.NotificationPreferenceService;
+import com.carebridge.backend.reminder.notification.service.AppointmentNotificationRuleValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -38,6 +39,7 @@ public class NotificationPreferenceServiceImpl implements NotificationPreference
 
     private final NotificationPreferenceRepository preferenceRepository;
     private final AuditService auditService;
+    private final AppointmentNotificationRuleValidator appointmentRuleValidator;
 
     // -------------------------------------------------------------------------
     // UC-10: Get preferences
@@ -80,6 +82,10 @@ public class NotificationPreferenceServiceImpl implements NotificationPreference
                     item.emailEnabled(),
                     item.inAppEnabled());
         }
+        if (request.appointmentReminderDefaults() != null) {
+            preferenceRepository.patchAppointmentReminderDefaults(
+                    userId, appointmentRuleValidator.normalize(request.appointmentReminderDefaults()));
+        }
 
         // Reload to return the full current state
         List<NotificationPreference> updated = preferenceRepository.findByUserId(userId);
@@ -121,6 +127,10 @@ public class NotificationPreferenceServiceImpl implements NotificationPreference
                         p.getEmailEnabled(),
                         p.getInAppEnabled()))
                 .toList();
-        return new NotificationPreferencesResponse(userId, items);
+        List<Integer> storedDefaults = preferenceRepository.findAppointmentReminderDefaults(userId);
+        List<Integer> effectiveDefaults = preferenceRepository.hasAppointmentReminderDefaults(userId)
+                ? appointmentRuleValidator.normalize(storedDefaults)
+                : AppointmentNotificationRuleValidator.SYSTEM_DEFAULTS;
+        return new NotificationPreferencesResponse(userId, items, effectiveDefaults);
     }
 }

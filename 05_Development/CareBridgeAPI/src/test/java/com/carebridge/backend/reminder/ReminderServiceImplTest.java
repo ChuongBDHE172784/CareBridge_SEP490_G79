@@ -10,6 +10,7 @@ import com.carebridge.backend.reminder.entity.Reminder;
 import com.carebridge.backend.reminder.entity.ReminderStatus;
 import com.carebridge.backend.reminder.entity.ReminderType;
 import com.carebridge.backend.reminder.repository.ReminderRepository;
+import com.carebridge.backend.reminder.notification.service.AppointmentNotificationScheduleService;
 import com.carebridge.backend.reminder.service.INotificationService;
 import com.carebridge.backend.reminder.service.impl.ReminderServiceImpl;
 import org.junit.jupiter.api.Test;
@@ -34,6 +35,7 @@ class ReminderServiceImplTest {
     @Mock private ReminderRepository reminderRepository;
     @Mock private INotificationService notificationService;
     @Mock private AuditService auditService;
+    @Mock private AppointmentNotificationScheduleService appointmentNotificationScheduleService;
     @InjectMocks private ReminderServiceImpl reminderService;
 
     private static final UUID CALLER_ID    = UUID.fromString("00000000-0000-0000-0000-000000000001");
@@ -63,7 +65,6 @@ class ReminderServiceImplTest {
     void createReminder_validFutureDate_returnsPendingReminder() {
         Instant future = Instant.now().plus(10, ChronoUnit.MINUTES);
         when(reminderRepository.save(any())).thenReturn(savedReminder(REMINDER_ID));
-        when(notificationService.scheduleFcmPush(any(), any(), any(), any())).thenReturn("fcm-job-1");
 
         CreateReminderResponse resp = reminderService.createReminder(makeRequest(future), CALLER_ID);
 
@@ -87,16 +88,17 @@ class ReminderServiceImplTest {
         verify(reminderRepository, never()).save(any());
     }
 
-    // REM-TC-003: C2 — FCM scheduled synchronously after save
+    // REM-TC-003: C2 — durable appointment milestones are snapshotted synchronously after save
     @Test
-    void createReminder_fcmScheduledSynchronously() {
+    void createReminder_appointmentScheduleSnapshottedSynchronously() {
         Instant future = Instant.now().plus(10, ChronoUnit.MINUTES);
-        when(reminderRepository.save(any())).thenReturn(savedReminder(REMINDER_ID));
-        when(notificationService.scheduleFcmPush(any(), any(), any(), any())).thenReturn("job-abc");
+        Reminder saved = savedReminder(REMINDER_ID);
+        when(reminderRepository.save(any())).thenReturn(saved);
 
         reminderService.createReminder(makeRequest(future), CALLER_ID);
 
-        verify(notificationService).scheduleFcmPush(eq(CALLER_ID), any(), any(), any());
+        verify(appointmentNotificationScheduleService).createSnapshot(saved, null, null);
+        verify(notificationService, never()).scheduleFcmPush(any(), any(), any(), any());
     }
 
     // REM-VIEW-TC-001: Owner views PENDING reminder → 200 with correct status and type

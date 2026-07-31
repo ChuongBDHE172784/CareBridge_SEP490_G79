@@ -1,9 +1,11 @@
 package com.carebridge.backend.content.mapper;
 
+import com.carebridge.backend.checklist.model.ChecklistRecipientRole;
 import com.carebridge.backend.content.dto.request.CreateContentRequest;
-import com.carebridge.backend.content.dto.response.ChecklistItemResponse;
-import com.carebridge.backend.content.dto.response.ChecklistTemplateResponse;
 import com.carebridge.backend.content.dto.response.AdminChecklistTemplateDetailResponse;
+import com.carebridge.backend.content.dto.response.ChecklistItemResponse;
+import com.carebridge.backend.content.dto.response.ChecklistSubstageResponse;
+import com.carebridge.backend.content.dto.response.ChecklistTemplateResponse;
 import com.carebridge.backend.content.dto.response.ContentDetailResponse;
 import com.carebridge.backend.content.dto.response.ContentListResponse;
 import com.carebridge.backend.content.dto.response.ContentSearchResponse;
@@ -115,6 +117,7 @@ public class ContentMapper {
                 .name(template.getName())
                 .stage(template.getStage())
                 .description(template.getDescription())
+                .templateType(template.getTemplateType())
                 .items(itemResponses)
                 .build();
     }
@@ -131,6 +134,17 @@ public class ContentMapper {
                 .status(template.getStatus())
                 .description(template.getDescription())
                 .versionNo(template.getVersionNo())
+                .lineageId(template.getTemplateLineageId())
+                .versionId(template.getTemplateVersionId())
+                .recipientRoles(toRecipientRoles(template))
+                .substage(toChecklistSubstageResponse(template))
+                .migrationReviewRequired(template.getMigrationReviewRequired())
+                .distributionEnabled(template.getDistributionEnabled())
+                .templateType(template.getTemplateType())
+                .approvedAt(template.getApprovedAt())
+                .approvedBy(template.getApprovedBy())
+                .migrationReviewedAt(template.getMigrationReviewedAt())
+                .migrationReviewedBy(template.getMigrationReviewedBy())
                 .items(itemResponses)
                 .latestReviewFeedback(toReviewFeedback(
                         template.getRevisionReason(), template.getRevisionRequestedAt(),
@@ -156,7 +170,40 @@ public class ContentMapper {
                 .itemText(item.getItemText())
                 .order(item.getOrder())
                 .isRequired(item.getIsRequired())
+                .targetSubject(item.getTargetSubject())
                 .build();
+    }
+
+    private List<ChecklistRecipientRole> toRecipientRoles(ChecklistTemplate template) {
+        if (template.getRecipientScope() == null) {
+            return List.of();
+        }
+        return switch (template.getRecipientScope()) {
+            case MOTHER -> List.of(ChecklistRecipientRole.MOTHER);
+            case FAMILY -> List.of(ChecklistRecipientRole.FAMILY);
+            case BOTH -> List.of(ChecklistRecipientRole.MOTHER, ChecklistRecipientRole.FAMILY);
+        };
+    }
+
+    private ChecklistSubstageResponse toChecklistSubstageResponse(ChecklistTemplate template) {
+        if (template.getStage() == null
+                || template.getEligibilityAnchorType() == null
+                || template.getEligibilityRangeUnit() == null
+                || template.getEligibilityStartInclusive() == null
+                || template.getEligibilityEndInclusive() == null) {
+            return null;
+        }
+        String code = template.getStage().name()
+                + "_" + template.getEligibilityAnchorType().name()
+                + "_" + template.getEligibilityRangeUnit().name()
+                + "_" + template.getEligibilityStartInclusive()
+                + "_" + template.getEligibilityEndInclusive();
+        return new ChecklistSubstageResponse(
+                code,
+                template.getEligibilityAnchorType(),
+                template.getEligibilityStartInclusive(),
+                template.getEligibilityEndInclusive(),
+                template.getEligibilityRangeUnit());
     }
 
     public ReviewFeedbackResponse toReviewFeedback(

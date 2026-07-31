@@ -1,9 +1,7 @@
 package com.carebridge.backend.family.entity;
 
 /**
- * Permission flag keys used by CareGroupAccessPolicy.hasPermission().
- * Open — shape owned by sibling UC72_ManageFamilyPermission; keys map to
- * boolean fields in permission_json (ADR-FAM-003).
+ * Permission flag keys stored in care_group_members.permission_json.
  */
 public enum PermissionFlag {
     CALENDAR("calendar"),
@@ -13,6 +11,8 @@ public enum PermissionFlag {
     BABY_VIEW("baby_view"),
     BABY_JOURNAL_WRITE("baby_journal_write"),
     BABY_GROWTH_WRITE("baby_growth_write"),
+    CHECKLIST_VIEW("CHECKLIST_VIEW"),
+    CHECKLIST_COMPLETE("CHECKLIST_COMPLETE"),
     QUICK_NOTES("quickNotes"),
     QUICK_NOTE_WEIGHT("quickNoteWeight"),
     QUICK_NOTE_HYDRATION("quickNoteHydration"),

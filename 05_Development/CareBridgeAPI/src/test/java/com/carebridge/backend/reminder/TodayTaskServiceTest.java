@@ -1,5 +1,6 @@
 package com.carebridge.backend.reminder;
 
+import com.carebridge.backend.checklist.today.policy.ReminderAccessPolicy;
 import com.carebridge.backend.reminder.dto.TodayTaskItem;
 import com.carebridge.backend.reminder.entity.RecurrenceType;
 import com.carebridge.backend.reminder.entity.ReminderStatus;
@@ -20,6 +21,7 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -31,14 +33,17 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class TodayTaskServiceTest {
 
+        private static final UUID FAMILY_ID =
+                        UUID.fromString("00000000-0000-0000-0002-000000000099");
+
         @Mock
         private ReminderRepository reminderRepository;
         @Mock
         private CareTaskRepository careTaskRepository;
         @Mock
-        private com.carebridge.backend.family.repository.CareGroupMemberRepository careGroupMemberRepository;
-        @Mock
         private com.carebridge.backend.family.repository.CareGroupRepository careGroupRepository;
+        @Mock
+        private ReminderAccessPolicy reminderAccessPolicy;
         private TodayTaskServiceImpl todayTaskService;
 
         private static final ZoneId VN_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
@@ -49,8 +54,8 @@ class TodayTaskServiceTest {
                                 reminderRepository,
                                 careTaskRepository,
                                 new ReminderRecurrenceService(),
-                                careGroupMemberRepository,
-                                careGroupRepository);
+                                careGroupRepository,
+                                reminderAccessPolicy);
         }
 
         @Test
@@ -325,5 +330,41 @@ class TodayTaskServiceTest {
                 assertThat(tasks.get(0).getStatus()).isEqualTo(ReminderStatus.SNOOZED.name());
                 assertThat(tasks.get(0).getDueAt()).isEqualTo(snoozedUntil);
                 assertThat(tasks.get(0).getSnoozedUntil()).isEqualTo(snoozedUntil);
+        }
+
+        @Test
+        void getTodayTasks_familyWithoutChecklistViewCannotSeeMotherReminder() {
+                when(reminderRepository.findByOwnerUserIdAndStatusNot(
+                                FAMILY_ID, ReminderStatus.CANCELLED)).thenReturn(List.of());
+                when(careGroupRepository.findActiveOwnerUserIdsForChecklistViewer(FAMILY_ID))
+                                .thenReturn(List.of());
+                when(careTaskRepository.findByAssignedToAndStatusInAndDueAtBetween(
+                                any(), any(), any(), any())).thenReturn(List.of());
+
+                assertThat(todayTaskService.getTodayTasks(FAMILY_ID, VN_ZONE)).isEmpty();
+        }
+
+        @Test
+        void getTodayTasks_expiredFamilyMembershipCannotSeeMotherReminder() {
+                when(reminderRepository.findByOwnerUserIdAndStatusNot(
+                                FAMILY_ID, ReminderStatus.CANCELLED)).thenReturn(List.of());
+                when(careGroupRepository.findActiveOwnerUserIdsForChecklistViewer(FAMILY_ID))
+                                .thenReturn(List.of());
+                when(careTaskRepository.findByAssignedToAndStatusInAndDueAtBetween(
+                                any(), any(), any(), any())).thenReturn(List.of());
+
+                assertThat(todayTaskService.getTodayTasks(FAMILY_ID, VN_ZONE)).isEmpty();
+        }
+
+        @Test
+        void getTodayTasks_inactiveGroupCannotExposeMotherReminder() {
+                when(reminderRepository.findByOwnerUserIdAndStatusNot(
+                                FAMILY_ID, ReminderStatus.CANCELLED)).thenReturn(List.of());
+                when(careGroupRepository.findActiveOwnerUserIdsForChecklistViewer(FAMILY_ID))
+                                .thenReturn(List.of());
+                when(careTaskRepository.findByAssignedToAndStatusInAndDueAtBetween(
+                                any(), any(), any(), any())).thenReturn(List.of());
+
+                assertThat(todayTaskService.getTodayTasks(FAMILY_ID, VN_ZONE)).isEmpty();
         }
 }

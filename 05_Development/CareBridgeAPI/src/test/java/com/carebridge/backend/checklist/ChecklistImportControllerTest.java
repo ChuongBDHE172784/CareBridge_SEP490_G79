@@ -1,280 +1,130 @@
 package com.carebridge.backend.checklist;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.Matchers.containsString;
-import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.doThrow;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.LoggerContext;
-import ch.qos.logback.classic.encoder.PatternLayoutEncoder;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.OutputStreamAppender;
 import com.carebridge.backend.checklist.controller.UserChecklistItemController;
-import com.carebridge.backend.checklist.dto.ImportFromTemplateRequest;
-import com.carebridge.backend.checklist.exception.ChecklistControllerExceptionHandler;
+import com.carebridge.backend.checklist.dto.ChecklistItemResponse;
 import com.carebridge.backend.checklist.service.IUserChecklistItemService;
-import com.carebridge.backend.common.config.JpaAuditingConfig;
+import com.carebridge.backend.checklist.service.UserCreatedChecklistTaskService;
+import com.carebridge.backend.checklist.service.ChecklistV2CompatibilityMutationService;
+import com.carebridge.backend.checklist.service.OptionalChecklistTemplateImportService;
+import com.carebridge.backend.checklist.distribution.ChecklistDistributionResult;
 import com.carebridge.backend.common.exception.BusinessException;
-import com.carebridge.backend.common.exception.GlobalExceptionHandler;
+import com.carebridge.backend.common.config.JpaAuditingConfig;
 import com.carebridge.backend.config.MockMvcSecurityBuilderConfig;
-import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
 import com.carebridge.backend.security.repository.UserRepository;
-import java.io.ByteArrayOutputStream;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
+import java.time.Instant;
 import java.util.UUID;
-import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.ComponentScan.Filter;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.core.Ordered;
-import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpStatus;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-/** Real import HTTP validation/security contracts for TC-009/023 and SEC-001/004. */
-@WebMvcTest(
-        value = UserChecklistItemController.class,
-        excludeFilters = @Filter(type = FilterType.ASSIGNABLE_TYPE, classes = JpaAuditingConfig.class)
-)
+/** HTTP cutover contract: canonical V2 creation is required and legacy import is gone. */
+@WebMvcTest(value = UserChecklistItemController.class,
+        excludeFilters = @Filter(type = FilterType.ASSIGNABLE_TYPE, classes = JpaAuditingConfig.class))
 @Import({SecurityConfig.class, MockMvcSecurityBuilderConfig.class})
 class ChecklistImportControllerTest {
-
-    private static final String USER_ID = "69000000-0000-0000-0000-000000000001";
-    private static final String IMPORT_URL = "/api/v1/user-checklist-items/import";
+    private static final UUID USER_ID = UUID.fromString("69000000-0000-0000-0000-000000000001");
 
     @Autowired private MockMvc mockMvc;
     @MockitoBean private IUserChecklistItemService checklistService;
+    @MockitoBean private UserCreatedChecklistTaskService userCreatedTaskService;
+    @MockitoBean private ChecklistV2CompatibilityMutationService v2MutationService;
+    @MockitoBean private OptionalChecklistTemplateImportService optionalTemplateImportService;
     @MockitoBean private JwtTokenProvider jwtTokenProvider;
     @MockitoBean private UserRepository userRepository;
 
     @Test
-    void r69_007_scopedAdviceHasExplicitPrecedenceAndFreezesChecklistValidationCode()
-            throws Exception {
-        Order order = ChecklistControllerExceptionHandler.class.getAnnotation(Order.class);
-        assertThat(order).as("checklist advice must declare deterministic precedence").isNotNull();
-        assertThat(order.value()).isEqualTo(Ordered.HIGHEST_PRECEDENCE);
-
-        for (String invalidBody : List.of(
-                "{\"templateItemIds\":[]}",
-                "{\"templateItemIds\":[null]}",
-                "{\"templateItemIds\":[not-json]}")) {
-            mockMvc.perform(post(IMPORT_URL).with(csrf()).with(user(USER_ID).roles("MOTHER"))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(invalidBody))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.error").value("CHECKLIST-001"));
-        }
-        verifyNoInteractions(checklistService);
+    void validLegacyImportReturnsGoneWithoutCallingLegacyService() throws Exception {
+        mockMvc.perform(post("/api/v1/user-checklist-items/import").with(csrf())
+                        .with(user(USER_ID.toString()).roles("MOTHER"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"journeyId\":\"%s\",\"templateItemIds\":[\"%s\"]}"
+                                .formatted(UUID.randomUUID(), UUID.randomUUID())))
+                .andExpect(status().isGone())
+                .andExpect(jsonPath("$.error").value("CHECKLIST_LEGACY_ROUTE_RETIRED"));
+        verifyNoInteractions(checklistService, userCreatedTaskService);
     }
 
     @Test
-    void uc82_69_tc_009_missingJwtIs401AndFamilyIs403() throws Exception {
-        mockMvc.perform(post(IMPORT_URL).with(csrf())
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(validBody()))
-                .andExpect(status().isUnauthorized());
-        mockMvc.perform(post(IMPORT_URL).with(csrf()).with(user(USER_ID).roles("FAMILY"))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(validBody()))
-                .andExpect(status().isForbidden());
-        verifyNoInteractions(checklistService);
-    }
+    void canonicalCreateDelegatesToRequiredV2Service() throws Exception {
+        UUID taskId = UUID.randomUUID();
+        UUID journeyId = UUID.randomUUID();
+        UUID clientTaskId = UUID.randomUUID();
+        org.mockito.Mockito.when(userCreatedTaskService.create(any(), eq(USER_ID)))
+                .thenReturn(new ChecklistItemResponse(taskId, USER_ID, journeyId, null,
+                        null, null, false, "Pack water", "GENERAL", false, null, 0,
+                        Instant.parse("2026-07-30T00:00:00Z"), "MOTHER", "USER_CREATED"));
 
-    @Test
-    void uc82_69_tc_009_motherValidRequestReachesService() throws Exception {
-        when(checklistService.importFromTemplate(any(), any())).thenReturn(List.of());
-        mockMvc.perform(post(IMPORT_URL).with(csrf()).with(user(USER_ID).roles("MOTHER"))
+        mockMvc.perform(post("/api/v1/user-checklist-items").with(csrf())
+                        .with(user(USER_ID.toString()).roles("MOTHER"))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(validBody()))
+                        .content("""
+                                {"journeyId":"%s","itemText":"Pack water","targetSubject":"MOTHER",
+                                 "clientTaskId":"%s"}
+                                """.formatted(journeyId, clientTaskId)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.success").value(true))
-                .andExpect(jsonPath("$.data").isArray());
+                .andExpect(jsonPath("$.data.itemId").value(taskId.toString()))
+                .andExpect(jsonPath("$.data.origin").value("USER_CREATED"));
+        verify(userCreatedTaskService).create(any(), eq(USER_ID));
+        verifyNoInteractions(checklistService);
     }
 
     @Test
-    void uc82_69_tc_009_validFiftyTraversesHttpAndReachesServiceIntact() throws Exception {
-        when(checklistService.importFromTemplate(any(), any())).thenReturn(List.of());
+    void optionalTemplateSelfAssignmentDelegatesToCanonicalV2Service() throws Exception {
+        UUID templateId = UUID.randomUUID();
+        UUID journeyId = UUID.randomUUID();
+        org.mockito.Mockito.when(optionalTemplateImportService.selfAssign(any(), eq(USER_ID)))
+                .thenReturn(ChecklistDistributionResult.created(1, 2));
 
-        mockMvc.perform(post(IMPORT_URL).with(csrf()).with(user(USER_ID).roles("MOTHER"))
+        mockMvc.perform(post("/api/v1/user-checklist-items/from-template").with(csrf())
+                        .with(user(USER_ID.toString()).roles("MOTHER"))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"templateItemIds\":" + uuidArray(50) + "}"))
+                        .content("{\"templateId\":\"%s\",\"journeyId\":\"%s\"}"
+                                .formatted(templateId, journeyId)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.success").value(true));
-
-        ArgumentCaptor<ImportFromTemplateRequest> request =
-                ArgumentCaptor.forClass(ImportFromTemplateRequest.class);
-        verify(checklistService).importFromTemplate(request.capture(), eq(UUID.fromString(USER_ID)));
-        assertThat(request.getValue().templateItemIds()).hasSize(50).doesNotContainNull();
+                .andExpect(jsonPath("$.data.createdInstances").value(1))
+                .andExpect(jsonPath("$.data.createdTasks").value(2));
+        verify(optionalTemplateImportService).selfAssign(any(), eq(USER_ID));
     }
 
     @Test
-    void uc82_69_tc_009_malformedJsonReturnsNeutralChecklist001BeforeService() throws Exception {
-        mockMvc.perform(post(IMPORT_URL).with(csrf()).with(user(USER_ID).roles("MOTHER"))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"templateItemIds\":[not-json]}"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("CHECKLIST-001"))
-                .andExpect(jsonPath("$.message").value("Invalid checklist request"))
-                .andExpect(content().string(not(containsString("JsonParseException"))))
-                .andExpect(content().string(not(containsString("not-json"))));
-        verifyNoInteractions(checklistService);
-    }
+    void v2SystemTaskUpdateAndDeleteReturnImmutableThroughCompatibilityAdapter() throws Exception {
+        UUID taskId = UUID.randomUUID();
+        BusinessException immutable = new BusinessException(
+                HttpStatus.CONFLICT, "SYSTEM_TASK_IMMUTABLE", "System tasks cannot be edited or deleted");
+        doThrow(immutable).when(v2MutationService).rejectUpdate(taskId, USER_ID);
+        doThrow(immutable).when(v2MutationService).rejectDelete(taskId, USER_ID);
 
-    @Test
-    void uc82_69_tc_023_zeroFiftyOneAndNullElementsFailBeforeService() throws Exception {
-        assertInvalid("{\"templateItemIds\":[]}");
-        assertInvalid("{\"templateItemIds\":" + uuidArray(51) + "}");
-        assertInvalid("{\"templateItemIds\":[null]}");
-        verifyNoInteractions(checklistService);
-    }
-
-    @Test
-    void uc82_69_sec_003_unavailableItemUsesNeutralChecklist007WithoutUuidOrPolicyLeak()
-            throws Exception {
-        when(checklistService.importFromTemplate(any(), any())).thenThrow(new BusinessException(
-                HttpStatus.NOT_FOUND, "CHECKLIST-007", "Template item not found or unavailable"));
-
-        mockMvc.perform(post(IMPORT_URL).with(csrf()).with(user(USER_ID).roles("MOTHER"))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(validBody()))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.error").value("CHECKLIST-007"))
-                .andExpect(jsonPath("$.message").value("Template item not found or unavailable"))
-                .andExpect(content().string(not(containsString("69000000-0000-0000-0000-000000000020"))))
-                .andExpect(content().string(not(containsString("APPROVED"))))
-                .andExpect(content().string(not(containsString("PREGNANCY"))));
-    }
-
-    @Test
-    void uc82_69_tc_023_missingCanonicalContextUsesNeutralCnt013() throws Exception {
-        when(checklistService.importFromTemplate(any(), any()))
-                .thenThrow(ContentException.lifecycleContextUnavailable());
-
-        mockMvc.perform(post(IMPORT_URL).with(csrf()).with(user(USER_ID).roles("MOTHER"))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"templateItemIds\":[\"69000000-0000-0000-0000-000000000020\"]}"))
+        mockMvc.perform(put("/api/v1/user-checklist-items/{id}", taskId).with(csrf())
+                        .with(user(USER_ID.toString()).roles("MOTHER"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"itemText\":\"Changed\"}"))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.success").value(false))
-                .andExpect(jsonPath("$.status").value(409))
-                .andExpect(jsonPath("$.error").value("CNT-013"))
-                .andExpect(jsonPath("$.message").value("Lifecycle content context unavailable"))
-                .andExpect(jsonPath("$.path").value(IMPORT_URL))
-                .andExpect(jsonPath("$.details")
-                        .value(org.hamcrest.Matchers.nullValue()))
-                .andExpect(jsonPath("$.timestamp").exists());
-    }
-
-    @Test
-    void uc82_69_sec_004_denialResponseAndLogsOmitRequestSentinels() throws Exception {
-        String privateItemId = "69000000-0000-0000-0000-000000000777";
-        String privateToken = "PRIVATE-TOKEN-SENTINEL-69";
-        String privateEmail = "private-69@example.invalid";
-        BusinessException denial = new BusinessException(
-                HttpStatus.NOT_FOUND, "CHECKLIST-007", "Template item not found or unavailable");
-        denial.initCause(new IllegalStateException(
-                "nested denial " + privateItemId,
-                new IllegalArgumentException(privateToken + " " + privateEmail)));
-        when(checklistService.importFromTemplate(any(), any())).thenThrow(denial);
-        Logger logger = (Logger) LoggerFactory.getLogger(GlobalExceptionHandler.class);
-        LoggerContext loggerContext = logger.getLoggerContext();
-        ByteArrayOutputStream encodedLog = new ByteArrayOutputStream();
-        PatternLayoutEncoder encoder = new PatternLayoutEncoder();
-        encoder.setContext(loggerContext);
-        encoder.setPattern("%level %logger - %msg%n%ex");
-        encoder.start();
-        OutputStreamAppender<ILoggingEvent> appender = new OutputStreamAppender<>();
-        appender.setContext(loggerContext);
-        appender.setEncoder(encoder);
-        appender.setOutputStream(encodedLog);
-        appender.start();
-        logger.addAppender(appender);
-        try {
-            String denialBody = mockMvc.perform(post(IMPORT_URL).with(csrf())
-                            .with(user(USER_ID).roles("MOTHER"))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("{\"templateItemIds\":[\"" + privateItemId + "\"]}"))
-                    .andExpect(status().isNotFound())
-                    .andExpect(jsonPath("$.error").value("CHECKLIST-007"))
-                    .andReturn().getResponse().getContentAsString();
-            String malformedBody = mockMvc.perform(post(IMPORT_URL).with(csrf())
-                            .with(user(USER_ID).roles("MOTHER"))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("{\"templateItemIds\":\"" + privateToken + " "+ privateEmail + "\"}"))
-                    .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.error").value("CHECKLIST-001"))
-                    .andReturn().getResponse().getContentAsString();
-
-            assertThat(denialBody + malformedBody)
-                    .doesNotContain(privateItemId, privateToken, privateEmail,
-                            "APPROVED", "PREGNANCY", "itemText");
-            String capturedLogs = encodedLog.toString(StandardCharsets.UTF_8);
-            assertThat(capturedLogs)
-                    .doesNotContain(privateItemId, privateToken, privateEmail,
-                            "APPROVED", "PREGNANCY", "itemText");
-        } finally {
-            logger.detachAppender(appender);
-            appender.stop();
-            encoder.stop();
-        }
-    }
-
-    @Test
-    void unmatchedGetOnExistingItemPathShapeReturnsNeutral405WithoutMethodMetadata()
-            throws Exception {
-        String body = mockMvc.perform(get("/api/v1/user-checklist-items/unmapped-route")
-                        .with(user(USER_ID).roles("MOTHER")))
-                .andExpect(status().isMethodNotAllowed())
-                .andExpect(jsonPath("$.status").value(405))
-                .andExpect(jsonPath("$.error").value("METHOD_NOT_ALLOWED"))
-                .andExpect(jsonPath("$.message").value("Request method not supported"))
-                .andExpect(jsonPath("$.path")
-                        .value("/api/v1/user-checklist-items/unmapped-route"))
-                .andReturn().getResponse().getContentAsString();
-
-        assertThat(body).doesNotContain(
-                "HttpRequestMethodNotSupportedException", "Request method 'GET'",
-                "PUT", "PATCH", "DELETE", "INTERNAL_ERROR");
+                .andExpect(jsonPath("$.error").value("SYSTEM_TASK_IMMUTABLE"));
+        mockMvc.perform(delete("/api/v1/user-checklist-items/{id}", taskId).with(csrf())
+                        .with(user(USER_ID.toString()).roles("MOTHER")))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("SYSTEM_TASK_IMMUTABLE"));
         verifyNoInteractions(checklistService);
-    }
-
-    private void assertInvalid(String body) throws Exception {
-        mockMvc.perform(post(IMPORT_URL).with(csrf()).with(user(USER_ID).roles("MOTHER"))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(body))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("CHECKLIST-001"));
-    }
-
-    private String validBody() {
-        return "{\"journeyId\":\"69000000-0000-0000-0000-000000000010\","
-                + "\"templateItemIds\":[\"69000000-0000-0000-0000-000000000020\"]}";
-    }
-
-    private String uuidArray(int count) {
-        return IntStream.range(0, count)
-                .mapToObj(index -> "\"" + new UUID(0L, index + 1L) + "\"")
-                .collect(java.util.stream.Collectors.joining(",", "[", "]"));
     }
 }

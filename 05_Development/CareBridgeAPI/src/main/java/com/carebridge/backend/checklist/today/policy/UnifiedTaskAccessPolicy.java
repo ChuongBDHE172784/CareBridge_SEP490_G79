@@ -1,0 +1,106 @@
+package com.carebridge.backend.checklist.today.policy;
+
+import com.carebridge.backend.checklist.entity.ChecklistInstance;
+import com.carebridge.backend.checklist.model.ChecklistRecipientRole;
+import com.carebridge.backend.baby.entity.BabyProfileStatus;
+import com.carebridge.backend.baby.repository.BabyProfileRepository;
+import com.carebridge.backend.family.entity.CareGroup;
+import com.carebridge.backend.family.entity.CareGroupStatus;
+import com.carebridge.backend.family.entity.PermissionFlag;
+import com.carebridge.backend.family.policy.CareGroupAuthorizationPolicy;
+import com.carebridge.backend.family.repository.CareGroupRepository;
+import com.carebridge.backend.journey.entity.JourneyStatus;
+import com.carebridge.backend.journey.repository.MotherJourneyRepository;
+import java.util.UUID;
+import org.springframework.stereotype.Component;
+
+@Component
+public class UnifiedTaskAccessPolicy {
+    private final CareGroupRepository groupRepository;
+    private final CareGroupAuthorizationPolicy careGroupAuthorizationPolicy;
+    private final MotherJourneyRepository journeyRepository;
+    private final BabyProfileRepository babyProfileRepository;
+
+    public UnifiedTaskAccessPolicy(CareGroupRepository groupRepository,
+                                   CareGroupAuthorizationPolicy careGroupAuthorizationPolicy,
+                                   MotherJourneyRepository journeyRepository,
+                                   BabyProfileRepository babyProfileRepository) {
+        this.groupRepository = groupRepository;
+        this.careGroupAuthorizationPolicy = careGroupAuthorizationPolicy;
+        this.journeyRepository = journeyRepository;
+        this.babyProfileRepository = babyProfileRepository;
+    }
+
+    public boolean canView(ChecklistInstance instance, UUID actorUserId) {
+        if (!isCanonicalRecipient(instance, actorUserId)) {
+            return false;
+        }
+        if (instance.getRecipientRole() == ChecklistRecipientRole.MOTHER) {
+            return instance.getCareGroupId() == null
+                    && actorUserId.equals(instance.getContextOwnerUserId())
+                    && hasOwnedPersonalContext(instance);
+        }
+        if (instance.getCareGroupId() == null || !hasCurrentGroupContext(instance)) {
+            return false;
+        }
+        return careGroupAuthorizationPolicy.hasPermission(
+                instance.getCareGroupId(), actorUserId, PermissionFlag.CHECKLIST_VIEW);
+    }
+
+    public boolean canComplete(ChecklistInstance instance, UUID actorUserId) {
+        if (!canView(instance, actorUserId)) {
+            return false;
+        }
+        return instance.getRecipientRole() == ChecklistRecipientRole.MOTHER
+                || careGroupAuthorizationPolicy.hasPermission(
+                instance.getCareGroupId(), actorUserId, PermissionFlag.CHECKLIST_COMPLETE);
+    }
+
+    private static boolean isCanonicalRecipient(ChecklistInstance instance, UUID actorUserId) {
+        return instance != null && actorUserId != null
+                && actorUserId.equals(instance.getRecipientUserId())
+                && instance.getCareContextType() != null
+                && instance.getCareContextId() != null
+                && instance.getContextOwnerUserId() != null;
+    }
+
+    private boolean hasOwnedPersonalContext(ChecklistInstance instance) {
+        if (instance.getCareContextType() == com.carebridge.backend.checklist.model.ChecklistCareContextType.JOURNEY) {
+            return journeyRepository.existsByIdAndOwnerUserIdAndStatus(
+                    instance.getCareContextId(), instance.getContextOwnerUserId(), JourneyStatus.ACTIVE);
+        }
+        return babyProfileRepository
+                .findByIdAndOwnerUserId(instance.getCareContextId(), instance.getContextOwnerUserId())
+                .filter(baby -> baby.getStatus() == BabyProfileStatus.ACTIVE)
+                .isPresent();
+    }
+
+    private boolean hasCurrentGroupContext(ChecklistInstance instance) {
+        return groupRepository.findById(instance.getCareGroupId())
+                .filter(group -> group.getStatus() == CareGroupStatus.ACTIVE)
+                .filter(group -> instance.getContextOwnerUserId().equals(group.getOwnerUserId()))
+                .filter(group -> hasMatchingLinkedContext(instance, group))
+                .filter(group -> hasActiveCanonicalContext(instance, group))
+                .map(group -> true)
+                .orElse(false);
+    }
+
+    private boolean hasActiveCanonicalContext(ChecklistInstance instance, CareGroup group) {
+        return switch (instance.getCareContextType()) {
+            case JOURNEY -> journeyRepository.existsByIdAndOwnerUserIdAndStatus(
+                            instance.getCareContextId(), group.getOwnerUserId(), JourneyStatus.ACTIVE);
+            case BABY -> babyProfileRepository.findByIdAndOwnerUserId(
+                                    instance.getCareContextId(), group.getOwnerUserId())
+                            .filter(baby -> baby.getStatus() == BabyProfileStatus.ACTIVE)
+                            .isPresent();
+        };
+    }
+
+    private static boolean hasMatchingLinkedContext(ChecklistInstance instance, CareGroup group) {
+        return switch (instance.getCareContextType()) {
+            case JOURNEY -> instance.getCareContextId().equals(group.getLinkedJourneyId());
+            case BABY -> instance.getCareContextId().equals(group.getLinkedBabyProfileId());
+        };
+    }
+
+}

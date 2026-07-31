@@ -1,6 +1,7 @@
 package com.carebridge.backend.content.entity;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import java.util.Locale;
 
 public enum ContentStage {
     PRE_PREGNANCY,
@@ -15,10 +16,6 @@ public enum ContentStage {
         if ("BABY_CARE".equalsIgnoreCase(value)) {
             return POSTPARTUM;
         }
-        try {
-            return valueOf(value.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            return POSTPARTUM;
-        }
+        return valueOf(value.toUpperCase(Locale.ROOT));
     }
 }

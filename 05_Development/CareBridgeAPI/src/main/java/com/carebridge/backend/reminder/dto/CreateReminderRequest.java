@@ -8,6 +8,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -30,4 +31,8 @@ public class CreateReminderRequest {
     private UUID journeyId;
 
     private UUID babyId;
+
+    private List<Integer> notificationOffsetsMinutes;
+
+    private String timeZone;
 }

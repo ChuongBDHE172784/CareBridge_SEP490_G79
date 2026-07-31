@@ -17,7 +17,8 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 /**
- * Canonical fresh-bootstrap contract: the single V20260727010000 convergence
+ * Canonical fresh-bootstrap contract: V1, V2, and the single
+ * V20260731060000 convergence
  * migration builds the full schema from an empty PostgreSQL 18 database —
  * 62 base tables (including flyway_schema_history), the four compatibility
  * views, and a schema Hibernate validates against every mapped entity.

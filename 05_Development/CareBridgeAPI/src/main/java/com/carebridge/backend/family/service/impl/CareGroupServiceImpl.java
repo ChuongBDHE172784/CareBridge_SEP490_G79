@@ -2,6 +2,8 @@ package com.carebridge.backend.family.service.impl;
 
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
+import com.carebridge.backend.audit.service.RequiredAuditEvent;
+import com.carebridge.backend.checklist.model.ChecklistCareContextType;
 import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.common.validation.VietnamesePhoneNumbers;
 import com.carebridge.backend.family.dto.AcceptInvitationByTokenResponse;
@@ -17,6 +19,7 @@ import com.carebridge.backend.family.dto.InviteFamilyMemberResponse;
 import com.carebridge.backend.family.dto.LeaveCareGroupResponse;
 import com.carebridge.backend.family.dto.RemoveMemberResponse;
 import com.carebridge.backend.family.dto.RevokeInvitationResponse;
+import com.carebridge.backend.family.dto.RelinkCareGroupJourneyResponse;
 import com.carebridge.backend.family.dto.CareGroupSummaryDto;
 import com.carebridge.backend.family.dto.JoinRequestDto;
 import com.carebridge.backend.family.dto.PendingInvitationDto;
@@ -41,6 +44,8 @@ import com.carebridge.backend.family.repository.CareGroupRepository;
 import com.carebridge.backend.family.repository.CareTaskRepository;
 import com.carebridge.backend.family.service.ICareGroupService;
 import com.carebridge.backend.family.service.InviteTokenGenerator;
+import com.carebridge.backend.journey.entity.JourneyStatus;
+import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -51,6 +56,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -71,6 +79,7 @@ public class CareGroupServiceImpl implements ICareGroupService {
     private final FcmService fcmService;
     private final DeviceTokenRepository deviceTokenRepository;
     private final CareTaskRepository taskRepository;
+    private final MotherJourneyRepository journeyRepository;
 
     @Override
     public CreateCareGroupResponse createCareGroup(CreateCareGroupRequest request, UUID callerId) {
@@ -137,13 +146,18 @@ public class CareGroupServiceImpl implements ICareGroupService {
                     "Only the group owner can delete this group");
         }
 
-        // Hard delete: members, tasks, then the group itself
-        memberRepository.deleteByCareGroupId(groupId);
-        taskRepository.deleteByCareGroupId(groupId);
-        groupRepository.deleteById(groupId);
+        if (group.getStatus() == CareGroupStatus.ARCHIVED) {
+            return;
+        }
+
+        memberRepository.findByCareGroupIdAndUserId(groupId, callerId)
+                .orElseThrow(() -> new BusinessException(HttpStatus.CONFLICT, "FAM-065",
+                        "Care group owner membership is unavailable"));
+        group.setStatus(CareGroupStatus.ARCHIVED);
+        groupRepository.save(group);
 
         auditService.log(AuditAction.CARE_GROUP_DELETED, callerId,
-                "CareGroup", groupId.toString(), "deleted");
+                "CareGroup", groupId.toString(), "archived");
     }
 
     @Override
@@ -317,7 +331,7 @@ public class CareGroupServiceImpl implements ICareGroupService {
     public void declineInvite(UUID groupId, UUID callerId) {
         CareGroupMember member = pendingInviteOrThrow(groupId, callerId);
         member.setInviteStatus(InviteStatus.REVOKED);
-        memberRepository.save(member);
+        CareGroupMember saved = memberRepository.save(member);
 
         auditService.log(AuditAction.CARE_GROUP_INVITE_DECLINED, callerId,
                 "CareGroup", groupId.toString(), "invite declined");
@@ -467,6 +481,80 @@ public class CareGroupServiceImpl implements ICareGroupService {
                 .groupId(groupId)
                 .leftAt(leftAt)
                 .reassignedTaskCount(reassigned)
+                .build();
+    }
+
+    @Override
+    public RelinkCareGroupJourneyResponse relinkJourney(
+            UUID groupId,
+            UUID journeyId,
+            UUID callerId) {
+        CareGroup group = groupRepository.findByIdAndOwnerUserIdForUpdate(groupId, callerId)
+                .orElseThrow(() -> new BusinessException(
+                        HttpStatus.NOT_FOUND, "CARE_GROUP_NOT_FOUND", "Care group not found"));
+        if (group.getStatus() != CareGroupStatus.ACTIVE) {
+            throw new BusinessException(
+                    HttpStatus.CONFLICT, "CARE_GROUP_INACTIVE", "Care group is not active");
+        }
+
+        if (group.getLinkedBabyProfileId() != null) {
+            throw new BusinessException(
+                    HttpStatus.CONFLICT, "CARE_GROUP_CONTEXT_AMBIGUOUS",
+                    "Care group has a non-journey context");
+        }
+
+        UUID previousJourneyId = group.getLinkedJourneyId();
+        if (previousJourneyId == null) {
+            throw new BusinessException(
+                    HttpStatus.CONFLICT, "CARE_GROUP_CONTEXT_MISSING",
+                    "Care group has no journey context to relink");
+        }
+        var journey = journeyRepository.findByIdAndOwnerUserIdForUpdate(journeyId, callerId)
+                .orElseThrow(() -> new BusinessException(
+                        HttpStatus.NOT_FOUND, "JOURNEY_NOT_FOUND", "Journey not found"));
+        if (journey.getStatus() != JourneyStatus.ACTIVE) {
+            throw new BusinessException(
+                    HttpStatus.CONFLICT, "JOURNEY_INACTIVE", "Journey is not active");
+        }
+        if (Objects.equals(previousJourneyId, journeyId)) {
+            throw new BusinessException(HttpStatus.CONFLICT,
+                    "CARE_GROUP_CONTEXT_UNCHANGED", "Care group already uses this journey");
+        }
+
+        group.setLinkedJourneyId(journeyId);
+        groupRepository.saveAndFlush(group);
+
+        UUID correlationId = UUID.randomUUID();
+        Instant relinkedAt = Instant.now();
+        Map<String, Object> before = new LinkedHashMap<>();
+        before.put("careContextType", ChecklistCareContextType.JOURNEY.name());
+        before.put("careContextId", previousJourneyId);
+        Map<String, Object> after = Map.of(
+                "careContextType", ChecklistCareContextType.JOURNEY.name(),
+                "careContextId", journeyId);
+        auditService.logRequired(new RequiredAuditEvent(
+                AuditAction.CARE_GROUP_CONTEXT_RELINKED,
+                callerId,
+                "USER",
+                null,
+                callerId,
+                "CARE_GROUP_CONTEXT",
+                groupId,
+                ChecklistCareContextType.JOURNEY,
+                journeyId,
+                previousJourneyId,
+                null,
+                null,
+                before,
+                after,
+                null,
+                correlationId));
+        return RelinkCareGroupJourneyResponse.builder()
+                .groupId(groupId)
+                .previousJourneyId(previousJourneyId)
+                .journeyId(journeyId)
+                .relinkedAt(relinkedAt)
+                .correlationId(correlationId)
                 .build();
     }
 
@@ -934,6 +1022,10 @@ public class CareGroupServiceImpl implements ICareGroupService {
                 request.getLogs()      != null ? request.getLogs()      : previous.isLogs(),
                 request.getAlerts()    != null ? request.getAlerts()    : previous.isAlerts(),
                 request.getRecords()   != null ? request.getRecords()   : previous.isRecords(),
+                request.getChecklistView() != null
+                        ? request.getChecklistView() : previous.isChecklistView(),
+                request.getChecklistComplete() != null
+                        ? request.getChecklistComplete() : previous.isChecklistComplete(),
                 quickNotes,
                 quickNotes && (request.getQuickNoteWeight() != null
                         ? request.getQuickNoteWeight() : previous.isQuickNoteWeight()),
@@ -944,6 +1036,7 @@ public class CareGroupServiceImpl implements ICareGroupService {
                 quickNotes && (request.getQuickNoteFetalMovement() != null
                         ? request.getQuickNoteFetalMovement() : previous.isQuickNoteFetalMovement())
         );
+        updated.copyAdditionalPermissionsFrom(previous);
 
         member.setPermissionJson(updated.toJson());
         CareGroupMember saved = memberRepository.save(member);
@@ -984,6 +1077,8 @@ public class CareGroupServiceImpl implements ICareGroupService {
                 .logs(updated.isLogs())
                 .alerts(updated.isAlerts())
                 .records(updated.isRecords())
+                .checklistView(updated.isChecklistView())
+                .checklistComplete(updated.isChecklistComplete())
                 .quickNotes(updated.isQuickNotes())
                 .quickNoteWeight(updated.isQuickNoteWeight())
                 .quickNoteHydration(updated.isQuickNoteHydration())
@@ -1023,6 +1118,8 @@ public class CareGroupServiceImpl implements ICareGroupService {
                 .logs(perm.isLogs())
                 .alerts(perm.isAlerts())
                 .records(perm.isRecords())
+                .checklistView(perm.isChecklistView())
+                .checklistComplete(perm.isChecklistComplete())
                 .quickNotes(perm.isQuickNotes())
                 .quickNoteWeight(perm.isQuickNoteWeight())
                 .quickNoteHydration(perm.isQuickNoteHydration())

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../models/appointment_notification_timing.dart';
 import '../models/reminder_model.dart';
 import '../services/reminder_service.dart';
 
@@ -302,6 +303,16 @@ class _ReminderContent extends StatelessWidget {
                 label: 'Trạng thái',
                 value: _statusLabel(reminder.status),
               ),
+              if (reminder.reminderType == ReminderType.appointment)
+                _InfoRow(
+                  icon: Icons.notifications_active_rounded,
+                  label: 'Thông báo',
+                  value: reminder.notificationOffsetsMinutes.isEmpty
+                      ? 'Đã tắt'
+                      : reminder.notificationOffsetsMinutes
+                            .map(AppointmentNotificationTiming.label)
+                            .join(', '),
+                ),
               if (reminder.location != null &&
                   reminder.location!.trim().isNotEmpty)
                 _InfoRow(

@@ -88,13 +88,14 @@ QODER.md
 .gemini/
 .kiro/
 .qoder/
-.workbuddy-ai
 .cursorrules
 .windsurfrules
 .opencode.json
 .serena/
 .venv-headroom/
 .codex/
+.workbuddy-ai/
+outputs/
 
 # Local Claude skills (untracked - keep local only)
 .claude/skills/ui-skill-system/
@@ -143,8 +144,15 @@ tools/
 .codex_tmp/
 code-review-graph/
 
-#bach
-package-lock.json
-DropSchema.java
-V3_add_audit_events.sql
-application.yaml
+# Local workbuddy memory and generated review artifacts
+.workbuddy-ai/memory/2026-07-28.md
+.workbuddy-ai/memory/2026-07-29.md
+.workbuddy-ai/memory/2026-07-30.md
+.workbuddy-ai/memory/2026-07-31.md
+outputs/admin-role-stage-task-flow-audit-2026-07-28.md
+outputs/carebridge-runtime-screen.png
+outputs/exercise-old-baseline-progress-audit-2026-07-28.md
+outputs/maternal-health-metric-release-verification-2026-07-31.md
+outputs/maternal-health-metric-review-2026-07-30.md
+outputs/maternal-health-metric-target-business-flow-2026-07-30.md
+outputs/notification-status-audit-2026-07-29.md

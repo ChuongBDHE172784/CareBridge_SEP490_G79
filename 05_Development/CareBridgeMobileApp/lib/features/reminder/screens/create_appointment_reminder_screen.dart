@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 
+import '../../notification/services/notification_service.dart';
+import '../models/appointment_notification_timing.dart';
 import '../models/reminder_model.dart';
 import '../services/reminder_service.dart';
+import '../widgets/appointment_notification_timing_editor.dart';
 
 class CreateAppointmentReminderScreen extends StatefulWidget {
-  const CreateAppointmentReminderScreen({super.key});
+  const CreateAppointmentReminderScreen({super.key, this.initialDate});
+
+  final DateTime? initialDate;
 
   @override
   State<CreateAppointmentReminderScreen> createState() =>
@@ -24,16 +29,40 @@ class _CreateAppointmentReminderScreenState
   final _titleController = TextEditingController();
   final _locationController = TextEditingController();
   final List<TimeOfDay> _times = [];
-  DateTime _startDate = DateTime.now();
+  late DateTime _startDate;
   DateTime? _endDate;
   RecurrenceType _recurrence = RecurrenceType.none;
+  List<int> _notificationOffsets = AppointmentNotificationTiming.systemDefaults;
   bool _saving = false;
 
   @override
   void initState() {
     super.initState();
-    final defaultTime = DateTime.now().add(const Duration(minutes: 10));
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final requestedDate = widget.initialDate?.toLocal();
+    final normalizedRequested = requestedDate == null
+        ? null
+        : DateTime(requestedDate.year, requestedDate.month, requestedDate.day);
+    _startDate =
+        normalizedRequested == null || normalizedRequested.isBefore(today)
+        ? today
+        : normalizedRequested;
+    final defaultTime = now.add(const Duration(minutes: 10));
     _times.add(TimeOfDay.fromDateTime(defaultTime));
+    _loadNotificationDefaults();
+  }
+
+  Future<void> _loadNotificationDefaults() async {
+    try {
+      final preferences = await NotificationService.instance.getPreferences();
+      if (!mounted) return;
+      setState(() {
+        _notificationOffsets = preferences.appointmentReminderDefaults;
+      });
+    } catch (_) {
+      // Keep the documented system defaults when preferences cannot be loaded.
+    }
   }
 
   @override
@@ -125,6 +154,7 @@ class _CreateAppointmentReminderScreenState
           scheduledAt: scheduledAt,
           recurrenceType: _recurrence,
           recurrenceEndDate: _endDate,
+          notificationOffsetsMinutes: _notificationOffsets,
         );
         createdCount++;
       }
@@ -303,6 +333,15 @@ class _CreateAppointmentReminderScreenState
                       .toList(),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          _Section(
+            child: AppointmentNotificationTimingEditor(
+              values: _notificationOffsets,
+              enabled: !_saving,
+              onChanged: (values) =>
+                  setState(() => _notificationOffsets = values),
             ),
           ),
           const SizedBox(height: 20),

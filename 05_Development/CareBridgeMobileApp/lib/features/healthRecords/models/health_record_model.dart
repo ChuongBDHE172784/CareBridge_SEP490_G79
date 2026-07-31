@@ -91,12 +91,15 @@ class HealthRecord {
   });
 
   factory HealthRecord.fromJson(Map<String, dynamic> json) {
+    final rawId = json['id'] ?? json['healthRecordId'];
     return HealthRecord(
-      id: (json['id'] ?? json['healthRecordId']).toString(),
+      id: rawId?.toString() ?? '',
       recordType: RecordTypeExtension.fromApi(json['recordType'] as String?),
-      title: json['title'] as String,
-      recordDate: DateTime.parse(json['recordDate'] as String),
-      facilityName: json['facilityName'] as String?,
+      title: json['title'] as String? ?? '',
+      recordDate: json['recordDate'] != null
+          ? DateTime.parse(json['recordDate'] as String)
+          : DateTime.now(),
+      facilityName: (json['facilityName'] ?? json['sourceName']) as String?,
       status: json['status'] as String?,
       isShared: json['isShared'] as bool? ?? false,
       createdAt: _parseOptionalDateTime(json['createdAt']),
@@ -153,14 +156,15 @@ class HealthRecordDetail extends HealthRecord {
 
   factory HealthRecordDetail.fromJson(Map<String, dynamic> json) {
     final rawAttachments = json['attachments'] as List<dynamic>? ?? [];
+    final rawId = json['id'] ?? json['healthRecordId'];
     return HealthRecordDetail(
-      id: json['id']?.toString() ?? '',
+      id: rawId?.toString() ?? '',
       recordType: RecordTypeExtension.fromApi(json['recordType'] as String?),
       title: json['title'] as String? ?? '',
       recordDate: json['recordDate'] != null
           ? DateTime.parse(json['recordDate'] as String)
           : DateTime.now(),
-      facilityName: json['facilityName'] as String?,
+      facilityName: (json['facilityName'] ?? json['sourceName']) as String?,
       status: json['status'] as String?,
       isShared: json['isShared'] as bool? ?? false,
       createdAt: _parseOptionalDateTime(json['createdAt']),

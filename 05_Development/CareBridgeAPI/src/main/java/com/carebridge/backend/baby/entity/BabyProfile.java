@@ -33,9 +33,6 @@ public class BabyProfile {
     @JoinColumn(name = "person_id", nullable = false)
     private Person person;
 
-    @Column(name = "mother_journey_id")
-    private UUID relatedJourneyId;
-
     @Column(name = "nickname", nullable = false, length = 100)
     private String nickname;
 

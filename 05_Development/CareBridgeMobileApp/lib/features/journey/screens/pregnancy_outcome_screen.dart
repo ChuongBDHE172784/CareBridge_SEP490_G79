@@ -241,10 +241,9 @@ class _PregnancyOutcomeScreenState extends State<PregnancyOutcomeScreen> {
 
   String _confirmationMessage(PregnancyOutcome outcome) {
     if (outcome == PregnancyOutcome.liveBirth) {
-      return 'Hành trình sẽ chuyển sang giai đoạn sau sinh. Bạn có thể tạo, liên kết hoặc để hồ sơ em bé cho lần sau.';
+      return 'Hành trình sẽ chuyển sang giai đoạn hậu sản. Bạn có thể thêm hồ sơ em bé ngay sau bước này.';
     }
-    if (outcome == PregnancyOutcome.pregnancyLoss ||
-        outcome == PregnancyOutcome.stillbirth) {
+    if (outcome == PregnancyOutcome.pregnancyLoss) {
       return 'Hành trình sẽ chuyển sang hỗ trợ hồi phục và không yêu cầu tạo hồ sơ em bé.';
     }
     return 'Thông tin này sẽ được lưu vào lịch sử hành trình. Bạn có thể cập nhật lại khi có thông tin mới.';
@@ -305,7 +304,9 @@ class _PregnancyOutcomeScreenState extends State<PregnancyOutcomeScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            ...PregnancyOutcome.values.map(_buildOutcomeChoice),
+            ...PregnancyOutcome.values
+                .where((o) => o != PregnancyOutcome.ongoing)
+                .map(_buildOutcomeChoice),
             if (_selected?.requiresDate == true) ...[
               const SizedBox(height: 8),
               Semantics(
@@ -490,7 +491,7 @@ class _PregnancyOutcomeScreenState extends State<PregnancyOutcomeScreen> {
                   const SizedBox(height: 10),
                   Text(
                     result.journeyType == 'POSTPARTUM'
-                        ? 'Bạn có thể tiếp tục với hỗ trợ hồi phục. Hồ sơ em bé luôn là lựa chọn và có thể thực hiện sau.'
+                        ? 'Bạn có thể tiếp tục với hỗ trợ hồi phục. Việc thêm hồ sơ em bé luôn là lựa chọn và có thể thực hiện sau.'
                         : 'Hành trình mang thai vẫn được giữ nguyên. Bạn có thể cập nhật khi có thông tin mới.',
                     textAlign: TextAlign.center,
                     style: const TextStyle(

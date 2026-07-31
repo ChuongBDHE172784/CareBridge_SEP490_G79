@@ -1,5 +1,6 @@
 package com.carebridge.backend.content.dto.response;
 
+import com.carebridge.backend.checklist.model.ChecklistTargetSubject;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,4 +19,5 @@ public class ChecklistItemResponse {
     private String itemText;
     private Integer order;
     private Boolean isRequired;
+    private ChecklistTargetSubject targetSubject;
 }

@@ -9,6 +9,7 @@ import '../../directChat/screens/expert_directory_screen.dart';
 import '../../directChat/screens/conversation_list_screen.dart';
 import '../../directChat/services/direct_chat_service.dart';
 import '../../directChat/services/conversation_refresh_bus.dart';
+import '../../checklist/services/checklist_assignment_refresh_bus.dart';
 
 /// Main app shell housing the BottomNavigationBar (5 tabs).
 /// Tabs: Home (CB-008) | Journey (CB-009) | Expert directory | Conversations | Profile
@@ -102,7 +103,11 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
   }
 
   void _onDestinationSelected(int i) {
+    final previousIndex = _index;
     setState(() => _index = i);
+    if (i == 0 && previousIndex != 0) {
+      ChecklistAssignmentRefreshBus.notify();
+    }
     _refreshUnreadCount();
   }
 

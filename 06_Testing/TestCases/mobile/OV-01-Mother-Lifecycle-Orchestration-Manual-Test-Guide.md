@@ -14,14 +14,14 @@
 
 Tài liệu này dùng để kiểm thử luồng nghiệp vụ xuyên suốt:
 
-`Đăng nhập → vai trò Mẹ → baseline/consent → chọn giai đoạn → tiền thai kỳ → thai kỳ → kết quả thai kỳ → hậu sản → liên kết em bé tùy chọn → safety triage → tiếp tục hoặc đóng hành trình`.
+`Đăng nhập → vai trò Mẹ → baseline/consent → chọn giai đoạn → tiền thai kỳ → thai kỳ → kết quả thai kỳ → hậu sản → tạo hồ sơ em bé độc lập tùy chọn → safety triage → tiếp tục hoặc đóng hành trình`.
 
 Mục tiêu chính:
 
 - chứng minh chỉ có một lifecycle hiện hành chuẩn cho mỗi Mẹ;
 - bảo toàn nguồn gốc, lịch sử và quy tắc chuyển giai đoạn;
 - hỗ trợ hậu sản độc lập với hồ sơ em bé;
-- bảo vệ quyền sở hữu khi liên kết 0..n em bé;
+- bảo vệ quyền sở hữu và cô lập dữ liệu của các hồ sơ em bé độc lập;
 - bảo đảm GREEN/YELLOW/RED và fallback an toàn hoạt động nhất quán;
 - không hiển thị nội dung chưa được duyệt hoặc chia sẻ quá mức dữ liệu sức khỏe;
 - bảo toàn trạng thái khi retry, mất mạng, khởi động lại và đổi tài khoản.
@@ -150,11 +150,11 @@ Không đưa access token, refresh token, mật khẩu, OTP, email/số điện 
 | OV01-MAN-015 | Pregnancy loss vào recovery, không tạo baby | 6.3 | P0 | PASS (provenance) | BLOCKED | physical device + PostgreSQL evidence |
 | OV01-MAN-016 | Vào postpartum trực tiếp với zero baby | 6.4 | P1 | PASS (provenance) | BLOCKED | physical Android device + PostgreSQL evidence |
 | OV01-MAN-017 | Recovery độc lập dữ liệu baby | 6.4 | P1 | PASS (provenance) | BLOCKED | physical Android device + PostgreSQL evidence |
-| OV01-MAN-018 | Hoãn tạo baby | 6.5 | P1 | PASS (provenance) | BLOCKED | `story-6-5-manual/manual-run-summary.md` |
-| OV01-MAN-019 | Tạo và liên kết baby mới | 6.5 | P1 | PASS (provenance) | BLOCKED | `story-6-5-manual/manual-run-summary.md` |
-| OV01-MAN-020 | Liên kết baby có sẵn cùng tài khoản | 6.5 | P1 | PASS (provenance) | BLOCKED | `story-6-5-manual/manual-run-summary.md` |
-| OV01-MAN-021 | Liên kết nhiều baby | 6.5 | P1 | PASS (provenance) | BLOCKED | `story-6-5-manual/manual-run-summary.md` |
-| OV01-MAN-022 | Chặn cross-account/incompatible baby | 6.5 | P0 | PASS (provenance) | BLOCKED | `story-6-5-manual/manual-run-summary.md` |
+| OV01-MAN-018 | Hoãn tạo baby sau live birth | 6.5 | P1 | NOT RUN | BLOCKED | Chờ chạy lại contract typed live-birth transition |
+| OV01-MAN-019 | Tạo baby độc lập sau live birth | 6.5 | P0 | NOT RUN | BLOCKED | Chờ chạy lại Add Baby standalone và kiểm tra Mother Journey bất biến |
+| OV01-MAN-020 | Entry Add Baby thông thường không có “Để sau” | 6.5 | P1 | NOT RUN | BLOCKED | Chờ chạy lại profile-list/deep-link entry |
+| OV01-MAN-021 | Nhiều baby độc lập cùng owner | 6.5 | P1 | NOT RUN | BLOCKED | Chờ chạy lại Baby tab và ownership isolation |
+| OV01-MAN-022 | Legacy relationship contract bị từ chối | 6.5 | P0 | NOT RUN | BLOCKED | Chờ API/MVC evidence cho validation 400 và route 404/405 |
 | OV01-MAN-023 | GREEN từ mọi active stage và trở về origin | 6.6/6.7 | P1 | PASS (provenance) | BLOCKED | Five production-origin Android GREEN round trips passed: PRECONCEPTION, PREGNANCY, POSTPARTUM returned to the exact Mother Journey; INFANT and TODDLER returned to the exact baby profile. Sanitized UI/PostgreSQL evidence: `_bmad-output/test-artifacts/story-6-7-manual/`. |
 | OV01-MAN-024 | YELLOW, verified expert và consent tối thiểu | 6.8 | P1 | PASS (provenance) | BLOCKED | Final Android 35 APK: verified-only discovery, explicit four-field consent, refusal/offline/eligibility-loss no-side-effect, stable-key exactly-once retry, minimal expert detail, account-switch/restart isolation, and GREEN/RED regression. Evidence: `_bmad-output/test-artifacts/story-6-8-manual/manual-run-summary.md`. |
 | OV01-MAN-025 | RED gọi emergency xác định | 6.6 | P0 | PASS (provenance) | BLOCKED | Android UI thật từ đủ năm production origin; evidence sanitized trong `story-6-6-manual/manual-run-summary.md` |
@@ -284,8 +284,8 @@ Sau đó gọi `GET /api/v1/journeys/{{journeyAId}}/history`.
 ### OV01-MAN-014 — Live birth chuyển sang postpartum
 
 **Fixture:** `MOTHER_PREG`, dữ liệu sinh synthetic.  
-**Thực hiện:** Chọn outcome live birth → nhập ngày/nguồn/reason → xác nhận → quan sát recovery và lời mời tạo/link baby.  
-**Mong đợi:** cùng canonical lifecycle chuyển sang POSTPARTUM; outcome provenance và history được giữ; baby vẫn là tùy chọn; từ chối/hoãn baby không chặn recovery; không duplicate transition khi bấm lặp.  
+**Thực hiện:** Chọn outcome live birth → nhập ngày/nguồn/reason → xác nhận → quan sát recovery và màn Add Baby độc lập.
+**Mong đợi:** cùng canonical lifecycle chuyển sang POSTPARTUM; outcome provenance và history được giữ; tạo baby vẫn là tùy chọn; “Để sau” không chặn recovery; không duplicate transition khi bấm lặp.
 **Thực tế/evidence:** PASS trên physical device + PostgreSQL sau khi sửa propagation của outcome correction. Canonical journey chuyển PREGNANCY → POSTPARTUM, version `2`, outcome/date và transition history được giữ, bấm lặp không tạo duplicate, `baby_count=0` vẫn hợp lệ. Evidence: `_bmad-output/test-artifacts/story-6-3-manual/ov01-man-014.png`, `ov01-man-014-pass.png`, `ov01-man-014-fixed.png`, `ov01-man-014-db.txt`.
 
 ### OV01-MAN-015 — Pregnancy loss vào recovery, không tạo baby
@@ -312,42 +312,42 @@ Sau đó gọi `GET /api/v1/journeys/{{journeyAId}}/history`.
 ### OV01-MAN-018 — Hoãn tạo baby
 
 **Fixture:** `MOTHER_POST_ZERO`.  
-**Thực hiện:** Từ lời mời create/link baby chọn “để sau/không bây giờ” → tiếp tục recovery → mở lại app.  
-**Mong đợi:** quay đúng postpartum dashboard; Mother state và recovery data không đổi; lời mời có thể mở lại sau; không có baby/profile/link rỗng được tạo.  
-**Thực tế/evidence:** `PASS` ngày 2026-07-21 trên Samsung SM-A725F. Thiết bị xác nhận tài khoản synthetic đủ điều kiện có ba hành động ngang hàng, chọn “Để sau” quay về recovery, và zero-baby ready state vẫn đúng sau force-stop/cold-start; không render baby/link rỗng. Việc mở lại lời mời và giữ zero-baby state qua simulated widget-tree rebuild được xác nhận bởi hai focused widget tests tương ứng. Bằng chứng sanitized: `_bmad-output/test-artifacts/story-6-5-manual/m5-linkage-actions.xml`, `m5-later-return.xml`, `m5-cold-start-ready.xml` và `manual-run-summary.md`.
+**Thực hiện:** Hoàn tất `LIVE_BIRTH` → Add Baby được mở bằng typed transition context → chọn “Để sau”.
+**Mong đợi:** điều hướng đúng một lần tới tab **Bé**; Mother Journey đã commit vẫn giữ POSTPARTUM; không tạo baby và không lưu handoff token.
+**Thực tế/evidence:** `NOT RUN` sau khi loại bỏ chức năng liên kết. Evidence Story 6.5 cũ chỉ được giữ làm lịch sử superseded và không chứng minh contract hiện tại.
 
-### OV01-MAN-019 — Tạo và liên kết baby mới
+### OV01-MAN-019 — Tạo baby độc lập sau live birth
 
 **Fixture:** `MOTHER_POST_ZERO`, dữ liệu baby synthetic tối thiểu.  
-**Thực hiện:** Chọn tạo baby → nhập minimum required data → lưu → quay lại recovery và mở baby selector.  
-**Mong đợi:** đúng một baby profile thuộc Mother; liên kết tới journey đủ điều kiện; POSTPARTUM state/version không bị đổi ngoài audit liên kết đã duyệt; retry không tạo baby trùng.  
-**Thực tế/evidence:** `PASS` ngày 2026-07-21 trên Samsung SM-A725F. Flow journey-scoped tạo dữ liệu tối thiểu và authoritative reload hiển thị đúng một baby liên kết. Aggregate-only read-only diagnostic xác nhận một active journey với version không đổi, một active/linked baby, một create submission và một accepted audit. Bằng chứng sanitized: `_bmad-output/test-artifacts/story-6-5-manual/m5-linked-final.xml`, `m5-db-verification.md` và `manual-run-summary.md`.
+**Thực hiện:** Hoàn tất `LIVE_BIRTH` → nhập minimum required data trên Add Baby → lưu.
+**Mong đợi:** đúng một baby profile standalone thuộc Mother; response không có quan hệ lifecycle; điều hướng đúng một lần tới tab **Bé**; POSTPARTUM Journey không đổi.
+**Thực tế/evidence:** `NOT RUN` sau khi loại bỏ chức năng liên kết.
 
-### OV01-MAN-020 — Liên kết baby có sẵn cùng tài khoản
+### OV01-MAN-020 — Entry Add Baby thông thường không có “Để sau”
 
-**Fixture:** một baby eligible cùng owner nhưng chưa liên kết journey hiện tại.  
-**Thực hiện:** Chọn link existing → chọn baby → xác nhận → reload recovery/baby journey.  
-**Mong đợi:** liên kết thành công một lần; không sao chép profile; baby data giữ nguyên; Mother recovery không reset; audit ghi actor/source/link target.  
-**Thực tế/evidence:** `PASS` ngày 2026-07-21 trên Samsung SM-A725F. Selector chỉ hiển thị candidate ACTIVE cùng owner và chưa liên kết; chọn Baby A tạo đúng một liên kết rồi authoritative refresh hiển thị Baby A một lần, không gọi switch-active legacy. Bằng chứng sanitized: `_bmad-output/test-artifacts/story-6-5-manual/m6-candidates.xml`, `m6-one-linked.xml`; audit/command contract được xác nhận bởi bộ PostgreSQL và widget test Story 6.5.
+**Fixture:** Mother đã đăng nhập và đang ở tab **Bé**.
+**Thực hiện:** Mở Add Baby từ profile list, sau đó mở trực tiếp `/babies/add` không kèm typed transition context.
+**Mong đợi:** cả hai entry dùng mode profile-list; không hiển thị “Để sau”; back không ghi dữ liệu và quay về đúng nguồn.
+**Thực tế/evidence:** `NOT RUN` sau khi loại bỏ chức năng liên kết.
 
-### OV01-MAN-021 — Liên kết nhiều baby
+### OV01-MAN-021 — Nhiều baby độc lập cùng owner
 
-**Fixture:** `BABY_A`, `BABY_B` cùng owner và compatible.  
-**Thực hiện:** Liên kết lần lượt hai baby → chuyển selector A/B nhiều lần → quay lại recovery.  
-**Mong đợi:** cả hai liên kết tồn tại, không trùng; dữ liệu mỗi baby được cô lập; Mother vẫn chỉ có một POSTPARTUM active; late response không làm đổi baby đang chọn.  
-**Thực tế/evidence:** `PASS` ngày 2026-07-21 trên Samsung SM-A725F. Baby A và Baby B tồn tại đúng một lần trong linked set; selector cuối có đúng một actionable semantics node cho mỗi baby, chọn Baby B vẫn được giữ sau authoritative refresh, và quay lại đúng postpartum recovery. Bằng chứng sanitized: `_bmad-output/test-artifacts/story-6-5-manual/m6-two-linked.xml`, `m6-selector-final-a.xml`, `m6-selector-final-b-refresh.xml`, `m6-recovery-return.xml`.
+**Fixture:** `BABY_A`, `BABY_B` là hai profile standalone cùng owner.
+**Thực hiện:** Mở tab **Bé** → chuyển Baby A/B → mở profile, growth và vaccination của từng baby.
+**Mong đợi:** mỗi profile xuất hiện đúng một lần, dữ liệu baby-scoped không trộn, và Mother Journey không hiển thị baby card hay hành động quan hệ.
+**Thực tế/evidence:** `NOT RUN` sau khi loại bỏ chức năng liên kết.
 
-### OV01-MAN-022 — Chặn cross-account hoặc incompatible baby
+### OV01-MAN-022 — Legacy relationship contract bị từ chối
 
-**Fixture:** `FOREIGN_BABY` và một baby không tương thích stage/outcome.  
-**Thực hiện:** Dùng deep link/API test support đã duyệt để thử liên kết từng fixture; sau đó kiểm tra bằng owner thật.  
-**Mong đợi:** 403/404 hoặc business error trung lập; không lộ tên/ngày/notes của foreign baby; không tạo/sửa link; attempt được audit; owner thật vẫn thấy dữ liệu nguyên vẹn.  
-**Thực tế/evidence:** `PASS` ngày 2026-07-21 bằng API test support trên PostgreSQL 16. Case `foreignAndIncompatibleLinkAttemptsLeaveOwnerDataUnchangedAndSanitizedAudits` xác nhận foreign trả `LINK_RESOURCE_NOT_FOUND`, pregnancy-loss/incompatible trả `LINK_NOT_ELIGIBLE`; không tạo submission/link, row owner không đổi và mỗi rejection có đúng một audit không chứa nickname, birth date hoặc token. Tổng hợp sanitized: `_bmad-output/test-artifacts/story-6-5-manual/manual-run-summary.md`.
+**Fixture:** token Mother hợp lệ và payload create có thuộc tính quan hệ legacy; các URL quan hệ cũ.
+**Thực hiện:** Gửi `POST /api/v1/babies` với thuộc tính ngoài contract; gọi các URL quan hệ cũ bằng method tương ứng.
+**Mong đợi:** create trả validation `400` trung tính và không tạo baby; URL đã gỡ trả generic `404/405`; không có audit writer mới cho chức năng đã xóa.
+**Thực tế/evidence:** `NOT RUN` sau khi loại bỏ chức năng liên kết.
 
 ### OV01-MAN-023 — GREEN từ mọi active stage và trở về origin
 
-**Fixture:** PRE, PREG, POST; baby-linked INFANT/TODDLER; và `TRIAGE_GREEN`.  
-**Thực hiện:** Từ từng Mother dashboard và từng baby journey INFANT/TODDLER mở safety triage → nhập GREEN phù hợp context → hoàn tất guidance/monitor → quay lại.  
+**Fixture:** PRE, PREG, POST; standalone baby INFANT/TODDLER; và `TRIAGE_GREEN`.
+**Thực hiện:** Từ từng Mother dashboard và từng baby profile INFANT/TODDLER mở safety triage → nhập GREEN phù hợp context → hoàn tất guidance/monitor → quay lại.
 **Mong đợi:** cả năm safety context được gửi/đọc đúng; kết quả GREEN nhất quán và non-diagnostic; không tạo emergency/consultation; quay đúng Mother dashboard hoặc đúng baby/context ban đầu; dữ liệu giữa stage/baby không bị trộn.  
 **Thực tế/evidence:** `PASS` ngày 2026-07-23 trên AVD Android 15/API 35 với APK build từ working tree cuối. Đã chạy lại đủ năm production origin: PRECONCEPTION, PREGNANCY, POSTPARTUM từ Mother Journey và INFANT/TODDLER từ đúng baby profile. Cả năm hoàn tất GREEN, quay về đúng typed origin, hiển thị confirmation tại destination và acknowledge continuation; hai pediatric request có top-level `babyProfileId` đúng. PostgreSQL latest-run matrix xác nhận mỗi stage có đúng một intake/projection, `acknowledged=true`, đúng journey/baby origin/action và zero emergency. Evidence sanitized: `_bmad-output/test-artifacts/story-6-7-manual/manual-run-summary.md`, `db-evidence.md`, các bộ `pre-queryfix-return.*`, `preg-queryfix-return.*`, `post-queryfix-return.*`, `infant-final-return.*`, `toddler-final-return.*`.
 
@@ -360,7 +360,7 @@ Sau đó gọi `GET /api/v1/journeys/{{journeyAId}}/history`.
 
 ### OV01-MAN-025 — RED gọi emergency xác định
 
-**Fixture:** PRE, PREG, POST; baby-linked INFANT/TODDLER; và `TRIAGE_RED`.  
+**Fixture:** PRE, PREG, POST; standalone baby INFANT/TODDLER; và `TRIAGE_RED`.
 **Thực hiện:** Từ cả năm safety context gửi RED input → quan sát điều hướng/call-to-action → mở emergency session và quay lại khi an toàn.  
 **Mong đợi:** context Mother/baby chính xác; RED không chờ hoặc gọi một AI interpretation thứ hai; emergency được tạo/mở deterministically; copy khẩn cấp rõ ràng, không chẩn đoán; origin lifecycle/baby context được giữ; POSTPARTUM, INFANT và TODDLER hoạt động end-to-end.  
 **Thực tế/evidence:** `PASS` ngày 2026-07-22 trên AVD Android 35 với APK build từ working tree cuối. Đã đăng nhập năm fixture account và thao tác từ đúng production origin: PRECONCEPTION/PREGNANCY/POSTPARTUM từ Mother Journey, INFANT/TODDLER từ baby profile nạp qua API thật. Mỗi CTA khóa stage, RED mở backend ACTIVE emergency, và back navigation trả về đúng typed origin trong current session. PostgreSQL xác nhận mọi RED intake tại checkpoint đều có association và mỗi owner chỉ dùng một linked emergency. Evidence sanitized: `_bmad-output/test-artifacts/story-6-6-manual/manual-run-summary.md`, `db-evidence.md`, cùng các bộ `pre-*valid`, `preg-*valid`, `post-*valid`, `infant-*`, `toddler-*` PNG/XML.
@@ -374,7 +374,7 @@ Sau đó gọi `GET /api/v1/journeys/{{journeyAId}}/history`.
 
 ### OV01-MAN-027 — AI unavailable dùng safe fallback
 
-**Fixture:** PRE, PREG, POST, baby-linked INFANT/TODDLER và failure injection được phê duyệt cho timeout/unavailable/malformed AI response.  
+**Fixture:** PRE, PREG, POST, standalone baby INFANT/TODDLER và failure injection được phê duyệt cho timeout/unavailable/malformed AI response.
 **Thực hiện:** Từ mỗi Mother/baby safety context gọi triage trong lúc AI unavailable → quan sát guidance/escalation → retry sau khi dịch vụ phục hồi.  
 **Mong đợi:** app không crash/blank; fallback bảo thủ, rõ ràng, non-diagnostic và không hạ mức nguy cơ; context INFANT/TODDLER không bị quy về Mother; RED-like danger signs vẫn dẫn emergency deterministically; retry không tạo side effect trùng.  
 **Thực tế/evidence:** `PASS` ngày 2026-07-22. Đã dừng process Python giữ port 8001 và xác nhận không còn listener, sau đó chạy từ đủ năm production origin. PRECONCEPTION, PREGNANCY, POSTPARTUM, INFANT và TODDLER đều hiển thị explicit safe-fallback copy, RED, emergency CTA và không crash/blank. Python được khởi động lại từ `.venv-story66`; `/health` trả HTTP 200, rồi cả năm origin được retry và trở lại normal RED copy. DB cuối chỉ tăng một intake association mỗi recovery retry; mỗi owner vẫn có đúng một ACTIVE/linked emergency, một outbox, `attempt_count=1` và không phát sinh recipient log. Evidence sanitized: `man027-outage-*-red.*`, `man027-recovery-*-red.*`, `manual-run-summary.md`, `db-evidence.md`.
@@ -489,7 +489,7 @@ Với baby, triage, emergency, consultation, content và safety projection, dùn
 | FR45 — dating source/confidence/revision/actor/reason/time | 6.1/6.3 | 006, 011–012 |
 | FR46 — ongoing, unknown, live birth, loss/stillbirth wording | 6.3 | 012–015, 030 |
 | FR47 — postpartum không bắt buộc baby | 6.4 | 014–018 |
-| FR48 — optional 0..n baby và ownership/compatibility | 6.5 | 018–022 |
+| FR48 — standalone baby profiles và ownership isolation | 6.5 | 018–022 |
 | FR49 — PRE/PREG/POST/INFANT/TODDLER safety context | 6.6 | 023, 025, 027 |
 | FR50 — RED create/reuse emergency, không AI lần hai | 6.6 | 025–027 |
 | FR51 — safety timeline và return-to-origin | 6.7 | 023, 028, 031 |

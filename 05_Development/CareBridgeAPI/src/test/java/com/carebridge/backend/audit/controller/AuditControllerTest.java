@@ -25,6 +25,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -132,9 +133,22 @@ class AuditControllerTest {
                 .andExpect(jsonPath("$.data[0].userId").value(knownActorId.toString()));
     }
 
+    @Test
+    @WithMockUser(username = ADMIN_ID, roles = "OPERATIONS")
+    void search_operationsRole_isAllowedAndMetaAudited() throws Exception {
+        org.mockito.Mockito.when(auditService.search(any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(java.util.List.of()));
+
+        mockMvc.perform(get(BASE_URL))
+                .andExpect(status().isOk());
+
+        verify(auditService).log(
+                eq(AuditAction.VIEW_AUDIT_LOG), any(UUID.class), eq("AuditLog"), isNull(), any());
+    }
+
     // UC117-TC-009 (Track A characterization) — non-admin rejection
     @ParameterizedTest
-    @EnumSource(value = Role.class, names = {"SYSTEM_ADMIN"}, mode = EnumSource.Mode.EXCLUDE)
+    @EnumSource(value = Role.class, names = {"SYSTEM_ADMIN", "OPERATIONS"}, mode = EnumSource.Mode.EXCLUDE)
     void search_nonSystemAdminRole_isRejected(Role role) throws Exception {
         mockMvc.perform(get(BASE_URL)
                         .with(SecurityMockMvcRequestPostProcessors.user(UUID.randomUUID().toString()).roles(role.name())))
@@ -156,5 +170,15 @@ class AuditControllerTest {
                 ArgumentCaptor.forClass(org.springframework.data.domain.Pageable.class);
         verify(auditService).search(any(), any(), any(), any(), pageableCaptor.capture());
         org.assertj.core.api.Assertions.assertThat(pageableCaptor.getValue().getPageSize()).isEqualTo(100);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"page=-1&size=20", "page=0&size=0"})
+    @WithMockUser(username = ADMIN_ID, roles = "SYSTEM_ADMIN")
+    void search_rejectsInvalidPageOrSize(String query) throws Exception {
+        mockMvc.perform(get(BASE_URL).queryParam("page", query.split("&")[0].substring(5))
+                        .queryParam("size", query.split("&")[1].substring(5)))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(auditService);
     }
 }

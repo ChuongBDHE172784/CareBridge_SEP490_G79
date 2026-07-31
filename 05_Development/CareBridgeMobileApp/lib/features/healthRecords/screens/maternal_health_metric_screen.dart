@@ -64,24 +64,10 @@ class _MaternalHealthMetricScreenState
         });
       }
     } on ApiException {
-      // Fallback mock for development
       if (mounted) {
         setState(() {
-          final isBp = widget.metricId == 'blood_pressure';
-          _metric = HealthMetricDetail(
-            id: widget.metricId,
-            journeyId: 'mock-journey-1',
-            metricType: isBp ? MetricType.bloodPressure : MetricType.weight,
-            valueNumeric: isBp ? 120 : 62.5,
-            valueSecondary: isBp ? 80 : null,
-            unit: isBp ? 'mmHg' : 'kg',
-            measuredAt: DateTime.now().subtract(const Duration(hours: 2)),
-            sourceType: SourceType.manual,
-            note: isBp
-                ? 'Huyết áp bình thường, đo sau khi nghỉ ngơi.'
-                : 'Cân nặng tăng nhẹ, ổn định.',
-            createdAt: DateTime.now(),
-          );
+          _metric = null;
+          _error = 'Không thể tải chỉ số. Vui lòng kiểm tra quyền truy cập hoặc thử lại.';
           _loading = false;
         });
       }

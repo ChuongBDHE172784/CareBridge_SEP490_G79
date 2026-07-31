@@ -145,6 +145,48 @@ public class ContentException extends RuntimeException {
                 HttpStatus.BAD_REQUEST);
     }
 
+    public static ContentException templateRoleRequired() {
+        return new ContentException(
+                "TEMPLATE_ROLE_REQUIRED",
+                "At least one checklist template recipient role is required",
+                HttpStatus.BAD_REQUEST);
+    }
+
+    public static ContentException familyStageNotAllowed() {
+        return new ContentException(
+                "FAMILY_STAGE_NOT_ALLOWED",
+                "Family-only checklist templates cannot define a lifecycle stage or substage",
+                HttpStatus.BAD_REQUEST);
+    }
+
+    public static ContentException substageStageMismatch() {
+        return new ContentException(
+                "SUBSTAGE_STAGE_MISMATCH",
+                "Checklist substage does not belong to the selected lifecycle stage",
+                HttpStatus.BAD_REQUEST);
+    }
+
+    public static ContentException itemTargetRequired() {
+        return new ContentException(
+                "ITEM_TARGET_REQUIRED",
+                "Every checklist item must define a valid target subject",
+                HttpStatus.BAD_REQUEST);
+    }
+
+    public static ContentException versionImmutable() {
+        return new ContentException(
+                "VERSION_IMMUTABLE",
+                "Approved checklist template versions are immutable",
+                HttpStatus.CONFLICT);
+    }
+
+    public static ContentException migrationReviewRequired() {
+        return new ContentException(
+                "MIGRATION_REVIEW_REQUIRED",
+                "Migrated checklist template must be explicitly reviewed before activation",
+                HttpStatus.CONFLICT);
+    }
+
     public static ContentException lifecycleContextUnavailable() {
         return new ContentException(
                 "CNT-013",

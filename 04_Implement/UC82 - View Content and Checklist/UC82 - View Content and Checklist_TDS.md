@@ -674,7 +674,7 @@ Exact production-file inventory owned by this TDS:
 | UPDATE | `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/checklist/service/impl/UserChecklistItemServiceImpl.java` |
 | UPDATE | `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/audit/policy/AuditEligibilityPolicy.java` to admit `CHECKLIST_ITEM_ADDED`; do not broaden unrelated actions |
 | UPDATE | `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/journey/repository/MotherJourneyRepository.java` only if the existing `findCanonicalForUpdate` signature must be projected through the resolver; do not duplicate its query |
-| UPDATE | `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/baby/repository/BabyProfileRepository.java` by preserving the existing owner-only lock for Story 6.5 and adding a dedicated Story 6.9 lock that enforces owner, `status=ACTIVE`, and `active=true` in SQL |
+| UPDATE | `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/baby/repository/BabyProfileRepository.java` by preserving the existing owner-only standalone-profile lock and adding a dedicated Story 6.9 lock that enforces owner, `status=ACTIVE`, and `active=true` in SQL |
 | NEW | `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/integration/gemini/dto/RagAudienceContext.java` |
 | NEW | `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/integration/gemini/dto/RagExecutionContext.java` |
 | UPDATE | `05_Development/CareBridgeAPI/src/main/java/com/carebridge/backend/integration/gemini/controller/RagController.java` |

@@ -1003,6 +1003,7 @@ ALTER TABLE public.care_logs ADD CONSTRAINT care_logs_recorded_by_fkey FOREIGN K
 -- public.care_subjects foreign keys
 
 ALTER TABLE public.care_subjects ADD CONSTRAINT care_subjects_journey_fk FOREIGN KEY (mother_journey_id) REFERENCES public.mother_journeys(journey_id);
+ALTER TABLE public.care_subjects ADD CONSTRAINT care_subjects_baby_no_mother_journey_ck CHECK (((subject_type)::text <> 'BABY'::text) OR (mother_journey_id IS NULL));
 ALTER TABLE public.care_subjects ADD CONSTRAINT care_subjects_owner_user_id_fkey FOREIGN KEY (owner_user_id) REFERENCES public.users(user_id);
 ALTER TABLE public.care_subjects ADD CONSTRAINT care_subjects_person_id_fkey FOREIGN KEY (person_id) REFERENCES public.users(user_id);
 

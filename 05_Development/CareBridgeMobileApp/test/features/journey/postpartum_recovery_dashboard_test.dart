@@ -38,6 +38,12 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('postpartum-open-logs')),
+      500,
+      scrollable: find.byType(Scrollable).first,
+    );
 
     expect(find.byKey(const Key('postpartum-open-logs')), findsOneWidget);
     expect(find.byKey(const Key('postpartum-safety-help')), findsOneWidget);

@@ -10,10 +10,12 @@ import static org.mockito.Mockito.when;
 import com.carebridge.backend.baby.entity.BabyProfile;
 import com.carebridge.backend.baby.entity.BabyProfileStatus;
 import com.carebridge.backend.baby.repository.BabyProfileRepository;
+import com.carebridge.backend.consent.repository.ConsentGrantRepository;
 import com.carebridge.backend.journey.entity.JourneyStatus;
 import com.carebridge.backend.journey.entity.JourneyType;
 import com.carebridge.backend.journey.entity.MotherJourney;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
+import com.carebridge.backend.journey.repository.MotherBaselineContextRepository;
 import com.carebridge.backend.journey.service.LifecycleConsentValidator;
 import com.carebridge.backend.triage.dto.request.StartIntakeConversationRequest;
 import com.carebridge.backend.triage.entity.IntakeSession;
@@ -109,6 +111,36 @@ class LifecycleIntakeBindingServiceTest {
     }
 
     @Test
+    void babyOrigin_startAndRevalidationDoNotRequireMotherLifecycleConsent() {
+        MotherBaselineContextRepository baselineRepository =
+                mock(MotherBaselineContextRepository.class);
+        ConsentGrantRepository consentRepository = mock(ConsentGrantRepository.class);
+        LifecycleConsentValidator realMotherConsentValidator =
+                new LifecycleConsentValidator(baselineRepository, consentRepository);
+        LifecycleIntakeBindingService babyService = new LifecycleIntakeBindingService(
+                realMotherConsentValidator, journeyRepository, babyRepository, Duration.ofDays(7));
+        when(babyRepository.findByIdAndOwnerUserId(BABY_ID, OWNER_ID))
+                .thenReturn(Optional.of(activeBaby(LocalDate.now().minusMonths(6))));
+
+        var binding = babyService.bindForStart(
+                babyRequest(TriageStage.INFANT, "baby-without-mother-consent"),
+                TriageStage.INFANT, OWNER_ID);
+
+        assertThat(binding.originDashboard()).isEqualTo(OriginDashboard.BABY_PROFILE);
+        assertThat(binding.journeyId()).isNull();
+        babyService.revalidate(IntakeSession.builder()
+                .userId(OWNER_ID)
+                .babyProfileId(BABY_ID)
+                .journeyId(null)
+                .stage(TriageStage.INFANT)
+                .originDashboard(OriginDashboard.BABY_PROFILE)
+                .originReferenceId(BABY_ID)
+                .build());
+        verify(baselineRepository, never()).findTopByOwnerUserIdOrderByRevisionDesc(OWNER_ID);
+        verify(consentRepository, never()).acquireLifecycleOwnerLock(OWNER_ID);
+    }
+
+    @Test
     void babyOrigin_rejectsRequestedStageMismatchAndEstablishedUpperBoundary() {
         LocalDate today = LocalDate.now();
 
@@ -134,7 +166,7 @@ class LifecycleIntakeBindingServiceTest {
                 (LifecycleIntakeBindingService) clockConstructor.newInstance(arguments);
         UUID stableToken = UUID.randomUUID();
         IntakeSession session = IntakeSession.builder()
-                .journeyId(JOURNEY_ID)
+                .journeyId(null)
                 .continuationToken(stableToken)
                 .continuationExpiresAt(now.minusSeconds(1))
                 .build();
@@ -217,7 +249,7 @@ class LifecycleIntakeBindingServiceTest {
                 .clientRequestId(clientRequestId)
                 .stage(stage)
                 .babyProfileId(BABY_ID)
-                .journeyId(JOURNEY_ID)
+                .journeyId(null)
                 .originDashboard(OriginDashboard.BABY_PROFILE)
                 .originReferenceId(BABY_ID)
                 .build();
@@ -236,7 +268,6 @@ class LifecycleIntakeBindingServiceTest {
         return BabyProfile.builder()
                 .id(BABY_ID)
                 .ownerUserId(OWNER_ID)
-                .relatedJourneyId(JOURNEY_ID)
                 .birthDate(birthDate)
                 .status(BabyProfileStatus.ACTIVE)
                 .build();

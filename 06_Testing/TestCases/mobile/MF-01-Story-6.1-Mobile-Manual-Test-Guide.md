@@ -434,7 +434,7 @@ Chưa bấm `Tạo hành trình` cho đến MF01-MOB-006.
    - ngày dự sinh;
    - số ngày còn lại;
    - journey ID khi mở các chức năng liên quan.
-6. Chuyển sang `Nuôi con`, sau đó quay lại `Mang thai`.
+6. Chuyển sang `Bé`, sau đó quay lại `Mẹ`.
 7. Lặp lại với `MOTHER_POSTPARTUM` sau khi tài khoản trước đã cache PREGNANCY.
 
 **Kết quả mong đợi:**

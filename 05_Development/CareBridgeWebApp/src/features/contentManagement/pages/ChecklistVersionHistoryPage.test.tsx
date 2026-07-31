@@ -29,14 +29,23 @@ import ChecklistVersionHistoryPage from './ChecklistVersionHistoryPage';
 function checklistDetail(): AdminChecklistTemplateDetail {
   return {
     id: 'checklist-123',
+    templateType: 'MANDATORY',
     name: 'Checklist thai kỳ',
     stage: 'PREGNANCY',
     status: 'DRAFT',
     description: 'Mô tả',
     versionNo: 4,
+    lineageId: 'lineage-1',
+    versionId: 'version-4',
+    recipientRoles: ['MOTHER'],
+    substage: null,
+    migrationReviewRequired: false,
+    distributionEnabled: false,
+    approvedAt: null,
+    approvedBy: null,
     items: [
-      { id: 'item-1', itemText: 'Khám thai', order: 1, isRequired: true },
-      { id: 'item-2', itemText: 'Uống vitamin', order: 2, isRequired: false },
+      { id: 'item-1', itemText: 'Khám thai', order: 1, isRequired: true, targetSubject: 'MOTHER' },
+      { id: 'item-2', itemText: 'Uống vitamin', order: 2, isRequired: false, targetSubject: 'BABY' },
     ],
   };
 }

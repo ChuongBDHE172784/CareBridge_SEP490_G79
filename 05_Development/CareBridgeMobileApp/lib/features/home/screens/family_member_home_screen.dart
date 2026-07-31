@@ -10,12 +10,20 @@ import '../../directChat/screens/expert_directory_screen.dart';
 import '../../familySync/screens/my_care_groups_screen.dart';
 import '../../familySync/screens/family_quick_note_history_screen.dart';
 import '../../familySync/services/family_home_service.dart';
+import '../../reminder/screens/today_tasks_screen.dart';
+import '../../reminder/services/today_task_service.dart';
+import '../../reminder/widgets/today_tasks_panel.dart';
 
 class FamilyMemberHomeScreen extends StatefulWidget {
-  const FamilyMemberHomeScreen({super.key, this.dashboardLoader});
+  const FamilyMemberHomeScreen({
+    super.key,
+    this.dashboardLoader,
+    this.todayTaskService,
+  });
 
   final Future<FamilyHomeSnapshot> Function({String? selectedCareGroupId})?
-  dashboardLoader;
+      dashboardLoader;
+  final TodayTaskService? todayTaskService;
 
   @override
   State<FamilyMemberHomeScreen> createState() => _FamilyMemberHomeScreenState();
@@ -32,6 +40,9 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
   static const _error = Color(0xFFBA1A1A);
 
   FamilyHomeSnapshot? _snapshot;
+  late final TodayTaskService _todayTaskService;
+  final TodayTasksPanelController _todayTasksController =
+      TodayTasksPanelController();
   bool _loading = true;
   Object? _loadError;
   bool _permissionDenied = false;
@@ -40,10 +51,12 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
   @override
   void initState() {
     super.initState();
+    _todayTaskService = widget.todayTaskService ?? TodayTaskService.instance;
     _load();
   }
 
   Future<void> _load() async {
+    final todayRefresh = _todayTasksController.refresh();
     setState(() {
       _loading = true;
       _loadError = null;
@@ -68,6 +81,8 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
         _permissionDenied = error is ApiException && error.statusCode == 403;
         _loadError = error;
       });
+    } finally {
+      await todayRefresh;
     }
   }
 
@@ -89,6 +104,21 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
                   _buildHeader(),
                   const SizedBox(height: 20),
                   _buildShortcuts(),
+                  const SizedBox(height: 28),
+                  TodayTasksPanel(
+                    service: _todayTaskService,
+                    audience: TodayTasksAudience.family,
+                    controller: _todayTasksController,
+                    headingAction: IconButton(
+                      tooltip: 'Xem tất cả việc hôm nay',
+                      onPressed: _openTodayTasks,
+                      icon: const Icon(
+                        Icons.check_circle_outline,
+                        color: _primary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 28),
                   if (initialLoading)
                     const Padding(
                       key: Key('family-dashboard-loading'),
@@ -195,6 +225,17 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  void _openTodayTasks() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => TodayTasksScreen(
+          service: _todayTaskService,
+          audience: TodayTasksAudience.family,
+        ),
+      ),
     );
   }
 

@@ -40,10 +40,12 @@ import '../../features/baby/models/milestone_model.dart';
 
 import '../../features/healthRecords/screens/edit_health_record_screen.dart';
 
+import '../../features/reminder/screens/create_appointment_reminder_screen.dart';
 import '../../features/reminder/screens/create_medication_reminder_screen.dart';
 import '../../features/reminder/screens/create_vaccination_reminder_screen.dart';
 import '../../features/reminder/screens/update_snooze_reminder_screen.dart';
 import '../../features/reminder/screens/all_reminders_screen.dart';
+import '../../features/reminder/screens/appointment_calendar_screen.dart';
 import '../../features/reminder/models/reminder_model.dart';
 
 import '../../features/fileManager/screens/file_viewer_screen.dart';
@@ -57,7 +59,6 @@ import '../../features/baby/screens/baby_profiles_screen.dart';
 import '../../features/baby/screens/baby_care_hub_screen.dart';
 import '../../features/baby/screens/baby_profile_detail_screen.dart';
 import '../../features/baby/screens/add_baby_screen.dart';
-import '../../features/baby/screens/baby_journey_linkage_screen.dart';
 import '../../features/fileManager/screens/upload_file_screen.dart';
 import '../../features/healthRecords/screens/vaccination_detail_screen.dart';
 import '../../features/healthRecords/models/vaccination_model.dart';
@@ -229,6 +230,17 @@ Future<String?> resolveMotherOnboardingRedirect({
     // Deep links fail closed when consent status cannot be verified.
     return '/mother-stage-selection';
   }
+}
+
+@visibleForTesting
+AddBabyEntryPoint resolveAddBabyEntryPoint({
+  required Object? extra,
+  required String? legacyEntry,
+}) {
+  if (extra is AddBabyRouteArgs) return extra.entryPoint;
+  return legacyEntry == 'onboarding'
+      ? AddBabyEntryPoint.onboarding
+      : AddBabyEntryPoint.profileList;
 }
 
 final GoRouter appRouter = GoRouter(
@@ -461,14 +473,19 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const AllRemindersScreen(),
     ),
     GoRoute(
+      path: '/reminders/calendar',
+      builder: (context, state) => const AppointmentCalendarScreen(),
+    ),
+    GoRoute(
       path: '/health-records/add',
       builder: (context, state) => const AddHealthRecordScreen(),
     ),
     GoRoute(
       path: '/health-records/detail/:id',
-      builder: (context, state) => const Scaffold(
-        body: Center(child: Text('Health Record Detail Screen (3.3.15.1)')),
-      ),
+      builder: (context, state) {
+        final id = state.pathParameters['id'] ?? '';
+        return EditHealthRecordScreen(recordId: id);
+      },
     ),
     GoRoute(
       path: '/upload-file',
@@ -476,11 +493,11 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/reminders/add',
-      builder: (context, state) => const Scaffold(
-        body: Center(
-          child: Text('Create Appointment Reminder Screen (3.3.1.22)'),
-        ),
-      ),
+      builder: (context, state) {
+        final rawDate = state.uri.queryParameters['date'];
+        final parsedDate = rawDate == null ? null : DateTime.tryParse(rawDate);
+        return CreateAppointmentReminderScreen(initialDate: parsedDate);
+      },
     ),
     GoRoute(
       path: '/reminders/detail/:id',
@@ -525,24 +542,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/babies/add',
       builder: (context, state) {
-        final entry = state.uri.queryParameters['entry'];
-        final relatedJourneyId = state.uri.queryParameters['relatedJourneyId'];
         return AddBabyScreen(
-          entryPoint: entry == 'onboarding'
-              ? AddBabyEntryPoint.onboarding
-              : AddBabyEntryPoint.profileList,
-          relatedJourneyId: relatedJourneyId,
-        );
-      },
-    ),
-    GoRoute(
-      path: '/journeys/:journeyId/babies',
-      builder: (context, state) {
-        final journeyId = state.pathParameters['journeyId'] ?? '';
-        return BabyJourneyLinkageScreen(
-          journeyId: journeyId,
-          onCreate: () => context.push<bool>(
-            '/babies/add?entry=list&relatedJourneyId=${Uri.encodeComponent(journeyId)}',
+          entryPoint: resolveAddBabyEntryPoint(
+            extra: state.extra,
+            legacyEntry: state.uri.queryParameters['entry'],
           ),
         );
       },

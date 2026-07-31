@@ -80,6 +80,9 @@ class SecureTokenStorage implements TokenStorage {
         'role': null,
       };
     }
+    await PostpartumDraftStorageCoordinator.deleteRetiredBabyCreateDrafts(
+      results[2]!,
+    );
     return {
       'accessToken': results[0],
       'refreshToken': results[1],
@@ -174,7 +177,9 @@ class PostpartumDraftStorageCoordinator {
   static Future<void> deletePrefix(String userId, String prefix) =>
       _enqueue(userId, () async {
         final values = await _store.readAll();
-        final keys = values.keys.where((key) => key.startsWith(prefix));
+        final keys = values.keys
+            .where((key) => key.startsWith(prefix))
+            .toList(growable: false);
         await Future.wait(keys.map((key) => _store.delete(key: key)));
       });
 
@@ -183,7 +188,7 @@ class PostpartumDraftStorageCoordinator {
     return _enqueue(userId, () async {
       final prefixes = [
         'cb_postpartum_log_draft_${userId}_',
-        'cb_baby_create_intent_${userId}_',
+        '${_retiredBabyCreateDraftPrefix(userId)}_',
       ];
       final values = await _store.readAll();
       final matchingKeys = values.keys
@@ -192,6 +197,12 @@ class PostpartumDraftStorageCoordinator {
       await Future.wait(matchingKeys.map((key) => _store.delete(key: key)));
     });
   }
+
+  static Future<void> deleteRetiredBabyCreateDrafts(String userId) =>
+      deletePrefix(userId, '${_retiredBabyCreateDraftPrefix(userId)}_');
+
+  static String _retiredBabyCreateDraftPrefix(String userId) =>
+      ['cb', 'baby', 'create', 'intent', userId].join('_');
 
   static Future<void> _enqueue(
     String userId,

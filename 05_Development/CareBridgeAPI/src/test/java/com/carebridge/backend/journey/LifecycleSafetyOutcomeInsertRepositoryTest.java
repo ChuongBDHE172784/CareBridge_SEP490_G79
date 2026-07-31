@@ -40,7 +40,6 @@ class LifecycleSafetyOutcomeInsertRepositoryTest {
                 .contains("'SAFETY_OUTCOME'")
                 .contains("audit_event_id, event_category, actor_user_id, subject_user_id")
                 .contains("subject_reference_id, resource_type, resource_id")
-                .contains("'mother_journeys'")
                 .contains("'intakeSessionId'")
                 .contains("'triageSessionId'")
                 .contains("'emergencySessionId'")
@@ -52,9 +51,39 @@ class LifecycleSafetyOutcomeInsertRepositoryTest {
                 .contains("ON CONFLICT (audit_event_id) DO NOTHING")
                 .doesNotContain("lifecycle_safety_outcomes")
                 .doesNotContain("mother_journey_events");
-        assertThat(arguments.getAllValues().get(0)[7])
+        assertThat(arguments.getAllValues().get(0)[8])
                 .as("nullable emergencySessionId remains a scalar SQL null")
                 .isNull();
+    }
+
+    @Test
+    void babyOriginUsesBabyReferenceForAuditAssociation() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
+        LifecycleSafetyOutcomeInsertRepository repository =
+                new LifecycleSafetyOutcomeInsertRepository(jdbcTemplate);
+        UUID babyId = UUID.randomUUID();
+        LifecycleSafetyOutcome outcome = LifecycleSafetyOutcome.builder()
+                .id(UUID.randomUUID())
+                .ownerUserId(UUID.randomUUID())
+                .journeyId(null)
+                .intakeSessionId(UUID.randomUUID())
+                .riskLevel(RiskLevel.GREEN)
+                .stage(TriageStage.INFANT)
+                .originDashboard(OriginDashboard.BABY_PROFILE)
+                .originReferenceId(babyId)
+                .originAction(OriginAction.RETURN_TO_BABY_PROFILE)
+                .occurredAt(Instant.now())
+                .recordedAt(Instant.now())
+                .build();
+
+        repository.insertIfAbsent(outcome);
+
+        ArgumentCaptor<Object[]> arguments = ArgumentCaptor.forClass(Object[].class);
+        verify(jdbcTemplate).update(anyString(), arguments.capture());
+        assertThat(arguments.getValue()[3]).isEqualTo(babyId);
+        assertThat(arguments.getValue()[4]).isEqualTo("baby_profiles");
+        assertThat(arguments.getValue()[5]).isEqualTo(babyId);
     }
 
     private LifecycleSafetyOutcome outcome(UUID emergencySessionId) {

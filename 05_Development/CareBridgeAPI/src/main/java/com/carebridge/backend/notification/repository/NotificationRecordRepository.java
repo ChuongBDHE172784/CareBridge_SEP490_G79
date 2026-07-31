@@ -92,4 +92,14 @@ public interface NotificationRecordRepository extends JpaRepository<Notification
     // NOTHING, to read back the row that already exists for this (recipient, messageId) pair.
     Optional<NotificationRecord> findByUserIdAndReferenceIdAndTypeAndReferenceType(
             UUID userId, UUID referenceId, NotificationType type, String referenceType);
+
+    @Query(value = """
+            SELECT *
+              FROM notification_records
+             WHERE type = 'REMINDER'
+               AND reference_type = 'APPOINTMENT'
+               AND metadata ->> 'milestoneJobId' = CAST(:jobId AS text)
+             LIMIT 1
+            """, nativeQuery = true)
+    Optional<NotificationRecord> findAppointmentMilestoneByJobId(@Param("jobId") UUID jobId);
 }

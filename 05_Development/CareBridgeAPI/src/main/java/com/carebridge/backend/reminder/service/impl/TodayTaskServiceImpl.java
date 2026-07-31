@@ -1,8 +1,6 @@
 package com.carebridge.backend.reminder.service.impl;
 
-import com.carebridge.backend.family.entity.CareGroupMember;
-import com.carebridge.backend.family.entity.InviteStatus;
-import com.carebridge.backend.family.repository.CareGroupMemberRepository;
+import com.carebridge.backend.checklist.today.policy.ReminderAccessPolicy;
 import com.carebridge.backend.family.repository.CareGroupRepository;
 import com.carebridge.backend.reminder.dto.TodayTaskItem;
 import com.carebridge.backend.reminder.entity.CareTask;
@@ -13,7 +11,7 @@ import com.carebridge.backend.reminder.repository.CareTaskRepository;
 import com.carebridge.backend.reminder.repository.ReminderRepository;
 import com.carebridge.backend.reminder.service.ITodayTaskService;
 import com.carebridge.backend.reminder.service.ReminderRecurrenceService;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,14 +27,27 @@ import java.util.UUID;
 
 @Service
 @Transactional(readOnly = true)
-@RequiredArgsConstructor
 public class TodayTaskServiceImpl implements ITodayTaskService {
 
     private final ReminderRepository reminderRepository;
     private final CareTaskRepository careTaskRepository;
     private final ReminderRecurrenceService reminderRecurrenceService;
-    private final CareGroupMemberRepository careGroupMemberRepository;
     private final CareGroupRepository careGroupRepository;
+    private final ReminderAccessPolicy accessPolicy;
+
+    @Autowired
+    public TodayTaskServiceImpl(
+            ReminderRepository reminderRepository,
+            CareTaskRepository careTaskRepository,
+            ReminderRecurrenceService reminderRecurrenceService,
+            CareGroupRepository careGroupRepository,
+            ReminderAccessPolicy accessPolicy) {
+        this.reminderRepository = reminderRepository;
+        this.careTaskRepository = careTaskRepository;
+        this.reminderRecurrenceService = reminderRecurrenceService;
+        this.careGroupRepository = careGroupRepository;
+        this.accessPolicy = accessPolicy;
+    }
 
     @Override
     public List<TodayTaskItem> getTodayTasks(UUID callerId, ZoneId timezone) {
@@ -57,23 +68,21 @@ public class TodayTaskServiceImpl implements ITodayTaskService {
             }
         }
 
-        // If caller is in care groups, also fetch reminders of group owners (Mother) without duplicates
-        List<CareGroupMember> memberships = careGroupMemberRepository.findByUserIdAndInviteStatus(callerId, InviteStatus.ACCEPTED);
-        if (memberships != null) {
-            Set<UUID> fetchedGroupOwnerIds = new HashSet<>();
-            for (CareGroupMember member : memberships) {
-                careGroupRepository.findById(member.getCareGroupId()).ifPresent(group -> {
-                    UUID ownerId = group.getOwnerUserId();
-                    if (!ownerId.equals(callerId) && fetchedGroupOwnerIds.add(ownerId)) {
-                        List<Reminder> groupReminders = reminderRepository
-                                .findByOwnerUserIdAndStatusNot(ownerId, ReminderStatus.CANCELLED);
-                        for (Reminder gr : groupReminders) {
-                            if (gr.getId() == null || processedReminderIds.add(gr.getId())) {
-                                reminders.add(gr);
-                            }
-                        }
-                    }
-                });
+        // Family discovery is actor-scoped in SQL, then each reminder is checked against its
+        // exact, unique current care context before it can enter the legacy response.
+        List<UUID> authorizedOwnerIds = careGroupRepository
+                .findActiveOwnerUserIdsForChecklistViewer(callerId);
+        if (authorizedOwnerIds != null) {
+            for (UUID ownerId : new HashSet<>(authorizedOwnerIds)) {
+                if (ownerId == null || ownerId.equals(callerId)) {
+                    continue;
+                }
+                reminderRepository.findByOwnerUserIdAndStatusNot(
+                                ownerId, ReminderStatus.CANCELLED).stream()
+                        .filter(reminder -> accessPolicy.canView(reminder, callerId))
+                        .filter(reminder -> reminder.getId() == null
+                                || processedReminderIds.add(reminder.getId()))
+                        .forEach(reminders::add);
             }
         }
 

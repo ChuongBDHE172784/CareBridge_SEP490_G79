@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:untitled/core/routes/app_router.dart';
+import 'package:untitled/features/baby/screens/add_baby_screen.dart';
 
 void main() {
   test('Epic 6 consultation and expert-handoff routes remain registered', () {
@@ -30,6 +31,34 @@ void main() {
       );
 
       expect(redirect, '/expert-onboarding');
+    });
+  });
+
+  group('Add Baby entry authorization', () {
+    test('typed live-birth extra enables the transition entry', () {
+      expect(
+        resolveAddBabyEntryPoint(
+          extra: const AddBabyRouteArgs(
+            entryPoint: AddBabyEntryPoint.liveBirthTransition,
+          ),
+          legacyEntry: null,
+        ),
+        AddBabyEntryPoint.liveBirthTransition,
+      );
+    });
+
+    test('deep links cannot enable transition defer', () {
+      expect(
+        resolveAddBabyEntryPoint(
+          extra: null,
+          legacyEntry: 'liveBirthTransition',
+        ),
+        AddBabyEntryPoint.profileList,
+      );
+      expect(
+        resolveAddBabyEntryPoint(extra: null, legacyEntry: 'onboarding'),
+        AddBabyEntryPoint.onboarding,
+      );
     });
   });
 

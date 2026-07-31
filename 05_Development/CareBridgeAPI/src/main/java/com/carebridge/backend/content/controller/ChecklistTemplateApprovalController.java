@@ -34,4 +34,32 @@ public class ChecklistTemplateApprovalController {
         ChecklistTemplateDecisionResponse response = checklistTemplateApprovalService.decide(id, request, principal);
         return ResponseEntity.ok(ApiResponse.success(response, "Checklist template decision recorded successfully"));
     }
+
+    @PostMapping("/{lineageId}/versions/{versionId}/approve")
+    public ResponseEntity<ApiResponse<ChecklistTemplateDecisionResponse>> approveVersion(
+            @PathVariable UUID lineageId, @PathVariable UUID versionId, Principal principal) {
+        ChecklistTemplateDecisionResponse response = checklistTemplateApprovalService.decideInLineage(
+                lineageId, versionId, new ContentDecisionRequest(
+                        com.carebridge.backend.content.entity.ContentDecision.APPROVE, null), principal);
+        if (response.id() == null) {
+            return ResponseEntity.ok(ApiResponse.success(response, "Checklist template decision recorded successfully"));
+        }
+        return ResponseEntity.ok(ApiResponse.success(response, "Checklist template version approved"));
+    }
+
+    @PostMapping("/{lineageId}/versions/{versionId}/review")
+    public ResponseEntity<ApiResponse<ChecklistTemplateDecisionResponse>> reviewImportedVersion(
+            @PathVariable UUID lineageId, @PathVariable UUID versionId, Principal principal) {
+        return ResponseEntity.ok(ApiResponse.success(
+                checklistTemplateApprovalService.reviewImportedInLineage(lineageId, versionId, principal),
+                "Migrated checklist template reviewed"));
+    }
+
+    @PostMapping("/{lineageId}/versions/{versionId}/activate")
+    public ResponseEntity<ApiResponse<ChecklistTemplateDecisionResponse>> activateImportedVersion(
+            @PathVariable UUID lineageId, @PathVariable UUID versionId, Principal principal) {
+        return ResponseEntity.ok(ApiResponse.success(
+                checklistTemplateApprovalService.activateImportedInLineage(lineageId, versionId, principal),
+                "Migrated checklist template activated"));
+    }
 }

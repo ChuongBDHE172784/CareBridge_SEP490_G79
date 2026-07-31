@@ -62,7 +62,7 @@ Future<void> _openSurfaceAndAssertBinding(
   WidgetTester tester, {
   required Widget origin,
   required String stage,
-  required String journeyId,
+  required String? journeyId,
   required String originReferenceId,
   required String originDashboard,
 }) async {
@@ -100,7 +100,7 @@ void main() {
           ({
             TriageStageIntent stage,
             TriageOriginIntent origin,
-            String journeyId,
+            String? journeyId,
             String originReferenceId,
             String originDashboard,
           })
@@ -129,14 +129,14 @@ void main() {
           (
             stage: TriageStageIntent.infant,
             origin: TriageOriginIntent.babyProfile,
-            journeyId: '10000000-0000-0000-0000-000000000004',
+            journeyId: null,
             originReferenceId: '20000000-0000-0000-0000-000000000004',
             originDashboard: 'BABY_PROFILE',
           ),
           (
             stage: TriageStageIntent.toddler,
             origin: TriageOriginIntent.babyProfile,
-            journeyId: '10000000-0000-0000-0000-000000000005',
+            journeyId: null,
             originReferenceId: '20000000-0000-0000-0000-000000000005',
             originDashboard: 'BABY_PROFILE',
           ),
@@ -174,7 +174,7 @@ void main() {
           Function.apply(TriageEntryContext.locked, const [], {
             #stage: TriageStageIntent.toddler,
             #origin: TriageOriginIntent.babyProfile,
-            #journeyId: '10000000-0000-0000-0000-000000000005',
+            #journeyId: null,
             #originReferenceId: '20000000-0000-0000-0000-000000000005',
           });
 
@@ -212,7 +212,7 @@ void main() {
           final context = TriageEntryContext.locked(
             stage: stage,
             origin: TriageOriginIntent.babyProfile,
-            journeyId: '10000000-0000-0000-0000-000000000020',
+            journeyId: null,
             originReferenceId: '20000000-0000-0000-0000-000000000020',
           );
           final service = TriageService(
@@ -242,7 +242,7 @@ void main() {
 
           expect(requestBodies, hasLength(1));
           final body = requestBodies.single;
-          expect(body['journeyId'], context.journeyId);
+          expect(body['journeyId'], isNull);
           expect(body['originDashboard'], 'BABY_PROFILE');
           expect(body['originReferenceId'], context.originReferenceId);
           expect(body['babyProfileId'], context.originReferenceId);
@@ -304,16 +304,16 @@ void main() {
     }
 
     final babyFixtures =
-        <({String stage, String journeyId, String babyId, Duration age})>[
+        <({String stage, String? journeyId, String babyId, Duration age})>[
           (
             stage: 'INFANT',
-            journeyId: '10000000-0000-0000-0000-000000000014',
+            journeyId: null,
             babyId: '20000000-0000-0000-0000-000000000014',
             age: const Duration(days: 180),
           ),
           (
             stage: 'TODDLER',
-            journeyId: '10000000-0000-0000-0000-000000000015',
+            journeyId: null,
             babyId: '20000000-0000-0000-0000-000000000015',
             age: const Duration(days: 500),
           ),
@@ -321,7 +321,7 @@ void main() {
 
     for (final fixture in babyFixtures) {
       testWidgets(
-        '${fixture.stage} surface forwards exact related journey and baby IDs',
+        '${fixture.stage} surface forwards baby origin with no journey ID',
         (tester) async {
           final profile = BabyProfile(
             id: fixture.babyId,
@@ -329,7 +329,6 @@ void main() {
             birthDate: DateTime.now().subtract(fixture.age),
             gender: BabyGender.unknown,
             isActive: true,
-            relatedJourneyId: fixture.journeyId,
           );
           await _openSurfaceAndAssertBinding(
             tester,

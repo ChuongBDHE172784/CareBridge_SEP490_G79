@@ -108,6 +108,26 @@ final class JourneyLifecycleTestFactory {
                 .build();
     }
 
+    static MotherJourney activePostpartum() {
+        MotherJourney journey = activePregnancy();
+        journey.setJourneyType(JourneyType.POSTPARTUM);
+        journey.setPregnancyOutcome(PregnancyOutcomeType.LIVE_BIRTH);
+        journey.setPregnancyOutcomeDate(LocalDate.of(2026, 7, 18));
+        journey.setDeliveryDate(LocalDate.of(2026, 7, 18));
+        return journey;
+    }
+
+    static UpdateJourneyRequest startNewPregnancyFromPostpartum() {
+        UpdateJourneyRequest request = new UpdateJourneyRequest();
+        request.setJourneyType(JourneyType.PREGNANCY);
+        request.setLastMenstrualDate(LocalDate.of(2026, 7, 1));
+        request.setDateSource(JourneyDateSource.SELF_REPORTED);
+        request.setDateConfidence(JourneyDateConfidence.ESTIMATED);
+        request.setChangeReason("CLIENT_SUPPLIED_REASON_IS_NOT_THE_HANDOFF_REASON");
+        request.setEffectiveAt(NOW);
+        return request;
+    }
+
     static MotherJourney completedJourney() {
         MotherJourney journey = activePregnancy();
         journey.setStatus(JourneyStatus.COMPLETED);

@@ -78,7 +78,6 @@ void main() {
               journeyType: 'POSTPARTUM',
               journeyVersion: 4,
               revisionNumber: 1,
-              babyActionsEligible: false,
             );
           },
         ),
@@ -128,7 +127,6 @@ void main() {
               journeyType: 'POSTPARTUM',
               journeyVersion: 5,
               revisionNumber: 2,
-              babyActionsEligible: false,
             );
           },
         ),
@@ -200,7 +198,6 @@ void main() {
               journeyType: 'POSTPARTUM',
               journeyVersion: 4,
               revisionNumber: 1,
-              babyActionsEligible: false,
             );
           },
         ),
@@ -257,7 +254,6 @@ void main() {
           journeyType: 'POSTPARTUM',
           journeyVersion: 4,
           revisionNumber: 1,
-          babyActionsEligible: false,
         ),
       );
       await tester.pumpAndSettle();
@@ -293,7 +289,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    for (final outcome in PregnancyOutcome.values) {
+    for (final outcome in PregnancyOutcome.values.where(
+      (o) => o != PregnancyOutcome.ongoing,
+    )) {
       final label = find.text(outcome.displayLabel);
       await tester.scrollUntilVisible(
         label,

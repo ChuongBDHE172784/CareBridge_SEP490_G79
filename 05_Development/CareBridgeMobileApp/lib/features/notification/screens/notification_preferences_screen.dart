@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/network/api_client.dart';
+import '../../reminder/models/appointment_notification_timing.dart';
+import '../../reminder/widgets/appointment_notification_timing_editor.dart';
 import '../services/notification_service.dart';
 import '../models/notification_model.dart';
 
@@ -23,6 +25,7 @@ class _NotificationPreferencesScreenState
   static const _outlineVariant = Color(0xFFD6C2BD);
 
   List<NotificationPreference> _prefs = [];
+  List<int> _appointmentDefaults = AppointmentNotificationTiming.systemDefaults;
   bool _isLoading = true;
   String? _error;
 
@@ -46,7 +49,8 @@ class _NotificationPreferencesScreenState
       final result = await NotificationService.instance.getPreferences();
       if (!mounted) return;
       setState(() {
-        _prefs = result;
+        _prefs = result.preferences;
+        _appointmentDefaults = result.appointmentReminderDefaults;
         _isLoading = false;
       });
     } on ApiException catch (e) {
@@ -69,8 +73,14 @@ class _NotificationPreferencesScreenState
     try {
       final result = await NotificationService.instance.updatePreferences(
         updated,
+        appointmentReminderDefaults: _appointmentDefaults,
       );
-      if (mounted) setState(() => _prefs = result);
+      if (mounted) {
+        setState(() {
+          _prefs = result.preferences;
+          _appointmentDefaults = result.appointmentReminderDefaults;
+        });
+      }
     } on ApiException {
       if (mounted) _load();
     }
@@ -102,6 +112,28 @@ class _NotificationPreferencesScreenState
       );
     }).toList();
     _save(updated);
+  }
+
+  Future<void> _saveAppointmentDefaults(List<int> values) async {
+    final previous = _appointmentDefaults;
+    setState(() => _appointmentDefaults = values);
+    try {
+      final result = await NotificationService.instance.updatePreferences(
+        _prefs,
+        appointmentReminderDefaults: values,
+      );
+      if (!mounted) return;
+      setState(() {
+        _prefs = result.preferences;
+        _appointmentDefaults = result.appointmentReminderDefaults;
+      });
+    } on ApiException {
+      if (!mounted) return;
+      setState(() => _appointmentDefaults = previous);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không thể lưu mốc nhắc lịch hẹn.')),
+      );
+    }
   }
 
   @override
@@ -205,7 +237,30 @@ class _NotificationPreferencesScreenState
         ),
         const SizedBox(height: 32),
 
-        // Section 2: Notification types
+        // Section 2: Appointment notification defaults
+        _sectionTitle('Mốc nhắc lịch hẹn mặc định'),
+        const SizedBox(height: 4),
+        const Text(
+          'Áp dụng cho lịch hẹn mới. Bạn vẫn có thể thay đổi riêng từng lịch hẹn.',
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 14,
+            color: _onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 16),
+        _card(
+          children: [
+            AppointmentNotificationTimingEditor(
+              values: _appointmentDefaults,
+              onChanged: _saveAppointmentDefaults,
+              title: 'Thông báo trước và sau lịch hẹn',
+            ),
+          ],
+        ),
+        const SizedBox(height: 32),
+
+        // Section 3: Notification types
         _sectionTitle('Loại thông báo'),
         const SizedBox(height: 4),
         const Text(

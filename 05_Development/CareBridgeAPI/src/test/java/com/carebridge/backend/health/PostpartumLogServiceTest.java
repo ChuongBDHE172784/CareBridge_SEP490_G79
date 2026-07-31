@@ -12,6 +12,7 @@ import com.carebridge.backend.health.repository.PostpartumLogRepository;
 import com.carebridge.backend.health.service.PostpartumAiAnalyzer;
 import com.carebridge.backend.health.service.impl.PostpartumLogServiceImpl;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
+import com.carebridge.backend.journey.repository.MotherJourneyTransitionRepository;
 import com.carebridge.backend.journey.service.LifecycleConsentValidator;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Page;
@@ -24,6 +25,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
@@ -40,6 +42,7 @@ class PostpartumLogServiceTest {
 
     @Mock private PostpartumLogRepository logRepository;
     @Mock private MotherJourneyRepository journeyRepository;
+    @Mock private MotherJourneyTransitionRepository transitionRepository;
     @Mock private AuditService auditService;
     @Mock private PostpartumAiAnalyzer postpartumAiAnalyzer;
     @Mock private ApplicationEventPublisher eventPublisher;
@@ -183,6 +186,47 @@ class PostpartumLogServiceTest {
         assertThat(response.getContent()).hasSize(1);
         assertThat(response.getContent().get(0).getPostpartumLogId()).isEqualTo(PostpartumLogTestFactory.LOG_ID);
         verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void historicPostpartumLogIsReadableAfterNewPregnancyButCannotBeMutated() {
+        var historicJourney = PostpartumLogTestFactory.makePregnancyJourney();
+        var log = PostpartumLogTestFactory.makeActiveLog();
+        when(logRepository.findByIdAndStatus(PostpartumLogTestFactory.LOG_ID, PostpartumLogStatus.ACTIVE))
+                .thenReturn(Optional.of(log));
+        when(journeyRepository.findById(PostpartumLogTestFactory.JOURNEY_ID))
+                .thenReturn(Optional.of(historicJourney));
+        when(transitionRepository.hasPostpartumHistory(PostpartumLogTestFactory.JOURNEY_ID))
+                .thenReturn(true);
+        when(logRepository.findByJourneyIdAndStatus(
+                eq(PostpartumLogTestFactory.JOURNEY_ID),
+                eq(PostpartumLogStatus.ACTIVE),
+                any())).thenReturn(new PageImpl<>(List.of(log)));
+
+        var logs = postpartumLogService.listLogs(
+                PostpartumLogTestFactory.JOURNEY_ID,
+                PostpartumLogTestFactory.MOTHER_ID,
+                0,
+                20);
+
+        assertThat(logs.getContent()).hasSize(1);
+
+        var detail = postpartumLogService.getLogDetail(
+                PostpartumLogTestFactory.LOG_ID, PostpartumLogTestFactory.MOTHER_ID);
+
+        assertThat(detail.getPostpartumLogId()).isEqualTo(PostpartumLogTestFactory.LOG_ID);
+
+        when(logRepository.findByIdAndStatusForUpdate(
+                PostpartumLogTestFactory.LOG_ID, PostpartumLogStatus.ACTIVE)).thenReturn(Optional.of(log));
+        when(journeyRepository.findByIdForUpdate(PostpartumLogTestFactory.JOURNEY_ID))
+                .thenReturn(Optional.of(historicJourney));
+        assertThatThrownBy(() -> postpartumLogService.updateLog(
+                PostpartumLogTestFactory.LOG_ID,
+                PostpartumLogTestFactory.MOTHER_ID,
+                PostpartumLogTestFactory.makeUpdateRequest()))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        error -> assertThat(error.getCode()).isEqualTo("POST-002"));
+        verify(logRepository, never()).save(any(PostpartumLog.class));
     }
 
     @Test

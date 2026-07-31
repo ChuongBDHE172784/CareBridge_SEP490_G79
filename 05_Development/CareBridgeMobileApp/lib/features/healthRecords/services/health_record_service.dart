@@ -26,10 +26,23 @@ class HealthRecordService {
   }
 
   // UC-40/41/42: List health records visible to the current user.
-  Future<List<HealthRecord>> listHealthRecords({int size = 100}) async {
+  Future<List<HealthRecord>> listHealthRecords({
+    RecordType? filter,
+    String? journeyId,
+    String? babyId,
+    int size = 100,
+  }) async {
+    final queryParams = <String, dynamic>{'size': size};
+    if (filter != null) queryParams['recordType'] = filter.apiValue;
+    if (journeyId != null && journeyId.isNotEmpty) {
+      queryParams['journeyId'] = journeyId;
+    }
+    if (babyId != null && babyId.isNotEmpty) {
+      queryParams['babyId'] = babyId;
+    }
     final data = await apiGet(
       '/api/v1/health-records/timeline',
-      queryParams: {'size': size},
+      queryParams: queryParams,
     );
     final payload = data['data'];
     final list = payload is Map<String, dynamic>

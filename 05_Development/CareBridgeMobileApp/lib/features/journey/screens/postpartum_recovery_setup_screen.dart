@@ -167,7 +167,7 @@ class _PostpartumRecoverySetupScreenState
         foregroundColor: _primaryDark,
         elevation: 0,
         title: const Text(
-          'Hành trình sau sinh',
+          'Hành trình hậu sản',
           style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700),
         ),
       ),

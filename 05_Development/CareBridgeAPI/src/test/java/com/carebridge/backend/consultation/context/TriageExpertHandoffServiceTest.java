@@ -73,6 +73,8 @@ class TriageExpertHandoffServiceTest {
     private static final UUID EXPERT_USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000402");
     private static final UUID REQUEST_ID = UUID.fromString("00000000-0000-0000-0000-000000000501");
     private static final UUID SHARE_ID = UUID.fromString("00000000-0000-0000-0000-000000000601");
+    private static final UUID BABY_PROFILE_ID =
+            UUID.fromString("00000000-0000-0000-0000-000000000702");
     private static final Instant NOW = Instant.parse("2026-07-23T00:00:00Z");
     private static final Instant EXPIRES = Instant.parse("2026-07-25T00:00:00Z");
 
@@ -140,6 +142,22 @@ class TriageExpertHandoffServiceTest {
     }
 
     @Test
+    void previewAcceptsOwnedCompletedYellowBabyProfileIntakeWithoutJourney() {
+        when(intakeRepository.findByIdAndUserId(INTAKE_ID, OWNER_ID))
+                .thenReturn(Optional.of(eligibleBabyProfileIntake()));
+        when(triageService.getResult(INTAKE_ID, OWNER_ID))
+                .thenReturn(babyProfileResult("Baby safe summary"));
+        when(citationResolver.resolveForPreview(anyList(), any())).thenReturn(List.of());
+
+        HandoffPreviewResponse response = service.preview(INTAKE_ID, OWNER_ID);
+
+        assertThat(response.intakeSessionId()).isEqualTo(INTAKE_ID);
+        assertThat(response.riskLevel()).isEqualTo(RiskLevel.YELLOW.name());
+        assertThat(response.stage()).isEqualTo(TriageStage.INFANT.name());
+        assertThat(response.riskSummary()).isEqualTo("Baby safe summary");
+    }
+
+    @Test
     void createPersistsExactConsentRequestAndImmutableSnapshot() {
         TriageExpertHandoffCreateRequest request = createRequest();
         when(contextShareRepository.findByOwnerUserIdAndIdempotencyKey(OWNER_ID, KEY))
@@ -204,6 +222,47 @@ class TriageExpertHandoffServiceTest {
                 "expertProfileId");
         assertThat(details.toString()).doesNotContain(
                 "Safe summary", "riskSummary", "citations", "symptoms", "continuationToken");
+    }
+
+    @Test
+    void createPreservesNullJourneyAndExactBabyOriginInImmutableSnapshot() {
+        when(contextShareRepository.findByOwnerUserIdAndIdempotencyKey(OWNER_ID, KEY))
+                .thenReturn(Optional.empty(), Optional.empty(), Optional.empty());
+        when(intakeRepository.findForUpdateByIdAndUserId(INTAKE_ID, OWNER_ID))
+                .thenReturn(Optional.of(eligibleBabyProfileIntake()));
+        when(triageService.getResult(INTAKE_ID, OWNER_ID))
+                .thenReturn(babyProfileResult("Baby safe summary"));
+        when(consultationRequestService.create(any(), any())).thenReturn(
+                new CreateConsultationRequestResult(consultationResponse(), true));
+        when(contextShareRepository.findByConsultationRequestId(REQUEST_ID))
+                .thenReturn(Optional.empty());
+        stubEligibleExpertBoundary();
+        when(citationResolver.resolveForCreate(anyList(), any())).thenReturn(List.of());
+        when(consentGrantRepository.save(any())).thenAnswer(invocation -> {
+            ConsentGrant consent = invocation.getArgument(0);
+            consent.setId(91L);
+            return consent;
+        });
+        when(contextShareRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        HandoffCreateResponse response = service.create(INTAKE_ID, createRequest(), OWNER_ID);
+
+        assertThat(response.consultationRequestId()).isEqualTo(REQUEST_ID);
+        assertThat(response.replayed()).isFalse();
+        assertThat(response.context().riskLevel()).isEqualTo(RiskLevel.YELLOW.name());
+        assertThat(response.context().stage()).isEqualTo(TriageStage.INFANT.name());
+
+        ArgumentCaptor<ConsultationContextShare> share =
+                ArgumentCaptor.forClass(ConsultationContextShare.class);
+        verify(contextShareRepository).save(share.capture());
+        assertThat(share.getValue().getIntakeSessionId()).isEqualTo(INTAKE_ID);
+        assertThat(share.getValue().getJourneyId()).isNull();
+        assertThat(share.getValue().getOriginDashboard())
+                .isEqualTo(OriginDashboard.BABY_PROFILE.name());
+        assertThat(share.getValue().getOriginReferenceId()).isEqualTo(BABY_PROFILE_ID);
+        assertThat(share.getValue().getTriageStage()).isEqualTo(TriageStage.INFANT.name());
+        assertThat(share.getValue().getRiskLevel()).isEqualTo(RiskLevel.YELLOW.name());
+        assertThat(share.getValue().getIntakeStatus()).isEqualTo(IntakeStatus.COMPLETED.name());
     }
 
     @Test
@@ -407,11 +466,34 @@ class TriageExpertHandoffServiceTest {
                 .build();
     }
 
+    private static IntakeSession eligibleBabyProfileIntake() {
+        return IntakeSession.builder()
+                .id(INTAKE_ID)
+                .userId(OWNER_ID)
+                .journeyId(null)
+                .originDashboard(OriginDashboard.BABY_PROFILE)
+                .originReferenceId(BABY_PROFILE_ID)
+                .stage(TriageStage.INFANT)
+                .riskLevel(RiskLevel.YELLOW)
+                .status(IntakeStatus.COMPLETED)
+                .build();
+    }
+
     private static TriageResultResponse result(String summary) {
         return TriageResultResponse.builder()
                 .sessionId(INTAKE_ID)
                 .stage("POSTPARTUM")
                 .riskLevel("YELLOW")
+                .summary(summary)
+                .citations(List.of())
+                .build();
+    }
+
+    private static TriageResultResponse babyProfileResult(String summary) {
+        return TriageResultResponse.builder()
+                .sessionId(INTAKE_ID)
+                .stage(TriageStage.INFANT.name())
+                .riskLevel(RiskLevel.YELLOW.name())
                 .summary(summary)
                 .citations(List.of())
                 .build();

@@ -1,5 +1,6 @@
 package com.carebridge.backend.family.dto;
 
+import com.carebridge.backend.checklist.model.ChecklistTargetSubject;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -25,4 +26,8 @@ public class AssignFamilyTaskRequest {
     /** Must be strictly after now() — ADR-FAM-033. */
     @NotNull
     private Instant dueAt;
+
+    /** V2 requires an explicit MOTHER/BABY target; recipient role is independent. */
+    @NotNull
+    private ChecklistTargetSubject targetSubject;
 }

@@ -16,7 +16,6 @@ class JourneyDashboard {
   final String? dateConfidence;
   final PregnancyOutcome? pregnancyOutcome;
   final DateTime? pregnancyOutcomeDate;
-  final bool babyActionsEligible;
 
   const JourneyDashboard({
     this.journeyId,
@@ -33,7 +32,6 @@ class JourneyDashboard {
     this.dateConfidence,
     this.pregnancyOutcome,
     this.pregnancyOutcomeDate,
-    this.babyActionsEligible = false,
   });
 
   static int? calculatePregnancyWeek({
@@ -150,7 +148,7 @@ class JourneyDashboard {
   String get phaseLabel {
     switch (journeyType) {
       case 'POSTPARTUM':
-        return 'Sau sinh';
+        return 'Hậu sản';
       case 'BABY_CARE':
         return 'Nuôi con';
       case 'PRE_PREGNANCY':
@@ -186,7 +184,6 @@ class JourneyDashboard {
       pregnancyOutcomeDate: json['pregnancyOutcomeDate'] == null
           ? null
           : DateTime.parse(json['pregnancyOutcomeDate'] as String),
-      babyActionsEligible: json['babyActionsEligible'] as bool? ?? false,
     );
   }
 }
@@ -500,40 +497,33 @@ class JourneyTimelinePage {
 
 enum PregnancyOutcome {
   ongoing,
-  unknown,
   liveBirth,
-  pregnancyLoss,
-  stillbirth;
+  pregnancyLoss;
 
   String get apiValue => switch (this) {
     PregnancyOutcome.ongoing => 'ONGOING',
-    PregnancyOutcome.unknown => 'UNKNOWN',
     PregnancyOutcome.liveBirth => 'LIVE_BIRTH',
     PregnancyOutcome.pregnancyLoss => 'PREGNANCY_LOSS',
-    PregnancyOutcome.stillbirth => 'STILLBIRTH',
   };
 
   String get displayLabel => switch (this) {
     PregnancyOutcome.ongoing => 'Thai kỳ vẫn đang tiếp diễn',
-    PregnancyOutcome.unknown => 'Tôi chưa chắc chắn',
     PregnancyOutcome.liveBirth => 'Em bé đã chào đời',
     PregnancyOutcome.pregnancyLoss => 'Thai kỳ đã kết thúc',
-    PregnancyOutcome.stillbirth => 'Thai kỳ đã kết thúc do thai lưu',
   };
 
   bool get requiresDate => this == PregnancyOutcome.liveBirth;
 
   bool get transitionsToPostpartum =>
       this == PregnancyOutcome.liveBirth ||
-      this == PregnancyOutcome.pregnancyLoss ||
-      this == PregnancyOutcome.stillbirth;
+      this == PregnancyOutcome.pregnancyLoss;
 
   static PregnancyOutcome fromApiValue(String value) => switch (value) {
     'ONGOING' => PregnancyOutcome.ongoing,
-    'UNKNOWN' => PregnancyOutcome.unknown,
     'LIVE_BIRTH' => PregnancyOutcome.liveBirth,
     'PREGNANCY_LOSS' => PregnancyOutcome.pregnancyLoss,
-    'STILLBIRTH' => PregnancyOutcome.stillbirth,
+    'UNKNOWN' => PregnancyOutcome.ongoing,
+    'STILLBIRTH' => PregnancyOutcome.pregnancyLoss,
     _ => throw FormatException('Unsupported pregnancy outcome: $value'),
   };
 }
@@ -588,7 +578,6 @@ class PregnancyOutcomeResult {
     required this.journeyVersion,
     this.transitionId,
     required this.revisionNumber,
-    required this.babyActionsEligible,
   });
 
   final String evidenceId;
@@ -599,7 +588,6 @@ class PregnancyOutcomeResult {
   final int journeyVersion;
   final String? transitionId;
   final int revisionNumber;
-  final bool babyActionsEligible;
 
   factory PregnancyOutcomeResult.fromJson(Map<String, dynamic> json) {
     return PregnancyOutcomeResult(
@@ -613,7 +601,6 @@ class PregnancyOutcomeResult {
       journeyVersion: (json['journeyVersion'] as num).toInt(),
       transitionId: json['transitionId'] as String?,
       revisionNumber: (json['revisionNumber'] as num).toInt(),
-      babyActionsEligible: json['babyActionsEligible'] as bool? ?? false,
     );
   }
 }

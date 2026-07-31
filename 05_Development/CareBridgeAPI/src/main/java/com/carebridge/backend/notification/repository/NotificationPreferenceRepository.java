@@ -20,6 +20,7 @@ import org.springframework.stereotype.Repository;
 @RequiredArgsConstructor
 public class NotificationPreferenceRepository {
     private static final String KEY = "notifications";
+    private static final String APPOINTMENT_DEFAULTS_KEY = "appointmentReminderDefaults";
     private final UserRepository userRepository;
     private final JdbcTemplate jdbcTemplate;
 
@@ -97,12 +98,50 @@ public class NotificationPreferenceRepository {
         }
     }
 
+    public boolean hasAppointmentReminderDefaults(UUID userId) {
+        User user = userRepository.findById(userId).orElse(null);
+        return user != null
+                && user.getSettings() != null
+                && user.getSettings().containsKey(APPOINTMENT_DEFAULTS_KEY);
+    }
+
+    public List<Integer> findAppointmentReminderDefaults(UUID userId) {
+        User user = userRepository.findById(userId).orElse(null);
+        if (user == null || user.getSettings() == null) return List.of();
+        Object raw = user.getSettings().get(APPOINTMENT_DEFAULTS_KEY);
+        if (!(raw instanceof List<?> values)) return List.of();
+        List<Integer> result = new ArrayList<>();
+        for (Object value : values) {
+            if (value instanceof Number number) result.add(number.intValue());
+        }
+        return result;
+    }
+
+    public void patchAppointmentReminderDefaults(UUID userId, List<Integer> offsets) {
+        int updated = jdbcTemplate.update("""
+                UPDATE users
+                   SET settings_jsonb = jsonb_set(
+                       CASE WHEN jsonb_typeof(settings_jsonb) = 'object'
+                            THEN settings_jsonb ELSE '{}'::jsonb END,
+                       '{appointmentReminderDefaults}',
+                       to_jsonb(CAST(? AS integer[])),
+                       true
+                   ),
+                       updated_at = now()
+                 WHERE user_id = ?
+                """, offsets.toArray(Integer[]::new), userId);
+        if (updated != 1) {
+            throw new NoSuchElementException("User not found: " + userId);
+        }
+    }
+
     public void deleteByUserId(UUID userId) {
         jdbcTemplate.update("""
                 UPDATE users
                    SET settings_jsonb =
-                       (CASE WHEN jsonb_typeof(settings_jsonb) = 'object'
-                             THEN settings_jsonb ELSE '{}'::jsonb END) - 'notifications',
+                       ((CASE WHEN jsonb_typeof(settings_jsonb) = 'object'
+                              THEN settings_jsonb ELSE '{}'::jsonb END) - 'notifications')
+                       - 'appointmentReminderDefaults',
                        updated_at = now()
                  WHERE user_id = ?
                 """, userId);

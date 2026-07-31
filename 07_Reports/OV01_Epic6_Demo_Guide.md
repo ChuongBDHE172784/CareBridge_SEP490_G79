@@ -3,7 +3,7 @@
 **Phạm vi demo:** Story 6.1–6.5
 **Đối tượng sử dụng:** Thành viên trình bày tiến độ, người vận hành thiết bị demo
 **Ngày cập nhật:** 21/07/2026
-**Trạng thái phạm vi:** Story 6.1–6.4 `DONE`; Story 6.5 `IN PROGRESS`
+**Trạng thái phạm vi:** Story 6.1–6.4 `DONE`; Story 6.5 cũ `SUPERSEDED — feature removed`
 
 ## 1. Mục tiêu buổi demo
 
@@ -13,7 +13,7 @@ Kịch bản chứng minh các năng lực đã triển khai:
 2. Hệ thống duy trì một hành trình Mẹ canonical và lịch sử chuyển trạng thái.
 3. Người dùng có thể thiết lập thai kỳ, cập nhật kết quả thai kỳ và chuyển sang hậu sản.
 4. Người dùng có thể bắt đầu phục hồi hậu sản mà không cần tạo hồ sơ em bé.
-5. Người dùng có thể để sau, tạo mới hoặc liên kết 0..n hồ sơ em bé đủ điều kiện.
+5. Sau live birth, người dùng có thể để sau hoặc tạo hồ sơ em bé standalone; Add Baby thông thường không có “Để sau”.
 
 Không trình bày Story 6.6–6.10 như chức năng đã hoàn thành.
 
@@ -24,13 +24,13 @@ Không trình bày Story 6.6–6.10 như chức năng đã hoàn thành.
 - Không chiếu access token, refresh token, biến môi trường hoặc log chứa credential.
 - Không chạy migration cleanup dữ liệu legacy trong buổi demo.
 - Không sửa trực tiếp database để “làm xanh” một bước đang lỗi.
-- Story 6.5 vẫn được sprint tracker ghi là `IN PROGRESS`; nói rõ bằng chứng kỹ thuật mới nhất đã đóng và trạng thái tracker cần được đồng bộ, không tự tuyên bố story `DONE`.
+- Story 6.5 đã `SUPERSEDED — feature removed`; không dùng evidence liên kết cũ để mô tả hành vi hiện tại.
 
 ## 3. Chuẩn bị môi trường
 
 ### 3.1. Thành phần cần chạy
 
-- PostgreSQL có đầy đủ Flyway migration của Story 6.1–6.5.
+- PostgreSQL có đầy đủ Flyway migration của Story 6.1–6.5 và migration loại bỏ chức năng liên kết hồ sơ bé.
 - CareBridge Backend API.
 - Flutter Mobile App từ cùng commit với backend.
 - Thiết bị Android hoặc emulator.
@@ -97,9 +97,9 @@ Với Android emulator, dùng `http://10.0.2.2:8080`. Với thiết bị thật 
 |---|---|---|
 | Demo onboarding và tạo hành trình từ đầu | `mebau@carebridge.dev` hoặc tài khoản Mẹ mới trên DB disposable | Chưa có baseline/journey từ lần demo trước |
 | Demo dashboard thai kỳ nhanh | `mother3@carebridge.dev` | Có canonical `PREGNANCY` |
-| Demo hậu sản có sẵn | `mother4@carebridge.dev` | Có canonical `POSTPARTUM` và dữ liệu baby liên quan |
-| Demo “Để sau” và tạo baby mới | `mother5@carebridge.dev` | `POSTPARTUM + LIVE_BIRTH`, ban đầu 0 baby linked |
-| Demo liên kết baby có sẵn/nhiều baby | `mother6@carebridge.dev` | Có Baby A và Baby B cùng owner, ACTIVE, chưa linked |
+| Demo hậu sản có sẵn | `mother4@carebridge.dev` | Có canonical `POSTPARTUM`; baby profile, nếu có, là standalone |
+| Demo “Để sau” và tạo baby mới | `mother5@carebridge.dev` | `POSTPARTUM + LIVE_BIRTH`, ban đầu 0 baby |
+| Demo nhiều baby độc lập | `mother6@carebridge.dev` | Có Baby A và Baby B standalone, cùng owner, ACTIVE |
 
 Mọi tài khoản fixture dùng chung password synthetic do người vận hành nạp riêng cho
 phiên demo; tài liệu này không lưu giá trị đó.
@@ -117,8 +117,8 @@ phiên demo; tài liệu này không lưu giá trị đó.
 - [ ] `adb reverse tcp:8080 tcp:8080` thành công.
 - [ ] Đăng nhập thử một tài khoản seed thành công.
 - [ ] `mebau`/tài khoản mới chưa có lifecycle nếu dùng cho full flow.
-- [ ] `mother5` có zero linked baby.
-- [ ] `mother6` có hai candidate Baby A/B chưa liên kết.
+- [ ] `mother5` có zero baby.
+- [ ] `mother6` có hai profile standalone Baby A/B.
 - [ ] Tắt thông báo cá nhân và đóng các cửa sổ có secret.
 - [ ] Chuẩn bị sẵn báo cáo tiến độ `OV01_Epic6_Progress_Review.md` làm slide dự phòng.
 
@@ -128,7 +128,7 @@ Kịch bản phải dùng nhiều fixture vì direct postpartum của Story 6.4 
 
 - **Flow A — Story 6.2 → 6.1 → 6.3:** tài khoản NEW → baseline/consent → PRE/PREGNANCY → pregnancy outcome → POSTPARTUM.
 - **Flow B — Story 6.4:** đăng xuất, dùng một tài khoản NEW khác đã qua baseline/consent nhưng chưa có journey → tạo POSTPARTUM trực tiếp → recovery log.
-- **Flow C — Story 6.5:** đăng xuất, dùng `mother5` cho zero-baby/create mới và `mother6` cho link existing/multiple.
+- **Flow C — Story 6.5:** dùng `mother5` cho typed live-birth Add Baby/defer và `mother6` cho nhiều profile standalone.
 
 Không cố chạy Flow B trên tài khoản vừa hoàn tất Flow A, vì tài khoản đó đã có canonical journey.
 
@@ -264,58 +264,56 @@ Kết quả cần chỉ ra:
 - Delete là soft-delete; không tuyên bố dữ liệu lịch sử bị xóa vật lý.
 - Nút **Dấu hiệu cần hỗ trợ khẩn cấp** mới là seam hỗ trợ; không trình bày toàn bộ Story 6.6 là đã hoàn tất.
 
-## 10. Demo Story 6.5 — Optional 0..n Baby-to-Journey Linkage
+## 10. Demo Story 6.5 — Standalone Add Baby
 
-### 10.1. Trường hợp 0 baby và “Để sau”
+### 10.1. Typed live-birth entry và “Để sau”
 
 1. Đăng xuất và đăng nhập `mother5@carebridge.dev`.
-2. Vào tab **Hành trình**.
-3. Mở mục **Hồ sơ bé** hoặc hành động thêm/liên kết hồ sơ bé.
-4. Tại **Chọn cách tiếp tục**, bấm **Để sau**.
-5. Quay lại dashboard; đóng/mở lại màn hình nếu cần.
+2. Hoàn tất nhánh `LIVE_BIRTH` và chờ POSTPARTUM reload thành công.
+3. Xác nhận Add Baby mở tự động bằng typed transition context.
+4. Chọn **Để sau**.
+5. Xác nhận app điều hướng đúng một lần tới tab **Bé**.
 
 Kết quả cần chỉ ra:
 
-- Dashboard hậu sản vẫn hoạt động với 0 baby.
-- Không có placeholder baby được tạo.
-- Người dùng có thể mở lại chức năng liên kết sau.
+- POSTPARTUM Journey đã commit vẫn authoritative.
+- Không có baby hoặc handoff token được tạo.
+- Mở `/babies/add` thông thường không hiển thị **Để sau**.
 
-### 10.2. Tạo và liên kết baby mới
+### 10.2. Tạo baby standalone sau live birth
 
-1. Với `mother5`, mở lại **Hồ sơ bé**.
-2. Chọn **Tạo hồ sơ bé**.
+1. Chạy lại `LIVE_BIRTH` trên fixture disposable hoặc dùng typed test entry đã duyệt.
+2. Giữ Add Baby ở transition mode.
 3. Nhập nickname và dữ liệu synthetic tối thiểu.
 4. Hoàn tất tạo.
-5. Quan sát danh sách authoritative sau refresh.
+5. Quan sát tab **Bé** sau điều hướng.
 
 Kết quả cần chỉ ra:
 
-- Baby mới được tạo và liên kết với journey hiện tại.
-- Journey version/stage của Mẹ không bị thay đổi chỉ vì liên kết baby.
+- Baby mới là profile standalone thuộc đúng owner.
+- Response/create payload không chứa quan hệ Mother Journey.
+- Journey version/stage của Mẹ không bị thay đổi.
 - Danh sách hiển thị đúng một baby, không nhân đôi khi refresh.
 
-### 10.3. Liên kết baby có sẵn và nhiều baby
+### 10.3. Nhiều baby standalone và ownership isolation
 
 1. Đăng xuất và đăng nhập `mother6@carebridge.dev`.
-2. Mở **Hồ sơ bé**.
-3. Chọn **Liên kết hồ sơ hiện có**.
-4. Chọn `[DEV][Story 6.5] Baby A`.
-5. Refresh và xác nhận Baby A xuất hiện đúng một lần.
-6. Lặp lại với Baby B.
-7. Chạm lần lượt Baby A/B để cho thấy selected state đổi rõ ràng và không tạo mutation “switch active” legacy ngoài ý muốn.
+2. Mở tab **Bé**.
+3. Chạm lần lượt Baby A/B.
+4. Mở profile, growth và vaccination của từng baby.
+5. Refresh và xác nhận mỗi profile xuất hiện đúng một lần.
 
 Kết quả cần chỉ ra:
 
-- Candidate chỉ gồm baby ACTIVE, cùng owner và chưa linked.
-- Có thể liên kết nhiều baby với cùng journey hậu sản.
+- Danh sách chỉ gồm baby thuộc owner hiện tại.
+- Dữ liệu mỗi baby được cô lập và selected state vẫn hợp lệ sau refresh.
+- Journey không có baby card hay hành động quan hệ.
 - Refresh giữ dữ liệu server-authoritative và selected state hợp lệ.
-- Cross-account hoặc incompatible journey bị backend từ chối trung tính.
+- Truy cập baby khác owner bị từ chối trung tính.
 
-### 10.4. Giới hạn cần nói rõ
+### 10.4. Negative contract
 
-> “Story 6.5 đã có backend/mobile vertical slice và OV01-MAN-018–022 PASS. Product/Data đã duyệt PD-8, waiver xác minh notifier cuối đã được chấp nhận, migration suite và backend clean package đã pass. Sprint tracker vẫn ghi `IN PROGRESS`, vì vậy buổi review giữ nguyên trạng thái chính thức và nêu đây là điểm cần đồng bộ/đóng trạng thái, không mô tả như một technical gate còn mở.”
-
-Migration `V20260722020000__quarantine_invalid_legacy_baby_journey_links.sql` đã được áp dụng với kết quả sanitized `MISSING_OUTCOME_EVIDENCE=1`, `remainingInvalid=0`. Không chạy thủ công lại migration này trong lúc demo.
+> “Story 6.5 cũ đã superseded và chức năng liên kết hồ sơ bé bị loại bỏ. Demo hiện tại chỉ chứng minh standalone Add Baby, legacy relationship JSON trả validation `400`, và các URL đã gỡ trả generic `404/405`.”
 
 ## 11. Phương án dự phòng khi demo trực tiếp gặp sự cố
 
@@ -325,7 +323,7 @@ Migration `V20260722020000__quarantine_invalid_legacy_baby_journey_links.sql` đ
 | Thiết bị không gọi được API | Chạy lại `adb reverse tcp:8080 tcp:8080`, xác nhận base URL và backend port |
 | Tài khoản đã bị thay đổi bởi lần demo trước | Đổi sang fixture dự phòng hoặc khôi phục DB disposable đã chuẩn bị |
 | `mother5` đã có baby | Dùng snapshot DB sạch; không xóa trực tiếp trên shared DB |
-| `mother6` không còn candidate | Khôi phục fixture seed trên DB disposable |
+| `mother6` thiếu Baby A/B | Khôi phục fixture standalone trên DB disposable |
 | UI loading/network lỗi | Thử lại một lần, sau đó chuyển sang evidence screenshot/manual summary |
 | Demo full flow quá rủi ro | Dùng các fixture `mother3`, `mother5`, `mother6` cho từng lát cắt độc lập |
 | Không thể chứng minh DB trên màn hình | Trình bày dataflow/table trong báo cáo tiến độ; không chiếu credential hoặc token |
@@ -360,7 +358,7 @@ Evidence dự phòng:
 
 ## 14. Thông điệp kết luận đề xuất
 
-> “Epic 6 đã triển khai nền móng lifecycle từ baseline/consent, canonical journey, pregnancy outcome đến zero-baby postpartum và optional 0..n baby linkage. Story 6.1–6.4 đã hoàn thành; Story 6.5 đã có luồng end-to-end và các gate kỹ thuật mới nhất đã có bằng chứng đóng, nhưng sprint tracker vẫn đang ghi `IN PROGRESS` và cần được đồng bộ trạng thái. Các nhánh safety, expert/content và E2E closure thuộc Story 6.6–6.10 vẫn là phần việc tiếp theo.”
+> “Epic 6 đã triển khai nền móng lifecycle từ baseline/consent, canonical journey và pregnancy outcome đến zero-baby postpartum. Story 6.5 cũ đã superseded; baby profile hiện là standalone và liên kết với Mother Journey đã bị loại bỏ. Các nhánh safety, expert/content và E2E closure thuộc Story 6.6–6.10 vẫn là phần việc tiếp theo.”
 
 ## 15. File code tham chiếu khi được hỏi kỹ thuật
 
@@ -371,7 +369,7 @@ Evidence dự phòng:
 | Pregnancy outcome | `lib/features/journey/screens/pregnancy_outcome_screen.dart` | `journey/service/impl/JourneyTransitionServiceImpl.java` |
 | Direct postpartum | `lib/features/journey/screens/postpartum_recovery_setup_screen.dart` | `journey/service/impl/JourneyServiceImpl.java` |
 | Recovery log | `lib/features/healthRecords/screens/postpartum_log_list_screen.dart`, `postpartum_log_detail_screen.dart`, `postpartum_log_form_screen.dart`; service `lib/features/healthRecords/services/postpartum_log_service.dart` | `health/controller/PostpartumLogController.java`, `health/service/impl/PostpartumLogServiceImpl.java` |
-| Baby linkage | `lib/features/baby/screens/baby_journey_linkage_screen.dart` | `baby/controller/BabyController.java`, `baby/controller/JourneyBabiesController.java`, `baby/service/impl/BabyServiceImpl.java` |
+| Standalone Add Baby | `lib/features/baby/screens/add_baby_screen.dart` | `baby/controller/BabyController.java`, `baby/service/impl/BabyServiceImpl.java` |
 
 Đường dẫn gốc:
 

@@ -1,7 +1,5 @@
 package com.carebridge.backend.config;
 
-import com.carebridge.backend.baby.security.BabyLinkBoundaryAuditFilter;
-import com.carebridge.backend.baby.service.BabyLinkRejectionAuditService;
 import com.carebridge.backend.systemconfiguration.security.MaintenanceModeFilter;
 import com.carebridge.backend.systemconfiguration.service.SystemMaintenanceModeService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -41,12 +39,6 @@ public class MockMvcSecurityBuilderConfig {
     MaintenanceModeFilter mockMvcMaintenanceModeFilter(
             SystemMaintenanceModeService maintenanceModeService, ObjectMapper objectMapper) {
         return new MaintenanceModeFilter(maintenanceModeService, objectMapper);
-    }
-
-    @Bean("mockMvcBabyLinkBoundaryAuditFilter")
-    @Fallback
-    BabyLinkBoundaryAuditFilter mockMvcBabyLinkBoundaryAuditFilter() {
-        return new BabyLinkBoundaryAuditFilter(mock(BabyLinkRejectionAuditService.class));
     }
 
     @Bean

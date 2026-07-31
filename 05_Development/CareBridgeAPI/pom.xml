@@ -27,10 +27,13 @@
  <url/>
  </scm>
  <properties>
- <java.version>21</java.version>
- <postgresql.version>42.7.12</postgresql.version>
- <tika.version>3.3.2</tika.version>
- </properties>
+<java.version>21</java.version>
+<postgresql.version>42.7.12</postgresql.version>
+<tika.version>3.3.2</tika.version>
+<embedded-postgres.version>2.1.0</embedded-postgres.version>
+<embedded-postgres-binaries.version>18.1.0</embedded-postgres-binaries.version>
+<carebridge.build.directory>${project.basedir}/target</carebridge.build.directory>
+</properties>
  <dependencies>
  <dependency>
   <groupId>org.springframework.boot</groupId>
@@ -185,6 +188,36 @@
   <scope>test</scope>
  </dependency>
  <dependency>
+  <groupId>io.zonky.test</groupId>
+  <artifactId>embedded-postgres</artifactId>
+  <version>${embedded-postgres.version}</version>
+  <scope>test</scope>
+  <exclusions>
+   <exclusion>
+    <groupId>io.zonky.test.postgres</groupId>
+    <artifactId>embedded-postgres-binaries-windows-amd64</artifactId>
+   </exclusion>
+   <exclusion>
+    <groupId>io.zonky.test.postgres</groupId>
+    <artifactId>embedded-postgres-binaries-darwin-amd64</artifactId>
+   </exclusion>
+   <exclusion>
+    <groupId>io.zonky.test.postgres</groupId>
+    <artifactId>embedded-postgres-binaries-linux-amd64</artifactId>
+   </exclusion>
+   <exclusion>
+    <groupId>io.zonky.test.postgres</groupId>
+    <artifactId>embedded-postgres-binaries-linux-amd64-alpine</artifactId>
+   </exclusion>
+  </exclusions>
+ </dependency>
+ <dependency>
+  <groupId>io.zonky.test.postgres</groupId>
+  <artifactId>embedded-postgres-binaries-windows-amd64</artifactId>
+  <version>${embedded-postgres-binaries.version}</version>
+  <scope>test</scope>
+ </dependency>
+ <dependency>
   <groupId>org.springdoc</groupId>
   <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
   <version>3.0.3</version>
@@ -192,6 +225,7 @@
  </dependencies>
 
  <build>
+ <directory>${carebridge.build.directory}</directory>
  <plugins>
  <plugin>
   <groupId>org.springframework.boot</groupId>

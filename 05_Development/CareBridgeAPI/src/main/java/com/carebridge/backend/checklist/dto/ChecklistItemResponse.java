@@ -16,5 +16,7 @@ public record ChecklistItemResponse(
         boolean completed,
         Instant completedAt,
         int itemOrder,
-        Instant createdAt
+        Instant createdAt,
+        String targetSubject,
+        String origin
 ) {}

@@ -32,6 +32,7 @@ import com.carebridge.backend.triage.service.ITriageService;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -136,6 +137,72 @@ class TriageExpertHandoffPostgresIntegrationTest extends AbstractPostgresIntegra
                 });
     }
 
+    @Test
+    @Transactional
+    void authorizedBabyOriginPersistsJourneyFreeImmutableSnapshot() {
+        User owner = seedUser("Story 6.8 Family Owner", "FAMILY");
+        User expertUser = seedUser("Story 6.8 Baby Expert", "EXPERT");
+        jdbcTemplate.update(
+                "UPDATE users SET specialty = ?, verification_status = ?, trust_status = ? "
+                        + "WHERE user_id = ?",
+                "Pediatric health",
+                VerificationStatus.APPROVED.name(),
+                TrustStatus.ACTIVE.name(),
+                expertUser.getId());
+        ExpertProfile expert = expertProfileRepository
+                .findByUserId(expertUser.getId())
+                .orElseThrow();
+        UUID babyId = seedBaby(owner.getId());
+        IntakeSession intake = intakeRepository.saveAndFlush(IntakeSession.builder()
+                .userId(owner.getId())
+                .babyProfileId(babyId)
+                .stage(TriageStage.INFANT)
+                .journeyId(null)
+                .originDashboard(OriginDashboard.BABY_PROFILE)
+                .originReferenceId(babyId)
+                .continuationToken(UUID.randomUUID())
+                .continuationExpiresAt(Instant.now().plusSeconds(3600))
+                .symptoms("server-owned baby fixture")
+                .riskLevel(RiskLevel.YELLOW)
+                .status(IntakeStatus.COMPLETED)
+                .createdAt(Instant.now())
+                .completedAt(Instant.now())
+                .createdBy(owner.getId())
+                .build());
+        when(triageService.getResult(intake.getId(), owner.getId())).thenReturn(
+                TriageResultResponse.builder()
+                        .sessionId(intake.getId())
+                        .stage("INFANT")
+                        .riskLevel("YELLOW")
+                        .summary("Baby context ready")
+                        .citations(List.of())
+                        .build());
+        TriageExpertHandoffCreateRequest request = new TriageExpertHandoffCreateRequest(
+                UUID.randomUUID(),
+                expert.getExpertProfileId(),
+                true,
+                TriageExpertHandoffPolicy.POLICY_VERSION);
+
+        HandoffCreateResponse created = handoffService.create(
+                intake.getId(), request, owner.getId());
+        entityManager.flush();
+
+        Map<String, Object> snapshot = jdbcTemplate.queryForMap("""
+                SELECT journey_id, origin_dashboard, origin_reference_id,
+                       triage_stage, risk_level, intake_status
+                  FROM consultation_context_shares
+                 WHERE consultation_request_id = ?
+                """, created.consultationRequestId());
+        assertThat(snapshot.get("journey_id")).isNull();
+        assertThat(snapshot.get("origin_dashboard")).isEqualTo("BABY_PROFILE");
+        assertThat(snapshot.get("origin_reference_id")).isEqualTo(babyId);
+        assertThat(snapshot.get("triage_stage")).isEqualTo("INFANT");
+        assertThat(snapshot.get("risk_level")).isEqualTo("YELLOW");
+        assertThat(snapshot.get("intake_status")).isEqualTo("COMPLETED");
+        assertThat(count("consultation_context_shares", "owner_user_id", owner.getId()))
+                .isOne();
+    }
+
     private User seedUser(String name, String role) {
         UUID userId = UUID.randomUUID();
         CanonicalUserFixture.insertUser(jdbcTemplate, userId, name, uniquePhone(), role);
@@ -164,6 +231,17 @@ class TriageExpertHandoffPostgresIntegrationTest extends AbstractPostgresIntegra
                 "UPDATE care_subjects SET mother_journey_id = ? WHERE care_subject_id = ?",
                 journey.getId(), careSubjectId);
         return journey;
+    }
+
+    private UUID seedBaby(UUID ownerId) {
+        UUID babyId = UUID.randomUUID();
+        jdbcTemplate.update("""
+                INSERT INTO care_subjects (
+                    care_subject_id, person_id, owner_user_id, mother_journey_id,
+                    subject_type, nickname, birth_date, status, created_at, updated_at)
+                VALUES (?, ?, ?, NULL, 'BABY', 'Journey-free baby', ?, 'ACTIVE', now(), now())
+                """, babyId, ownerId, ownerId, LocalDate.now().minusMonths(6));
+        return babyId;
     }
 
     private long count(String table, String ownerColumn, UUID ownerId) {

@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.carebridge.backend.security.service.EmailService;
 import com.carebridge.backend.security.service.SmsService;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -74,26 +75,40 @@ class DevDataSeederPostgresIntegrationTest {
     private SmsService smsService;
 
     @Test
-    void freshFlywaySchemaSeedsCanonicalMotherSubjectsAndRemainsIdempotent() {
-        assertCanonicalSeedState();
+    void freshFlywaySchemaUpgradesLegacyStandaloneFixturesAndRemainsIdempotent() {
+        assertCanonicalSeedState(2);
         assertLatestDevSchemaSeedState();
 
+        List<UUID> standaloneBabyIdsBefore = seededStandaloneBabyIds();
+        renameStandaloneBabyFixturesToLegacyNames();
+        replaceStandaloneEvidenceWithLegacySubmissionIds();
+        assertThat(seededStandaloneBabyIds()).isEmpty();
+        assertThat(seededLegacyStandaloneBabyCount()).isEqualTo(2L);
+        assertThat(seededEvidenceSubmissionCount("standalone-baby-")).isZero();
+        assertThat(seededEvidenceSubmissionCount("story65-")).isEqualTo(2L);
+        assertAuditEventsImmutableTriggerEnabled();
+
         Integer journeyCountBefore = seededJourneyCount();
-        Integer evidenceCountBefore = seededStory65EvidenceCount();
+        Integer evidenceCountBefore = seededPregnancyOutcomeEvidenceCount();
         List<UUID> growthIdsBefore = seededGrowthMeasurementIds();
         List<Long> fixtureCountsBefore = fixtureCounts();
 
         seeder.run(new DefaultApplicationArguments(new String[0]));
 
-        assertCanonicalSeedState();
+        assertCanonicalSeedState(evidenceCountBefore);
         assertLatestDevSchemaSeedState();
         assertThat(seededJourneyCount()).isEqualTo(journeyCountBefore);
-        assertThat(seededStory65EvidenceCount()).isEqualTo(evidenceCountBefore);
+        assertThat(seededPregnancyOutcomeEvidenceCount()).isEqualTo(evidenceCountBefore);
         assertThat(seededGrowthMeasurementIds()).containsExactlyElementsOf(growthIdsBefore);
         assertThat(fixtureCounts()).isEqualTo(fixtureCountsBefore);
+        assertThat(seededStandaloneBabyIds()).containsExactlyElementsOf(standaloneBabyIdsBefore);
+        assertThat(seededLegacyStandaloneBabyCount()).isZero();
+        assertThat(seededEvidenceSubmissionCount("standalone-baby-")).isZero();
+        assertThat(seededEvidenceSubmissionCount("story65-")).isEqualTo(2L);
+        assertAuditEventsImmutableTriggerEnabled();
     }
 
-    private void assertCanonicalSeedState() {
+    private void assertCanonicalSeedState(int expectedEvidenceCount) {
         assertThat(seededJourneyCount()).isEqualTo(4);
         assertThat(jdbcTemplate.queryForObject("""
                 SELECT count(*)
@@ -116,8 +131,16 @@ class DevDataSeederPostgresIntegrationTest {
                    AND evidence.event_category = 'PREGNANCY_OUTCOME_EVIDENCE'
                    AND evidence.actor_user_id = journey.owner_user_id
                    AND (evidence.payload->>'journeyVersion')::bigint = journey.version
-                """, Integer.class)).isEqualTo(2);
+                """, Integer.class)).isEqualTo(expectedEvidenceCount);
         assertThat(seededGrowthMeasurementIds()).containsExactlyElementsOf(SEEDED_GROWTH_IDS);
+        assertThat(jdbcTemplate.queryForObject("""
+                SELECT count(*)
+                  FROM care_subjects baby
+                  JOIN users owner ON owner.user_id = baby.owner_user_id
+                 WHERE baby.subject_type = 'BABY'
+                   AND owner.email LIKE '%@carebridge.dev'
+                   AND baby.mother_journey_id IS NOT NULL
+                """, Integer.class)).isZero();
         assertThat(jdbcTemplate.queryForObject("""
                 SELECT count(*)
                   FROM growth_measurements measurement
@@ -136,6 +159,18 @@ class DevDataSeederPostgresIntegrationTest {
     private void assertLatestDevSchemaSeedState() {
         assertThat(count("SELECT count(*) FROM users WHERE email LIKE '%@carebridge.dev'"))
                 .isGreaterThanOrEqualTo(14L);
+        assertThat(count("""
+                SELECT count(*)
+                  FROM care_group_members member
+                  JOIN care_groups group_row ON group_row.care_group_id = member.care_group_id
+                  JOIN users actor ON actor.user_id = member.user_id
+                  JOIN users owner ON owner.user_id = group_row.owner_user_id
+                 WHERE member.invitation_status = 'ACCEPTED'
+                   AND ((owner.email = 'mother3@carebridge.dev'
+                         AND actor.email IN ('mother3@carebridge.dev', 'family2@carebridge.dev'))
+                     OR (owner.email = 'mother4@carebridge.dev'
+                         AND actor.email IN ('mother4@carebridge.dev', 'family3@carebridge.dev')))
+                """)).isEqualTo(4L);
         assertThat(count("""
                 SELECT count(*)
                   FROM expert_credentials ec
@@ -182,7 +217,7 @@ class DevDataSeederPostgresIntegrationTest {
                 """.formatted(SEEDED_MOTHER_EMAILS), Integer.class);
     }
 
-    private Integer seededStory65EvidenceCount() {
+    private Integer seededPregnancyOutcomeEvidenceCount() {
         return jdbcTemplate.queryForObject("""
                 SELECT count(*)
                   FROM audit_events evidence
@@ -200,5 +235,115 @@ class DevDataSeederPostgresIntegrationTest {
                  WHERE note LIKE '[DEV][MF-03]%'
                 ORDER BY growth_measurement_id
                 """, UUID.class);
+    }
+
+    private List<UUID> seededStandaloneBabyIds() {
+        return jdbcTemplate.queryForList("""
+                SELECT baby.care_subject_id
+                  FROM care_subjects baby
+                  JOIN users owner ON owner.user_id = baby.owner_user_id
+                 WHERE owner.email = 'mother6@carebridge.dev'
+                   AND baby.subject_type = 'BABY'
+                   AND baby.nickname IN ('[DEV][Standalone] Baby A', '[DEV][Standalone] Baby B')
+                ORDER BY baby.nickname
+                """, UUID.class);
+    }
+
+    private long seededLegacyStandaloneBabyCount() {
+        return count("""
+                SELECT count(*)
+                  FROM care_subjects baby
+                  JOIN users owner ON owner.user_id = baby.owner_user_id
+                 WHERE owner.email = 'mother6@carebridge.dev'
+                   AND baby.subject_type = 'BABY'
+                   AND baby.nickname IN ('[DEV][Story 6.5] Baby A', '[DEV][Story 6.5] Baby B')
+                """);
+    }
+
+    private void renameStandaloneBabyFixturesToLegacyNames() {
+        assertThat(jdbcTemplate.update("""
+                UPDATE care_subjects
+                   SET nickname = CASE nickname
+                       WHEN '[DEV][Standalone] Baby A' THEN '[DEV][Story 6.5] Baby A'
+                       WHEN '[DEV][Standalone] Baby B' THEN '[DEV][Story 6.5] Baby B'
+                   END
+                 WHERE owner_user_id = (
+                       SELECT user_id FROM users WHERE email = 'mother6@carebridge.dev')
+                   AND subject_type = 'BABY'
+                   AND nickname IN ('[DEV][Standalone] Baby A', '[DEV][Standalone] Baby B')
+                """)).isEqualTo(2);
+    }
+
+    private void replaceStandaloneEvidenceWithLegacySubmissionIds() {
+        jdbcTemplate.execute("ALTER TABLE audit_events DISABLE TRIGGER audit_events_immutable_trg");
+        try {
+            replaceEvidenceSubmissionId("mother5@carebridge.dev", "mother5");
+            replaceEvidenceSubmissionId("mother6@carebridge.dev", "mother6");
+        } finally {
+            jdbcTemplate.execute("ALTER TABLE audit_events ENABLE TRIGGER audit_events_immutable_trg");
+        }
+    }
+
+    private void replaceEvidenceSubmissionId(String ownerEmail, String fixtureKey) {
+        UUID currentId = evidenceSubmissionId("standalone-baby-", fixtureKey);
+        UUID legacyId = evidenceSubmissionId("story65-", fixtureKey);
+        UUID legacyEventId = UUID.nameUUIDFromBytes(
+                ("story65-" + fixtureKey + "-evidence-row").getBytes(StandardCharsets.UTF_8));
+        assertThat(jdbcTemplate.update("""
+                INSERT INTO audit_events (
+                    audit_event_id, actor_user_id, event_category, subject_reference_id,
+                    resource_type, resource_id, occurred_at, created_at, event_origin, payload
+                )
+                SELECT ?, evidence.actor_user_id, evidence.event_category,
+                       evidence.subject_reference_id, evidence.resource_type, evidence.resource_id,
+                       evidence.occurred_at - interval '1 millisecond', now(), evidence.event_origin,
+                       evidence.payload || jsonb_build_object(
+                           'submissionId', CAST(? AS text),
+                           'reason', '[DEV][Story 6.5] synthetic live-birth fixture',
+                           'semanticHash', ?)
+                  FROM audit_events evidence
+                  JOIN mother_journeys journey
+                    ON journey.journey_id = evidence.subject_reference_id
+                  JOIN users owner ON owner.user_id = journey.owner_user_id
+                 WHERE evidence.event_category = 'PREGNANCY_OUTCOME_EVIDENCE'
+                   AND evidence.subject_reference_id = journey.journey_id
+                   AND owner.email = ?
+                   AND evidence.payload->>'submissionId' = ?
+                """, legacyEventId, legacyId,
+                "dev-story65-" + fixtureKey + "-live-birth", ownerEmail, currentId.toString()))
+                .isEqualTo(1);
+        assertThat(jdbcTemplate.update("""
+                DELETE FROM audit_events
+                 WHERE event_category = 'PREGNANCY_OUTCOME_EVIDENCE'
+                   AND payload->>'submissionId' = ?
+                """, currentId.toString())).isEqualTo(1);
+    }
+
+    private void assertAuditEventsImmutableTriggerEnabled() {
+        assertThat(jdbcTemplate.queryForObject("""
+                SELECT tgenabled
+                  FROM pg_trigger
+                 WHERE tgrelid = 'public.audit_events'::regclass
+                   AND tgname = 'audit_events_immutable_trg'
+                """, String.class)).isEqualTo("O");
+    }
+
+    private long seededEvidenceSubmissionCount(String prefix) {
+        return jdbcTemplate.queryForObject("""
+                SELECT count(*)
+                  FROM audit_events evidence
+                  JOIN mother_journeys journey ON journey.journey_id = evidence.subject_reference_id
+                  JOIN users owner ON owner.user_id = journey.owner_user_id
+                 WHERE owner.email IN ('mother5@carebridge.dev', 'mother6@carebridge.dev')
+                   AND evidence.event_category = 'PREGNANCY_OUTCOME_EVIDENCE'
+                   AND evidence.payload->>'submissionId' IN (?, ?)
+                """, Long.class,
+                evidenceSubmissionId(prefix, "mother5").toString(),
+                evidenceSubmissionId(prefix, "mother6").toString());
+    }
+
+    private UUID evidenceSubmissionId(String prefix, String fixtureKey) {
+        return UUID.nameUUIDFromBytes(
+                (prefix + fixtureKey + "-live-birth").getBytes(StandardCharsets.UTF_8));
     }
 }

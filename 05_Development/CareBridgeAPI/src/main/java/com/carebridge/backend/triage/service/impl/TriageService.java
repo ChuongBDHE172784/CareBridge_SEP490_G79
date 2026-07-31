@@ -861,7 +861,7 @@ public class TriageService implements ITriageService {
         session.setRiskLevel(isPersistableRiskLevel(risk) ? RiskLevel.valueOf(risk) : null);
         session.setDisclaimer(result.get("disclaimer") == null ? null : String.valueOf(result.get("disclaimer")));
         boolean complete = "TRIAGE_COMPLETE".equals(flowStatus);
-        if (complete && session.getJourneyId() != null) {
+        if (complete && session.getOriginDashboard() != null) {
             if (lifecycleBindingService == null) {
                 throw new IllegalStateException("Lifecycle intake binding service is unavailable");
             }
@@ -1693,7 +1693,7 @@ public class TriageService implements ITriageService {
         }
         IntakeConversationResponse response = objectMapper.convertValue(
                 responseFields, IntakeConversationResponse.class);
-        if (session.getJourneyId() != null) {
+        if (session.getOriginDashboard() != null) {
             response.setJourneyId(session.getJourneyId());
             response.setOriginDashboard(session.getOriginDashboard());
             response.setOriginReferenceId(session.getOriginReferenceId());
@@ -1718,7 +1718,7 @@ public class TriageService implements ITriageService {
     }
 
     private void validateReplay(IntakeSession session, LifecycleBinding requestedBinding) {
-        if (session.getJourneyId() == null && requestedBinding == null) return;
+        if (session.getOriginDashboard() == null && requestedBinding == null) return;
         if (lifecycleBindingService == null) {
             throw new IllegalStateException("Lifecycle intake binding service is unavailable");
         }

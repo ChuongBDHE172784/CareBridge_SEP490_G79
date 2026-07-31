@@ -2,18 +2,24 @@ package com.carebridge.backend.health;
 
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.common.exception.BusinessException;
+import com.carebridge.backend.family.entity.InviteStatus;
+import com.carebridge.backend.family.repository.CareGroupMemberRepository;
+import com.carebridge.backend.family.repository.CareGroupRepository;
 import com.carebridge.backend.health.dto.MetricTrendResponse;
 import com.carebridge.backend.health.entity.MetricStatus;
 import com.carebridge.backend.health.entity.MetricType;
-import com.carebridge.backend.health.repository.MaternalHealthMetricRepository;
-import com.carebridge.backend.health.service.MetricAiAnalyzer;
+import com.carebridge.backend.health.repository.HealthObservationRepository;
+import com.carebridge.backend.health.repository.MetricDefinitionRepository;
+import com.carebridge.backend.health.service.MetricObservationValidator;
 import com.carebridge.backend.health.service.impl.HealthMetricServiceImpl;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 
 import java.time.Instant;
@@ -33,10 +39,14 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class MetricTrendServiceTest {
 
-    @Mock private MaternalHealthMetricRepository metricRepository;
+    @Mock private HealthObservationRepository observationRepository;
+    @Mock private MetricDefinitionRepository definitionRepository;
     @Mock private MotherJourneyRepository journeyRepository;
     @Mock private AuditService auditService;
-    @Mock private MetricAiAnalyzer metricAiAnalyzer;
+    @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private CareGroupMemberRepository careGroupMemberRepository;
+    @Mock private CareGroupRepository careGroupRepository;
+    @Spy private MetricObservationValidator validator = new MetricObservationValidator();
     @InjectMocks private HealthMetricServiceImpl metricService;
 
     private static final Instant FROM = Instant.now().minus(90, ChronoUnit.DAYS);
@@ -46,10 +56,12 @@ class MetricTrendServiceTest {
     @Test
     void getMetricTrend_weightMetrics_returnsDataPointsSortedAsc() {
         var journey = MetricTrendTestFactory.makeJourney();
-        var metrics = MetricTrendTestFactory.makeWeightMetrics(5);
+        var metrics = MetricTrendTestFactory.makeWeightObservations(5);
         when(journeyRepository.findById(MetricTrendTestFactory.JOURNEY_ID)).thenReturn(Optional.of(journey));
-        when(metricRepository.findByJourneyIdAndMetricTypeInAndStatusAndMeasuredAtBetweenOrderByMeasuredAtAsc(
-                eq(MetricTrendTestFactory.JOURNEY_ID), eq(List.of(MetricType.WEIGHT.name())), eq(MetricStatus.ACTIVE),
+        when(definitionRepository.findByMetricCodeAndActiveTrue("WEIGHT"))
+                .thenReturn(Optional.of(MetricTrendTestFactory.makeWeightDefinition()));
+        when(observationRepository.findTrend(
+                eq(MetricTrendTestFactory.CARE_SUBJECT_ID), eq("WEIGHT"), eq(MetricStatus.ACTIVE),
                 any(Instant.class), any(Instant.class)))
                 .thenReturn(metrics);
 
@@ -73,8 +85,9 @@ class MetricTrendServiceTest {
     void getMetricTrend_noData_returns200WithEmptyList() {
         var journey = MetricTrendTestFactory.makeJourney();
         when(journeyRepository.findById(MetricTrendTestFactory.JOURNEY_ID)).thenReturn(Optional.of(journey));
-        when(metricRepository.findByJourneyIdAndMetricTypeInAndStatusAndMeasuredAtBetweenOrderByMeasuredAtAsc(
-                any(), any(), any(), any(), any()))
+        when(definitionRepository.findByMetricCodeAndActiveTrue("WEIGHT"))
+                .thenReturn(Optional.of(MetricTrendTestFactory.makeWeightDefinition()));
+        when(observationRepository.findTrend(any(), any(), any(), any(), any()))
                 .thenReturn(Collections.emptyList());
 
         assertThatNoException().isThrownBy(() -> {
@@ -90,6 +103,9 @@ class MetricTrendServiceTest {
     void getMetricTrend_journeyNotOwned_throwsMetric021() {
         var otherJourney = MetricTrendTestFactory.makeOtherUsersJourney();
         when(journeyRepository.findById(MetricTrendTestFactory.JOURNEY_ID)).thenReturn(Optional.of(otherJourney));
+        when(careGroupMemberRepository.findByUserIdAndInviteStatus(
+                MetricTrendTestFactory.MOTHER_ID, InviteStatus.ACCEPTED))
+                .thenReturn(Collections.emptyList());
 
         assertThatThrownBy(() -> metricService.getMetricTrend(
                 MetricTrendTestFactory.MOTHER_ID, MetricTrendTestFactory.JOURNEY_ID,
@@ -122,10 +138,13 @@ class MetricTrendServiceTest {
     @Test
     void getMetricTrend_bloodPressureMetrics_returnsBothValues() {
         var journey = MetricTrendTestFactory.makeJourney();
-        var bpMetrics = MetricTrendTestFactory.makeBloodPressureMetrics(3);
+        var bpMetrics = MetricTrendTestFactory.makeBloodPressureObservations(3);
         when(journeyRepository.findById(MetricTrendTestFactory.JOURNEY_ID)).thenReturn(Optional.of(journey));
-        when(metricRepository.findByJourneyIdAndMetricTypeInAndStatusAndMeasuredAtBetweenOrderByMeasuredAtAsc(
-                any(), eq(List.of(MetricType.BLOOD_PRESSURE_SYSTOLIC.name(), MetricType.BLOOD_PRESSURE_DIASTOLIC.name())), any(), any(), any()))
+        when(definitionRepository.findByMetricCodeAndActiveTrue("BLOOD_PRESSURE"))
+                .thenReturn(Optional.of(MetricTrendTestFactory.makeBloodPressureDefinition()));
+        when(observationRepository.findTrend(
+                eq(MetricTrendTestFactory.CARE_SUBJECT_ID), eq("BLOOD_PRESSURE"),
+                eq(MetricStatus.ACTIVE), any(), any()))
                 .thenReturn(bpMetrics);
 
         MetricTrendResponse response = metricService.getMetricTrend(

@@ -176,7 +176,7 @@ class RegistrationIntegrationTest {
     }
 
     @Test
-    void register_WithDuplicateEmail_ShouldReturnBadRequest() throws Exception {
+    void register_WithDuplicateEmail_ShouldReturnConflictCode() throws Exception {
         // Given - First registration
         String email = "duplicate@example.com";
         RegisterRequest firstRequest = new RegisterRequest();
@@ -201,7 +201,9 @@ class RegistrationIntegrationTest {
         mockMvc.perform(post("/api/v1/auth/register")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(secondRequest)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("AUTH_ACCOUNT_EXISTS"))
+                .andExpect(jsonPath("$.message").value("Account already exists"));
     }
 
     @Test

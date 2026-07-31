@@ -16,7 +16,11 @@ import static org.mockito.Mockito.when;
 
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
+import com.carebridge.backend.checklist.model.ChecklistAnchorType;
+import com.carebridge.backend.checklist.model.ChecklistRangeUnit;
+import com.carebridge.backend.checklist.model.ChecklistRecipientRole;
 import com.carebridge.backend.content.dto.request.ChecklistItemRequest;
+import com.carebridge.backend.content.dto.request.ChecklistSubstageRequest;
 import com.carebridge.backend.content.dto.request.CreateChecklistTemplateRequest;
 import com.carebridge.backend.content.dto.request.HideChecklistTemplateRequest;
 import com.carebridge.backend.content.dto.request.UpdateChecklistTemplateRequest;
@@ -34,6 +38,7 @@ import com.carebridge.backend.content.service.AdminChecklistTemplateServiceImpl;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -62,7 +67,19 @@ class AdminChecklistTemplateServiceImplTest {
     private AdminChecklistTemplateServiceImpl service;
 
     private CreateChecklistTemplateRequest makeCreateRequest(List<ChecklistItemRequest> items) {
-        return new CreateChecklistTemplateRequest("Checklist khám thai tháng 3", "Mô tả", ContentStage.PREGNANCY, items);
+        return new CreateChecklistTemplateRequest("Checklist khám thai tháng 3", "Mô tả",
+                Set.of(ChecklistRecipientRole.MOTHER), ContentStage.PREGNANCY, pregnancyEligibility(), items);
+    }
+
+    private UpdateChecklistTemplateRequest makeUpdateRequest(
+            String name, String description, ChecklistTemplateStatus status, List<ChecklistItemRequest> items) {
+        return new UpdateChecklistTemplateRequest(name, description, Set.of(ChecklistRecipientRole.MOTHER),
+                ContentStage.PREGNANCY, pregnancyEligibility(), status, items);
+    }
+
+    private ChecklistSubstageRequest pregnancyEligibility() {
+        return new ChecklistSubstageRequest(
+                "PREGNANCY_WEEKS_0_12", ChecklistAnchorType.LMP, 0, 12, ChecklistRangeUnit.WEEK);
     }
 
     // CHKTPL-TC-001
@@ -121,8 +138,8 @@ class AdminChecklistTemplateServiceImplTest {
         when(checklistTemplateRepository.save(any(ChecklistTemplate.class))).thenAnswer(inv -> inv.getArgument(0));
         when(checklistItemRepository.saveAll(anyList())).thenAnswer(inv -> inv.getArgument(0));
 
-        UpdateChecklistTemplateRequest request = new UpdateChecklistTemplateRequest(
-                "Tên mới", "Mô tả mới", ContentStage.PREGNANCY, ChecklistTemplateStatus.DRAFT,
+        UpdateChecklistTemplateRequest request = makeUpdateRequest(
+                "Tên mới", "Mô tả mới", ChecklistTemplateStatus.DRAFT,
                 List.of(new ChecklistItemRequest(old1.getId(), "Mục 1", 1, true),
                         new ChecklistItemRequest("Mục 2", 2, false),
                         new ChecklistItemRequest("Mục 3", 3, true)));
@@ -148,8 +165,8 @@ class AdminChecklistTemplateServiceImplTest {
         when(checklistTemplateRepository.save(any(ChecklistTemplate.class))).thenAnswer(inv -> inv.getArgument(0));
         when(checklistItemRepository.findAllByTemplateIdOrderByOrder(TEMPLATE_ID))
                 .thenReturn(List.of(existing));
-        UpdateChecklistTemplateRequest request = new UpdateChecklistTemplateRequest(
-                "Updated", "Updated", ContentStage.PREGNANCY, ChecklistTemplateStatus.DRAFT,
+        UpdateChecklistTemplateRequest request = makeUpdateRequest(
+                "Updated", "Updated", ChecklistTemplateStatus.DRAFT,
                 List.of(
                         new ChecklistItemRequest(existing.getId(), "First", 1, true),
                         new ChecklistItemRequest(existing.getId(), "Duplicate", 2, true)));
@@ -168,8 +185,8 @@ class AdminChecklistTemplateServiceImplTest {
         when(checklistTemplateRepository.save(any(ChecklistTemplate.class))).thenAnswer(inv -> inv.getArgument(0));
         when(checklistItemRepository.findAllByTemplateIdOrderByOrder(TEMPLATE_ID))
                 .thenReturn(List.of());
-        UpdateChecklistTemplateRequest request = new UpdateChecklistTemplateRequest(
-                "Updated", "Updated", ContentStage.PREGNANCY, ChecklistTemplateStatus.DRAFT,
+        UpdateChecklistTemplateRequest request = makeUpdateRequest(
+                "Updated", "Updated", ChecklistTemplateStatus.DRAFT,
                 List.of(new ChecklistItemRequest(UUID.randomUUID(), "Foreign", 1, true)));
 
         ContentException error = assertThrows(
@@ -188,8 +205,8 @@ class AdminChecklistTemplateServiceImplTest {
         when(checklistItemRepository.findByTemplate_IdOrderByOrder(TEMPLATE_ID)).thenReturn(List.of(existing));
         when(checklistTemplateRepository.save(any(ChecklistTemplate.class))).thenAnswer(inv -> inv.getArgument(0));
 
-        UpdateChecklistTemplateRequest request = new UpdateChecklistTemplateRequest(
-                "Tên mới", "Mô tả mới", ContentStage.PREGNANCY, ChecklistTemplateStatus.DRAFT, null);
+        UpdateChecklistTemplateRequest request = makeUpdateRequest(
+                "Tên mới", "Mô tả mới", ChecklistTemplateStatus.DRAFT, null);
 
         AdminChecklistTemplateDetailResponse response = service.update(TEMPLATE_ID, request, ADMIN_ID);
 
@@ -200,16 +217,16 @@ class AdminChecklistTemplateServiceImplTest {
 
     // update: current or target status outside DRAFT/PENDING_REVIEW -> CHKTPL-004
     @Test
-    void update_currentStatusApproved_throwsChktpl004() {
+    void update_currentStatusApproved_throwsVersionImmutable() {
         ChecklistTemplate template = makeTemplate(t -> t.setStatus(ChecklistTemplateStatus.APPROVED));
         when(checklistTemplateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(template));
 
-        UpdateChecklistTemplateRequest request = new UpdateChecklistTemplateRequest(
-                "Tên mới", "Mô tả", ContentStage.PREGNANCY, ChecklistTemplateStatus.DRAFT, null);
+        UpdateChecklistTemplateRequest request = makeUpdateRequest(
+                "Tên mới", "Mô tả", ChecklistTemplateStatus.DRAFT, null);
 
         ContentException ex = assertThrows(ContentException.class,
                 () -> service.update(TEMPLATE_ID, request, ADMIN_ID));
-        assertEquals("CHKTPL-004", ex.getCode());
+        assertEquals("VERSION_IMMUTABLE", ex.getCode());
         verify(checklistTemplateRepository, never()).save(any());
     }
 
@@ -274,9 +291,8 @@ class AdminChecklistTemplateServiceImplTest {
         when(checklistTemplateRepository.save(any(ChecklistTemplate.class))).thenAnswer(inv -> inv.getArgument(0));
         when(checklistItemRepository.findByTemplate_IdOrderByOrder(TEMPLATE_ID)).thenReturn(List.of());
 
-        service.update(TEMPLATE_ID, new UpdateChecklistTemplateRequest(
-                template.getName(), template.getDescription(), template.getStage(),
-                ChecklistTemplateStatus.PENDING_REVIEW, null), ADMIN_ID);
+        service.update(TEMPLATE_ID, makeUpdateRequest(
+                template.getName(), template.getDescription(), ChecklistTemplateStatus.PENDING_REVIEW, null), ADMIN_ID);
 
         assertEquals(ChecklistTemplateStatus.PENDING_REVIEW, template.getStatus());
         assertEquals(null, template.getRevisionReason());
@@ -297,9 +313,8 @@ class AdminChecklistTemplateServiceImplTest {
         when(checklistTemplateRepository.save(any(ChecklistTemplate.class))).thenAnswer(inv -> inv.getArgument(0));
         when(checklistItemRepository.findByTemplate_IdOrderByOrder(TEMPLATE_ID)).thenReturn(List.of());
 
-        service.update(TEMPLATE_ID, new UpdateChecklistTemplateRequest(
-                template.getName(), template.getDescription(), template.getStage(),
-                ChecklistTemplateStatus.DRAFT, null), ADMIN_ID);
+        service.update(TEMPLATE_ID, makeUpdateRequest(
+                template.getName(), template.getDescription(), ChecklistTemplateStatus.DRAFT, null), ADMIN_ID);
 
         assertEquals("Bổ sung mục bắt buộc", template.getRevisionReason());
         assertEquals(requestedAt, template.getRevisionRequestedAt());

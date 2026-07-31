@@ -248,7 +248,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Hành trình sau sinh'), findsOneWidget);
+    expect(find.text('Hành trình hậu sản'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Lịch sử hành trình'),
+      500,
+      scrollable: find.byType(Scrollable).first,
+    );
     expect(find.text('Lịch sử hành trình'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -327,7 +332,6 @@ void main() {
         find.byKey(const Key('pre-pregnancy-transition-action')),
         findsOneWidget,
       );
-      expect(find.text('Lịch sử hành trình'), findsOneWidget);
       await tester.tap(
         find.byKey(const Key('pre-pregnancy-transition-action')),
       );
@@ -335,6 +339,52 @@ void main() {
 
       expect(find.byKey(const Key('transition-route-probe')), findsOneWidget);
       expect(find.text('edit:journey-pre-1:pre-pregnancy'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'POSTPARTUM opens the canonical update transition for a new pregnancy',
+    (tester) async {
+      final router = GoRouter(
+        initialLocation: '/journey',
+        routes: [
+          GoRoute(
+            path: '/journey',
+            builder: (_, _) => Scaffold(
+              body: MotherJourneyScreen(
+                loadData: false,
+                initialDashboard: JourneyDashboard(
+                  journeyId: 'journey-postpartum-1',
+                  journeyType: 'POSTPARTUM',
+                  status: 'ACTIVE_POSTPARTUM',
+                  startDate: DateTime(2026, 7, 18),
+                ),
+                initialJourneyHistory: [_transition(toStage: 'POSTPARTUM')],
+              ),
+            ),
+          ),
+          GoRoute(
+            path: '/journey-setup',
+            builder: (_, state) => Text(
+              [
+                state.uri.queryParameters['mode'],
+                state.uri.queryParameters['journeyId'],
+                state.uri.queryParameters['transition'],
+              ].join(':'),
+              key: const Key('transition-route-probe'),
+            ),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('postpartum-transition-action')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('transition-route-probe')), findsOneWidget);
+      expect(find.text('edit:journey-postpartum-1:postpartum'), findsOneWidget);
     },
   );
 

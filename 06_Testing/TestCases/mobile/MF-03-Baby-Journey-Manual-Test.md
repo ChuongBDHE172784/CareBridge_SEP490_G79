@@ -17,7 +17,7 @@
 
 Kiểm tra luồng ứng dụng di động chính thức của MF-03:
 
-`Trang chủ → Hành trình → Nuôi con → MotherJourneyScreen → BabyProfileDetailScreen`
+`Trang chủ → Hành trình → Bé → MotherJourneyScreen → BabyProfileDetailScreen`
 
 Đường dẫn tạm thời `/baby-care-hub` không phải điểm bắt đầu của bộ kiểm thử này.
 
@@ -100,7 +100,7 @@ Các miền chức năng được kiểm tra:
 
 1. Mở ứng dụng từ Trang chủ.
 2. Chọn `Hành trình` trên thanh điều hướng chính.
-3. Chọn phần `Nuôi con`.
+3. Chọn phần `Bé`.
 4. Ghi lại tên bé đang được hiển thị.
 5. Kiểm tra các tương tác Nhật ký, Tăng trưởng, Cột mốc và Tiêm chủng.
 
@@ -397,7 +397,7 @@ Các miền chức năng được kiểm tra:
 
 **Các bước:**
 
-1. Đi tới Hành trình → Nuôi con.
+1. Đi tới Hành trình → Bé.
 2. Quan sát hướng dẫn và các hành động hiện có.
 
 **Kết quả mong đợi:** Hiển thị trạng thái trống an toàn, có hướng dẫn; không hiển thị bé giả hoặc dữ liệu của người khác; ứng dụng không crash.

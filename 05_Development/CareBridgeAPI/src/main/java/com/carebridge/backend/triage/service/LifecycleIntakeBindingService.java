@@ -85,11 +85,16 @@ public class LifecycleIntakeBindingService {
                 throw error(HttpStatus.BAD_REQUEST, "TRIAGE-012",
                         "Lifecycle intake requires clientRequestId");
             }
-            if (request.getJourneyId() == null || request.getOriginDashboard() == null
-                    || request.getOriginReferenceId() == null) {
+            if (request.getOriginDashboard() == null || request.getOriginReferenceId() == null
+                    || (request.getOriginDashboard() == OriginDashboard.MOTHER_JOURNEY
+                        && request.getJourneyId() == null)
+                    || (request.getOriginDashboard() == OriginDashboard.BABY_PROFILE
+                        && (request.getJourneyId() != null || request.getBabyProfileId() == null))) {
                 throw error(HttpStatus.BAD_REQUEST, "TRIAGE-012", "Incomplete lifecycle origin");
             }
-            lifecycleConsentValidator.ensureEligibleForMutation(ownerUserId);
+            if (request.getOriginDashboard() == OriginDashboard.MOTHER_JOURNEY) {
+                lifecycleConsentValidator.ensureEligibleForMutation(ownerUserId);
+            }
             validateOrigin(ownerUserId, request.getJourneyId(), stage, request.getOriginDashboard(),
                     request.getOriginReferenceId(), request.getBabyProfileId());
             LifecycleBinding binding = new LifecycleBinding(
@@ -130,9 +135,6 @@ public class LifecycleIntakeBindingService {
     }
 
     public void renewForTerminal(IntakeSession session) {
-        if (session.getJourneyId() == null) {
-            return;
-        }
         if (session.getContinuationToken() == null || session.getContinuationExpiresAt() == null) {
             metrics.record(LifecycleSafetyMetrics.Boundary.CONTINUATION,
                     LifecycleSafetyMetrics.Outcome.FAILED);
@@ -151,7 +153,9 @@ public class LifecycleIntakeBindingService {
     }
 
     public void revalidate(IntakeSession session) {
-        lifecycleConsentValidator.ensureEligibleForRead(session.getUserId());
+        if (session.getOriginDashboard() == OriginDashboard.MOTHER_JOURNEY) {
+            lifecycleConsentValidator.ensureEligibleForRead(session.getUserId());
+        }
         validateOrigin(session.getUserId(), session.getJourneyId(), session.getStage(),
                 session.getOriginDashboard(), session.getOriginReferenceId(),
                 session.getBabyProfileId());
@@ -160,11 +164,11 @@ public class LifecycleIntakeBindingService {
     private void validateOrigin(
             UUID ownerUserId, UUID journeyId, TriageStage stage,
             OriginDashboard dashboard, UUID originReferenceId, UUID babyProfileId) {
-        var journey = motherJourneyRepository.findById(journeyId)
-                .filter(candidate -> candidate.getOwnerUserId().equals(ownerUserId))
-                .filter(candidate -> candidate.getStatus() == JourneyStatus.ACTIVE)
-                .orElseThrow(() -> error(HttpStatus.NOT_FOUND, "JOURNEY-002", "Journey not found"));
         if (dashboard == OriginDashboard.MOTHER_JOURNEY) {
+            var journey = motherJourneyRepository.findById(journeyId)
+                    .filter(candidate -> candidate.getOwnerUserId().equals(ownerUserId))
+                    .filter(candidate -> candidate.getStatus() == JourneyStatus.ACTIVE)
+                    .orElseThrow(() -> error(HttpStatus.NOT_FOUND, "JOURNEY-002", "Journey not found"));
             JourneyType expected = switch (stage) {
                 case PRECONCEPTION -> JourneyType.PRE_PREGNANCY;
                 case PREGNANCY -> JourneyType.PREGNANCY;
@@ -177,12 +181,12 @@ public class LifecycleIntakeBindingService {
             }
             return;
         }
-        if (!stage.isPediatric() || babyProfileId == null || !originReferenceId.equals(babyProfileId)) {
+        if (journeyId != null || !stage.isPediatric() || babyProfileId == null
+                || !originReferenceId.equals(babyProfileId)) {
             throw error(HttpStatus.CONFLICT, "TRIAGE-015", "Continuation origin unavailable");
         }
         var baby = babyProfileRepository.findByIdAndOwnerUserId(babyProfileId, ownerUserId)
                 .filter(candidate -> candidate.getStatus() == BabyProfileStatus.ACTIVE)
-                .filter(candidate -> journeyId.equals(candidate.getRelatedJourneyId()))
                 .orElseThrow(() -> error(HttpStatus.CONFLICT, "TRIAGE-015", "Continuation origin unavailable"));
         if (babyTriageStageClassifier.classify(baby.getBirthDate()) != stage) {
             throw error(HttpStatus.CONFLICT, "TRIAGE-015", "Continuation origin unavailable");

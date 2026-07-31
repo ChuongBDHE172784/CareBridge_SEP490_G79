@@ -10,7 +10,6 @@ import com.carebridge.backend.baby.service.IBabyService;
 import com.carebridge.backend.common.response.ApiResponse;
 import com.carebridge.backend.common.util.SecurityUtils;
 import jakarta.validation.Valid;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,10 +19,6 @@ import org.springframework.web.bind.annotation.*;
 import java.security.Principal;
 import java.util.List;
 import java.util.UUID;
-import com.carebridge.backend.baby.dto.LinkBabyJourneyRequest;
-import com.carebridge.backend.baby.dto.LinkBabyJourneyResponse;
-import com.carebridge.backend.common.response.PaginatedResponse;
-import com.carebridge.backend.baby.security.BabyLinkBoundaryAuditFilter;
 
 @RestController
 @RequestMapping("/api/v1/babies")
@@ -98,15 +93,4 @@ public class BabyController {
         var response = babyService.archiveBabyProfile(babyId, callerId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
-
-    @PutMapping("/{babyId}/journey-link")
-    @PreAuthorize("hasRole('MOTHER')")
-    public ResponseEntity<ApiResponse<LinkBabyJourneyResponse>> linkExistingBaby(
-            @PathVariable UUID babyId, @Valid @RequestBody LinkBabyJourneyRequest request,
-            Principal principal, HttpServletRequest httpRequest) {
-        BabyLinkBoundaryAuditFilter.markControllerEntered(httpRequest);
-        var callerId = SecurityUtils.requireCurrentUserId(principal);
-        return ResponseEntity.ok(ApiResponse.success(babyService.linkExistingBaby(babyId, request, callerId)));
-    }
-
 }

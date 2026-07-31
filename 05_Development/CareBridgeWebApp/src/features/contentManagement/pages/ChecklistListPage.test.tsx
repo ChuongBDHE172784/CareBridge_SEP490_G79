@@ -2,16 +2,22 @@
 
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AdminChecklistTemplate, PaginatedResponse } from '../models/content';
+import type { AdminChecklistTemplate, ChecklistItem, PaginatedResponse } from '../models/content';
 
-const harness = vi.hoisted(() => ({
-  fetchAdminChecklists: vi.fn(),
+const harness = vi.hoisted(() => {
+  const fetchAdminChecklistTemplates = vi.fn();
+  return {
+  fetchAdminChecklistTemplates,
+  // Alias retained so the existing boundary tests continue to describe the
+  // same request while the page migrates to the canonical endpoint.
+  fetchAdminChecklists: fetchAdminChecklistTemplates,
   archiveChecklistTemplate: vi.fn(),
   navigate: vi.fn(),
-}));
+  };
+});
 
 vi.mock('../services/contentApi', () => ({
-  fetchAdminChecklists: harness.fetchAdminChecklists,
+  fetchAdminChecklistTemplates: harness.fetchAdminChecklistTemplates,
   archiveChecklistTemplate: harness.archiveChecklistTemplate,
 }));
 
@@ -24,9 +30,11 @@ vi.mock('react-router-dom', async () => {
 
 import ChecklistListPage from './ChecklistListPage';
 
+type ChecklistListFixture = AdminChecklistTemplate & { items?: ChecklistItem[] };
+
 function checklist(
-  overrides: Partial<AdminChecklistTemplate> = {},
-): AdminChecklistTemplate {
+  overrides: Partial<ChecklistListFixture> = {},
+): ChecklistListFixture {
   return {
     id: 'synthetic-checklist-69',
     name: 'Synthetic approved checklist',
@@ -105,6 +113,34 @@ describe('UC82-69-WEB-001 admin checklist boundary', () => {
     });
   });
 
+  it('renders canonical recipient, substage, and per-item target metadata', async () => {
+    harness.fetchAdminChecklists.mockResolvedValue(page([checklist({
+      name: 'Canonical metadata checklist',
+      recipientRoles: ['MOTHER', 'FAMILY'],
+      substage: {
+        code: 'BABY_CARE_MONTH_0_3',
+        anchor: 'BIRTH_DATE',
+        startInclusive: 0,
+        endInclusive: 3,
+        unit: 'MONTH',
+      },
+      itemCount: 2,
+      items: [
+        { id: 'one', itemText: 'Theo dõi mẹ', order: 1, isRequired: true, targetSubject: 'MOTHER' },
+        { id: 'two', itemText: 'Theo dõi bé', order: 2, isRequired: false, targetSubject: 'BABY' },
+      ],
+    })]));
+
+    render(<ChecklistListPage />);
+
+    expect(await screen.findByText('Canonical metadata checklist')).toBeTruthy();
+    expect(screen.getByLabelText('Người nhận: Mẹ')).toBeTruthy();
+    expect(screen.getByLabelText('Người nhận: Gia đình')).toBeTruthy();
+    expect(screen.getByText('BABY_CARE_MONTH_0_3')).toBeTruthy();
+    expect(screen.getByLabelText('Mục 1: Mẹ')).toBeTruthy();
+    expect(screen.getByLabelText('Mục 2: Em bé')).toBeTruthy();
+  });
+
   it('labels returned drafts and exposes the review reason', async () => {
     harness.fetchAdminChecklists.mockResolvedValue(page([
       checklist({
@@ -138,6 +174,9 @@ describe('UC82-69-WEB-001 admin checklist boundary', () => {
     render(<ChecklistListPage />);
 
     expect(await screen.findByText('Draft checklist')).toBeTruthy();
+    expect(screen.getByTestId('checklist-list-page').className).toContain('bg-background');
+    expect(screen.getByTestId('checklist-list-page').className).toContain('font-sans');
+    expect(screen.getByRole('heading', { name: 'Quản lý Checklist' }).className).toContain('text-on-surface');
     const draftEdit = screen.getByRole('button', { name: 'Chỉnh sửa checklist Draft checklist' });
     const pendingEdit = screen.getByRole('button', { name: 'Chỉnh sửa checklist Pending checklist' });
     const approvedEdit = screen.getByRole('button', { name: 'Chỉnh sửa checklist Approved checklist' });
@@ -151,6 +190,15 @@ describe('UC82-69-WEB-001 admin checklist boundary', () => {
     expect((rejectedEdit as HTMLButtonElement).disabled).toBe(true);
     expect((archivedEdit as HTMLButtonElement).disabled).toBe(true);
     expect((archivedDelete as HTMLButtonElement).disabled).toBe(true);
+
+    const draftView = screen.getByRole('button', { name: 'Xem checklist Draft checklist' });
+    const draftDelete = screen.getByRole('button', { name: 'Xóa checklist Draft checklist' });
+    for (const action of [draftView, draftEdit, draftDelete]) {
+      expect(action.className).toContain('min-h-12');
+      expect(action.className).toContain('min-w-12');
+      expect(action.className).toContain('rounded-full');
+      expect(action.querySelector('[aria-hidden="true"]')).toBeTruthy();
+    }
 
     fireEvent.click(draftEdit);
     expect(harness.navigate).toHaveBeenCalledWith('/content/checklists/draft/edit');
@@ -437,7 +485,7 @@ describe('UC82-69-WEB-001 admin checklist boundary', () => {
     expect(screen.queryByText('Đang tải...')).toBeNull();
   });
 
-  it('renders exact Vietnamese fallbacks for nullable stage and updatedAt', async () => {
+  it('renders exact Vietnamese fallbacks for nullable lifecycle metadata', async () => {
     const nullableRow = {
       ...checklist({ id: 'nullable', name: 'Nullable metadata row' }),
       stage: null,
@@ -448,7 +496,7 @@ describe('UC82-69-WEB-001 admin checklist boundary', () => {
     render(<ChecklistListPage />);
 
     expect(await screen.findByText('Nullable metadata row')).toBeTruthy();
-    expect(screen.getByText('Không xác định')).toBeTruthy();
-    expect(screen.getByText('Chưa cập nhật')).toBeTruthy();
+    expect(screen.getByText('Không áp dụng')).toBeTruthy();
+    expect(screen.getByText('Không có cửa sổ')).toBeTruthy();
   });
 });

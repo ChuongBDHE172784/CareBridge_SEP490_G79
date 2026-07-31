@@ -731,7 +731,7 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
         entryContext: TriageEntryContext.locked(
           stage: stage,
           origin: TriageOriginIntent.babyProfile,
-          journeyId: profile.relatedJourneyId,
+          journeyId: null,
           originReferenceId: profile.id,
         ),
       ),

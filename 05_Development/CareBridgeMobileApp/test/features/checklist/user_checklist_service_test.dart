@@ -1,9 +1,89 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:untitled/features/checklist/services/checklist_assignment_refresh_bus.dart';
 import 'package:untitled/features/checklist/services/user_checklist_service.dart';
 
 void main() {
   test(
-    'lifecycle import omits journey and baby context for server resolution',
+    'user-created task sends V2 identity and explicit mother target',
+    () async {
+      var refreshEvents = 0;
+      final subscription = ChecklistAssignmentRefreshBus.events.listen(
+        (_) => refreshEvents++,
+      );
+      addTearDown(subscription.cancel);
+      late String capturedPath;
+      late Map<String, dynamic> capturedBody;
+      final service = UserChecklistService(
+        postRequest: (path, body) async {
+          capturedPath = path;
+          capturedBody = body;
+          return {
+            'data': {
+              'itemId': 'task-29',
+              'itemText': 'Pack water',
+              'category': 'GENERAL',
+              'completed': false,
+              'itemOrder': 2,
+              'targetSubject': 'MOTHER',
+              'origin': 'USER_CREATED',
+            },
+          };
+        },
+      );
+
+      final result = await service.addItem(
+        itemText: 'Pack water',
+        targetSubject: 'MOTHER',
+        clientTaskId: 'client-task-29',
+        journeyId: 'journey-29',
+        itemOrder: 2,
+      );
+
+      expect(capturedPath, '/api/v1/user-checklist-items');
+      expect(capturedBody['targetSubject'], 'MOTHER');
+      expect(capturedBody['clientTaskId'], 'client-task-29');
+      expect(capturedBody['journeyId'], 'journey-29');
+      expect(capturedBody, isNot(contains('babyId')));
+      expect(result.itemId, 'task-29');
+      expect(result.targetSubject, 'MOTHER');
+      expect(result.origin, 'USER_CREATED');
+      expect(refreshEvents, 1);
+    },
+  );
+
+  test('baby-targeted task sends only the owned baby context', () async {
+    late Map<String, dynamic> capturedBody;
+    final service = UserChecklistService(
+      postRequest: (_, body) async {
+        capturedBody = body;
+        return {
+          'data': {
+            'itemId': 'task-baby',
+            'itemText': 'Prepare bottle',
+            'category': 'BABY_CARE',
+            'completed': false,
+            'itemOrder': 0,
+            'targetSubject': 'BABY',
+            'origin': 'USER_CREATED',
+          },
+        };
+      },
+    );
+
+    await service.addItem(
+      itemText: 'Prepare bottle',
+      targetSubject: 'BABY',
+      clientTaskId: 'client-baby',
+      babyId: 'baby-29',
+    );
+
+    expect(capturedBody['targetSubject'], 'BABY');
+    expect(capturedBody['babyId'], 'baby-29');
+    expect(capturedBody, isNot(contains('journeyId')));
+  });
+
+  test(
+    'optional template uses the canonical V2 self-assignment route',
     () async {
       late String capturedPath;
       late Map<String, dynamic> capturedBody;
@@ -11,54 +91,60 @@ void main() {
         postRequest: (path, body) async {
           capturedPath = path;
           capturedBody = body;
-          return {'data': const []};
+          return {
+            'data': {'createdInstances': 1, 'createdTasks': 2},
+          };
         },
       );
 
-      await service.importFromTemplate(templateItemIds: const ['item-69']);
+      final result = await service.addTemplate(
+        templateId: 'template-optional',
+        journeyId: 'journey-pre-pregnancy',
+      );
 
-      expect(capturedPath, '/api/v1/user-checklist-items/import');
-      expect(capturedBody['templateItemIds'], const ['item-69']);
-      expect(capturedBody, isNot(contains('journeyId')));
-      expect(capturedBody, isNot(contains('babyId')));
+      expect(capturedPath, '/api/v1/user-checklist-items/from-template');
+      expect(capturedBody, {
+        'templateId': 'template-optional',
+        'journeyId': 'journey-pre-pregnancy',
+      });
+      expect(result.createdTasks, 2);
+      expect(result.hasAssignedTasks, isTrue);
     },
   );
 
-  test('baby import sends only baby context', () async {
+  test('baby-care optional template omits maternal journey context', () async {
     late Map<String, dynamic> capturedBody;
     final service = UserChecklistService(
       postRequest: (_, body) async {
         capturedBody = body;
-        return {'data': const []};
+        return {
+          'data': {'createdTasks': 1, 'existingTasks': 0},
+        };
       },
     );
 
-    await service.importFromTemplate(
-      templateItemIds: const ['item-69'],
-      babyId: 'baby-69',
-    );
+    final result = await service.addTemplate(templateId: 'baby-template');
 
-    expect(capturedBody['babyId'], 'baby-69');
-    expect(capturedBody, isNot(contains('journeyId')));
+    expect(capturedBody, {'templateId': 'baby-template'});
+    expect(result.hasAssignedTasks, isTrue);
   });
 
-  test('journey and baby contexts remain mutually exclusive', () async {
-    var calls = 0;
+  test('optional template rejects a zero-task success envelope', () async {
+    var refreshEvents = 0;
+    final subscription = ChecklistAssignmentRefreshBus.events.listen(
+      (_) => refreshEvents++,
+    );
+    addTearDown(subscription.cancel);
     final service = UserChecklistService(
-      postRequest: (_, _) async {
-        calls++;
-        return {'data': const []};
+      postRequest: (_, _) async => {
+        'data': {'createdTasks': 0, 'existingTasks': 0},
       },
     );
 
-    expect(
-      () => service.importFromTemplate(
-        templateItemIds: const ['item-69'],
-        journeyId: 'journey-69',
-        babyId: 'baby-69',
-      ),
-      throwsArgumentError,
+    await expectLater(
+      service.addTemplate(templateId: 'empty-template'),
+      throwsA(isA<FormatException>()),
     );
-    expect(calls, 0);
+    expect(refreshEvents, 0);
   });
 }

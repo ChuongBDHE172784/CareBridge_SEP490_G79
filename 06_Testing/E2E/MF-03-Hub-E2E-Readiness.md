@@ -10,7 +10,7 @@
 
 ## Target scenarios
 
-1. Login as Mother and open the canonical Hành trình → Nuôi con flow.
+1. Login as Mother and open the canonical Hành trình → Bé flow.
 2. Switch active baby from Baby A to Baby B.
 3. Verify profile, journal, growth, milestone and vaccination cards reload with Baby B data only.
 4. Add a journal entry and verify it appears after reload.

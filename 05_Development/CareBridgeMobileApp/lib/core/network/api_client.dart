@@ -22,14 +22,58 @@ String get _baseUrl {
 /// against the API server rather than the Flutter development server.
 String get apiBaseUrl => _baseUrl;
 
-Map<String, String> _headers({String? token}) {
+Map<String, String> _headers({
+  String? token,
+  Map<String, String>? extraHeaders,
+}) {
   final effective = token ?? AuthState.instance.accessToken;
-  final headers = <String, String>{'Content-Type': 'application/json'};
+  final headers = <String, String>{...?extraHeaders};
+  headers['Content-Type'] = 'application/json';
   if (effective != null) headers['Authorization'] = 'Bearer $effective';
   return headers;
 }
 
 enum _RefreshOutcome { refreshed, tokenInvalid, networkError }
+
+/// Credential snapshot for a request that deliberately freezes an access
+/// token. A late response may only affect this exact account session.
+class _RequestSessionIdentity {
+  const _RequestSessionIdentity({
+    required this.accountId,
+    required this.accessToken,
+    required this.refreshToken,
+  });
+
+  final String accountId;
+  final String accessToken;
+  final String? refreshToken;
+
+  bool get isCurrent {
+    final auth = AuthState.instance;
+    return auth.userId == accountId &&
+        auth.accessToken == accessToken &&
+        auth.refreshToken == refreshToken;
+  }
+}
+
+_RequestSessionIdentity? _captureExpectedSession({
+  required String accountId,
+  required String accessToken,
+}) {
+  final auth = AuthState.instance;
+  if (accountId.isEmpty ||
+      auth.userId != accountId ||
+      auth.accessToken != accessToken) {
+    return null;
+  }
+  return _RequestSessionIdentity(
+    accountId: accountId,
+    accessToken: accessToken,
+    refreshToken: auth.refreshToken,
+  );
+}
+
+const _sessionChangedBody = '{"error":"AUTH_SESSION_CHANGED"}';
 
 Completer<_RefreshOutcome>? _refreshLock;
 
@@ -139,12 +183,7 @@ Future<void> _handleBlockedResponse(http.Response response) async {
 dynamic _decodeResponse(http.Response response) {
   if (response.body.isEmpty) return null;
   try {
-    final decoded = utf8.decode(response.bodyBytes);
-    if (!decoded.contains('') && !decoded.contains('?')) {
-      return jsonDecode(decoded);
-    }
-    // Fallback if browser client corrupted bytes via Latin1 default
-    return jsonDecode(utf8.decode(latin1.encode(response.body)));
+    return jsonDecode(utf8.decode(response.bodyBytes));
   } catch (_) {
     try {
       return jsonDecode(utf8.decode(latin1.encode(response.body)));
@@ -158,6 +197,7 @@ Future<dynamic> apiGet(
   String path, {
   String? token,
   Map<String, dynamic>? queryParams,
+  Map<String, String>? extraHeaders,
 }) async {
   String queryString = '';
   if (queryParams != null && queryParams.isNotEmpty) {
@@ -165,11 +205,14 @@ Future<dynamic> apiGet(
         '?${queryParams.entries.map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value.toString())}').join('&')}';
   }
   final uri = Uri.parse('$_baseUrl$path$queryString');
-  var response = await http.get(uri, headers: _headers(token: token));
+  var response = await http.get(
+    uri,
+    headers: _headers(token: token, extraHeaders: extraHeaders),
+  );
   response = await _handleUnauthorized(
     response,
     token,
-    () => http.get(uri, headers: _headers()),
+    () => http.get(uri, headers: _headers(extraHeaders: extraHeaders)),
   );
   if (response.statusCode >= 200 && response.statusCode < 300) {
     return _decodeResponse(response);
@@ -183,23 +226,55 @@ Future<dynamic> apiPost(
   String path,
   Map<String, dynamic> body, {
   String? token,
+  String? expectedAccountId,
+  http.Client? client,
 }) async {
+  final expectedSession = token != null && expectedAccountId != null
+      ? _captureExpectedSession(
+          accountId: expectedAccountId,
+          accessToken: token,
+        )
+      : null;
+  if (token != null && expectedAccountId != null && expectedSession == null) {
+    throw ApiException(401, _sessionChangedBody);
+  }
+
   final uri = Uri.parse('$_baseUrl$path');
   final encoded = jsonEncode(body);
-  var response = await http.post(
-    uri,
-    headers: _headers(token: token),
-    body: encoded,
-  );
+  var response = client == null
+      ? await http.post(
+          uri,
+          headers: _headers(token: token),
+          body: encoded,
+        )
+      : await client.post(
+          uri,
+          headers: _headers(token: token),
+          body: encoded,
+        );
   response = await _handleUnauthorized(
     response,
     token,
-    () => http.post(uri, headers: _headers(), body: encoded),
+    () => client == null
+        ? http.post(uri, headers: _headers(), body: encoded)
+        : client.post(uri, headers: _headers(), body: encoded),
   );
   if (response.statusCode >= 200 && response.statusCode < 300) {
     return _decodeResponse(response);
   }
-  if (response.statusCode == 401) await _handle401(response);
+  if (response.statusCode == 401) {
+    if (expectedSession != null) {
+      // Explicit-token requests intentionally do not refresh. An ordinary
+      // expiry remains a recoverable form error and must not sign the user
+      // out, while a late response from a replaced session is surfaced to
+      // its original caller without touching the active account.
+      if (!expectedSession.isCurrent) {
+        throw ApiException(response.statusCode, _sessionChangedBody);
+      }
+      throw ApiException(response.statusCode, response.body);
+    }
+    await _handle401(response);
+  }
   if (response.statusCode == 403) await _handleBlockedResponse(response);
   throw ApiException(response.statusCode, response.body);
 }
@@ -371,6 +446,23 @@ class ApiException implements Exception {
   final int statusCode;
   final String message;
   ApiException(this.statusCode, this.message);
+
+  String? get errorCode {
+    try {
+      final decoded = jsonDecode(message);
+      if (decoded is! Map<String, dynamic>) return null;
+      final error = decoded['error'];
+      if (error is String && error.isNotEmpty) return error;
+      if (error is Map<String, dynamic>) {
+        final nestedCode = error['code']?.toString();
+        if (nestedCode != null && nestedCode.isNotEmpty) return nestedCode;
+      }
+      final code = decoded['code']?.toString();
+      return code == null || code.isEmpty ? null : code;
+    } catch (_) {
+      return null;
+    }
+  }
 
   @override
   String toString() => 'ApiException($statusCode): $message';

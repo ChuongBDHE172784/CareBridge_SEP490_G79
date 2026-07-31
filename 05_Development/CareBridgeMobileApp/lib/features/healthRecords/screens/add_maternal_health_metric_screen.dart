@@ -34,77 +34,146 @@ class _AddMaternalHealthMetricScreenState
   final _primaryCtrl = TextEditingController();
   final _secondaryCtrl = TextEditingController();
   final _noteCtrl = TextEditingController();
+  final _protocolCtrl = TextEditingController(text: 'COUNT_10_MINUTES');
+  final _gestationalAgeCtrl = TextEditingController();
   final _service = HealthMetricService();
 
   DateTime _measuredDate = DateTime.now();
   TimeOfDay _measuredTime = TimeOfDay.now();
+  DateTime _periodStartDate = DateTime.now();
+  TimeOfDay _periodStartTime = TimeOfDay.fromDateTime(
+    DateTime.now().subtract(const Duration(minutes: 10)),
+  );
+  DateTime _periodEndDate = DateTime.now();
+  TimeOfDay _periodEndTime = TimeOfDay.now();
+  String _glucoseContext = 'FASTING';
+  String _completionStatus = 'COMPLETED';
+  List<MetricCapability> _capabilities = const [];
+  bool _isLoadingCapabilities = true;
   bool _isSaving = false;
-  List<MetricDataPoint> _history = [];
-  DateTime _historyDate = DateTime.now();
+  String? _loadError;
 
-  bool get _isBloodPressure =>
-      widget.initialMetricType.startsWith('BLOOD_PRESSURE');
+  static const _glucoseContexts = <String, String>{
+    'FASTING': 'Lúc đói',
+    'PRE_MEAL': 'Trước ăn',
+    'POST_MEAL_1H': 'Sau ăn 1 giờ',
+    'POST_MEAL_2H': 'Sau ăn 2 giờ',
+    'RANDOM': 'Ngẫu nhiên',
+    'OTHER_APPROVED': 'Khác (đã được duyệt)',
+  };
 
-  String get _metricType {
-    if (_isBloodPressure) return 'BLOOD_PRESSURE_SYSTOLIC';
-    return _supportedMetricTypes.contains(widget.initialMetricType)
-        ? widget.initialMetricType
-        : 'WEIGHT';
+  static const _completionStatuses = <String, String>{
+    'COMPLETED': 'Đã hoàn thành',
+    'PARTIAL': 'Chưa hoàn thành',
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCapabilities();
   }
 
-  String get _title =>
-      _isBloodPressure ? 'Thêm huyết áp' : 'Thêm $_metricLabel';
-  String get _primaryLabel =>
-      _isBloodPressure ? 'Tâm thu (mmHg)' : '$_metricLabel ($_unit)';
+  String get _metricType => _canonicalMetricType(widget.initialMetricType);
+
+  bool get _isBloodPressure => _metricType == 'BLOOD_PRESSURE';
+  bool get _isGlucose => _metricType == 'BLOOD_GLUCOSE';
+  bool get _isFetalMovement => _metricType == 'FETAL_MOVEMENT_SESSION';
+
+  MetricCapability? get _capability {
+    for (final capability in _capabilities) {
+      if (capability.metricCode == _metricType) return capability;
+    }
+    return null;
+  }
+
+  bool get _isSupported => _capability?.manualEntrySupported == true;
+
+  String get _title {
+    if (_isBloodPressure) return 'Thêm huyết áp';
+    if (_isFetalMovement) return 'Thêm cử động thai';
+    return 'Thêm $_metricLabel';
+  }
+
+  String get _primaryLabel {
+    if (_isBloodPressure) return 'Tâm thu (mmHg)';
+    if (_isFetalMovement) return 'Số cử động';
+    return '$_metricLabel ($_unit)';
+  }
+
   String get _unit {
     switch (_metricType) {
-      case 'HYDRATION':
-        return 'ml';
-      case 'MOOD':
-        return 'điểm';
-      case 'BLOOD_PRESSURE_SYSTOLIC':
+      case 'BLOOD_PRESSURE':
         return 'mmHg';
-      case 'HEART_RATE':
-        return 'bpm';
       case 'BLOOD_GLUCOSE':
         return 'mg/dL';
+      case 'MATERNAL_HEART_RATE':
+        return 'bpm';
       case 'TEMPERATURE':
-        return '°C';
+        return 'Cel';
+      case 'FETAL_MOVEMENT_SESSION':
+        return 'count';
       case 'WEIGHT':
       default:
-        return 'kg';
+        return _capability?.canonicalUnit.isNotEmpty == true
+            ? _capability!.canonicalUnit
+            : 'kg';
     }
   }
 
   String get _metricLabel {
     switch (_metricType) {
-      case 'HYDRATION':
-        return 'lượng nước đã uống';
-      case 'MOOD':
-        return 'tâm trạng';
-      case 'FETAL_MOVEMENT_COUNT':
-        return 'số cử động thai';
-      case 'HEART_RATE':
-        return 'nhịp tim';
+      case 'BLOOD_PRESSURE':
+        return 'huyết áp';
       case 'BLOOD_GLUCOSE':
         return 'đường huyết';
+      case 'MATERNAL_HEART_RATE':
+        return 'nhịp tim';
       case 'TEMPERATURE':
         return 'nhiệt độ';
+      case 'FETAL_MOVEMENT_SESSION':
+        return 'cử động thai';
       case 'WEIGHT':
       default:
         return 'cân nặng';
     }
   }
 
-  static const _supportedMetricTypes = {
-    'WEIGHT',
-    'HYDRATION',
-    'MOOD',
-    'FETAL_MOVEMENT_COUNT',
-    'HEART_RATE',
-    'BLOOD_GLUCOSE',
-    'TEMPERATURE',
-  };
+  String _canonicalMetricType(String value) {
+    switch (value) {
+      case 'BLOOD_PRESSURE_SYSTOLIC':
+      case 'BLOOD_PRESSURE_DIASTOLIC':
+      case 'BLOOD_PRESSURE':
+        return 'BLOOD_PRESSURE';
+      case 'FETAL_MOVEMENT':
+      case 'FETAL_MOVEMENT_COUNT':
+      case 'FETAL_MOVEMENT_SESSION':
+        return 'FETAL_MOVEMENT_SESSION';
+      case 'HEART_RATE':
+        return 'MATERNAL_HEART_RATE';
+      default:
+        return value;
+    }
+  }
+
+  Future<void> _loadCapabilities() async {
+    try {
+      final capabilities = await _service.getCapabilities(widget.journeyId);
+      if (!mounted) return;
+      setState(() {
+        _capabilities = capabilities;
+        _isLoadingCapabilities = false;
+        _loadError = capabilities.any((item) => item.metricCode == _metricType)
+            ? null
+            : 'Chỉ số này không được hỗ trợ nhập thủ công trong hành trình hiện tại.';
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingCapabilities = false;
+        _loadError = 'Không thể tải cấu hình chỉ số. Vui lòng thử lại.';
+      });
+    }
+  }
 
   DateTime get _resolvedMeasuredAt => DateTime(
     _measuredDate.year,
@@ -114,60 +183,37 @@ class _AddMaternalHealthMetricScreenState
     _measuredTime.minute,
   );
 
+  DateTime get _resolvedPeriodStart => DateTime(
+    _periodStartDate.year,
+    _periodStartDate.month,
+    _periodStartDate.day,
+    _periodStartTime.hour,
+    _periodStartTime.minute,
+  );
+
+  DateTime get _resolvedPeriodEnd => DateTime(
+    _periodEndDate.year,
+    _periodEndDate.month,
+    _periodEndDate.day,
+    _periodEndTime.hour,
+    _periodEndTime.minute,
+  );
+
   @override
   void dispose() {
     _primaryCtrl.dispose();
     _secondaryCtrl.dispose();
     _noteCtrl.dispose();
+    _protocolCtrl.dispose();
+    _gestationalAgeCtrl.dispose();
     super.dispose();
   }
 
-  @override
-  void initState() {
-    super.initState();
-    _loadHistory();
-  }
-
-  Future<void> _loadHistory() async {
-    final day = DateTime(
-      _historyDate.year,
-      _historyDate.month,
-      _historyDate.day,
-    );
-    try {
-      final trend = await _service.getMetricTrend(
-        journeyId: widget.journeyId,
-        metricType: _metricType,
-        from: day,
-        to: day.add(const Duration(days: 1)),
-      );
-      if (mounted)
-        setState(() => _history = trend.dataPoints.reversed.toList());
-    } catch (_) {}
-  }
-
-  Future<void> _pickHistoryDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _historyDate,
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
-      lastDate: DateTime.now(),
-    );
-    if (picked != null) {
-      setState(() => _historyDate = picked);
-      await _loadHistory();
-    }
-  }
-
-  double get _waterToday => _metricType == 'HYDRATION'
-      ? _history.fold(0, (sum, item) => sum + item.valueNumeric)
-      : 0;
-
-  Future<void> _pickDate() async {
+  Future<DateTime?> _pickDate(DateTime initialDate) async {
     final now = DateTime.now();
-    final picked = await showDatePicker(
+    return showDatePicker(
       context: context,
-      initialDate: _measuredDate,
+      initialDate: initialDate,
       firstDate: now.subtract(const Duration(days: 365)),
       lastDate: now,
       builder: (ctx, child) => Theme(
@@ -181,13 +227,12 @@ class _AddMaternalHealthMetricScreenState
         child: child!,
       ),
     );
-    if (picked != null) setState(() => _measuredDate = picked);
   }
 
-  Future<void> _pickTime() async {
-    final picked = await showTimePicker(
+  Future<TimeOfDay?> _pickTime(TimeOfDay initialTime) async {
+    return showTimePicker(
       context: context,
-      initialTime: _measuredTime,
+      initialTime: initialTime,
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
           colorScheme: const ColorScheme.light(
@@ -199,7 +244,26 @@ class _AddMaternalHealthMetricScreenState
         child: child!,
       ),
     );
+  }
+
+  Future<void> _pickMeasuredDate() async {
+    final picked = await _pickDate(_measuredDate);
+    if (picked != null) setState(() => _measuredDate = picked);
+  }
+
+  Future<void> _pickMeasuredTime() async {
+    final picked = await _pickTime(_measuredTime);
     if (picked != null) setState(() => _measuredTime = picked);
+  }
+
+  Future<void> _pickPeriodStartTime() async {
+    final picked = await _pickTime(_periodStartTime);
+    if (picked != null) setState(() => _periodStartTime = picked);
+  }
+
+  Future<void> _pickPeriodEndTime() async {
+    final picked = await _pickTime(_periodEndTime);
+    if (picked != null) setState(() => _periodEndTime = picked);
   }
 
   String? _requiredPositive(String? value) {
@@ -208,32 +272,48 @@ class _AddMaternalHealthMetricScreenState
     return null;
   }
 
-  String? _validatePrimaryValue(String? value) {
-    final baseError = _requiredPositive(value);
-    if (baseError != null) return baseError;
+  String? _requiredNonNegative(String? value) {
+    final parsed = double.tryParse(value?.trim() ?? '');
+    if (parsed == null || parsed < 0) return 'Nhập số hợp lệ';
+    return null;
+  }
 
-    final parsed = double.parse(value!.trim());
-    if (_metricType == 'MOOD' &&
-        (parsed < 1 || parsed > 5 || parsed % 1 != 0)) {
-      return 'Chọn mức từ 1 đến 5';
-    }
-    if (_metricType == 'FETAL_MOVEMENT_COUNT' && parsed % 1 != 0) {
-      return 'Nhập số nguyên';
-    }
+  String? _requiredText(String? value) {
+    if (value == null || value.trim().isEmpty) return 'Thông tin bắt buộc';
     return null;
   }
 
   Future<void> _save() async {
+    if (!_isSupported) {
+      _showError('Chỉ số này không được hỗ trợ nhập thủ công.');
+      return;
+    }
     if (!_formKey.currentState!.validate()) return;
 
-    final measuredAt = _resolvedMeasuredAt;
+    final measuredAt = _isFetalMovement
+        ? _resolvedPeriodEnd
+        : _resolvedMeasuredAt;
     if (measuredAt.isAfter(DateTime.now().add(const Duration(minutes: 5)))) {
       _showError('Thời điểm đo không được ở tương lai quá 5 phút.');
       return;
     }
 
+    if (_isFetalMovement && !_resolvedPeriodEnd.isAfter(_resolvedPeriodStart)) {
+      _showError('Thời điểm kết thúc phải sau thời điểm bắt đầu.');
+      return;
+    }
+
     setState(() => _isSaving = true);
     try {
+      final contextPayload = <String, dynamic>{};
+      if (_isGlucose) contextPayload['measurementContext'] = _glucoseContext;
+      if (_isFetalMovement) {
+        contextPayload['protocolCode'] = _protocolCtrl.text.trim();
+        contextPayload['completionStatus'] = _completionStatus;
+        contextPayload['gestationalAgeSnapshot'] = _gestationalAgeCtrl.text
+            .trim();
+      }
+
       await _service.addMetric(
         widget.journeyId,
         AddMetricRequest(
@@ -245,6 +325,10 @@ class _AddMaternalHealthMetricScreenState
           unit: _unit,
           measuredAt: measuredAt,
           note: _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
+          context: contextPayload,
+          periodStart: _isFetalMovement ? _resolvedPeriodStart : null,
+          periodEnd: _isFetalMovement ? _resolvedPeriodEnd : null,
+          definitionVersion: _capability?.version,
         ),
       );
       if (!mounted) return;
@@ -254,12 +338,9 @@ class _AddMaternalHealthMetricScreenState
           backgroundColor: _primary,
         ),
       );
-      _primaryCtrl.clear();
-      _secondaryCtrl.clear();
-      _noteCtrl.clear();
-      await _loadHistory();
+      Navigator.of(context).pop(true);
     } catch (_) {
-      _showError('Không thể lưu chỉ số. Vui lòng thử lại.');
+      _showError('Không thể lưu chỉ số. Vui lòng kiểm tra dữ liệu và thử lại.');
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -289,177 +370,259 @@ class _AddMaternalHealthMetricScreenState
         ),
       ),
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                TextFormField(
-                  controller: _primaryCtrl,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: true,
-                  ),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                  ],
-                  validator: _validatePrimaryValue,
-                  decoration: _inputDecoration(_primaryLabel),
-                ),
-                if (_metricType == 'MOOD') ...[
-                  const SizedBox(height: 14),
-                  _MoodSelector(
-                    selectedValue: _primaryCtrl.text,
-                    onSelected: (value) =>
-                        setState(() => _primaryCtrl.text = value.toString()),
-                  ),
-                ],
-                if (_isBloodPressure) ...[
-                  const SizedBox(height: 14),
-                  TextFormField(
-                    controller: _secondaryCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(
-                      decimal: true,
-                    ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
-                    ],
-                    validator: _requiredPositive,
-                    decoration: _inputDecoration('Tâm trương (mmHg)'),
-                  ),
-                ],
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _PickerTile(
-                        label: 'Ngày đo',
-                        value:
-                            '${_measuredDate.day.toString().padLeft(2, '0')}/${_measuredDate.month.toString().padLeft(2, '0')}/${_measuredDate.year}',
-                        onTap: _pickDate,
+        child: _isLoadingCapabilities
+            ? const Center(child: CircularProgressIndicator(color: _primary))
+            : _loadError != null
+            ? _buildErrorState()
+            : SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildMetricDescription(),
+                      const SizedBox(height: 14),
+                      TextFormField(
+                        controller: _primaryCtrl,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                        ],
+                        validator: _isFetalMovement
+                            ? _requiredNonNegative
+                            : _requiredPositive,
+                        decoration: _inputDecoration(_primaryLabel),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _PickerTile(
-                        label: 'Giờ đo',
-                        value: _measuredTime.format(context),
-                        onTap: _pickTime,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                TextFormField(
-                  controller: _noteCtrl,
-                  minLines: 3,
-                  maxLines: 5,
-                  decoration: _inputDecoration('Ghi chú'),
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: _isSaving ? null : _save,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _primary,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(double.infinity, 52),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  child: _isSaving
-                      ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.4,
-                            color: Colors.white,
+                      if (_isBloodPressure) ...[
+                        const SizedBox(height: 14),
+                        TextFormField(
+                          controller: _secondaryCtrl,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
                           ),
-                        )
-                      : const Text(
-                          'Lưu chỉ số',
-                          style: TextStyle(
-                            fontFamily: 'Lexend',
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                ),
-                if (_metricType == 'HYDRATION') ...[
-                  const SizedBox(height: 24),
-                  Text(
-                    '${DateUtils.isSameDay(_historyDate, DateTime.now()) ? 'Tổng nước hôm nay' : 'Tổng nước ngày đã chọn'}: ${_waterToday.toStringAsFixed(0)} ml',
-                    style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      color: _primary,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Lịch sử',
-                        style: TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    TextButton.icon(
-                      onPressed: _pickHistoryDate,
-                      icon: const Icon(Icons.calendar_month_rounded),
-                      label: Text(
-                        '${_historyDate.day.toString().padLeft(2, '0')}/${_historyDate.month.toString().padLeft(2, '0')}',
-                      ),
-                    ),
-                  ],
-                ),
-                if (_history.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 12),
-                    child: Text(
-                      'Chưa có bản ghi trong ngày đã chọn.',
-                      style: TextStyle(fontFamily: 'Lexend'),
-                    ),
-                  )
-                else
-                  ..._history.map(
-                    (item) => ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(
-                        Icons.history_rounded,
-                        color: _primary,
-                      ),
-                      title: Text(
-                        '${item.valueDisplay} ${_unit}',
-                        style: const TextStyle(
-                          fontFamily: 'Lexend',
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      subtitle: item.note == null
-                          ? null
-                          : Text(
-                              item.note!,
-                              style: const TextStyle(fontFamily: 'Lexend'),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(
+                              RegExp(r'[0-9.]'),
                             ),
-                      trailing: Text(
-                        TimeOfDay.fromDateTime(item.measuredAt).format(context),
-                        style: const TextStyle(fontFamily: 'Lexend'),
+                          ],
+                          validator: _requiredPositive,
+                          decoration: _inputDecoration('Tâm trương (mmHg)'),
+                        ),
+                      ],
+                      if (_isGlucose) ...[
+                        const SizedBox(height: 14),
+                        _buildDropdown<String>(
+                          label: 'Bối cảnh đo',
+                          value: _glucoseContext,
+                          items: _glucoseContexts,
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() => _glucoseContext = value);
+                            }
+                          },
+                        ),
+                      ],
+                      if (_isFetalMovement) ..._buildFetalMovementFields(),
+                      if (!_isFetalMovement) ...[
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _PickerTile(
+                                label: 'Ngày đo',
+                                value: _formatDate(_measuredDate),
+                                onTap: _pickMeasuredDate,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _PickerTile(
+                                label: 'Giờ đo',
+                                value: _measuredTime.format(context),
+                                onTap: _pickMeasuredTime,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                      const SizedBox(height: 14),
+                      TextFormField(
+                        controller: _noteCtrl,
+                        minLines: 3,
+                        maxLines: 5,
+                        decoration: _inputDecoration('Ghi chú'),
                       ),
-                    ),
+                      const SizedBox(height: 24),
+                      ElevatedButton(
+                        onPressed: _isSaving ? null : _save,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _primary,
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size(double.infinity, 52),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: _isSaving
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.4,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text(
+                                'Lưu chỉ số',
+                                style: TextStyle(
+                                  fontFamily: 'Lexend',
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                      ),
+                    ],
                   ),
-              ],
+                ),
+              ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.info_outline_rounded, color: _error, size: 44),
+            const SizedBox(height: 12),
+            Text(
+              _loadError!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                color: _onSurfaceVariant,
+              ),
             ),
-          ),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: _loadCapabilities,
+              child: const Text('Thử lại'),
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  Widget _buildMetricDescription() {
+    return Text(
+      'Dữ liệu được lưu để theo dõi, không thay thế chẩn đoán y khoa.',
+      style: TextStyle(
+        fontFamily: 'Lexend',
+        fontSize: 12,
+        color: _onSurfaceVariant,
+      ),
+    );
+  }
+
+  List<Widget> _buildFetalMovementFields() {
+    return [
+      const SizedBox(height: 14),
+      TextFormField(
+        controller: _protocolCtrl,
+        validator: _requiredText,
+        decoration: _inputDecoration('Mã quy trình'),
+      ),
+      const SizedBox(height: 14),
+      TextFormField(
+        controller: _gestationalAgeCtrl,
+        validator: _requiredText,
+        decoration: _inputDecoration('Tuổi thai tại thời điểm đo'),
+      ),
+      const SizedBox(height: 14),
+      _buildDropdown<String>(
+        label: 'Trạng thái phiên đo',
+        value: _completionStatus,
+        items: _completionStatuses,
+        onChanged: (value) {
+          if (value != null) setState(() => _completionStatus = value);
+        },
+      ),
+      const SizedBox(height: 14),
+      Row(
+        children: [
+          Expanded(
+            child: _PickerTile(
+              label: 'Bắt đầu',
+              value:
+                  '${_formatDate(_periodStartDate)} ${_periodStartTime.format(context)}',
+              onTap: () async {
+                final picked = await _pickDate(_periodStartDate);
+                if (picked != null) setState(() => _periodStartDate = picked);
+              },
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: _PickerTile(
+              label: 'Kết thúc',
+              value:
+                  '${_formatDate(_periodEndDate)} ${_periodEndTime.format(context)}',
+              onTap: () async {
+                final picked = await _pickDate(_periodEndDate);
+                if (picked != null) setState(() => _periodEndDate = picked);
+              },
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 8),
+      Row(
+        children: [
+          Expanded(
+            child: OutlinedButton(
+              onPressed: _pickPeriodStartTime,
+              child: Text('Giờ bắt đầu: ${_periodStartTime.format(context)}'),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: OutlinedButton(
+              onPressed: _pickPeriodEndTime,
+              child: Text('Giờ kết thúc: ${_periodEndTime.format(context)}'),
+            ),
+          ),
+        ],
+      ),
+    ];
+  }
+
+  Widget _buildDropdown<T>({
+    required String label,
+    required T value,
+    required Map<T, String> items,
+    required ValueChanged<T?> onChanged,
+  }) {
+    return DropdownButtonFormField<T>(
+      initialValue: value,
+      decoration: _inputDecoration(label),
+      items: items.entries
+          .map(
+            (entry) =>
+                DropdownMenuItem<T>(value: entry.key, child: Text(entry.value)),
+          )
+          .toList(),
+      onChanged: onChanged,
+    );
+  }
+
+  String _formatDate(DateTime value) {
+    return '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
   }
 
   InputDecoration _inputDecoration(String label) {
@@ -487,7 +650,6 @@ class _AddMaternalHealthMetricScreenState
     );
   }
 }
-
 class _PickerTile extends StatelessWidget {
   final String label;
   final String value;
@@ -527,6 +689,8 @@ class _PickerTile extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               value,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontFamily: 'Lexend',
                 fontSize: 14,
@@ -536,62 +700,6 @@ class _PickerTile extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-class _MoodSelector extends StatelessWidget {
-  final String selectedValue;
-  final ValueChanged<int> onSelected;
-
-  const _MoodSelector({required this.selectedValue, required this.onSelected});
-
-  static const _moods = [
-    (1, 'Rất tệ', Icons.sentiment_very_dissatisfied_rounded),
-    (2, 'Chưa ổn', Icons.sentiment_dissatisfied_rounded),
-    (3, 'Bình thường', Icons.sentiment_neutral_rounded),
-    (4, 'Khá tốt', Icons.sentiment_satisfied_rounded),
-    (5, 'Rất tốt', Icons.sentiment_very_satisfied_rounded),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      label: 'Chọn tâm trạng từ 1 đến 5',
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: _moods
-            .map((mood) {
-              final selected = selectedValue == mood.$1.toString();
-              return ChoiceChip(
-                avatar: Icon(
-                  mood.$3,
-                  size: 18,
-                  color: selected
-                      ? Colors.white
-                      : _AddMaternalHealthMetricScreenState._primary,
-                ),
-                label: Text(mood.$2),
-                selected: selected,
-                onSelected: (_) => onSelected(mood.$1),
-                selectedColor: _AddMaternalHealthMetricScreenState._primary,
-                labelStyle: TextStyle(
-                  fontFamily: 'Lexend',
-                  color: selected
-                      ? Colors.white
-                      : _AddMaternalHealthMetricScreenState._onSurface,
-                  fontWeight: FontWeight.w600,
-                ),
-                side: BorderSide(
-                  color: selected
-                      ? _AddMaternalHealthMetricScreenState._primary
-                      : _AddMaternalHealthMetricScreenState._outline,
-                ),
-              );
-            })
-            .toList(growable: false),
       ),
     );
   }

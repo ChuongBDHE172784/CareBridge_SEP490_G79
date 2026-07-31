@@ -1,8 +1,8 @@
 #!/bin/sh
 # This is a generated file; do not edit or check into version control.
-export "FLUTTER_ROOT=D:\flutter\flutter_windows_3.38.5-stable\flutter"
-export "FLUTTER_APPLICATION_PATH=D:\CareBridge_SEP490_G79\05_Development\CareBridgeMobileApp"
-export "FLUTTER_FRAMEWORK_SWIFT_PACKAGE_PATH=D:\CareBridge_SEP490_G79\05_Development\CareBridgeMobileApp\macos\Flutter\ephemeral\Packages\.packages\FlutterFramework"
+export "FLUTTER_ROOT=D:\Program Files\flutter"
+export "FLUTTER_APPLICATION_PATH=D:\SEP490\CareBridge_SEP490_G79\05_Development\CareBridgeMobileApp"
+export "FLUTTER_FRAMEWORK_SWIFT_PACKAGE_PATH=D:\SEP490\CareBridge_SEP490_G79\05_Development\CareBridgeMobileApp\macos\Flutter\ephemeral\Packages\.packages\FlutterFramework"
 export "COCOAPODS_PARALLEL_CODE_SIGN=true"
 export "FLUTTER_BUILD_DIR=build"
 export "FLUTTER_BUILD_NAME=1.0.0"

@@ -3,6 +3,7 @@ package com.carebridge.backend.health.controller;
 import com.carebridge.backend.common.response.ApiResponse;
 import com.carebridge.backend.common.util.SecurityUtils;
 import com.carebridge.backend.health.dto.AddMetricRequest;
+import com.carebridge.backend.health.dto.MetricCapabilityResponse;
 import com.carebridge.backend.health.dto.MetricResponse;
 import com.carebridge.backend.health.dto.MetricTrendResponse;
 import com.carebridge.backend.health.dto.UpdateMetricRequest;
@@ -27,6 +28,16 @@ import java.util.UUID;
 public class JourneyMetricController {
 
     private final IHealthMetricService healthMetricService;
+
+    @GetMapping("/capabilities")
+    @PreAuthorize("hasRole('MOTHER')")
+    public ResponseEntity<ApiResponse<java.util.List<MetricCapabilityResponse>>> getCapabilities(
+            @PathVariable UUID journeyId,
+            Principal principal) {
+        var callerId = SecurityUtils.requireCurrentUserId(principal);
+        return ResponseEntity.ok(ApiResponse.success(
+                healthMetricService.getCapabilities(journeyId, callerId)));
+    }
 
     // UC25: Add maternal health metric
     @PostMapping

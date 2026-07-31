@@ -8,5 +8,6 @@ import java.util.UUID;
  */
 public record NotificationPreferencesResponse(
     UUID userId,
-    List<NotificationPreferenceItemDto> preferences
+    List<NotificationPreferenceItemDto> preferences,
+    List<Integer> appointmentReminderDefaults
 ) {}

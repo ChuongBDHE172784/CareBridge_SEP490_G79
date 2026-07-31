@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -17,4 +18,6 @@ public class CreateReminderResponse {
     private String recurrenceType;
     private String status;
     private Instant createdAt;
+    private List<Integer> notificationOffsetsMinutes;
+    private String timeZone;
 }

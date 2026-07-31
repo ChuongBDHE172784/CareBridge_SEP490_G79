@@ -2,7 +2,20 @@ export type ContentType = 'ARTICLE' | 'FAQ' | 'CHECKLIST';
 export type ContentStage = 'PRE_PREGNANCY' | 'PREGNANCY' | 'POSTPARTUM';
 export type ContentStatus = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'ARCHIVED';
 export type ChecklistTemplateStatus = 'DRAFT' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED' | 'ARCHIVED';
+export type ChecklistTemplateType = 'MANDATORY' | 'OPTIONAL';
 export type ContentDecision = 'APPROVE' | 'REJECT';
+export type ChecklistRecipientRole = 'MOTHER' | 'FAMILY';
+export type ChecklistTargetSubject = 'MOTHER' | 'BABY';
+export type ChecklistAnchorType = 'NONE' | 'LMP' | 'EDD' | 'DELIVERY_DATE' | 'BIRTH_DATE';
+export type ChecklistRangeUnit = 'DAY' | 'WEEK' | 'MONTH';
+
+export interface ChecklistSubstage {
+  code: string;
+  anchor: ChecklistAnchorType;
+  startInclusive: number;
+  endInclusive: number;
+  unit: ChecklistRangeUnit;
+}
 
 export interface ReviewFeedback {
   reason: string;
@@ -53,9 +66,10 @@ export interface ContentSearchItem {
 export interface ChecklistTemplate {
   id: string;
   name: string;
-  stage: ContentStage;
-  status: ContentStatus;
+  stage: ContentStage | null;
+  status: ChecklistTemplateStatus;
   description: string;
+  templateType: ChecklistTemplateType;
   items: ChecklistItem[];
   latestReviewFeedback?: ReviewFeedback | null;
 }
@@ -82,6 +96,16 @@ export interface ChecklistTemplateVersionSnapshot {
 
 export interface AdminChecklistTemplateDetail extends ChecklistTemplate {
   versionNo: number;
+  lineageId: string;
+  versionId: string;
+  recipientRoles: ChecklistRecipientRole[];
+  substage: ChecklistSubstage | null;
+  migrationReviewRequired: boolean;
+  distributionEnabled: boolean;
+  approvedAt: string | null;
+  approvedBy: string | null;
+  migrationReviewedAt?: string | null;
+  migrationReviewedBy?: string | null;
 }
 
 export interface ChecklistItem {
@@ -89,26 +113,35 @@ export interface ChecklistItem {
   itemText: string;
   order: number;
   isRequired: boolean;
+  targetSubject: ChecklistTargetSubject;
 }
 
 export interface ChecklistItemInput {
+  id?: string;
   itemText: string;
   order: number;
   isRequired: boolean;
+  targetSubject: ChecklistTargetSubject;
 }
 
 export interface CreateChecklistTemplatePayload {
   name: string;
   description?: string;
-  stage: ContentStage;
+  templateType: ChecklistTemplateType;
+  recipientRoles: ChecklistRecipientRole[];
+  stage: ContentStage | null;
+  substage: ChecklistSubstage | null;
   items: ChecklistItemInput[];
 }
 
 export interface UpdateChecklistTemplatePayload {
   name: string;
   description?: string;
-  stage: ContentStage;
-  status: ContentStatus;
+  templateType: ChecklistTemplateType;
+  recipientRoles: ChecklistRecipientRole[];
+  stage: ContentStage | null;
+  substage: ChecklistSubstage | null;
+  status: ChecklistTemplateStatus;
   // null/undefined = keep existing items unchanged; [] = clear all; non-empty = full replace
   items?: ChecklistItemInput[] | null;
 }
@@ -136,12 +169,19 @@ export interface UpdateCommunityTopicPayload extends Partial<CommunityTopicMutat
 export interface AdminChecklistTemplate {
   id: string;
   name: string;
+  lineageId?: string;
+  versionId?: string;
+  recipientRoles?: ChecklistRecipientRole[];
   stage: ContentStage | null;
+  substage?: ChecklistSubstage | null;
   status: ChecklistTemplateStatus;
   description: string;
+  templateType?: ChecklistTemplateType;
   versionNo: number;
   updatedAt: string | null;
   itemCount: number;
+  migrationReviewRequired?: boolean;
+  distributionEnabled?: boolean;
   latestReviewFeedback?: ReviewFeedback | null;
 }
 

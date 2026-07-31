@@ -9,6 +9,7 @@ import '../../aiTriage/models/triage_continuation.dart';
 import '../../aiTriage/services/triage_continuation_restore_coordinator.dart';
 import '../../aiTriage/widgets/triage_safety_entry_action.dart';
 import '../../baby/models/baby_model.dart';
+import '../../baby/screens/add_baby_screen.dart';
 import '../../baby/screens/baby_profile_detail_screen.dart';
 import '../../baby/services/baby_profile_selection_storage.dart';
 import '../../baby/services/baby_service.dart';
@@ -16,11 +17,16 @@ import '../../community/models/content_model.dart';
 import '../../community/screens/view_content_screen.dart';
 import '../../healthRecords/models/health_metric_model.dart';
 import '../../healthRecords/services/health_metric_service.dart';
-import '../../reminder/models/reminder_model.dart';
-import '../../reminder/services/reminder_service.dart';
 import '../models/journey_model.dart';
 import '../services/journey_service.dart';
 import 'pregnancy_outcome_screen.dart';
+
+bool shouldOpenLiveBirthAddBaby({
+  required PregnancyOutcome? previousOutcome,
+  required PregnancyOutcomeResult result,
+}) =>
+    result.outcomeType == PregnancyOutcome.liveBirth &&
+    previousOutcome != PregnancyOutcome.liveBirth;
 
 /// CB-009 - Mother Journey (UC-23, UC-24, UC-25, UC-26, UC-27, UC-28)
 /// Shows the active mother journey from GET /api/v1/journeys/me/dashboard.
@@ -67,14 +73,12 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
   late final JourneyService _journeyService;
   late final BabyService _babyService;
   final _babySelectionStorage = BabyProfileSelectionStorage();
-  final _reminderService = ReminderService.instance;
   final _healthMetricService = HealthMetricService();
   JourneyDashboard? _dashboard;
   List<JourneyTransition> _journeyHistory = [];
   List<JourneyTimelineItem> _journeyTimeline = [];
   List<BabyProfile> _babyProfiles = [];
   String? _selectedBabyProfileId;
-  List<Reminder> _reminders = [];
   MetricTrend? _weightTrend;
   MetricTrend? _heartRateTrend;
   _JourneySection _selectedSection = _JourneySection.pregnancy;
@@ -142,10 +146,13 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
 
   Future<void> _load() async {
     final generation = ++_loadGeneration;
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+    final isInitialLoad = _dashboard == null;
+    if (isInitialLoad) {
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
+    }
 
     try {
       final dashboard = await _journeyService.getDashboard();
@@ -155,12 +162,8 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
       final lastOpenedBabyProfileId = widget.loadSupportingData
           ? await _babySelectionStorage.readLastOpenedBabyProfileId()
           : null;
-      final reminders = widget.loadSupportingData
-          ? await _loadReminders()
-          : _reminders;
       final hasMaternalJourney =
           dashboard.hasActiveJourney && dashboard.isMaternalLifecycle;
-      final hasPregnancyJourney = hasMaternalJourney && dashboard.isPregnancy;
       final shouldShowBabyCare =
           !hasMaternalJourney &&
           (dashboard.journeyType == 'BABY_CARE' || babyProfiles.isNotEmpty);
@@ -190,13 +193,13 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
       }
       final weightTrend =
           widget.loadSupportingData &&
-              hasPregnancyJourney &&
+              hasMaternalJourney &&
               dashboard.journeyId != null
           ? await _loadWeightTrend(dashboard.journeyId!)
           : _weightTrend;
       final heartRateTrend =
           widget.loadSupportingData &&
-              hasPregnancyJourney &&
+              hasMaternalJourney &&
               dashboard.journeyId != null
           ? await _loadHeartRateTrend(dashboard.journeyId!)
           : _heartRateTrend;
@@ -211,7 +214,6 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
           babyProfiles,
           preferredBabyProfileId: lastOpenedBabyProfileId,
         );
-        _reminders = reminders;
         _weightTrend = weightTrend;
         _heartRateTrend = heartRateTrend;
         if (!_didChooseInitialSection && shouldShowBabyCare) {
@@ -226,6 +228,7 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
       );
     } on ApiException catch (_) {
       if (!mounted || generation != _loadGeneration) return;
+      if (!isInitialLoad) return;
       setState(() {
         _dashboard = null;
         _babyProfiles = [];
@@ -234,6 +237,7 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
       });
     } catch (_) {
       if (!mounted || generation != _loadGeneration) return;
+      if (!isInitialLoad) return;
       setState(() {
         _dashboard = null;
         _babyProfiles = [];
@@ -360,14 +364,6 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
     return _babyProfiles.isEmpty ? null : _babyProfiles.first;
   }
 
-  Future<List<Reminder>> _loadReminders() async {
-    try {
-      return await _reminderService.listTodayReminders();
-    } catch (_) {
-      return [];
-    }
-  }
-
   Future<MetricTrend?> _loadWeightTrend(String journeyId) async {
     try {
       return await _healthMetricService.getMetricTrend(
@@ -413,17 +409,19 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
   Future<void> _openPregnancySetup() async {
     final dashboard = _dashboard;
     final journeyId = dashboard?.journeyId;
-    final isPrePregnancyTransition =
+    final isExistingJourneyTransition =
         dashboard?.hasActiveJourney == true &&
-        dashboard?.isPrePregnancy == true &&
+        (dashboard?.isPrePregnancy == true || dashboard?.isPostpartum == true) &&
         journeyId != null;
-    final route = isPrePregnancyTransition
+    final route = isExistingJourneyTransition
         ? Uri(
             path: '/journey-setup',
             queryParameters: {
               'mode': 'edit',
               'journeyId': journeyId,
-              'transition': 'pre-pregnancy',
+              'transition': dashboard?.isPostpartum == true
+                  ? 'postpartum'
+                  : 'pre-pregnancy',
             },
           ).toString()
         : '/journey-setup';
@@ -490,18 +488,6 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
     if (mounted) await _load();
   }
 
-  Reminder? _nearestReminder(ReminderType type) {
-    final pending =
-        _reminders
-            .where(
-              (r) =>
-                  r.reminderType == type && r.status == ReminderStatus.pending,
-            )
-            .toList()
-          ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
-    return pending.firstOrNull;
-  }
-
   String _formatDate(DateTime? date) {
     if (date == null) return 'Chưa có';
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
@@ -530,7 +516,6 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
       onRefresh: widget.loadData ? _load : () async {},
       child: CustomScrollView(
         slivers: [
-          SliverToBoxAdapter(child: _buildHeader()),
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             sliver: SliverList(
@@ -540,6 +525,7 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
                     padding: EdgeInsets.only(top: 80),
                     child: Center(
                       child: CircularProgressIndicator(
+                        key: Key('mother-journey-initial-loading'),
                         color: _primaryContainer,
                       ),
                     ),
@@ -664,17 +650,12 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
     }
 
     if (dashboard.isPrePregnancy) {
+      final triageContext = _maternalTriageEntryContext(dashboard);
       return [
         _buildPrePregnancyCard(dashboard),
         const SizedBox(height: 16),
-        TriageSafetyEntryAction(
-          entryContext: TriageEntryContext.locked(
-            stage: TriageStageIntent.preconception,
-            origin: TriageOriginIntent.motherJourney,
-            journeyId: dashboard.journeyId,
-            originReferenceId: dashboard.journeyId,
-          ),
-        ),
+        TriageSafetyEntryAction(entryContext: triageContext),
+        ..._buildMaternalHealthBlock(triageContext),
         if (_historyError != null) ...[
           const SizedBox(height: 16),
           _buildHistoryErrorCard(),
@@ -689,32 +670,12 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
     }
 
     if (dashboard.isPostpartum) {
+      final triageContext = _maternalTriageEntryContext(dashboard);
       return [
         _buildPostpartumCard(dashboard),
         const SizedBox(height: 16),
-        TriageSafetyEntryAction(
-          entryContext: TriageEntryContext.locked(
-            stage: TriageStageIntent.postpartum,
-            origin: TriageOriginIntent.motherJourney,
-            journeyId: dashboard.journeyId,
-            originReferenceId: dashboard.journeyId,
-          ),
-        ),
-        if (dashboard.babyActionsEligible && dashboard.journeyId != null) ...[
-          const SizedBox(height: 16),
-          _postpartumAction(
-            key: const Key('postpartum-baby-linkage'),
-            icon: Icons.child_care_outlined,
-            title: 'Hồ sơ bé',
-            description: 'Tạo, liên kết hoặc để sau theo lựa chọn của bạn.',
-            onTap: () =>
-                context.push('/journeys/${dashboard.journeyId}/babies'),
-          ),
-        ],
-        if (dashboard.pregnancyOutcome != null) ...[
-          const SizedBox(height: 16),
-          _buildPregnancyOutcomeEntry(dashboard),
-        ],
+        TriageSafetyEntryAction(entryContext: triageContext),
+        ..._buildMaternalHealthBlock(triageContext),
         if (_historyError != null) ...[
           const SizedBox(height: 16),
           _buildHistoryErrorCard(),
@@ -730,31 +691,18 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
       ];
     }
 
+    final triageContext = _maternalTriageEntryContext(dashboard);
     return [
       _buildHeroCard(dashboard),
       const SizedBox(height: 16),
-      TriageSafetyEntryAction(
-        entryContext: TriageEntryContext.locked(
-          stage: TriageStageIntent.pregnancy,
-          origin: TriageOriginIntent.motherJourney,
-          journeyId: dashboard.journeyId,
-          originReferenceId: dashboard.journeyId,
-        ),
-      ),
+      TriageSafetyEntryAction(entryContext: triageContext),
       const SizedBox(height: 16),
       _buildDueDateCard(dashboard),
       const SizedBox(height: 16),
       _buildPregnancyOutcomeEntry(dashboard),
       const SizedBox(height: 16),
-      _buildNextAppointmentCard(),
-      const SizedBox(height: 16),
-      _buildVaccinationCard(),
-      const SizedBox(height: 16),
       _buildSetupSourceCard(dashboard),
-      const SizedBox(height: 24),
-      _buildMetricButtons(),
-      const SizedBox(height: 24),
-      _buildBentoSummary(),
+      ..._buildMaternalHealthBlock(triageContext),
       if (_historyError != null) ...[
         const SizedBox(height: 24),
         _buildHistoryErrorCard(),
@@ -765,6 +713,29 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
       ],
       const SizedBox(height: 16),
       _buildLifecycleContentEntry(),
+    ];
+  }
+
+  TriageEntryContext _maternalTriageEntryContext(JourneyDashboard dashboard) {
+    final stage = dashboard.isPrePregnancy
+        ? TriageStageIntent.preconception
+        : dashboard.isPostpartum
+        ? TriageStageIntent.postpartum
+        : TriageStageIntent.pregnancy;
+    return TriageEntryContext.locked(
+      stage: stage,
+      origin: TriageOriginIntent.motherJourney,
+      journeyId: dashboard.journeyId,
+      originReferenceId: dashboard.journeyId,
+    );
+  }
+
+  List<Widget> _buildMaternalHealthBlock(TriageEntryContext triageContext) {
+    return [
+      const SizedBox(height: 16),
+      _buildMetricButtons(triageContext),
+      const SizedBox(height: 24),
+      _buildBentoSummary(),
     ];
   }
 
@@ -864,8 +835,20 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
                     ),
                   ),
                 );
-                if (result != null && mounted && widget.loadData) {
-                  await _load();
+                if (result != null && mounted) {
+                  if (widget.loadData) await _load();
+                  if (shouldOpenLiveBirthAddBaby(
+                        previousOutcome: dashboard.pregnancyOutcome,
+                        result: result,
+                      ) &&
+                      mounted) {
+                    await context.push(
+                      '/babies/add',
+                      extra: const AddBabyRouteArgs(
+                        entryPoint: AddBabyEntryPoint.liveBirthTransition,
+                      ),
+                    );
+                  }
                 }
               },
         child: Container(
@@ -940,7 +923,7 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
           ),
           const SizedBox(height: 18),
           const Text(
-            'Hành trình sau sinh',
+            'Hành trình hậu sản',
             style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 24,
@@ -951,13 +934,31 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
           const SizedBox(height: 8),
           Text(
             dashboard.startDate == null
-                ? 'CareBridge đang đồng hành cùng mẹ trong giai đoạn phục hồi sau sinh.'
-                : 'Giai đoạn sau sinh bắt đầu từ ${_formatDate(dashboard.startDate)}.',
+                ? 'CareBridge đang đồng hành cùng mẹ trong giai đoạn phục hồi hậu sản.'
+                : 'Giai đoạn hậu sản bắt đầu từ ${_formatDate(dashboard.startDate)}.',
             style: const TextStyle(
               fontFamily: 'Lexend',
               fontSize: 14,
               height: 1.5,
               color: _onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 20),
+          FilledButton.icon(
+            key: const Key('postpartum-transition-action'),
+            onPressed: _openPregnancySetup,
+            icon: const Icon(Icons.arrow_forward_rounded),
+            label: const Text('Bắt đầu thai kỳ mới'),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(52),
+              backgroundColor: _primaryContainer,
+              foregroundColor: Colors.white,
+              shape: const StadiumBorder(),
+              textStyle: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -984,7 +985,7 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
           key: const Key('postpartum-safety-help'),
           icon: Icons.health_and_safety_outlined,
           title: 'Dấu hiệu cần hỗ trợ khẩn cấp',
-          description: 'Xem lựa chọn hỗ trợ dành riêng cho giai đoạn sau sinh.',
+          description: 'Xem lựa chọn hỗ trợ dành riêng cho giai đoạn hậu sản.',
           onTap: () => context.push('/postpartum-safety-help'),
           urgent: true,
         ),
@@ -1144,31 +1145,6 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
                 fontWeight: FontWeight.w700,
               ),
             ),
-          ),
-          const SizedBox(height: 8),
-          TextButton(
-            key: const Key('mother-pre-not-yet'),
-            onPressed: () {
-              setState(() => _selectedSection = _JourneySection.pregnancy);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text(
-                    'Hành trình chuẩn bị mang thai được giữ nguyên.',
-                  ),
-                ),
-              );
-            },
-            style: TextButton.styleFrom(
-              minimumSize: const Size.fromHeight(48),
-              foregroundColor: _primary,
-              shape: const StadiumBorder(),
-              textStyle: const TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            child: const Text('Chưa mang thai, giữ nguyên hành trình'),
           ),
         ],
       ),
@@ -1492,7 +1468,7 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
       case 'PREGNANCY':
         return 'Mang thai';
       case 'POSTPARTUM':
-        return 'Sau sinh';
+        return 'Hậu sản';
       case 'BABY_CARE':
         return 'Nuôi con';
       default:
@@ -1570,27 +1546,6 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
     ];
   }
 
-  Widget _buildHeader() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 16, 8, 16),
-      child: Row(
-        children: [
-          const Expanded(
-            child: Text(
-              'Hành trình của Mẹ',
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                color: _onSurface,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildSectionTabs() {
     return Container(
       padding: const EdgeInsets.all(4),
@@ -1603,14 +1558,14 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
         children: [
           Expanded(
             child: _buildSectionTab(
-              label: 'Mang thai',
+              label: 'Mẹ',
               icon: Icons.pregnant_woman_rounded,
               section: _JourneySection.pregnancy,
             ),
           ),
           Expanded(
             child: _buildSectionTab(
-              label: 'Nuôi con',
+              label: 'Bé',
               icon: Icons.child_care_rounded,
               section: _JourneySection.babyCare,
             ),
@@ -1919,160 +1874,6 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
     );
   }
 
-  Widget _buildNextAppointmentCard() {
-    final appointment = _nearestReminder(ReminderType.appointment);
-    final hasData = appointment != null;
-
-    return GestureDetector(
-      onTap: hasData
-          ? () => context.push('/reminders/detail/${appointment.id}')
-          : null,
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF2EAE4),
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Lịch hẹn tiếp theo',
-                        style: TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: _onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        appointment?.title ?? 'Chưa có lịch khám sắp tới',
-                        style: const TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 14,
-                          color: _onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: const BoxDecoration(
-                    color: _surfaceContainerLowest,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.calendar_today,
-                    color: _primary,
-                    size: 20,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            const Divider(color: Color(0xFFD6C2BD), thickness: 1),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                const Icon(Icons.schedule, size: 16, color: _onSurfaceVariant),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    appointment != null
-                        ? [
-                            _formatDateTime(appointment.scheduledAt),
-                            if (appointment.location != null)
-                              appointment.location!,
-                          ].join(' • ')
-                        : 'Chưa có dữ liệu',
-                    style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 14,
-                      color: _onSurfaceVariant,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildVaccinationCard() {
-    final vaccination = _nearestReminder(ReminderType.vaccination);
-    final hasData = vaccination != null;
-
-    return GestureDetector(
-      onTap: hasData
-          ? () => context.push('/reminders/detail/${vaccination.id}')
-          : null,
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF2EAE4),
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: const BoxDecoration(
-                color: _surfaceContainerLowest,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.vaccines, color: _primary, size: 20),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Thông tin tiêm phòng',
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: _onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    vaccination != null
-                        ? '${vaccination.title} (${_formatDateTime(vaccination.scheduledAt)})'
-                        : 'Chưa có lịch tiêm phòng',
-                    style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 14,
-                      color: _onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              hasData ? Icons.chevron_right : Icons.info_outline_rounded,
-              color: _onSurfaceVariant,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildSetupSourceCard(JourneyDashboard dashboard) {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -2115,7 +1916,7 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
     );
   }
 
-  Widget _buildMetricButtons() {
+  Widget _buildMetricButtons(TriageEntryContext triageContext) {
     final metrics = [
       (Icons.monitor_heart_outlined, 'Chỉ số sức khỏe', 'WEIGHT'),
       (Icons.history_edu, 'Hồ sơ sức khỏe', '/health-records'),
@@ -2131,50 +1932,59 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
           final metric = entry.value;
           return Padding(
             padding: EdgeInsets.only(right: i < metrics.length - 1 ? 12 : 0),
-            child: GestureDetector(
-              onTap: () async {
-                if (metric.$3 == 'WEIGHT') {
-                  await _openMetricRoute(metric.$3);
-                  return;
-                }
-                context.push(metric.$3);
-              },
-              child: Container(
-                width: 104,
-                padding: const EdgeInsets.symmetric(
-                  vertical: 16,
-                  horizontal: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: _surfaceContainerLowest,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: _outlineVariant),
-                ),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: const BoxDecoration(
-                        color: _surfaceContainerHigh,
-                        shape: BoxShape.circle,
+            child: Semantics(
+              button: true,
+              label: metric.$2,
+              excludeSemantics: true,
+              child: GestureDetector(
+                onTap: () async {
+                  if (metric.$3 == 'WEIGHT') {
+                    await _openMetricRoute(metric.$3);
+                    return;
+                  }
+                  if (metric.$3 == '/triage/intake') {
+                    context.push(metric.$3, extra: triageContext);
+                    return;
+                  }
+                  context.push(metric.$3);
+                },
+                child: Container(
+                  width: 104,
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 16,
+                    horizontal: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _surfaceContainerLowest,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: _outlineVariant),
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: const BoxDecoration(
+                          color: _surfaceContainerHigh,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(metric.$1, color: _primary, size: 20),
                       ),
-                      child: Icon(metric.$1, color: _primary, size: 20),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      metric.$2,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: _onSurfaceVariant,
+                      const SizedBox(height: 8),
+                      Text(
+                        metric.$2,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: _onSurfaceVariant,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),

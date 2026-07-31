@@ -63,7 +63,7 @@
 
 | # | Spec goc (sai / thieu) | Thuc te (schema / policy) | Fix ap dung trong test |
 |---|------------------------|--------------------------|------------------------|
-| L1 | SRS does not specify which fields are immutable | ADR-BABY-003: owner_user_id, status, related_journey_id are immutable | Test verifies these fields remain unchanged after update |
+| L1 | SRS does not specify which fields are immutable | ADR-BABY-003: owner_user_id and status are immutable; standalone baby contract has no Mother Journey field | Test verifies immutable fields remain unchanged and response has no lifecycle relation |
 | L2 | SRS does not specify behavior for ARCHIVED baby | ADR-BABY-004: reject update on ARCHIVED baby with BABY-012 | Test verifies 400 response for archived baby |
 | L3 | SRS does not specify partial update behavior | PUT replaces all updatable fields; null fields are set to null | Test verifies null fields are written as null |
 

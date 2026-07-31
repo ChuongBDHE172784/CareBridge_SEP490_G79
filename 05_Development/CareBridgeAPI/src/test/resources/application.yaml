@@ -32,6 +32,10 @@ logging:
     com.carebridge.backend: DEBUG
 
 carebridge:
+  features:
+    # Background reconciliation is tested explicitly; keep unrelated Spring
+    # test contexts deterministic and free from scheduled database writes.
+    checklist-distribution-v2: false
   triage:
     disclaimer:
       # CB-TRIAGE-CONSENT-IMP-001-TEST FX-005 — synthetic single-oracle values (L4).

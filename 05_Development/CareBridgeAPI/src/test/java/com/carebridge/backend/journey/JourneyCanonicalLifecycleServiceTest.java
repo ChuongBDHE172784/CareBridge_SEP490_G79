@@ -226,6 +226,53 @@ class JourneyCanonicalLifecycleServiceTest {
     }
 
     @Test
+    void postpartumToPregnancy_reusesJourneyAndOpensNewOutcomeEpoch() {
+        MotherJourney current = JourneyLifecycleTestFactory.activePostpartum();
+        when(journeyRepository.findById(current.getId())).thenReturn(Optional.of(current));
+        when(journeyRepository.saveAndFlush(any())).thenAnswer(invocation -> {
+            MotherJourney saved = invocation.getArgument(0);
+            saved.setVersion(4L);
+            return saved;
+        });
+        when(transitionRepository.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var response = service.updateJourney(
+                JourneyLifecycleTestFactory.MOTHER_ID,
+                current.getId(),
+                JourneyLifecycleTestFactory.startNewPregnancyFromPostpartum());
+
+        assertThat(response.getJourneyId()).isEqualTo(current.getId());
+        assertThat(current.getJourneyType()).isEqualTo(JourneyType.PREGNANCY);
+        assertThat(current.getStatus()).isEqualTo(JourneyStatus.ACTIVE);
+        assertThat(current.getPregnancyOutcome()).isNull();
+        assertThat(current.getPregnancyOutcomeDate()).isNull();
+        assertThat(current.getDeliveryDate()).isNull();
+        ArgumentCaptor<MotherJourneyTransition> history =
+                ArgumentCaptor.forClass(MotherJourneyTransition.class);
+        verify(transitionRepository).saveAndFlush(history.capture());
+        assertThat(history.getValue().getEventType()).isEqualTo(JourneyTransitionType.STAGE_CHANGED);
+        assertThat(history.getValue().getSource()).isEqualTo(JourneyDateSource.SYSTEM_DERIVED);
+        assertThat(history.getValue().getReason()).isEqualTo("POSTPARTUM_NEW_PREGNANCY_EPOCH");
+        assertThat(history.getValue().getChanges())
+                .containsKeys("pregnancyOutcome", "pregnancyOutcomeDate", "deliveryDate");
+    }
+
+    @Test
+    void postpartumToPregnancy_rejectsCompletedTargetEpoch() {
+        MotherJourney current = JourneyLifecycleTestFactory.activePostpartum();
+        var request = JourneyLifecycleTestFactory.startNewPregnancyFromPostpartum();
+        request.setStatus("COMPLETED");
+        when(journeyRepository.findById(current.getId())).thenReturn(Optional.of(current));
+
+        assertJourneyError("JOURNEY_NEW_EPOCH_MUST_REMAIN_ACTIVE", HttpStatus.BAD_REQUEST,
+                () -> service.updateJourney(
+                        JourneyLifecycleTestFactory.MOTHER_ID, current.getId(), request));
+
+        verify(journeyRepository, never()).saveAndFlush(any());
+        verify(transitionRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
     void jrnTc004_invalidOrTerminalTransitionHasNoSideEffects() {
         MotherJourney completed = JourneyLifecycleTestFactory.completedJourney();
         when(journeyRepository.findById(completed.getId())).thenReturn(Optional.of(completed));

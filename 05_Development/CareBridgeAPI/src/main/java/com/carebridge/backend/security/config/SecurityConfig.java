@@ -1,7 +1,6 @@
 package com.carebridge.backend.security.config;
 
 import com.carebridge.backend.security.jwt.JwtAuthenticationFilter;
-import com.carebridge.backend.baby.security.BabyLinkBoundaryAuditFilter;
 import com.carebridge.backend.systemconfiguration.security.MaintenanceModeFilter;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -35,9 +34,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final BabyLinkBoundaryAuditFilter babyLinkBoundaryAuditFilter;
     private final MaintenanceModeFilter maintenanceModeFilter;
-
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
@@ -72,7 +69,8 @@ public class SecurityConfig {
                         // Unauthenticated requests → 401 (per CNT82-TC-SEC-001, ADR-COM-*)
                         // Admin / privileged write endpoints
                         .requestMatchers("/api/v1/consent/grants/**").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/admin/audit-logs").hasRole("SYSTEM_ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/admin/audit-logs")
+                                .hasAnyRole("SYSTEM_ADMIN", "OPERATIONS")
                         .requestMatchers(HttpMethod.GET, "/api/v1/moderator/community/dashboard").hasRole("MODERATOR")
                         .requestMatchers(HttpMethod.GET, "/api/v1/admin/moderation/queue").hasRole("MODERATOR")
                         // CB-MOD-IMP-004: added retroactively — @PreAuthorize + the /api/v1/** fallback
@@ -97,8 +95,7 @@ public class SecurityConfig {
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(maintenanceModeFilter, JwtAuthenticationFilter.class)
-                .addFilterAfter(babyLinkBoundaryAuditFilter, MaintenanceModeFilter.class);
+                .addFilterAfter(maintenanceModeFilter, JwtAuthenticationFilter.class);
         return http.build();
     }
 
@@ -106,14 +103,6 @@ public class SecurityConfig {
     public FilterRegistrationBean<MaintenanceModeFilter> maintenanceModeRegistration() {
         FilterRegistrationBean<MaintenanceModeFilter> registration = new FilterRegistrationBean<>();
         registration.setFilter(maintenanceModeFilter);
-        registration.setEnabled(false);
-        return registration;
-    }
-
-    @Bean
-    public FilterRegistrationBean<BabyLinkBoundaryAuditFilter> babyLinkBoundaryAuditRegistration() {
-        FilterRegistrationBean<BabyLinkBoundaryAuditFilter> registration = new FilterRegistrationBean<>();
-        registration.setFilter(babyLinkBoundaryAuditFilter);
         registration.setEnabled(false);
         return registration;
     }

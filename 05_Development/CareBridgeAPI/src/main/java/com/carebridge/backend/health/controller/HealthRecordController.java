@@ -68,8 +68,8 @@ public class HealthRecordController {
     }
 
     // UC42: View health record timeline
-    @GetMapping("/timeline")
-    @PreAuthorize("isAuthenticated()")
+    @GetMapping({"", "/timeline"})
+    @PreAuthorize("hasRole('MOTHER')")
     public ResponseEntity<ApiResponse<TimelineResponse>> getTimeline(
             @Valid TimelineFilter filter,
             Principal principal) {

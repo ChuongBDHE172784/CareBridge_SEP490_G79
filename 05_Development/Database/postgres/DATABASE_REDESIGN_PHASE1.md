@@ -242,7 +242,7 @@ Matrix này bao phủ chính xác 74 live MERGE sources. Không còn `INVALID_ME
 |---|---|---|---|
 | `audit_logs`, `baby_journey_link_cleanup_summary` | `audit_events` | Preserve IDs, actor/entity, before/after payload, checksum; append-only | LOW |
 | `baby_daily_logs` | `care_logs` | Typed log with scalar subject/type/time and versioned payload | LOW |
-| `baby_link_submissions` | `care_subjects`, `mother_journey_events` | Current subject link plus immutable idempotent link event | MEDIUM |
+| `baby_link_submissions` | `audit_events` only | Retired command source: preserve sanitized historical evidence only; do not recreate a current subject-to-journey relation | LOW |
 | `baby_profiles` | `persons`, `care_subjects` | Split human identity and baby-care attributes; never create account | LOW |
 | `care_tasks` | `family_tasks` | Preserve group, creator, assignee, due/status/completion | LOW |
 | `reminders` | `scheduled_care_items` | Preserve recurrence, snooze, completion/skip and source FK | MEDIUM |

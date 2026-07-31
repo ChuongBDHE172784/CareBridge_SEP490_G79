@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type {
   AdminChecklistTemplate,
+  AdminChecklistTemplateDetail,
   ChecklistTemplateStatus,
   ContentStage,
 } from '../models/content';
@@ -10,7 +11,7 @@ import {
   STAGE_LABELS,
   STAGE_OPTIONS,
 } from '../models/content';
-import { archiveChecklistTemplate, fetchAdminChecklists } from '../services/contentApi';
+import { archiveChecklistTemplate, fetchAdminChecklistTemplates } from '../services/contentApi';
 import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
 import { SortableTableHeader, type SortDirection } from '../components/SortableTableHeader';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
@@ -20,31 +21,29 @@ const PAGE_SIZE = 10;
 
 function stageBadgeClass(stage: ContentStage | null): string {
   switch (stage) {
-    case 'PRE_PREGNANCY': return 'bg-surface-container-high text-on-surface-variant';
-    case 'PREGNANCY': return 'bg-secondary-container text-on-secondary-container';
-    case 'POSTPARTUM': return 'bg-[#E6F4EA] text-[#137333]';
-    case null: return 'bg-surface-container-high text-on-surface-variant';
+    case 'PRE_PREGNANCY': return 'bg-emerald-100 text-emerald-800';
+    case 'PREGNANCY': return 'bg-amber-100 text-amber-800';
+    case 'POSTPARTUM': return 'bg-rose-100 text-rose-800';
+    case null: return 'bg-surface-container-low text-on-surface-variant';
   }
 }
 
 function statusBadgeClass(status: ChecklistTemplateStatus, returned: boolean): string {
   if (returned) return 'bg-error-container text-error';
   switch (status) {
-    case 'APPROVED': return 'bg-[#E6F4EA] text-[#137333]';
-    case 'REJECTED': return 'bg-[#FDE8E5] text-[#9F3A32]';
-    case 'PENDING_REVIEW': return 'bg-[#FFF3E0] text-[#E65100]';
-    case 'ARCHIVED': return 'bg-[#F5F5F5] text-[#616161]';
-    case 'DRAFT': return 'bg-surface-container-highest text-primary';
+    case 'APPROVED': return 'bg-emerald-100 text-emerald-800';
+    case 'REJECTED': return 'bg-error-container text-error';
+    case 'PENDING_REVIEW': return 'bg-amber-100 text-amber-800';
+    case 'ARCHIVED': return 'bg-surface-container-low text-outline';
+    case 'DRAFT': return 'bg-surface-container-low text-on-surface-variant';
   }
 }
 
-function formatUpdatedAt(value: string | null): string {
-  if (!value) return 'Chưa cập nhật';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime())
-    ? 'Chưa cập nhật'
-    : new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium' }).format(date);
-}
+type ChecklistListRow = AdminChecklistTemplateDetail & Pick<Partial<AdminChecklistTemplate>, 'itemCount'>;
+
+const recipientLabel = (role: 'MOTHER' | 'FAMILY') => (role === 'MOTHER' ? 'Mẹ' : 'Gia đình');
+const targetLabel = (target: 'MOTHER' | 'BABY') => (target === 'MOTHER' ? 'Mẹ' : 'Em bé');
+const warmBadge = 'inline-flex shrink-0 items-center rounded-full bg-surface-container-low px-3 py-1 text-xs font-semibold text-primary';
 
 const STATUS_TABS: { key: string; label: string; status?: ChecklistTemplateStatus }[] = [
   { key: 'all', label: 'Tất cả' },
@@ -55,7 +54,7 @@ const STATUS_TABS: { key: string; label: string; status?: ChecklistTemplateStatu
 
 export default function ChecklistListPage() {
   const navigate = useNavigate();
-  const [checklists, setChecklists] = useState<AdminChecklistTemplate[]>([]);
+  const [checklists, setChecklists] = useState<ChecklistListRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionError, setActionError] = useState('');
@@ -66,8 +65,8 @@ export default function ChecklistListPage() {
   const [page, setPage] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-  const [sortKey, setSortKey] = useState<'name' | 'stage' | 'itemCount' | 'status' | 'updatedAt'>('updatedAt');
-  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [sortKey, setSortKey] = useState<'name' | 'stage' | 'itemCount' | 'status'>('name');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const latestRequestId = useRef(0);
   const archivingIdRef = useRef<string | null>(null);
   const debouncedKeyword = useDebouncedValue(searchInput.trim());
@@ -83,7 +82,7 @@ export default function ChecklistListPage() {
     setIsLoading(true);
     setError('');
     try {
-      const result = await fetchAdminChecklists({
+      const result = await fetchAdminChecklistTemplates({
         stage: stageFilter || undefined,
         status: statusFilter || undefined,
         ...(debouncedKeyword ? { keyword: debouncedKeyword } : {}),
@@ -125,12 +124,11 @@ export default function ChecklistListPage() {
     };
   }, [loadData]);
 
-
   useEffect(() => {
     setActionError('');
   }, [page, stageFilter, statusFilter, debouncedKeyword]);
 
-  const handleDelete = async (checklist: AdminChecklistTemplate) => {
+  const handleDelete = async (checklist: ChecklistListRow) => {
     if (checklist.status === 'ARCHIVED' || archivingIdRef.current !== null) return;
 
     setActionError('');
@@ -160,12 +158,8 @@ export default function ChecklistListPage() {
     switch (sortKey) {
       case 'name': return checklist.name;
       case 'stage': return checklist.stage ? STAGE_LABELS[checklist.stage] : '';
-      case 'itemCount': return checklist.itemCount;
+      case 'itemCount': return checklist.items?.length ?? checklist.itemCount ?? 0;
       case 'status': return checklist.latestReviewFeedback ? 'Cần chỉnh sửa' : CHECKLIST_STATUS_LABELS[checklist.status];
-      case 'updatedAt': {
-        const timestamp = new Date(checklist.updatedAt ?? 0).getTime();
-        return Number.isNaN(timestamp) ? 0 : timestamp;
-      }
     }
   }), [checklists, sortDirection, sortKey]);
 
@@ -175,9 +169,9 @@ export default function ChecklistListPage() {
   };
 
   return (
-    <div className="p-8 font-sans">
+    <main data-testid="checklist-list-page" className="min-h-screen bg-background p-8 font-sans">
       {/* Header */}
-      <div className="flex justify-between items-start mb-6 flex-col md:flex-row gap-4">
+      <div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-[26px] font-bold text-on-surface m-0">Quản lý Checklist</h1>
           <p className="text-on-surface-variant text-sm mt-1">
@@ -188,7 +182,7 @@ export default function ChecklistListPage() {
           type="button"
           aria-label="Tạo checklist mới"
           onClick={() => navigate('/content/checklists/create')}
-          className="flex items-center gap-2 py-3 px-6 rounded-full bg-primary text-on-primary border-0 text-sm font-semibold cursor-pointer whitespace-nowrap self-start md:self-auto"
+          className="inline-flex items-center gap-2 py-2.5 px-6 rounded-full bg-primary text-on-primary text-sm font-semibold shadow-md hover:bg-primary/90 cursor-pointer transition-all active:scale-95 self-start md:self-auto"
         >
           <span aria-hidden="true" className="material-symbols-outlined text-lg">add</span>
           Tạo Checklist
@@ -196,15 +190,15 @@ export default function ChecklistListPage() {
       </div>
 
       {actionError && (
-        <div role="alert" className="bg-error-container rounded-2xl p-4 mb-4 text-error text-sm">
+        <div role="alert" className="mb-4 rounded-2xl border border-error-container bg-error-container/60 p-4 text-sm font-semibold text-error">
           {actionError}
         </div>
       )}
 
-      {/* Status tabs + Filter controls */}
-      <div className="flex justify-between items-center mb-5 flex-wrap gap-3">
+      {/* Action & Filter Bar */}
+      <div className="bg-surface rounded-2xl p-4 shadow-sm border border-surface-container-highest mb-6 flex flex-col md:flex-row items-center justify-between gap-4">
         {/* Status Tab buttons */}
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-2 flex-wrap w-full md:w-auto">
           {STATUS_TABS.map((tab) => {
             const isActive = tab.status === undefined ? statusFilter === '' : statusFilter === tab.status;
             return (
@@ -215,10 +209,10 @@ export default function ChecklistListPage() {
                   setStatusFilter(tab.status ?? '');
                   setPage(0);
                 }}
-                className={`flex items-center gap-1.5 py-2 px-[18px] rounded-full text-[13px] font-semibold cursor-pointer transition-colors ${
+                className={`py-2 px-4 rounded-full text-xs font-semibold cursor-pointer transition-all ${
                   isActive
-                    ? 'border-2 border-primary bg-surface-container-low text-primary'
-                    : 'border border-outline-variant bg-transparent text-on-surface-variant hover:bg-surface-container-low'
+                    ? 'bg-primary text-on-primary shadow-sm'
+                    : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-bright'
                 }`}
               >
                 {tab.label}
@@ -228,7 +222,7 @@ export default function ChecklistListPage() {
         </div>
 
         {/* Filters */}
-        <div className="flex gap-2 flex-wrap items-center">
+        <div className="flex gap-2 flex-wrap items-center w-full md:w-auto justify-end">
           <div className="relative min-w-[240px] flex-1 sm:flex-none">
             <span aria-hidden="true" className="material-symbols-outlined absolute left-[14px] top-1/2 -translate-y-1/2 text-xl text-outline">search</span>
             <input
@@ -246,7 +240,7 @@ export default function ChecklistListPage() {
               setStageFilter(event.target.value as ContentStage | '');
               setPage(0);
             }}
-            className="py-2.5 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface-variant cursor-pointer font-sans"
+            className="py-2.5 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface-variant cursor-pointer font-sans focus:outline-none focus:ring-2 focus:ring-primary/20"
           >
             <option value="">Tất cả giai đoạn</option>
             {STAGE_OPTIONS.map(({ value, label }) => (
@@ -261,7 +255,7 @@ export default function ChecklistListPage() {
               setStatusFilter(event.target.value as ChecklistTemplateStatus | '');
               setPage(0);
             }}
-            className="py-2.5 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface-variant cursor-pointer font-sans"
+            className="py-2.5 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface-variant cursor-pointer font-sans focus:outline-none focus:ring-2 focus:ring-primary/20"
           >
             <option value="">Tất cả trạng thái</option>
             {Object.entries(CHECKLIST_STATUS_LABELS).map(([value, label]) => (
@@ -285,8 +279,9 @@ export default function ChecklistListPage() {
             <button
               type="button"
               onClick={() => void loadData()}
-              className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-on-primary border-0 cursor-pointer"
+              className="inline-flex items-center gap-2 py-2.5 px-5 rounded-full bg-primary text-on-primary text-sm font-semibold hover:bg-primary/90 cursor-pointer"
             >
+              <span aria-hidden="true" className="material-symbols-outlined text-lg">refresh</span>
               Thử lại
             </button>
           </div>
@@ -297,85 +292,105 @@ export default function ChecklistListPage() {
                 <caption className="sr-only">Danh sách checklist quản trị theo trạng thái duyệt thật</caption>
                 <thead>
                   <tr className="border-b-2 border-surface-container-highest text-left">
-                    {[
-                      ['name', 'TIÊU ĐỀ'],
-                      ['stage', 'GIAI ĐOẠN'],
-                      ['itemCount', 'SỐ MỤC'],
-                      ['status', 'TRẠNG THÁI'],
-                      ['updatedAt', 'CẬP NHẬT'],
-                    ].map(([key, label]) => (
-                      <SortableTableHeader
-                        key={key}
-                        label={label}
-                        active={sortKey === key}
-                        direction={sortDirection}
-                        onClick={() => changeSort(key as typeof sortKey)}
-                      />
-                    ))}
+                    <SortableTableHeader label="TIÊU ĐỀ" active={sortKey === 'name'} direction={sortDirection} onClick={() => changeSort('name')} />
+                    <th scope="col" className="py-3 px-2 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">NGƯỜI NHẬN</th>
+                    <SortableTableHeader label="GIAI ĐOẠN / CỬA SỔ" active={sortKey === 'stage'} direction={sortDirection} onClick={() => changeSort('stage')} />
+                    <SortableTableHeader label="MỤC / ĐỐI TƯỢNG" active={sortKey === 'itemCount'} direction={sortDirection} onClick={() => changeSort('itemCount')} />
+                    <SortableTableHeader label="TRẠNG THÁI" active={sortKey === 'status'} direction={sortDirection} onClick={() => changeSort('status')} />
                     <th scope="col" className="px-2 py-3 text-[11px] font-semibold uppercase tracking-[0.05em] text-outline">THAO TÁC</th>
                   </tr>
                 </thead>
                 <tbody>
                   {sortedChecklists.map((checklist) => (
-                    <tr key={checklist.id} className="border-b border-surface-container-highest hover:bg-surface-bright">
+                    <tr key={checklist.id} className="border-b border-surface-container-highest hover:bg-surface-bright transition-colors">
                       <td className="py-3.5 px-2 max-w-[340px]">
-                        <div className="font-semibold text-sm text-on-surface">{checklist.name}</div>
+                        <div className="text-sm font-semibold text-on-surface">{checklist.name}</div>
                         <ReviewFeedbackNotice feedback={checklist.latestReviewFeedback} compact />
                         {checklist.description && (
-                          <div className="mt-0.5 line-clamp-2 text-xs text-on-surface-variant">{checklist.description}</div>
+                          <div className="mt-0.5 line-clamp-2 text-xs text-outline">{checklist.description}</div>
                         )}
                       </td>
-                      <td className="py-3.5 px-2 text-[13px] text-on-surface-variant font-medium">
-                        <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${stageBadgeClass(checklist.stage)}`}>
-                          {checklist.stage ? STAGE_LABELS[checklist.stage] : 'Không xác định'}
-                        </span>
+                      <td className="py-3.5 px-2">
+                        <div className="flex flex-wrap gap-1.5">
+                          {(checklist.recipientRoles ?? []).map((role) => (
+                            <span key={role} aria-label={`Người nhận: ${recipientLabel(role)}`} className={warmBadge}>
+                              {recipientLabel(role)}
+                            </span>
+                          ))}
+                          {(checklist.recipientRoles ?? []).length === 0 && (
+                            <span className="text-xs font-medium text-outline">Chưa cấu hình</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-2 py-3.5 text-[13px] font-medium text-on-surface-variant">
+                        <div className="flex flex-col items-start gap-1.5">
+                          <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${stageBadgeClass(checklist.stage)}`}>
+                            {checklist.stage ? STAGE_LABELS[checklist.stage] : 'Không áp dụng'}
+                          </span>
+                          <span className="inline-flex items-center rounded-full bg-surface-container-low px-2.5 py-0.5 text-xs text-on-surface-variant font-medium">{checklist.substage?.code ?? 'Không có cửa sổ'}</span>
+                        </div>
                       </td>
                       <td className="py-3.5 px-2">
-                        <span className="font-bold text-sm text-on-surface">{checklist.itemCount}</span>
-                        <span className="ml-1 text-xs text-on-surface-variant font-medium">mục</span>
+                        <div className="text-sm font-bold text-on-surface">
+                          {checklist.items?.length ?? checklist.itemCount ?? 0}
+                          <span className="ml-1 text-xs font-medium text-outline">mục</span>
+                        </div>
+                        <div className="mt-1.5 flex flex-wrap gap-1.5">
+                          {(checklist.items ?? []).slice().sort((a, b) => a.order - b.order).map((item) => (
+                            <span
+                              key={item.id}
+                              aria-label={`Mục ${item.order}: ${targetLabel(item.targetSubject)}`}
+                              className="inline-flex items-center rounded-full bg-surface-container-low px-2.5 py-0.5 text-xs font-medium text-primary"
+                            >
+                              Mục {item.order} · {targetLabel(item.targetSubject)}
+                            </span>
+                          ))}
+                        </div>
                       </td>
-                      <td className="py-3.5 px-2">
-                        <span className={`py-1 px-3.5 rounded-full text-xs font-semibold ${statusBadgeClass(checklist.status, Boolean(checklist.latestReviewFeedback))}`}>
+                      <td className="py-3.5 px-2 whitespace-nowrap">
+                        <span className={`inline-flex items-center whitespace-nowrap py-1 px-3 rounded-full text-xs font-semibold ${statusBadgeClass(checklist.status, Boolean(checklist.latestReviewFeedback))}`}>
                           {checklist.latestReviewFeedback ? 'Cần chỉnh sửa' : CHECKLIST_STATUS_LABELS[checklist.status]}
                         </span>
                       </td>
-                      <td className="py-3.5 px-2 text-[13px] text-outline">{formatUpdatedAt(checklist.updatedAt)}</td>
-                      <td className="py-3.5 px-2">
-                        <div className="flex gap-1">
+                      <td className="py-3.5 px-2 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5">
                           <button
                             type="button"
                             aria-label={`Xem checklist ${checklist.name}`}
                             onClick={() => navigate(`/content/checklists/${checklist.id}`)}
-                            className="w-8 h-8 rounded-lg border border-outline-variant bg-transparent cursor-pointer flex items-center justify-center hover:bg-surface-container-low"
+                              className="min-h-12 min-w-12 py-2.5 px-3 rounded-full border border-outline-variant bg-transparent cursor-pointer text-xs font-semibold text-primary flex items-center justify-center gap-1 hover:bg-surface-container-low"
                             title="Xem chi tiết"
                           >
                             <span aria-hidden="true" className="material-symbols-outlined text-base">visibility</span>
+                            Xem
                           </button>
                           <button
                             type="button"
                             aria-label={`Chỉnh sửa checklist ${checklist.name}`}
                             onClick={() => navigate(`/content/checklists/${checklist.id}/edit`)}
                             disabled={checklist.status !== 'DRAFT' && checklist.status !== 'PENDING_REVIEW'}
-                            className="w-8 h-8 rounded-lg border border-outline-variant bg-transparent cursor-pointer flex items-center justify-center hover:bg-surface-container-low disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                              className="min-h-12 min-w-12 py-2.5 px-3 rounded-full border border-outline-variant bg-surface text-on-surface-variant text-xs font-semibold cursor-pointer flex items-center justify-center gap-1 hover:bg-surface-container-low disabled:opacity-40"
                             title={checklist.status === 'DRAFT' || checklist.status === 'PENDING_REVIEW'
                               ? 'Chỉnh sửa'
                               : 'Checklist ở trạng thái này không thể chỉnh sửa trực tiếp'}
                           >
-                            <span aria-hidden="true" className="material-symbols-outlined text-primary text-base">edit</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-base">edit</span>
+                            Sửa
                           </button>
                           <button
                             type="button"
                             aria-label={`Xóa checklist ${checklist.name}`}
                             onClick={() => void handleDelete(checklist)}
                             disabled={checklist.status === 'ARCHIVED' || archivingId !== null}
-                            className="w-8 h-8 rounded-lg border border-outline-variant bg-transparent cursor-pointer flex items-center justify-center hover:bg-surface-container-low disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                              className="min-h-12 min-w-12 py-2.5 px-3 rounded-full border border-error-container bg-surface text-error text-xs font-semibold cursor-pointer flex items-center justify-center gap-1 hover:bg-error-container/20 disabled:opacity-40"
                             title={checklist.status === 'ARCHIVED'
                               ? 'Checklist đã xóa không thể xóa lại'
                               : archivingId === checklist.id
                                 ? 'Đang xóa...'
                                 : archivingId !== null ? 'Đang xử lý checklist khác...' : 'Xóa'}
                           >
-                            <span aria-hidden="true" className="material-symbols-outlined text-error text-base">delete</span>
+                            <span aria-hidden="true" className="material-symbols-outlined text-base">delete</span>
+                            Xóa
                           </button>
                         </div>
                       </td>
@@ -383,7 +398,7 @@ export default function ChecklistListPage() {
                   ))}
                   {checklists.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="py-12 text-center text-outline text-sm">Không có checklist phù hợp.</td>
+                      <td colSpan={6} className="py-12 text-center text-sm text-outline">Không có checklist phù hợp.</td>
                     </tr>
                   )}
                 </tbody>
@@ -398,9 +413,9 @@ export default function ChecklistListPage() {
                   aria-label="Trang checklist trước"
                   onClick={() => setPage((current) => Math.max(0, current - 1))}
                   disabled={page === 0}
-                  className="w-9 h-9 rounded-full border border-outline-variant bg-surface flex items-center justify-center text-primary disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  className={`w-9 h-9 rounded-full border border-outline-variant bg-surface flex items-center justify-center ${page === 0 ? 'opacity-40 cursor-default' : 'cursor-pointer hover:bg-surface-container-low'}`}
                 >
-                  <span aria-hidden="true" className="material-symbols-outlined text-lg">chevron_left</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-primary text-lg">chevron_left</span>
                 </button>
                 <span className="min-w-24 text-center text-sm font-semibold text-on-surface">Trang {totalPages === 0 ? 0 : page + 1}/{totalPages}</span>
                 <button
@@ -408,15 +423,15 @@ export default function ChecklistListPage() {
                   aria-label="Trang checklist sau"
                   onClick={() => setPage((current) => Math.min(totalPages - 1, current + 1))}
                   disabled={totalPages === 0 || page >= totalPages - 1}
-                  className="w-9 h-9 rounded-full border border-outline-variant bg-surface flex items-center justify-center text-primary disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  className={`w-9 h-9 rounded-full border border-outline-variant bg-surface flex items-center justify-center ${totalPages === 0 || page >= totalPages - 1 ? 'opacity-40 cursor-default' : 'cursor-pointer hover:bg-surface-container-low'}`}
                 >
-                  <span aria-hidden="true" className="material-symbols-outlined text-lg">chevron_right</span>
+                  <span aria-hidden="true" className="material-symbols-outlined text-primary text-lg">chevron_right</span>
                 </button>
               </nav>
             </footer>
           </>
         )}
       </section>
-    </div>
+    </main>
   );
 }

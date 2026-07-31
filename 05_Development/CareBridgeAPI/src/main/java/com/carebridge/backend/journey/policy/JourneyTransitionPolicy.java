@@ -32,6 +32,8 @@ public class JourneyTransitionPolicy {
         JourneyType requestedStage = request.getJourneyType();
         if (requestedStage != null && requestedStage != currentStage) {
             boolean allowed = currentStage == JourneyType.PRE_PREGNANCY
+                    && requestedStage == JourneyType.PREGNANCY
+                    || currentStage == JourneyType.POSTPARTUM
                     && requestedStage == JourneyType.PREGNANCY;
             if (!allowed) {
                 throw invalidTransition();

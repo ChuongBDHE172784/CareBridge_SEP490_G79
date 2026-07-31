@@ -392,7 +392,6 @@ public class JourneyServiceImpl implements IJourneyService {
                 .dateConfidence(journey.getDateConfidence())
                 .pregnancyOutcome(journey.getPregnancyOutcome())
                 .pregnancyOutcomeDate(journey.getPregnancyOutcomeDate())
-                .babyActionsEligible(isBabyActionsEligible(journey))
                 .build();
     }
 
@@ -407,20 +406,6 @@ public class JourneyServiceImpl implements IJourneyService {
             case BABY_CARE    -> DashboardStatus.BABY_CARE;
             case PRE_PREGNANCY -> DashboardStatus.PRE_PREGNANCY;
         };
-    }
-
-    private boolean isBabyActionsEligible(MotherJourney journey) {
-        if (outcomeEvidenceRepository == null
-                || journey.getJourneyType() != JourneyType.POSTPARTUM
-                || journey.getPregnancyOutcome() != PregnancyOutcomeType.LIVE_BIRTH) {
-            return false;
-        }
-        return outcomeEvidenceRepository.findFirstByJourneyIdOrderByRevisionNumberDesc(journey.getId())
-                .filter(evidence -> journey.getOwnerUserId().equals(evidence.getOwnerUserId()))
-                .filter(evidence -> evidence.getOutcomeType() == PregnancyOutcomeType.LIVE_BIRTH)
-                .filter(evidence -> Objects.equals(
-                        evidence.getOutcomeDate(), journey.getPregnancyOutcomeDate()))
-                .isPresent();
     }
 
     /** T1: weeks ≤ 13 | T2: weeks 14–26 | T3: weeks ≥ 27 */

@@ -1,6 +1,7 @@
 package com.carebridge.backend.health.service;
 
 import com.carebridge.backend.health.dto.AddMetricRequest;
+import com.carebridge.backend.health.dto.MetricCapabilityResponse;
 import com.carebridge.backend.health.dto.MetricDetailResponse;
 import com.carebridge.backend.health.dto.MetricResponse;
 import com.carebridge.backend.health.dto.MetricTrendResponse;
@@ -8,6 +9,7 @@ import com.carebridge.backend.health.dto.UpdateMetricRequest;
 import com.carebridge.backend.health.entity.MetricType;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 public interface IHealthMetricService {
@@ -34,4 +36,6 @@ public interface IHealthMetricService {
      * @throws com.carebridge.backend.common.exception.BusinessException (METRIC-020/404, METRIC-021/403, METRIC-022/400)
      */
     MetricTrendResponse getMetricTrend(UUID userId, UUID journeyId, MetricType metricType, Instant from, Instant to);
+
+    List<MetricCapabilityResponse> getCapabilities(UUID journeyId, UUID callerId);
 }

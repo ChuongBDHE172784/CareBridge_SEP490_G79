@@ -60,7 +60,7 @@ void main() {
       });
     }
 
-    testWidgets('PRE not-yet stays on the same canonical lifecycle', (
+    testWidgets('PRE card does not display redundant not-yet button', (
       tester,
     ) async {
       await _pumpJourney(
@@ -70,13 +70,7 @@ void main() {
       );
 
       final notYet = find.byKey(const Key('mother-pre-not-yet'));
-      expect(notYet, findsOneWidget);
-      await tester.ensureVisible(notYet);
-      await tester.tap(notYet);
-      await tester.pumpAndSettle();
-
-      expect(find.byType(MotherJourneyScreen), findsOneWidget);
-      expect(find.byType(ViewContentScreen), findsNothing);
+      expect(notYet, findsNothing);
     });
   });
 }

@@ -3,40 +3,41 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:uuid/uuid.dart';
 import '../models/baby_model.dart';
 import '../services/baby_service.dart';
-import '../services/baby_create_intent_store.dart';
-import '../../../core/network/api_client.dart';
 import '../../../core/auth/auth_state.dart';
-import '../../journey/services/journey_service.dart';
+import '../../../core/network/api_client.dart';
 
 /// Add Baby Profile screen — UC-31
 /// Collects nickname, birthDate, gender, birthWeightKg, birthLengthCm.
 /// Calls POST /api/v1/babies on submit.
 enum AddBabyEntryPoint {
   onboarding,
-  profileList;
+  profileList,
+  liveBirthTransition;
 
   bool get returnsHome => this == AddBabyEntryPoint.onboarding;
+  bool get returnsJourney => this == AddBabyEntryPoint.liveBirthTransition;
+}
+
+class AddBabyRouteArgs {
+  const AddBabyRouteArgs({required this.entryPoint});
+
+  final AddBabyEntryPoint entryPoint;
 }
 
 class AddBabyScreen extends StatefulWidget {
   final AddBabyEntryPoint entryPoint;
-  final String? relatedJourneyId;
   final BabyService? service;
-  final BabyCreateIntentStore? intentStore;
-  final String? accountId;
-  final Future<bool> Function(String journeyId)? eligibilityCheck;
+  final String? Function()? accountIdProvider;
+  final String? Function()? accessTokenProvider;
 
   const AddBabyScreen({
     super.key,
     this.entryPoint = AddBabyEntryPoint.profileList,
-    this.relatedJourneyId,
     this.service,
-    this.intentStore,
-    this.accountId,
-    this.eligibilityCheck,
+    this.accountIdProvider,
+    this.accessTokenProvider,
   });
 
   @override
@@ -64,75 +65,27 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
   DateTime? _birthDate;
   BabyGender _gender = BabyGender.unknown;
   bool _loading = false;
+  bool _deferring = false;
   String? _errorMsg;
 
   late final BabyService _service;
-  late final BabyCreateIntentStore _intentStore;
-  String? _submissionId;
-  String? _accountId;
-  int? _intentGeneration;
-  bool _restoringIntent = false;
-  bool? _linkEligible;
+  late final String? _requestAccountId;
 
   @override
   void initState() {
     super.initState();
     _service = widget.service ?? BabyService();
-    _intentStore = widget.intentStore ?? BabyCreateIntentStore();
-    _accountId = widget.accountId ?? AuthState.instance.userId;
-    if (_accountId != null) {
-      _intentGeneration = _intentStore.generationFor(_accountId!);
-    }
-    _submissionId = widget.relatedJourneyId == null ? null : const Uuid().v4();
-    if (widget.relatedJourneyId != null) _restoreLinkIntent();
+    _requestAccountId = _currentAccountId;
   }
 
-  Future<void> _restoreLinkIntent() async {
-    final accountId = _accountId;
-    final journeyId = widget.relatedJourneyId;
-    if (accountId == null || journeyId == null) {
-      if (mounted) setState(() => _linkEligible = false);
-      return;
-    }
-    setState(() => _restoringIntent = true);
-    try {
-      final eligible = widget.eligibilityCheck != null
-          ? await widget.eligibilityCheck!(journeyId)
-          : await _serverEligibility(journeyId);
-      if (!mounted ||
-          accountId != (widget.accountId ?? AuthState.instance.userId)) {
-        return;
-      }
-      if (!eligible) {
-        setState(() => _linkEligible = false);
-        return;
-      }
-      final intent = await _intentStore.read(accountId, journeyId);
-      if (!mounted ||
-          accountId != (widget.accountId ?? AuthState.instance.userId)) {
-        return;
-      }
-      if (intent != null) {
-        _submissionId = intent.submissionId;
-        _nicknameCtrl.text = intent.nickname;
-        _birthDate = DateTime.tryParse(intent.birthDate);
-        if (_birthDate != null) _dateCtrl.text = _displayDate(_birthDate!);
-        _gender = intent.gender;
-        _weightCtrl.text = intent.birthWeightKg?.toString() ?? '';
-        _lengthCtrl.text = intent.birthLengthCm?.toString() ?? '';
-      }
-      setState(() => _linkEligible = true);
-    } catch (_) {
-      if (mounted) setState(() => _linkEligible = false);
-    } finally {
-      if (mounted) setState(() => _restoringIntent = false);
-    }
-  }
+  String? get _currentAccountId =>
+      widget.accountIdProvider?.call() ?? AuthState.instance.userId;
 
-  Future<bool> _serverEligibility(String journeyId) async {
-    final dashboard = await JourneyService().getDashboard();
-    return dashboard.babyActionsEligible && dashboard.journeyId == journeyId;
-  }
+  String? get _currentAccessToken =>
+      widget.accessTokenProvider?.call() ?? AuthState.instance.accessToken;
+
+  bool get _isCurrentAccount =>
+      _requestAccountId != null && _requestAccountId == _currentAccountId;
 
   @override
   void dispose() {
@@ -177,7 +130,25 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
   }
 
   Future<void> _submit() async {
-    if (widget.relatedJourneyId != null && _linkEligible != true) return;
+    if (_loading || _deferring) return;
+    final requestAccountId = _requestAccountId;
+    if (requestAccountId == null ||
+        requestAccountId.isEmpty ||
+        !_isCurrentAccount) {
+      setState(
+        () => _errorMsg =
+            'Phiên đăng nhập đã thay đổi. Vui lòng mở lại biểu mẫu.',
+      );
+      return;
+    }
+    final requestToken = _currentAccessToken;
+    if (requestToken == null || requestToken.isEmpty || !_isCurrentAccount) {
+      setState(
+        () => _errorMsg =
+            'Phiên đăng nhập đã thay đổi. Vui lòng mở lại biểu mẫu.',
+      );
+      return;
+    }
     if (!_formKey.currentState!.validate()) return;
     if (_birthDate == null) {
       setState(() => _errorMsg = 'Vui lòng chọn ngày sinh của bé.');
@@ -203,38 +174,6 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
       _loading = true;
       _errorMsg = null;
     });
-    final accountId = _accountId;
-    final journeyId = widget.relatedJourneyId;
-    var submissionId = _submissionId;
-    if (accountId != null && journeyId != null && submissionId != null) {
-      var intent = BabyCreateIntent(
-        submissionId: submissionId,
-        nickname: _nicknameCtrl.text.trim(),
-        birthDate: _formatDate(_birthDate!),
-        gender: _gender,
-        birthWeightKg: birthWeightKg,
-        birthLengthCm: birthLengthCm,
-      );
-      final persisted = await _intentStore.read(accountId, journeyId);
-      if (persisted != null && !persisted.hasSamePayload(intent)) {
-        submissionId = const Uuid().v4();
-        _submissionId = submissionId;
-        intent = BabyCreateIntent(
-          submissionId: submissionId,
-          nickname: intent.nickname,
-          birthDate: intent.birthDate,
-          gender: intent.gender,
-          birthWeightKg: intent.birthWeightKg,
-          birthLengthCm: intent.birthLengthCm,
-        );
-      }
-      await _intentStore.write(
-        accountId,
-        journeyId,
-        intent,
-        expectedGeneration: _intentGeneration,
-      );
-    }
     try {
       await _service.createBabyProfile(
         CreateBabyRequest(
@@ -243,16 +182,17 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
           gender: _gender,
           birthWeightKg: birthWeightKg,
           birthLengthCm: birthLengthCm,
-          relatedJourneyId: widget.relatedJourneyId,
-          submissionId: submissionId,
         ),
+        token: requestToken,
+        expectedAccountId: requestAccountId,
       );
-      if (!mounted) return;
-      if (accountId != null && journeyId != null) {
-        await _intentStore.clear(accountId, journeyId);
-      }
-      if (!mounted ||
-          accountId != (widget.accountId ?? AuthState.instance.userId)) {
+      if (!mounted || !_isCurrentAccount) return;
+
+      if (widget.entryPoint.returnsJourney) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã tạo hồ sơ bé thành công.')),
+        );
+        context.go('/mother-home?tab=1');
         return;
       }
 
@@ -275,12 +215,22 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
       );
       context.go('/babies');
     } on ApiException catch (e) {
-      setState(() => _errorMsg = _formatCreateBabyError(e));
+      if (mounted && _isCurrentAccount) {
+        setState(() => _errorMsg = _formatCreateBabyError(e));
+      }
     } catch (_) {
-      setState(() => _errorMsg = 'Lỗi kết nối. Vui lòng thử lại.');
+      if (mounted && _isCurrentAccount) {
+        setState(() => _errorMsg = 'Lỗi kết nối. Vui lòng thử lại.');
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  void _defer() {
+    if (_loading || _deferring || !widget.entryPoint.returnsJourney) return;
+    setState(() => _deferring = true);
+    context.go('/mother-home?tab=1');
   }
 
   String _formatCreateBabyError(ApiException error) {
@@ -337,66 +287,52 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_restoringIntent) {
-      return const Scaffold(
+    return PopScope(
+      canPop: !_loading && !_deferring,
+      child: Scaffold(
         backgroundColor: _canvas,
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-    if (widget.relatedJourneyId != null && _linkEligible == false) {
-      return Scaffold(
-        backgroundColor: _canvas,
-        appBar: AppBar(backgroundColor: _canvas),
-        body: const Center(
-          child: Padding(
-            padding: EdgeInsets.all(24),
-            child: Text(
-              'Không thể tạo và liên kết hồ sơ bé cho hành trình này. Vui lòng quay lại bảng điều khiển để làm mới trạng thái.',
-              style: TextStyle(fontSize: 16, color: _onSurface),
-            ),
-          ),
-        ),
-      );
-    }
-    return Scaffold(
-      backgroundColor: _canvas,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildAppBar(),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (_errorMsg != null) ...[
-                        _buildErrorBanner(),
-                        const SizedBox(height: 16),
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildAppBar(),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (_errorMsg != null) ...[
+                          _buildErrorBanner(),
+                          const SizedBox(height: 16),
+                        ],
+                        _buildSection('Thông tin cơ bản', [
+                          _buildNicknameField(),
+                          const SizedBox(height: 16),
+                          _buildDateField(),
+                          const SizedBox(height: 16),
+                          _buildGenderField(),
+                        ]),
+                        const SizedBox(height: 24),
+                        _buildSection('Chỉ số lúc sinh (tuỳ chọn)', [
+                          _buildWeightField(),
+                          const SizedBox(height: 16),
+                          _buildLengthField(),
+                        ]),
+                        const SizedBox(height: 32),
+                        _buildSubmitButton(),
+                        if (widget.entryPoint.returnsJourney) ...[
+                          const SizedBox(height: 12),
+                          _buildDeferButton(),
+                        ],
                       ],
-                      _buildSection('Thông tin cơ bản', [
-                        _buildNicknameField(),
-                        const SizedBox(height: 16),
-                        _buildDateField(),
-                        const SizedBox(height: 16),
-                        _buildGenderField(),
-                      ]),
-                      const SizedBox(height: 24),
-                      _buildSection('Chỉ số lúc sinh (tuỳ chọn)', [
-                        _buildWeightField(),
-                        const SizedBox(height: 16),
-                        _buildLengthField(),
-                      ]),
-                      const SizedBox(height: 32),
-                      _buildSubmitButton(),
-                    ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -408,7 +344,9 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
       child: Row(
         children: [
           IconButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: _loading || _deferring
+                ? null
+                : () => Navigator.of(context).pop(),
             icon: const Icon(Icons.arrow_back, color: _primary),
           ),
           const Expanded(
@@ -493,6 +431,7 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
 
   Widget _buildNicknameField() {
     return TextFormField(
+      key: const Key('add-baby-nickname'),
       controller: _nicknameCtrl,
       textCapitalization: TextCapitalization.words,
       style: const TextStyle(
@@ -512,6 +451,7 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
 
   Widget _buildDateField() {
     return GestureDetector(
+      key: const Key('add-baby-birth-date'),
       onTap: _pickDate,
       child: AbsorbPointer(
         child: TextFormField(
@@ -678,7 +618,8 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
       width: double.infinity,
       height: 56,
       child: FilledButton(
-        onPressed: _loading ? null : _submit,
+        key: const Key('add-baby-submit'),
+        onPressed: _loading || _deferring ? null : _submit,
         style: FilledButton.styleFrom(
           backgroundColor: _primaryContainer,
           disabledBackgroundColor: _primaryContainer.withAlpha(100),
@@ -700,6 +641,36 @@ class _AddBabyScreenState extends State<AddBabyScreen> {
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                   color: Colors.white,
+                ),
+              ),
+      ),
+    );
+  }
+
+  Widget _buildDeferButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: OutlinedButton(
+        key: const Key('add-baby-defer'),
+        onPressed: _loading || _deferring ? null : _defer,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: _primary,
+          side: const BorderSide(color: _outlineVariant),
+          shape: const StadiumBorder(),
+        ),
+        child: _deferring
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(strokeWidth: 2.5),
+              )
+            : const Text(
+                'Để sau',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
       ),

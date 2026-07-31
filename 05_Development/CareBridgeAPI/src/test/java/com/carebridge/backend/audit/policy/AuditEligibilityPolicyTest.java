@@ -33,6 +33,17 @@ class AuditEligibilityPolicyTest {
     }
 
     @Test
+    void shouldAudit_legacyBabyJourneyLinkActions_remainEligible() {
+        assertThat(policy.shouldAudit(AuditAction.BABY_JOURNEY_LINK_ACCEPTED)).isTrue();
+        assertThat(policy.shouldAudit(AuditAction.BABY_JOURNEY_LINK_REJECTED)).isTrue();
+    }
+
+    @Test
+    void shouldAudit_checklistTemplateArchive_returnsTrue() {
+        assertThat(policy.shouldAudit(AuditAction.CHECKLIST_TEMPLATE_ARCHIVED)).isTrue();
+    }
+
+    @Test
     void uc82_69_tc_011_shouldAuditChecklistItemAdded() {
         assertThat(policy.shouldAudit(AuditAction.CHECKLIST_ITEM_ADDED))
                 .as("TC-011: successful imported snapshots are audit eligible")

@@ -188,7 +188,6 @@ skinparam ClassHeaderBackgroundColor #D5E8F0
 class BabyProfile <<existing>> {
   + id: UUID
   + ownerUserId: UUID
-  + relatedJourneyId: UUID
   + nickname: String
   + birthDate: LocalDate
   + gender: Gender

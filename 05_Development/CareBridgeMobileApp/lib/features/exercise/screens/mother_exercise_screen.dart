@@ -189,6 +189,19 @@ class _MotherExerciseScreenState extends State<MotherExerciseScreen> {
   Widget _buildHeader() {
     return Row(
       children: [
+        IconButton(
+          key: const Key('mother-exercise-back-button'),
+          tooltip: 'Quay lại',
+          onPressed: () => Navigator.of(context).maybePop(),
+          style: IconButton.styleFrom(
+            backgroundColor: _surface,
+            foregroundColor: _primary,
+            minimumSize: const Size(44, 44),
+            shape: const CircleBorder(),
+          ),
+          icon: const Icon(Icons.arrow_back_rounded),
+        ),
+        const SizedBox(width: 10),
         Container(
           width: 52,
           height: 52,
@@ -365,9 +378,7 @@ class _MotherExerciseScreenState extends State<MotherExerciseScreen> {
                 showCheckmark: false,
                 selectedColor: _primaryContainer,
                 backgroundColor: _surfaceLow,
-                side: BorderSide(
-                  color: active ? Colors.transparent : _outline,
-                ),
+                side: BorderSide(color: active ? Colors.transparent : _outline),
                 labelStyle: TextStyle(
                   fontFamily: 'Lexend',
                   fontWeight: FontWeight.w700,
@@ -513,8 +524,9 @@ class _MotherExerciseScreenState extends State<MotherExerciseScreen> {
               onPressed: isStarting ? null : () => _startExercise(exercise),
               style: FilledButton.styleFrom(
                 backgroundColor: _primaryContainer,
-                disabledBackgroundColor:
-                    _primaryContainer.withValues(alpha: 0.45),
+                disabledBackgroundColor: _primaryContainer.withValues(
+                  alpha: 0.45,
+                ),
                 shape: const StadiumBorder(),
               ),
               icon: isStarting

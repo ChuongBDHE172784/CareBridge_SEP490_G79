@@ -29,6 +29,24 @@ void main() {
     expect(route, '/direct-chat/aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
   });
 
+  test('REMINDER type resolves to appointment reminder detail', () {
+    final route = FcmService.resolveTapRoute({
+      'type': 'REMINDER',
+      'reminderId': 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+    });
+    expect(route, '/reminders/detail/cccccccc-cccc-4ccc-8ccc-cccccccccccc');
+  });
+
+  test('REMINDER type rejects a malformed reminder identifier', () {
+    expect(
+      FcmService.resolveTapRoute({
+        'type': 'REMINDER',
+        'reminderId': '../admin',
+      }),
+      isNull,
+    );
+  });
+
   test('MESSAGE type without a conversationId resolves to no route', () {
     final route = FcmService.resolveTapRoute({'type': 'MESSAGE'});
     expect(route, isNull);

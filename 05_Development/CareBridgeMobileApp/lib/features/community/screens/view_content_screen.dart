@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import '../../../core/auth/auth_state.dart';
 import '../../../core/constants/content_stages.dart';
 import '../../checklist/models/user_checklist_item_model.dart';
-import '../../checklist/screens/preparation_checklist_screen.dart';
+import '../../reminder/screens/today_tasks_screen.dart';
 import '../../checklist/services/user_checklist_service.dart';
 import '../../journey/models/journey_model.dart';
 import '../../journey/screens/mother_journey_screen.dart';
 import '../../journey/services/journey_service.dart';
 import '../models/community_model.dart';
+import '../models/checklist_assignment_context.dart';
 import '../models/content_model.dart';
 import '../services/community_service.dart';
 import '../services/content_service.dart';
@@ -34,8 +35,6 @@ class ViewContentScreen extends StatefulWidget {
 }
 
 class _ViewContentScreenState extends State<ViewContentScreen> {
-  static const _maxChecklistImportItems = 50;
-
   // ── Design tokens (Warm Claymorphism palette) ──
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
@@ -67,7 +66,6 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
   bool _articleLoadFailed = false;
   bool _faqLoadFailed = false;
   bool _checklistLoadFailed = false;
-  bool _userChecklistLoadFailed = false;
   int _loadGeneration = 0;
   String? _resolvedStage;
   String? _observedAccountId;
@@ -80,7 +78,6 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
   List<ContentListItem> _faqs = [];
   List<ChecklistTemplate> _checklists = [];
   List<UserChecklistItem> _userChecklistItems = [];
-  final Set<String> _importingChecklistIds = {};
   String _searchKeyword = '';
   String? _selectedTopicId;
   final Set<String> _selectedTagIds = <String>{};
@@ -198,6 +195,7 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
     });
     try {
       if (widget.mode == ContentBrowseMode.lifecycle) {
+        final userItemsFuture = _capture(_userChecklistService.listItems());
         final results = await Future.wait<Object>([
           _contentService.getAllLifecycleContent(
             shouldContinue: () => _canApply(generation, accountId),
@@ -206,6 +204,7 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
         ]);
         if (!_canApply(generation, accountId)) return;
 
+        final userItemsResult = await userItemsFuture;
         final content = results[0] as LifecycleEnvelope<List<ContentListItem>>;
         final checklists =
             results[1] as LifecycleEnvelope<List<ChecklistTemplate>>;
@@ -229,10 +228,10 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
               .where((item) => item.type == 'FAQ')
               .toList(growable: false);
           _checklists = checklists.payload;
+          _userChecklistItems = userItemsResult.$1 ?? <UserChecklistItem>[];
           _articleLoadFailed = false;
           _faqLoadFailed = false;
           _checklistLoadFailed = false;
-          _userChecklistLoadFailed = false;
           _loading = false;
         });
         return;
@@ -296,7 +295,6 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
           _articleLoadFailed = articlesResult.$2;
           _faqLoadFailed = faqsResult.$2;
           _checklistLoadFailed = checklistsResult.$2;
-          _userChecklistLoadFailed = userItemsResult.$2;
           _loading = false;
         });
         _loadFeaturedImage(
@@ -1373,17 +1371,19 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
       .toSet();
 
   Future<void> _openChecklistTemplate(ChecklistTemplate template) async {
-    if (_importingChecklistIds.isNotEmpty) return;
     final importedIds = _importedTemplateItemIds;
-    final missingItems = template.items
-        .where((item) => !importedIds.contains(item.id))
-        .toList(growable: false);
+    final allItemsAdded =
+        template.items.isNotEmpty &&
+        template.items.every((item) => importedIds.contains(item.id));
     final rawJourneyId = _dashboard?.journeyId;
     final journeyId = rawJourneyId == null || rawJourneyId.isEmpty
         ? null
         : rawJourneyId;
-    final hasImportContext =
-        journeyId != null || widget.mode == ContentBrowseMode.lifecycle;
+    final assignmentContext = ChecklistAssignmentContext.resolve(
+      templateStage: template.stage,
+      journeyId: journeyId,
+      lifecycleMode: widget.mode == ContentBrowseMode.lifecycle,
+    );
     final action = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
@@ -1438,16 +1438,10 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                   },
                 ),
               ),
-              if (!hasImportContext) ...[
+              if (!assignmentContext.canAssign) ...[
                 const SizedBox(height: 12),
                 const Text(
                   'Hãy thiết lập hành trình trước khi thêm checklist.',
-                  style: TextStyle(color: _error),
-                ),
-              ] else if (_userChecklistLoadFailed) ...[
-                const SizedBox(height: 12),
-                const Text(
-                  'Không thể kiểm tra checklist hiện tại. Hãy thử tải lại trước khi thêm để tránh trùng mục.',
                   style: TextStyle(color: _error),
                 ),
               ],
@@ -1455,21 +1449,17 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: !hasImportContext || _userChecklistLoadFailed
+                  onPressed: !assignmentContext.canAssign
                       ? null
                       : () => Navigator.pop(
                           sheetContext,
-                          missingItems.isEmpty ? 'open' : 'import',
+                          allItemsAdded ? 'open' : 'add',
                         ),
                   icon: Icon(
-                    missingItems.isEmpty
-                        ? Icons.checklist_rtl
-                        : Icons.playlist_add,
+                    allItemsAdded ? Icons.checklist_rtl : Icons.add_task,
                   ),
                   label: Text(
-                    missingItems.isEmpty
-                        ? 'Mở checklist của tôi'
-                        : 'Thêm ${missingItems.length} mục vào checklist',
+                    allItemsAdded ? 'Mở việc hôm nay' : 'Thêm vào Việc hôm nay',
                   ),
                 ),
               ),
@@ -1480,85 +1470,39 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
     );
 
     if (!mounted || action == null) return;
-    if (action == 'import') {
-      await _importChecklistTemplate(template);
-    } else {
-      await _openMyChecklist();
-    }
-  }
-
-  Future<void> _importChecklistTemplate(ChecklistTemplate template) async {
-    final rawJourneyId = _dashboard?.journeyId;
-    final journeyId = rawJourneyId == null || rawJourneyId.isEmpty
-        ? null
-        : rawJourneyId;
-    final hasImportContext =
-        journeyId != null || widget.mode == ContentBrowseMode.lifecycle;
-    if (!hasImportContext || _importingChecklistIds.isNotEmpty) {
-      return;
-    }
-    final importedIds = _importedTemplateItemIds;
-    final missingIds = template.items
-        .map((item) => item.id)
-        .where((id) => !importedIds.contains(id))
-        .toList(growable: false);
-    if (missingIds.isEmpty) {
-      await _openMyChecklist();
-      return;
-    }
-    if (missingIds.length > _maxChecklistImportItems) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Checklist có hơn 50 mục. Vui lòng chọn checklist nhỏ hơn.',
+    if (action == 'add') {
+      try {
+        await _userChecklistService.addTemplate(
+          templateId: template.id,
+          journeyId: assignmentContext.journeyId,
+        );
+        final items = await _userChecklistService.listItems(
+          journeyId: assignmentContext.journeyId,
+        );
+        if (!mounted) return;
+        setState(() => _userChecklistItems = items);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã thêm checklist vào Việc hôm nay.')),
+        );
+      } catch (_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Không thể thêm checklist. Vui lòng thử lại.'),
+            backgroundColor: _error,
           ),
-          backgroundColor: _error,
-        ),
-      );
-      return;
+        );
+        return;
+      }
     }
-
-    setState(() => _importingChecklistIds.add(template.id));
-    var importSucceeded = false;
-    try {
-      final imported = await _userChecklistService.importFromTemplate(
-        templateItemIds: missingIds,
-        journeyId: journeyId,
-      );
-      if (!mounted) return;
-      setState(
-        () => _userChecklistItems = [..._userChecklistItems, ...imported],
-      );
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Đã thêm ${imported.length} mục vào checklist.'),
-        ),
-      );
-      importSucceeded = true;
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Không thể thêm checklist. Vui lòng thử lại.'),
-          backgroundColor: _error,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _importingChecklistIds.remove(template.id));
-    }
-    if (importSucceeded && mounted) await _openMyChecklist();
+    await _openMyChecklist(journeyId: assignmentContext.journeyId);
   }
 
-  Future<void> _openMyChecklist() async {
-    final lifecycle = widget.mode == ContentBrowseMode.lifecycle;
-    final journeyId = lifecycle ? null : _dashboard?.journeyId;
+  Future<void> _openMyChecklist({String? journeyId}) async {
     await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => PreparationChecklistScreen(journeyId: journeyId),
-      ),
+      MaterialPageRoute(builder: (_) => TodayTasksScreen(journeyId: journeyId)),
     );
-    if (mounted && (lifecycle || journeyId != null)) {
+    if (mounted) {
       try {
         final items = await _userChecklistService.listItems(
           journeyId: journeyId,
@@ -1723,9 +1667,7 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
-                            _importingChecklistIds.contains(cl.id)
-                                ? Icons.hourglass_top
-                                : Icons.chevron_right,
+                            Icons.chevron_right,
                             size: 22,
                             color: _primary,
                           ),

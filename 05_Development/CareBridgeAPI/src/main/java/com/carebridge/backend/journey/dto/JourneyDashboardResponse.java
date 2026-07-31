@@ -50,9 +50,6 @@ public class JourneyDashboardResponse {
 
     private PregnancyOutcomeType pregnancyOutcome;
 
-    /** True only when a canonical postpartum LIVE_BIRTH has append-only evidence. */
-    private boolean babyActionsEligible;
-
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate pregnancyOutcomeDate;
 }

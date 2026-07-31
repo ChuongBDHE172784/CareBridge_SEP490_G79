@@ -170,6 +170,7 @@ class ChecklistTemplate {
   final String name;
   final String stage;
   final String description;
+  final String templateType;
   final List<ChecklistItem> items;
 
   ChecklistTemplate({
@@ -177,6 +178,7 @@ class ChecklistTemplate {
     required this.name,
     required this.stage,
     required this.description,
+    this.templateType = 'OPTIONAL',
     required this.items,
   });
 
@@ -186,6 +188,7 @@ class ChecklistTemplate {
         name: json['name'] as String,
         stage: normalizeContentStage(json['stage'] as String?, fallback: ''),
         description: json['description'] as String? ?? '',
+        templateType: json['templateType'] as String? ?? 'OPTIONAL',
         items: (json['items'] as List? ?? [])
             .map((e) => ChecklistItem.fromJson(e as Map<String, dynamic>))
             .toList(),

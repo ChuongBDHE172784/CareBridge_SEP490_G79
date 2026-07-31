@@ -91,6 +91,27 @@ public class AdminChecklistTemplateController {
         return ResponseEntity.ok(ApiResponse.success(response, "Checklist template updated successfully"));
     }
 
+    @PostMapping("/{id}/clone")
+    @PreAuthorize("hasRole('CONTENT_ADMIN')")
+    public ResponseEntity<ApiResponse<AdminChecklistTemplateDetailResponse>> cloneVersion(
+            @PathVariable UUID id, Principal principal) {
+        UUID adminUserId = SecurityUtils.requireCurrentUserId(principal);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
+                adminChecklistTemplateService.cloneVersion(id, adminUserId),
+                "Checklist template draft cloned successfully"));
+    }
+
+    @PostMapping("/{lineageId}/versions/{versionId}/clone")
+    @PreAuthorize("hasRole('CONTENT_ADMIN')")
+    public ResponseEntity<ApiResponse<AdminChecklistTemplateDetailResponse>> cloneVersionInLineage(
+            @PathVariable UUID lineageId, @PathVariable UUID versionId, Principal principal) {
+        UUID adminUserId = SecurityUtils.requireCurrentUserId(principal);
+        AdminChecklistTemplateDetailResponse response = adminChecklistTemplateService
+                .cloneVersionInLineage(lineageId, versionId, adminUserId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(
+                response, "Checklist template draft cloned successfully"));
+    }
+
     @PostMapping("/{id}/archive")
     @PreAuthorize("hasRole('CONTENT_ADMIN')")
     public ResponseEntity<ApiResponse<HideChecklistTemplateResponse>> archive(

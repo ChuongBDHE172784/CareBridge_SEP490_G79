@@ -68,6 +68,12 @@ class FcmService {
         _uuidPattern.hasMatch(sessionId)) {
       return '/emergency/alert/${Uri.encodeComponent(sessionId)}';
     }
+    final reminderId = data['reminderId'];
+    if (data['type'] == 'REMINDER' &&
+        reminderId is String &&
+        _uuidPattern.hasMatch(reminderId)) {
+      return '/reminders/detail/${Uri.encodeComponent(reminderId)}';
+    }
     final conversationId = data['conversationId'];
     if (data['type'] == 'MESSAGE' &&
         conversationId is String &&

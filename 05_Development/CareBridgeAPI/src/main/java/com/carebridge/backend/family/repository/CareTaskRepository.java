@@ -19,6 +19,8 @@ public interface CareTaskRepository extends JpaRepository<CareTask, UUID> {
     /** UC-73: list all tasks in a care group. */
     List<CareTask> findByCareGroupId(UUID careGroupId);
 
+    List<CareTask> findByAssignedTo(UUID assignedTo);
+
     /** Delete all tasks in a care group (used when group is hard-deleted). */
     void deleteByCareGroupId(UUID careGroupId);
 

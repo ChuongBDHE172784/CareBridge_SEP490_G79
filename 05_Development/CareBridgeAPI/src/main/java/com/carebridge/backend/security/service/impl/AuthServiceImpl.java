@@ -32,6 +32,7 @@ import com.carebridge.backend.security.dto.response.UserProfileResponse;
 import com.carebridge.backend.security.entity.OtpVerification;
 import com.carebridge.backend.security.entity.RefreshToken;
 import com.carebridge.backend.security.entity.User;
+import com.carebridge.backend.security.exception.AccountAlreadyExistsException;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
 import com.carebridge.backend.security.mapper.UserMapper;
 import com.carebridge.backend.security.policy.AuthenticationPolicy;
@@ -135,7 +136,7 @@ public class AuthServiceImpl implements AuthService {
         boolean phoneExists = phone != null && !phone.isBlank() && userRepository.existsByPhone(phone);
 
         if (emailExists || phoneExists) {
-            throw new ValidationException("Account already exists");
+            throw new AccountAlreadyExistsException();
         }
 
         // 4. Resolve optional role through authentication policy.

@@ -1,22 +1,48 @@
-import { useEffect, useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useCallback, useEffect, useState } from 'react';
+import { ArrowLeft, CalendarRange, ClipboardList, Plus, Save, Send, Trash2, Users } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
+import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
+import type {
+  ChecklistRecipientRole,
+  ChecklistSubstage,
+  ChecklistTargetSubject,
+  ChecklistTemplateStatus,
+  ChecklistTemplateType,
+  ContentStage,
+  ReviewFeedback,
+} from '../models/content';
+import { STAGE_LABELS, STAGE_OPTIONS } from '../models/content';
 import {
-  fetchChecklistTemplateDetail,
   createChecklistTemplate,
+  fetchChecklistTemplateDetail,
   updateChecklistTemplate,
 } from '../services/contentApi';
-import type { ContentStage, ReviewFeedback } from '../models/content';
-import { STAGE_OPTIONS } from '../models/content';
-import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
 
 interface ItemRow {
   key: string;
+  id?: string;
   itemText: string;
   isRequired: boolean;
+  targetSubject: ChecklistTargetSubject;
 }
 
+const ROLE_ORDER: ChecklistRecipientRole[] = ['MOTHER', 'FAMILY'];
+
+const SUBSTAGE_OPTIONS: Partial<Record<ContentStage, ChecklistSubstage[]>> = {
+  PREGNANCY: [
+    { code: 'PREGNANCY_LMP_WEEK_0_12', anchor: 'LMP', startInclusive: 0, endInclusive: 12, unit: 'WEEK' },
+    { code: 'PREGNANCY_EDD_WEEK_0_40', anchor: 'EDD', startInclusive: 0, endInclusive: 40, unit: 'WEEK' },
+  ],
+  POSTPARTUM: [
+    { code: 'POSTPARTUM_DAY_0_7', anchor: 'DELIVERY_DATE', startInclusive: 0, endInclusive: 7, unit: 'DAY' },
+    { code: 'POSTPARTUM_WEEK_0_6', anchor: 'DELIVERY_DATE', startInclusive: 0, endInclusive: 6, unit: 'WEEK' },
+  ],
+};
+
+const AUTHORABLE_STAGES: readonly ContentStage[] = STAGE_OPTIONS.map(({ value }) => value);
+
 function newRow(): ItemRow {
-  return { key: crypto.randomUUID(), itemText: '', isRequired: true };
+  return { key: crypto.randomUUID(), itemText: '', isRequired: true, targetSubject: 'MOTHER' };
 }
 
 export default function ChecklistFormPage() {
@@ -26,8 +52,12 @@ export default function ChecklistFormPage() {
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [templateType, setTemplateType] = useState<ChecklistTemplateType>('MANDATORY');
+  const [recipientRoles, setRecipientRoles] = useState<ChecklistRecipientRole[]>(['MOTHER']);
   const [stage, setStage] = useState<ContentStage | ''>('');
+  const [substage, setSubstage] = useState<ChecklistSubstage | null>(null);
   const [items, setItems] = useState<ItemRow[]>([newRow()]);
+  const [status, setStatus] = useState<ChecklistTemplateStatus>('DRAFT');
   const [isLoading, setIsLoading] = useState(isEdit);
   const [loadError, setLoadError] = useState('');
   const [submitting, setSubmitting] = useState<'draft' | 'submit' | null>(null);
@@ -43,18 +73,26 @@ export default function ChecklistFormPage() {
       const data = await fetchChecklistTemplateDetail(id);
       setName(data.name);
       setDescription(data.description ?? '');
-      setStage(data.stage);
+      setTemplateType(data.templateType ?? 'MANDATORY');
+      const loadedRoles = data.recipientRoles ?? ['MOTHER'];
+      const hasMotherRecipient = loadedRoles.includes('MOTHER');
+      setRecipientRoles(loadedRoles);
+      setStage(hasMotherRecipient ? (data.stage ?? '') : '');
+      setSubstage(hasMotherRecipient && data.stage !== 'PRE_PREGNANCY'
+        ? (data.substage ?? null)
+        : null);
+      setStatus(data.status);
       setVersionNo(data.versionNo);
       setReviewFeedback(data.latestReviewFeedback ?? null);
-      setItems(
-        data.items.length > 0
-          ? [...data.items].sort((a, b) => a.order - b.order).map(i => ({
-              key: i.id,
-              itemText: i.itemText,
-              isRequired: i.isRequired,
-            }))
-          : [newRow()],
-      );
+      setItems(data.items.length > 0
+        ? [...data.items].sort((a, b) => a.order - b.order).map((item) => ({
+            key: item.id,
+            id: item.id,
+            itemText: item.itemText,
+            isRequired: item.isRequired,
+            targetSubject: item.targetSubject ?? 'MOTHER',
+          }))
+        : [newRow()]);
     } catch {
       setLoadError('Không thể tải checklist để chỉnh sửa. Vui lòng thử lại hoặc kiểm tra quyền Content Admin.');
     } finally {
@@ -62,52 +100,79 @@ export default function ChecklistFormPage() {
     }
   }, [id]);
 
-  useEffect(() => { if (isEdit) loadDetail(); }, [isEdit, loadDetail]);
+  useEffect(() => {
+    if (isEdit) void loadDetail();
+  }, [isEdit, loadDetail]);
 
-  const isValid = name.trim().length > 0 && stage !== '';
+  const hasMotherRecipient = recipientRoles.includes('MOTHER');
+  const isImmutable = status === 'APPROVED' || status === 'ARCHIVED';
+  const isValid = name.trim().length > 0
+    && recipientRoles.length > 0
+    && (!hasMotherRecipient || (stage !== ''
+      && (stage === 'PRE_PREGNANCY' || (substage !== null && substage.anchor !== 'NONE'))))
+    && items.filter((row) => row.itemText.trim()).every((row) => Boolean(row.targetSubject));
+
+  const toggleRole = (role: ChecklistRecipientRole) => {
+    setRecipientRoles((previous) => {
+      const next = previous.includes(role)
+        ? previous.filter((value) => value !== role)
+        : [...previous, role];
+      const ordered = ROLE_ORDER.filter((value) => next.includes(value));
+      if (!ordered.includes('MOTHER')) {
+        setStage('');
+        setSubstage(null);
+      }
+      return ordered;
+    });
+  };
+
+  const updateStage = (value: ContentStage | '') => {
+    setStage(value);
+    setSubstage(value ? (SUBSTAGE_OPTIONS[value]?.[0] ?? null) : null);
+  };
+
+  const updateSubstage = (code: string) => {
+    setSubstage(stage ? (SUBSTAGE_OPTIONS[stage]?.find((option) => option.code === code) ?? null) : null);
+  };
 
   const updateItem = (key: string, patch: Partial<ItemRow>) => {
-    setItems(prev => prev.map(row => (row.key === key ? { ...row, ...patch } : row)));
+    setItems((previous) => previous.map((row) => (row.key === key ? { ...row, ...patch } : row)));
   };
 
-  const removeItem = (key: string) => {
-    setItems(prev => (prev.length > 1 ? prev.filter(row => row.key !== key) : prev));
-  };
-
-  const addItem = () => setItems(prev => [...prev, newRow()]);
-
-  const buildItemsPayload = () =>
-    items
-      .filter(row => row.itemText.trim().length > 0)
-      .map((row, index) => ({ itemText: row.itemText.trim(), order: index + 1, isRequired: row.isRequired }));
+  const buildItemsPayload = () => items
+    .filter((row) => row.itemText.trim())
+    .map((row, index) => ({
+      ...(row.id ? { id: row.id } : {}),
+      itemText: row.itemText.trim(),
+      order: index + 1,
+      isRequired: row.isRequired,
+      targetSubject: row.targetSubject,
+    }));
 
   const submit = async (targetStatus: 'DRAFT' | 'PENDING_REVIEW') => {
-    if (!isValid) return;
+    if (!isValid || isImmutable) return;
     setSubmitting(targetStatus === 'PENDING_REVIEW' ? 'submit' : 'draft');
     setSubmitError('');
+    const normalizedStage = hasMotherRecipient ? (stage || null) : null;
+    const normalizedSubstage = hasMotherRecipient && stage !== 'PRE_PREGNANCY' ? substage : null;
     try {
+      const commonPayload = {
+        name: name.trim(),
+        description: description.trim() || undefined,
+        templateType,
+        recipientRoles,
+        stage: normalizedStage,
+        substage: normalizedSubstage,
+      };
       const itemsPayload = buildItemsPayload();
       if (isEdit && id) {
-        await updateChecklistTemplate(id, {
-          name: name.trim(),
-          description: description.trim() || undefined,
-          stage,
-          status: targetStatus,
-          items: itemsPayload,
-        });
+        await updateChecklistTemplate(id, { ...commonPayload, status: targetStatus, items: itemsPayload });
         navigate(`/content/checklists/${id}`);
       } else {
-        const created = await createChecklistTemplate({
-          name: name.trim(),
-          description: description.trim() || undefined,
-          stage,
-          items: itemsPayload,
-        });
+        const created = await createChecklistTemplate({ ...commonPayload, items: itemsPayload });
         if (targetStatus === 'PENDING_REVIEW') {
           await updateChecklistTemplate(created.id, {
-            name: created.name,
-            description: created.description,
-            stage: created.stage,
+            ...commonPayload,
             status: 'PENDING_REVIEW',
             items: undefined,
           });
@@ -121,208 +186,133 @@ export default function ChecklistFormPage() {
     }
   };
 
-  if (isLoading) {
-    return <div className="p-8 font-sans text-center text-outline py-16">Đang tải...</div>;
-  }
-
+  if (isLoading) return <div className="p-8 text-center text-outline py-16">Đang tải...</div>;
   if (loadError) {
     return (
-      <div className="p-8 font-sans max-w-[700px]">
-        <div className="bg-error-container rounded-2xl p-6 text-error text-sm mb-4">{loadError}</div>
-        <button
-          onClick={() => navigate('/content/checklists')}
-          className="py-2.5 px-6 rounded-full border border-outline-variant bg-transparent text-primary text-sm font-semibold cursor-pointer"
-        >
+      <div className="mx-auto max-w-3xl p-6 font-sans">
+        <div role="alert" className="mb-4 rounded-2xl border border-error-container bg-error-container/60 p-4 text-sm text-error font-semibold">{loadError}</div>
+        <button type="button" onClick={() => navigate('/content/checklists')} className="py-2.5 px-6 rounded-full border border-outline-variant bg-surface text-on-surface text-sm font-semibold hover:bg-surface-container-low cursor-pointer">
           Quay lại danh sách
         </button>
       </div>
     );
   }
 
+  const card = 'bg-surface rounded-2xl p-6 shadow-md border border-surface-container-highest';
+  const field = 'w-full py-2.5 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface outline-none font-sans focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:bg-surface-container-low disabled:text-outline';
+
   return (
-    <div className="p-8 font-sans">
-      <button
-        onClick={() => navigate(-1)}
-        className="inline-flex items-center gap-1.5 py-2 px-5 rounded-full border border-outline-variant bg-transparent text-primary text-sm font-semibold cursor-pointer mb-6"
-      >
-        <span className="material-symbols-outlined text-lg">arrow_back</span>
-        Quay lại
+    <main className="p-8 font-sans">
+      <button type="button" onClick={() => navigate(-1)} className="mb-6 inline-flex items-center gap-2 py-2 px-4 rounded-full border border-outline-variant bg-surface text-sm font-semibold text-on-surface-variant hover:bg-surface-container-low cursor-pointer shadow-sm">
+        <ArrowLeft size={18} aria-hidden="true" /> Quay lại
       </button>
 
-      <div className="flex items-center justify-between mb-6">
+      <header className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-on-surface m-0">
-              {isEdit ? 'Chỉnh sửa Checklist' : 'Tạo Checklist mới'}
-            </h1>
-            {isEdit && versionNo !== null && (
-              <span className="py-1 px-3 rounded-full bg-surface-container text-primary text-xs font-semibold">
-                Version v{versionNo}
-              </span>
-            )}
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="m-0 text-[26px] font-bold text-on-surface">{isEdit ? 'Chỉnh sửa Checklist' : 'Tạo Checklist mới'}</h1>
+            {isEdit && versionNo !== null && <span className="inline-flex items-center rounded-full bg-surface-container-low px-3 py-1 text-xs font-semibold text-primary">Version v{versionNo}</span>}
           </div>
-          <p className="text-sm text-outline mt-1">
-            {isEdit && id
-              ? `Cập nhật checklist ID: ${id.slice(0, 8).toUpperCase()}`
-              : 'Xây dựng danh sách các mục để mẹ/gia đình nhập vào checklist cá nhân.'}
-          </p>
+          <p className="mt-1 text-sm text-on-surface-variant">Thiết lập đúng người nhận, giai đoạn và đối tượng cho từng mục.</p>
         </div>
-        <div className="flex gap-2.5">
-          <button
-            onClick={() => submit('DRAFT')}
-            disabled={!isValid || submitting !== null}
-            className="flex items-center gap-1.5 py-2.5 px-5 rounded-full bg-surface-container text-primary border-0 text-sm font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <span className="material-symbols-outlined text-lg">save</span>
-            {submitting === 'draft' ? 'Đang lưu...' : 'Lưu nháp'}
+        <div className="flex flex-wrap gap-3">
+          <button aria-label="Save draft" type="button" onClick={() => void submit('DRAFT')} disabled={!isValid || isImmutable || submitting !== null} className="inline-flex items-center gap-2 py-2.5 px-6 rounded-full border border-outline-variant bg-surface text-on-surface text-sm font-semibold hover:bg-surface-container-low cursor-pointer disabled:opacity-40">
+            <Save size={18} aria-hidden="true" /> {submitting === 'draft' ? 'Đang lưu...' : 'Lưu nháp'}
           </button>
-          <button
-            onClick={() => submit('PENDING_REVIEW')}
-            disabled={!isValid || submitting !== null}
-            className="flex items-center gap-1.5 py-2.5 px-5 rounded-full bg-primary text-on-primary border-0 text-sm font-semibold cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <span className="material-symbols-outlined text-lg">play_arrow</span>
-            {submitting === 'submit' ? 'Đang gửi...' : 'Gửi phê duyệt'}
+          <button aria-label="Submit for review" type="button" onClick={() => void submit('PENDING_REVIEW')} disabled={!isValid || isImmutable || submitting !== null} className="inline-flex items-center gap-2 py-2.5 px-6 rounded-full bg-primary text-on-primary text-sm font-semibold shadow-md hover:bg-primary/90 cursor-pointer disabled:opacity-40">
+            <Send size={18} aria-hidden="true" /> {submitting === 'submit' ? 'Đang gửi...' : 'Gửi phê duyệt'}
           </button>
         </div>
-      </div>
+      </header>
 
-      {submitError && <div className="bg-error-container rounded-2xl p-4 mb-4 text-error text-sm">{submitError}</div>}
+      {submitError && <div role="alert" className="mb-6 rounded-2xl border border-error-container bg-error-container/60 p-4 text-sm text-error">{submitError}</div>}
+      {isImmutable && <div role="status" className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">Phiên bản đã duyệt là bất biến. Hãy clone để tạo một bản nháp mới.</div>}
       <ReviewFeedbackNotice feedback={reviewFeedback} />
 
-      <div className="grid grid-cols-[1fr_320px] gap-6">
-        <div className="flex flex-col gap-5">
-          <div className="bg-surface rounded-2xl p-6 shadow-md">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="material-symbols-outlined text-primary text-xl">description</span>
-              <h2 className="text-base font-bold text-on-surface m-0">Thông tin cơ bản</h2>
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <div className="flex min-w-0 flex-col gap-6">
+          <section className={card}>
+            <div className="mb-5 flex items-center gap-2.5"><ClipboardList className="text-primary" size={22} /><h2 className="m-0 text-lg font-bold text-on-surface">Thông tin cơ bản</h2></div>
+            <div className="grid gap-5">
+              <label className="grid gap-2 text-sm font-semibold text-on-surface">Tên checklist <input aria-label="Template name" disabled={isImmutable} value={name} onChange={(event) => setName(event.target.value)} className={field} /></label>
+              <label className="grid gap-2 text-sm font-semibold text-on-surface">Mô tả <textarea aria-label="Template description" disabled={isImmutable} value={description} onChange={(event) => setDescription(event.target.value)} rows={3} className={`${field} py-3`} /></label>
             </div>
-            <div className="mb-4">
-              <label className="block text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-1.5">
-                Tên checklist <span className="text-error">*</span>
-              </label>
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="VD: Checklist khám thai tháng 3"
-                className="w-full py-3 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface font-sans"
-              />
-            </div>
+          </section>
 
-            <div className="mb-4">
-              <label className="block text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-1.5">
-                Giai đoạn <span className="text-error">*</span>
+          <section aria-label="Checklist type" className={card}>
+            <div className="mb-5 flex items-center gap-2.5"><ClipboardList className="text-primary" size={22} /><h2 className="m-0 text-lg font-bold text-on-surface">Loại checklist</h2></div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className={`cursor-pointer rounded-2xl border p-4 ${templateType === 'MANDATORY' ? 'border-primary bg-surface-container-low' : 'border-outline-variant bg-surface'}`}>
+                <input aria-label="Mandatory checklist" type="radio" name="templateType" value="MANDATORY" disabled={isImmutable} checked={templateType === 'MANDATORY'} onChange={() => setTemplateType('MANDATORY')} className="mr-2 accent-primary" />
+                <span className="font-semibold text-on-surface">Bắt buộc</span>
+                <p className="mt-1 text-xs text-on-surface-variant">Tự động hiển thị trong “Việc hôm nay” của người dùng phù hợp.</p>
               </label>
-              <select
-                value={stage}
-                onChange={(e) => setStage(e.target.value as ContentStage)}
-                className="w-full py-3 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface font-sans"
-              >
-                <option value="">Chọn giai đoạn</option>
-                {STAGE_OPTIONS.map(({ value, label }) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-1.5">
-                Mô tả
+              <label className={`cursor-pointer rounded-2xl border p-4 ${templateType === 'OPTIONAL' ? 'border-primary bg-surface-container-low' : 'border-outline-variant bg-surface'}`}>
+                <input aria-label="Optional checklist" type="radio" name="templateType" value="OPTIONAL" disabled={isImmutable} checked={templateType === 'OPTIONAL'} onChange={() => setTemplateType('OPTIONAL')} className="mr-2 accent-primary" />
+                <span className="font-semibold text-on-surface">Không bắt buộc</span>
+                <p className="mt-1 text-xs text-on-surface-variant">Người dùng tự thêm từ tab Checklist trong “Nội dung & FAQ”.</p>
               </label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Mô tả ngắn về mục đích của checklist..."
-                rows={2}
-                className="w-full py-3 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface font-sans resize-none"
-              />
             </div>
-          </div>
+          </section>
 
-          <div className="bg-surface rounded-2xl p-6 shadow-md">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary text-xl">checklist</span>
-                <h2 className="text-base font-bold text-on-surface m-0">Danh sách các mục</h2>
-              </div>
-              <button
-                type="button"
-                onClick={addItem}
-                className="flex items-center gap-1 py-2 px-4 rounded-full border border-outline-variant bg-transparent text-primary text-sm font-semibold cursor-pointer hover:bg-surface-container"
-              >
-                <span className="material-symbols-outlined text-lg">add</span>
-                Thêm mục
-              </button>
+          <section className={card}>
+            <div className="mb-5 flex items-center gap-2.5"><Users className="text-primary" size={22} /><h2 className="m-0 text-lg font-bold text-on-surface">Người nhận</h2></div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {ROLE_ORDER.map((role) => (
+                <label key={role} className={`flex min-h-12 cursor-pointer items-center gap-3 rounded-2xl border px-4 text-sm font-semibold transition-colors ${recipientRoles.includes(role) ? 'border-primary bg-surface-container-low text-primary' : 'border-outline-variant bg-surface text-on-surface-variant hover:bg-surface-bright'}`}>
+                  <input aria-label={`Recipient ${role}`} type="checkbox" disabled={isImmutable} checked={recipientRoles.includes(role)} onChange={() => toggleRole(role)} className="h-4 w-4 accent-primary" />
+                  {role === 'MOTHER' ? 'Mẹ' : 'Gia đình'}
+                </label>
+              ))}
             </div>
-            <div className="flex flex-col gap-3">
+            {recipientRoles.length === 0 && <p role="alert" className="mt-3 text-xs font-semibold text-error">Cần chọn ít nhất một người nhận.</p>}
+          </section>
+
+          {hasMotherRecipient && (
+            <section aria-label="Lifecycle targeting" className={card}>
+              <div className="mb-5 flex items-center gap-2.5"><CalendarRange className="text-primary" size={22} /><h2 className="m-0 text-lg font-bold text-on-surface">Giai đoạn áp dụng</h2></div>
+              <label className="grid gap-2 text-sm font-semibold text-on-surface">Giai đoạn
+                <select aria-label="Lifecycle stage" disabled={isImmutable} value={stage} onChange={(event) => updateStage(event.target.value as ContentStage | '')} className={field}>
+                  <option value="">Chọn giai đoạn</option>
+                  {AUTHORABLE_STAGES.map((value) => <option key={value} value={value}>{STAGE_LABELS[value]}</option>)}
+                </select>
+              </label>
+              {stage && stage !== 'PRE_PREGNANCY' && (
+                <label className="mt-4 grid gap-2 text-sm font-semibold text-on-surface">Cửa sổ vòng đời
+                  <select aria-label="Lifecycle substage" disabled={isImmutable} value={substage?.code ?? ''} onChange={(event) => updateSubstage(event.target.value)} className={field}>
+                    {(SUBSTAGE_OPTIONS[stage] ?? []).map((option) => (
+                      <option key={option.code} value={option.code}>{option.code}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              {substage && <div className="mt-4 rounded-2xl bg-surface-bright border border-surface-container-highest p-4"><strong className="text-on-surface text-sm">{substage.code}</strong><p className="mt-1 text-xs text-on-surface-variant">{substage.anchor} · {substage.startInclusive}–{substage.endInclusive} {substage.unit}</p></div>}
+            </section>
+          )}
+
+          <section className={card}>
+            <div className="mb-5 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5"><ClipboardList className="text-primary" size={22} /><h2 className="m-0 text-lg font-bold text-on-surface">Danh sách mục</h2></div>
+              <button type="button" disabled={isImmutable} onClick={() => setItems((previous) => [...previous, newRow()])} className="inline-flex items-center gap-1.5 py-2 px-4 rounded-full border border-outline-variant bg-surface text-xs font-semibold text-primary hover:bg-surface-container-low cursor-pointer disabled:opacity-40"><Plus size={16} /> Thêm mục</button>
+            </div>
+            <div className="grid gap-4">
               {items.map((row, index) => (
-                <div key={row.key} className="flex items-center gap-3 py-2 px-3 rounded-xl bg-surface-container-lowest border border-outline-variant/40">
-                  <span className="text-xs font-semibold text-outline w-6 text-center">{index + 1}</span>
-                  <input
-                    value={row.itemText}
-                    onChange={(e) => updateItem(row.key, { itemText: e.target.value })}
-                    placeholder="Nội dung mục..."
-                    className="flex-1 py-2.5 px-3 rounded-xl border border-outline-variant bg-surface text-sm text-on-surface font-sans"
-                  />
-                  <label className="flex items-center gap-1.5 text-xs text-outline whitespace-nowrap cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={row.isRequired}
-                      onChange={(e) => updateItem(row.key, { isRequired: e.target.checked })}
-                      className="rounded accent-primary cursor-pointer"
-                    />
-                    Bắt buộc
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => removeItem(row.key)}
-                    disabled={items.length === 1}
-                    title="Xóa mục"
-                    className="w-8 h-8 rounded-lg border border-outline-variant bg-transparent cursor-pointer flex items-center justify-center text-error disabled:opacity-30 disabled:cursor-not-allowed hover:bg-error-container/20"
-                  >
-                    <span className="material-symbols-outlined text-base">delete</span>
-                  </button>
+                <div key={row.key} className="grid gap-3 rounded-2xl border border-surface-container-highest bg-surface-bright p-4 md:grid-cols-[minmax(0,1fr)_160px_auto] md:items-end">
+                  <label className="grid gap-2 text-sm font-semibold text-on-surface">Mục {index + 1}<input aria-label={`Item ${index + 1} text`} disabled={isImmutable} value={row.itemText} onChange={(event) => updateItem(row.key, { itemText: event.target.value })} className={field} /></label>
+                  <label className="grid gap-2 text-sm font-semibold text-on-surface">Đối tượng<select aria-label={`Item ${index + 1} target`} disabled={isImmutable} value={row.targetSubject} onChange={(event) => updateItem(row.key, { targetSubject: event.target.value as ChecklistTargetSubject })} className={field}><option value="MOTHER">Mẹ</option><option value="BABY">Em bé</option></select></label>
+                  <button aria-label={`Delete item ${index + 1}`} type="button" disabled={isImmutable || items.length === 1} onClick={() => setItems((previous) => previous.filter((item) => item.key !== row.key))} className="flex h-10 w-10 items-center justify-center rounded-xl border border-error-container text-error hover:bg-error-container/20 cursor-pointer disabled:opacity-30 self-end mb-0.5"><Trash2 size={18} /></button>
+                  <label className="flex items-center gap-2 text-sm font-semibold text-on-surface-variant md:col-span-3"><input type="checkbox" disabled={isImmutable} checked={row.isRequired} onChange={(event) => updateItem(row.key, { isRequired: event.target.checked })} className="h-4 w-4 accent-primary" /> Bắt buộc</label>
                 </div>
               ))}
             </div>
-            <p className="text-[11px] text-outline mt-3">Có thể để trống danh sách mục và bổ sung sau (checklist bản nháp).</p>
-          </div>
+          </section>
         </div>
 
-        <div className="flex flex-col gap-4">
-          <div className="bg-surface rounded-2xl p-5 shadow-md">
-            <p className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-3">Tổng quan mục</p>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-on-surface">Tổng số mục</span>
-              <span className="text-sm font-semibold text-primary">{items.filter(i => i.itemText.trim()).length}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-on-surface">Mục bắt buộc</span>
-              <span className="text-sm font-semibold text-primary">{items.filter(i => i.itemText.trim() && i.isRequired).length}</span>
-            </div>
-          </div>
-
-          <div className="bg-surface rounded-2xl p-5 shadow-md">
-            <p className="text-[11px] font-semibold text-outline uppercase tracking-[0.05em] mb-3">Lịch sử phiên bản</p>
-            {isEdit && versionNo !== null ? (
-              <>
-                <p className="text-sm text-on-surface mb-1">Phiên bản hiện tại: v{versionNo}</p>
-                <button
-                  type="button"
-                  onClick={() => navigate(`/content/checklists/${id}/versions`)}
-                  className="text-sm text-primary font-semibold cursor-pointer border-0 bg-transparent p-0 hover:underline"
-                >
-                  Xem toàn bộ lịch sử
-                </button>
-              </>
-            ) : (
-              <p className="text-sm text-outline">Chưa có lịch sử (Phiên bản mới)</p>
-            )}
-          </div>
-        </div>
+        <aside className="flex flex-col gap-5">
+          <section className={card}><h2 className="mb-3 text-base font-bold text-on-surface">Tổng quan</h2><p className="text-sm text-on-surface-variant">{recipientRoles.length} nhóm người nhận</p><p className="text-sm text-on-surface-variant">{items.filter((item) => item.itemText.trim()).length} mục có nội dung</p></section>
+          <section className={card}><h2 className="mb-3 text-base font-bold text-on-surface">Lịch sử phiên bản</h2>{isEdit && versionNo !== null ? <><p className="text-sm text-on-surface-variant">Phiên bản hiện tại: v{versionNo}</p><button type="button" onClick={() => navigate(`/content/checklists/${id}/versions`)} className="mt-3 text-xs font-semibold text-primary underline cursor-pointer">Xem toàn bộ lịch sử</button></> : <p className="text-sm text-on-surface-variant">Chưa có lịch sử (Phiên bản mới)</p>}</section>
+        </aside>
       </div>
-    </div>
+    </main>
   );
 }

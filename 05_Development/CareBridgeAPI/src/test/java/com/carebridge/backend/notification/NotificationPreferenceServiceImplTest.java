@@ -9,6 +9,7 @@ import com.carebridge.backend.notification.entity.NotificationPreference;
 import com.carebridge.backend.notification.entity.NotificationType;
 import com.carebridge.backend.notification.repository.NotificationPreferenceRepository;
 import com.carebridge.backend.notification.service.impl.NotificationPreferenceServiceImpl;
+import com.carebridge.backend.reminder.notification.service.AppointmentNotificationRuleValidator;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,6 +37,8 @@ class NotificationPreferenceServiceImplTest {
 
     @Mock private NotificationPreferenceRepository preferenceRepository;
     @Mock private AuditService auditService;
+    @org.mockito.Spy private AppointmentNotificationRuleValidator appointmentRuleValidator =
+            new AppointmentNotificationRuleValidator();
     @InjectMocks private NotificationPreferenceServiceImpl service;
 
     private static final UUID USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000010");
@@ -57,6 +60,7 @@ class NotificationPreferenceServiceImplTest {
                 .inAppEnabled(true)
                 .build();
         when(preferenceRepository.findByUserId(USER_ID)).thenReturn(List.of(pref));
+        when(preferenceRepository.findAppointmentReminderDefaults(USER_ID)).thenReturn(List.of());
 
         // When
         NotificationPreferencesResponse response = service.getPreferences(USER_ID);
@@ -67,6 +71,7 @@ class NotificationPreferenceServiceImplTest {
         assertThat(response.preferences().get(0).notificationType()).isEqualTo(NotificationType.REMINDER);
         assertThat(response.preferences().get(0).pushEnabled()).isTrue();
         assertThat(response.preferences().get(0).emailEnabled()).isFalse();
+        assertThat(response.appointmentReminderDefaults()).containsExactly(-1440, -30, 0, 15);
 
         // C6: audit must be called
         verify(auditService).log(
@@ -81,6 +86,7 @@ class NotificationPreferenceServiceImplTest {
     @DisplayName("TC-UNIT-001b: getPreferences with no rows returns empty list")
     void getPreferences_noRows_returnsEmptyList() {
         when(preferenceRepository.findByUserId(USER_ID)).thenReturn(List.of());
+        when(preferenceRepository.findAppointmentReminderDefaults(USER_ID)).thenReturn(List.of());
 
         NotificationPreferencesResponse response = service.getPreferences(USER_ID);
 
@@ -107,7 +113,7 @@ class NotificationPreferenceServiceImplTest {
         when(preferenceRepository.findByUserId(USER_ID)).thenReturn(List.of(savedPref));
 
         UpdateNotificationPreferencesRequest request = new UpdateNotificationPreferencesRequest(
-                List.of(new NotificationPreferenceItemDto(NotificationType.REMINDER, true, false, true)));
+                List.of(new NotificationPreferenceItemDto(NotificationType.REMINDER, true, false, true)), null);
 
         // When
         NotificationPreferencesResponse response = service.updatePreferences(USER_ID, request);
@@ -149,7 +155,7 @@ class NotificationPreferenceServiceImplTest {
         when(preferenceRepository.findByUserId(USER_ID)).thenReturn(List.of(updated));
 
         UpdateNotificationPreferencesRequest request = new UpdateNotificationPreferencesRequest(
-                List.of(new NotificationPreferenceItemDto(NotificationType.REMINDER, false, null, null)));
+                List.of(new NotificationPreferenceItemDto(NotificationType.REMINDER, false, null, null)), null);
 
         // When
         service.updatePreferences(USER_ID, request);
@@ -168,7 +174,7 @@ class NotificationPreferenceServiceImplTest {
         UpdateNotificationPreferencesRequest request = new UpdateNotificationPreferencesRequest(List.of(
                 new NotificationPreferenceItemDto(NotificationType.REMINDER, true, false, true),
                 new NotificationPreferenceItemDto(NotificationType.COMMUNITY_REPLY, false, false, false),
-                new NotificationPreferenceItemDto(NotificationType.EMERGENCY, true, true, true)));
+                new NotificationPreferenceItemDto(NotificationType.EMERGENCY, true, true, true)), null);
 
         // When
         service.updatePreferences(USER_ID, request);
@@ -176,6 +182,23 @@ class NotificationPreferenceServiceImplTest {
         // Then — save called exactly 3 times (one per preference item)
         verify(preferenceRepository, times(3)).patchChannels(
                 eq(USER_ID), any(NotificationType.class), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("appointment timing-only update validates and persists global defaults")
+    void updatePreferences_timingOnly_persistsAppointmentDefaults() {
+        when(preferenceRepository.findByUserId(USER_ID)).thenReturn(List.of());
+        when(preferenceRepository.findAppointmentReminderDefaults(USER_ID))
+                .thenReturn(List.of(-60, 0, 30));
+        when(preferenceRepository.hasAppointmentReminderDefaults(USER_ID)).thenReturn(true);
+
+        UpdateNotificationPreferencesRequest request = new UpdateNotificationPreferencesRequest(
+                List.of(), List.of(30, -60, 0, -60));
+
+        NotificationPreferencesResponse response = service.updatePreferences(USER_ID, request);
+
+        verify(preferenceRepository).patchAppointmentReminderDefaults(USER_ID, List.of(-60, 0, 30));
+        assertThat(response.appointmentReminderDefaults()).containsExactly(-60, 0, 30);
     }
 
     // =========================================================================

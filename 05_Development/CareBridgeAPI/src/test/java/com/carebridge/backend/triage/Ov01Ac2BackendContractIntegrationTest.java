@@ -51,7 +51,6 @@ class Ov01Ac2BackendContractIntegrationTest extends AbstractPostgresIntegrationT
         MotherJourney journey = seedJourney(mother.getId());
         BabyProfile baby = babyRepository.saveAndFlush(BabyProfile.builder()
                 .ownerUserId(mother.getId())
-                .relatedJourneyId(journey.getId())
                 .nickname("E2E-008 synthetic baby")
                 .birthDate(LocalDate.of(2026, 7, 1))
                 .status(BabyProfileStatus.ACTIVE)
@@ -63,8 +62,10 @@ class Ov01Ac2BackendContractIntegrationTest extends AbstractPostgresIntegrationT
                     ? journey.getId() : baby.getId();
             TriageStage stage = origin == OriginDashboard.MOTHER_JOURNEY
                     ? TriageStage.POSTPARTUM : TriageStage.INFANT;
+            UUID boundJourneyId = origin == OriginDashboard.MOTHER_JOURNEY
+                    ? journey.getId() : null;
             IntakeSession intake = completedGreenIntake(
-                    mother.getId(), journey.getId(), origin, originReference, stage);
+                    mother.getId(), boundJourneyId, origin, originReference, stage);
 
             var first = outcomeProjector.ensureProjected(intake.getId(), mother.getId());
             var replay = outcomeProjector.ensureProjected(intake.getId(), mother.getId());

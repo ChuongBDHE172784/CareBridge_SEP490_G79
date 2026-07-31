@@ -1,8 +1,37 @@
 import '../../../core/network/api_client.dart';
 import '../models/user_checklist_item_model.dart';
+import 'checklist_assignment_refresh_bus.dart';
 
 typedef ChecklistPostRequest =
     Future<dynamic> Function(String path, Map<String, dynamic> body);
+
+class ChecklistTemplateAssignmentResult {
+  const ChecklistTemplateAssignmentResult({
+    required this.createdTasks,
+    required this.existingTasks,
+    required this.deniedRecipients,
+    required this.conflicts,
+    required this.failures,
+  });
+
+  final int createdTasks;
+  final int existingTasks;
+  final int deniedRecipients;
+  final int conflicts;
+  final int failures;
+
+  bool get hasAssignedTasks => createdTasks + existingTasks > 0;
+
+  factory ChecklistTemplateAssignmentResult.fromJson(
+    Map<String, dynamic> json,
+  ) => ChecklistTemplateAssignmentResult(
+    createdTasks: (json['createdTasks'] as num?)?.toInt() ?? 0,
+    existingTasks: (json['existingTasks'] as num?)?.toInt() ?? 0,
+    deniedRecipients: (json['deniedRecipients'] as num?)?.toInt() ?? 0,
+    conflicts: (json['conflicts'] as num?)?.toInt() ?? 0,
+    failures: (json['failures'] as num?)?.toInt() ?? 0,
+  );
+}
 
 class UserChecklistService {
   UserChecklistService({ChecklistPostRequest? postRequest})
@@ -41,50 +70,54 @@ class UserChecklistService {
 
   Future<UserChecklistItem> addItem({
     required String itemText,
+    required String targetSubject,
+    required String clientTaskId,
     ChecklistCategory category = ChecklistCategory.general,
     String? journeyId,
     String? babyId,
     int? itemOrder,
   }) async {
-    final data = await apiPost('/api/v1/user-checklist-items', {
+    final data = await _postRequest('/api/v1/user-checklist-items', {
       'itemText': itemText,
+      'targetSubject': targetSubject,
+      'clientTaskId': clientTaskId,
       'category': category.apiValue,
       if (journeyId != null && journeyId.isNotEmpty) 'journeyId': journeyId,
       if (babyId != null && babyId.isNotEmpty) 'babyId': babyId,
       'itemOrder': ?itemOrder,
     });
-    return UserChecklistItem.fromJson(data['data'] as Map<String, dynamic>);
-  }
-
-  Future<UserChecklistItem> toggleComplete(String itemId) async {
-    final data = await apiPatch(
-      '/api/v1/user-checklist-items/$itemId/toggle',
-      {},
+    final item = UserChecklistItem.fromJson(
+      data['data'] as Map<String, dynamic>,
     );
-    return UserChecklistItem.fromJson(data['data'] as Map<String, dynamic>);
+    ChecklistAssignmentRefreshBus.notify();
+    return item;
   }
 
-  Future<List<UserChecklistItem>> importFromTemplate({
-    required List<String> templateItemIds,
+  Future<ChecklistTemplateAssignmentResult> addTemplate({
+    required String templateId,
     String? journeyId,
     String? babyId,
   }) async {
-    final normalizedJourneyId = journeyId == null || journeyId.isEmpty
-        ? null
-        : journeyId;
-    final normalizedBabyId = babyId == null || babyId.isEmpty ? null : babyId;
-    if (normalizedJourneyId != null && normalizedBabyId != null) {
-      throw ArgumentError('journeyId and babyId are mutually exclusive');
+    final payload =
+        await _postRequest('/api/v1/user-checklist-items/from-template', {
+          'templateId': templateId,
+          if (journeyId != null && journeyId.isNotEmpty) 'journeyId': journeyId,
+          if (babyId != null && babyId.isNotEmpty) 'babyId': babyId,
+        });
+    final envelope = Map<String, dynamic>.from(payload as Map);
+    final raw = envelope['data'] is Map ? envelope['data'] as Map : envelope;
+    final result = ChecklistTemplateAssignmentResult.fromJson(
+      Map<String, dynamic>.from(raw),
+    );
+    if (!result.hasAssignedTasks ||
+        result.deniedRecipients > 0 ||
+        result.conflicts > 0 ||
+        result.failures > 0) {
+      throw const FormatException(
+        'Checklist assignment did not create or find usable tasks',
+      );
     }
-    if (templateItemIds.isEmpty) return const [];
-    final data = await _postRequest('/api/v1/user-checklist-items/import', {
-      'journeyId': ?normalizedJourneyId,
-      'babyId': ?normalizedBabyId,
-      'templateItemIds': templateItemIds,
-    });
-    return (data['data'] as List? ?? [])
-        .cast<Map<String, dynamic>>()
-        .map(UserChecklistItem.fromJson)
-        .toList(growable: false);
+    ChecklistAssignmentRefreshBus.notify();
+    return result;
   }
 }

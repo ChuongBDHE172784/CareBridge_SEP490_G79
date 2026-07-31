@@ -12,8 +12,14 @@ import 'role_selection_screen.dart';
 class RegisterScreen extends StatefulWidget {
   final bool isExpert;
   final Future<void> Function()? onGoogleSignIn;
+  final AuthService? authService;
 
-  const RegisterScreen({super.key, this.isExpert = false, this.onGoogleSignIn});
+  const RegisterScreen({
+    super.key,
+    this.isExpert = false,
+    this.onGoogleSignIn,
+    this.authService,
+  });
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -58,6 +64,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   ).hasMatch(_identifierCtrl.text.trim());
 
   bool get _hasMinLength => _passwordCtrl.text.length >= 8;
+  bool get _hasUppercase => RegExp(r'[A-Z]').hasMatch(_passwordCtrl.text);
   bool get _hasSpecialChar =>
       RegExp(r'[@#$%^&*!]').hasMatch(_passwordCtrl.text);
 
@@ -86,7 +93,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       setState(() => _confirmPasswordError = 'Mật khẩu không khớp');
       return;
     }
-    if (!_hasMinLength || !_hasSpecialChar) {
+    if (!_hasMinLength || !_hasSpecialChar || !_hasUppercase) {
       setState(() => _errorMessage = 'Mật khẩu chưa đáp ứng yêu cầu.');
       return;
     }
@@ -102,7 +109,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
-      await AuthService.instance.register(
+      await (widget.authService ?? AuthService.instance).register(
         name: name,
         email: _isEmailInput ? identifier : null,
         phone: !_isEmailInput ? identifier : null,
@@ -121,7 +128,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
     } on ApiException catch (e) {
       String msg;
-      if (e.statusCode == 409) {
+      if (e.errorCode == 'AUTH_ACCOUNT_EXISTS' || e.statusCode == 409) {
         msg = widget.isExpert
             ? 'Email này đã được đăng ký.'
             : 'Email hoặc số điện thoại này đã được đăng ký.';
@@ -130,8 +137,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       } else {
         msg = 'Đăng ký thất bại. Vui lòng thử lại sau.';
       }
+      if (!mounted) return;
       setState(() => _errorMessage = msg);
     } catch (_) {
+      if (!mounted) return;
       setState(() => _errorMessage = 'Không thể kết nối đến máy chủ.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -657,6 +666,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
           const SizedBox(height: 8),
           _buildCheckItem('Ít nhất 8 ký tự', _hasMinLength),
+          const SizedBox(height: 6),
+          _buildCheckItem('Chứa chữ cái viết hoa', _hasUppercase),
           const SizedBox(height: 6),
           _buildCheckItem(
             'Chứa ký tự đặc biệt (@, #, \$, ...)',

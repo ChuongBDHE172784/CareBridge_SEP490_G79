@@ -5,9 +5,11 @@
 **Ngày chốt số liệu:** 22/07/2026
 **Nguồn trạng thái chính thức:** `_bmad-output/implementation-artifacts/sprint-status.yaml` (cập nhật 22/07/2026)
 
+> **Lưu ý lịch sử:** Đây là bản chụp tiến độ tại 22/07/2026; không dùng các con số/trạng thái trong báo cáo này làm delivery truth hiện hành. Xem `sprint-status.yaml` và `ov01-gap-tracking.yaml` cho trạng thái mới nhất.
+
 ## 1. Mục tiêu Epic 6
 
-Epic 6 khép kín luồng OV-01 từ lúc người dùng chọn vai trò Mẹ, khai báo thông tin nền và đồng thuận, tạo hành trình chuẩn, theo dõi thai kỳ, ghi nhận kết quả thai kỳ, phục hồi sau sinh, liên kết em bé tùy chọn, cho đến các nhánh an toàn, hỗ trợ chuyên gia, nội dung đã duyệt và kiểm thử end-to-end.
+Epic 6 khép kín luồng OV-01 từ lúc người dùng chọn vai trò Mẹ, khai báo thông tin nền và đồng thuận, tạo hành trình chuẩn, theo dõi thai kỳ, ghi nhận kết quả thai kỳ, phục hồi sau sinh, tạo hồ sơ em bé độc lập tùy chọn, cho đến các nhánh an toàn, hỗ trợ chuyên gia, nội dung đã duyệt và kiểm thử end-to-end.
 
 Nguyên tắc cốt lõi:
 
@@ -15,7 +17,7 @@ Nguyên tắc cốt lõi:
 - Mọi chuyển trạng thái quan trọng phải có lịch sử append-only.
 - Không tạo hành trình nếu thiếu thông tin nền hoặc đồng thuận hợp lệ.
 - Phục hồi sau sinh không phụ thuộc bắt buộc vào hồ sơ em bé.
-- Việc liên kết em bé phải đúng chủ sở hữu và đúng ngữ nghĩa vòng đời.
+- Hồ sơ em bé là dữ liệu standalone theo chủ sở hữu và không tham gia quan hệ Mother Journey.
 - Các story còn lại về safety projection, chuyên gia, nội dung và E2E chưa hoàn tất không được trình bày như chức năng đã đóng.
 
 ## 2. Tổng quan tiến độ
@@ -31,7 +33,7 @@ Nguyên tắc cốt lõi:
 | Story point đang thực hiện | 0/63 (0%) |
 | Story point chưa bắt đầu | 24/63 (38,1%) |
 
-> Lưu ý: phần trăm theo số story và theo story point là hai cách đo khác nhau. Stories 6.5 và 6.6 đã hoàn tất sau kiểm thử thiết bị/PostgreSQL và review độc lập; Epic vẫn `in-progress` vì Stories 6.7–6.10 còn backlog.
+> Lưu ý: phần trăm theo số story và theo story point là hai cách đo khác nhau. Story 6.5 đã được supersede — chức năng liên kết hồ sơ bé bị loại bỏ; Story 6.6 đã hoàn tất; Epic vẫn `in-progress` vì Stories 6.7–6.10 còn backlog.
 
 ### 2.1. Trạng thái từng story
 
@@ -41,7 +43,7 @@ Nguyên tắc cốt lõi:
 | 6.2 | Thông tin nền và cổng đồng thuận bắt buộc | 5 | **Done** | Luồng fail-closed, retry/idempotency và kiểm thử thiết bị đã hoàn tất |
 | 6.3 | Kết quả thai kỳ và chuyển sang hậu sản | 8 | **Done** | Có evidence append-only, policy chuyển trạng thái và luồng mobile nhạy cảm với mất thai |
 | 6.4 | Phục hồi hậu sản trực tiếp, không phụ thuộc em bé | 5 | **Done** | Tạo POSTPARTUM với 0 em bé và recovery log CRUD đã hoàn tất |
-| 6.5 | Liên kết tùy chọn 0..n em bé với hành trình | 5 | **Done** | OV01-MAN-018–022 PASS; cleanup legacy đã được phê duyệt/áp dụng; review cuối không còn High/Medium |
+| 6.5 | Tạo hồ sơ bé độc lập sau live birth | 5 | **Superseded — feature removed** | Contract hiện hành không còn liên kết hồ sơ bé với Mother Journey; các ca MAN-018–022 phải chạy lại theo standalone Add Baby |
 | 6.6 | Điều phối RED an toàn và triage hậu sản | 8 | **Done** | RED tạo/reuse emergency xác định, POSTPARTUM và năm origin chạy end-to-end; OV01-MAN-025–027 PASS |
 | 6.7 | Lưu kết quả an toàn và quay về đúng màn hình nguồn | 8 | Backlog | Chưa triển khai trọn vẹn |
 | 6.8 | Chuyển YELLOW tới chuyên gia đã xác minh, có đồng thuận | 5 | Backlog | Chưa triển khai trọn vẹn |
@@ -53,7 +55,7 @@ Nguyên tắc cốt lõi:
 | Wave | Phạm vi | Trạng thái |
 |---|---|---|
 | Wave 0 - Contract foundation | 6.1, 6.2 | **Hoàn thành** |
-| Wave 1 - Outcome and recovery | 6.3, 6.4, 6.5 | **Hoàn thành** |
+| Wave 1 - Outcome and recovery | 6.3, 6.4, 6.5 | 6.3–6.4 **Hoàn thành**; 6.5 **superseded — feature removed** |
 | Wave 2 - Safety round trip | 6.6, 6.7 | **Đang thực hiện**; 6.6 done, 6.7 backlog |
 | Wave 3 - Assisted support | 6.8, 6.9 | Chưa bắt đầu |
 | Wave 4 - Release closure | 6.10 | Chưa bắt đầu |
@@ -241,60 +243,37 @@ Migration chính:
 - `V20260719170000__postpartum_log_idempotency.sql`
 - `V20260719180000__add_postpartum_triage_stage.sql`
 
-### 3.5. Story 6.5 - Liên kết tùy chọn 0..n em bé với hành trình
+### 3.5. Story 6.5 - Standalone Add Baby sau live birth
 
 #### Dataflow
 
-1. `mother_journey_screen.dart` chỉ mở entry khi server-authoritative journey đủ điều kiện; route tới `baby_journey_linkage_screen.dart`.
-2. `baby_service.dart` gọi:
-   - `POST /api/v1/babies` để create-with-link.
-   - `PUT /api/v1/babies/{babyId}/journey-link` để link baby có sẵn.
-   - `GET /api/v1/journeys/{journeyId}/babies` để refresh danh sách authoritative.
-3. `BabyController.java` hoặc `JourneyBabiesController.java` gọi `BabyServiceImpl.java`.
-4. Service khóa transaction/submission/baby, áp dụng policy: cùng owner, journey canonical active, outcome `LIVE_BIRTH`, không replay/conflict sai lệch.
-5. Sau create/link, mobile tải lại danh sách từ server để cập nhật selector/dashboard. Hành động “Để sau” giữ nguyên trạng thái 0 em bé.
+1. `PregnancyOutcomeScreen` commit `LIVE_BIRTH`; `MotherJourneyScreen` reloads authoritative POSTPARTUM rồi mới đẩy typed `AddBabyRouteArgs(liveBirthTransition)`.
+2. `AddBabyScreen` gọi duy nhất `POST /api/v1/babies` với owner-scoped profile fields; không có query parameter, journey ID hay persistent handoff token.
+3. Transition context cho phép “Để sau” đúng một lần quay tới tab **Bé**; back/failure không ghi dữ liệu.
+4. Profile-list, onboarding và deep-link entry dùng mode `profileList`, không render “Để sau”. Legacy relationship properties trả validation `400`; removed routes trả generic `404/405`.
 
 #### File code chính
 
 | Tầng | File |
 |---|---|
-| Mobile UI | `.../baby/screens/baby_journey_linkage_screen.dart` |
+| Mobile UI | `.../baby/screens/add_baby_screen.dart` |
 | Mobile entry | `.../journey/screens/mother_journey_screen.dart` |
 | Mobile service | `.../baby/services/baby_service.dart` |
 | Controller | `.../baby/controller/BabyController.java` |
-| Controller | `.../baby/controller/JourneyBabiesController.java` |
 | Service | `.../baby/service/impl/BabyServiceImpl.java` |
-| Eligibility policy | `.../baby/policy/BabyJourneyLinkagePolicy.java` |
 | Access policy | `.../baby/policy/BabyAccessPolicy.java` |
-| Rejection audit | `.../baby/service/BabyLinkRejectionAuditService.java` |
-| Boundary audit filter | `.../baby/security/BabyLinkBoundaryAuditFilter.java` |
 | Repository | `.../baby/repository/BabyProfileRepository.java` |
-| Repository | `.../baby/repository/BabyLinkSubmissionRepository.java` |
 
 #### Database table
 
 | Table | Vai trò |
 |---|---|
-| `baby_profiles` | Hồ sơ em bé; `related_journey_id` là liên kết tùy chọn |
-| `baby_link_submissions` | Idempotency và kết quả command create/link |
-| `mother_journeys` | Journey được khóa và kiểm tra eligibility |
-| `pregnancy_outcome_evidence` | Xác minh outcome tương thích `LIVE_BIRTH` |
+| `care_subjects` / baby profile projection | Hồ sơ em bé owner-scoped; baby rows không có Mother Journey ID |
+| `mother_journeys` | POSTPARTUM lifecycle authoritative; không bị thay đổi bởi Add Baby |
 | `users` | Owner/authorization |
-| `audit_logs` | Audit accepted/rejected, tối thiểu hóa dữ liệu |
-| `baby_journey_link_cleanup_summary` | Ghi kết quả tổng hợp đã tối thiểu hóa dữ liệu của migration cleanup legacy được phê duyệt |
+| `audit_logs` | Audit tạo hồ sơ bé và các sự kiện lịch sử bất biến |
 
-Migration và assessment đã xác minh:
-
-- `V20260720100000__secure_baby_journey_linkage.sql` — persistence/idempotency/audit boundary.
-- `V20260722020000__quarantine_invalid_legacy_baby_journey_links.sql` — đã áp dụng sau Product/Data approval; `MISSING_OUTCOME_EVIDENCE=1`, `remainingInvalid=0`.
-- `V20260722020100__quarantine_outcome_date_inconsistent_baby_journey_links.sql` — follow-up fail-closed; đã áp dụng với `affected=0`, `remainingMismatch=0`.
-- Read-only assessment: `db/assessment/story_6_5_legacy_baby_links.sql`.
-
-Xác minh đóng Story 6.5:
-
-- Backend baby/linkage 51/51, PostgreSQL migration 11/11 và backend package PASS.
-- Flutter focused cuối 25/25; manual OV01-MAN-018–022 PASS trên Android với evidence sanitized.
-- User đã chấp nhận waiver cho lượt full Flutter sau notifier cuối và residual concurrency risk của migration đã áp dụng; review độc lập không còn High/Medium.
+The forward-only removal migration detaches historical baby rows, enforces the baby-null journey invariant, and preserves Mother Journey links and immutable historical audits. Focused standalone validation and rerun of OV01-MAN-018–022 remain required.
 
 ### 3.6. Story 6.6 - Điều phối RED xác định và triage hậu sản
 
@@ -363,7 +342,7 @@ Không liệt kê các table dự kiến của 6.7-6.10 như table “đã tri�
 | 6.2 | Sau review: backend Story 6.1/6.2 46 test pass; Flutter focused 9/9; device missing/expired/revoked fail-closed |
 | 6.3 | Focused backend, PostgreSQL outcome/concurrency, full Flutter 209 test và analyze đều pass |
 | 6.4 | Backend focused 110/110; Flutter full 230/230; manual OV01-MAN-016/017 hoàn tất |
-| 6.5 | Backend baby/linkage 51/51 gồm PostgreSQL 9/9; migration 11/11; Flutter focused cuối 25/25, full trước notifier delta 247/247; OV01-MAN-018–022 PASS; waiver cuối được ghi nhận |
+| 6.5 | Superseded — feature removed; standalone Add Baby contract and legacy-field rejection require focused rerun |
 | 6.6 | Backend focused 80 PASS và package PASS; PostgreSQL/Testcontainers 10/10 với 97 migrations; Python 213/213; Flutter origin 13/13 và full 287/287; OV01-MAN-025–027 PASS trên Android |
 
 Manual suite OV-01 hiện có **17/34 READY, 8/34 PASS, 7/34 BLOCKED và 2/34 DEFERRED**. Gate riêng Story 6.6 đã PASS; full OV-01 gate vẫn BLOCKED bởi Stories 6.7–6.10, không phải do ca FAIL.
@@ -375,7 +354,7 @@ Project-wide backend regression ở một số lần chạy vẫn đỏ do basel
 ## 6. Rủi ro và điểm cần nhấn mạnh trong buổi review
 
 1. **Epic chưa đạt release-ready:** Wave 0–1 đã hoàn thành, Wave 2 mới hoàn tất 6.6; Stories 6.7–6.10 còn backlog.
-2. **Story 6.5 đã đóng với residual risk được chấp nhận:** full Flutter rerun sau notifier cuối và migration concurrency window có waiver rõ ràng; không được diễn giải thành bằng chứng “không có rủi ro”.
+2. **Story 6.5 đã supersede:** historical linkage evidence is retained only as superseded material; it is not evidence for the standalone contract.
 3. **Safety projection chưa hoàn chỉnh:** Story 6.6 đã đóng RED escalation, emergency idempotency và current-session return; Story 6.7 vẫn là release blocker cho timeline projection, restart-safe continuation và exactly-once outcome persistence.
 4. **Privacy/content chưa khép kín:** Story 6.8-6.9 còn thiếu verified expert handoff và APPROVED-only content boundary.
 5. **Chưa có full OV-01 E2E closure:** Story 6.10 chưa triển khai; traceability và release quality gate còn mở.
@@ -384,7 +363,7 @@ Project-wide backend regression ở một số lần chạy vẫn đỏ do basel
 ## 7. Thông điệp trình bày đề xuất
 
 - “Epic 6 đang đạt **6/10 story done**, tương đương **39/63 story point**; bốn story 6.7–6.10 còn backlog.”
-- “Nền tảng lifecycle, consent, pregnancy outcome, zero-baby postpartum và liên kết 0..n em bé đã được triển khai và có bằng chứng kiểm thử.”
+- “Nền tảng lifecycle, consent, pregnancy outcome, zero-baby postpartum và standalone Add Baby là phạm vi hiện hành; liên kết hồ sơ bé đã bị loại bỏ.”
 - “Story 6.6 đã đóng P0 RED safety gap: năm production origin đều mở authoritative emergency, fallback khi Python unavailable không hạ mức nguy cơ và retry không tạo emergency/outbox trùng.”
 - “Safety projection còn lại ở 6.7, expert/content ở 6.8–6.9 và E2E release closure ở 6.10; Epic 6 chưa release-ready.”
 
@@ -394,13 +373,13 @@ Project-wide backend regression ở một số lần chạy vẫn đỏ do basel
 - `_bmad-output/implementation-artifacts/6-2-add-baseline-context-and-required-consent-gate.md`
 - `_bmad-output/implementation-artifacts/6-3-model-pregnancy-outcomes-and-postpartum-transition.md`
 - `_bmad-output/implementation-artifacts/6-4-deliver-direct-postpartum-recovery-without-baby-dependency.md`
-- `_bmad-output/implementation-artifacts/6-5-secure-optional-0-n-baby-to-journey-linkage.md`
+- Superseded Story 6.5 historical archive (not current behavior evidence)
 - `_bmad-output/implementation-artifacts/6-6-guarantee-deterministic-safety-escalation-and-postpartum-triage.md`
 - `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-17.md` — story-point baseline đã được phê duyệt (63 điểm)
 - `04_Implement/UC22 - Canonical Mother Lifecycle and Transition History/`
 - `_bmad-output/test-artifacts/test-design-epic-6.md`
 - `_bmad-output/test-artifacts/test-design-progress.md`
-- `_bmad-output/test-artifacts/story-6-5-manual/manual-run-summary.md`
+- `_bmad-output/test-artifacts/story-6-5-manual/manual-run-summary.md` (superseded historical evidence)
 - `_bmad-output/test-artifacts/story-6-6-manual/manual-run-summary.md` — chỉ các artifact committed/cited được tính là sanitized evidence
 - `_bmad-output/test-artifacts/story-6-6-manual/db-evidence.md`
 - `06_Testing/TestCases/mobile/OV-01-Mother-Lifecycle-Orchestration-Manual-Test-Guide.md`
@@ -408,4 +387,4 @@ Project-wide backend regression ở một số lần chạy vẫn đỏ do basel
 
 ---
 
-**Kết luận:** Epic 6 đã hoàn thành 6/10 story (39/63 story point), bao phủ lifecycle từ onboarding đến postpartum, optional baby linkage và deterministic RED emergency round trip cho cả năm context. Phần còn lại là safety outcome projection/continuation, assisted support, reviewed content và E2E release closure ở Stories 6.7–6.10; trạng thái phù hợp tại thời điểm review vẫn là **IN PROGRESS**, chưa phải release-ready.
+**Kết luận:** Epic 6 giữ trạng thái **IN PROGRESS** (39/63 story point); phạm vi đã bao phủ lifecycle từ onboarding đến postpartum, standalone Add Baby và deterministic RED emergency round trip cho cả năm context. Liên kết hồ sơ bé là chức năng đã bị loại bỏ; phần còn lại là safety outcome projection/continuation, assisted support, reviewed content và E2E release closure ở Stories 6.7–6.10.

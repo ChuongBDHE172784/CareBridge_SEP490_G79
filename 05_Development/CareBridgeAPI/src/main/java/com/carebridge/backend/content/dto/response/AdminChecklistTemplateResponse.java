@@ -1,6 +1,7 @@
 package com.carebridge.backend.content.dto.response;
 
 import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
+import com.carebridge.backend.content.entity.ChecklistTemplateType;
 import com.carebridge.backend.content.entity.ContentStage;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
@@ -11,6 +12,7 @@ public record AdminChecklistTemplateResponse(
         UUID id,
         String name,
         @Nullable @Schema(nullable = true) ContentStage stage,
+        ChecklistTemplateType templateType,
         ChecklistTemplateStatus status,
         String description,
         Integer versionNo,
@@ -27,6 +29,21 @@ public record AdminChecklistTemplateResponse(
             Integer versionNo,
             Instant updatedAt,
             long itemCount) {
-        this(id, name, stage, status, description, versionNo, updatedAt, itemCount, null);
+        this(id, name, stage, ChecklistTemplateType.MANDATORY,
+                status, description, versionNo, updatedAt, itemCount, null);
+    }
+
+    public AdminChecklistTemplateResponse(
+            UUID id,
+            String name,
+            ContentStage stage,
+            ChecklistTemplateStatus status,
+            String description,
+            Integer versionNo,
+            Instant updatedAt,
+            long itemCount,
+            ReviewFeedbackResponse latestReviewFeedback) {
+        this(id, name, stage, ChecklistTemplateType.MANDATORY,
+                status, description, versionNo, updatedAt, itemCount, latestReviewFeedback);
     }
 }

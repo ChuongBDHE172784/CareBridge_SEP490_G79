@@ -19,4 +19,17 @@ public interface ChecklistTemplateApprovalService {
      * @throws com.carebridge.backend.content.exception.ContentException (CHKTPL-008) if reason is blank for REJECT
      */
     ChecklistTemplateDecisionResponse decide(UUID id, ContentDecisionRequest request, Principal principal);
+
+    ChecklistTemplateDecisionResponse decideInLineage(
+            UUID lineageId, UUID id, ContentDecisionRequest request, Principal principal);
+
+    ChecklistTemplateDecisionResponse reviewImported(UUID id, Principal principal);
+
+    ChecklistTemplateDecisionResponse reviewImportedInLineage(
+            UUID lineageId, UUID id, Principal principal);
+
+    ChecklistTemplateDecisionResponse activateImported(UUID id, Principal principal);
+
+    ChecklistTemplateDecisionResponse activateImportedInLineage(
+            UUID lineageId, UUID id, Principal principal);
 }

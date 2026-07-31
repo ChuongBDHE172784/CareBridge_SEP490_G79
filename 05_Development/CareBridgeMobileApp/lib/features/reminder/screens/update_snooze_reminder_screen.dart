@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/reminder_model.dart';
 import '../services/reminder_service.dart';
+import '../widgets/appointment_notification_timing_editor.dart';
 
 class UpdateSnoozeReminderScreen extends StatefulWidget {
   final String reminderId;
@@ -37,6 +38,7 @@ class _UpdateSnoozeReminderScreenState
   DateTime? _startDate;
   DateTime? _endDate;
   RecurrenceType _recurrence = RecurrenceType.none;
+  List<int> _notificationOffsets = const [];
   final TextEditingController _titleController = TextEditingController();
 
   @override
@@ -66,6 +68,7 @@ class _UpdateSnoozeReminderScreenState
         _startDate = reminder.scheduledAt.toLocal();
         _endDate = reminder.recurrenceEndDate?.toLocal();
         _recurrence = reminder.recurrenceType;
+        _notificationOffsets = reminder.notificationOffsetsMinutes;
         _errorText = null;
         _loading = false;
       });
@@ -117,10 +120,7 @@ class _UpdateSnoozeReminderScreenState
             fontWeight: FontWeight.w700,
           ),
         ),
-        content: Text(
-          message,
-          style: const TextStyle(fontFamily: 'Lexend'),
-        ),
+        content: Text(message, style: const TextStyle(fontFamily: 'Lexend')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -156,9 +156,9 @@ class _UpdateSnoozeReminderScreenState
       final reminder = await _service.getReminderDetail(widget.reminderId);
       if (!mounted) return;
       setState(() => _reminder = reminder);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã tắt nhắc lịch')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Đã tắt nhắc lịch')));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -191,10 +191,11 @@ class _UpdateSnoozeReminderScreenState
         _startDate = reminder.scheduledAt.toLocal();
         _endDate = reminder.recurrenceEndDate?.toLocal();
         _recurrence = reminder.recurrenceType;
+        _notificationOffsets = reminder.notificationOffsetsMinutes;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã mở nhắc lịch')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Đã mở nhắc lịch')));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -212,7 +213,8 @@ class _UpdateSnoozeReminderScreenState
     if (_reminder == null) return;
     final ok = await _confirmAction(
       title: 'Xóa nhắc lịch?',
-      message: 'Nhắc lịch sẽ bị xóa vĩnh viễn khỏi hệ thống và không thể khôi phục.',
+      message:
+          'Nhắc lịch sẽ bị xóa vĩnh viễn khỏi hệ thống và không thể khôi phục.',
       confirmLabel: 'Xóa',
       confirmColor: _error,
     );
@@ -222,9 +224,9 @@ class _UpdateSnoozeReminderScreenState
     try {
       await _service.hardDeleteReminder(widget.reminderId);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã xóa nhắc lịch')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Đã xóa nhắc lịch')));
       Navigator.pop(context, 'deleted');
     } catch (e) {
       if (!mounted) return;
@@ -247,7 +249,8 @@ class _UpdateSnoozeReminderScreenState
     final endDate = _endDate == null ? null : _dateOnly(_endDate!);
     var firstDate = currentDate.isBefore(today) ? currentDate : today;
     final defaultLastDate = today.add(const Duration(days: 365 * 2));
-    final lastDate = endDate ??
+    final lastDate =
+        endDate ??
         (currentDate.isAfter(defaultLastDate) ? currentDate : defaultLastDate);
     if (firstDate.isAfter(lastDate)) {
       firstDate = lastDate;
@@ -334,6 +337,12 @@ class _UpdateSnoozeReminderScreenState
     final titleChanged = _reminder!.title != _titleController.text.trim();
     final dateChanged = !_reminder!.scheduledAt.isAtSameMomentAs(_startDate!);
     final recurrenceChanged = _reminder!.recurrenceType != _recurrence;
+    final notificationOffsetsChanged =
+        _reminder!.notificationOffsetsMinutes.length !=
+            _notificationOffsets.length ||
+        !_reminder!.notificationOffsetsMinutes.every(
+          _notificationOffsets.contains,
+        );
 
     bool endDateChanged = false;
     if (_reminder!.recurrenceEndDate == null && _endDate != null) {
@@ -356,6 +365,11 @@ class _UpdateSnoozeReminderScreenState
         recurrenceType: recurrenceChanged ? _recurrence : null,
         recurrenceEndDate: endDateChanged ? _endDate?.toUtc() : null,
         recurrenceEndDateSet: endDateChanged,
+        notificationOffsetsMinutes: notificationOffsetsChanged
+            ? _notificationOffsets
+            : null,
+        notificationOffsetsMinutesSet: notificationOffsetsChanged,
+        timeZone: notificationOffsetsChanged ? _reminder!.timeZone : null,
       ),
     );
     if (mounted) Navigator.pop(context, true);
@@ -664,6 +678,15 @@ class _UpdateSnoozeReminderScreenState
                   ),
                 ),
               ),
+              if (reminder.reminderType == ReminderType.appointment) ...[
+                const SizedBox(height: 20),
+                AppointmentNotificationTimingEditor(
+                  values: _notificationOffsets,
+                  enabled: canEdit,
+                  onChanged: (values) =>
+                      setState(() => _notificationOffsets = values),
+                ),
+              ],
             ],
           ),
         ),

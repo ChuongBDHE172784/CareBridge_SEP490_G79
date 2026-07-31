@@ -8,6 +8,7 @@ import com.carebridge.backend.security.dto.response.OtpSendResponse;
 import com.carebridge.backend.security.dto.response.UserProfileResponse;
 import com.carebridge.backend.security.entity.OtpVerification;
 import com.carebridge.backend.security.entity.User;
+import com.carebridge.backend.security.exception.AccountAlreadyExistsException;
 import com.carebridge.backend.security.mapper.UserMapper;
 import com.carebridge.backend.security.policy.AuthenticationPolicy;
 import com.carebridge.backend.security.policy.PasswordComplexityPolicy;
@@ -79,9 +80,9 @@ class AuthServiceRegisterTest {
     // ═══════════════════════════════════════════════════════════════════
     // UC-01 RegisterAccount — TDD gap closure (unit-level, mock-based).
     // NOTE ON SPEC DIVERGENCE: the real service returns OtpSendResponse (OTP-gated
-    // registration), NOT a RegisterResponseDTO with status="UNVERIFIED"; duplicate
-    // email/phone throw a single ValidationException("Account already exists") rather
-    // than distinct AUTH-002/AUTH-003 codes; role is a Role enum guarded by
+    // registration), NOT a RegisterResponseDTO with status="UNVERIFIED". Duplicate
+    // email/phone intentionally share one privacy-preserving AUTH_ACCOUNT_EXISTS
+    // conflict code; role is a Role enum guarded by
     // AuthenticationPolicy.resolveSelfRegistrationRole (not a String "ADMIN").
     // Assertions below encode the ACTUAL approved behavior.
     // ═══════════════════════════════════════════════════════════════════
@@ -215,8 +216,13 @@ class AuthServiceRegisterTest {
 
         assertThatThrownBy(() -> svc.register(
                 registerRequest("existing@test.com", null, "MyP@ssw0rd123", Role.MOTHER)))
-                .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("Account already exists");
+                .isInstanceOf(AccountAlreadyExistsException.class)
+                .satisfies(error -> {
+                    AccountAlreadyExistsException exception = (AccountAlreadyExistsException) error;
+                    assertThat(exception.getCode()).isEqualTo("AUTH_ACCOUNT_EXISTS");
+                    assertThat(exception.getHttpStatus().value()).isEqualTo(409);
+                })
+                .hasMessage("Account already exists");
 
         verify(userRepositoryMock, never()).save(any(User.class));
         verify(otpRepoMock, never()).save(any(OtpVerification.class));
@@ -232,8 +238,13 @@ class AuthServiceRegisterTest {
 
         assertThatThrownBy(() -> svc.register(
                 registerRequest(null, "0912345678", "MyP@ssw0rd123", Role.MOTHER)))
-                .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("Account already exists");
+                .isInstanceOf(AccountAlreadyExistsException.class)
+                .satisfies(error -> {
+                    AccountAlreadyExistsException exception = (AccountAlreadyExistsException) error;
+                    assertThat(exception.getCode()).isEqualTo("AUTH_ACCOUNT_EXISTS");
+                    assertThat(exception.getHttpStatus().value()).isEqualTo(409);
+                })
+                .hasMessage("Account already exists");
 
         verify(userRepositoryMock, never()).save(any(User.class));
         verify(otpRepoMock, never()).save(any(OtpVerification.class));

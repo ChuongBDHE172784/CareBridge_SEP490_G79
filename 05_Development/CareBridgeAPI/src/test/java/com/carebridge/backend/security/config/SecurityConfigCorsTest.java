@@ -13,7 +13,7 @@ class SecurityConfigCorsTest {
 
     @Test
     void corsConfigurationSource_UsesOnlyConfiguredExactOrigins() {
-        SecurityConfig config = new SecurityConfig(null, null, null);
+        SecurityConfig config = new SecurityConfig(null, null);
         CorsConfigurationSource source = config.corsConfigurationSource(List.of(
                 " https://portal.dev.carebridge.example ",
                 "https://portal.carebridge.example"));
@@ -34,7 +34,7 @@ class SecurityConfigCorsTest {
 
     @Test
     void corsConfigurationSource_RejectsEmptyOrigins() {
-        SecurityConfig config = new SecurityConfig(null, null, null);
+        SecurityConfig config = new SecurityConfig(null, null);
 
         assertThatThrownBy(() -> config.corsConfigurationSource(List.of(" ", "")))
                 .isInstanceOf(IllegalStateException.class)
@@ -43,7 +43,7 @@ class SecurityConfigCorsTest {
 
     @Test
     void corsConfigurationSource_RejectsWildcardOrigins() {
-        SecurityConfig config = new SecurityConfig(null, null, null);
+        SecurityConfig config = new SecurityConfig(null, null);
 
         assertThatThrownBy(() -> config.corsConfigurationSource(List.of("https://*.example.com")))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -52,7 +52,7 @@ class SecurityConfigCorsTest {
 
     @Test
     void corsConfigurationSource_RejectsMalformedOrNonOriginValues() {
-        SecurityConfig config = new SecurityConfig(null, null, null);
+        SecurityConfig config = new SecurityConfig(null, null);
 
         assertThatThrownBy(() -> config.corsConfigurationSource(List.of("ftp://portal.example.com")))
                 .isInstanceOf(IllegalArgumentException.class);

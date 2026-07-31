@@ -7,18 +7,22 @@ CareBridge is a modern, premium Maternal and Early Childhood Healthcare Platform
 ## 🚀 Tech Stack
 
 ### Backend
+
 - **Core**: Java 21, Spring Boot 3.5.x, Maven
 - **Database**: PostgreSQL, Flyway (Migration)
 - **Architecture**: Modular Monolith
 
 ### Frontend Web
+
 - **Core**: React, TypeScript, Vite
 - **Styling**: Vanilla CSS / Warm Claymorphism UI/UX design language
 
 ### Mobile App
+
 - **Core**: Flutter, Dart
 
 ### Infrastructure & Integration
+
 - **Infrastructure**: Docker Compose, GitLab CI/CD
 - **Integrations**: Supabase, Firebase, TrackAsia, ZegoCloud, VNPay, Gmail SMTP, Gemini API
 
@@ -53,6 +57,7 @@ CareBridge_SEP490_G79/
 ## 🛠️ Quick Start & Commands
 
 ### 🟢 Backend (`05_Development/CareBridgeAPI`)
+
 1. Create a `.env` file from `.env.example` with valid credentials:
    - `SUPABASE_DB_URL`, `JWT_ACTIVE_KEY_ID`, `JWT_PRIVATE_KEY`, `JWT_PUBLIC_KEYS`, etc.
    - JWT signing uses RS256. `JWT_PRIVATE_KEY` is base64 DER PKCS#8; `JWT_PUBLIC_KEYS` is a semicolon-separated `kid:base64-DER-SPKI` verification ring. Never commit real keys.
@@ -60,6 +65,7 @@ CareBridge_SEP490_G79/
 2. Run the application:
    ```bash
    set -a && source .env && set +a && ./mvnw spring-boot:run
+   .\run.ps1
    ```
 3. Build and Package:
    ```bash
@@ -71,6 +77,7 @@ CareBridge_SEP490_G79/
    ```
 
 ### 🔵 Web (`05_Development/CareBridgeWebApp`)
+
 1. Install dependencies:
    ```bash
    npm install
@@ -85,6 +92,7 @@ CareBridge_SEP490_G79/
    ```
 
 ### 📱 Mobile (`05_Development/CareBridgeMobileApp`)
+
 - Run on Chrome:
   ```bash
   flutter run -d chrome
@@ -120,15 +128,15 @@ the accounts for that run, but must never be written to documentation, console o
 screenshots, or Git. A blank value or the retired historical default makes backend startup
 fail closed while seeding is enabled.
 
-| Role | Email |
-| :--- | :--- |
-| **SYSTEM_ADMIN** | `admin@carebridge.dev` |
-| **MODERATOR** | `moderator@carebridge.dev` |
-| **CONTENT_ADMIN** | `content@carebridge.dev` |
-| **EXPERT** | `expert@carebridge.dev` |
-| **PARTNER** | `partner@carebridge.dev` |
-| **MOTHER** | `mother@carebridge.dev` |
-| **FAMILY** | `family@carebridge.dev` |
+| Role                    | Email                        |
+| :---------------------- | :--------------------------- |
+| **SYSTEM_ADMIN**  | `admin@carebridge.dev`     |
+| **MODERATOR**     | `moderator@carebridge.dev` |
+| **CONTENT_ADMIN** | `content@carebridge.dev`   |
+| **EXPERT**        | `expert@carebridge.dev`    |
+| **PARTNER**       | `partner@carebridge.dev`   |
+| **MOTHER**        | `mother@carebridge.dev`    |
+| **FAMILY**        | `family@carebridge.dev`    |
 
 ---
 

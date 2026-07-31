@@ -32,7 +32,7 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
   static const _onSurfaceVariant = Color(0xFF524440);
   static const _error = Color(0xFFBA1A1A);
 
-  static const _metricOptions = [
+  static const _fallbackMetricOptions = [
     _MetricOption(
       apiValue: 'WEIGHT',
       label: 'Cân nặng',
@@ -40,22 +40,10 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
       icon: Icons.monitor_weight_outlined,
     ),
     _MetricOption(
-      apiValue: 'BLOOD_PRESSURE_SYSTOLIC',
-      label: 'Huyết áp tâm thu',
+      apiValue: 'BLOOD_PRESSURE',
+      label: 'Huyết áp',
       unit: 'mmHg',
       icon: Icons.favorite_border_rounded,
-    ),
-    _MetricOption(
-      apiValue: 'BLOOD_PRESSURE_DIASTOLIC',
-      label: 'Huyết áp tâm trương',
-      unit: 'mmHg',
-      icon: Icons.favorite_border_rounded,
-    ),
-    _MetricOption(
-      apiValue: 'HEART_RATE',
-      label: 'Nhịp tim',
-      unit: 'bpm',
-      icon: Icons.show_chart_rounded,
     ),
     _MetricOption(
       apiValue: 'BLOOD_GLUCOSE',
@@ -64,10 +52,10 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
       icon: Icons.water_drop_outlined,
     ),
     _MetricOption(
-      apiValue: 'TEMPERATURE',
-      label: 'Nhiệt độ',
-      unit: '°C',
-      icon: Icons.thermostat_rounded,
+      apiValue: 'FETAL_MOVEMENT_SESSION',
+      label: 'Cử động thai',
+      unit: 'count',
+      icon: Icons.child_friendly_rounded,
     ),
   ];
 
@@ -75,7 +63,9 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
   final _historyScrollController = ScrollController();
 
   late _MetricOption _selectedMetric;
+  List<_MetricOption> _metricOptions = _fallbackMetricOptions;
   bool _isLoading = false;
+  bool _isLoadingCapabilities = true;
   String? _errorMsg;
   MetricTrend? _trend;
 
@@ -88,11 +78,82 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedMetric = _metricOptions.firstWhere(
-      (o) => o.apiValue == (widget.initialMetricType ?? 'WEIGHT'),
-      orElse: () => _metricOptions.first,
+    _selectedMetric = _fallbackMetricOptions.first;
+    _loadCapabilities();
+  }
+
+  Future<void> _loadCapabilities() async {
+    try {
+      final capabilities = await _service.getCapabilities(widget.journeyId);
+      if (!mounted) return;
+      final options = capabilities
+          .where((capability) => capability.manualEntrySupported)
+          .map(_optionFromCapability)
+          .toList();
+      final resolvedOptions = options.isEmpty
+          ? _fallbackMetricOptions
+          : options;
+      final requested = _canonicalMetricType(widget.initialMetricType);
+      setState(() {
+        _metricOptions = resolvedOptions;
+        _selectedMetric = resolvedOptions.firstWhere(
+          (option) => option.apiValue == requested,
+          orElse: () => resolvedOptions.first,
+        );
+        _isLoadingCapabilities = false;
+      });
+      await _loadTrend();
+    } catch (_) {
+      if (!mounted) return;
+      final requested = _canonicalMetricType(widget.initialMetricType);
+      setState(() {
+        _metricOptions = _fallbackMetricOptions;
+        _selectedMetric = _fallbackMetricOptions.firstWhere(
+          (option) => option.apiValue == requested,
+          orElse: () => _fallbackMetricOptions.first,
+        );
+        _isLoadingCapabilities = false;
+      });
+      await _loadTrend();
+    }
+  }
+
+  _MetricOption _optionFromCapability(MetricCapability capability) {
+    final code = _canonicalMetricType(capability.metricCode);
+    final fallback = _fallbackMetricOptions.firstWhere(
+      (option) => option.apiValue == code,
+      orElse: () => const _MetricOption(
+        apiValue: 'WEIGHT',
+        label: 'Cân nặng',
+        unit: 'kg',
+        icon: Icons.monitor_weight_outlined,
+      ),
     );
-    _loadTrend();
+    return _MetricOption(
+      apiValue: code,
+      label: capability.displayName,
+      unit: capability.canonicalUnit.isEmpty
+          ? fallback.unit
+          : capability.canonicalUnit,
+      icon: fallback.icon,
+    );
+  }
+
+  String _canonicalMetricType(String? value) {
+    switch (value) {
+      case 'BLOOD_PRESSURE_SYSTOLIC':
+      case 'BLOOD_PRESSURE_DIASTOLIC':
+      case 'BLOOD_PRESSURE':
+        return 'BLOOD_PRESSURE';
+      case 'FETAL_MOVEMENT':
+      case 'FETAL_MOVEMENT_COUNT':
+      case 'FETAL_MOVEMENT_SESSION':
+        return 'FETAL_MOVEMENT_SESSION';
+      case 'HEART_RATE':
+        return 'MATERNAL_HEART_RATE';
+      default:
+        return value ?? 'WEIGHT';
+    }
   }
 
   @override
@@ -102,6 +163,7 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
   }
 
   Future<void> _loadTrend() async {
+    if (!_isSupportedMetric) return;
     setState(() {
       _isLoading = true;
       _errorMsg = null;
@@ -128,6 +190,15 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
       }
     }
   }
+
+  bool get _isSupportedMetric => _metricOptions.any(
+    (option) => option.apiValue == _selectedMetric.apiValue,
+  );
+
+  bool get _isBloodPressure => _selectedMetric.apiValue == 'BLOOD_PRESSURE';
+  bool get _isGlucose => _selectedMetric.apiValue == 'BLOOD_GLUCOSE';
+  bool get _isFetalMovement =>
+      _selectedMetric.apiValue == 'FETAL_MOVEMENT_SESSION';
 
   void _onMetricChanged(_MetricOption? opt) {
     if (opt == null || opt == _selectedMetric) return;
@@ -168,6 +239,7 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
       id: _syntheticMetricId(point),
       journeyId: widget.journeyId,
       metricType: _metricTypeFor(_selectedMetric.apiValue),
+      metricCode: _selectedMetric.apiValue,
       valueNumeric: point.valueNumeric,
       valueSecondary: point.valueSecondary,
       unit: _trend?.unit ?? _selectedMetric.unit,
@@ -175,6 +247,11 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
       sourceType: point.sourceType,
       note: point.note,
       createdAt: point.measuredAt,
+      context: point.context,
+      periodStart: point.periodStart,
+      periodEnd: point.periodEnd,
+      qualityLabel: point.qualityLabel,
+      disclaimer: _trend?.disclaimer,
     );
   }
 
@@ -224,13 +301,15 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
             children: [
               _buildMetricSelector(),
               const SizedBox(height: 16),
-              if (_isLoading)
+              if (_isLoadingCapabilities || _isLoading)
                 const Center(
                   child: Padding(
                     padding: EdgeInsets.all(48),
                     child: CircularProgressIndicator(color: _primaryContainer),
                   ),
                 )
+              else if (!_isSupportedMetric)
+                _buildUnsupportedMetricCard()
               else if (_errorMsg != null)
                 _buildErrorCard()
               else ...[
@@ -287,6 +366,26 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
     );
   }
 
+  Widget _buildUnsupportedMetricCard() {
+    return _Card(
+      child: Column(
+        children: [
+          const Icon(Icons.info_outline_rounded, color: _error, size: 44),
+          const SizedBox(height: 12),
+          const Text(
+            'Chỉ số này chưa được hỗ trợ trong hành trình hiện tại.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 14,
+              color: _onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildErrorCard() {
     return _Card(
       child: Column(
@@ -321,10 +420,12 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
 
   Widget _buildChartCard() {
     final points = _historyPoints;
-    final avg = _trend?.average ?? 0;
+    final avg = _trend?.average;
     final unit = _trend?.unit ?? _selectedMetric.unit;
     final trendPct = _trend?.trend;
     final isDown = (trendPct ?? 0) < 0;
+    final hasScalarSummary =
+        avg != null && !_isBloodPressure && !_isFetalMovement;
 
     return _Card(
       child: Column(
@@ -340,7 +441,9 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
                     Text(
                       points.isEmpty
                           ? '-- $unit'
-                          : '${_formatNumber(avg)} $unit',
+                          : hasScalarSummary
+                          ? '${_formatNumber(avg)} $unit'
+                          : _summaryLabel(unit),
                       style: const TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 22,
@@ -349,9 +452,9 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
                       ),
                     ),
                     const SizedBox(height: 2),
-                    const Text(
-                      'Trung bình 7 ngày gần đây',
-                      style: TextStyle(
+                    Text(
+                      _summaryCaption,
+                      style: const TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 12,
                         color: _onSurfaceVariant,
@@ -490,6 +593,20 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
     );
   }
 
+  String _summaryLabel(String unit) {
+    if (_isBloodPressure) return 'Xem theo cặp tâm thu/tâm trương';
+    if (_isFetalMovement) return 'Phiên đo trong 7 ngày';
+    if (_isGlucose) return 'Chọn cùng bối cảnh để so sánh';
+    return '-- $unit';
+  }
+
+  String get _summaryCaption {
+    if (_isBloodPressure) return 'Không tính trung bình vô hướng';
+    if (_isFetalMovement) return 'Lịch sử phiên cử động thai';
+    if (_isGlucose) return 'Đường huyết được phân nhóm theo bối cảnh đo';
+    return 'Trung bình 7 ngày gần đây';
+  }
+
   List<_ChartBar> _buildSevenDayBars(List<MetricDataPoint> points) {
     final now = DateTime.now();
     final days = List.generate(7, (i) {
@@ -509,6 +626,16 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
       }).toList();
       if (sameDay.isEmpty) {
         return _ChartBar(date: date, value: null);
+      }
+      if (_isBloodPressure) {
+        return _ChartBar(date: date, value: null);
+      }
+      if (_isGlucose) {
+        final contexts = sameDay
+            .map((point) => point.context['measurementContext'])
+            .whereType<String>()
+            .toSet();
+        if (contexts.length > 1) return _ChartBar(date: date, value: null);
       }
       final sum = sameDay.fold<double>(
         0,

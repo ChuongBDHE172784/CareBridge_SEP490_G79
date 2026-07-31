@@ -383,7 +383,7 @@ curl -X POST "https://[host]/api/v1/journeys/[journeyId]/postpartum-logs" \
 
 ## Story 6.10 OV-01 Traceability Addendum
 
-The implemented Story 6.4 contract supersedes the stale draft-only evidence state for the OV-01 slice: a Mother can use postpartum recovery and add/read logs with zero linked baby profiles. Baby linkage remains optional and never becomes an authorization surrogate.
+The implemented Story 6.4 contract supersedes the stale draft-only evidence state for the OV-01 slice: a Mother can use postpartum recovery and add/read logs with zero baby profiles. Baby profiles remain standalone and never become a Mother Journey authorization surrogate.
 
 | OV-01 branch | Decision | Canonical test case | Executable evidence |
 | --- | --- | --- | --- |

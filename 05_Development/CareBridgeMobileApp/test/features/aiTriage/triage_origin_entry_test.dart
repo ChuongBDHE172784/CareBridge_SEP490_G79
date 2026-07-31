@@ -350,15 +350,12 @@ void main() {
       '${fixture.apiStage} origin opens a locked typed intake and returns safely',
       (tester) async {
         final profileId = 'baby-${fixture.apiStage.toLowerCase()}';
-        final relatedJourneyId =
-            'journey-${fixture.apiStage.toLowerCase()}-baby';
         final profile = BabyProfile(
           id: profileId,
           nickname: 'Safety fixture',
           birthDate: DateTime.now().subtract(fixture.age),
           gender: BabyGender.unknown,
           isActive: true,
-          relatedJourneyId: relatedJourneyId,
         );
         final router = _babyRouter(profile);
         addTearDown(router.dispose);
@@ -375,7 +372,7 @@ void main() {
           expectedProbe:
               '${fixture.apiStage}:true:'
               '${TriageOriginIntent.babyProfile.name}:'
-              '$relatedJourneyId:BABY_PROFILE:$profileId:$profileId',
+              'null:BABY_PROFILE:$profileId:$profileId',
         );
       },
     );

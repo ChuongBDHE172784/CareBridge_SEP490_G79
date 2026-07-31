@@ -69,7 +69,7 @@
 | **Data Classification** | Sensitive-PII |
 | **Compliance Scope** | Project privacy, consent, ownership, minimum-necessary access, and immutable audit rules. No external statutory claim is introduced by this TDS. |
 | **Upstream Dependencies** | JWT identity, `users`, `AuditService`, Flyway/PostgreSQL |
-| **Downstream Consumers** | Mother dashboard, postpartum logs, baby linkage, reminders, health records, checklist/content, safety timeline |
+| **Downstream Consumers** | Mother dashboard, postpartum logs, standalone baby care, reminders, health records, checklist/content, safety timeline |
 
 ### 1.1 Scope
 
@@ -87,7 +87,7 @@ Out of scope:
 - Baseline/consent onboarding UI (Story 6.2).
 - Pregnancy outcome/loss semantics (Story 6.3).
 - Direct postpartum mobile entry (Story 6.4).
-- Baby-link validation (Story 6.5).
+- Standalone baby-profile creation and care flows.
 - Safety orchestration and timeline projection (Stories 6.6–6.7).
 - Global UC renumbering (Story 6.10).
 
