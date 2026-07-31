@@ -41,7 +41,7 @@ public class ConsultationContextShare {
     @Column(name = "idempotency_key", nullable = false, updatable = false)
     private UUID idempotencyKey;
 
-    @Column(name = "journey_id", nullable = false, updatable = false)
+    @Column(name = "journey_id", updatable = false)
     private UUID journeyId;
 
     @Column(name = "origin_dashboard", nullable = false, updatable = false, length = 30)

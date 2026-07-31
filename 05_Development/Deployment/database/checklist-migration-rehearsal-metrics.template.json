@@ -1,0 +1,20 @@
+{
+  "expandMigrationSucceeded": false,
+  "remainderMigrationSucceeded": false,
+  "flywayValidationSuccessful": false,
+  "lockSeconds": 0.0,
+  "backfillRows": 0,
+  "backfillSeconds": 0.0,
+  "backfillRowsPerSecond": 0.0,
+  "expandMigrationSeconds": 0.0,
+  "remainderMigrationSeconds": 0.0,
+  "fullMigrationSeconds": 0.0,
+  "measurementStartedAtUtc": "YYYY-MM-DDTHH:mm:ss.sssZ",
+  "measurementCompletedAtUtc": "YYYY-MM-DDTHH:mm:ss.sssZ",
+  "referenceDatasetFingerprint": "sha256-from-approved-sanitized-fixture-manifest",
+  "operatorEvidenceReference": "external-change-or-run-identifier",
+  "rawFlywayLogPath": "absolute-path-inside-evidence-directory",
+  "rawFlywayLogSha256": "64-char-lowercase-sha256",
+  "rawLockLogPath": "absolute-path-inside-evidence-directory",
+  "rawLockLogSha256": "64-char-lowercase-sha256"
+}

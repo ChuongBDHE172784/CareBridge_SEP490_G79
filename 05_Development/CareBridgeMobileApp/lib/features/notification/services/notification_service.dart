@@ -1,5 +1,7 @@
 import '../../../core/network/api_client.dart';
+import '../../reminder/models/appointment_notification_timing.dart';
 import '../models/notification_model.dart';
+import '../models/notification_preferences_model.dart';
 
 class NotificationService {
   static NotificationService instance = NotificationService();
@@ -30,25 +32,36 @@ class NotificationService {
     return (data?['markedCount'] as int?) ?? 0;
   }
 
-  Future<List<NotificationPreference>> getPreferences() async {
+  Future<NotificationPreferences> getPreferences() async {
     final res = await apiGet('/api/v1/users/me/notification-preferences');
-    final data = res['data'] as Map<String, dynamic>;
-    final list = data['preferences'] as List<dynamic>;
-    return list
-        .map((e) => NotificationPreference.fromJson(e as Map<String, dynamic>))
-        .toList();
+    return _parsePreferences(res['data'] as Map<String, dynamic>);
   }
 
-  Future<List<NotificationPreference>> updatePreferences(
-    List<NotificationPreference> prefs,
-  ) async {
+  Future<NotificationPreferences> updatePreferences(
+    List<NotificationPreference> prefs, {
+    List<int>? appointmentReminderDefaults,
+  }) async {
     final res = await apiPut('/api/v1/users/me/notification-preferences', {
       'preferences': prefs.map((p) => p.toJson()).toList(),
+      'appointmentReminderDefaults': ?appointmentReminderDefaults,
     });
-    final data = res['data'] as Map<String, dynamic>;
-    final list = data['preferences'] as List<dynamic>;
-    return list
-        .map((e) => NotificationPreference.fromJson(e as Map<String, dynamic>))
-        .toList();
+    return _parsePreferences(res['data'] as Map<String, dynamic>);
+  }
+
+  NotificationPreferences _parsePreferences(Map<String, dynamic> data) {
+    final list = data['preferences'] as List<dynamic>? ?? const [];
+    final rawDefaults =
+        data['appointmentReminderDefaults'] as List<dynamic>? ??
+        AppointmentNotificationTiming.systemDefaults;
+    return NotificationPreferences(
+      preferences: list
+          .map(
+            (e) => NotificationPreference.fromJson(e as Map<String, dynamic>),
+          )
+          .toList(),
+      appointmentReminderDefaults: AppointmentNotificationTiming.normalize(
+        rawDefaults.whereType<num>().map((value) => value.toInt()).toList(),
+      ),
+    );
   }
 }

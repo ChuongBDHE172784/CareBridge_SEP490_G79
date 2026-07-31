@@ -15,6 +15,7 @@ import com.carebridge.backend.family.dto.LeaveCareGroupResponse;
 import com.carebridge.backend.family.dto.PendingInvitationDto;
 import com.carebridge.backend.family.dto.RemoveMemberResponse;
 import com.carebridge.backend.family.dto.RevokeInvitationResponse;
+import com.carebridge.backend.family.dto.RelinkCareGroupJourneyResponse;
 import com.carebridge.backend.family.dto.UpdateFamilyPermissionRequest;
 
 import java.util.List;
@@ -60,6 +61,9 @@ public interface ICareGroupService {
     RemoveMemberResponse removeMember(UUID groupId, UUID targetUserId, UUID callerId);
 
     LeaveCareGroupResponse leaveCareGroup(UUID groupId, UUID callerId);
+
+    /** Relinks an ACTIVE owner group to another ACTIVE journey owned by the same Mother. */
+    RelinkCareGroupJourneyResponse relinkJourney(UUID groupId, UUID journeyId, UUID callerId);
 
     /**
      * UC71: Invites a family member into an existing care group via LINK, QR, or PHONE channel.

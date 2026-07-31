@@ -1,11 +1,9 @@
 package com.carebridge.backend.security.config;
 
 import com.carebridge.backend.security.jwt.JwtAuthenticationFilter;
-import com.carebridge.backend.baby.security.BabyLinkBoundaryAuditFilter;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.security.autoconfigure.actuate.web.servlet.EndpointRequest;
-import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -31,8 +29,6 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
-    private final BabyLinkBoundaryAuditFilter babyLinkBoundaryAuditFilter;
-
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
@@ -64,7 +60,8 @@ public class SecurityConfig {
                         // Unauthenticated requests → 401 (per CNT82-TC-SEC-001, ADR-COM-*)
                         // Admin / privileged write endpoints
                         .requestMatchers("/api/v1/consent/grants/**").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/v1/admin/audit-logs").hasRole("SYSTEM_ADMIN")
+                        .requestMatchers(HttpMethod.GET, "/api/v1/admin/audit-logs")
+                                .hasAnyRole("SYSTEM_ADMIN", "OPERATIONS")
                         .requestMatchers(HttpMethod.GET, "/api/v1/admin/community/dashboard").hasRole("SYSTEM_ADMIN")
                         .requestMatchers(HttpMethod.GET, "/api/v1/admin/moderation/queue").hasRole("MODERATOR")
                         // CB-MOD-IMP-004: added retroactively — @PreAuthorize + the /api/v1/** fallback
@@ -88,17 +85,8 @@ public class SecurityConfig {
                         .anyRequest().permitAll())
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterAfter(babyLinkBoundaryAuditFilter, JwtAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
-    }
-
-    @Bean
-    public FilterRegistrationBean<BabyLinkBoundaryAuditFilter> babyLinkBoundaryAuditRegistration() {
-        FilterRegistrationBean<BabyLinkBoundaryAuditFilter> registration = new FilterRegistrationBean<>();
-        registration.setFilter(babyLinkBoundaryAuditFilter);
-        registration.setEnabled(false);
-        return registration;
     }
 
     @Bean

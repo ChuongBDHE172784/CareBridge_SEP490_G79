@@ -96,6 +96,7 @@ export default function ContentApprovalQueuePage() {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('ALL');
   const [stageFilter, setStageFilter] = useState<'ALL' | ContentStage>('ALL');
+  const [sortOrder, setSortOrder] = useState<'NEWEST' | 'OLDEST'>('NEWEST');
   const [pageSize, setPageSize] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(10);
   const [page, setPage] = useState(0);
 
@@ -121,7 +122,7 @@ export default function ContentApprovalQueuePage() {
 
   useEffect(() => { void load(); }, [load]);
 
-  useEffect(() => { setPage(0); }, [search, typeFilter, stageFilter, pageSize]);
+  useEffect(() => { setPage(0); }, [search, typeFilter, stageFilter, sortOrder, pageSize]);
 
   const stats = useMemo(() => {
     const content = items.filter((item) => item.kind === 'CONTENT').length;
@@ -133,13 +134,19 @@ export default function ContentApprovalQueuePage() {
 
   const filteredItems = useMemo(() => {
     const query = search.trim().toLowerCase();
-    return items.filter((item) => {
+    const matched = items.filter((item) => {
       const matchesSearch = query.length === 0 || item.searchText.includes(query);
       const matchesType = typeFilter === 'ALL' || item.type === typeFilter;
       const matchesStage = stageFilter === 'ALL' || item.stage === stageFilter;
       return matchesSearch && matchesType && matchesStage;
     });
-  }, [items, search, stageFilter, typeFilter]);
+
+    return matched.sort((a, b) => {
+      const timeA = a.submittedAt ? new Date(a.submittedAt).getTime() : 0;
+      const timeB = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;
+      return sortOrder === 'NEWEST' ? timeB - timeA : timeA - timeB;
+    });
+  }, [items, search, stageFilter, typeFilter, sortOrder]);
 
   const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
   const currentPage = Math.min(page, totalPages - 1);
@@ -181,6 +188,7 @@ export default function ContentApprovalQueuePage() {
     setSearch('');
     setTypeFilter('ALL');
     setStageFilter('ALL');
+    setSortOrder('NEWEST');
   };
 
   const dialogTitle = pendingDecision?.decision === 'APPROVE'
@@ -267,6 +275,15 @@ export default function ContentApprovalQueuePage() {
               </select>
 
               <select
+                value={sortOrder}
+                onChange={(event) => setSortOrder(event.target.value as 'NEWEST' | 'OLDEST')}
+                className="py-2.5 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface-variant cursor-pointer font-sans"
+              >
+                <option value="NEWEST">Thời gian: Mới nhất</option>
+                <option value="OLDEST">Thời gian: Cũ nhất</option>
+              </select>
+
+              <select
                 value={pageSize}
                 onChange={(event) => setPageSize(Number(event.target.value) as typeof pageSize)}
                 className="py-2.5 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface-variant cursor-pointer font-sans"
@@ -276,7 +293,7 @@ export default function ContentApprovalQueuePage() {
                 ))}
               </select>
 
-              {(search || typeFilter !== 'ALL' || stageFilter !== 'ALL') && (
+              {(search || typeFilter !== 'ALL' || stageFilter !== 'ALL' || sortOrder !== 'NEWEST') && (
                 <button
                   type="button"
                   onClick={resetFilters}
@@ -309,9 +326,24 @@ export default function ContentApprovalQueuePage() {
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="border-b-2 border-surface-container-highest text-left">
-                      {['NỘI DUNG', 'PHÂN LOẠI', 'GIAI ĐOẠN', 'THÔNG TIN', 'GỬI DUYỆT', 'THAO TÁC'].map((heading) => (
-                        <th key={heading} className="py-3 px-2 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">{heading}</th>
-                      ))}
+                      <th className="py-3 px-2 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">NỘI DUNG</th>
+                      <th className="py-3 px-2 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">PHÂN LOẠI</th>
+                      <th className="py-3 px-2 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">GIAI ĐOẠN</th>
+                      <th className="py-3 px-2 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">THÔNG TIN</th>
+                      <th className="py-3 px-2 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">
+                        <button
+                          type="button"
+                          onClick={() => setSortOrder((prev) => (prev === 'NEWEST' ? 'OLDEST' : 'NEWEST'))}
+                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-outline uppercase tracking-[0.05em] hover:text-primary cursor-pointer border-0 bg-transparent p-0 font-sans"
+                          title="Bấm để chuyển sắp xếp mới nhất / cũ nhất"
+                        >
+                          GỬI DUYỆT
+                          <span className="material-symbols-outlined text-sm">
+                            {sortOrder === 'NEWEST' ? 'arrow_downward' : 'arrow_upward'}
+                          </span>
+                        </button>
+                      </th>
+                      <th className="py-3 px-2 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">THAO TÁC</th>
                     </tr>
                   </thead>
                   <tbody>

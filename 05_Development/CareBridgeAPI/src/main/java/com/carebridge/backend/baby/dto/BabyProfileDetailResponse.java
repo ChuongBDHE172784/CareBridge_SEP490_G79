@@ -22,5 +22,4 @@ public class BabyProfileDetailResponse {
     private Boolean active;
     private Instant createdAt;
     private Instant updatedAt;
-    private UUID relatedJourneyId;
 }

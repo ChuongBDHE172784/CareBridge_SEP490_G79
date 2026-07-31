@@ -110,7 +110,7 @@ export async function fetchChecklists(stage?: ContentStage): Promise<ChecklistTe
 
 /** Admin workspace (UC-243): includes DRAFT/PENDING_REVIEW/ARCHIVED, unlike the public list above. */
 export async function fetchAdminChecklistTemplates(params: {
-  status?: ContentStatus;
+  status?: ChecklistTemplateStatus;
   stage?: ContentStage;
   page?: number;
   size?: number;
@@ -166,6 +166,46 @@ export async function decideChecklistTemplate(
 ): Promise<{ previousStatus: ContentStatus; newStatus: ContentStatus }> {
   const res = await apiClient.post<ApiResponse<{ previousStatus: ContentStatus; newStatus: ContentStatus }>>(
     `/api/v1/admin/checklist-templates/${id}/decision`, { decision, reason },
+  );
+  return res.data.data;
+}
+
+export async function cloneChecklistVersion(
+  lineageId: string,
+  versionId: string,
+): Promise<AdminChecklistTemplateDetail> {
+  const res = await apiClient.post<ApiResponse<AdminChecklistTemplateDetail>>(
+    `/api/v1/admin/checklist-templates/${lineageId}/versions/${versionId}/clone`,
+  );
+  return res.data.data;
+}
+
+export async function approveChecklistVersion(
+  lineageId: string,
+  versionId: string,
+): Promise<{ previousStatus: ChecklistTemplateStatus; newStatus: ChecklistTemplateStatus }> {
+  const res = await apiClient.post<ApiResponse<{ previousStatus: ChecklistTemplateStatus; newStatus: ChecklistTemplateStatus }>>(
+    `/api/v1/admin/checklist-templates/${lineageId}/versions/${versionId}/approve`,
+  );
+  return res.data.data;
+}
+
+export async function reviewMigratedChecklistVersion(
+  lineageId: string,
+  versionId: string,
+): Promise<{ previousStatus: ChecklistTemplateStatus; newStatus: ChecklistTemplateStatus }> {
+  const res = await apiClient.post<ApiResponse<{ previousStatus: ChecklistTemplateStatus; newStatus: ChecklistTemplateStatus }>>(
+    `/api/v1/admin/checklist-templates/${lineageId}/versions/${versionId}/review`,
+  );
+  return res.data.data;
+}
+
+export async function activateChecklistVersion(
+  lineageId: string,
+  versionId: string,
+): Promise<{ previousStatus: ChecklistTemplateStatus; newStatus: ChecklistTemplateStatus }> {
+  const res = await apiClient.post<ApiResponse<{ previousStatus: ChecklistTemplateStatus; newStatus: ChecklistTemplateStatus }>>(
+    `/api/v1/admin/checklist-templates/${lineageId}/versions/${versionId}/activate`,
   );
   return res.data.data;
 }

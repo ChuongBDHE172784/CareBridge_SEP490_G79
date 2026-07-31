@@ -68,7 +68,6 @@ class JourneyCanonicalLifecycleControllerTest {
                 .journeyType(JourneyType.POSTPARTUM)
                 .journeyVersion(4L)
                 .revisionNumber(1)
-                .babyActionsEligible(true)
                 .build());
 
         mockMvc.perform(post("/api/v1/journeys/" + JourneyLifecycleTestFactory.JOURNEY_ID
@@ -89,8 +88,7 @@ class JourneyCanonicalLifecycleControllerTest {
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.evidenceId").value(evidenceId.toString()))
-                .andExpect(jsonPath("$.data.journeyType").value("POSTPARTUM"))
-                .andExpect(jsonPath("$.data.babyActionsEligible").value(true));
+                .andExpect(jsonPath("$.data.journeyType").value("POSTPARTUM"));
     }
 
     @Test

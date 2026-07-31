@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../../../core/network/api_client.dart';
 import '../models/reminder_model.dart';
+import '../models/appointment_notification_timing.dart';
 import '../models/today_task_model.dart';
 
 class ReminderService extends ChangeNotifier {
@@ -41,13 +42,39 @@ class ReminderService extends ChangeNotifier {
     }
   }
 
+  Future<List<Reminder>> listAllRemindersOrThrow() async {
+    final data = await apiGet('/api/v1/reminders');
+    final list = data['data'] as List? ?? [];
+    return list
+        .map((e) => Reminder.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<List<Reminder>> listAllReminders() async {
     try {
-      final data = await apiGet('/api/v1/reminders');
-      final list = data['data'] as List? ?? [];
-      return list
-          .map((e) => Reminder.fromJson(e as Map<String, dynamic>))
-          .toList();
+      return await listAllRemindersOrThrow();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Returns upcoming pending reminders sorted by scheduledAt
+  Future<List<Reminder>> listUpcomingReminders() async {
+    try {
+      var all = await listAllReminders();
+      if (all.isEmpty) {
+        all = await listTodayReminders();
+      }
+      final pending =
+          all
+              .where(
+                (r) =>
+                    r.status == ReminderStatus.pending ||
+                    r.status == ReminderStatus.snoozed,
+              )
+              .toList()
+            ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+      return pending;
     } catch (_) {
       return [];
     }
@@ -129,6 +156,8 @@ class ReminderService extends ChangeNotifier {
     RecurrenceType recurrenceType = RecurrenceType.none,
     DateTime? recurrenceEndDate,
     String? journeyId,
+    List<int>? notificationOffsetsMinutes,
+    String timeZone = AppointmentNotificationTiming.appTimeZone,
   }) async {
     final body = <String, dynamic>{
       'reminderType': 'APPOINTMENT',
@@ -141,6 +170,8 @@ class ReminderService extends ChangeNotifier {
         'recurrenceEndDate': recurrenceEndDate.toUtc().toIso8601String(),
       'journeyId': ?journeyId,
       'babyId': ?babyId,
+      'notificationOffsetsMinutes': ?notificationOffsetsMinutes,
+      'timeZone': timeZone,
     };
     final data = await apiPost('/api/v1/reminders', body);
     return Reminder.fromJson(data['data'] as Map<String, dynamic>);
@@ -169,6 +200,9 @@ class ReminderService extends ChangeNotifier {
     RecurrenceType? recurrenceType,
     DateTime? recurrenceEndDate,
     bool recurrenceEndDateSet = false,
+    List<int>? notificationOffsetsMinutes,
+    bool notificationOffsetsMinutesSet = false,
+    String? timeZone,
   }) async {
     final body = <String, dynamic>{
       'title': ?title,
@@ -179,6 +213,12 @@ class ReminderService extends ChangeNotifier {
         'recurrenceEndDate': recurrenceEndDate?.toUtc().toIso8601String(),
         'recurrenceEndDateSet': true,
       },
+      if (notificationOffsetsMinutesSet) ...{
+        'notificationOffsetsMinutes':
+            notificationOffsetsMinutes ?? const <int>[],
+        'notificationOffsetsMinutesSet': true,
+      },
+      'timeZone': ?timeZone,
     };
     final data = await apiPatch('/api/v1/reminders/$reminderId', body);
     return Reminder.fromJson(data['data'] as Map<String, dynamic>);

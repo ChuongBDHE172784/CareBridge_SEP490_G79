@@ -16,5 +16,7 @@ public class FamilyPermissionResponse {
     private boolean logs;
     private boolean alerts;
     private boolean records;
+    private boolean checklistView;
+    private boolean checklistComplete;
     private Instant updatedAt;
 }

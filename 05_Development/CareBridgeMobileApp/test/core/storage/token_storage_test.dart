@@ -5,6 +5,9 @@ import 'package:untitled/core/storage/token_storage.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  String retiredBabyDraftKey(String accountId, String journeyId) =>
+      ['cb', 'baby', 'create', 'intent', accountId, journeyId].join('_');
+
   setUp(() {
     FlutterSecureStorage.setMockInitialValues({});
   });
@@ -18,8 +21,8 @@ void main() {
         'cb_journey_onboarding_draft_account-b': '{"goal":"B"}',
         'cb_postpartum_log_draft_account-a_journey-1': '{"pain":"3"}',
         'cb_postpartum_log_draft_account-b_journey-2': '{"pain":"4"}',
-        'cb_baby_create_intent_account-a_journey-1': '{"submissionId":"a"}',
-        'cb_baby_create_intent_account-b_journey-2': '{"submissionId":"b"}',
+        retiredBabyDraftKey('account-a', 'journey-1'): '{"submissionId":"a"}',
+        retiredBabyDraftKey('account-b', 'journey-2'): '{"submissionId":"b"}',
       });
       final storage = SecureTokenStorage();
 
@@ -48,11 +51,11 @@ void main() {
         isNotNull,
       );
       expect(
-        await secure.read(key: 'cb_baby_create_intent_account-a_journey-1'),
+        await secure.read(key: retiredBabyDraftKey('account-a', 'journey-1')),
         isNull,
       );
       expect(
-        await secure.read(key: 'cb_baby_create_intent_account-b_journey-2'),
+        await secure.read(key: retiredBabyDraftKey('account-b', 'journey-2')),
         isNotNull,
       );
     },
@@ -66,7 +69,7 @@ void main() {
       'cb_role': 'MOTHER',
       'cb_journey_onboarding_draft_account-a': '{"goal":"A"}',
       'cb_postpartum_log_draft_account-a_journey-1': '{"pain":"3"}',
-      'cb_baby_create_intent_account-a_journey-1': '{"submissionId":"a"}',
+      retiredBabyDraftKey('account-a', 'journey-1'): '{"submissionId":"a"}',
     });
 
     await SecureTokenStorage().clear();
@@ -82,8 +85,37 @@ void main() {
       isNull,
     );
     expect(
-      await secure.read(key: 'cb_baby_create_intent_account-a_journey-1'),
+      await secure.read(key: retiredBabyDraftKey('account-a', 'journey-1')),
       isNull,
+    );
+  });
+
+  test('startup purges retired baby drafts for the active account', () async {
+    FlutterSecureStorage.setMockInitialValues({
+      'cb_user_id': 'account-a',
+      'cb_access_token': 'access-a',
+      'cb_refresh_token': 'refresh-a',
+      'cb_role': 'MOTHER',
+      'cb_postpartum_log_draft_account-a_journey-1': '{"pain":"3"}',
+      retiredBabyDraftKey('account-a', 'journey-1'): '{"submissionId":"a"}',
+      retiredBabyDraftKey('account-b', 'journey-2'): '{"submissionId":"b"}',
+    });
+
+    final loaded = await SecureTokenStorage().load();
+
+    const secure = FlutterSecureStorage();
+    expect(loaded['userId'], 'account-a');
+    expect(
+      await secure.read(key: retiredBabyDraftKey('account-a', 'journey-1')),
+      isNull,
+    );
+    expect(
+      await secure.read(key: retiredBabyDraftKey('account-b', 'journey-2')),
+      isNotNull,
+    );
+    expect(
+      await secure.read(key: 'cb_postpartum_log_draft_account-a_journey-1'),
+      isNotNull,
     );
   });
 
@@ -91,7 +123,6 @@ void main() {
     'account invalidation cannot be undone by a queued draft write',
     () async {
       const key = 'cb_postpartum_log_draft_account-a_journey-late';
-      const babyKey = 'cb_baby_create_intent_account-a_journey-late';
       final generation = PostpartumDraftStorageCoordinator.generationFor(
         'account-a',
       );
@@ -102,19 +133,12 @@ void main() {
         value: '{"pain":"9"}',
         generation: generation,
       );
-      final lateBabyWrite = PostpartumDraftStorageCoordinator.write(
-        userId: 'account-a',
-        key: babyKey,
-        value: '{"submissionId":"late"}',
-        generation: generation,
-      );
       final cleanup = PostpartumDraftStorageCoordinator.invalidateUser(
         'account-a',
       );
-      await Future.wait([lateWrite, lateBabyWrite, cleanup]);
+      await Future.wait([lateWrite, cleanup]);
 
       expect(await const FlutterSecureStorage().read(key: key), isNull);
-      expect(await const FlutterSecureStorage().read(key: babyKey), isNull);
     },
   );
 }

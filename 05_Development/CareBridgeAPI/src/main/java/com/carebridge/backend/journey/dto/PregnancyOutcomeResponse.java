@@ -27,5 +27,4 @@ public class PregnancyOutcomeResponse {
     private int revisionNumber;
     private Instant effectiveAt;
     private Instant recordedAt;
-    private boolean babyActionsEligible;
 }

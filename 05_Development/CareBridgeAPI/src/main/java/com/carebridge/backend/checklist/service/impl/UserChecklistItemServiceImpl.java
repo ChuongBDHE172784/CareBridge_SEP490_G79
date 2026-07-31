@@ -8,6 +8,8 @@ import com.carebridge.backend.checklist.entity.ChecklistCategory;
 import com.carebridge.backend.checklist.entity.UserChecklistItem;
 import com.carebridge.backend.checklist.repository.UserChecklistItemRepository;
 import com.carebridge.backend.checklist.service.IUserChecklistItemService;
+import com.carebridge.backend.checklist.today.policy.UnifiedTaskMutationPolicy;
+import com.carebridge.backend.checklist.model.ChecklistOrigin;
 import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.common.exception.ResourceNotFoundException;
 import com.carebridge.backend.content.entity.ChecklistItem;
@@ -44,103 +46,16 @@ public class UserChecklistItemServiceImpl implements IUserChecklistItemService {
     private final AuditService auditService;
     private final LifecycleContentStageResolver lifecycleContentStageResolver;
     private final BabyProfileRepository babyProfileRepository;
+    private final UnifiedTaskMutationPolicy mutationPolicy;
 
     @Override
     public ChecklistItemResponse addItem(AddChecklistItemRequest request, UUID userId) {
-        var item = UserChecklistItem.builder()
-                .ownerUserId(userId)
-                .journeyId(request.journeyId())
-                .babyId(request.babyId())
-                .itemText(request.itemText())
-                .category(request.category() != null ? request.category() : ChecklistCategory.GENERAL)
-                .itemOrder(request.itemOrder() != null ? request.itemOrder() : 0)
-                .build();
-
-        var saved = checklistRepository.save(item);
-        auditService.log(AuditAction.CHECKLIST_ITEM_ADDED, userId,
-                "UserChecklistItem", saved.getId().toString(), "added");
-        log.info("Checklist item added: itemId={}, userId={}", saved.getId(), userId);
-        return toResponse(saved);
+        throw retiredMutation();
     }
 
     @Override
     public List<ChecklistItemResponse> importFromTemplate(ImportFromTemplateRequest request, UUID userId) {
-        if (request.journeyId() != null && request.babyId() != null) {
-            throw invalidImport();
-        }
-
-        UUID journeyId = null;
-        UUID babyId = null;
-        ContentStage contextStage;
-        if (request.babyId() != null) {
-            var baby = babyProfileRepository.findOwnedActiveByIdForUpdate(request.babyId(), userId)
-                    .orElseThrow(this::unavailableTemplateItem);
-            babyId = baby.getId();
-            contextStage = ContentStage.BABY_CARE;
-        } else {
-            ResolvedLifecycleContext context;
-            try {
-                context = lifecycleContentStageResolver.resolveForUpdate(userId);
-            } catch (ContentException exception) {
-                if (request.journeyId() != null && "CNT-013".equals(exception.getCode())) {
-                    throw unavailableTemplateItem();
-                }
-                throw exception;
-            }
-            if (request.journeyId() != null && !request.journeyId().equals(context.journeyId())) {
-                throw unavailableTemplateItem();
-            }
-            journeyId = context.journeyId();
-            contextStage = context.stage();
-        }
-
-        LinkedHashSet<UUID> distinctTemplateItemIds = new LinkedHashSet<>(request.templateItemIds());
-        List<UUID> sortedIds = new ArrayList<>(distinctTemplateItemIds);
-        sortedIds.sort(Comparator.naturalOrder());
-        List<ChecklistItem> available = templateItemRepository.findAllAvailableByIdInForUpdate(
-                sortedIds, ChecklistTemplateStatus.APPROVED, contextStage);
-        if (available.size() != distinctTemplateItemIds.size()) {
-            throw unavailableTemplateItem();
-        }
-        Map<UUID, ChecklistItem> byId = available.stream()
-                .collect(Collectors.toMap(ChecklistItem::getId, Function.identity()));
-        final UUID resolvedJourneyId = journeyId;
-        final UUID resolvedBabyId = babyId;
-
-        return distinctTemplateItemIds.stream().map(templateItemId -> {
-            ChecklistItem template = byId.get(templateItemId);
-            if (template == null || template.getItemText() == null || template.getItemText().isBlank()) {
-                throw unavailableTemplateItem();
-            }
-            int inserted;
-            UserChecklistItem persisted;
-            if (resolvedBabyId != null) {
-                inserted = checklistRepository.insertBabyImportedIfAbsent(
-                        UUID.randomUUID(), userId, resolvedBabyId, templateItemId,
-                        template.getItemText(), template.getOrder() != null ? template.getOrder() : 0);
-                persisted = checklistRepository.findBabyImportedByExactScope(
-                                userId, resolvedBabyId, templateItemId)
-                        .orElseThrow(() -> new IllegalStateException(
-                                "Imported baby checklist item could not be resolved"));
-                if (persisted.getJourneyId() != null) {
-                    persisted.setJourneyId(null);
-                }
-            } else {
-                inserted = checklistRepository.insertJourneyImportedIfAbsent(
-                        UUID.randomUUID(), userId, resolvedJourneyId, templateItemId,
-                        template.getItemText(), template.getOrder() != null ? template.getOrder() : 0);
-                persisted = checklistRepository.findJourneyImportedByExactScope(
-                                userId, resolvedJourneyId, templateItemId)
-                        .orElseThrow(() -> new IllegalStateException(
-                                "Imported journey checklist item could not be resolved"));
-            }
-
-            if (inserted == 1) {
-                auditService.log(AuditAction.CHECKLIST_ITEM_ADDED, userId,
-                        "UserChecklistItem", persisted.getId().toString(), "imported");
-            }
-            return toResponse(persisted, template);
-        }).toList();
+        throw retiredMutation();
     }
 
     private BusinessException invalidImport() {
@@ -167,44 +82,17 @@ public class UserChecklistItemServiceImpl implements IUserChecklistItemService {
 
     @Override
     public ChecklistItemResponse toggleComplete(UUID itemId, UUID userId) {
-        var item = findOwnedOrThrow(itemId, userId);
-        item.setCompleted(!item.isCompleted());
-        item.setCompletedAt(item.isCompleted() ? Instant.now() : null);
-        var saved = checklistRepository.save(item);
-        auditService.log(AuditAction.CHECKLIST_ITEM_COMPLETED, userId,
-                "UserChecklistItem", itemId.toString(), String.valueOf(saved.isCompleted()));
-        return toResponse(saved, templateFor(saved));
+        throw retiredMutation();
     }
 
     @Override
     public ChecklistItemResponse updateItem(UUID itemId, UpdateChecklistItemRequest request, UUID userId) {
-        var item = findOwnedOrThrow(itemId, userId);
-
-        // C2: template items cannot have itemText or category changed
-        if (item.getTemplateItemId() != null) {
-            if (request.itemText() != null || request.category() != null) {
-                throw new BusinessException(HttpStatus.valueOf(422), "CHECKLIST-006",
-                        "CHECKLIST-006: Cannot modify itemText or category of a template-imported item");
-            }
-        }
-
-        if (request.itemText() != null) item.setItemText(request.itemText());
-        if (request.category() != null) item.setCategory(request.category());
-        if (request.itemOrder() != null) item.setItemOrder(request.itemOrder());
-
-        var saved = checklistRepository.save(item);
-        auditService.log(AuditAction.CHECKLIST_ITEM_UPDATED, userId,
-                "UserChecklistItem", itemId.toString(), "updated");
-        return toResponse(saved, templateFor(saved));
+        throw retiredMutation();
     }
 
     @Override
     public void deleteItem(UUID itemId, UUID userId) {
-        var item = findOwnedOrThrow(itemId, userId);
-        checklistRepository.delete(item);
-        auditService.log(AuditAction.CHECKLIST_ITEM_DELETED, userId,
-                "UserChecklistItem", itemId.toString(), "deleted");
-        log.info("Checklist item deleted: itemId={}, userId={}", itemId, userId);
+        throw retiredMutation();
     }
 
     // ── Private ────────────────────────────────────────────────────
@@ -219,6 +107,12 @@ public class UserChecklistItemServiceImpl implements IUserChecklistItemService {
         if (item.getTemplateItemId() == null) return null;
         return templateItemRepository.findAllWithTemplateByIdIn(List.of(item.getTemplateItemId()))
                 .stream().findFirst().orElse(null);
+    }
+
+    private ChecklistOrigin originOf(UserChecklistItem item) {
+        return item.getTemplateItemId() == null
+                ? ChecklistOrigin.USER_CREATED
+                : ChecklistOrigin.SYSTEM_TEMPLATE;
     }
 
     private ChecklistItemResponse toResponse(UserChecklistItem item) {
@@ -239,7 +133,14 @@ public class UserChecklistItemServiceImpl implements IUserChecklistItemService {
                 item.isCompleted(),
                 item.getCompletedAt(),
                 item.getItemOrder(),
-                item.getCreatedAt()
+                item.getCreatedAt(),
+                null,
+                originOf(item).name()
         );
+    }
+
+    private static BusinessException retiredMutation() {
+        return new BusinessException(HttpStatus.GONE, "CHECKLIST_LEGACY_ROUTE_RETIRED",
+                "Use the unified Today task APIs");
     }
 }

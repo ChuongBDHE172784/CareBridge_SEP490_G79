@@ -51,11 +51,8 @@ public interface MotherJourneyRepository extends JpaRepository<MotherJourney, UU
             @Param("journeyId") UUID journeyId);
 
     /**
-     * Maternal observations (postpartum logs) attach to health_observations with
-     * {@code care_subject_id = journey_id}. The canonical convergence migration
-     * guarantees such a MOTHER care_subjects row for every legacy journey that had
-     * observations (same convention documented in the migration); this keeps the
-     * invariant for journeys created or written after the convergence.
+     * Legacy compatibility helper for old postpartum records. New maternal metrics
+     * must use the journey's persisted careSubjectId directly.
      */
     @Modifying
     @Query(value = """
@@ -74,6 +71,16 @@ public interface MotherJourneyRepository extends JpaRepository<MotherJourney, UU
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select j from MotherJourney j where j.id = :journeyId")
     Optional<MotherJourney> findByIdForUpdate(@Param("journeyId") UUID journeyId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select journey from MotherJourney journey
+             where journey.id = :journeyId
+               and journey.ownerUserId = :ownerUserId
+            """)
+    Optional<MotherJourney> findByIdAndOwnerUserIdForUpdate(
+            @Param("journeyId") UUID journeyId,
+            @Param("ownerUserId") UUID ownerUserId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select j from MotherJourney j where j.ownerUserId=:owner and j.status=com.carebridge.backend.journey.entity.JourneyStatus.ACTIVE and j.journeyType in (com.carebridge.backend.journey.entity.JourneyType.PRE_PREGNANCY, com.carebridge.backend.journey.entity.JourneyType.PREGNANCY, com.carebridge.backend.journey.entity.JourneyType.POSTPARTUM)")
@@ -98,7 +105,11 @@ public interface MotherJourneyRepository extends JpaRepository<MotherJourney, UU
 
     long countByOwnerUserIdAndStatus(UUID ownerUserId, JourneyStatus status);
 
+    List<MotherJourney> findByStatus(JourneyStatus status);
+
     boolean existsByIdAndOwnerUserId(UUID id, UUID ownerUserId);
+
+    boolean existsByIdAndOwnerUserIdAndStatus(UUID id, UUID ownerUserId, JourneyStatus status);
 
     @Lock(LockModeType.PESSIMISTIC_READ)
     Optional<MotherJourney> findByIdAndOwnerUserIdAndStatus(

@@ -2,6 +2,7 @@ package com.carebridge.backend.family.service;
 
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
+import com.carebridge.backend.audit.service.RequiredAuditEvent;
 import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.family.dto.UpdateTaskStatusRequest;
 import com.carebridge.backend.family.dto.UpdateTaskStatusResponse;
@@ -231,13 +232,16 @@ class CareTaskServiceImplUpdateStatusTest {
 
         service.updateTaskStatus(GROUP_ID, TASK_ID, makeRequest("IN_PROGRESS"), ASSIGNEE);
 
-        verify(auditService).log(
-                eq(AuditAction.CARE_TASK_STATUS_UPDATED),
-                eq(ASSIGNEE),
-                eq("CareTask"),
-                eq(TASK_ID.toString()),
-                anyString()
-        );
+        verify(auditService).logRequired(argThat((RequiredAuditEvent event) ->
+                event.action() == AuditAction.CARE_TASK_STATUS_UPDATED
+                        && ASSIGNEE.equals(event.actorUserId())
+                        && ASSIGNEE.equals(event.subjectUserId())
+                        && "CARE_TASK".equals(event.resourceType())
+                        && TASK_ID.equals(event.resourceId())
+                        && "OPEN".equals(event.beforePayload().get("status"))
+                        && "IN_PROGRESS".equals(event.afterPayload().get("status"))
+                        && "USER_ACTION".equals(event.reasonCode())
+                        && event.correlationId() != null));
     }
 
     // ─── FCM failure does not propagate ──────────────────────────────────────

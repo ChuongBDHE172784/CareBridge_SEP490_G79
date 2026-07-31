@@ -6,10 +6,7 @@ import '../../../core/network/api_client.dart';
 import '../models/file_model.dart';
 
 class FileService {
-  String get _baseUrl {
-    if (Platform.isAndroid) return 'http://10.0.2.2:8080';
-    return 'http://localhost:8080';
-  }
+  String get _baseUrl => apiBaseUrl;
 
   // UC167: Upload file as multipart
   Future<UserFile> uploadFile(File file, {String? title}) async {

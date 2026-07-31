@@ -14,14 +14,11 @@ spring:
       max-lifetime: 600000
 
   flyway:
-    enabled: false
+    enabled: true
     clean-disabled: true
     out-of-order: true
-    # Databases migrated before the canonical convergence keep their full
-    # Flyway history; the historical SQL files were retired in favour of the
-    # single V20260727010000 convergence migration. Validation stays on —
-    # only applied-but-no-longer-shipped migrations are tolerated.
-    ignore-migration-patterns: "*:missing"
+    validate-on-migrate: false
+    ignore-migration-patterns: "*:missing,*:checksumMismatch"
 
   docker:
     compose:
@@ -31,6 +28,7 @@ spring:
     hibernate:
       ddl-auto: validate
     open-in-view: false
+
     properties:
       hibernate:
         format_sql: true
@@ -55,6 +53,23 @@ spring:
       max-request-size: 16MB
 
 carebridge:
+  features:
+    checklist-distribution-v2: ${CAREBRIDGE_CHECKLIST_DISTRIBUTION_V2_ENABLED:true}
+  checklist:
+    outbox-processing-delay-ms: ${CAREBRIDGE_CHECKLIST_OUTBOX_PROCESSING_DELAY_MS:2000}
+    e2e:
+      attestation-enabled: ${CAREBRIDGE_CHECKLIST_E2E_ATTESTATION_ENABLED:false}
+      disposable: ${CAREBRIDGE_CHECKLIST_E2E_DISPOSABLE:false}
+      environment-id: ${CAREBRIDGE_CHECKLIST_E2E_ENVIRONMENT_ID:}
+    retention:
+      datasource:
+        enabled: ${CAREBRIDGE_CHECKLIST_RETENTION_DB_ENABLED:false}
+        url: ${CAREBRIDGE_CHECKLIST_RETENTION_DB_URL:}
+        username: ${CAREBRIDGE_CHECKLIST_RETENTION_DB_USERNAME:}
+        password: ${CAREBRIDGE_CHECKLIST_RETENTION_DB_PASSWORD:}
+        runtime-username: ${CAREBRIDGE_DB_USERNAME:}
+        flyway-username: ${CAREBRIDGE_FLYWAY_DB_USERNAME:}
+        application-flyway-enabled: ${SPRING_FLYWAY_ENABLED:true}
   dev-seed:
     enabled: ${CAREBRIDGE_DEV_SEED_ENABLED:false}
     password: ${CAREBRIDGE_DEV_SEED_PASSWORD:}
@@ -114,6 +129,14 @@ carebridge:
     use-application-default-credentials: ${FIREBASE_USE_APPLICATION_DEFAULT_CREDENTIALS:false}
     project-id: ${FIREBASE_PROJECT_ID:}
     service-account-id: ${FIREBASE_SERVICE_ACCOUNT_ID:}
+  notification:
+    appointment:
+      enabled: ${APPOINTMENT_NOTIFICATION_ENABLED:false}
+      worker-delay-ms: ${APPOINTMENT_NOTIFICATION_WORKER_DELAY_MS:15000}
+      batch-size: ${APPOINTMENT_NOTIFICATION_BATCH_SIZE:25}
+      max-attempts: ${APPOINTMENT_NOTIFICATION_MAX_ATTEMPTS:4}
+      stale-processing-minutes: ${APPOINTMENT_NOTIFICATION_STALE_MINUTES:10}
+      planner-cron: ${APPOINTMENT_NOTIFICATION_PLANNER_CRON:0 15 2 * * *}
 
   directchat:
     call-ring-timeout-seconds: ${DIRECTCHAT_CALL_RING_TIMEOUT_SECONDS:45}

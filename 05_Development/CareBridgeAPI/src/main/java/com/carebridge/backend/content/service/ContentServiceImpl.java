@@ -88,10 +88,7 @@ public class ContentServiceImpl implements ContentService {
     @Override
     @Transactional(readOnly = true)
     public List<ChecklistTemplateResponse> getChecklists(ContentStage stage) {
-        List<ChecklistTemplate> templates = (stage == null)
-                ? checklistTemplateRepository.findByStatusOrderByUpdatedAtDesc(ChecklistTemplateStatus.APPROVED)
-                : checklistTemplateRepository.findByStageAndStatusOrderByUpdatedAtDesc(
-                        stage, ChecklistTemplateStatus.APPROVED);
+        List<ChecklistTemplate> templates = findOptionalTemplates(stage);
         return shapeApprovedChecklists(templates);
     }
 
@@ -110,8 +107,7 @@ public class ContentServiceImpl implements ContentService {
     @Transactional(readOnly = true)
     public LifecycleContentEnvelope<List<ChecklistTemplateResponse>> getLifecycleChecklists(UUID ownerId) {
         ContentStage stage = lifecycleContentStageResolver.resolve(ownerId);
-        List<ChecklistTemplate> templates = checklistTemplateRepository
-                .findByStageAndStatusOrderByUpdatedAtDesc(stage, ChecklistTemplateStatus.APPROVED);
+        List<ChecklistTemplate> templates = findOptionalTemplates(stage);
         return new LifecycleContentEnvelope<>(stage, shapeApprovedChecklists(templates));
     }
 
@@ -134,7 +130,7 @@ public class ContentServiceImpl implements ContentService {
         Map<UUID, Long> counts = ids.isEmpty() ? Map.of() : checklistItemRepository.countByTemplateIds(ids)
                 .stream().collect(Collectors.toMap(TemplateItemCount::getTemplateId, TemplateItemCount::getItemCount));
         return templates.map(template -> new AdminChecklistTemplateResponse(
-                template.getId(), template.getName(), template.getStage(), template.getStatus(),
+                template.getId(), template.getName(), template.getStage(), template.getTemplateType(), template.getStatus(),
                 template.getDescription(), template.getVersionNo(), template.getUpdatedAt(),
                 counts.getOrDefault(template.getId(), 0L),
                 contentMapper.toReviewFeedback(
@@ -152,5 +148,13 @@ public class ContentServiceImpl implements ContentService {
                 .map(template -> contentMapper.toChecklistTemplateResponse(
                         template, byTemplate.getOrDefault(template.getId(), List.of())))
                 .toList();
+    }
+
+    private List<ChecklistTemplate> findOptionalTemplates(ContentStage stage) {
+        List<ChecklistTemplate> templates = stage == null
+                ? checklistTemplateRepository.findAllOptionalByStatus(ChecklistTemplateStatus.APPROVED)
+                : checklistTemplateRepository.findAllOptionalByStageAndStatus(
+                        stage, ChecklistTemplateStatus.APPROVED);
+        return templates;
     }
 }

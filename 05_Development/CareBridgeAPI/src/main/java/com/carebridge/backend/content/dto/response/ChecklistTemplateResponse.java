@@ -1,6 +1,7 @@
 package com.carebridge.backend.content.dto.response;
 
 import com.carebridge.backend.content.entity.ContentStage;
+import com.carebridge.backend.content.entity.ChecklistTemplateType;
 import java.util.List;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
@@ -20,5 +21,6 @@ public class ChecklistTemplateResponse {
     private String name;
     private ContentStage stage;
     private String description;
+    private ChecklistTemplateType templateType;
     private List<ChecklistItemResponse> items;
 }

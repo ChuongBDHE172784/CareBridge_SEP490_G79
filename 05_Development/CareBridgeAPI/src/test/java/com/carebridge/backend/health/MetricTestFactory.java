@@ -2,15 +2,18 @@ package com.carebridge.backend.health;
 
 import com.carebridge.backend.health.dto.AddMetricRequest;
 import com.carebridge.backend.health.entity.DataSource;
-import com.carebridge.backend.health.entity.MaternalHealthMetric;
-import com.carebridge.backend.health.entity.MetricStatus;
+import com.carebridge.backend.health.entity.HealthObservation;
+import com.carebridge.backend.health.entity.MetricDefinition;
 import com.carebridge.backend.health.entity.MetricType;
+import com.carebridge.backend.health.entity.ObservationShape;
 import com.carebridge.backend.journey.entity.JourneyStatus;
 import com.carebridge.backend.journey.entity.JourneyType;
 import com.carebridge.backend.journey.entity.MotherJourney;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.UUID;
 
 /** Props-isolation factory for UC25 AddMaternalHealthMetric unit tests. */
@@ -21,6 +24,7 @@ public final class MetricTestFactory {
     public static final UUID OTHER_USER     = UUID.fromString("11111111-0000-0000-0000-000000000025");
     public static final UUID OTHER_JOURNEY  = UUID.fromString("cccccccc-0000-0000-0000-000000000025");
     public static final UUID METRIC_ID      = UUID.fromString("eeeeeeee-0000-0000-0000-000000000025");
+    public static final UUID CARE_SUBJECT_ID = UUID.fromString("bbbbbbbb-0000-0000-0000-000000000025");
 
     private MetricTestFactory() {}
 
@@ -28,6 +32,7 @@ public final class MetricTestFactory {
         return MotherJourney.builder()
                 .id(JOURNEY_ID)
                 .ownerUserId(MOTHER_ID)
+                .careSubjectId(CARE_SUBJECT_ID)
                 .journeyType(JourneyType.PREGNANCY)
                 .status(JourneyStatus.ACTIVE)
                 .build();
@@ -37,6 +42,7 @@ public final class MetricTestFactory {
         return MotherJourney.builder()
                 .id(JOURNEY_ID)
                 .ownerUserId(MOTHER_ID)
+                .careSubjectId(CARE_SUBJECT_ID)
                 .journeyType(JourneyType.PREGNANCY)
                 .status(JourneyStatus.COMPLETED)
                 .build();
@@ -46,6 +52,7 @@ public final class MetricTestFactory {
         return MotherJourney.builder()
                 .id(OTHER_JOURNEY)
                 .ownerUserId(OTHER_USER)
+                .careSubjectId(CARE_SUBJECT_ID)
                 .journeyType(JourneyType.PREGNANCY)
                 .status(JourneyStatus.ACTIVE)
                 .build();
@@ -91,18 +98,52 @@ public final class MetricTestFactory {
         return req;
     }
 
-    public static MaternalHealthMetric makeSavedMetric() {
-        return MaternalHealthMetric.builder()
+    public static HealthObservation makeSavedObservation() {
+        var payload = new LinkedHashMap<String, Object>();
+        payload.put("journeyId", JOURNEY_ID.toString());
+        payload.put("recordStatus", "ACTIVE");
+        return HealthObservation.builder()
                 .id(METRIC_ID)
-                .journeyId(JOURNEY_ID)
-                .metricType(MetricType.WEIGHT)
+                .careSubjectId(CARE_SUBJECT_ID)
+                .metricCode("WEIGHT")
                 .valueNumeric(new BigDecimal("65.5"))
                 .unit("kg")
                 .measuredAt(Instant.now().minusSeconds(300))
                 .sourceType(DataSource.MANUAL)
-                .status(MetricStatus.ACTIVE)
+                .definitionVersion(1)
+                .observationShape(ObservationShape.POINT)
+                .qualityLabel("UNKNOWN")
+                .context(new LinkedHashMap<>())
+                .payload(payload)
+                .legacySource(HealthObservation.CANONICAL_SOURCE)
+                .legacyId(METRIC_ID.toString())
+                .subjectType("MOTHER")
                 .createdAt(Instant.now())
                 .updatedAt(Instant.now())
+                .build();
+    }
+
+    public static MetricDefinition makeWeightDefinition() {
+        return definition("WEIGHT", ObservationShape.POINT, "kg");
+    }
+
+    public static MetricDefinition makeBloodPressureDefinition() {
+        return definition("BLOOD_PRESSURE", ObservationShape.PAIRED_POINT, "mmHg");
+    }
+
+    private static MetricDefinition definition(String code, ObservationShape shape, String unit) {
+        return MetricDefinition.builder()
+                .metricCode(code)
+                .version(1)
+                .displayName(code)
+                .observationShape(shape)
+                .subjectType("MOTHER")
+                .manualEntrySupported(true)
+                .canonicalUnit(unit)
+                .acceptedInputUnits(List.of(unit))
+                .precisionScale((short) 2)
+                .active(true)
+                .effectiveFrom(Instant.parse("2026-01-01T00:00:00Z"))
                 .build();
     }
 }

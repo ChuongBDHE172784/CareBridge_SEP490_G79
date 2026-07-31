@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../models/health_record_model.dart';
 import '../services/health_record_service.dart';
 
@@ -98,7 +99,7 @@ class _HealthRecordTimelineScreenState
         foregroundColor: Colors.white,
         shape: const CircleBorder(),
         onPressed: () {
-          // TODO: open AddHealthRecordSheet (UC-39)
+          context.push('/health-records/add').then((_) => _load());
         },
         child: const Icon(Icons.add),
       ),
@@ -194,7 +195,7 @@ class _HealthRecordTimelineScreenState
             month: entry.key,
             records: entry.value,
             onTap: (r) {
-              // TODO: navigate to HealthRecordDetailScreen (UC-211)
+              context.push('/health-records/detail/${r.id}').then((_) => _load());
             },
           );
         }).toList(),

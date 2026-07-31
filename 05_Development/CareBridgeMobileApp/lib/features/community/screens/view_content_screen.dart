@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 import '../../../core/auth/auth_state.dart';
 import '../../checklist/models/user_checklist_item_model.dart';
-import '../../checklist/screens/preparation_checklist_screen.dart';
+import '../../reminder/screens/today_tasks_screen.dart';
 import '../../checklist/services/user_checklist_service.dart';
 import '../../journey/models/journey_model.dart';
 import '../../journey/screens/mother_journey_screen.dart';
 import '../../journey/services/journey_service.dart';
 import '../models/community_model.dart';
+import '../models/checklist_assignment_context.dart';
 import '../models/content_model.dart';
 import '../services/community_service.dart';
 import '../services/content_service.dart';
 import '../widgets/verified_content_body.dart';
 import 'verified_content_detail_screen.dart';
+import 'verified_content_search_screen.dart';
 
 /// CB-223 — View Content and Checklist (UC-82)
 /// Displays curated articles, FAQs, and checklists filtered by pregnancy
@@ -33,8 +35,6 @@ class ViewContentScreen extends StatefulWidget {
 }
 
 class _ViewContentScreenState extends State<ViewContentScreen> {
-  static const _maxChecklistImportItems = 50;
-
   // ── Design tokens (Warm Claymorphism palette) ──
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
@@ -66,7 +66,6 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
   bool _articleLoadFailed = false;
   bool _faqLoadFailed = false;
   bool _checklistLoadFailed = false;
-  bool _userChecklistLoadFailed = false;
   int _loadGeneration = 0;
   String? _resolvedStage;
   String? _observedAccountId;
@@ -80,7 +79,6 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
   List<ContentListItem> _faqs = [];
   List<ChecklistTemplate> _checklists = [];
   List<UserChecklistItem> _userChecklistItems = [];
-  final Set<String> _importingChecklistIds = {};
   String _searchKeyword = '';
   String? _selectedCategoryId;
   String? _selectedTopicId;
@@ -215,6 +213,7 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
           _communityService.getTopics(type: 'TOPIC'),
         );
         final tagsFuture = _capture(_communityService.getTopics(type: 'TAG'));
+        final userItemsFuture = _capture(_userChecklistService.listItems());
         final results = await Future.wait<Object>([
           _contentService.getAllLifecycleContent(
             shouldContinue: () => _canApply(generation, accountId),
@@ -226,6 +225,7 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
         final categoriesResult = await categoriesFuture;
         final topicsResult = await topicsFuture;
         final tagsResult = await tagsFuture;
+        final userItemsResult = await userItemsFuture;
 
         final content = results[0] as LifecycleEnvelope<List<ContentListItem>>;
         final checklists =
@@ -251,10 +251,10 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
               .where((item) => item.type == 'FAQ')
               .toList(growable: false);
           _checklists = checklists.payload;
+          _userChecklistItems = userItemsResult.$1 ?? <UserChecklistItem>[];
           _articleLoadFailed = false;
           _faqLoadFailed = false;
           _checklistLoadFailed = false;
-          _userChecklistLoadFailed = false;
           _loading = false;
         });
         return;
@@ -290,7 +290,9 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
         _contentService.getChecklists(stage: stage),
       );
       final journeyId = dashboard?.journeyId;
-      final userItemsFuture = journeyId == null || journeyId.isEmpty
+      final userItemsFuture = stage == 'BABY_CARE'
+          ? _capture(_userChecklistService.listItems())
+          : journeyId == null || journeyId.isEmpty
           ? Future.value((<UserChecklistItem>[], false))
           : _capture(_userChecklistService.listItems(journeyId: journeyId));
       final topicsResult = await topicsFuture;
@@ -316,7 +318,6 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
           _articleLoadFailed = articlesResult.$2;
           _faqLoadFailed = faqsResult.$2;
           _checklistLoadFailed = checklistsResult.$2;
-          _userChecklistLoadFailed = userItemsResult.$2;
           _loading = false;
         });
         _loadFeaturedImage(
@@ -409,7 +410,10 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
               SliverToBoxAdapter(child: _buildTypeTabs()),
               if (widget.mode == ContentBrowseMode.generic)
                 SliverToBoxAdapter(child: _buildStageChips()),
-              SliverToBoxAdapter(child: _buildSearchInput()),
+              if (widget.mode == ContentBrowseMode.generic)
+                SliverToBoxAdapter(child: _buildSearchInput())
+              else
+                SliverToBoxAdapter(child: _buildGenericBrowseEntry()),
               SliverToBoxAdapter(child: _buildTopicRow()),
               if (_loading)
                 const SliverFillRemaining(
@@ -436,6 +440,37 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
               ],
               const SliverToBoxAdapter(child: SizedBox(height: 32)),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGenericBrowseEntry() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      child: Semantics(
+        button: true,
+        label: 'Mở tìm kiếm nội dung theo lựa chọn của bạn',
+        child: OutlinedButton.icon(
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) =>
+                  VerifiedContentSearchScreen(contentService: _contentService),
+            ),
+          ),
+          icon: const Icon(Icons.manage_search_rounded),
+          label: const Text('Khám phá nội dung theo lựa chọn'),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size(double.infinity, 48),
+            foregroundColor: _primary,
+            backgroundColor: Colors.white,
+            side: const BorderSide(color: Color(0xFFD6C2BD)),
+            shape: const StadiumBorder(),
+            textStyle: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       ),
@@ -886,8 +921,9 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
         )
         .toList();
     final tags = _tags.where((item) => !item.isHidden).toList();
-    if (categories.isEmpty && topics.isEmpty && tags.isEmpty)
+    if (categories.isEmpty && topics.isEmpty && tags.isEmpty) {
       return const SizedBox.shrink();
+    }
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
@@ -913,8 +949,9 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                     !_topics.any(
                       (topic) =>
                           topic.id == _selectedTopicId && topic.parentId == id,
-                    ))
+                    )) {
                   _selectedTopicId = null;
+                }
               }),
             ),
           if (topics.isNotEmpty)
@@ -948,7 +985,7 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
   ) => Padding(
     padding: const EdgeInsets.only(top: 10),
     child: DropdownButtonFormField<String>(
-      value: selectedId ?? '',
+      initialValue: selectedId ?? '',
       isExpanded: true,
       decoration: InputDecoration(
         labelText: label,
@@ -1392,17 +1429,19 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
       .toSet();
 
   Future<void> _openChecklistTemplate(ChecklistTemplate template) async {
-    if (_importingChecklistIds.isNotEmpty) return;
     final importedIds = _importedTemplateItemIds;
-    final missingItems = template.items
-        .where((item) => !importedIds.contains(item.id))
-        .toList(growable: false);
+    final allItemsAdded =
+        template.items.isNotEmpty &&
+        template.items.every((item) => importedIds.contains(item.id));
     final rawJourneyId = _dashboard?.journeyId;
     final journeyId = rawJourneyId == null || rawJourneyId.isEmpty
         ? null
         : rawJourneyId;
-    final hasImportContext =
-        journeyId != null || widget.mode == ContentBrowseMode.lifecycle;
+    final assignmentContext = ChecklistAssignmentContext.resolve(
+      templateStage: template.stage,
+      journeyId: journeyId,
+      lifecycleMode: widget.mode == ContentBrowseMode.lifecycle,
+    );
     final action = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
@@ -1457,16 +1496,10 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                   },
                 ),
               ),
-              if (!hasImportContext) ...[
+              if (!assignmentContext.canAssign) ...[
                 const SizedBox(height: 12),
                 const Text(
                   'Hãy thiết lập hành trình trước khi thêm checklist.',
-                  style: TextStyle(color: _error),
-                ),
-              ] else if (_userChecklistLoadFailed) ...[
-                const SizedBox(height: 12),
-                const Text(
-                  'Không thể kiểm tra checklist hiện tại. Hãy thử tải lại trước khi thêm để tránh trùng mục.',
                   style: TextStyle(color: _error),
                 ),
               ],
@@ -1474,21 +1507,17 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: !hasImportContext || _userChecklistLoadFailed
+                  onPressed: !assignmentContext.canAssign
                       ? null
                       : () => Navigator.pop(
                           sheetContext,
-                          missingItems.isEmpty ? 'open' : 'import',
+                          allItemsAdded ? 'open' : 'add',
                         ),
                   icon: Icon(
-                    missingItems.isEmpty
-                        ? Icons.checklist_rtl
-                        : Icons.playlist_add,
+                    allItemsAdded ? Icons.checklist_rtl : Icons.add_task,
                   ),
                   label: Text(
-                    missingItems.isEmpty
-                        ? 'Mở checklist của tôi'
-                        : 'Thêm ${missingItems.length} mục vào checklist',
+                    allItemsAdded ? 'Mở việc hôm nay' : 'Thêm vào Việc hôm nay',
                   ),
                 ),
               ),
@@ -1499,85 +1528,39 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
     );
 
     if (!mounted || action == null) return;
-    if (action == 'import') {
-      await _importChecklistTemplate(template);
-    } else {
-      await _openMyChecklist();
-    }
-  }
-
-  Future<void> _importChecklistTemplate(ChecklistTemplate template) async {
-    final rawJourneyId = _dashboard?.journeyId;
-    final journeyId = rawJourneyId == null || rawJourneyId.isEmpty
-        ? null
-        : rawJourneyId;
-    final hasImportContext =
-        journeyId != null || widget.mode == ContentBrowseMode.lifecycle;
-    if (!hasImportContext || _importingChecklistIds.isNotEmpty) {
-      return;
-    }
-    final importedIds = _importedTemplateItemIds;
-    final missingIds = template.items
-        .map((item) => item.id)
-        .where((id) => !importedIds.contains(id))
-        .toList(growable: false);
-    if (missingIds.isEmpty) {
-      await _openMyChecklist();
-      return;
-    }
-    if (missingIds.length > _maxChecklistImportItems) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Checklist có hơn 50 mục. Vui lòng chọn checklist nhỏ hơn.',
+    if (action == 'add') {
+      try {
+        await _userChecklistService.addTemplate(
+          templateId: template.id,
+          journeyId: assignmentContext.journeyId,
+        );
+        final items = await _userChecklistService.listItems(
+          journeyId: assignmentContext.journeyId,
+        );
+        if (!mounted) return;
+        setState(() => _userChecklistItems = items);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã thêm checklist vào Việc hôm nay.')),
+        );
+      } catch (_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Không thể thêm checklist. Vui lòng thử lại.'),
+            backgroundColor: _error,
           ),
-          backgroundColor: _error,
-        ),
-      );
-      return;
+        );
+        return;
+      }
     }
-
-    setState(() => _importingChecklistIds.add(template.id));
-    var importSucceeded = false;
-    try {
-      final imported = await _userChecklistService.importFromTemplate(
-        templateItemIds: missingIds,
-        journeyId: journeyId,
-      );
-      if (!mounted) return;
-      setState(
-        () => _userChecklistItems = [..._userChecklistItems, ...imported],
-      );
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Đã thêm ${imported.length} mục vào checklist.'),
-        ),
-      );
-      importSucceeded = true;
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Không thể thêm checklist. Vui lòng thử lại.'),
-          backgroundColor: _error,
-        ),
-      );
-    } finally {
-      if (mounted) setState(() => _importingChecklistIds.remove(template.id));
-    }
-    if (importSucceeded && mounted) await _openMyChecklist();
+    await _openMyChecklist(journeyId: assignmentContext.journeyId);
   }
 
-  Future<void> _openMyChecklist() async {
-    final lifecycle = widget.mode == ContentBrowseMode.lifecycle;
-    final journeyId = lifecycle ? null : _dashboard?.journeyId;
+  Future<void> _openMyChecklist({String? journeyId}) async {
     await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => PreparationChecklistScreen(journeyId: journeyId),
-      ),
+      MaterialPageRoute(builder: (_) => TodayTasksScreen(journeyId: journeyId)),
     );
-    if (mounted && (lifecycle || journeyId != null)) {
+    if (mounted) {
       try {
         final items = await _userChecklistService.listItems(
           journeyId: journeyId,
@@ -1742,9 +1725,7 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
-                            _importingChecklistIds.contains(cl.id)
-                                ? Icons.hourglass_top
-                                : Icons.chevron_right,
+                            Icons.chevron_right,
                             size: 22,
                             color: _primary,
                           ),
@@ -1758,40 +1739,6 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
           ),
           const SizedBox(height: 16),
         ],
-      ),
-    );
-  }
-
-  // ── Safety disclaimer ──
-  Widget _buildSafetyDisclaimer() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFFBE6),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: const Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(Icons.info_outline, size: 20, color: Color(0xFFB89A00)),
-            SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                'Lưu ý: Các nội dung trên mang tính chất tham khảo. '
-                'Nếu dấu hiệu nặng lên, hãy liên hệ cơ sở y tế phù hợp ngay lập tức.',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 12,
-                  fontStyle: FontStyle.italic,
-                  color: Color(0xFF6D5B00),
-                  height: 1.4,
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

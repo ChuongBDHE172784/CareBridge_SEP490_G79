@@ -1,0 +1,9 @@
+spring:
+  config:
+    activate:
+      on-profile: checklist-retirement
+  flyway:
+    clean-disabled: true
+    out-of-order: false
+    validate-on-migrate: true
+    ignore-migration-patterns: "*:future"

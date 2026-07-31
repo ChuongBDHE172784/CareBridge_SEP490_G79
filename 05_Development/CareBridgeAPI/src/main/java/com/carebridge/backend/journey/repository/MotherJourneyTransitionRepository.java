@@ -30,5 +30,31 @@ public interface MotherJourneyTransitionRepository
     Optional<MotherJourneyTransition> findFirstByJourneyIdAndJourneyVersionOrderByRecordedAtDesc(
             @Param("journeyId") UUID journeyId, @Param("journeyVersion") long journeyVersion);
 
+    @Query(value = """
+            SELECT CAST(payload->>'journeyVersion' AS bigint)
+              FROM audit_events
+             WHERE event_category='MOTHER_JOURNEY_TRANSITION'
+               AND subject_reference_id=:journeyId
+               AND payload->>'eventType'='STAGE_CHANGED'
+               AND payload->>'fromStage'='POSTPARTUM'
+               AND payload->>'toStage'='PREGNANCY'
+             ORDER BY CAST(payload->>'journeyVersion' AS bigint) DESC
+             LIMIT 1
+            """, nativeQuery = true)
+    Optional<Long> findLatestPostpartumToPregnancyEpochVersion(
+            @Param("journeyId") UUID journeyId);
+
+    @Query(value = """
+            SELECT EXISTS (
+                SELECT 1
+                  FROM audit_events
+                 WHERE event_category='MOTHER_JOURNEY_TRANSITION'
+                   AND subject_reference_id=:journeyId
+                   AND (payload->>'fromStage'='POSTPARTUM'
+                        OR payload->>'toStage'='POSTPARTUM')
+            )
+            """, nativeQuery = true)
+    boolean hasPostpartumHistory(@Param("journeyId") UUID journeyId);
+
     long count();
 }

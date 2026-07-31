@@ -23,6 +23,15 @@ public interface ReminderRepository extends JpaRepository<Reminder, UUID> {
 
     Optional<Reminder> findById(UUID id);
 
+    @Query(value = """
+            SELECT status
+              FROM care_tasks
+             WHERE task_id = :reminderId
+               AND task_type = 'SCHEDULED_REMINDER'
+             FOR UPDATE
+            """, nativeQuery = true)
+    Optional<String> findStatusByIdForUpdate(@Param("reminderId") UUID reminderId);
+
     List<Reminder> findByOwnerUserIdAndScheduledAtBetweenAndStatusIn(
             UUID ownerUserId, Instant start, Instant end, List<ReminderStatus> statuses);
 
@@ -51,6 +60,9 @@ public interface ReminderRepository extends JpaRepository<Reminder, UUID> {
 
     List<Reminder> findByOwnerUserIdAndReminderTypeAndStatusIn(
             UUID ownerUserId, ReminderType reminderType, List<ReminderStatus> statuses);
+
+    List<Reminder> findByReminderTypeAndStatusIn(
+            ReminderType reminderType, List<ReminderStatus> statuses);
 
     /** CB-TYFU-IMP-001 — idempotency probe for BR-TYFU-002 / ADR-TYFU-003. */
     boolean existsByReminderTypeAndSourceReferenceId(ReminderType reminderType, UUID sourceReferenceId);

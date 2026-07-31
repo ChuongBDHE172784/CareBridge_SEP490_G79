@@ -697,6 +697,42 @@ class TriageServiceTest {
     }
 
     @Test
+    void startConversation_babyReplayWithoutTypedBinding_shouldRejectConflict() {
+        String clientRequestId = "baby-replay-missing-binding";
+        UUID babyId = UUID.randomUUID();
+        IntakeSession existing = conversationSession(IntakeStatus.NEED_MORE_INFO, """
+                {"status":"ASK_MORE","intakeSessionId":"00000000-0000-0000-0000-000000000001",
+                 "mergedIntake":{},"questions":[{"questionKey":"duration","text":"How long?","answerType":"TEXT","options":[]}],"round":1}
+                """);
+        existing.setClientRequestId(clientRequestId);
+        existing.setJourneyId(null);
+        existing.setBabyProfileId(babyId);
+        existing.setStage(TriageStage.INFANT);
+        existing.setOriginDashboard(OriginDashboard.BABY_PROFILE);
+        existing.setOriginReferenceId(babyId);
+        when(intakeSessionRepository.findByUserIdAndClientRequestId(USER_ID, clientRequestId))
+                .thenReturn(Optional.of(existing));
+        LifecycleIntakeBindingService bindingService = mock(LifecycleIntakeBindingService.class);
+        TriageException conflict = new TriageException(
+                HttpStatus.CONFLICT, "TRIAGE-016", "Intake context conflict");
+        doThrow(conflict).when(bindingService).validateReplay(existing, null);
+        TriageService triageService = service();
+        ReflectionTestUtils.setField(triageService, "lifecycleBindingService", bindingService);
+        StartIntakeConversationRequest request = StartIntakeConversationRequest.builder()
+                .initialText("be sot")
+                .clientRequestId(clientRequestId)
+                .stage(TriageStage.INFANT)
+                .babyProfileId(babyId)
+                .build();
+
+        assertThatThrownBy(() -> triageService.startConversation(request, USER_ID))
+                .isSameAs(conflict);
+
+        verify(bindingService).validateReplay(existing, null);
+        verifyNoInteractions(childTriageAiClient, eventPublisher);
+    }
+
+    @Test
     void startConversation_databaseRaceLoser_shouldReloadWinnerAndReplayWithoutSideEffects() {
         String clientRequestId = "idempotency-race-1234";
         IntakeSession winner = conversationSession(IntakeStatus.NEED_MORE_INFO, """
@@ -774,14 +810,20 @@ class TriageServiceTest {
     }
 
     @Test
-    void continueConversation_terminalLifecycleResult_renewsContinuationBeforeSaveAndProjectionEvent() {
+    void continueConversation_terminalBabyResult_renewsContinuationWithoutJourneyBeforeSaveAndProjectionEvent() {
         IntakeSession session = conversationSession(IntakeStatus.NEED_MORE_INFO, """
                 {"status":"ASK_MORE","intakeSessionId":"00000000-0000-0000-0000-000000000001",
                  "mergedIntake":{},"questions":[{"questionKey":"duration","text":"Age?","answerType":"TEXT","options":[]}],"round":1}
                 """);
-        session.setJourneyId(UUID.randomUUID());
-        session.setContinuationToken(UUID.randomUUID());
-        session.setContinuationExpiresAt(Instant.parse("2026-07-01T00:00:00Z"));
+        UUID babyId = UUID.randomUUID();
+        session.setJourneyId(null);
+        session.setBabyProfileId(babyId);
+        session.setOriginDashboard(OriginDashboard.BABY_PROFILE);
+        session.setOriginReferenceId(babyId);
+        UUID continuationToken = UUID.randomUUID();
+        Instant continuationExpiresAt = Instant.now().plusSeconds(600);
+        session.setContinuationToken(continuationToken);
+        session.setContinuationExpiresAt(continuationExpiresAt);
         when(intakeSessionRepository.findForUpdateByIdAndUserId(session.getId(), USER_ID))
                 .thenReturn(Optional.of(session));
         when(intakeSessionRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -801,8 +843,13 @@ class TriageServiceTest {
                 .newAnswers(Map.of("duration", "one day"))
                 .build(), USER_ID);
 
-        assertThat(response.getContinuationToken()).isNull();
-        assertThat(response.getContinuationExpiresAt()).isNull();
+        assertThat(response.getJourneyId()).isNull();
+        assertThat(response.getOriginDashboard()).isEqualTo(OriginDashboard.BABY_PROFILE);
+        assertThat(response.getOriginReferenceId()).isEqualTo(babyId);
+        assertThat(response.getOriginAction())
+                .isEqualTo(OriginAction.forDashboard(OriginDashboard.BABY_PROFILE));
+        assertThat(response.getContinuationToken()).isEqualTo(continuationToken);
+        assertThat(response.getContinuationExpiresAt()).isEqualTo(continuationExpiresAt);
         InOrder order = inOrder(bindingService, intakeSessionRepository, eventPublisher);
         order.verify(bindingService).renewForTerminal(session);
         order.verify(intakeSessionRepository).save(session);

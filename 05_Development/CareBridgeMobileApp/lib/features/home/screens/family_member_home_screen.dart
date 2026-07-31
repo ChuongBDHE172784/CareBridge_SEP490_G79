@@ -4,9 +4,14 @@ import '../../auth/screens/account_profile_screen.dart';
 import '../../familySync/screens/my_care_groups_screen.dart';
 import '../../familySync/services/family_home_service.dart';
 import '../../notification/screens/notification_center_screen.dart';
+import '../../reminder/screens/today_tasks_screen.dart';
+import '../../reminder/services/today_task_service.dart';
+import '../../reminder/widgets/today_tasks_panel.dart';
 
 class FamilyMemberHomeScreen extends StatefulWidget {
-  const FamilyMemberHomeScreen({super.key});
+  const FamilyMemberHomeScreen({super.key, this.todayTaskService});
+
+  final TodayTaskService? todayTaskService;
 
   @override
   State<FamilyMemberHomeScreen> createState() => _FamilyMemberHomeScreenState();
@@ -19,7 +24,6 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
   static const _surface = Colors.white;
   static const _surfaceLow = Color(0xFFFFF1EC);
   static const _surfaceHigh = Color(0xFFFFE2D9);
-  static const _surfaceHighest = Color(0xFFFADCD3);
   static const _secondary = Color(0xFF6E5A52);
   static const _secondaryContainer = Color(0xFFF6DACF);
   static const _tertiary = Color(0xFF625D59);
@@ -38,22 +42,31 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
   ];
 
   FamilyHomeSnapshot? _snapshot;
+  late final TodayTaskService _todayTaskService;
+  final TodayTasksPanelController _todayTasksController =
+      TodayTasksPanelController();
   bool _loading = true;
 
   @override
   void initState() {
     super.initState();
+    _todayTaskService = widget.todayTaskService ?? TodayTaskService.instance;
     _load();
   }
 
   Future<void> _load() async {
+    final todayRefresh = _todayTasksController.refresh();
     setState(() => _loading = true);
-    final snapshot = await FamilyHomeService.instance.loadSnapshot();
-    if (!mounted) return;
-    setState(() {
-      _snapshot = snapshot;
-      _loading = false;
-    });
+    try {
+      final snapshot = await FamilyHomeService.instance.loadSnapshot();
+      if (!mounted) return;
+      setState(() {
+        _snapshot = snapshot;
+        _loading = false;
+      });
+    } finally {
+      await todayRefresh;
+    }
   }
 
   @override
@@ -74,6 +87,19 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
                   const SizedBox(height: 28),
                   _buildShortcuts(),
                   const SizedBox(height: 30),
+                  _SectionTitle(
+                    icon: Icons.assignment_outlined,
+                    title: 'Việc hôm nay',
+                    color: _primary,
+                  ),
+                  const SizedBox(height: 12),
+                  TodayTasksPanel(
+                    service: _todayTaskService,
+                    audience: TodayTasksAudience.family,
+                    showHeading: false,
+                    controller: _todayTasksController,
+                  ),
+                  const SizedBox(height: 30),
                   if (_loading)
                     const Padding(
                       padding: EdgeInsets.only(top: 80),
@@ -82,14 +108,6 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
                       ),
                     )
                   else ...[
-                    _SectionTitle(
-                      icon: Icons.assignment_outlined,
-                      title: 'Việc cần làm sắp tới',
-                      color: _primary,
-                    ),
-                    const SizedBox(height: 12),
-                    _buildTaskCard(),
-                    const SizedBox(height: 30),
                     _SectionTitle(
                       icon: Icons.calendar_today_outlined,
                       title: 'Lịch chăm sóc',
@@ -163,7 +181,14 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
           label: 'Nhiệm vụ',
           color: _primary,
           background: _primaryContainer.withValues(alpha: 0.18),
-          onTap: _openGroups,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => TodayTasksScreen(
+                service: _todayTaskService,
+                audience: TodayTasksAudience.family,
+              ),
+            ),
+          ),
         ),
         _ShortcutButton(
           icon: Icons.calendar_today_outlined,
@@ -189,75 +214,6 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
           onTap: _openGroups,
         ),
       ],
-    );
-  }
-
-  Widget _buildTaskCard() {
-    final task = _snapshot?.nextTask;
-    return _ClayCard(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 28,
-            height: 28,
-            margin: const EdgeInsets.only(top: 2),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: _outline, width: 3),
-            ),
-          ),
-          const SizedBox(width: 18),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  task?.title ?? 'Chưa có nhiệm vụ mới',
-                  style: const TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: _onSurface,
-                    height: 1.25,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 7,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _surfaceHighest,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.shopping_cart_outlined,
-                        color: _onSurfaceVariant,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        task?.category ?? 'Chăm sóc',
-                        style: const TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: _onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 

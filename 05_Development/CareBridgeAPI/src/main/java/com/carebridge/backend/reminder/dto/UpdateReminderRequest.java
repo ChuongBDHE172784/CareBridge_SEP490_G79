@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.time.Instant;
+import java.util.List;
 
 @Data
 public class UpdateReminderRequest {
@@ -19,4 +20,10 @@ public class UpdateReminderRequest {
     private Instant recurrenceEndDate;
 
     private Boolean recurrenceEndDateSet;
+
+    private List<Integer> notificationOffsetsMinutes;
+
+    private Boolean notificationOffsetsMinutesSet;
+
+    private String timeZone;
 }

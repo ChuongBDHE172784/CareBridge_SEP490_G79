@@ -141,7 +141,6 @@ void main() {
               'journeyType': 'POSTPARTUM',
               'journeyVersion': 2,
               'revisionNumber': 1,
-              'babyActionsEligible': false,
             },
           };
         },

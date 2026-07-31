@@ -139,8 +139,7 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
         }
 
         String semanticHash = outcomeSemanticHash(request);
-        var priorSubmission = outcomeRepository.findByJourneyIdAndSubmissionId(
-                journeyId, request.getSubmissionId());
+        var priorSubmission = priorSubmissionInCurrentPregnancyEpoch(current, request.getSubmissionId());
         if (priorSubmission.isPresent()) {
             PregnancyOutcomeEvidence prior = priorSubmission.get();
             if (!prior.getSemanticHash().equals(semanticHash)) {
@@ -165,8 +164,7 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
         }
         validateOutcomeRequest(current, request);
 
-        var previous = outcomeRepository
-                .findFirstByJourneyIdOrderByRevisionNumberDesc(journeyId);
+        var previous = previousOutcomeInCurrentPregnancyEpoch(current);
         boolean requiresCorrection = current.getJourneyType() == JourneyType.POSTPARTUM
                 || previous.map(value -> value.getOutcomeType().transitionsToPostpartum())
                         .orElse(false);
@@ -447,9 +445,19 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
         LocalDate oldLmp = current.getLastMenstrualDate();
         LocalDate oldEdd = current.getEstimatedDueDate();
         LocalDate oldDelivery = current.getDeliveryDate();
+        PregnancyOutcomeType oldPregnancyOutcome = current.getPregnancyOutcome();
+        LocalDate oldPregnancyOutcomeDate = current.getPregnancyOutcomeDate();
         String oldNotes = current.getNotes();
         JourneyDateSource oldSource = current.getDateSource();
         JourneyDateConfidence oldConfidence = current.getDateConfidence();
+        boolean startsNewPregnancyEpoch = fromStage == JourneyType.POSTPARTUM
+                && request.getJourneyType() == JourneyType.PREGNANCY;
+        if (startsNewPregnancyEpoch && "COMPLETED".equalsIgnoreCase(request.getStatus())) {
+            throw new BusinessException(
+                    HttpStatus.BAD_REQUEST,
+                    "JOURNEY_NEW_EPOCH_MUST_REMAIN_ACTIVE",
+                    "A new pregnancy epoch must remain active");
+        }
 
         if (request.getJourneyType() != null) {
             current.setJourneyType(request.getJourneyType());
@@ -478,6 +486,13 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
         if ("COMPLETED".equalsIgnoreCase(request.getStatus())) {
             current.setStatus(JourneyStatus.COMPLETED);
         }
+        if (startsNewPregnancyEpoch) {
+            // The existing journey remains the canonical identity, while this stage change
+            // opens a fresh pregnancy epoch. Historical outcome evidence is append-only.
+            current.setPregnancyOutcome(null);
+            current.setPregnancyOutcomeDate(null);
+            current.setDeliveryDate(null);
+        }
 
         boolean notesChanged = !Objects.equals(oldNotes, current.getNotes());
         boolean entityChanged = fromStage != current.getJourneyType()
@@ -485,6 +500,8 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
                 || !Objects.equals(oldLmp, current.getLastMenstrualDate())
                 || !Objects.equals(oldEdd, current.getEstimatedDueDate())
                 || !Objects.equals(oldDelivery, current.getDeliveryDate())
+                || oldPregnancyOutcome != current.getPregnancyOutcome()
+                || !Objects.equals(oldPregnancyOutcomeDate, current.getPregnancyOutcomeDate())
                 || !Objects.equals(oldSource, current.getDateSource())
                 || !Objects.equals(oldConfidence, current.getDateConfidence())
                 || notesChanged;
@@ -507,6 +524,12 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
         addIfChanged(changes, "lastMenstrualDate", oldLmp, saved.getLastMenstrualDate());
         addIfChanged(changes, "estimatedDueDate", oldEdd, saved.getEstimatedDueDate());
         addIfChanged(changes, "deliveryDate", oldDelivery, saved.getDeliveryDate());
+        addIfChanged(changes, "pregnancyOutcome", oldPregnancyOutcome, saved.getPregnancyOutcome());
+        addIfChanged(
+                changes,
+                "pregnancyOutcomeDate",
+                oldPregnancyOutcomeDate,
+                saved.getPregnancyOutcomeDate());
         addIfChanged(changes, "dateSource", oldSource, saved.getDateSource());
         addIfChanged(changes, "dateConfidence", oldConfidence, saved.getDateConfidence());
         addIfChanged(changes, "status", fromStatus, saved.getStatus());
@@ -525,15 +548,19 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
                 .fromStage(fromStage)
                 .toStage(saved.getJourneyType())
                 .changes(changes)
-                .source(sourceOrUnknown(
-                        request.getDateSource() != null
-                                ? request.getDateSource()
-                                : saved.getDateSource()))
+                .source(startsNewPregnancyEpoch
+                        ? JourneyDateSource.SYSTEM_DERIVED
+                        : sourceOrUnknown(
+                                request.getDateSource() != null
+                                        ? request.getDateSource()
+                                        : saved.getDateSource()))
                 .confidence(
                         request.getDateConfidence() != null
                                 ? request.getDateConfidence()
                                 : saved.getDateConfidence())
-                .reason(request.getChangeReason())
+                .reason(startsNewPregnancyEpoch
+                        ? "POSTPARTUM_NEW_PREGNANCY_EPOCH"
+                        : request.getChangeReason())
                 .actorUserId(ownerId)
                 .effectiveAt(effectiveAt)
                 .journeyVersion(saved.getVersion())
@@ -677,6 +704,32 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
                 || field.equals("dateConfidence");
     }
 
+    private java.util.Optional<PregnancyOutcomeEvidence> previousOutcomeInCurrentPregnancyEpoch(
+            MotherJourney journey) {
+        if (journey.getJourneyType() != JourneyType.PREGNANCY) {
+            return outcomeRepository.findFirstByJourneyIdOrderByRevisionNumberDesc(journey.getId());
+        }
+        return transitionRepository.findLatestPostpartumToPregnancyEpochVersion(journey.getId())
+                .map(epochVersion -> outcomeRepository
+                        .findFirstByJourneyIdAfterEpochVersionOrderByRevisionNumberDesc(
+                                journey.getId(), epochVersion))
+                .orElseGet(() -> outcomeRepository
+                        .findFirstByJourneyIdOrderByRevisionNumberDesc(journey.getId()));
+    }
+
+    private java.util.Optional<PregnancyOutcomeEvidence> priorSubmissionInCurrentPregnancyEpoch(
+            MotherJourney journey, UUID submissionId) {
+        if (journey.getJourneyType() != JourneyType.PREGNANCY) {
+            return outcomeRepository.findByJourneyIdAndSubmissionId(journey.getId(), submissionId);
+        }
+        return transitionRepository.findLatestPostpartumToPregnancyEpochVersion(journey.getId())
+                .map(epochVersion -> outcomeRepository
+                        .findByJourneyIdAndSubmissionIdAfterEpochVersion(
+                                journey.getId(), submissionId, epochVersion))
+                .orElseGet(() -> outcomeRepository
+                        .findByJourneyIdAndSubmissionId(journey.getId(), submissionId));
+    }
+
     private JourneyDateSource sourceOrUnknown(JourneyDateSource source) {
         return source == null ? JourneyDateSource.UNKNOWN : source;
     }
@@ -743,7 +796,6 @@ public class JourneyTransitionServiceImpl implements IJourneyTransitionService {
                 .revisionNumber(evidence.getRevisionNumber())
                 .effectiveAt(evidence.getEffectiveAt())
                 .recordedAt(evidence.getRecordedAt())
-                .babyActionsEligible(evidence.getOutcomeType() == PregnancyOutcomeType.LIVE_BIRTH)
                 .build();
     }
 

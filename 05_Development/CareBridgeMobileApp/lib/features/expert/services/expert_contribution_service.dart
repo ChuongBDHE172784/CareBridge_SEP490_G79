@@ -1,11 +1,10 @@
 import 'dart:convert';
-import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 
 import '../../../core/auth/auth_state.dart';
+import '../../../core/network/api_client.dart';
 import '../models/contribution_model.dart';
 
 /// Service for Expert Medical Contribution APIs
@@ -17,13 +16,7 @@ class ExpertContributionService {
   static const _basePath = '/api/v1/contributions';
 
   /// Get base URL using same logic as ApiClient
-  String get _baseUrl {
-    const envBaseUrl = String.fromEnvironment('API_BASE_URL');
-    if (envBaseUrl.isNotEmpty) return envBaseUrl;
-    if (kIsWeb) return 'http://localhost:8080';
-    if (Platform.isAndroid) return 'http://10.0.2.2:8080';
-    return 'http://localhost:8080';
-  }
+  String get _baseUrl => apiBaseUrl;
 
   /// Get token from auth state
   String? get _token => AuthState.instance.accessToken;

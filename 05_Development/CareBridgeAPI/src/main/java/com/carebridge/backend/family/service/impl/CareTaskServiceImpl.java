@@ -1,7 +1,10 @@
 package com.carebridge.backend.family.service.impl;
 
 import com.carebridge.backend.audit.entity.AuditAction;
+import com.carebridge.backend.checklist.model.ChecklistOrigin;
 import com.carebridge.backend.audit.service.AuditService;
+import com.carebridge.backend.audit.service.RequiredAuditEvent;
+import com.carebridge.backend.checklist.model.ChecklistCareContextType;
 import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.family.dto.AssignFamilyTaskRequest;
 import com.carebridge.backend.family.dto.AssignFamilyTaskResponse;
@@ -39,6 +42,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -97,6 +101,8 @@ public class CareTaskServiceImpl implements ICareTaskService {
                 .title(request.getTitle())
                 .description(request.getDescription())
                 .dueAt(request.getDueAt())
+                .origin(ChecklistOrigin.USER_CREATED)
+                .targetSubject(request.getTargetSubject())
                 .status(CareTaskStatus.OPEN)
                 .build();
 
@@ -349,9 +355,8 @@ public class CareTaskServiceImpl implements ICareTaskService {
         }
         CareTask saved = taskRepository.save(task);
 
-        // Step 7: audit log
-        auditService.log(AuditAction.CARE_TASK_STATUS_UPDATED, callerId,
-                "CareTask", taskId.toString(), current + " -> " + requested);
+        // Step 7: required typed audit log
+        auditCareTaskStatus(task, callerId, current, requested);
 
         // Step 8: notify assigner — best-effort
         if (task.getAssignedBy() != null) {
@@ -387,6 +392,43 @@ public class CareTaskServiceImpl implements ICareTaskService {
                 .assignedBy(task.getAssignedBy())
                 .completedAt(task.getCompletedAt())
                 .build();
+    }
+
+    private void auditCareTaskStatus(
+            CareTask task,
+            UUID callerId,
+            CareTaskStatus previousStatus,
+            CareTaskStatus nextStatus) {
+        ChecklistCareContextType contextType = task.getBabyId() != null
+                ? ChecklistCareContextType.BABY
+                : task.getJourneyId() != null ? ChecklistCareContextType.JOURNEY : null;
+        UUID contextId = task.getBabyId() != null ? task.getBabyId() : task.getJourneyId();
+        if (contextId == null) {
+            var group = groupRepository.findById(task.getCareGroupId()).orElse(null);
+            if (group != null && group.getLinkedBabyProfileId() != null) {
+                contextType = ChecklistCareContextType.BABY;
+                contextId = group.getLinkedBabyProfileId();
+            } else if (group != null && group.getLinkedJourneyId() != null) {
+                contextType = ChecklistCareContextType.JOURNEY;
+                contextId = group.getLinkedJourneyId();
+            }
+        }
+        auditService.logRequired(new RequiredAuditEvent(
+                AuditAction.CARE_TASK_STATUS_UPDATED,
+                callerId,
+                "USER",
+                null,
+                task.getAssignedTo(),
+                "CARE_TASK",
+                task.getId(),
+                contextType,
+                contextId,
+                null,
+                null,
+                Map.of("status", previousStatus.name()),
+                Map.of("status", nextStatus.name()),
+                "USER_ACTION",
+                UUID.randomUUID()));
     }
 
     private CareTaskDetailResponse toDetailResponse(CareTask task) {

@@ -26,13 +26,34 @@ class HealthRecordService {
   }
 
   // UC-40/41/42: List health records visible to the current user.
-  Future<List<HealthRecord>> listHealthRecords({RecordType? filter}) async {
-    final query = filter == null
-        ? ''
-        : '?recordType=${filter.name.toUpperCase()}';
-    final data = await apiGet('/api/v1/health-records$query');
-    final list = data['data'] as List? ?? [];
-    return list
+  Future<List<HealthRecord>> listHealthRecords({
+    RecordType? filter,
+    String? journeyId,
+    String? babyId,
+  }) async {
+    final queryParams = <String>[];
+    if (filter != null) {
+      queryParams.add('recordType=${filter.name.toUpperCase()}');
+    }
+    if (journeyId != null && journeyId.isNotEmpty) {
+      queryParams.add('journeyId=$journeyId');
+    }
+    if (babyId != null && babyId.isNotEmpty) {
+      queryParams.add('babyId=$babyId');
+    }
+
+    final query = queryParams.isEmpty ? '' : '?${queryParams.join('&')}';
+    final data = await apiGet('/api/v1/health-records/timeline$query');
+    final rawData = data['data'];
+
+    List items = [];
+    if (rawData is Map && rawData.containsKey('items')) {
+      items = rawData['items'] as List? ?? [];
+    } else if (rawData is List) {
+      items = rawData;
+    }
+
+    return items
         .map((e) => HealthRecord.fromJson(e as Map<String, dynamic>))
         .toList();
   }

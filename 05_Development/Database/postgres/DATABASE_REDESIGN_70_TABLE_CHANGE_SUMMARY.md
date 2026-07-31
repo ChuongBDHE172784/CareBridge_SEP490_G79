@@ -167,7 +167,7 @@ Ba extension giữ request lifecycle, consented context snapshot và approved ci
 | Person/account | Tách `user_profiles` thành `persons` và phần settings của `users` | Account không bị trộn với non-account; private/public identity tách biệt |
 | Auth | `refresh_tokens`, `user_sessions`, `token_blacklist`, OTP/reset token chuyển sang session/revocation/challenge canonical | Token hash, expiry, device revoke, rotation và reuse detection |
 | Mother | Metric, postpartum, safety answer và posture feedback chuyển thành typed observations | Type/value/unit/time là scalar; history không overwrite |
-| Baby | `baby_profiles`, daily logs và link submissions chuyển thành person/care subject/log/event | Baby không thành user; owner và journey link vẫn có FK |
+| Baby | `baby_profiles`, daily logs và retired link evidence chuyển thành person/care subject/log/event | Baby không thành user; profile giữ owner scope và không còn quan hệ với Mother Journey |
 | Community | Question/answer chuyển thành self-referencing content; like/bookmark/follow/mute thành interaction | Exactly-one-target CHECK và unique actor/type/target |
 | Expert | `expert_profiles` chuyển thành professional profile + multi-select specialties; credentials tách riêng | Verification/document history và specialty FK được giữ |
 | Triage | Intake/structured data chuyển thành session + evidence | RED/emergency, stage, context, disclaimer, claim và citation có thể audit |
@@ -187,7 +187,7 @@ Các hàng dưới đây được nhóm theo cùng target nhưng bao phủ đún
 |---|---|---|---|
 | `audit_logs`, `baby_journey_link_cleanup_summary` | `audit_events` | Giữ actor/entity, before/after, checksum; append-only | LOW |
 | `baby_daily_logs` | `care_logs` | Typed log với subject/type/time scalar | LOW |
-| `baby_link_submissions` | `care_subjects`, `mother_journey_events` | Current link + immutable idempotent event | MEDIUM |
+| `baby_link_submissions` | chỉ `audit_events` | Nguồn command đã retired: chỉ giữ bằng chứng lịch sử tối thiểu; không tạo lại quan hệ subject-to-journey hiện hành | LOW |
 | `baby_profiles` | `persons`, `care_subjects` | Tách human identity và baby attributes | LOW |
 | `care_tasks` | `family_tasks` | Giữ group, creator, assignee, due/status/completion | LOW |
 | `reminders` | `scheduled_care_items` | Giữ recurrence, snooze, completion/skip và source FK | MEDIUM |

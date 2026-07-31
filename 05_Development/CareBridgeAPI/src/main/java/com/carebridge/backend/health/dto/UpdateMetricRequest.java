@@ -1,10 +1,11 @@
 package com.carebridge.backend.health.dto;
 
 import jakarta.validation.constraints.Size;
-import lombok.Data;
-
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import lombok.Data;
 
 @Data
 public class UpdateMetricRequest {
@@ -20,4 +21,10 @@ public class UpdateMetricRequest {
 
     @Size(max = 2000)
     private String note;
+
+    private Map<String, Object> context;
+
+    private Instant periodStart;
+
+    private Instant periodEnd;
 }

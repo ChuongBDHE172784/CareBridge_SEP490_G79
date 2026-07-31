@@ -1,6 +1,51 @@
-// UC-26 update request DTO (mirrors backend UpdateMetricRequest)
 DateTime _parseMetricDateTime(Object? value) {
   return DateTime.parse(value as String).toLocal();
+}
+
+DateTime? _parseOptionalMetricDateTime(Object? value) {
+  if (value == null) return null;
+  return DateTime.parse(value as String).toLocal();
+}
+
+class MetricCapability {
+  final String metricCode;
+  final int version;
+  final String displayName;
+  final String observationShape;
+  final bool manualEntrySupported;
+  final bool deviceImportSupported;
+  final String canonicalUnit;
+  final List<String> acceptedInputUnits;
+  final Map<String, dynamic> requiredContextSchema;
+
+  const MetricCapability({
+    required this.metricCode,
+    required this.version,
+    required this.displayName,
+    required this.observationShape,
+    required this.manualEntrySupported,
+    required this.deviceImportSupported,
+    required this.canonicalUnit,
+    required this.acceptedInputUnits,
+    required this.requiredContextSchema,
+  });
+
+  factory MetricCapability.fromJson(Map<String, dynamic> json) {
+    return MetricCapability(
+      metricCode: json['metricCode'] as String,
+      version: (json['version'] as num).toInt(),
+      displayName: json['displayName'] as String,
+      observationShape: json['observationShape'] as String,
+      manualEntrySupported: json['manualEntrySupported'] as bool? ?? false,
+      deviceImportSupported: json['deviceImportSupported'] as bool? ?? false,
+      canonicalUnit: json['canonicalUnit'] as String? ?? '',
+      acceptedInputUnits: (json['acceptedInputUnits'] as List<dynamic>? ?? [])
+          .map((value) => value.toString())
+          .toList(),
+      requiredContextSchema:
+          (json['requiredContextSchema'] as Map<String, dynamic>?) ?? const {},
+    );
+  }
 }
 
 class UpdateMetricRequest {
@@ -9,6 +54,9 @@ class UpdateMetricRequest {
   final String? unit;
   final DateTime? measuredAt;
   final String? note;
+  final Map<String, dynamic>? context;
+  final DateTime? periodStart;
+  final DateTime? periodEnd;
 
   const UpdateMetricRequest({
     this.valueNumeric,
@@ -16,6 +64,9 @@ class UpdateMetricRequest {
     this.unit,
     this.measuredAt,
     this.note,
+    this.context,
+    this.periodStart,
+    this.periodEnd,
   });
 
   Map<String, dynamic> toJson() => {
@@ -24,10 +75,13 @@ class UpdateMetricRequest {
     if (unit != null) 'unit': unit,
     if (measuredAt != null) 'measuredAt': measuredAt!.toUtc().toIso8601String(),
     if (note != null) 'note': note,
+    if (context != null) 'context': context,
+    if (periodStart != null)
+      'periodStart': periodStart!.toUtc().toIso8601String(),
+    if (periodEnd != null) 'periodEnd': periodEnd!.toUtc().toIso8601String(),
   };
 }
 
-// UC-25 add request DTO (mirrors backend AddMetricRequest)
 class AddMetricRequest {
   final String metricType;
   final double valueNumeric;
@@ -36,6 +90,10 @@ class AddMetricRequest {
   final DateTime measuredAt;
   final String sourceType;
   final String? note;
+  final Map<String, dynamic> context;
+  final DateTime? periodStart;
+  final DateTime? periodEnd;
+  final int? definitionVersion;
 
   const AddMetricRequest({
     required this.metricType,
@@ -45,6 +103,10 @@ class AddMetricRequest {
     required this.measuredAt,
     this.sourceType = 'MANUAL',
     this.note,
+    this.context = const {},
+    this.periodStart,
+    this.periodEnd,
+    this.definitionVersion,
   });
 
   Map<String, dynamic> toJson() => {
@@ -55,10 +117,14 @@ class AddMetricRequest {
     'measuredAt': measuredAt.toUtc().toIso8601String(),
     'sourceType': sourceType,
     if (note != null) 'note': note,
+    if (context.isNotEmpty) 'context': context,
+    if (periodStart != null)
+      'periodStart': periodStart!.toUtc().toIso8601String(),
+    if (periodEnd != null) 'periodEnd': periodEnd!.toUtc().toIso8601String(),
+    if (definitionVersion != null) 'definitionVersion': definitionVersion,
   };
 }
 
-// UC-27 trend data point (mirrors backend MetricDataPoint)
 class MetricDataPoint {
   final String? metricId;
   final DateTime measuredAt;
@@ -66,6 +132,10 @@ class MetricDataPoint {
   final double? valueSecondary;
   final SourceType sourceType;
   final String? note;
+  final Map<String, dynamic> context;
+  final DateTime? periodStart;
+  final DateTime? periodEnd;
+  final String? qualityLabel;
 
   const MetricDataPoint({
     this.metricId,
@@ -74,6 +144,10 @@ class MetricDataPoint {
     this.valueSecondary,
     this.sourceType = SourceType.manual,
     this.note,
+    this.context = const {},
+    this.periodStart,
+    this.periodEnd,
+    this.qualityLabel,
   });
 
   factory MetricDataPoint.fromJson(Map<String, dynamic> json) =>
@@ -85,6 +159,10 @@ class MetricDataPoint {
         valueSecondary: (json['valueSecondary'] as num?)?.toDouble(),
         sourceType: SourceTypeExtension.fromApi(json['sourceType'] as String?),
         note: json['note'] as String?,
+        context: (json['context'] as Map<String, dynamic>?) ?? const {},
+        periodStart: _parseOptionalMetricDateTime(json['periodStart']),
+        periodEnd: _parseOptionalMetricDateTime(json['periodEnd']),
+        qualityLabel: json['qualityLabel'] as String?,
       );
 
   String get valueDisplay {
@@ -97,16 +175,17 @@ class MetricDataPoint {
   }
 }
 
-// UC-27 trend response (mirrors backend MetricTrendResponse)
 class MetricTrend {
   final String metricType;
   final String? unit;
   final List<MetricDataPoint> dataPoints;
+  final String? disclaimer;
 
   const MetricTrend({
     required this.metricType,
     this.unit,
     required this.dataPoints,
+    this.disclaimer,
   });
 
   factory MetricTrend.fromJson(Map<String, dynamic> json) => MetricTrend(
@@ -115,16 +194,24 @@ class MetricTrend {
     dataPoints: (json['dataPoints'] as List<dynamic>? ?? [])
         .map((e) => MetricDataPoint.fromJson(e as Map<String, dynamic>))
         .toList(),
+    disclaimer: json['disclaimer'] as String?,
   );
 
-  double get average {
-    if (dataPoints.isEmpty) return 0;
+  double? get average {
+    if (dataPoints.isEmpty || metricType == 'BLOOD_PRESSURE') return null;
+    if (metricType == 'BLOOD_GLUCOSE') {
+      final contexts = dataPoints
+          .map((point) => point.context['measurementContext'])
+          .whereType<String>()
+          .toSet();
+      if (contexts.length > 1) return null;
+    }
     return dataPoints.map((p) => p.valueNumeric).reduce((a, b) => a + b) /
         dataPoints.length;
   }
 
   double? get trend {
-    if (dataPoints.length < 2) return null;
+    if (dataPoints.length < 2 || metricType == 'BLOOD_PRESSURE') return null;
     final first = dataPoints.first.valueNumeric;
     final last = dataPoints.last.valueNumeric;
     return first == 0 ? null : (last - first) / first * 100;
@@ -157,7 +244,7 @@ extension MetricTypeExtension on MetricType {
       case MetricType.fetalMovement:
         return 'Cử động thai';
       case MetricType.other:
-        return 'Khác';
+        return 'Không hỗ trợ';
     }
   }
 
@@ -170,16 +257,16 @@ extension MetricTypeExtension on MetricType {
       case 'BLOOD_PRESSURE_DIASTOLIC':
         return MetricType.bloodPressure;
       case 'BLOOD_SUGAR':
-        return MetricType.bloodSugar;
       case 'BLOOD_GLUCOSE':
         return MetricType.bloodSugar;
       case 'TEMPERATURE':
         return MetricType.temperature;
       case 'HEART_RATE':
+      case 'MATERNAL_HEART_RATE':
         return MetricType.heartRate;
       case 'FETAL_MOVEMENT':
-        return MetricType.fetalMovement;
       case 'FETAL_MOVEMENT_COUNT':
+      case 'FETAL_MOVEMENT_SESSION':
         return MetricType.fetalMovement;
       default:
         return MetricType.other;
@@ -218,6 +305,7 @@ class HealthMetricDetail {
   final String id;
   final String journeyId;
   final MetricType metricType;
+  final String metricCode;
   final double valueNumeric;
   final double? valueSecondary;
   final String unit;
@@ -225,11 +313,18 @@ class HealthMetricDetail {
   final SourceType sourceType;
   final String? note;
   final DateTime createdAt;
+  final Map<String, dynamic> context;
+  final DateTime? periodStart;
+  final DateTime? periodEnd;
+  final String? qualityLabel;
+  final String? disclaimer;
+  final int? definitionVersion;
 
   const HealthMetricDetail({
     required this.id,
     required this.journeyId,
     required this.metricType,
+    String? metricCode,
     required this.valueNumeric,
     this.valueSecondary,
     required this.unit,
@@ -237,13 +332,21 @@ class HealthMetricDetail {
     required this.sourceType,
     this.note,
     required this.createdAt,
-  });
+    this.context = const {},
+    this.periodStart,
+    this.periodEnd,
+    this.qualityLabel,
+    this.disclaimer,
+    this.definitionVersion,
+  }) : metricCode = metricCode ?? '';
 
   factory HealthMetricDetail.fromJson(Map<String, dynamic> json) {
+    final code = json['metricType'] as String? ?? '';
     return HealthMetricDetail(
-      id: (json['id'] ?? json['metricId']) as String,
-      journeyId: json['journeyId'] as String,
-      metricType: MetricTypeExtension.fromApi(json['metricType'] as String?),
+      id: (json['id'] ?? json['metricId']).toString(),
+      journeyId: json['journeyId'].toString(),
+      metricType: MetricTypeExtension.fromApi(code),
+      metricCode: code,
       valueNumeric: (json['valueNumeric'] as num).toDouble(),
       valueSecondary: (json['valueSecondary'] as num?)?.toDouble(),
       unit: json['unit'] as String? ?? '',
@@ -253,6 +356,12 @@ class HealthMetricDetail {
       createdAt: _parseMetricDateTime(
         json['createdAt'] ?? json['updatedAt'] ?? json['measuredAt'],
       ),
+      context: (json['context'] as Map<String, dynamic>?) ?? const {},
+      periodStart: _parseOptionalMetricDateTime(json['periodStart']),
+      periodEnd: _parseOptionalMetricDateTime(json['periodEnd']),
+      qualityLabel: json['qualityLabel'] as String?,
+      disclaimer: json['disclaimer'] as String?,
+      definitionVersion: (json['definitionVersion'] as num?)?.toInt(),
     );
   }
 

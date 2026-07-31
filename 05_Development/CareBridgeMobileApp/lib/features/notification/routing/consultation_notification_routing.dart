@@ -14,5 +14,17 @@ String? resolveNotificationRoute(NotificationRecord notification) {
       _uuidPattern.hasMatch(referenceId)) {
     return '/consultation-requests/${Uri.encodeComponent(referenceId)}';
   }
+  final referenceType = notification.referenceType?.trim().toUpperCase();
+  if ((referenceType == 'APPOINTMENT' ||
+          notification.type.trim().toUpperCase() == 'REMINDER') &&
+      referenceId != null &&
+      _uuidPattern.hasMatch(referenceId)) {
+    return '/reminders/detail/${Uri.encodeComponent(referenceId)}';
+  }
+  final metadataReminderId = notification.metadata?['reminderId'];
+  if (metadataReminderId is String &&
+      _uuidPattern.hasMatch(metadataReminderId)) {
+    return '/reminders/detail/${Uri.encodeComponent(metadataReminderId)}';
+  }
   return null;
 }

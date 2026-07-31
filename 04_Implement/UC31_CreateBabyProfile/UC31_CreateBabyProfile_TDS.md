@@ -61,10 +61,10 @@
 | **Platform** | `Mobile App` |
 | **Data Classification** | `Sensitive-PII` |
 | **Compliance Scope** | `BR-RBAC, BR-PRIVACY, PDPA` |
-| **Upstream Dependencies** | `auth (JWT), journey (parent journey linkage)` |
+| **Upstream Dependencies** | `auth (JWT)` |
 | **Downstream Consumers** | `baby daily log, vaccination, growth tracking, audit` |
 
-**Mô tả:** Cho phép Mother tạo hồ sơ em bé với nickname, ngày sinh, giới tính, cân nặng và chiều cao lúc sinh. Một account có thể có nhiều baby profiles (phục vụ sinh đôi, sinh ba). Baby profile được liên kết với Mother's account và (tuỳ chọn) với journey đang ACTIVE.
+**Mô tả:** Cho phép Mother tạo hồ sơ em bé độc lập với nickname, ngày sinh, giới tính, cân nặng và chiều cao lúc sinh. Một account có thể có nhiều baby profiles (phục vụ sinh đôi, sinh ba). Baby profile chỉ thuộc account của Mother và không liên kết với Mother Journey.
 
 ---
 
@@ -189,7 +189,6 @@ BabyService --> IBabyRepository : uses
 CREATE TABLE public.baby_profiles (
     baby_id            uuid         NOT NULL DEFAULT gen_random_uuid(),
     owner_user_id      uuid         NOT NULL,
-    related_journey_id uuid,
     nickname           varchar(100) NOT NULL,
     birth_date         date,
     sex                varchar(10),   -- mapped to Java enum `Gender` (MALE/FEMALE/UNKNOWN) via @Enumerated(STRING)
@@ -200,8 +199,8 @@ CREATE TABLE public.baby_profiles (
     updated_at         timestamptz  NOT NULL DEFAULT now()
 );
 -- PK: baby_profiles_pkey (baby_id)
--- FK: owner_user_id -> users(user_id), related_journey_id -> mother_journeys(journey_id)
--- Index: idx_baby_profiles_owner_user_id, idx_baby_profiles_related_journey_id
+-- FK: owner_user_id -> users(user_id)
+-- Index: idx_baby_profiles_owner_user_id
 
 -- Không có cột avatar_file_id hoặc is_active trong schema thật.
 ```
@@ -221,7 +220,7 @@ participant "BabyRepository" as Repo
 database "PostgreSQL" as DB
 participant "AuditService" as Audit
 
-Client -> Controller : POST /api/v1/babies\n{nickname, birthDate, gender, birthWeightKg, birthLengthCm, relatedJourneyId}
+Client -> Controller : POST /api/v1/babies\n{nickname, birthDate, gender, birthWeightKg, birthLengthCm}
 Controller -> Controller : @Valid Bean Validation on CreateBabyProfileRequest\n(nickname/birthDate/birthWeightKg/birthLengthCm bounds)
 Controller -> Service : createBabyProfile(request, callerId)
 Service -> Repo : save(newBabyProfile)\n[ownerUserId=callerId]
@@ -270,7 +269,7 @@ Không có payload record riêng — `AuditService.log(action, actorId, entityTy
 
 ## 8. Interface Specification
 
-> **(Sửa 2026-07-03):** DTO dưới đây đã sửa khớp `CreateBabyProfileRequest.java`/`CreateBabyProfileResponse.java`/`IBabyService.java` thật: `nickname` max=100 (không phải 50), KHÔNG có `@PastOrPresent` trên `birthDate`, `gender` là optional (không `@NotNull`), bounds cân nặng/chiều dài đúng là 0.5–8.0kg / 25.0–65.0cm, có thêm field `relatedJourneyId` (không có trong bản gốc), và service KHÔNG ném `InvalidMeasurementException` — Bean Validation xử lý toàn bộ.
+> **(Cập nhật 2026-07-28):** DTO dưới đây khớp contract standalone: `nickname` max=100, KHÔNG có `@PastOrPresent` trên `birthDate`, `gender` là optional, bounds cân nặng/chiều dài là 0.5–8.0kg / 25.0–65.0cm. Request dùng deserializer nghiêm ngặt cục bộ; mọi thuộc tính ngoài contract trả validation `400` trung tính thay vì bị bỏ qua.
 
 ```java
 // CreateBabyProfileRequest.java
@@ -289,7 +288,6 @@ public class CreateBabyProfileRequest {
     @DecimalMin("25.0") @DecimalMax("65.0")
     private BigDecimal birthLengthCm; // optional
 
-    private UUID relatedJourneyId; // optional
 }
 
 // CreateBabyProfileResponse.java
@@ -332,8 +330,7 @@ public interface IBabyService {
   "birthDate": "2026-01-15",
   "gender": "MALE",
   "birthWeightKg": 3.2,
-  "birthLengthCm": 50.0,
-  "relatedJourneyId": "uuid-v4-optional"
+  "birthLengthCm": 50.0
 }
 ```
 
@@ -520,13 +517,13 @@ curl -X POST https://[host]/api/v1/babies \
 
 *EDS v2.1 — Tích hợp CASE 2.0 AI Prompt Constraints (§17).*
 
-## Story 6.10 OV-01 Optional Baby-Linkage Addendum
+## OV-01 Standalone Baby Profile Contract
 
-Story 6.5 extends the existing UC31/UC32/UC33 baby workspace with an optional Mother-journey association; it does not redefine the core profile CRUD identities.
+UC31 remains the only create operation. A committed live birth may open this existing standalone form through typed in-memory navigation, but no lifecycle identifier is persisted or serialized into the request.
 
 | OV-01 branch | Canonical decision | Test-Spec contract | Executable evidence |
 | --- | --- | --- | --- |
-| `OV01-B06` | A Mother may create, link, defer, or link multiple same-owner compatible babies; zero babies remains valid | `OV01-TS-31-001` | `BabyJourneyLinkServiceTest`, `BabyJourneyLinkControllerTest`, `BabyJourneyLinkagePolicyTest`, `BabyJourneyLinkSpringPostgresIntegrationTest` |
-| `OV01-B06` | Ownership and lifecycle/outcome compatibility are server-authoritative; replay is idempotent and foreign/cross-journey linkage fails closed | `OV01-TS-31-002` | the same Backend suites plus `story_6_5_baby_linkage_test.dart` |
+| `OV01-B06` | After committed live birth, typed transition entry may create one standalone profile or defer without writes; ordinary Add Baby entry never shows defer | `OV01-TS-31-001` | `add_baby_screen_test.dart` and pregnancy-outcome/Journey post-commit tests |
+| `OV01-B06` | The create request rejects unknown legacy relationship fields with neutral validation `400`; removed relationship routes resolve through generic `404/405` | `OV01-TS-31-002` | `CreateBabyProfileRequestValidationTest`, removed-route MVC coverage, and `BabyServiceImplTest` |
 
-UC32 and UC33 remain downstream update/archive Functions. This addendum records their interaction boundary without creating a duplicate linkage Function.
+UC32 and UC33 remain downstream update/archive Functions. Baby identity, ownership, triage origin, and care data remain baby-scoped and independent of Mother Journey.

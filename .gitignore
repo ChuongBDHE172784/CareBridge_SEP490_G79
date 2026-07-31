@@ -94,6 +94,8 @@ QODER.md
 .serena/
 .venv-headroom/
 .codex/
+.workbuddy-ai/
+outputs/
 
 # Local Claude skills (untracked - keep local only)
 .claude/skills/ui-skill-system/

@@ -45,9 +45,9 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
       }
     }
   }
@@ -56,7 +56,11 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
   Widget build(BuildContext context) {
     final now = DateTime.now();
     List<TodayTask> filteredTasks = _allTasks.where((t) {
-      final isOverdue = !t.isCompleted && !t.isSkipped && t.dueAt.isBefore(now);
+      final isOverdue =
+          !t.isCompleted &&
+          !t.isSkipped &&
+          t.dueAt != null &&
+          t.dueAt!.isBefore(now);
       if (_currentFilter == 'OVERDUE') {
         return isOverdue;
       }
@@ -233,7 +237,7 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
       indicatorColor = const Color(0xFF84736F);
     } else if (task.isSnoozed) {
       indicatorColor = const Color(0xFF845143);
-    } else if (task.dueAt.isBefore(DateTime.now())) {
+    } else if (task.dueAt?.isBefore(DateTime.now()) == true) {
       indicatorColor = const Color(0xFFBA1A1A);
     } else {
       indicatorColor = const Color(0xFFA09A95);
@@ -246,7 +250,7 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
       statusText = 'Bỏ qua';
     } else if (task.isSnoozed) {
       statusText = 'Hoãn';
-    } else if (task.dueAt.isBefore(DateTime.now())) {
+    } else if (task.dueAt?.isBefore(DateTime.now()) == true) {
       statusText = 'Quá hạn';
     }
 
@@ -314,7 +318,11 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
                           ],
                         ),
                       ),
-                      const Icon(Icons.remove_red_eye_outlined, size: 18, color: Color(0xFF84736F)),
+                      const Icon(
+                        Icons.remove_red_eye_outlined,
+                        size: 18,
+                        color: Color(0xFF84736F),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -330,7 +338,7 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
                   const SizedBox(height: 4),
                   Builder(
                     builder: (context) {
-                      final dueLocal = task.dueAt.toLocal();
+                      final dueLocal = task.dueAt?.toLocal();
                       return Row(
                         children: [
                           const Icon(
@@ -340,7 +348,9 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            '${dueLocal.hour.toString().padLeft(2, '0')}:${dueLocal.minute.toString().padLeft(2, '0')} - ${dueLocal.day}/${dueLocal.month}',
+                            dueLocal == null
+                                ? 'Chưa xếp lịch'
+                                : '${dueLocal.hour.toString().padLeft(2, '0')}:${dueLocal.minute.toString().padLeft(2, '0')} - ${dueLocal.day}/${dueLocal.month}',
                             style: const TextStyle(
                               fontSize: 14,
                               color: Color(0xFF524440),
@@ -387,7 +397,10 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFADCD3),
                       borderRadius: BorderRadius.circular(99),
@@ -417,13 +430,19 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
               const SizedBox(height: 12),
               Builder(
                 builder: (context) {
-                  final dueLocal = task.dueAt.toLocal();
+                  final dueLocal = task.dueAt?.toLocal();
                   return Row(
                     children: [
-                      const Icon(Icons.event, color: Color(0xFF845143), size: 20),
+                      const Icon(
+                        Icons.event,
+                        color: Color(0xFF845143),
+                        size: 20,
+                      ),
                       const SizedBox(width: 8),
                       Text(
-                        'Hạn chót: ${dueLocal.hour.toString().padLeft(2, '0')}:${dueLocal.minute.toString().padLeft(2, '0')} - ${dueLocal.day}/${dueLocal.month}/${dueLocal.year}',
+                        dueLocal == null
+                            ? 'Chưa xếp lịch'
+                            : 'Hạn chót: ${dueLocal.hour.toString().padLeft(2, '0')}:${dueLocal.minute.toString().padLeft(2, '0')} - ${dueLocal.day}/${dueLocal.month}/${dueLocal.year}',
                         style: const TextStyle(
                           fontFamily: 'Lexend',
                           fontSize: 14,
@@ -437,7 +456,11 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  const Icon(Icons.info_outline, color: Color(0xFF845143), size: 20),
+                  const Icon(
+                    Icons.info_outline,
+                    color: Color(0xFF845143),
+                    size: 20,
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     'Loại: ${task.type.displayLabel}',
@@ -462,7 +485,10 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
                   ),
                   child: const Text(
                     'Đóng',
-                    style: TextStyle(fontFamily: 'Lexend', color: Color(0xFF845143)),
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      color: Color(0xFF845143),
+                    ),
                   ),
                 ),
               ),

@@ -274,11 +274,11 @@ git checkout -- src/main/java/com/carebridge/backend/baby/
 | AP-AI-002 | ☐ Tests FAIL with stub | G-2 ★ |
 | AP-AI-004 | ☐ No business logic in controller | G-4 |
 
-## Story 6.10 OV-01 Test Contract Addendum
+## OV-01 Standalone Baby Profile Test Contract
 
-| Case ID | Priority | Oracle | Executable linkage |
+| Case ID | Priority | Oracle | Executable evidence |
 | --- | --- | --- | --- |
-| `OV01-TS-31-001` | P0 | 0/1/many optional babies preserve the same Mother recovery state; create/link/defer branches are deterministic | `BabyJourneyLinkSpringPostgresIntegrationTest`, `story_6_5_baby_linkage_test.dart` |
-| `OV01-TS-31-002` | P0 | Same-owner compatibility, replay idempotency, concurrency and foreign-owner denial are enforced at server/database boundaries | `BabyJourneyLinkServiceTest`, `BabyJourneyLinkControllerTest`, `BabyJourneyLinkagePolicyTest`, `BabyJourneyLinkSpringPostgresIntegrationTest` |
+| `OV01-TS-31-001` | P0 | Typed live-birth entry alone exposes defer; defer and successful standalone create each navigate once, while back/failure paths create no baby | `add_baby_screen_test.dart` plus pregnancy-outcome/Journey post-commit tests |
+| `OV01-TS-31-002` | P0 | Unknown legacy relationship properties receive neutral validation `400`, removed relationship routes are absent, and plain create responses contain no lifecycle relation | `CreateBabyProfileRequestValidationTest`, removed-route MVC coverage, and `BabyServiceImplTest` |
 
 These cases supplement the retained UC31 profile tests; they do not relabel UC32/UC33 or manufacture an alias UC.

@@ -32,7 +32,7 @@ public class CareGroupMember {
     @Column(name = "user_id", nullable = false)
     private UUID userId;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = GroupMemberRoleConverter.class)
     @Column(name = "member_role", length = 50)
     private GroupMemberRole memberRole;
 

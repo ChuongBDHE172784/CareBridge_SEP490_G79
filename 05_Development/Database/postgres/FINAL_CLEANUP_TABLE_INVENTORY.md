@@ -74,7 +74,7 @@ Mỗi row có đúng một taxonomy: `KEEP_RELEASE1`, `KEEP_CROSS_CUTTING`, `DRO
 | `audit_logs` | cross-cutting; CC-01 | KEEP_CROSS_CUTTING | Yes | 4605 | 0/0 | 0 | Retention/audit/security/evidence authority | Bắt buộc giữ cho audit/consent/security/forensic |
 | `baby_daily_logs` | baby; MF-03 / UC-32–45 | KEEP_RELEASE1 | Yes | 17 | 2/0 | 0 | Entity/repository/service hoặc collection/runtime Release-1 | Release-1 operational/history |
 | `baby_journey_link_cleanup_summary` | baby; MF-03 / UC-32–45 | KEEP_CROSS_CUTTING | No | 1 | 0/0 | 0 | Retention/audit/security/evidence authority | Bắt buộc giữ cho audit/consent/security/forensic |
-| `baby_link_submissions` | baby; MF-03 / UC-32–45 | KEEP_RELEASE1 | Yes | 3 | 0/0 | 0 | Entity/repository/service hoặc collection/runtime Release-1 | Release-1 operational/history |
+| `baby_link_submissions` | retired baby/Mother Journey command | REMOVE_RETIRED | No | 3 (legacy snapshot) | 0/0 | 0 | Không còn entity/repository/service runtime | Không giữ operational table; chỉ bảo toàn audit lịch sử đã tối thiểu hóa |
 | `baby_profiles` | baby; MF-03 / UC-32–45 | KEEP_RELEASE1 | Yes | 14 | 2/11 | 0 | Entity/repository/service hoặc collection/runtime Release-1 | Release-1 operational/history |
 | `care_facilities` | nearby/emergency; MF-07 / UC-77–82 | KEEP_RELEASE1 | Yes | 5 | 1/1 | 0 | Entity/repository/service hoặc collection/runtime Release-1 | Release-1 operational/history |
 | `care_facility_legacy_ids` | nearby/emergency; MF-07 / UC-77–82 | KEEP_RELEASE1 | Yes | absent | 1/0 | 0 | Entity/repository/service hoặc collection/runtime Release-1 | Release-1 operational/history |

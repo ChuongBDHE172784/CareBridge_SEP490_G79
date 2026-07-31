@@ -32,7 +32,7 @@ public class LifecycleSafetyOutcomeProjector implements ILifecycleSafetyOutcomeP
         try {
             var intake = intakeSessionRepository.findByIdAndUserId(intakeSessionId, ownerUserId)
                     .orElseThrow(() -> new IllegalStateException("Completed intake is unavailable"));
-            if (intake.getJourneyId() == null) {
+            if (intake.getOriginDashboard() == null) {
                 metrics.record(LifecycleSafetyMetrics.Boundary.PROJECTION,
                         LifecycleSafetyMetrics.Outcome.REJECTED);
                 return ProjectionResult.skipped();
@@ -59,11 +59,13 @@ public class LifecycleSafetyOutcomeProjector implements ILifecycleSafetyOutcomeP
                     .build();
             UUID createdId = insertRepository.insertIfAbsent(outcome);
             if (createdId != null) {
-                auditService.log(AuditAction.AI_TRIAGE, ownerUserId, "MotherJourneyEvent",
+                auditService.log(AuditAction.AI_TRIAGE, ownerUserId, "LifecycleSafetyOutcome",
                         createdId.toString(), Map.of(
                                 "event", "SAFETY_OUTCOME_PROJECTED",
                                 "riskLevel", intake.getRiskLevel().name(),
-                                "stage", intake.getStage().name()));
+                                "stage", intake.getStage().name(),
+                                "originDashboard", intake.getOriginDashboard().name(),
+                                "originReferenceId", intake.getOriginReferenceId().toString()));
                 metrics.record(LifecycleSafetyMetrics.Boundary.PROJECTION,
                         LifecycleSafetyMetrics.Outcome.CREATED);
                 return new ProjectionResult(true, createdId);

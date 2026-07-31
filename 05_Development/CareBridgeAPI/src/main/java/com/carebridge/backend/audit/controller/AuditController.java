@@ -3,6 +3,7 @@ package com.carebridge.backend.audit.controller;
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.common.constants.AppConstants;
+import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.common.response.PaginatedResponse;
 import com.carebridge.backend.common.util.SecurityUtils;
 import java.security.Principal;
@@ -32,7 +33,7 @@ public class AuditController {
     private final AuditService auditService;
 
     @GetMapping
-    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'OPERATIONS')")
     public ResponseEntity<PaginatedResponse<com.carebridge.backend.audit.dto.response.AuditLogResponse>> search(
             @RequestParam(required = false) java.util.UUID userId,
             @RequestParam(required = false) AuditAction action,
@@ -41,6 +42,12 @@ public class AuditController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             Principal principal) {
+        if (page < 0 || size < 1) {
+            throw new BusinessException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST,
+                    "PAGINATION_INVALID",
+                    "page must be >= 0 and size must be >= 1");
+        }
         int pageSize = Math.min(size, AppConstants.MAX_PAGE_SIZE);
         Pageable pageable = PageRequest.of(page, pageSize, Sort.by(Sort.Direction.DESC, "createdAt"));
         Page<com.carebridge.backend.audit.dto.response.AuditLogResponse> result =

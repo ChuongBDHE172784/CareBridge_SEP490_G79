@@ -275,7 +275,7 @@ class _MotherStageSelectionScreenState
   String get _buttonLabel {
     switch (_selectedStage) {
       case _MotherStage.postpartum:
-        return 'Thiết lập hành trình sau sinh';
+        return 'Thiết lập hành trình hậu sản';
       case _MotherStage.planning:
         return 'Tạo hành trình chuẩn bị';
       case _MotherStage.pregnant:
@@ -381,7 +381,7 @@ class _MotherStageSelectionScreenState
               _StageCard(
                 key: const Key('mother-stage-postpartum'),
                 icon: Icons.self_improvement_rounded,
-                title: 'Đang hồi phục sau sinh',
+                title: 'Đang hồi phục hậu sản',
                 subtitle:
                     'Theo dõi quá trình hồi phục của bạn mà không cần tạo hồ sơ em bé.',
                 selected: _selectedStage == _MotherStage.postpartum,

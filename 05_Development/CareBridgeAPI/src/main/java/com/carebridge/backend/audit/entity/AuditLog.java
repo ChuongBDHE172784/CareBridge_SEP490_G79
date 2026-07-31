@@ -1,5 +1,6 @@
 package com.carebridge.backend.audit.entity;
 
+import com.carebridge.backend.checklist.model.ChecklistCareContextType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -70,6 +71,15 @@ public class AuditLog {
     @Column(name = "actor_user_id")
     private java.util.UUID actorUserId;
 
+    @Column(name = "actor_type", length = 20)
+    private String actorType;
+
+    @Column(name = "actor_service", length = 80)
+    private String actorService;
+
+    @Column(name = "subject_user_id")
+    private java.util.UUID subjectUserId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "event_category", nullable = false, length = 80)
     private AuditAction action;
@@ -79,6 +89,25 @@ public class AuditLog {
 
     @Column(name = "resource_id")
     private java.util.UUID entityId;
+
+    @Column(name = "reason_code", length = 80)
+    private String reasonCode;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "care_context_type", length = 10)
+    private ChecklistCareContextType careContextType;
+
+    @Column(name = "care_context_id")
+    private java.util.UUID careContextId;
+
+    @Column(name = "template_version_id")
+    private java.util.UUID templateVersionId;
+
+    @Column(name = "checklist_task_instance_id")
+    private java.util.UUID checklistTaskInstanceId;
+
+    @Column(name = "correlation_id")
+    private java.util.UUID correlationId;
 
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "after_payload_jsonb", columnDefinition = "jsonb")
@@ -90,6 +119,10 @@ public class AuditLog {
 
     @Column(name = "ip_address", length = 80)
     private String ipAddress;
+
+    @Builder.Default
+    @Column(name = "legal_hold", nullable = false)
+    private Boolean legalHold = Boolean.FALSE;
 
     @Builder.Default
     @Column(name = "event_origin", nullable = false, updatable = false)

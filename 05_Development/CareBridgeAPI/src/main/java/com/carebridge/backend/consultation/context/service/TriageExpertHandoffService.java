@@ -348,11 +348,14 @@ public class TriageExpertHandoffService implements ITriageExpertHandoffService {
         if (intake.getStatus() != IntakeStatus.COMPLETED
                 || intake.getRiskLevel() != RiskLevel.YELLOW
                 || intake.getStage() == null
-                || intake.getJourneyId() == null
                 || intake.getOriginDashboard() == null
                 || (intake.getOriginDashboard() != OriginDashboard.MOTHER_JOURNEY
                         && intake.getOriginDashboard() != OriginDashboard.BABY_PROFILE)
-                || intake.getOriginReferenceId() == null) {
+                || intake.getOriginReferenceId() == null
+                || (intake.getOriginDashboard() == OriginDashboard.MOTHER_JOURNEY
+                    && intake.getJourneyId() == null)
+                || (intake.getOriginDashboard() == OriginDashboard.BABY_PROFILE
+                    && intake.getJourneyId() != null)) {
             throw TriageExpertHandoffException.intakeNotEligible();
         }
     }

@@ -9,7 +9,10 @@ public enum PermissionFlag {
     CALENDAR,
     LOGS,
     ALERTS,
+    RECORDS,
     BABY_VIEW,
     BABY_JOURNAL_WRITE,
-    BABY_GROWTH_WRITE
+    BABY_GROWTH_WRITE,
+    CHECKLIST_VIEW,
+    CHECKLIST_COMPLETE
 }

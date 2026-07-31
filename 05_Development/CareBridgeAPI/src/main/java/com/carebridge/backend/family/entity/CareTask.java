@@ -1,5 +1,7 @@
 package com.carebridge.backend.family.entity;
 
+import com.carebridge.backend.checklist.model.ChecklistOrigin;
+import com.carebridge.backend.checklist.model.ChecklistTargetSubject;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -60,4 +62,33 @@ public class CareTask {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    /** V2 provenance and explicit target; populated by the V2 task authoring path. */
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "origin", nullable = false, length = 20)
+    private ChecklistOrigin origin = ChecklistOrigin.USER_CREATED;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "target_subject", nullable = false, length = 10)
+    private ChecklistTargetSubject targetSubject;
+
+    @Column(name = "journey_id")
+    private UUID journeyId;
+
+    @Column(name = "baby_id")
+    private UUID babyId;
+
+    @PrePersist
+    @PreUpdate
+    void prepareUnifiedTaskMetadata() {
+        if (origin == null) {
+            origin = ChecklistOrigin.USER_CREATED;
+        }
+        if (targetSubject == null) {
+            targetSubject = babyId != null
+                    ? ChecklistTargetSubject.BABY
+                    : ChecklistTargetSubject.MOTHER;
+        }
+    }
 }

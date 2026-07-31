@@ -145,6 +145,62 @@ class CareGroupServiceImplPermissionTest {
     // ── TC-003: Member views own permission grant ─────────────────────────────
 
     @Test
+    void updateFamilyPermission_preservesChecklistPermissionKeys() {
+        stubActiveGroup();
+        stubOwnerAuthorized();
+        CareGroupMember member = stubAcceptedMember(
+                "{\"calendar\":true,\"CHECKLIST_VIEW\":true,\"CHECKLIST_COMPLETE\":false}");
+        stubSaveMember(member);
+        stubDeviceToken(MEMBER_USER_ID);
+
+        UpdateFamilyPermissionRequest partial = new UpdateFamilyPermissionRequest();
+        partial.setLogs(true);
+        service.updateFamilyPermission(GROUP_ID, MEMBER_ID, partial, OWNER_ID);
+
+        assertThat(member.getPermissionJson())
+                .contains("\"CHECKLIST_VIEW\":true")
+                .contains("\"CHECKLIST_COMPLETE\":false");
+    }
+
+    @Test
+    void updateFamilyPermission_checklistOnlyPayloadCanGrantAccess() throws Exception {
+        stubActiveGroup();
+        stubOwnerAuthorized();
+        CareGroupMember member = stubAcceptedMember(DEFAULT_PERM_JSON);
+        stubSaveMember(member);
+        stubDeviceToken(MEMBER_USER_ID);
+        UpdateFamilyPermissionRequest request = new com.fasterxml.jackson.databind.ObjectMapper()
+                .readValue("{\"checklistView\":true,\"checklistComplete\":true}",
+                        UpdateFamilyPermissionRequest.class);
+
+        FamilyPermissionResponse response = service.updateFamilyPermission(
+                GROUP_ID, MEMBER_ID, request, OWNER_ID);
+
+        assertThat(member.getPermissionJson())
+                .contains("\"CHECKLIST_VIEW\":true")
+                .contains("\"CHECKLIST_COMPLETE\":true")
+                .doesNotContain("\"checklistView\"")
+                .doesNotContain("\"checklistComplete\"");
+        assertThat(response).extracting("checklistView", "checklistComplete")
+                .containsExactly(true, true);
+    }
+
+    @Test
+    void updateFamilyPermission_completeOnlyChangeDoesNotPublishDistributionCandidate() {
+        stubActiveGroup();
+        stubOwnerAuthorized();
+        CareGroupMember member = stubAcceptedMember(
+                "{\"CHECKLIST_VIEW\":false,\"CHECKLIST_COMPLETE\":false}");
+        stubSaveMember(member);
+        stubDeviceToken(MEMBER_USER_ID);
+        UpdateFamilyPermissionRequest request = new UpdateFamilyPermissionRequest();
+        request.setChecklistComplete(true);
+
+        service.updateFamilyPermission(GROUP_ID, MEMBER_ID, request, OWNER_ID);
+
+    }
+
+    @Test
     void getFamilyPermission_memberViewsOwnRecord_returnsCurrentFlags() {
         stubActiveGroup();
         stubAcceptedMember(DEFAULT_PERM_JSON);

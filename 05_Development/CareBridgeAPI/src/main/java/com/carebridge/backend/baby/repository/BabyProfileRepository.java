@@ -6,8 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Lock;
 import jakarta.persistence.LockModeType;
 
@@ -21,16 +19,9 @@ public interface BabyProfileRepository extends JpaRepository<BabyProfile, UUID> 
 
     List<BabyProfile> findByOwnerUserIdAndStatusOrderByCreatedAtAsc(UUID ownerUserId, BabyProfileStatus status);
 
-    Optional<BabyProfile> findByIdAndOwnerUserId(UUID id, UUID ownerUserId);
+    List<BabyProfile> findByStatus(BabyProfileStatus status);
 
-    @Lock(LockModeType.PESSIMISTIC_READ)
-    @Query("select b from BabyProfile b where b.id=:id and b.ownerUserId=:ownerUserId "
-            + "and b.relatedJourneyId=:relatedJourneyId and b.status=:status")
-    Optional<BabyProfile> findByIdAndOwnerUserIdAndRelatedJourneyIdAndStatusAndActiveTrue(
-            @Param("id") UUID id,
-            @Param("ownerUserId") UUID ownerUserId,
-            @Param("relatedJourneyId") UUID relatedJourneyId,
-            @Param("status") BabyProfileStatus status);
+    Optional<BabyProfile> findByIdAndOwnerUserId(UUID id, UUID ownerUserId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select b from BabyProfile b where b.id=:id and b.ownerUserId=:owner")
@@ -41,9 +32,6 @@ public interface BabyProfileRepository extends JpaRepository<BabyProfile, UUID> 
             + "and b.status=com.carebridge.backend.baby.entity.BabyProfileStatus.ACTIVE")
     Optional<BabyProfile> findOwnedActiveByIdForUpdate(
             @Param("id") UUID id, @Param("owner") UUID owner);
-
-    Page<BabyProfile> findByOwnerUserIdAndRelatedJourneyIdAndStatus(
-            UUID ownerUserId, UUID relatedJourneyId, BabyProfileStatus status, Pageable pageable);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query(value = """

@@ -53,8 +53,9 @@ class TriageEntryContext {
     if (origin == TriageOriginIntent.direct) return const {};
     final trustedJourneyId = journeyId;
     final trustedOriginReferenceId = originReferenceId;
-    if (trustedJourneyId == null ||
-        trustedJourneyId.isEmpty ||
+    final requiresJourney = origin == TriageOriginIntent.motherJourney;
+    if ((requiresJourney &&
+            (trustedJourneyId == null || trustedJourneyId.isEmpty)) ||
         trustedOriginReferenceId == null ||
         trustedOriginReferenceId.isEmpty) {
       // Story 6.6 typed current-session entries remain compatible. They do

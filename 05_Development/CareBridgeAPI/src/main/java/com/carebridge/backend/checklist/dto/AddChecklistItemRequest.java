@@ -1,6 +1,7 @@
 package com.carebridge.backend.checklist.dto;
 
 import com.carebridge.backend.checklist.entity.ChecklistCategory;
+import com.carebridge.backend.checklist.model.ChecklistTargetSubject;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
@@ -18,5 +19,9 @@ public record AddChecklistItemRequest(
 
         ChecklistCategory category,
 
-        Integer itemOrder
+        Integer itemOrder,
+
+        ChecklistTargetSubject targetSubject,
+
+        UUID clientTaskId
 ) {}

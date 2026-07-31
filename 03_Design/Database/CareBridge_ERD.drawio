@@ -2905,7 +2905,7 @@
             <mxRectangle height="30" width="260" as="alternateBounds" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="tbl_care_journey_care_subjects_row_03_detail_name" parent="tbl_care_journey_care_subjects_row_03_detail" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=2;fontSize=12;whiteSpace=wrap;overflow=hidden;connectable=0;" value="mother_journey_id" vertex="1">
+        <mxCell id="tbl_care_journey_care_subjects_row_03_detail_name" parent="tbl_care_journey_care_subjects_row_03_detail" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=2;fontSize=12;whiteSpace=wrap;overflow=hidden;connectable=0;" value="mother_journey_id (MOTHER only; BABY = NULL)" vertex="1">
           <mxGeometry height="30" width="220" as="geometry" />
         </mxCell>
         <mxCell id="tbl_care_journey_care_subjects_row_03_detail_meta" parent="tbl_care_journey_care_subjects_row_03_detail" style="text;html=1;strokeColor=none;fillColor=none;align=right;verticalAlign=middle;spacingLeft=2;spacingRight=6;fontSize=12;fontColor=#666666;whiteSpace=wrap;overflow=hidden;connectable=0;" value="uuid" vertex="1">
@@ -22463,7 +22463,7 @@
             <mxRectangle height="30" width="260" as="alternateBounds" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="all_tbl_care_journey_care_subjects_row_03_detail_name" parent="all_tbl_care_journey_care_subjects_row_03_detail" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=2;fontSize=12;whiteSpace=wrap;overflow=hidden;connectable=0;" value="mother_journey_id" vertex="1">
+        <mxCell id="all_tbl_care_journey_care_subjects_row_03_detail_name" parent="all_tbl_care_journey_care_subjects_row_03_detail" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;spacingLeft=6;spacingRight=2;fontSize=12;whiteSpace=wrap;overflow=hidden;connectable=0;" value="mother_journey_id (MOTHER only; BABY = NULL)" vertex="1">
           <mxGeometry height="30" width="220" as="geometry" />
         </mxCell>
         <mxCell id="all_tbl_care_journey_care_subjects_row_03_detail_meta" parent="all_tbl_care_journey_care_subjects_row_03_detail" style="text;html=1;strokeColor=none;fillColor=none;align=right;verticalAlign=middle;spacingLeft=2;spacingRight=6;fontSize=12;fontColor=#666666;whiteSpace=wrap;overflow=hidden;connectable=0;" value="uuid" vertex="1">

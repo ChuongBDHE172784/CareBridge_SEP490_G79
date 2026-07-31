@@ -3,283 +3,384 @@ package com.carebridge.backend.health.service.impl;
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.common.exception.BusinessException;
+import com.carebridge.backend.family.entity.CareGroupStatus;
+import com.carebridge.backend.family.entity.InviteStatus;
+import com.carebridge.backend.family.repository.CareGroupMemberRepository;
+import com.carebridge.backend.family.repository.CareGroupRepository;
+import com.carebridge.backend.family.entity.PermissionFlag;
+import com.carebridge.backend.family.policy.CareGroupAuthorizationPolicy;
 import com.carebridge.backend.health.dto.AddMetricRequest;
+import com.carebridge.backend.health.dto.MetricCapabilityResponse;
+import com.carebridge.backend.health.dto.MetricDataPoint;
 import com.carebridge.backend.health.dto.MetricDetailResponse;
 import com.carebridge.backend.health.dto.MetricResponse;
 import com.carebridge.backend.health.dto.MetricTrendResponse;
 import com.carebridge.backend.health.dto.UpdateMetricRequest;
-import com.carebridge.backend.health.entity.MaternalHealthMetric;
+import com.carebridge.backend.health.entity.HealthObservation;
+import com.carebridge.backend.health.entity.MetricDefinition;
 import com.carebridge.backend.health.entity.MetricStatus;
 import com.carebridge.backend.health.entity.MetricType;
 import com.carebridge.backend.health.event.MaternalHealthMetricDeleted;
-import com.carebridge.backend.health.repository.MaternalHealthMetricRepository;
+import com.carebridge.backend.health.repository.HealthObservationRepository;
+import com.carebridge.backend.health.repository.MetricDefinitionRepository;
 import com.carebridge.backend.health.service.IHealthMetricService;
-import com.carebridge.backend.health.service.MetricAiAnalyzer;
+import com.carebridge.backend.health.service.MetricObservationValidator;
 import com.carebridge.backend.journey.entity.JourneyStatus;
 import com.carebridge.backend.journey.entity.MotherJourney;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import com.carebridge.backend.family.entity.InviteStatus;
-import com.carebridge.backend.family.repository.CareGroupMemberRepository;
-import com.carebridge.backend.family.repository.CareGroupRepository;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.Instant;
-import java.util.UUID;
 
 @Service
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
 public class HealthMetricServiceImpl implements IHealthMetricService {
 
-    private final MaternalHealthMetricRepository metricRepository;
+    private static final java.util.Set<String> P0_MANUAL_METRICS = java.util.Set.of(
+            "WEIGHT", "BLOOD_PRESSURE", "BLOOD_GLUCOSE", "FETAL_MOVEMENT_SESSION");
+    private static final String DISCLAIMER = "Đây là dữ liệu theo dõi, không phải chẩn đoán y khoa.";
+
+    private final HealthObservationRepository observationRepository;
+    private final MetricDefinitionRepository definitionRepository;
     private final MotherJourneyRepository journeyRepository;
     private final AuditService auditService;
-    private final MetricAiAnalyzer metricAiAnalyzer;
     private final ApplicationEventPublisher eventPublisher;
     private final CareGroupMemberRepository careGroupMemberRepository;
     private final CareGroupRepository careGroupRepository;
+    private final CareGroupAuthorizationPolicy careGroupAuthorizationPolicy;
+    private final MetricObservationValidator validator;
 
     @Override
     public MetricDetailResponse getMetricDetail(UUID metricId, UUID callerId) {
-        // C3: DELETED returns 404
-        MaternalHealthMetric metric = metricRepository.findByIdAndStatus(metricId, MetricStatus.ACTIVE)
+        HealthObservation observation = observationRepository.findByIdAndStatus(metricId, MetricStatus.ACTIVE)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "METRIC-001",
                         "Metric not found or deleted: " + metricId));
-
-        // C1: ownership via journey — metric → journey → owner_user_id
-        MotherJourney journey = journeyRepository.findById(metric.getJourneyId())
-                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "METRIC-002",
-                        "Parent journey not found for metric: " + metricId));
-
-        if (!journey.getOwnerUserId().equals(callerId)) {
-            throw new BusinessException(HttpStatus.FORBIDDEN, "METRIC-003",
-                    "Access denied to health metric");
-        }
-
-        // C2: no diagnosis in response (BR-SAFETY)
-        return MetricDetailResponse.builder()
-                .id(metric.getId())
-                .journeyId(metric.getJourneyId())
-                .metricType(metric.getMetricType().name())
-                .valueNumeric(metric.getValueNumeric())
-                .valueSecondary(metric.getValueSecondary())
-                .unit(metric.getUnit())
-                .measuredAt(metric.getMeasuredAt())
-                .sourceType(metric.getSourceType() != null ? metric.getSourceType().name() : null)
-                .note(metric.getNote())
-                .createdAt(metric.getCreatedAt())
-                .build();
+        MotherJourney journey = journeyForObservation(observation);
+        requireOwner(journey, callerId, "METRIC-003");
+        return toDetailResponse(observation, journey.getId());
     }
 
     @Override
     @Transactional
     public void deleteMetric(UUID metricId, UUID callerId) {
-        MaternalHealthMetric metric = metricRepository.findByIdAndStatus(metricId, MetricStatus.ACTIVE)
+        HealthObservation observation = observationRepository.findByIdAndStatus(metricId, MetricStatus.ACTIVE)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "METRIC-001",
                         "Metric not found or deleted: " + metricId));
-
-        MotherJourney journey = journeyRepository.findById(metric.getJourneyId())
-                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "METRIC-002",
-                        "Parent journey not found for metric: " + metricId));
-
-        if (!journey.getOwnerUserId().equals(callerId)) {
-            throw new BusinessException(HttpStatus.FORBIDDEN, "METRIC-003",
-                    "Access denied to health metric");
-        }
-
-        metric.setStatus(MetricStatus.DELETED);
-        metricRepository.save(metric);
-        metricRepository.updateStatus(metric.getId(), MetricStatus.DELETED);
+        MotherJourney journey = journeyForObservation(observation);
+        requireOwner(journey, callerId, "METRIC-003");
+        observation.setRecordStatus(MetricStatus.DELETED);
+        observationRepository.save(observation);
+        observationRepository.updateStatus(observation.getId(), MetricStatus.DELETED);
         auditService.log(AuditAction.HEALTH_METRIC_DELETED, callerId,
-                "MaternalHealthMetric", metric.getId().toString(), "deleted");
+                "HealthObservation", observation.getId().toString(), "deleted");
         eventPublisher.publishEvent(new MaternalHealthMetricDeleted(
-                metric.getId(), metric.getJourneyId(), callerId, Instant.now()));
+                observation.getId(), journey.getId(), callerId, Instant.now()));
     }
 
     @Override
     @Transactional
     public MetricResponse addMetric(UUID userId, UUID journeyId, AddMetricRequest request) {
-        // C1: journey must exist
-        MotherJourney journey = journeyRepository.findById(journeyId)
-                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "METRIC-001",
-                        "Journey not found: " + journeyId));
+        MotherJourney journey = activeOwnedJourney(journeyId, userId, "METRIC-001", "METRIC-002");
+        String metricCode = validator.canonicalCode(request.getMetricType());
+        MetricDefinition definition = effectiveDefinition(metricCode);
+        MetricObservationValidator.NormalizedObservation normalized = validator.normalize(request, definition);
 
-        // C1: ownership check
-        if (!journey.getOwnerUserId().equals(userId)) {
-            throw new BusinessException(HttpStatus.FORBIDDEN, "METRIC-002",
-                    "Access denied to journey");
-        }
-
-        // C2: journey must be ACTIVE
-        if (journey.getStatus() != JourneyStatus.ACTIVE) {
-            throw new BusinessException(HttpStatus.BAD_REQUEST, "METRIC-003",
-                    "Journal is not active");
-        }
-
-        // C3: measuredAt cannot be more than 5 minutes in the future
-        if (request.getMeasuredAt().isAfter(Instant.now().plusSeconds(300))) {
-            throw new BusinessException(HttpStatus.BAD_REQUEST, "METRIC-004",
-                    "measuredAt cannot be more than 5 minutes in the future");
-        }
-
-        // C5: blood pressure types require valueSecondary
-        if (isBpType(request.getMetricType()) && request.getValueSecondary() == null) {
-            throw new BusinessException(HttpStatus.BAD_REQUEST, "METRIC-005",
-                    "Blood pressure metrics require both valueNumeric and valueSecondary");
-        }
-
-        MaternalHealthMetric metric = MaternalHealthMetric.builder()
-                .journeyId(journeyId)
-                .metricType(request.getMetricType())
-                .valueNumeric(request.getValueNumeric())
-                .valueSecondary(request.getValueSecondary())
-                .unit(request.getUnit())
-                .measuredAt(request.getMeasuredAt())
-                .sourceType(request.getSourceType())
-                .note(request.getNote())
+        HealthObservation observation = HealthObservation.builder()
+                .careSubjectId(requireCareSubjectId(journey))
+                .metricCode(normalized.metricCode())
+                .periodStart(normalized.periodStart())
+                .periodEnd(normalized.periodEnd())
+                .context(new LinkedHashMap<>(normalized.context()))
+                .originalUnit(request.getUnit())
+                .definitionVersion(normalized.definitionVersion())
+                .observationShape(definition.getObservationShape())
+                .valueNumeric(normalized.valueNumeric())
+                .valueSecondary(normalized.valueSecondary())
+                .unit(normalized.unit())
+                .measuredAt(normalized.measuredAt())
+                .sourceType(normalized.sourceType())
+                .note(normalized.note())
+                .qualityLabel("UNKNOWN")
+                .payload(new LinkedHashMap<>(normalized.context()))
+                .subjectType("MOTHER")
+                .legacySource(HealthObservation.CANONICAL_SOURCE)
                 .build();
-
-        MaternalHealthMetric saved = metricRepository.save(metric);
-
-        // C4: async AI — fail-open
-        String aiInsight = null;
-        boolean redFlag = false;
-        if (metricAiAnalyzer != null) {
-            try {
-                MetricAiAnalyzer.InsightResult insight = metricAiAnalyzer
-                        .analyze(saved.getMetricType(), saved.getValueNumeric(), saved.getValueSecondary())
-                        .get(5, java.util.concurrent.TimeUnit.SECONDS);
-                if (insight != null) {
-                    aiInsight = insight.insight();
-                    redFlag = insight.redFlag();
-                }
-            } catch (Exception ignored) {
-                // fail-open: metric already saved, AI insight is optional
-            }
-        }
+        observation.getPayload().put("journeyId", journeyId.toString());
+        HealthObservation saved = observationRepository.save(observation);
 
         auditService.log(AuditAction.HEALTH_METRIC_ADDED, userId,
-                "MaternalHealthMetric", saved.getId().toString(), "added");
-
-        return toMetricResponse(saved, aiInsight, redFlag);
+                "HealthObservation", saved.getId().toString(), "added");
+        return toMetricResponse(saved, journeyId, null, false, definition.getVersion());
     }
 
     @Override
     @Transactional
     public MetricResponse updateMetric(UUID userId, UUID journeyId, UUID metricId, UpdateMetricRequest request) {
-        // C1: journey must exist
-        MotherJourney journey = journeyRepository.findById(journeyId)
-                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "METRIC-010",
-                        "Journey not found: " + journeyId));
-
-        // C1: ownership check
-        if (!journey.getOwnerUserId().equals(userId)) {
-            throw new BusinessException(HttpStatus.FORBIDDEN, "METRIC-013",
-                    "Access denied to journey");
-        }
-
-        // C2: metric must belong to this journey and be ACTIVE
-        MaternalHealthMetric metric = metricRepository.findByIdAndJourneyIdAndStatus(
-                        metricId, journeyId, MetricStatus.ACTIVE)
+        MotherJourney journey = activeOwnedJourney(journeyId, userId, "METRIC-010", "METRIC-013");
+        HealthObservation observation = observationRepository.findByIdAndCareSubjectIdAndStatus(
+                        metricId, requireCareSubjectId(journey), MetricStatus.ACTIVE)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "METRIC-011",
                         "Metric not found in this journey: " + metricId));
-
-        // C3: 24-hour edit window (from created_at, not measured_at)
-        if (Instant.now().isAfter(metric.getCreatedAt().plus(24, java.time.temporal.ChronoUnit.HOURS))) {
+        if (observation.getCreatedAt() != null
+                && Instant.now().isAfter(observation.getCreatedAt().plus(24, ChronoUnit.HOURS))) {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "METRIC-012",
                     "Edit window of 24 hours has expired");
         }
 
-        // C4: metricType is immutable — apply only mutable fields
-        if (request.getValueNumeric() != null) metric.setValueNumeric(request.getValueNumeric());
-        if (request.getValueSecondary() != null) metric.setValueSecondary(request.getValueSecondary());
-        if (request.getUnit() != null) metric.setUnit(request.getUnit());
-        if (request.getMeasuredAt() != null) metric.setMeasuredAt(request.getMeasuredAt());
-        if (request.getNote() != null) metric.setNote(request.getNote());
+        MetricType legacyType = legacyTypeForCanonical(observation.getMetricCode());
+        MetricDefinition definition = effectiveDefinition(observation.getMetricCode());
+        Map<String, Object> existingContext = observation.getContext() == null
+                ? new LinkedHashMap<>() : new LinkedHashMap<>(observation.getContext());
+        MetricObservationValidator.NormalizedObservation normalized = validator.mergeAndNormalize(
+                legacyType,
+                observation.getValueNumeric(),
+                observation.getValueSecondary(),
+                observation.getUnit(),
+                observation.getMeasuredAt(),
+                observation.getSourceType(),
+                observation.getNote(),
+                existingContext,
+                observation.getPeriodStart(),
+                observation.getPeriodEnd(),
+                request,
+                definition);
 
-        MaternalHealthMetric saved = metricRepository.save(metric);
-
-        // C5: audit with old+new snapshot
+        observation.setValueNumeric(normalized.valueNumeric());
+        observation.setValueSecondary(normalized.valueSecondary());
+        observation.setUnit(normalized.unit());
+        observation.setMeasuredAt(normalized.measuredAt());
+        observation.setNote(normalized.note());
+        observation.setContext(new LinkedHashMap<>(normalized.context()));
+        observation.setPeriodStart(normalized.periodStart());
+        observation.setPeriodEnd(normalized.periodEnd());
+        observation.setOriginalUnit(request.getUnit() == null ? observation.getOriginalUnit() : request.getUnit());
+        observation.setDefinitionVersion(normalized.definitionVersion());
+        observation.setPayload(new LinkedHashMap<>(normalized.context()));
+        observation.getPayload().put("journeyId", journeyId.toString());
+        HealthObservation saved = observationRepository.save(observation);
         auditService.log(AuditAction.HEALTH_METRIC_UPDATED, userId,
-                "MaternalHealthMetric", saved.getId().toString(), "updated");
-
-        return toMetricResponse(saved, null, false);
+                "HealthObservation", saved.getId().toString(), "updated");
+        return toMetricResponse(saved, journeyId, null, false, definition.getVersion());
     }
 
     @Override
-    public MetricTrendResponse getMetricTrend(UUID userId, UUID journeyId, MetricType metricType, Instant from, Instant to) {
-        // C1: journey must exist
+    public List<MetricCapabilityResponse> getCapabilities(UUID journeyId, UUID callerId) {
         MotherJourney journey = journeyRepository.findById(journeyId)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "METRIC-020",
                         "Journey not found: " + journeyId));
-
-        // C1: ownership or care group member check
-        if (!journey.getOwnerUserId().equals(userId)) {
-            boolean isCareGroupMember = false;
-            if (careGroupMemberRepository != null && careGroupRepository != null) {
-                var memberships = careGroupMemberRepository.findByUserIdAndInviteStatus(userId, InviteStatus.ACCEPTED);
-                for (var member : memberships) {
-                    var groupOpt = careGroupRepository.findById(member.getCareGroupId());
-                    if (groupOpt.isPresent() && groupOpt.get().getOwnerUserId().equals(journey.getOwnerUserId())) {
-                        isCareGroupMember = true;
-                        break;
-                    }
-                }
-            }
-            if (!isCareGroupMember) {
-                throw new BusinessException(HttpStatus.FORBIDDEN, "METRIC-021",
-                        "Access denied to journey");
-            }
-        }
-
-        // C2: fetch data — sorted ASC by measuredAt; empty list = 200 OK (not 404)
-        var metrics = metricRepository
-                .findByJourneyIdAndMetricTypeAndStatusAndMeasuredAtBetweenOrderByMeasuredAtAsc(
-                        journeyId, metricType, MetricStatus.ACTIVE, from, to);
-
-        var dataPoints = metrics.stream()
-                .map(m -> com.carebridge.backend.health.dto.MetricDataPoint.builder()
-                        .metricId(m.getId())
-                        .measuredAt(m.getMeasuredAt())
-                        .valueNumeric(m.getValueNumeric())
-                        .valueSecondary(m.getValueSecondary())
-                        .sourceType(m.getSourceType() != null ? m.getSourceType().name() : null)
-                        .note(m.getNote())
+        requireOwner(journey, callerId, "METRIC-021");
+        return definitionRepository.findAllEffectiveAt(Instant.now()).stream()
+                .filter(definition -> definition.getAllowedJourneyStages() == null
+                        || definition.getAllowedJourneyStages().isEmpty()
+                        || definition.getAllowedJourneyStages().contains(journey.getJourneyType().name()))
+                .filter(definition -> definition.isManualEntrySupported())
+                .filter(definition -> P0_MANUAL_METRICS.contains(definition.getMetricCode()))
+                .map(definition -> MetricCapabilityResponse.builder()
+                        .metricCode(definition.getMetricCode())
+                        .version(definition.getVersion())
+                        .displayName(definition.getDisplayName())
+                        .observationShape(definition.getObservationShape())
+                        .subjectType(definition.getSubjectType())
+                        .manualEntrySupported(definition.isManualEntrySupported())
+                        .deviceImportSupported(definition.isDeviceImportSupported())
+                        .canonicalUnit(definition.getCanonicalUnit())
+                        .acceptedInputUnits(definition.getAcceptedInputUnits())
+                        .precisionScale(definition.getPrecisionScale())
+                        .requiredContextSchema(definition.getRequiredContextSchema())
+                        .qualityPolicy(definition.getQualityPolicy())
+                        .allowedJourneyStages(definition.getAllowedJourneyStages())
                         .build())
                 .toList();
+    }
 
-        String unit = metrics.isEmpty() ? null : metrics.get(0).getUnit();
-
+    @Override
+    public MetricTrendResponse getMetricTrend(UUID userId, UUID journeyId, MetricType metricType,
+                                               Instant from, Instant to) {
+        MotherJourney journey = journeyRepository.findById(journeyId)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "METRIC-020",
+                        "Journey not found: " + journeyId));
+        requireTrendAccess(journey, userId);
+        String metricCode = validator.canonicalCode(metricType);
+        MetricDefinition definition = effectiveDefinition(metricCode);
+        List<HealthObservation> observations = observationRepository.findTrend(
+                requireCareSubjectId(journey), metricCode, MetricStatus.ACTIVE, from, to);
+        List<MetricDataPoint> points = observations.stream().map(this::toDataPoint).toList();
         return MetricTrendResponse.builder()
-                .metricType(metricType.name())
-                .unit(unit)
-                .dataPoints(dataPoints)
+                .metricType(metricCode)
+                .unit(definition.getCanonicalUnit())
+                .dataPoints(points)
+                .disclaimer(DISCLAIMER)
                 .build();
     }
 
-    private static boolean isBpType(MetricType type) {
-        return type == MetricType.BLOOD_PRESSURE_SYSTOLIC || type == MetricType.BLOOD_PRESSURE_DIASTOLIC;
+    private MotherJourney activeOwnedJourney(UUID journeyId, UUID userId, String notFoundCode, String forbiddenCode) {
+        MotherJourney journey = journeyRepository.findById(journeyId)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, notFoundCode,
+                        "Journey not found: " + journeyId));
+        if (!journey.getOwnerUserId().equals(userId)) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, forbiddenCode, "Access denied to journey");
+        }
+        if (journey.getStatus() != JourneyStatus.ACTIVE) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "METRIC-003", "Journey is not active");
+        }
+        return journey;
     }
 
-    private MetricResponse toMetricResponse(MaternalHealthMetric m, String aiInsight, boolean redFlag) {
+    private UUID requireCareSubjectId(MotherJourney journey) {
+        if (journey.getCareSubjectId() == null) {
+            throw new BusinessException(HttpStatus.CONFLICT, "METRIC-040",
+                    "Journey has no care subject");
+        }
+        return journey.getCareSubjectId();
+    }
+
+    private MotherJourney journeyForObservation(HealthObservation observation) {
+        Object journeyId = observation.getPayload() == null ? null : observation.getPayload().get("journeyId");
+        if (journeyId == null) {
+            throw new BusinessException(HttpStatus.NOT_FOUND, "METRIC-002", "Parent journey not found");
+        }
+        return journeyRepository.findById(UUID.fromString(journeyId.toString()))
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "METRIC-002",
+                        "Parent journey not found"));
+    }
+
+    private void requireOwner(MotherJourney journey, UUID callerId, String code) {
+        if (!journey.getOwnerUserId().equals(callerId)) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, code, "Access denied to health metric");
+        }
+    }
+
+    private void requireTrendAccess(MotherJourney journey, UUID userId) {
+        if (journey.getOwnerUserId().equals(userId)) return;
+        boolean member = careGroupMemberRepository.findByUserIdAndInviteStatus(userId, InviteStatus.ACCEPTED)
+                .stream()
+                .map(membership -> careGroupRepository.findById(membership.getCareGroupId())
+                        .map(group -> new java.util.AbstractMap.SimpleImmutableEntry<>(membership, group))
+                        .orElse(null))
+                .anyMatch(entry -> entry != null
+                        && entry.getValue().getStatus() == CareGroupStatus.ACTIVE
+                        && entry.getValue().getOwnerUserId().equals(journey.getOwnerUserId())
+                        && entry.getValue().getLinkedJourneyId() != null
+                        && entry.getValue().getLinkedJourneyId().equals(journey.getId())
+                        && careGroupAuthorizationPolicy.hasPermission(
+                                entry.getValue().getId(), userId, PermissionFlag.RECORDS));
+        if (!member) {
+            throw new BusinessException(HttpStatus.FORBIDDEN, "METRIC-021", "Access denied to journey");
+        }
+    }
+
+    private MetricDefinition effectiveDefinition(String metricCode) {
+        if (metricCode == null) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "METRIC-030", "Unsupported metric type");
+        }
+        return definitionRepository.findByMetricCodeAndActiveTrue(metricCode)
+                .orElseThrow(() -> new BusinessException(HttpStatus.BAD_REQUEST, "METRIC-030",
+                        "Metric is not supported: " + metricCode));
+    }
+
+    private MetricType legacyTypeForCanonical(String metricCode) {
+        return switch (metricCode) {
+            case "WEIGHT" -> MetricType.WEIGHT;
+            case "BLOOD_PRESSURE" -> MetricType.BLOOD_PRESSURE;
+            case "BLOOD_GLUCOSE" -> MetricType.BLOOD_GLUCOSE;
+            case "FETAL_MOVEMENT_SESSION" -> MetricType.FETAL_MOVEMENT_SESSION;
+            default -> throw new BusinessException(HttpStatus.BAD_REQUEST, "METRIC-030", "Unsupported metric type");
+        };
+    }
+
+    private MetricDetailResponse toDetailResponse(HealthObservation observation, UUID journeyId) {
+        return MetricDetailResponse.builder()
+                .id(observation.getId())
+                .journeyId(journeyId)
+                .metricType(observation.getMetricCode())
+                .valueNumeric(observation.getValueNumeric())
+                .valueSecondary(observation.getValueSecondary())
+                .unit(observation.getUnit())
+                .measuredAt(observation.getMeasuredAt())
+                .sourceType(observation.getSourceType() == null ? null : observation.getSourceType().name())
+                .note(observation.getNote())
+                .createdAt(observation.getCreatedAt())
+                .context(contextWithoutInternal(observation.getContext()))
+                .periodStart(observation.getPeriodStart())
+                .periodEnd(observation.getPeriodEnd())
+                .qualityLabel(observation.getQualityLabel())
+                .disclaimer(DISCLAIMER)
+                .definitionVersion(observation.getDefinitionVersion())
+                .build();
+    }
+
+    private MetricResponse toMetricResponse(HealthObservation observation, UUID journeyId,
+                                             String aiInsight, boolean redFlag, int definitionVersion) {
         return MetricResponse.builder()
-                .metricId(m.getId())
-                .journeyId(m.getJourneyId())
-                .metricType(m.getMetricType().name())
-                .valueNumeric(m.getValueNumeric())
-                .valueSecondary(m.getValueSecondary())
-                .unit(m.getUnit())
-                .measuredAt(m.getMeasuredAt())
-                .sourceType(m.getSourceType() != null ? m.getSourceType().name() : null)
-                .note(m.getNote())
-                .createdAt(m.getCreatedAt())
-                .updatedAt(m.getUpdatedAt())
+                .metricId(observation.getId())
+                .journeyId(journeyId)
+                .metricType(observation.getMetricCode())
+                .valueNumeric(observation.getValueNumeric())
+                .valueSecondary(observation.getValueSecondary())
+                .unit(observation.getUnit())
+                .measuredAt(observation.getMeasuredAt())
+                .sourceType(observation.getSourceType() == null ? null : observation.getSourceType().name())
+                .note(observation.getNote())
+                .createdAt(observation.getCreatedAt())
+                .updatedAt(observation.getUpdatedAt())
+                .context(contextWithoutInternal(observation.getContext()))
+                .periodStart(observation.getPeriodStart())
+                .periodEnd(observation.getPeriodEnd())
+                .qualityLabel(observation.getQualityLabel())
+                .disclaimer(DISCLAIMER)
+                .definitionVersion(definitionVersion)
                 .aiInsight(aiInsight)
                 .redFlagAlert(redFlag)
                 .build();
+    }
+
+    private MetricDataPoint toDataPoint(HealthObservation observation) {
+        return MetricDataPoint.builder()
+                .metricId(observation.getId())
+                .measuredAt(observation.getMeasuredAt())
+                .valueNumeric(observation.getValueNumeric())
+                .valueSecondary(observation.getValueSecondary())
+                .sourceType(observation.getSourceType() == null ? null : observation.getSourceType().name())
+                .note(observation.getNote())
+                .context(contextWithoutInternal(observation.getContext()))
+                .periodStart(observation.getPeriodStart())
+                .periodEnd(observation.getPeriodEnd())
+                .qualityLabel(observation.getQualityLabel())
+                .build();
+    }
+
+    private Map<String, Object> contextWithoutInternal(Map<String, Object> payload) {
+        Map<String, Object> result = payload == null ? new LinkedHashMap<>() : new LinkedHashMap<>(payload);
+        result.remove("journeyId");
+        result.remove("periodStart");
+        result.remove("periodEnd");
+        result.remove("definitionVersion");
+        result.remove("metricCode");
+        result.remove("originalUnit");
+        result.remove("sourceType");
+        result.remove("recordStatus");
+        return result;
+    }
+
+    private Instant instantFromPayload(Map<String, Object> payload, String key) {
+        Object value = payload == null ? null : payload.get(key);
+        if (value == null) return null;
+        if (value instanceof Instant instant) return instant;
+        return Instant.parse(value.toString());
+    }
+
+    private Integer integerFromPayload(Map<String, Object> payload, String key) {
+        Object value = payload == null ? null : payload.get(key);
+        if (value == null) return null;
+        return value instanceof Number number ? number.intValue() : Integer.valueOf(value.toString());
     }
 }

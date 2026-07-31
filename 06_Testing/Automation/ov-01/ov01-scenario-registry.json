@@ -41,12 +41,12 @@
       ]
     },
     {
-      "id": "OV01-E2E-004", "priority": "P0", "title": "Live birth to postpartum with optional baby handoff",
+      "id": "OV01-E2E-004", "priority": "P0", "title": "Live birth commits postpartum before optional standalone Add Baby handoff",
       "gateIds": ["OV01-GATE-BE-LIFECYCLE", "OV01-GATE-MOBILE-OV01"],
       "executableSelectors": [{"gateId": "OV01-GATE-BE-LIFECYCLE", "selector": "PregnancyOutcomeIntegrationTest"}],
       "proofRefs": [
         {"path": "05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/journey/PregnancyOutcomeIntegrationTest.java", "contains": "LIVE_BIRTH"},
-        {"path": "05_Development/CareBridgeMobileApp/test/features/baby/story_6_5_baby_linkage_test.dart", "contains": "offers equal create, link existing, and do later actions"}
+        {"path": "05_Development/CareBridgeMobileApp/test/features/baby/add_baby_screen_test.dart", "contains": "liveBirthTransition"}
       ]
     },
     {
@@ -73,12 +73,15 @@
       ]
     },
     {
-      "id": "OV01-E2E-007", "priority": "P0", "title": "Optional baby linkage is owner-safe, compatible and idempotent",
+      "id": "OV01-E2E-007", "priority": "P0", "title": "Standalone baby creation rejects legacy relationship input and preserves Mother lifecycle",
       "gateIds": ["OV01-GATE-BE-LIFECYCLE", "OV01-GATE-MOBILE-OV01"],
-      "executableSelectors": [{"gateId": "OV01-GATE-BE-LIFECYCLE", "selector": "BabyJourneyLinkSpringPostgresIntegrationTest"}],
+      "executableSelectors": [
+        {"gateId": "OV01-GATE-BE-LIFECYCLE", "selector": "CreateBabyProfileRequestValidationTest"},
+        {"gateId": "OV01-GATE-MOBILE-OV01", "selector": "add_baby_screen_test.dart"}
+      ],
       "proofRefs": [
-        {"path": "05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/baby/BabyJourneyLinkSpringPostgresIntegrationTest.java", "contains": "BabyJourneyLinkSpringPostgresIntegrationTest"},
-        {"path": "05_Development/CareBridgeMobileApp/test/features/baby/story_6_5_baby_linkage_test.dart", "contains": "account switch dismisses a candidate sheet immediately"}
+        {"path": "05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/baby/CreateBabyProfileRequestValidationTest.java", "contains": "CreateBabyProfileRequestValidationTest"},
+        {"path": "05_Development/CareBridgeMobileApp/test/features/baby/add_baby_screen_test.dart", "contains": "liveBirthTransition"}
       ]
     },
     {
@@ -93,7 +96,7 @@
         {"path": "05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/triage/Ov01Ac2BackendContractIntegrationTest.java", "contains": "ov01E2e008_greenProjectsTypedOriginsExactlyOnceWithoutEmergencySideEffects"},
         {"path": "05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/triage/IntakeControllerTest.java", "contains": "ov01E2e008_startConversationReturnsTypedMaternalOrigin"},
         {"path": "05_Development/CareBridgeAPI/src/test/java/com/carebridge/backend/journey/LifecycleSafetyOutcomeProjectorTest.java", "contains": "ov01E2e008_greenProjectsOnceForEveryTypedOriginWithoutEmergencySideEffects"},
-        {"path": "05_Development/CareBridgeMobileApp/test/features/aiTriage/story_6_7_lifecycle_origin_contract_test.dart", "contains": "surface forwards exact related journey and baby IDs"}
+        {"path": "05_Development/CareBridgeMobileApp/test/features/aiTriage/story_6_7_lifecycle_origin_contract_test.dart", "contains": "babyProfileId"}
       ]
     },
     {
@@ -177,7 +180,7 @@
   "gates": [
     {
       "id": "OV01-GATE-BE-LIFECYCLE", "platform": "Backend/PostgreSQL", "kind": "test", "workingDirectory": "05_Development/CareBridgeAPI", "timeoutSeconds": 900,
-      "executable": "./mvnw.cmd", "arguments": ["-Dtest=JourneyOnboardingIntegrationTest,JourneyCanonicalLifecycleIntegrationTest,PregnancyOutcomeIntegrationTest,PregnancyOutcomeConcurrencyIntegrationTest,BabyJourneyLinkSpringPostgresIntegrationTest,PostpartumLogPostgresIntegrationTest", "test"],
+      "executable": "./mvnw.cmd", "arguments": ["-Dtest=JourneyOnboardingIntegrationTest,JourneyCanonicalLifecycleIntegrationTest,PregnancyOutcomeIntegrationTest,PregnancyOutcomeConcurrencyIntegrationTest,CreateBabyProfileRequestValidationTest,BabyServiceImplTest,PostpartumLogPostgresIntegrationTest", "test"],
       "versionArguments": ["-v"], "expectedVersionRegex": "Apache Maven 3\\.9\\.16",
       "fallback": {"executable": "${MAVEN_PINNED_3_9_16}", "whenOutputMatches": "(?i)(Cannot start maven from wrapper|Cannot index into a null array)", "versionArguments": ["-v"], "expectedVersionRegex": "Apache Maven 3\\.9\\.16"},
       "parser": "maven-surefire", "expectedMinTests": 1
@@ -191,7 +194,7 @@
     },
     {
       "id": "OV01-GATE-MOBILE-OV01", "platform": "Mobile", "kind": "test", "workingDirectory": "05_Development/CareBridgeMobileApp", "timeoutSeconds": 1200, "runnerTool": "flutter-dart-snapshot",
-      "executable": "D:/Program Files/flutter/bin/flutter.bat", "arguments": ["test", "test/features/journey/story_6_1_mobile_gap_test.dart", "test/features/journey/postpartum_recovery_setup_screen_test.dart", "test/features/journey/postpartum_recovery_dashboard_test.dart", "test/features/healthRecords/postpartum_log_list_screen_test.dart", "test/features/baby/story_6_5_baby_linkage_test.dart", "test/features/aiTriage/story_6_7_lifecycle_origin_contract_test.dart", "test/features/aiTriage/story_6_7_continuation_restore_test.dart", "test/features/aiTriage/story_6_7_continuation_storage_test.dart", "test/features/consultation/triage_expert_handoff_mobile_test.dart", "test/features/emergency/emergency_map_screen_test.dart", "test/features/journey/story_6_9_lifecycle_content_entry_test.dart", "test/core/storage/token_storage_test.dart", "--reporter", "compact", "--no-color"],
+      "executable": "D:/Program Files/flutter/bin/flutter.bat", "arguments": ["test", "test/features/journey/story_6_1_mobile_gap_test.dart", "test/features/journey/postpartum_recovery_setup_screen_test.dart", "test/features/journey/postpartum_recovery_dashboard_test.dart", "test/features/healthRecords/postpartum_log_list_screen_test.dart", "test/features/baby/add_baby_screen_test.dart", "test/features/aiTriage/story_6_7_lifecycle_origin_contract_test.dart", "test/features/aiTriage/story_6_7_continuation_restore_test.dart", "test/features/aiTriage/story_6_7_continuation_storage_test.dart", "test/features/consultation/triage_expert_handoff_mobile_test.dart", "test/features/emergency/emergency_map_screen_test.dart", "test/features/journey/story_6_9_lifecycle_content_entry_test.dart", "test/core/storage/token_storage_test.dart", "--reporter", "compact", "--no-color"],
       "versionArguments": ["--version"], "expectedVersionRegex": "Flutter\\s",
       "parser": "flutter", "expectedMinTests": 1
     },

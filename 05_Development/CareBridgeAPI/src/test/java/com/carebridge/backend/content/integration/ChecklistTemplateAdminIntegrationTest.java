@@ -27,6 +27,7 @@ import com.carebridge.backend.security.jwt.JwtTokenProvider;
 import com.carebridge.backend.security.rbac.Role;
 import com.carebridge.backend.security.repository.UserRepository;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
+import jakarta.persistence.EntityManager;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -47,6 +48,7 @@ class ChecklistTemplateAdminIntegrationTest extends AbstractPostgresIntegrationT
     @Autowired private ChecklistTemplateRepository checklistTemplateRepository;
     @Autowired private ChecklistItemRepository checklistItemRepository;
     @Autowired private UserChecklistItemRepository userChecklistItemRepository;
+    @Autowired private EntityManager entityManager;
     @Autowired private MotherJourneyRepository motherJourneyRepository;
     @Autowired private UserRepository userRepository;
     @Autowired private JdbcTemplate jdbcTemplate;
@@ -157,13 +159,14 @@ class ChecklistTemplateAdminIntegrationTest extends AbstractPostgresIntegrationT
                 item(template, "Retained entry", 1));
         ChecklistItem omitted = checklistItemRepository.saveAndFlush(
                 item(template, "Omitted entry", 2));
-        UserChecklistItem imported = userChecklistItemRepository.saveAndFlush(
-                UserChecklistItem.builder()
+        UserChecklistItem imported = UserChecklistItem.builder()
                         .ownerUserId(admin.getId())
                         .templateItemId(retained.getId())
                         .itemText(retained.getItemText())
                         .itemOrder(retained.getOrder())
-                        .build());
+                        .build();
+        entityManager.persist(imported);
+        entityManager.flush();
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                         .put(BASE_URL + "/{id}", template.getId()).with(csrf())

@@ -10,6 +10,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.carebridge.backend.checklist.controller.UserChecklistItemController;
 import com.carebridge.backend.checklist.service.IUserChecklistItemService;
+import com.carebridge.backend.checklist.service.UserCreatedChecklistTaskService;
+import com.carebridge.backend.checklist.service.OptionalChecklistTemplateImportService;
+import com.carebridge.backend.checklist.service.ChecklistV2CompatibilityMutationService;
 import com.carebridge.backend.common.config.JpaAuditingConfig;
 import com.carebridge.backend.config.MockMvcSecurityBuilderConfig;
 import com.carebridge.backend.content.controller.AdminContentController;
@@ -51,6 +54,9 @@ class Story69ContentSecurityTest {
     @MockitoBean private ContentService contentService;
     @MockitoBean private AdminContentService adminContentService;
     @MockitoBean private IUserChecklistItemService checklistService;
+    @MockitoBean private UserCreatedChecklistTaskService userCreatedChecklistTaskService;
+    @MockitoBean private OptionalChecklistTemplateImportService optionalChecklistTemplateImportService;
+    @MockitoBean private ChecklistV2CompatibilityMutationService checklistV2CompatibilityMutationService;
     @MockitoBean private JwtTokenProvider jwtTokenProvider;
     @MockitoBean private UserRepository userRepository;
 
@@ -84,12 +90,11 @@ class Story69ContentSecurityTest {
     }
 
     @Test
-    void uc82_69_sec_002_motherCanUseLifecycleAndImport() throws Exception {
+    void uc82_69_sec_002_motherCanUseLifecycleWhileLegacyImportIsGone() throws Exception {
         when(contentService.getLifecycleContents(any(), any(), any(), any()))
                 .thenReturn(new LifecycleContentEnvelope<>(ContentStage.PRE_PREGNANCY, Page.empty()));
         when(contentService.getLifecycleChecklists(any()))
                 .thenReturn(new LifecycleContentEnvelope<>(ContentStage.PRE_PREGNANCY, List.of()));
-        when(checklistService.importFromTemplate(any(), any())).thenReturn(List.of());
 
         mockMvc.perform(get("/api/v1/content/lifecycle")
                         .with(user(USER_ID).roles("MOTHER")))
@@ -101,7 +106,7 @@ class Story69ContentSecurityTest {
                         .with(csrf()).with(user(USER_ID).roles("MOTHER"))
                         .contentType("application/json")
                         .content(validImportJson()))
-                .andExpect(status().isCreated());
+                .andExpect(status().isGone());
     }
 
     @ParameterizedTest

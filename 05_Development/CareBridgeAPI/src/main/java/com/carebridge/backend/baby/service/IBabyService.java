@@ -9,9 +9,6 @@ import com.carebridge.backend.baby.dto.UpdateBabyProfileResponse;
 
 import java.util.List;
 import java.util.UUID;
-import com.carebridge.backend.baby.dto.LinkBabyJourneyRequest;
-import com.carebridge.backend.baby.dto.LinkBabyJourneyResponse;
-import com.carebridge.backend.common.response.PaginatedResponse;
 
 public interface IBabyService {
 
@@ -36,7 +33,4 @@ public interface IBabyService {
      */
     ArchiveBabyProfileResponse archiveBabyProfile(UUID babyId, UUID callerId);
 
-    LinkBabyJourneyResponse linkExistingBaby(UUID babyId, LinkBabyJourneyRequest request, UUID callerId);
-
-    PaginatedResponse<BabyProfileDetailResponse> listJourneyBabies(UUID journeyId, int page, int size, UUID callerId);
 }

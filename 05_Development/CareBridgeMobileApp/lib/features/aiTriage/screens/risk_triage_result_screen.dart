@@ -193,11 +193,12 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
   bool _canOpenYellowHandoff(TriageResult result) =>
       result.status == 'COMPLETED' &&
       result.riskLevel == 'YELLOW' &&
-      (result.journeyId ?? '').isNotEmpty &&
       const {
         'MOTHER_JOURNEY',
         'BABY_PROFILE',
       }.contains(result.originDashboard) &&
+      (result.originDashboard == 'BABY_PROFILE' ||
+          (result.journeyId ?? '').isNotEmpty) &&
       (result.originReferenceId ?? '').isNotEmpty;
 
   void _openYellowHandoff(TriageResult result) {

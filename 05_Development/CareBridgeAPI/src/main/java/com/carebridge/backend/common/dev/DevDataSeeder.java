@@ -72,6 +72,7 @@ import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.rbac.Role;
 import com.carebridge.backend.security.repository.UserRepository;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -160,6 +161,9 @@ public class DevDataSeeder implements ApplicationRunner {
     @Value("${carebridge.dev-seed.password:" + DEFAULT_TEST_PASSWORD + "}")
     private String testPassword;
 
+    @Value("${carebridge.dev-seed.extended-content-enabled:true}")
+    private boolean extendedContentEnabled;
+
     record SeedAccount(String email, String fullName, Role role) {}
 
     private static final List<SeedAccount> SEED_ACCOUNTS = List.of(
@@ -173,8 +177,8 @@ public class DevDataSeeder implements ApplicationRunner {
         new SeedAccount("mebau@carebridge.dev", "Mẹ Bầu Mới", Role.MOTHER),
         new SeedAccount("mother3@carebridge.dev", "Mother Test 3", Role.MOTHER),
         new SeedAccount("mother4@carebridge.dev", "Mother Test 4", Role.MOTHER),
-        new SeedAccount("mother5@carebridge.dev", "Story 6.5 Mother Create", Role.MOTHER),
-        new SeedAccount("mother6@carebridge.dev", "Story 6.5 Mother Link", Role.MOTHER),
+        new SeedAccount("mother5@carebridge.dev", "Live Birth Add Baby Mother", Role.MOTHER),
+        new SeedAccount("mother6@carebridge.dev", "Standalone Baby Profiles Mother", Role.MOTHER),
         new SeedAccount("family2@carebridge.dev", "Family Test 2", Role.FAMILY),
         new SeedAccount("family3@carebridge.dev", "Family Test 3", Role.FAMILY),
         new SeedAccount("expert2@carebridge.dev", "Expert Test 2", Role.EXPERT),
@@ -231,9 +235,13 @@ public class DevDataSeeder implements ApplicationRunner {
         }
 
         seedVerifiedProfileData(savedUsers);
-        seedCommunitySampleData(savedUsers);
-        seedCommunitySampleDataBatch2(savedUsers);
-        seedVerifiedContent(savedUsers);
+        if (extendedContentEnabled) {
+            seedCommunitySampleData(savedUsers);
+            seedCommunitySampleDataBatch2(savedUsers);
+            seedVerifiedContent(savedUsers);
+        } else {
+            log.info("Skipped extended dev community/content fixtures by explicit configuration");
+        }
     }
 
     static void validateSeedPassword(String candidate) {
@@ -470,12 +478,11 @@ public class DevDataSeeder implements ApplicationRunner {
         MotherJourney mother4Journey = seedMotherJourney(
             savedUsers.get("mother4@carebridge.dev"), JourneyType.POSTPARTUM,
             LocalDate.now().minusMonths(2));
-        MotherJourney mother5Journey = seedEligibleStory65Journey(
-            savedUsers.get("mother5@carebridge.dev"), "mother5");
-        MotherJourney mother6Journey = seedEligibleStory65Journey(
+        seedStandaloneAddBabyJourney(savedUsers.get("mother5@carebridge.dev"), "mother5");
+        MotherJourney mother6Journey = seedStandaloneAddBabyJourney(
             savedUsers.get("mother6@carebridge.dev"), "mother6");
 
-        seedUnlinkedStory65Babies(savedUsers.get("mother6@carebridge.dev"), mother6Journey);
+        seedStandaloneBabies(savedUsers.get("mother6@carebridge.dev"), mother6Journey);
 
         seedAcceptedCareGroup(
             savedUsers.get("mother3@carebridge.dev"), savedUsers.get("family2@carebridge.dev"),
@@ -500,10 +507,10 @@ public class DevDataSeeder implements ApplicationRunner {
     }
 
     /**
-     * Isolated Story 6.5 manual-test fixture. It is deliberately created only by
-     * the opt-in development seeder, never a migration or production bootstrap.
+     * Isolated standalone Add Baby manual-test fixture. It is deliberately created
+     * only by the opt-in development seeder, never a migration or production bootstrap.
      */
-    private MotherJourney seedEligibleStory65Journey(User mother, String fixtureKey) {
+    private MotherJourney seedStandaloneAddBabyJourney(User mother, String fixtureKey) {
         MotherJourney journey = motherJourneyRepository.findCanonical(mother.getId())
             .orElseGet(() -> saveMotherJourneyWithCanonicalSubject(
                 mother,
@@ -516,15 +523,22 @@ public class DevDataSeeder implements ApplicationRunner {
                     .pregnancyOutcomeDate(LocalDate.now().minusDays(14))
                     .dateSource(JourneyDateSource.SELF_REPORTED)
                     .status(JourneyStatus.ACTIVE)
-                    .notes("[DEV][Story 6.5] eligible manual linkage fixture")));
+                    .notes("[DEV][Standalone Add Baby] live-birth fixture")));
 
         if (journey.getJourneyType() != JourneyType.POSTPARTUM
             || journey.getPregnancyOutcome() != PregnancyOutcomeType.LIVE_BIRTH) {
-            throw new IllegalStateException("Story 6.5 fixture must retain an eligible POSTPARTUM/LIVE_BIRTH journey");
+            throw new IllegalStateException("Standalone Add Baby fixture must retain POSTPARTUM/LIVE_BIRTH");
         }
 
-        UUID submissionId = UUID.nameUUIDFromBytes(("story65-" + fixtureKey + "-live-birth").getBytes());
-        if (pregnancyOutcomeEvidenceRepository.findByJourneyIdAndSubmissionId(journey.getId(), submissionId).isEmpty()) {
+        UUID submissionId = UUID.nameUUIDFromBytes(
+            ("standalone-baby-" + fixtureKey + "-live-birth").getBytes(StandardCharsets.UTF_8));
+        UUID legacySubmissionId = UUID.nameUUIDFromBytes(
+            ("story65-" + fixtureKey + "-live-birth").getBytes(StandardCharsets.UTF_8));
+        boolean evidenceExists = pregnancyOutcomeEvidenceRepository
+            .findByJourneyIdAndSubmissionId(journey.getId(), legacySubmissionId).isPresent()
+            || pregnancyOutcomeEvidenceRepository
+                .findByJourneyIdAndSubmissionId(journey.getId(), submissionId).isPresent();
+        if (!evidenceExists) {
             var previousEvidence = pregnancyOutcomeEvidenceRepository
                 .findFirstByJourneyIdOrderByRevisionNumberDesc(journey.getId());
             pregnancyOutcomeEvidenceRepository.save(PregnancyOutcomeEvidence.builder()
@@ -535,7 +549,7 @@ public class DevDataSeeder implements ApplicationRunner {
                 .outcomeDate(journey.getPregnancyOutcomeDate())
                 .source(JourneyDateSource.SELF_REPORTED)
                 .actorUserId(mother.getId())
-                .reason("[DEV][Story 6.5] synthetic live-birth fixture")
+                .reason("[DEV][Standalone Add Baby] synthetic live-birth fixture")
                 .effectiveAt(Instant.now())
                 .revisionNumber(previousEvidence
                     .map(PregnancyOutcomeEvidence::getRevisionNumber)
@@ -544,28 +558,42 @@ public class DevDataSeeder implements ApplicationRunner {
                     .map(PregnancyOutcomeEvidence::getId)
                     .orElse(null))
                 .journeyVersion(journey.getVersion())
-                .semanticHash("dev-story65-" + fixtureKey + "-live-birth")
+                .semanticHash("dev-standalone-baby-" + fixtureKey + "-live-birth")
                 .correction(false)
                 .build());
         }
         return journey;
     }
 
-    private void seedUnlinkedStory65Babies(User mother, MotherJourney journey) {
+    private void seedStandaloneBabies(User mother, MotherJourney journey) {
         List<BabyProfile> existing = babyProfileRepository
             .findByOwnerUserIdAndStatusOrderByCreatedAtAsc(mother.getId(), BabyProfileStatus.ACTIVE);
-        seedUnlinkedStory65Baby(existing, mother, journey, "[DEV][Story 6.5] Baby A", Gender.FEMALE, true);
-        seedUnlinkedStory65Baby(existing, mother, journey, "[DEV][Story 6.5] Baby B", Gender.MALE, false);
+        seedStandaloneBaby(
+            existing, mother, journey,
+            "[DEV][Standalone] Baby A", "[DEV][Story 6.5] Baby A", Gender.FEMALE, true);
+        seedStandaloneBaby(
+            existing, mother, journey,
+            "[DEV][Standalone] Baby B", "[DEV][Story 6.5] Baby B", Gender.MALE, false);
     }
 
-    private void seedUnlinkedStory65Baby(
-            List<BabyProfile> existing, User mother, MotherJourney journey, String nickname, Gender gender,
+    private void seedStandaloneBaby(
+            List<BabyProfile> existing, User mother, MotherJourney journey,
+            String nickname, String legacyNickname, Gender gender,
             boolean selectedInLegacyProfileSwitcher) {
-        boolean present = existing.stream().anyMatch(baby -> nickname.equals(baby.getNickname()));
-        if (present) return;
+        if (existing.stream().anyMatch(baby -> nickname.equals(baby.getNickname()))) return;
+
+        var legacyFixture = existing.stream()
+            .filter(baby -> legacyNickname.equals(baby.getNickname()))
+            .findFirst();
+        if (legacyFixture.isPresent()) {
+            BabyProfile baby = legacyFixture.get();
+            baby.setNickname(nickname);
+            babyProfileRepository.save(baby);
+            return;
+        }
+
         babyProfileRepository.save(BabyProfile.builder()
             .ownerUserId(mother.getId())
-            .relatedJourneyId(null)
             .nickname(nickname)
             .birthDate(journey.getDeliveryDate())
             .gender(gender)
@@ -573,8 +601,8 @@ public class DevDataSeeder implements ApplicationRunner {
             .birthLengthCm(new BigDecimal("49.0"))
             .status(BabyProfileStatus.ACTIVE)
             // The legacy schema permits one selected profile per owner. Both rows
-            // remain ACTIVE and are valid linkage candidates; this flag controls
-            // only the legacy profile switcher selection.
+            // remain ACTIVE standalone profiles; this flag controls only the
+            // legacy profile switcher selection.
             .active(selectedInLegacyProfileSwitcher)
             .build());
     }
@@ -645,7 +673,6 @@ public class DevDataSeeder implements ApplicationRunner {
         }
         return babyProfileRepository.saveAndFlush(BabyProfile.builder()
             .ownerUserId(mother.getId())
-            .relatedJourneyId(journey.getId())
             .nickname("Bé " + mother.getName())
             .birthDate(journey.getDeliveryDate() != null
                 ? journey.getDeliveryDate() : journey.getStartDate().plusMonths(1))
@@ -780,14 +807,33 @@ public class DevDataSeeder implements ApplicationRunner {
                 .build())
             : groups.get(0);
 
-        careGroupMemberRepository.findByCareGroupIdAndUserId(group.getId(), familyMember.getId())
-            .orElseGet(() -> careGroupMemberRepository.save(CareGroupMember.builder()
+        ensureAcceptedCareGroupMember(group, mother, GroupMemberRole.OWNER);
+        ensureAcceptedCareGroupMember(group, familyMember, GroupMemberRole.MEMBER);
+    }
+
+    private void ensureAcceptedCareGroupMember(CareGroup group, User user, GroupMemberRole role) {
+        var existing = careGroupMemberRepository.findByCareGroupIdAndUserId(group.getId(), user.getId());
+        if (existing.isEmpty()) {
+            careGroupMemberRepository.save(CareGroupMember.builder()
                 .careGroupId(group.getId())
-                .userId(familyMember.getId())
-                .memberRole(GroupMemberRole.MEMBER)
+                .userId(user.getId())
+                .memberRole(role)
                 .inviteStatus(InviteStatus.ACCEPTED)
                 .joinedAt(Instant.now())
-                .build()));
+                .build());
+            return;
+        }
+
+        CareGroupMember member = existing.get();
+        if (member.getMemberRole() != role || member.getInviteStatus() != InviteStatus.ACCEPTED
+                || member.getJoinedAt() == null) {
+            member.setMemberRole(role);
+            member.setInviteStatus(InviteStatus.ACCEPTED);
+            if (member.getJoinedAt() == null) {
+                member.setJoinedAt(Instant.now());
+            }
+            careGroupMemberRepository.save(member);
+        }
     }
 
     private void seedVerifiedExpert(User expertUser, User admin, String specialty,

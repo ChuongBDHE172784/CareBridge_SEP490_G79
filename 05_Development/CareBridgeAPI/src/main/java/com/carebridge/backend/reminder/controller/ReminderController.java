@@ -2,6 +2,10 @@ package com.carebridge.backend.reminder.controller;
 
 import com.carebridge.backend.common.response.ApiResponse;
 import com.carebridge.backend.common.util.SecurityUtils;
+import com.carebridge.backend.checklist.today.dto.TaskActionRequest;
+import com.carebridge.backend.checklist.today.model.TaskAction;
+import com.carebridge.backend.checklist.today.model.TaskKind;
+import com.carebridge.backend.checklist.today.service.UnifiedTaskActionFacade;
 import com.carebridge.backend.reminder.dto.CreateMedicationReminderRequest;
 import com.carebridge.backend.reminder.dto.CreateReminderRequest;
 import com.carebridge.backend.reminder.dto.CreateReminderResponse;
@@ -22,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 import java.time.ZoneId;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 
@@ -34,6 +39,7 @@ public class ReminderController {
 
     private final IReminderService reminderService;
     private final ITodayTaskService todayTaskService;
+    private final UnifiedTaskActionFacade taskActionFacade;
 
     // UC45: Create appointment reminder
     @PostMapping
@@ -133,7 +139,10 @@ public class ReminderController {
             @PathVariable UUID reminderId,
             Principal principal) {
         var callerId = SecurityUtils.requireCurrentUserId(principal);
-        var response = reminderService.completeReminder(reminderId, callerId);
+        taskActionFacade.apply(callerId, TaskKind.REMINDER, reminderId,
+                new TaskActionRequest(TaskAction.COMPLETE,
+                        legacyRequestId(callerId, reminderId, TaskAction.COMPLETE), null));
+        var response = reminderService.getReminderDetail(reminderId, callerId);
         return ResponseEntity.ok(ApiResponse.success(response, "Reminder completed successfully"));
     }
 
@@ -144,7 +153,10 @@ public class ReminderController {
             @PathVariable UUID reminderId,
             Principal principal) {
         var callerId = SecurityUtils.requireCurrentUserId(principal);
-        var response = reminderService.skipReminder(reminderId, callerId);
+        taskActionFacade.apply(callerId, TaskKind.REMINDER, reminderId,
+                new TaskActionRequest(TaskAction.SKIP,
+                        legacyRequestId(callerId, reminderId, TaskAction.SKIP), "USER_CHOICE"));
+        var response = reminderService.getReminderDetail(reminderId, callerId);
         return ResponseEntity.ok(ApiResponse.success(response, "Reminder skipped successfully"));
     }
 
@@ -199,5 +211,10 @@ public class ReminderController {
         } catch (Exception e) {
             return ZoneId.of(DEFAULT_TIMEZONE);
         }
+    }
+
+    private static UUID legacyRequestId(UUID actorId, UUID taskId, TaskAction action) {
+        String identity = "legacy-reminder-action-v2|" + actorId + "|" + taskId + "|" + action;
+        return UUID.nameUUIDFromBytes(identity.getBytes(StandardCharsets.UTF_8));
     }
 }

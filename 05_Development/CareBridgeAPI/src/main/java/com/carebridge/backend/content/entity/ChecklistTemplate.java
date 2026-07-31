@@ -1,5 +1,8 @@
 package com.carebridge.backend.content.entity;
 
+import com.carebridge.backend.checklist.model.ChecklistAnchorType;
+import com.carebridge.backend.checklist.model.ChecklistRangeUnit;
+import com.carebridge.backend.checklist.model.ChecklistRecipientScope;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -38,6 +41,33 @@ public class ChecklistTemplate {
     @Column(name = "title", length = 500)
     private String name;
 
+    @Column(name = "template_lineage_id")
+    private UUID templateLineageId;
+
+    @Column(name = "template_version_id")
+    private UUID templateVersionId;
+
+    @Column(name = "substage_id")
+    private UUID substageId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "recipient_scope", length = 10)
+    private ChecklistRecipientScope recipientScope;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "eligibility_anchor_type", length = 30)
+    private ChecklistAnchorType eligibilityAnchorType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "eligibility_range_unit", length = 10)
+    private ChecklistRangeUnit eligibilityRangeUnit;
+
+    @Column(name = "eligibility_start_inclusive")
+    private Integer eligibilityStartInclusive;
+
+    @Column(name = "eligibility_end_inclusive")
+    private Integer eligibilityEndInclusive;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "stage", length = 30)
     private ContentStage stage;
@@ -46,6 +76,31 @@ public class ChecklistTemplate {
     @Enumerated(EnumType.STRING)
     @Column(name = "content_status", nullable = false, length = 20)
     private ChecklistTemplateStatus status = ChecklistTemplateStatus.DRAFT;
+
+    @Builder.Default
+    @Column(name = "migration_review_required", nullable = false)
+    private Boolean migrationReviewRequired = Boolean.FALSE;
+
+    @Builder.Default
+    @Column(name = "distribution_enabled", nullable = false)
+    private Boolean distributionEnabled = Boolean.FALSE;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "template_type", nullable = false, length = 20)
+    private ChecklistTemplateType templateType = ChecklistTemplateType.MANDATORY;
+
+    @Column(name = "approved_at")
+    private Instant approvedAt;
+
+    @Column(name = "approved_by")
+    private UUID approvedBy;
+
+    @Column(name = "migration_reviewed_at")
+    private Instant migrationReviewedAt;
+
+    @Column(name = "migration_reviewed_by")
+    private UUID migrationReviewedBy;
 
     @Builder.Default
     @Column(name = "version", nullable = false)

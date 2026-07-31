@@ -16,6 +16,7 @@ import com.carebridge.backend.family.entity.GroupMemberRole;
 import com.carebridge.backend.family.entity.InviteStatus;
 import com.carebridge.backend.family.repository.CareGroupMemberRepository;
 import com.carebridge.backend.family.repository.CareGroupRepository;
+import com.carebridge.backend.family.repository.CareTaskRepository;
 import com.carebridge.backend.family.service.impl.CareGroupServiceImpl;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.repository.UserRepository;
@@ -41,6 +42,7 @@ class CareGroupServiceImplTest {
     @Mock private CareGroupMemberRepository memberRepository;
     @Mock private UserRepository userRepository;
     @Mock private AuditService auditService;
+    @Mock private CareTaskRepository taskRepository;
     @InjectMocks private CareGroupServiceImpl careGroupService;
 
     private static final UUID CALLER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
@@ -119,6 +121,24 @@ class CareGroupServiceImplTest {
                 m.getMemberRole() == GroupMemberRole.OWNER &&
                 m.getInviteStatus() == InviteStatus.ACCEPTED &&
                 m.getUserId().equals(CALLER_ID)));
+    }
+
+    @Test
+    void deleteCareGroup_withRetainedHistoryArchivesAndPublishesCandidate() {
+        CareGroup group = savedGroup(GROUP_ID);
+        CareGroupMember owner = ownerMember(GROUP_ID);
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, CALLER_ID))
+                .thenReturn(Optional.of(owner));
+        when(groupRepository.save(group)).thenReturn(group);
+
+        careGroupService.deleteCareGroup(GROUP_ID, CALLER_ID);
+
+        assertThat(group.getStatus()).isEqualTo(CareGroupStatus.ARCHIVED);
+        verify(groupRepository).save(group);
+        verify(memberRepository, never()).deleteByCareGroupId(any());
+        verify(taskRepository, never()).deleteByCareGroupId(any());
+        verify(groupRepository, never()).deleteById(any());
     }
 
     // FAM-TC-004: List members — ACCEPTED member can view (C1 — isMember uses ACCEPTED)
@@ -248,7 +268,7 @@ class CareGroupServiceImplTest {
     @Test
     void acceptInvite_pendingInvite_setsAcceptedAndJoinedAt() {
         CareGroupMember pending = CareGroupMember.builder()
-                .careGroupId(GROUP_ID).userId(INVITEE_ID)
+                .id(UUID.randomUUID()).careGroupId(GROUP_ID).userId(INVITEE_ID)
                 .memberRole(GroupMemberRole.MEMBER).inviteStatus(InviteStatus.PENDING).build();
         when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, INVITEE_ID)).thenReturn(Optional.of(pending));
         when(memberRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -271,13 +291,46 @@ class CareGroupServiceImplTest {
     @Test
     void declineInvite_pendingInvite_setsRevoked() {
         CareGroupMember pending = CareGroupMember.builder()
-                .careGroupId(GROUP_ID).userId(INVITEE_ID)
+                .id(UUID.randomUUID()).careGroupId(GROUP_ID).userId(INVITEE_ID)
                 .memberRole(GroupMemberRole.MEMBER).inviteStatus(InviteStatus.PENDING).build();
         when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, INVITEE_ID)).thenReturn(Optional.of(pending));
+        when(memberRepository.save(pending)).thenReturn(pending);
 
         careGroupService.declineInvite(GROUP_ID, INVITEE_ID);
 
         verify(memberRepository).save(argThat(m -> m.getInviteStatus() == InviteStatus.REVOKED));
+    }
+
+    @Test
+    void respondJoinRequest_approvePublishesDurableEligibilityCandidate() {
+        UUID memberId = UUID.randomUUID();
+        CareGroupMember pending = CareGroupMember.builder()
+                .id(memberId).careGroupId(GROUP_ID).userId(INVITEE_ID)
+                .memberRole(GroupMemberRole.MEMBER).inviteStatus(InviteStatus.PENDING).build();
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(savedGroup(GROUP_ID)));
+        when(memberRepository.findByIdAndCareGroupId(memberId, GROUP_ID)).thenReturn(Optional.of(pending));
+        when(memberRepository.save(pending)).thenReturn(pending);
+
+        CareGroupMemberDto result = careGroupService.respondJoinRequest(
+                GROUP_ID, memberId, true, CALLER_ID);
+
+        assertThat(result.getInviteStatus()).isEqualTo("ACCEPTED");
+    }
+
+    @Test
+    void respondJoinRequest_rejectDoesNotPublishEligibilityCandidate() {
+        UUID memberId = UUID.randomUUID();
+        CareGroupMember pending = CareGroupMember.builder()
+                .id(memberId).careGroupId(GROUP_ID).userId(INVITEE_ID)
+                .memberRole(GroupMemberRole.MEMBER).inviteStatus(InviteStatus.PENDING).build();
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(savedGroup(GROUP_ID)));
+        when(memberRepository.findByIdAndCareGroupId(memberId, GROUP_ID)).thenReturn(Optional.of(pending));
+        when(memberRepository.save(pending)).thenReturn(pending);
+
+        CareGroupMemberDto result = careGroupService.respondJoinRequest(
+                GROUP_ID, memberId, false, CALLER_ID);
+
+        assertThat(result.getInviteStatus()).isEqualTo("REJECTED");
     }
 
     @Test

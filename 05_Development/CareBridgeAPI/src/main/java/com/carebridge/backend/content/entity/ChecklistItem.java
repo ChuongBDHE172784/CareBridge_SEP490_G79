@@ -1,8 +1,13 @@
 package com.carebridge.backend.content.entity;
 
+import com.carebridge.backend.checklist.model.ChecklistTargetSubject;
+import com.carebridge.backend.checklist.model.ChecklistAnchorType;
+import com.carebridge.backend.checklist.model.ChecklistRangeUnit;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -47,6 +52,25 @@ public class ChecklistItem {
 
     @Column(name = "is_required")
     private Boolean isRequired;
+
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    @Column(name = "target_subject", nullable = false, length = 10)
+    private ChecklistTargetSubject targetSubject = ChecklistTargetSubject.MOTHER;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "due_anchor_type", length = 30)
+    private ChecklistAnchorType dueAnchorType;
+
+    @Column(name = "due_offset_start")
+    private Integer dueOffsetStart;
+
+    @Column(name = "due_offset_end")
+    private Integer dueOffsetEnd;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "due_offset_unit", length = 10)
+    private ChecklistRangeUnit dueOffsetUnit;
 
     @Builder.Default
     @Column(name = "is_active", nullable = false)

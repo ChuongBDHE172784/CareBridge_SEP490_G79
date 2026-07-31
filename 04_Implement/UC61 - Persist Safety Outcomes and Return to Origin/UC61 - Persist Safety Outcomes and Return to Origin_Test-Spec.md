@@ -133,8 +133,8 @@ Not in scope: Web, AI risk threshold changes, YELLOW expert handoff, provider no
 | Condition ID | Test Condition | Coverage Item | Cases |
 |---|---|---|---|
 | `S67-C01` | valid Mother origin binds canonical journey/stage/token | conversation start service/controller | 001 |
-| `S67-C02` | valid baby origin binds owned linked baby without new age rule | origin policy | 002 |
-| `S67-C03` | non-owner, inactive, unlinked, consent invalid fail neutrally | policy/controller | 003,004 |
+| `S67-C02` | valid `BABY_PROFILE` origin binds an owned active baby with `journeyId == null` and no new age rule | origin policy | 002 |
+| `S67-C03` | non-owner, inactive baby, mismatched origin reference, maternal journey mismatch, or invalid consent fail neutrally | policy/controller | 003,004 |
 | `S67-C04` | replay same intent is stable; changed intent conflicts; one-shot excluded | idempotency/legacy | 005,006 |
 | `S67-C05` | GREEN/YELLOW/RED produce one minimum projection | projector | 007,008 |
 | `S67-C06` | duplicate/concurrent/retry exact-once | PostgreSQL transaction | 009 |
@@ -155,7 +155,7 @@ Not in scope: Web, AI risk threshold changes, YELLOW expert handoff, provider no
 |---|---|---|
 | Equivalence partitioning | risk/origin/token status/roles | cover valid and invalid contracts |
 | Boundary analysis | page size 0/1/100/101; token expiry; idempotency key length | validate exact contract edges |
-| Decision table | stage × origin × journey/baby/consent state | prevent mixed maternal/baby behavior |
+| Decision table | stage × origin × nullable journey/baby/consent state | prevent mixed maternal/baby behavior |
 | State transition | ACTIVE→ACKNOWLEDGED/EXPIRED | validate monotonic token state |
 | Concurrency | duplicate completion/start replay | prove database exact-once, not mock behavior |
 | Fault injection | projection repository/network/late response | prove no false success and recovery |
@@ -167,7 +167,7 @@ Not in scope: Web, AI risk threshold changes, YELLOW expert handoff, provider no
 |---|---|---|---|
 | `S67-FX-01` | users | Mother A, Mother B UUIDs + JWTs | owner isolation |
 | `S67-FX-02` | journeys | A PRE/PREG/POST active canonical; B active journey | maternal mapping/IDOR |
-| `S67-FX-03` | babies | A INFANT/TODDLER accepted by current classifier, A unlinked, B foreign | baby origin/link checks |
+| `S67-FX-03` | babies | A INFANT/TODDLER active and owned, B foreign, origin-reference mismatch fixture | baby origin/ownership checks |
 | `S67-FX-04` | consent | valid, missing, expired, revoked | fail-closed decisions |
 | `S67-FX-05` | intakes | terminal GREEN/YELLOW/RED and nonterminal conversation | projection/state |
 | `S67-FX-06` | emergency | RED association; multiple intakes reuse one ACTIVE session | source reference/cardinality |
@@ -199,8 +199,8 @@ The reported focused Mobile `85/85` also includes affected symptom/result/emerge
 | ID / Severity | Feature / Actual Test File(s) | Oracle | Preconditions | Arrange / Act / Assert | Expected Persistence / Side Effects | Failure Signature | Status |
 |---|---|---|---|---|---|---|---|
 | `S67-TC-001` HIGH | bound Mother start — `triage/Story67LifecycleContractRedTest.java`; affected triage/controller regressions | AC1; TDS §5.3 | FX01/02/04 valid | Arrange active POST journey; Act start with `MOTHER_JOURNEY`; Assert 200, persisted journey/stage/origin, stable token/expiry | one intake; zero projection until terminal; no token log | missing/mismatched server context or client route trusted | PASS — Backend `137/137` final evidence |
-| `S67-TC-002` HIGH | bound baby start — `triage/Story67LifecycleContractRedTest.java`; `story_6_7_lifecycle_origin_contract_test.dart` | AC1; Decision 6 | owned linked baby accepted by current classifier | start INFANT/TODDLER with BABY_PROFILE; assert related journey and exact baby ref; repeat for both existing production classifications | one intake; no new age rule or link mutation | wrong baby/journey or Story 6.6 classifier changed | PASS — focused Mobile `85/85` + Backend contract |
-| `S67-TC-003` CRITICAL | owner/link/consent denial — `Story67LifecycleContractRedTest.java`, `TriageContinuationServiceTest.java` | BR-RBAC/PRIVACY; AC1/5 | foreign/inactive/unlinked/revoked fixtures | submit each invalid partition; assert neutral 404/409 and no existence disclosure | no intake/token/projection/audit success | resource data or distinguishable foreign response leaks | PASS — Story 6.7 Backend `20/20` |
+| `S67-TC-002` HIGH | bound baby start — `triage/Story67LifecycleContractRedTest.java`; `story_6_7_lifecycle_origin_contract_test.dart` | AC1; Decision 6 | owned active baby accepted by current classifier | start INFANT/TODDLER with BABY_PROFILE; assert `journeyId == null` and exact owned baby ref; repeat for both existing production classifications | one intake; no new age rule or relationship mutation | wrong baby/journey binding or Story 6.6 classifier changed | PASS — focused Mobile `85/85` + Backend contract |
+| `S67-TC-003` CRITICAL | owner/origin/consent denial — `Story67LifecycleContractRedTest.java`, `TriageContinuationServiceTest.java` | BR-RBAC/PRIVACY; AC1/5 | foreign/inactive/mismatched-origin/revoked fixtures | submit each invalid partition; assert neutral 404/409 and no existence disclosure | no intake/token/projection/audit success | resource data or distinguishable foreign response leaks | PASS — Story 6.7 Backend `20/20` |
 | `S67-TC-004` HIGH | maternal stage mapping — `Story67LifecycleContractRedTest.java`; `story_6_7_lifecycle_origin_contract_test.dart` | TDS §5.3 | PRE/PREG/POST journeys | table-drive stage↔journey combinations; assert only exact matches pass | no side effect for mismatch | default/loose mapping accepts incompatible stage | PASS — Backend contract + focused Mobile |
 | `S67-TC-005` HIGH | start replay / changed intent — `Story67LifecycleContractRedTest.java`; affected `TriageServiceTest` regressions | AC1; ADR-061-03 | same owner/key | call same intent twice then changed journey/origin; assert same intake/token then `TRIAGE-016` | one intake/token; no duplicate audit | token rotates or changed intent reuses key | PASS — Backend final `137/137` |
 | `S67-TC-006` MEDIUM | one-shot/direct exclusion — `Story67LifecycleContractRedTest.java`; `story_6_7_lifecycle_origin_contract_test.dart` | TDS scope; L4 | legacy Run/direct input | run legacy path and attempt lifecycle fields at boundary; assert legacy response and no durable descriptor | no continuation/projection claim | one-shot silently projects or breaks legacy | PASS — Backend contract + focused Mobile |
@@ -233,7 +233,7 @@ The reported focused Mobile `85/85` also includes affected symptom/result/emerge
 
 | ID / Severity | Feature / Actual Test File(s) / Evidence | Oracle | Preconditions | Arrange / Act / Assert | Expected Persistence / Side Effects | Failure Signature | Status |
 |---|---|---|---|---|---|---|---|
-| `S67-TC-015` HIGH | five-origin request/return — `story_6_7_lifecycle_origin_contract_test.dart`, `story_6_7_continuation_restore_test.dart` | AC1/4; UX | PRE/PREG/POST + current INFANT/TODDLER origins | pump each production screen; start/finish GREEN/YELLOW; assert exact journey/baby body and fixed return | token saved then acknowledged/cleared; no emergency for GREEN/YELLOW | mixed origin, wrong ID, missing stage lock | PASS — focused Mobile `85/85` |
+| `S67-TC-015` HIGH | five-origin request/return — `story_6_7_lifecycle_origin_contract_test.dart`, `story_6_7_continuation_restore_test.dart` | AC1/4; UX | PRE/PREG/POST + current INFANT/TODDLER origins | pump each production screen; start/finish GREEN/YELLOW; assert maternal journey body or baby body with null journey and fixed return | token saved then acknowledged/cleared; no emergency for GREEN/YELLOW | mixed origin, wrong ID, non-null baby journey, missing stage lock | PASS — focused Mobile `85/85` |
 | `S67-TC-016` CRITICAL | restart-safe RED — `story_6_7_continuation_restore_test.dart` + affected result/emergency/router tests | AC3/4; Story 6.6 | terminal RED + active emergency + stored token | destroy/rebuild app/auth; resolve; resume existing emergency; return/ack | GET active only; no MANUAL POST; one projection/outbox | second POST/AI, origin lost, 115 removed | PASS automated + Android MAN-028; one intake/outcome/emergency/outbox before and after restart/return |
 | `S67-TC-017` CRITICAL | logout/account switch/late response — `story_6_7_continuation_storage_test.dart`, `story_6_7_continuation_restore_test.dart` | AC5; R-OV01-11 | Mother A token, delayed A response, login B | switch/logout while request pending; complete late future; assert B sees no A token/data | A key removed; queued write blocked; no cross-account navigation | flash/resurrection/cross-account route | PASS — generation guard + account-aware fingerprint tests |
 | `S67-TC-018` HIGH | Mobile network retry — focused affected tests + `_bmad-output/test-artifacts/story-6-7-manual/manual-run-summary.md` | AC5; MAN-031 | offline/5xx/delay then recovery | start/complete/resolve under failures; assert inline retry/no false success; recover | same key/token; one projection after reconnect | lost input, duplicate write, late overwrite | PASS — Android MAN-031 Story 6.7 slice + exact-one DB evidence |

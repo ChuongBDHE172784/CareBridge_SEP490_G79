@@ -22,6 +22,8 @@ import com.carebridge.backend.family.dto.CareTasksResponse;
 import com.carebridge.backend.family.dto.LeaveCareGroupResponse;
 import com.carebridge.backend.family.dto.RemoveMemberResponse;
 import com.carebridge.backend.family.dto.RevokeInvitationResponse;
+import com.carebridge.backend.family.dto.RelinkCareGroupJourneyRequest;
+import com.carebridge.backend.family.dto.RelinkCareGroupJourneyResponse;
 import com.carebridge.backend.family.dto.SharedCareCalendarResponse;
 import com.carebridge.backend.family.dto.UpdateFamilyTaskRequest;
 import com.carebridge.backend.family.dto.UpdateFamilyTaskResponse;
@@ -63,7 +65,7 @@ public class CareGroupController {
                 .body(ApiResponse.success(response, "Care group created successfully"));
     }
 
-    // UC70-DEL: Delete care group (owner only, hard delete)
+    // UC70-DEL: Delete care group (owner only, lifecycle-safe archive)
     @DeleteMapping("/{groupId}")
     @PreAuthorize("hasRole('MOTHER')")
     public ResponseEntity<ApiResponse<Void>> deleteCareGroup(
@@ -169,6 +171,17 @@ public class CareGroupController {
         var callerId = SecurityUtils.requireCurrentUserId(principal);
         var response = careGroupService.leaveCareGroup(groupId, callerId);
         return ResponseEntity.ok(ApiResponse.success(response, "You have left the care group"));
+    }
+
+    @PatchMapping("/{groupId}/journey")
+    @PreAuthorize("hasRole('MOTHER')")
+    public ResponseEntity<ApiResponse<RelinkCareGroupJourneyResponse>> relinkJourney(
+            @PathVariable UUID groupId,
+            @Valid @RequestBody RelinkCareGroupJourneyRequest request,
+            Principal principal) {
+        var callerId = SecurityUtils.requireCurrentUserId(principal);
+        var response = careGroupService.relinkJourney(groupId, request.getJourneyId(), callerId);
+        return ResponseEntity.ok(ApiResponse.success(response, "Care group journey relinked successfully"));
     }
 
     // UC83: Accept a pending invitation by invite token (token-based deep-link / QR / PHONE accept)

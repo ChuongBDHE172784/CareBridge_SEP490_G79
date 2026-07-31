@@ -140,6 +140,8 @@ class Reminder {
   final String? location;
   final String? note;
   final ReminderAssignee assignee;
+  final List<int> notificationOffsetsMinutes;
+  final String? timeZone;
 
   const Reminder({
     required this.id,
@@ -153,6 +155,8 @@ class Reminder {
     this.location,
     this.note,
     this.assignee = ReminderAssignee.mother,
+    this.notificationOffsetsMinutes = const [],
+    this.timeZone,
   });
 
   factory Reminder.fromJson(Map<String, dynamic> json) {
@@ -172,6 +176,12 @@ class Reminder {
       status: ReminderStatusExtension.fromApi(json['status'] as String?),
       location: json['location'] as String?,
       note: json['note'] as String?,
+      notificationOffsetsMinutes:
+          (json['notificationOffsetsMinutes'] as List<dynamic>? ?? const [])
+              .whereType<num>()
+              .map((value) => value.toInt())
+              .toList(),
+      timeZone: json['timeZone'] as String?,
     );
   }
 }

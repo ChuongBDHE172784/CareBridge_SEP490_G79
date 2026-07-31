@@ -1,9 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../../checklist/services/checklist_assignment_refresh_bus.dart';
+import '../../checklist/widgets/add_user_checklist_task_button.dart';
 import '../../journey/models/journey_model.dart';
 import '../../journey/services/journey_service.dart';
 import '../../reminder/models/reminder_model.dart';
 import '../../reminder/services/reminder_service.dart';
-import '../../reminder/screens/today_tasks_screen.dart';
+import '../../reminder/services/today_task_service.dart';
+import '../../reminder/widgets/today_tasks_panel.dart';
 import '../../notification/screens/notification_center_screen.dart';
 import '../../notification/services/notification_service.dart';
 import '../../../core/network/api_client.dart';
@@ -11,16 +18,24 @@ import '../../community/screens/community_feed_screen.dart';
 import '../../community/screens/view_content_screen.dart';
 import '../../community/models/content_model.dart';
 import '../../exercise/screens/mother_exercise_screen.dart';
-import '../../checklist/screens/preparation_checklist_screen.dart';
 
 /// CB-008 — Mother Home (UC-24, UC-49)
 /// Main home screen showing journey status card, next appointment alert,
 /// quick action grid, today's tasks, and personalized content suggestions.
 /// Data: GET /api/v1/journeys/me/dashboard (UC-24), mock tasks + articles.
 class MotherHomeScreen extends StatefulWidget {
-  const MotherHomeScreen({super.key, this.recoveryNotice});
+  const MotherHomeScreen({
+    super.key,
+    this.recoveryNotice,
+    this.todayTaskService,
+    this.dashboardLoader,
+    this.reminderLoader,
+  });
 
   final String? recoveryNotice;
+  final TodayTaskService? todayTaskService;
+  final Future<JourneyDashboard> Function()? dashboardLoader;
+  final Future<List<Reminder>> Function()? reminderLoader;
 
   @override
   State<MotherHomeScreen> createState() => _MotherHomeScreenState();
@@ -35,17 +50,19 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
   static const _surfaceContainerHigh = Color(0xFFFFE2D9);
   static const _surfaceContainerLow = Color(0xFFFFF1EC);
   static const _surfaceContainerHighest = Color(0xFFFADCD3);
-  static const _surfaceVariant = Color(0xFFFADCD3);
   static const _secondaryContainer = Color(0xFFF6DACF);
   static const _onSurface = Color(0xFF271812);
   static const _onSurfaceVariant = Color(0xFF524440);
   static const _error = Color(0xFFBA1A1A);
 
   final _journeyService = JourneyService();
-  final _reminderService = ReminderService.instance;
+  late final TodayTaskService _todayTaskService;
+  final TodayTasksPanelController _todayTasksController =
+      TodayTasksPanelController();
+  StreamSubscription<void>? _checklistAssignmentRefreshSubscription;
 
   JourneyDashboard? _dashboard;
-  List<Reminder> _tasks = [];
+  List<Reminder> _reminders = [];
   bool _loading = true;
   bool _hasUnread = false;
   int _loadGeneration = 0;
@@ -53,9 +70,14 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
   @override
   void initState() {
     super.initState();
+    _todayTaskService = widget.todayTaskService ?? TodayTaskService.instance;
     WidgetsBinding.instance.addObserver(this);
     JourneyService.dashboardRevision.addListener(_onJourneyDashboardChanged);
-    _reminderService.addListener(_onServiceChanged);
+    _checklistAssignmentRefreshSubscription = ChecklistAssignmentRefreshBus
+        .events
+        .listen((_) {
+          if (mounted) unawaited(_todayTasksController.refresh());
+        });
     _load();
   }
 
@@ -63,7 +85,7 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     JourneyService.dashboardRevision.removeListener(_onJourneyDashboardChanged);
-    _reminderService.removeListener(_onServiceChanged);
+    _checklistAssignmentRefreshSubscription?.cancel();
     super.dispose();
   }
 
@@ -72,10 +94,6 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
     if (state == AppLifecycleState.resumed) {
       _load();
     }
-  }
-
-  void _onServiceChanged() {
-    if (mounted) setState(() {});
   }
 
   void _onJourneyDashboardChanged() {
@@ -96,33 +114,71 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
   }
 
   Future<void> _load() async {
+    final todayRefresh = _todayTasksController.refresh();
     final generation = ++_loadGeneration;
-    setState(() => _loading = true);
+    final isInitialLoad = _dashboard == null;
+    if (isInitialLoad) {
+      setState(() => _loading = true);
+    }
     _checkUnread();
     try {
-      final dashboard = await _journeyService.getDashboard();
-      List<Reminder> tasks = [];
-      try {
-        tasks = await _reminderService.listTodayReminders();
-      } catch (_) {
-        tasks = [];
-      }
+      final dashboard =
+          await (widget.dashboardLoader?.call() ??
+              _journeyService.getDashboard());
+      final reminders = await _loadReminders();
       if (mounted && generation == _loadGeneration) {
         setState(() {
           _dashboard = dashboard;
-          _tasks = tasks.take(3).toList();
+          _reminders = reminders;
           _loading = false;
         });
       }
     } on ApiException {
-      if (mounted && generation == _loadGeneration) {
+      if (mounted && generation == _loadGeneration && isInitialLoad) {
         setState(() => _loading = false);
       }
     } catch (_) {
-      if (mounted && generation == _loadGeneration) {
+      if (mounted && generation == _loadGeneration && isInitialLoad) {
         setState(() => _loading = false);
       }
+    } finally {
+      await todayRefresh;
     }
+  }
+
+  Future<List<Reminder>> _loadReminders() async {
+    if (widget.reminderLoader != null) {
+      return widget.reminderLoader!();
+    }
+    try {
+      final upcoming = await ReminderService.instance.listUpcomingReminders();
+      if (upcoming.isNotEmpty) return upcoming;
+      return await ReminderService.instance.listTodayReminders();
+    } catch (_) {
+      return _reminders;
+    }
+  }
+
+  Reminder? _nearestAppointment() {
+    final pending =
+        _reminders
+            .where(
+              (reminder) =>
+                  reminder.reminderType == ReminderType.appointment &&
+                  reminder.status == ReminderStatus.pending,
+            )
+            .toList()
+          ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
+    return pending.firstOrNull;
+  }
+
+  String _formatDateTime(DateTime date) {
+    final localDate = date.toLocal();
+    final day = localDate.day.toString().padLeft(2, '0');
+    final month = localDate.month.toString().padLeft(2, '0');
+    final hour = localDate.hour.toString().padLeft(2, '0');
+    final minute = localDate.minute.toString().padLeft(2, '0');
+    return '$hour:$minute - $day/$month/${localDate.year}';
   }
 
   @override
@@ -147,20 +203,19 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
                 const SizedBox(height: 24),
                 if (_loading)
                   const Center(
-                    child: CircularProgressIndicator(color: _primaryContainer),
+                    child: CircularProgressIndicator(
+                      key: Key('mother-home-dashboard-loading'),
+                      color: _primaryContainer,
+                    ),
                   )
                 else ...[
                   _buildJourneyCard(),
                   const SizedBox(height: 16),
                   _buildAlertCard(),
                   const SizedBox(height: 24),
-                  _buildQuickActions(),
-                  const SizedBox(height: 24),
-                  _buildTasksSection(),
-                  const SizedBox(height: 24),
-                  _buildPreparationChecklistSection(),
-                  const SizedBox(height: 24),
                 ],
+                _buildTasksSection(),
+                const SizedBox(height: 24),
               ]),
             ),
           ),
@@ -530,220 +585,119 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
   }
 
   Widget _buildAlertCard() {
-    final next = _tasks
-        .where((t) => t.status == ReminderStatus.pending)
-        .firstOrNull;
-    if (next == null) return const SizedBox.shrink();
-    final timeStr =
-        '${next.scheduledAt.hour.toString().padLeft(2, '0')}:${next.scheduledAt.minute.toString().padLeft(2, '0')}';
-    final detail = [
-      timeStr,
-      if (next.location != null) next.location!,
-    ].join(' · ');
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _surfaceVariant,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(color: _surface, shape: BoxShape.circle),
-            child: const Icon(Icons.event, color: _primary, size: 22),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Lịch hẹn sắp tới',
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: _onSurface,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${next.title} — $detail',
-                  style: const TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 14,
-                    color: _onSurfaceVariant,
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+    final appointment = _nearestAppointment();
 
-  Widget _buildQuickActions() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Ghi chú nhanh',
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: _onSurface,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            _QuickAction(
-              icon: Icons.monitor_weight,
-              label: 'Cân nặng',
-              onTap: () {},
-            ),
-            const SizedBox(width: 12),
-            _QuickAction(icon: Icons.water_drop, label: 'Nước', onTap: () {}),
-            const SizedBox(width: 12),
-            _QuickAction(icon: Icons.mood, label: 'Tâm trạng', onTap: () {}),
-            const SizedBox(width: 12),
-            _QuickAction(
-              icon: Icons.child_care,
-              label: 'Cử động',
-              onTap: () {},
+    return GestureDetector(
+      key: const Key('mother-home-next-appointment-card'),
+      onTap: () async {
+        await context.push('/reminders/calendar');
+        if (mounted) await _load();
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF2EAE4),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x0F5A463F),
+              blurRadius: 24,
+              offset: Offset(0, 8),
             ),
           ],
         ),
-      ],
-    );
-  }
-
-  Widget _buildTasksSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Việc hôm nay',
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: _onSurface,
-              ),
-            ),
-            GestureDetector(
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const TodayTasksScreen()),
-              ),
-              child: const Text(
-                'Xem tất cả',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: _primary,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        if (_tasks.isEmpty)
-          const Text(
-            'Không có việc nào hôm nay.',
-            style: TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant),
-          )
-        else
-          ...List.generate(_tasks.length, (i) {
-            final t = _tasks[i];
-            return Padding(
-              padding: EdgeInsets.only(bottom: i < _tasks.length - 1 ? 10 : 0),
-              child: _TaskRow(
-                reminder: t,
-                isDone: _reminderService.isDone(t),
-                onToggle: () => _reminderService.toggleDone(t),
-              ),
-            );
-          }),
-      ],
-    );
-  }
-
-  Widget _buildPreparationChecklistSection() {
-    return Semantics(
-      button: true,
-      label: 'Mở Checklist chuẩn bị',
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => const PreparationChecklistScreen(),
-            ),
-          ),
-          child: Ink(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: _surfaceContainerLow,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: _secondaryContainer),
-            ),
-            child: Row(
+            Row(
               children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: const BoxDecoration(
-                    color: _secondaryContainer,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.checklist_rounded, color: _primary),
-                ),
-                const SizedBox(width: 14),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Checklist chuẩn bị',
+                      const Text(
+                        'Lịch hẹn tiếp theo',
                         style: TextStyle(
                           fontFamily: 'Lexend',
                           fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
                           color: _onSurface,
                         ),
                       ),
-                      SizedBox(height: 4),
+                      const SizedBox(height: 2),
                       Text(
-                        'Theo dõi các mục cần chuẩn bị của mẹ và bé',
-                        style: TextStyle(
+                        appointment?.title ??
+                            'Chưa có lịch khám sắp tới (Chạm để xem hoặc tạo mới)',
+                        style: const TextStyle(
                           fontFamily: 'Lexend',
-                          fontSize: 12,
+                          fontSize: 14,
                           color: _onSurfaceVariant,
                         ),
                       ),
                     ],
                   ),
                 ),
-                Icon(Icons.chevron_right_rounded, color: _primary),
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: const BoxDecoration(
+                    color: _surface,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.calendar_today,
+                    color: _primary,
+                    size: 20,
+                  ),
+                ),
               ],
             ),
-          ),
+            const SizedBox(height: 12),
+            const Divider(color: Color(0xFFD6C2BD), thickness: 1),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Icon(Icons.schedule, size: 16, color: _onSurfaceVariant),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    appointment != null
+                        ? [
+                            _formatDateTime(appointment.scheduledAt),
+                            if (appointment.location != null)
+                              appointment.location!,
+                          ].join(' • ')
+                        : 'Quản lý danh sách lịch hẹn',
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 14,
+                      color: _onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: _onSurfaceVariant,
+                  size: 20,
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
   }
+
+  Widget _buildTasksSection() => TodayTasksPanel(
+    service: _todayTaskService,
+    audience: TodayTasksAudience.mother,
+    layout: TodayTasksLayout.sourceGroups,
+    controller: _todayTasksController,
+    headingAction: (_dashboard?.journeyId?.isNotEmpty ?? false)
+        ? AddUserChecklistTaskButton(journeyId: _dashboard!.journeyId)
+        : null,
+  );
 
   Widget _buildContentSection() {
     if (_dashboard == null) return const SizedBox.shrink();
@@ -819,75 +773,6 @@ class _QuickAction extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-// ─── Task row ─────────────────────────────────────────────────────────────────
-class _TaskRow extends StatelessWidget {
-  final Reminder reminder;
-  final bool isDone;
-  final VoidCallback onToggle;
-
-  const _TaskRow({
-    required this.reminder,
-    required this.isDone,
-    required this.onToggle,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF8F6),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF5A463F).withAlpha(15),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          GestureDetector(
-            onTap: onToggle,
-            child: Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isDone ? const Color(0xFF845143) : Colors.transparent,
-                border: Border.all(
-                  color: isDone
-                      ? const Color(0xFF845143)
-                      : const Color(0xFFD6C2BD),
-                  width: 2,
-                ),
-              ),
-              child: isDone
-                  ? const Icon(Icons.check, size: 14, color: Colors.white)
-                  : null,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Text(
-              reminder.title,
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 16,
-                color: isDone
-                    ? const Color(0xFF84736F)
-                    : const Color(0xFF271812),
-                decoration: isDone ? TextDecoration.lineThrough : null,
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }

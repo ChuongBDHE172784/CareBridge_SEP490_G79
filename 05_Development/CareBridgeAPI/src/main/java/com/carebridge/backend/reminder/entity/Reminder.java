@@ -48,6 +48,10 @@ public class Reminder {
     @Column(name = "scheduled_at", nullable = false)
     private Instant scheduledAt;
 
+    @Builder.Default
+    @Column(name = "reminder_occurrence_generation", nullable = false)
+    private long occurrenceGeneration = 0L;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "recurrence_type", length = 30)
     private RecurrenceType recurrenceType;
@@ -86,11 +90,4 @@ public class Reminder {
     @Column(name = "task_type", nullable = false, updatable = false, length = 40)
     private String taskType = "SCHEDULED_REMINDER";
 
-    @PrePersist
-    @PreUpdate
-    void prepareCanonicalTask() {
-        if (careSubjectId == null) {
-            careSubjectId = babyId != null ? babyId : journeyId;
-        }
-    }
 }

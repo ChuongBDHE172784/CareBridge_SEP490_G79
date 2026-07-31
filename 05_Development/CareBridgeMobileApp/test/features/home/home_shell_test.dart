@@ -7,6 +7,7 @@ import 'package:untitled/features/directChat/models/direct_conversation.dart';
 import 'package:untitled/features/directChat/models/expert_directory_item.dart';
 import 'package:untitled/features/directChat/services/direct_chat_service.dart';
 import 'package:untitled/features/directChat/services/conversation_refresh_bus.dart';
+import 'package:untitled/features/checklist/services/checklist_assignment_refresh_bus.dart';
 import 'package:untitled/features/home/screens/home_shell.dart';
 import 'package:untitled/features/journey/screens/mother_journey_screen.dart';
 
@@ -111,6 +112,28 @@ void main() {
       expect(find.text('Chuyên gia đã xác thực'), findsOneWidget);
     },
   );
+
+  testWidgets('reactivating the retained Home tab requests a Today refresh', (
+    tester,
+  ) async {
+    var refreshEvents = 0;
+    final subscription = ChecklistAssignmentRefreshBus.events.listen(
+      (_) => refreshEvents++,
+    );
+    addTearDown(subscription.cancel);
+
+    await tester.pumpWidget(const MaterialApp(home: HomeShell()));
+    await tester.pumpAndSettle();
+
+    final navigation = tester.widget<NavigationBar>(find.byType(NavigationBar));
+    navigation.onDestinationSelected!(1);
+    await tester.pump();
+    expect(refreshEvents, 0);
+
+    navigation.onDestinationSelected!(0);
+    await tester.pump();
+    expect(refreshEvents, 1);
+  });
 
   testWidgets(
     'foreground conversation events refresh the Mother unread badge',

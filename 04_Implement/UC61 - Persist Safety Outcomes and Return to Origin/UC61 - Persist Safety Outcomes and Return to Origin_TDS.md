@@ -62,12 +62,12 @@
 | **Priority** | P1; OV-01 safety-integrity release gate |
 | **Data Classification** | Sensitive-PII references; projection is minimum-necessary |
 | **Compliance Scope** | CareBridge BR-PRIVACY, BR-SAFETY, BR-RBAC, consent and immutable audit rules; formal legal citations are Open |
-| **Upstream Dependencies** | Stories 6.1–6.6, lifecycle consent, canonical journey, baby linkage, triage completion, RED emergency association |
+| **Upstream Dependencies** | Stories 6.1–6.6, lifecycle consent, canonical journey, standalone baby origin, triage completion, RED emergency association |
 | **Downstream Consumers** | Mother Journey timeline, result/emergency return navigation, OV-01 tests |
 
 ### 1.1 Intended Outcome
 
-A validated lifecycle-bound conversation intake produces exactly one append-only safety projection before terminal success. GREEN/YELLOW and restart-safe RED continuation return to a server-validated Mother Journey or linked baby origin through an owner-bound opaque token.
+A validated lifecycle-bound conversation intake produces exactly one append-only safety projection before terminal success. GREEN/YELLOW and restart-safe RED continuation return to a server-validated Mother Journey or an owned active standalone baby origin through an owner-bound opaque token.
 
 ### 1.2 In Scope
 
@@ -153,7 +153,7 @@ The ordinary `IntakeSessionCompleted` listener joins the triage transaction. Sto
 | **Date** | 2026-07-22 |
 | **Approval basis** | Approved seven-day default TTL and continuation contract in UC61 implementation approval |
 
-Conversation intake receives a random UUID (about 122 random bits), `expires_at` (default seven days, configurable), and `acknowledged_at`. It is not an authorization credential: JWT ownership, consent, journey, origin, baby linkage, locked stage, and dashboard/action pairing are revalidated. Malformed, unknown, foreign, expired, or acknowledged values resolve as neutral `TRIAGE-014`; owned but ineligible consent/origin resolves as `TRIAGE-015`. Same-owner acknowledgement replay returns 200. Token bodies are redacted from telemetry and never appear in URL, audit, logs, projection, or screenshots.
+Conversation intake receives a random UUID (about 122 random bits), `expires_at` (default seven days, configurable), and `acknowledged_at`. It is not an authorization credential: JWT ownership, consent, typed origin identity, locked stage, and dashboard/action pairing are revalidated. Maternal origins require an owned active `journeyId`; `BABY_PROFILE` origins require `journeyId == null`, an owned active baby, and `originReferenceId` equal to that baby identity. Malformed, unknown, foreign, expired, or acknowledged values resolve as neutral `TRIAGE-014`; owned but ineligible consent/origin resolves as `TRIAGE-015`. Same-owner acknowledgement replay returns 200. Token bodies are redacted from telemetry and never appear in URL, audit, logs, projection, or screenshots.
 
 ### ADR-061-04 — Unified globally paginated timeline
 
@@ -248,7 +248,7 @@ CREATE UNIQUE INDEX uq_intake_sessions_continuation_token
 CREATE TABLE lifecycle_safety_outcomes (
   outcome_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   owner_user_id uuid NOT NULL,
-  journey_id uuid NOT NULL,
+  journey_id uuid,
   intake_session_id uuid NOT NULL UNIQUE,
   emergency_session_id uuid,
   risk_level varchar(10) NOT NULL,
@@ -263,7 +263,11 @@ CREATE TABLE lifecycle_safety_outcomes (
   CONSTRAINT fk_safety_emergency_owner FOREIGN KEY (emergency_session_id, owner_user_id) REFERENCES emergency_sessions(id, user_id) ON DELETE RESTRICT,
   CONSTRAINT chk_safety_risk CHECK (risk_level IN ('GREEN','YELLOW','RED')),
   CONSTRAINT chk_safety_origin CHECK (origin_dashboard IN ('MOTHER_JOURNEY','BABY_PROFILE')),
-  CONSTRAINT chk_safety_action CHECK (origin_action IN ('RETURN_TO_MOTHER_JOURNEY','RETURN_TO_BABY_PROFILE'))
+  CONSTRAINT chk_safety_action CHECK (origin_action IN ('RETURN_TO_MOTHER_JOURNEY','RETURN_TO_BABY_PROFILE')),
+  CONSTRAINT chk_safety_origin_journey CHECK (
+    (origin_dashboard = 'MOTHER_JOURNEY' AND journey_id IS NOT NULL)
+    OR (origin_dashboard = 'BABY_PROFILE' AND journey_id IS NULL)
+  )
 );
 
 CREATE INDEX idx_safety_journey_timeline
@@ -279,7 +283,7 @@ The migration adds the exact five-stage check using the current `TriageStage` va
 - `OriginDashboard`: `MOTHER_JOURNEY`, `BABY_PROFILE`.
 - `OriginAction`: `RETURN_TO_MOTHER_JOURNEY`, `RETURN_TO_BABY_PROFILE`.
 - Maternal mapping: PRECONCEPTION↔PRE_PREGNANCY, PREGNANCY↔PREGNANCY, POSTPARTUM↔POSTPARTUM.
-- Pediatric mapping reuses Story 6.6's production classifier and Story 6.5's owned `relatedJourneyId`; this TDS adds no age threshold.
+- Pediatric mapping reuses Story 6.6's production classifier. `BABY_PROFILE` origins require INFANT/TODDLER, `journeyId == null`, an owned active baby, and matching `originReferenceId`; this TDS adds no age threshold.
 
 ---
 
@@ -380,11 +384,11 @@ interface IJourneyTimelineService {
 
 - `IIntakeSessionRepository`: idempotent owner/key lookup and token lookup scoped by owner.
 - `LifecycleSafetyOutcomeRepository`: conflict-safe insert returning whether created; paged timeline query support; no update/delete API.
-- Existing journey, baby, escalation repositories remain authoritative for ownership/link/source checks.
+- Existing journey, baby, and escalation repositories remain authoritative for ownership, typed-origin, and source checks. Baby-origin validation never requires or creates a Mother Journey relation.
 
 ### 8.3 Mobile Interfaces
 
-- `TriageEntryContext`: stage, lockStage, origin enum, journeyId, originReferenceId.
+- `TriageEntryContext`: stage, lockStage, origin enum, nullable journeyId, originReferenceId. For `BABY_PROFILE`, journeyId is always null and originReferenceId is the owned active baby ID.
 - `TriageContinuationStore`: encrypted per-user save/load/clear with generation guard.
 - `TriageContinuationRestoreCoordinator`: resolve after auth restoration, require status/risk/stage/action, verify the exact dashboard/action pair, and map only fixed routes.
 - `TriageContinuationArrival`: destination-owned marker that presents the recording confirmation and acknowledges only after the exact Mother Journey/Baby Profile destination renders.

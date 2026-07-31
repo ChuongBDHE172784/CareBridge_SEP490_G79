@@ -8,8 +8,10 @@ import com.carebridge.backend.reminder.entity.RecurrenceType;
 import com.carebridge.backend.reminder.entity.Reminder;
 import com.carebridge.backend.reminder.entity.ReminderStatus;
 import com.carebridge.backend.reminder.entity.ReminderType;
+import com.carebridge.backend.reminder.notification.service.AppointmentNotificationScheduleService;
 import com.carebridge.backend.reminder.repository.ReminderRepository;
 import com.carebridge.backend.reminder.service.INotificationService;
+import com.carebridge.backend.reminder.service.ReminderActionAuditContext;
 import com.carebridge.backend.reminder.service.impl.ReminderServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,6 +23,7 @@ import org.springframework.http.HttpStatus;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -36,6 +39,7 @@ class UpdateReminderServiceTest {
     @Mock private ReminderRepository reminderRepository;
     @Mock private INotificationService notificationService;
     @Mock private AuditService auditService;
+    @Mock private AppointmentNotificationScheduleService appointmentNotificationScheduleService;
     @InjectMocks private ReminderServiceImpl reminderService;
 
     // UPD-TC-001: Happy path — update title and scheduledAt
@@ -171,6 +175,53 @@ class UpdateReminderServiceTest {
         assertThat(resp.getSnoozedUntil()).isNotNull();
     }
 
+    @Test
+    void snoozeReminder_appointmentKeepsDurableMilestonesAndSchedulesTransientFollowUp() {
+        var appointment = ReminderTestFactory.pendingReminder(ReminderType.APPOINTMENT);
+        Instant scheduledAt = appointment.getScheduledAt();
+        when(reminderRepository.findById(ReminderTestFactory.REMINDER_ID))
+                .thenReturn(Optional.of(appointment));
+        when(reminderRepository.save(any(Reminder.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(notificationService.scheduleFcmPush(any(), any(), any(), any()))
+                .thenReturn("appointment-snooze-job");
+
+        ReminderDetailResponse response = reminderService.snoozeReminder(
+                ReminderTestFactory.REMINDER_ID,
+                ReminderTestFactory.validSnoozeRequest(),
+                ReminderTestFactory.OWNER_ID);
+
+        assertThat(response.getStatus()).isEqualTo(ReminderStatus.SNOOZED.name());
+        assertThat(response.getScheduledAt()).isEqualTo(scheduledAt);
+        verify(appointmentNotificationScheduleService, never()).cancelRemaining(any());
+        verify(appointmentNotificationScheduleService, never()).reschedule(any(), any(), anyBoolean(), any());
+        verify(notificationService).scheduleFcmPush(
+                eq(ReminderTestFactory.OWNER_ID),
+                eq(appointment.getTitle()),
+                contains("Snoozed reminder"),
+                eq(response.getSnoozedUntil()));
+    }
+
+    @Test
+    void snoozeReminder_appointmentResnoozeCancelsOnlyPreviousTransientJob() {
+        var appointment = ReminderTestFactory.pendingReminder(ReminderType.APPOINTMENT);
+        appointment.setStatus(ReminderStatus.SNOOZED);
+        appointment.setFcmJobId("previous-appointment-snooze-job");
+        when(reminderRepository.findById(ReminderTestFactory.REMINDER_ID))
+                .thenReturn(Optional.of(appointment));
+        when(reminderRepository.save(any(Reminder.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(notificationService.scheduleFcmPush(any(), any(), any(), any()))
+                .thenReturn("replacement-appointment-snooze-job");
+
+        reminderService.snoozeReminder(
+                ReminderTestFactory.REMINDER_ID,
+                ReminderTestFactory.validSnoozeRequest(),
+                ReminderTestFactory.OWNER_ID);
+
+        verify(notificationService).cancelFcmJob("previous-appointment-snooze-job");
+        verify(appointmentNotificationScheduleService, never()).cancelRemaining(any());
+        assertThat(appointment.getFcmJobId()).isEqualTo("replacement-appointment-snooze-job");
+    }
+
     // UPD-TC-007: Snooze — snoozedUntil > 24h in future → REM-008 / 400
     @Test
     void snoozeReminder_snoozedUntilTooFar_throwsBusinessException400() {
@@ -244,6 +295,43 @@ class UpdateReminderServiceTest {
         verify(notificationService).cancelFcmJob("job-complete");
         verify(auditService).log(AuditAction.REMINDER_COMPLETED, ReminderTestFactory.OWNER_ID,
                 "Reminder", ReminderTestFactory.REMINDER_ID.toString(), "completed");
+    }
+
+    @Test
+    void completeReminder_snoozedAppointmentCancelsMilestonesAndTransientJob() {
+        var appointment = ReminderTestFactory.pendingReminder(ReminderType.APPOINTMENT);
+        appointment.setStatus(ReminderStatus.SNOOZED);
+        appointment.setFcmJobId("appointment-snooze-job");
+        when(reminderRepository.findById(ReminderTestFactory.REMINDER_ID))
+                .thenReturn(Optional.of(appointment));
+        when(reminderRepository.save(any(Reminder.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        ReminderDetailResponse response = reminderService.completeReminder(
+                ReminderTestFactory.REMINDER_ID, ReminderTestFactory.OWNER_ID);
+
+        assertThat(response.getStatus()).isEqualTo(ReminderStatus.COMPLETED.name());
+        verify(appointmentNotificationScheduleService).cancelRemaining(ReminderTestFactory.REMINDER_ID);
+        verify(notificationService).cancelFcmJob("appointment-snooze-job");
+        assertThat(appointment.getFcmJobId()).isNull();
+    }
+
+    @Test
+    void completeReminder_recurringAppointmentCancelsOnlySelectedOccurrence() {
+        var appointment = ReminderTestFactory.pendingReminder(ReminderType.APPOINTMENT);
+        appointment.setRecurrenceType(RecurrenceType.DAILY);
+        UUID occurrenceId = UUID.fromString("00000000-0000-0000-0000-000000000301");
+        when(reminderRepository.findById(ReminderTestFactory.REMINDER_ID))
+                .thenReturn(Optional.of(appointment));
+        when(reminderRepository.save(any(Reminder.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        reminderService.completeReminder(
+                ReminderTestFactory.REMINDER_ID,
+                ReminderTestFactory.OWNER_ID,
+                new ReminderActionAuditContext(occurrenceId, "USER_ACTION", UUID.randomUUID()));
+
+        verify(appointmentNotificationScheduleService).cancelOccurrence(
+                ReminderTestFactory.REMINDER_ID, occurrenceId);
+        verify(appointmentNotificationScheduleService, never()).cancelRemaining(any());
     }
 
     // UPD-TC-010: Complete snoozed reminder happy path → status = COMPLETED

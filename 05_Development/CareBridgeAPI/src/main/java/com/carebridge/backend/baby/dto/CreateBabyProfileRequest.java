@@ -1,12 +1,12 @@
 package com.carebridge.backend.baby.dto;
 
 import com.carebridge.backend.baby.entity.Gender;
+import com.fasterxml.jackson.annotation.JsonAnySetter;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.UUID;
 
 @Data
 public class CreateBabyProfileRequest {
@@ -29,12 +29,8 @@ public class CreateBabyProfileRequest {
     @DecimalMax("100.0")
     private BigDecimal birthLengthCm;
 
-    private UUID relatedJourneyId;
-
-    private UUID submissionId;
-
-    @AssertTrue(message = "submissionId is required when relatedJourneyId is provided")
-    public boolean isLinkSubmissionValid() {
-        return relatedJourneyId == null || submissionId != null;
+    @JsonAnySetter
+    public void rejectUnknownField(String fieldName, Object ignoredValue) {
+        throw new IllegalArgumentException("Unsupported baby profile field: " + fieldName);
     }
 }

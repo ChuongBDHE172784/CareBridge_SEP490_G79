@@ -32,5 +32,10 @@ public interface AdminChecklistTemplateService {
 
     List<ChecklistTemplateVersionSnapshotResponse> getVersionHistory(UUID id);
 
+    AdminChecklistTemplateDetailResponse cloneVersion(UUID id, UUID adminUserId);
+
+    AdminChecklistTemplateDetailResponse cloneVersionInLineage(
+            UUID lineageId, UUID id, UUID adminUserId);
+
     HideChecklistTemplateResponse archive(UUID id, HideChecklistTemplateRequest request, UUID adminUserId);
 }

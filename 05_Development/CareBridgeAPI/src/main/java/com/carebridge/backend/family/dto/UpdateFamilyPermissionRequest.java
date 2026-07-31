@@ -13,8 +13,11 @@ public class UpdateFamilyPermissionRequest {
     private Boolean logs;
     private Boolean alerts;
     private Boolean records;
+    private Boolean checklistView;
+    private Boolean checklistComplete;
 
     public boolean hasAtLeastOneField() {
-        return calendar != null || logs != null || alerts != null || records != null;
+        return calendar != null || logs != null || alerts != null || records != null
+                || checklistView != null || checklistComplete != null;
     }
 }

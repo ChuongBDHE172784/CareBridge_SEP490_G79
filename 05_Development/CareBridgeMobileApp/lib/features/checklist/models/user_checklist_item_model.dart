@@ -52,6 +52,8 @@ class UserChecklistItem {
   final DateTime? completedAt;
   final int itemOrder;
   final DateTime? createdAt;
+  final String? targetSubject;
+  final String? origin;
 
   const UserChecklistItem({
     required this.itemId,
@@ -64,6 +66,8 @@ class UserChecklistItem {
     this.completedAt,
     required this.itemOrder,
     this.createdAt,
+    this.targetSubject,
+    this.origin,
   });
 
   factory UserChecklistItem.fromJson(Map<String, dynamic> json) {
@@ -82,6 +86,8 @@ class UserChecklistItem {
       createdAt: json['createdAt'] == null
           ? null
           : DateTime.parse(json['createdAt'] as String),
+      targetSubject: json['targetSubject'] as String?,
+      origin: json['origin'] as String?,
     );
   }
 }

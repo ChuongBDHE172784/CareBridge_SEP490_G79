@@ -86,6 +86,28 @@ class CareGroupAccessPolicyTest {
         assertThat(result).isTrue();
     }
 
+    @Test
+    void hasPermission_uppercaseChecklistViewGrant_returnsTrue() {
+        UUID userId = UUID.randomUUID();
+        CareGroupMember member = CareCalendarTestFactory.makeMember(
+                GROUP_ID, userId, InviteStatus.ACCEPTED, "{\"CHECKLIST_VIEW\":true}");
+        when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, userId))
+                .thenReturn(Optional.of(member));
+
+        assertThat(policy.hasPermission(GROUP_ID, userId, PermissionFlag.CHECKLIST_VIEW)).isTrue();
+    }
+
+    @Test
+    void hasPermission_revokedMemberWithStaleGrant_returnsFalse() {
+        UUID userId = UUID.randomUUID();
+        CareGroupMember member = CareCalendarTestFactory.makeMember(
+                GROUP_ID, userId, InviteStatus.REVOKED, "{\"CHECKLIST_VIEW\":true}");
+        when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, userId))
+                .thenReturn(Optional.of(member));
+
+        assertThat(policy.hasPermission(GROUP_ID, userId, PermissionFlag.CHECKLIST_VIEW)).isFalse();
+    }
+
     // ── Malformed JSON → default-deny (no exception propagated) ──────────────
 
     @Test
@@ -102,6 +124,17 @@ class CareGroupAccessPolicyTest {
     }
 
     // ── No membership row at all → default-deny ───────────────────────────────
+
+    @Test
+    void hasPermission_stringChecklistBoolean_returnsFalse() {
+        UUID userId = UUID.randomUUID();
+        CareGroupMember member = CareCalendarTestFactory.makeMember(
+                GROUP_ID, userId, InviteStatus.ACCEPTED, "{\"CHECKLIST_VIEW\":\"true\"}");
+        when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, userId))
+                .thenReturn(Optional.of(member));
+
+        assertThat(policy.hasPermission(GROUP_ID, userId, PermissionFlag.CHECKLIST_VIEW)).isFalse();
+    }
 
     @Test
     void hasPermission_noMemberRow_returnsFalse() {

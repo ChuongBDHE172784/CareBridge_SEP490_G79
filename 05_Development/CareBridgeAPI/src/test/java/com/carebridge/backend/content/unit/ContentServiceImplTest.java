@@ -176,7 +176,7 @@ class ContentServiceImplTest {
         ChecklistItem item2 = makeChecklistItem(template, 2);
         ChecklistItem item3 = makeChecklistItem(template, 3);
 
-        when(checklistTemplateRepository.findByStageAndStatusOrderByUpdatedAtDesc(
+        when(checklistTemplateRepository.findAllOptionalByStageAndStatus(
                 ContentStage.PREGNANCY, ChecklistTemplateStatus.APPROVED))
                 .thenReturn(List.of(template));
         // DB ORDER BY item_order returns already-sorted list
@@ -197,7 +197,7 @@ class ContentServiceImplTest {
     @Test
     void getChecklists_withNullStage_returnsAllTemplates() {
         ChecklistTemplate template = makeChecklistTemplate(ContentStage.PREGNANCY);
-        when(checklistTemplateRepository.findByStatusOrderByUpdatedAtDesc(
+        when(checklistTemplateRepository.findAllOptionalByStatus(
                 ChecklistTemplateStatus.APPROVED)).thenReturn(List.of(template));
         when(checklistItemRepository.findAllByApprovedTemplateIds(
                 java.util.Set.of(template.getId()), ChecklistTemplateStatus.APPROVED))
@@ -211,7 +211,7 @@ class ContentServiceImplTest {
     @Test
     void getChecklists_templateWithNoItems_returnsEmptyItemList() {
         ChecklistTemplate template = makeChecklistTemplate(ContentStage.POSTPARTUM);
-        when(checklistTemplateRepository.findByStageAndStatusOrderByUpdatedAtDesc(
+        when(checklistTemplateRepository.findAllOptionalByStageAndStatus(
                 ContentStage.POSTPARTUM, ChecklistTemplateStatus.APPROVED))
                 .thenReturn(List.of(template));
         when(checklistItemRepository.findAllByApprovedTemplateIds(
@@ -227,7 +227,7 @@ class ContentServiceImplTest {
     void getChecklists_withStage_returnsOnlyApprovedTemplates() {
         ChecklistTemplate approved = makeChecklistTemplate(
                 ContentStage.PREGNANCY, ChecklistTemplateStatus.APPROVED);
-        when(checklistTemplateRepository.findByStageAndStatusOrderByUpdatedAtDesc(
+        when(checklistTemplateRepository.findAllOptionalByStageAndStatus(
                 ContentStage.PREGNANCY, ChecklistTemplateStatus.APPROVED))
                 .thenReturn(List.of(approved));
         when(checklistItemRepository.findAllByApprovedTemplateIds(
@@ -245,7 +245,7 @@ class ContentServiceImplTest {
     void getChecklists_withoutStage_returnsOnlyApprovedTemplates() {
         ChecklistTemplate approved = makeChecklistTemplate(
                 ContentStage.POSTPARTUM, ChecklistTemplateStatus.APPROVED);
-        when(checklistTemplateRepository.findByStatusOrderByUpdatedAtDesc(
+        when(checklistTemplateRepository.findAllOptionalByStatus(
                 ChecklistTemplateStatus.APPROVED))
                 .thenReturn(List.of(approved));
         when(checklistItemRepository.findAllByApprovedTemplateIds(

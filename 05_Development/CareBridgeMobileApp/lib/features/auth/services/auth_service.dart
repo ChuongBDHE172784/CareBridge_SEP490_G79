@@ -245,7 +245,7 @@ class AuthService {
     final body = <String, dynamic>{'name': name, 'password': password};
     if (email != null && email.isNotEmpty) body['email'] = email;
     if (phone != null && phone.isNotEmpty) body['phone'] = phone;
-    final res = await apiPost('/api/v1/auth/register', body);
+    final res = await _postRequest('/api/v1/auth/register', body);
     return OtpSendResponse.fromJson(res['data'] as Map<String, dynamic>);
   }
 

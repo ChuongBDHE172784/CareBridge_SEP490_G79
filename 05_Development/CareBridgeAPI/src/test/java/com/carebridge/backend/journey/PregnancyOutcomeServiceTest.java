@@ -126,7 +126,6 @@ class PregnancyOutcomeServiceTest {
 
         assertThat(response.getOutcomeType()).isEqualTo(PregnancyOutcomeType.LIVE_BIRTH);
         assertThat(response.getJourneyType()).isEqualTo(JourneyType.POSTPARTUM);
-        assertThat(response.isBabyActionsEligible()).isTrue();
         assertThat(journey.getJourneyType()).isEqualTo(JourneyType.POSTPARTUM);
         assertThat(journey.getDeliveryDate()).isEqualTo(LocalDate.of(2026, 7, 18));
         ArgumentCaptor<MotherJourneyTransition> transition =
@@ -168,7 +167,6 @@ class PregnancyOutcomeServiceTest {
                 request(PregnancyOutcomeType.PREGNANCY_LOSS, null));
 
         assertThat(response.getJourneyType()).isEqualTo(JourneyType.POSTPARTUM);
-        assertThat(response.isBabyActionsEligible()).isFalse();
         assertThat(journey.getDeliveryDate()).isNull();
     }
 
@@ -202,6 +200,44 @@ class PregnancyOutcomeServiceTest {
         assertThat(response.getJourneyType()).isEqualTo(JourneyType.PREGNANCY);
         assertThat(journey.getDeliveryDate()).isNull();
         verify(journeyRepository).saveAndFlush(any());
+    }
+
+    @Test
+    void newPregnancyEpochDoesNotRequireCorrectionForHistoricPostpartumOutcome() {
+        MotherJourney journey = activePregnancy();
+        when(journeyRepository.findByIdForUpdate(JOURNEY_ID)).thenReturn(Optional.of(journey));
+        when(transitionRepository.findLatestPostpartumToPregnancyEpochVersion(JOURNEY_ID))
+                .thenReturn(Optional.of(3L));
+        when(outcomeRepository.findByJourneyIdAndSubmissionIdAfterEpochVersion(
+                JOURNEY_ID, SUBMISSION_ID, 3L)).thenReturn(Optional.empty());
+        when(outcomeRepository.findFirstByJourneyIdAfterEpochVersionOrderByRevisionNumberDesc(
+                JOURNEY_ID, 3L)).thenReturn(Optional.empty());
+        when(journeyRepository.saveAndFlush(any())).thenAnswer(invocation -> {
+            MotherJourney saved = invocation.getArgument(0);
+            saved.setVersion(4L);
+            return saved;
+        });
+        when(outcomeRepository.saveAndFlush(any())).thenAnswer(invocation -> {
+            PregnancyOutcomeEvidence evidence = invocation.getArgument(0);
+            evidence.setId(UUID.randomUUID());
+            return evidence;
+        });
+        when(transitionRepository.saveAndFlush(any())).thenAnswer(invocation -> {
+            MotherJourneyTransition transition = invocation.getArgument(0);
+            transition.setId(UUID.randomUUID());
+            return transition;
+        });
+
+        service.recordPregnancyOutcome(
+                OWNER_ID, JOURNEY_ID, request(PregnancyOutcomeType.ONGOING, null));
+
+        ArgumentCaptor<PregnancyOutcomeEvidence> evidence =
+                ArgumentCaptor.forClass(PregnancyOutcomeEvidence.class);
+        verify(outcomeRepository).saveAndFlush(evidence.capture());
+        assertThat(evidence.getValue().getRevisionNumber()).isEqualTo(1);
+        assertThat(evidence.getValue().getSupersedesEvidenceId()).isNull();
+        verify(outcomeRepository, never()).findFirstByJourneyIdOrderByRevisionNumberDesc(JOURNEY_ID);
+        verify(outcomeRepository, never()).findByJourneyIdAndSubmissionId(JOURNEY_ID, SUBMISSION_ID);
     }
 
     @Test

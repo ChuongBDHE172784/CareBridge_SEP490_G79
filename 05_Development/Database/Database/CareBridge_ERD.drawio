@@ -73,8 +73,8 @@
         <mxCell id="ent_postpartum_logs" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#4F4F4F;fontFamily=Arial;align=left;verticalAlign=top;spacing=8;" value="&lt;div style=&quot;font-size:12px&quot;&gt;&lt;b&gt;postpartum_logs&lt;/b&gt;&lt;/div&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;div style=&quot;font-size:11px;line-height:1.35;text-align:left&quot;&gt;&lt;b&gt;PK&lt;/b&gt; postpartum_log_id&lt;br/&gt;&lt;b&gt;FK&lt;/b&gt; journey_id&lt;br/&gt;log_date&lt;br/&gt;pain_level&lt;br/&gt;bleeding_level&lt;br/&gt;mood_level&lt;br/&gt;sleep_hours&lt;br/&gt;breastfeeding_note&lt;br/&gt;symptom_note&lt;br/&gt;created_at&lt;br/&gt;updated_at&lt;/div&gt;" vertex="1">
           <mxGeometry height="216" width="140" x="4470" y="724" as="geometry" />
         </mxCell>
-        <mxCell id="ent_baby_profiles" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#4F4F4F;fontFamily=Arial;align=left;verticalAlign=top;spacing=8;" value="&lt;div style=&quot;font-size:12px&quot;&gt;&lt;b&gt;baby_profiles&lt;/b&gt;&lt;/div&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;div style=&quot;font-size:11px;line-height:1.35;text-align:left&quot;&gt;&lt;b&gt;PK&lt;/b&gt; baby_id&lt;br/&gt;&lt;b&gt;FK&lt;/b&gt; owner_user_id&lt;br/&gt;&lt;b&gt;FK&lt;/b&gt; related_journey_id&lt;br/&gt;nickname&lt;br/&gt;birth_date&lt;br/&gt;sex&lt;br/&gt;birth_weight_kg&lt;br/&gt;birth_length_cm&lt;br/&gt;status&lt;br/&gt;created_at&lt;br/&gt;updated_at&lt;/div&gt;" vertex="1">
-          <mxGeometry height="214" width="138" x="5162" y="374.5" as="geometry" />
+        <mxCell id="ent_care_subjects" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#4F4F4F;fontFamily=Arial;align=left;verticalAlign=top;spacing=8;" value="&lt;div style=&quot;font-size:12px&quot;&gt;&lt;b&gt;care_subjects&lt;/b&gt;&lt;/div&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;div style=&quot;font-size:11px;line-height:1.35;text-align:left&quot;&gt;&lt;b&gt;PK&lt;/b&gt; care_subject_id&lt;br/&gt;&lt;b&gt;FK&lt;/b&gt; person_id&lt;br/&gt;&lt;b&gt;FK&lt;/b&gt; owner_user_id&lt;br/&gt;&lt;b&gt;FK&lt;/b&gt; mother_journey_id (MOTHER only; BABY = NULL)&lt;br/&gt;subject_type&lt;br/&gt;nickname&lt;br/&gt;birth_date&lt;br/&gt;sex&lt;br/&gt;birth_weight_kg&lt;br/&gt;birth_length_cm&lt;br/&gt;status&lt;br/&gt;created_at&lt;br/&gt;updated_at&lt;/div&gt;" vertex="1">
+          <mxGeometry height="260" width="220" x="5162" y="374.5" as="geometry" />
         </mxCell>
         <mxCell id="ent_baby_daily_logs" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#4F4F4F;fontFamily=Arial;align=left;verticalAlign=top;spacing=8;" value="&lt;div style=&quot;font-size:12px&quot;&gt;&lt;b&gt;baby_daily_logs&lt;/b&gt;&lt;/div&gt;&lt;hr size=&quot;1&quot;/&gt;&lt;div style=&quot;font-size:11px;line-height:1.35;text-align:left&quot;&gt;&lt;b&gt;PK&lt;/b&gt; baby_log_id&lt;br/&gt;&lt;b&gt;FK&lt;/b&gt; baby_id&lt;br/&gt;log_type&lt;br/&gt;started_at&lt;br/&gt;ended_at&lt;br/&gt;quantity&lt;br/&gt;unit&lt;br/&gt;note&lt;br/&gt;&lt;b&gt;FK&lt;/b&gt; recorded_by&lt;br/&gt;created_at&lt;br/&gt;updated_at&lt;/div&gt;" vertex="1">
           <mxGeometry height="214" width="129" x="5408" y="372.5" as="geometry" />
@@ -308,7 +308,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="rel_12" edge="1" parent="1" source="ent_users" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#555555;fontSize=10;startArrow=ERone;endArrow=ERzeroToMany;startFill=0;endFill=0;" target="ent_baby_profiles" value="manages">
+        <mxCell id="rel_12" edge="1" parent="1" source="ent_users" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#555555;fontSize=10;startArrow=ERone;endArrow=ERzeroToMany;startFill=0;endFill=0;" target="ent_care_subjects" value="manages">
           <mxGeometry relative="1" x="-0.2373" as="geometry">
             <mxPoint as="offset" />
             <Array as="points">
@@ -316,7 +316,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="rel_13" edge="1" parent="1" source="ent_mother_journeys" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#555555;fontSize=10;startArrow=ERzeroToOne;endArrow=ERzeroToMany;startFill=0;endFill=0;" target="ent_baby_profiles" value="related to">
+        <mxCell id="rel_13" edge="1" parent="1" source="ent_mother_journeys" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#555555;fontSize=10;startArrow=ERzeroToOne;endArrow=ERzeroToOne;startFill=0;endFill=0;" target="ent_care_subjects" value="MOTHER subject only (BABY link prohibited)">
           <mxGeometry relative="1" x="-0.2692" as="geometry">
             <mxPoint as="offset" />
             <Array as="points">
@@ -325,7 +325,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="rel_14" edge="1" parent="1" source="ent_baby_profiles" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#555555;fontSize=10;startArrow=ERone;endArrow=ERzeroToMany;startFill=0;endFill=0;" target="ent_baby_daily_logs" value="has">
+        <mxCell id="rel_14" edge="1" parent="1" source="ent_care_subjects" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#555555;fontSize=10;startArrow=ERone;endArrow=ERzeroToMany;startFill=0;endFill=0;" target="ent_baby_daily_logs" value="has">
           <mxGeometry relative="1" x="-0.0173" as="geometry">
             <mxPoint as="offset" />
             <Array as="points">
@@ -342,7 +342,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="rel_16" edge="1" parent="1" source="ent_baby_profiles" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#555555;fontSize=10;startArrow=ERone;endArrow=ERzeroToMany;startFill=0;endFill=0;" target="ent_development_milestones" value="achieves">
+        <mxCell id="rel_16" edge="1" parent="1" source="ent_care_subjects" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#555555;fontSize=10;startArrow=ERone;endArrow=ERzeroToMany;startFill=0;endFill=0;" target="ent_development_milestones" value="achieves">
           <mxGeometry relative="1" x="0.2045" as="geometry">
             <mxPoint as="offset" />
             <Array as="points">
@@ -351,7 +351,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="rel_17" edge="1" parent="1" source="ent_baby_profiles" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#555555;fontSize=10;startArrow=ERone;endArrow=ERzeroToMany;startFill=0;endFill=0;" target="ent_growth_measurements" value="measured">
+        <mxCell id="rel_17" edge="1" parent="1" source="ent_care_subjects" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#555555;fontSize=10;startArrow=ERone;endArrow=ERzeroToMany;startFill=0;endFill=0;" target="ent_growth_measurements" value="measured">
           <mxGeometry relative="1" x="-0.0196" y="-1" as="geometry">
             <mxPoint as="offset" />
             <Array as="points">
@@ -360,7 +360,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="rel_18" edge="1" parent="1" source="ent_baby_profiles" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#555555;fontSize=10;startArrow=ERone;endArrow=ERzeroToMany;startFill=0;endFill=0;" target="ent_vaccination_records" value="has">
+        <mxCell id="rel_18" edge="1" parent="1" source="ent_care_subjects" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#555555;fontSize=10;startArrow=ERone;endArrow=ERzeroToMany;startFill=0;endFill=0;" target="ent_vaccination_records" value="has">
           <mxGeometry relative="1" x="-0.0465" as="geometry">
             <mxPoint as="offset" />
             <Array as="points">
@@ -386,7 +386,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="rel_21" edge="1" parent="1" source="ent_baby_profiles" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#555555;fontSize=10;startArrow=ERzeroToOne;endArrow=ERzeroToMany;startFill=0;endFill=0;" target="ent_health_records" value="attached to">
+        <mxCell id="rel_21" edge="1" parent="1" source="ent_care_subjects" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#555555;fontSize=10;startArrow=ERzeroToOne;endArrow=ERzeroToMany;startFill=0;endFill=0;" target="ent_health_records" value="attached to">
           <mxGeometry relative="1" x="-0.1675" as="geometry">
             <mxPoint as="offset" />
             <Array as="points">

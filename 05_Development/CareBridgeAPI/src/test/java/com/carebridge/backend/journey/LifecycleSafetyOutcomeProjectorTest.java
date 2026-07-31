@@ -15,6 +15,7 @@ import com.carebridge.backend.triage.entity.IntakeSession;
 import com.carebridge.backend.triage.repository.IIntakeSessionRepository;
 import com.carebridge.backend.triage.service.LifecycleSafetyMetrics;
 import java.time.Instant;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -44,7 +45,7 @@ class LifecycleSafetyOutcomeProjectorTest {
                     auditService, metrics);
             UUID ownerId = UUID.randomUUID();
             UUID intakeId = UUID.randomUUID();
-            UUID journeyId = UUID.randomUUID();
+            UUID journeyId = dashboard == OriginDashboard.BABY_PROFILE ? null : UUID.randomUUID();
             UUID originReferenceId = dashboard == OriginDashboard.MOTHER_JOURNEY
                     ? journeyId
                     : UUID.randomUUID();
@@ -91,7 +92,11 @@ class LifecycleSafetyOutcomeProjectorTest {
             });
             verifyNoInteractions(triageEscalationLinkRepository);
             verify(auditService).log(eq(AuditAction.AI_TRIAGE), eq(ownerId),
-                    eq("MotherJourneyEvent"), eq(eventId.toString()), anyMap());
+                    eq("LifecycleSafetyOutcome"), eq(eventId.toString()),
+                    org.mockito.ArgumentMatchers.<Map<String, Object>>argThat(details ->
+                            dashboard.name().equals(details.get("originDashboard"))
+                                    && originReferenceId.toString()
+                                            .equals(details.get("originReferenceId"))));
             verify(metrics).record(LifecycleSafetyMetrics.Boundary.PROJECTION,
                     LifecycleSafetyMetrics.Outcome.CREATED);
             verify(metrics).record(LifecycleSafetyMetrics.Boundary.PROJECTION,

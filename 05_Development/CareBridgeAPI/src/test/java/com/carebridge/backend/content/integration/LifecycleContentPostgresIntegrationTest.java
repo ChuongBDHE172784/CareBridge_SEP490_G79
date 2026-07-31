@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.carebridge.backend.content.entity.ChecklistItem;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
 import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
+import com.carebridge.backend.content.entity.ChecklistTemplateType;
 import com.carebridge.backend.content.entity.ContentItem;
 import com.carebridge.backend.content.entity.ContentSource;
 import com.carebridge.backend.content.entity.ContentStage;
@@ -556,6 +557,7 @@ class LifecycleContentPostgresIntegrationTest extends AbstractPostgresIntegratio
         return templateRepository.saveAndFlush(ChecklistTemplate.builder()
                 .name(name)
                 .stage(stage)
+                .templateType(ChecklistTemplateType.OPTIONAL)
                 .status(status)
                 .versionNo(1)
                 .build());

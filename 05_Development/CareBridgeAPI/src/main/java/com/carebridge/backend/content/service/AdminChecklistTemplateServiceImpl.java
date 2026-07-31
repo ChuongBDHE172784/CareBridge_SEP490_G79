@@ -4,7 +4,12 @@ import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.audit.entity.AuditLog;
 import com.carebridge.backend.audit.repository.AuditLogRepository;
+import com.carebridge.backend.checklist.model.ChecklistAnchorType;
+import com.carebridge.backend.checklist.model.ChecklistRangeUnit;
+import com.carebridge.backend.checklist.model.ChecklistRecipientRole;
+import com.carebridge.backend.checklist.model.ChecklistRecipientScope;
 import com.carebridge.backend.content.dto.request.ChecklistItemRequest;
+import com.carebridge.backend.content.dto.request.ChecklistSubstageRequest;
 import com.carebridge.backend.content.dto.request.CreateChecklistTemplateRequest;
 import com.carebridge.backend.content.dto.request.HideChecklistTemplateRequest;
 import com.carebridge.backend.content.dto.request.UpdateChecklistTemplateRequest;
@@ -14,7 +19,9 @@ import com.carebridge.backend.content.dto.response.ChecklistTemplateVersionSnaps
 import com.carebridge.backend.content.entity.ChecklistItem;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
 import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
+import com.carebridge.backend.content.entity.ChecklistTemplateType;
 import com.carebridge.backend.content.entity.ContentStage;
+import com.carebridge.backend.checklist.model.ChecklistTargetSubject;
 import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.mapper.ContentMapper;
 import com.carebridge.backend.content.repository.ChecklistItemRepository;
@@ -23,11 +30,11 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.Set;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -68,11 +75,27 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
     @Transactional
     public AdminChecklistTemplateDetailResponse create(
             CreateChecklistTemplateRequest request, UUID adminUserId) {
+        Set<ChecklistRecipientRole> recipientRoles = requireRecipientRoles(request.recipientRoles());
+        ContentStage normalizedStage = normalizeStage(recipientRoles, request.stage());
+        InlineEligibility eligibility = resolveEligibility(recipientRoles, normalizedStage, request.substage());
+        validateItemTargets(request.items());
+        UUID lineageId = UUID.randomUUID();
+        UUID versionId = UUID.randomUUID();
         ChecklistTemplate template = ChecklistTemplate.builder()
                 .name(request.name())
                 .description(request.description())
-                .stage(request.stage())
+                .templateLineageId(lineageId)
+                .templateVersionId(versionId)
+                .stage(normalizedStage)
+                .recipientScope(toRecipientScope(recipientRoles))
+                .eligibilityAnchorType(eligibility.anchor())
+                .eligibilityRangeUnit(eligibility.unit())
+                .eligibilityStartInclusive(eligibility.startInclusive())
+                .eligibilityEndInclusive(eligibility.endInclusive())
                 .status(ChecklistTemplateStatus.DRAFT)
+                .migrationReviewRequired(false)
+                .distributionEnabled(false)
+                .templateType(normalizeTemplateType(request.templateType()))
                 .authorUserId(adminUserId)
                 .build();
         ChecklistTemplate saved = checklistTemplateRepository.save(template);
@@ -95,6 +118,11 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
         ChecklistTemplate template = checklistTemplateRepository.findById(id)
                 .orElseThrow(ContentException::checklistTemplateNotFound);
 
+        if (template.getStatus() == ChecklistTemplateStatus.APPROVED
+                || template.getStatus() == ChecklistTemplateStatus.ARCHIVED) {
+            throw ContentException.versionImmutable();
+        }
+
         // Same separation-of-duties guard as ContentItem.updateContent (BR-CNT-006): a Content Admin
         // may only work a draft or submit it for review — publication is a System Admin decision
         // made exclusively through ChecklistTemplateApprovalService.decide().
@@ -106,13 +134,41 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
                 && request.status() != ChecklistTemplateStatus.PENDING_REVIEW) {
             throw ContentException.checklistTemplateInvalidStatusTransition();
         }
+        boolean reviewedImportedVersion = template.getMigrationReviewedAt() != null;
+
+        Set<ChecklistRecipientRole> recipientRoles = requireRecipientRoles(request.recipientRoles());
+        ContentStage normalizedStage = normalizeStage(recipientRoles, request.stage());
+        InlineEligibility eligibility = resolveEligibility(recipientRoles, normalizedStage, request.substage());
+        validateItemTargets(request.items());
+
+        if (template.getTemplateLineageId() == null) {
+            template.setTemplateLineageId(template.getId());
+        }
+        if (template.getTemplateVersionId() == null) {
+            template.setTemplateVersionId(template.getId());
+        }
 
         template.setName(request.name());
         template.setDescription(request.description());
-        template.setStage(request.stage());
+        template.setTemplateType(request.templateType() == null
+                ? normalizeTemplateType(template.getTemplateType())
+                : request.templateType());
+        template.setStage(normalizedStage);
+        template.setSubstageId(null);
+        template.setRecipientScope(toRecipientScope(recipientRoles));
+        template.setEligibilityAnchorType(eligibility.anchor());
+        template.setEligibilityRangeUnit(eligibility.unit());
+        template.setEligibilityStartInclusive(eligibility.startInclusive());
+        template.setEligibilityEndInclusive(eligibility.endInclusive());
         template.setStatus(request.status());
-        int currentVersion = template.getVersionNo() == null ? 1 : template.getVersionNo();
-        template.setVersionNo(currentVersion + 1);
+        if (reviewedImportedVersion) {
+            template.setMigrationReviewRequired(true);
+            template.setMigrationReviewedAt(null);
+            template.setMigrationReviewedBy(null);
+            template.setDistributionEnabled(false);
+            template.setApprovedAt(null);
+            template.setApprovedBy(null);
+        }
         if (request.status() == ChecklistTemplateStatus.PENDING_REVIEW) {
             clearReviewFeedback(template);
         }
@@ -151,6 +207,7 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
         // ADR-CHK-002: soft-delete only. Canonical template entries and imported personal
         // preparation_checklist_items remain stable when a template is archived.
         template.setStatus(ChecklistTemplateStatus.ARCHIVED);
+        template.setDistributionEnabled(false);
         clearReviewFeedback(template);
         ChecklistTemplate saved = checklistTemplateRepository.save(template);
 
@@ -182,6 +239,83 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
                 .toList();
     }
 
+    @Override
+    @Transactional
+    public AdminChecklistTemplateDetailResponse cloneVersion(UUID id, UUID adminUserId) {
+        return cloneVersionInternal(null, id, adminUserId);
+    }
+
+    @Override
+    @Transactional
+    public AdminChecklistTemplateDetailResponse cloneVersionInLineage(
+            UUID lineageId, UUID id, UUID adminUserId) {
+        return cloneVersionInternal(lineageId, id, adminUserId);
+    }
+
+    private AdminChecklistTemplateDetailResponse cloneVersionInternal(
+            UUID expectedLineageId, UUID id, UUID adminUserId) {
+        ChecklistTemplate source = (expectedLineageId == null
+                ? checklistTemplateRepository.findById(id)
+                : checklistTemplateRepository.findByTemplateVersionId(id))
+                .orElseThrow(ContentException::checklistTemplateNotFound);
+        if (source.getStatus() != ChecklistTemplateStatus.APPROVED) {
+            throw ContentException.checklistTemplateInvalidStatusTransition();
+        }
+
+        UUID lineageId = source.getTemplateLineageId() == null ? source.getId() : source.getTemplateLineageId();
+        if (expectedLineageId != null && !expectedLineageId.equals(lineageId)) {
+            throw ContentException.checklistTemplateNotFound();
+        }
+        checklistTemplateRepository.acquireLineageLock(lineageId);
+        UUID versionId = UUID.randomUUID();
+        int sourceVersionNo = source.getVersionNo() == null ? 1 : source.getVersionNo();
+        int lineageMaxVersionNo = checklistTemplateRepository.findMaxVersionNoForLineage(lineageId);
+        int nextVersionNo = Math.max(sourceVersionNo, lineageMaxVersionNo) + 1;
+        ChecklistTemplate clone = ChecklistTemplate.builder()
+                .name(source.getName())
+                .description(source.getDescription())
+                .templateLineageId(lineageId)
+                .templateVersionId(versionId)
+                .stage(source.getStage())
+                .recipientScope(source.getRecipientScope())
+                .eligibilityAnchorType(source.getEligibilityAnchorType())
+                .eligibilityRangeUnit(source.getEligibilityRangeUnit())
+                .eligibilityStartInclusive(source.getEligibilityStartInclusive())
+                .eligibilityEndInclusive(source.getEligibilityEndInclusive())
+                .status(ChecklistTemplateStatus.DRAFT)
+                .migrationReviewRequired(false)
+                .distributionEnabled(false)
+                .templateType(source.getTemplateType())
+                .versionNo(nextVersionNo)
+                .authorUserId(adminUserId)
+                .build();
+        ChecklistTemplate saved = checklistTemplateRepository.save(clone);
+
+        List<ChecklistItem> sourceItems = checklistItemRepository.findByTemplate_IdOrderByOrder(source.getId());
+        List<ChecklistItem> clonedItems = sourceItems.stream()
+                .map(item -> {
+                    if (item.getTargetSubject() == null) {
+                        throw ContentException.itemTargetRequired();
+                    }
+                    return ChecklistItem.builder()
+                            .template(saved)
+                            .itemText(item.getItemText())
+                            .order(item.getOrder())
+                            .isRequired(item.getIsRequired())
+                            .targetSubject(item.getTargetSubject())
+                            .isActive(true)
+                            .build();
+                })
+                .toList();
+        if (!clonedItems.isEmpty()) {
+            checklistItemRepository.saveAll(clonedItems);
+        }
+
+        auditService.log(AuditAction.CHECKLIST_TEMPLATE_CREATED, adminUserId,
+                "ChecklistTemplate", saved.getId().toString(), snapshotOf(saved, clonedItems.size()));
+        return contentMapper.toAdminChecklistTemplateDetailResponse(saved, clonedItems);
+    }
+
     private ChecklistTemplateVersionSnapshotResponse snapshotOf(ChecklistTemplate template, int itemCount) {
         return new ChecklistTemplateVersionSnapshotResponse(template.getVersionNo(), template.getName(),
                 template.getStage() == null ? null : template.getStage().name(), template.getStatus().name(),
@@ -201,7 +335,8 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
 
     private AdminChecklistTemplateDetailResponse toResponseWithItems(ChecklistTemplate template) {
         List<ChecklistItem> items = checklistItemRepository.findByTemplate_IdOrderByOrder(template.getId());
-        return contentMapper.toAdminChecklistTemplateDetailResponse(template, items);
+        return contentMapper.toAdminChecklistTemplateDetailResponse(
+                template, items);
     }
 
     private List<ChecklistItem> toEntities(List<ChecklistItemRequest> items, ChecklistTemplate template) {
@@ -212,6 +347,7 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
                     .itemText(item.itemText())
                     .order(item.order())
                     .isRequired(item.isRequired())
+                    .targetSubject(resolveTargetSubject(item, template))
                     .isActive(true)
                     .build());
         }
@@ -249,6 +385,7 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
             item.setItemText(requested.itemText());
             item.setOrder(requested.order());
             item.setIsRequired(requested.isRequired());
+            item.setTargetSubject(resolveTargetSubject(requested, template));
             item.setIsActive(true);
             activeItems.add(item);
         }
@@ -256,5 +393,95 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
             checklistItemRepository.saveAll(itemsToSave);
         }
         return activeItems;
+    }
+
+    private ChecklistTargetSubject resolveTargetSubject(
+            ChecklistItemRequest item, ChecklistTemplate template) {
+        if (item.targetSubject() == null) {
+            throw ContentException.itemTargetRequired();
+        }
+        return item.targetSubject();
+    }
+
+    private Set<ChecklistRecipientRole> requireRecipientRoles(Set<ChecklistRecipientRole> requestedRoles) {
+        if (requestedRoles == null || requestedRoles.isEmpty()
+                || requestedRoles.stream().anyMatch(java.util.Objects::isNull)) {
+            throw ContentException.templateRoleRequired();
+        }
+        return new LinkedHashSet<>(requestedRoles);
+    }
+
+    private ContentStage normalizeStage(Set<ChecklistRecipientRole> roles, ContentStage requestedStage) {
+        boolean familyOnly = roles.size() == 1 && roles.contains(ChecklistRecipientRole.FAMILY);
+        return familyOnly ? null : requestedStage;
+    }
+
+    private InlineEligibility resolveEligibility(
+            Set<ChecklistRecipientRole> roles,
+            ContentStage stage,
+            ChecklistSubstageRequest requestedSubstage) {
+        boolean familyOnly = roles.size() == 1 && roles.contains(ChecklistRecipientRole.FAMILY);
+        if (familyOnly) {
+            return InlineEligibility.none();
+        }
+        if (stage == ContentStage.PRE_PREGNANCY) {
+            if (requestedSubstage != null) {
+                throw ContentException.substageStageMismatch();
+            }
+            return new InlineEligibility(ChecklistAnchorType.NONE, ChecklistRangeUnit.DAY, 0, 0);
+        }
+        if (stage == null || requestedSubstage == null
+                || requestedSubstage.code() == null || requestedSubstage.code().isBlank()
+                || requestedSubstage.anchor() == null || requestedSubstage.unit() == null
+                || requestedSubstage.startInclusive() == null || requestedSubstage.endInclusive() == null
+                || requestedSubstage.startInclusive() < 0
+                || requestedSubstage.endInclusive() < requestedSubstage.startInclusive()
+                || !isAnchorCompatible(stage, requestedSubstage.anchor())) {
+            throw ContentException.substageStageMismatch();
+        }
+        return new InlineEligibility(
+                requestedSubstage.anchor(),
+                requestedSubstage.unit(),
+                requestedSubstage.startInclusive(),
+                requestedSubstage.endInclusive());
+    }
+
+    private void validateItemTargets(List<ChecklistItemRequest> items) {
+        if (items != null && items.stream().anyMatch(item -> item.targetSubject() == null)) {
+            throw ContentException.itemTargetRequired();
+        }
+    }
+
+    private ChecklistTemplateType normalizeTemplateType(ChecklistTemplateType requestedType) {
+        return requestedType == null ? ChecklistTemplateType.MANDATORY : requestedType;
+    }
+
+    private ChecklistRecipientScope toRecipientScope(Set<ChecklistRecipientRole> roles) {
+        if (roles.contains(ChecklistRecipientRole.MOTHER)
+                && roles.contains(ChecklistRecipientRole.FAMILY)) {
+            return ChecklistRecipientScope.BOTH;
+        }
+        return roles.contains(ChecklistRecipientRole.FAMILY)
+                ? ChecklistRecipientScope.FAMILY
+                : ChecklistRecipientScope.MOTHER;
+    }
+
+    private boolean isAnchorCompatible(ContentStage stage, ChecklistAnchorType anchor) {
+        return switch (stage) {
+            case PREGNANCY -> anchor == ChecklistAnchorType.LMP || anchor == ChecklistAnchorType.EDD;
+            case POSTPARTUM -> anchor == ChecklistAnchorType.DELIVERY_DATE;
+            case BABY_CARE -> anchor == ChecklistAnchorType.BIRTH_DATE;
+            case PRE_PREGNANCY -> anchor == ChecklistAnchorType.NONE;
+        };
+    }
+
+    private record InlineEligibility(
+            ChecklistAnchorType anchor,
+            ChecklistRangeUnit unit,
+            Integer startInclusive,
+            Integer endInclusive) {
+        private static InlineEligibility none() {
+            return new InlineEligibility(null, null, null, null);
+        }
     }
 }

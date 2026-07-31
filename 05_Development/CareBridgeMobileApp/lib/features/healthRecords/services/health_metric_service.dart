@@ -2,19 +2,26 @@ import '../../../core/network/api_client.dart';
 import '../models/health_metric_model.dart';
 
 class HealthMetricService {
-  // UC-187: Get metric detail
+  Future<List<MetricCapability>> getCapabilities(String journeyId) async {
+    final data = await apiGet(
+      '/api/v1/journeys/$journeyId/metrics/capabilities',
+    );
+    final body = data['data'] as List<dynamic>? ?? const [];
+    return body
+        .map((item) => MetricCapability.fromJson(item as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<HealthMetricDetail> getMetricDetail(String metricId) async {
     final data = await apiGet('/api/v1/health-metrics/$metricId');
     final body = data['data'] as Map<String, dynamic>;
     return HealthMetricDetail.fromJson(body);
   }
 
-  // UC-188: Delete metric
   Future<void> deleteMetric(String metricId) async {
     await apiDelete('/api/v1/health-metrics/$metricId');
   }
 
-  // UC-25: Add maternal health metric
   Future<HealthMetricDetail> addMetric(
     String journeyId,
     AddMetricRequest request,
@@ -27,7 +34,6 @@ class HealthMetricService {
     return HealthMetricDetail.fromJson(body);
   }
 
-  // UC-26: Update maternal health metric (BR-METRIC-012: 24-hour window from createdAt)
   Future<HealthMetricDetail> updateMetric(
     String journeyId,
     String metricId,
@@ -40,19 +46,11 @@ class HealthMetricService {
     final body = data['data'] as Map<String, dynamic>;
     return HealthMetricDetail.fromJson({
       'id': body['metricId'],
-      'journeyId': body['journeyId'],
-      'metricType': body['metricType'],
-      'valueNumeric': body['valueNumeric'],
-      'valueSecondary': body['valueSecondary'],
-      'unit': body['unit'],
-      'measuredAt': body['measuredAt'],
-      'sourceType': body['sourceType'],
-      'note': body['note'],
+      ...body,
       'createdAt': body['createdAt'] ?? body['updatedAt'],
     });
   }
 
-  // UC-27: Get metric trend for a journey
   Future<MetricTrend> getMetricTrend({
     required String journeyId,
     required String metricType,
@@ -64,12 +62,23 @@ class HealthMetricService {
         .toUtc();
     final resolvedTo = (to ?? now).toUtc();
     final query = [
-      'metricType=$metricType',
-      'from=${resolvedFrom.toIso8601String()}',
-      'to=${resolvedTo.toIso8601String()}',
+      'metricType=${Uri.encodeQueryComponent(_legacyQueryType(metricType))}',
+      'from=${Uri.encodeQueryComponent(resolvedFrom.toIso8601String())}',
+      'to=${Uri.encodeQueryComponent(resolvedTo.toIso8601String())}',
     ].join('&');
     final data = await apiGet('/api/v1/journeys/$journeyId/metrics?$query');
     final body = data['data'] as Map<String, dynamic>;
     return MetricTrend.fromJson(body);
+  }
+
+  String _legacyQueryType(String metricType) {
+    switch (metricType) {
+      case 'BLOOD_PRESSURE':
+        return 'BLOOD_PRESSURE_SYSTOLIC';
+      case 'FETAL_MOVEMENT_SESSION':
+        return 'FETAL_MOVEMENT_COUNT';
+      default:
+        return metricType;
+    }
   }
 }

@@ -17,6 +17,7 @@ import com.carebridge.backend.journey.entity.JourneyStatus;
 import com.carebridge.backend.journey.entity.JourneyType;
 import com.carebridge.backend.journey.entity.MotherJourney;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
+import com.carebridge.backend.journey.repository.MotherJourneyTransitionRepository;
 import com.carebridge.backend.journey.service.LifecycleConsentValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -39,6 +40,7 @@ public class PostpartumLogServiceImpl implements IPostpartumLogService {
 
     private final PostpartumLogRepository logRepository;
     private final MotherJourneyRepository journeyRepository;
+    private final MotherJourneyTransitionRepository transitionRepository;
     private final AuditService auditService;
     private final PostpartumAiAnalyzer postpartumAiAnalyzer;
     private final ApplicationEventPublisher eventPublisher;
@@ -48,8 +50,7 @@ public class PostpartumLogServiceImpl implements IPostpartumLogService {
     @Transactional(readOnly = true)
     public Page<PostpartumLogResponse> listLogs(UUID journeyId, UUID callerId, int page, int size) {
         consentValidator.ensureEligibleForRead(callerId);
-        MotherJourney journey = requireActivePostpartumOwner(
-                journeyId, callerId, false, "POST-001");
+        MotherJourney journey = requirePostpartumReadOwner(journeyId, callerId, "POST-001");
         var pageable = PageRequest.of(page, size);
         return logRepository.findByJourneyIdAndStatus(
                 journey.getId(), PostpartumLogStatus.ACTIVE, pageable).map(this::toResponse);
@@ -60,7 +61,7 @@ public class PostpartumLogServiceImpl implements IPostpartumLogService {
     public PostpartumLogResponse getLogDetail(UUID logId, UUID callerId) {
         consentValidator.ensureEligibleForRead(callerId);
         PostpartumLog log = findActiveLogOrThrow(logId);
-        requireActivePostpartumOwner(log.getJourneyId(), callerId, false, "PPLOG-001");
+        requirePostpartumReadOwner(log.getJourneyId(), callerId, "PPLOG-001");
         return toResponse(log);
     }
 
@@ -241,6 +242,30 @@ public class PostpartumLogServiceImpl implements IPostpartumLogService {
                     "Postpartum journey is not active");
         }
         return journey;
+    }
+
+    private MotherJourney requirePostpartumReadOwner(
+            UUID journeyId, UUID callerId, String notFoundCode) {
+        MotherJourney journey = journeyRepository.findById(journeyId)
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, notFoundCode,
+                        "Postpartum resource not found"));
+        if (!journey.getOwnerUserId().equals(callerId)) {
+            throw new BusinessException(HttpStatus.NOT_FOUND, notFoundCode,
+                    "Postpartum resource not found");
+        }
+        if (journey.getJourneyType() == JourneyType.POSTPARTUM
+                && journey.getStatus() == JourneyStatus.ACTIVE) {
+            return journey;
+        }
+        if (transitionRepository.hasPostpartumHistory(journeyId)) {
+            return journey;
+        }
+        if (journey.getJourneyType() != JourneyType.POSTPARTUM) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "POST-002",
+                    "Postpartum logs require a POSTPARTUM journey type");
+        }
+        throw new BusinessException(HttpStatus.BAD_REQUEST, "POST-003",
+                "Postpartum journey is not active");
     }
 
     private boolean matches(PostpartumLog log, AddPostpartumLogRequest request) {

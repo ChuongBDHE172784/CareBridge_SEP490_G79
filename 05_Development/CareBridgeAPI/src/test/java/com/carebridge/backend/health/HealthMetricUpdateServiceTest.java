@@ -3,18 +3,24 @@ package com.carebridge.backend.health;
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.common.exception.BusinessException;
+import com.carebridge.backend.family.repository.CareGroupMemberRepository;
+import com.carebridge.backend.family.repository.CareGroupRepository;
 import com.carebridge.backend.health.dto.MetricResponse;
+import com.carebridge.backend.health.entity.HealthObservation;
 import com.carebridge.backend.health.entity.MetricStatus;
 import com.carebridge.backend.health.entity.MetricType;
-import com.carebridge.backend.health.repository.MaternalHealthMetricRepository;
-import com.carebridge.backend.health.service.MetricAiAnalyzer;
+import com.carebridge.backend.health.repository.HealthObservationRepository;
+import com.carebridge.backend.health.repository.MetricDefinitionRepository;
+import com.carebridge.backend.health.service.MetricObservationValidator;
 import com.carebridge.backend.health.service.impl.HealthMetricServiceImpl;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 
 import java.math.BigDecimal;
@@ -31,23 +37,29 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class HealthMetricUpdateServiceTest {
 
-    @Mock private MaternalHealthMetricRepository metricRepository;
+    @Mock private HealthObservationRepository observationRepository;
+    @Mock private MetricDefinitionRepository definitionRepository;
     @Mock private MotherJourneyRepository journeyRepository;
     @Mock private AuditService auditService;
-    @Mock private MetricAiAnalyzer metricAiAnalyzer;
+    @Mock private ApplicationEventPublisher eventPublisher;
+    @Mock private CareGroupMemberRepository careGroupMemberRepository;
+    @Mock private CareGroupRepository careGroupRepository;
+    @Spy private MetricObservationValidator validator = new MetricObservationValidator();
     @InjectMocks private HealthMetricServiceImpl metricService;
 
     /** METRIC-TC-026-001: Happy path — update value within 24h window; metricType unchanged. */
     @Test
     void updateMetric_withinEditWindow_returnsUpdatedResponse() {
         var journey = MetricUpdateTestFactory.makeActiveJourney();
-        var metric = MetricUpdateTestFactory.makeRecentMetric(); // created 1h ago
+        var metric = MetricUpdateTestFactory.makeRecentObservation(); // created 1h ago
         var req = MetricUpdateTestFactory.makeUpdateWeightRequest();
         when(journeyRepository.findById(MetricUpdateTestFactory.JOURNEY_ID)).thenReturn(Optional.of(journey));
-        when(metricRepository.findByIdAndJourneyIdAndStatus(
-                MetricUpdateTestFactory.METRIC_ID, MetricUpdateTestFactory.JOURNEY_ID, MetricStatus.ACTIVE))
+        when(observationRepository.findByIdAndCareSubjectIdAndStatus(
+                MetricUpdateTestFactory.METRIC_ID, MetricUpdateTestFactory.CARE_SUBJECT_ID, MetricStatus.ACTIVE))
                 .thenReturn(Optional.of(metric));
-        when(metricRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(definitionRepository.findByMetricCodeAndActiveTrue("WEIGHT"))
+                .thenReturn(Optional.of(MetricUpdateTestFactory.makeWeightDefinition()));
+        when(observationRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         MetricResponse response = metricService.updateMetric(
                 MetricUpdateTestFactory.MOTHER_ID, MetricUpdateTestFactory.JOURNEY_ID,
@@ -57,19 +69,19 @@ class HealthMetricUpdateServiceTest {
         assertThat(response.getMetricType()).isEqualTo(MetricType.WEIGHT.name());
         assertThat(response.getNote()).isEqualTo("Corrected weight measurement");
         verify(auditService).log(eq(AuditAction.HEALTH_METRIC_UPDATED), eq(MetricUpdateTestFactory.MOTHER_ID),
-                eq("MaternalHealthMetric"), any(), any());
-        verify(metricRepository).save(any());
+                eq("HealthObservation"), any(), any());
+        verify(observationRepository).save(any(HealthObservation.class));
     }
 
     /** METRIC-TC-026-002: CRITICAL — Edit window expired (25h old) → METRIC-012 (400). */
     @Test
     void updateMetric_editWindowExpired_throwsMetric012() {
         var journey = MetricUpdateTestFactory.makeActiveJourney();
-        var oldMetric = MetricUpdateTestFactory.makeOldMetric(); // created 25h ago
+        var oldMetric = MetricUpdateTestFactory.makeOldObservation(); // created 25h ago
         var req = MetricUpdateTestFactory.makeUpdateWeightRequest();
         when(journeyRepository.findById(MetricUpdateTestFactory.JOURNEY_ID)).thenReturn(Optional.of(journey));
-        when(metricRepository.findByIdAndJourneyIdAndStatus(
-                MetricUpdateTestFactory.METRIC_ID, MetricUpdateTestFactory.JOURNEY_ID, MetricStatus.ACTIVE))
+        when(observationRepository.findByIdAndCareSubjectIdAndStatus(
+                MetricUpdateTestFactory.METRIC_ID, MetricUpdateTestFactory.CARE_SUBJECT_ID, MetricStatus.ACTIVE))
                 .thenReturn(Optional.of(oldMetric));
 
         assertThatThrownBy(() -> metricService.updateMetric(
@@ -81,7 +93,7 @@ class HealthMetricUpdateServiceTest {
                     assertThat(be.getCode()).isEqualTo("METRIC-012");
                     assertThat(be.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
                 });
-        verify(metricRepository, never()).save(any());
+        verify(observationRepository, never()).save(any());
         verify(auditService, never()).log(any(), any(), any(), any(), any());
     }
 
@@ -91,8 +103,8 @@ class HealthMetricUpdateServiceTest {
         var journey = MetricUpdateTestFactory.makeActiveJourney();
         var req = MetricUpdateTestFactory.makeUpdateWeightRequest();
         when(journeyRepository.findById(MetricUpdateTestFactory.JOURNEY_ID)).thenReturn(Optional.of(journey));
-        when(metricRepository.findByIdAndJourneyIdAndStatus(
-                MetricUpdateTestFactory.METRIC_ID, MetricUpdateTestFactory.JOURNEY_ID, MetricStatus.ACTIVE))
+        when(observationRepository.findByIdAndCareSubjectIdAndStatus(
+                MetricUpdateTestFactory.METRIC_ID, MetricUpdateTestFactory.CARE_SUBJECT_ID, MetricStatus.ACTIVE))
                 .thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> metricService.updateMetric(
@@ -104,7 +116,7 @@ class HealthMetricUpdateServiceTest {
                     assertThat(be.getCode()).isEqualTo("METRIC-011");
                     assertThat(be.getHttpStatus()).isEqualTo(HttpStatus.NOT_FOUND);
                 });
-        verify(metricRepository, never()).save(any());
+        verify(observationRepository, never()).save(any());
     }
 
     /** METRIC-TC-026-004: CRITICAL SECURITY — Journey owned by different user → METRIC-013 (403). */
@@ -123,7 +135,7 @@ class HealthMetricUpdateServiceTest {
                     assertThat(be.getCode()).isEqualTo("METRIC-013");
                     assertThat(be.getHttpStatus()).isEqualTo(HttpStatus.FORBIDDEN);
                 });
-        verify(metricRepository, never()).save(any());
+        verify(observationRepository, never()).save(any());
         verify(auditService, never()).log(any(), any(), any(), any(), any());
     }
 
@@ -142,6 +154,6 @@ class HealthMetricUpdateServiceTest {
                     assertThat(be.getCode()).isEqualTo("METRIC-010");
                     assertThat(be.getHttpStatus()).isEqualTo(HttpStatus.NOT_FOUND);
                 });
-        verify(metricRepository, never()).save(any());
+        verify(observationRepository, never()).save(any());
     }
 }
