@@ -4,11 +4,14 @@ import com.carebridge.backend.family.CareGroupTestFactory;
 import com.carebridge.backend.family.entity.CareGroupMember;
 import com.carebridge.backend.family.entity.GroupMemberRole;
 import com.carebridge.backend.family.entity.InviteStatus;
+import com.carebridge.backend.family.entity.PermissionFlag;
 import com.carebridge.backend.family.repository.CareGroupMemberRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
@@ -22,6 +25,7 @@ import static org.mockito.Mockito.when;
 class CareGroupAuthorizationPolicyTest {
 
     @Mock private CareGroupMemberRepository memberRepository;
+    @Spy private ObjectMapper objectMapper = new ObjectMapper();
     @InjectMocks private CareGroupAuthorizationPolicy policy;
 
     private static final UUID GROUP_ID  = UUID.fromString("00000000-0000-0000-0000-000000000010");
@@ -128,5 +132,22 @@ class CareGroupAuthorizationPolicyTest {
                 .thenReturn(Optional.of(expired));
 
         assertThat(policy.isMember(GROUP_ID, CALLER_ID)).isFalse();
+    }
+
+    @Test
+    void hasPermission_readsCamelCaseQuickNoteKeysWithoutChangingLegacyKeys() {
+        CareGroupMember member = CareGroupTestFactory.makeCareGroupMember(m -> {
+            m.setCareGroupId(GROUP_ID);
+            m.setUserId(CALLER_ID);
+            m.setPermissionJson("{\"quickNotes\":true,\"quickNoteWeight\":true,"
+                    + "\"baby_view\":true,\"alerts\":false}");
+        });
+        when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, CALLER_ID))
+                .thenReturn(Optional.of(member));
+
+        assertThat(policy.hasPermission(GROUP_ID, CALLER_ID, PermissionFlag.QUICK_NOTES)).isTrue();
+        assertThat(policy.hasPermission(GROUP_ID, CALLER_ID, PermissionFlag.QUICK_NOTE_WEIGHT)).isTrue();
+        assertThat(policy.hasPermission(GROUP_ID, CALLER_ID, PermissionFlag.BABY_VIEW)).isTrue();
+        assertThat(policy.hasPermission(GROUP_ID, CALLER_ID, PermissionFlag.ALERTS)).isFalse();
     }
 }

@@ -13,8 +13,15 @@ public class UpdateFamilyPermissionRequest {
     private Boolean logs;
     private Boolean alerts;
     private Boolean records;
+    private Boolean quickNotes;
+    private Boolean quickNoteWeight;
+    private Boolean quickNoteHydration;
+    private Boolean quickNoteEpds;
+    private Boolean quickNoteFetalMovement;
 
     public boolean hasAtLeastOneField() {
-        return calendar != null || logs != null || alerts != null || records != null;
+        return calendar != null || logs != null || alerts != null || records != null
+                || quickNotes != null || quickNoteWeight != null || quickNoteHydration != null
+                || quickNoteEpds != null || quickNoteFetalMovement != null;
     }
 }

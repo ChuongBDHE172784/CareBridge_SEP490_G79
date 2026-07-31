@@ -19,9 +19,15 @@ public class FamilyPermission {
     private boolean logs;
     private boolean alerts;
     private boolean records;
+    private boolean quickNotes;
+    private boolean quickNoteWeight;
+    private boolean quickNoteHydration;
+    private boolean quickNoteEpds;
+    private boolean quickNoteFetalMovement;
 
     public static FamilyPermission defaults() {
-        return new FamilyPermission(false, false, false, false);
+        return new FamilyPermission(false, false, false, false,
+                false, false, false, false, false);
     }
 
     public static FamilyPermission fromJson(String json) {
@@ -39,7 +45,9 @@ public class FamilyPermission {
         try {
             return MAPPER.writeValueAsString(this);
         } catch (JsonProcessingException e) {
-            return "{\"calendar\":false,\"logs\":false,\"alerts\":false,\"records\":false}";
+            return "{\"calendar\":false,\"logs\":false,\"alerts\":false,\"records\":false,"
+                    + "\"quickNotes\":false,\"quickNoteWeight\":false,\"quickNoteHydration\":false,"
+                    + "\"quickNoteEpds\":false,\"quickNoteFetalMovement\":false}";
         }
     }
 }

@@ -80,7 +80,7 @@ public class CareGroupAuthorizationPolicy {
                     if (json == null || json.isBlank()) return false; // Open — owned by UC72: default deny
                     try {
                         Map<String, Object> map = objectMapper.readValue(json, Map.class);
-                        Object val = map.get(flag.name().toLowerCase());
+                        Object val = map.get(flag.jsonKey());
                         return Boolean.TRUE.equals(val);
                     } catch (Exception e) {
                         log.warn("Failed to parse permission_json for group={} user={}: {}", groupId, userId, e.getMessage());

@@ -159,12 +159,26 @@ class CareGroupService {
     bool? logs,
     bool? alerts,
     bool? records,
+    bool? quickNotes,
+    bool? quickNoteWeight,
+    bool? quickNoteHydration,
+    bool? quickNoteEpds,
+    bool? quickNoteFetalMovement,
   }) async {
     final body = <String, dynamic>{};
     if (calendar != null) body['calendar'] = calendar;
     if (logs != null) body['logs'] = logs;
     if (alerts != null) body['alerts'] = alerts;
     if (records != null) body['records'] = records;
+    if (quickNotes != null) body['quickNotes'] = quickNotes;
+    if (quickNoteWeight != null) body['quickNoteWeight'] = quickNoteWeight;
+    if (quickNoteHydration != null) {
+      body['quickNoteHydration'] = quickNoteHydration;
+    }
+    if (quickNoteEpds != null) body['quickNoteEpds'] = quickNoteEpds;
+    if (quickNoteFetalMovement != null) {
+      body['quickNoteFetalMovement'] = quickNoteFetalMovement;
+    }
 
     final data = await apiPatch(
       '/api/v1/care-groups/$groupId/members/$memberId/permissions',

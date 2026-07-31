@@ -926,11 +926,23 @@ public class CareGroupServiceImpl implements ICareGroupService {
 
         // Merge previous + requested (null = unchanged)
         FamilyPermission previous = FamilyPermission.fromJson(member.getPermissionJson());
+        boolean quickNotes = request.getQuickNotes() != null
+                ? request.getQuickNotes()
+                : previous.isQuickNotes();
         FamilyPermission updated = new FamilyPermission(
                 request.getCalendar()  != null ? request.getCalendar()  : previous.isCalendar(),
                 request.getLogs()      != null ? request.getLogs()      : previous.isLogs(),
                 request.getAlerts()    != null ? request.getAlerts()    : previous.isAlerts(),
-                request.getRecords()   != null ? request.getRecords()   : previous.isRecords()
+                request.getRecords()   != null ? request.getRecords()   : previous.isRecords(),
+                quickNotes,
+                quickNotes && (request.getQuickNoteWeight() != null
+                        ? request.getQuickNoteWeight() : previous.isQuickNoteWeight()),
+                quickNotes && (request.getQuickNoteHydration() != null
+                        ? request.getQuickNoteHydration() : previous.isQuickNoteHydration()),
+                quickNotes && (request.getQuickNoteEpds() != null
+                        ? request.getQuickNoteEpds() : previous.isQuickNoteEpds()),
+                quickNotes && (request.getQuickNoteFetalMovement() != null
+                        ? request.getQuickNoteFetalMovement() : previous.isQuickNoteFetalMovement())
         );
 
         member.setPermissionJson(updated.toJson());
@@ -972,6 +984,11 @@ public class CareGroupServiceImpl implements ICareGroupService {
                 .logs(updated.isLogs())
                 .alerts(updated.isAlerts())
                 .records(updated.isRecords())
+                .quickNotes(updated.isQuickNotes())
+                .quickNoteWeight(updated.isQuickNoteWeight())
+                .quickNoteHydration(updated.isQuickNoteHydration())
+                .quickNoteEpds(updated.isQuickNoteEpds())
+                .quickNoteFetalMovement(updated.isQuickNoteFetalMovement())
                 .updatedAt(saved.getUpdatedAt())
                 .build();
     }
@@ -1006,6 +1023,11 @@ public class CareGroupServiceImpl implements ICareGroupService {
                 .logs(perm.isLogs())
                 .alerts(perm.isAlerts())
                 .records(perm.isRecords())
+                .quickNotes(perm.isQuickNotes())
+                .quickNoteWeight(perm.isQuickNoteWeight())
+                .quickNoteHydration(perm.isQuickNoteHydration())
+                .quickNoteEpds(perm.isQuickNoteEpds())
+                .quickNoteFetalMovement(perm.isQuickNoteFetalMovement())
                 .updatedAt(member.getUpdatedAt())
                 .build();
     }

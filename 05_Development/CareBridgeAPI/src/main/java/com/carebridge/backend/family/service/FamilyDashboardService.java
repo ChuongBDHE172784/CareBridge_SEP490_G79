@@ -273,11 +273,22 @@ public class FamilyDashboardService {
 
     private FamilyDashboardResponse.Permission permissionScope(UUID groupId, UUID userId) {
         boolean owner = authorizationPolicy.isOwner(groupId, userId);
+        boolean quickNotes = owner
+                || authorizationPolicy.hasPermission(groupId, userId, PermissionFlag.QUICK_NOTES);
         return new FamilyDashboardResponse.Permission(
                 owner || authorizationPolicy.hasPermission(groupId, userId, PermissionFlag.CALENDAR),
                 owner || authorizationPolicy.hasPermission(groupId, userId, PermissionFlag.LOGS),
                 owner || authorizationPolicy.hasPermission(groupId, userId, PermissionFlag.ALERTS),
-                owner || authorizationPolicy.hasPermission(groupId, userId, PermissionFlag.BABY_VIEW));
+                owner || authorizationPolicy.hasPermission(groupId, userId, PermissionFlag.RECORDS),
+                quickNotes,
+                quickNotes && (owner || authorizationPolicy.hasPermission(
+                        groupId, userId, PermissionFlag.QUICK_NOTE_WEIGHT)),
+                quickNotes && (owner || authorizationPolicy.hasPermission(
+                        groupId, userId, PermissionFlag.QUICK_NOTE_HYDRATION)),
+                quickNotes && (owner || authorizationPolicy.hasPermission(
+                        groupId, userId, PermissionFlag.QUICK_NOTE_EPDS)),
+                quickNotes && (owner || authorizationPolicy.hasPermission(
+                        groupId, userId, PermissionFlag.QUICK_NOTE_FETAL_MOVEMENT)));
     }
 
     private List<CareTask> loadRequesterTasks(UUID groupId, UUID userId) {

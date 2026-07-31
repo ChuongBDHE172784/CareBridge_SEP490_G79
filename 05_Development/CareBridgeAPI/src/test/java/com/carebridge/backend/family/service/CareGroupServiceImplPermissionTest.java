@@ -142,6 +142,52 @@ class CareGroupServiceImplPermissionTest {
         assertThat(result.isRecords()).isFalse();   // preserved
     }
 
+    @Test
+    void updateFamilyPermission_turningQuickNotesOffClearsAllChildPermissions() {
+        stubActiveGroup();
+        stubOwnerAuthorized();
+        CareGroupMember member = stubAcceptedMember(
+                "{\"quickNotes\":true,\"quickNoteWeight\":true,"
+                        + "\"quickNoteHydration\":true,\"quickNoteEpds\":true,"
+                        + "\"quickNoteFetalMovement\":true}");
+        stubSaveMember(member);
+        stubDeviceToken(MEMBER_USER_ID);
+        UpdateFamilyPermissionRequest request = new UpdateFamilyPermissionRequest();
+        request.setQuickNotes(false);
+
+        FamilyPermissionResponse result = service.updateFamilyPermission(
+                GROUP_ID, MEMBER_ID, request, OWNER_ID);
+
+        assertThat(result.isQuickNotes()).isFalse();
+        assertThat(result.isQuickNoteWeight()).isFalse();
+        assertThat(result.isQuickNoteHydration()).isFalse();
+        assertThat(result.isQuickNoteEpds()).isFalse();
+        assertThat(result.isQuickNoteFetalMovement()).isFalse();
+    }
+
+    @Test
+    void updateFamilyPermission_partialQuickNoteUpdatePreservesOtherChildren() {
+        stubActiveGroup();
+        stubOwnerAuthorized();
+        CareGroupMember member = stubAcceptedMember(
+                "{\"quickNotes\":true,\"quickNoteWeight\":true,"
+                        + "\"quickNoteHydration\":false,\"quickNoteEpds\":true,"
+                        + "\"quickNoteFetalMovement\":false}");
+        stubSaveMember(member);
+        stubDeviceToken(MEMBER_USER_ID);
+        UpdateFamilyPermissionRequest request = new UpdateFamilyPermissionRequest();
+        request.setQuickNoteHydration(true);
+
+        FamilyPermissionResponse result = service.updateFamilyPermission(
+                GROUP_ID, MEMBER_ID, request, OWNER_ID);
+
+        assertThat(result.isQuickNotes()).isTrue();
+        assertThat(result.isQuickNoteWeight()).isTrue();
+        assertThat(result.isQuickNoteHydration()).isTrue();
+        assertThat(result.isQuickNoteEpds()).isTrue();
+        assertThat(result.isQuickNoteFetalMovement()).isFalse();
+    }
+
     // ── TC-003: Member views own permission grant ─────────────────────────────
 
     @Test

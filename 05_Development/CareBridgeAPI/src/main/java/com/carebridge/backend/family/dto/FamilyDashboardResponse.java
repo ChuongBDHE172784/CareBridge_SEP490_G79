@@ -44,7 +44,16 @@ public record FamilyDashboardResponse(
             boolean read) {
     }
 
-    public record Permission(boolean calendar, boolean logs, boolean alerts, boolean records) {
+    public record Permission(
+            boolean calendar,
+            boolean logs,
+            boolean alerts,
+            boolean records,
+            boolean quickNotes,
+            boolean quickNoteWeight,
+            boolean quickNoteHydration,
+            boolean quickNoteEpds,
+            boolean quickNoteFetalMovement) {
     }
 
     public record Member(

@@ -27,6 +27,11 @@ class _ManageFamilyPermissionScreenState
   bool _logs = false;
   bool _alerts = false;
   bool _records = false;
+  bool _quickNotes = false;
+  bool _quickNoteWeight = false;
+  bool _quickNoteHydration = false;
+  bool _quickNoteEpds = false;
+  bool _quickNoteFetalMovement = false;
 
   bool _isSaving = false;
 
@@ -49,6 +54,11 @@ class _ManageFamilyPermissionScreenState
           _logs = perm.logs;
           _alerts = perm.alerts;
           _records = perm.records;
+          _quickNotes = perm.quickNotes;
+          _quickNoteWeight = perm.quickNoteWeight;
+          _quickNoteHydration = perm.quickNoteHydration;
+          _quickNoteEpds = perm.quickNoteEpds;
+          _quickNoteFetalMovement = perm.quickNoteFetalMovement;
           _isLoading = false;
         });
       }
@@ -72,6 +82,11 @@ class _ManageFamilyPermissionScreenState
         logs: _logs,
         alerts: _alerts,
         records: _records,
+        quickNotes: _quickNotes,
+        quickNoteWeight: _quickNoteWeight,
+        quickNoteHydration: _quickNoteHydration,
+        quickNoteEpds: _quickNoteEpds,
+        quickNoteFetalMovement: _quickNoteFetalMovement,
       );
       if (mounted) {
         setState(() {
@@ -147,7 +162,7 @@ class _ManageFamilyPermissionScreenState
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'Quản lý quyền hạn',
+          'Quản lý quyền chia sẻ',
           style: TextStyle(
             color: Color(0xFF845143),
             fontSize: 22,
@@ -309,6 +324,72 @@ class _ManageFamilyPermissionScreenState
                           value: _records,
                           onChanged: (val) => setState(() => _records = val),
                         ),
+                        const SizedBox(height: 16),
+                        _buildPermissionSwitch(
+                          title: 'Ghi chú nhanh',
+                          subtitle:
+                              'Chỉ cho phép xem lịch sử của những mục bạn chọn',
+                          icon: Icons.sticky_note_2_outlined,
+                          value: _quickNotes,
+                          onChanged: _setQuickNotes,
+                        ),
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 220),
+                          child: !_quickNotes
+                              ? const SizedBox.shrink()
+                              : Padding(
+                                  key: const ValueKey('quick-note-children'),
+                                  padding: const EdgeInsets.only(top: 12),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(14),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFFFF8F6),
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                        color: const Color(0xFFF2EAE4),
+                                      ),
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        _buildQuickNoteSwitch(
+                                          title: 'Cân nặng',
+                                          icon: Icons.monitor_weight_outlined,
+                                          value: _quickNoteWeight,
+                                          onChanged: (value) => setState(
+                                            () => _quickNoteWeight = value,
+                                          ),
+                                        ),
+                                        _buildQuickNoteSwitch(
+                                          title: 'Nước',
+                                          icon: Icons.water_drop_outlined,
+                                          value: _quickNoteHydration,
+                                          onChanged: (value) => setState(
+                                            () => _quickNoteHydration = value,
+                                          ),
+                                        ),
+                                        _buildQuickNoteSwitch(
+                                          title: 'Sàng lọc EPDS',
+                                          icon: Icons.psychology_alt_outlined,
+                                          value: _quickNoteEpds,
+                                          onChanged: (value) => setState(
+                                            () => _quickNoteEpds = value,
+                                          ),
+                                        ),
+                                        _buildQuickNoteSwitch(
+                                          title: 'Cử động thai',
+                                          icon: Icons.child_friendly_outlined,
+                                          value: _quickNoteFetalMovement,
+                                          showDivider: false,
+                                          onChanged: (value) => setState(
+                                            () =>
+                                                _quickNoteFetalMovement = value,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                        ),
                       ],
                     ),
                   ),
@@ -460,6 +541,62 @@ class _ManageFamilyPermissionScreenState
           ),
         ],
       ),
+    );
+  }
+
+  void _setQuickNotes(bool value) {
+    setState(() {
+      _quickNotes = value;
+      if (!value) {
+        _quickNoteWeight = false;
+        _quickNoteHydration = false;
+        _quickNoteEpds = false;
+        _quickNoteFetalMovement = false;
+      }
+    });
+  }
+
+  Widget _buildQuickNoteSwitch({
+    required String title,
+    required IconData icon,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+    bool showDivider = true,
+  }) {
+    return Column(
+      children: [
+        SwitchListTile.adaptive(
+          contentPadding: EdgeInsets.zero,
+          dense: true,
+          secondary: Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFE9E3),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, size: 20, color: const Color(0xFF845143)),
+          ),
+          title: Text(
+            title,
+            style: const TextStyle(
+              fontFamily: 'Quicksand',
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF625D59),
+            ),
+          ),
+          subtitle: const Text(
+            'Chỉ xem lịch sử',
+            style: TextStyle(fontFamily: 'Quicksand', fontSize: 11),
+          ),
+          value: value,
+          activeThumbColor: Colors.white,
+          activeTrackColor: const Color(0xFFC98C7B),
+          onChanged: onChanged,
+        ),
+        if (showDivider) const Divider(height: 1, color: Color(0xFFF2EAE4)),
+      ],
     );
   }
 

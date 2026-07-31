@@ -16,5 +16,10 @@ public class FamilyPermissionResponse {
     private boolean logs;
     private boolean alerts;
     private boolean records;
+    private boolean quickNotes;
+    private boolean quickNoteWeight;
+    private boolean quickNoteHydration;
+    private boolean quickNoteEpds;
+    private boolean quickNoteFetalMovement;
     private Instant updatedAt;
 }

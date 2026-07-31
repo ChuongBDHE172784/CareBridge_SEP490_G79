@@ -8,6 +8,7 @@ import '../../community/screens/view_content_screen.dart';
 import '../../directChat/screens/conversation_list_screen.dart';
 import '../../directChat/screens/expert_directory_screen.dart';
 import '../../familySync/screens/my_care_groups_screen.dart';
+import '../../familySync/screens/family_quick_note_history_screen.dart';
 import '../../familySync/services/family_home_service.dart';
 
 class FamilyMemberHomeScreen extends StatefulWidget {
@@ -244,7 +245,7 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
   Widget _buildGroupSelector(FamilyHomeSnapshot snapshot) {
     return DropdownButtonFormField<String>(
       key: const Key('family-dashboard-group-selector'),
-      value: snapshot.selectedCareGroupId,
+      initialValue: snapshot.selectedCareGroupId,
       decoration: const InputDecoration(
         labelText: 'Nhóm đang xem',
         border: OutlineInputBorder(),
@@ -300,6 +301,11 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
           )
         else
           ...detail.todayReminders.map(_buildReminderCard),
+        if (detail.permissionScope.quickNotes &&
+            _sharedQuickNoteTypes(detail.permissionScope).isNotEmpty) ...[
+          const SizedBox(height: 24),
+          _buildQuickNotesSection(detail),
+        ],
         const SizedBox(height: 24),
         const _SectionTitle('Cảnh báo theo nhóm'),
         const SizedBox(height: 10),
@@ -316,6 +322,161 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
         ...detail.members.map(_buildMemberCard),
       ],
     );
+  }
+
+  Widget _buildQuickNotesSection(FamilyHomeGroupDetail detail) {
+    final types = _sharedQuickNoteTypes(detail.permissionScope);
+    return Column(
+      key: const Key('family-dashboard-quick-notes'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Expanded(child: _SectionTitle('Ghi chú nhanh được chia sẻ')),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+              decoration: BoxDecoration(
+                color: _surfaceLow,
+                borderRadius: BorderRadius.circular(99),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.visibility_outlined, size: 15, color: _primary),
+                  SizedBox(width: 4),
+                  Text(
+                    'Chỉ xem',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: _primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          '${detail.motherDisplayName} đã chia sẻ ${types.length} mục lịch sử với bạn.',
+          style: const TextStyle(color: _onSurfaceVariant, height: 1.35),
+        ),
+        const SizedBox(height: 12),
+        GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: types.length,
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 1.35,
+          ),
+          itemBuilder: (context, index) {
+            final type = types[index];
+            return _buildQuickNoteTile(detail.careGroupId, type);
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildQuickNoteTile(String groupId, _FamilyQuickNoteType type) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(22),
+      child: InkWell(
+        key: Key('family-quick-note-${type.metricType.toLowerCase()}'),
+        borderRadius: BorderRadius.circular(22),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => FamilyQuickNoteHistoryScreen(
+              careGroupId: groupId,
+              metricType: type.metricType,
+            ),
+          ),
+        ),
+        child: Ink(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: const Color(0xFFF0E4DF)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: type.tint,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(type.icon, color: _primary, size: 22),
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      type.label,
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: _onSurface,
+                      ),
+                    ),
+                  ),
+                  const Icon(
+                    Icons.arrow_forward_rounded,
+                    size: 18,
+                    color: _primary,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  List<_FamilyQuickNoteType> _sharedQuickNoteTypes(
+    FamilyHomePermission permission,
+  ) {
+    if (!permission.quickNotes) return const [];
+    return [
+      if (permission.quickNoteWeight)
+        const _FamilyQuickNoteType(
+          metricType: 'WEIGHT',
+          label: 'Cân nặng',
+          icon: Icons.monitor_weight_outlined,
+          tint: Color(0xFFFFE9E3),
+        ),
+      if (permission.quickNoteHydration)
+        const _FamilyQuickNoteType(
+          metricType: 'HYDRATION',
+          label: 'Nước',
+          icon: Icons.water_drop_outlined,
+          tint: Color(0xFFE5F3F6),
+        ),
+      if (permission.quickNoteEpds)
+        const _FamilyQuickNoteType(
+          metricType: 'EPDS_SCORE',
+          label: 'Sàng lọc EPDS',
+          icon: Icons.psychology_alt_outlined,
+          tint: Color(0xFFF1E9F7),
+        ),
+      if (permission.quickNoteFetalMovement)
+        const _FamilyQuickNoteType(
+          metricType: 'FETAL_MOVEMENT_COUNT',
+          label: 'Cử động thai',
+          icon: Icons.child_friendly_outlined,
+          tint: Color(0xFFFFF0D8),
+        ),
+    ];
   }
 
   Widget _buildReminderCard(FamilyHomeTodayReminder reminder) {
@@ -551,6 +712,20 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
       _ => Icons.notifications_none_outlined,
     };
   }
+}
+
+class _FamilyQuickNoteType {
+  const _FamilyQuickNoteType({
+    required this.metricType,
+    required this.label,
+    required this.icon,
+    required this.tint,
+  });
+
+  final String metricType;
+  final String label;
+  final IconData icon;
+  final Color tint;
 }
 
 class _SectionTitle extends StatelessWidget {

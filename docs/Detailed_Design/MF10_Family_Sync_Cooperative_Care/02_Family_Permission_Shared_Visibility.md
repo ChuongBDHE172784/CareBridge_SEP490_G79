@@ -6,15 +6,16 @@
 | Use Cases Covered | UC-98 Manage Family Permission Scope, UC-101 View Shared Care Calendar, Data and Alerts |
 | Primary Actor(s) | Mother (grants scope), Family Member (consumes within scope) |
 | Platform | Mother Mobile App, Family Mobile App |
-| Main Flow Summary | A Mother defines which categories of data (calendar, logs, alerts, records) a specific family member may see, stored as a per-membership permission scope; the family member then views only the calendar items, shared data and alerts allowed by their current scope — never more. |
-| Grounding (source code) | `family/entity/CareGroupMember.java` (`permissionJson`), `family/dto/FamilyPermission.java`, `family/entity/PermissionFlag.java`, `family/entity/SharedDataCategory.java`, `family/controller/CareGroupController.java` (`/{groupId}/members/{memberId}/permissions`, `/{groupId}/calendar`), `family/controller/SharedDataController.java` (`/{groupId}/shared-data`), `family/controller/FamilyAlertController.java` (`/api/v1/family-alerts`) |
+| Main Flow Summary | A Mother defines which categories of data a specific family member may see. Beside tasks and profile/shared data, Quick Notes has a parent consent plus four granular scopes: weight, hydration, EPDS screening and fetal movement. Family receives read-only, date-filtered history only. |
+| Grounding (source code) | `family/entity/CareGroupMember.java` (`permissionJson`), `family/dto/FamilyPermission.java`, `family/entity/PermissionFlag.java`, `family/controller/CareGroupController.java`, `family/controller/FamilyQuickNoteController.java`, `family/service/FamilyQuickNoteService.java`, `health/entity/MaternalHealthMetric.java`, `health/repository/MaternalHealthMetricRepository.java` |
 
 ## 1. Tổng quan luồng chính (Main Flow Overview)
 
 Đây là mô hình "consent nội bộ nhóm" của MF-10 — khác với `ConsentGrant` (MF-01, dùng cho
 chia sẻ điểm-tới-điểm có hạn) hoặc `DataPermission` (MF-08, dùng cho chia sẻ với
 chuyên gia). Ở đây, phạm vi quyền được lưu **trực tiếp trên `CareGroupMember.permissionJson`**
-dưới dạng 4 cờ boolean (`calendar`/`logs`/`alerts`/`records` — DTO `FamilyPermission`),
+dưới dạng các cờ boolean (`calendar`/`logs`/`alerts`/`records` và nhóm quyền
+`quickNotes` — DTO `FamilyPermission`),
 do Owner cập nhật cho từng thành viên (UC-98). Mọi truy vấn dữ liệu chia sẻ của Family
 Member (lịch chăm sóc UC-101, dữ liệu chia sẻ, cảnh báo gia đình) đều lọc lại theo đúng
 scope hiện tại của `CareGroupMember` gọi request đó — không có bảng "shared calendar"
@@ -45,6 +46,11 @@ class FamilyPermission <<embedded JSON>> {
   + logs: boolean
   + alerts: boolean
   + records: boolean
+  + quickNotes: boolean
+  + quickNoteWeight: boolean
+  + quickNoteHydration: boolean
+  + quickNoteEpds: boolean
+  + quickNoteFetalMovement: boolean
 }
 
 enum SharedDataCategory {
@@ -191,7 +197,7 @@ Service -> FcmSvc : 21. sendToTokens(memberDeviceTokens,\n"Access permission cha
 activate FcmSvc
 FcmSvc --> Service : 22. void
 deactivate FcmSvc
-Service --> GroupController : 23. FamilyPermissionResponse{calendar,logs,alerts,records}
+Service --> GroupController : 23. FamilyPermissionResponse{calendar,logs,alerts,records,\nquickNotes,quickNoteWeight,quickNoteHydration,\nquickNoteEpds,quickNoteFetalMovement}
 deactivate Service
 GroupController --> M : 24. HTTP 200 OK
 deactivate GroupController
@@ -317,16 +323,17 @@ skinparam backgroundColor #FAFAFA
 skinparam StateBackgroundColor #D5E8F0
 skinparam StateBorderColor #2E75B6
 
-state "Mỗi cờ trong FamilyPermission\n(calendar / logs / alerts / records)" as Flag {
+state "Mỗi cờ trong FamilyPermission\n(calendar / logs / alerts / records / quickNotes + children)" as Flag {
   [*] --> DENIED : Mặc định khi mời thành viên\n[FamilyPermission.defaults() = tất cả false]
   DENIED --> GRANTED : Owner bật cờ tương ứng (UC-98)
   GRANTED --> DENIED : Owner tắt cờ tương ứng (UC-98)
 }
 
 note right of Flag
-  Đây không phải state machine nhiều bước mà là 4 toggle độc lập
-  (đúng theo FamilyPermission DTO thật: 4 boolean rời rạc) —
-  UC-101 kiểm tra lại từng cờ tại thời điểm truy vấn, không cache.
+  Các cờ cũ là toggle độc lập. Nhóm Quick Notes dùng
+  quickNotes làm quyền cha; khi cha tắt, toàn bộ quyền con
+  bị tắt và backend từ chối mọi lịch sử dù dữ liệu JSON cũ
+  còn sót quyền con. Mọi cờ được kiểm tra lại khi truy vấn.
 end note
 
 @enduml
@@ -340,3 +347,27 @@ end note
 - UC-98 — phạm vi quyền là theo từng thành viên (`memberId`), không áp dụng chung cho cả nhóm.
 - UC-101 — mọi endpoint đọc dữ liệu chia sẻ đều kiểm tra lại cờ tương ứng tại thời điểm truy vấn; không trả dữ liệu vượt scope kể cả khi request hợp lệ về mặt xác thực.
 - BR-PRIVACY — hồ sơ sức khỏe chi tiết (`records`) là cờ nhạy cảm nhất, mặc định `false`.
+- BR-QUICK-NOTE-CONSENT — `quickNotes=false` vô hiệu hóa mọi quyền con. Bật một mục
+  trên Mother Mobile luôn gửi cả quyền cha và quyền con; backend vẫn cưỡng chế điều kiện
+  cha + con, không tin vào trạng thái UI.
+- BR-QUICK-NOTE-READONLY — Family chỉ dùng
+  `GET /api/v1/care-groups/{careGroupId}/quick-notes?metricType=&from=&to=`. Không có
+  endpoint tạo/sửa/xóa trong family module và UI Family không hiển thị action ghi dữ liệu.
+- BR-QUICK-NOTE-STORAGE — không tạo bảng mới. Cân nặng, nước, EPDS và cử động thai tiếp tục
+  lưu trong `health_observations` qua projection `MaternalHealthMetric`; API Family chỉ tạo
+  read-model đã lọc quyền trên dữ liệu hiện hữu.
+- BR-EPDS-PRIVACY — lịch sử Family chỉ nhận điểm EPDS và thời gian. JSON câu trả lời chi tiết
+  trong `note` không được trả ra. Với cử động thai, `note` chỉ được dùng làm loại hoạt động
+  (`KICK`, `ROLL`, `HICCUP`, `STRETCH`) để hiển thị lịch sử đúng ngữ nghĩa.
+
+## 6. Family Mobile Dashboard — Ghi chú nhanh chỉ đọc
+
+- Section “Ghi chú nhanh được chia sẻ” chỉ xuất hiện khi `quickNotes=true` và có ít nhất
+  một quyền con đang bật.
+- Dashboard chỉ dựng tile cho đúng scope được cấp; không dựng tile mờ cho dữ liệu bị từ chối,
+  tránh làm lộ việc dữ liệu đó có tồn tại hay không.
+- Mỗi tile mở một danh sách cuộn theo ngày, có bộ lọc ngày và nhãn “Chỉ xem”.
+- Nước và cử động thai hiển thị tổng trong ngày; cân nặng và EPDS hiển thị lần ghi gần nhất;
+  bên dưới là toàn bộ bản ghi của ngày đã chọn.
+- Khi quyền bị thu hồi trong lúc đang xem, lần tải lại API trả `403 FAM-067`; client hiển thị
+  trạng thái không tải được thay vì giữ hoặc suy đoán dữ liệu ngoài scope.

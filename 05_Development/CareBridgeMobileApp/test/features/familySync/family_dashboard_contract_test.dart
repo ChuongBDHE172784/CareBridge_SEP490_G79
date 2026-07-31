@@ -3,17 +3,44 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:untitled/core/network/api_client.dart';
+import 'package:untitled/features/familySync/models/family_permission_model.dart';
 import 'package:untitled/features/familySync/services/family_home_service.dart';
 import 'package:untitled/features/home/screens/family_member_home_screen.dart';
 
 void main() {
   group('Family dashboard contract', () {
+    test(
+      'parses granular quick-note permission response with safe defaults',
+      () {
+        final permission = FamilyPermission.fromJson({
+          'memberId': 'member-a',
+          'careGroupId': 'group-a',
+          'calendar': false,
+          'logs': false,
+          'alerts': true,
+          'records': true,
+          'quickNotes': true,
+          'quickNoteWeight': true,
+          'updatedAt': '2026-07-31T00:00:00Z',
+        });
+
+        expect(permission.quickNotes, isTrue);
+        expect(permission.quickNoteWeight, isTrue);
+        expect(permission.quickNoteHydration, isFalse);
+        expect(permission.quickNoteEpds, isFalse);
+        expect(permission.quickNoteFetalMovement, isFalse);
+      },
+    );
+
     test('parses backend groups, global aggregate, and selected detail', () {
       final snapshot = FamilyHomeSnapshot.fromJson(_dashboardJson());
 
       expect(snapshot.globalAggregate.overdue, 7);
       expect(snapshot.groups, hasLength(2));
       expect(snapshot.groups.first.permissionScope.alerts, isTrue);
+      expect(snapshot.groups.first.permissionScope.quickNotes, isTrue);
+      expect(snapshot.groups.first.permissionScope.quickNoteWeight, isTrue);
+      expect(snapshot.groups.first.permissionScope.quickNoteEpds, isFalse);
       expect(snapshot.selectedCareGroupId, 'group-a');
       expect(snapshot.selectedGroupDetail!.careGroupId, 'group-a');
       expect(snapshot.selectedGroupDetail!.motherDisplayName, 'Nguyễn Lan');
@@ -212,6 +239,49 @@ void main() {
       expect(find.text('Dữ liệu chia sẻ'), findsNothing);
     });
 
+    testWidgets('renders only explicitly shared quick-note histories', (
+      tester,
+    ) async {
+      const permission = FamilyHomePermission(
+        calendar: true,
+        logs: false,
+        alerts: true,
+        records: true,
+        quickNotes: true,
+        quickNoteWeight: true,
+        quickNoteHydration: true,
+      );
+      await _pumpDashboard(
+        tester,
+        ({selectedCareGroupId}) async => _snapshot(
+          selectedId: 'group-a',
+          groups: [_group('group-a', 'Nhóm A')],
+          detail: _detail('group-a', permission: permission),
+        ),
+      );
+      await tester.pump();
+
+      await tester.scrollUntilVisible(
+        find.byKey(const Key('family-dashboard-quick-notes')),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(
+        find.byKey(const Key('family-dashboard-quick-notes')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('family-quick-note-weight')), findsOneWidget);
+      expect(
+        find.byKey(const Key('family-quick-note-hydration')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('family-quick-note-epds_score')),
+        findsNothing,
+      );
+      expect(find.text('Chỉ xem'), findsOneWidget);
+    });
+
     testWidgets('renders generic error and retries loader', (tester) async {
       var calls = 0;
       await _pumpDashboard(tester, ({selectedCareGroupId}) async {
@@ -302,7 +372,11 @@ FamilyHomeGroup _group(String id, String name) {
   );
 }
 
-FamilyHomeGroupDetail _detail(String groupId, {bool empty = false}) {
+FamilyHomeGroupDetail _detail(
+  String groupId, {
+  bool empty = false,
+  FamilyHomePermission permission = _permission,
+}) {
   final suffix = groupId == 'group-a' ? 'a' : 'b';
   return FamilyHomeGroupDetail(
     careGroupId: groupId,
@@ -347,7 +421,7 @@ FamilyHomeGroupDetail _detail(String groupId, {bool empty = false}) {
     ],
     relationshipRole: 'GRANDMOTHER',
     customRelationshipRole: null,
-    permissionScope: _permission,
+    permissionScope: permission,
     sharedDataSummary: FamilyHomeSharedDataSummary(
       totalItems: empty ? 0 : 2,
       categories: [
@@ -388,6 +462,11 @@ Map<String, dynamic> _dashboardJson() {
           'logs': false,
           'alerts': true,
           'records': true,
+          'quickNotes': true,
+          'quickNoteWeight': true,
+          'quickNoteHydration': false,
+          'quickNoteEpds': false,
+          'quickNoteFetalMovement': false,
         },
         'aggregate': {'overdue': 1, 'dueSoon': 1, 'inProgress': 1, 'alerts': 1},
       },
@@ -458,6 +537,11 @@ Map<String, dynamic> _dashboardJson() {
         'logs': false,
         'alerts': true,
         'records': true,
+        'quickNotes': true,
+        'quickNoteWeight': true,
+        'quickNoteHydration': false,
+        'quickNoteEpds': false,
+        'quickNoteFetalMovement': false,
       },
       'sharedDataSummary': {
         'totalItems': 2,

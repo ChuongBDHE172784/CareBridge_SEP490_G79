@@ -5,6 +5,11 @@ class FamilyPermission {
   final bool logs;
   final bool alerts;
   final bool records;
+  final bool quickNotes;
+  final bool quickNoteWeight;
+  final bool quickNoteHydration;
+  final bool quickNoteEpds;
+  final bool quickNoteFetalMovement;
   final DateTime updatedAt;
 
   FamilyPermission({
@@ -14,6 +19,11 @@ class FamilyPermission {
     required this.logs,
     required this.alerts,
     required this.records,
+    this.quickNotes = false,
+    this.quickNoteWeight = false,
+    this.quickNoteHydration = false,
+    this.quickNoteEpds = false,
+    this.quickNoteFetalMovement = false,
     required this.updatedAt,
   });
 
@@ -25,6 +35,11 @@ class FamilyPermission {
       logs: json['logs'] ?? false,
       alerts: json['alerts'] ?? false,
       records: json['records'] ?? false,
+      quickNotes: json['quickNotes'] ?? false,
+      quickNoteWeight: json['quickNoteWeight'] ?? false,
+      quickNoteHydration: json['quickNoteHydration'] ?? false,
+      quickNoteEpds: json['quickNoteEpds'] ?? false,
+      quickNoteFetalMovement: json['quickNoteFetalMovement'] ?? false,
       updatedAt: json['updatedAt'] != null
           ? DateTime.parse(json['updatedAt'])
           : DateTime.now(),

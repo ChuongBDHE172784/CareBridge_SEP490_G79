@@ -1,4 +1,5 @@
 import '../../../core/network/api_client.dart';
+import '../../healthRecords/models/health_metric_model.dart';
 
 class FamilyHomeService {
   static final FamilyHomeService instance = FamilyHomeService._();
@@ -8,12 +9,26 @@ class FamilyHomeService {
   Future<FamilyHomeSnapshot> loadSnapshot({String? selectedCareGroupId}) async {
     final response = await apiGet(
       '/api/v1/family/dashboard',
-      queryParams: {
-        if (selectedCareGroupId != null)
-          'selectedCareGroupId': selectedCareGroupId,
-      },
+      queryParams: {'selectedCareGroupId': ?selectedCareGroupId},
     );
     return FamilyHomeSnapshot.fromJson(_requiredMap(response, 'data'));
+  }
+
+  Future<MetricTrend> loadQuickNoteHistory({
+    required String careGroupId,
+    required String metricType,
+    required DateTime from,
+    required DateTime to,
+  }) async {
+    final response = await apiGet(
+      '/api/v1/care-groups/$careGroupId/quick-notes',
+      queryParams: {
+        'metricType': metricType,
+        'from': from.toUtc().toIso8601String(),
+        'to': to.toUtc().toIso8601String(),
+      },
+    );
+    return MetricTrend.fromJson(_requiredMap(response, 'data'));
   }
 }
 
@@ -266,12 +281,22 @@ class FamilyHomePermission {
     required this.logs,
     required this.alerts,
     required this.records,
+    this.quickNotes = false,
+    this.quickNoteWeight = false,
+    this.quickNoteHydration = false,
+    this.quickNoteEpds = false,
+    this.quickNoteFetalMovement = false,
   });
 
   final bool calendar;
   final bool logs;
   final bool alerts;
   final bool records;
+  final bool quickNotes;
+  final bool quickNoteWeight;
+  final bool quickNoteHydration;
+  final bool quickNoteEpds;
+  final bool quickNoteFetalMovement;
 
   factory FamilyHomePermission.fromJson(Map<String, dynamic> json) {
     return FamilyHomePermission(
@@ -279,6 +304,11 @@ class FamilyHomePermission {
       logs: _requiredBool(json, 'logs'),
       alerts: _requiredBool(json, 'alerts'),
       records: _requiredBool(json, 'records'),
+      quickNotes: json['quickNotes'] as bool? ?? false,
+      quickNoteWeight: json['quickNoteWeight'] as bool? ?? false,
+      quickNoteHydration: json['quickNoteHydration'] as bool? ?? false,
+      quickNoteEpds: json['quickNoteEpds'] as bool? ?? false,
+      quickNoteFetalMovement: json['quickNoteFetalMovement'] as bool? ?? false,
     );
   }
 }
