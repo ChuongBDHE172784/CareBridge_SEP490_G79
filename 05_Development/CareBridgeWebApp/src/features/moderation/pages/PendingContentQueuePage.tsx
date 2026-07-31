@@ -108,7 +108,7 @@ export default function PendingContentQueuePage() {
   const load = useCallback(async () => {
     setIsLoading(true);
     setError('');
-    fetchAiModerationStatus().then(st => setAiEnabled(st.enabled)).catch(() => setAiEnabled(null));
+    fetchAiModerationStatus().then(st => setAiEnabled(st.enabled && st.businessToggleEnabled)).catch(() => setAiEnabled(null));
     try {
       if (tab === 'HISTORY') {
         const result = await fetchModerationHistory({ size: 50 });
