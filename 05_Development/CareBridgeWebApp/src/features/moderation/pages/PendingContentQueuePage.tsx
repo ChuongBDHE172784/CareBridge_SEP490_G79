@@ -293,7 +293,7 @@ export default function PendingContentQueuePage() {
                 {aiEnabled === false ? (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
                     <span className="w-2 h-2 rounded-full bg-amber-500" />
-                    AI Moderation: Đã tắt (Duyệt thủ công)
+                    AI Moderation: Đã tắt
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -305,7 +305,7 @@ export default function PendingContentQueuePage() {
               <p className="text-on-surface-variant text-sm mt-1">
                 {aiEnabled === false
                   ? 'Hệ thống AI Moderation đang TẮT. Toàn bộ nội dung mới từ người dùng được giữ lại chờ Moderator duyệt thủ công trước khi xuất bản.'
-                  : 'Các nội dung cần duyệt tay trước khi công khai (khi bật kiểm duyệt trước hoặc khi hệ thống AI cần xác minh thủ công).'}
+                  : 'Các nội dung cần duyệt tay trước khi công khai (khi AI đánh giá nội dung ở mức nghi vấn nhẹ).'}
               </p>
             </div>
             <button
@@ -347,8 +347,8 @@ export default function PendingContentQueuePage() {
                   type="button"
                   onClick={() => setTab(tabItem.value)}
                   className={`inline-flex items-center gap-2 py-2 px-4 rounded-full text-xs font-semibold cursor-pointer transition-colors ${tab === tabItem.value
-                      ? 'bg-primary text-on-primary shadow-sm'
-                      : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-highest'
+                    ? 'bg-primary text-on-primary shadow-sm'
+                    : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-highest'
                     }`}
                 >
                   <span className="material-symbols-outlined text-base">{tabItem.icon}</span>
