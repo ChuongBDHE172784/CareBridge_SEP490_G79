@@ -17,22 +17,38 @@ class FloatingAiTriageRouteObserver extends NavigatorObserver
     notifyListeners();
   }
 
+  void _notifyNavigationChanged() => notifyListeners();
+
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
     super.didPush(route, previousRoute);
-    if (_isPopup(route)) _updatePopupDepth(1);
+    if (_isPopup(route)) {
+      _updatePopupDepth(1);
+    } else {
+      _popupDepth = 0;
+      _notifyNavigationChanged();
+    }
   }
 
   @override
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
     super.didPop(route, previousRoute);
-    if (_isPopup(route)) _updatePopupDepth(-1);
+    if (_isPopup(route)) {
+      _updatePopupDepth(-1);
+    } else {
+      _popupDepth = 0;
+      _notifyNavigationChanged();
+    }
   }
 
   @override
   void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
     super.didRemove(route, previousRoute);
-    if (_isPopup(route)) _updatePopupDepth(-1);
+    if (_isPopup(route)) {
+      _updatePopupDepth(-1);
+    } else {
+      _notifyNavigationChanged();
+    }
   }
 
   @override
@@ -40,6 +56,10 @@ class FloatingAiTriageRouteObserver extends NavigatorObserver
     super.didReplace(newRoute: newRoute, oldRoute: oldRoute);
     if (_isPopup(oldRoute)) _updatePopupDepth(-1);
     if (_isPopup(newRoute)) _updatePopupDepth(1);
+    if (!_isPopup(oldRoute) && !_isPopup(newRoute)) {
+      _popupDepth = 0;
+      _notifyNavigationChanged();
+    }
   }
 }
 
@@ -249,24 +269,22 @@ class _FloatingAiTriageHostState extends State<FloatingAiTriageHost> {
                     child: Semantics(
                       button: true,
                       label: 'Mở trợ lý AI Triage',
-                      child: Tooltip(
-                        message: 'Mở trợ lý AI Triage',
-                        child: GestureDetector(
-                          key: const Key('floating-ai-triage-robot'),
-                          behavior: HitTestBehavior.opaque,
-                          onTap: widget.onOpen,
-                          onPanUpdate: (details) => _move(
-                            details,
-                            constraints,
-                            safePadding,
-                            keyboardInset,
-                          ),
-                          onPanEnd: (_) => _snapToNearestEdge(
-                            constraints,
-                            safePadding,
-                            keyboardInset,
-                          ),
-                          child: Container(
+                      child: GestureDetector(
+                        key: const Key('floating-ai-triage-robot'),
+                        behavior: HitTestBehavior.opaque,
+                        onTap: widget.onOpen,
+                        onPanUpdate: (details) => _move(
+                          details,
+                          constraints,
+                          safePadding,
+                          keyboardInset,
+                        ),
+                        onPanEnd: (_) => _snapToNearestEdge(
+                          constraints,
+                          safePadding,
+                          keyboardInset,
+                        ),
+                        child: Container(
                             width: _size,
                             height: _size,
                             decoration: BoxDecoration(
@@ -322,7 +340,6 @@ class _FloatingAiTriageHostState extends State<FloatingAiTriageHost> {
                                 ),
                               ],
                             ),
-                          ),
                         ),
                       ),
                     ),

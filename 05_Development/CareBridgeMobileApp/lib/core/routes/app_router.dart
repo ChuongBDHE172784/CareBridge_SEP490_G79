@@ -77,7 +77,6 @@ import '../../features/emergency/screens/emergency_alert_detail_screen.dart';
 import '../../features/emergency/screens/family_alert_detail_screen.dart';
 import '../../features/safety/screens/safety_monitoring_screen.dart';
 import '../../features/safety/screens/enable_fall_detection_screen.dart';
-import '../../features/expert/screens/expert_question_queue_screen.dart';
 import '../../features/expert/screens/expert_profile_setup_screen.dart';
 import '../../features/expert/screens/upload_verification_docs_screen.dart';
 import '../../features/expert/screens/verification_status_screen.dart';
@@ -812,10 +811,6 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/safety/fall-detection/enable',
       builder: (context, state) => const EnableFallDetectionScreen(),
-    ),
-    GoRoute(
-      path: '/expert-queue',
-      builder: (context, state) => const ExpertQuestionQueueScreen(),
     ),
     // CB-033: Expert Profile Setup (UC-87)
     GoRoute(
