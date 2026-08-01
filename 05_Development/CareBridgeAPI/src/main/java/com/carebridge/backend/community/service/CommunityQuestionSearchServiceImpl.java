@@ -53,6 +53,7 @@ public class CommunityQuestionSearchServiceImpl implements CommunityQuestionSear
                 request.getKeyword(),
                 request.getTopicId(),
                 request.getStage(),
+                request.getUrgency(),
                 request.getHasExpertAnswer(),
                 pageable);
 

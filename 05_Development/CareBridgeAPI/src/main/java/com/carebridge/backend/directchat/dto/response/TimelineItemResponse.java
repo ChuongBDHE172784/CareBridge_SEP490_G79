@@ -23,6 +23,8 @@ public class TimelineItemResponse {
     private final UUID senderUserId;
     private final String messageType;
     private final String messageBody;
+    private final UUID attachmentId;
+    private final Instant recalledAt;
     private final Instant createdAt;
 
     // CALL_EVENT fields

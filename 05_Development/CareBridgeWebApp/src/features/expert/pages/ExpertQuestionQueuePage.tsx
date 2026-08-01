@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import apiClient from '../../../shared/api/apiClient';
+import { useAuthStore } from '../../../shared/auth/authStore';
 
 interface CommunityTopic {
   id: string;
@@ -22,11 +23,21 @@ interface CommunityQuestion {
 
 interface AnswerItem {
   id: string;
+  authorId: string;
   body: string;
-  authorName?: string;
-  authorRole?: string;
-  isExpertAnswer: boolean;
+  authorDisplay?: string;
+  expertLabeled: boolean;
+  expertProfileId?: string;
+  personalExperience: boolean;
+  imageUrls: string[];
+  likeCount: number;
+  liked: boolean;
   createdAt: string;
+}
+
+interface PendingAnswerImage {
+  file: File;
+  previewUrl: string;
 }
 
 interface CommunityQuestionDetail {
@@ -45,6 +56,7 @@ interface CommunityQuestionDetail {
   status: string;
   answerCount: number;
   likeCount: number;
+  isLiked: boolean;
   createdAt: string;
   answers?: AnswerItem[];
 }
@@ -87,7 +99,13 @@ export default function ExpertQuestionQueuePage() {
 
   // Answer submission
   const [answerText, setAnswerText] = useState('');
+  const [pendingAnswerImages, setPendingAnswerImages] = useState<PendingAnswerImage[]>([]);
+  const [editingAnswerId, setEditingAnswerId] = useState<string | null>(null);
+  const [existingAnswerImageUrls, setExistingAnswerImageUrls] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const currentUserId = useAuthStore((state) => state.user?.id ?? null);
+
 
   // Pagination
   const [page, setPage] = useState(0);
@@ -116,7 +134,7 @@ export default function ExpertQuestionQueuePage() {
       if (selectedStage) params.stage = selectedStage;
       if (selectedTopicId) params.topicId = selectedTopicId;
       if (selectedHasExpertAnswer) params.hasExpertAnswer = selectedHasExpertAnswer;
-      if (filterUrgent) params.urgency = 'HIGH';
+      if (filterUrgent) params.urgency = 'URGENT';
 
       const qs = new URLSearchParams(params).toString();
       const { data } = await apiClient.get(`/api/v1/community/questions?${qs}`);
@@ -166,38 +184,124 @@ export default function ExpertQuestionQueuePage() {
     if (!answerText.trim() || !selectedId || submitting) return;
     setSubmitting(true);
     try {
-      const { data } = await apiClient.post(`/api/v1/community/questions/${selectedId}/answers`, {
+      const imageUrls = await Promise.all(pendingAnswerImages.map(async ({ file }) => {
+        const form = new FormData();
+        form.append('file', file);
+        form.append('kind', 'IMAGE');
+        form.append('purpose', 'COMMUNITY_ANSWER_IMAGE');
+        form.append('accessMode', 'PUBLIC');
+        const { data } = await apiClient.post('/api/v1/files/upload/with-purpose', form, {
+          headers: { 'Content-Type': undefined },
+        });
+        return data.data.presignedUrl as string;
+      }));
+      const payload = {
         body: answerText.trim(),
         isPersonalExperience: false,
-      });
+        imageUrls: [...existingAnswerImageUrls, ...imageUrls],
+      };
+      const { data } = editingAnswerId
+        ? await apiClient.patch(`/api/v1/community/questions/${selectedId}/answers/${editingAnswerId}`, payload)
+        : await apiClient.post(`/api/v1/community/questions/${selectedId}/answers`, payload);
 
       const newAnswer: AnswerItem = data.data ?? {
         id: crypto.randomUUID(),
         body: answerText.trim(),
-        authorName: 'Chuyên gia Y tế CareBridge',
-        isExpertAnswer: true,
+        authorDisplay: 'Chuyên gia',
+        expertLabeled: true,
+        personalExperience: false,
+        imageUrls,
+        likeCount: 0,
+        liked: false,
         createdAt: new Date().toISOString(),
       };
 
       setAnswerText('');
-      setDetail((prev) =>
-        prev
-          ? {
-              ...prev,
-              answerCount: prev.answerCount + 1,
-              answers: [newAnswer, ...(prev.answers || [])],
-            }
-          : prev
-      );
-      setQuestions((prev) =>
-        prev.map((q) =>
-          q.id === selectedId ? { ...q, answerCount: q.answerCount + 1, hasExpertAnswer: true } : q
-        )
-      );
+      pendingAnswerImages.forEach(({ previewUrl }) => URL.revokeObjectURL(previewUrl));
+      setPendingAnswerImages([]);
+      setDetail((prev) => {
+        if (!prev) return prev;
+        if (editingAnswerId) {
+          return { ...prev, answers: prev.answers?.map((answer) => answer.id === editingAnswerId
+            ? { ...answer, ...newAnswer, authorDisplay: answer.authorDisplay }
+            : answer) };
+        }
+        return { ...prev, answerCount: prev.answerCount + 1, answers: [newAnswer, ...(prev.answers || [])] };
+      });
+      if (!editingAnswerId) {
+        setQuestions((prev) => prev.map((q) => q.id === selectedId
+          ? { ...q, answerCount: q.answerCount + 1, hasExpertAnswer: true }
+          : q));
+      }
+      setEditingAnswerId(null);
+      setExistingAnswerImageUrls([]);
     } catch {
       alert('Gửi câu trả lời thất bại. Vui lòng thử lại.');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const startEditingAnswer = (answer: AnswerItem) => {
+    setEditingAnswerId(answer.id);
+    setAnswerText(answer.body);
+    setExistingAnswerImageUrls(answer.imageUrls);
+    setPendingAnswerImages([]);
+  };
+
+  const cancelEditingAnswer = () => {
+    pendingAnswerImages.forEach(({ previewUrl }) => URL.revokeObjectURL(previewUrl));
+    setEditingAnswerId(null);
+    setAnswerText('');
+    setExistingAnswerImageUrls([]);
+    setPendingAnswerImages([]);
+  };
+
+  const deleteAnswer = async (answerId: string) => {
+    if (!selectedId || !window.confirm('Bạn có chắc muốn xóa câu trả lời này?')) return;
+    try {
+      await apiClient.delete(`/api/v1/community/questions/${selectedId}/answers/${answerId}`);
+      setDetail((current) => current ? {
+        ...current,
+        answerCount: Math.max(0, current.answerCount - 1),
+        answers: current.answers?.filter((answer) => answer.id !== answerId),
+      } : current);
+      setQuestions((current) => current.map((question) => question.id === selectedId
+        ? { ...question, answerCount: Math.max(0, question.answerCount - 1) }
+        : question));
+      if (editingAnswerId === answerId) cancelEditingAnswer();
+    } catch {
+      alert('Không thể xóa câu trả lời. Vui lòng thử lại.');
+    }
+  };
+
+  const queueAnswerImage = (file: File) => {
+    if (pendingAnswerImages.length >= 3) return;
+    setPendingAnswerImages((current) => [...current, { file, previewUrl: URL.createObjectURL(file) }]);
+    if (imageInputRef.current) imageInputRef.current.value = '';
+  };
+
+  const toggleQuestionLike = async () => {
+    if (!selectedId || !detail) return;
+    try {
+      const { data } = await apiClient.post(`/api/v1/community/questions/${selectedId}/like`);
+      setDetail((current) => current ? { ...current, likeCount: data.data.likeCount, isLiked: data.data.liked } : current);
+    } catch {
+      alert('Không thể cập nhật lượt tim. Vui lòng thử lại.');
+    }
+  };
+
+  const toggleAnswerLike = async (answerId: string) => {
+    try {
+      const { data } = await apiClient.post(`/api/v1/community/answers/${answerId}/like`);
+      setDetail((current) => current ? {
+        ...current,
+        answers: current.answers?.map((answer) => answer.id === answerId
+          ? { ...answer, likeCount: data.data.likeCount, liked: data.data.liked }
+          : answer),
+      } : current);
+    } catch {
+      alert('Không thể cập nhật lượt tim. Vui lòng thử lại.');
     }
   };
 
@@ -249,7 +353,6 @@ export default function ExpertQuestionQueuePage() {
             <button
               onClick={() => {
                 setFilterUrgent((v) => !v);
-                fetchQuestions(0);
               }}
               className={`py-2 px-3.5 rounded-full text-xs font-semibold cursor-pointer whitespace-nowrap transition-colors flex items-center gap-1 ${
                 filterUrgent
@@ -269,7 +372,6 @@ export default function ExpertQuestionQueuePage() {
               value={selectedStage}
               onChange={(e) => {
                 setSelectedStage(e.target.value);
-                fetchQuestions(0);
               }}
               className="py-1.5 px-3 rounded-full border border-outline-variant bg-surface text-xs font-medium text-on-surface outline-none cursor-pointer"
             >
@@ -282,10 +384,9 @@ export default function ExpertQuestionQueuePage() {
             {topics.length > 0 && (
               <select
                 value={selectedTopicId}
-                onChange={(e) => {
-                  setSelectedTopicId(e.target.value);
-                  fetchQuestions(0);
-                }}
+              onChange={(e) => {
+                setSelectedTopicId(e.target.value);
+              }}
                 className="py-1.5 px-3 rounded-full border border-outline-variant bg-surface text-xs font-medium text-on-surface outline-none cursor-pointer max-w-[180px] truncate"
               >
                 <option value="">Tất cả chủ đề</option>
@@ -302,7 +403,6 @@ export default function ExpertQuestionQueuePage() {
               value={selectedHasExpertAnswer}
               onChange={(e) => {
                 setSelectedHasExpertAnswer(e.target.value);
-                fetchQuestions(0);
               }}
               className="py-1.5 px-3 rounded-full border border-outline-variant bg-surface text-xs font-medium text-on-surface outline-none cursor-pointer"
             >
@@ -333,7 +433,7 @@ export default function ExpertQuestionQueuePage() {
 
           {questions.map((q) => {
             const active = q.id === selectedId;
-            const isHigh = q.urgency === 'HIGH';
+            const isHigh = q.urgency === 'URGENT';
             const hasImages = q.imageUrls && q.imageUrls.length > 0;
 
             return (
@@ -477,10 +577,10 @@ export default function ExpertQuestionQueuePage() {
 
                   <span
                     className={`py-1 px-3 rounded-full text-xs font-bold ${
-                      detail?.urgency === 'HIGH' ? 'bg-error-container text-error' : 'bg-[#FFF3E0] text-[#E65100]'
+                      detail?.urgency === 'URGENT' ? 'bg-error-container text-error' : 'bg-[#FFF3E0] text-[#E65100]'
                     }`}
                   >
-                    {detail?.urgency === 'HIGH' ? 'Khẩn cấp' : 'Thường'}
+                    {detail?.urgency === 'URGENT' ? 'Khẩn cấp' : 'Thường'}
                   </span>
                 </div>
 
@@ -490,6 +590,13 @@ export default function ExpertQuestionQueuePage() {
                   <p className="text-sm text-on-surface leading-relaxed whitespace-pre-line m-0">
                     {detail?.body || 'Không có nội dung mô tả bổ sung.'}
                   </p>
+                  <button
+                    onClick={toggleQuestionLike}
+                    className={`flex items-center gap-1 text-xs font-semibold cursor-pointer ${detail?.isLiked ? 'text-primary' : 'text-outline hover:text-primary'}`}
+                  >
+                    <span className="material-symbols-outlined text-base">{detail?.isLiked ? 'favorite' : 'favorite_border'}</span>
+                    {detail?.likeCount ?? 0} tim
+                  </button>
                 </div>
 
                 {/* Attached Images Gallery (Uploaded from Mobile App) */}
@@ -533,21 +640,41 @@ export default function ExpertQuestionQueuePage() {
                         <div
                           key={ans.id}
                           className={`p-4 rounded-2xl border space-y-1.5 ${
-                            ans.isExpertAnswer
+                            ans.expertLabeled
                               ? 'border-emerald-300 bg-emerald-50/70 text-emerald-950'
                               : 'border-outline-variant/50 bg-surface'
                           }`}
                         >
                           <div className="flex items-center justify-between text-xs">
                             <span className="font-bold flex items-center gap-1">
-                              {ans.isExpertAnswer && (
+                              {ans.expertLabeled && (
                                 <span className="material-symbols-outlined text-sm text-emerald-700">verified</span>
                               )}
-                              {ans.authorName || (ans.isExpertAnswer ? 'Chuyên gia Y tế' : 'Người dùng cộng đồng')}
+                              {ans.authorDisplay || (ans.expertLabeled ? 'Chuyên gia' : 'Thành viên')}
                             </span>
                             <span className="text-[11px] opacity-75">{timeAgo(ans.createdAt)}</span>
                           </div>
                           <p className="text-xs leading-relaxed whitespace-pre-line m-0">{ans.body}</p>
+                          {ans.imageUrls.length > 0 && (
+                            <div className="grid grid-cols-3 gap-2 pt-1">
+                              {ans.imageUrls.map((url, index) => (
+                                <img key={url} src={url} alt={`Ảnh phản hồi ${index + 1}`} className="aspect-square w-full rounded-xl object-cover border border-outline-variant/50" />
+                              ))}
+                            </div>
+                          )}
+                          <button
+                            onClick={() => toggleAnswerLike(ans.id)}
+                            className={`flex items-center gap-1 pt-1 text-[11px] font-semibold cursor-pointer ${ans.liked ? 'text-primary' : 'text-outline hover:text-primary'}`}
+                          >
+                            <span className="material-symbols-outlined text-sm">{ans.liked ? 'favorite' : 'favorite_border'}</span>
+                            {ans.likeCount}
+                          </button>
+                          {ans.authorId === currentUserId && (
+                            <div className="flex gap-3 pt-1 text-[11px] font-semibold">
+                              <button onClick={() => startEditingAnswer(ans)} className="cursor-pointer text-primary hover:underline">Sửa</button>
+                              <button onClick={() => void deleteAnswer(ans.id)} className="cursor-pointer text-error hover:underline">Xóa</button>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
@@ -570,6 +697,7 @@ export default function ExpertQuestionQueuePage() {
 
           {/* Answer Editor Textarea & Submit */}
           <div className="p-4 border-t border-surface-container-highest bg-surface space-y-3">
+            {editingAnswerId && <div className="flex items-center justify-between rounded-xl bg-primary-container/30 px-3 py-2 text-xs text-on-surface"><span>Đang chỉnh sửa câu trả lời</span><button onClick={cancelEditingAnswer} className="cursor-pointer font-semibold text-primary">Hủy</button></div>}
             <textarea
               rows={4}
               value={answerText}
@@ -577,6 +705,12 @@ export default function ExpertQuestionQueuePage() {
               placeholder="Nhập câu trả lời tư vấn chuyên môn chi tiết cho mẹ bầu..."
               className="w-full rounded-2xl border border-outline-variant bg-surface p-3.5 text-xs text-on-surface leading-relaxed outline-none focus:border-primary font-sans resize-none"
             />
+            <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => event.target.files?.[0] && queueAnswerImage(event.target.files[0])} />
+            <div className="flex flex-wrap gap-2">
+              {existingAnswerImageUrls.map((url) => <div key={url} className="relative h-16 w-16"><img src={url} alt="Ảnh hiện có" className="h-full w-full rounded-xl object-cover" /><button onClick={() => setExistingAnswerImageUrls((urls) => urls.filter((image) => image !== url))} className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-error text-[11px] text-white cursor-pointer">×</button></div>)}
+              {pendingAnswerImages.map(({ previewUrl }) => <div key={previewUrl} className="relative h-16 w-16"><img src={previewUrl} alt="Ảnh sắp gửi" className="h-full w-full rounded-xl object-cover" /><button onClick={() => setPendingAnswerImages((images) => { const removed = images.find((image) => image.previewUrl === previewUrl); if (removed) URL.revokeObjectURL(removed.previewUrl); return images.filter((image) => image.previewUrl !== previewUrl); })} className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-error text-[11px] text-white cursor-pointer">×</button></div>)}
+              {existingAnswerImageUrls.length + pendingAnswerImages.length < 3 && <button onClick={() => imageInputRef.current?.click()} disabled={submitting} className="flex h-16 items-center gap-1 rounded-xl border border-dashed border-outline-variant px-3 text-xs text-outline hover:text-primary cursor-pointer disabled:opacity-50"><span className="material-symbols-outlined text-base">add_photo_alternate</span>Thêm ảnh</button>}
+            </div>
             <div className="flex items-center justify-between">
               <span className="text-[11px] text-outline">{answerText.length} / 2 000 ký tự</span>
               <button
@@ -585,7 +719,7 @@ export default function ExpertQuestionQueuePage() {
                 className="flex items-center gap-2 py-2.5 px-6 rounded-full bg-primary text-on-primary font-semibold text-xs hover:brightness-110 disabled:opacity-50 cursor-pointer shadow-md"
               >
                 <span className="material-symbols-outlined text-base">send</span>
-                {submitting ? 'Đang gửi...' : 'Gửi câu trả lời'}
+                {submitting ? 'Đang lưu...' : editingAnswerId ? 'Lưu thay đổi' : 'Gửi câu trả lời'}
               </button>
             </div>
           </div>

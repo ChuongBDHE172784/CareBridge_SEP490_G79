@@ -125,6 +125,7 @@ class CommunityAnswer {
   final String body;
   final List<String> imageUrls;
   final bool personalExperience;
+  final String? experienceTag;
   final bool expertLabeled;
   final String? expertProfileId;
   final String status;
@@ -140,6 +141,7 @@ class CommunityAnswer {
     required this.body,
     this.imageUrls = const [],
     required this.personalExperience,
+    this.experienceTag,
     required this.expertLabeled,
     this.expertProfileId,
     required this.status,
@@ -159,6 +161,7 @@ class CommunityAnswer {
             .whereType<String>()
             .toList(),
         personalExperience: json['personalExperience'] as bool? ?? false,
+        experienceTag: json['experienceTag'] as String?,
         expertLabeled: json['expertLabeled'] as bool? ?? false,
         expertProfileId: json['expertProfileId'] as String?,
         status: json['status'] as String? ?? 'PENDING',
@@ -175,6 +178,7 @@ class CommunityAnswer {
     body: body,
     imageUrls: imageUrls,
     personalExperience: personalExperience,
+    experienceTag: experienceTag,
     expertLabeled: expertLabeled,
     expertProfileId: expertProfileId,
     status: status,

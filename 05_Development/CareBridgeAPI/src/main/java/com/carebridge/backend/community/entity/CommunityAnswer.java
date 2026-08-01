@@ -54,6 +54,9 @@ public class CommunityAnswer {
     @Builder.Default
     private boolean personalExperience = false;
 
+    @Column(name = "experience_tag", length = 80)
+    private String experienceTag;
+
     // Fallback for legacy/system-created flows; member posts explicitly start AI_PENDING.
     @Enumerated(EnumType.STRING)
     @Column(name = "moderation_status", nullable = false, length = 30)

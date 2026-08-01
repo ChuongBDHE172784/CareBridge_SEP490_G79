@@ -10,6 +10,7 @@ import com.carebridge.backend.community.dto.response.CommunityQuestionDetailResp
 import com.carebridge.backend.community.dto.response.CommunityQuestionResponse;
 import com.carebridge.backend.community.dto.response.CommunityQuestionSummaryResponse;
 import com.carebridge.backend.community.entity.PregnancyStage;
+import com.carebridge.backend.community.entity.UrgencyLevel;
 import com.carebridge.backend.community.exception.CommunityFeedValidationException;
 import com.carebridge.backend.community.service.CommunityQuestionSearchService;
 import com.carebridge.backend.community.service.CommunityQuestionService;
@@ -51,6 +52,7 @@ public class CommunityQuestionController {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) UUID topicId,
             @RequestParam(required = false) PregnancyStage stage,
+            @RequestParam(required = false) UrgencyLevel urgency,
             @RequestParam(required = false) Boolean hasExpertAnswer,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -65,6 +67,7 @@ public class CommunityQuestionController {
         request.setKeyword(keyword);
         request.setTopicId(topicId);
         request.setStage(stage);
+        request.setUrgency(urgency);
         request.setHasExpertAnswer(hasExpertAnswer);
         request.setPage(page);
         request.setSize(size);

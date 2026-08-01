@@ -11,6 +11,7 @@ import com.carebridge.backend.expert.entity.ExpertProfile;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import com.carebridge.backend.expert.truststatus.TrustStatus;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
+import com.carebridge.backend.family.repository.CareGroupMemberRepository;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -24,6 +25,9 @@ class DirectConversationPolicyImplTest {
 
     @Mock
     private ExpertProfileRepository expertProfileRepository;
+
+    @Mock
+    private CareGroupMemberRepository careGroupMemberRepository;
 
     @InjectMocks
     private DirectConversationPolicyImpl policy;
@@ -106,6 +110,19 @@ class DirectConversationPolicyImplTest {
                     assertThat(ex.getCode()).isEqualTo("DCC-003");
                     assertThat(ex.getHttpStatus().value()).isEqualTo(403);
                 });
+    }
+
+    @Test
+    void assertIsParticipant_acceptedFamilyMemberOfMother_passes() {
+        UUID motherUserId = UUID.randomUUID();
+        UUID familyUserId = UUID.randomUUID();
+        DirectConversation conversation = conversation(motherUserId, UUID.randomUUID());
+        when(careGroupMemberRepository.existsAcceptedMemberOfActiveMotherCareGroup(motherUserId, familyUserId))
+                .thenReturn(true);
+
+        policy.assertIsParticipant(familyUserId, conversation);
+
+        assertThat(policy.resolveRole(familyUserId, conversation)).isEqualTo("FAMILY");
     }
 
     // DCC-TC-004 — Expert not APPROVED rejected at creation time (422).

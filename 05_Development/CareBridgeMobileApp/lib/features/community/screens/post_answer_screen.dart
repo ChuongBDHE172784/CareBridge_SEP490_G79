@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/auth/auth_state.dart';
 import '../widgets/community_image_attachments.dart';
 
 import '../models/community_model.dart';
@@ -60,10 +61,10 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
   static const _outlineVariant = Color(0xFFD6C2BD);
 
   static const _experienceTags = [
-    'Dinh dưỡng',
-    'Tâm lý',
-    'Mẹo dân gian',
-    'Khích lệ tinh thần',
+    'Trải nghiệm thực tế',
+    'Chăm sóc hằng ngày',
+    'Hỗ trợ tinh thần',
+    'Thông tin tham khảo',
   ];
 
   final _bodyCtrl = TextEditingController();
@@ -73,14 +74,17 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
   final List<String> _existingImageUrls = [];
   bool _submitting = false;
   bool _showPublishedModal = false;
+  bool get _isExpert => AuthState.instance.role?.trim().toUpperCase() == 'EXPERT';
 
   @override
   void initState() {
     super.initState();
     if (widget.existingAnswer != null) {
       _bodyCtrl.text = widget.existingAnswer!.body;
-      if (widget.existingAnswer!.personalExperience) {
-        _selectedTags.add(0);
+      final tag = widget.existingAnswer!.experienceTag;
+      final index = tag == null ? 0 : _experienceTags.indexOf(tag);
+      if (!_isExpert && widget.existingAnswer!.personalExperience && index >= 0) {
+        _selectedTags.add(index);
       }
       _existingImageUrls.addAll(widget.existingAnswer!.imageUrls);
     }
@@ -112,6 +116,7 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
           {
             'body': _bodyCtrl.text.trim(),
             'isPersonalExperience': _selectedTags.isNotEmpty,
+            'experienceTag': _selectedTags.isEmpty ? null : _experienceTags[_selectedTags.first],
             'imageUrls': finalImageUrls,
           },
         );
@@ -121,6 +126,7 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
           {
             'body': _bodyCtrl.text.trim(),
             'isPersonalExperience': _selectedTags.isNotEmpty,
+            'experienceTag': _selectedTags.isEmpty ? null : _experienceTags[_selectedTags.first],
             'imageUrls': finalImageUrls,
           },
         );
@@ -417,6 +423,7 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
             ),
           ),
           const SizedBox(height: 16),
+          if (!_isExpert) ...[
           // Experience tags
           const Text(
             'Thẻ kinh nghiệm liên quan:',
@@ -437,6 +444,7 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
                   if (selected) {
                     _selectedTags.remove(i);
                   } else {
+                    _selectedTags.clear();
                     _selectedTags.add(i);
                   }
                 }),
@@ -461,6 +469,7 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
             }),
           ),
           const SizedBox(height: 16),
+          ],
           TextField(
             controller: _bodyCtrl,
             maxLines: 8,

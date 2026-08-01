@@ -27,6 +27,103 @@ function describeCall(item: TimelineItem): string {
   }
 }
 
+function formatTimestamp(value?: string): string {
+  if (!value) return '';
+  const date = new Date(value);
+  const now = new Date();
+  const time = date.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  return date.toDateString() === now.toDateString()
+    ? time
+    : `${date.toLocaleDateString('vi-VN')} · ${time}`;
+}
+
+async function downloadAttachment(url: string, name: string) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error('Download failed');
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = objectUrl;
+  anchor.download = name;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(objectUrl);
+}
+
+function AttachmentBubble({
+  item,
+  conversationId,
+  isOwn,
+  onPreview,
+  onRecall,
+  onError,
+}: {
+  item: TimelineItem;
+  conversationId: string;
+  isOwn: boolean;
+  onPreview: (url: string, name: string) => void;
+  onRecall: (messageId: string) => void;
+  onError: (message: string) => void;
+}) {
+  const [attachment, setAttachment] = useState<directChatApi.DirectChatAttachment | null>(null);
+
+  useEffect(() => {
+    if (!item.messageId || !item.attachmentId || item.recalledAt) return;
+    let disposed = false;
+    directChatApi.viewAttachment(conversationId, item.messageId)
+      .then((result) => !disposed && setAttachment(result))
+      .catch(() => !disposed && onError('Không thể tải tệp đính kèm.'));
+    return () => { disposed = true; };
+  }, [conversationId, item.attachmentId, item.messageId, item.recalledAt, onError]);
+
+  if (item.recalledAt) {
+    return <span className="italic text-on-surface-variant">Tin nhắn đã được thu hồi</span>;
+  }
+  if (!attachment) {
+    return <span className="inline-flex min-w-36 items-center gap-2"><span className="material-symbols-outlined animate-spin">progress_activity</span>Đang tải tệp...</span>;
+  }
+  const download = async () => {
+    try {
+      await downloadAttachment(attachment.presignedUrl, attachment.originalName);
+    } catch {
+      onError('Không thể tải tệp. Vui lòng thử lại.');
+    }
+  };
+  const actions = (
+    <div className="absolute right-2 top-2 hidden gap-1 group-hover:flex">
+      <button type="button" onClick={download} className="chat-attachment-action" title="Tải xuống">
+        <span className="material-symbols-outlined text-base">download</span>
+      </button>
+      {isOwn && item.messageId && (
+        <button type="button" onClick={() => onRecall(item.messageId!)} className="chat-attachment-action" title="Thu hồi">
+          <span className="material-symbols-outlined text-base">undo</span>
+        </button>
+      )}
+    </div>
+  );
+  if (item.messageType === 'IMAGE') {
+    return (
+      <div className="group relative">
+        <button type="button" onClick={() => onPreview(attachment.presignedUrl, attachment.originalName)} className="block overflow-hidden rounded-xl cursor-zoom-in">
+          <img src={attachment.presignedUrl} alt={attachment.originalName} className="chat-inline-image" />
+        </button>
+        {actions}
+      </div>
+    );
+  }
+  return (
+    <div className="group relative flex min-w-52 items-center gap-3 pr-14">
+      <span className="material-symbols-outlined text-2xl">description</span>
+      <div className="min-w-0">
+        <p className="m-0 truncate font-semibold">{attachment.originalName}</p>
+        <p className="m-0 text-xs opacity-75">Tài liệu đính kèm</p>
+      </div>
+      {actions}
+    </div>
+  );
+}
+
 export default function ChatPanel({ conversationId }: ChatPanelProps) {
   const navigate = useNavigate();
   const currentUserId = useAuthStore((state) => state.user?.id);
@@ -39,8 +136,11 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
   const [draft, setDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [hasMoreOlder, setHasMoreOlder] = useState(false);
+  const [preview, setPreview] = useState<{ url: string; name: string } | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const documentInputRef = useRef<HTMLInputElement>(null);
 
   const nextCursorRef = useRef<string | null>(null);
   const previousCursorRef = useRef<string | null>(null);
@@ -166,9 +266,14 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
     }
   };
 
-  const sendWithClientId = async (clientMessageId: string, body: string) => {
+  const sendWithClientId = async (
+    clientMessageId: string,
+    body?: string,
+    messageType: 'TEXT' | 'IMAGE' | 'FILE' = 'TEXT',
+    attachmentId?: string
+  ) => {
     try {
-      const confirmed = await directChatApi.sendMessage(conversationId, clientMessageId, body);
+      const confirmed = await directChatApi.sendMessage(conversationId, clientMessageId, body, messageType, attachmentId);
       setItems((prev) => mergeTimelineItems(prev, [confirmed]));
     } catch {
       setItems((prev) =>
@@ -201,6 +306,43 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
     setSending(true);
     // Same clientMessageId — idempotent retry (BR-DCC-005), never creates a duplicate.
     await sendWithClientId(item.clientMessageId, item.messageBody);
+  };
+
+  const handleAttachment = async (file: File, kind: 'IMAGE' | 'DOCUMENT') => {
+    if (sending || !expertAvailable || !currentUserId) return;
+    const image = kind === 'IMAGE';
+    const sizeLimit = image ? 10 * 1024 * 1024 : 20 * 1024 * 1024;
+    if (file.size > sizeLimit) {
+      setError(image ? 'Ảnh phải nhỏ hơn 10 MB.' : 'Tài liệu phải nhỏ hơn 20 MB.');
+      return;
+    }
+    setSending(true);
+    try {
+      const uploaded = await directChatApi.uploadAttachment(conversationId, file, kind);
+      const clientMessageId = crypto.randomUUID();
+      const messageType = image ? 'IMAGE' : 'FILE';
+      setItems((prev) => mergeTimelineItems(prev, [optimisticMessage({
+        clientMessageId, senderUserId: currentUserId, messageType, attachmentId: uploaded.fileId,
+      })]));
+      await sendWithClientId(clientMessageId, undefined, messageType, uploaded.fileId);
+    } catch (e) {
+      setError(`Không thể gửi ${image ? 'ảnh' : 'tài liệu'}: ${e}`);
+      setSending(false);
+    }
+  };
+
+  const handleRecall = async (messageId: string) => {
+    if (!window.confirm('Thu hồi tin nhắn và tệp đính kèm này?')) return;
+    try {
+      await directChatApi.recallMessage(conversationId, messageId);
+      setItems((previous) => previous.map((item) =>
+        item.messageId === messageId
+          ? { ...item, attachmentId: undefined, messageBody: undefined, recalledAt: new Date().toISOString() }
+          : item
+      ));
+    } catch (e) {
+      setError(`Không thể thu hồi tin nhắn: ${e}`);
+    }
   };
 
   useEffect(() => {
@@ -313,7 +455,7 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
                 <div key={`call-${item.callId}`} className="flex justify-center my-3">
                   <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-medium bg-surface-container-highest/80 text-on-surface-variant border border-outline-variant/50 shadow-xs">
                     <span className="material-symbols-outlined text-sm">phone_in_talk</span>
-                    {describeCall(item)}
+                    {describeCall(item)} · {formatTimestamp(item.initiatedAt)}
                   </span>
                 </div>
               );
@@ -337,9 +479,24 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
                         : 'bg-surface border border-outline-variant/60 text-on-surface rounded-tl-xs'
                     }`}
                   >
-                    {item.messageBody}
+                    {item.messageType === 'IMAGE' || item.messageType === 'FILE' ? (
+                      <AttachmentBubble
+                        item={item}
+                        conversationId={conversationId}
+                        isOwn={isOwn}
+                        onPreview={(url, name) => setPreview({ url, name })}
+                        onRecall={handleRecall}
+                        onError={setError}
+                      />
+                    ) : item.recalledAt ? (
+                      <span className="italic text-on-surface-variant">Tin nhắn đã được thu hồi</span>
+                    ) : item.messageBody}
                   </div>
                 </div>
+
+                {!item.sendStatus && (
+                  <span className="text-[11px] text-outline px-1">{formatTimestamp(item.createdAt)}</span>
+                )}
 
                 {isOwn && item.sendStatus === 'sending' && (
                   <span className="text-[11px] text-outline px-1">Đang gửi...</span>
@@ -361,6 +518,46 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
         {/* Input Bar */}
         {expertAvailable && (
           <div className="p-4 bg-surface border-t border-outline-variant/60 flex items-center gap-3 shrink-0">
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/heic,image/gif"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.currentTarget.files?.[0];
+                e.currentTarget.value = '';
+                if (file) void handleAttachment(file, 'IMAGE');
+              }}
+            />
+            <input
+              ref={documentInputRef}
+              type="file"
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.txt"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.currentTarget.files?.[0];
+                e.currentTarget.value = '';
+                if (file) void handleAttachment(file, 'DOCUMENT');
+              }}
+            />
+            <button
+              type="button"
+              disabled={sending}
+              onClick={() => imageInputRef.current?.click()}
+              className="w-10 h-10 rounded-full border border-outline-variant text-primary hover:bg-surface-container-low disabled:opacity-40 cursor-pointer"
+              title="Gửi ảnh"
+            >
+              <span className="material-symbols-outlined">image</span>
+            </button>
+            <button
+              type="button"
+              disabled={sending}
+              onClick={() => documentInputRef.current?.click()}
+              className="w-10 h-10 rounded-full border border-outline-variant text-primary hover:bg-surface-container-low disabled:opacity-40 cursor-pointer"
+              title="Gửi tài liệu"
+            >
+              <span className="material-symbols-outlined">attach_file</span>
+            </button>
             <div className="relative flex-1">
               <input
                 value={draft}
@@ -381,6 +578,22 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
           </div>
         )}
       </div>
+      {preview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-8" onClick={() => setPreview(null)}>
+          <button type="button" className="absolute right-6 top-6 rounded-full bg-white/15 p-3 text-white hover:bg-white/25" onClick={() => setPreview(null)} aria-label="Đóng ảnh">
+            <span className="material-symbols-outlined">close</span>
+          </button>
+          <img
+            src={preview.url}
+            alt={preview.name}
+            className="max-h-full max-w-full object-contain cursor-zoom-out"
+            onClick={(event) => event.stopPropagation()}
+          />
+          <button type="button" onClick={() => void downloadAttachment(preview.url, preview.name)} className="absolute bottom-6 rounded-full bg-white px-5 py-3 text-sm font-bold text-primary shadow-lg">
+            <span className="material-symbols-outlined mr-2 align-middle">download</span>Tải xuống
+          </button>
+        </div>
+      )}
     </div>
   );
 }

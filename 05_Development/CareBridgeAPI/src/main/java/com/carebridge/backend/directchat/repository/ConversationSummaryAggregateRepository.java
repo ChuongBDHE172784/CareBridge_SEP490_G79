@@ -19,6 +19,5 @@ public interface ConversationSummaryAggregateRepository {
 
     Map<UUID, Integer> fetchUnreadCounts(List<UUID> conversationIds, UUID currentUserId);
 
-    ReadCursor advanceReadCursor(UUID conversationId, UUID currentUserId, boolean mother,
-            Instant createdAt, UUID messageId);
+    ReadCursor advanceReadCursor(UUID conversationId, UUID currentUserId, Instant createdAt, UUID messageId);
 }

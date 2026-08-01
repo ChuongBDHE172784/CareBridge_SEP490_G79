@@ -30,6 +30,12 @@
 	<string>CareBridge uses the camera for video consultations and photos you choose to share with the community.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>CareBridge accesses photos only when you choose an image to share with the community.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>CareBridge saves chat images to your photo library only when you choose Download.</string>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+	<key>UIFileSharingEnabled</key>
+	<true/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>CareBridge uses the microphone for one-to-one voice and video consultations.</string>
 	<key>NSMotionUsageDescription</key>

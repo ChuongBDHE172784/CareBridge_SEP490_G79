@@ -22,6 +22,8 @@ import com.carebridge.backend.directchat.service.IDirectMessageService;
 import com.carebridge.backend.directchat.service.SendDirectMessageResult;
 import com.carebridge.backend.expert.entity.ExpertProfile;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
+import com.carebridge.backend.file.entity.FileStatus;
+import com.carebridge.backend.file.repository.UploadedFileRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -50,6 +52,9 @@ public class DirectMessageServiceImpl implements IDirectMessageService {
     private final ApplicationEventPublisher eventPublisher;
     private final AuditService auditService;
     private final Clock clock;
+
+    @Autowired
+    private UploadedFileRepository uploadedFileRepository;
 
     @Autowired
     public DirectMessageServiceImpl(
@@ -103,14 +108,26 @@ public class DirectMessageServiceImpl implements IDirectMessageService {
         policy.assertConversationWritable(lockedExpert);
 
         String trimmedBody = request.getMessageBody() == null ? "" : request.getMessageBody().trim();
-        if (trimmedBody.isEmpty() || trimmedBody.length() > MAX_BODY_LENGTH) {
+        MessageType messageType;
+        try {
+            messageType = request.getMessageType() == null ? MessageType.TEXT
+                    : MessageType.valueOf(request.getMessageType().trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
             throw DirectChatException.invalidMessageBody();
+        }
+        boolean textPayload = messageType == MessageType.TEXT;
+        if ((textPayload && (trimmedBody.isEmpty() || trimmedBody.length() > MAX_BODY_LENGTH))
+                || (!textPayload && request.getAttachmentId() == null)) {
+            throw DirectChatException.invalidMessageBody();
+        }
+        if (!textPayload) {
+            assertAttachmentOwnedBySender(request.getAttachmentId(), senderUserId);
         }
 
         Optional<DirectMessage> existing = messageRepository.findByConversationIdAndSenderUserIdAndClientMessageId(
                 conversationId, senderUserId, request.getClientMessageId());
         if (existing.isPresent()) {
-            assertSameIdempotentPayload(existing.get(), trimmedBody);
+            assertSameIdempotentPayload(existing.get(), textPayload ? trimmedBody : null, messageType, request.getAttachmentId());
             return new SendDirectMessageResult(toItemResponse(existing.get()), false);
         }
 
@@ -119,8 +136,9 @@ public class DirectMessageServiceImpl implements IDirectMessageService {
                 .conversationId(conversationId)
                 .senderUserId(senderUserId)
                 .clientMessageId(request.getClientMessageId())
-                .messageType(MessageType.TEXT)
-                .messageBody(trimmedBody)
+                .messageType(messageType)
+                .messageBody(textPayload ? trimmedBody : null)
+                .attachmentId(request.getAttachmentId())
                 .createdAt(Instant.now(clock))
                 .build();
 
@@ -130,7 +148,7 @@ public class DirectMessageServiceImpl implements IDirectMessageService {
             saved = messageRepository.findByConversationIdAndSenderUserIdAndClientMessageId(
                             conversationId, senderUserId, request.getClientMessageId())
                     .orElseThrow(DirectChatException::idempotencyConflict);
-            assertSameIdempotentPayload(saved, trimmedBody);
+            assertSameIdempotentPayload(saved, textPayload ? trimmedBody : null, messageType, request.getAttachmentId());
         }
 
         if (created) {
@@ -186,6 +204,34 @@ public class DirectMessageServiceImpl implements IDirectMessageService {
         return buildPage(ascending, false, hasMoreOlder);
     }
 
+    @Override
+    @Transactional
+    public void recallMessage(UUID conversationId, UUID messageId, UUID senderUserId) {
+        DirectConversation conversation = conversationRepository.findById(conversationId)
+                .orElseThrow(DirectChatException::conversationNotFound);
+        policy.assertIsParticipant(senderUserId, conversation);
+        DirectMessage message = messageRepository.findByIdAndConversationId(messageId, conversationId)
+                .orElseThrow(DirectChatException::idempotencyConflict);
+        if (!senderUserId.equals(message.getSenderUserId())) {
+            throw DirectChatException.idempotencyConflict();
+        }
+        if (message.getRecalledAt() == null) {
+            if (message.getAttachmentId() != null && uploadedFileRepository != null) {
+                uploadedFileRepository.findByIdAndStatus(message.getAttachmentId(), FileStatus.ACTIVE)
+                        .filter(file -> senderUserId.equals(file.getOwnerUserId()))
+                        .ifPresent(file -> {
+                            file.setStatus(FileStatus.DELETED);
+                            uploadedFileRepository.save(file);
+                        });
+            }
+            message.setMessageBody(null);
+            message.setAttachmentId(null);
+            message.setRecalledAt(Instant.now(clock));
+            message.setRecalledByUserId(senderUserId);
+            messageRepository.save(message);
+        }
+    }
+
     private static TimelineCursorCodec.DecodedCursor decodeCursor(String cursor) {
         try {
             return TimelineCursorCodec.decode(cursor);
@@ -194,9 +240,21 @@ public class DirectMessageServiceImpl implements IDirectMessageService {
         }
     }
 
-    private static void assertSameIdempotentPayload(DirectMessage existing, String requestedBody) {
-        if (existing.getMessageType() != MessageType.TEXT || !existing.getMessageBody().equals(requestedBody)) {
+    private static void assertSameIdempotentPayload(DirectMessage existing, String requestedBody,
+            MessageType requestedType, UUID requestedAttachmentId) {
+        if (existing.getMessageType() != requestedType
+                || !java.util.Objects.equals(existing.getMessageBody(), requestedBody)
+                || !java.util.Objects.equals(existing.getAttachmentId(), requestedAttachmentId)) {
             throw DirectChatException.idempotencyConflict();
+        }
+    }
+
+    private void assertAttachmentOwnedBySender(UUID attachmentId, UUID senderUserId) {
+        // The repository is field-injected so existing focused unit constructors remain stable.
+        // A production Spring context always supplies it; attachment writes fail closed otherwise.
+        if (uploadedFileRepository == null || uploadedFileRepository.findByIdAndStatus(attachmentId, FileStatus.ACTIVE)
+                .filter(file -> senderUserId.equals(file.getOwnerUserId())).isEmpty()) {
+            throw DirectChatException.invalidMessageBody();
         }
     }
 
@@ -249,6 +307,8 @@ public class DirectMessageServiceImpl implements IDirectMessageService {
                 .senderUserId(message.getSenderUserId())
                 .messageType(message.getMessageType().name())
                 .messageBody(message.getMessageBody())
+                .attachmentId(message.getAttachmentId())
+                .recalledAt(message.getRecalledAt())
                 .createdAt(message.getCreatedAt())
                 .build();
     }

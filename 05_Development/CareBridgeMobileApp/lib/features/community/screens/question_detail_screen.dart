@@ -950,8 +950,8 @@ class _AnswerCard extends StatelessWidget {
                     color: const Color(0xFFFFE2D9),
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: const Text(
-                    'Kinh nghiệm',
+                  child: Text(
+                    answer.experienceTag ?? 'Kinh nghiệm',
                     style: TextStyle(fontSize: 10, color: Color(0xFF845143)),
                   ),
                 ),

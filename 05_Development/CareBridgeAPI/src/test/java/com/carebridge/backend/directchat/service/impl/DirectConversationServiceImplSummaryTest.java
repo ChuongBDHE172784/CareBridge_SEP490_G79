@@ -53,6 +53,7 @@ class DirectConversationServiceImplSummaryTest {
 
     private static final UUID MOTHER_ID = UUID.randomUUID();
     private static final UUID EXPERT_USER_ID = UUID.randomUUID();
+    private static final UUID FAMILY_USER_ID = UUID.randomUUID();
     private static final UUID CONVERSATION_ID = UUID.randomUUID();
 
     @BeforeEach
@@ -109,6 +110,26 @@ class DirectConversationServiceImplSummaryTest {
         assertThat(s.getCounterpartRole()).isEqualTo("MOTHER");
         assertThat(s.getCounterpartDisplayName()).isEqualTo("Trần Thị B");
         assertThat(s.getCounterpartSpecialty()).isNull();
+    }
+
+    @Test
+    void listMyConversations_familyViewer_seesDelegatedConversationWithExpertCounterpart() {
+        when(conversationRepository.findByMotherUserIdOrExpertUserIdOrderByLastActivityAtDesc(FAMILY_USER_ID, FAMILY_USER_ID))
+                .thenReturn(List.of());
+        when(conversationRepository.findDelegatedToFamilyUserOrderByLastActivityAtDesc(FAMILY_USER_ID))
+                .thenReturn(List.of(conversation()));
+        User expertUser = User.builder().id(EXPERT_USER_ID).name("BS. Nguyễn Văn A").build();
+        when(userRepository.findAllById(anySet())).thenReturn(List.of(expertUser));
+        when(expertProfileRepository.findByUserIdIn(anySet())).thenReturn(List.of(approvedExpert()));
+        when(aggregateRepository.fetchLastMessages(any())).thenReturn(Map.of());
+        when(aggregateRepository.fetchUnreadCounts(any(), eq(FAMILY_USER_ID))).thenReturn(Map.of());
+
+        List<DirectConversationSummaryResponse> summaries = service.listMyConversations(FAMILY_USER_ID);
+
+        assertThat(summaries).singleElement().satisfies(summary -> {
+            assertThat(summary.getCounterpartRole()).isEqualTo("EXPERT");
+            assertThat(summary.getCounterpartUserId()).isEqualTo(EXPERT_USER_ID);
+        });
     }
 
     // MEDI-TC-010 — lastMessagePreview / lastMessageAt come from the aggregate query
