@@ -19,6 +19,14 @@ type NavGroupItem = {
 };
 type NavItem = NavLinkItem | NavGroupItem;
 
+const ROLE_LABELS: Record<string, string> = {
+  SYSTEM_ADMIN: 'Quản trị viên',
+  MODERATOR: 'Kiểm duyệt viên',
+  EXPERT: 'Chuyên gia Y tế',
+  CONTENT_ADMIN: 'Quản lý Nội dung',
+  PARTNER: 'Đối tác CareBridge',
+};
+
 // Keep navigation icons and colors consistent across the administration portal.
 const NAV_LINKS: readonly NavItem[] = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: 'dashboard', roles: ['SYSTEM_ADMIN'] },
@@ -73,6 +81,8 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const isModerator = user?.role === 'MODERATOR';
+  const isPartner = user?.role === 'PARTNER';
+
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => ({
     'Quản lý chuyên gia': location.pathname.startsWith('/admin/expert-'),
     'Hệ thống kiểm duyệt': [
@@ -94,35 +104,45 @@ export default function AdminLayout() {
     return <Outlet />;
   }
 
+  const portalIcon = isModerator ? 'shield' : isPartner ? 'handshake' : 'admin_panel_settings';
+  const portalSubtitle = isModerator
+    ? 'Cổng Kiểm duyệt Nội dung'
+    : isPartner
+      ? 'Cổng Đối tác CareBridge'
+      : 'Cổng Quản trị Hệ thống';
+
   return (
     <div className="flex min-h-screen bg-background font-sans text-on-surface">
       <aside className="fixed left-0 top-0 z-20 hidden h-screen w-64 flex-col border-r border-outline-variant/70 bg-surface md:flex">
+        {/* Brand Header */}
         <div className="border-b border-outline-variant/70 p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="material-symbols-outlined text-xl text-primary">
-              {isModerator ? 'shield' : 'admin_panel_settings'}
-            </span>
-            <span className="text-sm font-semibold leading-none text-on-surface">CareBridge</span>
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-on-primary font-bold shadow-sm shrink-0">
+              <span className="material-symbols-outlined text-xl">{portalIcon}</span>
+            </div>
+            <div>
+              <span className="text-sm font-bold leading-none text-on-surface block">CareBridge</span>
+              <span className="text-[11px] text-outline mt-0.5 block font-medium">{portalSubtitle}</span>
+            </div>
           </div>
-          <p className="ml-7 text-[11px] text-outline">
-            {isModerator ? 'Cổng kiểm duyệt nội dung' : 'Cổng quản trị hệ thống'}
-          </p>
         </div>
-        <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
+
+        {/* Nav Items */}
+        <nav className="flex-1 space-y-1 overflow-y-auto p-3">
           {visibleLinks.map((l) => {
             if (l.type === 'group') {
               const groupOpen = openGroups[l.label] ?? true;
               const groupActive = l.children.some((child) => location.pathname.startsWith(child.to));
 
               return (
-                <div key={l.label} className="space-y-0.5">
+                <div key={l.label} className="space-y-1">
                   <button
                     type="button"
                     onClick={() => setOpenGroups((groups) => ({ ...groups, [l.label]: !groupOpen }))}
                     aria-expanded={groupOpen}
-                    className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
+                    className={`flex w-full items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-xs font-semibold transition-all ${
                       groupActive
-                        ? 'bg-primary-container text-primary'
+                        ? 'bg-primary-container text-primary font-bold shadow-sm'
                         : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
                     }`}
                   >
@@ -133,15 +153,15 @@ export default function AdminLayout() {
                     </span>
                   </button>
                   {groupOpen && (
-                    <div className="space-y-0.5 pl-5">
+                    <div className="space-y-1 pl-4">
                       {l.children.filter(isVisible).map((child) => (
                         <NavLink
                           key={child.to}
                           to={child.to}
                           className={({ isActive }) =>
-                            `flex items-center gap-2 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
+                            `flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
                               isActive
-                                ? 'bg-primary-container text-primary'
+                                ? 'bg-primary-container text-primary font-bold shadow-sm'
                                 : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
                             }`
                           }
@@ -161,9 +181,9 @@ export default function AdminLayout() {
                 key={l.to}
                 to={l.to}
                 className={({ isActive }) =>
-                  `flex items-center gap-2.5 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
+                  `flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-xs font-semibold transition-all ${
                     isActive
-                      ? 'bg-primary-container text-primary'
+                      ? 'bg-primary-container text-primary font-bold shadow-sm'
                       : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
                   }`
                 }
@@ -174,20 +194,30 @@ export default function AdminLayout() {
             );
           })}
         </nav>
-        <div className="space-y-2.5 border-t border-outline-variant/70 p-3">
-          <div className="px-1 text-[11px] text-outline">
-            <p className="truncate font-semibold text-on-surface-variant">{user?.name ?? user?.phone}</p>
-            <p>{user?.role}</p>
+
+        {/* Footer User Profile Card */}
+        <div className="space-y-3 border-t border-outline-variant/70 p-3">
+          <div className="flex items-center gap-2.5 rounded-2xl bg-surface-container-low p-2.5 border border-outline-variant/40">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-container text-primary font-bold text-xs shrink-0">
+              {user?.name?.charAt(0)?.toUpperCase() || user?.phone?.charAt(0) || 'A'}
+            </div>
+            <div className="overflow-hidden text-[11px] text-outline flex-1 min-w-0">
+              <p className="truncate font-bold text-xs text-on-surface">{user?.name || user?.phone || 'Quản trị viên'}</p>
+              <span className="inline-block py-0.5 px-2 rounded-full bg-surface-container text-primary font-semibold text-[10px] mt-0.5">
+                {ROLE_LABELS[user?.role || ''] || user?.role || 'SYSTEM_ADMIN'}
+              </span>
+            </div>
           </div>
+
           <button
             type="button"
             onClick={handleLogout}
-            className="flex w-full items-center justify-center gap-2 rounded-md border border-outline-variant bg-surface px-3 py-1.5 text-xs font-semibold text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface"
+            className="flex w-full items-center justify-center gap-2 rounded-full border border-outline-variant bg-surface py-2 text-xs font-semibold text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface cursor-pointer transition-colors"
           >
             <span className="material-symbols-outlined text-[16px]">logout</span>
             Đăng xuất
           </button>
-          <p className="text-center text-[10px] text-outline">CareBridge © 2026</p>
+          <p className="text-center text-[10px] text-outline font-medium">CareBridge © 2026</p>
         </div>
       </aside>
       <main className="min-h-screen flex-1 overflow-auto bg-background md:ml-64">
@@ -196,3 +226,4 @@ export default function AdminLayout() {
     </div>
   );
 }
+

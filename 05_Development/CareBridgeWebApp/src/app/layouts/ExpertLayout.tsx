@@ -23,23 +23,29 @@ export default function ExpertLayout() {
   return (
     <div className="flex min-h-screen font-sans">
       <aside className="fixed left-0 top-0 z-20 hidden h-screen w-64 flex-col border-r border-outline-variant/70 bg-surface md:flex">
+        {/* Brand Header */}
         <div className="border-b border-outline-variant/70 p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="material-symbols-outlined text-xl text-primary">medical_services</span>
-            <span className="text-sm font-semibold leading-none text-on-surface">ExpertPortal</span>
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-on-primary font-bold shadow-sm shrink-0">
+              <span className="material-symbols-outlined text-xl">medical_services</span>
+            </div>
+            <div>
+              <span className="text-sm font-bold leading-none text-on-surface block">CareBridge</span>
+              <span className="text-[11px] text-outline mt-0.5 block font-medium">Cổng Chuyên gia Y tế</span>
+            </div>
           </div>
-          <p className="ml-7 text-[11px] text-outline">Cổng Chuyên Gia CareBridge</p>
         </div>
-        
-        <nav className="flex-1 space-y-0.5 overflow-y-auto p-3">
+
+        {/* Nav Items */}
+        <nav className="flex-1 space-y-1 overflow-y-auto p-3">
           {NAV_ITEMS.map((item) => (
             <NavLink
               key={item.path}
               to={item.path}
               className={({ isActive }) =>
-                `flex items-center gap-2.5 rounded-md px-3 py-2 text-xs font-medium transition-colors ${
+                `flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-xs font-semibold transition-all ${
                   isActive
-                    ? 'bg-primary-container text-primary'
+                    ? 'bg-primary-container text-primary font-bold shadow-sm'
                     : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
                 }`
               }
@@ -49,33 +55,37 @@ export default function ExpertLayout() {
             </NavLink>
           ))}
         </nav>
-        
-        <div className="space-y-2.5 border-t border-outline-variant/70 p-3">
-          <div className="flex items-center gap-2.5 px-1 py-1">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-container text-primary font-bold text-xs shrink-0">
-              {user?.name?.charAt(0)?.toUpperCase() || 'E'}
+
+        {/* Footer User Profile Card */}
+        <div className="space-y-3 border-t border-outline-variant/70 p-3">
+          <div className="flex items-center gap-2.5 rounded-2xl bg-surface-container-low p-2.5 border border-outline-variant/40">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary-container text-primary font-bold text-xs shrink-0">
+              {user?.name?.charAt(0)?.toUpperCase() || user?.phone?.charAt(0) || 'E'}
             </div>
-            <div className="overflow-hidden text-[11px] text-outline">
-              <p className="truncate font-semibold text-on-surface-variant">{user?.name || 'Chuyên gia'}</p>
-              <p className="truncate">{user?.phone || 'CHUYÊN GIA'}</p>
+            <div className="overflow-hidden text-[11px] text-outline flex-1 min-w-0">
+              <p className="truncate font-bold text-xs text-on-surface">{user?.name || user?.phone || 'Chuyên gia Y tế'}</p>
+              <span className="inline-block py-0.5 px-2 rounded-full bg-surface-container text-primary font-semibold text-[10px] mt-0.5">
+                Chuyên gia Y tế
+              </span>
             </div>
           </div>
-          
+
           <button
             type="button"
             onClick={handleLogout}
-            className="flex w-full items-center justify-center gap-2 rounded-md border border-outline-variant bg-surface px-3 py-1.5 text-xs font-semibold text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface"
+            className="flex w-full items-center justify-center gap-2 rounded-full border border-outline-variant bg-surface py-2 text-xs font-semibold text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface cursor-pointer transition-colors"
           >
             <span className="material-symbols-outlined text-[16px]">logout</span>
             Đăng xuất
           </button>
-          <p className="text-center text-[10px] text-outline">CareBridge © 2026</p>
+          <p className="text-center text-[10px] text-outline font-medium">CareBridge © 2026</p>
         </div>
       </aside>
-      
+
       <main className="ml-64 min-h-screen bg-background overflow-auto flex-1">
         <Outlet />
       </main>
     </div>
   );
 }
+
