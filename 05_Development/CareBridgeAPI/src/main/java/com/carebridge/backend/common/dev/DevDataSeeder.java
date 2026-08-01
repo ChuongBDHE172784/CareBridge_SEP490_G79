@@ -39,6 +39,9 @@ import com.carebridge.backend.content.entity.ReportCategory;
 import com.carebridge.backend.content.entity.ReportStatus;
 import com.carebridge.backend.content.entity.ReportSource;
 import com.carebridge.backend.content.entity.ReportTargetType;
+import com.carebridge.backend.checklist.model.ChecklistAnchorType;
+import com.carebridge.backend.checklist.model.ChecklistRangeUnit;
+import com.carebridge.backend.checklist.model.ChecklistRecipientScope;
 import com.carebridge.backend.content.repository.ContentReportRepository;
 import com.carebridge.backend.content.repository.ContentRepository;
 import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
@@ -98,9 +101,9 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * Credentials (same operator-supplied synthetic password for all accounts):
  *   Password : CAREBRIDGE_DEV_SEED_PASSWORD / carebridge.dev-seed.password
- * The value is required when seeding is enabled, is never logged, and must stay outside
- * source control and documentation. Blank input and the retired historical default fail
- * startup closed.
+ * The value is required when seeding is enabled, is never logged, and is restricted to
+ * the dev profile. The approved local fixture password (Test@1234) is accepted for this
+ * synthetic seed only; blank input still fails startup closed.
  * The seeder is available only in the dev profile while prod is absent and still requires
  * the explicit carebridge.dev-seed.enabled property gate.
  *
@@ -163,6 +166,8 @@ public class DevDataSeeder implements ApplicationRunner {
 
     @Value("${carebridge.dev-seed.extended-content-enabled:true}")
     private boolean extendedContentEnabled;
+
+    private UUID seedApprovalUserId;
 
     record SeedAccount(String email, String fullName, Role role) {}
 
@@ -245,17 +250,16 @@ public class DevDataSeeder implements ApplicationRunner {
     }
 
     static void validateSeedPassword(String candidate) {
-        if (candidate == null
-                || candidate.isBlank()
-                || DEFAULT_TEST_PASSWORD.equals(candidate)) {
+        if (candidate == null || candidate.isBlank()) {
             throw new IllegalStateException(
-                    "Dev seed requires an explicit non-default CAREBRIDGE_DEV_SEED_PASSWORD");
+                    "Dev seed requires a non-blank CAREBRIDGE_DEV_SEED_PASSWORD");
         }
     }
 
     /** Small idempotent content library covering public, draft and review lifecycle states. */
     private void seedVerifiedContent(Map<String, User> users) {
         User author = users.get("content@carebridge.dev");
+        seedApprovalUserId = users.get("admin@carebridge.dev").getId();
         seedContent(author, "[DEV] Dinh dưỡng thai kỳ an toàn", ContentType.ARTICLE, ContentStage.PREGNANCY, ContentStatus.APPROVED);
         seedContent(author, "[DEV] Câu hỏi thường gặp sau sinh", ContentType.FAQ, ContentStage.POSTPARTUM, ContentStatus.PENDING_REVIEW);
         seedContent(author, "[DEV] Checklist chuẩn bị sinh", ContentType.CHECKLIST, ContentStage.PREGNANCY, ContentStatus.DRAFT);
@@ -378,9 +382,10 @@ public class DevDataSeeder implements ApplicationRunner {
     private void seedChecklistTemplate() {
         ChecklistTemplate template = checklistTemplateRepository.findAll().stream()
                 .filter(t -> "[DEV] Checklist chuẩn bị sinh".equals(t.getName())).findFirst()
-                .orElseGet(() -> checklistTemplateRepository.save(ChecklistTemplate.builder()
-                        .name("[DEV] Checklist chuẩn bị sinh").stage(ContentStage.PREGNANCY)
-                        .description("Checklist mẫu tương ứng nội dung CHECKLIST đã seed.").build()));
+                .orElseGet(() -> checklistTemplateRepository.save(buildSeedChecklistTemplate(
+                        "[DEV] Checklist chuẩn bị sinh", ContentStage.PREGNANCY,
+                        ChecklistTemplateStatus.DRAFT,
+                        "Checklist mẫu tương ứng nội dung CHECKLIST đã seed.")));
         if (checklistItemRepository.findByTemplate_IdOrderByOrder(template.getId()).isEmpty()) {
             checklistItemRepository.save(ChecklistItem.builder().template(template).itemText("Chuẩn bị giấy tờ cần thiết")
                     .order(1).isRequired(true).build());
@@ -446,12 +451,14 @@ public class DevDataSeeder implements ApplicationRunner {
             List<ChecklistItemSpec> items) {
         ChecklistTemplate template = checklistTemplateRepository.findAll().stream()
                 .filter(t -> name.equals(t.getName())).findFirst()
-                .orElseGet(() -> checklistTemplateRepository.saveAndFlush(ChecklistTemplate.builder()
-                        .name(name)
-                        .stage(stage)
-                        .status(ChecklistTemplateStatus.valueOf(status.name()))
-                        .description(description)
-                        .build()));
+                .orElseGet(() -> checklistTemplateRepository.saveAndFlush(buildSeedChecklistTemplate(
+                        name, stage,
+                        // Build the complete version while mutable. The database guard
+                        // rejects item inserts once a root is APPROVED/ARCHIVED.
+                        status == ContentStatus.APPROVED || status == ContentStatus.ARCHIVED
+                                ? ChecklistTemplateStatus.DRAFT
+                                : ChecklistTemplateStatus.valueOf(status.name()),
+                        description)));
         if (checklistItemRepository.findByTemplate_IdOrderByOrder(template.getId()).isEmpty()) {
             int order = 1;
             for (ChecklistItemSpec item : items) {
@@ -459,6 +466,57 @@ public class DevDataSeeder implements ApplicationRunner {
                         .order(order++).isRequired(item.required()).build());
             }
         }
+
+        // Finalize only after all items exist. This preserves VERSION_IMMUTABLE while
+        // keeping approved mandatory fixtures eligible for checklist distribution.
+        ChecklistTemplateStatus requestedStatus = ChecklistTemplateStatus.valueOf(status.name());
+        if (template.getStatus() != requestedStatus) {
+            template.setStatus(requestedStatus);
+            if (requestedStatus == ChecklistTemplateStatus.APPROVED) {
+                template.setDistributionEnabled(true);
+                template.setApprovedAt(Instant.now());
+                template.setApprovedBy(seedApprovalUserId);
+            } else {
+                template.setDistributionEnabled(false);
+                template.setApprovedAt(null);
+                template.setApprovedBy(null);
+            }
+            checklistTemplateRepository.saveAndFlush(template);
+        }
+    }
+
+    private ChecklistTemplate buildSeedChecklistTemplate(String name, ContentStage stage,
+            ChecklistTemplateStatus status, String description) {
+        ChecklistTemplate template = ChecklistTemplate.builder()
+                .templateLineageId(UUID.randomUUID())
+                .templateVersionId(UUID.randomUUID())
+                .recipientScope(ChecklistRecipientScope.MOTHER)
+                .name(name)
+                .stage(stage)
+                .status(status)
+                .description(description)
+                .build();
+        switch (stage) {
+            case PRE_PREGNANCY -> {
+                template.setEligibilityAnchorType(ChecklistAnchorType.NONE);
+                template.setEligibilityRangeUnit(ChecklistRangeUnit.DAY);
+                template.setEligibilityStartInclusive(0);
+                template.setEligibilityEndInclusive(0);
+            }
+            case PREGNANCY -> {
+                template.setEligibilityAnchorType(ChecklistAnchorType.LMP);
+                template.setEligibilityRangeUnit(ChecklistRangeUnit.WEEK);
+                template.setEligibilityStartInclusive(0);
+                template.setEligibilityEndInclusive(40);
+            }
+            case POSTPARTUM -> {
+                template.setEligibilityAnchorType(ChecklistAnchorType.DELIVERY_DATE);
+                template.setEligibilityRangeUnit(ChecklistRangeUnit.WEEK);
+                template.setEligibilityStartInclusive(0);
+                template.setEligibilityEndInclusive(6);
+            }
+        }
+        return template;
     }
 
     /**

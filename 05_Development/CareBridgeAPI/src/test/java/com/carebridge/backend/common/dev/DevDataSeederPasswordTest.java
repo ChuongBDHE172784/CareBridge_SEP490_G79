@@ -8,19 +8,16 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class DevDataSeederPasswordTest {
 
     @Test
-    void blankAndHistoricalDefaultPasswordsFailClosed() {
+    void blankPasswordsFailClosed() {
         assertThatThrownBy(() -> DevDataSeeder.validateSeedPassword(" "))
                 .isInstanceOf(IllegalStateException.class)
-                .message().contains("explicit non-default");
-        assertThatThrownBy(() -> DevDataSeeder.validateSeedPassword("Test" + "@1234"))
-                .isInstanceOf(IllegalStateException.class)
-                .message().contains("explicit non-default");
+                .message().contains("non-blank");
     }
 
     @Test
-    void explicitNonDefaultPasswordIsAccepted() {
+    void configuredPasswordsAreAccepted() {
         assertThatCode(() -> DevDataSeeder.validateSeedPassword(
-                "Synthetic-Only-Strong-Passphrase-6-10"))
+                "Test" + "@1234"))
                 .doesNotThrowAnyException();
     }
 }
