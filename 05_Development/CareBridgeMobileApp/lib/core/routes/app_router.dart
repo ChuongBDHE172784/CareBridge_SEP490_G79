@@ -19,6 +19,7 @@ import '../../features/healthRecords/screens/maternal_health_metric_screen.dart'
 import '../../features/healthRecords/screens/health_record_timeline_screen.dart';
 import '../../features/healthRecords/screens/add_health_record_screen.dart';
 import '../../features/healthRecords/screens/add_maternal_health_metric_screen.dart';
+import '../../features/healthRecords/screens/fetal_movement_tracker_screen.dart';
 import '../../features/healthRecords/screens/edit_health_metric_screen.dart';
 import '../../features/healthRecords/screens/postpartum_log_list_screen.dart';
 import '../../features/healthRecords/screens/postpartum_log_detail_screen.dart';
@@ -436,6 +437,11 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) {
         final journeyId = state.pathParameters['journeyId'] ?? '';
         final metricType = state.uri.queryParameters['metricType'] ?? 'WEIGHT';
+        if (metricType == 'FETAL_MOVEMENT_SESSION' ||
+            metricType == 'FETAL_MOVEMENT_COUNT' ||
+            metricType == 'FETAL_MOVEMENT') {
+          return FetalMovementTrackerScreen(journeyId: journeyId);
+        }
         return AddMaternalHealthMetricScreen(
           journeyId: journeyId,
           initialMetricType: metricType,

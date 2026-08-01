@@ -46,7 +46,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class HealthMetricServiceImpl implements IHealthMetricService {
 
     private static final java.util.Set<String> P0_MANUAL_METRICS = java.util.Set.of(
-            "WEIGHT", "BLOOD_PRESSURE", "BLOOD_GLUCOSE", "FETAL_MOVEMENT_SESSION");
+            "WEIGHT", "BLOOD_PRESSURE", "BLOOD_GLUCOSE", "FETAL_MOVEMENT_SESSION", "HYDRATION", "EPDS_SCORE");
     private static final String DISCLAIMER = "Đây là dữ liệu theo dõi, không phải chẩn đoán y khoa.";
 
     private final HealthObservationRepository observationRepository;

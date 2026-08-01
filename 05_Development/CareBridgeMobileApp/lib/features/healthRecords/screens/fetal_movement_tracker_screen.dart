@@ -69,11 +69,18 @@ class _FetalMovementTrackerScreenState
       final saved = await _service.addMetric(
         widget.journeyId,
         AddMetricRequest(
-          metricType: 'FETAL_MOVEMENT_COUNT',
+          metricType: 'FETAL_MOVEMENT_SESSION',
           valueNumeric: 1,
-          unit: 'lần',
+          unit: 'count',
           measuredAt: now,
           note: type,
+          periodStart: now.subtract(const Duration(minutes: 1)),
+          periodEnd: now,
+          context: const {
+            'protocolCode': 'MATERNAL_AWARENESS',
+            'completionStatus': 'IN_PROGRESS',
+            'gestationalAgeSnapshot': 'NOT_RECORDED',
+          },
         ),
       );
       if (!mounted) return;
@@ -139,7 +146,7 @@ class _FetalMovementTrackerScreenState
       elevation: 0,
       foregroundColor: _primary,
       title: const Text(
-        'Bộ đếm thai máy',
+        'Theo dõi cử động thai',
         style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700),
       ),
     ),
@@ -149,7 +156,7 @@ class _FetalMovementTrackerScreenState
         padding: const EdgeInsets.all(20),
         children: [
           Text(
-            '${DateUtils.isSameDay(_historyDate, DateTime.now()) ? 'Tổng hôm nay' : 'Tổng ngày đã chọn'}: ${_today.length} lần',
+            '${DateUtils.isSameDay(_historyDate, DateTime.now()) ? 'Hôm nay' : 'Ngày đã chọn'}: ${_today.length} cử động đã ghi nhận',
             style: const TextStyle(
               fontFamily: 'Lexend',
               fontSize: 25,
@@ -159,8 +166,29 @@ class _FetalMovementTrackerScreenState
           ),
           const SizedBox(height: 8),
           const Text(
-            'Mỗi lần cảm nhận thai máy, chạm đúng kiểu cử động để CareBridge tự lưu thời điểm.',
+            'Ghi nhận khi bạn cảm nhận bé cử động. Điều quan trọng nhất là nhận biết thay đổi so với nhịp cử động quen thuộc của bé.',
             style: TextStyle(fontFamily: 'Lexend', height: 1.45),
+          ),
+          const SizedBox(height: 20),
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFE2D9),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.info_outline_rounded, color: _primary),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Nếu bé cử động ít hơn thường ngày, thay đổi rõ rệt hoặc bạn không cảm nhận được cử động, hãy liên hệ cơ sở sản khoa ngay — không chờ đến ngày mai.',
+                    style: TextStyle(fontFamily: 'Lexend', height: 1.45),
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 20),
           GridView.count(
