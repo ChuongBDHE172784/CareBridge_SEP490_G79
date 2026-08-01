@@ -426,13 +426,20 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('facility-0')));
+    final facilityTile = find.byKey(const Key('facility-0'));
+    await tester.ensureVisible(facilityTile);
+    await tester.tap(facilityTile);
     await tester.pumpAndSettle();
 
     expect(find.text('Phòng khám gần nhất'), findsWidgets);
     expect(find.textContaining('Nguồn TrackAsia'), findsOneWidget);
     expect(find.textContaining('Đã được CareBridge xác minh'), findsOneWidget);
     expect(find.textContaining('ETA 5 phút'), findsOneWidget);
+    await tester.drag(
+      find.byKey(const Key('nearby-list')),
+      const Offset(0, -240),
+    );
+    await tester.pumpAndSettle();
     expect(find.textContaining('9.0 km'), findsOneWidget);
     expect(find.byKey(const Key('facility-navigate')), findsOneWidget);
   });

@@ -66,7 +66,6 @@ class EmergencyMapScreen extends StatefulWidget {
 }
 
 class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
-  static const _primary = Color(0xFF845143);
   static const _surface = Color(0xFFFFF8F6);
   static const _emergencyNumber = '115';
   static const _trackAsiaMapKey = String.fromEnvironment('TRACKASIA_MAP_KEY');
@@ -120,7 +119,7 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
   int _sessionGeneration = 0;
   int _radiusMeters = 5000;
   String _facilityType = 'hospital';
-  String _transportMode = 'DRIVING';
+  final String _transportMode = 'DRIVING';
   TrackAsiaMapController? _mapController;
   bool _mapStyleReady = false;
   bool _navigationActive = false;
@@ -858,16 +857,6 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
     await _load();
   }
 
-  Future<void> _changeTransportMode(String mode) async {
-    if (mode == _transportMode) return;
-    setState(() => _transportMode = mode);
-    await _stopNavigation();
-    final selected = _selected;
-    if (selected != null) {
-      await _loadRoute(selected, ++_selectionGeneration);
-    }
-  }
-
   String _distance(CareFacility facility) {
     final meters = identical(_selected, facility) && _route != null
         ? _route!.distanceMeters
@@ -1021,7 +1010,7 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
           : MyLocationRenderMode.normal,
       onMapCreated: _onMapCreated,
       onStyleLoadedCallback: () {
-        _mapStyleReady = true;
+        if (mounted) setState(() => _mapStyleReady = true);
         unawaited(_syncMapAnnotations());
       },
     );
@@ -1038,271 +1027,450 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
           icon: const Icon(Icons.arrow_back),
         ),
         title: const Text('Cơ sở y tế gần đây'),
-        backgroundColor: _surface,
-        foregroundColor: _primary,
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF17324D),
+        elevation: 1,
       ),
-      body: Column(
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final desktop = constraints.maxWidth >= 720;
+          return Stack(
+            children: [
+              Positioned.fill(child: _buildMapCanvas()),
+              if (_loading)
+                const Positioned(
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  child: LinearProgressIndicator(key: Key('nearby-loading')),
+                ),
+              if (desktop)
+                Positioned(
+                  left: 16,
+                  top: 16,
+                  bottom: 16,
+                  width: 390,
+                  child: _buildFacilityPanel(),
+                )
+              else
+                Align(
+                  alignment: Alignment.bottomCenter,
+                  child: SizedBox(
+                    height: (constraints.maxHeight * 0.72).clamp(380.0, 520.0),
+                    child: _buildFacilityPanel(compact: true),
+                  ),
+                ),
+              _buildStatusOverlay(desktop: desktop),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildMapCanvas() {
+    return ColoredBox(
+      color: const Color(0xFFE8F1EC),
+      child: Stack(
         children: [
-          if (_loading)
-            const LinearProgressIndicator(key: Key('nearby-loading')),
-          if (_session != null)
-            const MaterialBanner(
-              content: Text(
-                'Phiên hỗ trợ khẩn cấp đang hoạt động; yêu cầu thông báo đang được xử lý.',
-              ),
-              actions: [SizedBox.shrink()],
-            ),
-          if (_familyAlertFailed && _isTriageHandoff)
-            MaterialBanner(
-              key: const Key('emergency-session-status'),
-              content: const Text(
-                'Không thể xác nhận phiên hỗ trợ khẩn cấp. Vui lòng thử lại.',
-              ),
-              actions: [
-                TextButton(
-                  key: const Key('emergency-session-retry'),
-                  onPressed: _sendingFamilyAlert
-                      ? null
-                      : () => _ensureEmergencySession(showFeedback: false),
-                  child: const Text('Thử lại'),
-                ),
-              ],
-            ),
-          if (_continuationExitError != null)
-            MaterialBanner(
-              key: const Key('emergency-continuation-exit-error'),
-              content: Text(_continuationExitError!),
-              actions: [
-                TextButton(
-                  key: const Key('emergency-continuation-exit-retry'),
-                  onPressed: _restoringContinuation ? null : _leaveEmergency,
-                  child: const Text('Thử lại'),
-                ),
-                TextButton(
-                  key: const Key('emergency-continuation-safe-dashboard'),
-                  onPressed: _restoringContinuation
-                      ? null
-                      : () => context.go(
-                          (AuthState.instance.role ?? '')
-                                      .trim()
-                                      .toUpperCase() ==
-                                  'FAMILY'
-                              ? '/'
-                              : '/mother-home',
-                        ),
-                  child: const Text('Về trang chủ'),
-                ),
-              ],
-            ),
-          if (_notice != null)
-            MaterialBanner(
-              key: const Key('nearby-notice'),
-              content: Text(_notice!),
-              actions: [
-                if (_locationConsentRequired &&
-                    !_accountChanged &&
-                    !_noticeIsDialFallback)
-                  TextButton(
-                    key: const Key('location-consent-action'),
-                    onPressed: _grantingLocationConsent
-                        ? null
-                        : _requestLocationConsent,
-                    child: const Text('Cho phép vị trí'),
-                  ),
-                if (!_locationConsentRequired &&
-                    !_accountChanged &&
-                    !_noticeIsDialFallback)
-                  TextButton(onPressed: _load, child: const Text('Thử lại')),
-                if (_accountChanged || _noticeIsDialFallback)
-                  const SizedBox.shrink(),
-              ],
-            ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                key: Key(
-                  const {
-                        'PRECONCEPTION',
-                        'PREGNANCY',
-                        'POSTPARTUM',
-                      }.contains(_stage)
-                      ? 'emergency-maternal-call-115'
-                      : 'emergency-call',
-                ),
-                onPressed: () => _call(null),
-                style: FilledButton.styleFrom(backgroundColor: Colors.red),
-                icon: const Icon(Icons.call),
-                label: const Text('Gọi cấp cứu 115'),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: SizedBox(
-              width: double.infinity,
-              child: KeyedSubtree(
-                key: const Key('emergency-family-alert'),
-                child: OutlinedButton.icon(
-                  key: const Key('family-alert'),
-                  onPressed: _sendingFamilyAlert || _accountChanged
-                      ? null
-                      : () => _ensureEmergencySession(),
-                  icon: _sendingFamilyAlert
-                      ? const SizedBox.square(
-                          dimension: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Icon(
-                          _familyAlertFailed ? Icons.refresh : Icons.campaign,
-                        ),
-                  label: Text(
-                    _familyAlertFailed
-                        ? 'Thử gửi lại báo động gia đình'
-                        : 'Báo động gia đình',
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  const Text('Bán kính: '),
-                  for (final radius in const [5000, 10000, 15000])
-                    Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: ChoiceChip(
-                        key: Key('radius-$radius'),
-                        label: Text('${radius ~/ 1000} km'),
-                        selected: _radiusMeters == radius,
-                        onSelected: (_) => _changeRadius(radius),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  const Text('Cơ sở: '),
-                  for (final entry in const {
-                    'hospital': 'Bệnh viện',
-                    'clinic': 'Phòng khám',
-                    'health_station': 'Trạm y tế',
-                  }.entries)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: ChoiceChip(
-                        key: Key('facility-type-${entry.key}'),
-                        label: Text(entry.value),
-                        selected: _facilityType == entry.key,
-                        onSelected: (_) => _changeFacilityType(entry.key),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-          Expanded(
-            child: Column(
-              children: [
-                Flexible(
-                  flex: 2,
-                  child: SizedBox.expand(child: _buildTrackAsiaMap()),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+          Positioned.fill(child: _buildTrackAsiaMap()),
+          if (_position != null &&
+              _trackAsiaMapKey.isNotEmpty &&
+              !_mapStyleReady)
+            const Center(
+              child: Card(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                   child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text('Phương tiện: '),
-                      Expanded(
-                        child: SegmentedButton<String>(
-                          key: const Key('transport-mode'),
-                          segments: const [
-                            ButtonSegment(
-                              value: 'DRIVING',
-                              icon: Icon(Icons.directions_car),
-                              label: Text('Ô tô'),
-                            ),
-                            ButtonSegment(
-                              value: 'MOTORCYCLE',
-                              icon: Icon(Icons.two_wheeler),
-                              label: Text('Xe máy'),
-                            ),
-                            ButtonSegment(
-                              value: 'WALKING',
-                              icon: Icon(Icons.directions_walk),
-                              label: Text('Đi bộ'),
-                            ),
-                          ],
-                          selected: {_transportMode},
-                          showSelectedIcon: false,
-                          onSelectionChanged: (selection) =>
-                              _changeTransportMode(selection.first),
+                      SizedBox.square(
+                        dimension: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      SizedBox(width: 10),
+                      Text('Đang mở bản đồ TrackAsia...'),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          Positioned(
+            right: 16,
+            bottom: 16,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: const [
+                  BoxShadow(color: Color(0x22000000), blurRadius: 8),
+                ],
+              ),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                child: Text(
+                  'TrackAsia · OSM',
+                  style: TextStyle(fontSize: 11, color: Color(0xFF50657A)),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusOverlay({required bool desktop}) {
+    final banners = <Widget>[
+      if (_session != null)
+        const MaterialBanner(
+          content: Text(
+            'Phiên hỗ trợ khẩn cấp đang hoạt động; yêu cầu thông báo đang được xử lý.',
+          ),
+          actions: [SizedBox.shrink()],
+        ),
+      if (_familyAlertFailed && _isTriageHandoff)
+        MaterialBanner(
+          key: const Key('emergency-session-status'),
+          content: const Text(
+            'Không thể xác nhận phiên hỗ trợ khẩn cấp. Vui lòng thử lại.',
+          ),
+          actions: [
+            TextButton(
+              key: const Key('emergency-session-retry'),
+              onPressed: _sendingFamilyAlert
+                  ? null
+                  : () => _ensureEmergencySession(showFeedback: false),
+              child: const Text('Thử lại'),
+            ),
+          ],
+        ),
+      if (_continuationExitError != null)
+        MaterialBanner(
+          key: const Key('emergency-continuation-exit-error'),
+          content: Text(_continuationExitError!),
+          actions: [
+            TextButton(
+              key: const Key('emergency-continuation-exit-retry'),
+              onPressed: _restoringContinuation ? null : _leaveEmergency,
+              child: const Text('Thử lại'),
+            ),
+            TextButton(
+              key: const Key('emergency-continuation-safe-dashboard'),
+              onPressed: _restoringContinuation
+                  ? null
+                  : () => context.go(
+                      (AuthState.instance.role ?? '').trim().toUpperCase() ==
+                              'FAMILY'
+                          ? '/'
+                          : '/mother-home',
+                    ),
+              child: const Text('Về trang chủ'),
+            ),
+          ],
+        ),
+      if (_notice != null)
+        MaterialBanner(
+          key: const Key('nearby-notice'),
+          content: Text(_notice!),
+          actions: [
+            if (_locationConsentRequired &&
+                !_accountChanged &&
+                !_noticeIsDialFallback)
+              TextButton(
+                key: const Key('location-consent-action'),
+                onPressed: _grantingLocationConsent
+                    ? null
+                    : _requestLocationConsent,
+                child: const Text('Cho phép vị trí'),
+              ),
+            if (!_locationConsentRequired &&
+                !_accountChanged &&
+                !_noticeIsDialFallback)
+              TextButton(onPressed: _load, child: const Text('Thử lại')),
+            if (_accountChanged || _noticeIsDialFallback)
+              const SizedBox.shrink(),
+          ],
+        ),
+    ];
+    if (banners.isEmpty) return const SizedBox.shrink();
+    return Positioned(
+      left: desktop ? 422 : 12,
+      right: 12,
+      top: 12,
+      child: Card(
+        elevation: 5,
+        clipBehavior: Clip.antiAlias,
+        child: Column(mainAxisSize: MainAxisSize.min, children: banners),
+      ),
+    );
+  }
+
+  Widget _buildFacilityPanel({bool compact = false}) {
+    return Card(
+      key: const Key('nearby-facility-panel'),
+      margin: compact
+          ? const EdgeInsets.fromLTRB(10, 0, 10, 10)
+          : EdgeInsets.zero,
+      elevation: 10,
+      color: Colors.white,
+      clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: Column(
+        children: [
+          Container(
+            color: const Color(0xFF1479C9),
+            padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+            child: Row(
+              children: [
+                const CircleAvatar(
+                  radius: 19,
+                  backgroundColor: Colors.white,
+                  child: Icon(Icons.local_hospital, color: Color(0xFF1479C9)),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Bệnh viện gần bạn',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      Text(
+                        '${_results.length} kết quả trong ${_radiusMeters ~/ 1000} km',
+                        style: const TextStyle(
+                          color: Color(0xFFDDEFFF),
+                          fontSize: 12,
                         ),
                       ),
                     ],
                   ),
                 ),
-                Expanded(
-                  flex: 3,
-                  child: _results.isEmpty
-                      ? const Center(
-                          child: Icon(Icons.local_hospital_outlined, size: 56),
-                        )
-                      : SingleChildScrollView(
-                          key: const Key('nearby-list'),
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            children: [
-                              for (
-                                var index = 0;
-                                index < _results.length;
-                                index++
-                              )
-                                Card(
-                                  child: ListTile(
-                                    key: Key('facility-$index'),
-                                    selected: identical(
-                                      _selected,
-                                      _results[index],
-                                    ),
-                                    title: Text(_results[index].name),
-                                    subtitle: Text(
-                                      [
-                                        if (_results[index]
-                                                .address
-                                                ?.isNotEmpty ==
-                                            true)
-                                          _results[index].address!,
-                                        _distance(_results[index]),
-                                        _results[index].sourceLabel,
-                                        _results[index].verificationLabel,
-                                      ].join('\n'),
-                                    ),
-                                    isThreeLine: true,
-                                    onTap: () => _select(_results[index]),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
+                IconButton(
+                  tooltip: 'Tải lại',
+                  onPressed: _loading ? null : _load,
+                  color: Colors.white,
+                  icon: const Icon(Icons.refresh),
                 ),
               ],
             ),
           ),
-          if (_selected != null) _buildSelected(_selected!),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    key: Key(
+                      const {
+                            'PRECONCEPTION',
+                            'PREGNANCY',
+                            'POSTPARTUM',
+                          }.contains(_stage)
+                          ? 'emergency-maternal-call-115'
+                          : 'emergency-call',
+                    ),
+                    onPressed: () => _call(null),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFFD62828),
+                      foregroundColor: Colors.white,
+                    ),
+                    icon: const Icon(Icons.call),
+                    label: const Text('Gọi cấp cứu 115'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: KeyedSubtree(
+                    key: const Key('emergency-family-alert'),
+                    child: OutlinedButton.icon(
+                      key: const Key('family-alert'),
+                      onPressed: _sendingFamilyAlert || _accountChanged
+                          ? null
+                          : () => _ensureEmergencySession(),
+                      icon: _sendingFamilyAlert
+                          ? const SizedBox.square(
+                              dimension: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : Icon(
+                              _familyAlertFailed
+                                  ? Icons.refresh
+                                  : Icons.campaign_outlined,
+                            ),
+                      label: Text(
+                        _familyAlertFailed
+                            ? 'Thử gửi lại báo động gia đình'
+                            : 'Báo động gia đình',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _buildSearchFilters(),
+          const Divider(height: 1),
+          Expanded(child: _buildFacilityList()),
+          if (_selected != null) ...[
+            const Divider(height: 1),
+            ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: compact ? 150 : 190),
+              child: SingleChildScrollView(child: _buildSelected(_selected!)),
+            ),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _buildSearchFilters() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                const Icon(Icons.radar, size: 18, color: Color(0xFF50657A)),
+                const SizedBox(width: 6),
+                for (final radius in const [5000, 10000, 15000])
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: ChoiceChip(
+                      key: Key('radius-$radius'),
+                      label: Text('${radius ~/ 1000} km'),
+                      selected: _radiusMeters == radius,
+                      onSelected: (_) => _changeRadius(radius),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final entry in const {
+                  'hospital': 'Bệnh viện',
+                  'clinic': 'Phòng khám',
+                  'health_station': 'Trạm y tế',
+                }.entries)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: ChoiceChip(
+                      key: Key('facility-type-${entry.key}'),
+                      avatar: Icon(
+                        entry.key == 'hospital'
+                            ? Icons.local_hospital_outlined
+                            : Icons.medical_services_outlined,
+                        size: 16,
+                      ),
+                      label: Text(entry.value),
+                      selected: _facilityType == entry.key,
+                      onSelected: (_) => _changeFacilityType(entry.key),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFacilityList() {
+    if (_results.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.local_hospital_outlined,
+                size: 52,
+                color: Color(0xFF78909C),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                _loading
+                    ? 'Đang tìm cơ sở y tế gần bạn...'
+                    : 'Chưa tìm thấy cơ sở trong bán kính này',
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    return ListView.separated(
+      key: const Key('nearby-list'),
+      padding: const EdgeInsets.all(10),
+      itemCount: _results.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
+      itemBuilder: (context, index) {
+        final facility = _results[index];
+        final selected = identical(_selected, facility);
+        return Material(
+          color: selected ? const Color(0xFFE6F3FC) : Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+              color: selected
+                  ? const Color(0xFF1479C9)
+                  : const Color(0xFFDCE4EA),
+            ),
+          ),
+          child: ListTile(
+            key: Key('facility-$index'),
+            contentPadding: const EdgeInsets.fromLTRB(12, 6, 6, 6),
+            leading: CircleAvatar(
+              backgroundColor: const Color(0xFFE1F0FB),
+              child: Icon(
+                _facilityType == 'hospital'
+                    ? Icons.local_hospital
+                    : Icons.medical_services,
+                color: const Color(0xFF1479C9),
+              ),
+            ),
+            title: Text(
+              facility.name,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            subtitle: Text(
+              [
+                if (facility.address?.isNotEmpty == true) facility.address!,
+                _distance(facility),
+                '${facility.sourceLabel} · ${facility.verificationLabel}',
+              ].join('\n'),
+              maxLines: 4,
+              overflow: TextOverflow.ellipsis,
+            ),
+            trailing: IconButton.filledTonal(
+              tooltip: facility.phone == null ? 'Xem chi tiết' : 'Gọi cơ sở',
+              onPressed: facility.phone == null
+                  ? () => _select(facility)
+                  : () => _call(facility.phone),
+              icon: Icon(
+                facility.phone == null ? Icons.chevron_right : Icons.call,
+              ),
+            ),
+            onTap: () => _select(facility),
+          ),
+        );
+      },
     );
   }
 
