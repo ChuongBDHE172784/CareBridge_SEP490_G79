@@ -251,7 +251,7 @@ export default function ExpertQuestionQueuePage() {
                 </span>
               )}
               <span className="py-0.5 px-3 rounded-full bg-surface-container-low text-on-surface-variant text-xs font-medium">
-                Giai đoạn: {selected.stage}
+                Giai đoạn: {selected.stage === 'PREGNANCY' ? 'Thai kỳ' : selected.stage === 'POSTPARTUM' ? 'Sau sinh' : selected.stage}
               </span>
               {selected.hasExpertAnswer && (
                 <span className="py-0.5 px-3 rounded-full bg-[#E6F4EA] text-[#137333] text-xs font-bold flex items-center gap-1">

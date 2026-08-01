@@ -433,9 +433,15 @@ export default function VerificationDocumentsPage() {
                       {cred.expiryDate && <span>• Hết hạn: {cred.expiryDate}</span>}
                     </div>
 
-                    {cred.reviewNote && (
+                     {cred.reviewNote && (
                       <p className="text-xs text-error mt-2 bg-error-container/40 p-2 rounded-xl">
-                        Ghi chú phản hồi: {cred.reviewNote}
+                        Ghi chú phản hồi: {
+                          cred.reviewNote === 'Seeded verified test credential'
+                            ? 'Chứng chỉ mẫu đã được hệ thống tự động xác minh'
+                            : cred.reviewNote === 'Seeded pending test credential'
+                            ? 'Chứng chỉ mẫu đang chờ xét duyệt'
+                            : cred.reviewNote
+                        }
                       </p>
                     )}
                   </div>
