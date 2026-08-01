@@ -522,7 +522,18 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
     );
     final host = uri.host.toLowerCase().replaceFirst(RegExp(r'^www\\.'), '');
     final path = uri.path.replaceAll('/', '').trim().toLowerCase();
+    final genericSearchHost = const {'google.com', 'bing.com', 'yahoo.com'}
+        .contains(host);
+    final genericSearchPath = RegExp(r'(^|/)(search|query|find)(/|$)')
+        .hasMatch(uri.path.toLowerCase());
     return uri.scheme == 'https' &&
+        uri.host.isNotEmpty &&
+        (uri.port == -1 || uri.port == 443) &&
+        uri.userInfo.isEmpty &&
+        host != 'localhost' &&
+        host != '127.0.0.1' &&
+        !genericSearchHost &&
+        !genericSearchPath &&
         domain.isNotEmpty &&
         path.isNotEmpty &&
         path != 'vi' &&
@@ -1306,6 +1317,44 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
           if ((result.warning ?? '').isNotEmpty) ...[
             const SizedBox(height: 12),
             Text(result.warning!, style: const TextStyle(color: Colors.orange)),
+          ],
+          if ((result.ragAnswer ?? '').isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Container(
+              key: const Key('triage-rag-guidance'),
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: _surfaceLow,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: _primary.withValues(alpha: 0.25)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Hướng dẫn tham khảo phù hợp với triệu chứng',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(result.ragAnswer!),
+                  if ((result.ragDisclaimer ?? '').isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      result.ragDisclaimer!,
+                      style: const TextStyle(fontSize: 12, color: _onVariant),
+                    ),
+                  ],
+                  if (result.ragFallback == true) ...[
+                    const SizedBox(height: 8),
+                    const Text(
+                      'Nguồn tham khảo hiện chưa sẵn sàng; kết quả phân loại vẫn được giữ nguyên.',
+                      style: TextStyle(fontSize: 12, color: Colors.orange),
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ],
           if (result.citations.isNotEmpty) ...[
             const SizedBox(height: 16),

@@ -20,6 +20,9 @@ class TriageResult {
   final List<String> redFlags;
   final List<String> matchedRules;
   final List<TriageCitation> citations;
+  final String? ragAnswer;
+  final String? ragDisclaimer;
+  final bool? ragFallback;
   final List<TriageClaim> claims;
   final TriageEvidence? evidence;
   final String? disclaimer;
@@ -48,6 +51,9 @@ class TriageResult {
     this.redFlags = const [],
     this.matchedRules = const [],
     this.citations = const [],
+    this.ragAnswer,
+    this.ragDisclaimer,
+    this.ragFallback,
     this.claims = const [],
     this.evidence,
     this.disclaimer,
@@ -104,6 +110,9 @@ class TriageResult {
           .whereType<Map<String, dynamic>>()
           .map(TriageCitation.fromJson)
           .toList(),
+      ragAnswer: json['ragAnswer']?.toString(),
+      ragDisclaimer: json['ragDisclaimer']?.toString(),
+      ragFallback: json['ragFallback'] as bool?,
       claims: (json['claims'] as List<dynamic>? ?? const [])
           .whereType<Map<String, dynamic>>()
           .map(TriageClaim.fromJson)

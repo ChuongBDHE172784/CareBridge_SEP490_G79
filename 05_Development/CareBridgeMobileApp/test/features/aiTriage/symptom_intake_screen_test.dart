@@ -35,6 +35,9 @@ TriageResult _result(
   bool emergency = false,
   String stage = 'INFANT',
   List<TriageCitation> citations = const [],
+  String? ragAnswer,
+  String? ragDisclaimer,
+  bool? ragFallback,
 }) => TriageResult(
   sessionId: _sessionId,
   stage: stage,
@@ -44,6 +47,9 @@ TriageResult _result(
   summary: 'Ket qua $risk',
   recommendedAction: 'Theo doi huong dan',
   citations: citations,
+  ragAnswer: ragAnswer,
+  ragDisclaimer: ragDisclaimer,
+  ragFallback: ragFallback,
   disclaimer: 'Khong thay the chan doan y khoa',
 );
 
@@ -1185,6 +1191,29 @@ void main() {
       expect(find.byKey(const Key('triage-emergency-cta')), findsNothing);
     });
   }
+
+  testWidgets('terminal result renders symptom-scoped RAG guidance', (
+    tester,
+  ) async {
+    await _pumpScreen(
+      tester,
+      triage: _StaticTriageService(
+        _complete(
+          _result(
+            'YELLOW',
+            stage: 'PREGNANCY',
+            ragAnswer: 'Theo dõi đau đầu và uống đủ nước.',
+            ragDisclaimer: 'Thông tin tham khảo.',
+          ),
+        ),
+      ),
+    );
+    await _submitInitial(tester);
+
+    expect(find.byKey(const Key('triage-rag-guidance')), findsOneWidget);
+    expect(find.text('Theo dõi đau đầu và uống đủ nước.'), findsOneWidget);
+    expect(find.text('Thông tin tham khảo.'), findsOneWidget);
+  });
 
   testWidgets(
     'offline continuation resolve keeps completed intake visible and retryable',
