@@ -58,7 +58,7 @@ Validation errors: `TEMPLATE_ROLE_REQUIRED`, `FAMILY_STAGE_NOT_ALLOWED`, `SUBSTA
 Response:
 
 ```json
-{"asOf":"2026-08-03T01:00:00Z","zoneId":"Asia/Ho_Chi_Minh","horizonDays":7,"sections":{"overdue":[{"taskKind":"CHECKLIST","taskId":"...","instanceId":"...","templateVersionId":"...","careGroupId":"...","careContextType":"JOURNEY","careContextId":"...","title":"Drink water","targetSubject":"MOTHER","origin":"SYSTEM_TEMPLATE","status":"PENDING","timeBucket":"OVERDUE","allowedActions":["COMPLETE","SKIP"],"dueAt":"2026-08-02T08:00:00Z"}],"today":[],"upcoming":[],"unscheduled":[]},"counts":{"overdue":1,"today":0,"upcoming":0,"unscheduled":0},"correlationId":"..."}
+{"asOf":"2026-08-03T01:00:00Z","zoneId":"Asia/Ho_Chi_Minh","horizonDays":7,"sections":{"overdue":[{"taskKind":"CHECKLIST","taskId":"...","instanceId":"...","templateVersionId":"...","careGroupId":"...","careContextType":"JOURNEY","careContextId":"...","title":"Drink water","targetSubject":"MOTHER","origin":"SYSTEM_TEMPLATE","status":"PENDING","timeBucket":"OVERDUE","allowedActions":["COMPLETE"],"dueAt":"2026-08-02T08:00:00Z"}],"today":[],"upcoming":[],"unscheduled":[]},"counts":{"overdue":1,"today":0,"upcoming":0,"unscheduled":0},"correlationId":"..."}
 ```
 
 `date` defaults to the effective local date; timezone is resolved from the valid IANA header or Asia/Ho_Chi_Minh. `OVERDUE` is non-terminal work due before local day start; `TODAY` is work due in the local day (including terminal actions made for that due date); `UPCOMING` is non-terminal work due in the next seven days; `UNSCHEDULED` preserves active migrated work without a safe due date; `CANCELLED` is excluded. The server ignores client role/group filters and derives scope from the authenticated principal. The endpoint reads V2 projections and related care/reminder tasks; it never inserts, updates status or triggers reconciliation.
@@ -71,7 +71,7 @@ Provider normalization:
 
 | taskKind | Stable task ID | origin/target | normalized status | allowed actions |
 |---|---|---|---|---|
-| CHECKLIST | checklist task-instance UUID | persisted origin and item target | checklist persisted state | COMPLETE/SKIP only when policy and state allow |
+| CHECKLIST | checklist task-instance UUID | persisted origin and item target | checklist persisted state | COMPLETE for active tasks; REOPEN for COMPLETED tasks; no SKIP |
 | REMINDER | existing reminder occurrence UUID, never definition-only ID | existing system/user provenance; explicit mapped target or null when legacy schema has none | provider maps to PENDING/COMPLETED/CANCELLED | only provider-supported actions advertised; no implicit SKIP |
 | CARE_TASK | existing care-task UUID | persisted manual/system origin and explicit target | provider FSM mapping | only actions currently legal in Family/care-task FSM |
 
@@ -85,7 +85,7 @@ The aggregator does not invent actions. The facade authorizes first, dispatches 
 {"action":"COMPLETE","clientRequestId":"client-uuid","reason":null}
 ```
 
-`action` is `COMPLETE` or `SKIP`; `reason` is required for `SKIP` and must be controlled (for example `NOT_APPLICABLE`, `USER_CHOICE`, `LIFECYCLE_CHANGED`). Response returns `{taskKind, taskId, instanceId, action, previousStatus, status, appliedAt, idempotentReplay, correlationId}`. Durable command identity is `(actorId, taskKind, taskId, clientRequestId)` plus canonical payload hash. Authorization occurs before replay lookup. Concurrent claimants serialize on the unique row; same payload returns the original result and different payload returns `IDEMPOTENCY_KEY_REUSE`. Command rows are retained until the task is terminal and for seven years from `appliedAt`, extended by legal hold; operations-only purge is audited. After lawful purge, authorization and terminal CAS still prevent reapplication and return `TASK_ALREADY_TERMINAL`; no active-task command row may be purged. System tasks reject edit/delete actions with `SYSTEM_TASK_IMMUTABLE`; terminal tasks return `TASK_ALREADY_TERMINAL` with the current state.
+`action` is `COMPLETE`, `SKIP`, or `REOPEN`; `reason` is required for `SKIP` and must be controlled (for example `NOT_APPLICABLE`, `USER_CHOICE`, `LIFECYCLE_CHANGED`). Checklist tasks advertise only `COMPLETE` while active and `REOPEN` while `COMPLETED`; checklist `SKIP` is not supported. `REOPEN` requires no reason and changes `COMPLETED` to `PENDING`, clearing completion metadata. Response returns `{taskKind, taskId, instanceId, action, previousStatus, status, appliedAt, idempotentReplay, correlationId}`. Durable command identity is `(actorId, taskKind, taskId, clientRequestId)` plus canonical payload hash. Authorization occurs before replay lookup. Concurrent claimants serialize on the unique row; same payload returns the original result and different payload returns `IDEMPOTENCY_KEY_REUSE`. Command rows are retained until the task is terminal and for seven years from `appliedAt`, extended by legal hold; operations-only purge is audited. After lawful purge, authorization and terminal CAS still prevent reapplication and return `TASK_ALREADY_TERMINAL`; no active-task command row may be purged. System tasks reject edit/delete actions with `SYSTEM_TASK_IMMUTABLE`; user-created checklist children can be cancelled through the user-item DELETE route and are then excluded from Today.
 
 Legacy action routes adapt to this facade and do not write legacy tables after V2 activation.
 
@@ -98,7 +98,7 @@ Legacy action routes adapt to this facade and do not write legacy tables after V
 | Operation | MOTHER | FAMILY | Content Admin | SYSTEM_ADMIN/Operations |
 |---|---|---|---|---|
 | Own Today/tasks | own group/context | exact union of accepted groups with CHECKLIST_VIEW | scoped metadata admin only, no recipient task content | no recipient task content |
-| Complete/skip | own task | own accepted group/context + CHECKLIST_VIEW + CHECKLIST_COMPLETE | no | no recipient mutation |
+| Complete/reopen | own task | own accepted group/context + CHECKLIST_VIEW + CHECKLIST_COMPLETE | no | no recipient mutation |
 | Author/submit/clone | no | no | yes | no |
 | Approve/reject/review/activate | no | no | no | SYSTEM_ADMIN only |
 | Audit read | no | no | no | yes |
@@ -107,7 +107,7 @@ Every query predicates by authenticated user, accepted membership, permission, g
 
 ## 5. State and concurrency rules
 
-Use row locks or optimistic CAS on instance/task version. Complete/skip and lifecycle reconciliation are serialized. A terminal mutation and audit event commit atomically. New checklist audit action enums must be added to the eligibility policy; an ineligible required action, allowlisted-DTO serialization failure or persistence failure aborts the business transaction. The audit schema stores actor type/service, recipient, context, task/version IDs, before/after status, controlled reason and indexed UUID correlation ID as typed columns or constrained fields; arbitrary details are forbidden. Distribution conflict compares canonical payload; same key with differing payload is encrypted/quarantined and alerted rather than silently overwritten. GET requests are side-effect free.
+Use row locks or optimistic CAS on instance/task version. Complete/reopen/skip and lifecycle reconciliation are serialized. A terminal mutation and audit event commit atomically. New checklist audit action enums must be added to the eligibility policy; an ineligible required action, allowlisted-DTO serialization failure or persistence failure aborts the business transaction. The audit schema stores actor type/service, recipient, context, task/version IDs, before/after status, controlled reason and indexed UUID correlation ID as typed columns or constrained fields; arbitrary details are forbidden. Distribution conflict compares canonical payload; same key with differing payload is encrypted/quarantined and alerted rather than silently overwritten. GET requests are side-effect free. User-created deletion is a soft cancellation that retains the task and audit record; system-origin deletion is rejected.
 
 ## 6. Migration and rollout
 
@@ -139,7 +139,7 @@ Domain mutations that affect eligibility publish a durable outbox/candidate reco
 
 ### UI contract
 
-Mother Home and Family Home each render Today sections, loading, empty, error and retry states. Source and target badges use Warm Claymorphism tokens with icon plus text (“System template”, “My care”, “Baby”). Mother Today exposes a context-bound user-created task composer with explicit MOTHER/BABY target, one canonical journey/baby context, a stable client task ID for identical retries and automatic Today refresh after creation; Family does not gain create permission. PreparationChecklistScreen and its direct navigation are removed only after both replacement entry points pass route/import and widget tests. Focus order, semantics labels, contrast and scalable text are required.
+Mother Home and Family Home each render Today sections, loading, empty, error and retry states. Source and target badges use Warm Claymorphism tokens with icon plus text (“System template”, “My care”, “Baby”). Mother Today exposes a context-bound user-created task composer with explicit MOTHER/BABY target, one canonical journey/baby context, a stable client task ID for identical retries and automatic Today refresh after creation; completed checklist cards reopen to the incomplete state, and only USER_CREATED checklist cards expose delete. Family does not gain create or delete permission. PreparationChecklistScreen and its direct navigation are removed only after both replacement entry points pass route/import and widget tests. Focus order, semantics labels, contrast and scalable text are required.
 ### Approved CHK-041 reference-environment decision — 2026-07-30
 
 The product owner explicitly approved a deterministic **synthetic production-representative dataset** and a **local disposable PostgreSQL 18** cluster as the final CHK-041 reference environment. This supersedes only the earlier requirement for a sanitized external backup/host; it does not waive or lower any CHK-041 threshold or safety gate. The approval is valid only when one sealed run binds the exact fixture fingerprint, PostgreSQL/tool identities, host profile, application commit, Flyway history, raw timing/lock logs and cohort-disabled simulation, and proves count/hash reconciliation, reviewed quarantine baseline, a real fail-closed abort, a same-threshold forward-only correction, roll-forward pass, cleanup and leak scan. It does not establish production capacity beyond the approved local host profile.

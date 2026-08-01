@@ -17,6 +17,8 @@
 
 ---
 
+> **Current V2 cutover note (2026-08-01):** The legacy `/user-checklist-items` toggle/update/delete mutations described below are retired for Today Tasks. The canonical V2 contract supports `COMPLETE`/`REOPEN` for checklist task instances; `SKIP` is not advertised for checklists. System-origin children are immutable, while user-created children are removed through a soft `CANCELLED` transition that preserves audit history.
+
 ## CHANGELOG
 
 > **Policy 4.4 — Immutable History:** Không bao giờ xóa thông tin cũ. Mọi thay đổi phải ghi vào bảng này.
