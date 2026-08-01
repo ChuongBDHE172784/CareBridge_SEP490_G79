@@ -1,15 +1,52 @@
 import { useState, useEffect, useCallback } from 'react';
 import apiClient from '../../../shared/api/apiClient';
 
+interface CommunityTopic {
+  id: string;
+  name: string;
+}
+
 interface CommunityQuestion {
   id: string;
   title: string;
-  topicName: string;
+  body?: string;
+  topicId?: string;
+  topicName?: string;
   stage: string;
   urgency: string;
   answerCount: number;
   hasExpertAnswer: boolean;
   createdAt: string;
+  imageUrls?: string[];
+}
+
+interface AnswerItem {
+  id: string;
+  body: string;
+  authorName?: string;
+  authorRole?: string;
+  isExpertAnswer: boolean;
+  createdAt: string;
+}
+
+interface CommunityQuestionDetail {
+  id: string;
+  topicId?: string;
+  topicName?: string;
+  title: string;
+  body: string;
+  imageUrls: string[];
+  stage: string;
+  pregnancyWeek?: number;
+  babyAgeMonths?: number;
+  urgency: string;
+  anonymous: boolean;
+  authorDisplay: string;
+  status: string;
+  answerCount: number;
+  likeCount: number;
+  createdAt: string;
+  answers?: AnswerItem[];
 }
 
 function timeAgo(iso: string): string {
@@ -23,25 +60,64 @@ function timeAgo(iso: string): string {
   return `${days} ngày trước`;
 }
 
+function getStageLabel(stage: string): string {
+  if (stage === 'PREGNANCY') return 'Thai kỳ';
+  if (stage === 'POSTPARTUM') return 'Sau sinh';
+  return stage || 'Cộng đồng';
+}
+
 export default function ExpertQuestionQueuePage() {
   const [questions, setQuestions] = useState<CommunityQuestion[]>([]);
+  const [topics, setTopics] = useState<CommunityTopic[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Selection & Detail
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [detail, setDetail] = useState<CommunityQuestionDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+
+  // Filters (aligned with Mobile App)
+  const [keyword, setKeyword] = useState('');
+  const [selectedStage, setSelectedStage] = useState<string>(''); // '', 'PREGNANCY', 'POSTPARTUM'
+  const [selectedTopicId, setSelectedTopicId] = useState<string>('');
+  const [selectedHasExpertAnswer, setSelectedHasExpertAnswer] = useState<string>(''); // '', 'false', 'true'
+  const [filterUrgent, setFilterUrgent] = useState(false);
+
+  // Answer submission
   const [answerText, setAnswerText] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [keyword, setKeyword] = useState('');
-  const [filterUrgent, setFilterUrgent] = useState(false);
+
+  // Pagination
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
 
+  // Load Topics list for filter dropdown
+  useEffect(() => {
+    const loadTopics = async () => {
+      try {
+        const { data } = await apiClient.get('/api/v1/community/topics');
+        setTopics(data.data ?? []);
+      } catch {
+        // non-blocking
+      }
+    };
+    void loadTopics();
+  }, []);
+
+  // Fetch Questions with active filters
   const fetchQuestions = useCallback(async (p: number) => {
     try {
       setLoading(true);
       setError(null);
       const params: Record<string, string> = { size: '20', page: String(p) };
       if (keyword.trim()) params.keyword = keyword.trim();
+      if (selectedStage) params.stage = selectedStage;
+      if (selectedTopicId) params.topicId = selectedTopicId;
+      if (selectedHasExpertAnswer) params.hasExpertAnswer = selectedHasExpertAnswer;
       if (filterUrgent) params.urgency = 'HIGH';
+
       const qs = new URLSearchParams(params).toString();
       const { data } = await apiClient.get(`/api/v1/community/questions?${qs}`);
       const content: CommunityQuestion[] = data.data?.content ?? data.data ?? [];
@@ -53,25 +129,66 @@ export default function ExpertQuestionQueuePage() {
     } finally {
       setLoading(false);
     }
-  }, [keyword, filterUrgent]);
+  }, [keyword, selectedStage, selectedTopicId, selectedHasExpertAnswer, filterUrgent]);
 
   useEffect(() => {
     fetchQuestions(0);
   }, [fetchQuestions]);
 
+  // Fetch Question Detail when selected
+  useEffect(() => {
+    if (!selectedId) {
+      setDetail(null);
+      return;
+    }
+    let active = true;
+    setDetailLoading(true);
+    apiClient
+      .get(`/api/v1/community/questions/${selectedId}`)
+      .then((res) => {
+        if (active) setDetail(res.data.data);
+      })
+      .catch(() => {
+        if (active) setDetail(null);
+      })
+      .finally(() => {
+        if (active) setDetailLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [selectedId]);
+
   const onSearch = () => fetchQuestions(0);
-  const selected = questions.find((q) => q.id === selectedId);
+  const selectedSummary = questions.find((q) => q.id === selectedId);
 
   const postAnswer = async () => {
     if (!answerText.trim() || !selectedId || submitting) return;
     setSubmitting(true);
     try {
-      await apiClient.post(`/api/v1/community/questions/${selectedId}/answers`, {
+      const { data } = await apiClient.post(`/api/v1/community/questions/${selectedId}/answers`, {
         body: answerText.trim(),
         isPersonalExperience: false,
       });
+
+      const newAnswer: AnswerItem = data.data ?? {
+        id: crypto.randomUUID(),
+        body: answerText.trim(),
+        authorName: 'Chuyên gia Y tế CareBridge',
+        isExpertAnswer: true,
+        createdAt: new Date().toISOString(),
+      };
+
       setAnswerText('');
-      setSelectedId(null);
+      setDetail((prev) =>
+        prev
+          ? {
+              ...prev,
+              answerCount: prev.answerCount + 1,
+              answers: [newAnswer, ...(prev.answers || [])],
+            }
+          : prev
+      );
       setQuestions((prev) =>
         prev.map((q) =>
           q.id === selectedId ? { ...q, answerCount: q.answerCount + 1, hasExpertAnswer: true } : q
@@ -92,7 +209,7 @@ export default function ExpertQuestionQueuePage() {
           selectedId ? 'w-1/2' : 'w-full'
         }`}
       >
-        {/* Header Toolbar */}
+        {/* Header & Filter Bar (Mobile-App Parity) */}
         <div className="p-5 pb-3 border-b border-surface-container-highest space-y-3 bg-surface">
           <div className="flex justify-between items-center">
             <div>
@@ -100,12 +217,20 @@ export default function ExpertQuestionQueuePage() {
                 <span className="material-symbols-outlined text-primary text-2xl">forum</span>
                 Hàng đợi câu hỏi cộng đồng
               </h2>
-              <p className="text-xs text-outline mt-0.5">
+              <p className="text-xs text-outline mt-0.5 m-0">
                 Các câu hỏi sức khỏe mẹ &amp; bé chưa có phản hồi chuyên môn
               </p>
             </div>
+            <button
+              onClick={() => fetchQuestions(0)}
+              className="p-2 rounded-full border border-outline-variant text-outline hover:text-primary hover:bg-surface-container-low transition-colors cursor-pointer"
+              title="Làm mới hàng đợi"
+            >
+              <span className="material-symbols-outlined text-lg">refresh</span>
+            </button>
           </div>
 
+          {/* Search Row */}
           <div className="flex gap-2">
             <div className="relative flex-1">
               <span className="material-symbols-outlined text-outline absolute left-3 top-1/2 -translate-y-1/2 text-lg">
@@ -113,19 +238,20 @@ export default function ExpertQuestionQueuePage() {
               </span>
               <input
                 type="text"
-                placeholder="Tìm kiếm từ khóa câu hỏi..."
+                placeholder="Tìm kiếm nội dung, từ khóa câu hỏi..."
                 value={keyword}
                 onChange={(e) => setKeyword(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && onSearch()}
                 className="w-full py-2 pr-3 pl-9 rounded-full border border-outline-variant bg-surface text-xs text-on-surface outline-none focus:border-primary font-sans"
               />
             </div>
+
             <button
               onClick={() => {
                 setFilterUrgent((v) => !v);
                 fetchQuestions(0);
               }}
-              className={`py-2 px-4 rounded-full text-xs font-semibold cursor-pointer whitespace-nowrap transition-colors flex items-center gap-1 ${
+              className={`py-2 px-3.5 rounded-full text-xs font-semibold cursor-pointer whitespace-nowrap transition-colors flex items-center gap-1 ${
                 filterUrgent
                   ? 'border-2 border-primary bg-surface-container-low text-primary'
                   : 'border border-outline-variant bg-transparent text-on-surface-variant'
@@ -134,6 +260,56 @@ export default function ExpertQuestionQueuePage() {
               <span className="material-symbols-outlined text-base">priority_high</span>
               Khẩn cấp
             </button>
+          </div>
+
+          {/* Dropdown Filters Row (Stage, Topic, Expert Status) */}
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            {/* Stage Filter */}
+            <select
+              value={selectedStage}
+              onChange={(e) => {
+                setSelectedStage(e.target.value);
+                fetchQuestions(0);
+              }}
+              className="py-1.5 px-3 rounded-full border border-outline-variant bg-surface text-xs font-medium text-on-surface outline-none cursor-pointer"
+            >
+              <option value="">Tất cả giai đoạn</option>
+              <option value="PREGNANCY">Thai kỳ</option>
+              <option value="POSTPARTUM">Sau sinh</option>
+            </select>
+
+            {/* Topic Filter */}
+            {topics.length > 0 && (
+              <select
+                value={selectedTopicId}
+                onChange={(e) => {
+                  setSelectedTopicId(e.target.value);
+                  fetchQuestions(0);
+                }}
+                className="py-1.5 px-3 rounded-full border border-outline-variant bg-surface text-xs font-medium text-on-surface outline-none cursor-pointer max-w-[180px] truncate"
+              >
+                <option value="">Tất cả chủ đề</option>
+                {topics.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            {/* Expert Answer Status Filter */}
+            <select
+              value={selectedHasExpertAnswer}
+              onChange={(e) => {
+                setSelectedHasExpertAnswer(e.target.value);
+                fetchQuestions(0);
+              }}
+              className="py-1.5 px-3 rounded-full border border-outline-variant bg-surface text-xs font-medium text-on-surface outline-none cursor-pointer"
+            >
+              <option value="">Tất cả trạng thái bác sĩ</option>
+              <option value="false">Chưa có bác sĩ tư vấn</option>
+              <option value="true">Đã có bác sĩ tư vấn</option>
+            </select>
           </div>
         </div>
 
@@ -158,6 +334,8 @@ export default function ExpertQuestionQueuePage() {
           {questions.map((q) => {
             const active = q.id === selectedId;
             const isHigh = q.urgency === 'HIGH';
+            const hasImages = q.imageUrls && q.imageUrls.length > 0;
+
             return (
               <div
                 key={q.id}
@@ -174,12 +352,21 @@ export default function ExpertQuestionQueuePage() {
                       {q.title}
                     </h3>
 
+                    {q.body && (
+                      <p className="text-xs text-on-surface-variant line-clamp-2 mt-1 mb-0 leading-relaxed">
+                        {q.body}
+                      </p>
+                    )}
+
                     <div className="flex flex-wrap items-center gap-2 mt-2">
                       {q.topicName && (
                         <span className="py-0.5 px-2.5 rounded-full bg-surface-container-low text-primary text-[11px] font-semibold">
                           {q.topicName}
                         </span>
                       )}
+                      <span className="py-0.5 px-2.5 rounded-full bg-surface-container-low text-on-surface-variant text-[11px] font-medium">
+                        {getStageLabel(q.stage)}
+                      </span>
                       <span
                         className={`py-0.5 px-2.5 rounded-full text-[11px] font-semibold ${
                           isHigh ? 'bg-error-container text-error' : 'bg-[#FFF3E0] text-[#E65100]'
@@ -187,6 +374,12 @@ export default function ExpertQuestionQueuePage() {
                       >
                         {isHigh ? 'Khẩn cấp' : 'Thường'}
                       </span>
+                      {hasImages && (
+                        <span className="py-0.5 px-2.5 rounded-full bg-primary-container/40 text-primary text-[11px] font-semibold flex items-center gap-1">
+                          <span className="material-symbols-outlined text-xs">image</span>
+                          {q.imageUrls?.length} ảnh
+                        </span>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-3 mt-2 text-[11px] text-outline">
@@ -221,97 +414,213 @@ export default function ExpertQuestionQueuePage() {
           {questions.length === 0 && !loading && !error && (
             <div className="py-16 text-center text-outline">
               <span className="material-symbols-outlined text-4xl block mb-2 opacity-40">task_alt</span>
-              <p className="text-sm font-semibold">Không có câu hỏi chờ</p>
-              <p className="text-xs mt-1">Tất cả câu hỏi đã được giải đáp.</p>
+              <p className="text-sm font-semibold">Không tìm thấy câu hỏi phù hợp</p>
+              <p className="text-xs mt-1">Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm.</p>
             </div>
           )}
         </div>
       </div>
 
-      {/* Answer Editor Pane */}
-      {selected ? (
+      {/* Answer & Detail Pane */}
+      {selectedId ? (
         <div className="w-1/2 flex flex-col rounded-2xl bg-surface border border-outline-variant/70 shadow-md overflow-hidden">
-          {/* Question detail header */}
-          <div className="p-5 border-b border-surface-container-highest bg-surface">
-            <div className="flex items-start justify-between gap-4">
+          {/* Header Bar */}
+          <div className="p-5 border-b border-surface-container-highest bg-surface flex items-start justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="py-0.5 px-2.5 rounded-full bg-primary-container text-primary text-xs font-semibold">
+                  {detail?.topicName || selectedSummary?.topicName || 'Chủ đề Y tế'}
+                </span>
+                <span className="py-0.5 px-2.5 rounded-full bg-surface-container-low text-on-surface-variant text-xs font-medium">
+                  Giai đoạn: {getStageLabel(detail?.stage || selectedSummary?.stage || '')}
+                </span>
+              </div>
               <h3 className="text-base font-bold text-on-surface leading-snug m-0">
-                {selected.title}
+                {detail?.title || selectedSummary?.title}
               </h3>
-              <button
-                onClick={() => setSelectedId(null)}
-                className="w-7 h-7 rounded-full border border-outline-variant flex items-center justify-center text-outline hover:text-on-surface shrink-0 cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-base">close</span>
-              </button>
             </div>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {selected.topicName && (
-                <span className="py-0.5 px-3 rounded-full bg-primary-container text-primary text-xs font-semibold">
-                  {selected.topicName}
-                </span>
-              )}
-              <span className="py-0.5 px-3 rounded-full bg-surface-container-low text-on-surface-variant text-xs font-medium">
-                Giai đoạn: {selected.stage === 'PREGNANCY' ? 'Thai kỳ' : selected.stage === 'POSTPARTUM' ? 'Sau sinh' : selected.stage}
-              </span>
-              {selected.hasExpertAnswer && (
-                <span className="py-0.5 px-3 rounded-full bg-[#E6F4EA] text-[#137333] text-xs font-bold flex items-center gap-1">
-                  <span className="material-symbols-outlined text-xs">verified</span>
-                  Đã có tư vấn chuyên gia
-                </span>
-              )}
+            <button
+              onClick={() => setSelectedId(null)}
+              className="w-8 h-8 rounded-full border border-outline-variant flex items-center justify-center text-outline hover:text-on-surface shrink-0 cursor-pointer"
+              title="Đóng chi tiết"
+            >
+              <span className="material-symbols-outlined text-base">close</span>
+            </button>
+          </div>
+
+          {/* Scrollable Question Body, Attached Images & Existing Answers */}
+          <div className="flex-1 overflow-y-auto p-5 space-y-5 bg-surface-container-low/20">
+            {detailLoading ? (
+              <div className="py-12 text-center text-outline flex items-center justify-center gap-2 text-xs">
+                <span className="material-symbols-outlined animate-spin text-lg text-primary">progress_activity</span>
+                Đang tải chi tiết bài viết &amp; hình ảnh đính kèm...
+              </div>
+            ) : (
+              <>
+                {/* Author Metadata */}
+                <div className="flex items-center justify-between p-3 rounded-2xl bg-surface border border-outline-variant/50">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center text-sm">
+                      {detail?.anonymous ? 'A' : (detail?.authorDisplay?.[0] || 'M')}
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-on-surface">
+                        {detail?.anonymous ? 'Người dùng ẩn danh' : detail?.authorDisplay || 'Mẹ bầu CareBridge'}
+                      </div>
+                      <div className="text-[11px] text-outline">
+                        {detail?.pregnancyWeek && `Tuần thai: ${detail.pregnancyWeek} `}
+                        {detail?.babyAgeMonths && `Tuổi bé: ${detail.babyAgeMonths} tháng `}
+                        • {timeAgo(detail?.createdAt || selectedSummary?.createdAt || '')}
+                      </div>
+                    </div>
+                  </div>
+
+                  <span
+                    className={`py-1 px-3 rounded-full text-xs font-bold ${
+                      detail?.urgency === 'HIGH' ? 'bg-error-container text-error' : 'bg-[#FFF3E0] text-[#E65100]'
+                    }`}
+                  >
+                    {detail?.urgency === 'HIGH' ? 'Khẩn cấp' : 'Thường'}
+                  </span>
+                </div>
+
+                {/* Full Question Body */}
+                <div className="bg-surface rounded-2xl p-4 border border-outline-variant/60 shadow-xs space-y-2">
+                  <p className="text-xs font-bold text-outline uppercase tracking-wider m-0">Nội dung chi tiết câu hỏi</p>
+                  <p className="text-sm text-on-surface leading-relaxed whitespace-pre-line m-0">
+                    {detail?.body || 'Không có nội dung mô tả bổ sung.'}
+                  </p>
+                </div>
+
+                {/* Attached Images Gallery (Uploaded from Mobile App) */}
+                {detail?.imageUrls && detail.imageUrls.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold text-outline uppercase tracking-wider m-0 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-sm text-primary">photo_library</span>
+                      Hình ảnh đính kèm ({detail.imageUrls.length})
+                    </p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {detail.imageUrls.map((url, idx) => (
+                        <div
+                          key={idx}
+                          onClick={() => setPreviewImage(url)}
+                          className="relative aspect-square rounded-2xl overflow-hidden border border-outline-variant/60 bg-surface cursor-pointer group shadow-xs hover:shadow-md transition-all"
+                        >
+                          <img
+                            src={url}
+                            alt={`Ảnh đính kèm ${idx + 1}`}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white">
+                            <span className="material-symbols-outlined text-xl">zoom_in</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Existing Answers List */}
+                {detail?.answers && detail.answers.length > 0 && (
+                  <div className="space-y-3 pt-2">
+                    <p className="text-xs font-bold text-outline uppercase tracking-wider m-0 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-sm text-primary">forum</span>
+                      Các phản hồi đã có ({detail.answers.length})
+                    </p>
+
+                    <div className="space-y-3">
+                      {detail.answers.map((ans) => (
+                        <div
+                          key={ans.id}
+                          className={`p-4 rounded-2xl border space-y-1.5 ${
+                            ans.isExpertAnswer
+                              ? 'border-emerald-300 bg-emerald-50/70 text-emerald-950'
+                              : 'border-outline-variant/50 bg-surface'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-bold flex items-center gap-1">
+                              {ans.isExpertAnswer && (
+                                <span className="material-symbols-outlined text-sm text-emerald-700">verified</span>
+                              )}
+                              {ans.authorName || (ans.isExpertAnswer ? 'Chuyên gia Y tế' : 'Người dùng cộng đồng')}
+                            </span>
+                            <span className="text-[11px] opacity-75">{timeAgo(ans.createdAt)}</span>
+                          </div>
+                          <p className="text-xs leading-relaxed whitespace-pre-line m-0">{ans.body}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Expert Guidelines Banner */}
+            <div className="rounded-2xl border border-primary/20 bg-primary-container/20 p-4">
+              <div className="flex items-start gap-3">
+                <span className="material-symbols-outlined text-primary text-xl mt-0.5">verified</span>
+                <p className="text-xs text-on-surface-variant leading-relaxed m-0">
+                  Câu trả lời của bạn sẽ được hiển thị kèm huy hiệu <strong>Chuyên gia Y tế CareBridge</strong>.
+                  Vui lòng tư vấn y khoa chính xác, văn phong chuẩn mực và không tự ý kê đơn thuốc trực tiếp.
+                </p>
+              </div>
             </div>
           </div>
 
-          {/* Expert Badge Notice */}
-          <div className="mx-5 mt-4 rounded-2xl border border-primary/20 bg-primary-container/20 p-4">
-            <div className="flex items-start gap-3">
-              <span className="material-symbols-outlined text-primary text-xl mt-0.5">verified</span>
-              <p className="text-xs text-on-surface-variant leading-relaxed m-0">
-                Câu trả lời của bạn sẽ được hiển thị kèm huy hiệu <strong>Chuyên gia Y tế CareBridge</strong>.
-                Vui lòng đưa ra tư vấn khoa học, chính xác — không đưa ra kê đơn thuốc trực tiếp.
-              </p>
-            </div>
-          </div>
-
-          {/* Answer Editor Textarea */}
-          <div className="flex-1 p-5 flex flex-col">
-            <label className="block text-xs font-semibold text-outline uppercase tracking-wider mb-2">
-              Nội dung câu trả lời chuyên gia
-            </label>
+          {/* Answer Editor Textarea & Submit */}
+          <div className="p-4 border-t border-surface-container-highest bg-surface space-y-3">
             <textarea
-              rows={8}
+              rows={4}
               value={answerText}
               onChange={(e) => setAnswerText(e.target.value)}
-              placeholder="Viết câu trả lời tư vấn chuyên môn chi tiết cho mẹ bầu..."
-              className="flex-1 w-full rounded-2xl border border-outline-variant bg-surface p-4 text-sm text-on-surface leading-relaxed outline-none focus:border-primary font-sans resize-none"
+              placeholder="Nhập câu trả lời tư vấn chuyên môn chi tiết cho mẹ bầu..."
+              className="w-full rounded-2xl border border-outline-variant bg-surface p-3.5 text-xs text-on-surface leading-relaxed outline-none focus:border-primary font-sans resize-none"
             />
-            <p className="mt-1.5 text-right text-xs text-outline m-0">
-              {answerText.length} / 2 000 ký tự
-            </p>
-          </div>
-
-          {/* Submit Bar */}
-          <div className="p-4 border-t border-surface-container-highest bg-surface flex justify-end">
-            <button
-              onClick={postAnswer}
-              disabled={!answerText.trim() || submitting}
-              className="flex items-center justify-center gap-2 py-3 px-8 rounded-full bg-primary text-on-primary font-semibold text-sm hover:brightness-110 disabled:opacity-50 cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-lg">send</span>
-              {submitting ? 'Đang gửi...' : 'Gửi câu trả lời'}
-            </button>
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-outline">{answerText.length} / 2 000 ký tự</span>
+              <button
+                onClick={postAnswer}
+                disabled={!answerText.trim() || submitting}
+                className="flex items-center gap-2 py-2.5 px-6 rounded-full bg-primary text-on-primary font-semibold text-xs hover:brightness-110 disabled:opacity-50 cursor-pointer shadow-md"
+              >
+                <span className="material-symbols-outlined text-base">send</span>
+                {submitting ? 'Đang gửi...' : 'Gửi câu trả lời'}
+              </button>
+            </div>
           </div>
         </div>
       ) : (
         <div className="w-1/2 hidden md:flex flex-col items-center justify-center rounded-2xl bg-surface border border-outline-variant/70 shadow-md p-8 text-center text-outline">
           <span className="material-symbols-outlined text-5xl block mb-2 opacity-30">forum</span>
           <p className="text-base font-bold text-on-surface mb-1">Chọn một câu hỏi để trả lời</p>
-          <p className="text-xs text-outline max-w-xs">
-            Nhấp vào câu hỏi trong hàng đợi bên trái để xem thông tin chi tiết và viết phản hồi chuyên môn.
+          <p className="text-xs text-outline max-w-xs leading-relaxed">
+            Nhấp vào câu hỏi trong hàng đợi bên trái để xem đầy đủ nội dung bài viết, hình ảnh đính kèm từ mẹ bầu và gửi tư vấn chuyên môn.
           </p>
+        </div>
+      )}
+
+      {/* Lightbox Image Preview Modal */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] flex flex-col items-center justify-center">
+            <button
+              onClick={() => setPreviewImage(null)}
+              className="absolute -top-10 right-0 text-white hover:text-gray-300 font-bold text-sm flex items-center gap-1 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-xl">close</span> Đóng
+            </button>
+            <img
+              src={previewImage}
+              alt="Ảnh đính kèm"
+              className="max-w-full max-h-[85vh] rounded-2xl object-contain shadow-2xl border border-white/20"
+            />
+          </div>
         </div>
       )}
     </div>
   );
 }
-
