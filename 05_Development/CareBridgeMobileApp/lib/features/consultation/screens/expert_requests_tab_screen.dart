@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../community/screens/expert_question_queue_screen.dart';
 import 'expert_request_queue_screen.dart';
 
 class ExpertRequestsTabScreen extends StatelessWidget {
@@ -8,26 +7,23 @@ class ExpertRequestsTabScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          automaticallyImplyLeading: false,
-          title: const Text('Yêu cầu tư vấn'),
-          bottom: const TabBar(
-            tabs: [
-              Tab(text: 'Tư vấn'),
-              Tab(text: 'Cộng đồng'),
-            ],
+    return Scaffold(
+      backgroundColor: Color(0xFFF6F1EC),
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        backgroundColor: Color(0xFFF6F1EC),
+        surfaceTintColor: Color(0xFFF6F1EC),
+        title: Text(
+          'Yêu cầu tư vấn',
+          style: TextStyle(
+            color: Color(0xFF271812),
+            fontFamily: 'Lexend',
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
           ),
         ),
-        body: const TabBarView(
-          children: [
-            ExpertRequestQueueScreen(),
-            ExpertQuestionQueueScreen(embeddedInShell: true),
-          ],
-        ),
       ),
+      body: const ExpertRequestQueueScreen(),
     );
   }
 }

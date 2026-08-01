@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../community/screens/community_feed_screen.dart';
-import '../../community/screens/expert_question_queue_screen.dart';
+import '../../consultation/screens/expert_request_queue_screen.dart';
 import '../../expert/services/expert_home_service.dart';
 
 class ExpertAppHomeScreen extends StatefulWidget {
@@ -105,6 +105,10 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
               else ...[
                 _buildMetricGrid(snapshot),
                 const SizedBox(height: 18),
+                if (snapshot?.nextConsultation != null) ...[
+                  _buildNextConsultation(snapshot!.nextConsultation!),
+                  const SizedBox(height: 18),
+                ],
                 _buildCommunityCard(),
                 const SizedBox(height: 30),
                 _buildSupportSection(snapshot),
@@ -181,12 +185,71 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
   }
 
   Widget _buildMetricGrid(ExpertHomeSnapshot? snapshot) {
-    return _MetricCard(
-      icon: Icons.forum_outlined,
-      count: snapshot?.questionCount ?? 0,
-      title: 'Hàng đợi Q&A',
-      subtitle: 'Chờ trả lời',
-      onTap: _openQuestions,
+    return Row(
+      children: [
+        Expanded(
+          child: _MetricCard(
+            icon: Icons.assignment_outlined,
+            count: snapshot?.requestCount ?? 0,
+            title: 'Yêu cầu',
+            subtitle: 'Đang chờ',
+            onTap: _openRequests,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNextConsultation(ExpertConsultation consultation) {
+    return InkWell(
+      onTap: _openRequests,
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: _surfaceHigh,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Row(
+          children: [
+            const CircleAvatar(
+              backgroundColor: _primary,
+              child: Icon(Icons.schedule_outlined, color: Colors.white),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Yêu cầu cần xem trước',
+                    style: TextStyle(color: _onSurfaceVariant, fontSize: 12),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    consultation.topic,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontWeight: FontWeight.w800,
+                      color: _onSurface,
+                    ),
+                  ),
+                  Text(
+                    '${consultation.motherName} · ${consultation.timeLabel}',
+                    style: const TextStyle(
+                      color: _onSurfaceVariant,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: _primary),
+          ],
+        ),
+      ),
     );
   }
 
@@ -293,10 +356,10 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
     );
   }
 
-  void _openQuestions() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const ExpertQuestionQueueScreen()),
-    );
+  void _openRequests() {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const ExpertRequestQueueScreen()));
   }
 
   static List<BoxShadow> get _softShadow => [
