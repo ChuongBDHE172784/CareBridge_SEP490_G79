@@ -379,16 +379,6 @@ class _MotherStageSelectionScreenState
               ),
               const SizedBox(height: 16),
               _StageCard(
-                key: const Key('mother-stage-postpartum'),
-                icon: Icons.self_improvement_rounded,
-                title: 'Đang hồi phục hậu sản',
-                subtitle:
-                    'Theo dõi quá trình hồi phục của bạn mà không cần tạo hồ sơ em bé.',
-                selected: _selectedStage == _MotherStage.postpartum,
-                onTap: () => _selectStage(_MotherStage.postpartum),
-              ),
-              const SizedBox(height: 16),
-              _StageCard(
                 key: const Key('mother-stage-pregnant'),
                 icon: Icons.favorite_rounded,
                 title: 'Đang mang thai',
@@ -396,6 +386,16 @@ class _MotherStageSelectionScreenState
                     'Tính tuổi thai, ngày dự sinh và cá nhân hóa hành trình theo tuần thai.',
                 selected: _selectedStage == _MotherStage.pregnant,
                 onTap: () => _selectStage(_MotherStage.pregnant),
+              ),
+              const SizedBox(height: 16),
+              _StageCard(
+                key: const Key('mother-stage-postpartum'),
+                icon: Icons.self_improvement_rounded,
+                title: 'Đang hồi phục hậu sản',
+                subtitle:
+                    'Theo dõi quá trình hồi phục của bạn mà không cần tạo hồ sơ em bé.',
+                selected: _selectedStage == _MotherStage.postpartum,
+                onTap: () => _selectStage(_MotherStage.postpartum),
               ),
               const SizedBox(height: 16),
               _StageCard(

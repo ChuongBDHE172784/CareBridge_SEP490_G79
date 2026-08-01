@@ -35,6 +35,7 @@ public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final MaintenanceModeFilter maintenanceModeFilter;
+
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
@@ -59,7 +60,8 @@ public class SecurityConfig {
                                 "/api/v1/auth/refresh",
                                 "/api/v1/auth/forgot-password",
                                 "/api/v1/auth/reset-password",
-                                "/api/v1/auth/lock-appeals").permitAll()
+                                "/api/v1/auth/lock-appeals")
+                        .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/profile").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/v1/auth/profile").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/v1/auth/logout").authenticated()
@@ -70,26 +72,32 @@ public class SecurityConfig {
                         // Admin / privileged write endpoints
                         .requestMatchers("/api/v1/consent/grants/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/admin/audit-logs")
-                                .hasAnyRole("SYSTEM_ADMIN", "OPERATIONS")
+                        .hasAnyRole("SYSTEM_ADMIN", "OPERATIONS")
                         .requestMatchers(HttpMethod.GET, "/api/v1/moderator/community/dashboard").hasRole("MODERATOR")
                         .requestMatchers(HttpMethod.GET, "/api/v1/admin/moderation/queue").hasRole("MODERATOR")
                         // CB-MOD-IMP-004: added retroactively — @PreAuthorize + the /api/v1/** fallback
-                        // below already enforced MODERATOR-only, so this was a convention gap, not a hole.
-                        .requestMatchers(HttpMethod.GET, "/api/v1/admin/moderation/pending-content").hasRole("MODERATOR")
+                        // below already enforced MODERATOR-only, so this was a convention gap, not a
+                        // hole.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/admin/moderation/pending-content")
+                        .hasRole("MODERATOR")
                         .requestMatchers(HttpMethod.GET, "/api/v1/admin/moderation/history").hasRole("MODERATOR")
                         .requestMatchers(HttpMethod.POST, "/api/v1/admin/moderation/actions").hasRole("MODERATOR")
-                        .requestMatchers(HttpMethod.POST, "/api/v1/admin/moderation/reports/*/resolve").hasRole("MODERATOR")
-                        .requestMatchers(HttpMethod.POST, "/api/v1/admin/moderation/account-actions").hasRole("MODERATOR")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/admin/moderation/reports/*/resolve")
+                        .hasRole("MODERATOR")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/admin/moderation/account-actions")
+                        .hasRole("MODERATOR")
                         .requestMatchers(HttpMethod.POST, "/api/v1/admin/content").hasRole("CONTENT_ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/v1/admin/content/*").hasRole("CONTENT_ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/admin/content/*/archive").hasRole("CONTENT_ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/admin/content/*/unpublish").hasRole("CONTENT_ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/admin/content/*/decision").hasRole("SYSTEM_ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/v1/community/topics").hasAnyRole("MODERATOR", "CONTENT_ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/v1/community/topics")
+                        .hasAnyRole("MODERATOR", "CONTENT_ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/partner/profile").hasRole("PARTNER")
                         .requestMatchers(HttpMethod.PUT, "/api/v1/partner/profile").hasRole("PARTNER")
                         .requestMatchers(HttpMethod.POST, "/api/v1/admin/partners/*/decision").hasRole("SYSTEM_ADMIN")
-                        .requestMatchers(HttpMethod.PATCH, "/api/v1/community/topics/**").hasAnyRole("MODERATOR", "CONTENT_ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/community/topics/**")
+                        .hasAnyRole("MODERATOR", "CONTENT_ADMIN")
                         .requestMatchers("/api/v1/**").authenticated()
                         .anyRequest().permitAll())
                 .exceptionHandling(exceptions -> exceptions
@@ -114,8 +122,7 @@ public class SecurityConfig {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource(
-            @Value("#{'${carebridge.cors.allowed-origins:http://localhost:5173,http://127.0.0.1:5173}'.split(',')}")
-            List<String> allowedOrigins) {
+            @Value("#{'${carebridge.cors.allowed-origins:http://localhost:5173,http://127.0.0.1:5173,http://localhost:5000,http://127.0.0.1:5000}'.split(',')}") List<String> allowedOrigins) {
         if (allowedOrigins == null) {
             throw new IllegalStateException("At least one exact CORS origin is required");
         }
