@@ -317,12 +317,9 @@ void main() {
         expect(find.textContaining('dấu hiệu bạn đang gặp'), findsOneWidget);
         expect(find.textContaining('triệu chứng của bé'), findsNothing);
         expect(find.text('Ví dụ: Bé bị sốt và ho...'), findsNothing);
-        expect(
-          find.text('Ví dụ: Tôi thấy chóng mặt và khó thở...'),
-          findsOneWidget,
-        );
+        expect(find.text('Mô tả dấu hiệu của mẹ...'), findsOneWidget);
         await tester.enterText(find.byType(TextField).first, 'khó thở');
-        await tester.tap(find.byIcon(Icons.send));
+        await tester.tap(find.byKey(const Key('triage-chat-send')));
         await tester.pump();
 
         expect(triage.receivedIntake?['stage'], stage.apiValue);
@@ -475,7 +472,7 @@ void main() {
         await tester.pumpAndSettle();
 
         await tester.enterText(find.byType(TextField).first, 'khó thở');
-        await tester.tap(find.byIcon(Icons.send));
+        await tester.tap(find.byKey(const Key('triage-chat-send')));
         await tester.pump();
         expect(find.text('Mức rủi ro: RED'), findsOneWidget);
         expect(triage.starts, 1);

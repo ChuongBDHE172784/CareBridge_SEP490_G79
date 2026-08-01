@@ -7,6 +7,7 @@ import 'core/firebase/firebase_bootstrap.dart';
 import 'core/notifications/fcm_service.dart';
 import 'core/routes/app_router.dart';
 import 'features/auth/services/auth_service.dart';
+import 'features/aiTriage/widgets/floating_ai_triage_host.dart';
 import 'features/directChat/calls/direct_call_host.dart';
 import 'features/reminder/services/reminder_service.dart';
 import 'features/safety/services/safety_foreground_service.dart';
@@ -102,7 +103,18 @@ class CareBridgeApp extends StatelessWidget {
         final app = child ?? const SizedBox.shrink();
         return DirectCallHost(
           manageAuthenticatedSession: firebaseEnabled,
-          child: app,
+          child: FloatingAiTriageHost(
+            authListenable: AuthState.instance,
+            navigationListenable: appRouter.routeInformationProvider,
+            modalListenable: floatingAiTriageRouteObserver,
+            isAuthenticated: () => AuthState.instance.isAuthenticated,
+            currentRole: () => AuthState.instance.role,
+            currentPath: () =>
+                appRouter.routeInformationProvider.value.uri.path,
+            hasModal: () => floatingAiTriageRouteObserver.hasPopupRoute,
+            onOpen: () => appRouter.push('/triage/intake'),
+            child: app,
+          ),
         );
       },
     );

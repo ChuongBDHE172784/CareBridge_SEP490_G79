@@ -1,6 +1,7 @@
 package com.carebridge.backend.integration.gemini.service;
 
 import com.carebridge.backend.content.entity.ContentItem;
+import com.carebridge.backend.content.entity.ContentSource;
 import com.carebridge.backend.integration.gemini.builder.GeminiPromptBuilder;
 import com.carebridge.backend.integration.gemini.client.GeminiClient;
 import com.carebridge.backend.integration.gemini.dto.RagAnswerRequest;
@@ -9,8 +10,10 @@ import com.carebridge.backend.integration.gemini.dto.RagSource;
 import com.carebridge.backend.integration.gemini.dto.RagExecutionContext;
 import com.carebridge.backend.integration.gemini.exception.GeminiUnavailableException;
 import com.carebridge.backend.integration.gemini.retriever.RagContextRetriever;
+import java.net.URI;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Primary;
@@ -41,10 +44,16 @@ public class GeminiRagServiceImpl implements RagService {
         int maxChunks = (request.getMaxContextChunks() != null && request.getMaxContextChunks() > 0)
                 ? request.getMaxContextChunks() : 5;
 
-        List<ContentItem> contextItems = context.mother()
-                ? contextRetriever.retrieveContext(
-                        request.getQuery(), request.getTopicId(), context.canonicalStage(), maxChunks)
-                : contextRetriever.retrieveContext(request.getQuery(), request.getTopicId(), maxChunks);
+        List<ContentItem> contextItems;
+        try {
+            contextItems = context.mother() || context.canonicalStage() != null
+                    ? contextRetriever.retrieveContext(
+                            request.getQuery(), request.getTopicId(), context.canonicalStage(), maxChunks)
+                    : contextRetriever.retrieveContext(request.getQuery(), request.getTopicId(), maxChunks);
+        } catch (RuntimeException exception) {
+            log.warn("RAG retrieval unavailable reason={}", exception.getClass().getSimpleName());
+            return buildFallbackResponse();
+        }
 
         String prompt = promptBuilder.buildSafetyConstrainedPrompt(
                 request.getQuery(), contextItems, context.promptStage());
@@ -52,12 +61,14 @@ public class GeminiRagServiceImpl implements RagService {
         // C2: Catch Gemini unavailability — NEVER propagate exception to caller
         try {
             String answer = geminiClient.generate(prompt);
-            List<RagSource> sources = contextItems.stream()
-                    .map(item -> RagSource.builder()
-                            .contentId(item.getId())
-                            .title(item.getTitle())
-                            .build())
-                    .toList();
+            List<RagSource> sources;
+            try {
+                sources = contextItems.stream().map(this::toSource).toList();
+            } catch (RuntimeException exception) {
+                log.warn("RAG source provenance unavailable reason={}",
+                        exception.getClass().getSimpleName());
+                sources = List.of();
+            }
             return RagAnswerResponse.builder()
                     .answer(answer)
                     .disclaimer(STANDARD_DISCLAIMER)  // C4: constant, never from Gemini
@@ -68,6 +79,9 @@ public class GeminiRagServiceImpl implements RagService {
         } catch (GeminiUnavailableException exception) {
             log.warn("RagFallbackTriggered reason=GEMINI_UNAVAILABLE exceptionType={}",
                     exception.getClass().getSimpleName());
+            return buildFallbackResponse();
+        } catch (RuntimeException exception) {
+            log.warn("RAG generation unavailable reason={}", exception.getClass().getSimpleName());
             return buildFallbackResponse();
         }
     }
@@ -80,6 +94,66 @@ public class GeminiRagServiceImpl implements RagService {
                 .fallback(true)
                 .generatedAt(LocalDateTime.now())
                 .build();
+    }
+
+    /**
+     * Keep source provenance attached to the retrieved content.  The triage enrichment
+     * boundary performs the final DB-backed HTTPS/deep-link approval check before exposing
+     * any of these fields to a user; this mapper deliberately never invents a URL.
+     */
+    private RagSource toSource(ContentItem item) {
+        ContentSource source = selectSource(item);
+        String excerpt = item.getSummary();
+        if (excerpt == null || excerpt.isBlank()) {
+            excerpt = item.getBody();
+        }
+        if (excerpt != null && excerpt.length() > 500) {
+            excerpt = excerpt.substring(0, 500).trim() + "…";
+        }
+        return RagSource.builder()
+                .contentId(item.getId())
+                .title(item.getTitle())
+                .url(source == null ? null : source.getUrl())
+                .publisher(source == null ? null : source.getPublisher())
+                .excerpt(excerpt)
+                .sourceVersion(item.getVersionNo() == null ? null : String.valueOf(item.getVersionNo()))
+                .lastReviewed(item.getUpdatedAt() == null
+                        ? (item.getPublishedAt() == null ? null : item.getPublishedAt().toString())
+                        : item.getUpdatedAt().toString())
+                .build();
+    }
+
+    private ContentSource selectSource(ContentItem item) {
+        if (item == null) return null;
+        try {
+            if (item.getSources() == null) return null;
+            return item.getSources().stream()
+                    .filter(candidate -> candidate != null && isUsableSourceUrl(candidate.getUrl()))
+                    .findFirst()
+                    .orElse(null);
+        } catch (RuntimeException exception) {
+            log.warn("RAG source collection unavailable reason={}",
+                    exception.getClass().getSimpleName());
+            return null;
+        }
+    }
+
+    private boolean isUsableSourceUrl(String value) {
+        if (value == null || value.isBlank()) return false;
+        try {
+            URI uri = URI.create(value);
+            String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase();
+            String path = uri.getPath() == null ? "" : uri.getPath().toLowerCase();
+            return "https".equalsIgnoreCase(uri.getScheme())
+                    && !host.isBlank()
+                    && (uri.getPort() == -1 || uri.getPort() == 443)
+                    && uri.getUserInfo() == null
+                    && !Set.of("google.com", "bing.com", "yahoo.com")
+                            .contains(host.replaceFirst("^www\\.", ""))
+                    && !path.matches(".*/(search|query|find)(/.*)?/?");
+        } catch (IllegalArgumentException exception) {
+            return false;
+        }
     }
 
     private RagAnswerResponse buildRedFlagResponse(String guidance) {

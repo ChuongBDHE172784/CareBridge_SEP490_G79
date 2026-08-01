@@ -23,7 +23,7 @@ public class EmergencyController {
     private final IEmergencyService emergencyService;
 
     @PostMapping
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<EmergencySessionResponse>> openFlow(
             @Valid @RequestBody OpenEmergencyRequest request,
             Principal principal) {
@@ -33,14 +33,14 @@ public class EmergencyController {
     }
 
     @GetMapping("/active")
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<EmergencySessionResponse>> getActive(Principal principal) {
         UUID userId = SecurityUtils.requireCurrentUserId(principal);
         return ResponseEntity.ok(ApiResponse.success(emergencyService.getActiveSession(userId)));
     }
 
     @PatchMapping("/{id}/resolve")
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<EmergencySessionResponse>> resolve(
             @PathVariable UUID id,
             Principal principal) {

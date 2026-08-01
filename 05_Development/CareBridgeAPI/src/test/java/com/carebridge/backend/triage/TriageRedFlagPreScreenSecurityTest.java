@@ -29,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * TRFP-TC-SEC-001 (CRITICAL) — OWASP A01:2021 / CWE-862.
- * Intake endpoints remain MOTHER-only; the pre-screen is unreachable pre-authorization,
+ * Intake endpoints remain limited to MOTHER and FAMILY; the pre-screen is unreachable pre-authorization,
  * so the new safety path cannot be abused to trigger escalations cross-role.
  * Oracle: CB-TRIAGE-IMP-003 §16 Authorization Matrix (unchanged); IntakeController @PreAuthorize.
  *
@@ -62,7 +62,7 @@ class TriageRedFlagPreScreenSecurityTest {
 
     @Test
     @WithMockUser(username = "00000000-0000-0000-0000-0000000000e1", roles = "EXPERT")
-    void nonMotherRole_intakeEndpointsForbidden_preScreenUnreachable() throws Exception {
+    void unsupportedRole_intakeEndpointsForbidden_preScreenUnreachable() throws Exception {
         mockMvc.perform(post(BASE_URL)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(MATCHING_ONE_SHOT_BODY))

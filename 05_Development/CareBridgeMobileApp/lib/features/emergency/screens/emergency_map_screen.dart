@@ -359,14 +359,16 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
         });
         return;
       }
+      final isFamily =
+          (AuthState.instance.role ?? '').trim().toUpperCase() == 'FAMILY';
       final location = switch (decision.destination) {
-        TriageContinuationDestination.motherJourney =>
+        TriageContinuationDestination.motherJourney when !isFamily =>
           '/mother-home?tab=1&triageReturn=${Uri.encodeQueryComponent(_session?.sessionId ?? DateTime.now().microsecondsSinceEpoch.toString())}',
         TriageContinuationDestination.babyProfile
-            when decision.originReferenceId != null =>
+            when !isFamily && decision.originReferenceId != null =>
           '/babies/detail/${Uri.encodeComponent(decision.originReferenceId!)}',
         TriageContinuationDestination.safeDashboard ||
-        TriageContinuationDestination.none => '/mother-home',
+        TriageContinuationDestination.none => isFamily ? '/' : '/mother-home',
         _ => null,
       };
       if (location == null) {
@@ -379,10 +381,11 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
       context.go(
         location,
         extra:
-            decision.destination ==
-                    TriageContinuationDestination.motherJourney ||
-                decision.destination ==
-                    TriageContinuationDestination.babyProfile
+            !isFamily &&
+                (decision.destination ==
+                        TriageContinuationDestination.motherJourney ||
+                    decision.destination ==
+                        TriageContinuationDestination.babyProfile)
             ? TriageContinuationArrival(
                 userId: userId,
                 decision: decision,
@@ -498,7 +501,14 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
                   key: const Key('emergency-continuation-safe-dashboard'),
                   onPressed: _restoringContinuation
                       ? null
-                      : () => context.go('/mother-home'),
+                      : () => context.go(
+                          (AuthState.instance.role ?? '')
+                                      .trim()
+                                      .toUpperCase() ==
+                                  'FAMILY'
+                              ? '/'
+                              : '/mother-home',
+                        ),
                   child: const Text('Về trang chủ'),
                 ),
               ],

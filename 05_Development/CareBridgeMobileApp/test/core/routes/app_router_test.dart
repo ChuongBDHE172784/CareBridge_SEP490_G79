@@ -160,6 +160,44 @@ void main() {
     });
   });
 
+  group('family triage continuation gate', () {
+    test('cold start dispatches Family through auth landing once', () {
+      expect(
+        resolveAppRedirect(
+          isAuthenticated: true,
+          isRestoring: false,
+          blockedReason: null,
+          role: ' family ',
+          location: '/',
+        ),
+        '/auth-landing',
+      );
+      expect(
+        resolveAppRedirect(
+          isAuthenticated: true,
+          isRestoring: false,
+          blockedReason: null,
+          role: 'FAMILY',
+          location: '/',
+          familyLandingComplete: true,
+        ),
+        isNull,
+      );
+    });
+
+    test('Family may remain on auth landing while restoration runs', () {
+      final redirect = resolveAppRedirect(
+        isAuthenticated: true,
+        isRestoring: false,
+        blockedReason: null,
+        role: 'FAMILY',
+        location: '/auth-landing',
+      );
+
+      expect(redirect, isNull);
+    });
+  });
+
   group('blocked account routing', () {
     test('keeps a blocked unauthenticated user on the blocked screen', () {
       final redirect = resolveAppRedirect(
