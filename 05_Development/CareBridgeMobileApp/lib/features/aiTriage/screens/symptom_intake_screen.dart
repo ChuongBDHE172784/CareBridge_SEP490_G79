@@ -32,8 +32,8 @@ class SymptomIntakeScreen extends StatefulWidget {
 }
 
 class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
-  static const _primary = Color(0xFF845143);
-  static const _surface = Color(0xFFFFF8F6);
+  static const _primary = Color(0xFFC98C7B);
+  static const _surface = Color(0xFFF6F1EC);
   static const _surfaceLow = Color(0xFFFFF1EC);
   static const _onSurface = Color(0xFF271812);
   static const _onVariant = Color(0xFF524440);
@@ -644,15 +644,25 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
     return Scaffold(
       backgroundColor: _surface,
       appBar: AppBar(
-        backgroundColor: _surface,
+        backgroundColor: _primary,
         elevation: 0,
-        foregroundColor: _primary,
-        title: Text(
-          widget.entryContext.isPostpartum
-              ? 'Hỗ trợ dấu hiệu sau sinh'
-              : widget.entryContext.isMaternal
-              ? 'Kiểm tra dấu hiệu an toàn'
-              : 'Kiểm tra triệu chứng',
+        foregroundColor: Colors.white,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              widget.entryContext.isPostpartum
+                  ? 'Dấu hiệu sau sinh'
+                  : widget.entryContext.isMaternal
+                  ? 'Kiểm tra dấu hiệu an toàn'
+                  : 'Kiểm tra triệu chứng của bé',
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+            ),
+            const Text(
+              'Đánh giá nhanh theo giai đoạn sức khỏe',
+              style: TextStyle(fontSize: 11, color: Colors.white70),
+            ),
+          ],
         ),
       ),
       body: SafeArea(
@@ -681,24 +691,58 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
 
   Widget _buildBubble(_ChatMessage message) {
     final isUser = message.role == _ChatRole.user;
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 320),
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: isUser ? _primary : Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: isUser ? _primary : _outline),
-        ),
-        child: Text(
-          message.text,
-          style: TextStyle(
-            color: isUser ? Colors.white : _onSurface,
-            height: 1.35,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        mainAxisAlignment: isUser
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (!isUser) ...[
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: _primary.withValues(alpha: 0.15),
+              child: const Icon(
+                Icons.health_and_safety_outlined,
+                size: 16,
+                color: _primary,
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
+          Flexible(
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.76,
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+              decoration: BoxDecoration(
+                color: isUser ? _primary : Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(16),
+                  topRight: const Radius.circular(16),
+                  bottomLeft: Radius.circular(isUser ? 16 : 4),
+                  bottomRight: Radius.circular(isUser ? 4 : 16),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Text(
+                message.text,
+                style: TextStyle(
+                  color: isUser ? Colors.white : _onSurface,
+                  height: 1.4,
+                ),
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -709,7 +753,13 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _outline),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1194,7 +1244,16 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
     }
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-      decoration: const BoxDecoration(color: _surface),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
       child: _questions.isEmpty
           ? Row(
               children: [
@@ -1207,20 +1266,41 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
                       hintText: widget.entryContext.isMaternal
                           ? 'Ví dụ: Tôi thấy chóng mặt và khó thở...'
                           : 'Ví dụ: Bé bị sốt và ho...',
-                      border: OutlineInputBorder(),
+                      filled: true,
+                      fillColor: _surface,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: BorderSide.none,
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                IconButton.filled(
-                  onPressed: _loading ? null : _start,
-                  icon: _loading
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.send),
+                SizedBox(
+                  width: 44,
+                  height: 44,
+                  child: IconButton.filled(
+                    style: IconButton.styleFrom(backgroundColor: _primary),
+                    onPressed: _loading ? null : _start,
+                    icon: _loading
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.send, color: Colors.white),
+                  ),
                 ),
               ],
             )
@@ -1356,6 +1436,18 @@ class _ChoiceGroup extends StatelessWidget {
             return ChoiceChip(
               label: Text(option),
               selected: isSelected,
+              selectedColor: const Color(0xFFFFE2D9),
+              side: BorderSide(
+                color: isSelected
+                    ? const Color(0xFFC98C7B)
+                    : const Color(0xFFD6C2BD),
+              ),
+              labelStyle: TextStyle(
+                color: isSelected
+                    ? const Color(0xFF845143)
+                    : const Color(0xFF524440),
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+              ),
               onSelected: (_) => onSelected(option),
             );
           }).toList(),

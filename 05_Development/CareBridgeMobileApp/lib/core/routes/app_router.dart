@@ -76,7 +76,6 @@ import '../../features/emergency/screens/emergency_alert_detail_screen.dart';
 import '../../features/emergency/screens/family_alert_detail_screen.dart';
 import '../../features/safety/screens/safety_monitoring_screen.dart';
 import '../../features/safety/screens/enable_fall_detection_screen.dart';
-import '../../features/aiTriage/screens/rag_chat_screen.dart';
 import '../../features/expert/screens/expert_question_queue_screen.dart';
 import '../../features/expert/screens/expert_profile_setup_screen.dart';
 import '../../features/expert/screens/upload_verification_docs_screen.dart';
@@ -804,10 +803,6 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/safety/fall-detection/enable',
       builder: (context, state) => const EnableFallDetectionScreen(),
-    ),
-    GoRoute(
-      path: '/rag-chat',
-      builder: (context, state) => const RagChatScreen(),
     ),
     GoRoute(
       path: '/expert-queue',
