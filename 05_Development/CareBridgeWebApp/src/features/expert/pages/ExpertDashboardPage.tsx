@@ -223,7 +223,7 @@ export default function ExpertDashboardPage() {
   const vInfo = getVerificationLabel(stats.verificationStatus);
 
   return (
-    <div className="p-8 font-sans">
+    <div className="p-8 font-sans space-y-8">
       {/* Header */}
       <div className="flex justify-between items-start mb-6">
         <div>

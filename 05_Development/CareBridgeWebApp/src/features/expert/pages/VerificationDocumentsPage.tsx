@@ -190,7 +190,7 @@ export default function VerificationDocumentsPage() {
   const pendingCount = credentials.filter((c) => c.reviewStatus === 'PENDING' || c.reviewStatus === 'UNDER_REVIEW').length;
 
   return (
-    <div className="p-8 font-sans max-w-4xl">
+    <div className="p-8 font-sans">
       {/* Header */}
       <div className="flex justify-between items-start mb-6">
         <div>

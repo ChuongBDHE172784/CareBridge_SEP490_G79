@@ -19,7 +19,7 @@ export default function ConversationListPage() {
   if (loading) return <div className="p-8 text-center text-outline">Đang tải cuộc trò chuyện...</div>;
 
   return (
-    <div className="p-8 font-sans max-w-4xl">
+    <div className="p-8 font-sans">
       {/* Header */}
       <div className="flex justify-between items-start mb-6">
         <div>
