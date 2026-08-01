@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:untitled/core/auth/auth_state.dart';
 import 'package:untitled/features/aiTriage/models/triage_continuation.dart';
@@ -10,8 +11,39 @@ import 'package:untitled/features/aiTriage/services/triage_continuation_restore_
 import 'package:untitled/features/aiTriage/services/triage_continuation_store.dart';
 import 'package:untitled/features/aiTriage/services/triage_service.dart';
 import 'package:untitled/features/emergency/models/emergency_session_model.dart';
+import 'package:untitled/features/emergency/models/care_facility_model.dart';
 import 'package:untitled/features/emergency/screens/emergency_map_screen.dart';
+import 'package:untitled/features/emergency/services/care_facility_service.dart';
 import 'package:untitled/features/emergency/services/emergency_service.dart';
+import 'package:untitled/features/safety/services/safety_permission_service.dart';
+
+class _RecordingFacilityService extends CareFacilityService {
+  int searchCalls = 0;
+
+  @override
+  Future<List<CareFacility>> searchNearby({
+    required double latitude,
+    required double longitude,
+    int radiusMeters = 5000,
+    String type = 'hospital',
+  }) async {
+    searchCalls++;
+    return const [];
+  }
+}
+
+Position _position() => Position(
+  longitude: 106.66,
+  latitude: 10.76,
+  timestamp: DateTime(2026),
+  accuracy: 5,
+  altitude: 0,
+  altitudeAccuracy: 0,
+  heading: 0,
+  headingAccuracy: 0,
+  speed: 0,
+  speedAccuracy: 0,
+);
 
 class _RecordingEmergencyService extends EmergencyService {
   int openCalls = 0;
@@ -96,6 +128,149 @@ void main() {
   });
 
   tearDown(() async => AuthState.instance.clear());
+
+  testWidgets('location stays unread when mother cancels consent disclosure', (
+    tester,
+  ) async {
+    var locationReads = 0;
+    var grantCalls = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: EmergencyMapScreen(
+          emergencyService: _RecordingEmergencyService(),
+          facilityService: _RecordingFacilityService(),
+          locationConsentProbe: () async => false,
+          locationConsentGrant:
+              ({
+                required dataType,
+                required purpose,
+                required recipient,
+                required scope,
+              }) async {
+                grantCalls++;
+              },
+          permissionService: SafetyPermissionService(
+            locationReader: () async {
+              locationReads++;
+              return _position();
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(locationReads, 0);
+    await tester.tap(find.byKey(const Key('location-consent-action')));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('location-consent-disclosure')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const Key('location-consent-cancel')));
+    await tester.pumpAndSettle();
+
+    expect(grantCalls, 0);
+    expect(locationReads, 0);
+    expect(find.byKey(const Key('location-consent-action')), findsOneWidget);
+  });
+
+  testWidgets('accepted disclosure grants exact scope before geolocation', (
+    tester,
+  ) async {
+    var consentActive = false;
+    var grantCompleted = false;
+    var locationReads = 0;
+    late Map<String, String> granted;
+    final facilities = _RecordingFacilityService();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: EmergencyMapScreen(
+          emergencyService: _RecordingEmergencyService(),
+          facilityService: facilities,
+          locationConsentProbe: () async => consentActive,
+          locationConsentGrant:
+              ({
+                required dataType,
+                required purpose,
+                required recipient,
+                required scope,
+              }) async {
+                granted = {
+                  'dataType': dataType,
+                  'purpose': purpose,
+                  'recipient': recipient,
+                  'scope': scope,
+                };
+                consentActive = true;
+                grantCompleted = true;
+              },
+          permissionService: SafetyPermissionService(
+            locationReader: () async {
+              expect(grantCompleted, isTrue);
+              locationReads++;
+              return _position();
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('location-consent-action')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('location-consent-confirm')));
+    await tester.pumpAndSettle();
+
+    expect(granted, {
+      'dataType': 'LOCATION',
+      'purpose': 'SHARE',
+      'recipient': 'CAREBRIDGE_SAFETY',
+      'scope': 'SAFETY_EMERGENCY_ALERT',
+    });
+    expect(locationReads, 1);
+    expect(facilities.searchCalls, 1);
+  });
+
+  testWidgets('consent grant failure leaves location blocked and retryable', (
+    tester,
+  ) async {
+    var locationReads = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: EmergencyMapScreen(
+          emergencyService: _RecordingEmergencyService(),
+          facilityService: _RecordingFacilityService(),
+          locationConsentProbe: () async => false,
+          locationConsentGrant:
+              ({
+                required dataType,
+                required purpose,
+                required recipient,
+                required scope,
+              }) async => throw StateError('grant failed'),
+          permissionService: SafetyPermissionService(
+            locationReader: () async {
+              locationReads++;
+              return _position();
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('location-consent-action')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('location-consent-confirm')));
+    await tester.pumpAndSettle();
+
+    expect(locationReads, 0);
+    expect(find.textContaining('Không thể lưu đồng ý'), findsOneWidget);
+    expect(find.byKey(const Key('location-consent-action')), findsOneWidget);
+    expect(find.text('Gọi cấp cứu 115'), findsOneWidget);
+  });
 
   testWidgets(
     'triage handoff checks notification request without claiming delivery',

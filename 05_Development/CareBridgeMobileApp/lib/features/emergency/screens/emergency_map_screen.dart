@@ -22,6 +22,13 @@ import '../services/emergency_service.dart';
 
 typedef EmergencyUriLauncher = Future<bool> Function(Uri uri);
 typedef LocationConsentProbe = Future<bool> Function();
+typedef LocationConsentGrant =
+    Future<void> Function({
+      required String dataType,
+      required String purpose,
+      required String recipient,
+      required String scope,
+    });
 
 /// Emergency help remains available when location or the route provider is
 /// unavailable. Nearby results are informational and never delay emergency
@@ -34,6 +41,7 @@ class EmergencyMapScreen extends StatefulWidget {
     this.emergencyService,
     this.uriLauncher,
     this.locationConsentProbe,
+    this.locationConsentGrant,
     this.existingSession,
     this.triageHandoff = false,
     this.stage = 'INFANT',
@@ -46,6 +54,7 @@ class EmergencyMapScreen extends StatefulWidget {
   final EmergencyService? emergencyService;
   final EmergencyUriLauncher? uriLauncher;
   final LocationConsentProbe? locationConsentProbe;
+  final LocationConsentGrant? locationConsentGrant;
   final EmergencySession? existingSession;
   final bool triageHandoff;
   final String stage;
@@ -79,6 +88,8 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
       widget.uriLauncher ?? ((uri) => launchUrl(uri));
   late final LocationConsentProbe _hasLocationConsent =
       widget.locationConsentProbe ?? _defaultLocationConsentProbe;
+  late final LocationConsentGrant _grantLocationConsent =
+      widget.locationConsentGrant ?? _defaultLocationConsentGrant;
   late final TriageContinuationRestoreCoordinator _continuationCoordinator =
       widget.continuationCoordinator ??
       TriageContinuationRestoreCoordinator(
@@ -99,6 +110,9 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
   bool _accountChanged = false;
   bool _restoringContinuation = false;
   bool _noticeIsDialFallback = false;
+  bool _locationConsentRequired = false;
+  bool _locationConsentDialogOpen = false;
+  bool _grantingLocationConsent = false;
   String? _notice;
   String? _continuationExitError;
   int _loadGeneration = 0;
@@ -179,6 +193,8 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
       _session = null;
       _continuationExitError = null;
       _noticeIsDialFallback = false;
+      _locationConsentRequired = false;
+      _grantingLocationConsent = false;
       _notice =
           'Phiên đăng nhập đã thay đổi. Dữ liệu khẩn cấp cũ đã được xóa khỏi màn hình.';
     });
@@ -192,6 +208,7 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
         _loading = true;
         _notice = null;
         _noticeIsDialFallback = false;
+        _locationConsentRequired = false;
         _route = null;
       });
     }
@@ -209,13 +226,15 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
             _selected = null;
             _route = null;
             _loading = false;
+            _locationConsentRequired = true;
             _notice =
-                'Chưa có consent chia sẻ vị trí. Bạn vẫn có thể gọi cấp cứu.';
+                'CareBridge cần sự đồng ý của bạn để dùng vị trí hiện tại tìm cơ sở y tế gần đây. Bạn vẫn có thể gọi cấp cứu 115.';
           });
         }
         return;
       }
       if (!mounted || generation != _loadGeneration) return;
+      setState(() => _locationConsentRequired = false);
       final position = await _permissions.readConsentedLocation();
       if (!mounted || generation != _loadGeneration) return;
       if (position == null) {
@@ -274,6 +293,80 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
           grant.recipient == 'CAREBRIDGE_SAFETY' &&
           grant.scope == 'SAFETY_EMERGENCY_ALERT',
     );
+  }
+
+  Future<void> _defaultLocationConsentGrant({
+    required String dataType,
+    required String purpose,
+    required String recipient,
+    required String scope,
+  }) async {
+    await PrivacyService.instance.grantConsent(
+      dataType: dataType,
+      purpose: purpose,
+      recipient: recipient,
+      scope: scope,
+    );
+  }
+
+  Future<void> _requestLocationConsent() async {
+    if (_grantingLocationConsent ||
+        _locationConsentDialogOpen ||
+        _accountChanged) {
+      return;
+    }
+    _locationConsentDialogOpen = true;
+    bool? accepted;
+    try {
+      accepted = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          key: const Key('location-consent-dialog'),
+          title: const Text('Cho phép dùng vị trí?'),
+          content: const Text(
+            'CareBridge sẽ chia sẻ vị trí hiện tại của bạn với bộ phận an toàn CareBridge để tìm cơ sở y tế gần đây và hỗ trợ cảnh báo khẩn cấp. Vị trí chỉ được đọc sau khi bạn đồng ý.',
+            key: Key('location-consent-disclosure'),
+          ),
+          actions: [
+            TextButton(
+              key: const Key('location-consent-cancel'),
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Hủy'),
+            ),
+            FilledButton(
+              key: const Key('location-consent-confirm'),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Đồng ý và tiếp tục'),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      _locationConsentDialogOpen = false;
+    }
+    if (accepted != true || !mounted || _accountChanged) return;
+
+    final accountId = _accountId;
+    setState(() => _grantingLocationConsent = true);
+    try {
+      await _grantLocationConsent(
+        dataType: 'LOCATION',
+        purpose: 'SHARE',
+        recipient: 'CAREBRIDGE_SAFETY',
+        scope: 'SAFETY_EMERGENCY_ALERT',
+      );
+      if (!mounted || _accountChanged || _accountId != accountId) return;
+      setState(() => _grantingLocationConsent = false);
+      await _load();
+    } catch (_) {
+      if (!mounted || _accountChanged || _accountId != accountId) return;
+      setState(() {
+        _grantingLocationConsent = false;
+        _locationConsentRequired = true;
+        _notice =
+            'Không thể lưu đồng ý chia sẻ vị trí. Vui lòng thử lại; bạn vẫn có thể gọi cấp cứu 115.';
+      });
+    }
   }
 
   Future<void> _loadRoute(
@@ -1006,7 +1099,19 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
               key: const Key('nearby-notice'),
               content: Text(_notice!),
               actions: [
-                if (!_accountChanged && !_noticeIsDialFallback)
+                if (_locationConsentRequired &&
+                    !_accountChanged &&
+                    !_noticeIsDialFallback)
+                  TextButton(
+                    key: const Key('location-consent-action'),
+                    onPressed: _grantingLocationConsent
+                        ? null
+                        : _requestLocationConsent,
+                    child: const Text('Cho phép vị trí'),
+                  ),
+                if (!_locationConsentRequired &&
+                    !_accountChanged &&
+                    !_noticeIsDialFallback)
                   TextButton(onPressed: _load, child: const Text('Thử lại')),
                 if (_accountChanged || _noticeIsDialFallback)
                   const SizedBox.shrink(),

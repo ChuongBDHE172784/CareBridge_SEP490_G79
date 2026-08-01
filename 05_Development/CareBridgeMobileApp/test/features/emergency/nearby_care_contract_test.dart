@@ -46,6 +46,7 @@ class _FacilityStub extends CareFacilityService {
   _FacilityStub(this.results);
 
   final List<CareFacility> results;
+  int searchCalls = 0;
 
   @override
   Future<List<CareFacility>> searchNearby({
@@ -53,7 +54,10 @@ class _FacilityStub extends CareFacilityService {
     required double longitude,
     int radiusMeters = 5000,
     String type = 'hospital',
-  }) async => results;
+  }) async {
+    searchCalls++;
+    return results;
+  }
 
   @override
   Future<CareFacility> getFacility(String facilityId) async =>
@@ -201,9 +205,161 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(locationRead, isFalse);
-    expect(find.textContaining('consent chia sẻ vị trí'), findsOneWidget);
+    expect(find.byKey(const Key('location-consent-action')), findsOneWidget);
     expect(find.text('Gọi cấp cứu 115'), findsOneWidget);
   });
+
+  testWidgets(
+    'accepted disclosure grants scoped consent before location read',
+    (tester) async {
+      var consentActive = false;
+      var locationRead = false;
+      final facilityService = _FacilityStub(const []);
+      Map<String, String>? grantedConsent;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: EmergencyMapScreen(
+            facilityService: facilityService,
+            permissionService: SafetyPermissionService(
+              locationReader: () async {
+                locationRead = true;
+                return _position();
+              },
+            ),
+            emergencyService: _EmergencyStub(),
+            locationConsentProbe: () async => consentActive,
+            locationConsentGrant:
+                ({
+                  required dataType,
+                  required purpose,
+                  required recipient,
+                  required scope,
+                }) async {
+                  expect(locationRead, isFalse);
+                  grantedConsent = {
+                    'dataType': dataType,
+                    'purpose': purpose,
+                    'recipient': recipient,
+                    'scope': scope,
+                  };
+                  consentActive = true;
+                },
+            uriLauncher: (_) async => true,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(locationRead, isFalse);
+      await tester.tap(find.byKey(const Key('location-consent-action')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('location-consent-dialog')), findsOneWidget);
+      expect(
+        find.byKey(const Key('location-consent-disclosure')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.byKey(const Key('location-consent-confirm')));
+      await tester.pumpAndSettle();
+
+      expect(grantedConsent, {
+        'dataType': 'LOCATION',
+        'purpose': 'SHARE',
+        'recipient': 'CAREBRIDGE_SAFETY',
+        'scope': 'SAFETY_EMERGENCY_ALERT',
+      });
+      expect(locationRead, isTrue);
+      expect(facilityService.searchCalls, 1);
+    },
+  );
+
+  testWidgets(
+    'cancelled disclosure neither grants consent nor reads location',
+    (tester) async {
+      var grantCalls = 0;
+      var locationRead = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: EmergencyMapScreen(
+            facilityService: _FacilityStub(const []),
+            permissionService: SafetyPermissionService(
+              locationReader: () async {
+                locationRead = true;
+                return _position();
+              },
+            ),
+            emergencyService: _EmergencyStub(),
+            locationConsentProbe: () async => false,
+            locationConsentGrant:
+                ({
+                  required dataType,
+                  required purpose,
+                  required recipient,
+                  required scope,
+                }) async {
+                  grantCalls++;
+                },
+            uriLauncher: (_) async => true,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('location-consent-action')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('location-consent-cancel')));
+      await tester.pumpAndSettle();
+
+      expect(grantCalls, 0);
+      expect(locationRead, isFalse);
+      expect(find.byKey(const Key('location-consent-action')), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'failed consent grant remains retryable without reading location',
+    (tester) async {
+      var grantCalls = 0;
+      var locationRead = false;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: EmergencyMapScreen(
+            facilityService: _FacilityStub(const []),
+            permissionService: SafetyPermissionService(
+              locationReader: () async {
+                locationRead = true;
+                return _position();
+              },
+            ),
+            emergencyService: _EmergencyStub(),
+            locationConsentProbe: () async => false,
+            locationConsentGrant:
+                ({
+                  required dataType,
+                  required purpose,
+                  required recipient,
+                  required scope,
+                }) async {
+                  grantCalls++;
+                  throw StateError('offline');
+                },
+            uriLauncher: (_) async => true,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('location-consent-action')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('location-consent-confirm')));
+      await tester.pumpAndSettle();
+
+      expect(grantCalls, 1);
+      expect(locationRead, isFalse);
+      expect(find.textContaining('Không thể lưu đồng ý'), findsOneWidget);
+      expect(find.byKey(const Key('location-consent-action')), findsOneWidget);
+    },
+  );
 
   testWidgets('failed initial family alert exposes independent retry', (
     tester,
