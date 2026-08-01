@@ -21,7 +21,7 @@ export default function ExpertLayout() {
   };
 
   return (
-    <div className="flex min-h-screen font-sans">
+    <div className="flex min-h-screen bg-background font-sans text-on-surface">
       <aside className="fixed left-0 top-0 z-20 hidden h-screen w-64 flex-col border-r border-outline-variant/70 bg-surface md:flex">
         {/* Brand Header */}
         <div className="border-b border-outline-variant/70 p-4">
@@ -71,7 +71,7 @@ export default function ExpertLayout() {
         </div>
       </aside>
 
-      <main className="ml-64 min-h-screen bg-background overflow-auto flex-1">
+      <main className="min-h-screen flex-1 overflow-auto bg-background md:ml-64">
         <Outlet />
       </main>
     </div>

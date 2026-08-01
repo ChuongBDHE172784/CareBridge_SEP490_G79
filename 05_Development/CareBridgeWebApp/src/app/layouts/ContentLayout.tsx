@@ -3,9 +3,9 @@ import ContentPortalSidebar from '../../features/contentManagement/components/Co
 
 export default function ContentLayout() {
   return (
-    <div className="flex min-h-screen font-sans">
+    <div className="flex min-h-screen bg-background font-sans text-on-surface">
       <ContentPortalSidebar />
-      <main className="ml-64 min-h-screen bg-background overflow-auto flex-1">
+      <main className="min-h-screen flex-1 overflow-auto bg-background md:ml-64">
         <Outlet />
       </main>
     </div>
