@@ -801,9 +801,22 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
     audience: TodayTasksAudience.mother,
     layout: TodayTasksLayout.sourceGroups,
     controller: _todayTasksController,
-    headingAction: (_dashboard?.journeyId?.isNotEmpty ?? false)
-        ? AddUserChecklistTaskButton(journeyId: _dashboard!.journeyId)
-        : null,
+    headingAction: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          key: const Key('mother-home-checklist-history-button'),
+          tooltip: 'Lịch sử checklist',
+          onPressed: () => context.push('/checklists/history'),
+          icon: const Icon(Icons.history_rounded),
+          color: _primary,
+        ),
+        if (_dashboard?.journeyId?.isNotEmpty ?? false) ...[
+          const SizedBox(width: 8),
+          AddUserChecklistTaskButton(journeyId: _dashboard!.journeyId),
+        ],
+      ],
+    ),
   );
 
   Widget _buildContentSection() {

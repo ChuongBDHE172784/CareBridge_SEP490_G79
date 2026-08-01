@@ -7,6 +7,7 @@ import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/blocked_account_screen.dart';
 import '../../features/auth/screens/auth_landing_screen.dart';
 import '../../features/auth/screens/role_selection_screen.dart';
+import '../../features/checklist/screens/checklist_history_screen.dart';
 import '../../features/home/screens/home_shell.dart';
 import '../../features/home/screens/expert_home_shell.dart';
 import '../../features/home/screens/family_member_home_screen.dart';
@@ -160,6 +161,7 @@ String? resolveAppRedirect({
 }) {
   final hasAssignedRole = role != null && role.trim().isNotEmpty;
   const motherOnlySetupRoutes = {
+    '/checklists/history',
     '/journey-onboarding',
     '/mother-stage-selection',
     '/journey-setup',
@@ -182,7 +184,8 @@ String? resolveAppRedirect({
   if (isAuthenticated &&
       hasAssignedRole &&
       role != 'MOTHER' &&
-      motherOnlySetupRoutes.contains(location)) {
+      (motherOnlySetupRoutes.contains(location) ||
+          location.startsWith('/checklists/history'))) {
     return '/';
   }
   if (isAuthenticated && hasAssignedRole && location == '/role-selection') {
@@ -300,6 +303,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/auth-landing',
       builder: (context, state) => const AuthLandingScreen(),
+    ),
+    GoRoute(
+      path: '/checklists/history',
+      builder: (context, state) => const ChecklistHistoryScreen(),
     ),
     GoRoute(
       path: '/journey-onboarding',

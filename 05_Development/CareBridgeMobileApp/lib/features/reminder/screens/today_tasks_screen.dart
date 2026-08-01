@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../checklist/services/user_checklist_service.dart';
 import '../../checklist/widgets/add_user_checklist_task_button.dart';
@@ -41,6 +42,15 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
         backgroundColor: const Color(0xFFF6F1EC),
         foregroundColor: const Color(0xFF5A463F),
         elevation: 0,
+        actions: [
+          if (widget.audience == TodayTasksAudience.mother)
+            IconButton(
+              key: const Key('today-checklist-history-button'),
+              tooltip: 'Lịch sử checklist',
+              onPressed: () => context.push('/checklists/history'),
+              icon: const Icon(Icons.history_rounded),
+            ),
+        ],
         title: const Text(
           'Việc hôm nay',
           style: TextStyle(

@@ -3,6 +3,7 @@ package com.carebridge.backend.content.repository;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
 import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
 import com.carebridge.backend.content.entity.ContentStage;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -17,6 +18,8 @@ import org.springframework.stereotype.Repository;
 public interface ChecklistTemplateRepository extends JpaRepository<ChecklistTemplate, UUID> {
 
     Optional<ChecklistTemplate> findByTemplateVersionId(UUID templateVersionId);
+
+    List<ChecklistTemplate> findAllByTemplateVersionIdIn(Collection<UUID> templateVersionIds);
 
     @Query("select coalesce(max(t.versionNo), 0) from ChecklistTemplate t " +
             "where t.id=:lineageId or t.templateLineageId=:lineageId")

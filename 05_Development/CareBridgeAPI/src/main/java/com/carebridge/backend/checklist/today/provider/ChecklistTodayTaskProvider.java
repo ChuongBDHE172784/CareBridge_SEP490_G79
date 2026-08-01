@@ -39,7 +39,7 @@ public class ChecklistTodayTaskProvider implements TodayTaskProvider {
     @Transactional(readOnly = true)
     public List<TodayTaskCandidate> findAuthorizedTasks(UUID actorUserId) {
         List<AuthorizedInstance> authorizedInstances = new ArrayList<>();
-        for (var instance : instanceRepository.findByRecipientUserId(actorUserId)) {
+        for (var instance : instanceRepository.findByRecipientUserIdAndHistoricalAtIsNull(actorUserId)) {
             if (instance.getStatus() != ChecklistInstanceStatus.CANCELLED
                     && accessPolicy.canView(instance, actorUserId)) {
                 authorizedInstances.add(new AuthorizedInstance(

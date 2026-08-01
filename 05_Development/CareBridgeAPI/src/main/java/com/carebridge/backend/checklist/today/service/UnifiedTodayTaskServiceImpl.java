@@ -1,6 +1,7 @@
 package com.carebridge.backend.checklist.today.service;
 
 import com.carebridge.backend.checklist.distribution.EnsureEligibleChecklistAssignmentsService;
+import com.carebridge.backend.checklist.distribution.ChecklistHistoryReconciliationService;
 import com.carebridge.backend.checklist.today.dto.TodayTasksResponse;
 import com.carebridge.backend.checklist.today.dto.TodayTaskCounts;
 import com.carebridge.backend.checklist.today.dto.TodayTaskItemResponse;
@@ -31,24 +32,26 @@ public class UnifiedTodayTaskServiceImpl implements UnifiedTodayTaskService {
     private final List<TodayTaskProvider> providers;
     private final TodayTaskContextLabelResolver labelResolver;
     private final EnsureEligibleChecklistAssignmentsService ensureAssignments;
+    private final ChecklistHistoryReconciliationService historyReconciliationService;
     private final Clock clock;
 
     @Autowired
     public UnifiedTodayTaskServiceImpl(
             List<TodayTaskProvider> providers,
             TodayTaskContextLabelResolver labelResolver,
-            EnsureEligibleChecklistAssignmentsService ensureAssignments) {
-        this(providers, labelResolver, ensureAssignments, Clock.systemUTC());
+            EnsureEligibleChecklistAssignmentsService ensureAssignments,
+            ChecklistHistoryReconciliationService historyReconciliationService) {
+        this(providers, labelResolver, ensureAssignments, historyReconciliationService, Clock.systemUTC());
     }
 
     public UnifiedTodayTaskServiceImpl(List<TodayTaskProvider> providers, Clock clock) {
-        this(providers, null, null, clock);
+        this(providers, null, null, null, clock);
     }
 
     public UnifiedTodayTaskServiceImpl(
             List<TodayTaskProvider> providers,
             TodayTaskContextLabelResolver labelResolver) {
-        this(providers, labelResolver, null, Clock.systemUTC());
+        this(providers, labelResolver, null, null, Clock.systemUTC());
     }
 
     public UnifiedTodayTaskServiceImpl(
@@ -56,9 +59,19 @@ public class UnifiedTodayTaskServiceImpl implements UnifiedTodayTaskService {
             TodayTaskContextLabelResolver labelResolver,
             EnsureEligibleChecklistAssignmentsService ensureAssignments,
             Clock clock) {
+        this(providers, labelResolver, ensureAssignments, null, clock);
+    }
+
+    public UnifiedTodayTaskServiceImpl(
+            List<TodayTaskProvider> providers,
+            TodayTaskContextLabelResolver labelResolver,
+            EnsureEligibleChecklistAssignmentsService ensureAssignments,
+            ChecklistHistoryReconciliationService historyReconciliationService,
+            Clock clock) {
         this.providers = List.copyOf(providers);
         this.labelResolver = labelResolver;
         this.ensureAssignments = ensureAssignments;
+        this.historyReconciliationService = historyReconciliationService;
         this.clock = clock;
     }
 
@@ -70,6 +83,9 @@ public class UnifiedTodayTaskServiceImpl implements UnifiedTodayTaskService {
         UUID correlationId = UUID.randomUUID();
         if (ensureAssignments != null) {
             ensureAssignments.ensureEligibleAssignments(actorUserId, effectiveDate, zone, correlationId);
+        }
+        if (historyReconciliationService != null) {
+            historyReconciliationService.reconcile(actorUserId, effectiveDate, zone, correlationId);
         }
         Instant dayStart = effectiveDate.atStartOfDay(zone).toInstant();
         Instant nextDayStart = effectiveDate.plusDays(1).atStartOfDay(zone).toInstant();
