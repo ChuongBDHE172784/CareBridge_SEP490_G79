@@ -448,35 +448,62 @@ class _DirectChatScreenState extends State<DirectChatScreen>
     super.dispose();
   }
 
+  static const _primary = Color(0xFFC98C7B);
+  static const _primaryDark = Color(0xFF845143);
+  static const _surface = Color(0xFFF6F1EC);
+  static const _surfaceLow = Color(0xFFF2EAE4);
+  static const _onSurface = Color(0xFF271812);
+  static const _onVariant = Color(0xFF524440);
+  static const _outline = Color(0xFFD6C2BD);
+
   @override
   Widget build(BuildContext context) {
     final currentUserId = AuthState.instance.userId;
     return Scaffold(
+      backgroundColor: _surface,
       appBar: AppBar(
-        title: const Text('Trò chuyện'),
+        backgroundColor: _primaryDark,
+        elevation: 0,
+        foregroundColor: Colors.white,
+        centerTitle: true,
+        title: const Text(
+          'Trò chuyện Trực tiếp',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.call),
+            tooltip: 'Gọi thoại',
+            icon: const Icon(Icons.phone_rounded),
             onPressed: _expertAvailable ? () => _placeCall('VOICE') : null,
           ),
           IconButton(
-            icon: const Icon(Icons.videocam),
+            tooltip: 'Gọi video',
+            icon: const Icon(Icons.videocam_rounded),
             onPressed: _expertAvailable ? () => _placeCall('VIDEO') : null,
           ),
+          const SizedBox(width: 4),
         ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(child: CircularProgressIndicator(color: _primary))
           : Column(
               children: [
                 if (!_expertAvailable)
                   Container(
                     width: double.infinity,
-                    color: Colors.orange.shade100,
-                    padding: const EdgeInsets.all(12),
-                    child: const Text(
-                      'Chuyên gia hiện không khả dụng. Bạn vẫn có thể xem lại lịch sử trò chuyện.',
-                      style: TextStyle(color: Colors.deepOrange),
+                    color: const Color(0xFFFEF3C7),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.info_outline, color: Color(0xFFD97706), size: 20),
+                        const SizedBox(width: 10),
+                        const Expanded(
+                          child: Text(
+                            'Chuyên gia hiện không khả dụng. Bạn vẫn có thể xem lại lịch sử trò chuyện.',
+                            style: TextStyle(color: Color(0xFF92400E), fontSize: 13, height: 1.3),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 Expanded(
@@ -491,14 +518,14 @@ class _DirectChatScreenState extends State<DirectChatScreen>
                     },
                     child: ListView.builder(
                       controller: _scrollController,
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
                       itemCount: _items.length + (_loadingOlder ? 1 : 0),
                       itemBuilder: (context, index) {
                         if (_loadingOlder && index == 0) {
                           return const Padding(
                             padding: EdgeInsets.symmetric(vertical: 8),
                             child: Center(
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                              child: CircularProgressIndicator(strokeWidth: 2, color: _primary),
                             ),
                           );
                         }
@@ -524,64 +551,114 @@ class _DirectChatScreenState extends State<DirectChatScreen>
 
   Widget _buildInputRow() {
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(8),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x105A463F),
+              blurRadius: 16,
+              offset: Offset(0, -4),
+            ),
+          ],
+        ),
         child: Row(
           children: [
-            IconButton(
-              icon: const Icon(Icons.add_photo_alternate_outlined),
-              onPressed: _sending
-                  ? null
-                  : () => showModalBottomSheet<void>(
-                      context: context,
-                      builder: (sheetContext) => SafeArea(
-                        child: Wrap(
-                          children: [
-                            ListTile(
-                              leading: const Icon(Icons.photo_library_outlined),
-                              title: const Text('Chọn từ thư viện'),
-                              onTap: () {
-                                Navigator.pop(sheetContext);
-                                _attachImage(ImageSource.gallery);
-                              },
-                            ),
-                            ListTile(
-                              leading: const Icon(Icons.attach_file),
-                              title: const Text('Chọn tài liệu'),
-                              onTap: () {
-                                Navigator.pop(sheetContext);
-                                _attachDocument();
-                              },
-                            ),
-                            ListTile(
-                              leading: const Icon(Icons.camera_alt_outlined),
-                              title: const Text('Chụp ảnh'),
-                              onTap: () {
-                                Navigator.pop(sheetContext);
-                                _attachImage(ImageSource.camera);
-                              },
-                            ),
-                          ],
+            Container(
+              decoration: BoxDecoration(
+                color: _surfaceLow,
+                shape: BoxShape.circle,
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.add_photo_alternate_rounded, color: _primaryDark),
+                onPressed: _sending
+                    ? null
+                    : () => showModalBottomSheet<void>(
+                        context: context,
+                        backgroundColor: Colors.white,
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                        ),
+                        builder: (sheetContext) => SafeArea(
+                          child: Wrap(
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.all(16),
+                                child: Text(
+                                  'Tệp đính kèm',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: _primaryDark,
+                                  ),
+                                ),
+                              ),
+                              ListTile(
+                                leading: const Icon(Icons.photo_library_outlined, color: _primary),
+                                title: const Text('Chọn từ thư viện'),
+                                onTap: () {
+                                  Navigator.pop(sheetContext);
+                                  _attachImage(ImageSource.gallery);
+                                },
+                              ),
+                              ListTile(
+                                leading: const Icon(Icons.attach_file_rounded, color: _primary),
+                                title: const Text('Chọn tài liệu'),
+                                onTap: () {
+                                  Navigator.pop(sheetContext);
+                                  _attachDocument();
+                                },
+                              ),
+                              ListTile(
+                                leading: const Icon(Icons.camera_alt_outlined, color: _primary),
+                                title: const Text('Chụp ảnh'),
+                                onTap: () {
+                                  Navigator.pop(sheetContext);
+                                  _attachImage(ImageSource.camera);
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                            ],
+                          ),
                         ),
                       ),
-                    ),
-            ),
-            Expanded(
-              child: TextField(
-                controller: _textController,
-                minLines: 1,
-                maxLines: 4,
-                decoration: const InputDecoration(
-                  hintText: 'Nhập tin nhắn...',
-                  border: OutlineInputBorder(),
-                ),
-                onSubmitted: (_) => _send(),
               ),
             ),
             const SizedBox(width: 8),
-            IconButton(
-              icon: const Icon(Icons.send),
-              onPressed: _sending ? null : _send,
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: _surface,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: _outline.withValues(alpha: 0.6)),
+                ),
+                child: TextField(
+                  controller: _textController,
+                  minLines: 1,
+                  maxLines: 4,
+                  style: const TextStyle(color: _onSurface, fontSize: 14),
+                  decoration: const InputDecoration(
+                    hintText: 'Nhập tin nhắn...',
+                    hintStyle: TextStyle(color: _onVariant, fontSize: 14),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    border: InputBorder.none,
+                  ),
+                  onSubmitted: (_) => _send(),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              decoration: const BoxDecoration(
+                color: _primaryDark,
+                shape: BoxShape.circle,
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                onPressed: _sending ? null : _send,
+              ),
             ),
           ],
         ),
@@ -591,6 +668,12 @@ class _DirectChatScreenState extends State<DirectChatScreen>
 }
 
 class _TimelineTile extends StatelessWidget {
+  static const _primary = Color(0xFFC98C7B);
+  static const _surfaceLow = Color(0xFFF2EAE4);
+  static const _onSurface = Color(0xFF271812);
+  static const _onVariant = Color(0xFF524440);
+  static const _outline = Color(0xFFD6C2BD);
+
   final TimelineItem item;
   final String conversationId;
   final bool isOwnMessage;
@@ -644,23 +727,40 @@ class _TimelineTile extends StatelessWidget {
                       ),
                     ),
                   ),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(16),
             child: Container(
               margin: const EdgeInsets.symmetric(vertical: 4),
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
               constraints: BoxConstraints(
                 maxWidth: MediaQuery.of(context).size.width * 0.75,
               ),
               decoration: BoxDecoration(
-                color: isOwnMessage
-                    ? Colors.blue.shade100
-                    : Colors.grey.shade200,
-                borderRadius: BorderRadius.circular(10),
+                color: isOwnMessage ? _primary : Colors.white,
+                border: isOwnMessage
+                    ? null
+                    : Border.all(color: _outline.withValues(alpha: 0.6)),
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(18),
+                  topRight: const Radius.circular(18),
+                  bottomLeft: Radius.circular(isOwnMessage ? 18 : 4),
+                  bottomRight: Radius.circular(isOwnMessage ? 4 : 18),
+                ),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x0A5A463F),
+                    blurRadius: 8,
+                    offset: Offset(0, 3),
+                  ),
+                ],
               ),
               child: item.recalledAt != null
-                  ? const Text(
+                  ? Text(
                       'Tin nhắn đã được thu hồi',
-                      style: TextStyle(fontStyle: FontStyle.italic),
+                      style: TextStyle(
+                        fontStyle: FontStyle.italic,
+                        color: isOwnMessage ? Colors.white70 : _onVariant,
+                        fontSize: 13,
+                      ),
                     )
                   : item.messageType == 'IMAGE' && item.messageId != null
                   ? _InlineChatImage(
@@ -670,15 +770,31 @@ class _TimelineTile extends StatelessWidget {
                       onRecall: onRecall,
                     )
                   : item.messageType == 'FILE'
-                  ? const Row(
+                  ? Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.attach_file),
-                        SizedBox(width: 8),
-                        Text('Tài liệu'),
+                        Icon(
+                          Icons.insert_drive_file_rounded,
+                          color: isOwnMessage ? Colors.white : _primary,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Tài liệu',
+                          style: TextStyle(
+                            color: isOwnMessage ? Colors.white : _onSurface,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ],
                     )
-                  : Text(item.messageBody ?? ''),
+                  : Text(
+                      item.messageBody ?? '',
+                      style: TextStyle(
+                        color: isOwnMessage ? Colors.white : _onSurface,
+                        fontSize: 14,
+                        height: 1.4,
+                      ),
+                    ),
             ),
           ),
           if (!failed && !sending)
@@ -686,21 +802,21 @@ class _TimelineTile extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 6, left: 4, right: 4),
               child: Text(
                 _formatTimestamp(item.createdAt),
-                style: const TextStyle(fontSize: 11, color: Colors.grey),
+                style: const TextStyle(fontSize: 11, color: _onVariant),
               ),
             ),
           if (failed)
             TextButton.icon(
               onPressed: onRetry,
-              icon: const Icon(Icons.refresh, size: 14),
-              label: const Text('Gửi lại', style: TextStyle(fontSize: 12)),
+              icon: const Icon(Icons.refresh, size: 14, color: Colors.red),
+              label: const Text('Gửi lại', style: TextStyle(fontSize: 12, color: Colors.red)),
             )
           else if (sending)
             const Padding(
               padding: EdgeInsets.only(bottom: 6),
               child: Text(
                 'Đang gửi...',
-                style: TextStyle(fontSize: 11, color: Colors.grey),
+                style: TextStyle(fontSize: 11, color: _onVariant),
               ),
             ),
         ],
