@@ -68,6 +68,16 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
         AuthState.instance.userId != requestAccountId) {
       throw const _StaleExpertProfileResponse();
     }
+    final expertUserId = (profile['userId'] ?? profile['expertUserId'])?.toString();
+    if (expertUserId != null && expertUserId.isNotEmpty) {
+      try {
+        final conversations = await DirectChatService.instance.listMyConversations();
+        final existing = conversations.where((item) => item.counterpartUserId == expertUserId);
+        if (existing.isNotEmpty) profile['_conversationId'] = existing.first.conversationId;
+      } catch (_) {
+        // Consultation stays available if the optional conversation lookup fails.
+      }
+    }
     return profile;
   }
 
@@ -147,6 +157,8 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
                 final consultationScope =
                     profile['consultationScope'] as String?;
                 final isVerified = profile['verificationStatus'] == 'APPROVED';
+                final conversationId = profile['_conversationId'] as String?;
+                final hasConversation = conversationId != null && conversationId.isNotEmpty;
 
                 return SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
@@ -323,7 +335,9 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
                         width: double.infinity,
                         height: 52,
                         child: FilledButton(
-                          onPressed: isConsultationEligible
+                          onPressed: hasConversation
+                              ? () => context.push('/direct-chat/$conversationId')
+                              : isConsultationEligible
                               ? () => Navigator.of(context).push(
                                   MaterialPageRoute(
                                     builder: (_) =>
@@ -341,8 +355,8 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
                               borderRadius: BorderRadius.circular(12),
                             ),
                           ),
-                          child: const Text(
-                            'Yêu cầu tư vấn',
+                          child: Text(
+                            hasConversation ? 'Trò chuyện' : 'Yêu cầu tư vấn',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,

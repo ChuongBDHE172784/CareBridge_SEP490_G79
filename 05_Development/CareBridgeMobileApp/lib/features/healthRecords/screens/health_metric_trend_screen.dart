@@ -742,6 +742,10 @@ String _formatHistoryDateTime(DateTime dt) {
 }
 
 String _displayValue(MetricDataPoint point, _MetricOption metric) {
+  if (metric.apiValue == 'FETAL_MOVEMENT_SESSION') {
+    final count = point.valueNumeric.toStringAsFixed(0);
+    return '$count cử động';
+  }
   if (point.valueSecondary != null) {
     if (metric.apiValue == 'BLOOD_PRESSURE_DIASTOLIC') {
       return '${point.valueSecondary!.toStringAsFixed(0)}/${point.valueNumeric.toStringAsFixed(0)}';

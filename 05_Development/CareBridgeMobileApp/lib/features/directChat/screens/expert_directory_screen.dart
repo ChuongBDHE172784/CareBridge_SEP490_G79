@@ -329,24 +329,9 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
                 '★ ${expert.ratingAvg!.toStringAsFixed(1)}',
             ].join(' · '),
           ),
-          trailing: Wrap(
-            spacing: 4,
-            children: [
-              TextButton(
-                onPressed: () async {
-                  final conversation = await DirectChatService.instance
-                      .findOrCreateConversation(expert.expertProfileId);
-                  if (context.mounted)
-                    context.push('/direct-chat/${conversation.conversationId}');
-                },
-                child: const Text('Trò chuyện'),
-              ),
-              OutlinedButton(
-                onPressed: () =>
-                    context.push('/expert/public/${expert.expertProfileId}'),
-                child: const Text('Xem hồ sơ'),
-              ),
-            ],
+          trailing: OutlinedButton(
+            onPressed: () => context.push('/expert/public/${expert.expertProfileId}'),
+            child: const Text('Xem hồ sơ'),
           ),
           onTap: () => context.push('/expert/public/${expert.expertProfileId}'),
         );

@@ -133,9 +133,9 @@ void main() {
     expect(find.text('BS. Nguyễn Văn A'), findsOneWidget);
   });
 
-  // MEDI-FL-06 (CTA button, distinct from tapping the card itself)
+  // Directory now directs the user to the profile; chat is exposed there only for existing conversations.
   testWidgets(
-    'tapping the CTA on the first card opens the right conversation',
+    'shows only the profile CTA on the first card',
     (tester) async {
       final service = _ScriptedDirectChatService(
         onGetDirectory: () async => _pageWith(const [_expert]),
@@ -144,11 +144,8 @@ void main() {
       await _pumpWithRouter(tester);
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Trò chuyện'));
-      await tester.pumpAndSettle();
-
-      expect(service.lastConversationExpertProfileId, 'expert-profile-1');
-      expect(find.text('chat:conv-1'), findsOneWidget);
+      expect(find.text('Xem hồ sơ'), findsOneWidget);
+      expect(find.text('Trò chuyện'), findsNothing);
     },
   );
 

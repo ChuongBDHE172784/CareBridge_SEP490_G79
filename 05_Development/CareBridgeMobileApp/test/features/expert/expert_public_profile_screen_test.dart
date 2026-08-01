@@ -43,9 +43,9 @@ void main() {
   setUp(() => original = DirectChatService.instance);
   tearDown(() => DirectChatService.instance = original);
 
-  // MEDI-FL-06
+  // A profile without an existing conversation keeps the consultation CTA.
   testWidgets(
-    'CTA calls find-or-create with the right expertProfileId then pushes the returned conversation; retapping stays on the same conversation',
+    'shows consultation CTA when the expert is not yet in the conversation list',
     (tester) async {
       final service = _ScriptedDirectChatService();
       DirectChatService.instance = service;
@@ -69,23 +69,9 @@ void main() {
       await tester.pumpWidget(MaterialApp.router(routerConfig: router));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Trò chuyện'));
-      await tester.pumpAndSettle();
-
-      expect(service.lastExpertProfileId, 'expert-profile-9');
-      expect(service.findOrCreateCallCount, 1);
-      expect(find.text('chat:conv-X'), findsOneWidget);
-
-      // Repeat: pop back to the profile and tap the CTA a second time — the backend's
-      // find-or-create idempotency (BR-DCC-002) means a second call still resolves to the
-      // exact same conversationId, never a duplicate.
-      router.pop();
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Trò chuyện'));
-      await tester.pumpAndSettle();
-
-      expect(service.findOrCreateCallCount, 2);
-      expect(find.text('chat:conv-X'), findsOneWidget);
+      expect(find.text('Yêu cầu tư vấn'), findsOneWidget);
+      expect(find.text('Trò chuyện'), findsNothing);
+      expect(service.findOrCreateCallCount, 0);
     },
   );
 }
