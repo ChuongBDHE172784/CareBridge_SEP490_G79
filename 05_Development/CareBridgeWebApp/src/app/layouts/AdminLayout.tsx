@@ -91,7 +91,11 @@ export default function AdminLayout() {
   const isVisible = (item: NavItem) => hasAnyRole(...(item.roles as Parameters<typeof hasAnyRole>));
   const visibleLinks = NAV_LINKS.filter(isVisible);
 
-  if (location.pathname.startsWith('/content')) {
+  if (
+    location.pathname.startsWith('/content') ||
+    location.pathname.startsWith('/expert') ||
+    location.pathname.startsWith('/partner')
+  ) {
     return <Outlet />;
   }
 
