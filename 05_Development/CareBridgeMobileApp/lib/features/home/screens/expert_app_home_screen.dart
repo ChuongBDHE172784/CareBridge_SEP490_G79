@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../community/screens/community_feed_screen.dart';
-import '../../consultation/screens/expert_request_queue_screen.dart';
+import '../../consultation/screens/expert_requests_tab_screen.dart';
 import '../../expert/services/expert_home_service.dart';
 
 class ExpertAppHomeScreen extends StatefulWidget {
@@ -357,9 +357,11 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
   }
 
   void _openRequests() {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const ExpertRequestQueueScreen()));
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => const ExpertRequestsTabScreen(showBackButton: true),
+      ),
+    );
   }
 
   static List<BoxShadow> get _softShadow => [
