@@ -102,20 +102,24 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
     }
     if (!mounted) return;
     setState(() => _returningToOrigin = false);
+    final isFamily =
+        (AuthState.instance.role ?? '').trim().toUpperCase() == 'FAMILY';
     String? location;
     switch (decision.destination) {
       case TriageContinuationDestination.motherJourney:
-        location =
-            '/mother-home?tab=1&triageReturn=${Uri.encodeQueryComponent(widget.sessionId)}';
+        if (!isFamily) {
+          location =
+              '/mother-home?tab=1&triageReturn=${Uri.encodeQueryComponent(widget.sessionId)}';
+        }
         break;
       case TriageContinuationDestination.babyProfile:
         final reference = decision.originReferenceId;
-        if (reference != null && reference.isNotEmpty) {
+        if (!isFamily && reference != null && reference.isNotEmpty) {
           location = '/babies/detail/${Uri.encodeComponent(reference)}';
         }
         break;
       case TriageContinuationDestination.safeDashboard:
-        location = '/mother-home';
+        location = isFamily ? '/?triageChecked=true' : '/mother-home';
         break;
       case TriageContinuationDestination.emergency:
         await _openEmergencyFlow();
@@ -133,8 +137,11 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
     router.go(
       location,
       extra:
-          decision.destination == TriageContinuationDestination.motherJourney ||
-              decision.destination == TriageContinuationDestination.babyProfile
+          !isFamily &&
+              (decision.destination ==
+                      TriageContinuationDestination.motherJourney ||
+                  decision.destination ==
+                      TriageContinuationDestination.babyProfile)
           ? TriageContinuationArrival(
               userId: userId,
               decision: decision,

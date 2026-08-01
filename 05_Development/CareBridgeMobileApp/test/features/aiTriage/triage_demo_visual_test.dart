@@ -100,7 +100,7 @@ Future<void> _pump(
 
 Future<void> _submit(WidgetTester tester, String text) async {
   await tester.enterText(find.byType(TextField).first, text);
-  await tester.tap(find.byIcon(Icons.send));
+  await tester.tap(find.byKey(const Key('triage-chat-send')));
   await tester.pumpAndSettle();
 }
 

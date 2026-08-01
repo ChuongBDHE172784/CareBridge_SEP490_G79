@@ -70,13 +70,13 @@ import '../../features/aiTriage/models/triage_entry_context.dart';
 import '../../features/aiTriage/models/triage_continuation.dart';
 import '../../features/aiTriage/services/triage_continuation_restore_coordinator.dart';
 import '../../features/aiTriage/screens/symptom_intake_screen.dart';
+import '../../features/aiTriage/widgets/floating_ai_triage_host.dart';
 import '../../features/aiTriage/screens/risk_triage_result_screen.dart';
 import '../../features/emergency/screens/emergency_map_screen.dart';
 import '../../features/emergency/screens/emergency_alert_detail_screen.dart';
 import '../../features/emergency/screens/family_alert_detail_screen.dart';
 import '../../features/safety/screens/safety_monitoring_screen.dart';
 import '../../features/safety/screens/enable_fall_detection_screen.dart';
-import '../../features/aiTriage/screens/rag_chat_screen.dart';
 import '../../features/expert/screens/expert_question_queue_screen.dart';
 import '../../features/expert/screens/expert_profile_setup_screen.dart';
 import '../../features/expert/screens/upload_verification_docs_screen.dart';
@@ -157,8 +157,10 @@ String? resolveAppRedirect({
   required String? blockedReason,
   required String? role,
   required String location,
+  bool familyLandingComplete = false,
 }) {
-  final hasAssignedRole = role != null && role.trim().isNotEmpty;
+  final normalizedRole = role?.trim().toUpperCase();
+  final hasAssignedRole = normalizedRole != null && normalizedRole.isNotEmpty;
   const motherOnlySetupRoutes = {
     '/journey-onboarding',
     '/mother-stage-selection',
@@ -181,33 +183,36 @@ String? resolveAppRedirect({
   }
   if (isAuthenticated &&
       hasAssignedRole &&
-      role != 'MOTHER' &&
+      normalizedRole != 'MOTHER' &&
       motherOnlySetupRoutes.contains(location)) {
     return '/';
   }
   if (isAuthenticated && hasAssignedRole && location == '/role-selection') {
-    return role == 'EXPERT'
+    return normalizedRole == 'EXPERT'
         ? '/expert-onboarding'
-        : (role == 'MOTHER' ? '/mother-stage-selection' : '/');
+        : (normalizedRole == 'MOTHER' ? '/mother-stage-selection' : '/');
   }
   if (isAuthenticated && isAuthRoute && location != '/auth-landing') {
-    return role == 'EXPERT'
+    return normalizedRole == 'EXPERT'
         ? '/expert-onboarding'
-        : (role == 'MOTHER'
+        : (normalizedRole == 'MOTHER' || normalizedRole == 'FAMILY'
               ? '/auth-landing'
               : (hasAssignedRole ? '/' : '/role-selection'));
   }
   if (isAuthenticated && location == '/auth-landing') {
-    return role == 'MOTHER'
+    return normalizedRole == 'MOTHER' || normalizedRole == 'FAMILY'
         ? null
-        : (role == 'EXPERT'
+        : (normalizedRole == 'EXPERT'
               ? '/expert-onboarding'
               : (hasAssignedRole ? '/' : '/role-selection'));
   }
 
   // `/` is the app-start dispatcher for mothers. The landing screen verifies
   // the journey before opening the real home or consolidated setup screen.
-  if (isAuthenticated && role == 'MOTHER' && location == '/') {
+  if (isAuthenticated &&
+      (normalizedRole == 'MOTHER' ||
+          (normalizedRole == 'FAMILY' && !familyLandingComplete)) &&
+      location == '/') {
     return '/auth-landing';
   }
   return null;
@@ -245,6 +250,7 @@ AddBabyEntryPoint resolveAddBabyEntryPoint({
 
 final GoRouter appRouter = GoRouter(
   navigatorKey: rootNavigatorKey,
+  observers: [floatingAiTriageRouteObserver],
   initialLocation: '/',
   refreshListenable: AuthState.instance,
   redirect: (context, state) async {
@@ -263,6 +269,8 @@ final GoRouter appRouter = GoRouter(
       blockedReason: auth.blockedReason,
       role: auth.role,
       location: state.matchedLocation,
+      familyLandingComplete:
+          state.uri.queryParameters['triageChecked'] == 'true',
     );
     if (baseRedirect != null) return baseRedirect;
 
@@ -804,10 +812,6 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/safety/fall-detection/enable',
       builder: (context, state) => const EnableFallDetectionScreen(),
-    ),
-    GoRoute(
-      path: '/rag-chat',
-      builder: (context, state) => const RagChatScreen(),
     ),
     GoRoute(
       path: '/expert-queue',

@@ -32,9 +32,10 @@ class SymptomIntakeScreen extends StatefulWidget {
 }
 
 class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
-  static const _primary = Color(0xFF845143);
-  static const _surface = Color(0xFFFFF8F6);
-  static const _surfaceLow = Color(0xFFFFF1EC);
+  static const _primary = Color(0xFFC98C7B);
+  static const _primaryDark = Color(0xFF845143);
+  static const _surface = Color(0xFFF6F1EC);
+  static const _surfaceLow = Color(0xFFF2EAE4);
   static const _onSurface = Color(0xFF271812);
   static const _onVariant = Color(0xFF524440);
   static const _outline = Color(0xFFD6C2BD);
@@ -324,13 +325,16 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
     }
     if (!mounted) return;
     setState(() => _returningToOrigin = false);
+    final isFamily =
+        (AuthState.instance.role ?? '').trim().toUpperCase() == 'FAMILY';
     final String? location = switch (decision.destination) {
-      TriageContinuationDestination.motherJourney =>
+      TriageContinuationDestination.motherJourney when !isFamily =>
         '/mother-home?tab=1&triageReturn=${Uri.encodeQueryComponent(_sessionId ?? DateTime.now().microsecondsSinceEpoch.toString())}',
       TriageContinuationDestination.babyProfile
-          when decision.originReferenceId?.isNotEmpty == true =>
+          when !isFamily && decision.originReferenceId?.isNotEmpty == true =>
         '/babies/detail/${Uri.encodeComponent(decision.originReferenceId!)}',
-      TriageContinuationDestination.safeDashboard => '/mother-home',
+      TriageContinuationDestination.safeDashboard =>
+        isFamily ? '/' : '/mother-home',
       _ => null,
     };
     if (location == null) {
@@ -343,8 +347,11 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
     context.go(
       location,
       extra:
-          decision.destination == TriageContinuationDestination.motherJourney ||
-              decision.destination == TriageContinuationDestination.babyProfile
+          !isFamily &&
+              (decision.destination ==
+                      TriageContinuationDestination.motherJourney ||
+                  decision.destination ==
+                      TriageContinuationDestination.babyProfile)
           ? TriageContinuationArrival(
               userId: userId,
               decision: decision,
@@ -639,38 +646,74 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
     });
   }
 
+  String _stageLabel(String stage) => switch (stage) {
+    'PRECONCEPTION' => 'Chuẩn bị mang thai',
+    'PREGNANCY' => 'Đang mang thai',
+    'POSTPARTUM' => 'Sau sinh',
+    'INFANT' => 'Bé 0–12 tháng',
+    'TODDLER' => 'Bé 12–24 tháng',
+    _ => 'Sức khỏe gia đình',
+  };
+
   @override
   Widget build(BuildContext context) {
+    final showWelcome =
+        _sessionId == null &&
+        _messages.length == 1 &&
+        _questions.isEmpty &&
+        _result == null &&
+        _error == null;
     return Scaffold(
       backgroundColor: _surface,
       appBar: AppBar(
-        backgroundColor: _surface,
+        backgroundColor: _primaryDark,
         elevation: 0,
-        foregroundColor: _primary,
-        title: Text(
-          widget.entryContext.isPostpartum
-              ? 'Hỗ trợ dấu hiệu sau sinh'
-              : widget.entryContext.isMaternal
-              ? 'Kiểm tra dấu hiệu an toàn'
-              : 'Kiểm tra triệu chứng',
+        foregroundColor: Colors.white,
+        centerTitle: true,
+        title: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'CareBridge AI',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+            ),
+            Text(
+              'Trợ lý phân loại • ${_stageLabel(_selectedStage)}',
+              style: const TextStyle(fontSize: 11, color: Colors.white70),
+            ),
+          ],
         ),
+        actions: [
+          IconButton(
+            key: const Key('triage-ai-info'),
+            tooltip: 'Thông tin an toàn AI Triage',
+            onPressed: _showAiInfo,
+            icon: const Icon(Icons.info_outline_rounded),
+          ),
+        ],
       ),
       body: SafeArea(
         child: Column(
           children: [
             Expanded(
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  if (_sessionId == null && !widget.entryContext.lockStage)
-                    _buildStageSelector(),
-                  ..._messages.map(_buildBubble),
-                  if (_result != null) _buildResult(_result!),
-                  if (_questions.isNotEmpty && _result == null)
-                    _buildQuestions(),
-                  if (_error != null) _buildError(),
-                ],
-              ),
+              child: showWelcome
+                  ? _buildWelcome()
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (_sessionId == null &&
+                              !widget.entryContext.lockStage)
+                            _buildStageSelector(),
+                          ..._messages.map(_buildBubble),
+                          if (_result != null) _buildResult(_result!),
+                          if (_questions.isNotEmpty && _result == null)
+                            _buildQuestions(),
+                          if (_error != null) _buildError(),
+                        ],
+                      ),
+                    ),
             ),
             _buildComposer(),
           ],
@@ -679,44 +722,212 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
     );
   }
 
-  Widget _buildBubble(_ChatMessage message) {
-    final isUser = message.role == _ChatRole.user;
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 320),
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: isUser ? _primary : Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: isUser ? _primary : _outline),
+  Future<void> _showAiInfo() async {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        icon: const Icon(
+          Icons.health_and_safety_outlined,
+          color: _primary,
+          size: 36,
         ),
-        child: Text(
-          message.text,
-          style: TextStyle(
-            color: isUser ? Colors.white : _onSurface,
-            height: 1.35,
+        title: const Text(
+          'Về CareBridge AI',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: _onSurface, fontWeight: FontWeight.w700),
+        ),
+        content: const Text(
+          'CareBridge AI hỗ trợ phân loại rủi ro ban đầu, không chẩn đoán, '
+          'không kê đơn và không thay thế nhân viên y tế. Trong tình huống '
+          'khẩn cấp, hãy liên hệ cấp cứu ngay.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: _onVariant, height: 1.5),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            style: FilledButton.styleFrom(
+              backgroundColor: _primaryDark,
+              shape: const StadiumBorder(),
+              minimumSize: const Size(120, 48),
+            ),
+            child: const Text('Đã hiểu'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWelcome() {
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 20),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight - 44),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 82,
+                height: 82,
+                decoration: BoxDecoration(
+                  color: _primary.withValues(alpha: 0.13),
+                  shape: BoxShape.circle,
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x165A463F),
+                      blurRadius: 22,
+                      offset: Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.smart_toy_rounded,
+                  size: 42,
+                  color: _primary,
+                ),
+              ),
+              const SizedBox(height: 22),
+              const Text(
+                'Trợ lý AI CareBridge',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 21,
+                  fontWeight: FontWeight.w700,
+                  color: _primaryDark,
+                ),
+              ),
+              if (widget.entryContext.lockStage) ...[
+                const SizedBox(height: 8),
+                const Text(
+                  'Kiểm tra dấu hiệu an toàn',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: _primary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 10),
+              Text(
+                widget.entryContext.isPostpartum
+                    ? 'Hãy mô tả dấu hiệu sau sinh để CareBridge hỗ trợ phân loại mức độ cần chú ý.'
+                    : widget.entryContext.isMaternal
+                    ? 'Hãy mô tả dấu hiệu bạn đang gặp để CareBridge hỗ trợ phân loại mức độ cần chú ý.'
+                    : 'Hỏi về sức khỏe mẹ bầu, sau sinh hoặc mô tả triệu chứng và sự phát triển của bé.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: _onVariant,
+                  fontSize: 14,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Phản hồi AI chỉ mang tính tham khảo, không thay thế tư vấn y tế.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Color(0xFF9C857C), fontSize: 12),
+              ),
+              if (!widget.entryContext.lockStage) ...[
+                const SizedBox(height: 28),
+                _buildStageSelector(),
+              ],
+            ],
           ),
         ),
       ),
     );
   }
 
+  Widget _buildBubble(_ChatMessage message) {
+    final isUser = message.role == _ChatRole.user;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        mainAxisAlignment: isUser
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (!isUser) ...[
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: _primary.withValues(alpha: 0.14),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.smart_toy_rounded,
+                size: 19,
+                color: _primaryDark,
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
+          Flexible(
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 320),
+              padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+              decoration: BoxDecoration(
+                color: isUser ? _primaryDark : Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: const Radius.circular(20),
+                  topRight: const Radius.circular(20),
+                  bottomLeft: Radius.circular(isUser ? 20 : 6),
+                  bottomRight: Radius.circular(isUser ? 6 : 20),
+                ),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x145A463F),
+                    blurRadius: 16,
+                    offset: Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: Text(
+                message.text,
+                style: TextStyle(
+                  color: isUser ? Colors.white : _onSurface,
+                  height: 1.45,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildQuestions() {
     return Container(
+      margin: const EdgeInsets.only(top: 4),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _outline),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x145A463F),
+            blurRadius: 20,
+            offset: Offset(0, 6),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Trả lời bổ sung',
-            style: TextStyle(fontWeight: FontWeight.w700, color: _onSurface),
+            'CareBridge cần hỏi thêm',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: _primaryDark,
+              fontSize: 16,
+            ),
           ),
           const SizedBox(height: 12),
           ..._questions.map(_buildQuestionInput),
@@ -734,27 +945,47 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
     };
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _outline),
+        color: _surfaceLow,
+        borderRadius: BorderRadius.circular(22),
       ),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: stages.entries.map((entry) {
-          return ChoiceChip(
-            label: Text(entry.value),
-            selected: _selectedStage == entry.key,
-            onSelected: _loading
-                ? null
-                : (_) => setState(() {
-                    _selectedStage = entry.key;
-                    _currentIntake = _newIntake(stage: entry.key);
-                  }),
-          );
-        }).toList(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(left: 4, bottom: 10),
+            child: Text(
+              'Bạn đang hỏi cho giai đoạn nào?',
+              style: TextStyle(color: _onSurface, fontWeight: FontWeight.w700),
+            ),
+          ),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: stages.entries.map((entry) {
+              final selected = _selectedStage == entry.key;
+              return ChoiceChip(
+                label: Text(entry.value),
+                selected: selected,
+                selectedColor: _primaryDark,
+                backgroundColor: Colors.white,
+                side: BorderSide(color: selected ? _primary : _outline),
+                labelStyle: TextStyle(
+                  color: selected ? Colors.white : _onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
+                shape: const StadiumBorder(),
+                onSelected: _loading
+                    ? null
+                    : (_) => setState(() {
+                        _selectedStage = entry.key;
+                        _currentIntake = _newIntake(stage: entry.key);
+                      }),
+              );
+            }).toList(),
+          ),
+        ],
       ),
     );
   }
@@ -777,7 +1008,16 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
             maxLines: question.answerType == 'TEXT' ? 3 : 1,
             decoration: InputDecoration(
               labelText: question.text,
-              border: const OutlineInputBorder(),
+              filled: true,
+              fillColor: _surface,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: _primary, width: 1.5),
+              ),
             ),
           ),
         );
@@ -981,7 +1221,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
                   key: const Key('triage-inline-yellow-expert-handoff-cta'),
                   onPressed: () => _openYellowHandoff(result),
                   style: FilledButton.styleFrom(
-                    backgroundColor: const Color(0xFFC98C7B),
+                    backgroundColor: _primaryDark,
                     foregroundColor: Colors.white,
                     shape: const StadiumBorder(),
                   ),
@@ -1042,7 +1282,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
                 ),
                 style: FilledButton.styleFrom(
                   minimumSize: const Size.fromHeight(52),
-                  backgroundColor: const Color(0xFFC98C7B),
+                  backgroundColor: _primaryDark,
                   foregroundColor: Colors.white,
                   shape: const StadiumBorder(),
                 ),
@@ -1193,61 +1433,137 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
       return const SizedBox(height: 12);
     }
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-      decoration: const BoxDecoration(color: _surface),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x175A463F),
+            blurRadius: 18,
+            offset: Offset(0, -4),
+          ),
+        ],
+      ),
       child: _questions.isEmpty
           ? Row(
               children: [
                 Expanded(
                   child: TextField(
+                    key: const Key('triage-chat-input'),
                     controller: _initialController,
+                    enabled: !_loading,
                     minLines: 1,
                     maxLines: 4,
                     decoration: InputDecoration(
                       hintText: widget.entryContext.isMaternal
-                          ? 'Ví dụ: Tôi thấy chóng mặt và khó thở...'
-                          : 'Ví dụ: Bé bị sốt và ho...',
-                      border: OutlineInputBorder(),
+                          ? 'Mô tả dấu hiệu của mẹ...'
+                          : 'Đặt câu hỏi sức khỏe...',
+                      hintStyle: const TextStyle(color: Color(0xFF9C857C)),
+                      filled: true,
+                      fillColor: _surface,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 13,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(28),
+                        borderSide: BorderSide.none,
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(28),
+                        borderSide: const BorderSide(
+                          color: _primary,
+                          width: 1.5,
+                        ),
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                IconButton.filled(
-                  onPressed: _loading ? null : _start,
-                  icon: _loading
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.send),
+                SizedBox(
+                  width: 50,
+                  height: 50,
+                  child: IconButton.filled(
+                    key: const Key('triage-chat-send'),
+                    style: IconButton.styleFrom(
+                      backgroundColor: _primaryDark,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: _primaryDark.withValues(
+                        alpha: 0.45,
+                      ),
+                    ),
+                    onPressed: _loading ? null : _start,
+                    icon: _loading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.arrow_upward_rounded, size: 26),
+                  ),
                 ),
               ],
             )
           : SizedBox(
+              height: 52,
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: _loading ? null : _sendAnswers,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _primaryDark,
+                  foregroundColor: Colors.white,
+                  shape: const StadiumBorder(),
+                  elevation: 0,
+                ),
                 icon: _loading
                     ? const SizedBox(
                         width: 18,
                         height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
                       )
-                    : const Icon(Icons.send),
-                label: const Text('Gửi câu trả lời'),
+                    : const Icon(Icons.arrow_upward_rounded),
+                label: const Text(
+                  'Gửi câu trả lời',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
               ),
             ),
     );
   }
 
   Widget _buildError() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 12),
+    return Container(
+      margin: const EdgeInsets.only(top: 12),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFDAD6),
+        borderRadius: BorderRadius.circular(18),
+        border: const Border(
+          left: BorderSide(color: Color(0xFFBA1A1A), width: 4),
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(_error!, style: const TextStyle(color: Colors.red)),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.error_outline_rounded, color: Color(0xFF93000A)),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  _error!,
+                  style: const TextStyle(color: Color(0xFF93000A), height: 1.4),
+                ),
+              ),
+            ],
+          ),
           if (_emergencyFailed) ...[
             const SizedBox(height: 8),
             Wrap(

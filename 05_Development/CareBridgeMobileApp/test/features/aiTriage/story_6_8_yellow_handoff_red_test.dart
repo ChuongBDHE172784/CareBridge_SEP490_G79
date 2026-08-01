@@ -90,7 +90,7 @@ void main() {
         find.byType(TextField).first,
         'Synthetic input for a YELLOW fixture',
       );
-      await tester.tap(find.byIcon(Icons.send).first);
+      await tester.tap(find.byKey(const Key('triage-chat-send')));
       await tester.pumpAndSettle();
 
       expect(find.text(_yellowSummary), findsWidgets);

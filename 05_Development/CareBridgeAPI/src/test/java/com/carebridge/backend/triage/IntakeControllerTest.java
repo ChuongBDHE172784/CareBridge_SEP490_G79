@@ -12,6 +12,7 @@ import com.carebridge.backend.triage.service.ITriageService;
 import com.carebridge.backend.triage.service.ITriageContinuationService;
 import com.carebridge.backend.triage.dto.request.StartIntakeConversationRequest;
 import com.carebridge.backend.triage.dto.response.IntakeConversationResponse;
+import com.carebridge.backend.triage.dto.response.IntakeSessionResponse;
 import com.carebridge.backend.triage.exception.TriageException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -55,6 +56,7 @@ class IntakeControllerTest {
     @MockitoBean private UserRepository userRepository;
 
     private static final String BASE_URL = "/api/v1/triage/intake";
+    private static final String FAMILY = "00000000-0000-0000-0000-000000000012";
 
     @Test
     @WithMockUser(username = "00000000-0000-0000-0000-000000000010", roles = "MOTHER")
@@ -94,6 +96,62 @@ class IntakeControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"symptoms\":\"test symptoms\"}"))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = FAMILY, roles = "FAMILY")
+    void runIntake_familyRole_shouldUseAuthenticatedFamilyAsOwner() throws Exception {
+        UUID familyId = UUID.fromString(FAMILY);
+        when(triageService.runIntake(any(), eq(familyId))).thenReturn(
+                IntakeSessionResponse.builder()
+                        .sessionId(UUID.fromString("00000000-0000-0000-0000-000000000061"))
+                        .stage("PREGNANCY")
+                        .status("COMPLETED")
+                        .riskLevel("YELLOW")
+                        .build());
+
+        mockMvc.perform(post(BASE_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"symptoms\":\"Người thân đang chóng mặt\",\"stage\":\"PREGNANCY\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.stage").value("PREGNANCY"));
+
+        verify(triageService).runIntake(any(), eq(familyId));
+    }
+
+    @Test
+    @WithMockUser(username = FAMILY, roles = "FAMILY")
+    void conversation_familyRole_shouldStartAndContinueOwnSession() throws Exception {
+        UUID familyId = UUID.fromString(FAMILY);
+        UUID sessionId = UUID.fromString("00000000-0000-4000-8000-000000000062");
+        when(triageService.startConversation(any(), eq(familyId))).thenReturn(
+                IntakeConversationResponse.builder()
+                        .status("ASK_MORE")
+                        .intakeSessionId(sessionId.toString())
+                        .stage("INFANT")
+                        .round(1)
+                        .build());
+        when(triageService.continueConversation(any(), eq(familyId))).thenReturn(
+                IntakeConversationResponse.builder()
+                        .status("TRIAGE_COMPLETE")
+                        .intakeSessionId(sessionId.toString())
+                        .stage("INFANT")
+                        .round(2)
+                        .build());
+
+        mockMvc.perform(post(BASE_URL + "/conversation/start")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"initialText\":\"Bé sốt\",\"stage\":\"INFANT\",\"currentIntake\":{\"stage\":\"INFANT\"}}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.intakeSessionId").value(sessionId.toString()));
+
+        mockMvc.perform(post(BASE_URL + "/conversation/continue")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"intakeSessionId\":\"" + sessionId + "\",\"newAnswers\":{\"temperatureC\":39.0},\"round\":1}"))
+                .andExpect(status().isOk());
+
+        verify(triageService).startConversation(any(), eq(familyId));
+        verify(triageService).continueConversation(any(), eq(familyId));
     }
 
     @Test

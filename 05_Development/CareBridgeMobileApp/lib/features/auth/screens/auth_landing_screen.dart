@@ -59,12 +59,23 @@ class _AuthLandingScreenState extends State<AuthLandingScreen> {
       return;
     }
 
-    if (auth.role != 'MOTHER') {
+    final userId = auth.userId;
+    final normalizedRole = auth.role?.trim().toUpperCase();
+    if (normalizedRole == 'FAMILY') {
+      if (userId != null &&
+          userId.isNotEmpty &&
+          await _restorePendingContinuation(userId)) {
+        return;
+      }
+      if (mounted) context.go('/?triageChecked=true');
+      return;
+    }
+
+    if (normalizedRole != 'MOTHER') {
       if (mounted) context.go('/');
       return;
     }
 
-    final userId = auth.userId;
     if (userId != null &&
         userId.isNotEmpty &&
         await _restorePendingContinuation(userId)) {
@@ -113,16 +124,19 @@ class _AuthLandingScreenState extends State<AuthLandingScreen> {
       return true;
     }
 
+    final isFamily =
+        (AuthState.instance.role ?? '').trim().toUpperCase() == 'FAMILY';
     final String? location = switch (decision.destination) {
-      TriageContinuationDestination.motherJourney => '/mother-home?tab=1',
+      TriageContinuationDestination.motherJourney when !isFamily =>
+        '/mother-home?tab=1',
       TriageContinuationDestination.babyProfile
-          when decision.originReferenceId?.isNotEmpty == true =>
+          when !isFamily && decision.originReferenceId?.isNotEmpty == true =>
         '/babies/detail/${Uri.encodeComponent(decision.originReferenceId!)}',
       TriageContinuationDestination.emergency =>
         '/emergency/map?mode=triage&stage=${Uri.encodeComponent(decision.stage ?? 'INFANT')}',
       TriageContinuationDestination.safeDashboard
           when decision.continuationToken == null =>
-        '/mother-home',
+        isFamily ? '/' : '/mother-home',
       TriageContinuationDestination.none => null,
       _ => null,
     };
@@ -141,8 +155,11 @@ class _AuthLandingScreenState extends State<AuthLandingScreen> {
     context.go(
       location,
       extra:
-          decision.destination == TriageContinuationDestination.motherJourney ||
-              decision.destination == TriageContinuationDestination.babyProfile
+          !isFamily &&
+              (decision.destination ==
+                      TriageContinuationDestination.motherJourney ||
+                  decision.destination ==
+                      TriageContinuationDestination.babyProfile)
           ? TriageContinuationArrival(
               userId: userId,
               decision: decision,

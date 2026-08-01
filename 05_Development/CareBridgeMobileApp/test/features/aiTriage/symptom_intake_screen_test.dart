@@ -353,7 +353,7 @@ Future<GoRouter> _pumpScreen(
 
 Future<void> _submitInitial(WidgetTester tester) async {
   await tester.enterText(find.byType(TextField).first, 'be kho tho');
-  await tester.tap(find.byIcon(Icons.send));
+  await tester.tap(find.byKey(const Key('triage-chat-send')));
   await tester.pump();
 }
 
@@ -379,7 +379,7 @@ void main() {
         find.byType(TextField).first,
         'Tôi thấy chóng mặt',
       );
-      await tester.tap(find.byIcon(Icons.send));
+      await tester.tap(find.byKey(const Key('triage-chat-send')));
       await tester.pumpAndSettle();
 
       expect(triage.receivedIntake?['stage'], 'POSTPARTUM');
@@ -402,7 +402,7 @@ void main() {
     );
 
     await tester.enterText(find.byType(TextField).first, 'Tôi thấy chóng mặt');
-    await tester.tap(find.byIcon(Icons.send));
+    await tester.tap(find.byKey(const Key('triage-chat-send')));
     await tester.pumpAndSettle();
 
     expect(find.textContaining('không khớp với giai đoạn sau sinh'), findsOne);
@@ -482,7 +482,10 @@ void main() {
     await tester.tap(find.byKey(const Key('triage-emergency-cta')));
     await tester.pumpAndSettle();
 
-    await tester.drag(find.byType(ListView), const Offset(0, -600));
+    await tester.drag(
+      find.byType(SingleChildScrollView),
+      const Offset(0, -600),
+    );
     await tester.pump();
     expect(find.textContaining('Phiên có thể'), findsOneWidget);
     await tester.tap(find.byKey(const Key('triage-postpartum-call-115')));
@@ -624,7 +627,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Emergency map'), findsNothing);
-      await tester.drag(find.byType(ListView), const Offset(0, -600));
+      await tester.drag(
+        find.byType(SingleChildScrollView),
+        const Offset(0, -600),
+      );
       await tester.pump();
       expect(
         find.textContaining('Phiên đăng nhập đã thay đổi'),
@@ -685,7 +691,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Emergency map'), findsNothing);
-      await tester.drag(find.byType(ListView), const Offset(0, -600));
+      await tester.drag(
+        find.byType(SingleChildScrollView),
+        const Offset(0, -600),
+      );
       await tester.pump();
       expect(
         find.textContaining('Phiên đăng nhập đã thay đổi'),
@@ -710,7 +719,10 @@ void main() {
       await tester.tap(find.byKey(const Key('triage-emergency-cta')));
       await tester.pumpAndSettle();
 
-      await tester.drag(find.byType(ListView), const Offset(0, -600));
+      await tester.drag(
+        find.byType(SingleChildScrollView),
+        const Offset(0, -600),
+      );
       await tester.pump();
       expect(find.textContaining('Không thể tải phiên hỗ trợ'), findsOneWidget);
       expect(find.textContaining('RAW_EMERGENCY_FAILURE'), findsNothing);
