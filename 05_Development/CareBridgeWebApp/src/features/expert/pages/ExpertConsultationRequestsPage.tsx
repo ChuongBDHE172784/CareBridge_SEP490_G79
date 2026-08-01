@@ -128,8 +128,8 @@ export default function ExpertConsultationRequestsPage() {
       )}
 
       {/* Status tabs + search bar */}
-      <div className="flex justify-between items-center mb-5 flex-wrap gap-4 w-full">
-        <div className="flex gap-2 flex-wrap">
+      <div className="flex justify-between items-center mb-5 flex-wrap gap-3">
+        <div className="flex gap-2">
           {STATUS_TABS.map((tab) => (
             <button
               key={tab.key}
@@ -137,10 +137,10 @@ export default function ExpertConsultationRequestsPage() {
                 setActiveTab(tab.key);
                 setPage(0);
               }}
-              className={`flex items-center gap-1.5 py-2 px-[18px] rounded-full text-[13px] font-semibold cursor-pointer transition-colors ${
+              className={`flex items-center gap-1.5 py-2 px-[18px] rounded-full text-[13px] font-semibold cursor-pointer ${
                 activeTab === tab.key
                   ? 'border-2 border-primary bg-surface-container-low text-primary'
-                  : 'border border-outline-variant bg-transparent text-on-surface-variant hover:bg-surface-container-low'
+                  : 'border border-outline-variant bg-transparent text-on-surface-variant'
               }`}
             >
               {tab.label}
@@ -148,16 +148,18 @@ export default function ExpertConsultationRequestsPage() {
           ))}
         </div>
 
-        <div className="relative w-72 md:w-80 shrink-0">
-          <span className="material-symbols-outlined text-outline absolute left-[14px] top-1/2 -translate-y-1/2 text-xl">
-            search
-          </span>
-          <input
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Tìm theo tên hoặc chủ đề..."
-            className="w-full py-2.5 pr-[14px] pl-[42px] rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface outline-none font-sans focus:border-primary"
-          />
+        <div className="flex gap-2 flex-1 justify-end">
+          <div className="relative max-w-[280px] flex-1">
+            <span className="material-symbols-outlined text-outline absolute left-[14px] top-1/2 -translate-y-1/2 text-xl">
+              search
+            </span>
+            <input
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="Tìm theo tên hoặc chủ đề..."
+              className="w-full py-2.5 pr-[14px] pl-[42px] rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface outline-none font-sans"
+            />
+          </div>
         </div>
       </div>
 
