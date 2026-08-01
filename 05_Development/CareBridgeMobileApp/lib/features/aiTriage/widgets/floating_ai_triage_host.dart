@@ -285,61 +285,61 @@ class _FloatingAiTriageHostState extends State<FloatingAiTriageHost> {
                           keyboardInset,
                         ),
                         child: Container(
-                            width: _size,
-                            height: _size,
-                            decoration: BoxDecoration(
-                              color: _accent,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.9),
-                                width: 3,
-                              ),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Color(0x4DC98C7B),
-                                  blurRadius: 24,
-                                  offset: Offset(0, 8),
-                                ),
-                                BoxShadow(
-                                  color: Color(0x1A5A463F),
-                                  blurRadius: 8,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
+                          width: _size,
+                          height: _size,
+                          decoration: BoxDecoration(
+                            color: _accent,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.9),
+                              width: 3,
                             ),
-                            child: const Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                Center(
-                                  child: Icon(
-                                    Icons.smart_toy_rounded,
-                                    color: Colors.white,
-                                    size: 31,
-                                  ),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x4DC98C7B),
+                                blurRadius: 24,
+                                offset: Offset(0, 8),
+                              ),
+                              BoxShadow(
+                                color: Color(0x1A5A463F),
+                                blurRadius: 8,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              Center(
+                                child: Icon(
+                                  Icons.smart_toy_rounded,
+                                  color: Colors.white,
+                                  size: 31,
                                 ),
-                                Positioned(
-                                  right: -2,
-                                  bottom: -2,
-                                  child: DecoratedBox(
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Padding(
-                                      padding: EdgeInsets.all(5),
-                                      child: Text(
-                                        'AI',
-                                        style: TextStyle(
-                                          color: _deepCocoa,
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w800,
-                                        ),
+                              ),
+                              Positioned(
+                                right: -2,
+                                bottom: -2,
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Padding(
+                                    padding: EdgeInsets.all(5),
+                                    child: Text(
+                                      'AI',
+                                      style: TextStyle(
+                                        color: _deepCocoa,
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w800,
                                       ),
                                     ),
                                   ),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
