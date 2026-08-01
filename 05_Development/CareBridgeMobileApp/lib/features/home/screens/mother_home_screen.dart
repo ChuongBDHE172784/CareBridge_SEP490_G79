@@ -185,50 +185,60 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
-      color: _primaryContainer,
-      onRefresh: _load,
-      child: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(child: _buildTopBar()),
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                if (widget.recoveryNotice != null) ...[
-                  _buildContinuationRecoveryNotice(),
-                  const SizedBox(height: 16),
-                ],
-                _buildGreeting(),
-                const SizedBox(height: 16),
-                _buildEmergencyMapButton(),
-                const SizedBox(height: 24),
-                _buildDiscoverSection(),
-                const SizedBox(height: 24),
-                if (_loading)
-                  const Center(
-                    child: CircularProgressIndicator(
-                      key: Key('mother-home-dashboard-loading'),
-                      color: _primaryContainer,
-                    ),
-                  )
-                else ...[
-                  _buildJourneyCard(),
-                  const SizedBox(height: 16),
-                  _buildAlertCard(),
-                  const SizedBox(height: 24),
-                  _buildQuickActions(),
-                  const SizedBox(height: 24),
-                ],
-                _buildTasksSection(),
-                const SizedBox(height: 24),
-              ]),
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: RefreshIndicator(
+            color: _primaryContainer,
+            onRefresh: _load,
+            child: CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(child: _buildTopBar()),
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      if (widget.recoveryNotice != null) ...[
+                        _buildContinuationRecoveryNotice(),
+                        const SizedBox(height: 16),
+                      ],
+                      _buildGreeting(),
+                      const SizedBox(height: 24),
+                      _buildDiscoverSection(),
+                      const SizedBox(height: 24),
+                      if (_loading)
+                        const Center(
+                          child: CircularProgressIndicator(
+                            key: Key('mother-home-dashboard-loading'),
+                            color: _primaryContainer,
+                          ),
+                        )
+                      else ...[
+                        _buildJourneyCard(),
+                        const SizedBox(height: 16),
+                        _buildAlertCard(),
+                        const SizedBox(height: 24),
+                        _buildQuickActions(),
+                        const SizedBox(height: 24),
+                      ],
+                      _buildTasksSection(),
+                      const SizedBox(height: 24),
+                    ]),
+                  ),
+                ),
+                if (!_loading)
+                  SliverToBoxAdapter(child: _buildContentSection()),
+                const SliverToBoxAdapter(child: SizedBox(height: 104)),
+              ],
             ),
           ),
-          if (!_loading) SliverToBoxAdapter(child: _buildContentSection()),
-          const SliverToBoxAdapter(child: SizedBox(height: 24)),
-        ],
-      ),
+        ),
+        Positioned(
+          right: 24,
+          bottom: 24 + MediaQuery.viewPaddingOf(context).bottom,
+          child: _buildEmergencyMapFab(),
+        ),
+      ],
     );
   }
 
@@ -373,34 +383,20 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
     );
   }
 
-  Widget _buildEmergencyMapButton() {
+  Widget _buildEmergencyMapFab() {
     return Semantics(
       button: true,
       label: 'Tìm bệnh viện gần đây bằng TrackAsia Map',
-      child: SizedBox(
-        width: double.infinity,
-        child: FilledButton.icon(
-          key: const Key('mother-emergency-map-button'),
-          onPressed: () =>
-              context.push('/emergency/map?mode=manual&stage=PREGNANCY'),
-          style: FilledButton.styleFrom(
-            backgroundColor: _error,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-          ),
-          icon: const Icon(Icons.local_hospital_outlined),
-          label: const Text(
-            'Tìm bệnh viện gần đây',
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
+      child: FloatingActionButton(
+        key: const Key('mother-emergency-map-fab'),
+        heroTag: 'mother-emergency-map-fab',
+        tooltip: 'Tìm bệnh viện gần đây',
+        onPressed: () =>
+            context.push('/emergency/map?mode=manual&stage=PREGNANCY'),
+        backgroundColor: _error,
+        foregroundColor: Colors.white,
+        shape: const CircleBorder(),
+        child: const Icon(Icons.local_hospital_outlined),
       ),
     );
   }

@@ -339,7 +339,19 @@ void main() {
 
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('mother-emergency-map-button')));
+    final fabFinder = find.byKey(const Key('mother-emergency-map-fab'));
+    expect(fabFinder, findsOneWidget);
+    expect(
+      tester.widget<FloatingActionButton>(fabFinder).shape,
+      isA<CircleBorder>(),
+    );
+    final positioned = tester.widget<Positioned>(
+      find.ancestor(of: fabFinder, matching: find.byType(Positioned)),
+    );
+    expect(positioned.right, 24);
+    expect(positioned.bottom, 24);
+
+    await tester.tap(fabFinder);
     await tester.pumpAndSettle();
 
     expect(openedUri?.path, '/emergency/map');
