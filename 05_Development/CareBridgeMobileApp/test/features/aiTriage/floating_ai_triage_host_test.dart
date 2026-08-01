@@ -1,4 +1,5 @@
 import 'package:untitled/features/aiTriage/widgets/floating_ai_triage_host.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -158,5 +159,37 @@ void main() {
     final viewport = tester.view.physicalSize / tester.view.devicePixelRatio;
     expect(rect.right, lessThanOrEqualTo(viewport.width));
     expect(rect.bottom, lessThanOrEqualTo(viewport.height));
+  });
+
+  testWidgets('production builder placement stays valid on web hover', (
+    tester,
+  ) async {
+    final authChanges = ValueNotifier(0);
+    final navigationChanges = ValueNotifier(0);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        builder: (context, child) => FloatingAiTriageHost(
+          authListenable: authChanges,
+          navigationListenable: navigationChanges,
+          isAuthenticated: () => true,
+          currentRole: () => 'MOTHER',
+          currentPath: () => '/mother-home',
+          onOpen: () {},
+          child: child!,
+        ),
+        home: const Scaffold(body: Text('Nội dung ứng dụng')),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final robot = find.byKey(const Key('floating-ai-triage-robot'));
+    expect(robot, findsOneWidget);
+    await tester.sendEventToBinding(
+      PointerHoverEvent(position: tester.getCenter(robot)),
+    );
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(tester.takeException(), isNull);
   });
 }
