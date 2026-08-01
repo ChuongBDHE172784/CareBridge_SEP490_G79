@@ -341,10 +341,11 @@ void main() {
     await tester.pumpAndSettle();
     final fabFinder = find.byKey(const Key('mother-emergency-map-fab'));
     expect(fabFinder, findsOneWidget);
-    expect(
-      tester.widget<FloatingActionButton>(fabFinder).shape,
-      isA<CircleBorder>(),
+    expect(tester.getSize(fabFinder), const Size.square(64));
+    final fabMaterial = tester.widget<Material>(
+      find.descendant(of: fabFinder, matching: find.byType(Material)),
     );
+    expect(fabMaterial.shape, isA<CircleBorder>());
     final scaffold = tester.widget<Scaffold>(
       find.ancestor(of: fabFinder, matching: find.byType(Scaffold)).first,
     );
