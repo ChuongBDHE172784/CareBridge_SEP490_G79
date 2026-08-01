@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './ChatPanel.css';
 import { useAuthStore } from '../../../shared/auth/authStore';
 import { conversationSignalHub } from '../../../shared/integrations/firebaseRealtime/conversationSignalHub';
@@ -27,6 +28,7 @@ function describeCall(item: TimelineItem): string {
 }
 
 export default function ChatPanel({ conversationId }: ChatPanelProps) {
+  const navigate = useNavigate();
   const currentUserId = useAuthStore((state) => state.user?.id);
   const { initiate } = useDirectCall();
   const [items, setItems] = useState<TimelineItem[]>([]);
@@ -37,6 +39,8 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
   const [draft, setDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [hasMoreOlder, setHasMoreOlder] = useState(false);
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const nextCursorRef = useRef<string | null>(null);
   const previousCursorRef = useRef<string | null>(null);
@@ -199,6 +203,10 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
     await sendWithClientId(item.clientMessageId, item.messageBody);
   };
 
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [items]);
+
   const handleCall = async (callType: 'VOICE' | 'VIDEO') => {
     try {
       await initiate(conversationId, callType);
@@ -207,69 +215,172 @@ export default function ChatPanel({ conversationId }: ChatPanelProps) {
     }
   };
 
-  if (loading) return <div className="chat-panel-loading">Đang tải...</div>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64 text-on-surface-variant text-sm gap-2">
+        <span className="material-symbols-outlined animate-spin text-primary text-xl">progress_activity</span>
+        Đang tải cuộc trò chuyện...
+      </div>
+    );
+  }
 
   return (
-    <div className="chat-panel">
-      <div className="chat-panel-toolbar">
-        <button disabled={!expertAvailable} onClick={() => handleCall('VOICE')}>
-          Gọi thoại
-        </button>
-        <button disabled={!expertAvailable} onClick={() => handleCall('VIDEO')}>
-          Gọi video
-        </button>
+    <div className="flex flex-col space-y-5">
+      {/* Top Header Bar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-outline-variant/60">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate(-1)}
+            className="flex items-center justify-center w-10 h-10 rounded-full border border-outline-variant bg-surface text-on-surface hover:bg-surface-container-low transition-colors shrink-0 cursor-pointer shadow-sm"
+            title="Quay lại"
+          >
+            <span className="material-symbols-outlined text-xl">arrow_back</span>
+          </button>
+          
+          <div className="w-11 h-11 rounded-full bg-primary-container text-primary flex items-center justify-center font-bold text-base shrink-0 shadow-sm">
+            M
+          </div>
+
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg font-bold text-on-surface m-0 leading-tight">
+                Tư vấn Mẹ bầu CareBridge
+              </h1>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold border bg-emerald-50 text-emerald-700 border-emerald-300">
+                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                Trực tuyến
+              </span>
+            </div>
+            <p className="text-xs text-on-surface-variant mt-0.5 m-0">
+              Mã phòng chat: <span className="font-mono text-outline">{conversationId.slice(0, 8)}...</span>
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2.5 self-start md:self-auto">
+          <button
+            disabled={!expertAvailable}
+            onClick={() => handleCall('VOICE')}
+            className="flex items-center gap-2 py-2.5 px-5 rounded-full border border-outline-variant bg-surface text-primary text-[13px] font-semibold cursor-pointer hover:bg-surface-container-low disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
+          >
+            <span className="material-symbols-outlined text-lg">call</span>
+            Gọi thoại
+          </button>
+          <button
+            disabled={!expertAvailable}
+            onClick={() => handleCall('VIDEO')}
+            className="flex items-center gap-2 py-2.5 px-5 rounded-full bg-primary text-on-primary border-0 text-[13px] font-semibold cursor-pointer hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md"
+          >
+            <span className="material-symbols-outlined text-lg">videocam</span>
+            Gọi video
+          </button>
+        </div>
       </div>
 
-      {!expertAvailable && (
-        <div className="chat-panel-banner">
-          Chuyên gia hiện không khả dụng. Bạn vẫn có thể xem lại lịch sử trò chuyện.
-        </div>
-      )}
-      {error && <div className="chat-panel-error">{error}</div>}
-
-      <div className="chat-panel-messages">
-        {hasMoreOlder && (
-          <button disabled={loadingOlder} onClick={loadOlder}>
-            {loadingOlder ? 'Đang tải...' : 'Tải thêm lịch sử'}
-          </button>
+      {/* Main Chat Box Container */}
+      <div className="bg-surface rounded-2xl shadow-md border border-outline-variant/60 flex flex-col h-[calc(100vh-220px)] overflow-hidden">
+        {!expertAvailable && (
+          <div className="bg-amber-50 border-b border-amber-200 text-amber-900 px-4 py-3 text-xs flex items-center gap-2 shrink-0 font-medium">
+            <span className="material-symbols-outlined text-lg text-amber-700">warning</span>
+            Chuyên gia hiện không khả dụng. Bạn vẫn có thể xem lại lịch sử trò chuyện.
+          </div>
         )}
-        {items.map((item) => {
-          if (item.kind === 'CALL_EVENT') {
+
+        {error && (
+          <div className="bg-rose-50 border-b border-rose-200 text-rose-800 px-4 py-3 text-xs flex items-center justify-between shrink-0 font-medium">
+            <span>{error}</span>
+            <button onClick={() => setError(null)} className="text-rose-600 hover:underline">Đóng</button>
+          </div>
+        )}
+
+        {/* Timeline Items list */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-surface-container-low/30">
+          {hasMoreOlder && (
+            <div className="text-center my-2">
+              <button
+                disabled={loadingOlder}
+                onClick={loadOlder}
+                className="py-1.5 px-4 rounded-full border border-outline-variant bg-surface text-xs font-semibold text-primary hover:bg-surface-container-low transition-colors shadow-sm"
+              >
+                {loadingOlder ? 'Đang tải...' : 'Tải thêm lịch sử cũ hơn'}
+              </button>
+            </div>
+          )}
+
+          {items.map((item) => {
+            if (item.kind === 'CALL_EVENT') {
+              return (
+                <div key={`call-${item.callId}`} className="flex justify-center my-3">
+                  <span className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-medium bg-surface-container-highest/80 text-on-surface-variant border border-outline-variant/50 shadow-xs">
+                    <span className="material-symbols-outlined text-sm">phone_in_talk</span>
+                    {describeCall(item)}
+                  </span>
+                </div>
+              );
+            }
+
+            const isOwn = item.senderUserId === currentUserId;
+            const key = item.messageId ?? item.clientMessageId;
+
             return (
-              <div key={`call-${item.callId}`} className="chat-panel-call-event">
-                {describeCall(item)}
+              <div key={key} className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'} space-y-1`}>
+                <div className={`flex items-end gap-2 max-w-[75%] ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}>
+                  {!isOwn && (
+                    <div className="w-8 h-8 rounded-full bg-primary-container text-primary flex items-center justify-center text-xs font-bold shrink-0 mb-0.5 shadow-xs">
+                      M
+                    </div>
+                  )}
+                  <div
+                    className={`p-3.5 rounded-2xl text-sm leading-relaxed shadow-sm ${
+                      isOwn
+                        ? 'bg-primary text-on-primary rounded-tr-xs'
+                        : 'bg-surface border border-outline-variant/60 text-on-surface rounded-tl-xs'
+                    }`}
+                  >
+                    {item.messageBody}
+                  </div>
+                </div>
+
+                {isOwn && item.sendStatus === 'sending' && (
+                  <span className="text-[11px] text-outline px-1">Đang gửi...</span>
+                )}
+                {isOwn && item.sendStatus === 'failed' && (
+                  <button
+                    className="text-[11px] font-bold text-rose-600 hover:underline px-1 flex items-center gap-1 cursor-pointer"
+                    onClick={() => handleRetry(item)}
+                  >
+                    <span className="material-symbols-outlined text-xs">refresh</span> Gửi lại
+                  </button>
+                )}
               </div>
             );
-          }
-          const isOwn = item.senderUserId === currentUserId;
-          const key = item.messageId ?? item.clientMessageId;
-          return (
-            <div key={key} className={`chat-panel-message ${isOwn ? 'own' : 'other'}`}>
-              <div className="chat-panel-message-bubble">{item.messageBody}</div>
-              {item.sendStatus === 'sending' && <span className="chat-panel-status">Đang gửi...</span>}
-              {item.sendStatus === 'failed' && (
-                <button className="chat-panel-retry" onClick={() => handleRetry(item)}>
-                  Gửi lại
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {expertAvailable && (
-        <div className="chat-panel-input">
-          <input
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="Nhập tin nhắn..."
-          />
-          <button disabled={sending} onClick={handleSend}>
-            Gửi
-          </button>
+          })}
+          <div ref={messagesEndRef} />
         </div>
-      )}
+
+        {/* Input Bar */}
+        {expertAvailable && (
+          <div className="p-4 bg-surface border-t border-outline-variant/60 flex items-center gap-3 shrink-0">
+            <div className="relative flex-1">
+              <input
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+                placeholder="Nhập tin nhắn tư vấn cho mẹ bầu..."
+                className="w-full py-3 px-5 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-sans"
+              />
+            </div>
+            <button
+              disabled={sending || !draft.trim()}
+              onClick={handleSend}
+              className="w-11 h-11 rounded-full bg-primary text-on-primary flex items-center justify-center hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition-all shrink-0 cursor-pointer shadow-md"
+              title="Gửi tin nhắn"
+            >
+              <span className="material-symbols-outlined text-xl">send</span>
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
