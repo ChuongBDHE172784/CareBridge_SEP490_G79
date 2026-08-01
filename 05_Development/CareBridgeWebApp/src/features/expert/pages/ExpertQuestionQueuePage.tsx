@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import apiClient from '../../../shared/api/apiClient';
 
-// ── Types from backend CommunityQuestionSummaryResponse ────────────────────
 interface CommunityQuestion {
   id: string;
   title: string;
@@ -13,20 +12,16 @@ interface CommunityQuestion {
   createdAt: string;
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────
 function timeAgo(iso: string): string {
+  if (!iso) return '—';
   const diff = Date.now() - new Date(iso).getTime();
-  const h = Math.floor(diff / 3_600_000);
-  if (h < 1) return 'Vừa xong';
-  if (h < 24) return `${h} giờ trước`;
-  return `${Math.floor(h / 24)} ngày trước`;
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins} phút trước`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} giờ trước`;
+  const days = Math.floor(hours / 24);
+  return `${days} ngày trước`;
 }
-
-const URGENCY_CLS: Record<string, string> = {
-  HIGH: 'bg-red-100 text-red-700',
-  NORMAL: 'bg-amber-100 text-amber-700',
-  LOW: 'bg-green-100 text-green-700',
-};
 
 export default function ExpertQuestionQueuePage() {
   const [questions, setQuestions] = useState<CommunityQuestion[]>([]);
@@ -43,6 +38,7 @@ export default function ExpertQuestionQueuePage() {
   const fetchQuestions = useCallback(async (p: number) => {
     try {
       setLoading(true);
+      setError(null);
       const params: Record<string, string> = { size: '20', page: String(p) };
       if (keyword.trim()) params.keyword = keyword.trim();
       if (filterUrgent) params.urgency = 'HIGH';
@@ -53,9 +49,7 @@ export default function ExpertQuestionQueuePage() {
       setHasMore(content.length >= 20);
       setPage(p);
     } catch (e: unknown) {
-      setError(
-        e instanceof Error ? e.message : 'Không thể tải danh sách câu hỏi',
-      );
+      setError(e instanceof Error ? e.message : 'Không thể tải danh sách câu hỏi cộng đồng');
     } finally {
       setLoading(false);
     }
@@ -63,7 +57,7 @@ export default function ExpertQuestionQueuePage() {
 
   useEffect(() => {
     fetchQuestions(0);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fetchQuestions]);
 
   const onSearch = () => fetchQuestions(0);
   const selected = questions.find((q) => q.id === selectedId);
@@ -72,210 +66,252 @@ export default function ExpertQuestionQueuePage() {
     if (!answerText.trim() || !selectedId || submitting) return;
     setSubmitting(true);
     try {
-      await apiClient.post(
-        `/api/v1/community/questions/${selectedId}/answers`,
-        { body: answerText.trim(), isPersonalExperience: false },
-      );
+      await apiClient.post(`/api/v1/community/questions/${selectedId}/answers`, {
+        body: answerText.trim(),
+        isPersonalExperience: false,
+      });
       setAnswerText('');
       setSelectedId(null);
       setQuestions((prev) =>
         prev.map((q) =>
-          q.id === selectedId ? { ...q, answerCount: q.answerCount + 1, hasExpertAnswer: true } : q,
-        ),
+          q.id === selectedId ? { ...q, answerCount: q.answerCount + 1, hasExpertAnswer: true } : q
+        )
       );
     } catch {
-      alert('Gửi câu trả lời thất bại');
+      alert('Gửi câu trả lời thất bại. Vui lòng thử lại.');
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)]">
-      {/* ── Queue list pane ───────────────────────────────────────────── */}
+    <div className="flex h-[calc(100vh-64px)] p-6 font-sans gap-6 overflow-hidden">
+      {/* Question Queue List Pane */}
       <div
-        className={`flex flex-col border-r border-outline-variant/50 bg-surface ${selectedId ? 'w-1/2' : 'w-full'}`}>
-        {/* Toolbar */}
-        <div className="p-4 pb-3 space-y-3">
-          <h2 className="text-xl font-bold text-on-surface">Hàng đợi câu hỏi</h2>
+        className={`flex flex-col rounded-2xl bg-surface border border-outline-variant/70 shadow-md overflow-hidden transition-all duration-300 ${
+          selectedId ? 'w-1/2' : 'w-full'
+        }`}
+      >
+        {/* Header Toolbar */}
+        <div className="p-5 pb-3 border-b border-surface-container-highest space-y-3 bg-surface">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-xl font-bold text-on-surface m-0 flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary text-2xl">forum</span>
+                Hàng đợi câu hỏi cộng đồng
+              </h2>
+              <p className="text-xs text-outline mt-0.5">
+                Các câu hỏi sức khỏe mẹ &amp; bé chưa có phản hồi chuyên môn
+              </p>
+            </div>
+          </div>
+
           <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Tìm kiếm câu hỏi…"
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && onSearch()}
-              className="flex-1 rounded-full border border-outline-variant bg-surface-container-lowest px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-            />
+            <div className="relative flex-1">
+              <span className="material-symbols-outlined text-outline absolute left-3 top-1/2 -translate-y-1/2 text-lg">
+                search
+              </span>
+              <input
+                type="text"
+                placeholder="Tìm kiếm từ khóa câu hỏi..."
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && onSearch()}
+                className="w-full py-2 pr-3 pl-9 rounded-full border border-outline-variant bg-surface text-xs text-on-surface outline-none focus:border-primary font-sans"
+              />
+            </div>
             <button
-              onClick={() => { setFilterUrgent((v) => !v); fetchQuestions(0); }}
-              className={`rounded-full px-4 py-2 text-sm font-medium border transition-colors ${
+              onClick={() => {
+                setFilterUrgent((v) => !v);
+                fetchQuestions(0);
+              }}
+              className={`py-2 px-4 rounded-full text-xs font-semibold cursor-pointer whitespace-nowrap transition-colors flex items-center gap-1 ${
                 filterUrgent
-                  ? 'bg-primary text-white border-primary'
-                  : 'bg-surface text-on-surface-variant border-outline-variant hover:bg-surface-container-low'
+                  ? 'border-2 border-primary bg-surface-container-low text-primary'
+                  : 'border border-outline-variant bg-transparent text-on-surface-variant'
               }`}
             >
+              <span className="material-symbols-outlined text-base">priority_high</span>
               Khẩn cấp
             </button>
           </div>
         </div>
 
-        {/* Question list */}
-        <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3">
+        {/* List Content */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-3">
           {loading && questions.length === 0 && (
-            <div className="flex flex-col items-center gap-3 py-20">
-              <span className="material-symbols-outlined animate-spin text-[36px] text-primary">
-                progress_activity
-              </span>
-              <p className="text-sm text-on-surface-variant">Đang tải…</p>
+            <div className="py-20 text-center text-outline flex flex-col items-center gap-2">
+              <span className="material-symbols-outlined animate-spin text-3xl text-primary">progress_activity</span>
+              <span>Đang tải danh sách câu hỏi...</span>
             </div>
           )}
+
           {error && (
-            <div className="p-4 rounded-2xl bg-error-container text-on-error-container text-sm">
-              {error}
-              <button
-                onClick={() => fetchQuestions(0)}
-                className="ml-3 underline font-semibold text-on-error"
-              >
+            <div className="p-4 rounded-2xl bg-error-container text-error text-xs flex justify-between items-center">
+              <span>{error}</span>
+              <button onClick={() => fetchQuestions(0)} className="underline font-bold cursor-pointer">
                 Thử lại
               </button>
             </div>
           )}
+
           {questions.map((q) => {
             const active = q.id === selectedId;
-            const urgencyCls = URGENCY_CLS[q.urgency] ?? 'bg-gray-100 text-gray-600';
+            const isHigh = q.urgency === 'HIGH';
             return (
-              <button
+              <div
                 key={q.id}
                 onClick={() => setSelectedId(q.id)}
-                className={`w-full rounded-2xl p-4 text-left border transition-shadow ${
+                className={`p-4 rounded-2xl border cursor-pointer transition-all ${
                   active
-                    ? 'border-primary bg-primary-container/30 shadow-md'
-                    : 'border-outline-variant/60 bg-surface hover:border-primary/30 hover:shadow-sm'
+                    ? 'border-2 border-primary bg-surface-container-low shadow-md'
+                    : 'border-outline-variant/60 bg-surface hover:border-primary/40 hover:shadow-sm'
                 }`}
               >
-                <div className="flex items-start gap-3">
+                <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-semibold text-on-surface leading-snug line-clamp-2">
+                    <h3 className="text-sm font-bold text-on-surface leading-snug line-clamp-2 m-0">
                       {q.title}
                     </h3>
-                    <div className="flex flex-wrap gap-2 mt-2">
+
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
                       {q.topicName && (
-                        <span className="rounded-full px-2 py-0.5 bg-surface-container-low text-xs text-on-surface-variant">
+                        <span className="py-0.5 px-2.5 rounded-full bg-surface-container-low text-primary text-[11px] font-semibold">
                           {q.topicName}
                         </span>
                       )}
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${urgencyCls}`}>
-                        {q.urgency}
+                      <span
+                        className={`py-0.5 px-2.5 rounded-full text-[11px] font-semibold ${
+                          isHigh ? 'bg-error-container text-error' : 'bg-[#FFF3E0] text-[#E65100]'
+                        }`}
+                      >
+                        {isHigh ? 'Khẩn cấp' : 'Thường'}
                       </span>
                     </div>
-                    <div className="flex items-center gap-3 mt-2 text-xs text-on-surface-variant">
-                      <span>💬 {q.answerCount} trả lời</span>
-                      <span>{timeAgo(q.createdAt)}</span>
+
+                    <div className="flex items-center gap-3 mt-2 text-[11px] text-outline">
+                      <span className="flex items-center gap-1">
+                        <span className="material-symbols-outlined text-xs">chat_bubble</span>
+                        {q.answerCount} trả lời
+                      </span>
+                      <span>• {timeAgo(q.createdAt)}</span>
                       {q.hasExpertAnswer && (
-                        <span className="text-primary font-semibold">✓ Đã có chuyên gia</span>
+                        <span className="text-[#137333] font-semibold flex items-center gap-0.5">
+                          <span className="material-symbols-outlined text-xs">verified</span>
+                          Đã có bác sĩ
+                        </span>
                       )}
                     </div>
                   </div>
+                  <span className="material-symbols-outlined text-outline text-lg">chevron_right</span>
                 </div>
-              </button>
+              </div>
             );
           })}
+
           {hasMore && !loading && (
             <button
               onClick={() => fetchQuestions(page + 1)}
-              className="w-full rounded-full py-2 text-sm font-medium text-primary hover:bg-surface-container-low transition-colors"
+              className="w-full py-2.5 text-xs font-semibold text-primary hover:bg-surface-container-low rounded-xl transition-colors cursor-pointer"
             >
-              Xem thêm câu hỏi…
+              Xem thêm câu hỏi...
             </button>
           )}
+
           {questions.length === 0 && !loading && !error && (
-            <div className="py-16 text-center text-on-surface-variant">
-              <span className="material-symbols-outlined text-[48px] block mb-3 opacity-40">
-                forum
-              </span>
-              <p className="text-base font-medium">Không có câu hỏi chờ</p>
-              <p className="text-sm mt-1">Tất cả đã có câu trả lời chuyên gia.</p>
+            <div className="py-16 text-center text-outline">
+              <span className="material-symbols-outlined text-4xl block mb-2 opacity-40">task_alt</span>
+              <p className="text-sm font-semibold">Không có câu hỏi chờ</p>
+              <p className="text-xs mt-1">Tất cả câu hỏi đã được giải đáp.</p>
             </div>
           )}
         </div>
       </div>
 
-      {/* ── Answer editor pane ─────────────────────────────────────────── */}
-      {selected && (
-        <div className="w-1/2 flex flex-col bg-surface-container-lowest">
+      {/* Answer Editor Pane */}
+      {selected ? (
+        <div className="w-1/2 flex flex-col rounded-2xl bg-surface border border-outline-variant/70 shadow-md overflow-hidden">
           {/* Question detail header */}
-          <div className="p-5 border-b border-outline-variant/50 bg-surface">
+          <div className="p-5 border-b border-surface-container-highest bg-surface">
             <div className="flex items-start justify-between gap-4">
-              <h3 className="text-base font-semibold text-on-surface leading-snug">
+              <h3 className="text-base font-bold text-on-surface leading-snug m-0">
                 {selected.title}
               </h3>
               <button
                 onClick={() => setSelectedId(null)}
-                className="text-on-surface-variant hover:text-on-surface text-xl leading-none"
+                className="w-7 h-7 rounded-full border border-outline-variant flex items-center justify-center text-outline hover:text-on-surface shrink-0 cursor-pointer"
               >
-                ×
+                <span className="material-symbols-outlined text-base">close</span>
               </button>
             </div>
             <div className="flex flex-wrap gap-2 mt-2">
               {selected.topicName && (
-                <span className="rounded-full px-2 py-0.5 bg-primary-container/40 text-xs text-primary font-medium">
+                <span className="py-0.5 px-3 rounded-full bg-primary-container text-primary text-xs font-semibold">
                   {selected.topicName}
                 </span>
               )}
-              <span className="rounded-full px-2 py-0.5 bg-surface-container-low text-xs text-on-surface-variant">
+              <span className="py-0.5 px-3 rounded-full bg-surface-container-low text-on-surface-variant text-xs font-medium">
                 Giai đoạn: {selected.stage}
               </span>
               {selected.hasExpertAnswer && (
-                <span className="rounded-full px-2 py-0.5 bg-[#e8f5e9] text-xs text-[#2e7d32] font-bold">
-                  ✓ Đã có câu trả lời chuyên gia
+                <span className="py-0.5 px-3 rounded-full bg-[#E6F4EA] text-[#137333] text-xs font-bold flex items-center gap-1">
+                  <span className="material-symbols-outlined text-xs">verified</span>
+                  Đã có tư vấn chuyên gia
                 </span>
               )}
             </div>
           </div>
 
-          {/* Expert badge notice */}
-          <div className="mx-5 mt-4 rounded-2xl border border-primary-container/50 bg-[#fff1ec] p-4">
+          {/* Expert Badge Notice */}
+          <div className="mx-5 mt-4 rounded-2xl border border-primary/20 bg-primary-container/20 p-4">
             <div className="flex items-start gap-3">
-              <span className="material-symbols-outlined text-primary text-[20px] mt-0.5">
-                verified
-              </span>
-              <p className="text-xs text-on-surface-variant leading-relaxed">
-                Câu trả lời của bạn sẽ được gắn nhãn <strong>Chuyên gia đã xác thực</strong>.
-                Vui lòng đảm bảo nội dung mang tính tham khảo — không chẩn đoán hay kê đơn.
+              <span className="material-symbols-outlined text-primary text-xl mt-0.5">verified</span>
+              <p className="text-xs text-on-surface-variant leading-relaxed m-0">
+                Câu trả lời của bạn sẽ được hiển thị kèm huy hiệu <strong>Chuyên gia Y tế CareBridge</strong>.
+                Vui lòng đưa ra tư vấn khoa học, chính xác — không đưa ra kê đơn thuốc trực tiếp.
               </p>
             </div>
           </div>
 
-          {/* Answer editor */}
-          <div className="flex-1 p-5">
-            <label className="block text-sm font-semibold text-on-surface mb-2">
-              Câu trả lời của bạn
+          {/* Answer Editor Textarea */}
+          <div className="flex-1 p-5 flex flex-col">
+            <label className="block text-xs font-semibold text-outline uppercase tracking-wider mb-2">
+              Nội dung câu trả lời chuyên gia
             </label>
             <textarea
               rows={8}
               value={answerText}
               onChange={(e) => setAnswerText(e.target.value)}
-              placeholder="Viết câu trả lời chuyên gia của bạn…"
-              className="w-full rounded-2xl border border-outline-variant bg-surface p-4 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+              placeholder="Viết câu trả lời tư vấn chuyên môn chi tiết cho mẹ bầu..."
+              className="flex-1 w-full rounded-2xl border border-outline-variant bg-surface p-4 text-sm text-on-surface leading-relaxed outline-none focus:border-primary font-sans resize-none"
             />
-            <p className="mt-1 text-right text-xs text-on-surface-variant">
+            <p className="mt-1.5 text-right text-xs text-outline m-0">
               {answerText.length} / 2 000 ký tự
             </p>
           </div>
 
-          {/* Submit bar */}
-          <div className="p-4 border-t border-outline-variant/50 bg-surface">
+          {/* Submit Bar */}
+          <div className="p-4 border-t border-surface-container-highest bg-surface flex justify-end">
             <button
               onClick={postAnswer}
               disabled={!answerText.trim() || submitting}
-              className="w-full h-12 rounded-full bg-primary text-white font-semibold text-base hover:brightness-110 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center justify-center gap-2 py-3 px-8 rounded-full bg-primary text-on-primary font-semibold text-sm hover:brightness-110 disabled:opacity-50 cursor-pointer"
             >
-              {submitting ? 'Đang gửi…' : 'Gửi câu trả lời'}
+              <span className="material-symbols-outlined text-lg">send</span>
+              {submitting ? 'Đang gửi...' : 'Gửi câu trả lời'}
             </button>
           </div>
+        </div>
+      ) : (
+        <div className="w-1/2 hidden md:flex flex-col items-center justify-center rounded-2xl bg-surface border border-outline-variant/70 shadow-md p-8 text-center text-outline">
+          <span className="material-symbols-outlined text-5xl block mb-2 opacity-30">forum</span>
+          <p className="text-base font-bold text-on-surface mb-1">Chọn một câu hỏi để trả lời</p>
+          <p className="text-xs text-outline max-w-xs">
+            Nhấp vào câu hỏi trong hàng đợi bên trái để xem thông tin chi tiết và viết phản hồi chuyên môn.
+          </p>
         </div>
       )}
     </div>
   );
 }
+
