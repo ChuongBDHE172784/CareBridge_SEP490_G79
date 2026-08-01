@@ -17,7 +17,7 @@ enum TodayTaskStatus {
 
 enum TodayTimeBucket { overdue, today, upcoming, unscheduled, unknown }
 
-enum TodayTaskAction { complete, skip }
+enum TodayTaskAction { complete, skip, reopen }
 
 enum TodayTaskSkipReason { notApplicable, userChoice, lifecycleChanged }
 
@@ -56,10 +56,15 @@ extension TodayTaskActionApi on TodayTaskAction {
       switch (value?.toUpperCase()) {
         'COMPLETE' => TodayTaskAction.complete,
         'SKIP' => TodayTaskAction.skip,
+        'REOPEN' => TodayTaskAction.reopen,
         _ => null,
       };
 
-  String get apiValue => this == TodayTaskAction.complete ? 'COMPLETE' : 'SKIP';
+  String get apiValue => switch (this) {
+    TodayTaskAction.complete => 'COMPLETE',
+    TodayTaskAction.skip => 'SKIP',
+    TodayTaskAction.reopen => 'REOPEN',
+  };
 }
 
 extension TodayTaskSkipReasonApi on TodayTaskSkipReason {

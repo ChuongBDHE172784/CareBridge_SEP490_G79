@@ -42,13 +42,13 @@ class StatefulTodayBackend {
     if (failActions) {
       throw StateError('simulated action failure');
     }
-    completed = true;
+    completed = body['action'] == 'COMPLETE';
     return <String, dynamic>{
       'data': <String, dynamic>{
         'taskKind': 'CHECKLIST',
         'taskId': 'today-red-task',
         'action': body['action'],
-        'status': 'COMPLETED',
+        'status': completed ? 'COMPLETED' : 'PENDING',
       },
     };
   }
@@ -76,7 +76,7 @@ class StatefulTodayBackend {
       'origin': 'SYSTEM_TEMPLATE',
       'status': completed ? 'COMPLETED' : 'PENDING',
       'timeBucket': 'TODAY',
-      'allowedActions': completed ? <String>[] : <String>['COMPLETE', 'SKIP'],
+      'allowedActions': completed ? <String>['REOPEN'] : <String>['COMPLETE'],
       'dueAt': '2026-08-03T08:00:00Z',
     };
     return <String, dynamic>{

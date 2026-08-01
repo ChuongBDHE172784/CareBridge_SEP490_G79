@@ -50,7 +50,10 @@ void main() {
           snapshot.sections.today.single.taskStatus,
           TodayTaskStatus.completed,
         );
-        expect(snapshot.sections.today.single.allowedActions, isEmpty);
+        expect(
+          snapshot.sections.today.single.allowedActions,
+          contains(TodayTaskAction.reopen),
+        );
       }
       expect(backend.getCount, 3);
     },
@@ -123,6 +126,7 @@ void main() {
     expect(TodayTaskKind.careTask.apiValue, 'CARE_TASK');
     expect(TodayTaskAction.complete.apiValue, 'COMPLETE');
     expect(TodayTaskAction.skip.apiValue, 'SKIP');
+    expect(TodayTaskAction.reopen.apiValue, 'REOPEN');
     expect(TodayTaskSkipReason.notApplicable.apiValue, 'NOT_APPLICABLE');
     expect(TodayTaskSkipReason.userChoice.apiValue, 'USER_CHOICE');
     expect(TodayTaskSkipReason.lifecycleChanged.apiValue, 'LIFECYCLE_CHANGED');

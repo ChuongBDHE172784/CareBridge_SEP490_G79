@@ -26,7 +26,7 @@ void main() {
               'origin': 'SYSTEM_TEMPLATE',
               'status': 'PENDING',
               'timeBucket': 'OVERDUE',
-              'allowedActions': ['COMPLETE', 'SKIP'],
+              'allowedActions': ['COMPLETE'],
               'dueAt': '2026-08-02T08:00:00Z',
             },
           ],
@@ -43,10 +43,7 @@ void main() {
       expect(task.origin, TodayTaskOrigin.systemTemplate);
       expect(task.target, TodayTaskTarget.baby);
       expect(task.bucket, TodayTimeBucket.overdue);
-      expect(task.allowedActions, {
-        TodayTaskAction.complete,
-        TodayTaskAction.skip,
-      });
+      expect(task.allowedActions, {TodayTaskAction.complete});
       expect(task.careGroupLabel, 'Gia đình An');
       expect(task.careContextLabel, 'Bé An');
       expect(snapshot.totalCount, 1);
@@ -70,5 +67,22 @@ void main() {
     expect(task.bucket, TodayTimeBucket.unscheduled);
     expect(task.originLabel, 'My care');
     expect(task.targetLabel, 'My care');
+  });
+
+  test('parses completed checklist reopen action', () {
+    final task = TodayTask.fromJson({
+      'taskKind': 'CHECKLIST',
+      'taskId': 'completed-1',
+      'title': 'Review task',
+      'origin': 'SYSTEM_TEMPLATE',
+      'targetSubject': 'MOTHER',
+      'status': 'COMPLETED',
+      'timeBucket': 'TODAY',
+      'allowedActions': ['REOPEN'],
+    });
+
+    expect(task.isCompleted, isTrue);
+    expect(task.allowedActions, {TodayTaskAction.reopen});
+    expect(TodayTaskAction.reopen.apiValue, 'REOPEN');
   });
 }

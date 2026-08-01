@@ -4,6 +4,23 @@ import 'package:untitled/features/checklist/services/user_checklist_service.dart
 
 void main() {
   test(
+    'user-created item deletion uses canonical compatibility route',
+    () async {
+      String? capturedPath;
+      final service = UserChecklistService(
+        deleteRequest: (path) async {
+          capturedPath = path;
+          return const {};
+        },
+      );
+
+      await service.deleteItem('task-delete-29');
+
+      expect(capturedPath, '/api/v1/user-checklist-items/task-delete-29');
+    },
+  );
+
+  test(
     'user-created task sends V2 identity and explicit mother target',
     () async {
       var refreshEvents = 0;

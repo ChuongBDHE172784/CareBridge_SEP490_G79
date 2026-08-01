@@ -4,6 +4,7 @@ import 'checklist_assignment_refresh_bus.dart';
 
 typedef ChecklistPostRequest =
     Future<dynamic> Function(String path, Map<String, dynamic> body);
+typedef ChecklistDeleteRequest = Future<dynamic> Function(String path);
 
 class ChecklistTemplateAssignmentResult {
   const ChecklistTemplateAssignmentResult({
@@ -34,12 +35,21 @@ class ChecklistTemplateAssignmentResult {
 }
 
 class UserChecklistService {
-  UserChecklistService({ChecklistPostRequest? postRequest})
-    : _postRequest = postRequest ?? apiPost;
+  UserChecklistService({
+    ChecklistPostRequest? postRequest,
+    ChecklistDeleteRequest? deleteRequest,
+  }) : _postRequest = postRequest ?? apiPost,
+       _deleteRequest = deleteRequest ?? ((path) => apiDelete(path));
 
   static final UserChecklistService instance = UserChecklistService();
 
   final ChecklistPostRequest _postRequest;
+  final ChecklistDeleteRequest _deleteRequest;
+
+  Future<void> deleteItem(String itemId) async {
+    await _deleteRequest('/api/v1/user-checklist-items/$itemId');
+    ChecklistAssignmentRefreshBus.notify();
+  }
 
   Future<List<UserChecklistItem>> listItems({
     String? journeyId,

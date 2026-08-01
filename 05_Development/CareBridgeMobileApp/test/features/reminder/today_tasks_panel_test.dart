@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:untitled/core/network/api_client.dart';
+import 'package:untitled/features/checklist/services/user_checklist_service.dart';
 import 'package:untitled/features/reminder/services/today_task_service.dart';
 import 'package:untitled/features/reminder/widgets/today_tasks_panel.dart';
 
@@ -62,7 +63,7 @@ Map<String, dynamic> _task(
   'origin': 'SYSTEM_TEMPLATE',
   'status': completed ? 'COMPLETED' : 'PENDING',
   'timeBucket': bucket,
-  'allowedActions': completed ? <String>[] : ['COMPLETE', 'SKIP'],
+  'allowedActions': completed ? <String>['REOPEN'] : ['COMPLETE'],
   'dueAt': due ? '2026-08-03T08:00:00Z' : null,
 };
 
@@ -106,6 +107,51 @@ void main() {
     },
   );
 
+  testWidgets('family audience does not offer user-created deletion', (
+    tester,
+  ) async {
+    final envelope = {
+      'asOf': '2026-08-03T01:00:00Z',
+      'zoneId': 'Asia/Ho_Chi_Minh',
+      'horizonDays': 7,
+      'sections': {
+        'overdue': <Map<String, dynamic>>[],
+        'today': [
+          {
+            'taskKind': 'CHECKLIST',
+            'taskId': 'family-user-created',
+            'title': 'Family visible personal task',
+            'origin': 'USER_CREATED',
+            'targetSubject': 'MOTHER',
+            'status': 'PENDING',
+            'timeBucket': 'TODAY',
+            'allowedActions': ['COMPLETE'],
+          },
+        ],
+        'upcoming': <Map<String, dynamic>>[],
+        'unscheduled': <Map<String, dynamic>>[],
+      },
+      'counts': {'overdue': 0, 'today': 1, 'upcoming': 0, 'unscheduled': 0},
+      'correlationId': 'family-delete-hidden',
+    };
+
+    await tester.pumpWidget(
+      _wrap(
+        TodayTasksPanel(
+          service: _service(() async => {'data': envelope}),
+          audience: TodayTasksAudience.family,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Family visible personal task'), findsOneWidget);
+    expect(
+      find.byKey(const Key('delete-task-family-user-created')),
+      findsNothing,
+    );
+  });
+
   testWidgets('shows loading then accessible empty state', (tester) async {
     final pending = Completer<dynamic>();
     await tester.pumpWidget(
@@ -144,7 +190,7 @@ void main() {
               'origin': 'SYSTEM_TEMPLATE',
               'status': 'PENDING',
               'timeBucket': 'UNSCHEDULED',
-              'allowedActions': ['COMPLETE', 'SKIP'],
+              'allowedActions': ['COMPLETE'],
               'dueAt': null,
             },
             {
@@ -179,7 +225,10 @@ void main() {
 
       expect(find.text('Admin mandatory task'), findsOneWidget);
       expect(find.text('User-added task'), findsOneWidget);
-      expect(find.byIcon(Icons.radio_button_unchecked_rounded), findsNWidgets(2));
+      expect(
+        find.byIcon(Icons.radio_button_unchecked_rounded),
+        findsNWidgets(2),
+      );
     },
   );
 
@@ -270,19 +319,23 @@ void main() {
 
       final systemSection = find.byKey(const Key('today-system-tasks'));
       expect(
-        tester.getTopLeft(
-          find.descendant(
-            of: systemSection,
-            matching: find.text('Hệ thống mới hơn'),
-          ),
-        ).dy,
+        tester
+            .getTopLeft(
+              find.descendant(
+                of: systemSection,
+                matching: find.text('Hệ thống mới hơn'),
+              ),
+            )
+            .dy,
         lessThan(
-          tester.getTopLeft(
-            find.descendant(
-              of: systemSection,
-              matching: find.text('Hệ thống cũ hơn'),
-            ),
-          ).dy,
+          tester
+              .getTopLeft(
+                find.descendant(
+                  of: systemSection,
+                  matching: find.text('Hệ thống cũ hơn'),
+                ),
+              )
+              .dy,
         ),
       );
 
@@ -292,66 +345,71 @@ void main() {
 
       final userSection = find.byKey(const Key('today-user-tasks'));
       expect(
-        tester.getTopLeft(
-          find.descendant(
-            of: userSection,
-            matching: find.text('Tôi thêm có giờ'),
-          ),
-        ).dy,
+        tester
+            .getTopLeft(
+              find.descendant(
+                of: userSection,
+                matching: find.text('Tôi thêm có giờ'),
+              ),
+            )
+            .dy,
         lessThan(
-          tester.getTopLeft(
-            find.descendant(
-              of: userSection,
-              matching: find.text('Tôi thêm chưa có giờ'),
-            ),
-          ).dy,
+          tester
+              .getTopLeft(
+                find.descendant(
+                  of: userSection,
+                  matching: find.text('Tôi thêm chưa có giờ'),
+                ),
+              )
+              .dy,
         ),
       );
     },
   );
 
-  testWidgets('source layout is empty when the response only has appointments', (
-    tester,
-  ) async {
-    final envelope = {
-      'asOf': '2026-08-03T01:00:00Z',
-      'zoneId': 'Asia/Ho_Chi_Minh',
-      'horizonDays': 7,
-      'sections': {
-        'overdue': <Map<String, dynamic>>[],
-        'today': [
-          {
-            'taskKind': 'REMINDER',
-            'taskId': 'appointment-only',
-            'type': 'APPOINTMENT',
-            'title': 'Lịch khám duy nhất',
-            'origin': 'USER_CREATED',
-            'targetSubject': 'MOTHER',
-            'status': 'PENDING',
-            'timeBucket': 'TODAY',
-            'allowedActions': ['COMPLETE'],
-            'dueAt': '2026-08-03T09:00:00Z',
-          },
-        ],
-        'upcoming': <Map<String, dynamic>>[],
-        'unscheduled': <Map<String, dynamic>>[],
-      },
-      'correlationId': 'appointment-only',
-    };
+  testWidgets(
+    'source layout is empty when the response only has appointments',
+    (tester) async {
+      final envelope = {
+        'asOf': '2026-08-03T01:00:00Z',
+        'zoneId': 'Asia/Ho_Chi_Minh',
+        'horizonDays': 7,
+        'sections': {
+          'overdue': <Map<String, dynamic>>[],
+          'today': [
+            {
+              'taskKind': 'REMINDER',
+              'taskId': 'appointment-only',
+              'type': 'APPOINTMENT',
+              'title': 'Lịch khám duy nhất',
+              'origin': 'USER_CREATED',
+              'targetSubject': 'MOTHER',
+              'status': 'PENDING',
+              'timeBucket': 'TODAY',
+              'allowedActions': ['COMPLETE'],
+              'dueAt': '2026-08-03T09:00:00Z',
+            },
+          ],
+          'upcoming': <Map<String, dynamic>>[],
+          'unscheduled': <Map<String, dynamic>>[],
+        },
+        'correlationId': 'appointment-only',
+      };
 
-    await tester.pumpWidget(
-      _wrap(
-        TodayTasksPanel(
-          service: _service(() async => {'data': envelope}),
-          layout: TodayTasksLayout.sourceGroups,
+      await tester.pumpWidget(
+        _wrap(
+          TodayTasksPanel(
+            service: _service(() async => {'data': envelope}),
+            layout: TodayTasksLayout.sourceGroups,
+          ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('today-empty')), findsOneWidget);
-    expect(find.text('Lịch khám duy nhất'), findsNothing);
-  });
+      expect(find.byKey(const Key('today-empty')), findsOneWidget);
+      expect(find.text('Lịch khám duy nhất'), findsNothing);
+    },
+  );
 
   testWidgets('an older pending load cannot overwrite a newer completed load', (
     tester,
@@ -430,7 +488,7 @@ void main() {
     );
   });
 
-  testWidgets('invokes unified COMPLETE and SKIP actions', (tester) async {
+  testWidgets('invokes unified COMPLETE and REOPEN actions', (tester) async {
     final calls = <Map<String, dynamic>>[];
     var currentCompleted = false;
     final service = TodayTaskService(
@@ -441,7 +499,10 @@ void main() {
         calls.add(body);
         currentCompleted = body['action'] == 'COMPLETE';
         return {
-          'data': {...body, 'status': currentCompleted ? 'COMPLETED' : 'SKIPPED'},
+          'data': {
+            ...body,
+            'status': currentCompleted ? 'COMPLETED' : 'PENDING',
+          },
         };
       },
       clientRequestIdFactory: () => 'client-1',
@@ -455,7 +516,82 @@ void main() {
 
     await tester.tap(find.byIcon(Icons.check_circle_rounded).first);
     await tester.pumpAndSettle();
-    expect(calls.last['action'], 'SKIP');
-    expect(calls.last['reason'], 'USER_CHOICE');
+    expect(calls.last['action'], 'REOPEN');
+    expect(calls.last['reason'], isNull);
+  });
+
+  testWidgets('offers deletion only for user-created checklist tasks', (
+    tester,
+  ) async {
+    var deleted = false;
+    var getCount = 0;
+    String? deletePath;
+    final todayService = TodayTaskService(
+      getRequest: (_, {queryParams}) async {
+        getCount++;
+        return {
+          'data': {
+            'asOf': '2026-08-03T01:00:00Z',
+            'zoneId': 'Asia/Ho_Chi_Minh',
+            'horizonDays': 7,
+            'sections': {
+              'overdue': <Map<String, dynamic>>[],
+              'today': deleted
+                  ? <Map<String, dynamic>>[]
+                  : <Map<String, dynamic>>[
+                      {
+                        'taskKind': 'CHECKLIST',
+                        'taskId': 'user-delete-task',
+                        'title': 'User-added task',
+                        'origin': 'USER_CREATED',
+                        'targetSubject': 'MOTHER',
+                        'status': 'PENDING',
+                        'timeBucket': 'TODAY',
+                        'allowedActions': ['COMPLETE'],
+                      },
+                    ],
+              'upcoming': <Map<String, dynamic>>[],
+              'unscheduled': <Map<String, dynamic>>[],
+            },
+            'counts': {
+              'overdue': 0,
+              'today': deleted ? 0 : 1,
+              'upcoming': 0,
+              'unscheduled': 0,
+            },
+            'correlationId': 'delete-test',
+          },
+        };
+      },
+      postRequest: (_, body) async => {'data': body},
+    );
+    final checklistService = UserChecklistService(
+      deleteRequest: (path) async {
+        deletePath = path;
+        deleted = true;
+        return const {};
+      },
+    );
+
+    await tester.pumpWidget(
+      _wrap(
+        TodayTasksPanel(
+          service: todayService,
+          checklistService: checklistService,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('delete-task-user-delete-task')),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('delete-task-user-delete-task')));
+    await tester.pumpAndSettle();
+
+    expect(deletePath, '/api/v1/user-checklist-items/user-delete-task');
+    expect(getCount, 2);
+    expect(find.text('User-added task'), findsNothing);
   });
 }

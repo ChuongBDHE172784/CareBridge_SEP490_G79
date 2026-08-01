@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../checklist/services/user_checklist_service.dart';
 import '../models/reminder_model.dart';
 import '../models/today_task_model.dart';
 import '../services/today_task_service.dart';
@@ -31,6 +32,7 @@ class TodayTasksPanel extends StatefulWidget {
   const TodayTasksPanel({
     super.key,
     this.service,
+    this.checklistService,
     this.audience = TodayTasksAudience.mother,
     this.layout = TodayTasksLayout.timeBuckets,
     this.showHeading = true,
@@ -39,6 +41,7 @@ class TodayTasksPanel extends StatefulWidget {
   });
 
   final TodayTaskService? service;
+  final UserChecklistService? checklistService;
   final TodayTasksAudience audience;
   final TodayTasksLayout layout;
   final bool showHeading;
@@ -53,6 +56,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
   static const _text = Color(0xFF5A463F);
 
   late TodayTaskService _service;
+  late UserChecklistService _checklistService;
   TodayTasksSnapshot? _snapshot;
   TodayTasksFailure? _failure;
   bool _loading = true;
@@ -69,6 +73,8 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
   void initState() {
     super.initState();
     _service = widget.service ?? TodayTaskService.instance;
+    _checklistService =
+        widget.checklistService ?? UserChecklistService.instance;
     widget.controller?._attach(this, _load);
     _load();
   }
@@ -81,6 +87,10 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
       _snapshot = null;
       _failure = null;
       _load();
+    }
+    if (oldWidget.checklistService != widget.checklistService) {
+      _checklistService =
+          widget.checklistService ?? UserChecklistService.instance;
     }
     if (oldWidget.controller != widget.controller) {
       oldWidget.controller?._detach(this);
@@ -133,15 +143,46 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
       await _load();
       if (!mounted) return;
       setState(() {
-        _announcement = action == TodayTaskAction.complete
-            ? 'Đã hoàn tất ${task.title}'
-            : 'Đã bỏ qua ${task.title}';
+        _announcement = switch (action) {
+          TodayTaskAction.complete => 'Đã hoàn tất ${task.title}',
+          TodayTaskAction.reopen => 'Đã chuyển ${task.title} về chưa hoàn tất',
+          TodayTaskAction.skip => 'Đã bỏ qua ${task.title}',
+        };
       });
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Không thể cập nhật công việc. Vui lòng thử lại.'),
+          backgroundColor: _text,
+          behavior: SnackBarBehavior.floating,
+          shape: StadiumBorder(),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _acting.remove(task.id));
+    }
+  }
+
+  Future<void> _delete(TodayTask task) async {
+    if (_acting.contains(task.id) ||
+        !task.isChecklist ||
+        task.origin != TodayTaskOrigin.userCreated) {
+      return;
+    }
+    setState(() => _acting.add(task.id));
+    try {
+      await _checklistService.deleteItem(task.id);
+      await _load();
+      if (!mounted) return;
+      setState(() {
+        _announcement = 'Đã xoá ${task.title}';
+      });
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Không thể xoá công việc. Vui lòng thử lại.'),
           backgroundColor: _text,
           behavior: SnackBarBehavior.floating,
           shape: StadiumBorder(),
@@ -258,12 +299,15 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
                     tasks: systemTasks,
                     acting: _acting,
                     onAction: _act,
+                    onDelete: _delete,
+                    allowDelete: widget.audience == TodayTasksAudience.mother,
                     showTitle: false,
                   )
                 else
                   const _EmptyTabState(
                     icon: Icons.auto_awesome_outlined,
-                    message: 'Chưa có gợi ý nào từ lộ trình CareBridge cho hôm nay.',
+                    message:
+                        'Chưa có gợi ý nào từ lộ trình CareBridge cho hôm nay.',
                   ),
               ] else ...[
                 if (userTasks.isNotEmpty)
@@ -274,6 +318,8 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
                     tasks: userTasks,
                     acting: _acting,
                     onAction: _act,
+                    onDelete: _delete,
+                    allowDelete: widget.audience == TodayTasksAudience.mother,
                     showTitle: false,
                   )
                 else
@@ -289,6 +335,8 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
                 tasks: _snapshot!.sections.overdue,
                 acting: _acting,
                 onAction: _act,
+                onDelete: _delete,
+                allowDelete: widget.audience == TodayTasksAudience.mother,
               ),
               _Section(
                 title: 'Hôm nay',
@@ -296,6 +344,8 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
                 tasks: _snapshot!.sections.today,
                 acting: _acting,
                 onAction: _act,
+                onDelete: _delete,
+                allowDelete: widget.audience == TodayTasksAudience.mother,
               ),
               _Section(
                 title: '7 ngày tới',
@@ -303,6 +353,8 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
                 tasks: _snapshot!.sections.upcoming,
                 acting: _acting,
                 onAction: _act,
+                onDelete: _delete,
+                allowDelete: widget.audience == TodayTasksAudience.mother,
               ),
               _Section(
                 title: 'Chưa xếp lịch',
@@ -310,6 +362,8 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
                 tasks: _snapshot!.sections.unscheduled,
                 acting: _acting,
                 onAction: _act,
+                onDelete: _delete,
+                allowDelete: widget.audience == TodayTasksAudience.mother,
               ),
             ],
           ],
@@ -446,8 +500,9 @@ class _TabButton extends StatelessWidget {
                     style: TextStyle(
                       fontFamily: 'Quicksand',
                       fontSize: 13.5,
-                      fontWeight:
-                          isSelected ? FontWeight.w800 : FontWeight.w600,
+                      fontWeight: isSelected
+                          ? FontWeight.w800
+                          : FontWeight.w600,
                       color: isSelected ? textActive : textInactive,
                     ),
                   ),
@@ -486,10 +541,7 @@ class _TabButton extends StatelessWidget {
 }
 
 class _EmptyTabState extends StatelessWidget {
-  const _EmptyTabState({
-    required this.icon,
-    required this.message,
-  });
+  const _EmptyTabState({required this.icon, required this.message});
 
   final IconData icon;
   final String message;
@@ -523,11 +575,7 @@ class _EmptyTabState extends StatelessWidget {
               color: Color(0xFFFFF3EE),
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              icon,
-              size: 26,
-              color: const Color(0xFFC98C7B),
-            ),
+            child: Icon(icon, size: 26, color: const Color(0xFFC98C7B)),
           ),
           const SizedBox(height: 12),
           Text(
@@ -555,6 +603,8 @@ class _Section extends StatelessWidget {
     required this.tasks,
     required this.acting,
     required this.onAction,
+    required this.onDelete,
+    required this.allowDelete,
     this.showTitle = true,
   });
 
@@ -563,6 +613,8 @@ class _Section extends StatelessWidget {
   final List<TodayTask> tasks;
   final Set<String> acting;
   final Future<void> Function(TodayTask, TodayTaskAction) onAction;
+  final Future<void> Function(TodayTask) onDelete;
+  final bool allowDelete;
   final bool showTitle;
 
   @override
@@ -598,6 +650,8 @@ class _Section extends StatelessWidget {
                 task: task,
                 busy: acting.contains(task.id),
                 onAction: (action) => onAction(task, action),
+                onDelete: () => onDelete(task),
+                allowDelete: allowDelete,
               ),
             ),
           ),
@@ -612,15 +666,24 @@ class _TodayTaskCard extends StatelessWidget {
     required this.task,
     required this.busy,
     required this.onAction,
+    required this.onDelete,
+    required this.allowDelete,
   });
 
   final TodayTask task;
   final bool busy;
   final ValueChanged<TodayTaskAction> onAction;
+  final VoidCallback onDelete;
+  final bool allowDelete;
 
   @override
   Widget build(BuildContext context) {
     final isCompleted = task.isCompleted;
+    final tapAction = _tapAction;
+    final canDelete =
+        allowDelete &&
+        task.isChecklist &&
+        task.origin == TodayTaskOrigin.userCreated;
 
     return Semantics(
       container: true,
@@ -631,11 +694,7 @@ class _TodayTaskCard extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           key: Key('task-item-${task.id}'),
-          onTap: busy
-              ? null
-              : () => onAction(
-                    isCompleted ? TodayTaskAction.skip : TodayTaskAction.complete,
-                  ),
+          onTap: busy || tapAction == null ? null : () => onAction(tapAction!),
           borderRadius: BorderRadius.circular(20),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
@@ -733,12 +792,42 @@ class _TodayTaskCard extends StatelessWidget {
                     ],
                   ),
                 ),
+                if (canDelete)
+                  IconButton(
+                    key: Key('delete-task-${task.id}'),
+                    onPressed: busy ? null : onDelete,
+                    tooltip: 'Xoá việc',
+                    icon: const Icon(Icons.delete_outline_rounded),
+                    color: const Color(0xFFB06E62),
+                  ),
               ],
             ),
           ),
         ),
       ),
     );
+  }
+
+  TodayTaskAction? get _tapAction {
+    if (task.isChecklist) {
+      if (task.isCompleted &&
+          task.allowedActions.contains(TodayTaskAction.reopen)) {
+        return TodayTaskAction.reopen;
+      }
+      if (!task.isCompleted &&
+          task.allowedActions.contains(TodayTaskAction.complete)) {
+        return TodayTaskAction.complete;
+      }
+      return null;
+    }
+    if (task.isCompleted || task.isSkipped) return null;
+    if (task.allowedActions.contains(TodayTaskAction.complete)) {
+      return TodayTaskAction.complete;
+    }
+    if (task.allowedActions.contains(TodayTaskAction.skip)) {
+      return TodayTaskAction.skip;
+    }
+    return null;
   }
 }
 
@@ -759,9 +848,7 @@ class _InfoPill extends StatelessWidget {
     decoration: BoxDecoration(
       color: backgroundColor ?? const Color(0xFFF9F4F0),
       borderRadius: BorderRadius.circular(20),
-      border: Border.all(
-        color: const Color(0xFFEDE4DC).withValues(alpha: .7),
-      ),
+      border: Border.all(color: const Color(0xFFEDE4DC).withValues(alpha: .7)),
     ),
     child: Row(
       mainAxisSize: MainAxisSize.min,
