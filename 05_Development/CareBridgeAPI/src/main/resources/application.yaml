@@ -121,6 +121,9 @@ carebridge:
       batch-size: ${AI_MODERATION_BATCH_SIZE:3}
       review-confidence-threshold: ${AI_MODERATION_REVIEW_THRESHOLD:0.5}
       stale-processing-minutes: ${AI_MODERATION_STALE_PROCESSING_MINUTES:10}
+  trackasia:
+    api-key: ${TRACKASIA_API_KEY:}
+    maps-base-url: ${TRACKASIA_MAPS_BASE_URL:https://maps.track-asia.com}
   zego:
     app-id: ${ZEGO_APP_ID:0}
     server-secret: ${ZEGO_SERVER_SECRET:}

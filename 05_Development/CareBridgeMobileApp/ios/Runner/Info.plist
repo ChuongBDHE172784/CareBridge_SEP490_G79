@@ -36,6 +36,8 @@
 	<string>CareBridge uses motion sensors to detect possible falls after you explicitly enable safety monitoring.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>CareBridge includes your location in an emergency alert only when you explicitly consent and grant location access.</string>
+	<key>MGLMapboxMetricsEnabledSettingShownInApp</key>
+	<true/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

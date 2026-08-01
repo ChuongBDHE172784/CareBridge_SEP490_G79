@@ -52,6 +52,7 @@ class _FacilityStub extends CareFacilityService {
     required double latitude,
     required double longitude,
     int radiusMeters = 5000,
+    String type = 'hospital',
   }) async => results;
 
   @override
@@ -64,6 +65,7 @@ class _FacilityStub extends CareFacilityService {
     required double fromLongitude,
     required double toLatitude,
     required double toLongitude,
+    String transportMode = 'DRIVING',
   }) async => const CareRoute(
     distanceMeters: 1200,
     etaMinutes: 5,
@@ -85,6 +87,33 @@ Position _position() => Position(
 );
 
 void main() {
+  test('decodes TrackAsia encoded polyline without Google Maps', () {
+    final points = CareRoute.decodePolyline(
+      '_p~iF~ps|U_ulLnnqC_mqNvxq`@',
+      precision: 5,
+    );
+
+    expect(points, hasLength(3));
+    expect(points.first.latitude, closeTo(38.5, 0.00001));
+    expect(points.first.longitude, closeTo(-120.2, 0.00001));
+    expect(points.last.latitude, closeTo(43.252, 0.00001));
+    expect(points.last.longitude, closeTo(-126.453, 0.00001));
+  });
+
+  test('route contract decodes TrackAsia polyline6 geometry', () {
+    final route = CareRoute.fromJson({
+      'distanceMeters': 100,
+      'etaMinutes': 1,
+      'durationSeconds': 30,
+      'encodedPolyline': '_p~iF~ps|U_ulLnnqC_mqNvxq`@',
+      'steps': const [],
+      'transportMode': 'DRIVING',
+    });
+
+    expect(route.coordinates.first.latitude, closeTo(3.85, 0.000001));
+    expect(route.coordinates.first.longitude, closeTo(-12.02, 0.000001));
+  });
+
   test(
     'facility parser accepts canonical, nullable external, and legacy IDs',
     () {
@@ -101,8 +130,8 @@ void main() {
       });
 
       expect(external.facilityId, isNull);
-      expect(external.sourceLabel, 'Dữ liệu từ TrackAsia');
-      expect(external.verificationLabel, 'Chưa xác minh');
+      expect(external.sourceLabel, 'Nguồn TrackAsia');
+      expect(external.verificationLabel, 'Chưa được CareBridge xác minh');
       expect(legacy.facilityId, 'old-id');
     },
   );
@@ -120,7 +149,7 @@ void main() {
     expect(unknown.sourceType, 'UNKNOWN');
     expect(unknown.sourceLabel, 'Nguồn dữ liệu chưa xác định');
     expect(verified.isVerified, isTrue);
-    expect(verified.verificationLabel, 'Đã xác minh');
+    expect(verified.verificationLabel, 'Đã được CareBridge xác minh');
   });
 
   testWidgets('denied location keeps emergency call available', (tester) async {
@@ -241,10 +270,12 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('facility-0')));
+    await tester.pumpAndSettle();
 
     expect(find.text('Phòng khám gần nhất'), findsWidgets);
-    expect(find.textContaining('Dữ liệu từ TrackAsia'), findsOneWidget);
-    expect(find.textContaining('Đã xác minh'), findsOneWidget);
+    expect(find.textContaining('Nguồn TrackAsia'), findsOneWidget);
+    expect(find.textContaining('Đã được CareBridge xác minh'), findsOneWidget);
     expect(find.textContaining('ETA 5 phút'), findsOneWidget);
     expect(find.textContaining('9.0 km'), findsOneWidget);
     expect(find.byKey(const Key('facility-navigate')), findsOneWidget);

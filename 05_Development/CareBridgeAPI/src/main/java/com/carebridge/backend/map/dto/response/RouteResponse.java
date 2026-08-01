@@ -12,6 +12,9 @@ import java.util.List;
 public class RouteResponse {
     private BigDecimal distanceMeters;
     private Integer etaMinutes;
+    private Integer durationSeconds;
+    private String encodedPolyline;
     private List<RoutePoint> points;
+    private List<RouteStep> steps;
     private String transportMode;
 }

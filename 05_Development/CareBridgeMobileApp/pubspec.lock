@@ -480,6 +480,14 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  flutter_tts:
+    dependency: "direct main"
+    description:
+      name: flutter_tts
+      sha256: ce5eb209b40e95f2f4a1397116c87ab2fcdff32257d04ed7a764e75894c03775
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.2.5"
   flutter_web_plugins:
     dependency: transitive
     description: flutter
@@ -1252,6 +1260,30 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.7.11"
+  trackasia_gl:
+    dependency: "direct main"
+    description:
+      name: trackasia_gl
+      sha256: c269b0ab95cea597e1efba158fd5bb385f68d10bd78919f061a41c4cf66bd0a5
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.3"
+  trackasia_gl_platform_interface:
+    dependency: transitive
+    description:
+      name: trackasia_gl_platform_interface
+      sha256: "4eba904f15267dea74f5091dc42e58e76d35c6a275178405e8e7ff7058938acb"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.2"
+  trackasia_gl_web:
+    dependency: transitive
+    description:
+      name: trackasia_gl_web
+      sha256: "3e1840fc925ac4afef7bdbc2e865aec510a689cfad13498170327c7cdcbf118a"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.1"
   typed_data:
     dependency: transitive
     description:
