@@ -380,16 +380,29 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
     return Semantics(
       button: true,
       label: 'Tìm bệnh viện gần đây bằng TrackAsia Map',
-      child: FloatingActionButton(
+      child: SizedBox.square(
         key: const Key('mother-emergency-map-fab'),
-        heroTag: 'mother-emergency-map-fab',
-        tooltip: 'Tìm bệnh viện gần đây',
-        onPressed: () =>
-            context.push('/emergency/map?mode=manual&stage=PREGNANCY'),
-        backgroundColor: _error,
-        foregroundColor: Colors.white,
-        shape: const CircleBorder(),
-        child: const Icon(Icons.local_hospital_outlined),
+        dimension: 64,
+        child: Material(
+          color: _error,
+          elevation: 6,
+          shadowColor: const Color(0x55000000),
+          shape: const CircleBorder(),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            key: const Key('mother-emergency-map-action'),
+            customBorder: const CircleBorder(),
+            onTap: () =>
+                context.push('/emergency/map?mode=manual&stage=PREGNANCY'),
+            child: const Center(
+              child: Icon(
+                Icons.local_hospital_outlined,
+                color: Colors.white,
+                size: 30,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
