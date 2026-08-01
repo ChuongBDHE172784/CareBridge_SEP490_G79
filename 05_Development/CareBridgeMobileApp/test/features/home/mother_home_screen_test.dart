@@ -345,11 +345,13 @@ void main() {
       tester.widget<FloatingActionButton>(fabFinder).shape,
       isA<CircleBorder>(),
     );
-    final positioned = tester.widget<Positioned>(
-      find.ancestor(of: fabFinder, matching: find.byType(Positioned)),
+    final scaffold = tester.widget<Scaffold>(
+      find.ancestor(of: fabFinder, matching: find.byType(Scaffold)).first,
     );
-    expect(positioned.right, 24);
-    expect(positioned.bottom, 24);
+    expect(
+      scaffold.floatingActionButtonLocation,
+      FloatingActionButtonLocation.endFloat,
+    );
 
     await tester.tap(fabFinder);
     await tester.pumpAndSettle();

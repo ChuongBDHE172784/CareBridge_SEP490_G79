@@ -185,60 +185,53 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: RefreshIndicator(
-            color: _primaryContainer,
-            onRefresh: _load,
-            child: CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(child: _buildTopBar()),
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  sliver: SliverList(
-                    delegate: SliverChildListDelegate([
-                      if (widget.recoveryNotice != null) ...[
-                        _buildContinuationRecoveryNotice(),
-                        const SizedBox(height: 16),
-                      ],
-                      _buildGreeting(),
-                      const SizedBox(height: 24),
-                      _buildDiscoverSection(),
-                      const SizedBox(height: 24),
-                      if (_loading)
-                        const Center(
-                          child: CircularProgressIndicator(
-                            key: Key('mother-home-dashboard-loading'),
-                            color: _primaryContainer,
-                          ),
-                        )
-                      else ...[
-                        _buildJourneyCard(),
-                        const SizedBox(height: 16),
-                        _buildAlertCard(),
-                        const SizedBox(height: 24),
-                        _buildQuickActions(),
-                        const SizedBox(height: 24),
-                      ],
-                      _buildTasksSection(),
-                      const SizedBox(height: 24),
-                    ]),
-                  ),
-                ),
-                if (!_loading)
-                  SliverToBoxAdapter(child: _buildContentSection()),
-                const SliverToBoxAdapter(child: SizedBox(height: 104)),
-              ],
+    return Scaffold(
+      backgroundColor: _canvas,
+      body: RefreshIndicator(
+        color: _primaryContainer,
+        onRefresh: _load,
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(child: _buildTopBar()),
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  if (widget.recoveryNotice != null) ...[
+                    _buildContinuationRecoveryNotice(),
+                    const SizedBox(height: 16),
+                  ],
+                  _buildGreeting(),
+                  const SizedBox(height: 24),
+                  _buildDiscoverSection(),
+                  const SizedBox(height: 24),
+                  if (_loading)
+                    const Center(
+                      child: CircularProgressIndicator(
+                        key: Key('mother-home-dashboard-loading'),
+                        color: _primaryContainer,
+                      ),
+                    )
+                  else ...[
+                    _buildJourneyCard(),
+                    const SizedBox(height: 16),
+                    _buildAlertCard(),
+                    const SizedBox(height: 24),
+                    _buildQuickActions(),
+                    const SizedBox(height: 24),
+                  ],
+                  _buildTasksSection(),
+                  const SizedBox(height: 24),
+                ]),
+              ),
             ),
-          ),
+            if (!_loading) SliverToBoxAdapter(child: _buildContentSection()),
+            const SliverToBoxAdapter(child: SizedBox(height: 104)),
+          ],
         ),
-        Positioned(
-          right: 24,
-          bottom: 24 + MediaQuery.viewPaddingOf(context).bottom,
-          child: _buildEmergencyMapFab(),
-        ),
-      ],
+      ),
+      floatingActionButton: _buildEmergencyMapFab(),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 
