@@ -7,29 +7,28 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
+import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 
 @Component
 @Slf4j
 public class TrackAsiaClient {
 
-    private static final String PLACES_URL =
-            "https://maps.trackasia.vn/api/v1/search/nearby/json";
-    private static final String DIRECTIONS_URL =
-            "https://maps.trackasia.vn/api/v1/directions/driving/";
-    private static final String SEARCH_URL =
-            "https://maps.trackasia.vn/api/v1/search/search/json";
-
     private final HttpClient http;
     private final ObjectMapper mapper;
     private final String apiKey;
+    private final String mapsBaseUrl;
 
     public TrackAsiaClient(
-            @Value("${TRACKASIA_API_KEY:}") String apiKey) {
+            @Value("${carebridge.trackasia.api-key:}") String apiKey,
+            @Value("${carebridge.trackasia.maps-base-url:https://maps.track-asia.com}") String mapsBaseUrl) {
         this.apiKey = apiKey;
+        this.mapsBaseUrl = mapsBaseUrl.replaceAll("/+$", "");
         this.http = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(10))
                 .build();
@@ -48,15 +47,13 @@ public class TrackAsiaClient {
             throw new IllegalStateException("TRACKASIA_API_KEY not configured");
         }
 
-        String query = String.format(
-                "poi=true&lat=%f&lon=%f&radius=%d&limit=20",
-                lat, lng, radiusMeters);
-
-        if (type != null && !type.isBlank()) {
-            query += "&type=" + type;
-        }
-
-        String fullUrl = PLACES_URL + "?" + query;
+        String requestedType = type == null || type.isBlank() ? "hospital" : type.trim();
+        String query = "location=" + encode(String.format(Locale.ROOT, "%.7f,%.7f", lat, lng))
+                + "&radius=" + radiusMeters
+                + "&type=" + encode(requestedType)
+                + "&new_admin=true"
+                + "&key=" + encode(apiKey);
+        String fullUrl = mapsBaseUrl + "/api/v2/place/nearbysearch/json?" + query;
 
         var request = baseRequest()
                 .uri(URI.create(fullUrl))
@@ -80,12 +77,18 @@ public class TrackAsiaClient {
             throw new IllegalStateException("TRACKASIA_API_KEY not configured");
         }
 
-        String coordinates = String.format(
+        String coordinates = String.format(Locale.ROOT,
                 "%f,%f;%f,%f",
                 fromLng, fromLat, toLng, toLat);
-
-        String url = DIRECTIONS_URL + coordinates
-                + "?alternatives=false&overview=full";
+        String profile = switch (transportMode == null ? "DRIVING" : transportMode.trim().toUpperCase(Locale.ROOT)) {
+            case "DRIVING", "CAR" -> "car";
+            case "MOTORCYCLE", "MOTORCYCLING", "MOTO" -> "moto";
+            case "WALKING", "WALK" -> "walk";
+            default -> throw new IllegalArgumentException("Unsupported transport mode");
+        };
+        String url = mapsBaseUrl + "/route/v1/" + profile + "/" + coordinates
+                + ".json?geometries=polyline6&steps=true&overview=full&alternatives=false&key="
+                + encode(apiKey);
 
         var request = baseRequest()
                 .uri(URI.create(url))
@@ -107,12 +110,12 @@ public class TrackAsiaClient {
             throw new IllegalStateException("TRACKASIA_API_KEY not configured");
         }
 
-        String q = String.format(
-                "q=%s&lat=%f&lon=%f&limit=5",
-                query.replace(" ", "+"), lat, lng);
+        String q = "query=" + encode(query)
+                + "&location=" + encode(String.format(Locale.ROOT, "%.7f,%.7f", lat, lng))
+                + "&key=" + encode(apiKey);
 
         var request = baseRequest()
-                .uri(URI.create(SEARCH_URL + "?" + q))
+                .uri(URI.create(mapsBaseUrl + "/api/v2/place/textsearch/json?" + q))
                 .GET()
                 .build();
 
@@ -124,5 +127,9 @@ public class TrackAsiaClient {
                     "TrackAsia Search HTTP " + response.statusCode());
         }
         return mapper.readTree(response.body());
+    }
+
+    private static String encode(String value) {
+        return URLEncoder.encode(value, StandardCharsets.UTF_8);
     }
 }

@@ -312,4 +312,39 @@ void main() {
     expect(openedRoute, '/reminders/calendar');
     expect(find.text('Lịch hẹn theo tháng'), findsOneWidget);
   });
+
+  testWidgets('Mother Home opens the TrackAsia emergency map', (tester) async {
+    Uri? openedUri;
+    final router = GoRouter(
+      initialLocation: '/',
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (_, _) => MotherHomeScreen(
+            todayTaskService: _todayTaskService(),
+            dashboardLoader: () async => _dashboard(12),
+            reminderLoader: () async => const [],
+          ),
+        ),
+        GoRoute(
+          path: '/emergency/map',
+          builder: (_, state) {
+            openedUri = state.uri;
+            return const Scaffold(body: Text('TrackAsia Map'));
+          },
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('mother-emergency-map-button')));
+    await tester.pumpAndSettle();
+
+    expect(openedUri?.path, '/emergency/map');
+    expect(openedUri?.queryParameters['mode'], 'manual');
+    expect(openedUri?.queryParameters['stage'], 'PREGNANCY');
+    expect(find.text('TrackAsia Map'), findsOneWidget);
+  });
 }

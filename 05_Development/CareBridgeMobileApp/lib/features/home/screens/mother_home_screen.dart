@@ -200,6 +200,8 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
                   const SizedBox(height: 16),
                 ],
                 _buildGreeting(),
+                const SizedBox(height: 16),
+                _buildEmergencyMapButton(),
                 const SizedBox(height: 24),
                 _buildDiscoverSection(),
                 const SizedBox(height: 24),
@@ -368,6 +370,38 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildEmergencyMapButton() {
+    return Semantics(
+      button: true,
+      label: 'Tìm bệnh viện gần đây bằng TrackAsia Map',
+      child: SizedBox(
+        width: double.infinity,
+        child: FilledButton.icon(
+          key: const Key('mother-emergency-map-button'),
+          onPressed: () =>
+              context.push('/emergency/map?mode=manual&stage=PREGNANCY'),
+          style: FilledButton.styleFrom(
+            backgroundColor: _error,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+          icon: const Icon(Icons.local_hospital_outlined),
+          label: const Text(
+            'Tìm bệnh viện gần đây',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
     );
   }
 
