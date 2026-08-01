@@ -251,7 +251,7 @@ export default function ExpertDashboardPage() {
       </div>
 
       {/* Summary cards row */}
-      <div className="grid grid-cols-4 gap-4 mb-7">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-7 w-full">
         <StatCard
           icon="contact_support"
           label="Yêu cầu chờ tư vấn"
@@ -287,11 +287,11 @@ export default function ExpertDashboardPage() {
       </div>
 
       {/* Quick Hub Section */}
-      <div className="mb-7">
+      <div className="mb-7 w-full">
         <div className="text-xs font-semibold text-outline uppercase tracking-wider mb-3">
           Lối truy cập nhanh
         </div>
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
           {QUICK_HUB_ITEMS.map((item) => (
             <div
               key={item.path}

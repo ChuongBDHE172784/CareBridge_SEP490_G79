@@ -35,7 +35,7 @@ export default function ConversationListPage() {
       )}
 
       {/* Conversation List */}
-      <div className="space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {conversations.length === 0 && !error && (
           <div className="bg-surface rounded-2xl p-12 text-center text-outline shadow-md">
             <span className="material-symbols-outlined text-4xl block mb-2 opacity-40">chat_bubble</span>

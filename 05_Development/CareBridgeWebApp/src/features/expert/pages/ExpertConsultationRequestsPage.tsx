@@ -128,8 +128,8 @@ export default function ExpertConsultationRequestsPage() {
       )}
 
       {/* Status tabs + search bar */}
-      <div className="flex justify-between items-center mb-5 flex-wrap gap-3">
-        <div className="flex gap-2">
+      <div className="flex justify-between items-center mb-5 flex-wrap gap-4 w-full">
+        <div className="flex gap-2 flex-wrap">
           {STATUS_TABS.map((tab) => (
             <button
               key={tab.key}
@@ -137,10 +137,10 @@ export default function ExpertConsultationRequestsPage() {
                 setActiveTab(tab.key);
                 setPage(0);
               }}
-              className={`flex items-center gap-1.5 py-2 px-[18px] rounded-full text-[13px] font-semibold cursor-pointer ${
+              className={`flex items-center gap-1.5 py-2 px-[18px] rounded-full text-[13px] font-semibold cursor-pointer transition-colors ${
                 activeTab === tab.key
                   ? 'border-2 border-primary bg-surface-container-low text-primary'
-                  : 'border border-outline-variant bg-transparent text-on-surface-variant'
+                  : 'border border-outline-variant bg-transparent text-on-surface-variant hover:bg-surface-container-low'
               }`}
             >
               {tab.label}
@@ -148,7 +148,7 @@ export default function ExpertConsultationRequestsPage() {
           ))}
         </div>
 
-        <div className="relative max-w-[280px] flex-1">
+        <div className="relative w-72 md:w-80 shrink-0">
           <span className="material-symbols-outlined text-outline absolute left-[14px] top-1/2 -translate-y-1/2 text-xl">
             search
           </span>
@@ -156,13 +156,13 @@ export default function ExpertConsultationRequestsPage() {
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Tìm theo tên hoặc chủ đề..."
-            className="w-full py-2.5 pr-[14px] pl-[42px] rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface outline-none font-sans"
+            className="w-full py-2.5 pr-[14px] pl-[42px] rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface outline-none font-sans focus:border-primary"
           />
         </div>
       </div>
 
       {/* Table container */}
-      <div className="bg-surface rounded-2xl p-6 shadow-md">
+      <div className="bg-surface rounded-2xl p-6 shadow-md w-full overflow-x-auto">
         {loading ? (
           <div className="py-12 text-center text-outline">Đang tải danh sách...</div>
         ) : (
@@ -170,11 +170,11 @@ export default function ExpertConsultationRequestsPage() {
             <table className="w-full border-collapse">
               <thead>
                 <tr className="border-b-2 border-surface-container-highest text-left">
-                  {['NGƯỜI GỬI', 'CHỦ ĐỀ TƯ VẤN', 'TRẠNG THÁI', 'THỜI GIAN GỬI', 'THAO TÁC'].map((h) => (
-                    <th key={h} className="py-3 px-2 text-[11px] font-semibold text-outline uppercase tracking-[0.05em]">
-                      {h}
-                    </th>
-                  ))}
+                  <th className="py-3 px-3 text-[11px] font-semibold text-outline uppercase tracking-[0.05em] w-[22%]">NGƯỜI GỬI</th>
+                  <th className="py-3 px-3 text-[11px] font-semibold text-outline uppercase tracking-[0.05em] w-[38%]">CHỦ ĐỀ TƯ VẤN</th>
+                  <th className="py-3 px-3 text-[11px] font-semibold text-outline uppercase tracking-[0.05em] w-[15%]">TRẠNG THÁI</th>
+                  <th className="py-3 px-3 text-[11px] font-semibold text-outline uppercase tracking-[0.05em] w-[13%]">THỜI GIAN GỬI</th>
+                  <th className="py-3 px-3 text-[11px] font-semibold text-outline uppercase tracking-[0.05em] w-[12%] text-right">THAO TÁC</th>
                 </tr>
               </thead>
               <tbody>
@@ -185,7 +185,7 @@ export default function ExpertConsultationRequestsPage() {
                   };
                   return (
                     <tr key={req.id} className="border-b border-surface-container-highest hover:bg-surface-bright">
-                      <td className="py-3.5 px-2 font-semibold text-sm text-on-surface">
+                      <td className="py-3.5 px-3 font-semibold text-sm text-on-surface">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-primary-container text-primary flex items-center justify-center font-bold text-xs">
                             {(req.counterpartDisplayName || 'M')[0].toUpperCase()}
@@ -195,20 +195,20 @@ export default function ExpertConsultationRequestsPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="py-3.5 px-2 text-sm text-on-surface-variant max-w-[300px]">
+                      <td className="py-3.5 px-3 text-sm text-on-surface-variant">
                         {req.topic}
                       </td>
-                      <td className="py-3.5 px-2">
+                      <td className="py-3.5 px-3">
                         <span className={`py-1 px-3.5 rounded-full text-xs font-semibold ${status.className}`}>
                           {status.label}
                         </span>
                       </td>
-                      <td className="py-3.5 px-2 text-[13px] text-outline">
+                      <td className="py-3.5 px-3 text-[13px] text-outline">
                         {timeAgo(req.createdAt)}
                       </td>
-                      <td className="py-3.5 px-2">
+                      <td className="py-3.5 px-3 text-right">
                         {req.status === 'PENDING' ? (
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 justify-end">
                             <button
                               onClick={() => handleAction(req.id, 'reject')}
                               className="py-1.5 px-3 rounded-lg border border-error/30 bg-error-container/40 text-error text-xs font-semibold hover:bg-error-container cursor-pointer"
@@ -225,7 +225,7 @@ export default function ExpertConsultationRequestsPage() {
                         ) : req.status === 'ACCEPTED' ? (
                           <button
                             onClick={() => navigate('/expert/direct-chats')}
-                            className="py-1.5 px-3.5 rounded-lg border border-outline-variant bg-surface-container-low text-primary text-xs font-semibold hover:bg-surface-bright cursor-pointer flex items-center gap-1.5"
+                            className="py-1.5 px-3.5 rounded-lg border border-outline-variant bg-surface-container-low text-primary text-xs font-semibold hover:bg-surface-bright cursor-pointer flex items-center gap-1.5 justify-end"
                           >
                             <span className="material-symbols-outlined text-base">chat</span>
                             Vào nhắn tin
