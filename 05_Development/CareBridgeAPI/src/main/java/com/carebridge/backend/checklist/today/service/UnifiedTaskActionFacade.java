@@ -101,6 +101,10 @@ public class UnifiedTaskActionFacade {
             throw new BusinessException(HttpStatus.BAD_REQUEST, "TASK_ACTION_REASON_INVALID",
                     "Complete does not accept a reason");
         }
+        if (request.action() == TaskAction.REOPEN && request.reason() != null) {
+            throw new BusinessException(HttpStatus.BAD_REQUEST, "TASK_ACTION_REASON_INVALID",
+                    "Reopen does not accept a reason");
+        }
 
         String payloadHash = hash(taskKind, canonicalTaskId, request);
         commandRepository.acquireTaskActionLock(

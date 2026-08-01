@@ -150,6 +150,7 @@ class ChecklistDistributionHardeningContractTest {
                 "CHECKLIST_ASSIGNED",
                 "CHECKLIST_COMPLETED",
                 "CHECKLIST_SKIPPED",
+                "CHECKLIST_REOPENED",
                 "CHECKLIST_CANCELLED",
                 "CHECKLIST_RECONCILIATION_FAILED",
                 "CHECKLIST_MIGRATION_QUARANTINED")) {

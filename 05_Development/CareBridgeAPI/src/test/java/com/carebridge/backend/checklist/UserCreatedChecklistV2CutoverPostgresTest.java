@@ -124,17 +124,45 @@ class UserCreatedChecklistV2CutoverPostgresTest extends AbstractEmbeddedPostgres
                 + "where actor_user_id=? and checklist_task_instance_id=? "
                 + "and event_category='CHECKLIST_COMPLETED'", Long.class, motherId, taskId)).isOne();
 
-        UUID skippedTaskId = createTask("Skip me", "DELIVERY", UUID.randomUUID());
-        mockMvc.perform(post("/api/v1/tasks/CHECKLIST/%s/actions".formatted(skippedTaskId))
+        mockMvc.perform(post("/api/v1/tasks/CHECKLIST/%s/actions".formatted(taskId))
                         .with(csrf()).with(user(motherId.toString()).roles("MOTHER"))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"action\":\"SKIP\",\"clientRequestId\":\"%s\","
-                                .formatted(UUID.randomUUID()) + "\"reason\":\"USER_CHOICE\"}"))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("SKIPPED"));
+                        .content("{\"action\":\"REOPEN\",\"clientRequestId\":\"%s\"}"
+                                .formatted(UUID.randomUUID())))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("PENDING"));
+        assertThat(jdbcTemplate.queryForObject("select status from checklist_task_instances where checklist_task_instance_id=?",
+                String.class, taskId)).isEqualTo("PENDING");
         assertThat(jdbcTemplate.queryForObject("select count(*) from audit_events "
                 + "where actor_user_id=? and checklist_task_instance_id=? "
-                + "and event_category='CHECKLIST_SKIPPED' and reason_code='USER_CHOICE'",
-                Long.class, motherId, skippedTaskId)).isOne();
+                + "and event_category='CHECKLIST_REOPENED'",
+                Long.class, motherId, taskId)).isOne();
+
+        mockMvc.perform(delete("/api/v1/user-checklist-items/%s".formatted(taskId))
+                        .with(csrf()).with(user(motherId.toString()).roles("MOTHER")))
+                .andExpect(status().isNoContent());
+        assertThat(jdbcTemplate.queryForObject(
+                "select status from checklist_task_instances where checklist_task_instance_id=?",
+                String.class, taskId)).isEqualTo("CANCELLED");
+        assertThat(jdbcTemplate.queryForObject(
+                "select count(*) from audit_events where actor_user_id=? "
+                        + "and checklist_task_instance_id=? and event_category='CHECKLIST_CANCELLED' "
+                        + "and reason_code='USER_DELETED'",
+                Long.class, motherId, taskId)).isOne();
+        mockMvc.perform(get("/api/v1/user-checklist-items").param("journeyId", journeyId.toString())
+                        .with(user(motherId.toString()).roles("MOTHER")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[?(@.itemId == '%s')]".formatted(taskId)).isEmpty());
+
+        UUID replacementTaskId = createTask("New water task", "GENERAL", UUID.randomUUID());
+        assertThat(jdbcTemplate.queryForObject(
+                "select status from checklist_instances where recipient_user_id=? "
+                        + "and origin='USER_CREATED' and care_group_id is null",
+                String.class, motherId)).isEqualTo("PENDING");
+        mockMvc.perform(get("/api/v1/tasks/today").param("date", "2026-07-30")
+                        .with(user(motherId.toString()).roles("MOTHER")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sections.unscheduled[*].taskId")
+                        .value(org.hamcrest.Matchers.hasItem(replacementTaskId.toString())));
     }
 
     @Test

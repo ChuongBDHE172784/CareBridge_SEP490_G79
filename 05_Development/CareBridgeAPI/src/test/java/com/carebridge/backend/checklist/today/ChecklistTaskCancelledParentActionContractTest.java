@@ -17,25 +17,32 @@ import com.carebridge.backend.checklist.model.ChecklistInstanceStatus;
 import com.carebridge.backend.checklist.model.ChecklistCareContextType;
 import com.carebridge.backend.checklist.model.ChecklistRecipientRole;
 import com.carebridge.backend.checklist.model.ChecklistTaskStatus;
+import com.carebridge.backend.checklist.repository.ChecklistActionCommandRepository;
 import com.carebridge.backend.checklist.repository.ChecklistInstanceRepository;
 import com.carebridge.backend.checklist.repository.ChecklistTaskInstanceRepository;
+import com.carebridge.backend.checklist.today.dto.TaskActionRequest;
 import com.carebridge.backend.checklist.today.model.TaskAction;
 import com.carebridge.backend.checklist.today.model.TaskKind;
 import com.carebridge.backend.checklist.today.policy.UnifiedTaskAccessPolicy;
 import com.carebridge.backend.checklist.today.provider.AuthorizedTask;
 import com.carebridge.backend.checklist.today.provider.ChecklistTaskActionHandler;
+import com.carebridge.backend.checklist.today.service.UnifiedTaskActionFacade;
 import com.carebridge.backend.common.exception.BusinessException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.http.HttpStatus;
 import org.junit.jupiter.api.Test;
 
 class ChecklistTaskCancelledParentActionContractTest {
 
     @Test
-    void directActionAgainstTaskWhoseParentIsCancelledIsDeniedAsNotFound() {
+    void unauthorizedActionAgainstTaskWhoseParentIsCancelledIsDeniedAsNotFound() {
         UUID actorId = UUID.fromString("00000000-0000-0000-0000-000000000101");
         UUID instanceId = UUID.fromString("00000000-0000-0000-0000-000000000201");
         UUID taskId = UUID.fromString("00000000-0000-0000-0000-000000000301");
@@ -62,7 +69,7 @@ class ChecklistTaskCancelledParentActionContractTest {
         when(instances.findForUpdateById(instanceId)).thenReturn(Optional.of(parent));
         when(tasks.findAllForUpdateByChecklistInstanceIdOrderByTaskKey(instanceId))
                 .thenReturn(List.of(task));
-        when(access.canComplete(parent, actorId)).thenReturn(true);
+        when(access.canComplete(parent, actorId)).thenReturn(false);
         var handler = new ChecklistTaskActionHandler(tasks, instances, access,
                 mock(ChecklistAuditWriter.class), mock(jakarta.persistence.EntityManager.class));
 
@@ -73,6 +80,57 @@ class ChecklistTaskCancelledParentActionContractTest {
         lockOrder.verify(instances).acquireDistributionKeyLock(anyString());
         lockOrder.verify(instances).findForUpdateById(instanceId);
         lockOrder.verify(tasks).findAllForUpdateByChecklistInstanceIdOrderByTaskKey(instanceId);
+    }
+
+    @Test
+    void authorizedReopenAgainstCancelledParentReturnsTerminalConflict() {
+        UUID actorId = UUID.fromString("00000000-0000-0000-0000-000000000102");
+        UUID instanceId = UUID.fromString("00000000-0000-0000-0000-000000000202");
+        UUID taskId = UUID.fromString("00000000-0000-0000-0000-000000000302");
+        UUID requestId = UUID.fromString("00000000-0000-0000-0000-000000000402");
+        ChecklistTaskInstanceRepository tasks = mock(ChecklistTaskInstanceRepository.class);
+        ChecklistInstanceRepository instances = mock(ChecklistInstanceRepository.class);
+        UnifiedTaskAccessPolicy access = mock(UnifiedTaskAccessPolicy.class);
+        ChecklistAuditWriter audit = mock(ChecklistAuditWriter.class);
+        ChecklistActionCommandRepository commands = mock(ChecklistActionCommandRepository.class);
+        ChecklistTaskInstance task = ChecklistTaskInstance.builder()
+                .id(taskId)
+                .checklistInstanceId(instanceId)
+                .status(ChecklistTaskStatus.PENDING)
+                .build();
+        ChecklistInstance parent = ChecklistInstance.builder()
+                .id(instanceId)
+                .templateVersionId(UUID.fromString("00000000-0000-0000-0000-000000000403"))
+                .recipientUserId(actorId)
+                .recipientRole(ChecklistRecipientRole.MOTHER)
+                .careGroupId(UUID.fromString("00000000-0000-0000-0000-000000000502"))
+                .careContextType(ChecklistCareContextType.JOURNEY)
+                .careContextId(UUID.fromString("00000000-0000-0000-0000-000000000602"))
+                .status(ChecklistInstanceStatus.CANCELLED)
+                .build();
+        when(tasks.findById(taskId)).thenReturn(Optional.of(task));
+        when(instances.findById(instanceId)).thenReturn(Optional.of(parent));
+        when(instances.findForUpdateById(instanceId)).thenReturn(Optional.of(parent));
+        when(tasks.findAllForUpdateByChecklistInstanceIdOrderByTaskKey(instanceId))
+                .thenReturn(List.of(task));
+        when(access.canComplete(parent, actorId)).thenReturn(true);
+        when(commands.findByActorUserIdAndTaskKindAndTaskIdAndClientRequestId(
+                actorId, "CHECKLIST", taskId, requestId)).thenReturn(Optional.empty());
+        var handler = new ChecklistTaskActionHandler(tasks, instances, access,
+                audit, mock(jakarta.persistence.EntityManager.class));
+        var facade = new UnifiedTaskActionFacade(List.of(handler), commands,
+                new ObjectMapper().findAndRegisterModules(),
+                Clock.fixed(Instant.parse("2026-08-03T12:00:00Z"), ZoneOffset.UTC));
+
+        assertThatThrownBy(() -> facade.apply(actorId, TaskKind.CHECKLIST, taskId,
+                new TaskActionRequest(TaskAction.REOPEN, requestId, null)))
+                .isInstanceOfSatisfying(BusinessException.class, exception -> {
+                    assertThat(exception.getHttpStatus()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(exception.getCode()).isEqualTo("TASK_ALREADY_TERMINAL");
+                });
+        verify(tasks, never()).save(any());
+        verify(instances, never()).save(any());
+        verify(audit, never()).write(any());
     }
 
     @Test

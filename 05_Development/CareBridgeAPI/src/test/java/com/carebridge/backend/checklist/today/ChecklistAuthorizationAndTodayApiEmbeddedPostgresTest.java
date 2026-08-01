@@ -607,12 +607,14 @@ class ChecklistAuthorizationAndTodayApiEmbeddedPostgresTest
     private static void assertCanonicalNotFound(DeniedResponse response) {
         assertThat(response.httpStatus()).isEqualTo(404);
         assertThat(response.bodyKeys()).containsExactlyInAnyOrder(
-                "success", "status", "error", "message", "path", "details", "timestamp");
+                "success", "status", "error", "message", "path", "details", "metadata", "timestamp");
         assertThat(response.canonicalBody().path("success").asBoolean()).isFalse();
         assertThat(response.canonicalBody().path("status").asInt()).isEqualTo(404);
         assertThat(response.canonicalBody().path("error").asText()).isEqualTo("TASK_NOT_FOUND");
         assertThat(response.canonicalBody().path("message").asText()).isEqualTo("Task not found");
         assertThat(response.canonicalBody().path("details").isNull()).isTrue();
+        JsonNode metadata = response.canonicalBody().path("metadata");
+        assertThat(metadata.isNull() || metadata.isEmpty()).isTrue();
     }
 
     private void assertAcceptedFamilyControl(UUID actor, TaskIds expected) throws Exception {
@@ -735,7 +737,7 @@ class ChecklistAuthorizationAndTodayApiEmbeddedPostgresTest
         JsonNode reminder = task(tasks, expected.reminderOccurrenceId());
         assertExactMetadata(checklist, "USER_CREATED", "MOTHER", "PENDING",
                 checklistCareGroupId, "JOURNEY", journey, expected.checklistInstanceId(), null,
-                Set.of("COMPLETE", "SKIP"));
+                Set.of("COMPLETE"));
         assertExactMetadata(careTask, "USER_CREATED", "MOTHER", "PENDING",
                 primaryGroup, "JOURNEY", journey, null, null, Set.of("COMPLETE"));
         assertExactMetadata(reminder, "USER_CREATED", "MOTHER", "PENDING",

@@ -157,6 +157,19 @@ class UnifiedTaskActionFacadeTest {
     }
 
     @Test
+    void chk028_reopenRejectsNonNullReason() {
+        when(handler.authorize(ACTOR, TASK)).thenReturn(new AuthorizedTask(
+                TaskKind.CHECKLIST, TASK, INSTANCE, "COMPLETED", Set.of(TaskAction.REOPEN)));
+
+        assertThatThrownBy(() -> facade.apply(ACTOR, TaskKind.CHECKLIST, TASK,
+                new TaskActionRequest(TaskAction.REOPEN, REQUEST_ID, "USER_CHOICE")))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> assertThat(exception.getCode()).isEqualTo("TASK_ACTION_REASON_INVALID"));
+        verify(repository, never()).acquireTaskActionLock(any());
+        verify(handler, never()).apply(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
     void chk028_terminalStateStillBlocksMutationAfterCommandWasPurged() {
         AuthorizedTask authorized = new AuthorizedTask(
                 TaskKind.CHECKLIST, TASK, INSTANCE, "COMPLETED", Set.of());

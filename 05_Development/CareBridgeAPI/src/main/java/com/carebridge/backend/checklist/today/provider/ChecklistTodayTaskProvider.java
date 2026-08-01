@@ -63,11 +63,15 @@ public class ChecklistTodayTaskProvider implements TodayTaskProvider {
         for (var authorized : authorizedInstances) {
             ChecklistInstance instance = authorized.instance();
             for (var task : tasksByInstanceId.getOrDefault(instance.getId(), List.of())) {
+                if (task.getStatus() == ChecklistTaskStatus.CANCELLED) {
+                    continue;
+                }
                 Set<TaskAction> actions = EnumSet.noneOf(TaskAction.class);
                 if (authorized.canAct() && (task.getStatus() == ChecklistTaskStatus.PENDING
                         || task.getStatus() == ChecklistTaskStatus.IN_PROGRESS)) {
                     actions.add(TaskAction.COMPLETE);
-                    actions.add(TaskAction.SKIP);
+                } else if (authorized.canAct() && task.getStatus() == ChecklistTaskStatus.COMPLETED) {
+                    actions.add(TaskAction.REOPEN);
                 }
                 UUID presentedCareGroupId = instance.getRecipientRole()
                                 == ChecklistRecipientRole.MOTHER

@@ -26,6 +26,7 @@ public class ChecklistAuditWriter {
             AuditAction.CHECKLIST_ASSIGNED,
             AuditAction.CHECKLIST_COMPLETED,
             AuditAction.CHECKLIST_SKIPPED,
+            AuditAction.CHECKLIST_REOPENED,
             AuditAction.CHECKLIST_CANCELLED,
             AuditAction.CHECKLIST_RECONCILIATION_FAILED,
             AuditAction.CHECKLIST_MIGRATION_QUARANTINED);
@@ -140,6 +141,17 @@ public class ChecklistAuditWriter {
                 require(event.beforeStatus(), "Skipped checklist previous status is required");
                 requireStatus(event.afterStatus(), "SKIPPED");
                 require(event.reasonCode(), "Skipped checklist reason is required");
+                requireResource(event, ChecklistAuditResourceType.CHECKLIST_TASK_INSTANCE,
+                        event.checklistTaskInstanceId());
+            }
+            case CHECKLIST_REOPENED -> {
+                require(event.recipientUserId(), "Reopened checklist recipient is required");
+                require(event.checklistTaskInstanceId(), "Reopened checklist task is required");
+                requireStatus(event.beforeStatus(), "COMPLETED");
+                requireStatus(event.afterStatus(), "PENDING");
+                if (event.reasonCode() != null) {
+                    throw new IllegalArgumentException("Reopened checklist reason must be absent");
+                }
                 requireResource(event, ChecklistAuditResourceType.CHECKLIST_TASK_INSTANCE,
                         event.checklistTaskInstanceId());
             }

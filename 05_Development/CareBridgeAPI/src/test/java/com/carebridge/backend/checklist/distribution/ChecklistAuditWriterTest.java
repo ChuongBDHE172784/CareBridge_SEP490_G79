@@ -103,6 +103,62 @@ class ChecklistAuditWriterTest {
     }
 
     @Test
+    void reopenedActionRequiresCompletedToPendingTransition() throws Exception {
+        UUID taskId = UUID.randomUUID();
+        ChecklistAuditEvent event = new ChecklistAuditEvent(
+                AuditAction.CHECKLIST_REOPENED,
+                UUID.randomUUID(),
+                ChecklistAuditActorType.USER,
+                null,
+                ChecklistAuditResourceType.CHECKLIST_TASK_INSTANCE,
+                taskId,
+                UUID.randomUUID(),
+                ChecklistCareContextType.JOURNEY,
+                UUID.randomUUID(),
+                UUID.randomUUID(),
+                taskId,
+                "COMPLETED",
+                "PENDING",
+                null,
+                UUID.randomUUID());
+        when(policy.shouldAudit(event.action())).thenReturn(true);
+        when(objectMapper.writeValueAsString(any())).thenReturn("{\"status\":\"COMPLETED\"}",
+                "{\"status\":\"PENDING\"}");
+
+        writer.write(event);
+
+        ArgumentCaptor<AuditLog> captor = ArgumentCaptor.forClass(AuditLog.class);
+        verify(repository).save(captor.capture());
+        assertThat(captor.getValue().getAction()).isEqualTo(AuditAction.CHECKLIST_REOPENED);
+        assertThat(captor.getValue().getReasonCode()).isNull();
+    }
+
+    @Test
+    void reopenedActionRejectsWrongPreviousStatusOrReason() {
+        UUID taskId = UUID.randomUUID();
+        ChecklistAuditEvent wrongStatus = new ChecklistAuditEvent(
+                AuditAction.CHECKLIST_REOPENED,
+                UUID.randomUUID(), ChecklistAuditActorType.USER, null,
+                ChecklistAuditResourceType.CHECKLIST_TASK_INSTANCE, taskId,
+                UUID.randomUUID(), ChecklistCareContextType.JOURNEY, UUID.randomUUID(),
+                UUID.randomUUID(), taskId, "PENDING", "PENDING", null, UUID.randomUUID());
+        ChecklistAuditEvent reasonPresent = new ChecklistAuditEvent(
+                AuditAction.CHECKLIST_REOPENED,
+                UUID.randomUUID(), ChecklistAuditActorType.USER, null,
+                ChecklistAuditResourceType.CHECKLIST_TASK_INSTANCE, taskId,
+                UUID.randomUUID(), ChecklistCareContextType.JOURNEY, UUID.randomUUID(),
+                UUID.randomUUID(), taskId, "COMPLETED", "PENDING", "USER_CHOICE", UUID.randomUUID());
+        when(policy.shouldAudit(AuditAction.CHECKLIST_REOPENED)).thenReturn(true);
+
+        assertThatThrownBy(() -> writer.write(wrongStatus))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> writer.write(reasonPresent))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("reason");
+        verify(repository, never()).save(any());
+    }
+
+    @Test
     void rejectsUnpairedOrActionMismatchedResourceBeforePersistence() {
         ChecklistAuditEvent valid = event(AuditAction.CHECKLIST_COMPLETED);
         ChecklistAuditEvent unpaired = new ChecklistAuditEvent(

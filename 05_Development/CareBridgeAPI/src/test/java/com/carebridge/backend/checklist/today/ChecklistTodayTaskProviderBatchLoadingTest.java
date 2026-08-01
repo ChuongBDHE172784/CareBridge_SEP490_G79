@@ -18,6 +18,7 @@ import com.carebridge.backend.checklist.model.ChecklistTaskStatus;
 import com.carebridge.backend.checklist.repository.ChecklistInstanceRepository;
 import com.carebridge.backend.checklist.repository.ChecklistTaskInstanceRepository;
 import com.carebridge.backend.checklist.today.policy.UnifiedTaskAccessPolicy;
+import com.carebridge.backend.checklist.today.model.TaskAction;
 import com.carebridge.backend.checklist.today.provider.ChecklistTodayTaskProvider;
 import java.util.List;
 import java.util.UUID;
@@ -61,6 +62,32 @@ class ChecklistTodayTaskProviderBatchLoadingTest {
         assertThat(candidates)
                 .extracting(candidate -> candidate.careGroupId())
                 .containsOnlyNulls();
+    }
+
+    @Test
+    void completedChecklistAdvertisesReopenAndCancelledChildrenAreHidden() {
+        ChecklistInstance instance = instance(FIRST_INSTANCE_ID, uuid(401));
+        ChecklistTaskInstance completed = task(FIRST_TASK_ID, FIRST_INSTANCE_ID, 1);
+        completed.setStatus(ChecklistTaskStatus.COMPLETED);
+        completed.setCompletedAt(java.time.Instant.parse("2026-08-03T08:00:00Z"));
+        ChecklistTaskInstance cancelled = task(SECOND_TASK_ID, FIRST_INSTANCE_ID, 2);
+        cancelled.setStatus(ChecklistTaskStatus.CANCELLED);
+        ChecklistInstanceRepository instances = mock(ChecklistInstanceRepository.class);
+        ChecklistTaskInstanceRepository tasks = mock(ChecklistTaskInstanceRepository.class);
+        UnifiedTaskAccessPolicy access = mock(UnifiedTaskAccessPolicy.class);
+        when(instances.findByRecipientUserId(ACTOR_ID)).thenReturn(List.of(instance));
+        when(access.canView(instance, ACTOR_ID)).thenReturn(true);
+        when(access.canComplete(instance, ACTOR_ID)).thenReturn(true);
+        when(tasks.findAllByChecklistInstanceIds(List.of(FIRST_INSTANCE_ID)))
+                .thenReturn(List.of(completed, cancelled));
+
+        var candidates = new ChecklistTodayTaskProvider(instances, tasks, access)
+                .findAuthorizedTasks(ACTOR_ID);
+
+        assertThat(candidates).hasSize(1);
+        assertThat(candidates.getFirst().taskId()).isEqualTo(FIRST_TASK_ID);
+        assertThat(candidates.getFirst().allowedActions())
+                .containsExactly(TaskAction.REOPEN);
     }
 
     private static ChecklistInstance instance(UUID instanceId, UUID contextId) {

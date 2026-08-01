@@ -58,6 +58,7 @@ public class AuditServiceImpl implements AuditService {
             AuditAction.CHECKLIST_ASSIGNED,
             AuditAction.CHECKLIST_COMPLETED,
             AuditAction.CHECKLIST_SKIPPED,
+            AuditAction.CHECKLIST_REOPENED,
             AuditAction.CHECKLIST_CANCELLED,
             AuditAction.CHECKLIST_RECONCILIATION_FAILED,
             AuditAction.CHECKLIST_MIGRATION_QUARANTINED);
@@ -68,6 +69,7 @@ public class AuditServiceImpl implements AuditService {
             AuditAction.CHECKLIST_ASSIGNED,
             AuditAction.CHECKLIST_COMPLETED,
             AuditAction.CHECKLIST_SKIPPED,
+            AuditAction.CHECKLIST_REOPENED,
             AuditAction.CHECKLIST_CANCELLED,
             AuditAction.CHECKLIST_RECONCILIATION_FAILED,
             AuditAction.CHECKLIST_MIGRATION_QUARANTINED);

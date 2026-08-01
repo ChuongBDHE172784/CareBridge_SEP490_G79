@@ -46,17 +46,19 @@ public class ChecklistTaskActionHandler implements TaskActionHandler {
         var aggregate = lockAggregate(taskId);
         var task = aggregate.task();
         var instance = aggregate.instance();
-        if (instance.getStatus() == ChecklistInstanceStatus.CANCELLED) {
-            throw notFound();
-        }
         if (!accessPolicy.canComplete(instance, actorUserId)) {
             throw notFound();
         }
         Set<TaskAction> actions = EnumSet.noneOf(TaskAction.class);
+        if (instance.getStatus() == ChecklistInstanceStatus.CANCELLED) {
+            return new AuthorizedTask(TaskKind.CHECKLIST, taskId, instance.getId(),
+                    ChecklistInstanceStatus.CANCELLED.name(), actions);
+        }
         if (task.getStatus() == ChecklistTaskStatus.PENDING
                 || task.getStatus() == ChecklistTaskStatus.IN_PROGRESS) {
             actions.add(TaskAction.COMPLETE);
-            actions.add(TaskAction.SKIP);
+        } else if (task.getStatus() == ChecklistTaskStatus.COMPLETED) {
+            actions.add(TaskAction.REOPEN);
         }
         return new AuthorizedTask(TaskKind.CHECKLIST, taskId, instance.getId(),
                 task.getStatus().name(), actions);
@@ -81,12 +83,21 @@ public class ChecklistTaskActionHandler implements TaskActionHandler {
             auditAction = AuditAction.CHECKLIST_COMPLETED;
             task.setCompletedAt(appliedAt);
             task.setSkippedAt(null);
+            task.setCancelledAt(null);
+            task.setActionReasonCode(null);
+        } else if (action == TaskAction.REOPEN) {
+            nextStatus = ChecklistTaskStatus.PENDING;
+            auditAction = AuditAction.CHECKLIST_REOPENED;
+            task.setCompletedAt(null);
+            task.setSkippedAt(null);
+            task.setCancelledAt(null);
             task.setActionReasonCode(null);
         } else {
             nextStatus = ChecklistTaskStatus.SKIPPED;
             auditAction = AuditAction.CHECKLIST_SKIPPED;
             task.setSkippedAt(appliedAt);
             task.setCompletedAt(null);
+            task.setCancelledAt(null);
             task.setActionReasonCode(reason);
         }
         task.setStatus(nextStatus);
@@ -114,8 +125,9 @@ public class ChecklistTaskActionHandler implements TaskActionHandler {
         if (allTerminal) {
             instance.setStatus(ChecklistInstanceStatus.COMPLETED);
             instance.setCompletedAt(appliedAt);
-        } else if (instance.getStatus() == ChecklistInstanceStatus.PENDING) {
+        } else {
             instance.setStatus(ChecklistInstanceStatus.IN_PROGRESS);
+            instance.setCompletedAt(null);
         }
         instanceRepository.save(instance);
     }

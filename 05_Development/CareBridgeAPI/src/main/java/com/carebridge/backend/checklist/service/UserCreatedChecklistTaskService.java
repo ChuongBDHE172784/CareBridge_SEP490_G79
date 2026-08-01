@@ -158,7 +158,15 @@ public class UserCreatedChecklistTaskService {
             String taskKey,
             AddChecklistItemRequest request,
             UUID actorUserId) {
-        if (instance.getStatus() == ChecklistInstanceStatus.COMPLETED) {
+        if (instance.getStatus() == ChecklistInstanceStatus.CANCELLED) {
+            // Deleting the last user-created child cancels the aggregate. A later
+            // new clientTaskId starts a fresh personal checklist epoch in place.
+            instance.setStatus(ChecklistInstanceStatus.PENDING);
+            instance.setCompletedAt(null);
+            instance.setCancelledAt(null);
+            instance.setCancellationReasonCode(null);
+            instanceRepository.save(instance);
+        } else if (instance.getStatus() == ChecklistInstanceStatus.COMPLETED) {
             instance.setStatus(ChecklistInstanceStatus.IN_PROGRESS);
             instance.setCompletedAt(null);
             instanceRepository.save(instance);

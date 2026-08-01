@@ -92,12 +92,12 @@ public class UserChecklistItemController {
     // UC50: Delete checklist item
     @DeleteMapping("/{itemId}")
     @PreAuthorize("hasRole('MOTHER')")
-    public ResponseEntity<ApiResponse<Void>> deleteItem(
+    public ResponseEntity<Void> deleteItem(
             @PathVariable UUID itemId,
             Principal principal) {
         var callerId = SecurityUtils.requireCurrentUserId(principal);
-        v2MutationService.rejectDelete(itemId, callerId);
-        throw retiredMutation();
+        v2MutationService.delete(itemId, callerId);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/from-template")
