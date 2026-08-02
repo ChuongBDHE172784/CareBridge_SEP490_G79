@@ -45,6 +45,22 @@ const recipientLabel = (role: 'MOTHER' | 'FAMILY') => (role === 'MOTHER' ? 'Mẹ
 const targetLabel = (target: 'MOTHER' | 'BABY') => (target === 'MOTHER' ? 'Mẹ' : 'Em bé');
 const warmBadge = 'inline-flex shrink-0 items-center rounded-full bg-surface-container-low px-3 py-1 text-xs font-semibold text-primary';
 
+export function getChecklistTargetIcon(checklist: {
+  name?: string;
+  stage?: string | null;
+  items?: Array<{ targetSubject?: 'MOTHER' | 'BABY' }>;
+}): 'child_care' | 'pregnant_woman' {
+  const hasBabyItem = checklist.items?.some((i) => i.targetSubject === 'BABY');
+  const isBabyStage = checklist.stage === 'BABY_CARE';
+  const nameLower = (checklist.name || '').toLowerCase();
+  const isBabyName = nameLower.includes('bé') || nameLower.includes('trẻ') || nameLower.includes('sơ sinh');
+
+  if (hasBabyItem || isBabyStage || isBabyName) {
+    return 'child_care';
+  }
+  return 'pregnant_woman';
+}
+
 const STATUS_TABS: { key: string; label: string; status?: ChecklistTemplateStatus }[] = [
   { key: 'all', label: 'Tất cả' },
   { key: 'approved', label: 'Đã duyệt', status: 'APPROVED' },
@@ -304,7 +320,10 @@ export default function ChecklistListPage() {
                   {sortedChecklists.map((checklist) => (
                     <tr key={checklist.id} className="border-b border-surface-container-highest hover:bg-surface-bright transition-colors">
                       <td className="py-3.5 px-2 max-w-[340px]">
-                        <div className="text-sm font-semibold text-on-surface">{checklist.name}</div>
+                        <div className="text-sm font-semibold text-on-surface flex items-center gap-2">
+                          <span aria-hidden="true" className="material-symbols-outlined text-primary text-lg select-none">{getChecklistTargetIcon(checklist)}</span>
+                          <span>{checklist.name}</span>
+                        </div>
                         <ReviewFeedbackNotice feedback={checklist.latestReviewFeedback} compact />
                         {checklist.description && (
                           <div className="mt-0.5 line-clamp-2 text-xs text-outline">{checklist.description}</div>

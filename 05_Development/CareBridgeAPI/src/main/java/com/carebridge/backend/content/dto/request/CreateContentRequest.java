@@ -38,5 +38,11 @@ public class CreateContentRequest {
 
     private List<UUID> tagIds;
 
+    private Integer eligibleFromWeek;
+
+    private Integer eligibleToWeek;
+
+    private Integer recommendationPriority;
+
     private List<@jakarta.validation.Valid ContentSourceRequest> sources;
 }

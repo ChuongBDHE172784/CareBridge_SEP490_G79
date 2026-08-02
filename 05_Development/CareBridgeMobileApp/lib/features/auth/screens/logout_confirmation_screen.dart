@@ -2,18 +2,31 @@ import 'package:flutter/material.dart';
 import '../../../../core/auth/auth_state.dart';
 import '../../../../core/network/api_client.dart';
 import '../../journey/services/pregnancy_outcome_draft_store.dart';
+import '../../recommendation/services/recommendation_service.dart';
 import '../services/auth_service.dart';
 
 @visibleForTesting
 Future<void> clearLocalSessionAfterLogout({
   required String? accountId,
   required Future<void> Function(String accountId) clearDraft,
+  Future<void> Function(String accountId)? clearRecommendationDraft,
   required Future<void> Function() clearAuth,
 }) async {
   try {
-    if (accountId != null) await clearDraft(accountId);
-  } catch (_) {
-    debugPrint('[Logout] ancillary draft cleanup failed');
+    if (accountId != null) {
+      try {
+        await clearDraft(accountId);
+      } catch (_) {
+        debugPrint('[Logout] pregnancy outcome draft cleanup failed');
+      }
+      if (clearRecommendationDraft != null) {
+        try {
+          await clearRecommendationDraft(accountId);
+        } catch (_) {
+          debugPrint('[Logout] recommendation draft cleanup failed');
+        }
+      }
+    }
   } finally {
     await clearAuth();
   }
@@ -37,6 +50,7 @@ Future<void> showLogoutConfirmationSheet(BuildContext context) async {
   await clearLocalSessionAfterLogout(
     accountId: accountId,
     clearDraft: SecurePregnancyOutcomeDraftStore.instance.clearForAccount,
+    clearRecommendationDraft: RecommendationService().clearDraftFor,
     clearAuth: AuthState.instance.clear,
   );
 }

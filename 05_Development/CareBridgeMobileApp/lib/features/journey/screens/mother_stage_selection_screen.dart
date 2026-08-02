@@ -338,7 +338,7 @@ class _MotherStageSelectionScreenState
       if (!mounted || AuthState.instance.userId != expectedUserId) return;
       await _refreshSession();
       if (!mounted || AuthState.instance.userId != expectedUserId) return;
-      context.go('/');
+      context.go('/recommendation-profile', extra: 'PRE_PREGNANCY');
     } on ApiException catch (e) {
       if (!mounted || AuthState.instance.userId != expectedUserId) return;
       setState(() {

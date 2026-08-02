@@ -110,7 +110,11 @@ void main() {
 
       expect(
         paths,
-        containsAll(const {'/journey-onboarding', '/mother-stage-selection'}),
+        containsAll(const {
+          '/checklists/history',
+          '/journey-onboarding',
+          '/mother-stage-selection',
+        }),
       );
     });
 
@@ -154,6 +158,18 @@ void main() {
         blockedReason: null,
         role: 'FAMILY',
         location: '/mother-stage-selection',
+      );
+
+      expect(redirect, '/');
+    });
+
+    test('non-mothers cannot deep-link into checklist history', () {
+      final redirect = resolveAppRedirect(
+        isAuthenticated: true,
+        isRestoring: false,
+        blockedReason: null,
+        role: 'FAMILY',
+        location: '/checklists/history',
       );
 
       expect(redirect, '/');

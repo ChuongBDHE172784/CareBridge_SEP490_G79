@@ -40,7 +40,7 @@ class ChecklistTodayTaskProviderBatchLoadingTest {
         ChecklistInstanceRepository instances = mock(ChecklistInstanceRepository.class);
         ChecklistTaskInstanceRepository tasks = mock(ChecklistTaskInstanceRepository.class);
         UnifiedTaskAccessPolicy access = mock(UnifiedTaskAccessPolicy.class);
-        when(instances.findByRecipientUserId(ACTOR_ID)).thenReturn(List.of(first, second));
+        when(instances.findByRecipientUserIdAndHistoricalAtIsNull(ACTOR_ID)).thenReturn(List.of(first, second));
         when(access.canView(first, ACTOR_ID)).thenReturn(true);
         when(access.canView(second, ACTOR_ID)).thenReturn(true);
         when(access.canComplete(first, ACTOR_ID)).thenReturn(true);
@@ -75,7 +75,7 @@ class ChecklistTodayTaskProviderBatchLoadingTest {
         ChecklistInstanceRepository instances = mock(ChecklistInstanceRepository.class);
         ChecklistTaskInstanceRepository tasks = mock(ChecklistTaskInstanceRepository.class);
         UnifiedTaskAccessPolicy access = mock(UnifiedTaskAccessPolicy.class);
-        when(instances.findByRecipientUserId(ACTOR_ID)).thenReturn(List.of(instance));
+        when(instances.findByRecipientUserIdAndHistoricalAtIsNull(ACTOR_ID)).thenReturn(List.of(instance));
         when(access.canView(instance, ACTOR_ID)).thenReturn(true);
         when(access.canComplete(instance, ACTOR_ID)).thenReturn(true);
         when(tasks.findAllByChecklistInstanceIds(List.of(FIRST_INSTANCE_ID)))

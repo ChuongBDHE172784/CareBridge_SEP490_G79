@@ -2,7 +2,14 @@
 param()
 $ErrorActionPreference = 'Stop'
 $envFile = Join-Path $PSScriptRoot ".env"
-if (-not (Test-Path $envFile)) { Write-Error ".env not found at $envFile"; exit 1 }
+if (-not (Test-Path $envFile)) {
+    $rootEnv = Join-Path $PSScriptRoot "..\..\.env"
+    if (Test-Path $rootEnv) {
+        $envFile = $rootEnv
+    } else {
+        Write-Error ".env not found at $envFile or $rootEnv"; exit 1
+    }
+}
 
 # Parse KEY=VALUE lines (skip comments and blank lines)
 foreach ($line in Get-Content $envFile) {

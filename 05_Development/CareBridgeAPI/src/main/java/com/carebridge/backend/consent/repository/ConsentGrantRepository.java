@@ -6,6 +6,7 @@ import com.carebridge.backend.consent.entity.ConsentPurpose;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,6 +14,44 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ConsentGrantRepository extends JpaRepository<ConsentGrant, Long> {
+
+    @Query("""
+            select c from ConsentGrant c
+             where c.userId = :userId
+               and c.dataType = com.carebridge.backend.consent.entity.ConsentDataType.SENSITIVE_DATA
+               and c.purpose = com.carebridge.backend.consent.entity.ConsentPurpose.PERSONALIZE
+               and c.scope = :scope
+               and c.revokedAt is null
+               and c.status = 'ACTIVE'
+             order by c.consentGivenAt desc, c.id desc
+            """)
+    List<ConsentGrant> findRecommendationGrants(
+            @Param("userId") UUID userId, @Param("scope") String scope);
+
+    @Query("""
+            select c from ConsentGrant c
+             where c.userId = :userId
+               and c.dataType = com.carebridge.backend.consent.entity.ConsentDataType.SENSITIVE_DATA
+               and c.purpose = com.carebridge.backend.consent.entity.ConsentPurpose.PERSONALIZE
+               and c.scope = :scope
+             order by c.consentGivenAt desc, c.id desc
+            """)
+    List<ConsentGrant> findLatestRecommendationGrant(
+            @Param("userId") UUID userId, @Param("scope") String scope,
+            org.springframework.data.domain.Pageable pageable);
+
+    @Query("""
+            select c from ConsentGrant c
+             where c.userId = :userId
+               and c.evidenceKey = :evidenceKey
+               and c.dataType = com.carebridge.backend.consent.entity.ConsentDataType.SENSITIVE_DATA
+               and c.purpose = com.carebridge.backend.consent.entity.ConsentPurpose.PERSONALIZE
+               and c.scope = :scope
+            """)
+    Optional<ConsentGrant> findRecommendationGrantByEvidence(
+            @Param("userId") UUID userId,
+            @Param("evidenceKey") UUID evidenceKey,
+            @Param("scope") String scope);
 
     @Query(value = """
             SELECT 1

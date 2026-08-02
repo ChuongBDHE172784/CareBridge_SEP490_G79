@@ -7,6 +7,7 @@ import '../../aiTriage/services/triage_continuation_restore_coordinator.dart';
 import '../../aiTriage/services/triage_continuation_store.dart';
 import '../../aiTriage/services/triage_service.dart';
 import '../../journey/services/journey_service.dart';
+import '../../recommendation/services/recommendation_service.dart';
 
 /// Routes authenticated users to the right first screen after login.
 ///
@@ -16,10 +17,12 @@ class AuthLandingScreen extends StatefulWidget {
   const AuthLandingScreen({
     super.key,
     this.journeyService,
+    this.recommendationService,
     this.continuationCoordinator,
   });
 
   final JourneyService? journeyService;
+  final RecommendationService? recommendationService;
   final TriageContinuationRestoreCoordinator? continuationCoordinator;
 
   @override
@@ -28,6 +31,7 @@ class AuthLandingScreen extends StatefulWidget {
 
 class _AuthLandingScreenState extends State<AuthLandingScreen> {
   late final JourneyService _journeyService;
+  late final RecommendationService _recommendationService;
   late final TriageContinuationRestoreCoordinator _continuationCoordinator;
   bool _loading = true;
   String? _error;
@@ -36,6 +40,8 @@ class _AuthLandingScreenState extends State<AuthLandingScreen> {
   void initState() {
     super.initState();
     _journeyService = widget.journeyService ?? JourneyService();
+    _recommendationService =
+        widget.recommendationService ?? RecommendationService();
     final continuationStore = SecureTriageContinuationStore();
     _continuationCoordinator =
         widget.continuationCoordinator ??
@@ -84,8 +90,34 @@ class _AuthLandingScreenState extends State<AuthLandingScreen> {
 
     try {
       final dashboard = await _journeyService.getDashboard();
-      if (!mounted) return;
+      if (!mounted || AuthState.instance.userId != userId) return;
+      final maternalStage = const {
+        'PRE_PREGNANCY',
+        'PREGNANCY',
+        'POSTPARTUM',
+      }.contains(dashboard.journeyType);
+      if (dashboard.hasActiveJourney && maternalStage) {
+        try {
+          final profile = await _recommendationService.getProfile();
+          if (!mounted || AuthState.instance.userId != userId) return;
+          if (profile.requiresAction) {
+            context.go('/recommendation-profile', extra: dashboard.journeyType);
+          } else {
+            context.go('/mother-home');
+          }
+        } catch (_) {
+          if (!mounted || AuthState.instance.userId != userId) return;
+          setState(() {
+            _loading = false;
+            _error =
+                'KhÃ´ng thá»ƒ kiá»ƒm tra thiáº¿t láº­p cÃ¡ nhÃ¢n hÃ³a. Vui lÃ²ng thá»­ láº¡i.';
+          });
+        }
+        return;
+      }
       if (dashboard.hasActiveJourney) {
+        // BABY_CARE remains on its existing Home flow and is never gated by
+        // the maternal recommendation profile.
         context.go('/mother-home');
         return;
       }

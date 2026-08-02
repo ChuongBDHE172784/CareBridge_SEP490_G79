@@ -15,6 +15,9 @@ public record UpdateContentRequest(
         @NotNull ContentStage stage,
         UUID topicId,
         List<UUID> tagIds,
+        Integer eligibleFromWeek,
+        Integer eligibleToWeek,
+        Integer recommendationPriority,
         @NotNull ContentStatus status,
         String sourceLabel,
         List<@jakarta.validation.Valid ContentSourceRequest> sources
@@ -23,6 +26,6 @@ public record UpdateContentRequest(
     public UpdateContentRequest(
             String title, String body, ContentStage stage, UUID topicId, ContentStatus status,
             String sourceLabel, List<ContentSourceRequest> sources) {
-        this(title, body, null, stage, topicId, null, status, sourceLabel, sources);
+        this(title, body, null, stage, topicId, null, null, null, null, status, sourceLabel, sources);
     }
 }

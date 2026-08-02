@@ -131,7 +131,9 @@ export default function ManageTopicsPage() {
       const res = await apiClient.get<ApiResponse<CommunityTopic[]>>(
         '/api/v1/community/topics?includeHidden=true',
       );
-      setTopics(res.data.data ?? []);
+      // Recommendation catalog rows are managed through the dedicated catalog
+      // surface and must not appear in the general taxonomy editor.
+      setTopics((res.data.data ?? []).filter((topic) => !topic.slug.startsWith('rec-')));
     } catch {
       setError('Không thể tải danh sách. Vui lòng thử lại.');
     } finally {
@@ -283,7 +285,9 @@ export default function ManageTopicsPage() {
           '/api/v1/community/topics',
           payload,
         );
-        setTopics((prev) => [...prev, res.data.data]);
+        if (!res.data.data.slug.startsWith('rec-')) {
+          setTopics((prev) => [...prev, res.data.data]);
+        }
       }
       closeDrawer();
     } catch (err: unknown) {

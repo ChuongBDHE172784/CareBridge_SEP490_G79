@@ -7,6 +7,7 @@ import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/blocked_account_screen.dart';
 import '../../features/auth/screens/auth_landing_screen.dart';
 import '../../features/auth/screens/role_selection_screen.dart';
+import '../../features/checklist/screens/checklist_history_screen.dart';
 import '../../features/home/screens/home_shell.dart';
 import '../../features/home/screens/expert_home_shell.dart';
 import '../../features/home/screens/family_member_home_screen.dart';
@@ -14,6 +15,7 @@ import '../../features/journey/screens/mother_stage_selection_screen.dart';
 import '../../features/journey/screens/journey_setup_screen.dart';
 import '../../features/journey/screens/postpartum_recovery_setup_screen.dart';
 import '../../features/journey/services/journey_onboarding_service.dart';
+import '../../features/recommendation/screens/recommendation_profile_screen.dart';
 
 import '../../features/healthRecords/screens/maternal_health_metric_screen.dart';
 import '../../features/healthRecords/screens/health_record_timeline_screen.dart';
@@ -162,10 +164,12 @@ String? resolveAppRedirect({
   final normalizedRole = role?.trim().toUpperCase();
   final hasAssignedRole = normalizedRole != null && normalizedRole.isNotEmpty;
   const motherOnlySetupRoutes = {
+    '/checklists/history',
     '/journey-onboarding',
     '/mother-stage-selection',
     '/journey-setup',
     '/postpartum-recovery-setup',
+    '/recommendation-profile',
   };
 
   if (isRestoring) return null;
@@ -310,6 +314,10 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const AuthLandingScreen(),
     ),
     GoRoute(
+      path: '/checklists/history',
+      builder: (context, state) => const ChecklistHistoryScreen(),
+    ),
+    GoRoute(
       path: '/journey-onboarding',
       redirect: (context, state) => '/mother-stage-selection',
     ),
@@ -320,6 +328,12 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/postpartum-recovery-setup',
       builder: (context, state) => const PostpartumRecoverySetupScreen(),
+    ),
+    GoRoute(
+      path: '/recommendation-profile',
+      builder: (context, state) => RecommendationProfileScreen(
+        journeyStage: state.extra is String ? state.extra as String : null,
+      ),
     ),
     GoRoute(
       path: '/',

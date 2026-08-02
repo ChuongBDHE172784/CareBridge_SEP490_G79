@@ -21,6 +21,7 @@ import type {
   ChecklistTemplateStatus,
   ContentVersionSnapshot,
   ChecklistTemplateVersionSnapshot,
+  RecommendationTagCatalog,
 } from '../models/content';
 
 export async function fetchContentList(params: {
@@ -282,6 +283,9 @@ export async function createContent(data: {
   stage: ContentStage;
   topicId?: string;
   tagIds?: string[];
+  eligibleFromWeek?: number | null;
+  eligibleToWeek?: number | null;
+  recommendationPriority?: number;
   sources?: ContentSource[];
 }): Promise<CreateContentResult> {
   const res = await apiClient.post<ApiResponse<CreateContentResult>>('/api/v1/admin/content', data);
@@ -297,6 +301,9 @@ export async function updateContent(
     stage: ContentStage;
     topicId?: string;
     tagIds?: string[];
+    eligibleFromWeek?: number | null;
+    eligibleToWeek?: number | null;
+    recommendationPriority?: number;
     status: ContentStatus;
     sourceLabel?: string;
     sources?: ContentSource[];
@@ -306,6 +313,11 @@ export async function updateContent(
     `/api/v1/admin/content/${id}`,
     data,
   );
+  return res.data.data;
+}
+
+export async function fetchRecommendationTags(): Promise<RecommendationTagCatalog> {
+  const res = await apiClient.get<ApiResponse<RecommendationTagCatalog>>('/api/v1/admin/content/recommendation-tags');
   return res.data.data;
 }
 

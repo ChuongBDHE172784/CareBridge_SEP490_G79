@@ -102,6 +102,12 @@ public class ChecklistInstance {
     @Column(name = "cancellation_reason_code", length = 80)
     private String cancellationReasonCode;
 
+    @Column(name = "historical_at")
+    private Instant historicalAt;
+
+    @Column(name = "history_reason_code", length = 80)
+    private String historyReasonCode;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
