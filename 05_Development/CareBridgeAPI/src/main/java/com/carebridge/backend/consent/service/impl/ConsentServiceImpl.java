@@ -24,6 +24,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
 @RequiredArgsConstructor
@@ -35,6 +36,9 @@ public class ConsentServiceImpl implements ConsentService {
     private final ConsentCheckPolicy consentCheckPolicy;
     private final AuditService auditService;
     private final ExpertLocationShareRepository expertLocationShareRepository;
+
+    @Autowired(required = false)
+    private com.carebridge.backend.recommendation.service.RecommendationConsentCleanup recommendationConsentCleanup;
 
     @Override
     public ConsentGrantResponse grantConsent(java.util.UUID userId, GrantConsentRequest request) {
@@ -78,6 +82,9 @@ public class ConsentServiceImpl implements ConsentService {
         grant.setStatus("REVOKED");
         ConsentGrant saved = consentGrantRepository.save(grant);
         expertLocationShareRepository.deleteAllByConsentReference(permissionId);
+        if (recommendationConsentCleanup != null) {
+            recommendationConsentCleanup.onRevoked(userId, saved);
+        }
         auditService.log(
                 AuditAction.CONSENT_REVOKED,
                 userId,

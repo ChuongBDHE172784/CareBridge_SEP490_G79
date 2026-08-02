@@ -233,6 +233,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.7.14"
+  dio:
+    dependency: transitive
+    description:
+      name: dio
+      sha256: "0df44ebba85e503958eb75d07eedd3c86275a58c1d3eda2f2ce8f0a2c3abbb3c"
+      url: "https://pub.dev"
+    source: hosted
+    version: "5.11.0"
+  dio_web_adapter:
+    dependency: transitive
+    description:
+      name: dio_web_adapter
+      sha256: "0786d0b7295a373de356fc0af4f6f1d0ab2844ed31b19dfc5e7556b70e24212c"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.2.1"
   fake_async:
     dependency: transitive
     description:
@@ -265,6 +281,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "10.3.10"
+  file_saver:
+    dependency: "direct main"
+    description:
+      name: file_saver
+      sha256: "68c9a085d9bb4546e0a31d1e583a48d7c17a6987d538788ea064f0043b1fc02d"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.4.0"
   file_selector_linux:
     dependency: transitive
     description:
@@ -480,6 +504,14 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  flutter_tts:
+    dependency: "direct main"
+    description:
+      name: flutter_tts
+      sha256: ce5eb209b40e95f2f4a1397116c87ab2fcdff32257d04ed7a764e75894c03775
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.2.5"
   flutter_web_plugins:
     dependency: transitive
     description: flutter
@@ -682,6 +714,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.8.0"
+  image_gallery_saver_plus:
+    dependency: "direct main"
+    description:
+      name: image_gallery_saver_plus
+      sha256: "598beaaade0ead242416a6ef85883bb8f7f1c18f523c531c06c586a4688bd34a"
+      url: "https://pub.dev"
+    source: hosted
+    version: "5.1.1"
   image_picker:
     dependency: "direct main"
     description:
@@ -1252,6 +1292,30 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.7.11"
+  trackasia_gl:
+    dependency: "direct main"
+    description:
+      name: trackasia_gl
+      sha256: c269b0ab95cea597e1efba158fd5bb385f68d10bd78919f061a41c4cf66bd0a5
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.3"
+  trackasia_gl_platform_interface:
+    dependency: transitive
+    description:
+      name: trackasia_gl_platform_interface
+      sha256: "4eba904f15267dea74f5091dc42e58e76d35c6a275178405e8e7ff7058938acb"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.2"
+  trackasia_gl_web:
+    dependency: transitive
+    description:
+      name: trackasia_gl_web
+      sha256: "3e1840fc925ac4afef7bdbc2e865aec510a689cfad13498170327c7cdcbf118a"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.1"
   typed_data:
     dependency: transitive
     description:
@@ -1437,5 +1501,5 @@ packages:
     source: hosted
     version: "3.24.1"
 sdks:
-  dart: ">=3.10.3 <4.0.0"
-  flutter: ">=3.38.4"
+  dart: ">=3.11.0 <4.0.0"
+  flutter: ">=3.41.0"

@@ -14,6 +14,8 @@ class ExpertRequestQueueScreen extends StatefulWidget {
 }
 
 class _ExpertRequestQueueScreenState extends State<ExpertRequestQueueScreen> {
+  static const _primary = Color(0xFF845143);
+  static const _canvas = Color(0xFFF6F1EC);
   static const _filters = <String, String?>{
     'Đang chờ': 'PENDING',
     'Đã nhận': 'ACCEPTED',
@@ -161,11 +163,11 @@ class _ExpertRequestQueueScreenState extends State<ExpertRequestQueueScreen> {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.transparent,
+      color: _canvas,
       child: Column(
         children: [
           SizedBox(
-            height: 54,
+            height: 58,
             child: ListView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -176,6 +178,15 @@ class _ExpertRequestQueueScreenState extends State<ExpertRequestQueueScreen> {
                       child: ChoiceChip(
                         label: Text(entry.key),
                         selected: _status == entry.value,
+                        selectedColor: const Color(0xFFFFE2D9),
+                        labelStyle: TextStyle(
+                          color: _status == entry.value
+                              ? _primary
+                              : const Color(0xFF524440),
+                          fontWeight: _status == entry.value
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                        ),
                         onSelected: (_) {
                           setState(() => _status = entry.value);
                           _load(refresh: true);
@@ -184,6 +195,37 @@ class _ExpertRequestQueueScreenState extends State<ExpertRequestQueueScreen> {
                     ),
                   )
                   .toList(),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFFE2D9),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.assignment_outlined,
+                    color: _primary,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  _loading
+                      ? 'Đang cập nhật danh sách...'
+                      : '${_items.length} yêu cầu hiển thị',
+                  style: const TextStyle(
+                    color: Color(0xFF524440),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
             ),
           ),
           Expanded(
@@ -202,7 +244,7 @@ class _ExpertRequestQueueScreenState extends State<ExpertRequestQueueScreen> {
                     onRefresh: () => _load(refresh: true),
                     child: ListView.builder(
                       controller: _scrollController,
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                       itemCount: _items.length + (_hasMore ? 1 : 0),
                       itemBuilder: (context, index) {
                         if (index == _items.length) {
@@ -213,24 +255,55 @@ class _ExpertRequestQueueScreenState extends State<ExpertRequestQueueScreen> {
                         }
                         final request = _items[index];
                         final busy = _busyIds.contains(request.id);
-                        return Card(
+                        return Container(
                           key: Key('consultation-${request.id}'),
                           margin: const EdgeInsets.only(bottom: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.06),
+                                blurRadius: 14,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
+                          ),
                           child: Padding(
                             padding: const EdgeInsets.all(14),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  request.counterpartDisplayName ?? 'Mother',
-                                  style: Theme.of(
-                                    context,
-                                  ).textTheme.titleMedium,
+                                  request.counterpartDisplayName ??
+                                      'Người dùng CareBridge',
+                                  style: const TextStyle(
+                                    color: Color(0xFF271812),
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 16,
+                                  ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(request.topic),
                                 const SizedBox(height: 8),
-                                Chip(label: Text(_statusLabel(request.status))),
+                                Wrap(
+                                  spacing: 8,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    Chip(
+                                      label: Text(_statusLabel(request.status)),
+                                      backgroundColor: const Color(0xFFFFE2D9),
+                                      side: BorderSide.none,
+                                    ),
+                                    Text(
+                                      _timeAgo(request.createdAt),
+                                      style: const TextStyle(
+                                        color: Color(0xFF84736F),
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                                 Align(
                                   alignment: Alignment.centerRight,
                                   child: TextButton.icon(
@@ -292,3 +365,10 @@ String _statusLabel(String status) => switch (status) {
   'EXPIRED' => 'Hết hạn',
   _ => status,
 };
+
+String _timeAgo(DateTime value) {
+  final diff = DateTime.now().difference(value);
+  if (diff.inMinutes < 60) return 'Vừa gửi';
+  if (diff.inHours < 24) return '${diff.inHours} giờ trước';
+  return '${diff.inDays} ngày trước';
+}

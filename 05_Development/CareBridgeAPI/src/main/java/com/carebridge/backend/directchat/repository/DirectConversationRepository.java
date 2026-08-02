@@ -23,6 +23,25 @@ public interface DirectConversationRepository extends JpaRepository<DirectConver
     List<DirectConversation> findByMotherUserIdOrExpertUserIdOrderByLastActivityAtDesc(
             UUID motherUserId, UUID expertUserId);
 
+    /** Conversations delegated to an accepted Family member of the Mother's active care group. */
+    @Query(value = """
+            SELECT dc.*
+              FROM direct_conversations dc
+             WHERE dc.mother_user_id <> :userId
+               AND dc.expert_user_id <> :userId
+               AND EXISTS (
+                    SELECT 1
+                      FROM care_groups cg
+                      JOIN care_group_members cgm ON cgm.care_group_id = cg.care_group_id
+                     WHERE cg.owner_user_id = dc.mother_user_id
+                       AND cg.status = 'ACTIVE'
+                       AND cgm.user_id = :userId
+                       AND cgm.invitation_status = 'ACCEPTED'
+               )
+             ORDER BY dc.last_activity_at DESC NULLS LAST
+            """, nativeQuery = true)
+    List<DirectConversation> findDelegatedToFamilyUserOrderByLastActivityAtDesc(@Param("userId") UUID userId);
+
     // BR-DCC-014: touched from both message send and every call transition, not just message send.
     @Modifying
     @Transactional

@@ -55,6 +55,16 @@ public class ContentItem {
     @Column(name = "stage", length = 30)
     private ContentStage stage;
 
+    @Column(name = "eligible_from_week")
+    private Short eligibleFromWeek;
+
+    @Column(name = "eligible_to_week")
+    private Short eligibleToWeek;
+
+    @Builder.Default
+    @Column(name = "recommendation_priority", nullable = false)
+    private Short recommendationPriority = 0;
+
     @Column(name = "topic_id")
     private UUID topicId;
 

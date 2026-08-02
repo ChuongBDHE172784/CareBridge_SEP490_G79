@@ -13,7 +13,6 @@ import 'package:untitled/features/consultation/screens/expert_requests_tab_scree
 import 'package:untitled/features/consultation/screens/my_consultation_requests_screen.dart';
 import 'package:untitled/features/consultation/services/consultation_request_refresh_bus.dart';
 import 'package:untitled/features/consultation/services/consultation_request_service.dart';
-import 'package:untitled/features/community/screens/expert_question_queue_screen.dart';
 
 class _FakeConsultationRequestService extends ConsultationRequestService {
   ConsultationRequestPage page = const ConsultationRequestPage(
@@ -335,20 +334,17 @@ void main() {
 
   // CONREQ-FL-09
   testWidgets(
-    'expert requests tab has two segments without nested navigation',
+    'expert requests tab shows only consultation requests without nested navigation',
     (tester) async {
       ConsultationRequestService.instance = _FakeConsultationRequestService();
       await tester.pumpWidget(
         const MaterialApp(home: ExpertRequestsTabScreen()),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Tư vấn'), findsOneWidget);
-      expect(find.text('Cộng đồng'), findsOneWidget);
+      expect(find.text('Yêu cầu tư vấn'), findsOneWidget);
+      expect(find.text('Cộng đồng'), findsNothing);
       expect(find.byType(NavigationBar), findsNothing);
-      await tester.tap(find.text('Cộng đồng'));
-      await tester.pumpAndSettle();
-      expect(find.byType(ExpertQuestionQueueScreen), findsOneWidget);
-      expect(find.byType(NavigationBar), findsNothing);
+      expect(find.byType(ExpertRequestQueueScreen), findsOneWidget);
     },
   );
 

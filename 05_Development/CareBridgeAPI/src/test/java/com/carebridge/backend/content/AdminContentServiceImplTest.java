@@ -371,4 +371,32 @@ class AdminContentServiceImplTest {
         assertEquals(requestedBy, item.getRevisionRequestedBy());
         assertEquals(2, item.getRevisionRequestedVersion());
     }
+
+    @Test
+    void updateContent_recommendationMetadataCanClearExistingPregnancyWindow() {
+        UUID contentId = UUID.randomUUID();
+        ContentItem item = ContentItem.builder()
+                .id(contentId)
+                .type(ContentType.ARTICLE)
+                .title("BÃ i cÃ³ khoáº£ng tuáº§n")
+                .body("Ná»™i dung")
+                .stage(ContentStage.PREGNANCY)
+                .status(ContentStatus.DRAFT)
+                .versionNo(2)
+                .eligibleFromWeek((short) 10)
+                .eligibleToWeek((short) 12)
+                .recommendationPriority((short) 40)
+                .build();
+        when(contentRepository.findById(contentId)).thenReturn(Optional.of(item));
+        when(contentRepository.save(any(ContentItem.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        adminContentService.updateContent(contentId, new UpdateContentRequest(
+                item.getTitle(), item.getBody(), null, item.getStage(), null,
+                List.of(), null, null, 0, ContentStatus.DRAFT, null, null),
+                () -> ADMIN_USER_ID.toString());
+
+        assertEquals(null, item.getEligibleFromWeek());
+        assertEquals(null, item.getEligibleToWeek());
+        assertEquals((short) 0, item.getRecommendationPriority());
+    }
 }

@@ -22,6 +22,7 @@ import com.carebridge.backend.community.exception.QuestionNotAnswerableException
 import com.carebridge.backend.community.exception.QuestionNotFoundException;
 import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.exception.ModerationException;
+import com.carebridge.backend.recommendation.exception.RecommendationException;
 import com.carebridge.backend.integration.gemini.exception.RagException;
 import com.carebridge.backend.partner.exception.PartnerException;
 import com.carebridge.backend.emergency.exception.EmergencyException;
@@ -51,6 +52,15 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 public class GlobalExceptionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @ExceptionHandler(RecommendationException.class)
+    public ResponseEntity<ErrorResponse> handleRecommendation(
+            RecommendationException ex, HttpServletRequest request) {
+        // RecommendationException messages are constructed from field/rule constants only.
+        // Never route health DTOs through the generic rejectedValue/logging handler.
+        logger.warn("Recommendation request rejected: code={}, path={}", ex.getCode(), request.getRequestURI());
+        return error(ex.getStatus(), ex.getCode(), ex.getMessage(), request);
+    }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(

@@ -119,4 +119,28 @@ class ContentItemContextRetrieverTest {
 
         assertThat(result).hasSizeLessThanOrEqualTo(2);
     }
+
+    @Test
+    void retrieveContext_keepsCanonicalStageOutOfKeywordLiteral() {
+        when(contentRepository.searchByFilters(
+                eq("đau đầu"), isNull(), isNull(), isNull(), eq(ContentStatus.APPROVED), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        retriever.retrieveContext("đau đầu; giai đoạn pregnancy", null, 5);
+
+        verify(contentRepository).searchByFilters(
+                eq("đau đầu"), isNull(), isNull(), isNull(), eq(ContentStatus.APPROVED), any(Pageable.class));
+    }
+
+    @Test
+    void retrieveContext_usesSymptomSegmentBeforeStructuredFacts() {
+        when(contentRepository.searchByFilters(
+                eq("đau đầu"), isNull(), isNull(), isNull(), eq(ContentStatus.APPROVED), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        retriever.retrieveContext("đau đầu; 2 ngày; giai đoạn pregnancy", null, 5);
+
+        verify(contentRepository).searchByFilters(
+                eq("đau đầu"), isNull(), isNull(), isNull(), eq(ContentStatus.APPROVED), any(Pageable.class));
+    }
 }

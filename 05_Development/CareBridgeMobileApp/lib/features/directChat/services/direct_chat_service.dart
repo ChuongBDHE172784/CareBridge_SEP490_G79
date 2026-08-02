@@ -52,12 +52,17 @@ class DirectChatService {
   Future<TimelineItem> sendMessage(
     String conversationId, {
     required String clientMessageId,
-    required String messageBody,
+    String? messageBody,
+    String messageType = 'TEXT',
+    String? attachmentId,
   }) async {
-    final response = await apiPost(
-      '/api/v1/direct-conversations/$conversationId/messages',
-      {'clientMessageId': clientMessageId, 'messageBody': messageBody},
-    );
+    final response =
+        await apiPost('/api/v1/direct-conversations/$conversationId/messages', {
+          'clientMessageId': clientMessageId,
+          if (messageBody != null) 'messageBody': messageBody,
+          'messageType': messageType,
+          if (attachmentId != null) 'attachmentId': attachmentId,
+        });
     return TimelineItem.fromJson(response['data'] as Map<String, dynamic>);
   }
 
@@ -86,6 +91,14 @@ class DirectChatService {
       'lastSeenMessageId': lastSeenMessageId,
     });
   }
+
+  Future<void> recallMessage(
+    String conversationId,
+    String messageId,
+  ) => apiPatch(
+    '/api/v1/direct-conversations/$conversationId/messages/$messageId/recall',
+    {},
+  );
 
   Future<UnreadSummary> getUnreadSummary() async {
     final response = await apiGet(

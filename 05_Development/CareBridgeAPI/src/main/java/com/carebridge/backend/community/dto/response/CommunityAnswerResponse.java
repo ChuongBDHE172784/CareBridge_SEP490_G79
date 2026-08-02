@@ -22,6 +22,7 @@ public class CommunityAnswerResponse {
  private String body;
  private List<String> imageUrls;
  private boolean personalExperience;
+ private String experienceTag;
  private boolean expertLabeled;
  private UUID expertProfileId;
  private String status;

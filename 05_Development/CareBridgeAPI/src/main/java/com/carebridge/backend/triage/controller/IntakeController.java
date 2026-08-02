@@ -33,7 +33,7 @@ public class IntakeController {
     private final ITriageContinuationService continuationService;
 
     @PostMapping
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<IntakeSessionResponse>> runIntake(
             @Valid @RequestBody RunIntakeRequest request,
             Principal principal) {
@@ -43,7 +43,7 @@ public class IntakeController {
     }
 
     @GetMapping("/{sessionId}")
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<TriageResultResponse>> getResult(
             @PathVariable UUID sessionId,
             Principal principal) {
@@ -52,14 +52,14 @@ public class IntakeController {
     }
 
     @GetMapping
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<List<IntakeSessionResponse>>> listSessions(Principal principal) {
         UUID userId = SecurityUtils.requireCurrentUserId(principal);
         return ResponseEntity.ok(ApiResponse.success(triageService.listSessions(userId)));
     }
 
     @PostMapping("/conversation/start")
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<IntakeConversationResponse>> startConversation(
             @Valid @RequestBody StartIntakeConversationRequest request,
             Principal principal) {
@@ -68,7 +68,7 @@ public class IntakeController {
     }
 
     @PostMapping("/conversation/continue")
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<IntakeConversationResponse>> continueConversation(
             @Valid @RequestBody ContinueIntakeConversationRequest request,
             Principal principal) {
@@ -77,7 +77,7 @@ public class IntakeController {
     }
 
     @PostMapping("/continuations/resolve")
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<ContinuationDescriptor>> resolveContinuation(
             @Valid @RequestBody ContinuationTokenRequest request, Principal principal) {
         UUID userId = SecurityUtils.requireCurrentUserId(principal);
@@ -86,7 +86,7 @@ public class IntakeController {
     }
 
     @PostMapping("/continuations/acknowledge")
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<ContinuationAcknowledgementResponse>> acknowledgeContinuation(
             @Valid @RequestBody ContinuationTokenRequest request, Principal principal) {
         UUID userId = SecurityUtils.requireCurrentUserId(principal);

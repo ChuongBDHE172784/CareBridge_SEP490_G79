@@ -5,6 +5,8 @@ import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.content.entity.ContentStatus;
 import com.carebridge.backend.content.entity.ContentType;
 import java.util.Optional;
+import java.util.List;
+import java.util.Collection;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,6 +17,92 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ContentRepository extends JpaRepository<ContentItem, UUID> {
+
+    /** Targeted pool prefilter reusing the existing content/topic join table. */
+    @Query(value = """
+            SELECT DISTINCT c.*
+              FROM content_items c
+             WHERE c.stage = :stage
+               AND c.content_type = 'ARTICLE'
+               AND c.status = 'APPROVED'
+               AND (
+                    (:pregnancyWeek IS NULL
+                     AND c.eligible_from_week IS NULL
+                     AND c.eligible_to_week IS NULL)
+                    OR (:pregnancyWeek IS NOT NULL AND
+                        ((c.eligible_from_week IS NULL AND c.eligible_to_week IS NULL)
+                         OR (c.eligible_from_week <= :pregnancyWeek
+                             AND c.eligible_to_week >= :pregnancyWeek)))
+               )
+               AND EXISTS (
+                   SELECT 1
+                     FROM content_item_topics cit
+                     JOIN community_topics ct ON ct.id = cit.topic_id
+                    WHERE cit.content_item_id = c.content_item_id
+                      AND ct.type = 'TAG'
+                      AND ct.is_hidden = false
+                      AND ct.slug IN (:tagSlugs)
+               )
+             ORDER BY c.recommendation_priority DESC,
+                      (SELECT COUNT(DISTINCT matched_cit.topic_id)
+                         FROM content_item_topics matched_cit
+                         JOIN community_topics matched_ct ON matched_ct.id = matched_cit.topic_id
+                        WHERE matched_cit.content_item_id = c.content_item_id
+                          AND matched_ct.type = 'TAG'
+                          AND matched_ct.is_hidden = false
+                          AND matched_ct.slug IN (:tagSlugs)) DESC,
+                      CASE WHEN c.eligible_from_week IS NULL AND c.eligible_to_week IS NULL THEN 1 ELSE 0 END ASC,
+                      COALESCE(c.eligible_to_week - c.eligible_from_week + 1, 43) ASC,
+                      c.published_at DESC NULLS LAST,
+                      c.content_item_id ASC
+            """, nativeQuery = true)
+    List<ContentItem> findApprovedTargetedArticlesForRecommendation(
+            @Param("stage") String stage,
+            @Param("pregnancyWeek") Integer pregnancyWeek,
+            @Param("tagSlugs") Collection<String> tagSlugs,
+            Pageable pageable);
+
+    /** Fallback pool prefilter excluding every rec-* association. */
+    @Query(value = """
+            SELECT DISTINCT c.*
+              FROM content_items c
+             WHERE c.stage = :stage
+               AND c.content_type = 'ARTICLE'
+               AND c.status = 'APPROVED'
+               AND (
+                    (:pregnancyWeek IS NULL
+                     AND c.eligible_from_week IS NULL
+                     AND c.eligible_to_week IS NULL)
+                    OR (:pregnancyWeek IS NOT NULL AND
+                        ((c.eligible_from_week IS NULL AND c.eligible_to_week IS NULL)
+                         OR (c.eligible_from_week <= :pregnancyWeek
+                             AND c.eligible_to_week >= :pregnancyWeek)))
+               )
+               AND NOT EXISTS (
+                   SELECT 1
+                     FROM content_item_topics cit
+                     JOIN community_topics ct ON ct.id = cit.topic_id
+                    WHERE cit.content_item_id = c.content_item_id
+                      AND ct.type = 'TAG'
+                      AND ct.slug LIKE 'rec-%'
+               )
+             ORDER BY c.recommendation_priority DESC,
+                      CASE WHEN c.eligible_from_week IS NULL AND c.eligible_to_week IS NULL THEN 1 ELSE 0 END ASC,
+                      COALESCE(c.eligible_to_week - c.eligible_from_week + 1, 43) ASC,
+                      c.published_at DESC NULLS LAST,
+                      c.content_item_id ASC
+            """, nativeQuery = true)
+    List<ContentItem> findApprovedFallbackArticlesForRecommendation(
+            @Param("stage") String stage,
+            @Param("pregnancyWeek") Integer pregnancyWeek,
+            Pageable pageable);
+
+    /**
+     * Reads recommendation tag links in one JPQL join instead of triggering a
+     * lazy ElementCollection query for every candidate entity.
+     */
+    @Query("select c.id, tag from ContentItem c join c.tagIds tag where c.id in :contentItemIds")
+    List<Object[]> findRecommendationTagRows(@Param("contentItemIds") Collection<UUID> contentItemIds);
 
     Optional<ContentItem> findByTitleIgnoreCaseAndStageAndType(
             String title, ContentStage stage, ContentType type);

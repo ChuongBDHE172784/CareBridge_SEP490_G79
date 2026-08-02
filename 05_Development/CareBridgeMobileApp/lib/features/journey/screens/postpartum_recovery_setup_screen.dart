@@ -124,7 +124,7 @@ class _PostpartumRecoverySetupScreenState
       final create = widget.createJourney ?? service.createJourney;
       await create(request);
       if (!mounted) return;
-      context.go('/mother-home?tab=1');
+      context.go('/recommendation-profile', extra: 'POSTPARTUM');
     } on ApiException catch (error) {
       if (!mounted) return;
       if (error.statusCode == 409) {

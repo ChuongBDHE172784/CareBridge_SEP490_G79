@@ -25,7 +25,8 @@ public CommunityAnswer toEntity(PostCommunityAnswerRequest request, UUID authorI
  .authorId(authorId)
  .body(request.getBody())
  .imageUrls(copyImageUrls(request.getImageUrls()))
- .personalExperience(Boolean.TRUE.equals(request.getIsPersonalExperience()))
+ .personalExperience(!expertLabeled && Boolean.TRUE.equals(request.getIsPersonalExperience()))
+ .experienceTag(expertLabeled ? null : request.getExperienceTag())
  .expertLabeled(expertLabeled) // ADR-COM-005: never from request
  .status(AnswerStatus.AI_PENDING)
  .build();
@@ -58,6 +59,7 @@ public CommunityAnswerResponse toResponse(CommunityAnswer entity, String authorD
  .body(entity.getBody())
  .imageUrls(copyImageUrls(entity.getImageUrls()))
  .personalExperience(entity.isPersonalExperience())
+ .experienceTag(entity.getExperienceTag())
  .expertLabeled(entity.isExpertLabeled())
  .expertProfileId(expertProfileId)
  .status(toResponseStatus(entity.getStatus()))
@@ -82,6 +84,7 @@ private String toResponseStatus(AnswerStatus status) {
 public void applyEdit(CommunityAnswer entity, EditAnswerRequest request) {
  entity.setBody(request.getBody());
  entity.setPersonalExperience(Boolean.TRUE.equals(request.getIsPersonalExperience()));
+ entity.setExperienceTag(Boolean.TRUE.equals(request.getIsPersonalExperience()) ? request.getExperienceTag() : null);
  if (request.getImageUrls() != null) {
   entity.setImageUrls(copyImageUrls(request.getImageUrls()));
  }

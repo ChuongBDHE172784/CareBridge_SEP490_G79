@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
-import { getMyProfile, updateMyProfile } from '../services/expertApi';
+import { getMyProfile, updateMyProfile, searchTrackAsiaHospitals, uploadExpertAvatar } from '../services/expertApi';
 import { updateUserProfile } from '../../auth/services/authApi';
 import type { UserProfile } from '../../auth/models/user';
-import { searchTrackAsiaHospitals, uploadExpertAvatar } from '../services/expertApi';
-import { RefreshCw, Camera } from 'lucide-react';
 
 const TITLES = [
   'Bác sĩ',
@@ -17,12 +15,11 @@ const TITLES = [
   'Chuyên gia Dinh dưỡng',
   'Điều dưỡng',
   'Kỹ thuật viên',
-  'Chuyên gia Y tế khác'
+  'Chuyên gia Y tế khác',
 ];
-import './ExpertProfilePage.css';
 
 function getInitials(name: string | null | undefined): string {
-  if (!name) return 'ED';
+  if (!name) return 'EX';
   const parts = name.trim().split(/\s+/);
   if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   return parts[0].slice(0, 2).toUpperCase();
@@ -69,13 +66,15 @@ export default function ExpertProfilePage() {
       });
       setTrackAsiaQuery(profileData.workplace ?? '');
     } catch (e: any) {
-      setError(e.response?.data?.message ?? 'Không thể tải hồ sơ');
+      setError(e.response?.data?.message ?? 'Không thể tải hồ sơ chuyên môn');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
   useEffect(() => {
     if (trackAsiaQuery.trim().length < 2 || trackAsiaQuery === form.workplace) {
@@ -85,7 +84,7 @@ export default function ExpertProfilePage() {
     const timer = setTimeout(() => {
       setSearchingHospitals(true);
       searchTrackAsiaHospitals(trackAsiaQuery)
-        .then(res => setTrackAsiaResults(res || []))
+        .then((res) => setTrackAsiaResults(res || []))
         .catch(() => setTrackAsiaResults([]))
         .finally(() => setSearchingHospitals(false));
     }, 500);
@@ -112,7 +111,7 @@ export default function ExpertProfilePage() {
       setAvatarSuccess(true);
       setTimeout(() => setAvatarSuccess(false), 3000);
     } catch (err: any) {
-      alert(err.response?.data?.message ?? 'Lưu ảnh thất bại');
+      alert(err.response?.data?.message ?? 'Lưu ảnh đại diện thất bại');
     } finally {
       setAvatarSaving(false);
       e.target.value = '';
@@ -136,64 +135,86 @@ export default function ExpertProfilePage() {
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
     } catch (e: any) {
-      alert(e.response?.data?.message ?? 'Lưu thất bại');
+      alert(e.response?.data?.message ?? 'Lưu hồ sơ thất bại');
     } finally {
       setSaving(false);
     }
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent" />
-      </div>
-    );
+    return <div className="py-12 text-center text-outline">Đang tải hồ sơ chuyên môn...</div>;
   }
 
-  const statusColor: Record<string, string> = {
-    PENDING: 'bg-yellow-100 text-yellow-800',
-    UNDER_REVIEW: 'bg-blue-100 text-blue-800',
-    APPROVED: 'bg-green-100 text-green-800',
-    VERIFIED: 'bg-green-100 text-green-800',
-    REJECTED: 'bg-red-100 text-red-800',
-    SUSPENDED: 'bg-gray-100 text-gray-800',
-    EXPIRED: 'bg-gray-100 text-gray-800',
+  const getStatusBadge = (status: string) => {
+    if (status === 'APPROVED' || status === 'VERIFIED')
+      return { label: 'Đã xác minh', className: 'bg-[#E6F4EA] text-[#137333]' };
+    if (status === 'REJECTED')
+      return { label: 'Từ chối xác minh', className: 'bg-error-container text-error' };
+    return { label: 'Đang chờ xét duyệt', className: 'bg-[#FFF3E0] text-[#E65100]' };
   };
 
+  const statusInfo = getStatusBadge(profile?.verificationStatus);
+
   return (
-    <div className="max-w-2xl mx-auto p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-on-surface">Hồ sơ chuyên môn</h1>
-        <span className={`px-3 py-1 rounded-full text-sm font-medium ${statusColor[profile?.verificationStatus] || 'bg-gray-100'}`}>
-          {profile?.verificationStatus ?? 'N/A'}
+    <div className="p-8 font-sans">
+      {/* Header */}
+      <div className="flex justify-between items-start mb-6">
+        <div>
+          <h1 className="text-[26px] font-bold text-on-surface m-0">Hồ sơ chuyên môn</h1>
+          <p className="text-on-surface-variant text-sm mt-1">
+            Quản lý thông tin cá nhân, bằng cấp, nơi công tác và phạm vi tư vấn sức khỏe
+          </p>
+        </div>
+        <span className={`py-1.5 px-4 rounded-full text-xs font-semibold ${statusInfo.className}`}>
+          ✓ {statusInfo.label}
         </span>
       </div>
 
       {error && (
-        <div className="mb-4 p-3 rounded bg-red-50 border border-red-200 text-red-700 text-sm">{error}</div>
+        <div className="bg-error-container rounded-2xl p-4 mb-4 text-error text-sm">{error}</div>
       )}
       {success && (
-        <div className="mb-4 p-3 rounded bg-green-50 border border-green-200 text-green-700 text-sm">Đã lưu thành công!</div>
+        <div className="bg-[#E6F4EA] rounded-2xl p-4 mb-4 text-[#137333] text-sm">
+          ✓ Đã cập nhật thông tin hồ sơ thành công!
+        </div>
       )}
       {avatarSuccess && (
-        <div className="mb-4 p-3 rounded bg-green-50 border border-green-200 text-green-700 text-sm">Đã lưu ảnh thành công!</div>
+        <div className="bg-[#E6F4EA] rounded-2xl p-4 mb-4 text-[#137333] text-sm">
+          ✓ Đã cập nhật ảnh đại diện thành công!
+        </div>
       )}
 
-      <div className="expert-avatar-section">
-        {profile?.avatarUrl ? (
-          <img
-            src={profile.avatarUrl}
-            alt="Avatar"
-            className="expert-avatar-img"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-          />
-        ) : (
-          <div className="expert-avatar-placeholder">
-            {getInitials(user?.name ?? null)}
-          </div>
-        )}
-        <label className={`expert-avatar-edit-btn ${avatarSaving ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}>
-          <Camera size={16} className="mr-2 inline-block" />
+      {/* Avatar Card */}
+      <div className="bg-surface rounded-2xl p-6 shadow-md mb-6 flex items-center gap-6">
+        <div className="relative">
+          {profile?.avatarUrl ? (
+            <img
+              src={profile.avatarUrl}
+              alt="Avatar"
+              className="w-20 h-20 rounded-full object-cover border-2 border-primary/20"
+              onError={(e) => {
+                (e.target as HTMLImageElement).style.display = 'none';
+              }}
+            />
+          ) : (
+            <div className="w-20 h-20 rounded-full bg-primary-container text-primary font-bold text-2xl flex items-center justify-center">
+              {getInitials(user?.name ?? null)}
+            </div>
+          )}
+        </div>
+
+        <div className="flex-1">
+          <h3 className="text-base font-bold text-on-surface mb-0.5">{user?.name || 'Chuyên gia CareBridge'}</h3>
+          <p className="text-xs text-outline">{form.professionalTitle || 'Chuyên gia Y tế'} {form.specialty ? `• ${form.specialty}` : ''}</p>
+          <p className="text-xs text-on-surface-variant mt-1">{user?.phone}</p>
+        </div>
+
+        <label
+          className={`flex items-center gap-2 py-2.5 px-5 rounded-full border border-outline-variant bg-surface text-primary text-xs font-semibold transition hover:bg-surface-container-low ${
+            avatarSaving ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+          }`}
+        >
+          <span className="material-symbols-outlined text-base">photo_camera</span>
           {avatarSaving ? 'Đang lưu...' : 'Cập nhật ảnh'}
           <input
             type="file"
@@ -205,115 +226,147 @@ export default function ExpertProfilePage() {
         </label>
       </div>
 
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm divide-y divide-gray-100">
-        <form onSubmit={onSubmit} className="p-6 space-y-5">
-          <Field label="Chuyên khoa" required>
-            <input
-              className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 focus:border-primary focus:ring-1 focus:ring-primary"
-              value={form.specialty}
-              onChange={(e) => setForm({ ...form, specialty: e.target.value })}
-              placeholder="VD: Sản khoa, Nhi khoa..."
-            />
-          </Field>
+      {/* Main Form */}
+      <form onSubmit={onSubmit} className="space-y-6">
+        {/* Section 1: Professional Information */}
+        <div className="bg-surface rounded-2xl p-6 shadow-md">
+          <h2 className="text-base font-bold text-on-surface mb-4 flex items-center gap-2">
+            <span className="material-symbols-outlined text-primary text-xl">medical_information</span>
+            Thông tin chuyên môn &amp; Chức danh
+          </h2>
 
-          <Field label="Chức danh chuyên môn">
-            <select
-              className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 bg-white focus:border-primary focus:ring-1 focus:ring-primary"
-              value={form.professionalTitle}
-              onChange={(e) => setForm({ ...form, professionalTitle: e.target.value })}
-            >
-              <option value="">-- Chọn chức danh --</option>
-              {TITLES.map((title) => (
-                <option key={title} value={title}>
-                  {title}
-                </option>
-              ))}
-            </select>
-          </Field>
-
-          <Field label="Số năm kinh nghiệm">
-            <input
-              type="number"
-              min="0"
-              className="mt-1 block w-32 rounded border border-gray-300 px-3 py-2 focus:border-primary focus:ring-1 focus:ring-primary"
-              value={form.experienceYears}
-              onChange={(e) => setForm({ ...form, experienceYears: e.target.value })}
-            />
-          </Field>
-
-          <Field label="Nơi công tác">
-            <div className="relative">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-outline uppercase tracking-wider mb-2">
+                Chuyên khoa <span className="text-error">*</span>
+              </label>
               <input
-                className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 focus:border-primary focus:ring-1 focus:ring-primary"
-                value={trackAsiaQuery}
-                onChange={(e) => setTrackAsiaQuery(e.target.value)}
-                placeholder="Gõ tên bệnh viện/phòng khám (VD: Bệnh viện Chợ Rẫy)..."
+                required
+                className="w-full py-2.5 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface outline-none focus:border-primary font-sans"
+                value={form.specialty}
+                onChange={(e) => setForm({ ...form, specialty: e.target.value })}
+                placeholder="VD: Sản khoa, Nhi khoa, Dinh dưỡng..."
               />
-              {searchingHospitals && (
-                <div className="absolute right-3 top-4">
-                  <RefreshCw className="animate-spin text-primary" size={16} />
-                </div>
-              )}
-              {trackAsiaResults.length > 0 && (
-                <div className="absolute top-12 z-10 max-h-60 w-full overflow-y-auto rounded-md border border-gray-200 bg-white shadow-lg">
-                  {trackAsiaResults.map((r, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      className="w-full border-b p-3 text-left hover:bg-gray-50 last:border-0"
-                      onClick={() => {
-                        setForm({ ...form, workplace: r.name });
-                        setTrackAsiaQuery(r.name);
-                        setTrackAsiaResults([]);
-                      }}
-                    >
-                      <p className="font-semibold text-sm">{r.name}</p>
-                      <p className="text-xs text-gray-500">{r.address}</p>
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
-          </Field>
 
-          <Field label="Lĩnh vực tư vấn">
+            <div>
+              <label className="block text-xs font-semibold text-outline uppercase tracking-wider mb-2">
+                Chức danh chuyên môn
+              </label>
+              <select
+                className="w-full py-2.5 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface outline-none focus:border-primary font-sans cursor-pointer"
+                value={form.professionalTitle}
+                onChange={(e) => setForm({ ...form, professionalTitle: e.target.value })}
+              >
+                <option value="">-- Chọn chức danh --</option>
+                {TITLES.map((title) => (
+                  <option key={title} value={title}>
+                    {title}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-outline uppercase tracking-wider mb-2">
+                Số năm kinh nghiệm
+              </label>
+              <input
+                type="number"
+                min="0"
+                className="w-full py-2.5 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface outline-none focus:border-primary font-sans"
+                value={form.experienceYears}
+                onChange={(e) => setForm({ ...form, experienceYears: e.target.value })}
+                placeholder="Số năm..."
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Section 2: Workplace */}
+        <div className="bg-surface rounded-2xl p-6 shadow-md">
+          <h2 className="text-base font-bold text-on-surface mb-4 flex items-center gap-2">
+            <span className="material-symbols-outlined text-primary text-xl">domain</span>
+            Nơi công tác &amp; Cơ sở y tế
+          </h2>
+
+          <div className="relative">
+            <label className="block text-xs font-semibold text-outline uppercase tracking-wider mb-2">
+              Bệnh viện / Phòng khám
+            </label>
+            <input
+              className="w-full py-2.5 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface outline-none focus:border-primary font-sans"
+              value={trackAsiaQuery}
+              onChange={(e) => setTrackAsiaQuery(e.target.value)}
+              placeholder="Gõ tên bệnh viện/phòng khám (VD: Bệnh viện Từ Dũ, Bệnh viện Chợ Rẫy)..."
+            />
+            {searchingHospitals && (
+              <div className="absolute right-4 top-10">
+                <span className="material-symbols-outlined animate-spin text-primary text-lg">progress_activity</span>
+              </div>
+            )}
+            {trackAsiaResults.length > 0 && (
+              <div className="absolute top-[72px] z-10 max-h-60 w-full overflow-y-auto rounded-2xl border border-outline-variant bg-surface shadow-xl py-1">
+                {trackAsiaResults.map((r, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    className="w-full p-3.5 text-left hover:bg-surface-container-low border-b border-surface-container-highest last:border-0 cursor-pointer"
+                    onClick={() => {
+                      setForm({ ...form, workplace: r.name });
+                      setTrackAsiaQuery(r.name);
+                      setTrackAsiaResults([]);
+                    }}
+                  >
+                    <p className="font-semibold text-sm text-on-surface">{r.name}</p>
+                    <p className="text-xs text-outline">{r.address}</p>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Section 3: Consultation Scope */}
+        <div className="bg-surface rounded-2xl p-6 shadow-md">
+          <h2 className="text-base font-bold text-on-surface mb-4 flex items-center gap-2">
+            <span className="material-symbols-outlined text-primary text-xl">description</span>
+            Lĩnh vực &amp; Phạm vi tư vấn
+          </h2>
+
+          <div>
+            <label className="block text-xs font-semibold text-outline uppercase tracking-wider mb-2">
+              Mô tả chi tiết lĩnh vực có thể tư vấn
+            </label>
             <textarea
               rows={4}
-              className="mt-1 block w-full rounded border border-gray-300 px-3 py-2 focus:border-primary focus:ring-1 focus:ring-primary"
+              className="w-full py-3 px-4 rounded-2xl border border-outline-variant bg-surface text-sm text-on-surface outline-none focus:border-primary font-sans leading-relaxed resize-none"
               value={form.consultationScope}
               onChange={(e) => setForm({ ...form, consultationScope: e.target.value })}
-              placeholder="Mô tả lĩnh vực bạn có thể tư vấn..."
+              placeholder="Nhập phạm vi tư vấn sức khỏe thai kỳ, dinh dưỡng mẹ & bé, tư vấn tâm lý..."
             />
-          </Field>
+          </div>
 
           {profile?.verifiedAt && (
-            <p className="text-sm text-gray-500">
-              Đã xác minh lúc: {new Date(profile.verifiedAt).toLocaleString('vi-VN')}
+            <p className="text-xs text-outline mt-3">
+              Đã xác minh lần cuối: {new Date(profile.verifiedAt).toLocaleString('vi-VN')}
             </p>
           )}
+        </div>
 
-          <div className="pt-2">
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-5 py-2.5 rounded bg-primary text-white font-medium hover:bg-primary/90 disabled:opacity-50"
-            >
-              {saving ? 'Đang lưu...' : 'Lưu hồ sơ'}
-            </button>
-          </div>
-        </form>
-      </div>
+        {/* Action button */}
+        <div className="flex justify-end pt-2">
+          <button
+            type="submit"
+            disabled={saving}
+            className="flex items-center gap-2 py-3 px-8 rounded-full bg-primary text-on-primary text-sm font-semibold cursor-pointer hover:brightness-110 disabled:opacity-50"
+          >
+            <span className="material-symbols-outlined text-lg">save</span>
+            {saving ? 'Đang lưu...' : 'Lưu hồ sơ chuyên môn'}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
 
-function Field({ label, children, required }: { label: string; children: React.ReactNode; required?: boolean }) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700">
-        {label} {required && <span className="text-red-500">*</span>}
-      </label>
-      {children}
-    </div>
-  );
-}

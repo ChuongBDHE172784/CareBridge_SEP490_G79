@@ -76,7 +76,7 @@ class QuestionSearchProviderTest {
                 makeQuestion("Câu hỏi về thai kỳ 5", "Nội dung 5"));
         Page<CommunityQuestion> page = new PageImpl<>(approved, pageable, 5);
 
-        when(questionRepository.searchApproved(eq("thai kỳ"), isNull(), isNull(), isNull(), any()))
+        when(questionRepository.searchApproved(eq("thai kỳ"), isNull(), isNull(), isNull(), isNull(), any()))
                 .thenReturn(page);
 
         Page<SearchItemResponse> result = provider.search("thai kỳ", UUID.randomUUID(), pageable);
@@ -96,7 +96,7 @@ class QuestionSearchProviderTest {
         CommunityQuestion question = makeQuestion("Title", longHtmlBody);
         Page<CommunityQuestion> page = new PageImpl<>(List.of(question), pageable, 1);
 
-        when(questionRepository.searchApproved(any(), isNull(), isNull(), isNull(), any())).thenReturn(page);
+        when(questionRepository.searchApproved(any(), isNull(), isNull(), isNull(), isNull(), any())).thenReturn(page);
 
         Page<SearchItemResponse> result = provider.search("mang thai", UUID.randomUUID(), pageable);
 

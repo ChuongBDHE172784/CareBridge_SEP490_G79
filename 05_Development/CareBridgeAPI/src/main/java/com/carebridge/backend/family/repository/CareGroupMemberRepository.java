@@ -31,6 +31,22 @@ public interface CareGroupMemberRepository extends JpaRepository<CareGroupMember
 
     boolean existsByCareGroupIdAndUserIdAndInviteStatus(UUID careGroupId, UUID userId, InviteStatus status);
 
+    /** A delegated Family account may act in the Mother's direct conversation only while its
+     * membership is accepted and the Mother's care group remains active. */
+    @Query(value = """
+            SELECT EXISTS (
+                SELECT 1
+                  FROM care_groups cg
+                  JOIN care_group_members cgm ON cgm.care_group_id = cg.care_group_id
+                 WHERE cg.owner_user_id = :motherUserId
+                   AND cg.status = 'ACTIVE'
+                   AND cgm.user_id = :familyUserId
+                   AND cgm.invitation_status = 'ACCEPTED'
+            )
+            """, nativeQuery = true)
+    boolean existsAcceptedMemberOfActiveMotherCareGroup(
+            @Param("motherUserId") UUID motherUserId, @Param("familyUserId") UUID familyUserId);
+
     List<CareGroupMember> findByCareGroupIdAndInviteStatusIn(UUID careGroupId, List<InviteStatus> statuses);
 
     long countByCareGroupId(UUID careGroupId);

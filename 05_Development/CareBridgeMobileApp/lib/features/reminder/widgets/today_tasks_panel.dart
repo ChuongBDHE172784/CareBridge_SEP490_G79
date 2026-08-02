@@ -12,18 +12,26 @@ enum TodayTasksLayout { timeBuckets, sourceGroups }
 class TodayTasksPanelController {
   Object? _owner;
   Future<void> Function()? _refresh;
+  Future<void> Function()? _clear;
 
   Future<void> refresh() => _refresh?.call() ?? Future<void>.value();
+  Future<void> clear() => _clear?.call() ?? Future<void>.value();
 
-  void _attach(Object owner, Future<void> Function() refresh) {
+  void _attach(
+    Object owner,
+    Future<void> Function() refresh,
+    Future<void> Function() clear,
+  ) {
     _owner = owner;
     _refresh = refresh;
+    _clear = clear;
   }
 
   void _detach(Object owner) {
     if (identical(_owner, owner)) {
       _owner = null;
       _refresh = null;
+      _clear = null;
     }
   }
 }
@@ -75,7 +83,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
     _service = widget.service ?? TodayTaskService.instance;
     _checklistService =
         widget.checklistService ?? UserChecklistService.instance;
-    widget.controller?._attach(this, _load);
+    widget.controller?._attach(this, _load, _clear);
     _load();
   }
 
@@ -94,7 +102,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
     }
     if (oldWidget.controller != widget.controller) {
       oldWidget.controller?._detach(this);
-      widget.controller?._attach(this, _load);
+      widget.controller?._attach(this, _load, _clear);
     }
   }
 
@@ -126,6 +134,18 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
         _loading = false;
       });
     }
+  }
+
+  Future<void> _clear() async {
+    ++_loadGeneration;
+    if (!mounted) return;
+    setState(() {
+      _snapshot = null;
+      _failure = null;
+      _loading = true;
+      _announcement = null;
+      _acting.clear();
+    });
   }
 
   Future<void> _act(TodayTask task, TodayTaskAction action) async {
@@ -751,23 +771,39 @@ class _TodayTaskCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        task.title,
-                        style: TextStyle(
-                          fontFamily: 'Quicksand',
-                          fontSize: 15.5,
-                          fontWeight: isCompleted
-                              ? FontWeight.w600
-                              : FontWeight.w700,
-                          color: isCompleted
-                              ? const Color(0xFF9C857C)
-                              : const Color(0xFF4A3831),
-                          decoration: isCompleted
-                              ? TextDecoration.lineThrough
-                              : TextDecoration.none,
-                          decorationColor: const Color(0xFF9C857C),
-                          height: 1.35,
-                        ),
+                      Row(
+                        children: [
+                          Icon(
+                            task.target == TodayTaskTarget.baby
+                                ? Icons.child_care_rounded
+                                : Icons.pregnant_woman_rounded,
+                            color: isCompleted
+                                ? const Color(0xFF9C857C)
+                                : const Color(0xFFC98C7B),
+                            size: 18,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              task.title,
+                              style: TextStyle(
+                                fontFamily: 'Quicksand',
+                                fontSize: 15.5,
+                                fontWeight: isCompleted
+                                    ? FontWeight.w600
+                                    : FontWeight.w700,
+                                color: isCompleted
+                                    ? const Color(0xFF9C857C)
+                                    : const Color(0xFF4A3831),
+                                decoration: isCompleted
+                                    ? TextDecoration.lineThrough
+                                    : TextDecoration.none,
+                                decorationColor: const Color(0xFF9C857C),
+                                height: 1.35,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       if (task.careGroupLabel != null ||
                           task.careContextLabel != null) ...[

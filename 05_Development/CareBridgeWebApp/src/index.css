@@ -5,10 +5,15 @@
 @layer base {
   *, *::before, *::after { box-sizing: border-box; }
 
-  body {
-    margin: 0;
-    min-width: 320px;
+  html, body, #root {
+    width: 100%;
     min-height: 100vh;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    min-width: 320px;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     @apply bg-background text-on-surface font-sans;

@@ -36,6 +36,8 @@ import com.carebridge.backend.triage.service.ITriageService;
 import com.carebridge.backend.triage.service.TriagePreScreenMetrics;
 import com.carebridge.backend.triage.service.TriageFallbackMetrics;
 import com.carebridge.backend.triage.service.TriageStageLegacyDefaultMetrics;
+import com.carebridge.backend.triage.service.TriageRagEnrichmentService;
+import com.carebridge.backend.common.util.SecurityUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -83,7 +85,8 @@ public class TriageService implements ITriageService {
     private static final Set<String> CONVERSATION_RESPONSE_METADATA_FIELDS = Set.of(
             "assistantProvider",
             "assistantFallbackUsed",
-            "conversationSummary");
+            "conversationSummary",
+            "ragQueryText");
 
     private final IIntakeSessionRepository intakeSessionRepository;
     private final ChildTriageAiClient childTriageAiClient;
@@ -130,6 +133,10 @@ public class TriageService implements ITriageService {
     // session creation once the gate passes. Optional for the same constructor-compat reason.
     @Autowired(required = false)
     private com.carebridge.backend.triage.policy.TriageDisclaimerPolicy triageDisclaimerPolicy;
+
+    /** Optional for legacy unit-test constructors; production wiring always provides RAG. */
+    @Autowired(required = false)
+    private TriageRagEnrichmentService triageRagEnrichmentService;
 
     @Autowired
     public TriageService(
@@ -412,6 +419,12 @@ public class TriageService implements ITriageService {
         envelope = ensureSafeEnvelope(envelope, canonicalRequest, true);
         envelope.put("intakeSessionId", session.getId().toString());
         envelope.put("stage", session.getStage().name());
+        String ragQueryText = boundedRagQueryText(request.getInitialText());
+        if (ragQueryText != null) {
+            envelope.put("ragQueryText", ragQueryText);
+        }
+        enrichConversationResult(envelope, sessionStage(session), userId,
+                request.getInitialText(), castToMap(canonicalRequest.get("currentIntake")), Map.of());
         persistConversationEnvelope(session, envelope, userId);
         return toConversationResponse(envelope, session);
     }
@@ -489,6 +502,12 @@ public class TriageService implements ITriageService {
         envelope = ensureSafeEnvelope(envelope, canonical, false);
         envelope.put("intakeSessionId", session.getId().toString());
         envelope.put("stage", stage.name());
+        String previousRagQuery = boundedRagQueryText(previous.get("ragQueryText"));
+        if (previousRagQuery != null) {
+            envelope.put("ragQueryText", previousRagQuery);
+        }
+        enrichConversationResult(envelope, stage, userId, previousRagQuery,
+                castToMap(canonical.get("currentIntake")), normalizedAnswers);
         persistConversationEnvelope(session, envelope, userId);
         return toConversationResponse(envelope, session);
     }
@@ -534,6 +553,19 @@ public class TriageService implements ITriageService {
                 List<HealthMemoryContextItem> healthContext = loadHealthContextFailOpen(
                         userId, stage, request.getBabyProfileId(), request.getMotherProfileId());
                 aiResponse = triageWithAiServiceOrFallback(request, healthContext);
+            }
+            Map<String, Object> resultMap = readJsonObject(aiResponse);
+            if (preScreen == null || preScreen.outcome() != PreScreenOutcome.ESCALATE_RED) {
+                if (triageRagEnrichmentService != null) {
+                    triageRagEnrichmentService.enrichOneShot(
+                            resultMap,
+                            stage,
+                            userId,
+                            SecurityUtils.hasRole("MOTHER"),
+                            objectMapper.convertValue(request,
+                                    new TypeReference<Map<String, Object>>() {}));
+                    aiResponse = objectMapper.writeValueAsString(resultMap);
+                }
             }
             JsonNode result = objectMapper.readTree(aiResponse);
             String triageStatus = result.path("status").asText(null);
@@ -676,6 +708,9 @@ public class TriageService implements ITriageService {
                 .redFlags(readStringList(session, "redFlags"))
                 .matchedRules(readStringList(session, "matchedRules"))
                 .citations(citations)
+                .ragAnswer(readText(session, "ragAnswer"))
+                .ragDisclaimer(readText(session, "ragDisclaimer"))
+                .ragFallback(readNullableBoolean(session, "ragFallback"))
                 .claims(readValidatedClaims(session, citations))
                 .evidence(readObject(session, "evidence"))
                 .disclaimer(readText(session, "disclaimer", session.getDisclaimer()))
@@ -801,6 +836,39 @@ public class TriageService implements ITriageService {
     private Boolean readBoolean(IntakeSession session, String field) {
         JsonNode node = rawResult(session).path(field);
         return node.isMissingNode() || node.isNull() ? Boolean.FALSE : node.asBoolean();
+    }
+
+    private Boolean readNullableBoolean(IntakeSession session, String field) {
+        JsonNode node = rawResult(session).path(field);
+        return node.isMissingNode() || node.isNull() ? null : node.asBoolean();
+    }
+
+    private void enrichConversationResult(
+            Map<String, Object> envelope,
+            TriageStage stage,
+            UUID userId,
+            String initialText,
+            Map<String, Object> currentIntake,
+            Map<String, Object> newAnswers) {
+        if (triageRagEnrichmentService == null
+                || !"TRIAGE_COMPLETE".equals(String.valueOf(envelope.get("status")))) {
+            return;
+        }
+        Object resultValue = envelope.get("triageResult");
+        if (!(resultValue instanceof Map<?, ?>)) {
+            return;
+        }
+        Map<String, Object> result = objectMapper.convertValue(
+                resultValue, new TypeReference<Map<String, Object>>() {});
+        triageRagEnrichmentService.enrichConversation(
+                result,
+                stage,
+                userId,
+                SecurityUtils.hasRole("MOTHER"),
+                initialText,
+                currentIntake,
+                newAnswers);
+        envelope.put("triageResult", result);
     }
 
     private List<String> readStringList(IntakeSession session, String field) {
@@ -1556,6 +1624,13 @@ public class TriageService implements ITriageService {
 
     private String nonBlank(Object value) {
         return value == null || String.valueOf(value).isBlank() ? null : String.valueOf(value);
+    }
+
+    private String boundedRagQueryText(Object value) {
+        String text = nonBlank(value);
+        if (text == null) return null;
+        text = text.trim();
+        return text.substring(0, Math.min(500, text.length()));
     }
 
     private String normalizeClientRequestId(String value) {

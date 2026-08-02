@@ -19,6 +19,7 @@ import com.carebridge.backend.community.repository.CommunityTopicRepository;
 import com.carebridge.backend.community.repository.TopicQuestionCountProjection;
 import com.carebridge.backend.community.repository.UserTopicFollowRepository;
 import com.carebridge.backend.community.util.SlugGenerator;
+import com.carebridge.backend.recommendation.exception.RecommendationException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -102,6 +103,7 @@ public class CommunityTopicServiceImpl implements CommunityTopicService {
 
         CommunityTopic topic = topicMapper.toEntity(request, createdBy);
         topic.setSlug(resolveUniqueSlug(request.getName(), null));
+        rejectReservedRecommendationSlug(topic.getSlug());
         topic = topicRepository.save(topic);
         auditService.log(AuditAction.MODERATION_ACTION, createdBy, "CommunityTopic", topic.getId().toString(), "created");
         return hydrateSingle(topic, createdBy);
@@ -112,6 +114,11 @@ public class CommunityTopicServiceImpl implements CommunityTopicService {
     public CommunityTopicResponse updateTopic(UUID id, UUID updatedBy, UpdateCommunityTopicRequest request) {
         CommunityTopic topic = topicRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Community topic not found: " + id));
+
+        // Catalog rows are immutable through the general topic API. Check the
+        // persisted slug before applying a rename so a rec-* row cannot escape
+        // the reserved namespace by changing its display name.
+        rejectReservedRecommendationSlug(topic.getSlug());
 
         if (request.getType() != null && request.getType() != topic.getType()) {
             throw new ImmutableTopicTypeException(
@@ -137,6 +144,8 @@ public class CommunityTopicServiceImpl implements CommunityTopicService {
             topic.setSlug(resolveUniqueSlug(topic.getName(), id));
         }
 
+        rejectReservedRecommendationSlug(topic.getSlug());
+
         topic = topicRepository.save(topic);
         auditService.log(AuditAction.MODERATION_ACTION, updatedBy, "CommunityTopic", id.toString(), "updated");
         return hydrateSingle(topic, updatedBy);
@@ -147,6 +156,8 @@ public class CommunityTopicServiceImpl implements CommunityTopicService {
     public void deleteTopic(UUID id, UUID deletedBy) {
         CommunityTopic topic = topicRepository.findById(id)
                 .orElseThrow(() -> new CommunityTopicNotFoundException(id.toString()));
+
+        rejectReservedRecommendationSlug(topic.getSlug());
 
         boolean hasChildren = topicRepository.existsByParentId(id);
         boolean hasQuestions = questionRepository.existsByTopicId(id);
@@ -191,6 +202,15 @@ public class CommunityTopicServiceImpl implements CommunityTopicService {
             suffix++;
         }
         return candidate;
+    }
+
+    private void rejectReservedRecommendationSlug(String slug) {
+        if (slug != null && slug.startsWith("rec-")) {
+            throw new RecommendationException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST,
+                    "RECOMMENDATION_TAG_NAMESPACE_RESERVED",
+                    "The rec-* topic namespace is reserved for the recommendation catalog");
+        }
     }
 
     private CommunityTopicResponse hydrateSingle(CommunityTopic topic, UUID currentUserId) {

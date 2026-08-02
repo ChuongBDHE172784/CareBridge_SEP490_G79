@@ -6,6 +6,7 @@ class CareFacilityService {
     required double latitude,
     required double longitude,
     int radiusMeters = 5000,
+    String type = 'hospital',
   }) async {
     final response = await apiGet(
       '/api/v1/map/nearby-facilities',
@@ -13,6 +14,7 @@ class CareFacilityService {
         'lat': latitude,
         'lng': longitude,
         'radiusMeters': radiusMeters,
+        'type': type,
       },
     );
     final data = response['data'] as Map<String, dynamic>? ?? const {};
@@ -40,13 +42,14 @@ class CareFacilityService {
     required double fromLongitude,
     required double toLatitude,
     required double toLongitude,
+    String transportMode = 'DRIVING',
   }) async {
     final response = await apiPost('/api/v1/map/route', {
       'fromLat': fromLatitude,
       'fromLng': fromLongitude,
       'toLat': toLatitude,
       'toLng': toLongitude,
-      'transportMode': 'DRIVING',
+      'transportMode': transportMode,
     });
     return CareRoute.fromJson(response['data'] as Map<String, dynamic>);
   }

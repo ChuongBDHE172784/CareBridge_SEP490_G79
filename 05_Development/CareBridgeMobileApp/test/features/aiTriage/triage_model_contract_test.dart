@@ -93,4 +93,21 @@ void main() {
     expect(result.citations.single.id, 'WHO-1');
     expect(result.claims.single.evidenceIds, ['WHO-1']);
   });
+
+  test('parses additive symptom-scoped RAG guidance without changing risk', () {
+    final result = TriageResult.fromJson({
+      'sessionId': 'spring-canonical-id',
+      'stage': 'PREGNANCY',
+      'status': 'COMPLETED',
+      'riskLevel': 'YELLOW',
+      'ragAnswer': 'Theo dõi triệu chứng và liên hệ cơ sở y tế nếu nặng hơn.',
+      'ragDisclaimer': 'Thông tin tham khảo, không thay thế chẩn đoán.',
+      'ragFallback': false,
+    });
+
+    expect(result.riskLevel, 'YELLOW');
+    expect(result.ragAnswer, contains('Theo dõi triệu chứng'));
+    expect(result.ragDisclaimer, contains('không thay thế'));
+    expect(result.ragFallback, isFalse);
+  });
 }

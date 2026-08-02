@@ -307,12 +307,24 @@ class _ChecklistsTab extends StatelessWidget {
             child: ExpansionTile(
               iconColor: const Color(0xFFC98C7B),
               collapsedIconColor: const Color(0xFFD4A895),
-              title: Text(
-                cl['title'] ?? '',
-                style: const TextStyle(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
+              title: Row(
+                children: [
+                  Icon(
+                    _getChecklistIconData(cl['targetSubject'], cl['stage'], cl['title'] ?? cl['name']),
+                    color: const Color(0xFFC98C7B),
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      cl['title'] ?? cl['name'] ?? '',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
               ),
               subtitle: Text(
                 '${items.length} mục',
@@ -339,6 +351,19 @@ class _ChecklistsTab extends StatelessWidget {
         },
       ),
     );
+  }
+
+  IconData _getChecklistIconData(dynamic targetSubject, dynamic stage, dynamic title) {
+    final nameLower = (title?.toString() ?? '').toLowerCase();
+    if (targetSubject?.toString() == 'BABY' ||
+        stage?.toString() == 'BABY_CARE' ||
+        stage?.toString() == 'INFANT' ||
+        nameLower.contains('bé') ||
+        nameLower.contains('trẻ') ||
+        nameLower.contains('sơ sinh')) {
+      return Icons.child_care_rounded;
+    }
+    return Icons.pregnant_woman_rounded;
   }
 }
 

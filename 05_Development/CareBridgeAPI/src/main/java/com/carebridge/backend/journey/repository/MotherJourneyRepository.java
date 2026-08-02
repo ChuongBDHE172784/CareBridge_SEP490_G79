@@ -89,6 +89,11 @@ public interface MotherJourneyRepository extends JpaRepository<MotherJourney, UU
     @Query("select j from MotherJourney j where j.ownerUserId=:owner and j.status=com.carebridge.backend.journey.entity.JourneyStatus.ACTIVE and j.journeyType in (com.carebridge.backend.journey.entity.JourneyType.PRE_PREGNANCY, com.carebridge.backend.journey.entity.JourneyType.PREGNANCY, com.carebridge.backend.journey.entity.JourneyType.POSTPARTUM)")
     Optional<MotherJourney> findCanonical(@Param("owner") UUID owner);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select j from MotherJourney j where j.ownerUserId=:owner and j.journeyType in (com.carebridge.backend.journey.entity.JourneyType.PRE_PREGNANCY, com.carebridge.backend.journey.entity.JourneyType.PREGNANCY, com.carebridge.backend.journey.entity.JourneyType.POSTPARTUM) order by case when j.status = com.carebridge.backend.journey.entity.JourneyStatus.ACTIVE then 0 else 1 end, j.updatedAt desc")
+    List<MotherJourney> findLatestMaternalForUpdate(@Param("owner") UUID owner,
+                                                     org.springframework.data.domain.Pageable pageable);
+
     boolean existsByOwnerUserIdAndJourneyTypeAndStatus(UUID ownerUserId, JourneyType type, JourneyStatus status);
 
     boolean existsByOwnerUserIdAndStatusAndJourneyTypeIn(

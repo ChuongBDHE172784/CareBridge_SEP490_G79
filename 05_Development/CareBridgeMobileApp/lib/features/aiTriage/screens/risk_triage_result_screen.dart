@@ -102,20 +102,24 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
     }
     if (!mounted) return;
     setState(() => _returningToOrigin = false);
+    final isFamily =
+        (AuthState.instance.role ?? '').trim().toUpperCase() == 'FAMILY';
     String? location;
     switch (decision.destination) {
       case TriageContinuationDestination.motherJourney:
-        location =
-            '/mother-home?tab=1&triageReturn=${Uri.encodeQueryComponent(widget.sessionId)}';
+        if (!isFamily) {
+          location =
+              '/mother-home?tab=1&triageReturn=${Uri.encodeQueryComponent(widget.sessionId)}';
+        }
         break;
       case TriageContinuationDestination.babyProfile:
         final reference = decision.originReferenceId;
-        if (reference != null && reference.isNotEmpty) {
+        if (!isFamily && reference != null && reference.isNotEmpty) {
           location = '/babies/detail/${Uri.encodeComponent(reference)}';
         }
         break;
       case TriageContinuationDestination.safeDashboard:
-        location = '/mother-home';
+        location = isFamily ? '/?triageChecked=true' : '/mother-home';
         break;
       case TriageContinuationDestination.emergency:
         await _openEmergencyFlow();
@@ -133,8 +137,11 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
     router.go(
       location,
       extra:
-          decision.destination == TriageContinuationDestination.motherJourney ||
-              decision.destination == TriageContinuationDestination.babyProfile
+          !isFamily &&
+              (decision.destination ==
+                      TriageContinuationDestination.motherJourney ||
+                  decision.destination ==
+                      TriageContinuationDestination.babyProfile)
           ? TriageContinuationArrival(
               userId: userId,
               decision: decision,
@@ -325,7 +332,18 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
     );
     final host = uri.host.toLowerCase().replaceFirst(RegExp(r'^www\\.'), '');
     final path = uri.path.replaceAll('/', '').trim().toLowerCase();
+    final genericSearchHost = const {'google.com', 'bing.com', 'yahoo.com'}
+        .contains(host);
+    final genericSearchPath = RegExp(r'(^|/)(search|query|find)(/|$)')
+        .hasMatch(uri.path.toLowerCase());
     return uri.scheme == 'https' &&
+        uri.host.isNotEmpty &&
+        (uri.port == -1 || uri.port == 443) &&
+        uri.userInfo.isEmpty &&
+        host != 'localhost' &&
+        host != '127.0.0.1' &&
+        !genericSearchHost &&
+        !genericSearchPath &&
         domain.isNotEmpty &&
         path.isNotEmpty &&
         path != 'vi' &&
@@ -843,6 +861,10 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
           ),
         ],
         const SizedBox(height: 16),
+        if ((result?.ragAnswer ?? '').isNotEmpty) ...[
+          _buildRagGuidance(result!),
+          const SizedBox(height: 16),
+        ],
         if (result?.citations.isNotEmpty == true) ...[
           _buildCitations(result!.citations),
           const SizedBox(height: 16),
@@ -1001,6 +1023,44 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRagGuidance(TriageResult result) {
+    return Container(
+      key: const Key('triage-rag-guidance'),
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _surfaceContainerLow,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _tertiary.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Hướng dẫn tham khảo phù hợp với triệu chứng',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          Text(result.ragAnswer!),
+          if ((result.ragDisclaimer ?? '').isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              result.ragDisclaimer!,
+              style: const TextStyle(fontSize: 12, color: _tertiary),
+            ),
+          ],
+          if (result.ragFallback == true) ...[
+            const SizedBox(height: 8),
+            const Text(
+              'Nguồn tham khảo hiện chưa sẵn sàng; kết quả phân loại vẫn được giữ nguyên.',
+              style: TextStyle(fontSize: 12, color: Colors.orange),
+            ),
+          ],
         ],
       ),
     );

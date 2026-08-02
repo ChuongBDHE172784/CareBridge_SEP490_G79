@@ -32,7 +32,12 @@ public class RagPolicyServiceImpl implements RagPolicyService {
                     .generatedAt(LocalDateTime.now()).build();
         }
         RagExecutionContext executionContext;
-        if (context.mother()) {
+        if (context.triageStage() != null) {
+            // Internal AI Triage enrichment supplies the canonical selected stage. This
+            // takes precedence over account lifecycle state so the answer matches the intake.
+            executionContext = new RagExecutionContext(
+                    context.mother(), context.triageStage(), mapCanonicalStage(context.triageStage()));
+        } else if (context.mother()) {
             ContentStage canonical = lifecycleContentStageResolver.resolve(context.callerId());
             executionContext = new RagExecutionContext(true, canonical, mapCanonicalStage(canonical));
         } else {

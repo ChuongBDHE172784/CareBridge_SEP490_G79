@@ -7,6 +7,7 @@ import com.carebridge.backend.audit.repository.AuditLogRepository;
 import com.carebridge.backend.common.util.SecurityUtils;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
 import com.carebridge.backend.community.entity.TopicType;
+import com.carebridge.backend.community.entity.CommunityTopic;
 import com.carebridge.backend.content.dto.request.CreateContentRequest;
 import com.carebridge.backend.content.dto.request.HideContentRequest;
 import com.carebridge.backend.content.dto.request.UpdateContentRequest;
@@ -22,6 +23,7 @@ import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.mapper.ContentMapper;
 import com.carebridge.backend.content.policy.HtmlContentSanitizer;
 import com.carebridge.backend.content.repository.ContentRepository;
+import com.carebridge.backend.recommendation.service.RecommendationMetadataPolicy;
 import java.security.Principal;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -83,7 +85,13 @@ public class AdminContentServiceImpl implements AdminContentService {
                 });
 
         ContentItem entity = contentMapper.toEntity(request, authorUserId);
-        entity.setTagIds(validateTagIds(request.getTagIds()));
+        List<CommunityTopic> tags = validateTagEntities(request.getTagIds());
+        short priority = RecommendationMetadataPolicy.validate(request.getType(), request.getStage(),
+                request.getEligibleFromWeek(), request.getEligibleToWeek(), request.getRecommendationPriority(), tags);
+        entity.setTagIds(tags.stream().map(CommunityTopic::getId).collect(Collectors.toCollection(ArrayList::new)));
+        entity.setEligibleFromWeek(request.getEligibleFromWeek() == null ? null : request.getEligibleFromWeek().shortValue());
+        entity.setEligibleToWeek(request.getEligibleToWeek() == null ? null : request.getEligibleToWeek().shortValue());
+        entity.setRecommendationPriority(priority);
         // ADR-RTE-005: body is rendered unescaped (web dangerouslySetInnerHTML, mobile
         // flutter_html) — must be sanitized before persisting, not just at render time.
         entity.setBody(htmlContentSanitizer.sanitize(request.getBody()));
@@ -136,8 +144,42 @@ public class AdminContentServiceImpl implements AdminContentService {
         item.setSummary(request.summary());
         item.setStage(request.stage());
         item.setTopicId(request.topicId());
-        if (request.tagIds() != null) {
-            item.setTagIds(validateTagIds(request.tagIds()));
+        List<CommunityTopic> tags = request.tagIds() == null
+                ? validateTagEntities(item.getTagIds()) : validateTagEntities(request.tagIds());
+        // Recommendation metadata is a full replacement once any recommendation
+        // field is supplied.  This lets the editor intentionally clear an old
+        // pregnancy window by sending both bounds as null (the normal UI always
+        // sends priority), while legacy ordinary-tag-only updates retain the
+        // existing recommendation configuration.
+        boolean recommendationMetadataSupplied = request.eligibleFromWeek() != null
+                || request.eligibleToWeek() != null
+                || request.recommendationPriority() != null
+                || (request.tagIds() != null
+                    && tags.stream().anyMatch(RecommendationMetadataPolicy::isControlled))
+                || (request.stage() != ContentStage.PREGNANCY
+                    && (item.getEligibleFromWeek() != null || item.getEligibleToWeek() != null));
+        Integer fromWeek = request.eligibleFromWeek() != null
+                ? request.eligibleFromWeek()
+                : recommendationMetadataSupplied ? null
+                : item.getEligibleFromWeek() == null ? null : item.getEligibleFromWeek().intValue();
+        Integer toWeek = request.eligibleToWeek() != null
+                ? request.eligibleToWeek()
+                : recommendationMetadataSupplied ? null
+                : item.getEligibleToWeek() == null ? null : item.getEligibleToWeek().intValue();
+        if (request.stage() != ContentStage.PREGNANCY) {
+            fromWeek = null;
+            toWeek = null;
+        }
+        Integer priorityValue = recommendationMetadataSupplied
+                ? request.recommendationPriority() == null ? item.getRecommendationPriority() == null ? 0 : item.getRecommendationPriority().intValue() : request.recommendationPriority()
+                : item.getRecommendationPriority() == null ? 0 : item.getRecommendationPriority().intValue();
+        short priority = RecommendationMetadataPolicy.validate(item.getType(), request.stage(),
+                fromWeek, toWeek, priorityValue, tags);
+        if (request.tagIds() != null) item.setTagIds(tags.stream().map(CommunityTopic::getId).collect(Collectors.toCollection(ArrayList::new)));
+        if (recommendationMetadataSupplied) {
+            item.setEligibleFromWeek(fromWeek == null ? null : fromWeek.shortValue());
+            item.setEligibleToWeek(toWeek == null ? null : toWeek.shortValue());
+            item.setRecommendationPriority(priority);
         }
         item.setStatus(request.status());
         if (request.status() == ContentStatus.PENDING_REVIEW) {
@@ -165,22 +207,21 @@ public class AdminContentServiceImpl implements AdminContentService {
 
         return new UpdateContentResponse(
                 saved.getId(), saved.getType(), saved.getTitle(), saved.getBody(), saved.getStage(),
-                saved.getTopicId(), saved.getStatus(), saved.getVersionNo(), saved.getUpdatedAt());
+                saved.getTopicId(), saved.getEligibleFromWeek(), saved.getEligibleToWeek(), saved.getRecommendationPriority(),
+                saved.getStatus(), saved.getVersionNo(), saved.getUpdatedAt());
     }
 
-    private List<UUID> validateTagIds(List<UUID> tagIds) {
+    private List<CommunityTopic> validateTagEntities(List<UUID> tagIds) {
         if (tagIds == null || tagIds.isEmpty()) {
-            return new ArrayList<>();
+            return List.of();
         }
         LinkedHashSet<UUID> uniqueTagIds = new LinkedHashSet<>(tagIds);
-        List<UUID> validatedTagIds = communityTopicRepository
-                .findAllByIdInAndTypeAndIsHiddenFalse(uniqueTagIds, TopicType.TAG).stream()
-                .map(tag -> tag.getId())
-                .toList();
-        if (validatedTagIds.size() != uniqueTagIds.size()) {
+        List<CommunityTopic> rows = communityTopicRepository.findAllByIdInAndTypeAndIsHiddenFalse(
+                uniqueTagIds, TopicType.TAG);
+        if (rows.size() != uniqueTagIds.size()) {
             throw ContentException.validationFailed("tagIds", "All tags must exist, be visible, and have type TAG");
         }
-        return new ArrayList<>(uniqueTagIds);
+        return uniqueTagIds.stream().map(id -> rows.stream().filter(tag -> tag.getId().equals(id)).findFirst().orElseThrow()).toList();
     }
 
     private void clearReviewFeedback(ContentItem item) {
@@ -208,6 +249,8 @@ public class AdminContentServiceImpl implements AdminContentService {
                 item.getStage() == null ? null : item.getStage().name(), item.getStatus().name(),
                 item.getSources().isEmpty() ? item.getSourceLabel()
                         : item.getSources().stream().map(ContentSource::getTitle).collect(Collectors.joining(", ")),
+                item.getTagIds() == null ? List.of() : new ArrayList<>(item.getTagIds()),
+                item.getEligibleFromWeek(), item.getEligibleToWeek(), item.getRecommendationPriority(),
                 null, Instant.now());
     }
 
@@ -216,7 +259,9 @@ public class AdminContentServiceImpl implements AdminContentService {
             ContentVersionSnapshotResponse snapshot = objectMapper.readValue(
                     auditLog.getNewValueJson(), ContentVersionSnapshotResponse.class);
             return java.util.Optional.of(new ContentVersionSnapshotResponse(snapshot.versionNo(), snapshot.title(),
-                    snapshot.stage(), snapshot.status(), snapshot.sourceSummary(), auditLog.getActorUserId(), auditLog.getCreatedAt()));
+                    snapshot.stage(), snapshot.status(), snapshot.sourceSummary(), snapshot.tagIds(),
+                    snapshot.eligibleFromWeek(), snapshot.eligibleToWeek(), snapshot.recommendationPriority(),
+                    auditLog.getActorUserId(), auditLog.getCreatedAt()));
         } catch (Exception ignored) {
             return java.util.Optional.empty();
         }

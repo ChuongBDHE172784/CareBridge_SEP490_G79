@@ -20,6 +20,10 @@ public class TriageResultResponse {
     private List<String> redFlags;
     private List<String> matchedRules;
     private List<Map<String, Object>> citations;
+    /** Additive RAG guidance; risk and emergency fields remain triage-owned. */
+    private String ragAnswer;
+    private String ragDisclaimer;
+    private Boolean ragFallback;
     private List<Map<String, Object>> claims;
     private Map<String, Object> evidence;
     private String disclaimer;

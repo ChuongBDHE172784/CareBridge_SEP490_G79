@@ -230,14 +230,28 @@ class _ChecklistHistoryScreenState extends State<ChecklistHistoryScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            item.templateName ?? item.stageLabel,
-                            style: const TextStyle(
-                              fontFamily: 'Quicksand',
-                              fontSize: 18,
-                              fontWeight: FontWeight.w800,
-                              color: _muted,
-                            ),
+                          Row(
+                            children: [
+                              Icon(
+                                item.targetSubject == ChecklistHistoryTargetSubject.baby
+                                    ? Icons.child_care_rounded
+                                    : Icons.pregnant_woman_rounded,
+                                color: _primary,
+                                size: 22,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  item.templateName ?? item.stageLabel,
+                                  style: const TextStyle(
+                                    fontFamily: 'Quicksand',
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w800,
+                                    color: _muted,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 4),
                           Text(

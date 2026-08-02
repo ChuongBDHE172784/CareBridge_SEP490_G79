@@ -10,4 +10,7 @@ public interface IDirectMessageService {
     SendDirectMessageResult sendMessage(UUID conversationId, UUID senderUserId, SendDirectMessageRequest request);
 
     TimelinePageResponse getTimeline(UUID conversationId, UUID currentUserId, String after, String before, int limit);
+
+    void recallMessage(UUID conversationId, UUID messageId, UUID senderUserId);
+
 }

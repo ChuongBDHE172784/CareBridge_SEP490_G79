@@ -11,8 +11,7 @@ import java.util.UUID;
 
 public interface ICareFacilityService {
 
-    NearbyResponse searchNearby(BigDecimal lat, BigDecimal lng, Integer radiusMeters, String type,
-                                String provinceId, String districtId);
+    NearbyResponse searchNearby(BigDecimal lat, BigDecimal lng, Integer radiusMeters, String type);
 
     List<FacilityResponse> getAllFacilities();
 

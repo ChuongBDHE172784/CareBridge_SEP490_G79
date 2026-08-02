@@ -517,7 +517,7 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
       child: CustomScrollView(
         slivers: [
           SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 if (_loading)
@@ -531,6 +531,32 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
                     ),
                   )
                 else ...[
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Hành trình',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 26,
+                            fontWeight: FontWeight.w700,
+                            color: _onSurface,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Theo dõi sức khỏe của mẹ và bé theo từng giai đoạn.',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 13,
+                            color: _onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   _buildSectionTabs(),
                   if (_showContinuationConfirmation) ...[
                     const SizedBox(height: 16),

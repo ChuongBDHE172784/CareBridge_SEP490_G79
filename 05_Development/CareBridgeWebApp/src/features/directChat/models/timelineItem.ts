@@ -10,6 +10,8 @@ export interface TimelineItem {
   senderUserId?: string;
   messageType?: string;
   messageBody?: string;
+  attachmentId?: string;
+  recalledAt?: string;
   createdAt?: string; // ISO instant
 
   // CALL_EVENT fields
@@ -29,14 +31,17 @@ export interface TimelineItem {
 export function optimisticMessage(params: {
   clientMessageId: string;
   senderUserId: string;
-  messageBody: string;
+  messageBody?: string;
+  messageType?: 'TEXT' | 'IMAGE' | 'FILE';
+  attachmentId?: string;
 }): TimelineItem {
   return {
     kind: 'MESSAGE',
     clientMessageId: params.clientMessageId,
     senderUserId: params.senderUserId,
-    messageType: 'TEXT',
+    messageType: params.messageType ?? 'TEXT',
     messageBody: params.messageBody,
+    attachmentId: params.attachmentId,
     createdAt: new Date().toISOString(),
     sendStatus: 'sending',
   };

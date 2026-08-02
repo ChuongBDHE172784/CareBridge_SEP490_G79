@@ -10,6 +10,7 @@ import com.carebridge.backend.triage.dto.response.TriageConsentAcceptOutcome;
 import com.carebridge.backend.triage.dto.response.TriageConsentStatusResponse;
 import com.carebridge.backend.triage.service.ITriageConsentService;
 import java.time.Instant;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +29,7 @@ import static com.carebridge.backend.triage.TriageConsentTestFactory.V1;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -57,6 +59,7 @@ class TriageConsentControllerTest {
 
     private static final String BASE_URL = "/api/v1/triage/consent";
     private static final String MOTHER = "00000000-0000-0000-0000-000000000010";
+    private static final String FAMILY = "00000000-0000-0000-0000-000000000012";
     private static final String EXPERT = "00000000-0000-0000-0000-000000000099";
 
     private static TriageConsentStatusResponse acceptedStatus() {
@@ -104,6 +107,26 @@ class TriageConsentControllerTest {
                 .andExpect(jsonPath("$.data.status").value("ACCEPTED"));
 
         verify(consentService, times(1)).accept(any(), any());
+    }
+
+    @Test
+    @WithMockUser(username = FAMILY, roles = "FAMILY")
+    void familyRole_allConsentEndpoints_shouldUseAuthenticatedFamily() throws Exception {
+        when(consentService.getStatus(UUID.fromString(FAMILY))).thenReturn(acceptedStatus());
+        when(consentService.accept(any(), eq(UUID.fromString(FAMILY))))
+                .thenReturn(new TriageConsentAcceptOutcome(false, acceptedStatus()));
+        when(consentService.revoke(UUID.fromString(FAMILY))).thenReturn(acceptedStatus());
+
+        mockMvc.perform(get(BASE_URL)).andExpect(status().isOk());
+        mockMvc.perform(post(BASE_URL + "/accept")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"policyVersion\":\"" + V1 + "\",\"locale\":\"vi\"}"))
+                .andExpect(status().isOk());
+        mockMvc.perform(post(BASE_URL + "/revoke")).andExpect(status().isOk());
+
+        verify(consentService).getStatus(UUID.fromString(FAMILY));
+        verify(consentService).accept(any(), eq(UUID.fromString(FAMILY)));
+        verify(consentService).revoke(UUID.fromString(FAMILY));
     }
 
     // ─────────────────────────────────────────────────────────────────────────────

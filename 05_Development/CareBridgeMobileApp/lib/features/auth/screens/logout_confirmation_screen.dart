@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/auth/auth_state.dart';
 import '../../../../core/network/api_client.dart';
 import '../../journey/services/pregnancy_outcome_draft_store.dart';
+import '../../recommendation/services/recommendation_service.dart';
 import '../models/auth_model.dart';
 import '../services/auth_service.dart';
 
@@ -9,10 +10,16 @@ import '../services/auth_service.dart';
 Future<void> clearLocalSessionAfterLogout({
   required String? accountId,
   required Future<void> Function(String accountId) clearDraft,
+  Future<void> Function(String accountId)? clearRecommendationDraft,
   required Future<void> Function() clearAuth,
 }) async {
   try {
-    if (accountId != null) await clearDraft(accountId);
+    if (accountId != null) {
+      await clearDraft(accountId);
+      if (clearRecommendationDraft != null) {
+        await clearRecommendationDraft(accountId);
+      }
+    }
   } catch (_) {
     debugPrint('[Logout] ancillary draft cleanup failed');
   } finally {
@@ -98,6 +105,7 @@ class _LogoutConfirmationSheetState extends State<LogoutConfirmationSheet> {
       clearLocalSessionAfterLogout(
         accountId: accountId,
         clearDraft: SecurePregnancyOutcomeDraftStore.instance.clearForAccount,
+        clearRecommendationDraft: RecommendationService().clearDraftFor,
         clearAuth: AuthState.instance.clear,
       );
 

@@ -42,6 +42,9 @@ export interface ContentDetail {
   stage: ContentStage;
   topicId: string;
   tagIds?: string[];
+  eligibleFromWeek?: number | null;
+  eligibleToWeek?: number | null;
+  recommendationPriority?: number;
   version: number;
   publishedAt: string | null;
   status: ContentStatus;
@@ -50,6 +53,18 @@ export interface ContentDetail {
   sourceLabel?: string | null;
   sources?: ContentSource[];
   latestReviewFeedback?: ReviewFeedback | null;
+}
+
+export interface RecommendationTag {
+  id: string;
+  slug: string;
+  domain: string;
+  label: string;
+}
+
+export interface RecommendationTagCatalog {
+  catalogVersion: string;
+  items: RecommendationTag[];
 }
 
 export interface ContentSource { title: string; url?: string; publisher?: string; }
@@ -80,6 +95,10 @@ export interface ContentVersionSnapshot {
   stage: string | null;
   status: string;
   sourceSummary: string | null;
+  tagIds?: string[];
+  eligibleFromWeek?: number | null;
+  eligibleToWeek?: number | null;
+  recommendationPriority?: number | null;
   changedBy: string | null;
   createdAt: string;
 }

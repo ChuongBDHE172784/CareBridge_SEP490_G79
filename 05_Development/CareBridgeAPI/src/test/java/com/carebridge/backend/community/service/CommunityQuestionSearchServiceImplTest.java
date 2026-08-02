@@ -105,7 +105,7 @@ class CommunityQuestionSearchServiceImplTest {
         Page<CommunityQuestion> page = new PageImpl<>(List.of(q1, q2), PageRequest.of(0, 20), 2L);
 
         when(questionRepository.searchApproved(
-                eq("thai nhi"), isNull(), isNull(), isNull(), any(Pageable.class)))
+                eq("thai nhi"), isNull(), isNull(), isNull(), isNull(), any(Pageable.class)))
                 .thenReturn(page);
         stubEmptyDependencies();
 
@@ -120,7 +120,7 @@ class CommunityQuestionSearchServiceImplTest {
     // COM162-TC-002: no results → PaginatedResponse with empty content (not exception)
     @Test
     void searchQuestions_noResults_returnsEmptyContent() {
-        when(questionRepository.searchApproved(any(), any(), any(), any(), any()))
+        when(questionRepository.searchApproved(any(), any(), any(), any(), any(), any()))
                 .thenReturn(Page.empty());
         when(answerRepository.findQuestionIdsWithExpertAnswer(any())).thenReturn(Set.of());
 
@@ -139,7 +139,7 @@ class CommunityQuestionSearchServiceImplTest {
         q.setTopicId(topicA);
 
         Page<CommunityQuestion> filtered = new PageImpl<>(List.of(q), PageRequest.of(0, 20), 1L);
-        when(questionRepository.searchApproved(isNull(), eq(topicA), isNull(), isNull(), any()))
+        when(questionRepository.searchApproved(isNull(), eq(topicA), isNull(), isNull(), isNull(), any()))
                 .thenReturn(filtered);
         stubEmptyDependencies();
 
@@ -152,7 +152,7 @@ class CommunityQuestionSearchServiceImplTest {
     // COM162-TC-005: stage filter is forwarded to repository
     @Test
     void searchQuestions_stageFilter_forwardsStageToRepository() {
-        when(questionRepository.searchApproved(isNull(), isNull(), eq(PregnancyStage.PREGNANCY), isNull(), any()))
+        when(questionRepository.searchApproved(isNull(), isNull(), eq(PregnancyStage.PREGNANCY), isNull(), isNull(), any()))
                 .thenReturn(new PageImpl<>(List.of(
                         makeApprovedQuestion("P1"), makeApprovedQuestion("P2"), makeApprovedQuestion("P3")
                 ), PageRequest.of(0, 20), 3L));
@@ -162,6 +162,15 @@ class CommunityQuestionSearchServiceImplTest {
                 service.searchQuestions(makeSearchRequest(r -> r.setStage(PregnancyStage.PREGNANCY)));
 
         assertThat(result.getTotalElements()).isEqualTo(3L);
+    }
+
+    @Test
+    void searchQuestions_urgencyFilter_forwardsUrgencyToRepository() {
+        when(questionRepository.searchApproved(isNull(), isNull(), isNull(), eq(UrgencyLevel.URGENT), isNull(), any()))
+                .thenReturn(Page.empty());
+        stubEmptyDependencies();
+
+        service.searchQuestions(makeSearchRequest(r -> r.setUrgency(UrgencyLevel.URGENT)));
     }
 
     // COM162-TC-006: hasExpertAnswer=true → response items have hasExpertAnswer=true
@@ -180,7 +189,7 @@ class CommunityQuestionSearchServiceImplTest {
                 .body("body").stage(PregnancyStage.PREGNANCY).urgency(UrgencyLevel.NORMAL)
                 .status(QuestionStatus.APPROVED).answerCount(2).build();
 
-        when(questionRepository.searchApproved(isNull(), isNull(), isNull(), eq(true), any()))
+        when(questionRepository.searchApproved(isNull(), isNull(), isNull(), isNull(), eq(true), any()))
                 .thenReturn(new PageImpl<>(List.of(q1, q2), PageRequest.of(0, 20), 2L));
         when(topicRepository.findAllById(any())).thenReturn(Collections.emptyList());
         when(answerRepository.findQuestionIdsWithExpertAnswer(any())).thenReturn(Set.of(q1Id, q2Id));
@@ -205,7 +214,7 @@ class CommunityQuestionSearchServiceImplTest {
                 ),
                 PageRequest.of(1, 20), 25L
         );
-        when(questionRepository.searchApproved(any(), any(), any(), any(),
+        when(questionRepository.searchApproved(any(), any(), any(), any(), any(),
                 argThat(p -> p.getPageNumber() == 1))).thenReturn(secondPage);
         stubEmptyDependencies();
 

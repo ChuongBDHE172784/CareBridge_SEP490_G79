@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import '../../../core/auth/auth_state.dart';
 import '../../../core/network/api_client.dart';
 import '../models/privacy_model.dart';
 import '../services/privacy_service.dart';
+import '../../recommendation/services/recommendation_service.dart';
+import '../../recommendation/screens/recommendation_profile_screen.dart';
 
 class PrivacySettingsScreen extends StatefulWidget {
   const PrivacySettingsScreen({super.key});
@@ -103,8 +106,18 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
       ),
     );
     if (confirmed != true) return;
+    final expectedUserId = AuthState.instance.userId;
     try {
       await PrivacyService.instance.revokeConsent(grant.id);
+      if (!mounted || AuthState.instance.userId != expectedUserId) return;
+      if (grant.dataType == 'SENSITIVE_DATA' &&
+          grant.purpose == 'PERSONALIZE' &&
+          grant.scope == 'MOTHER_PERSONALIZED_CONTENT') {
+        if (expectedUserId != null) {
+          await RecommendationService().clearDraftFor(expectedUserId);
+        }
+        RecommendationService.notifyProfileChanged();
+      }
       if (mounted) {
         setState(() => _consents.removeWhere((c) => c.id == grant.id));
       }
@@ -211,6 +224,24 @@ class _PrivacySettingsScreenState extends State<PrivacySettingsScreen> {
                 ]
               : _buildConsentItems(),
         ),
+        if (AuthState.instance.role == 'MOTHER' &&
+            !_consents.any(
+              (consent) =>
+                  consent.dataType == 'SENSITIVE_DATA' &&
+                  consent.purpose == 'PERSONALIZE' &&
+                  consent.scope == 'MOTHER_PERSONALIZED_CONTENT',
+            )) ...[
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const RecommendationProfileScreen(),
+              ),
+            ),
+            icon: const Icon(Icons.auto_awesome_outlined),
+            label: const Text('Mở lại thiết lập cá nhân hóa'),
+          ),
+        ],
         const SizedBox(height: 24),
 
         // Section 2 — Community Visibility

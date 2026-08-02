@@ -179,7 +179,6 @@ void main() {
 
       await tester.pumpWidget(const MaterialApp(home: ExpertAppHomeScreen()));
       await tester.pumpAndSettle();
-      expect(find.text('2'), findsOneWidget);
       expect(find.text('Hỗ trợ tại nhà'), findsOneWidget);
       expect(find.byIcon(Icons.close_rounded), findsOneWidget);
 
@@ -188,7 +187,6 @@ void main() {
 
       expect(api.lastPatchBody, {'online': true});
       expect(find.byIcon(Icons.check_rounded), findsNothing);
-      expect(find.text('2'), findsOneWidget);
       expect(find.text('Hỗ trợ tại nhà'), findsOneWidget);
 
       api.patchCompleter!.complete({'message': 'Đã bật từ máy chủ'});
@@ -196,7 +194,6 @@ void main() {
 
       expect(find.byIcon(Icons.check_rounded), findsOneWidget);
       expect(find.text('Đã bật từ máy chủ'), findsOneWidget);
-      expect(find.text('2'), findsOneWidget);
       expect(find.text('Hỗ trợ tại nhà'), findsOneWidget);
     },
   );

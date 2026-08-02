@@ -63,26 +63,59 @@ export default function ExpertOnboardingPage() {
   const currentStep = overrideStep || state?.nextStep;
 
   return (
-    <div className="mx-auto max-w-5xl p-5 sm:p-8">
-      <header className="rounded-3xl bg-gradient-to-br from-primary to-[#a96856] p-7 text-white shadow-lg">
-        <p className="text-sm font-medium text-white/75">Cổng chuyên gia CareBridge</p>
-        <h1 className="mt-2 text-3xl font-semibold">Hoàn tất xác minh chuyên gia</h1>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-white/85">
-          Quy trình tuân thủ chuẩn Bộ Y Tế. Vui lòng cung cấp thông tin chính xác và ảnh rõ nét để được phê duyệt nhanh nhất.
-        </p>
+    <div className="p-8 font-sans space-y-8 max-w-5xl mx-auto">
+      {/* Header Banner */}
+      <header className="rounded-3xl bg-surface border border-outline-variant/60 p-7 text-on-surface shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="material-symbols-outlined text-primary text-xl">medical_services</span>
+            <span className="text-xs font-bold text-primary uppercase tracking-wider">Cổng Chuyên gia CareBridge</span>
+          </div>
+          <h1 className="text-[26px] font-bold text-on-surface m-0 leading-tight">Hoàn tất xác minh hồ sơ chuyên gia</h1>
+          <p className="mt-2 text-sm text-on-surface-variant max-w-2xl leading-relaxed m-0">
+            Quy trình tuân thủ chuẩn Bộ Y Tế. Vui lòng cung cấp thông tin chính xác và ảnh rõ nét để được phê duyệt nhanh nhất.
+          </p>
+        </div>
+        <div className="shrink-0 flex items-center gap-3 self-start md:self-auto">
+          <span className="px-3.5 py-1.5 rounded-full text-xs font-bold border bg-primary-container/40 text-primary border-primary/30 flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+            Xác minh Y tế
+          </span>
+        </div>
       </header>
 
-      <div className="my-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {/* Stepper Steps */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {steps.map(([key, label], index) => {
           const activeIndex = Math.max(0, steps.findIndex(([step]) => step === currentStep));
           const complete = currentStep === 'COMPLETE' || index < activeIndex;
           const active = index === activeIndex && currentStep !== 'COMPLETE';
           return (
-            <div key={key} className={`rounded-2xl border p-4 ${active ? 'border-primary bg-primary/5' : 'border-gray-200 bg-white'}`}>
-              <div className={`mb-2 flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold ${complete ? 'bg-green-600 text-white' : active ? 'bg-primary text-white' : 'bg-gray-100 text-gray-500'}`}>
-                {complete ? <Check size={17} /> : index + 1}
+            <div
+              key={key}
+              className={`rounded-2xl border p-4 flex items-center gap-3.5 transition-all shadow-xs ${
+                complete
+                  ? 'border-emerald-300 bg-emerald-50/60 text-emerald-900'
+                  : active
+                  ? 'border-primary bg-primary-container/30 text-primary font-bold shadow-sm'
+                  : 'border-outline-variant/50 bg-surface text-outline'
+              }`}
+            >
+              <div
+                className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                  complete
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : active
+                    ? 'bg-primary text-on-primary shadow-xs'
+                    : 'bg-surface-container-highest text-outline'
+                }`}
+              >
+                {complete ? <Check size={18} /> : index + 1}
               </div>
-              <p className="text-sm font-semibold text-on-surface">{label}</p>
+              <div>
+                <p className="text-[11px] text-outline font-semibold uppercase tracking-wider m-0">Bước {index + 1}</p>
+                <p className="text-sm font-bold m-0">{label}</p>
+              </div>
             </div>
           );
         })}
@@ -103,12 +136,17 @@ export default function ExpertOnboardingPage() {
       {currentStep === 'CREDENTIAL' && <CredentialStep onDone={reload} />}
       {currentStep === 'UNDER_REVIEW' && state && <ReviewStep state={state} reload={reload} setOverrideStep={setOverrideStep} />}
       {currentStep === 'COMPLETE' && (
-        <section className="rounded-3xl border border-green-200 bg-green-50 p-8 text-center">
-          <BadgeCheck className="mx-auto text-green-700" size={58} />
-          <h2 className="mt-4 text-2xl font-semibold text-green-900">Hồ sơ đã được xác minh</h2>
-          <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-green-800">Bạn có thể sử dụng đầy đủ cổng chuyên gia CareBridge.</p>
-          <button className="mt-6 rounded-full bg-green-700 px-6 py-3 font-semibold text-white" onClick={() => navigate('/expert/dashboard', { replace: true })}>
-            Đi đến trang chuyên gia
+        <section className="rounded-3xl border border-emerald-300 bg-emerald-50/80 p-8 text-center shadow-md">
+          <BadgeCheck className="mx-auto text-emerald-600" size={60} />
+          <h2 className="mt-4 text-2xl font-bold text-emerald-950">Hồ sơ đã được xác minh</h2>
+          <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-emerald-800">
+            Chúc mừng! Bạn đã hoàn tất toàn bộ quy trình xác minh và có thể sử dụng đầy đủ cổng Chuyên gia CareBridge.
+          </p>
+          <button
+            className="mt-6 rounded-full bg-emerald-700 hover:bg-emerald-800 px-8 py-3.5 font-bold text-white text-sm cursor-pointer shadow-md transition-all"
+            onClick={() => navigate('/expert/dashboard', { replace: true })}
+          >
+            Vào Trang chủ Chuyên gia
           </button>
         </section>
       )}
@@ -750,12 +788,12 @@ function CameraDialog({
 
 function StepCard({ icon, title, description, children }: { icon: React.ReactNode; title: string; description: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
-      <div className="mb-6 flex gap-4">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">{icon}</div>
+    <section className="rounded-3xl border border-outline-variant/60 bg-surface p-6 sm:p-8 shadow-md">
+      <div className="mb-6 flex items-start gap-4 pb-4 border-b border-outline-variant/40">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary-container text-primary shadow-xs">{icon}</div>
         <div>
-          <h2 className="text-xl font-semibold text-on-surface">{title}</h2>
-          <p className="mt-1 text-sm leading-6 text-gray-600">{description}</p>
+          <h2 className="text-xl font-bold text-on-surface m-0 leading-tight">{title}</h2>
+          <p className="mt-1 text-xs text-on-surface-variant leading-relaxed m-0">{description}</p>
         </div>
       </div>
       {children}
@@ -763,31 +801,47 @@ function StepCard({ icon, title, description, children }: { icon: React.ReactNod
   );
 }
 
-function Input({ label, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
+function Input({ label, className, ...props }: React.InputHTMLAttributes<HTMLInputElement> & { label: string }) {
   return (
-    <label className="grid gap-2 text-sm font-medium">
+    <label className="grid gap-1.5 text-xs font-semibold text-on-surface">
       {label}
-      <input {...props} required={label.includes('*')} className="h-12 rounded-xl border border-gray-300 px-3 font-normal outline-none transition-colors focus:border-primary focus:ring-4 focus:ring-primary/20" />
+      <input
+        {...props}
+        required={label.includes('*')}
+        className={`h-11 rounded-2xl border border-outline-variant bg-surface px-4 text-sm text-on-surface outline-none transition-all focus:border-primary focus:ring-1 focus:ring-primary font-sans ${className || ''}`}
+      />
     </label>
   );
 }
 
 function SubmitButton({ busy, children }: { busy: boolean; children: React.ReactNode }) {
-  return <button disabled={busy} className="min-h-12 rounded-full bg-primary px-6 py-3 font-semibold text-white outline-none transition-all duration-300 hover:-translate-y-0.5 active:scale-95 focus-visible:ring-4 focus-visible:ring-primary/20 disabled:opacity-50 sm:col-span-2">{busy ? 'Đang xử lý...' : children}</button>;
+  return (
+    <button
+      disabled={busy}
+      className="min-h-12 rounded-full bg-primary px-8 py-3 font-semibold text-on-primary text-sm outline-none transition-all hover:brightness-110 active:scale-95 disabled:opacity-50 sm:col-span-2 cursor-pointer shadow-md"
+    >
+      {busy ? 'Đang xử lý...' : children}
+    </button>
+  );
 }
 
 function ErrorBanner({ message, retry }: { message: string; retry?: () => Promise<void> }) {
   return (
-    <div className="mb-5 flex items-start gap-3 rounded-xl bg-red-50 p-4 text-sm text-red-700" role="alert">
-      <AlertCircle size={19} className="shrink-0" />
-      <span className="flex-1">{message}</span>
-      {retry && <button className="font-semibold underline" onClick={() => void retry()}>Thử lại</button>}
+    <div className="mb-5 flex items-start gap-3 rounded-2xl bg-rose-50 border border-rose-200 p-4 text-sm text-rose-800 shadow-xs" role="alert">
+      <AlertCircle size={20} className="shrink-0 text-rose-600 mt-0.5" />
+      <span className="flex-1 text-xs leading-relaxed">{message}</span>
+      {retry && <button className="font-bold underline text-xs text-rose-900 cursor-pointer" onClick={() => void retry()}>Thử lại</button>}
     </div>
   );
 }
 
 function Loading() {
-  return <div className="flex min-h-[420px] items-center justify-center"><div className="h-9 w-9 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>;
+  return (
+    <div className="flex min-h-[420px] items-center justify-center gap-3 text-on-surface-variant text-sm font-medium">
+      <div className="h-8 w-8 animate-spin rounded-full border-3 border-primary border-t-transparent" />
+      Đang tải dữ liệu tiến độ xác minh...
+    </div>
+  );
 }
 
 function Status({ label, value }: { label: string; value: string | null }) {
@@ -804,9 +858,17 @@ function Status({ label, value }: { label: string; value: string | null }) {
   const displayValue = value ? (statusTranslations[value] || value) : 'CHƯA GỬI';
 
   return (
-    <div className={`rounded-2xl border p-4 ${positive ? 'border-green-200 bg-green-50' : rejected ? 'border-red-200 bg-red-50' : 'border-amber-200 bg-amber-50'}`}>
-      <p className="text-xs text-gray-500">{label}</p>
-      <p className="mt-1 font-semibold">{displayValue}</p>
+    <div
+      className={`rounded-2xl border p-4 shadow-xs ${
+        positive
+          ? 'border-emerald-300 bg-emerald-50/70 text-emerald-950'
+          : rejected
+          ? 'border-rose-300 bg-rose-50/70 text-rose-950'
+          : 'border-amber-300 bg-amber-50/70 text-amber-950'
+      }`}
+    >
+      <p className="text-[11px] font-semibold text-outline uppercase tracking-wider m-0">{label}</p>
+      <p className="mt-1 font-bold text-sm m-0">{displayValue}</p>
     </div>
   );
 }

@@ -67,6 +67,9 @@ carebridge:
     allowed-origins: ${CAREBRIDGE_CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://localhost:5000,http://127.0.0.1:5000}
   features:
     checklist-distribution-v2: ${CAREBRIDGE_CHECKLIST_DISTRIBUTION_V2_ENABLED:true}
+  recommendation:
+    # Safe fallback remains available while personalization is disabled.
+    enabled: ${CAREBRIDGE_RECOMMENDATION_ENABLED:false}
   checklist:
     outbox-processing-delay-ms: ${CAREBRIDGE_CHECKLIST_OUTBOX_PROCESSING_DELAY_MS:2000}
     e2e:
@@ -121,6 +124,9 @@ carebridge:
       batch-size: ${AI_MODERATION_BATCH_SIZE:3}
       review-confidence-threshold: ${AI_MODERATION_REVIEW_THRESHOLD:0.5}
       stale-processing-minutes: ${AI_MODERATION_STALE_PROCESSING_MINUTES:10}
+  trackasia:
+    api-key: ${TRACKASIA_API_KEY:}
+    maps-base-url: ${TRACKASIA_MAPS_BASE_URL:https://maps.track-asia.com}
   zego:
     app-id: ${ZEGO_APP_ID:0}
     server-secret: ${ZEGO_SERVER_SECRET:}

@@ -13,6 +13,8 @@ class TimelineItem {
   final String? senderUserId;
   final String? messageType;
   final String? messageBody;
+  final String? attachmentId;
+  final DateTime? recalledAt;
   final DateTime? createdAt;
 
   // CALL_EVENT fields
@@ -35,6 +37,8 @@ class TimelineItem {
     this.senderUserId,
     this.messageType,
     this.messageBody,
+    this.attachmentId,
+    this.recalledAt,
     this.createdAt,
     this.callId,
     this.callType,
@@ -55,6 +59,8 @@ class TimelineItem {
       senderUserId: json['senderUserId'] as String?,
       messageType: json['messageType'] as String?,
       messageBody: json['messageBody'] as String?,
+      attachmentId: json['attachmentId'] as String?,
+      recalledAt: _parseDate(json['recalledAt']),
       createdAt: _parseDate(json['createdAt']),
       callId: json['callId'] as String?,
       callType: json['callType'] as String?,
@@ -94,13 +100,11 @@ class TimelineItem {
     return 'MESSAGE:${messageId ?? clientMessageId}';
   }
 
-  DateTime get sortTimestamp =>
-      kind == 'CALL_EVENT' ? (initiatedAt ?? DateTime.now()) : (createdAt ?? DateTime.now());
+  DateTime get sortTimestamp => kind == 'CALL_EVENT'
+      ? (initiatedAt ?? DateTime.now())
+      : (createdAt ?? DateTime.now());
 
-  TimelineItem copyWith({
-    String? messageId,
-    ChatSendStatus? sendStatus,
-  }) {
+  TimelineItem copyWith({String? messageId, ChatSendStatus? sendStatus}) {
     return TimelineItem(
       kind: kind,
       messageId: messageId ?? this.messageId,
@@ -141,7 +145,8 @@ List<TimelineItem> mergeTimelineItems(
   }
   for (final item in incoming) {
     final pendingClientId = item.clientMessageId;
-    if (pendingClientId != null && byClientMessageId.containsKey(pendingClientId)) {
+    if (pendingClientId != null &&
+        byClientMessageId.containsKey(pendingClientId)) {
       // Reconciles an optimistic "sending" entry with the server-confirmed row —
       // remove the optimistic dedup key so it doesn't linger as a duplicate.
       final optimistic = byClientMessageId[pendingClientId]!;

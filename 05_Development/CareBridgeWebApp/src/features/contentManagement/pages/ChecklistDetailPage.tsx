@@ -22,6 +22,22 @@ function statusDotClass(status: string): string {
 
 const recipientLabel = (role: 'MOTHER' | 'FAMILY') => (role === 'MOTHER' ? 'Mẹ' : 'Gia đình');
 const targetLabel = (target: 'MOTHER' | 'BABY') => (target === 'MOTHER' ? 'Mẹ' : 'Em bé');
+function getChecklistTargetIcon(checklist: {
+  name?: string;
+  stage?: string | null;
+  items?: Array<{ targetSubject?: 'MOTHER' | 'BABY' }>;
+}): 'child_care' | 'pregnant_woman' {
+  const hasBabyItem = checklist.items?.some((i) => i.targetSubject === 'BABY');
+  const isBabyStage = checklist.stage === 'BABY_CARE';
+  const nameLower = (checklist.name || '').toLowerCase();
+  const isBabyName = nameLower.includes('bé') || nameLower.includes('trẻ') || nameLower.includes('sơ sinh');
+
+  if (hasBabyItem || isBabyStage || isBabyName) {
+    return 'child_care';
+  }
+  return 'pregnant_woman';
+}
+
 const warmBadge = 'inline-flex shrink-0 items-center rounded-full bg-surface-container-low px-3 py-1 text-xs font-semibold text-primary';
 
 export default function ChecklistDetailPage() {
@@ -198,7 +214,10 @@ export default function ChecklistDetailPage() {
       <div data-testid="checklist-detail-layout" className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         {/* Main content area */}
         <div>
-          <h1 className="mb-5 mt-0 text-[28px] font-bold leading-[1.3] text-on-surface">{detail.name}</h1>
+          <h1 className="mb-5 mt-0 text-[28px] font-bold leading-[1.3] text-on-surface flex items-center gap-2.5">
+            <span aria-hidden="true" className="material-symbols-outlined text-primary text-2xl select-none">{getChecklistTargetIcon(detail)}</span>
+            <span>{detail.name}</span>
+          </h1>
 
           {/* Metadata card */}
           <div className="mb-6 flex flex-wrap gap-8 rounded-2xl border border-surface-container-highest bg-surface p-5 shadow-md">

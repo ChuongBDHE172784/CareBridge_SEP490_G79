@@ -19,6 +19,8 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(
@@ -66,5 +68,22 @@ class EmergencyControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"triggerSource\":\"\"}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-4000-8000-000000000030", roles = "FAMILY")
+    void family_canUseEmergencySessionLifecycle() throws Exception {
+        mockMvc.perform(post(BASE_URL)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"triggerSource\":\"AUTO_TRIAGE\"}"))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get(BASE_URL + "/active"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(patch(BASE_URL + "/00000000-0000-4000-8000-000000000031/resolve")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isOk());
     }
 }

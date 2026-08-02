@@ -81,6 +81,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.Map;
@@ -244,6 +245,7 @@ public class DevDataSeeder implements ApplicationRunner {
             seedCommunitySampleData(savedUsers);
             seedCommunitySampleDataBatch2(savedUsers);
             seedVerifiedContent(savedUsers);
+            seedRecommendationFixtures(savedUsers.get("content@carebridge.dev"));
         } else {
             log.info("Skipped extended dev community/content fixtures by explicit configuration");
         }
@@ -377,6 +379,67 @@ public class DevDataSeeder implements ApplicationRunner {
                 .stage(stage).status(status).versionNo(1).authorUserId(author.getId())
                 .sourceLabel(sourceLabel).sources(List.of(new ContentSource(sourceTitle, sourceUrl, publisher)))
                 .publishedAt(status == ContentStatus.APPROVED ? now : null).build());
+    }
+
+    /**
+     * Recommendation-specific demo inventory.  These rows are synthetic, idempotent, and only
+     * created when the explicit dev seed is enabled; they provide enough approved coverage to
+     * exercise fallback and targeted branches without making production content assumptions.
+     */
+    private void seedRecommendationFixtures(User author) {
+        for (ContentStage stage : List.of(ContentStage.PRE_PREGNANCY, ContentStage.PREGNANCY, ContentStage.POSTPARTUM)) {
+            for (int ordinal = 1; ordinal <= 3; ordinal++) {
+                seedRecommendationArticle(author,
+                        "[DEV][REC] " + stage.name() + " fallback " + ordinal,
+                        stage, List.of(), null, null, (short) ordinal);
+            }
+        }
+
+        List<String> targetedSlugs = List.of(
+                "rec-nutrition-vegetarian",
+                "rec-vaccination-tdap-due",
+                "rec-sexual-health-intimacy-during-lifecycle");
+        Map<String, UUID> catalogIds = communityTopicRepository.findAllBySlugIn(targetedSlugs).stream()
+                .collect(java.util.stream.Collectors.toMap(CommunityTopic::getSlug, CommunityTopic::getId));
+        if (catalogIds.size() != targetedSlugs.size()) {
+            log.warn("Recommendation demo targeted fixtures skipped because the V1 catalog is incomplete");
+            return;
+        }
+
+        seedRecommendationArticle(author, "[DEV][REC] PRE_PREGNANCY targeted nutrition",
+                ContentStage.PRE_PREGNANCY,
+                List.of(catalogIds.get("rec-nutrition-vegetarian")), null, null, (short) 80);
+        seedRecommendationArticle(author, "[DEV][REC] PREGNANCY targeted Tdap",
+                ContentStage.PREGNANCY,
+                List.of(catalogIds.get("rec-vaccination-tdap-due")), (short) 10, (short) 20, (short) 80);
+        seedRecommendationArticle(author, "[DEV][REC] POSTPARTUM targeted intimacy",
+                ContentStage.POSTPARTUM,
+                List.of(catalogIds.get("rec-sexual-health-intimacy-during-lifecycle")), null, null, (short) 80);
+    }
+
+    private void seedRecommendationArticle(User author, String title, ContentStage stage,
+            List<UUID> tagIds, Short eligibleFromWeek, Short eligibleToWeek, short priority) {
+        ContentItem item = contentRepository.findByTitleIgnoreCaseAndStageAndType(
+                        title, stage, ContentType.ARTICLE)
+                .orElseGet(() -> ContentItem.builder()
+                        .type(ContentType.ARTICLE)
+                        .title(title)
+                        .body("Approved synthetic recommendation fixture for deterministic dev smoke tests.")
+                        .stage(stage)
+                        .status(ContentStatus.APPROVED)
+                        .versionNo(1)
+                        .authorUserId(author.getId())
+                        .sourceLabel("CareBridge dev fixture")
+                        .sources(List.of(new ContentSource("CareBridge dev fixture", null, "CareBridge")))
+                        .publishedAt(Instant.now())
+                        .build());
+        item.setTagIds(new ArrayList<>(tagIds));
+        item.setEligibleFromWeek(eligibleFromWeek);
+        item.setEligibleToWeek(eligibleToWeek);
+        item.setRecommendationPriority(priority);
+        item.setStatus(ContentStatus.APPROVED);
+        if (item.getPublishedAt() == null) item.setPublishedAt(Instant.now());
+        contentRepository.save(item);
     }
 
     private void seedChecklistTemplate() {

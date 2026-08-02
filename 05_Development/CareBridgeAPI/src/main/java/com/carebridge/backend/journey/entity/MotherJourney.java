@@ -1,12 +1,17 @@
 package com.carebridge.backend.journey.entity;
 
+import com.carebridge.backend.recommendation.entity.RecommendationProfileStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @Entity
@@ -67,6 +72,28 @@ public class MotherJourney {
     @Enumerated(EnumType.STRING)
     @Column(name = "date_confidence", length = 20)
     private JourneyDateConfidence dateConfidence;
+
+    /** Existing onboarding snapshot (comma-separated SupportPreference names). */
+    @Column(name = "baseline_preferences", length = 300)
+    private String baselinePreferences;
+
+    /** Server-authored consented profile. Raw values are cleared when inactive. */
+    @Builder.Default
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "recommendation_profile_jsonb", nullable = false, columnDefinition = "jsonb")
+    private Map<String, Object> recommendationProfileJson = new LinkedHashMap<>();
+
+    @Builder.Default
+    @Column(name = "recommendation_profile_version", nullable = false)
+    private short recommendationProfileVersion = 0;
+
+    @Column(name = "recommendation_profile_completed_at")
+    private Instant recommendationProfileCompletedAt;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "recommendation_profile_status", nullable = false, length = 24)
+    private RecommendationProfileStatus recommendationProfileStatus = RecommendationProfileStatus.NOT_STARTED;
 
     @Version
     @Builder.Default

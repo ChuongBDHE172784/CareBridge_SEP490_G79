@@ -20,8 +20,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * CB-TRIAGE-CONSENT-IMP-001 §9 — AI-triage disclaimer consent endpoints (ROLE_MOTHER only,
- * TDS §16). Validation + request/response mapping only; all business logic lives in
+ * AI-triage disclaimer consent endpoints for MOTHER and FAMILY users. Consent is scoped
+ * to the authenticated principal. Validation and request/response mapping live here; business logic lives in
  * {@link ITriageConsentService} (BR-TDC-006 / CLAUDE.md architecture rules).
  */
 @RestController
@@ -32,14 +32,14 @@ public class TriageConsentController {
     private final ITriageConsentService triageConsentService;
 
     @GetMapping
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<TriageConsentStatusResponse>> getStatus(Principal principal) {
         UUID userId = SecurityUtils.requireCurrentUserId(principal);
         return ResponseEntity.ok(ApiResponse.success(triageConsentService.getStatus(userId)));
     }
 
     @PostMapping("/accept")
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<TriageConsentStatusResponse>> accept(
             @Valid @RequestBody AcceptTriageConsentRequest request,
             Principal principal) {
@@ -51,7 +51,7 @@ public class TriageConsentController {
     }
 
     @PostMapping("/revoke")
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<TriageConsentStatusResponse>> revoke(Principal principal) {
         UUID userId = SecurityUtils.requireCurrentUserId(principal);
         return ResponseEntity.ok(ApiResponse.success(triageConsentService.revoke(userId)));

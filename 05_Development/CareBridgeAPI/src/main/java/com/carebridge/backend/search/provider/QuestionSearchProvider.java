@@ -33,7 +33,7 @@ public class QuestionSearchProvider implements DomainSearchProvider {
 
     @Override
     public Page<SearchItemResponse> search(String q, UUID userId, Pageable pageable) {
-        Page<CommunityQuestion> page = questionRepository.searchApproved(q, null, null, null, pageable);
+        Page<CommunityQuestion> page = questionRepository.searchApproved(q, null, null, null, null, pageable);
         return page.map(this::toItem);
     }
 

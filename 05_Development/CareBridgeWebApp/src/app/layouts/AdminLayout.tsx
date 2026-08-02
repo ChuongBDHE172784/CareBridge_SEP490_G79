@@ -73,6 +73,7 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const isModerator = user?.role === 'MODERATOR';
+
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => ({
     'Quản lý chuyên gia': location.pathname.startsWith('/admin/expert-'),
     'Hệ thống kiểm duyệt': [
@@ -90,7 +91,11 @@ export default function AdminLayout() {
   const isVisible = (item: NavItem) => hasAnyRole(...(item.roles as Parameters<typeof hasAnyRole>));
   const visibleLinks = NAV_LINKS.filter(isVisible);
 
-  if (location.pathname.startsWith('/content')) {
+  if (
+    location.pathname.startsWith('/content') ||
+    location.pathname.startsWith('/expert') ||
+    location.pathname.startsWith('/partner')
+  ) {
     return <Outlet />;
   }
 
@@ -102,7 +107,9 @@ export default function AdminLayout() {
             <span className="material-symbols-outlined text-xl text-primary">
               {isModerator ? 'shield' : 'admin_panel_settings'}
             </span>
-            <span className="text-sm font-semibold leading-none text-on-surface">CareBridge</span>
+            <span className="text-sm font-semibold leading-none text-on-surface">
+              {isModerator ? 'ModeratorPortal' : 'AdminPortal'}
+            </span>
           </div>
           <p className="ml-7 text-[11px] text-outline">
             {isModerator ? 'Cổng kiểm duyệt nội dung' : 'Cổng quản trị hệ thống'}
@@ -176,13 +183,13 @@ export default function AdminLayout() {
         </nav>
         <div className="space-y-2.5 border-t border-outline-variant/70 p-3">
           <div className="px-1 text-[11px] text-outline">
-            <p className="truncate font-semibold text-on-surface-variant">{user?.name ?? user?.phone}</p>
+            <p className="truncate font-semibold text-on-surface-variant">{user?.name ?? user?.phone ?? 'Admin'}</p>
             <p>{user?.role}</p>
           </div>
           <button
             type="button"
             onClick={handleLogout}
-            className="flex w-full items-center justify-center gap-2 rounded-md border border-outline-variant bg-surface px-3 py-1.5 text-xs font-semibold text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface"
+            className="flex w-full items-center justify-center gap-2 rounded-md border border-outline-variant bg-surface px-3 py-1.5 text-xs font-semibold text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface cursor-pointer"
           >
             <span className="material-symbols-outlined text-[16px]">logout</span>
             Đăng xuất
@@ -196,3 +203,4 @@ export default function AdminLayout() {
     </div>
   );
 }
+
