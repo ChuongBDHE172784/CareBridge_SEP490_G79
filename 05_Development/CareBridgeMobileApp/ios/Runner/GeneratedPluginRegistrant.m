@@ -54,6 +54,12 @@
 @import flutter_secure_storage;
 #endif
 
+#if __has_include(<flutter_tts/FlutterTtsPlugin.h>)
+#import <flutter_tts/FlutterTtsPlugin.h>
+#else
+@import flutter_tts;
+#endif
+
 #if __has_include(<geolocator_apple/GeolocatorPlugin.h>)
 #import <geolocator_apple/GeolocatorPlugin.h>
 #else
@@ -102,6 +108,12 @@
 @import shared_preferences_foundation;
 #endif
 
+#if __has_include(<trackasia_gl/TrackAsiaMapsPlugin.h>)
+#import <trackasia_gl/TrackAsiaMapsPlugin.h>
+#else
+@import trackasia_gl;
+#endif
+
 #if __has_include(<url_launcher_ios/URLLauncherPlugin.h>)
 #import <url_launcher_ios/URLLauncherPlugin.h>
 #else
@@ -125,6 +137,7 @@
   [FLTFirebaseMessagingPlugin registerWithRegistrar:[registry registrarForPlugin:@"FLTFirebaseMessagingPlugin"]];
   [FlutterForegroundTaskPlugin registerWithRegistrar:[registry registrarForPlugin:@"FlutterForegroundTaskPlugin"]];
   [FlutterSecureStoragePlugin registerWithRegistrar:[registry registrarForPlugin:@"FlutterSecureStoragePlugin"]];
+  [FlutterTtsPlugin registerWithRegistrar:[registry registrarForPlugin:@"FlutterTtsPlugin"]];
   [GeolocatorPlugin registerWithRegistrar:[registry registrarForPlugin:@"GeolocatorPlugin"]];
   [FLTGoogleSignInPlugin registerWithRegistrar:[registry registrarForPlugin:@"FLTGoogleSignInPlugin"]];
   [ImageGallerySaverPlusPlugin registerWithRegistrar:[registry registrarForPlugin:@"ImageGallerySaverPlusPlugin"]];
@@ -133,6 +146,7 @@
   [PermissionHandlerPlugin registerWithRegistrar:[registry registrarForPlugin:@"PermissionHandlerPlugin"]];
   [FPPSensorsPlusPlugin registerWithRegistrar:[registry registrarForPlugin:@"FPPSensorsPlusPlugin"]];
   [SharedPreferencesPlugin registerWithRegistrar:[registry registrarForPlugin:@"SharedPreferencesPlugin"]];
+  [TrackAsiaMapsPlugin registerWithRegistrar:[registry registrarForPlugin:@"TrackAsiaMapsPlugin"]];
   [URLLauncherPlugin registerWithRegistrar:[registry registrarForPlugin:@"URLLauncherPlugin"]];
   [ZegoExpressEnginePlugin registerWithRegistrar:[registry registrarForPlugin:@"ZegoExpressEnginePlugin"]];
 }

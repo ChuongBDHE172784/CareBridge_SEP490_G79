@@ -1304,17 +1304,16 @@ packages:
     dependency: transitive
     description:
       name: trackasia_gl_platform_interface
-      sha256: "4eba904f15267dea74f5091dc42e58e76d35c6a275178405e8e7ff7058938acb"
+      sha256: "2801fe13ef5aea6793c57cea50c6b397d226d0f635ad9550029fe4e29f62921c"
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.2"
+    version: "2.0.1"
   trackasia_gl_web:
-    dependency: transitive
+    dependency: "direct overridden"
     description:
-      name: trackasia_gl_web
-      sha256: "3e1840fc925ac4afef7bdbc2e865aec510a689cfad13498170327c7cdcbf118a"
-      url: "https://pub.dev"
-    source: hosted
+      path: "lib/features/emergency/widgets/trackasia_gl_web_override"
+      relative: true
+    source: path
     version: "2.0.1"
   typed_data:
     dependency: transitive
