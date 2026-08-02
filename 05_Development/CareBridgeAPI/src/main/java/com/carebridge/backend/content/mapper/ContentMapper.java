@@ -205,6 +205,7 @@ public class ContentMapper {
                 .id(template.getId())
                 .name(template.getName())
                 .stage(template.getStage())
+                .displayOrder(template.getSequencePosition())
                 .status(template.getStatus())
                 .description(template.getDescription())
                 .versionNo(template.getVersionNo())

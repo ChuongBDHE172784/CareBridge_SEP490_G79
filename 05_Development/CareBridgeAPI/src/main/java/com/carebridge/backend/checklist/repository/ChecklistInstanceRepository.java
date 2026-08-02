@@ -30,6 +30,8 @@ public interface ChecklistInstanceRepository extends JpaRepository<ChecklistInst
 
     List<ChecklistInstance> findByRecipientUserId(UUID recipientUserId);
 
+    boolean existsByTemplateLineageId(UUID templateLineageId);
+
     List<ChecklistInstance> findByRecipientUserIdAndHistoricalAtIsNull(UUID recipientUserId);
 
     List<ChecklistInstance> findByContextOwnerUserIdAndRecipientRoleAndOriginAndHistoricalAtIsNull(

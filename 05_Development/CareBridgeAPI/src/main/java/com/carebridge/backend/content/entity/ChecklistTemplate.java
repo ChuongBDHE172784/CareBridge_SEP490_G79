@@ -50,6 +50,11 @@ public class ChecklistTemplate {
     @Column(name = "substage_id")
     private UUID substageId;
 
+    /** Positive position in the PRE_PREGNANCY sequence; zero is legacy/unsequenced. */
+    @Builder.Default
+    @Column(name = "display_order", nullable = false)
+    private Integer sequencePosition = 0;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "recipient_scope", length = 10)
     private ChecklistRecipientScope recipientScope;

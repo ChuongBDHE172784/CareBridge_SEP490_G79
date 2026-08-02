@@ -85,6 +85,7 @@ export interface ChecklistTemplate {
   status: ChecklistTemplateStatus;
   description: string;
   templateType: ChecklistTemplateType;
+  displayOrder?: number | null;
   items: ChecklistItem[];
   latestReviewFeedback?: ReviewFeedback | null;
 }
@@ -150,6 +151,7 @@ export interface CreateChecklistTemplatePayload {
   recipientRoles: ChecklistRecipientRole[];
   stage: ContentStage | null;
   substage: ChecklistSubstage | null;
+  displayOrder?: number;
   items: ChecklistItemInput[];
 }
 
@@ -161,6 +163,7 @@ export interface UpdateChecklistTemplatePayload {
   stage: ContentStage | null;
   substage: ChecklistSubstage | null;
   status: ChecklistTemplateStatus;
+  displayOrder?: number;
   // null/undefined = keep existing items unchanged; [] = clear all; non-empty = full replace
   items?: ChecklistItemInput[] | null;
 }

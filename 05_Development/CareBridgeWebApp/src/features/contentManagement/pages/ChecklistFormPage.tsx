@@ -56,6 +56,7 @@ export default function ChecklistFormPage() {
   const [recipientRoles, setRecipientRoles] = useState<ChecklistRecipientRole[]>(['MOTHER']);
   const [stage, setStage] = useState<ContentStage | ''>('');
   const [substage, setSubstage] = useState<ChecklistSubstage | null>(null);
+  const [displayOrder, setDisplayOrder] = useState(0);
   const [items, setItems] = useState<ItemRow[]>([newRow()]);
   const [status, setStatus] = useState<ChecklistTemplateStatus>('DRAFT');
   const [isLoading, setIsLoading] = useState(isEdit);
@@ -78,6 +79,7 @@ export default function ChecklistFormPage() {
       const hasMotherRecipient = loadedRoles.includes('MOTHER');
       setRecipientRoles(loadedRoles);
       setStage(hasMotherRecipient ? (data.stage ?? '') : '');
+      setDisplayOrder(data.displayOrder ?? 0);
       setSubstage(hasMotherRecipient && data.stage !== 'PRE_PREGNANCY'
         ? (data.substage ?? null)
         : null);
@@ -105,12 +107,17 @@ export default function ChecklistFormPage() {
   }, [isEdit, loadDetail]);
 
   const hasMotherRecipient = recipientRoles.includes('MOTHER');
+  const sequenceEligible = templateType === 'MANDATORY'
+    && recipientRoles.length === 1
+    && recipientRoles[0] === 'MOTHER'
+    && stage === 'PRE_PREGNANCY';
   const isImmutable = status === 'APPROVED' || status === 'ARCHIVED';
   const isValid = name.trim().length > 0
     && recipientRoles.length > 0
     && (!hasMotherRecipient || (stage !== ''
       && (stage === 'PRE_PREGNANCY' || (substage !== null && substage.anchor !== 'NONE'))))
-    && items.filter((row) => row.itemText.trim()).every((row) => Boolean(row.targetSubject));
+    && items.filter((row) => row.itemText.trim()).every((row) => Boolean(row.targetSubject))
+    && (!sequenceEligible || (Number.isInteger(displayOrder) && displayOrder >= 0));
 
   const toggleRole = (role: ChecklistRecipientRole) => {
     setRecipientRoles((previous) => {
@@ -163,6 +170,7 @@ export default function ChecklistFormPage() {
         recipientRoles,
         stage: normalizedStage,
         substage: normalizedSubstage,
+        displayOrder: sequenceEligible ? displayOrder : 0,
       };
       const itemsPayload = buildItemsPayload();
       if (isEdit && id) {
@@ -284,6 +292,25 @@ export default function ChecklistFormPage() {
                       <option key={option.code} value={option.code}>{option.code}</option>
                     ))}
                   </select>
+                </label>
+              )}
+              {sequenceEligible && (
+                <label className="mt-4 grid gap-2 text-sm font-semibold text-on-surface">
+                  Vị trí bộ checklist (0 = chưa tham gia chuỗi)
+                  <input
+                    aria-label="Checklist sequence position"
+                    type="number"
+                    min={0}
+                    max={1000}
+                    step={1}
+                    disabled={isImmutable}
+                    value={displayOrder}
+                    onChange={(event) => setDisplayOrder(Number(event.target.value))}
+                    className={field}
+                  />
+                  <span className="text-xs font-normal text-on-surface-variant">
+                    Nhập 1, 2, 3... theo thứ tự các bộ. Vị trí được kiểm tra lại khi phê duyệt.
+                  </span>
                 </label>
               )}
               {substage && <div className="mt-4 rounded-2xl bg-surface-bright border border-surface-container-highest p-4"><strong className="text-on-surface text-sm">{substage.code}</strong><p className="mt-1 text-xs text-on-surface-variant">{substage.anchor} · {substage.startInclusive}–{substage.endInclusive} {substage.unit}</p></div>}

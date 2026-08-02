@@ -23,6 +23,84 @@ enum TodayTaskSkipReason { notApplicable, userChoice, lifecycleChanged }
 
 enum TodayTaskSourceType { reminder, careTask, checklist, unknown }
 
+enum TodaySequenceState {
+  active,
+  readyToAdvance,
+  sequenceComplete,
+  configurationBlocked,
+  unknown,
+}
+
+class TodaySequenceNextSet {
+  final String? name;
+  final int? position;
+
+  const TodaySequenceNextSet({this.name, this.position});
+
+  factory TodaySequenceNextSet.fromJson(Map<String, dynamic> json) =>
+      TodaySequenceNextSet(
+        name: json['name'] as String?,
+        position: (json['position'] as num?)?.toInt(),
+      );
+}
+
+class TodaySequenceProjection {
+  final TodaySequenceState state;
+  final String? currentInstanceId;
+  final String? currentTemplateVersionId;
+  final String? currentSetName;
+  final int? currentPosition;
+  final int? totalPositions;
+  final int? qualifiedPositions;
+  final bool advanceAvailable;
+  final TodaySequenceNextSet? nextSet;
+  final bool sequenceComplete;
+  final String? blockedReasonCode;
+
+  const TodaySequenceProjection({
+    required this.state,
+    this.currentInstanceId,
+    this.currentTemplateVersionId,
+    this.currentSetName,
+    this.currentPosition,
+    this.totalPositions,
+    this.qualifiedPositions,
+    required this.advanceAvailable,
+    this.nextSet,
+    required this.sequenceComplete,
+    this.blockedReasonCode,
+  });
+
+  bool get readyToAdvance => state == TodaySequenceState.readyToAdvance;
+
+  factory TodaySequenceProjection.fromJson(Map<String, dynamic> json) {
+    final raw = (json['sequenceState'] as String? ?? '').toUpperCase();
+    final state = switch (raw) {
+      'ACTIVE' => TodaySequenceState.active,
+      'READY_TO_ADVANCE' => TodaySequenceState.readyToAdvance,
+      'SEQUENCE_COMPLETE' => TodaySequenceState.sequenceComplete,
+      'CONFIGURATION_BLOCKED' => TodaySequenceState.configurationBlocked,
+      _ => TodaySequenceState.unknown,
+    };
+    final next = json['nextSet'];
+    return TodaySequenceProjection(
+      state: state,
+      currentInstanceId: json['currentInstanceId'] as String?,
+      currentTemplateVersionId: json['currentTemplateVersionId'] as String?,
+      currentSetName: json['currentSetName'] as String?,
+      currentPosition: (json['currentPosition'] as num?)?.toInt(),
+      totalPositions: (json['totalPositions'] as num?)?.toInt(),
+      qualifiedPositions: (json['qualifiedPositions'] as num?)?.toInt(),
+      advanceAvailable: json['advanceAvailable'] == true,
+      nextSet: next is Map
+          ? TodaySequenceNextSet.fromJson(Map<String, dynamic>.from(next))
+          : null,
+      sequenceComplete: json['sequenceComplete'] == true,
+      blockedReasonCode: json['blockedReasonCode'] as String?,
+    );
+  }
+}
+
 T _enumFromApi<T>(String? raw, Map<String, T> values, T fallback) =>
     values[raw?.trim().toUpperCase()] ?? fallback;
 
@@ -262,6 +340,7 @@ class TodayTasksSnapshot {
   final int horizonDays;
   final TodayTaskSections sections;
   final String correlationId;
+  final TodaySequenceProjection? sequence;
 
   const TodayTasksSnapshot({
     required this.asOf,
@@ -269,6 +348,7 @@ class TodayTasksSnapshot {
     required this.horizonDays,
     required this.sections,
     required this.correlationId,
+    this.sequence,
   });
 
   factory TodayTasksSnapshot.fromJson(Map<String, dynamic> json) =>
@@ -280,6 +360,13 @@ class TodayTasksSnapshot {
           Map<String, dynamic>.from(json['sections'] as Map? ?? const {}),
         ),
         correlationId: json['correlationId'] as String? ?? '',
+        sequence: json['sequence'] is Map
+            ? TodaySequenceProjection.fromJson(
+                Map<String, dynamic>.from(json['sequence'] as Map),
+              )
+            : json['sequenceState'] is String
+            ? TodaySequenceProjection.fromJson(json)
+            : null,
       );
 
   int get totalCount => sections.all.length;

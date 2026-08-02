@@ -19,6 +19,8 @@ public interface ChecklistTemplateRepository extends JpaRepository<ChecklistTemp
 
     Optional<ChecklistTemplate> findByTemplateVersionId(UUID templateVersionId);
 
+    List<ChecklistTemplate> findByTemplateLineageId(UUID templateLineageId);
+
     List<ChecklistTemplate> findAllByTemplateVersionIdIn(Collection<UUID> templateVersionIds);
 
     @Query("select coalesce(max(t.versionNo), 0) from ChecklistTemplate t " +

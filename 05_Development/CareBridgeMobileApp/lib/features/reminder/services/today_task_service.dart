@@ -83,6 +83,22 @@ class TodayTaskService {
     return Map<String, dynamic>.from(raw);
   }
 
+  Future<Map<String, dynamic>> advanceSequence({
+    required String currentInstanceId,
+    String? clientRequestId,
+  }) async {
+    final payload = await _postRequest(
+      '/api/v1/checklists/sequences/advance',
+      {
+        'currentInstanceId': currentInstanceId,
+        'clientRequestId': clientRequestId ?? _clientRequestIdFactory(),
+      },
+    );
+    final envelope = Map<String, dynamic>.from(payload as Map);
+    final raw = envelope['data'] is Map ? envelope['data'] as Map : envelope;
+    return Map<String, dynamic>.from(raw);
+  }
+
   static String _dateOnly(DateTime value) =>
       '${value.year.toString().padLeft(4, '0')}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
 
