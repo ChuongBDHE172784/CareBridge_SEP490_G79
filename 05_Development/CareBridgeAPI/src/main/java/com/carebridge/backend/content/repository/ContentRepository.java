@@ -20,7 +20,7 @@ public interface ContentRepository extends JpaRepository<ContentItem, UUID> {
 
     /** Targeted pool prefilter reusing the existing content/topic join table. */
     @Query(value = """
-            SELECT DISTINCT c.*
+            SELECT c.*
               FROM content_items c
              WHERE c.stage = :stage
                AND c.content_type = 'ARTICLE'
@@ -64,7 +64,7 @@ public interface ContentRepository extends JpaRepository<ContentItem, UUID> {
 
     /** Fallback pool prefilter excluding every rec-* association. */
     @Query(value = """
-            SELECT DISTINCT c.*
+            SELECT c.*
               FROM content_items c
              WHERE c.stage = :stage
                AND c.content_type = 'ARTICLE'
