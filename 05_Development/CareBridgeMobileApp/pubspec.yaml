@@ -63,6 +63,10 @@ dependencies:
   universal_io: ^2.3.1
   trackasia_gl: 2.0.3
   flutter_tts: 4.2.5
+dependency_overrides:
+  trackasia_gl_web:
+    path: lib/features/emergency/widgets/trackasia_gl_web_override
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
