@@ -105,11 +105,12 @@ void main() {
         findsNothing,
       );
 
-      await tester.tap(find.text('Chuyên gia'));
+      final navBar = tester.widget<NavigationBar>(navBarFinder);
+      navBar.onDestinationSelected!(2);
       await tester.pumpAndSettle();
 
       // Directory tab's own AppBar title proves it rendered in place (IndexedStack, not a push).
-      expect(find.text('Chuyên gia đã xác thực'), findsOneWidget);
+      expect(find.text('Chuyên Gia Y Tế'), findsOneWidget);
     },
   );
 

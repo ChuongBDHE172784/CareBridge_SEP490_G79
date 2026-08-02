@@ -231,6 +231,14 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
       }
       return;
     }
+    if (mounted && generation == _recommendationLoadGeneration) {
+      setState(() {
+        // Keep recommendation progress independent from the main dashboard
+        // load while the eligibility context is being resolved.
+        _recommendationLoading = true;
+        _recommendationError = null;
+      });
+    }
     try {
       final dashboard =
           _dashboard ??
@@ -250,12 +258,6 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
       // fabricate a stage or call the recommendation endpoint.
       _clearRecommendationState(generation);
       return;
-    }
-    if (mounted && generation == _recommendationLoadGeneration) {
-      setState(() {
-        _recommendationLoading = true;
-        _recommendationError = null;
-      });
     }
     try {
       final response =
@@ -356,8 +358,6 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
                   const SizedBox(height: 24),
                   _buildDiscoverSection(),
                   const SizedBox(height: 24),
-                  _buildRecommendationSection(),
-                  const SizedBox(height: 24),
                   if (_loading)
                     const Center(
                       child: CircularProgressIndicator(
@@ -375,10 +375,11 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
                   ],
                   _buildTasksSection(),
                   const SizedBox(height: 24),
+                  _buildRecommendationSection(),
+                  const SizedBox(height: 24),
                 ]),
               ),
             ),
-            if (!_loading) SliverToBoxAdapter(child: _buildContentSection()),
             const SliverToBoxAdapter(child: SizedBox(height: 104)),
           ],
         ),
@@ -474,7 +475,12 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
                           builder: (_) => const NotificationCenterScreen(),
                         ),
                       )
-                      .then((_) => _checkUnread()),
+                      .then(
+                        (_) => _checkUnread(
+                          generation: _loadGeneration,
+                          accountId: AuthState.instance.userId,
+                        ),
+                      ),
                   icon: const Icon(
                     Icons.notifications,
                     size: 28,
@@ -1117,12 +1123,13 @@ extension _MotherHomeRecommendationView on _MotherHomeScreenState {
     if (response == null) return const SizedBox.shrink();
     final items = response.items;
     final title = switch (response.stage) {
-      'PRE_PREGNANCY' => 'Gợi ý trước thai kỳ',
+      'PRE_PREGNANCY' => 'Gợi ý cho chuẩn bị mang thai',
       'PREGNANCY' when response.pregnancyWeek != null =>
-        'Dành riêng cho tuần ${response.pregnancyWeek}',
+        'Gợi ý dành riêng cho tuần ${response.pregnancyWeek}',
       'PREGNANCY' => 'Gợi ý cho thai kỳ',
-      'POSTPARTUM' => 'Gợi ý sau sinh',
-      _ => 'Gợi ý dành cho mẹ',
+      'POSTPARTUM' => 'Gợi ý cho sau sinh',
+      'BABY_CARE' => 'Gợi ý chăm sóc bé',
+      _ => 'Gợi ý dành cho bạn',
     };
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -1339,25 +1346,6 @@ class _RecommendationErrorState extends StatelessWidget {
               icon: const Icon(Icons.refresh),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _RecommendationEmptyState extends StatelessWidget {
-  const _RecommendationEmptyState();
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      key: const Key('mother-home-recommendation-empty'),
-      margin: EdgeInsets.zero,
-      child: const Padding(
-        padding: EdgeInsets.all(16),
-        child: Text(
-          'Chưa có bài viết phù hợp cho giai đoạn hiện tại.',
-          style: TextStyle(color: Color(0xFF524440)),
         ),
       ),
     );
