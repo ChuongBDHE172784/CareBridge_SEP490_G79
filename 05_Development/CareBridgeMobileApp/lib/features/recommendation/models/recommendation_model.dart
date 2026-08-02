@@ -178,8 +178,8 @@ class RecommendationProfileDraft {
       'sleep': {'state': 'UNKNOWN'},
     },
     'nutrition': {'state': 'UNKNOWN'},
-    'vaccination': {
-      'answers': [
+    'vaccination': <String, dynamic>{
+      'answers': <Map<String, dynamic>>[
         for (final code in [
           'INFLUENZA',
           'COVID_19',
@@ -187,7 +187,7 @@ class RecommendationProfileDraft {
           'HEPATITIS_B',
           'RUBELLA_IMMUNITY',
         ])
-          {'code': code, 'state': 'UNKNOWN'},
+          <String, dynamic>{'code': code, 'state': 'UNKNOWN'},
       ],
     },
     'currentMedications': {'state': 'UNKNOWN'},
