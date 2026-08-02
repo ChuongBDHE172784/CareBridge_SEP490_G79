@@ -86,7 +86,7 @@ class FloatingAiTriageHost extends StatefulWidget {
   final String? Function() currentRole;
   final String Function() currentPath;
   final bool Function() hasModal;
-  final VoidCallback onOpen;
+  final Future<void> Function() onOpen;
 
   static bool _neverHasModal() => false;
 
@@ -103,6 +103,7 @@ class _FloatingAiTriageHostState extends State<FloatingAiTriageHost> {
 
   Offset? _position;
   bool _refreshScheduled = false;
+  bool _isOpening = false;
 
   @override
   void initState() {
@@ -157,6 +158,7 @@ class _FloatingAiTriageHostState extends State<FloatingAiTriageHost> {
   }
 
   bool get _shouldShow {
+    if (_isOpening) return false;
     if (!widget.isAuthenticated()) return false;
     if (widget.hasModal()) return false;
     final role = (widget.currentRole() ?? '').trim().toUpperCase();
@@ -260,6 +262,22 @@ class _FloatingAiTriageHostState extends State<FloatingAiTriageHost> {
     });
   }
 
+  Future<void> _open() async {
+    if (_isOpening) return;
+
+    setState(() => _isOpening = true);
+    try {
+      await widget.onOpen();
+    } catch (error) {
+      debugPrint(
+        '[FloatingAiTriageHost] failed to open CareBridge AI: '
+        '${error.runtimeType}',
+      );
+    } finally {
+      if (mounted) setState(() => _isOpening = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -289,7 +307,7 @@ class _FloatingAiTriageHostState extends State<FloatingAiTriageHost> {
                       child: GestureDetector(
                         key: const Key('floating-ai-triage-robot'),
                         behavior: HitTestBehavior.opaque,
-                        onTap: widget.onOpen,
+                        onTap: _open,
                         onPanUpdate: (details) => _move(
                           details,
                           constraints,

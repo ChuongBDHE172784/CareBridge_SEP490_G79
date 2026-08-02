@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:untitled/features/aiTriage/widgets/floating_ai_triage_host.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -10,7 +12,7 @@ void main() {
     required bool Function() isAuthenticated,
     required String? Function() currentRole,
     required String Function() currentPath,
-    required VoidCallback onOpen,
+    required Future<void> Function() onOpen,
     ValueNotifier<int>? modalChanges,
     bool Function()? hasModal,
   }) {
@@ -43,7 +45,7 @@ void main() {
         isAuthenticated: () => true,
         currentRole: () => role,
         currentPath: () => '/',
-        onOpen: () {},
+        onOpen: () async {},
       ),
     );
     expect(find.byKey(const Key('floating-ai-triage-robot')), findsOneWidget);
@@ -73,7 +75,7 @@ void main() {
         isAuthenticated: () => true,
         currentRole: () => 'FAMILY',
         currentPath: () => path,
-        onOpen: () {},
+        onOpen: () async {},
       ),
     );
     expect(find.byKey(const Key('floating-ai-triage-robot')), findsOneWidget);
@@ -114,7 +116,7 @@ void main() {
         currentRole: () => 'FAMILY',
         currentPath: () => '/',
         hasModal: () => hasModal,
-        onOpen: () {},
+        onOpen: () async {},
       ),
     );
     expect(find.byKey(const Key('floating-ai-triage-robot')), findsOneWidget);
@@ -144,7 +146,7 @@ void main() {
           currentRole: () => 'MOTHER',
           currentPath: () => '/',
           hasModal: () => observer.hasPopupRoute,
-          onOpen: () {},
+          onOpen: () async {},
           child: StatefulBuilder(
             builder: (context, setState) {
               rebuildChild = setState;
@@ -186,7 +188,7 @@ void main() {
         isAuthenticated: () => true,
         currentRole: () => 'MOTHER',
         currentPath: () => '/content',
-        onOpen: () => opens++,
+        onOpen: () async => opens++,
       ),
     );
 
@@ -208,6 +210,78 @@ void main() {
     expect(rect.bottom, lessThanOrEqualTo(viewport.height));
   });
 
+  testWidgets(
+    'hides while AI navigation is pending, restores, and ignores duplicate taps',
+    (tester) async {
+      final authChanges = ValueNotifier(0);
+      final navigationChanges = ValueNotifier(0);
+      final navigation = Completer<void>();
+      var opens = 0;
+
+      await tester.pumpWidget(
+        buildHost(
+          authChanges: authChanges,
+          navigationChanges: navigationChanges,
+          isAuthenticated: () => true,
+          currentRole: () => 'FAMILY',
+          currentPath: () => '/',
+          onOpen: () {
+            opens++;
+            return navigation.future;
+          },
+        ),
+      );
+
+      final robot = find.byKey(const Key('floating-ai-triage-robot'));
+      final onTap = tester.widget<GestureDetector>(robot).onTap!;
+
+      onTap();
+      onTap();
+      await tester.pump();
+
+      expect(opens, 1);
+      expect(robot, findsNothing);
+
+      await tester.pump(const Duration(seconds: 1));
+      expect(robot, findsNothing);
+
+      navigation.complete();
+      await tester.pump();
+      await tester.pump();
+
+      expect(robot, findsOneWidget);
+    },
+  );
+
+  testWidgets('restores after AI navigation fails', (tester) async {
+    final authChanges = ValueNotifier(0);
+    final navigationChanges = ValueNotifier(0);
+    final navigation = Completer<void>();
+
+    await tester.pumpWidget(
+      buildHost(
+        authChanges: authChanges,
+        navigationChanges: navigationChanges,
+        isAuthenticated: () => true,
+        currentRole: () => 'MOTHER',
+        currentPath: () => '/',
+        onOpen: () => navigation.future,
+      ),
+    );
+
+    final robot = find.byKey(const Key('floating-ai-triage-robot'));
+    await tester.tap(robot);
+    await tester.pump();
+    expect(robot, findsNothing);
+
+    navigation.completeError(StateError('navigation failed'));
+    await tester.pump();
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(robot, findsOneWidget);
+  });
+
   testWidgets('production builder placement stays valid on web hover', (
     tester,
   ) async {
@@ -222,7 +296,7 @@ void main() {
           isAuthenticated: () => true,
           currentRole: () => 'MOTHER',
           currentPath: () => '/mother-home',
-          onOpen: () {},
+          onOpen: () async {},
           child: child!,
         ),
         home: const Scaffold(body: Text('Nội dung ứng dụng')),

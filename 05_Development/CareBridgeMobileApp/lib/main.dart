@@ -112,7 +112,9 @@ class CareBridgeApp extends StatelessWidget {
             currentPath: () =>
                 appRouter.routeInformationProvider.value.uri.path,
             hasModal: () => floatingAiTriageRouteObserver.hasPopupRoute,
-            onOpen: () => appRouter.push('/triage/intake'),
+            onOpen: () async {
+              await appRouter.push('/triage/intake');
+            },
             child: app,
           ),
         );
