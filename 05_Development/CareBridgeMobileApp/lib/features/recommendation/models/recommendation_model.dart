@@ -165,6 +165,13 @@ class RecommendationContentResponse {
 class RecommendationProfileDraft {
   static const policyVersion = 'MOTHER_PERSONALIZED_CONTENT_V1';
   static const schemaVersion = 1;
+  static const _vaccinationStates = {
+    'KNOWN',
+    'UNKNOWN',
+    'PREFER_NOT_TO_SAY',
+    'NOT_APPLICABLE',
+  };
+  static const _vaccinationValues = {'UP_TO_DATE', 'DUE', 'NOT_RECEIVED'};
 
   static Map<String, dynamic> empty() => {
     'age': {'state': 'UNKNOWN'},
@@ -236,8 +243,29 @@ class RecommendationProfileDraft {
     return raw
         .whereType<Map>()
         .map((answer) => Map<String, dynamic>.from(answer))
-        .where((answer) => answer['code'] is String)
+        .where(_isRepairableVaccinationAnswer)
         .toList();
+  }
+
+  static bool _isRepairableVaccinationAnswer(Map<String, dynamic> answer) {
+    final code = answer['code'];
+    final state = answer['state'];
+    if (!answer.keys.every(
+      (key) => key == 'code' || key == 'state' || key == 'value',
+    )) {
+      return false;
+    }
+    if (code is! String ||
+        code.isEmpty ||
+        state is! String ||
+        !_vaccinationStates.contains(state)) {
+      return false;
+    }
+    if (state == 'KNOWN') {
+      return answer['value'] is String &&
+          _vaccinationValues.contains(answer['value']);
+    }
+    return !answer.containsKey('value');
   }
 
   static List<Map<String, dynamic>> _mergeAnswerLists(
@@ -257,13 +285,7 @@ class RecommendationProfileDraft {
     final vaccination = result['vaccination'];
     if (vaccination is Map) {
       final baseAnswers = (empty()['vaccination'] as Map)['answers'] as List;
-      final provided = vaccination['answers'] is List
-          ? (vaccination['answers'] as List)
-                .whereType<Map>()
-                .where((answer) => answer['code'] is String)
-                .map((answer) => Map<String, dynamic>.from(answer))
-                .toList()
-          : <Map<String, dynamic>>[];
+      final provided = _copyAnswerList(vaccination['answers']);
       final byCode = <String, Map<String, dynamic>>{
         for (final answer in provided) answer['code'] as String: answer,
       };
