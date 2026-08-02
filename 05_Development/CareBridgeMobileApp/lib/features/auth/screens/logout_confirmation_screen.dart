@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../../../core/auth/auth_state.dart';
 import '../../../../core/network/api_client.dart';
 import '../../journey/services/pregnancy_outcome_draft_store.dart';
-import '../models/auth_model.dart';
 import '../services/auth_service.dart';
 
 @visibleForTesting
@@ -20,13 +19,25 @@ Future<void> clearLocalSessionAfterLogout({
   }
 }
 
-Future<void> showLogoutConfirmationSheet(BuildContext context) {
-  return showModalBottomSheet<void>(
+Future<void> showLogoutConfirmationSheet(BuildContext context) async {
+  final accountId = AuthState.instance.userId;
+  final confirmed = await showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     barrierColor: Colors.black.withValues(alpha: 0.5),
     builder: (_) => const LogoutConfirmationSheet(),
+  );
+
+  if (confirmed != true) return;
+
+  // Let the popup route finish leaving the Navigator before AuthState notifies
+  // GoRouter and redirects to the unauthenticated landing route.
+  await WidgetsBinding.instance.endOfFrame;
+  await clearLocalSessionAfterLogout(
+    accountId: accountId,
+    clearDraft: SecurePregnancyOutcomeDraftStore.instance.clearForAccount,
+    clearAuth: AuthState.instance.clear,
   );
 }
 
@@ -48,15 +59,8 @@ class _LogoutConfirmationSheetState extends State<LogoutConfirmationSheet> {
   static const _secondaryTextColor = Color(0xFF524440);
   static const _outlineColor = Color(0xFFD6C2BD);
 
-  late final Future<UserProfile> _profileFuture;
   bool _isSubmitting = false;
   String? _errorMessage;
-
-  @override
-  void initState() {
-    super.initState();
-    _profileFuture = AuthService.instance.getProfile();
-  }
 
   Future<void> _confirmLogout() async {
     if (_isSubmitting) return;
@@ -67,15 +71,11 @@ class _LogoutConfirmationSheetState extends State<LogoutConfirmationSheet> {
     });
 
     try {
-      final accountId = AuthState.instance.userId;
       await AuthService.instance.logout();
-      await _clearLocalSession(accountId);
-      if (mounted) Navigator.of(context).pop();
+      if (mounted) Navigator.of(context).pop(true);
     } on ApiException catch (error) {
       if (error.statusCode == 401) {
-        final accountId = AuthState.instance.userId;
-        await _clearLocalSession(accountId);
-        if (mounted) Navigator.of(context).pop();
+        if (mounted) Navigator.of(context).pop(true);
         return;
       }
 
@@ -93,13 +93,6 @@ class _LogoutConfirmationSheetState extends State<LogoutConfirmationSheet> {
       });
     }
   }
-
-  Future<void> _clearLocalSession(String? accountId) =>
-      clearLocalSessionAfterLogout(
-        accountId: accountId,
-        clearDraft: SecurePregnancyOutcomeDraftStore.instance.clearForAccount,
-        clearAuth: AuthState.instance.clear,
-      );
 
   @override
   Widget build(BuildContext context) {
@@ -245,82 +238,58 @@ class _LogoutConfirmationSheetState extends State<LogoutConfirmationSheet> {
   }
 
   Widget _buildAccountPill() {
-    return FutureBuilder<UserProfile>(
-      future: _profileFuture,
-      builder: (context, snapshot) {
-        final accountName = _resolveAccountName(snapshot.data);
-
-        return Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-          decoration: BoxDecoration(
-            color: _canvasColor,
-            borderRadius: BorderRadius.circular(999),
+    final accountName = _resolveAccountName();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      decoration: BoxDecoration(
+        color: _canvasColor,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.account_circle_outlined,
+            color: Color(0xFF845143),
+            size: 24,
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.account_circle_outlined,
-                color: Color(0xFF845143),
-                size: 24,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: RichText(
-                  overflow: TextOverflow.ellipsis,
-                  text: TextSpan(
+          const SizedBox(width: 10),
+          Expanded(
+            child: RichText(
+              overflow: TextOverflow.ellipsis,
+              text: TextSpan(
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w400,
+                  color: _secondaryTextColor,
+                ),
+                children: [
+                  const TextSpan(text: 'Tài khoản: '),
+                  TextSpan(
+                    text: accountName,
                     style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w400,
-                      color: _secondaryTextColor,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF845143),
                     ),
-                    children: [
-                      const TextSpan(text: 'Tài khoản: '),
-                      TextSpan(
-                        text: accountName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF845143),
-                        ),
-                      ),
-                    ],
                   ),
-                ),
+                ],
               ),
-              if (snapshot.connectionState == ConnectionState.waiting)
-                const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: _primaryColor,
-                  ),
-                ),
-            ],
+            ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 
-  String _resolveAccountName(UserProfile? profile) {
-    final candidates = [
-      profile?.name,
-      profile?.email,
-      profile?.phone,
-      AuthState.instance.role,
-    ];
-
-    for (final candidate in candidates) {
-      final value = candidate?.trim();
-      if (value != null && value.isNotEmpty) {
-        return value;
-      }
-    }
-
-    return 'CareBridge';
+  String _resolveAccountName() {
+    return switch (AuthState.instance.role?.trim().toUpperCase()) {
+      'MOTHER' => 'Mẹ',
+      'FAMILY' => 'Gia đình',
+      'EXPERT' => 'Chuyên gia',
+      _ => 'CareBridge',
+    };
   }
 
   Widget _buildErrorBanner() {

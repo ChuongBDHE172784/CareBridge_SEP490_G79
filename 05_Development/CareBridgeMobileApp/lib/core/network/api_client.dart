@@ -157,8 +157,16 @@ Future<http.Response> _handleUnauthorized(
   http.Response original,
   String? explicitToken,
   Future<http.Response> Function() retry,
+  _RequestSessionIdentity? requestSession,
 ) async {
   if (original.statusCode != 401 || explicitToken != null) return original;
+
+  // A request started before logout/account switching can finish after the
+  // local session has changed. It must not refresh or clear the new session.
+  if (requestSession != null && !requestSession.isCurrent) {
+    debugPrint('[ApiClient] ignoring 401 from a stale session request');
+    return original;
+  }
 
   final outcome = await _tryRefresh();
   switch (outcome) {
@@ -199,6 +207,14 @@ Future<dynamic> apiGet(
   Map<String, dynamic>? queryParams,
   Map<String, String>? extraHeaders,
 }) async {
+  final auth = AuthState.instance;
+  final requestToken = token ?? auth.accessToken;
+  final requestSession = requestToken == null
+      ? null
+      : _captureExpectedSession(
+          accountId: auth.userId ?? '',
+          accessToken: requestToken,
+        );
   String queryString = '';
   if (queryParams != null && queryParams.isNotEmpty) {
     queryString =
@@ -213,11 +229,15 @@ Future<dynamic> apiGet(
     response,
     token,
     () => http.get(uri, headers: _headers(extraHeaders: extraHeaders)),
+    requestSession,
   );
   if (response.statusCode >= 200 && response.statusCode < 300) {
     return _decodeResponse(response);
   }
-  if (response.statusCode == 401) await _handle401(response);
+  if (response.statusCode == 401 &&
+      (requestSession == null || requestSession.isCurrent)) {
+    await _handle401(response);
+  }
   if (response.statusCode == 403) await _handleBlockedResponse(response);
   throw ApiException(response.statusCode, response.body);
 }
@@ -258,6 +278,7 @@ Future<dynamic> apiPost(
     () => client == null
         ? http.post(uri, headers: _headers(), body: encoded)
         : client.post(uri, headers: _headers(), body: encoded),
+    expectedSession,
   );
   if (response.statusCode >= 200 && response.statusCode < 300) {
     return _decodeResponse(response);
@@ -295,6 +316,7 @@ Future<dynamic> apiPut(
     response,
     token,
     () => http.put(uri, headers: _headers(), body: encoded),
+    null,
   );
   if (response.statusCode >= 200 && response.statusCode < 300) {
     return _decodeResponse(response);
@@ -320,6 +342,7 @@ Future<dynamic> apiPatch(
     response,
     token,
     () => http.patch(uri, headers: _headers(), body: encoded),
+    null,
   );
   if (response.statusCode >= 200 && response.statusCode < 300) {
     return _decodeResponse(response);
@@ -345,6 +368,7 @@ Future<dynamic> apiDelete(
     response,
     token,
     () => http.delete(uri, headers: _headers(), body: encoded),
+    null,
   );
   if (response.statusCode >= 200 && response.statusCode < 300) {
     return _decodeResponse(response);

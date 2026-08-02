@@ -125,6 +125,53 @@ void main() {
     expect(find.byKey(const Key('floating-ai-triage-robot')), findsNothing);
   });
 
+  testWidgets('defers observer notifications received during a build', (
+    tester,
+  ) async {
+    final authChanges = ValueNotifier(0);
+    final navigationChanges = ValueNotifier(0);
+    final observer = FloatingAiTriageRouteObserver();
+    late StateSetter rebuildChild;
+    var notifyDuringBuild = false;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: FloatingAiTriageHost(
+          authListenable: authChanges,
+          navigationListenable: navigationChanges,
+          modalListenable: observer,
+          isAuthenticated: () => true,
+          currentRole: () => 'MOTHER',
+          currentPath: () => '/',
+          hasModal: () => observer.hasPopupRoute,
+          onOpen: () {},
+          child: StatefulBuilder(
+            builder: (context, setState) {
+              rebuildChild = setState;
+              if (notifyDuringBuild) {
+                observer.didPush(
+                  PageRouteBuilder<void>(
+                    pageBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  ),
+                  null,
+                );
+              }
+              return const Scaffold(body: Text('Nội dung ứng dụng'));
+            },
+          ),
+        ),
+      ),
+    );
+
+    notifyDuringBuild = true;
+    rebuildChild(() {});
+    await tester.pump();
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(const Key('floating-ai-triage-robot')), findsOneWidget);
+  });
+
   testWidgets('tap opens triage and drag remains inside the safe viewport', (
     tester,
   ) async {

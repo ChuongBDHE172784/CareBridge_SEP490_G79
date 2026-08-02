@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 final floatingAiTriageRouteObserver = FloatingAiTriageRouteObserver();
 
@@ -101,6 +102,7 @@ class _FloatingAiTriageHostState extends State<FloatingAiTriageHost> {
   static const _deepCocoa = Color(0xFF5A463F);
 
   Offset? _position;
+  bool _refreshScheduled = false;
 
   @override
   void initState() {
@@ -136,7 +138,22 @@ class _FloatingAiTriageHostState extends State<FloatingAiTriageHost> {
   }
 
   void _refresh() {
-    if (mounted) setState(() {});
+    if (!mounted || _refreshScheduled) return;
+
+    if (SchedulerBinding.instance.schedulerPhase !=
+        SchedulerPhase.persistentCallbacks) {
+      setState(() {});
+      return;
+    }
+
+    // Navigator observers may notify while Flutter is mounting or redirecting
+    // routes. Deferring this rebuild avoids calling setState while Navigator
+    // is build-locked (notably during logout redirects).
+    _refreshScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshScheduled = false;
+      if (mounted) setState(() {});
+    });
   }
 
   bool get _shouldShow {
