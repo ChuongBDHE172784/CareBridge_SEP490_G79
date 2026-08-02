@@ -1296,10 +1296,10 @@ packages:
     dependency: "direct main"
     description:
       name: trackasia_gl
-      sha256: c269b0ab95cea597e1efba158fd5bb385f68d10bd78919f061a41c4cf66bd0a5
+      sha256: bc2f90f5d905a62530f6a3dc6a473b7b7b16cab221e036d57a63dde5c08c9ab0
       url: "https://pub.dev"
     source: hosted
-    version: "2.0.3"
+    version: "2.0.1"
   trackasia_gl_platform_interface:
     dependency: transitive
     description:
