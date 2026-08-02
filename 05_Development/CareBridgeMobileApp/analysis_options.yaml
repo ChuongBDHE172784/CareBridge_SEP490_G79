@@ -9,6 +9,12 @@
 # packages, and plugins designed to encourage good coding practices.
 include: package:flutter_lints/flutter.yaml
 
+analyzer:
+  exclude:
+    # Vendored official Web plugin is validated by `flutter build web`; the
+    # host analyzer otherwise evaluates legacy JS-only libraries as VM code.
+    - third_party/trackasia_gl_web/**
+
 linter:
   # The lint rules applied to this project can be customized in the
   # section below to disable rules from the `package:flutter_lints/flutter.yaml`

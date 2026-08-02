@@ -542,6 +542,7 @@ void main() {
 
       await clearLocalSessionAfterLogout(
         accountId: 'account-a',
+        isCapturedSessionCurrent: () => true,
         clearDraft: (_) async => throw StateError('draft storage failed'),
         clearAuth: () async {
           authCleared = true;

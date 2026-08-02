@@ -344,12 +344,21 @@ class AuthService {
 
   // UC-04: Logout current session using the backend's real contract.
   // The request body may be empty because the backend can revoke by JWT sid.
-  Future<void> logout({String? refreshToken}) async {
+  Future<void> logout({
+    String? refreshToken,
+    String? token,
+    String? expectedAccountId,
+  }) async {
     final body = <String, dynamic>{};
     if (refreshToken != null && refreshToken.isNotEmpty) {
       body['refreshToken'] = refreshToken;
     }
-    await apiPost('/api/v1/auth/logout', body);
+    await apiPost(
+      '/api/v1/auth/logout',
+      body,
+      token: token,
+      expectedAccountId: expectedAccountId,
+    );
   }
 
   // UC-15: Deactivate account — all sessions revoked, data preserved.

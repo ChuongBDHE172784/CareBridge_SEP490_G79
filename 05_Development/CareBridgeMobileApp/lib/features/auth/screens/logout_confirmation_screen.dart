@@ -7,6 +7,7 @@ import '../services/auth_service.dart';
 @visibleForTesting
 Future<void> clearLocalSessionAfterLogout({
   required String? accountId,
+  required bool Function() isCapturedSessionCurrent,
   required Future<void> Function(String accountId) clearDraft,
   required Future<void> Function() clearAuth,
 }) async {
@@ -15,18 +16,38 @@ Future<void> clearLocalSessionAfterLogout({
   } catch (_) {
     debugPrint('[Logout] ancillary draft cleanup failed');
   } finally {
-    await clearAuth();
+    if (isCapturedSessionCurrent()) await clearAuth();
   }
 }
 
 Future<void> showLogoutConfirmationSheet(BuildContext context) async {
-  final accountId = AuthState.instance.userId;
+  final auth = AuthState.instance;
+  final accountId = auth.userId;
+  final sessionGeneration = auth.sessionGeneration;
+  if (accountId == null || auth.accessToken == null) return;
+
+  bool isCapturedSessionCurrent() =>
+      auth.matchesSession(generation: sessionGeneration, userId: accountId);
+
   final confirmed = await showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
+    isDismissible: false,
+    enableDrag: false,
     backgroundColor: Colors.transparent,
     barrierColor: Colors.black.withValues(alpha: 0.5),
-    builder: (_) => const LogoutConfirmationSheet(),
+    builder: (_) => LogoutConfirmationSheet(
+      onLogout: () {
+        if (!isCapturedSessionCurrent()) {
+          throw ApiException(401, '{"error":"AUTH_SESSION_CHANGED"}');
+        }
+        return AuthService.instance.logout(
+          token: auth.accessToken,
+          expectedAccountId: accountId,
+          refreshToken: auth.refreshToken,
+        );
+      },
+    ),
   );
 
   if (confirmed != true) return;
@@ -36,15 +57,23 @@ Future<void> showLogoutConfirmationSheet(BuildContext context) async {
   await WidgetsBinding.instance.endOfFrame;
   await clearLocalSessionAfterLogout(
     accountId: accountId,
+    isCapturedSessionCurrent: isCapturedSessionCurrent,
     clearDraft: SecurePregnancyOutcomeDraftStore.instance.clearForAccount,
-    clearAuth: AuthState.instance.clear,
+    clearAuth: () async {
+      await auth.clearIfCurrentSession(
+        generation: sessionGeneration,
+        userId: accountId,
+      );
+    },
   );
 }
 
 /// CB-116 - Logout Confirmation (UC-04)
 /// Confirms logout, calls the real backend contract, then clears local auth state.
 class LogoutConfirmationSheet extends StatefulWidget {
-  const LogoutConfirmationSheet({super.key});
+  const LogoutConfirmationSheet({required this.onLogout, super.key});
+
+  final Future<void> Function() onLogout;
 
   @override
   State<LogoutConfirmationSheet> createState() =>
@@ -71,7 +100,7 @@ class _LogoutConfirmationSheetState extends State<LogoutConfirmationSheet> {
     });
 
     try {
-      await AuthService.instance.logout();
+      await widget.onLogout();
       if (mounted) Navigator.of(context).pop(true);
     } on ApiException catch (error) {
       if (error.statusCode == 401) {
@@ -98,73 +127,76 @@ class _LogoutConfirmationSheetState extends State<LogoutConfirmationSheet> {
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
-    return AnimatedPadding(
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOut,
-      padding: EdgeInsets.only(bottom: bottomInset),
-      child: SafeArea(
-        top: false,
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
-          decoration: const BoxDecoration(
-            color: _surfaceColor,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-            boxShadow: [
-              BoxShadow(
-                color: Color.fromRGBO(90, 70, 63, 0.12),
-                blurRadius: 32,
-                offset: Offset(0, -8),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 52,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: _outlineColor,
-                  borderRadius: BorderRadius.circular(999),
+    return PopScope(
+      canPop: !_isSubmitting,
+      child: AnimatedPadding(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+        padding: EdgeInsets.only(bottom: bottomInset),
+        child: SafeArea(
+          top: false,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+            decoration: const BoxDecoration(
+              color: _surfaceColor,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+              boxShadow: [
+                BoxShadow(
+                  color: Color.fromRGBO(90, 70, 63, 0.12),
+                  blurRadius: 32,
+                  offset: Offset(0, -8),
                 ),
-              ),
-              const SizedBox(height: 28),
-              _buildIconCluster(),
-              const SizedBox(height: 28),
-              const Text(
-                'Đăng xuất',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  color: _textColor,
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Bạn có chắc chắn muốn đăng xuất?',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 16,
-                  fontWeight: FontWeight.w400,
-                  color: _secondaryTextColor,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 18),
-              _buildAccountPill(),
-              if (_errorMessage != null) ...[
-                const SizedBox(height: 16),
-                _buildErrorBanner(),
               ],
-              const SizedBox(height: 28),
-              _buildPrimaryButton(),
-              const SizedBox(height: 14),
-              _buildSecondaryButton(),
-            ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 52,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: _outlineColor,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                const SizedBox(height: 28),
+                _buildIconCluster(),
+                const SizedBox(height: 28),
+                const Text(
+                  'Đăng xuất',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: _textColor,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Bạn có chắc chắn muốn đăng xuất?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w400,
+                    color: _secondaryTextColor,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                _buildAccountPill(),
+                if (_errorMessage != null) ...[
+                  const SizedBox(height: 16),
+                  _buildErrorBanner(),
+                ],
+                const SizedBox(height: 28),
+                _buildPrimaryButton(),
+                const SizedBox(height: 14),
+                _buildSecondaryButton(),
+              ],
+            ),
           ),
         ),
       ),

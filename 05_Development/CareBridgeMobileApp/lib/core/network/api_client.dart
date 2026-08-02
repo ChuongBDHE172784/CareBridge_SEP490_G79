@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'dart:convert';
 import 'package:universal_io/io.dart';
 import 'package:flutter/foundation.dart';
@@ -33,27 +32,46 @@ Map<String, String> _headers({
   return headers;
 }
 
-enum _RefreshOutcome { refreshed, tokenInvalid, networkError }
+enum _RefreshOutcome { refreshed, tokenInvalid, networkError, sessionChanged }
+
+class _RefreshResult {
+  const _RefreshResult(this.outcome, [this.session]);
+
+  final _RefreshOutcome outcome;
+  final _RequestSessionIdentity? session;
+}
 
 /// Credential snapshot for a request that deliberately freezes an access
 /// token. A late response may only affect this exact account session.
 class _RequestSessionIdentity {
   const _RequestSessionIdentity({
+    required this.generation,
     required this.accountId,
     required this.accessToken,
     required this.refreshToken,
+    required this.role,
   });
 
+  final int generation;
   final String accountId;
   final String accessToken;
   final String? refreshToken;
+  final String role;
 
   bool get isCurrent {
     final auth = AuthState.instance;
-    return auth.userId == accountId &&
-        auth.accessToken == accessToken &&
-        auth.refreshToken == refreshToken;
+    return auth.matchesSession(generation: generation, userId: accountId);
   }
+
+  bool get hasCurrentCredentials {
+    final auth = AuthState.instance;
+    return isCurrent &&
+        auth.accessToken == accessToken &&
+        auth.refreshToken == refreshToken &&
+        auth.role == role;
+  }
+
+  String get lockKey => '$generation\u0000$accountId\u0000$accessToken';
 }
 
 _RequestSessionIdentity? _captureExpectedSession({
@@ -67,51 +85,117 @@ _RequestSessionIdentity? _captureExpectedSession({
     return null;
   }
   return _RequestSessionIdentity(
+    generation: auth.sessionGeneration,
     accountId: accountId,
     accessToken: accessToken,
     refreshToken: auth.refreshToken,
+    role: auth.role ?? '',
   );
 }
 
 const _sessionChangedBody = '{"error":"AUTH_SESSION_CHANGED"}';
 
-Completer<_RefreshOutcome>? _refreshLock;
+final Map<String, Future<_RefreshResult>> _refreshLocks = {};
 
 /// Attempts to get a new access token using the stored refresh token.
 /// - refreshed: new tokens saved, callers should retry
 /// - tokenInvalid: refresh token expired/revoked, caller should logout
 /// - networkError: transient failure, caller should NOT logout (keep session)
-Future<_RefreshOutcome> _tryRefresh() async {
-  final refresh = AuthState.instance.refreshToken;
+Future<_RefreshResult> _tryRefresh(
+  _RequestSessionIdentity requestSession,
+) async {
+  if (!requestSession.isCurrent) {
+    return const _RefreshResult(_RefreshOutcome.sessionChanged);
+  }
+  if (!requestSession.hasCurrentCredentials) {
+    final current = AuthState.instance;
+    final currentToken = current.accessToken;
+    if (currentToken == null) {
+      return const _RefreshResult(_RefreshOutcome.sessionChanged);
+    }
+    final refreshedSession = _captureExpectedSession(
+      accountId: requestSession.accountId,
+      accessToken: currentToken,
+    );
+    return refreshedSession == null
+        ? const _RefreshResult(_RefreshOutcome.sessionChanged)
+        : _RefreshResult(_RefreshOutcome.refreshed, refreshedSession);
+  }
+  final refresh = requestSession.refreshToken;
   if (refresh == null) {
     debugPrint('[ApiClient] _tryRefresh: no refresh token → tokenInvalid');
-    return _RefreshOutcome.tokenInvalid;
+    return const _RefreshResult(_RefreshOutcome.tokenInvalid);
   }
 
-  if (_refreshLock != null) return await _refreshLock!.future;
+  final existing = _refreshLocks[requestSession.lockKey];
+  if (existing != null) return existing;
+  final future = _performRefresh(requestSession, refresh);
+  _refreshLocks[requestSession.lockKey] = future;
+  try {
+    return await future;
+  } finally {
+    if (identical(_refreshLocks[requestSession.lockKey], future)) {
+      _refreshLocks.remove(requestSession.lockKey);
+    }
+  }
+}
 
-  _refreshLock = Completer<_RefreshOutcome>();
+Future<_RefreshResult> _performRefresh(
+  _RequestSessionIdentity requestSession,
+  String refresh,
+) async {
   try {
     debugPrint('[ApiClient] _tryRefresh: calling POST /auth/refresh');
     final uri = Uri.parse('$_baseUrl/api/v1/auth/refresh');
-    final response = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'refreshToken': refresh}),
-    );
+    final response = await http
+        .post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'refreshToken': refresh}),
+        )
+        .timeout(const Duration(seconds: 20));
     debugPrint('[ApiClient] _tryRefresh: status=${response.statusCode}');
+    if (!requestSession.isCurrent) {
+      return const _RefreshResult(_RefreshOutcome.sessionChanged);
+    }
+    if (!requestSession.hasCurrentCredentials) {
+      final currentToken = AuthState.instance.accessToken;
+      final refreshedSession = currentToken == null
+          ? null
+          : _captureExpectedSession(
+              accountId: requestSession.accountId,
+              accessToken: currentToken,
+            );
+      return refreshedSession == null
+          ? const _RefreshResult(_RefreshOutcome.sessionChanged)
+          : _RefreshResult(_RefreshOutcome.refreshed, refreshedSession);
+    }
     if (response.statusCode >= 200 && response.statusCode < 300) {
       final data = jsonDecode(utf8.decode(response.bodyBytes));
       final payload = data['data'] as Map<String, dynamic>;
-      await AuthState.instance.setTokens(
-        accessToken: payload['accessToken'] as String,
-        refreshToken: payload['refreshToken'] as String,
-        userId: AuthState.instance.userId ?? '',
-        role: AuthState.instance.role ?? '',
+      final accessToken = payload['accessToken'] as String;
+      final refreshToken = payload['refreshToken'] as String;
+      final published = await AuthState.instance.setTokensIfCurrent(
+        expectedGeneration: requestSession.generation,
+        expectedAccessToken: requestSession.accessToken,
+        expectedRefreshToken: requestSession.refreshToken,
+        expectedUserId: requestSession.accountId,
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+        role: requestSession.role,
       );
+      if (!published) {
+        return const _RefreshResult(_RefreshOutcome.sessionChanged);
+      }
+      final refreshedSession = _captureExpectedSession(
+        accountId: requestSession.accountId,
+        accessToken: accessToken,
+      );
+      if (refreshedSession == null) {
+        return const _RefreshResult(_RefreshOutcome.sessionChanged);
+      }
       debugPrint('[ApiClient] _tryRefresh: SUCCESS → new tokens saved');
-      _refreshLock!.complete(_RefreshOutcome.refreshed);
-      return _RefreshOutcome.refreshed;
+      return _RefreshResult(_RefreshOutcome.refreshed, refreshedSession);
     }
     // 400/401/403 from refresh endpoint = token is invalid/revoked
     final outcome =
@@ -121,34 +205,46 @@ Future<_RefreshOutcome> _tryRefresh() async {
         ? _RefreshOutcome.tokenInvalid
         : _RefreshOutcome.networkError;
     debugPrint(
-      '[ApiClient] _tryRefresh: FAILED → outcome=$outcome body=${response.body}',
+      '[ApiClient] _tryRefresh: FAILED → '
+      'outcome=$outcome status=${response.statusCode}',
     );
-    _refreshLock!.complete(outcome);
-    return outcome;
+    return _RefreshResult(outcome);
   } catch (e) {
     // Network/IO exception = don't clear session, user may be offline
     debugPrint(
       '[ApiClient] _tryRefresh: EXCEPTION → $e → networkError (session kept)',
     );
-    _refreshLock!.complete(_RefreshOutcome.networkError);
-    return _RefreshOutcome.networkError;
-  } finally {
-    _refreshLock = null;
+    return const _RefreshResult(_RefreshOutcome.networkError);
   }
 }
 
-Future<void> _handle401(http.Response response) async {
+Future<void> _handle401(
+  http.Response response,
+  _RequestSessionIdentity? requestSession,
+) async {
+  if (requestSession == null || !requestSession.isCurrent) return;
   final blockedState = parseAccountBlockedState(response);
   if (blockedState != null) {
     debugPrint('[ApiClient] account blocked → code=${blockedState.code}');
-    unawaited(AuthState.instance.clearWithBlockedAccount(blockedState));
+    if (requestSession.isCurrent) {
+      await AuthState.instance.clearWithBlockedAccountIfCurrentSession(
+        generation: requestSession.generation,
+        userId: requestSession.accountId,
+        state: blockedState,
+      );
+    }
   } else {
     debugPrint(
       '[ApiClient] _handle401: clearing session (real 401 with valid token)',
     );
-    unawaited(AuthState.instance.clear());
+    await AuthState.instance.clearIfCurrentSession(
+      generation: requestSession.generation,
+      userId: requestSession.accountId,
+    );
   }
 }
+
+Never _throwSessionChanged() => throw ApiException(401, _sessionChangedBody);
 
 /// Applies refresh-then-retry logic when the server returns 401.
 /// Returns the retried response (or the original if no retry was done).
@@ -165,26 +261,58 @@ Future<http.Response> _handleUnauthorized(
   // local session has changed. It must not refresh or clear the new session.
   if (requestSession != null && !requestSession.isCurrent) {
     debugPrint('[ApiClient] ignoring 401 from a stale session request');
-    return original;
+    _throwSessionChanged();
   }
 
-  final outcome = await _tryRefresh();
-  switch (outcome) {
+  if (requestSession == null) return original;
+
+  final result = await _tryRefresh(requestSession);
+  switch (result.outcome) {
     case _RefreshOutcome.refreshed:
-      return await retry();
+      final refreshedSession = result.session;
+      if (refreshedSession == null || !refreshedSession.isCurrent) {
+        _throwSessionChanged();
+      }
+      final response = await retry();
+      if (!refreshedSession.isCurrent) _throwSessionChanged();
+      if (response.statusCode == 401) {
+        await _handle401(response, refreshedSession);
+        throw ApiException(401, response.body);
+      }
+      if (response.statusCode == 403) {
+        await _handleBlockedResponse(response, refreshedSession);
+      }
+      return response;
     case _RefreshOutcome.tokenInvalid:
-      await _handle401(original);
+      if (!requestSession.isCurrent) _throwSessionChanged();
+      await _handle401(original, requestSession);
       throw ApiException(401, original.body);
     case _RefreshOutcome.networkError:
       // Keep session intact; surface the error so the UI can show a retry
       throw ApiException(original.statusCode, original.body);
+    case _RefreshOutcome.sessionChanged:
+      _throwSessionChanged();
   }
 }
 
-Future<void> _handleBlockedResponse(http.Response response) async {
+Future<void> _handleBlockedResponse(
+  http.Response response,
+  _RequestSessionIdentity? requestSession,
+) async {
+  if (requestSession == null || !requestSession.isCurrent) return;
   final state = parseAccountBlockedState(response);
   if (state != null) {
-    await AuthState.instance.clearWithBlockedAccount(state);
+    await AuthState.instance.clearWithBlockedAccountIfCurrentSession(
+      generation: requestSession.generation,
+      userId: requestSession.accountId,
+      state: state,
+    );
+  }
+}
+
+void _ensureSessionStillCurrent(_RequestSessionIdentity? requestSession) {
+  if (requestSession != null && !requestSession.isCurrent) {
+    _throwSessionChanged();
   }
 }
 
@@ -225,20 +353,27 @@ Future<dynamic> apiGet(
     uri,
     headers: _headers(token: token, extraHeaders: extraHeaders),
   );
+  if (response.statusCode != 401) {
+    _ensureSessionStillCurrent(requestSession);
+  }
   response = await _handleUnauthorized(
     response,
     token,
     () => http.get(uri, headers: _headers(extraHeaders: extraHeaders)),
     requestSession,
   );
+  _ensureSessionStillCurrent(requestSession);
   if (response.statusCode >= 200 && response.statusCode < 300) {
     return _decodeResponse(response);
   }
   if (response.statusCode == 401 &&
+      token == null &&
       (requestSession == null || requestSession.isCurrent)) {
-    await _handle401(response);
+    await _handle401(response, requestSession);
   }
-  if (response.statusCode == 403) await _handleBlockedResponse(response);
+  if (response.statusCode == 403) {
+    await _handleBlockedResponse(response, requestSession);
+  }
   throw ApiException(response.statusCode, response.body);
 }
 
@@ -249,12 +384,14 @@ Future<dynamic> apiPost(
   String? expectedAccountId,
   http.Client? client,
 }) async {
-  final expectedSession = token != null && expectedAccountId != null
-      ? _captureExpectedSession(
-          accountId: expectedAccountId,
-          accessToken: token,
-        )
-      : null;
+  final auth = AuthState.instance;
+  final requestToken = token ?? auth.accessToken;
+  final expectedSession = requestToken == null
+      ? null
+      : _captureExpectedSession(
+          accountId: expectedAccountId ?? auth.userId ?? '',
+          accessToken: requestToken,
+        );
   if (token != null && expectedAccountId != null && expectedSession == null) {
     throw ApiException(401, _sessionChangedBody);
   }
@@ -272,6 +409,9 @@ Future<dynamic> apiPost(
           headers: _headers(token: token),
           body: encoded,
         );
+  if (response.statusCode != 401) {
+    _ensureSessionStillCurrent(expectedSession);
+  }
   response = await _handleUnauthorized(
     response,
     token,
@@ -280,6 +420,7 @@ Future<dynamic> apiPost(
         : client.post(uri, headers: _headers(), body: encoded),
     expectedSession,
   );
+  _ensureSessionStillCurrent(expectedSession);
   if (response.statusCode >= 200 && response.statusCode < 300) {
     return _decodeResponse(response);
   }
@@ -294,9 +435,11 @@ Future<dynamic> apiPost(
       }
       throw ApiException(response.statusCode, response.body);
     }
-    await _handle401(response);
+    await _handle401(response, expectedSession);
   }
-  if (response.statusCode == 403) await _handleBlockedResponse(response);
+  if (response.statusCode == 403) {
+    await _handleBlockedResponse(response, expectedSession);
+  }
   throw ApiException(response.statusCode, response.body);
 }
 
@@ -305,6 +448,14 @@ Future<dynamic> apiPut(
   Map<String, dynamic> body, {
   String? token,
 }) async {
+  final auth = AuthState.instance;
+  final requestToken = token ?? auth.accessToken;
+  final requestSession = requestToken == null
+      ? null
+      : _captureExpectedSession(
+          accountId: auth.userId ?? '',
+          accessToken: requestToken,
+        );
   final uri = Uri.parse('$_baseUrl$path');
   final encoded = jsonEncode(body);
   var response = await http.put(
@@ -312,17 +463,25 @@ Future<dynamic> apiPut(
     headers: _headers(token: token),
     body: encoded,
   );
+  if (response.statusCode != 401) {
+    _ensureSessionStillCurrent(requestSession);
+  }
   response = await _handleUnauthorized(
     response,
     token,
     () => http.put(uri, headers: _headers(), body: encoded),
-    null,
+    requestSession,
   );
+  _ensureSessionStillCurrent(requestSession);
   if (response.statusCode >= 200 && response.statusCode < 300) {
     return _decodeResponse(response);
   }
-  if (response.statusCode == 401) await _handle401(response);
-  if (response.statusCode == 403) await _handleBlockedResponse(response);
+  if (response.statusCode == 401 && token == null) {
+    await _handle401(response, requestSession);
+  }
+  if (response.statusCode == 403) {
+    await _handleBlockedResponse(response, requestSession);
+  }
   throw ApiException(response.statusCode, response.body);
 }
 
@@ -331,6 +490,14 @@ Future<dynamic> apiPatch(
   Map<String, dynamic> body, {
   String? token,
 }) async {
+  final auth = AuthState.instance;
+  final requestToken = token ?? auth.accessToken;
+  final requestSession = requestToken == null
+      ? null
+      : _captureExpectedSession(
+          accountId: auth.userId ?? '',
+          accessToken: requestToken,
+        );
   final uri = Uri.parse('$_baseUrl$path');
   final encoded = jsonEncode(body);
   var response = await http.patch(
@@ -338,17 +505,25 @@ Future<dynamic> apiPatch(
     headers: _headers(token: token),
     body: encoded,
   );
+  if (response.statusCode != 401) {
+    _ensureSessionStillCurrent(requestSession);
+  }
   response = await _handleUnauthorized(
     response,
     token,
     () => http.patch(uri, headers: _headers(), body: encoded),
-    null,
+    requestSession,
   );
+  _ensureSessionStillCurrent(requestSession);
   if (response.statusCode >= 200 && response.statusCode < 300) {
     return _decodeResponse(response);
   }
-  if (response.statusCode == 401) await _handle401(response);
-  if (response.statusCode == 403) await _handleBlockedResponse(response);
+  if (response.statusCode == 401 && token == null) {
+    await _handle401(response, requestSession);
+  }
+  if (response.statusCode == 403) {
+    await _handleBlockedResponse(response, requestSession);
+  }
   throw ApiException(response.statusCode, response.body);
 }
 
@@ -357,6 +532,14 @@ Future<dynamic> apiDelete(
   String? token,
   Map<String, dynamic>? body,
 }) async {
+  final auth = AuthState.instance;
+  final requestToken = token ?? auth.accessToken;
+  final requestSession = requestToken == null
+      ? null
+      : _captureExpectedSession(
+          accountId: auth.userId ?? '',
+          accessToken: requestToken,
+        );
   final uri = Uri.parse('$_baseUrl$path');
   final encoded = body != null ? jsonEncode(body) : null;
   var response = await http.delete(
@@ -364,17 +547,25 @@ Future<dynamic> apiDelete(
     headers: _headers(token: token),
     body: encoded,
   );
+  if (response.statusCode != 401) {
+    _ensureSessionStillCurrent(requestSession);
+  }
   response = await _handleUnauthorized(
     response,
     token,
     () => http.delete(uri, headers: _headers(), body: encoded),
-    null,
+    requestSession,
   );
+  _ensureSessionStillCurrent(requestSession);
   if (response.statusCode >= 200 && response.statusCode < 300) {
     return _decodeResponse(response);
   }
-  if (response.statusCode == 401) await _handle401(response);
-  if (response.statusCode == 403) await _handleBlockedResponse(response);
+  if (response.statusCode == 401 && token == null) {
+    await _handle401(response, requestSession);
+  }
+  if (response.statusCode == 403) {
+    await _handleBlockedResponse(response, requestSession);
+  }
   throw ApiException(response.statusCode, response.body);
 }
 
@@ -387,13 +578,24 @@ Future<dynamic> apiMultipart(
   String? filePath,
   String? fileName,
   String? mimeType,
+  String? expectedAccountId,
 }) async {
+  final auth = AuthState.instance;
+  final effectiveToken = token ?? auth.accessToken;
+  final requestSession = effectiveToken == null
+      ? null
+      : _captureExpectedSession(
+          accountId: expectedAccountId ?? auth.userId ?? '',
+          accessToken: effectiveToken,
+        );
+  if (token != null && expectedAccountId != null && requestSession == null) {
+    _throwSessionChanged();
+  }
   final uri = Uri.parse('$_baseUrl$path');
   var request = http.MultipartRequest('POST', uri);
   for (final entry in fields.entries) {
     request.fields[entry.key] = entry.value;
   }
-  final effectiveToken = token ?? AuthState.instance.accessToken;
   if (effectiveToken != null) {
     request.headers['Authorization'] = 'Bearer $effectiveToken';
   }
@@ -422,31 +624,62 @@ Future<dynamic> apiMultipart(
   final streamed = await request.send();
   final response = await http.Response.fromStream(streamed);
   debugPrint('Multipart $path → ${response.statusCode}');
-  final auth = AuthState.instance;
-  String? effectiveToken2 = token ?? auth.accessToken;
-  if (response.statusCode == 401 && effectiveToken2 != null) {
-    final outcome = await _tryRefresh();
-    if (outcome == _RefreshOutcome.refreshed) {
-      return apiMultipart(
-        path,
-        fields,
-        token: null,
-        files: files,
-        fileFieldName: fileFieldName,
-        filePath: filePath,
-        fileName: fileName,
-        mimeType: mimeType,
-      );
+  if (response.statusCode != 401) {
+    _ensureSessionStillCurrent(requestSession);
+  }
+  if (response.statusCode == 401 && token == null && requestSession != null) {
+    if (!requestSession.isCurrent) _throwSessionChanged();
+    final result = await _tryRefresh(requestSession);
+    if (result.outcome == _RefreshOutcome.refreshed) {
+      final refreshedSession = result.session;
+      if (refreshedSession == null || !refreshedSession.isCurrent) {
+        _throwSessionChanged();
+      }
+      try {
+        return await apiMultipart(
+          path,
+          fields,
+          token: refreshedSession.accessToken,
+          expectedAccountId: refreshedSession.accountId,
+          files: files,
+          fileFieldName: fileFieldName,
+          filePath: filePath,
+          fileName: fileName,
+          mimeType: mimeType,
+        );
+      } on ApiException catch (error) {
+        if (error.statusCode == 401 &&
+            error.errorCode != 'AUTH_SESSION_CHANGED' &&
+            refreshedSession.isCurrent) {
+          await _handle401(
+            http.Response(error.message, error.statusCode),
+            refreshedSession,
+          );
+        }
+        rethrow;
+      }
     }
-    await _handle401(response);
+    if (result.outcome == _RefreshOutcome.sessionChanged ||
+        !requestSession.isCurrent) {
+      _throwSessionChanged();
+    }
+    if (result.outcome == _RefreshOutcome.networkError) {
+      throw ApiException(401, response.body);
+    }
+    await _handle401(response, requestSession);
     throw ApiException(401, response.body);
   }
   if (response.statusCode >= 200 && response.statusCode < 300) {
     if (response.body.isEmpty) return null;
     return jsonDecode(utf8.decode(response.bodyBytes));
   }
-  if (response.statusCode == 401) await _handle401(response);
-  if (response.statusCode == 403) await _handleBlockedResponse(response);
+  if (response.statusCode == 401) {
+    _ensureSessionStillCurrent(requestSession);
+    await _handle401(response, token == null ? requestSession : null);
+  }
+  if (response.statusCode == 403) {
+    await _handleBlockedResponse(response, requestSession);
+  }
   throw ApiException(response.statusCode, response.body);
 }
 

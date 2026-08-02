@@ -7,6 +7,7 @@ import 'package:untitled/core/storage/token_storage.dart';
 class _ControlledTokenStorage implements TokenStorage {
   final values = <String, String?>{};
   Completer<void>? pendingSave;
+  Completer<void>? pendingClear;
   Object? saveFailure;
   int clearCalls = 0;
 
@@ -34,6 +35,8 @@ class _ControlledTokenStorage implements TokenStorage {
   @override
   Future<void> clear() async {
     clearCalls++;
+    final blocker = pendingClear;
+    if (blocker != null) await blocker.future;
     values.clear();
   }
 }
@@ -105,4 +108,81 @@ void main() {
       expect(state.isAuthenticated, isFalse);
     },
   );
+
+  test(
+    'stale clear finishes before a replacement login is persisted',
+    () async {
+      final storage = _ControlledTokenStorage();
+      final state = AuthState.forTesting(storage: storage);
+      await state.setTokens(
+        accessToken: 'access-a',
+        refreshToken: 'refresh-a',
+        userId: 'account-a',
+        role: 'MOTHER',
+      );
+      final generationA = state.sessionGeneration;
+      final clearBlocker = Completer<void>();
+      storage.pendingClear = clearBlocker;
+
+      final clearA = state.clearIfCurrentSession(
+        generation: generationA,
+        userId: 'account-a',
+      );
+      await Future<void>.delayed(Duration.zero);
+      final loginB = state.setTokens(
+        accessToken: 'access-b',
+        refreshToken: 'refresh-b',
+        userId: 'account-b',
+        role: 'FAMILY',
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(state.userId, isNull);
+      clearBlocker.complete();
+      await Future.wait([clearA, loginB]);
+
+      expect(state.userId, 'account-b');
+      expect(storage.values['userId'], 'account-b');
+      expect(storage.values['accessToken'], 'access-b');
+    },
+  );
+
+  test('queued stale refresh cannot overwrite a replacement login', () async {
+    final storage = _ControlledTokenStorage();
+    final state = AuthState.forTesting(storage: storage);
+    await state.setTokens(
+      accessToken: 'access-a',
+      refreshToken: 'refresh-a',
+      userId: 'account-a',
+      role: 'MOTHER',
+    );
+    final generationA = state.sessionGeneration;
+    final saveBlocker = Completer<void>();
+    storage.pendingSave = saveBlocker;
+
+    final loginB = state.setTokens(
+      accessToken: 'access-b',
+      refreshToken: 'refresh-b',
+      userId: 'account-b',
+      role: 'FAMILY',
+    );
+    final staleRefresh = state.setTokensIfCurrent(
+      expectedGeneration: generationA,
+      expectedAccessToken: 'access-a',
+      expectedRefreshToken: 'refresh-a',
+      expectedUserId: 'account-a',
+      accessToken: 'access-a-new',
+      refreshToken: 'refresh-a-new',
+      role: 'MOTHER',
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    saveBlocker.complete();
+    expect(await staleRefresh, isFalse);
+    await loginB;
+
+    expect(state.userId, 'account-b');
+    expect(storage.values['userId'], 'account-b');
+    expect(storage.values['accessToken'], 'access-b');
+  });
 }
