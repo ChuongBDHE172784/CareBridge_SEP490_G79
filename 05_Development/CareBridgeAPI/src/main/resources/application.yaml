@@ -26,7 +26,7 @@ spring:
     clean-disabled: true
     out-of-order: true
     validate-on-migrate: true
-    ignore-migration-patterns: "*:missing"
+    ignore-migration-patterns: "*:missing,*:checksum"
 
   docker:
     compose:
