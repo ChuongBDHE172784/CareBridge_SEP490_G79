@@ -135,17 +135,31 @@ void main() {
       final subscription = service.diagnostics.listen(snapshots.add);
       await service.start();
 
-      gyroscope.add(GyroscopeEvent(0.1, 0, 0, now));
-      accelerometer.add(AccelerometerEvent(9.81, 0, 0, now));
-      await Future<void>.delayed(Duration.zero);
-      final beforeGestureCount = snapshots.length;
+      final startedAt = now;
+      for (var index = 0; index <= 20; index++) {
+        now = startedAt.add(Duration(milliseconds: index * 20));
+        gyroscope.add(GyroscopeEvent(0.05, 0, 0, now));
+        accelerometer.add(AccelerometerEvent(9.81, 0, 0, now));
+        await Future<void>.delayed(Duration.zero);
+      }
+      expect(snapshots.last.demoGestureSequence, isZero);
 
-      now = now.add(const Duration(milliseconds: 50));
-      gyroscope.add(GyroscopeEvent(1, 0, 0, now));
-      accelerometer.add(AccelerometerEvent(6, 0, 0, now));
-      await Future<void>.delayed(Duration.zero);
+      var detectedAndForcePublished = false;
+      for (var index = 0; index < 26; index++) {
+        now = startedAt.add(Duration(milliseconds: 420 + index * 20));
+        final beforeSampleCount = snapshots.length;
+        gyroscope.add(GyroscopeEvent(2.8, 0, 0, now));
+        accelerometer.add(AccelerometerEvent(16.5, 0, 0, now));
+        await Future<void>.delayed(Duration.zero);
+        if (snapshots.last.demoGestureSequence == 1) {
+          expect(snapshots.length, greaterThan(beforeSampleCount));
+          expect(snapshots.last.capturedAt, now);
+          detectedAndForcePublished = true;
+          break;
+        }
+      }
 
-      expect(snapshots, hasLength(beforeGestureCount + 1));
+      expect(detectedAndForcePublished, isTrue);
       expect(snapshots.last.demoGestureSequence, 1);
 
       await service.stop();

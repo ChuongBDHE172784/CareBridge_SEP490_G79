@@ -75,7 +75,11 @@ void main() {
       findsOneWidget,
     );
     expect(find.byKey(const Key('safety-countdown-help')), findsOneWidget);
-    expect(find.textContaining('30 giây'), findsOneWidget);
+    expect(find.text('30'), findsOneWidget);
+    expect(
+      find.byKey(const Key('safety-countdown-large-timer')),
+      findsOneWidget,
+    );
     expect(feedback.starts, 1);
   });
 
@@ -224,5 +228,41 @@ void main() {
     expect(feedback.starts, isZero);
     await tester.pumpWidget(const SizedBox.shrink());
     expect(feedback.stops, isZero);
+  });
+
+  testWidgets('demo gesture presents the production fall-alert experience', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SafetyCountdownSheet(
+            event: event,
+            simulated: true,
+            presentAsRealAlert: true,
+            feedback: feedback,
+            now: () => now,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('MÔ PHỎNG AN TOÀN'), findsNothing);
+    expect(
+      find.textContaining('phát hiện dấu hiệu nghi ngờ ngã'),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('safety-countdown-large-timer')),
+      findsOneWidget,
+    );
+    expect(find.textContaining('gửi cảnh báo cho người thân'), findsOneWidget);
+    expect(find.textContaining('bước gọi 115'), findsOneWidget);
+    expect(find.text('Tôi vẫn ổn — tắt cảnh báo'), findsOneWidget);
+    expect(feedback.starts, 1);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    expect(feedback.stops, 1);
   });
 }
