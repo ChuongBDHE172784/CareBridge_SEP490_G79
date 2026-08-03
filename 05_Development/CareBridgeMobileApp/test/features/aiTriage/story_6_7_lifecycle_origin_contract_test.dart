@@ -58,13 +58,10 @@ GoRouter _surfaceRouter(Widget origin) => GoRouter(
   ],
 );
 
-Future<void> _openSurfaceAndAssertBinding(
+Future<void> _assertNoInlineTriageEntry(
   WidgetTester tester, {
   required Widget origin,
   required String stage,
-  required String? journeyId,
-  required String originReferenceId,
-  required String originDashboard,
 }) async {
   final router = _surfaceRouter(origin);
   addTearDown(router.dispose);
@@ -72,19 +69,7 @@ Future<void> _openSurfaceAndAssertBinding(
   await tester.pumpAndSettle();
 
   final action = find.byKey(Key('triage-safety-entry-${stage.toLowerCase()}'));
-  await tester.scrollUntilVisible(
-    action,
-    300,
-    scrollable: find.byType(Scrollable).first,
-  );
-  await tester.tap(action);
-  await tester.pumpAndSettle();
-
-  expect(find.byKey(const Key('story-6-7-binding-probe')), findsOneWidget);
-  expect(
-    find.text('$stage|$journeyId|$originReferenceId|$originDashboard'),
-    findsOneWidget,
-  );
+  expect(action, findsNothing);
 }
 
 void main() {
@@ -252,7 +237,7 @@ void main() {
     }
   });
 
-  group('Story 6.7 production entry surfaces', () {
+  group('AI Triage uses the central floating entry', () {
     final maternalFixtures =
         <({String stage, String journeyId, JourneyDashboard dashboard})>[
           (
@@ -286,19 +271,16 @@ void main() {
         ];
 
     for (final fixture in maternalFixtures) {
-      testWidgets('${fixture.stage} surface forwards its exact journey ID', (
+      testWidgets('${fixture.stage} surface has no duplicate inline entry', (
         tester,
       ) async {
-        await _openSurfaceAndAssertBinding(
+        await _assertNoInlineTriageEntry(
           tester,
           origin: MotherJourneyScreen(
             loadData: false,
             initialDashboard: fixture.dashboard,
           ),
           stage: fixture.stage,
-          journeyId: fixture.journeyId,
-          originReferenceId: fixture.journeyId,
-          originDashboard: 'MOTHER_JOURNEY',
         );
       });
     }
@@ -320,31 +302,27 @@ void main() {
         ];
 
     for (final fixture in babyFixtures) {
-      testWidgets(
-        '${fixture.stage} surface forwards baby origin with no journey ID',
-        (tester) async {
-          final profile = BabyProfile(
-            id: fixture.babyId,
-            nickname: 'Synthetic safety profile',
-            birthDate: DateTime.now().subtract(fixture.age),
-            gender: BabyGender.unknown,
-            isActive: true,
-          );
-          await _openSurfaceAndAssertBinding(
-            tester,
-            origin: BabyProfileDetailScreen(
-              babyId: fixture.babyId,
-              loadData: false,
-              loadCareCollectionsData: false,
-              initialProfile: profile,
-            ),
-            stage: fixture.stage,
-            journeyId: fixture.journeyId,
-            originReferenceId: fixture.babyId,
-            originDashboard: 'BABY_PROFILE',
-          );
-        },
-      );
+      testWidgets('${fixture.stage} surface has no duplicate inline entry', (
+        tester,
+      ) async {
+        final profile = BabyProfile(
+          id: fixture.babyId,
+          nickname: 'Synthetic safety profile',
+          birthDate: DateTime.now().subtract(fixture.age),
+          gender: BabyGender.unknown,
+          isActive: true,
+        );
+        await _assertNoInlineTriageEntry(
+          tester,
+          origin: BabyProfileDetailScreen(
+            babyId: fixture.babyId,
+            loadData: false,
+            loadCareCollectionsData: false,
+            initialProfile: profile,
+          ),
+          stage: fixture.stage,
+        );
+      });
     }
   });
 }

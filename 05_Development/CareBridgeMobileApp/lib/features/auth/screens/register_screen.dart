@@ -131,7 +131,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (e.errorCode == 'AUTH_ACCOUNT_EXISTS' || e.statusCode == 409) {
         msg = widget.isExpert
             ? 'Email này đã được đăng ký.'
-            : 'Email hoặc số điện thoại này đã được đăng ký.';
+            : 'Tài khoản đã tồn tại';
       } else if (e.statusCode == 400) {
         msg = 'Thông tin không hợp lệ. Vui lòng kiểm tra lại.';
       } else {
