@@ -3,6 +3,8 @@ package com.carebridge.backend.common.exception;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.carebridge.backend.common.response.ErrorResponse;
+import com.carebridge.backend.content.exception.ContentException;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpMethod;
@@ -28,6 +30,22 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getBody()).isNotNull();
         assertThat(response.getBody().getError()).isEqualTo("AUTH-071");
         assertThat(response.getBody().getMessage()).isEqualTo("Current password is incorrect");
+    }
+
+    @Test
+    void handleContent_preservesChecklistReasonMetadata() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setRequestURI("/api/v1/admin/checklist-templates/1/decision");
+
+        ResponseEntity<ErrorResponse> response = handler.handleContent(
+                new ContentException("CNT-001", "Validation failed", HttpStatus.BAD_REQUEST,
+                        Map.of("reasonCode", "CHECKLIST_ACTIVE_LEGACY_CONFLICT")),
+                request);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getMetadata())
+                .containsEntry("reasonCode", "CHECKLIST_ACTIVE_LEGACY_CONFLICT");
     }
 
     @Test

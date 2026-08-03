@@ -18,12 +18,20 @@ import com.carebridge.backend.exercise.entity.PostureFeedbackEvent;
 import com.carebridge.backend.exercise.entity.SessionStatus;
 import com.carebridge.backend.exercise.exception.InvalidSessionStateException;
 import com.carebridge.backend.exercise.exception.SessionOwnershipException;
+import com.carebridge.backend.exercise.inference.PostureInferenceConfigResolver;
+import com.carebridge.backend.exercise.inference.PostureInferenceConfigResolver.ResolvedInferenceConfig;
+import com.carebridge.backend.exercise.inference.PostureInferencePort;
+import com.carebridge.backend.exercise.inference.PostureInferencePort.InferenceFeedback;
+import com.carebridge.backend.exercise.inference.PostureInferencePort.InferenceRequest;
+import com.carebridge.backend.exercise.inference.PostureInferencePort.InferenceResult;
+import com.carebridge.backend.exercise.inference.PostureInferenceUnavailableException;
 import com.carebridge.backend.exercise.repository.ExerciseSessionRepository;
 import com.carebridge.backend.exercise.repository.PostureAnalysisConfigRepository;
 import com.carebridge.backend.exercise.repository.PostureFeedbackEventRepository;
 import com.carebridge.backend.exercise.service.impl.PostureAnalysisServiceImpl;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -51,6 +59,12 @@ class PostureAnalysisServiceTest {
 
     @Mock
     private PostureFeedbackEventRepository postureFeedbackEventRepository;
+
+    @Mock
+    private PostureInferencePort postureInferencePort;
+
+    @Mock
+    private PostureInferenceConfigResolver inferenceConfigResolver;
 
     @InjectMocks
     private PostureAnalysisServiceImpl service;
@@ -82,6 +96,32 @@ class PostureAnalysisServiceTest {
         request.setEventTimeMs(1000L);
         request.setKeypointSummaryJson(Map.of("backAngle", backAngle));
         return request;
+    }
+
+    private PostureAnalysisConfig modelConfig(String analysisMode, BigDecimal threshold) {
+        return PostureAnalysisConfig.builder()
+                .postureConfigId(UUID.randomUUID())
+                .exerciseId(EXERCISE_ID)
+                .analysisMode(analysisMode)
+                .ruleOrModelVersion(PostureInferenceConfigResolver.PINNED_MODEL_VERSION)
+                .confidenceThreshold(threshold)
+                .feedbackLevel("DETAILED")
+                .configJson("{\"exerciseKey\":\"squat\"}")
+                .status("ACTIVE")
+                .build();
+    }
+
+    private InferenceResult inferenceResult(BigDecimal confidence) {
+        return new InferenceResult(
+                PostureInferenceConfigResolver.PINNED_MODEL_VERSION,
+                "squat",
+                1000L,
+                "KNEE_TOO_WIDE",
+                confidence,
+                false,
+                new BigDecimal("0.62"),
+                List.of(new InferenceFeedback(
+                        "KNEE_TOO_WIDE", "WARNING", "Bring your knees slightly inward.")));
     }
 
     // EX-TC-030-005 — happy path with feedback + severity
@@ -195,5 +235,135 @@ class PostureAnalysisServiceTest {
                 service.analyzePosture(SESSION_ID, MOTHER_USER_ID, requestWithBackAngle(5.0));
 
         assertThat(response.getData().getFeedbackText()).isNull();
+    }
+
+    @Test
+    @DisplayName("MODEL_BASED dispatch uses server-owned config and maps normalized inference")
+    void analyzePosture_modelBased_dispatchesAndMapsInference() {
+        PostureAnalysisConfig config = modelConfig("MODEL_BASED", new BigDecimal("0.60"));
+        when(sessionRepository.findById(SESSION_ID)).thenReturn(Optional.of(inProgressSession()));
+        when(postureConfigRepository.findActiveConfigByExerciseId(eq(EXERCISE_ID), any()))
+                .thenReturn(Optional.of(config));
+        when(inferenceConfigResolver.resolve(config)).thenReturn(new ResolvedInferenceConfig(
+                PostureInferenceConfigResolver.PINNED_MODEL_VERSION, "squat"));
+        when(postureInferencePort.infer(any(InferenceRequest.class)))
+                .thenReturn(inferenceResult(new BigDecimal("0.82")));
+
+        ApiResponse<PostureFeedbackResponse> response =
+                service.analyzePosture(SESSION_ID, MOTHER_USER_ID, requestWithBackAngle(5.0));
+
+        assertThat(response.getData().getPostureCode()).isEqualTo("KNEE_TOO_WIDE");
+        assertThat(response.getData().getConfidenceScore()).isEqualByComparingTo("0.82");
+        assertThat(response.getData().getSeverity()).isEqualTo("WARNING");
+        assertThat(response.getData().getFeedbackText())
+                .isEqualTo("Bring your knees slightly inward.");
+
+        ArgumentCaptor<InferenceRequest> requestCaptor =
+                ArgumentCaptor.forClass(InferenceRequest.class);
+        verify(postureInferencePort).infer(requestCaptor.capture());
+        assertThat(requestCaptor.getValue().modelVersion())
+                .isEqualTo(PostureInferenceConfigResolver.PINNED_MODEL_VERSION);
+        assertThat(requestCaptor.getValue().exerciseKey()).isEqualTo("squat");
+        assertThat(requestCaptor.getValue().sequenceNumber()).isEqualTo(1000L);
+        assertThat(requestCaptor.getValue().landmarks()).containsEntry("backAngle", 5.0);
+    }
+
+    @Test
+    @DisplayName("MODEL_BASED sidecar failure returns explicit unavailable result")
+    void analyzePosture_modelBasedSidecarFailure_returnsUnavailable() {
+        PostureAnalysisConfig config = modelConfig("MODEL_BASED", new BigDecimal("0.60"));
+        when(sessionRepository.findById(SESSION_ID)).thenReturn(Optional.of(inProgressSession()));
+        when(postureConfigRepository.findActiveConfigByExerciseId(eq(EXERCISE_ID), any()))
+                .thenReturn(Optional.of(config));
+        when(inferenceConfigResolver.resolve(config)).thenReturn(new ResolvedInferenceConfig(
+                PostureInferenceConfigResolver.PINNED_MODEL_VERSION, "squat"));
+        when(postureInferencePort.infer(any(InferenceRequest.class)))
+                .thenThrow(new PostureInferenceUnavailableException("SIDECAR_TIMEOUT_OR_UNREACHABLE"));
+
+        ApiResponse<PostureFeedbackResponse> response =
+                service.analyzePosture(SESSION_ID, MOTHER_USER_ID, requestWithBackAngle(5.0));
+
+        assertThat(response.getData().getPostureCode()).isEqualTo("MODEL_UNAVAILABLE");
+        assertThat(response.getData().getConfidenceScore()).isEqualByComparingTo(BigDecimal.ZERO);
+        assertThat(response.getData().getSeverity()).isEqualTo("WARNING");
+
+        ArgumentCaptor<PostureFeedbackEvent> eventCaptor =
+                ArgumentCaptor.forClass(PostureFeedbackEvent.class);
+        verify(postureFeedbackEventRepository).save(eventCaptor.capture());
+        assertThat(eventCaptor.getValue().getCanonicalPayload())
+                .containsEntry("analysisStatus", "MODEL_UNAVAILABLE")
+                .containsEntry("failureCode", "SIDECAR_TIMEOUT_OR_UNREACHABLE");
+    }
+
+    @Test
+    @DisplayName("HYBRID sidecar failure explicitly degrades to bounded rule fallback")
+    void analyzePosture_hybridSidecarFailure_usesExplicitRuleFallback() {
+        PostureAnalysisConfig config = modelConfig("HYBRID", new BigDecimal("0.60"));
+        when(sessionRepository.findById(SESSION_ID)).thenReturn(Optional.of(inProgressSession()));
+        when(postureConfigRepository.findActiveConfigByExerciseId(eq(EXERCISE_ID), any()))
+                .thenReturn(Optional.of(config));
+        when(inferenceConfigResolver.resolve(config)).thenReturn(new ResolvedInferenceConfig(
+                PostureInferenceConfigResolver.PINNED_MODEL_VERSION, "squat"));
+        when(postureInferencePort.infer(any(InferenceRequest.class)))
+                .thenThrow(new PostureInferenceUnavailableException("SIDECAR_UNAVAILABLE"));
+
+        ApiResponse<PostureFeedbackResponse> response =
+                service.analyzePosture(SESSION_ID, MOTHER_USER_ID, requestWithBackAngle(5.0));
+
+        assertThat(response.getData().getPostureCode())
+                .isEqualTo("MODEL_UNAVAILABLE_RULE_FALLBACK_GOOD_FORM");
+        assertThat(response.getData().getConfidenceScore()).isEqualByComparingTo("0.70");
+        assertThat(response.getData().getSeverity()).isEqualTo("WARNING");
+        assertThat(response.getData().getFeedbackText()).contains("rule-based fallback");
+    }
+
+    @Test
+    @DisplayName("MODEL_BASED confidence below server threshold is not presented as success")
+    void analyzePosture_modelBelowThreshold_returnsLowConfidence() {
+        PostureAnalysisConfig config = modelConfig("MODEL_BASED", new BigDecimal("0.75"));
+        when(sessionRepository.findById(SESSION_ID)).thenReturn(Optional.of(inProgressSession()));
+        when(postureConfigRepository.findActiveConfigByExerciseId(eq(EXERCISE_ID), any()))
+                .thenReturn(Optional.of(config));
+        when(inferenceConfigResolver.resolve(config)).thenReturn(new ResolvedInferenceConfig(
+                PostureInferenceConfigResolver.PINNED_MODEL_VERSION, "squat"));
+        when(postureInferencePort.infer(any(InferenceRequest.class)))
+                .thenReturn(inferenceResult(new BigDecimal("0.52")));
+
+        ApiResponse<PostureFeedbackResponse> response =
+                service.analyzePosture(SESSION_ID, MOTHER_USER_ID, requestWithBackAngle(5.0));
+
+        assertThat(response.getData().getPostureCode()).isEqualTo("MODEL_LOW_CONFIDENCE");
+        assertThat(response.getData().getConfidenceScore()).isEqualByComparingTo("0.52");
+        assertThat(response.getData().getSeverity()).isEqualTo("WARNING");
+    }
+
+    @Test
+    @DisplayName("MODEL_BASED provider low-confidence marker is not presented as a posture class")
+    void analyzePosture_providerLowConfidence_returnsLowConfidence() {
+        PostureAnalysisConfig config = modelConfig("MODEL_BASED", new BigDecimal("0.50"));
+        when(sessionRepository.findById(SESSION_ID)).thenReturn(Optional.of(inProgressSession()));
+        when(postureConfigRepository.findActiveConfigByExerciseId(eq(EXERCISE_ID), any()))
+                .thenReturn(Optional.of(config));
+        when(inferenceConfigResolver.resolve(config)).thenReturn(new ResolvedInferenceConfig(
+                PostureInferenceConfigResolver.PINNED_MODEL_VERSION, "squat"));
+        when(postureInferencePort.infer(any(InferenceRequest.class)))
+                .thenReturn(new InferenceResult(
+                        PostureInferenceConfigResolver.PINNED_MODEL_VERSION,
+                        "squat",
+                        1000L,
+                        "unknown",
+                        new BigDecimal("0.60"),
+                        false,
+                        BigDecimal.ZERO,
+                        List.of(new InferenceFeedback(
+                                "low_confidence",
+                                "INFO",
+                                "The demo model is not confident enough to evaluate this sample."))));
+
+        ApiResponse<PostureFeedbackResponse> response =
+                service.analyzePosture(SESSION_ID, MOTHER_USER_ID, requestWithBackAngle(5.0));
+
+        assertThat(response.getData().getPostureCode()).isEqualTo("MODEL_LOW_CONFIDENCE");
+        assertThat(response.getData().getSeverity()).isEqualTo("WARNING");
     }
 }

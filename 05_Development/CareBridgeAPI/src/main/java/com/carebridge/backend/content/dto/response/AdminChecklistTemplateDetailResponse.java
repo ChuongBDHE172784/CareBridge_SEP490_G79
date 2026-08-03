@@ -24,6 +24,7 @@ public class AdminChecklistTemplateDetailResponse {
     private UUID id;
     private String name;
     private ContentStage stage;
+    private Integer displayOrder;
     private ChecklistTemplateStatus status;
     private String description;
     private Integer versionNo;

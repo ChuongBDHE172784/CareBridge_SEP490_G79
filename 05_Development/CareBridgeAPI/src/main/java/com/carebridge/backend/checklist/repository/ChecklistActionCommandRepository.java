@@ -20,5 +20,8 @@ public interface ChecklistActionCommandRepository extends JpaRepository<Checklis
     Optional<ChecklistActionCommand> findByActorUserIdAndTaskKindAndTaskIdAndClientRequestId(
             UUID actorUserId, String taskKind, UUID taskId, UUID clientRequestId);
 
+    Optional<ChecklistActionCommand> findFirstByActorUserIdAndTaskKindAndClientRequestId(
+            UUID actorUserId, String taskKind, UUID clientRequestId);
+
     boolean existsByTaskKindAndTaskIdIn(String taskKind, Collection<UUID> taskIds);
 }

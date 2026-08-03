@@ -2,6 +2,7 @@ package com.carebridge.backend.checklist.today.service;
 
 import com.carebridge.backend.checklist.distribution.EnsureEligibleChecklistAssignmentsService;
 import com.carebridge.backend.checklist.distribution.ChecklistHistoryReconciliationService;
+import com.carebridge.backend.checklist.sequence.ChecklistSequenceResolver;
 import com.carebridge.backend.checklist.today.dto.TodayTasksResponse;
 import com.carebridge.backend.checklist.today.dto.TodayTaskCounts;
 import com.carebridge.backend.checklist.today.dto.TodayTaskItemResponse;
@@ -33,6 +34,7 @@ public class UnifiedTodayTaskServiceImpl implements UnifiedTodayTaskService {
     private final TodayTaskContextLabelResolver labelResolver;
     private final EnsureEligibleChecklistAssignmentsService ensureAssignments;
     private final ChecklistHistoryReconciliationService historyReconciliationService;
+    private final ChecklistSequenceResolver sequenceResolver;
     private final Clock clock;
 
     @Autowired
@@ -40,18 +42,20 @@ public class UnifiedTodayTaskServiceImpl implements UnifiedTodayTaskService {
             List<TodayTaskProvider> providers,
             TodayTaskContextLabelResolver labelResolver,
             EnsureEligibleChecklistAssignmentsService ensureAssignments,
-            ChecklistHistoryReconciliationService historyReconciliationService) {
-        this(providers, labelResolver, ensureAssignments, historyReconciliationService, Clock.systemUTC());
+            ChecklistHistoryReconciliationService historyReconciliationService,
+            ChecklistSequenceResolver sequenceResolver) {
+        this(providers, labelResolver, ensureAssignments, historyReconciliationService,
+                sequenceResolver, Clock.systemUTC());
     }
 
     public UnifiedTodayTaskServiceImpl(List<TodayTaskProvider> providers, Clock clock) {
-        this(providers, null, null, null, clock);
+        this(providers, null, null, null, null, clock);
     }
 
     public UnifiedTodayTaskServiceImpl(
             List<TodayTaskProvider> providers,
             TodayTaskContextLabelResolver labelResolver) {
-        this(providers, labelResolver, null, null, Clock.systemUTC());
+        this(providers, labelResolver, null, null, null, Clock.systemUTC());
     }
 
     public UnifiedTodayTaskServiceImpl(
@@ -59,7 +63,7 @@ public class UnifiedTodayTaskServiceImpl implements UnifiedTodayTaskService {
             TodayTaskContextLabelResolver labelResolver,
             EnsureEligibleChecklistAssignmentsService ensureAssignments,
             Clock clock) {
-        this(providers, labelResolver, ensureAssignments, null, clock);
+        this(providers, labelResolver, ensureAssignments, null, null, clock);
     }
 
     public UnifiedTodayTaskServiceImpl(
@@ -68,10 +72,21 @@ public class UnifiedTodayTaskServiceImpl implements UnifiedTodayTaskService {
             EnsureEligibleChecklistAssignmentsService ensureAssignments,
             ChecklistHistoryReconciliationService historyReconciliationService,
             Clock clock) {
+        this(providers, labelResolver, ensureAssignments, historyReconciliationService, null, clock);
+    }
+
+    public UnifiedTodayTaskServiceImpl(
+            List<TodayTaskProvider> providers,
+            TodayTaskContextLabelResolver labelResolver,
+            EnsureEligibleChecklistAssignmentsService ensureAssignments,
+            ChecklistHistoryReconciliationService historyReconciliationService,
+            ChecklistSequenceResolver sequenceResolver,
+            Clock clock) {
         this.providers = List.copyOf(providers);
         this.labelResolver = labelResolver;
         this.ensureAssignments = ensureAssignments;
         this.historyReconciliationService = historyReconciliationService;
+        this.sequenceResolver = sequenceResolver;
         this.clock = clock;
     }
 
@@ -122,10 +137,11 @@ public class UnifiedTodayTaskServiceImpl implements UnifiedTodayTaskService {
         List<TodayTaskItemResponse> today = section(unique, TaskTimeBucket.TODAY);
         List<TodayTaskItemResponse> upcoming = section(unique, TaskTimeBucket.UPCOMING);
         List<TodayTaskItemResponse> unscheduled = section(unique, TaskTimeBucket.UNSCHEDULED);
+        var sequence = sequenceResolver == null ? null : sequenceResolver.resolve(actorUserId);
         return new TodayTasksResponse(clock.instant(), zone.getId(), HORIZON_DAYS,
                 new TodayTaskSections(overdue, today, upcoming, unscheduled),
                 new TodayTaskCounts(overdue.size(), today.size(), upcoming.size(), unscheduled.size()),
-                correlationId);
+                correlationId, sequence);
     }
 
     private static List<TodayTaskItemResponse> section(

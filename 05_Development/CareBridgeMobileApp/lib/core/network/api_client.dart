@@ -447,7 +447,7 @@ Future<dynamic> apiPost(
           headers: _headers(token: token),
           body: encoded,
         );
-  if (response.statusCode != 401) {
+  if (response.statusCode != 401 && response.statusCode != 403) {
     _ensureSessionStillCurrent(expectedSession);
   }
   response = await _handleUnauthorized(
@@ -458,7 +458,9 @@ Future<dynamic> apiPost(
         : client.post(uri, headers: _headers(), body: encoded),
     expectedSession,
   );
-  _ensureSessionStillCurrent(expectedSession);
+  if (response.statusCode != 403) {
+    _ensureSessionStillCurrent(expectedSession);
+  }
   if (response.statusCode >= 200 && response.statusCode < 300) {
     return _decodeResponse(response);
   }
@@ -476,6 +478,9 @@ Future<dynamic> apiPost(
     await _handle401(response, expectedSession);
   }
   if (response.statusCode == 403) {
+    if (expectedSession != null && !expectedSession.isCurrent) {
+      throw ApiException(response.statusCode, _sessionChangedBody);
+    }
     await _handleBlockedResponse(response, expectedSession);
   }
   throw ApiException(response.statusCode, response.body);

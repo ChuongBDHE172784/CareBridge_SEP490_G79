@@ -9,6 +9,7 @@ import com.carebridge.backend.checklist.model.ChecklistCareContextType;
 import com.carebridge.backend.checklist.model.ChecklistOrigin;
 import com.carebridge.backend.checklist.model.ChecklistRangeUnit;
 import com.carebridge.backend.checklist.model.ChecklistRecipientRole;
+import com.carebridge.backend.checklist.policy.ChecklistTemplateVisibilityPolicy;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
 import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
@@ -39,6 +40,16 @@ public class ChecklistCurrentScopePolicy {
                 && instance.getCareContextType() != null
                 && instance.getCareContextId() != null
                 && instance.getContextOwnerUserId() != null;
+    }
+
+    @Transactional(readOnly = true)
+    public boolean isArchivedTemplate(ChecklistInstance instance) {
+        if (instance == null || instance.getTemplateVersionId() == null) {
+            return false;
+        }
+        ChecklistTemplate template = templateRepository.findByTemplateVersionId(
+                instance.getTemplateVersionId()).orElse(null);
+        return ChecklistTemplateVisibilityPolicy.isArchived(template);
     }
 
     @Transactional(readOnly = true)

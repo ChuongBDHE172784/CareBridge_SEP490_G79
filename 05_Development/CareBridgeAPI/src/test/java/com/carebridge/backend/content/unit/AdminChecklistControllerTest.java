@@ -19,7 +19,9 @@ import com.carebridge.backend.common.config.JpaAuditingConfig;
 import com.carebridge.backend.config.MockMvcSecurityBuilderConfig;
 import com.carebridge.backend.content.controller.AdminContentController;
 import com.carebridge.backend.content.dto.response.AdminChecklistTemplateResponse;
+import com.carebridge.backend.checklist.model.ChecklistRecipientRole;
 import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
+import com.carebridge.backend.content.entity.ChecklistTemplateType;
 import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.content.service.AdminContentService;
 import com.carebridge.backend.content.service.ContentService;
@@ -115,6 +117,34 @@ class AdminChecklistControllerTest {
 
         verify(contentService).getAdminChecklists(
                 eq(ContentStage.PREGNANCY), eq(ChecklistTemplateStatus.PENDING_REVIEW), eq(null), any());
+    }
+
+    @Test
+    void adminResponseExposesSequencePositionAndRecipientRoles() throws Exception {
+        var dto = new AdminChecklistTemplateResponse(
+                UUID.fromString("69000000-0000-0000-0000-000000000100"),
+                "Preconception sequence 2",
+                ContentStage.PRE_PREGNANCY,
+                ChecklistTemplateType.MANDATORY,
+                ChecklistTemplateStatus.PENDING_REVIEW,
+                "Sequence metadata",
+                2,
+                Instant.parse("2026-08-03T00:00:00Z"),
+                1L,
+                2,
+                List.of(ChecklistRecipientRole.MOTHER),
+                null);
+        when(contentService.getAdminChecklists(
+                        eq(ContentStage.PRE_PREGNANCY), eq(ChecklistTemplateStatus.PENDING_REVIEW), eq(null), any()))
+                .thenReturn(new PageImpl<>(List.of(dto), PageRequest.of(0, 20), 1));
+
+        mockMvc.perform(get(URL)
+                        .with(user(USER_ID).roles("SYSTEM_ADMIN"))
+                        .param("stage", "PRE_PREGNANCY")
+                        .param("status", "PENDING_REVIEW"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data[0].displayOrder").value(2))
+                .andExpect(jsonPath("$.data[0].recipientRoles[0]").value("MOTHER"));
     }
 
     @Test

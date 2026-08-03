@@ -1,22 +1,23 @@
 package com.carebridge.backend.integration.firebase;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
+import com.carebridge.backend.common.response.ApiResponse;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.security.Principal;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 @ExtendWith(MockitoExtension.class)
@@ -24,7 +25,6 @@ class FirebaseTokenControllerTest {
 
     @Mock private IFirebaseAuthBridgeService firebaseAuthBridgeService;
     @Mock private AuditService auditService;
-    @InjectMocks private FirebaseTokenController controller;
 
     // DCC-TC-019 step 1 — no @RequestBody, no @RequestParam, no way to name a different user.
     @Test
@@ -41,15 +41,50 @@ class FirebaseTokenControllerTest {
     }
 
     @Test
-    void issueCustomToken_usesPrincipalNameAsUserId() {
+    void issueCustomToken_whenFirestoreDisabled_returnsCapabilityWithoutIssuingToken() {
         UUID userId = UUID.randomUUID();
         Principal principal = () -> userId.toString();
+        FirebaseTokenController controller = controller(false);
+
+        ResponseEntity<ApiResponse<FirebaseTokenController.FirebaseCustomTokenResponse>> response =
+                controller.issueCustomToken(principal);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().isSuccess()).isTrue();
+        assertThat(response.getBody().getData().firestoreSignalingEnabled()).isFalse();
+        assertThat(response.getBody().getData().firebaseCustomToken()).isNull();
+        verifyNoInteractions(firebaseAuthBridgeService, auditService);
+    }
+
+    @Test
+    void issueCustomToken_whenFirestoreEnabled_usesPrincipalNameAndAuditsIssuedToken() {
+        UUID userId = UUID.randomUUID();
+        Principal principal = () -> userId.toString();
+        FirebaseTokenController controller = controller(true);
         when(firebaseAuthBridgeService.createCustomToken(userId)).thenReturn("tok-abc");
 
-        ResponseEntity<?> response = controller.issueCustomToken(principal);
+        ResponseEntity<ApiResponse<FirebaseTokenController.FirebaseCustomTokenResponse>> response =
+                controller.issueCustomToken(principal);
 
-        assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
-        verify(firebaseAuthBridgeService).createCustomToken(eq(userId));
-        verify(auditService).log(eq(AuditAction.FIREBASE_CUSTOM_TOKEN_ISSUED), eq(userId), any(), any(), any());
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().isSuccess()).isTrue();
+        assertThat(response.getBody().getData().firestoreSignalingEnabled()).isTrue();
+        assertThat(response.getBody().getData().firebaseCustomToken()).isEqualTo("tok-abc");
+        verify(firebaseAuthBridgeService).createCustomToken(userId);
+        verify(auditService).log(
+                AuditAction.FIREBASE_CUSTOM_TOKEN_ISSUED,
+                userId,
+                "FIREBASE_CUSTOM_TOKEN",
+                userId.toString(),
+                Map.of());
+    }
+
+    private FirebaseTokenController controller(boolean firestoreSignalingEnabled) {
+        return new FirebaseTokenController(
+                firebaseAuthBridgeService,
+                auditService,
+                firestoreSignalingEnabled);
     }
 }

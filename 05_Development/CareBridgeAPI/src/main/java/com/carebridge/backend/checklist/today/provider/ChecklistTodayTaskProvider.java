@@ -5,30 +5,61 @@ import com.carebridge.backend.checklist.entity.ChecklistTaskInstance;
 import com.carebridge.backend.checklist.model.ChecklistInstanceStatus;
 import com.carebridge.backend.checklist.model.ChecklistRecipientRole;
 import com.carebridge.backend.checklist.model.ChecklistTaskStatus;
+import com.carebridge.backend.checklist.policy.ChecklistTemplateVisibilityPolicy;
 import com.carebridge.backend.checklist.repository.ChecklistInstanceRepository;
 import com.carebridge.backend.checklist.repository.ChecklistTaskInstanceRepository;
+import com.carebridge.backend.checklist.sequence.ChecklistSequenceResolver;
+import com.carebridge.backend.checklist.today.dto.TodaySequenceProjection;
 import com.carebridge.backend.checklist.today.dto.TodayTaskCandidate;
 import com.carebridge.backend.checklist.today.model.TaskAction;
 import com.carebridge.backend.checklist.today.model.TaskKind;
 import com.carebridge.backend.checklist.today.policy.UnifiedTaskAccessPolicy;
+import com.carebridge.backend.content.entity.ChecklistTemplate;
+import com.carebridge.backend.content.entity.ChecklistTemplateType;
+import com.carebridge.backend.content.entity.ContentStage;
+import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
-@RequiredArgsConstructor
 public class ChecklistTodayTaskProvider implements TodayTaskProvider {
     private final ChecklistInstanceRepository instanceRepository;
     private final ChecklistTaskInstanceRepository taskRepository;
     private final UnifiedTaskAccessPolicy accessPolicy;
+    private final ChecklistSequenceResolver sequenceResolver;
+    private final ChecklistTemplateRepository templateRepository;
+
+    public ChecklistTodayTaskProvider(
+            ChecklistInstanceRepository instanceRepository,
+            ChecklistTaskInstanceRepository taskRepository,
+            UnifiedTaskAccessPolicy accessPolicy) {
+        this(instanceRepository, taskRepository, accessPolicy, null, null);
+    }
+
+    @Autowired
+    public ChecklistTodayTaskProvider(
+            ChecklistInstanceRepository instanceRepository,
+            ChecklistTaskInstanceRepository taskRepository,
+            UnifiedTaskAccessPolicy accessPolicy,
+            ChecklistSequenceResolver sequenceResolver,
+            ChecklistTemplateRepository templateRepository) {
+        this.instanceRepository = instanceRepository;
+        this.taskRepository = taskRepository;
+        this.accessPolicy = accessPolicy;
+        this.sequenceResolver = sequenceResolver;
+        this.templateRepository = templateRepository;
+    }
 
     @Override
     public TaskKind taskKind() {
@@ -38,9 +69,16 @@ public class ChecklistTodayTaskProvider implements TodayTaskProvider {
     @Override
     @Transactional(readOnly = true)
     public List<TodayTaskCandidate> findAuthorizedTasks(UUID actorUserId) {
+        TodaySequenceProjection sequence = sequenceResolver == null
+                ? null : sequenceResolver.resolve(actorUserId);
+        List<ChecklistInstance> currentInstances = instanceRepository
+                .findByRecipientUserIdAndHistoricalAtIsNull(actorUserId);
+        Map<UUID, ChecklistTemplate> templatesByVersion = templatesByVersion(currentInstances);
         List<AuthorizedInstance> authorizedInstances = new ArrayList<>();
-        for (var instance : instanceRepository.findByRecipientUserIdAndHistoricalAtIsNull(actorUserId)) {
+        for (var instance : currentInstances) {
             if (instance.getStatus() != ChecklistInstanceStatus.CANCELLED
+                    && isVisibleTemplate(instance, templatesByVersion)
+                    && isVisibleSequenceInstance(instance, sequence, templatesByVersion)
                     && accessPolicy.canView(instance, actorUserId)) {
                 authorizedInstances.add(new AuthorizedInstance(
                         instance, accessPolicy.canComplete(instance, actorUserId)));
@@ -85,6 +123,68 @@ public class ChecklistTodayTaskProvider implements TodayTaskProvider {
             }
         }
         return List.copyOf(result);
+    }
+
+    private Map<UUID, ChecklistTemplate> templatesByVersion(Collection<ChecklistInstance> instances) {
+        if (templateRepository == null) {
+            return Map.of();
+        }
+        List<UUID> versionIds = instances.stream()
+                .map(ChecklistInstance::getTemplateVersionId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        if (versionIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, ChecklistTemplate> result = new LinkedHashMap<>();
+        for (ChecklistTemplate template : templateRepository.findAllByTemplateVersionIdIn(versionIds)) {
+            result.putIfAbsent(template.getTemplateVersionId(), template);
+        }
+        return result;
+    }
+
+    private boolean isVisibleTemplate(
+            ChecklistInstance instance,
+            Map<UUID, ChecklistTemplate> templatesByVersion) {
+        if (templateRepository == null) {
+            // Preserve the lightweight compatibility constructor used by callers
+            // that do not provide template metadata.
+            return true;
+        }
+        ChecklistTemplate template = templatesByVersion.get(instance.getTemplateVersionId());
+        return ChecklistTemplateVisibilityPolicy.isVisible(instance, template);
+    }
+
+    private boolean isVisibleSequenceInstance(
+            ChecklistInstance instance,
+            TodaySequenceProjection sequence,
+            Map<UUID, ChecklistTemplate> templatesByVersion) {
+        if (sequence == null || !isSequenceInstance(instance, templatesByVersion)) {
+            return true;
+        }
+        // A blocked projection deliberately has no current instance, so all sequence
+        // tasks are hidden rather than leaking a locked/future set.
+        return sequence.currentInstanceId() != null
+                && sequence.currentInstanceId().equals(instance.getId());
+    }
+
+    private boolean isSequenceInstance(
+            ChecklistInstance instance,
+            Map<UUID, ChecklistTemplate> templatesByVersion) {
+        if (templateRepository == null || instance.getTemplateVersionId() == null) {
+            return false;
+        }
+        ChecklistTemplate template = templatesByVersion.get(instance.getTemplateVersionId());
+        return template != null
+                && template.getStage() == ContentStage.PRE_PREGNANCY
+                && template.getTemplateType() == ChecklistTemplateType.MANDATORY
+                && template.getRecipientScope()
+                    == com.carebridge.backend.checklist.model.ChecklistRecipientScope.MOTHER
+                && template.getSequencePosition() != null
+                && template.getSequencePosition() > 0
+                && instance.getRecipientRole() == ChecklistRecipientRole.MOTHER
+                && instance.getOrigin() == com.carebridge.backend.checklist.model.ChecklistOrigin.SYSTEM_TEMPLATE;
     }
 
     private static Instant terminalAt(ChecklistTaskInstance task) {

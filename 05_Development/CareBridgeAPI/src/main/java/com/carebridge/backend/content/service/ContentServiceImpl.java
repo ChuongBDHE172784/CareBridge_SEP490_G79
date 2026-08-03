@@ -14,6 +14,8 @@ import com.carebridge.backend.content.entity.ContentItem;
 import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.content.entity.ContentStatus;
 import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
+import com.carebridge.backend.checklist.model.ChecklistRecipientRole;
+import com.carebridge.backend.checklist.model.ChecklistRecipientScope;
 import com.carebridge.backend.content.entity.ContentType;
 import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.mapper.ContentMapper;
@@ -143,7 +145,9 @@ public class ContentServiceImpl implements ContentService {
                 counts.getOrDefault(template.getId(), 0L),
                 contentMapper.toReviewFeedback(
                         template.getRevisionReason(), template.getRevisionRequestedAt(),
-                        template.getRevisionRequestedBy(), template.getRevisionRequestedVersion())));
+                        template.getRevisionRequestedBy(), template.getRevisionRequestedVersion()),
+                template.getSequencePosition(),
+                toRecipientRoles(template.getRecipientScope())));
     }
 
     private List<ChecklistTemplateResponse> shapeApprovedChecklists(List<ChecklistTemplate> templates) {
@@ -164,5 +168,14 @@ public class ContentServiceImpl implements ContentService {
                 : checklistTemplateRepository.findAllOptionalByStageAndStatus(
                         stage, ChecklistTemplateStatus.APPROVED);
         return templates;
+    }
+
+    private static List<ChecklistRecipientRole> toRecipientRoles(ChecklistRecipientScope scope) {
+        if (scope == null) return List.of();
+        return switch (scope) {
+            case MOTHER -> List.of(ChecklistRecipientRole.MOTHER);
+            case FAMILY -> List.of(ChecklistRecipientRole.FAMILY);
+            case BOTH -> List.of(ChecklistRecipientRole.MOTHER, ChecklistRecipientRole.FAMILY);
+        };
     }
 }
