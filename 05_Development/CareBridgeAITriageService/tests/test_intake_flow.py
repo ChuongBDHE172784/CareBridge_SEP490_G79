@@ -37,7 +37,9 @@ def test_fever_questions_temperature_before_unrelated_breathing_screen():
     assert response.status == "ASK_MORE"
     keys = [q.questionKey for q in response.questions]
     assert "temperatureC" in keys
-    assert "breathingStatus" not in keys
+    # Cough is explicitly present, so breathing is a relevant third fact after
+    # fever-specific temperature and duration checks.
+    assert "breathingStatus" in keys
 
 
 def test_red_flag_in_first_round_completes_red():

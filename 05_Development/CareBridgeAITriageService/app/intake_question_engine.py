@@ -14,6 +14,7 @@ MAX_FOLLOWUP_ROUNDS = 3
 MATERNAL_STAGES = frozenset({"PRECONCEPTION", "PREGNANCY", "POSTPARTUM"})
 PEDIATRIC_KEYS = frozenset({
     "childAgeMonths", "feedingStatus", "vomiting", "diarrhea", "rash", "dehydrationSigns",
+    "painSeverity", "urinarySymptoms",
 })
 
 def _question(key: str, text: str, answer_type: str, options: list[str] | None = None) -> IntakeQuestion:
@@ -33,16 +34,21 @@ QUESTION_BANK: dict[str, IntakeQuestion] = {
     "vomiting": _question("vomiting", "Bé có nôn không? Nếu có, nôn ít hay nôn liên tục?", "SINGLE_CHOICE", ["Không", "Nôn ít", "Nôn liên tục", "Không chắc"]),
     "duration": _question("duration", "Triệu chứng xuất hiện bao lâu rồi?", "SINGLE_CHOICE", ["Dưới 1 ngày", "1-3 ngày", "3-7 ngày", "Hơn 1 tuần", "Không chắc"]),
     "rash": _question("rash", "Bé có phát ban không?", "SINGLE_CHOICE", ["Không", "Phát ban nhẹ", "Phát ban kèm sốt cao", "Xấu nhanh", "Không chắc"]),
+    "painSeverity": _question("painSeverity", "Mức độ đau của bé hiện thế nào?", "SINGLE_CHOICE", ["Nhẹ", "Vừa", "Nhiều", "Không chắc"]),
+    "urinarySymptoms": _question("urinarySymptoms", "Bé có tiểu buốt, tiểu rắt hoặc thay đổi nước tiểu không?", "SINGLE_CHOICE", ["Không", "Có", "Không chắc"]),
 }
 
 MATERNAL_QUESTION_BANK: dict[str, IntakeQuestion] = {
     "parentFreeText": _question("parentFreeText", "Bạn đang gặp triệu chứng hoặc cần hỗ trợ nội dung gì?", "TEXT"),
     "duration": _question("duration", "Triệu chứng hoặc vấn đề này xuất hiện bao lâu rồi?", "SINGLE_CHOICE", ["Dưới 1 ngày", "1-3 ngày", "3-7 ngày", "Hơn 1 tuần", "Không chắc"]),
     "hydrationStatus": _question("hydrationStatus", "Bạn có khát nhiều, khô miệng, tiểu ít hoặc không giữ được nước không?", "SINGLE_CHOICE", ["Không", "Có một dấu hiệu", "Có nhiều dấu hiệu", "Không chắc"]),
+    "vomiting": _question("vomiting", "Bạn có buồn nôn hoặc nôn không?", "SINGLE_CHOICE", ["Không", "Buồn nôn", "Nôn ít", "Nôn liên tục", "Không chắc"]),
     "temperatureC": _question("temperatureC", "Nhiệt độ cao nhất bạn đo được là bao nhiêu độ C?", "NUMBER"),
     "breathingStatus": _question("breathingStatus", "Bạn có khó thở hoặc tím tái không?", "SINGLE_CHOICE", ["Không", "Khó thở", "Tím tái", "Không chắc"]),
     "consciousnessStatus": _question("consciousnessStatus", "Bạn có lơ mơ, ngất hoặc khó giữ tỉnh táo không?", "SINGLE_CHOICE", ["Tỉnh táo", "Lơ mơ", "Ngất", "Khó giữ tỉnh táo", "Không chắc"]),
     "seizure": _question("seizure", "Bạn có bị co giật không?", "BOOLEAN", ["Không", "Có", "Không chắc"]),
+    "painSeverity": _question("painSeverity", "Mức độ đau hiện thế nào?", "SINGLE_CHOICE", ["Nhẹ", "Vừa", "Nhiều", "Không chắc"]),
+    "urinarySymptoms": _question("urinarySymptoms", "Bạn có tiểu buốt, tiểu rắt hoặc thay đổi nước tiểu không?", "SINGLE_CHOICE", ["Không", "Có", "Không chắc"]),
 }
 
 
@@ -57,9 +63,12 @@ def extract_triage_intent(intake: ChildTriageRequest) -> TriageIntent:
     mapping = {
         "diarrhea": "DIARRHEA", "mild_dehydration": "DIARRHEA", "severe_dehydration": "DIARRHEA",
         "vomiting": "VOMITING", "persistent_vomiting": "VOMITING",
-        "fever": "FEVER", "high_fever": "FEVER", "rash": "RASH",
-        "cough": "RESPIRATORY", "difficulty_breathing": "RESPIRATORY",
+        "fever": "FEVER", "high_fever": "FEVER", "rash": "RASH", "itching": "RASH",
+        "cough": "RESPIRATORY", "runny_nose": "RESPIRATORY", "cold_symptoms": "RESPIRATORY",
+        "difficulty_breathing": "RESPIRATORY",
         "chest_indrawing": "RESPIRATORY", "cyanosis": "RESPIRATORY",
+        "abdominal_pain": "ABDOMINAL", "nausea": "ABDOMINAL", "constipation": "ABDOMINAL",
+        "urinary_discomfort": "URINARY", "ear_pain": "EAR", "headache": "HEADACHE",
     }
     for symptom in symptoms:
         family = mapping.get(symptom)
@@ -125,7 +134,44 @@ def _relevant_missing_keys(intake: ChildTriageRequest, intent: TriageIntent) -> 
             if intake.stage == "POSTPARTUM"
             else ["parentFreeText"]
         )
+    if len(families) > 1:
+        policies = (
+            {
+                "ABDOMINAL": ["painSeverity", "duration", "vomiting", "hydrationStatus", "temperatureC"],
+                "DIARRHEA": ["duration", "hydrationStatus", "temperatureC"],
+                "VOMITING": ["vomiting", "hydrationStatus", "duration"],
+                "URINARY": ["urinarySymptoms", "duration", "temperatureC"],
+                "EAR": ["painSeverity", "duration", "temperatureC"],
+                "HEADACHE": ["painSeverity", "duration", "temperatureC"],
+                "FEVER": ["duration", "temperatureC"],
+                "RESPIRATORY": ["breathingStatus", "consciousnessStatus", "duration"],
+                "RASH": ["rash", "temperatureC", "duration"],
+            }
+            if intake.stage in MATERNAL_STAGES else {
+                "ABDOMINAL": ["painSeverity", "duration", "vomiting", "feedingStatus", "childAgeMonths"],
+                "DIARRHEA": ["duration", "dehydrationSigns", "vomiting", "feedingStatus", "childAgeMonths"],
+                "VOMITING": ["vomiting", "dehydrationSigns", "feedingStatus", "childAgeMonths"],
+                "URINARY": ["urinarySymptoms", "duration", "temperatureC", "childAgeMonths"],
+                "EAR": ["painSeverity", "duration", "temperatureC", "childAgeMonths"],
+                "HEADACHE": ["painSeverity", "duration", "temperatureC", "childAgeMonths"],
+                "FEVER": ["duration", "temperatureC", "childAgeMonths", "feedingStatus"],
+                "RESPIRATORY": ["childAgeMonths", "duration", "breathingStatus", "consciousnessStatus"],
+                "RASH": ["duration", "rash", "temperatureC", "childAgeMonths"],
+            }
+        )
+        priority = ("ABDOMINAL", "DIARRHEA", "VOMITING", "URINARY", "EAR", "HEADACHE", "FEVER", "RESPIRATORY", "RASH")
+        return list(dict.fromkeys(
+            key for family in priority if family in families for key in policies[family]
+        ))
     if intake.stage in MATERNAL_STAGES:
+        if "ABDOMINAL" in families:
+            return ["painSeverity", "duration", "vomiting", "hydrationStatus", "temperatureC"]
+        if "URINARY" in families:
+            return ["urinarySymptoms", "duration", "temperatureC"]
+        if "EAR" in families:
+            return ["painSeverity", "duration", "temperatureC"]
+        if "HEADACHE" in families:
+            return ["painSeverity", "duration", "temperatureC"]
         if "DIARRHEA" in families:
             return ["duration", "hydrationStatus", "temperatureC"]
         if "FEVER" in families:
@@ -135,6 +181,14 @@ def _relevant_missing_keys(intake: ChildTriageRequest, intent: TriageIntent) -> 
         return ["parentFreeText"] if _empty(intake.parentFreeText) and not intake.symptomList else ["duration"]
     if "DIARRHEA" in families:
         return ["duration", "dehydrationSigns", "vomiting", "feedingStatus", "childAgeMonths"]
+    if "ABDOMINAL" in families:
+        return ["painSeverity", "duration", "vomiting", "feedingStatus", "childAgeMonths"]
+    if "URINARY" in families:
+        return ["urinarySymptoms", "duration", "temperatureC", "childAgeMonths"]
+    if "EAR" in families:
+        return ["painSeverity", "duration", "temperatureC", "childAgeMonths"]
+    if "HEADACHE" in families:
+        return ["painSeverity", "duration", "temperatureC", "childAgeMonths"]
     if "VOMITING" in families:
         return ["duration", "dehydrationSigns", "feedingStatus", "childAgeMonths"]
     if "FEVER" in families:

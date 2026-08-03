@@ -106,6 +106,8 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
       'breathingStatus': null,
       'consciousnessStatus': null,
       'seizure': null,
+      'painSeverity': null,
+      'urinarySymptoms': null,
       'parentFreeText': null,
     };
     if (_maternalStages.contains(stage)) return common;
@@ -496,6 +498,8 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
       'diarrhea': 'Tiêu chảy',
       'duration': 'Thời gian triệu chứng',
       'rash': 'Phát ban',
+      'painSeverity': 'Mức độ đau',
+      'urinarySymptoms': 'Triệu chứng tiểu tiện',
       'parentFreeText': 'Mô tả bổ sung',
     };
     return answers.entries

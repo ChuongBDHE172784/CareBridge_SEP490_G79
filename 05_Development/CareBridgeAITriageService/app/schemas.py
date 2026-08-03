@@ -37,6 +37,10 @@ class ChildTriageRequest(BaseModel):
     vomiting: str | None = None
     diarrhea: str | None = None
     rash: str | None = None
+    # Bounded descriptive facts for common, non-diagnostic symptom follow-ups.
+    # They do not create risk thresholds; deterministic red rules remain separate.
+    painSeverity: str | None = None
+    urinarySymptoms: str | None = None
     seizure: bool | None = None
     dehydrationSigns: list[str] = Field(default_factory=list)
     hydrationStatus: str | None = None

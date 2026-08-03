@@ -1541,6 +1541,8 @@ public class TriageService implements ITriageService {
                 "parentFreeText",
                 "symptomList",
                 "hydrationStatus",
+                "painSeverity",
+                "urinarySymptoms",
                 "breathingStatus",
                 "consciousnessStatus",
                 "seizure",
