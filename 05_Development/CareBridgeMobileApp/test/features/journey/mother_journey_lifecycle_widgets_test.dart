@@ -3,8 +3,6 @@ import 'dart:collection';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:go_router/go_router.dart';
-import 'package:untitled/features/aiTriage/models/triage_entry_context.dart';
 import 'package:untitled/features/journey/models/journey_model.dart';
 import 'package:untitled/features/journey/screens/mother_journey_screen.dart';
 import 'package:untitled/features/journey/services/journey_service.dart';
@@ -165,60 +163,32 @@ void main() {
     });
   }
 
-  testWidgets('maternal metric triage keeps the typed postpartum origin', (
+  testWidgets('maternal journey keeps AI Triage as a single floating entry', (
     tester,
   ) async {
-    Object? capturedExtra;
     const dashboard = JourneyDashboard(
       journeyId: '10000000-0000-0000-0000-000000000003',
       journeyType: 'POSTPARTUM',
       status: 'ACTIVE_POSTPARTUM',
       version: 1,
     );
-    final router = GoRouter(
-      initialLocation: '/mother',
-      routes: [
-        GoRoute(
-          path: '/mother',
-          builder: (_, _) => const Scaffold(
-            body: MotherJourneyScreen(
-              loadData: false,
-              loadSupportingData: false,
-              initialDashboard: dashboard,
-            ),
-          ),
-        ),
-        GoRoute(
-          path: '/triage/intake',
-          builder: (_, state) {
-            capturedExtra = state.extra;
-            return const Scaffold(body: Text('triage'));
-          },
-        ),
-      ],
-    );
-    addTearDown(router.dispose);
     await tester.binding.setSurfaceSize(const Size(900, 1800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
-    await tester.pumpAndSettle();
-
-    await tester.scrollUntilVisible(
-      find.text('Kiểm tra triệu chứng'),
-      250,
-      scrollable: find.byType(Scrollable).first,
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: MotherJourneyScreen(
+            loadData: false,
+            loadSupportingData: false,
+            initialDashboard: dashboard,
+          ),
+        ),
+      ),
     );
-    await tester.tap(find.text('Kiểm tra triệu chứng'));
     await tester.pumpAndSettle();
 
-    expect(find.text('triage'), findsOneWidget);
-    expect(capturedExtra, isA<TriageEntryContext>());
-    final entry = capturedExtra! as TriageEntryContext;
-    expect(entry.stage, TriageStageIntent.postpartum);
-    expect(entry.origin, TriageOriginIntent.motherJourney);
-    expect(entry.journeyId, dashboard.journeyId);
-    expect(entry.originReferenceId, dashboard.journeyId);
-    expect(entry.lockStage, isTrue);
+    expect(find.text('Kiểm tra triệu chứng'), findsNothing);
+    expect(find.text('AI Triage - Kiểm tra triệu chứng'), findsNothing);
   });
 
   testWidgets('shows loading feedback only while the first journey loads', (

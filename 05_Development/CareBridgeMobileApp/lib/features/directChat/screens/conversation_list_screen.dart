@@ -119,9 +119,7 @@ class _ConversationListScreenState extends State<ConversationListScreen>
 
   Widget _buildBody() {
     if (_loading) {
-      return const Center(
-        child: CircularProgressIndicator(color: _primary),
-      );
+      return const Center(child: CircularProgressIndicator(color: _primary));
     }
     if (_error != null) {
       return ListView(
@@ -178,7 +176,7 @@ class _ConversationListScreenState extends State<ConversationListScreen>
                   const SizedBox(height: 20),
                   Text(
                     _isExpert
-                        ? 'Chưa có mẹ nào gửi tin nhắn'
+                        ? 'Chưa có mẹ nào nhắn cho bạn'
                         : 'Bạn chưa có cuộc trò chuyện nào',
                     style: const TextStyle(
                       fontSize: 17,
@@ -192,7 +190,11 @@ class _ConversationListScreenState extends State<ConversationListScreen>
                     _isExpert
                         ? 'Danh sách cuộc trò chuyện sẽ xuất hiện ngay khi có mẹ hoặc gia đình liên hệ tư vấn.'
                         : 'Hãy kết nối ngay với bác sĩ và chuyên gia y tế đã xác thực để nhận lời khuyên an toàn.',
-                    style: const TextStyle(color: _onVariant, fontSize: 13, height: 1.4),
+                    style: const TextStyle(
+                      color: _onVariant,
+                      fontSize: 13,
+                      height: 1.4,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   if (!_isExpert) ...[
@@ -200,10 +202,13 @@ class _ConversationListScreenState extends State<ConversationListScreen>
                     FilledButton.icon(
                       onPressed: () => context.push('/experts'),
                       icon: const Icon(Icons.search_rounded),
-                      label: const Text('Tìm Chuyên gia'),
+                      label: const Text('Tìm chuyên gia'),
                       style: FilledButton.styleFrom(
                         backgroundColor: _primaryDark,
-                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(24),
                         ),
@@ -287,7 +292,9 @@ class _ConversationTile extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: hasUnread ? _primary.withValues(alpha: 0.5) : _outline.withValues(alpha: 0.5),
+            color: hasUnread
+                ? _primary.withValues(alpha: 0.5)
+                : _outline.withValues(alpha: 0.5),
             width: hasUnread ? 1.5 : 1,
           ),
           boxShadow: [
@@ -303,7 +310,10 @@ class _ConversationTile extends StatelessWidget {
             Container(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: _primary.withValues(alpha: 0.4), width: 2),
+                border: Border.all(
+                  color: _primary.withValues(alpha: 0.4),
+                  width: 2,
+                ),
               ),
               child: CircleAvatar(
                 radius: 26,
@@ -344,7 +354,9 @@ class _ConversationTile extends StatelessWidget {
                                   : 'Mẹ'),
                           style: TextStyle(
                             fontSize: 15,
-                            fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w600,
+                            fontWeight: hasUnread
+                                ? FontWeight.w700
+                                : FontWeight.w600,
                             color: _onSurface,
                           ),
                           maxLines: 1,
@@ -356,8 +368,12 @@ class _ConversationTile extends StatelessWidget {
                         _relativeTime(displayTime),
                         style: TextStyle(
                           fontSize: 12,
-                          color: hasUnread ? _primary : _onVariant.withValues(alpha: 0.7),
-                          fontWeight: hasUnread ? FontWeight.w600 : FontWeight.normal,
+                          color: hasUnread
+                              ? _primary
+                              : _onVariant.withValues(alpha: 0.7),
+                          fontWeight: hasUnread
+                              ? FontWeight.w600
+                              : FontWeight.normal,
                         ),
                       ),
                     ],
@@ -382,14 +398,19 @@ class _ConversationTile extends StatelessWidget {
                                 style: TextStyle(
                                   fontSize: 13,
                                   color: hasUnread ? _onSurface : _onVariant,
-                                  fontWeight: hasUnread ? FontWeight.w500 : FontWeight.normal,
+                                  fontWeight: hasUnread
+                                      ? FontWeight.w500
+                                      : FontWeight.normal,
                                 ),
                               ),
                       ),
                       if (hasUnread) ...[
                         const SizedBox(width: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
                           decoration: BoxDecoration(
                             color: _primary,
                             borderRadius: BorderRadius.circular(12),
@@ -417,4 +438,3 @@ class _ConversationTile extends StatelessWidget {
     );
   }
 }
-

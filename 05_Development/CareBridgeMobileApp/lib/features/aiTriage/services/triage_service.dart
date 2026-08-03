@@ -9,6 +9,7 @@ import '../../../core/network/api_client.dart';
 import '../models/triage_consent_status.dart';
 import '../models/triage_continuation.dart';
 import '../models/triage_intake_flow_model.dart';
+import '../models/triage_history_model.dart';
 import '../models/triage_result_model.dart';
 import 'triage_continuation_store.dart';
 
@@ -66,6 +67,24 @@ class TriageService implements TriageContinuationGateway {
     );
     _throwIfStale(requestContext);
     return status;
+  }
+
+  Future<List<TriageHistoryItem>> listHistory() async {
+    final requestContext = _captureContinuationContext();
+    final data = await _getRequest(
+      '/api/v1/triage/intake',
+    ).timeout(_requestTimeout);
+    final rawItems = data['data'];
+    if (rawItems is! List) {
+      throw const FormatException('Invalid triage history response');
+    }
+    _throwIfStale(requestContext);
+    return rawItems
+        .whereType<Map>()
+        .map(
+          (item) => TriageHistoryItem.fromJson(Map<String, dynamic>.from(item)),
+        )
+        .toList(growable: false);
   }
 
   Future<TriageConsentStatus> acceptConsent({

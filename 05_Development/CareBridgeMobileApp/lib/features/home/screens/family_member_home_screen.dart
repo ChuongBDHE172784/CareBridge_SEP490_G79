@@ -135,25 +135,13 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
               color: _primary,
               onRefresh: _load,
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 124),
+                // Leave enough scrollable space above the persistent bottom nav
+                // so the group selector and its menu remain fully tappable.
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 220),
                 children: [
                   _buildHeader(),
                   const SizedBox(height: 20),
                   _buildShortcuts(),
-                  const SizedBox(height: 28),
-                  TodayTasksPanel(
-                    service: _todayTaskService,
-                    audience: TodayTasksAudience.family,
-                    controller: _todayTasksController,
-                    headingAction: IconButton(
-                      tooltip: 'Xem tất cả việc hôm nay',
-                      onPressed: _openTodayTasks,
-                      icon: const Icon(
-                        Icons.check_circle_outline,
-                        color: _primary,
-                      ),
-                    ),
-                  ),
                   const SizedBox(height: 28),
                   if (initialLoading)
                     const Padding(
@@ -190,6 +178,20 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
                         _snapshot!.selectedGroupDetail!,
                       ),
                   ],
+                  const SizedBox(height: 28),
+                  TodayTasksPanel(
+                    service: _todayTaskService,
+                    audience: TodayTasksAudience.family,
+                    controller: _todayTasksController,
+                    headingAction: IconButton(
+                      tooltip: 'Xem tất cả việc hôm nay',
+                      onPressed: _openTodayTasks,
+                      icon: const Icon(
+                        Icons.check_circle_outline,
+                        color: _primary,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
