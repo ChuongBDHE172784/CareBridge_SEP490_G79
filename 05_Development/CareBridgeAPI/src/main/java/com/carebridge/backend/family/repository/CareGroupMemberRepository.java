@@ -57,7 +57,14 @@ public interface CareGroupMemberRepository extends JpaRepository<CareGroupMember
 
     default Optional<CareGroupMember> findByCareGroupIdAndUserId(UUID careGroupId, UUID userId) {
         List<CareGroupMember> list = findAllByCareGroupIdAndUserId(careGroupId, userId);
-        return list.isEmpty() ? Optional.empty() : Optional.of(list.get(0));
+        // A user can have an old REVOKED/EXPIRED invite alongside a later ACCEPTED
+        // membership. Authorization must always resolve the active membership first.
+        return list.stream()
+                .filter(member -> member.getInviteStatus() == InviteStatus.ACCEPTED
+                        && (member.getInviteExpiresAt() == null
+                        || !member.getInviteExpiresAt().isBefore(Instant.now())))
+                .findFirst()
+                .or(() -> list.stream().findFirst());
     }
 
     /**

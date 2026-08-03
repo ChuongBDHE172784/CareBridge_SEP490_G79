@@ -20,6 +20,8 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 
 @ExtendWith(MockitoExtension.class)
 class CareGroupAuthorizationPolicyTest {
@@ -149,5 +151,27 @@ class CareGroupAuthorizationPolicyTest {
         assertThat(policy.hasPermission(GROUP_ID, CALLER_ID, PermissionFlag.QUICK_NOTE_WEIGHT)).isTrue();
         assertThat(policy.hasPermission(GROUP_ID, CALLER_ID, PermissionFlag.BABY_VIEW)).isTrue();
         assertThat(policy.hasPermission(GROUP_ID, CALLER_ID, PermissionFlag.ALERTS)).isFalse();
+    }
+
+    @Test
+    void membershipLookup_prefersAcceptedMembershipOverOlderRevokedRow() {
+        CareGroupMember revoked = CareGroupTestFactory.makeCareGroupMember(m -> {
+            m.setCareGroupId(GROUP_ID);
+            m.setUserId(CALLER_ID);
+            m.setInviteStatus(InviteStatus.REVOKED);
+        });
+        CareGroupMember accepted = CareGroupTestFactory.makeCareGroupMember(m -> {
+            m.setCareGroupId(GROUP_ID);
+            m.setUserId(CALLER_ID);
+            m.setInviteStatus(InviteStatus.ACCEPTED);
+            m.setPermissionJson("{\"records\":true}");
+        });
+        CareGroupMemberRepository repository = mock(
+                CareGroupMemberRepository.class, CALLS_REAL_METHODS);
+        when(repository.findAllByCareGroupIdAndUserId(GROUP_ID, CALLER_ID))
+                .thenReturn(java.util.List.of(revoked, accepted));
+
+        assertThat(repository.findByCareGroupIdAndUserId(GROUP_ID, CALLER_ID))
+                .containsSame(accepted);
     }
 }

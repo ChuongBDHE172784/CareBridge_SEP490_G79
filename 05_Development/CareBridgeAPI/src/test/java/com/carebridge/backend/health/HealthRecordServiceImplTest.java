@@ -16,6 +16,9 @@ import com.carebridge.backend.health.entity.RecordType;
 import com.carebridge.backend.health.repository.HealthRecordFileRepository;
 import com.carebridge.backend.health.repository.HealthRecordRepository;
 import com.carebridge.backend.health.service.impl.HealthRecordServiceImpl;
+import com.carebridge.backend.family.repository.CareGroupMemberRepository;
+import com.carebridge.backend.family.repository.CareGroupRepository;
+import com.carebridge.backend.family.policy.CareGroupAuthorizationPolicy;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -41,6 +44,9 @@ class HealthRecordServiceImplTest {
     @Mock private UploadedFileRepository uploadedFileRepository;
     @Mock private IFileService fileService;
     @Mock private AuditService auditService;
+    @Mock private CareGroupRepository careGroupRepository;
+    @Mock private CareGroupMemberRepository careGroupMemberRepository;
+    @Mock private CareGroupAuthorizationPolicy careGroupAuthorizationPolicy;
     @InjectMocks private HealthRecordServiceImpl healthRecordService;
 
     private static final UUID CALLER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");

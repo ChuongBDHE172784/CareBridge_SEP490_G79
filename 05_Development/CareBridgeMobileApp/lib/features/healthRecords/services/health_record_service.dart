@@ -30,6 +30,7 @@ class HealthRecordService {
     RecordType? filter,
     String? journeyId,
     String? babyId,
+    String? careGroupId,
     int size = 100,
   }) async {
     final queryParams = <String, dynamic>{'size': size};
@@ -39,6 +40,9 @@ class HealthRecordService {
     }
     if (babyId != null && babyId.isNotEmpty) {
       queryParams['babyId'] = babyId;
+    }
+    if (careGroupId != null && careGroupId.isNotEmpty) {
+      queryParams['careGroupId'] = careGroupId;
     }
     final data = await apiGet(
       '/api/v1/health-records/timeline',
