@@ -98,21 +98,14 @@ class _CreateAppointmentReminderScreenState
     if (picked != null) setState(() => _endDate = picked);
   }
 
-  Future<void> _addTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: const TimeOfDay(hour: 8, minute: 0),
-    );
+  Future<void> _pickAppointmentTime() async {
+    final current = _times.isEmpty ? TimeOfDay.now() : _times.first;
+    final picked = await showTimePicker(context: context, initialTime: current);
     if (picked == null) return;
     setState(() {
-      if (!_times.any(
-        (t) => t.hour == picked.hour && t.minute == picked.minute,
-      )) {
-        _times.add(picked);
-        _times.sort(
-          (a, b) => (a.hour * 60 + a.minute).compareTo(b.hour * 60 + b.minute),
-        );
-      }
+      _times
+        ..clear()
+        ..add(picked);
     });
   }
 
@@ -125,7 +118,7 @@ class _CreateAppointmentReminderScreenState
       return;
     }
     if (_times.isEmpty) {
-      _showError('Vui lòng thêm ít nhất một giờ nhắc.');
+      _showError('Vui lòng chọn giờ hẹn.');
       return;
     }
 
@@ -145,7 +138,7 @@ class _CreateAppointmentReminderScreenState
 
     final minimum = DateTime.now().add(const Duration(minutes: 5));
     if (scheduledTimes.any((time) => time.isBefore(minimum))) {
-      _showError('Giờ nhắc phải sau hiện tại ít nhất 5 phút.');
+      _showError('Giờ hẹn phải sau hiện tại ít nhất 5 phút.');
       return;
     }
 
@@ -246,18 +239,20 @@ class _CreateAppointmentReminderScreenState
             ),
           ),
           const SizedBox(height: 14),
-          _DateButton(
-            label: 'Ngay hen',
-            value: _formatDate(_startDate),
-            onTap: _pickStartDate,
-          ),
-          const SizedBox(height: 14),
           _Section(
             child: TextField(
               controller: _locationController,
               minLines: 2,
               maxLines: 4,
               decoration: _inputDecoration('Địa điểm hoặc phòng khám'),
+            ),
+          ),
+          const SizedBox(height: 14),
+          _Section(
+            child: _DateButton(
+              label: 'Ngày hẹn',
+              value: _formatDate(_startDate),
+              onTap: _pickStartDate,
             ),
           ),
           const SizedBox(height: 14),
@@ -311,7 +306,7 @@ class _CreateAppointmentReminderScreenState
                   children: [
                     const Expanded(
                       child: Text(
-                        'Giờ nhắc',
+                        'Giờ hẹn',
                         style: TextStyle(
                           fontFamily: 'Lexend',
                           fontWeight: FontWeight.w800,
@@ -319,14 +314,12 @@ class _CreateAppointmentReminderScreenState
                         ),
                       ),
                     ),
-                    if (_showLegacyForm)
-                      IconButton(
-                        onPressed: _saving ? null : _addTime,
-                        icon: const Icon(
-                          Icons.add_alarm_rounded,
-                          color: _primary,
-                        ),
-                      ),
+                    TextButton.icon(
+                      key: const Key('appointment-time-picker'),
+                      onPressed: _saving ? null : _pickAppointmentTime,
+                      icon: const Icon(Icons.schedule_rounded, color: _primary),
+                      label: const Text('Chọn giờ'),
+                    ),
                   ],
                 ),
                 Wrap(
@@ -340,6 +333,15 @@ class _CreateAppointmentReminderScreenState
                         ),
                       )
                       .toList(),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  'Lịch hẹn chỉ có một giờ. Muốn đặt nhiều giờ lặp lại, hãy dùng Lịch nhắc.',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 12,
+                    color: _onSurfaceVariant,
+                  ),
                 ),
               ],
             ),

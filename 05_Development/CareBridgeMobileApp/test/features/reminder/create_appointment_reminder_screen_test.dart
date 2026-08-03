@@ -36,4 +36,14 @@ void main() {
         '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}';
     expect(find.text(expected), findsOneWidget);
   });
+
+  testWidgets('offers a single appointment time picker', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(home: CreateAppointmentReminderScreen()),
+    );
+
+    expect(find.text('Giờ hẹn'), findsOneWidget);
+    expect(find.byKey(const Key('appointment-time-picker')), findsOneWidget);
+    expect(find.text('Chọn giờ'), findsOneWidget);
+  });
 }
