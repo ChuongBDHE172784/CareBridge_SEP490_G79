@@ -86,6 +86,8 @@ public class TriageService implements ITriageService {
             "assistantProvider",
             "assistantFallbackUsed",
             "conversationSummary",
+            "intent",
+            "askedQuestionKeys",
             "ragQueryText");
 
     private final IIntakeSessionRepository intakeSessionRepository;
@@ -440,6 +442,7 @@ public class TriageService implements ITriageService {
         }
         TriageStage stage = requireCanonicalSessionStage(session);
         ensurePostpartumEligible(stage, userId);
+        validateContinuationStage(request.getCurrentIntake(), stage);
 
         Map<String, Object> previous = readJsonObject(session.getRawAiResponse());
         Map<String, Object> normalizedAnswers = coerceConversationAnswers(request.getNewAnswers());
@@ -450,6 +453,7 @@ public class TriageService implements ITriageService {
                 stage, session.getBabyProfileId(), session.getMotherProfileId()));
         canonical.put("messages", List.of());
         canonical.put("newAnswers", normalizedAnswers);
+        canonical.put("askedQuestionKeys", previous.getOrDefault("askedQuestionKeys", List.of()));
         canonical.put("round", number(previous.get("round"), 1));
         canonical.put("stage", stage.name());
 
@@ -468,7 +472,10 @@ public class TriageService implements ITriageService {
         }
 
         java.util.Set<String> allowedQuestionKeys = outstandingQuestionKeys(previous);
-        normalizedAnswers.entrySet().removeIf(entry -> !allowedQuestionKeys.contains(entry.getKey()));
+        if (normalizedAnswers.keySet().stream().anyMatch(key -> !allowedQuestionKeys.contains(key))) {
+            throw new TriageException(HttpStatus.BAD_REQUEST, "TRIAGE-010",
+                    "newAnswers must contain only currently requested questions");
+        }
         if (normalizedAnswers.isEmpty()) {
             throw new TriageException(HttpStatus.BAD_REQUEST, "TRIAGE-010",
                     "newAnswers must answer a currently requested question");
@@ -773,12 +780,17 @@ public class TriageService implements ITriageService {
                 && session.getContinuationExpiresAt().isAfter(Instant.now());
     }
 
-    /**
-     * Sessions created before the multi-stage migration have no persisted stage.
-     * They are pediatric sessions, so preserve the legacy contract as INFANT.
-     */
     private TriageStage sessionStage(IntakeSession session) {
+        // Sessions created before the multi-stage migration are pediatric.
         return session.getStage() == null ? TriageStage.INFANT : session.getStage();
+    }
+
+    private TriageStage requireCanonicalSessionStage(IntakeSession session) {
+        if (session.getStage() == null) {
+            throw new TriageException(HttpStatus.CONFLICT, "TRIAGE-014",
+                    "Active intake session is missing its canonical triage stage");
+        }
+        return session.getStage();
     }
 
     private String snapshotRequest(RunIntakeRequest request) {
@@ -915,7 +927,7 @@ public class TriageService implements ITriageService {
     }
 
     private void persistConversationEnvelope(IntakeSession session, Map<String, Object> envelope, UUID userId) {
-        sanitizeEnvelope(envelope, requireCanonicalSessionStage(session));
+        sanitizeEnvelope(envelope, sessionStage(session));
         try {
             session.setRawAiResponse(objectMapper.writeValueAsString(envelope));
         } catch (JsonProcessingException exception) {
@@ -1367,17 +1379,21 @@ public class TriageService implements ITriageService {
     }
 
     private TriageStage resolveStage(TriageStage requested, Map<String, Object> currentIntake, UUID babyProfileId, UUID motherProfileId) {
-        if (requested != null) {
-            return requested;
-        }
         Object stageValue = currentIntake == null ? null : currentIntake.get("stage");
+        TriageStage nested = null;
         if (stageValue != null) {
             try {
-                return TriageStage.valueOf(String.valueOf(stageValue));
+                nested = TriageStage.valueOf(String.valueOf(stageValue));
             } catch (IllegalArgumentException ignored) {
                 throw new TriageException(HttpStatus.BAD_REQUEST, "TRIAGE-011", "Invalid triage stage");
             }
         }
+        if (requested != null && nested != null && requested != nested) {
+            throw new TriageException(HttpStatus.BAD_REQUEST, "TRIAGE-011",
+                    "Top-level and currentIntake stages must match");
+        }
+        if (requested != null) return requested;
+        if (nested != null) return nested;
         return motherProfileId != null && babyProfileId == null ? TriageStage.PREGNANCY : TriageStage.INFANT;
     }
 
@@ -1386,19 +1402,28 @@ public class TriageService implements ITriageService {
         TriageStage stage = resolveStage(requested, currentIntake, babyProfileId, motherProfileId);
         boolean hasIntakeStage = currentIntake != null && currentIntake.get("stage") != null;
         if (requested == null && !hasIntakeStage && babyProfileId == null && motherProfileId == null) {
-            // LEGACY: default INFANT when stage is absent. Observe triage_stage_legacy_default_total;
-            // reject this in the next API version after the Flutter stage selector is fully deployed and the metric is zero.
             triageStageLegacyDefaultMetrics.record(userId, false, false);
         }
         return stage;
     }
 
-    private TriageStage requireCanonicalSessionStage(IntakeSession session) {
-        if (session.getStage() == null) {
-            throw new TriageException(HttpStatus.CONFLICT, "TRIAGE-014",
-                    "Active intake session is missing its canonical triage stage");
+    private void validateContinuationStage(Map<String, Object> intake, TriageStage canonicalStage) {
+        Object value = intake == null ? null : intake.get("stage");
+        if (value == null) {
+            // The persisted stage is authoritative. Older clients did not echo it
+            // in currentIntake, so absence is tolerated; a supplied value may never
+            // override the active session's canonical context.
+            return;
         }
-        return session.getStage();
+        final TriageStage submitted;
+        try {
+            submitted = TriageStage.valueOf(String.valueOf(value));
+        } catch (IllegalArgumentException ignored) {
+            throw new TriageException(HttpStatus.BAD_REQUEST, "TRIAGE-011", "Invalid triage stage");
+        }
+        if (submitted != canonicalStage) {
+            throw new TriageException(HttpStatus.CONFLICT, "TRIAGE-016", "Intake context conflict");
+        }
     }
 
     private void ensurePostpartumEligible(TriageStage stage, UUID userId) {
@@ -1515,6 +1540,7 @@ public class TriageService implements ITriageService {
                 "duration",
                 "parentFreeText",
                 "symptomList",
+                "hydrationStatus",
                 "breathingStatus",
                 "consciousnessStatus",
                 "seizure",

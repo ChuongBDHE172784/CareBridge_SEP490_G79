@@ -21,6 +21,9 @@ class HealthContextItem(BaseModel):
 
 
 class ChildTriageRequest(BaseModel):
+    # Legacy direct callers remain pediatric by default. Conversation endpoints
+    # reconcile this nested value with the required caller context and reject a
+    # contradictory top-level stage instead of silently switching subjects.
     stage: TriageStage = "INFANT"
     babyProfileId: str | None = None
     motherProfileId: str | None = None
@@ -36,6 +39,7 @@ class ChildTriageRequest(BaseModel):
     rash: str | None = None
     seizure: bool | None = None
     dehydrationSigns: list[str] = Field(default_factory=list)
+    hydrationStatus: str | None = None
     parentFreeText: str | None = None
     # Additive (CB-TRIAGE-THMC-IMP-001): defaults keep every existing client valid.
     healthContext: list[HealthContextItem] = Field(default_factory=list, max_length=5)
@@ -163,21 +167,37 @@ class IntakeMessage(BaseModel):
     content: str
 
 
+IntentSubject = Literal["MOTHER", "CHILD"]
+IntentCareGoal = Literal["ASSESS_REPORTED_SYMPTOM", "CLARIFY_SYMPTOM"]
+
+
+class TriageIntent(BaseModel):
+    """Bounded fact-selection hint; never a risk or routing authority."""
+
+    model_config = ConfigDict(extra="forbid")
+    subject: IntentSubject
+    careGoal: IntentCareGoal
+    symptomFamilies: list[str] = Field(default_factory=list, max_length=8)
+    knownFacts: list[str] = Field(default_factory=list, max_length=24)
+    confidence: float = Field(ge=0, le=1)
+
+
 class IntakeStartRequest(BaseModel):
     intakeSessionId: str | None = None
     initialText: str | None = None
+    stage: TriageStage | None = None
     currentIntake: ChildTriageRequest = Field(default_factory=ChildTriageRequest)
     # Additive (CB-TRIAGE-THMC-IMP-001): defaults keep every existing client valid.
     healthContext: list[HealthContextItem] = Field(default_factory=list, max_length=5)
 
-
 class IntakeContinueRequest(BaseModel):
     intakeSessionId: str
+    stage: TriageStage | None = None
     currentIntake: ChildTriageRequest = Field(default_factory=ChildTriageRequest)
     messages: list[IntakeMessage] = Field(default_factory=list)
     newAnswers: dict[str, object] = Field(default_factory=dict)
+    askedQuestionKeys: list[str] = Field(default_factory=list, max_length=36)
     round: int = Field(default=1, ge=1, le=3)
-
 
 class IntakeFlowResponse(BaseModel):
     status: IntakeFlowStatus
@@ -192,6 +212,8 @@ class IntakeFlowResponse(BaseModel):
     assistantProvider: Literal["GEMINI", "DETERMINISTIC_FALLBACK"] = "DETERMINISTIC_FALLBACK"
     assistantFallbackUsed: bool = True
     conversationSummary: str | None = None
+    intent: TriageIntent | None = None
+    askedQuestionKeys: list[str] = Field(default_factory=list, max_length=36)
 
 
 class GeminiNormalizedSymptomItem(BaseModel):
