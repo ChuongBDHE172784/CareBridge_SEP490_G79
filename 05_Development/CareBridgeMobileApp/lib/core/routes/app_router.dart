@@ -21,6 +21,7 @@ import '../../features/healthRecords/screens/maternal_health_metric_screen.dart'
 import '../../features/healthRecords/screens/health_record_timeline_screen.dart';
 import '../../features/healthRecords/screens/add_health_record_screen.dart';
 import '../../features/healthRecords/screens/add_maternal_health_metric_screen.dart';
+import '../../features/healthRecords/screens/hydration_tracker_screen.dart';
 import '../../features/healthRecords/screens/fetal_movement_tracker_screen.dart';
 import '../../features/healthRecords/screens/edit_health_metric_screen.dart';
 import '../../features/healthRecords/screens/postpartum_log_list_screen.dart';
@@ -455,6 +456,9 @@ final GoRouter appRouter = GoRouter(
             metricType == 'FETAL_MOVEMENT_COUNT' ||
             metricType == 'FETAL_MOVEMENT') {
           return FetalMovementTrackerScreen(journeyId: journeyId);
+        }
+        if (metricType == 'HYDRATION') {
+          return HydrationTrackerScreen(journeyId: journeyId);
         }
         return AddMaternalHealthMetricScreen(
           journeyId: journeyId,

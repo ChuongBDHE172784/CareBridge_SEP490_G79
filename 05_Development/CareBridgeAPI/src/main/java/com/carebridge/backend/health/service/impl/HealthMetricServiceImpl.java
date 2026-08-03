@@ -293,6 +293,8 @@ public class HealthMetricServiceImpl implements IHealthMetricService {
             case "BLOOD_PRESSURE" -> MetricType.BLOOD_PRESSURE;
             case "BLOOD_GLUCOSE" -> MetricType.BLOOD_GLUCOSE;
             case "FETAL_MOVEMENT_SESSION" -> MetricType.FETAL_MOVEMENT_SESSION;
+            case "HYDRATION" -> MetricType.HYDRATION;
+            case "EPDS_SCORE" -> MetricType.EPDS_SCORE;
             default -> throw new BusinessException(HttpStatus.BAD_REQUEST, "METRIC-030", "Unsupported metric type");
         };
     }

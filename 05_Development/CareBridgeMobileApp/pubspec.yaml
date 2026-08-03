@@ -61,7 +61,7 @@ dependencies:
   file_saver: ^0.3.1
   flutter_html: ^3.0.0
   universal_io: ^2.3.1
-  trackasia_gl: 2.0.1
+  trackasia_gl: ^2.0.3
   flutter_tts: 4.2.5
 dependency_overrides:
   # Official 2.0.1 source with its platform-view registration migrated to
