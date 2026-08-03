@@ -125,4 +125,60 @@ void main() {
 
     expect(gateway.stops, 1);
   });
+
+  test('does not start on an unsupported platform', () async {
+    final gateway = _FakeForegroundGateway();
+    final coordinator = SafetyForegroundServiceCoordinator.forTesting(
+      gateway: gateway,
+      isAuthenticated: () => true,
+      loadConfig: () async => enabledConfig,
+      loadConsents: () async => [consent('SENSOR_DATA', 'CREATE')],
+      platformSupported: false,
+    );
+
+    expect(coordinator.isSupported, isFalse);
+    expect(await coordinator.requestRequiredPermissions(), isFalse);
+    await coordinator.reconcile();
+
+    expect(gateway.starts, isZero);
+    expect(coordinator.isRunning, isFalse);
+  });
+
+  test('supported non-Android platforms skip Android permissions', () async {
+    var androidPermissionRequests = 0;
+    final coordinator = SafetyForegroundServiceCoordinator.forTesting(
+      gateway: _FakeForegroundGateway(),
+      isAuthenticated: () => true,
+      loadConfig: () async => enabledConfig,
+      loadConsents: () async => [consent('SENSOR_DATA', 'CREATE')],
+      platformAndroid: false,
+      requestAndroidPermissions: () async {
+        androidPermissionRequests++;
+        return false;
+      },
+    );
+
+    expect(await coordinator.requestRequiredPermissions(), isTrue);
+    expect(androidPermissionRequests, isZero);
+  });
+
+  test(
+    'Android retains notification and battery permission handling',
+    () async {
+      var androidPermissionRequests = 0;
+      final coordinator = SafetyForegroundServiceCoordinator.forTesting(
+        gateway: _FakeForegroundGateway(),
+        isAuthenticated: () => true,
+        loadConfig: () async => enabledConfig,
+        loadConsents: () async => [consent('SENSOR_DATA', 'CREATE')],
+        requestAndroidPermissions: () async {
+          androidPermissionRequests++;
+          return true;
+        },
+      );
+
+      expect(await coordinator.requestRequiredPermissions(), isTrue);
+      expect(androidPermissionRequests, 1);
+    },
+  );
 }

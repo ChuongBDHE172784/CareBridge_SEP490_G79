@@ -13,6 +13,7 @@ import 'safety_service.dart';
 
 typedef SafetyConfigLoader = Future<SafetyConfig> Function();
 typedef SafetyConsentLoader = Future<List<ConsentGrant>> Function();
+typedef SafetyPermissionRequester = Future<bool> Function();
 
 abstract class SafetyForegroundGateway {
   Future<bool> isRunning();
@@ -29,23 +30,32 @@ class SafetyForegroundServiceCoordinator {
     required SafetyConfigLoader loadConfig,
     required SafetyConsentLoader loadConsents,
     required bool Function() platformSupported,
+    required bool Function() platformAndroid,
+    required SafetyPermissionRequester requestAndroidPermissions,
   }) : _gateway = gateway,
        _isAuthenticated = isAuthenticated,
        _loadConfig = loadConfig,
        _loadConsents = loadConsents,
-       _platformSupported = platformSupported;
+       _platformSupported = platformSupported,
+       _platformAndroid = platformAndroid,
+       _requestAndroidPermissions = requestAndroidPermissions;
 
   factory SafetyForegroundServiceCoordinator.forTesting({
     required SafetyForegroundGateway gateway,
     required bool Function() isAuthenticated,
     required SafetyConfigLoader loadConfig,
     required SafetyConsentLoader loadConsents,
+    bool platformSupported = true,
+    bool platformAndroid = true,
+    SafetyPermissionRequester? requestAndroidPermissions,
   }) => SafetyForegroundServiceCoordinator._(
     gateway: gateway,
     isAuthenticated: isAuthenticated,
     loadConfig: loadConfig,
     loadConsents: loadConsents,
-    platformSupported: () => true,
+    platformSupported: () => platformSupported,
+    platformAndroid: () => platformAndroid,
+    requestAndroidPermissions: requestAndroidPermissions ?? () async => true,
   );
 
   static final SafetyForegroundServiceCoordinator instance =
@@ -54,7 +64,10 @@ class SafetyForegroundServiceCoordinator {
         isAuthenticated: () => AuthState.instance.isAuthenticated,
         loadConfig: SafetyService().getConfig,
         loadConsents: PrivacyService.instance.listConsents,
-        platformSupported: () => !kIsWeb && Platform.isAndroid,
+        platformSupported: () =>
+            !kIsWeb && (Platform.isAndroid || Platform.isIOS),
+        platformAndroid: () => !kIsWeb && Platform.isAndroid,
+        requestAndroidPermissions: _requestAndroidForegroundPermissions,
       );
 
   final SafetyForegroundGateway _gateway;
@@ -62,6 +75,8 @@ class SafetyForegroundServiceCoordinator {
   final SafetyConfigLoader _loadConfig;
   final SafetyConsentLoader _loadConsents;
   final bool Function() _platformSupported;
+  final bool Function() _platformAndroid;
+  final SafetyPermissionRequester _requestAndroidPermissions;
   final StreamController<SafetyEvent> _eventController =
       StreamController<SafetyEvent>.broadcast();
 
@@ -159,16 +174,8 @@ class SafetyForegroundServiceCoordinator {
 
   Future<bool> requestRequiredPermissions() async {
     if (!_platformSupported()) return false;
-    var notificationPermission =
-        await FlutterForegroundTask.checkNotificationPermission();
-    if (notificationPermission != NotificationPermission.granted) {
-      notificationPermission =
-          await FlutterForegroundTask.requestNotificationPermission();
-    }
-    if (!await FlutterForegroundTask.isIgnoringBatteryOptimizations) {
-      await FlutterForegroundTask.requestIgnoreBatteryOptimization();
-    }
-    return notificationPermission == NotificationPermission.granted;
+    if (!_platformAndroid()) return true;
+    return _requestAndroidPermissions();
   }
 
   Future<void> stop() => _stopIfRunning();
@@ -201,6 +208,19 @@ class SafetyForegroundServiceCoordinator {
   }
 
   void _onAuthStateChanged() => unawaited(reconcile());
+}
+
+Future<bool> _requestAndroidForegroundPermissions() async {
+  var notificationPermission =
+      await FlutterForegroundTask.checkNotificationPermission();
+  if (notificationPermission != NotificationPermission.granted) {
+    notificationPermission =
+        await FlutterForegroundTask.requestNotificationPermission();
+  }
+  if (!await FlutterForegroundTask.isIgnoringBatteryOptimizations) {
+    await FlutterForegroundTask.requestIgnoreBatteryOptimization();
+  }
+  return notificationPermission == NotificationPermission.granted;
 }
 
 class _FlutterSafetyForegroundGateway implements SafetyForegroundGateway {
