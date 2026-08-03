@@ -306,9 +306,7 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
       return widget.reminderLoader!();
     }
     try {
-      final upcoming = await ReminderService.instance.listUpcomingReminders();
-      if (upcoming.isNotEmpty) return upcoming;
-      return await ReminderService.instance.listTodayReminders();
+      return await ReminderService.instance.listAppointmentsOrThrow();
     } catch (_) {
       return _reminders;
     }
@@ -789,7 +787,7 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
     return GestureDetector(
       key: const Key('mother-home-next-appointment-card'),
       onTap: () async {
-        await context.push('/reminders/calendar');
+        await context.push('/appointments/calendar');
         if (mounted) await _load();
       },
       child: Container(
@@ -1004,6 +1002,13 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
           tooltip: 'Lịch sử checklist',
           onPressed: () => context.push('/checklists/history'),
           icon: const Icon(Icons.history_rounded),
+          color: _primary,
+        ),
+        IconButton(
+          key: const Key('mother-home-reminder-schedules-button'),
+          tooltip: 'Lich nhac',
+          onPressed: () => context.push('/reminder-schedules'),
+          icon: const Icon(Icons.alarm_rounded),
           color: _primary,
         ),
         if (_dashboard?.journeyId?.isNotEmpty ?? false) ...[

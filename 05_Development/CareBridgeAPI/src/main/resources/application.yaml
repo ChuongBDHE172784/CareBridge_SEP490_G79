@@ -154,6 +154,15 @@ carebridge:
     project-id: ${FIREBASE_PROJECT_ID:}
     service-account-id: ${FIREBASE_SERVICE_ACCOUNT_ID:}
   notification:
+    reminder-schedule:
+      # Enable the durable worker automatically when real FCM is enabled;
+      # override explicitly for staged/manual delivery verification.
+      enabled: ${REMINDER_SCHEDULE_NOTIFICATION_ENABLED:${CAREBRIDGE_FCM_ENABLED:false}}
+      worker-delay-ms: ${REMINDER_SCHEDULE_WORKER_DELAY_MS:15000}
+      batch-size: ${REMINDER_SCHEDULE_BATCH_SIZE:25}
+      max-attempts: ${REMINDER_SCHEDULE_MAX_ATTEMPTS:4}
+      stale-processing-minutes: ${REMINDER_SCHEDULE_STALE_MINUTES:10}
+      planner-cron: ${REMINDER_SCHEDULE_PLANNER_CRON:0 20 2 * * *}
     appointment:
       enabled: ${APPOINTMENT_NOTIFICATION_ENABLED:false}
       worker-delay-ms: ${APPOINTMENT_NOTIFICATION_WORKER_DELAY_MS:15000}

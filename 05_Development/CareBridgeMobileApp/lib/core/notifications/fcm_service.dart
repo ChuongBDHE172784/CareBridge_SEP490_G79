@@ -68,7 +68,23 @@ class FcmService {
         _uuidPattern.hasMatch(sessionId)) {
       return '/emergency/alert/${Uri.encodeComponent(sessionId)}';
     }
-    final reminderId = data['reminderId'];
+    final scheduleId = data['scheduleId'] ??
+        ((data['referenceType'] == 'REMINDER_SCHEDULE')
+            ? data['referenceId']
+            : null);
+    if ((data['type'] == 'REMINDER_SCHEDULE' ||
+            data['referenceType'] == 'REMINDER_SCHEDULE') &&
+        scheduleId is String &&
+        _uuidPattern.hasMatch(scheduleId)) {
+      return '/reminder-schedules/${Uri.encodeComponent(scheduleId)}';
+    }
+    final reminderId = data['reminderId'] ?? data['referenceId'];
+    if (data['type'] == 'REMINDER' &&
+        data['referenceType'] == 'APPOINTMENT' &&
+        reminderId is String &&
+        _uuidPattern.hasMatch(reminderId)) {
+      return '/appointments/detail/${Uri.encodeComponent(reminderId)}';
+    }
     if (data['type'] == 'REMINDER' &&
         reminderId is String &&
         _uuidPattern.hasMatch(reminderId)) {

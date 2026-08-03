@@ -7,11 +7,13 @@ import '../widgets/appointment_notification_timing_editor.dart';
 class UpdateSnoozeReminderScreen extends StatefulWidget {
   final String reminderId;
   final Reminder? initialReminder;
+  final bool appointmentResource;
 
   const UpdateSnoozeReminderScreen({
     super.key,
     required this.reminderId,
     this.initialReminder,
+    this.appointmentResource = false,
   });
 
   @override
@@ -60,7 +62,9 @@ class _UpdateSnoozeReminderScreenState
   Future<void> _load() async {
     if (_reminder == null) setState(() => _loading = true);
     try {
-      final reminder = await _service.getReminderDetail(widget.reminderId);
+      final reminder = widget.appointmentResource
+          ? await _service.getAppointmentDetail(widget.reminderId)
+          : await _service.getReminderDetail(widget.reminderId);
       if (!mounted) return;
       setState(() {
         _reminder = reminder;
@@ -152,6 +156,12 @@ class _UpdateSnoozeReminderScreenState
 
     setState(() => _processing = true);
     try {
+      if (widget.appointmentResource) {
+        await _service.deleteAppointment(widget.reminderId);
+        if (!mounted) return;
+        Navigator.pop(context, 'deleted');
+        return;
+      }
       await _service.deleteReminder(widget.reminderId);
       final reminder = await _service.getReminderDetail(widget.reminderId);
       if (!mounted) return;
@@ -357,21 +367,36 @@ class _UpdateSnoozeReminderScreenState
       );
     }
 
-    await _run(
-      () => _service.updateReminder(
-        widget.reminderId,
-        title: titleChanged ? _titleController.text.trim() : null,
-        scheduledAt: dateChanged ? _startDate!.toUtc() : null,
-        recurrenceType: recurrenceChanged ? _recurrence : null,
-        recurrenceEndDate: endDateChanged ? _endDate?.toUtc() : null,
-        recurrenceEndDateSet: endDateChanged,
-        notificationOffsetsMinutes: notificationOffsetsChanged
-            ? _notificationOffsets
-            : null,
-        notificationOffsetsMinutesSet: notificationOffsetsChanged,
-        timeZone: notificationOffsetsChanged ? _reminder!.timeZone : null,
-      ),
-    );
+    if (widget.appointmentResource) {
+      await _run(
+        () => _service.updateAppointment(
+          widget.reminderId,
+          title: titleChanged ? _titleController.text.trim() : null,
+          scheduledAt: dateChanged ? _startDate!.toUtc() : null,
+          notificationOffsetsMinutes: notificationOffsetsChanged
+              ? _notificationOffsets
+              : null,
+          notificationOffsetsMinutesSet: notificationOffsetsChanged,
+          timeZone: notificationOffsetsChanged ? _reminder!.timeZone : null,
+        ),
+      );
+    } else {
+      await _run(
+        () => _service.updateReminder(
+          widget.reminderId,
+          title: titleChanged ? _titleController.text.trim() : null,
+          scheduledAt: dateChanged ? _startDate!.toUtc() : null,
+          recurrenceType: recurrenceChanged ? _recurrence : null,
+          recurrenceEndDate: endDateChanged ? _endDate?.toUtc() : null,
+          recurrenceEndDateSet: endDateChanged,
+          notificationOffsetsMinutes: notificationOffsetsChanged
+              ? _notificationOffsets
+              : null,
+          notificationOffsetsMinutesSet: notificationOffsetsChanged,
+          timeZone: notificationOffsetsChanged ? _reminder!.timeZone : null,
+        ),
+      );
+    }
     if (mounted) Navigator.pop(context, true);
   }
 
@@ -575,8 +600,9 @@ class _UpdateSnoozeReminderScreenState
                 ),
               ),
 
-              const SizedBox(height: 16),
-              const Text(
+              if (!widget.appointmentResource) ...[
+                const SizedBox(height: 16),
+                const Text(
                 'Ngày kết thúc',
                 style: TextStyle(
                   fontFamily: 'Lexend',
@@ -629,8 +655,8 @@ class _UpdateSnoozeReminderScreenState
                 ],
               ),
 
-              const SizedBox(height: 16),
-              const Text(
+                const SizedBox(height: 16),
+                const Text(
                 'Lặp lại',
                 style: TextStyle(
                   fontFamily: 'Lexend',
@@ -639,7 +665,7 @@ class _UpdateSnoozeReminderScreenState
                 ),
               ),
               const SizedBox(height: 4),
-              Container(
+                Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 4,
@@ -677,7 +703,8 @@ class _UpdateSnoozeReminderScreenState
                         .toList(),
                   ),
                 ),
-              ),
+                ),
+              ],
               if (reminder.reminderType == ReminderType.appointment) ...[
                 const SizedBox(height: 20),
                 AppointmentNotificationTimingEditor(

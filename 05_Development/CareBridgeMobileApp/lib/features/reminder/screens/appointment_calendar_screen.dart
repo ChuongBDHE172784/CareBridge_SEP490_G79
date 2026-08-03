@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../models/reminder_model.dart';
+import '../models/appointment_model.dart';
 import '../services/reminder_service.dart';
 
 class AppointmentCalendarScreen extends StatefulWidget {
@@ -34,7 +35,7 @@ class _AppointmentCalendarScreenState extends State<AppointmentCalendarScreen>
   static const _error = Color(0xFFBA1A1A);
 
   final _service = ReminderService.instance;
-  List<Reminder> _appointments = const [];
+  List<Appointment> _appointments = const [];
   late DateTime _visibleMonth;
   DateTime? _selectedDate;
   bool _loading = true;
@@ -77,7 +78,7 @@ class _AppointmentCalendarScreenState extends State<AppointmentCalendarScreen>
     try {
       final reminders =
           await (widget.reminderLoader?.call() ??
-              _service.listAllRemindersOrThrow());
+              _service.listAppointmentsOrThrow());
       final appointments =
           reminders
               .where(
@@ -85,6 +86,7 @@ class _AppointmentCalendarScreenState extends State<AppointmentCalendarScreen>
                     reminder.reminderType == ReminderType.appointment &&
                     reminder.status != ReminderStatus.cancelled,
               )
+              .map(Appointment.fromReminder)
               .toList()
             ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
       if (!mounted || generation != _loadGeneration) return;
@@ -176,10 +178,12 @@ class _AppointmentCalendarScreenState extends State<AppointmentCalendarScreen>
     switch (action.type) {
       case _CalendarActionType.add:
         result = await context.push(
-          '/reminders/add?date=${_routeDate(selected)}',
+          '/appointments/add?date=${_routeDate(selected)}',
         );
       case _CalendarActionType.detail:
-        result = await context.push('/reminders/detail/${action.reminderId}');
+        result = await context.push(
+          '/appointments/detail/${action.reminderId}',
+        );
     }
     if (!mounted) return;
     if (result == true || result == 'deleted') {

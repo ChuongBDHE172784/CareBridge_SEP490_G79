@@ -37,6 +37,14 @@ void main() {
     expect(route, '/reminders/detail/cccccccc-cccc-4ccc-8ccc-cccccccccccc');
   });
 
+  test('REMINDER_SCHEDULE type resolves to alarm schedule detail', () {
+    final route = FcmService.resolveTapRoute({
+      'type': 'REMINDER_SCHEDULE',
+      'scheduleId': 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+    });
+    expect(route, '/reminder-schedules/cccccccc-cccc-4ccc-8ccc-cccccccccccc');
+  });
+
   test('REMINDER type rejects a malformed reminder identifier', () {
     expect(
       FcmService.resolveTapRoute({
@@ -45,6 +53,15 @@ void main() {
       }),
       isNull,
     );
+  });
+
+  test('appointment reminder payload resolves to appointment detail', () {
+    final route = FcmService.resolveTapRoute({
+      'type': 'REMINDER',
+      'referenceType': 'APPOINTMENT',
+      'reminderId': 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+    });
+    expect(route, '/appointments/detail/dddddddd-dddd-4ddd-8ddd-dddddddddddd');
   });
 
   test('MESSAGE type without a conversationId resolves to no route', () {

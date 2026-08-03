@@ -9,6 +9,7 @@ import com.carebridge.backend.checklist.today.dto.TodayTaskItemResponse;
 import com.carebridge.backend.checklist.today.dto.TodayTaskSections;
 import com.carebridge.backend.checklist.today.dto.TodayTaskCandidate;
 import com.carebridge.backend.checklist.today.model.TaskTimeBucket;
+import com.carebridge.backend.checklist.today.model.TaskKind;
 import com.carebridge.backend.checklist.today.provider.TodayTaskProvider;
 import java.time.DateTimeException;
 import java.time.Clock;
@@ -21,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -93,13 +95,28 @@ public class UnifiedTodayTaskServiceImpl implements UnifiedTodayTaskService {
     @Override
     @Transactional
     public TodayTasksResponse getTodayTasks(UUID actorUserId, LocalDate date, String timezoneHeader) {
+        return getTodayTasks(actorUserId, date, timezoneHeader, null, true);
+    }
+
+    @Override
+    @Transactional
+    public TodayTasksResponse getTodayTasks(
+            UUID actorUserId, LocalDate date, String timezoneHeader, Set<TaskKind> kinds) {
+        return getTodayTasks(actorUserId, date, timezoneHeader, kinds, true);
+    }
+
+    @Override
+    @Transactional
+    public TodayTasksResponse getTodayTasks(
+            UUID actorUserId, LocalDate date, String timezoneHeader,
+            Set<TaskKind> kinds, boolean reconcile) {
         ZoneId zone = resolveZone(timezoneHeader);
         LocalDate effectiveDate = date == null ? LocalDate.ofInstant(clock.instant(), zone) : date;
         UUID correlationId = UUID.randomUUID();
-        if (ensureAssignments != null) {
+        if (reconcile && ensureAssignments != null) {
             ensureAssignments.ensureEligibleAssignments(actorUserId, effectiveDate, zone, correlationId);
         }
-        if (historyReconciliationService != null) {
+        if (reconcile && historyReconciliationService != null) {
             historyReconciliationService.reconcile(actorUserId, effectiveDate, zone, correlationId);
         }
         Instant dayStart = effectiveDate.atStartOfDay(zone).toInstant();
@@ -108,6 +125,7 @@ public class UnifiedTodayTaskServiceImpl implements UnifiedTodayTaskService {
 
         List<TodayTaskCandidate> candidates = new ArrayList<>();
         for (TodayTaskProvider provider : providers) {
+            if (kinds != null && !kinds.contains(provider.taskKind())) continue;
             candidates.addAll(provider.findAuthorizedTasks(actorUserId));
         }
         Map<TodayTaskContextLabelResolver.ContextKey, TodayTaskContextLabelResolver.Labels> labels =

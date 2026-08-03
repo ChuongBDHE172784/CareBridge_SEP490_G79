@@ -102,4 +102,14 @@ public interface NotificationRecordRepository extends JpaRepository<Notification
              LIMIT 1
             """, nativeQuery = true)
     Optional<NotificationRecord> findAppointmentMilestoneByJobId(@Param("jobId") UUID jobId);
+
+    @Query(value = """
+            SELECT *
+              FROM notification_records
+             WHERE type = 'REMINDER'
+               AND reference_type = 'REMINDER_SCHEDULE'
+               AND metadata ->> 'scheduleJobId' = CAST(:jobId AS text)
+             LIMIT 1
+            """, nativeQuery = true)
+    Optional<NotificationRecord> findReminderScheduleByJobId(@Param("jobId") UUID jobId);
 }

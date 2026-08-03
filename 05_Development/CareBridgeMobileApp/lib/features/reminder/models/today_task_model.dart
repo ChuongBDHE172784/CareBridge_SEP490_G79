@@ -323,7 +323,13 @@ class TodayTaskSections {
 
   static List<TodayTask> _tasks(dynamic value) => (value as List? ?? const [])
       .whereType<Map>()
-      .map((item) => TodayTask.fromJson(Map<String, dynamic>.from(item)))
+      .map((item) {
+        final json = Map<String, dynamic>.from(item);
+        if (!json.containsKey('taskKind') && !json.containsKey('sourceType')) {
+          json['taskKind'] = 'CHECKLIST';
+        }
+        return TodayTask.fromJson(json);
+      })
       .toList(growable: false);
 
   Iterable<TodayTask> get all sync* {

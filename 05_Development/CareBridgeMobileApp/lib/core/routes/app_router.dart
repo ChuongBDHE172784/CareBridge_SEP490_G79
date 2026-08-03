@@ -8,6 +8,8 @@ import '../../features/auth/screens/blocked_account_screen.dart';
 import '../../features/auth/screens/auth_landing_screen.dart';
 import '../../features/auth/screens/role_selection_screen.dart';
 import '../../features/checklist/screens/checklist_history_screen.dart';
+import '../../features/checklist/screens/checklist_detail_screen.dart';
+import '../../features/community/models/content_model.dart';
 import '../../features/home/screens/home_shell.dart';
 import '../../features/home/screens/expert_home_shell.dart';
 import '../../features/home/screens/family_member_home_screen.dart';
@@ -48,14 +50,15 @@ import '../../features/reminder/screens/create_appointment_reminder_screen.dart'
 import '../../features/reminder/screens/create_medication_reminder_screen.dart';
 import '../../features/reminder/screens/create_vaccination_reminder_screen.dart';
 import '../../features/reminder/screens/update_snooze_reminder_screen.dart';
-import '../../features/reminder/screens/all_reminders_screen.dart';
 import '../../features/reminder/screens/appointment_calendar_screen.dart';
+import '../../features/reminder/screens/reminder_schedules_screen.dart';
 import '../../features/reminder/models/reminder_model.dart';
 
 import '../../features/fileManager/screens/file_viewer_screen.dart';
 import '../../features/fileManager/screens/shared_file_viewer_screen.dart';
 
 import '../../features/reminder/screens/reminder_detail_screen.dart';
+import '../../features/reminder/screens/all_reminders_screen.dart';
 import '../../features/familySync/screens/care_groups_screen.dart';
 import '../../features/familySync/screens/care_group_members_screen.dart';
 import '../../features/baby/screens/baby_profiles_screen.dart';
@@ -319,6 +322,33 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const ChecklistHistoryScreen(),
     ),
     GoRoute(
+      path: '/checklists/detail',
+      builder: (context, state) {
+        final extraMap =
+            state.extra is Map<String, dynamic>
+                ? state.extra as Map<String, dynamic>
+                : <String, dynamic>{};
+        final template = extraMap['template'] as ChecklistTemplate?;
+        if (template == null) {
+          return const Scaffold(
+            body: Center(
+              child: Text(
+                'Không tìm thấy thông tin checklist',
+                style: TextStyle(fontFamily: 'Lexend'),
+              ),
+            ),
+          );
+        }
+        return ChecklistDetailScreen(
+          template: template,
+          importedItemIds:
+              (extraMap['importedItemIds'] as Set<String>?) ?? const {},
+          journeyId: extraMap['journeyId'] as String?,
+          isLifecycleMode: extraMap['isLifecycleMode'] as bool? ?? false,
+        );
+      },
+    ),
+    GoRoute(
       path: '/journey-onboarding',
       redirect: (context, state) => '/mother-stage-selection',
     ),
@@ -501,11 +531,30 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/reminders/all',
+      // Compatibility read for older deep links; canonical new entry is
+      // /reminder-schedules and appointments have their own calendar.
       builder: (context, state) => const AllRemindersScreen(),
     ),
     GoRoute(
       path: '/reminders/calendar',
       builder: (context, state) => const AppointmentCalendarScreen(),
+    ),
+    GoRoute(
+      path: '/appointments/calendar',
+      builder: (context, state) => const AppointmentCalendarScreen(),
+    ),
+    GoRoute(
+      path: '/reminder-schedules',
+      builder: (context, state) => const ReminderSchedulesScreen(),
+    ),
+    GoRoute(
+      path: '/reminder-schedules/:id',
+      builder: (context, state) {
+        final id = state.pathParameters['id'];
+        return _isUuid(id)
+            ? ReminderSchedulesScreen(scheduleId: id)
+            : const _InvalidRouteScreen();
+      },
     ),
     GoRoute(
       path: '/health-records/add',
@@ -531,10 +580,43 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(
+      path: '/appointments/add',
+      builder: (context, state) {
+        final rawDate = state.uri.queryParameters['date'];
+        final parsedDate = rawDate == null ? null : DateTime.tryParse(rawDate);
+        return CreateAppointmentReminderScreen(initialDate: parsedDate);
+      },
+    ),
+    GoRoute(
       path: '/reminders/detail/:id',
       builder: (context, state) {
         final id = state.pathParameters['id'] ?? '';
         return ReminderDetailScreen(reminderId: id);
+      },
+    ),
+    GoRoute(
+      path: '/appointments/detail/:id',
+      builder: (context, state) {
+        final id = state.pathParameters['id'];
+        return _isUuid(id)
+            ? ReminderDetailScreen(reminderId: id!, appointmentResource: true)
+            : const _InvalidRouteScreen();
+      },
+    ),
+    GoRoute(
+      path: '/appointments/:id/edit',
+      builder: (context, state) {
+        final id = state.pathParameters['id'];
+        final initialReminder = state.extra is Reminder
+            ? state.extra as Reminder
+            : null;
+        return _isUuid(id)
+            ? UpdateSnoozeReminderScreen(
+                reminderId: id!,
+                initialReminder: initialReminder,
+                appointmentResource: true,
+              )
+            : const _InvalidRouteScreen();
       },
     ),
     GoRoute(

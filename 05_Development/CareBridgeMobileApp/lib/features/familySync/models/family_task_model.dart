@@ -28,12 +28,15 @@ class FamilyTask {
   });
 
   factory FamilyTask.fromJson(Map<String, dynamic> json) {
+    final dueAt = DateTime.tryParse(json['dueAt'] as String? ?? '') ??
+        DateTime.fromMillisecondsSinceEpoch(0, isUtc: true);
+    final createdAt = DateTime.tryParse(json['createdAt'] as String? ?? '') ?? dueAt;
     return FamilyTask(
       taskId: json['careTaskId'] ?? '',
       groupId: json['careGroupId'] ?? '',
       title: json['title'] ?? '',
       description: json['description'] ?? '',
-      dueAt: DateTime.parse(json['dueAt']),
+      dueAt: dueAt,
       status: json['status'] ?? 'TODO',
       assignedTo: json['assignedTo'] ?? '',
       assignedToName: json['assignedToName'] ?? '',
@@ -42,7 +45,7 @@ class FamilyTask {
       completedAt: json['completedAt'] != null
           ? DateTime.parse(json['completedAt'])
           : null,
-      createdAt: DateTime.parse(json['createdAt']),
+      createdAt: createdAt,
     );
   }
 }

@@ -38,7 +38,7 @@ void main() {
 
       final result = await service.loadToday(date: DateTime(2026, 8, 3));
 
-      expect(capturedPath, '/api/v1/tasks/today');
+      expect(capturedPath, '/api/v1/checklists/current/tasks');
       expect(capturedQuery, {'date': '2026-08-03'});
       expect(result.zoneId, 'Asia/Ho_Chi_Minh');
     },
@@ -71,7 +71,7 @@ void main() {
         reason: TodayTaskSkipReason.userChoice,
       );
 
-      expect(calls[0].$1, '/api/v1/tasks/CHECKLIST/task-1/actions');
+      expect(calls[0].$1, '/api/v1/checklists/tasks/task-1/actions');
       expect(calls[0].$2, {
         'action': 'COMPLETE',
         'clientRequestId': 'client-1',

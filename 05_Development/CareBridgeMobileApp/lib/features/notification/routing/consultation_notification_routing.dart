@@ -15,8 +15,25 @@ String? resolveNotificationRoute(NotificationRecord notification) {
     return '/consultation-requests/${Uri.encodeComponent(referenceId)}';
   }
   final referenceType = notification.referenceType?.trim().toUpperCase();
-  if ((referenceType == 'APPOINTMENT' ||
-          notification.type.trim().toUpperCase() == 'REMINDER') &&
+  if (notification.type.trim().toUpperCase() == 'REMINDER' &&
+      referenceType == 'REMINDER_SCHEDULE' &&
+      referenceId != null &&
+      _uuidPattern.hasMatch(referenceId)) {
+    return '/reminder-schedules/${Uri.encodeComponent(referenceId)}';
+  }
+  final metadataScheduleId = notification.metadata?['scheduleId'];
+  if (notification.type.trim().toUpperCase() == 'REMINDER' &&
+      referenceType == 'REMINDER_SCHEDULE' &&
+      metadataScheduleId is String &&
+      _uuidPattern.hasMatch(metadataScheduleId)) {
+    return '/reminder-schedules/${Uri.encodeComponent(metadataScheduleId)}';
+  }
+  if (referenceType == 'APPOINTMENT' &&
+      referenceId != null &&
+      _uuidPattern.hasMatch(referenceId)) {
+    return '/appointments/detail/${Uri.encodeComponent(referenceId)}';
+  }
+  if (notification.type.trim().toUpperCase() == 'REMINDER' &&
       referenceId != null &&
       _uuidPattern.hasMatch(referenceId)) {
     return '/reminders/detail/${Uri.encodeComponent(referenceId)}';

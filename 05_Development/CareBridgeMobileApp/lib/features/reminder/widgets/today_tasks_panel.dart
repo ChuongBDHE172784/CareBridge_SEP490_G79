@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../checklist/services/user_checklist_service.dart';
-import '../models/reminder_model.dart';
 import '../models/today_task_model.dart';
 import '../services/today_task_service.dart';
 
@@ -157,13 +156,9 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
     if (_acting.contains(task.id)) return;
     setState(() => _acting.add(task.id));
     try {
-      await _service.performAction(
-        taskKind: task.kind,
+      await _service.performChecklistAction(
         taskId: task.id,
         action: action,
-        reason: action == TodayTaskAction.skip
-            ? TodayTaskSkipReason.userChoice
-            : null,
       );
       await _load();
       if (!mounted) return;
@@ -258,12 +253,13 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
 
   List<TodayTask> get _sourceGroupedTasks {
     if (_snapshot == null) return const [];
-    final tasks = _snapshot!.sections.all
-        .where((task) => task.type != ReminderType.appointment)
-        .toList();
+    final tasks = _snapshot!.sections.all.toList();
     tasks.sort(_compareNewestFirst);
     return tasks;
   }
+
+  List<TodayTask> _checklistOnly(List<TodayTask> tasks) =>
+      tasks.toList(growable: false);
 
   static int _compareNewestFirst(TodayTask left, TodayTask right) {
     final leftTime = left.dueAt ?? left.scheduledAt;
@@ -283,9 +279,12 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
     final sourceGroupedTasks = widget.layout == TodayTasksLayout.sourceGroups
         ? _sourceGroupedTasks
         : const <TodayTask>[];
+    final checklistCount = _snapshot == null
+        ? 0
+        : _checklistOnly(_snapshot!.sections.all.toList()).length;
     final hasVisibleTasks = widget.layout == TodayTasksLayout.sourceGroups
         ? sourceGroupedTasks.isNotEmpty
-        : (_snapshot?.totalCount ?? 0) > 0 || _snapshot?.sequence != null;
+        : checklistCount > 0 || _snapshot?.sequence != null;
 
     final systemTasks = sourceGroupedTasks
         .where((task) => task.origin == TodayTaskOrigin.systemTemplate)
@@ -402,7 +401,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
               _Section(
                 title: 'Quá hạn',
                 icon: Icons.error_outline_rounded,
-                tasks: _snapshot!.sections.overdue,
+                tasks: _checklistOnly(_snapshot!.sections.overdue),
                 acting: _acting,
                 onAction: _act,
                 onDelete: _delete,
@@ -411,7 +410,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
               _Section(
                 title: 'Hôm nay',
                 icon: Icons.wb_sunny_outlined,
-                tasks: _snapshot!.sections.today,
+                tasks: _checklistOnly(_snapshot!.sections.today),
                 acting: _acting,
                 onAction: _act,
                 onDelete: _delete,
@@ -420,7 +419,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
               _Section(
                 title: '7 ngày tới',
                 icon: Icons.date_range_rounded,
-                tasks: _snapshot!.sections.upcoming,
+                tasks: _checklistOnly(_snapshot!.sections.upcoming),
                 acting: _acting,
                 onAction: _act,
                 onDelete: _delete,
@@ -429,7 +428,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
               _Section(
                 title: 'Chưa xếp lịch',
                 icon: Icons.event_busy_rounded,
-                tasks: _snapshot!.sections.unscheduled,
+                tasks: _checklistOnly(_snapshot!.sections.unscheduled),
                 acting: _acting,
                 onAction: _act,
                 onDelete: _delete,
@@ -879,7 +878,7 @@ class _TodayTaskCard extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           key: Key('task-item-${task.id}'),
-          onTap: busy || tapAction == null ? null : () => onAction(tapAction!),
+          onTap: busy || tapAction == null ? null : () => onAction(tapAction),
           borderRadius: BorderRadius.circular(20),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),

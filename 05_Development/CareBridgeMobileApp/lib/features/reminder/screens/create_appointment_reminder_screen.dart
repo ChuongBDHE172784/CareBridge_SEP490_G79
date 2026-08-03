@@ -30,10 +30,16 @@ class _CreateAppointmentReminderScreenState
   final _locationController = TextEditingController();
   final List<TimeOfDay> _times = [];
   late DateTime _startDate;
+  // Retained only for compatibility with the legacy hidden form branch. The
+  // appointment UI does not render recurrence or end-date controls.
   DateTime? _endDate;
   RecurrenceType _recurrence = RecurrenceType.none;
   List<int> _notificationOffsets = AppointmentNotificationTiming.systemDefaults;
   bool _saving = false;
+
+  // Kept as a runtime compatibility switch so legacy recurrence fields are
+  // not rendered by the non-recurring appointment flow.
+  bool get _showLegacyForm => false;
 
   @override
   void initState() {
@@ -147,17 +153,12 @@ class _CreateAppointmentReminderScreenState
     try {
       final location = _locationController.text.trim();
       final reminderTitle = location.isEmpty ? title : '$title - $location';
-      var createdCount = 0;
-      for (final scheduledAt in scheduledTimes) {
-        await _service.createAppointmentReminder(
-          title: reminderTitle,
-          scheduledAt: scheduledAt,
-          recurrenceType: _recurrence,
-          recurrenceEndDate: _endDate,
-          notificationOffsetsMinutes: _notificationOffsets,
-        );
-        createdCount++;
-      }
+      await _service.createAppointmentReminder(
+        title: reminderTitle,
+        scheduledAt: scheduledTimes.first,
+        notificationOffsetsMinutes: _notificationOffsets,
+      );
+      const createdCount = 1;
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Đã tạo $createdCount nhắc lịch hẹn.')),
@@ -245,6 +246,12 @@ class _CreateAppointmentReminderScreenState
             ),
           ),
           const SizedBox(height: 14),
+          _DateButton(
+            label: 'Ngay hen',
+            value: _formatDate(_startDate),
+            onTap: _pickStartDate,
+          ),
+          const SizedBox(height: 14),
           _Section(
             child: TextField(
               controller: _locationController,
@@ -254,44 +261,47 @@ class _CreateAppointmentReminderScreenState
             ),
           ),
           const SizedBox(height: 14),
-          _Section(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                DropdownButtonFormField<RecurrenceType>(
-                  initialValue: _recurrence,
-                  decoration: _inputDecoration('Lặp lại'),
-                  items: RecurrenceType.values
-                      .map(
-                        (value) => DropdownMenuItem(
-                          value: value,
-                          child: Text(value.displayLabel),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: _saving
-                      ? null
-                      : (value) => setState(
-                          () => _recurrence = value ?? RecurrenceType.none,
-                        ),
-                ),
-                const SizedBox(height: 10),
-                _DateButton(
-                  label: 'Ngày bắt đầu',
-                  value: _formatDate(_startDate),
-                  onTap: _pickStartDate,
-                ),
-                const SizedBox(height: 10),
-                _DateButton(
-                  label: 'Ngày kết thúc',
-                  value: _endDate == null
-                      ? 'Không có ngày kết thúc'
-                      : _formatDate(_endDate!),
-                  onTap: _pickEndDate,
-                ),
-              ],
+          if (_showLegacyForm)
+            _Section(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (_showLegacyForm)
+                    DropdownButtonFormField<RecurrenceType>(
+                      initialValue: _recurrence,
+                      decoration: _inputDecoration('Lặp lại'),
+                      items: RecurrenceType.values
+                          .map(
+                            (value) => DropdownMenuItem(
+                              value: value,
+                              child: Text(value.displayLabel),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: _saving
+                          ? null
+                          : (value) => setState(
+                              () => _recurrence = value ?? RecurrenceType.none,
+                            ),
+                    ),
+                  const SizedBox(height: 10),
+                  if (_showLegacyForm)
+                    _DateButton(
+                      label: 'Ngày bắt đầu',
+                      value: _formatDate(_startDate),
+                      onTap: _pickStartDate,
+                    ),
+                  const SizedBox(height: 10),
+                  _DateButton(
+                    label: 'Ngày kết thúc',
+                    value: _endDate == null
+                        ? 'Không có ngày kết thúc'
+                        : _formatDate(_endDate!),
+                    onTap: _pickEndDate,
+                  ),
+                ],
+              ),
             ),
-          ),
           const SizedBox(height: 14),
           _Section(
             child: Column(
@@ -309,13 +319,14 @@ class _CreateAppointmentReminderScreenState
                         ),
                       ),
                     ),
-                    IconButton(
-                      onPressed: _saving ? null : _addTime,
-                      icon: const Icon(
-                        Icons.add_alarm_rounded,
-                        color: _primary,
+                    if (_showLegacyForm)
+                      IconButton(
+                        onPressed: _saving ? null : _addTime,
+                        icon: const Icon(
+                          Icons.add_alarm_rounded,
+                          color: _primary,
+                        ),
                       ),
-                    ),
                   ],
                 ),
                 Wrap(
@@ -325,9 +336,7 @@ class _CreateAppointmentReminderScreenState
                       .map(
                         (time) => InputChip(
                           label: Text(time.format(context)),
-                          onDeleted: _times.length == 1 || _saving
-                              ? null
-                              : () => setState(() => _times.remove(time)),
+                          onDeleted: null,
                         ),
                       )
                       .toList(),
