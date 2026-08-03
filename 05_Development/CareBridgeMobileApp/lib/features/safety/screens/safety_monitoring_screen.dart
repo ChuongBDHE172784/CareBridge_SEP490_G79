@@ -1,7 +1,10 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../models/imu_diagnostics_model.dart';
 import '../models/safety_config_model.dart';
+import '../services/imu_fall_detector.dart';
 import '../services/safety_foreground_service.dart';
 import '../services/safety_service.dart';
 import '../widgets/disable_fall_detection_sheet.dart';
@@ -10,6 +13,69 @@ import 'enable_fall_detection_screen.dart';
 import '../../emergency/screens/emergency_contacts_screen.dart';
 import '../../emergency/services/emergency_service.dart';
 import '../../emergency/models/emergency_session_model.dart';
+
+Future<void> dispatchSafetyCountdownResult({
+  required SafetyCountdownResult? result,
+  required bool simulated,
+  required Future<void> Function() onSafe,
+  required Future<void> Function(String? reasonCode, String? reason)
+  onFalsePositive,
+  required Future<void> Function() onEmergency,
+}) async {
+  if (simulated || result == null) return;
+  switch (result.action) {
+    case SafetyCountdownAction.safe:
+      await onSafe();
+    case SafetyCountdownAction.falsePositive:
+      await onFalsePositive(result.reasonCode, result.reason);
+    case SafetyCountdownAction.help:
+    case SafetyCountdownAction.timeout:
+      await onEmergency();
+  }
+}
+
+SafetyEvent? selectNextOpenSafetyEvent(
+  Iterable<SafetyEvent> events, {
+  required String excludingId,
+}) {
+  for (final event in events) {
+    if (event.status == 'OPEN' && event.id != excludingId) return event;
+  }
+  return null;
+}
+
+bool isSafeFallSimulationEligible({
+  required SafetyConfig? config,
+  required bool coordinatorRunning,
+  required ImuDiagnosticsSnapshot? diagnostics,
+  required DateTime now,
+}) =>
+    (config?.fallDetectionEnabled ?? false) &&
+    (config?.sensorPermissionGranted ?? false) &&
+    coordinatorRunning &&
+    diagnostics?.state == ImuSamplingState.sampling &&
+    diagnostics!.ageAt(now) <= const Duration(seconds: 2);
+
+class SafetyRealEventQueue {
+  final List<SafetyEvent> _events = [];
+
+  void enqueue(SafetyEvent event) {
+    if (event.status != 'OPEN' || _events.any((item) => item.id == event.id)) {
+      return;
+    }
+    _events.add(event);
+  }
+
+  void remove(String eventId) {
+    _events.removeWhere((event) => event.id == eventId);
+  }
+
+  SafetyEvent? takeNext({required String excludingId}) {
+    final index = _events.indexWhere((event) => event.id != excludingId);
+    if (index < 0) return null;
+    return _events.removeAt(index);
+  }
+}
 
 /// CB-023 — Safety Monitoring (UC-133..UC-141, UC-176)
 /// Hub screen for fall detection, SOS, and safety event history.
@@ -46,6 +112,9 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
   List<SafetyEvent> _events = const [];
   EmergencySession? _activeEmergency;
   StreamSubscription<SafetyEvent>? _detectedEventSubscription;
+  StreamSubscription<ImuDiagnosticsSnapshot>? _diagnosticsSubscription;
+  ImuDiagnosticsSnapshot? _imuDiagnostics;
+  final SafetyRealEventQueue _pendingRealEvents = SafetyRealEventQueue();
   String? _countdownEventId;
   bool _loading = true;
   // Local sensor-stream toggle backed by sensors_plus accelerometer/gyroscope
@@ -59,6 +128,13 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
     _detectedEventSubscription = _foregroundCoordinator.detectedEvents.listen(
       _onDetectedEvent,
     );
+    if (kDebugMode) {
+      _diagnosticsSubscription = _foregroundCoordinator.diagnostics.listen((
+        snapshot,
+      ) {
+        if (mounted) setState(() => _imuDiagnostics = snapshot);
+      });
+    }
     _load();
   }
 
@@ -66,6 +142,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _detectedEventSubscription?.cancel();
+    _diagnosticsSubscription?.cancel();
     super.dispose();
   }
 
@@ -118,13 +195,17 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
 
   void _onDetectedEvent(SafetyEvent event) {
     if (!mounted) return;
+    _pendingRealEvents.enqueue(event);
     setState(() {
       _events = [event, ..._events.where((item) => item.id != event.id)];
     });
     unawaited(_showCountdown(event));
   }
 
-  Future<void> _showCountdown(SafetyEvent event) async {
+  Future<void> _showCountdown(
+    SafetyEvent event, {
+    bool simulated = false,
+  }) async {
     final deadline = event.countdownDeadlineAt;
     if (!mounted ||
         event.status != 'OPEN' ||
@@ -133,27 +214,34 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
       return;
     }
     _countdownEventId = event.id;
+    if (!simulated) _pendingRealEvents.remove(event.id);
     final result = await showModalBottomSheet<SafetyCountdownResult>(
       context: context,
       isDismissible: false,
       enableDrag: false,
       isScrollControlled: true,
-      builder: (_) => SafetyCountdownSheet(event: event),
+      builder: (_) => SafetyCountdownSheet(event: event, simulated: simulated),
     );
     try {
-      if (result?.action == SafetyCountdownAction.safe) {
-        await _confirmEventSafe(
+      await dispatchSafetyCountdownResult(
+        result: result,
+        simulated: simulated,
+        onSafe: () => _confirmEventSafe(
           event,
           note: 'Người dùng xác nhận an toàn trong thời gian đếm ngược.',
+        ),
+        onFalsePositive: (reasonCode, reason) =>
+            _reportEventFalsePositive(event, note: '$reasonCode: $reason'),
+        onEmergency: () => _safetyService.sendEmergencyAlertForEvent(event.id),
+      );
+      if (simulated && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Đã kết thúc mô phỏng cục bộ. Không có cảnh báo hay dữ liệu nào được gửi.',
+            ),
+          ),
         );
-      } else if (result?.action == SafetyCountdownAction.falsePositive) {
-        await _reportEventFalsePositive(
-          event,
-          note: '${result?.reasonCode}: ${result?.reason}',
-        );
-      } else if (result?.action == SafetyCountdownAction.help ||
-          result?.action == SafetyCountdownAction.timeout) {
-        await _safetyService.sendEmergencyAlertForEvent(event.id);
       }
     } catch (error) {
       if (mounted) {
@@ -164,19 +252,70 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
         );
       }
     } finally {
-      if (mounted) await _load();
+      if (!simulated && mounted) await _load();
       _countdownEventId = null;
       if (mounted) {
-        SafetyEvent? next;
-        for (final candidate in _events) {
-          if (candidate.status == 'OPEN' && candidate.id != event.id) {
-            next = candidate;
-            break;
-          }
-        }
+        final next =
+            _pendingRealEvents.takeNext(excludingId: event.id) ??
+            selectNextOpenSafetyEvent(_events, excludingId: event.id);
         if (next != null) unawaited(_showCountdown(next));
       }
     }
+  }
+
+  Future<void> _runSafeSimulation() async {
+    if (!kDebugMode) return;
+    final eligible = isSafeFallSimulationEligible(
+      config: _config,
+      coordinatorRunning: _foregroundCoordinator.isRunning,
+      diagnostics: _imuDiagnostics,
+      now: DateTime.now().toUtc(),
+    );
+    if (!eligible || _countdownEventId != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Hãy bật phát hiện ngã, quyền cảm biến và dịch vụ IMU trước khi mô phỏng.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final detector = ImuFallDetector();
+    FallCandidate? candidate;
+    final startedAt = DateTime.now().toUtc();
+    for (final sample in ImuFallDetector.canonicalSimulationSamples(
+      startedAt,
+    )) {
+      candidate = detector.addSample(sample) ?? candidate;
+    }
+    if (candidate == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Mô phỏng bị bộ phát hiện từ chối: '
+              '${detector.latestDecision.reason.label}',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+
+    final event = SafetyEvent(
+      id: 'local-simulation-${startedAt.microsecondsSinceEpoch}',
+      eventType: 'SUSPECTED_FALL',
+      magnitude: candidate.impactSample.accelerationMagnitude,
+      status: 'OPEN',
+      detectedAt: startedAt,
+      countdownDeadlineAt: DateTime.now().toUtc().add(
+        Duration(seconds: (_config?.countdownSeconds ?? 30).clamp(1, 300)),
+      ),
+      notes: 'Local debug simulation; never persisted or transmitted.',
+    );
+    await _showCountdown(event, simulated: true);
   }
 
   Future<void> _confirmEventSafe(SafetyEvent event, {String? note}) async {
@@ -322,6 +461,10 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
                       ),
                       const SizedBox(height: 24),
                       _buildStatusCard(fallDetectionEnabled),
+                      if (kDebugMode) ...[
+                        const SizedBox(height: 16),
+                        _buildImuDiagnosticsCard(),
+                      ],
                       if (_activeEmergency != null) ...[
                         const SizedBox(height: 16),
                         _buildActiveEmergencyCard(),
@@ -489,6 +632,61 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
                 onChanged: _onFallDetectionToggle,
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImuDiagnosticsCard() {
+    final diagnostics = _imuDiagnostics;
+    final state =
+        diagnostics?.state ??
+        (_foregroundCoordinator.isRunning
+            ? ImuSamplingState.coordinatorRunning
+            : ImuSamplingState.stopped);
+    final age = diagnostics?.ageAt(DateTime.now().toUtc());
+    String metric(double? value, String suffix) =>
+        value == null ? '—' : '${value.toStringAsFixed(1)} $suffix';
+
+    return Container(
+      key: const Key('imu-diagnostics-card'),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _surfaceContainer,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _primaryContainer.withValues(alpha: 0.45)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'Chẩn đoán IMU · DEBUG',
+            style: TextStyle(fontWeight: FontWeight.w800, color: _primary),
+          ),
+          const SizedBox(height: 8),
+          Text(state.label, key: const Key('imu-sampling-state')),
+          const SizedBox(height: 6),
+          Text(
+            'Tần số: ${metric(diagnostics?.sampleRateHz, 'Hz')} · '
+            'Tuổi mẫu: ${age == null ? '—' : '${age.inMilliseconds} ms'}',
+          ),
+          Text(
+            'Gia tốc: ${metric(diagnostics?.accelerationMagnitude, 'm/s²')} · '
+            'Gyro: ${metric(diagnostics?.gyroscopeMagnitude, 'rad/s')}',
+          ),
+          Text(
+            'Pha: ${diagnostics?.detectorPhase.name ?? 'idle'} · '
+            '${diagnostics?.detectorReason.label ?? 'Chưa có quyết định'}',
+          ),
+          if (diagnostics?.errorMessage case final message?)
+            Text(message, style: const TextStyle(color: _onErrorContainer)),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            key: const Key('run-safe-fall-simulation'),
+            onPressed: _runSafeSimulation,
+            icon: const Icon(Icons.science_outlined),
+            label: const Text('Mô phỏng ngã an toàn'),
           ),
         ],
       ),

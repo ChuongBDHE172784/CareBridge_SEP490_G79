@@ -201,4 +201,28 @@ void main() {
     expect(find.byType(SimpleDialog), findsNothing);
     expect(feedback.stops, 1);
   });
+
+  testWidgets('simulation is unmistakable and does not start alert feedback', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SafetyCountdownSheet(
+            event: event,
+            simulated: true,
+            feedback: feedback,
+            now: () => now,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('MÔ PHỎNG AN TOÀN'), findsOneWidget);
+    expect(find.textContaining('không gửi cảnh báo'), findsOneWidget);
+    expect(feedback.starts, isZero);
+    await tester.pumpWidget(const SizedBox.shrink());
+    expect(feedback.stops, isZero);
+  });
 }

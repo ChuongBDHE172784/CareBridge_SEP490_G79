@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:untitled/features/privacy/models/privacy_model.dart';
 import 'package:untitled/features/safety/models/safety_config_model.dart';
+import 'package:untitled/features/safety/models/imu_diagnostics_model.dart';
 import 'package:untitled/features/safety/services/safety_foreground_service.dart';
 
 class _FakeForegroundGateway implements SafetyForegroundGateway {
@@ -179,6 +180,130 @@ void main() {
 
       expect(await coordinator.requestRequiredPermissions(), isTrue);
       expect(androidPermissionRequests, 1);
+    },
+  );
+
+  test('forwards valid diagnostics and ignores malformed payloads', () async {
+    final coordinator = SafetyForegroundServiceCoordinator.forTesting(
+      gateway: _FakeForegroundGateway(),
+      isAuthenticated: () => true,
+      loadConfig: () async => enabledConfig,
+      loadConsents: () async => [consent('SENSOR_DATA', 'CREATE')],
+    );
+    final snapshots = <ImuDiagnosticsSnapshot>[];
+    final subscription = coordinator.diagnostics.listen(snapshots.add);
+
+    coordinator.handleTaskDataForTesting({
+      'type': 'imu_diagnostics',
+      'snapshot': ImuDiagnosticsSnapshot.awaiting(
+        generation: 2,
+        capturedAt: DateTime.utc(2026, 8, 4),
+      ).toJson(),
+    });
+    coordinator.handleTaskDataForTesting({
+      'type': 'imu_diagnostics',
+      'snapshot': {'generation': 'bad'},
+    });
+    await Future<void>.delayed(Duration.zero);
+
+    expect(snapshots, hasLength(1));
+    expect(snapshots.single.state, ImuSamplingState.awaitingSamples);
+    await subscription.cancel();
+  });
+
+  test('ignores diagnostics from an older task generation', () async {
+    final coordinator = SafetyForegroundServiceCoordinator.forTesting(
+      gateway: _FakeForegroundGateway(),
+      isAuthenticated: () => true,
+      loadConfig: () async => enabledConfig,
+      loadConsents: () async => [consent('SENSOR_DATA', 'CREATE')],
+    );
+    final snapshots = <ImuDiagnosticsSnapshot>[];
+    final subscription = coordinator.diagnostics.listen(snapshots.add);
+    final capturedAt = DateTime.utc(2026, 8, 4);
+
+    coordinator.handleTaskDataForTesting({
+      'type': 'imu_diagnostics',
+      'snapshot': ImuDiagnosticsSnapshot.awaiting(
+        generation: 3,
+        capturedAt: capturedAt,
+      ).toJson(),
+    });
+    coordinator.handleTaskDataForTesting({
+      'type': 'imu_diagnostics',
+      'snapshot': ImuDiagnosticsSnapshot.stopped(
+        generation: 2,
+        capturedAt: capturedAt,
+      ).toJson(),
+    });
+    await Future<void>.delayed(Duration.zero);
+
+    expect(snapshots, hasLength(1));
+    expect(snapshots.single.generation, 3);
+    await subscription.cancel();
+  });
+
+  test('ignores reordered diagnostics within the same generation', () async {
+    final coordinator = SafetyForegroundServiceCoordinator.forTesting(
+      gateway: _FakeForegroundGateway(),
+      isAuthenticated: () => true,
+      loadConfig: () async => enabledConfig,
+      loadConsents: () async => [consent('SENSOR_DATA', 'CREATE')],
+    );
+    final snapshots = <ImuDiagnosticsSnapshot>[];
+    final subscription = coordinator.diagnostics.listen(snapshots.add);
+    final newer = DateTime.utc(2026, 8, 4, 10);
+
+    coordinator.handleTaskDataForTesting({
+      'type': 'imu_diagnostics',
+      'snapshot': ImuDiagnosticsSnapshot(
+        generation: 4,
+        state: ImuSamplingState.sampling,
+        capturedAt: newer,
+      ).toJson(),
+    });
+    coordinator.handleTaskDataForTesting({
+      'type': 'imu_diagnostics',
+      'snapshot': ImuDiagnosticsSnapshot(
+        generation: 4,
+        state: ImuSamplingState.error,
+        capturedAt: newer.subtract(const Duration(seconds: 1)),
+      ).toJson(),
+    });
+    await Future<void>.delayed(Duration.zero);
+
+    expect(snapshots, hasLength(1));
+    expect(snapshots.single.state, ImuSamplingState.sampling);
+    await subscription.cancel();
+  });
+
+  test(
+    'reconcile never overwrites fresh sampling with coordinator state',
+    () async {
+      final gateway = _FakeForegroundGateway()..running = true;
+      final coordinator = SafetyForegroundServiceCoordinator.forTesting(
+        gateway: gateway,
+        isAuthenticated: () => true,
+        loadConfig: () async => enabledConfig,
+        loadConsents: () async => [consent('SENSOR_DATA', 'CREATE')],
+      );
+      final snapshots = <ImuDiagnosticsSnapshot>[];
+      final subscription = coordinator.diagnostics.listen(snapshots.add);
+      coordinator.handleTaskDataForTesting({
+        'type': 'imu_diagnostics',
+        'snapshot': ImuDiagnosticsSnapshot(
+          generation: 5,
+          state: ImuSamplingState.sampling,
+          capturedAt: DateTime.now().toUtc(),
+        ).toJson(),
+      });
+
+      await coordinator.reconcile();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(snapshots, hasLength(1));
+      expect(snapshots.single.state, ImuSamplingState.sampling);
+      await subscription.cancel();
     },
   );
 }

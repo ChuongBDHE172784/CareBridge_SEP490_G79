@@ -67,12 +67,14 @@ class SafetyCountdownSheet extends StatefulWidget {
     required this.event,
     SafetyCountdownFeedback? feedback,
     DateTime Function()? now,
+    this.simulated = false,
   }) : feedback = feedback ?? SystemSafetyCountdownFeedback(),
        now = now ?? DateTime.now;
 
   final SafetyEvent event;
   final SafetyCountdownFeedback feedback;
   final DateTime Function() now;
+  final bool simulated;
 
   @override
   State<SafetyCountdownSheet> createState() => _SafetyCountdownSheetState();
@@ -106,7 +108,7 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
   @override
   void initState() {
     super.initState();
-    widget.feedback.start();
+    if (!widget.simulated) widget.feedback.start();
     _tick();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
   }
@@ -123,7 +125,7 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
     }
     final remainingSeconds =
         (remaining.inMicroseconds / Duration.microsecondsPerSecond).ceil();
-    widget.feedback.pulse(remainingSeconds);
+    if (!widget.simulated) widget.feedback.pulse(remainingSeconds);
     if (mounted) setState(() => _remainingSeconds = remainingSeconds);
   }
 
@@ -188,7 +190,7 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
   @override
   void dispose() {
     _timer?.cancel();
-    widget.feedback.stop();
+    if (!widget.simulated) widget.feedback.stop();
     super.dispose();
   }
 
@@ -200,21 +202,55 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (widget.simulated) ...[
+              Container(
+                key: const Key('safety-countdown-simulation-banner'),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFE9E3),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: const Text(
+                  'MÔ PHỎNG AN TOÀN',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF845143),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             const Icon(
               Icons.warning_amber_rounded,
               size: 52,
               color: Color(0xFFBA1A1A),
             ),
             const SizedBox(height: 12),
-            const Text(
-              'CareBridge ghi nhận dấu hiệu nghi ngờ ngã hoặc va chạm',
+            Text(
+              widget.simulated
+                  ? 'Kiểm thử luồng phát hiện ngã bằng dữ liệu mô phỏng'
+                  : 'CareBridge ghi nhận dấu hiệu nghi ngờ ngã hoặc va chạm',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
+            if (widget.simulated) ...[
+              const Text(
+                'Thao tác ở đây chỉ chạy trên thiết bị, không gửi cảnh báo, '
+                'không gọi SOS và không ghi lịch sử.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+            ],
             Text(
-              'Cảnh báo sẽ được chuyển sang hỗ trợ khẩn cấp sau '
-              '$_remainingSeconds giây nếu bạn không phản hồi.',
+              widget.simulated
+                  ? 'Mô phỏng sẽ tự kết thúc sau $_remainingSeconds giây.'
+                  : 'Cảnh báo sẽ được chuyển sang hỗ trợ khẩn cấp sau '
+                        '$_remainingSeconds giây nếu bạn không phản hồi.',
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),

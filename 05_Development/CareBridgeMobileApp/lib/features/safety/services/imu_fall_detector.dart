@@ -2,6 +2,33 @@ import 'dart:math';
 
 enum FallDetectionPhase { idle, freeFall, impact }
 
+enum ImuDetectorDecisionReason {
+  awaitingFreeFall,
+  freeFallDetected,
+  awaitingImpact,
+  impactWindowExpired,
+  jerkTooLow,
+  gyroscopeMissing,
+  gyroscopeStale,
+  impactDetected,
+  impactSettling,
+  sampleGap,
+  excessiveMovement,
+  awaitingImmobility,
+  insufficientStationarySamples,
+  accepted,
+  cooldown,
+  outOfOrder,
+  reset,
+}
+
+class ImuDetectorDecision {
+  const ImuDetectorDecision({required this.phase, required this.reason});
+
+  final FallDetectionPhase phase;
+  final ImuDetectorDecisionReason reason;
+}
+
 class ImuSample {
   const ImuSample({
     required this.accelerometerX,
@@ -77,20 +104,54 @@ class ImuFallDetector {
   var _stationaryPostImpactSamples = 0;
   DateTime? _lastPostImpactSampleAt;
   DateTime? _cooldownUntil;
+  ImuDetectorDecision _latestDecision = const ImuDetectorDecision(
+    phase: FallDetectionPhase.idle,
+    reason: ImuDetectorDecisionReason.awaitingFreeFall,
+  );
 
   FallDetectionPhase get phase => _phase;
+  ImuDetectorDecision get latestDecision => _latestDecision;
+
+  static List<ImuSample> canonicalSimulationSamples(DateTime startedAt) {
+    ImuSample sample(
+      Duration offset,
+      double acceleration, {
+      double gyro = 0.1,
+    }) {
+      final timestamp = startedAt.toUtc().add(offset);
+      return ImuSample(
+        accelerometerX: acceleration,
+        accelerometerY: 0,
+        accelerometerZ: 0,
+        gyroscopeX: gyro,
+        gyroscopeY: 0,
+        gyroscopeZ: 0,
+        timestamp: timestamp,
+        gyroscopeTimestamp: timestamp,
+      );
+    }
+
+    return <ImuSample>[
+      sample(Duration.zero, 2),
+      sample(const Duration(milliseconds: 100), 30, gyro: 0.2),
+      for (var index = 1; index <= 20; index++)
+        sample(Duration(milliseconds: 100 + index * 200), gravity),
+    ];
+  }
 
   FallCandidate? addSample(ImuSample sample) {
     final previous = _previousSample;
     if (previous != null && !sample.timestamp.isAfter(previous.timestamp)) {
       _resetCandidate();
       _previousSample = sample;
+      _setDecision(ImuDetectorDecisionReason.outOfOrder);
       return null;
     }
     _previousSample = sample;
 
     final cooldownUntil = _cooldownUntil;
     if (cooldownUntil != null && sample.timestamp.isBefore(cooldownUntil)) {
+      _setDecision(ImuDetectorDecisionReason.cooldown);
       return null;
     }
     if (cooldownUntil != null) _cooldownUntil = null;
@@ -100,6 +161,9 @@ class ImuFallDetector {
         if (sample.accelerationMagnitude < freeFallThreshold) {
           _phase = FallDetectionPhase.freeFall;
           _freeFallAt = sample.timestamp;
+          _setDecision(ImuDetectorDecisionReason.freeFallDetected);
+        } else {
+          _setDecision(ImuDetectorDecisionReason.awaitingFreeFall);
         }
         return null;
       case FallDetectionPhase.freeFall:
@@ -118,10 +182,12 @@ class ImuFallDetector {
         _phase = FallDetectionPhase.freeFall;
         _freeFallAt = sample.timestamp;
       }
+      _setDecision(ImuDetectorDecisionReason.impactWindowExpired);
       return null;
     }
 
     if (sample.accelerationMagnitude <= impactThreshold || previous == null) {
+      _setDecision(ImuDetectorDecisionReason.awaitingImpact);
       return null;
     }
 
@@ -130,15 +196,20 @@ class ImuFallDetector {
         .inMicroseconds;
     if (elapsedMicros <= 0) {
       _resetCandidate();
+      _setDecision(ImuDetectorDecisionReason.outOfOrder);
       return null;
     }
     final elapsedSeconds = elapsedMicros / Duration.microsecondsPerSecond;
     final jerk =
         (sample.accelerationMagnitude - previous.accelerationMagnitude).abs() /
         elapsedSeconds;
-    if (jerk < minimumJerk) return null;
+    if (jerk < minimumJerk) {
+      _setDecision(ImuDetectorDecisionReason.jerkTooLow);
+      return null;
+    }
     if (!_hasFreshGyroscope(sample)) {
       _resetCandidate();
+      _setDecision(_gyroscopeFailureReason(sample));
       return null;
     }
 
@@ -148,6 +219,7 @@ class ImuFallDetector {
     _postImpactSamples = 0;
     _stationaryPostImpactSamples = 0;
     _lastPostImpactSampleAt = sample.timestamp.add(impactSettlingGrace);
+    _setDecision(ImuDetectorDecisionReason.impactDetected);
     return null;
   }
 
@@ -156,6 +228,7 @@ class ImuFallDetector {
     final impactStartedAt = _impactStartedAt;
     if (impact == null || impactStartedAt == null) {
       _resetCandidate();
+      _setDecision(ImuDetectorDecisionReason.reset);
       return null;
     }
 
@@ -166,11 +239,13 @@ class ImuFallDetector {
           _hasFreshGyroscope(sample)) {
         _impactSample = sample;
       }
+      _setDecision(ImuDetectorDecisionReason.impactSettling);
       return null;
     }
 
     if (!_hasFreshGyroscope(sample)) {
       _resetCandidate();
+      _setDecision(_gyroscopeFailureReason(sample));
       return null;
     }
     final lastPostImpactSampleAt = _lastPostImpactSampleAt;
@@ -178,6 +253,7 @@ class ImuFallDetector {
         sample.timestamp.difference(lastPostImpactSampleAt) >
             maximumPostImpactSampleGap) {
       _resetCandidate();
+      _setDecision(ImuDetectorDecisionReason.sampleGap);
       return null;
     }
     _lastPostImpactSampleAt = sample.timestamp;
@@ -187,6 +263,7 @@ class ImuFallDetector {
     if (sample.gyroscopeMagnitude > cancellationGyroscopeThreshold ||
         accelerationDeviation > strongMovementAccelerationDeviation) {
       _resetCandidate();
+      _setDecision(ImuDetectorDecisionReason.excessiveMovement);
       return null;
     }
 
@@ -197,6 +274,7 @@ class ImuFallDetector {
     }
 
     if (sinceFirstImpact < immobilityWindow) {
+      _setDecision(ImuDetectorDecisionReason.awaitingImmobility);
       return null;
     }
 
@@ -204,10 +282,23 @@ class ImuFallDetector {
         ? 0.0
         : _stationaryPostImpactSamples / _postImpactSamples;
     _resetCandidate();
-    if (ratio < minimumStationaryRatio) return null;
+    if (ratio < minimumStationaryRatio) {
+      _setDecision(ImuDetectorDecisionReason.insufficientStationarySamples);
+      return null;
+    }
 
     _cooldownUntil = sample.timestamp.add(cooldown);
+    _setDecision(ImuDetectorDecisionReason.accepted);
     return FallCandidate(impactSample: impact, stationarySampleRatio: ratio);
+  }
+
+  ImuDetectorDecisionReason _gyroscopeFailureReason(ImuSample sample) =>
+      sample.gyroscopeTimestamp == null
+      ? ImuDetectorDecisionReason.gyroscopeMissing
+      : ImuDetectorDecisionReason.gyroscopeStale;
+
+  void _setDecision(ImuDetectorDecisionReason reason) {
+    _latestDecision = ImuDetectorDecision(phase: _phase, reason: reason);
   }
 
   bool _hasFreshGyroscope(ImuSample sample) {
@@ -221,6 +312,7 @@ class ImuFallDetector {
     _resetCandidate();
     _previousSample = null;
     _cooldownUntil = null;
+    _setDecision(ImuDetectorDecisionReason.reset);
   }
 
   void _resetCandidate() {
