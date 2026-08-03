@@ -306,4 +306,26 @@ void main() {
       await subscription.cancel();
     },
   );
+
+  test('stopped task diagnostics clear cached running state', () async {
+    final gateway = _FakeForegroundGateway()..running = true;
+    final coordinator = SafetyForegroundServiceCoordinator.forTesting(
+      gateway: gateway,
+      isAuthenticated: () => true,
+      loadConfig: () async => enabledConfig,
+      loadConsents: () async => [consent('SENSOR_DATA', 'CREATE')],
+    );
+    await coordinator.reconcile();
+    expect(coordinator.isRunning, isTrue);
+
+    coordinator.handleTaskDataForTesting({
+      'type': 'imu_diagnostics',
+      'snapshot': ImuDiagnosticsSnapshot.stopped(
+        generation: 8,
+        capturedAt: DateTime.now().toUtc(),
+      ).toJson(),
+    });
+
+    expect(coordinator.isRunning, isFalse);
+  });
 }

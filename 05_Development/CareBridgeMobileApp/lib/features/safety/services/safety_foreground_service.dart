@@ -10,6 +10,7 @@ import '../../privacy/services/privacy_service.dart';
 import '../models/safety_config_model.dart';
 import '../models/imu_diagnostics_model.dart';
 import 'fall_detection_sensor_service.dart';
+import 'safety_demo_mode.dart';
 import 'safety_service.dart';
 
 typedef SafetyConfigLoader = Future<SafetyConfig> Function();
@@ -90,8 +91,9 @@ class SafetyForegroundServiceCoordinator {
   ImuDiagnosticsSnapshot? _latestDiagnostics;
 
   Stream<SafetyEvent> get detectedEvents => _eventController.stream;
-  Stream<ImuDiagnosticsSnapshot> get diagnostics =>
-      kDebugMode ? _diagnosticsController.stream : const Stream.empty();
+  Stream<ImuDiagnosticsSnapshot> get diagnostics => safetyDiagnosticsEnabled
+      ? _diagnosticsController.stream
+      : const Stream.empty();
   bool get isRunning => _isRunning;
   bool get isSupported => _platformSupported();
 
@@ -194,7 +196,7 @@ class SafetyForegroundServiceCoordinator {
     final shouldPublishStopped = gatewayRunning || _isRunning;
     if (gatewayRunning) await _gateway.stop();
     _isRunning = false;
-    if (kDebugMode && shouldPublishStopped) {
+    if (safetyDiagnosticsEnabled && shouldPublishStopped) {
       _publishDiagnosticsSnapshot(
         ImuDiagnosticsSnapshot.stopped(
           generation: _latestDiagnosticsGeneration,
@@ -206,7 +208,7 @@ class SafetyForegroundServiceCoordinator {
   }
 
   void _publishCoordinatorRunning() {
-    if (!kDebugMode) return;
+    if (!safetyDiagnosticsEnabled) return;
     final latest = _latestDiagnostics;
     if (latest != null && latest.state != ImuSamplingState.stopped) return;
     _publishDiagnosticsSnapshot(
@@ -240,7 +242,9 @@ class SafetyForegroundServiceCoordinator {
       );
       return;
     }
-    if (!kDebugMode || normalized['type'] != 'imu_diagnostics') return;
+    if (!safetyDiagnosticsEnabled || normalized['type'] != 'imu_diagnostics') {
+      return;
+    }
     final snapshot = ImuDiagnosticsSnapshot.tryParse(normalized['snapshot']);
     if (snapshot != null) _publishDiagnosticsSnapshot(snapshot);
   }
@@ -259,6 +263,7 @@ class SafetyForegroundServiceCoordinator {
     }
     _latestDiagnosticsGeneration = snapshot.generation;
     _latestDiagnostics = snapshot;
+    if (snapshot.state == ImuSamplingState.stopped) _isRunning = false;
     _diagnosticsController.add(snapshot);
   }
 
@@ -321,7 +326,7 @@ class _SafetyForegroundTaskHandler extends TaskHandler {
   Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
     await AuthState.instance.init();
     _eventSubscription = _sensorService.detectedEvents.listen(_publishEvent);
-    if (kDebugMode) {
+    if (safetyDiagnosticsEnabled) {
       _diagnosticsSubscription = _sensorService.diagnostics.listen(
         _publishDiagnostics,
       );
@@ -344,7 +349,7 @@ class _SafetyForegroundTaskHandler extends TaskHandler {
   }
 
   void _publishDiagnostics(ImuDiagnosticsSnapshot snapshot) {
-    if (!kDebugMode) return;
+    if (!safetyDiagnosticsEnabled) return;
     FlutterForegroundTask.sendDataToMain({
       'type': 'imu_diagnostics',
       'snapshot': snapshot.toJson(),

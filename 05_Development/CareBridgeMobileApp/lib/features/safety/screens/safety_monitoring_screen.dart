@@ -1,10 +1,10 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../models/imu_diagnostics_model.dart';
 import '../models/safety_config_model.dart';
 import '../services/imu_fall_detector.dart';
+import '../services/safety_demo_mode.dart';
 import '../services/safety_foreground_service.dart';
 import '../services/safety_service.dart';
 import '../widgets/disable_fall_detection_sheet.dart';
@@ -114,6 +114,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
   StreamSubscription<SafetyEvent>? _detectedEventSubscription;
   StreamSubscription<ImuDiagnosticsSnapshot>? _diagnosticsSubscription;
   ImuDiagnosticsSnapshot? _imuDiagnostics;
+  Timer? _demoRecoveryTimer;
   final SafetyRealEventQueue _pendingRealEvents = SafetyRealEventQueue();
   String? _countdownEventId;
   bool _loading = true;
@@ -128,12 +129,10 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
     _detectedEventSubscription = _foregroundCoordinator.detectedEvents.listen(
       _onDetectedEvent,
     );
-    if (kDebugMode) {
-      _diagnosticsSubscription = _foregroundCoordinator.diagnostics.listen((
-        snapshot,
-      ) {
-        if (mounted) setState(() => _imuDiagnostics = snapshot);
-      });
+    if (safetyDiagnosticsEnabled) {
+      _diagnosticsSubscription = _foregroundCoordinator.diagnostics.listen(
+        _onDiagnosticsSnapshot,
+      );
     }
     _load();
   }
@@ -143,7 +142,18 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
     WidgetsBinding.instance.removeObserver(this);
     _detectedEventSubscription?.cancel();
     _diagnosticsSubscription?.cancel();
+    _demoRecoveryTimer?.cancel();
     super.dispose();
+  }
+
+  void _onDiagnosticsSnapshot(ImuDiagnosticsSnapshot snapshot) {
+    if (!mounted) return;
+    setState(() => _imuDiagnostics = snapshot);
+    if (!safetyDemoMode || snapshot.state != ImuSamplingState.stopped) return;
+    if (_demoRecoveryTimer?.isActive ?? false) return;
+    _demoRecoveryTimer = Timer(const Duration(seconds: 1), () {
+      if (mounted) unawaited(_foregroundCoordinator.reconcile());
+    });
   }
 
   @override
@@ -264,7 +274,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
   }
 
   Future<void> _runSafeSimulation() async {
-    if (!kDebugMode) return;
+    if (!safetyDiagnosticsEnabled) return;
     final eligible = isSafeFallSimulationEligible(
       config: _config,
       coordinatorRunning: _foregroundCoordinator.isRunning,
@@ -461,7 +471,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
                       ),
                       const SizedBox(height: 24),
                       _buildStatusCard(fallDetectionEnabled),
-                      if (kDebugMode) ...[
+                      if (safetyDiagnosticsEnabled) ...[
                         const SizedBox(height: 16),
                         _buildImuDiagnosticsCard(),
                       ],
@@ -661,9 +671,21 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text(
-            'Chẩn đoán IMU · DEBUG',
+            'Chẩn đoán IMU · $safetyDiagnosticsModeLabel',
             style: TextStyle(fontWeight: FontWeight.w800, color: _primary),
           ),
+          if (safetyDemoMode) ...[
+            const SizedBox(height: 6),
+            const Text(
+              'BẢN TRÌNH DIỄN · MÔ PHỎNG KHÔNG GỬI SOS',
+              key: Key('safety-demo-mode-banner'),
+              style: TextStyle(
+                color: _onErrorContainer,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
           const SizedBox(height: 8),
           Text(state.label, key: const Key('imu-sampling-state')),
           const SizedBox(height: 6),

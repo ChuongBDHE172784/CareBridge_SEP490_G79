@@ -7,6 +7,7 @@ import 'package:geolocator/geolocator.dart';
 import '../models/safety_config_model.dart';
 import '../models/imu_diagnostics_model.dart';
 import 'imu_fall_detector.dart';
+import 'safety_demo_mode.dart';
 import 'safety_service.dart';
 import 'safety_permission_service.dart';
 import '../../privacy/services/privacy_service.dart';
@@ -77,8 +78,9 @@ class FallDetectionSensorService {
 
   bool get isRunning => _running;
   Stream<SafetyEvent> get detectedEvents => _eventController.stream;
-  Stream<ImuDiagnosticsSnapshot> get diagnostics =>
-      kDebugMode ? _diagnosticsController.stream : const Stream.empty();
+  Stream<ImuDiagnosticsSnapshot> get diagnostics => safetyDiagnosticsEnabled
+      ? _diagnosticsController.stream
+      : const Stream.empty();
 
   @visibleForTesting
   bool get diagnosticsLifecycleActiveForTesting =>
@@ -106,7 +108,7 @@ class FallDetectionSensorService {
         : _runGeneration + 1;
     _accelerometerStreamError = null;
     _gyroscopeStreamError = null;
-    if (kDebugMode) {
+    if (safetyDiagnosticsEnabled) {
       _lastAccelerometerAt = null;
       _sampleRateHz = null;
       _emitDiagnostics(
@@ -186,7 +188,7 @@ class FallDetectionSensorService {
     _sampleRateHz = null;
     _accelerometerStreamError = null;
     _gyroscopeStreamError = null;
-    if (kDebugMode) {
+    if (safetyDiagnosticsEnabled) {
       _emitDiagnostics(
         ImuDiagnosticsSnapshot.stopped(
           generation: _runGeneration,
@@ -214,7 +216,7 @@ class FallDetectionSensorService {
       gyroscopeTimestamp: gyro?.timestamp.toUtc(),
     );
     final candidate = _detector.addSample(sample);
-    if (kDebugMode) _publishSamplingDiagnostics(sample);
+    if (safetyDiagnosticsEnabled) _publishSamplingDiagnostics(sample);
     if (_locationSharingAllowed &&
         (_locationReadAt == null ||
             timestamp.difference(_locationReadAt!) >
@@ -301,7 +303,7 @@ class FallDetectionSensorService {
   }
 
   void _checkDiagnosticsFreshness() {
-    if (!kDebugMode || !_running) return;
+    if (!safetyDiagnosticsEnabled || !_running) return;
     final latestAt = _lastAccelerometerAt;
     final now = _now().toUtc();
     if (latestAt == null) {
@@ -342,7 +344,7 @@ class FallDetectionSensorService {
   }
 
   void _publishSensorError(String message) {
-    if (!kDebugMode) return;
+    if (!safetyDiagnosticsEnabled) return;
     _emitDiagnostics(
       ImuDiagnosticsSnapshot(
         generation: _runGeneration,
@@ -386,7 +388,7 @@ class FallDetectionSensorService {
   }
 
   void _emitDiagnostics(ImuDiagnosticsSnapshot snapshot, {bool force = false}) {
-    if (!kDebugMode) return;
+    if (!safetyDiagnosticsEnabled) return;
     final previousPublishedAt = _lastSamplingDiagnosticsPublishedAt;
     if (!force &&
         previousPublishedAt != null &&
