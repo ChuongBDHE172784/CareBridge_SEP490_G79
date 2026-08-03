@@ -5,7 +5,6 @@ import '../../../core/network/api_client.dart';
 import '../models/care_group_model.dart';
 import '../services/care_group_service.dart';
 import 'care_group_detail_screen.dart';
-import 'pending_invitations_screen.dart';
 
 /// CB-026 — My Care Groups (Family member perspective, UC-83, UC-84, UC-72, UC-216)
 /// Shows groups this user (family member / co-carer) belongs to.
@@ -26,7 +25,6 @@ class _MyCareGroupsScreenState extends State<MyCareGroupsScreen> {
 
   final _service = CareGroupService();
   List<CareGroup> _groups = [];
-  int _pendingInviteCount = 0;
   bool _loading = true;
 
   @override
@@ -39,24 +37,15 @@ class _MyCareGroupsScreenState extends State<MyCareGroupsScreen> {
     setState(() => _loading = true);
     try {
       final list = await _service.listMyGroups();
-      final invites = await _service.listMyInvitations();
       if (mounted) {
         setState(() {
           _groups = list;
-          _pendingInviteCount = invites.length;
           _loading = false;
         });
       }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
-  }
-
-  void _openInvitations() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const PendingInvitationsScreen()),
-    ).then((_) => _load());
   }
 
   Future<void> _joinGroupWithCode() async {
@@ -286,18 +275,6 @@ class _MyCareGroupsScreenState extends State<MyCareGroupsScreen> {
               IconButton(
                 onPressed: () => Navigator.pop(context),
                 icon: const Icon(Icons.arrow_back, color: _onSurfaceVariant),
-              ),
-              const Spacer(),
-              IconButton(
-                onPressed: _openInvitations,
-                icon: Badge(
-                  label: Text('$_pendingInviteCount'),
-                  isLabelVisible: _pendingInviteCount > 0,
-                  child: const Icon(
-                    Icons.mail_outline,
-                    color: _onSurfaceVariant,
-                  ),
-                ),
               ),
             ],
           ),

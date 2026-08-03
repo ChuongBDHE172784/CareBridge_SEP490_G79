@@ -29,6 +29,10 @@ import com.carebridge.backend.family.event.CareGroupMemberLeft;
 import com.carebridge.backend.family.event.CareGroupMemberRemoved;
 import com.carebridge.backend.family.event.CareTaskReassigned;
 import com.carebridge.backend.family.event.FamilyPermissionUpdated;
+import com.carebridge.backend.notification.entity.NotificationRecord;
+import com.carebridge.backend.notification.entity.NotificationRecordStatus;
+import com.carebridge.backend.notification.entity.NotificationType;
+import com.carebridge.backend.notification.repository.NotificationRecordRepository;
 import com.carebridge.backend.notification.repository.DeviceTokenRepository;
 import com.carebridge.backend.notification.service.FcmService;
 import lombok.extern.slf4j.Slf4j;
@@ -78,6 +82,7 @@ public class CareGroupServiceImpl implements ICareGroupService {
     private final ApplicationEventPublisher eventPublisher;
     private final FcmService fcmService;
     private final DeviceTokenRepository deviceTokenRepository;
+    private final NotificationRecordRepository notificationRecordRepository;
     private final CareTaskRepository taskRepository;
     private final MotherJourneyRepository journeyRepository;
 
@@ -318,6 +323,41 @@ public class CareGroupServiceImpl implements ICareGroupService {
         auditService.log(AuditAction.CARE_GROUP_INVITE_ACCEPTED, callerId,
                 "CareGroup", groupId.toString(), "invite accepted");
 
+        try {
+            CareGroup group = groupRepository.findById(groupId).orElse(null);
+            if (group != null) {
+                User caller = userRepository.findById(callerId).orElse(null);
+                String callerName = (caller != null && caller.getName() != null && !caller.getName().isBlank())
+                        ? caller.getName()
+                        : ((caller != null && caller.getEmail() != null) ? caller.getEmail() : "Thành viên gia đình");
+                String title = "Lời mời đã được chấp nhận";
+                String body = callerName + " đã chấp nhận lời mời tham gia nhóm chăm sóc " + group.getGroupName() + ".";
+
+                NotificationRecord record = NotificationRecord.builder()
+                        .userId(group.getOwnerUserId())
+                        .type(NotificationType.GROUP_INVITE)
+                        .title(title)
+                        .body(body)
+                        .referenceId(groupId)
+                        .careGroupId(groupId)
+                        .referenceType("CARE_GROUP")
+                        .status(NotificationRecordStatus.SENT)
+                        .channel("PUSH")
+                        .isRead(false)
+                        .attemptCount(1)
+                        .build();
+                notificationRecordRepository.save(record);
+
+                List<String> tokens = deviceTokenRepository.findByUserIdAndActiveTrue(group.getOwnerUserId())
+                        .stream().map(t -> t.getToken()).collect(Collectors.toList());
+                if (!tokens.isEmpty()) {
+                    fcmService.sendToTokens(tokens, title, body);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Notification logging or FCM push failed for acceptInvite (non-blocking): {}", e.getMessage());
+        }
+
         return toMemberDto(saved);
     }
 
@@ -335,6 +375,41 @@ public class CareGroupServiceImpl implements ICareGroupService {
 
         auditService.log(AuditAction.CARE_GROUP_INVITE_DECLINED, callerId,
                 "CareGroup", groupId.toString(), "invite declined");
+
+        try {
+            CareGroup group = groupRepository.findById(groupId).orElse(null);
+            if (group != null) {
+                User caller = userRepository.findById(callerId).orElse(null);
+                String callerName = (caller != null && caller.getName() != null && !caller.getName().isBlank())
+                        ? caller.getName()
+                        : ((caller != null && caller.getEmail() != null) ? caller.getEmail() : "Thành viên gia đình");
+                String title = "Lời mời bị từ chối";
+                String body = callerName + " đã từ chối lời mời tham gia nhóm chăm sóc " + group.getGroupName() + ".";
+
+                NotificationRecord record = NotificationRecord.builder()
+                        .userId(group.getOwnerUserId())
+                        .type(NotificationType.GROUP_INVITE)
+                        .title(title)
+                        .body(body)
+                        .referenceId(groupId)
+                        .careGroupId(groupId)
+                        .referenceType("CARE_GROUP")
+                        .status(NotificationRecordStatus.SENT)
+                        .channel("PUSH")
+                        .isRead(false)
+                        .attemptCount(1)
+                        .build();
+                notificationRecordRepository.save(record);
+
+                List<String> tokens = deviceTokenRepository.findByUserIdAndActiveTrue(group.getOwnerUserId())
+                        .stream().map(t -> t.getToken()).collect(Collectors.toList());
+                if (!tokens.isEmpty()) {
+                    fcmService.sendToTokens(tokens, title, body);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Notification logging or FCM push failed for declineInvite (non-blocking): {}", e.getMessage());
+        }
     }
 
     @Override

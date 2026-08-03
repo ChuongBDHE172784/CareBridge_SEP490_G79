@@ -58,7 +58,6 @@ import '../../features/fileManager/screens/shared_file_viewer_screen.dart';
 import '../../features/reminder/screens/reminder_detail_screen.dart';
 import '../../features/familySync/screens/care_groups_screen.dart';
 import '../../features/familySync/screens/care_group_members_screen.dart';
-import '../../features/familySync/screens/pending_invitations_screen.dart';
 import '../../features/baby/screens/baby_profiles_screen.dart';
 import '../../features/baby/screens/baby_care_hub_screen.dart';
 import '../../features/baby/screens/baby_profile_detail_screen.dart';
@@ -557,10 +556,6 @@ final GoRouter appRouter = GoRouter(
           members: const [],
         );
       },
-    ),
-    GoRoute(
-      path: '/care-groups/invitations',
-      builder: (context, state) => const PendingInvitationsScreen(),
     ),
     GoRoute(
       path: '/babies',

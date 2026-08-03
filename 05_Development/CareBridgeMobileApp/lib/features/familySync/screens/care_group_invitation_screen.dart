@@ -4,6 +4,8 @@ import '../services/care_group_service.dart';
 import 'reject_invitation_confirmation_screen.dart';
 import '../widgets/family_relationship_role_picker.dart';
 
+enum _InvitationStatus { pending, accepted, declined }
+
 class CareGroupInvitationScreen extends StatefulWidget {
   final PendingInvitation invitation;
 
@@ -17,6 +19,39 @@ class CareGroupInvitationScreen extends StatefulWidget {
 class _CareGroupInvitationScreenState extends State<CareGroupInvitationScreen> {
   final _service = CareGroupService();
   bool _isLoading = false;
+  bool _checkingStatus = true;
+  _InvitationStatus _status = _InvitationStatus.pending;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkStatus();
+  }
+
+  Future<void> _checkStatus() async {
+    try {
+      final invitations = await _service.listMyInvitations();
+      final isStillPending =
+          invitations.any((inv) => inv.groupId == widget.invitation.groupId);
+
+      if (!isStillPending) {
+        final myGroups = await _service.listMyGroups();
+        final isMember = myGroups.any((g) => g.id == widget.invitation.groupId);
+        if (mounted) {
+          setState(() {
+            _status = isMember
+                ? _InvitationStatus.accepted
+                : _InvitationStatus.declined;
+            _checkingStatus = false;
+          });
+        }
+        return;
+      }
+    } catch (_) {}
+    if (mounted) {
+      setState(() => _checkingStatus = false);
+    }
+  }
 
   Future<void> _accept() async {
     final relationship = await showFamilyRelationshipRolePicker(context);
@@ -29,7 +64,10 @@ class _CareGroupInvitationScreenState extends State<CareGroupInvitationScreen> {
         customFamilyRelationshipRole: relationship.customRole,
       );
       if (mounted) {
-        Navigator.pop(context, true); // Return true on success
+        setState(() {
+          _status = _InvitationStatus.accepted;
+          _isLoading = false;
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -56,7 +94,33 @@ class _CareGroupInvitationScreenState extends State<CareGroupInvitationScreen> {
       ),
     );
     if (result == true && mounted) {
-      Navigator.pop(context, true);
+      setState(() {
+        _status = _InvitationStatus.declined;
+      });
+    }
+  }
+
+  String _formatInvitationText(String groupName) {
+    final clean = groupName.trim();
+    if (clean.toLowerCase().startsWith('nhóm')) {
+      return 'Bạn đã được mời tham gia $clean.';
+    }
+    return 'Bạn đã được mời tham gia nhóm chăm sóc $clean.';
+  }
+
+  String _formatRole(String role) {
+    final upper = role.trim().toUpperCase();
+    switch (upper) {
+      case 'MEMBER':
+        return 'Thành viên';
+      case 'ADMIN':
+        return 'Quản trị viên';
+      case 'MOTHER':
+        return 'Mẹ';
+      case 'FAMILY':
+        return 'Người thân gia đình';
+      default:
+        return role.isNotEmpty ? role : 'Thành viên';
     }
   }
 
@@ -69,7 +133,7 @@ class _CareGroupInvitationScreenState extends State<CareGroupInvitationScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Color(0xFF845143)),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.pop(context, _status != _InvitationStatus.pending),
         ),
       ),
       body: SafeArea(
@@ -120,27 +184,13 @@ class _CareGroupInvitationScreenState extends State<CareGroupInvitationScreen> {
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 16),
-                      RichText(
+                      Text(
+                        _formatInvitationText(widget.invitation.groupName),
                         textAlign: TextAlign.center,
-                        text: TextSpan(
-                          style: const TextStyle(
-                            fontSize: 16,
-                            color: Color(0xFF524440),
-                            fontFamily: 'Lexend',
-                          ),
-                          children: [
-                            const TextSpan(
-                              text: 'Bạn đã được mời tham gia nhóm chăm sóc ',
-                            ),
-                            TextSpan(
-                              text: widget.invitation.groupName,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF271812),
-                              ),
-                            ),
-                            const TextSpan(text: '.'),
-                          ],
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Color(0xFF524440),
+                          fontFamily: 'Lexend',
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -163,7 +213,7 @@ class _CareGroupInvitationScreenState extends State<CareGroupInvitationScreen> {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              'Vai trò: ${widget.invitation.memberRole}',
+                              'Vai trò: ${_formatRole(widget.invitation.memberRole)}',
                               style: const TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
@@ -174,119 +224,109 @@ class _CareGroupInvitationScreenState extends State<CareGroupInvitationScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFFF1EC),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      if (_checkingStatus)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 16.0),
+                          child: CircularProgressIndicator(
+                            color: Color(0xFFC98C7B),
+                            strokeWidth: 2,
+                          ),
+                        )
+                      else if (_status != _InvitationStatus.pending)
+                        _buildStatusCard()
+                      else
+                        const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            const Text(
-                              'QUYỀN HẠN',
+                            Icon(
+                              Icons.schedule,
+                              size: 16,
+                              color: Color(0xFF524440),
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              'Hết hạn sau 48 giờ',
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
                                 color: Color(0xFF524440),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            _buildRightRow('Xem lịch tiêm chủng'),
-                            const SizedBox(height: 8),
-                            _buildRightRow('Theo dõi giấc ngủ'),
-                            const SizedBox(height: 8),
-                            _buildRightRow('Nhận thông báo khẩn cấp'),
-                            const SizedBox(height: 16),
-                            const Text(
-                              'MỤC ĐÍCH',
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF524440),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            const Text(
-                              'Hỗ trợ chăm sóc bé',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF271812),
                               ),
                             ),
                           ],
                         ),
-                      ),
-                      const SizedBox(height: 24),
-                      const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.schedule,
-                            size: 16,
-                            color: Color(0xFF524440),
-                          ),
-                          SizedBox(width: 8),
-                          Text(
-                            'Hết hạn sau 48 giờ',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF524440),
-                            ),
-                          ),
-                        ],
-                      ),
                     ],
                   ),
                 ),
               ),
               const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: _isLoading ? null : _accept,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFC98C7B),
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(double.infinity, 52),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(999),
+              if (_status == _InvitationStatus.pending) ...[
+                ElevatedButton(
+                  onPressed: _isLoading ? null : _accept,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFC98C7B),
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(double.infinity, 52),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text(
+                          'Chấp nhận',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                ),
+                const SizedBox(height: 12),
+                ElevatedButton(
+                  onPressed: _isLoading ? null : _reject,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFADCD3),
+                    foregroundColor: const Color(0xFF524440),
+                    minimumSize: const Size(double.infinity, 52),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                  child: const Text(
+                    'Từ chối',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-                child: _isLoading
-                    ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : const Text(
-                        'Chấp nhận',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-              ),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: _isLoading ? null : _reject,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFADCD3),
-                  foregroundColor: const Color(0xFF524440),
-                  minimumSize: const Size(double.infinity, 52),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(999),
+              ] else ...[
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFC98C7B),
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(double.infinity, 52),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                  child: const Text(
+                    'Đóng',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-                child: const Text(
-                  'Từ chối',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ),
+              ],
             ],
           ),
         ),
@@ -294,16 +334,41 @@ class _CareGroupInvitationScreenState extends State<CareGroupInvitationScreen> {
     );
   }
 
-  Widget _buildRightRow(String text) {
-    return Row(
-      children: [
-        const Icon(Icons.check_circle, color: Color(0xFF845143), size: 20),
-        const SizedBox(width: 8),
-        Text(
-          text,
-          style: const TextStyle(fontSize: 14, color: Color(0xFF271812)),
-        ),
-      ],
+  Widget _buildStatusCard() {
+    final isAccepted = _status == _InvitationStatus.accepted;
+    final color =
+        isAccepted ? const Color(0xFF2E7D32) : const Color(0xFFC62828);
+    final bgColor =
+        isAccepted ? const Color(0xFFE8F5E9) : const Color(0xFFFFEBEE);
+    final icon = isAccepted ? Icons.check_circle : Icons.cancel;
+    final message = isAccepted
+        ? 'Bạn đã chấp nhận lời mời tham gia nhóm này.'
+        : 'Lời mời này đã bị từ chối hoặc không còn hiệu lực.';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 24),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
