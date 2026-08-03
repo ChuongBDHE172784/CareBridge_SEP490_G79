@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:untitled/core/auth/auth_state.dart';
 import 'package:untitled/core/auth/blocked_account_state.dart';
@@ -7,6 +8,12 @@ import 'package:untitled/features/auth/screens/blocked_account_screen.dart';
 Widget _wrap(Widget child) => MaterialApp(home: child);
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    FlutterSecureStorage.setMockInitialValues({});
+  });
+
   tearDown(() {
     AuthState.instance.clearBlockedReason();
   });
@@ -16,9 +23,7 @@ void main() {
       'shows disabled title and message when reason is ACCOUNT_DISABLED',
       (tester) async {
         AuthState.instance.clearBlockedReason();
-        // Set blocked reason synchronously via clearWithReason (sync part runs first)
-        // ignore: unawaited_futures
-        AuthState.instance.clearWithReason('ACCOUNT_DISABLED');
+        await AuthState.instance.clearWithReason('ACCOUNT_DISABLED');
 
         await tester.pumpWidget(_wrap(const BlockedAccountScreen()));
         await tester.pump();
@@ -37,8 +42,7 @@ void main() {
     testWidgets(
       'shows administrative reason and appeal form for an appealable lock',
       (tester) async {
-        // ignore: unawaited_futures
-        AuthState.instance.clearWithBlockedAccount(
+        await AuthState.instance.clearWithBlockedAccount(
           const BlockedAccountState(
             code: 'ACCOUNT_ADMIN_LOCKED',
             lockType: 'ADMIN',
@@ -69,8 +73,7 @@ void main() {
     testWidgets('shows locked title and message when reason is ACCOUNT_LOCKED', (
       tester,
     ) async {
-      // ignore: unawaited_futures
-      AuthState.instance.clearWithReason('ACCOUNT_LOCKED');
+      await AuthState.instance.clearWithReason('ACCOUNT_LOCKED');
 
       await tester.pumpWidget(_wrap(const BlockedAccountScreen()));
       await tester.pump();
@@ -88,8 +91,7 @@ void main() {
     testWidgets('shows a rejected appeal status without the appeal form', (
       tester,
     ) async {
-      // ignore: unawaited_futures
-      AuthState.instance.clearWithBlockedAccount(
+      await AuthState.instance.clearWithBlockedAccount(
         const BlockedAccountState(
           code: 'ACCOUNT_ADMIN_LOCKED',
           appealAllowed: false,
@@ -108,8 +110,7 @@ void main() {
     });
 
     testWidgets('clearBlockedReason clears the blocked state', (tester) async {
-      // ignore: unawaited_futures
-      AuthState.instance.clearWithReason('ACCOUNT_DISABLED');
+      await AuthState.instance.clearWithReason('ACCOUNT_DISABLED');
       expect(AuthState.instance.blockedReason, 'ACCOUNT_DISABLED');
 
       AuthState.instance.clearBlockedReason();

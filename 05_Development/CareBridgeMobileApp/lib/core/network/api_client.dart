@@ -222,25 +222,52 @@ Future<void> _handle401(
   http.Response response,
   _RequestSessionIdentity? requestSession,
 ) async {
-  if (requestSession == null || !requestSession.isCurrent) return;
+  if (requestSession == null) return;
+  if (!requestSession.isCurrent) _throwSessionChanged();
   final blockedState = parseAccountBlockedState(response);
   if (blockedState != null) {
     debugPrint('[ApiClient] account blocked → code=${blockedState.code}');
-    if (requestSession.isCurrent) {
-      await AuthState.instance.clearWithBlockedAccountIfCurrentSession(
+    final cleared = await _normalizeAuthClearFailure(
+      response,
+      () => AuthState.instance.clearWithBlockedAccountIfCurrentCredentials(
         generation: requestSession.generation,
+        accessToken: requestSession.accessToken,
+        refreshToken: requestSession.refreshToken,
         userId: requestSession.accountId,
+        role: requestSession.role,
         state: blockedState,
-      );
+      ),
+    );
+    if (!cleared) {
+      _throwSessionChanged();
     }
   } else {
     debugPrint(
       '[ApiClient] _handle401: clearing session (real 401 with valid token)',
     );
-    await AuthState.instance.clearIfCurrentSession(
-      generation: requestSession.generation,
-      userId: requestSession.accountId,
+    final cleared = await _normalizeAuthClearFailure(
+      response,
+      () => AuthState.instance.clearIfCurrentCredentials(
+        generation: requestSession.generation,
+        accessToken: requestSession.accessToken,
+        refreshToken: requestSession.refreshToken,
+        userId: requestSession.accountId,
+        role: requestSession.role,
+      ),
     );
+    if (!cleared) _throwSessionChanged();
+  }
+}
+
+Future<T> _normalizeAuthClearFailure<T>(
+  http.Response response,
+  Future<T> Function() clear,
+) async {
+  try {
+    return await clear();
+  } catch (error) {
+    debugPrint('[ApiClient] credential cleanup failed: ${error.runtimeType}');
+    throw ApiException(response.statusCode, response.body);
   }
 }
 
@@ -276,6 +303,9 @@ Future<http.Response> _handleUnauthorized(
       final response = await retry();
       if (!refreshedSession.isCurrent) _throwSessionChanged();
       if (response.statusCode == 401) {
+        if (!refreshedSession.hasCurrentCredentials) {
+          _throwSessionChanged();
+        }
         await _handle401(response, refreshedSession);
         throw ApiException(401, response.body);
       }
@@ -299,14 +329,22 @@ Future<void> _handleBlockedResponse(
   http.Response response,
   _RequestSessionIdentity? requestSession,
 ) async {
-  if (requestSession == null || !requestSession.isCurrent) return;
+  if (requestSession == null) return;
+  if (!requestSession.isCurrent) _throwSessionChanged();
   final state = parseAccountBlockedState(response);
   if (state != null) {
-    await AuthState.instance.clearWithBlockedAccountIfCurrentSession(
-      generation: requestSession.generation,
-      userId: requestSession.accountId,
-      state: state,
+    final cleared = await _normalizeAuthClearFailure(
+      response,
+      () => AuthState.instance.clearWithBlockedAccountIfCurrentCredentials(
+        generation: requestSession.generation,
+        accessToken: requestSession.accessToken,
+        refreshToken: requestSession.refreshToken,
+        userId: requestSession.accountId,
+        role: requestSession.role,
+        state: state,
+      ),
     );
+    if (!cleared) _throwSessionChanged();
   }
 }
 

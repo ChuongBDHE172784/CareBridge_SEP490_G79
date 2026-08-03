@@ -120,6 +120,35 @@ void main() {
   });
 
   test(
+    'partial credential bundle invalidates the captured account continuation',
+    () async {
+      FlutterSecureStorage.setMockInitialValues({
+        'cb_user_id': 'account-a',
+        'cb_access_token': 'partial-access',
+        'cb_journey_onboarding_draft_account-a': '{"goal":"A"}',
+      });
+      final storage = SecureTokenStorage();
+      await storage.saveTriageContinuation(
+        userId: 'account-a',
+        token: 'continuation-a',
+        intakeSessionId: 'intake-a',
+        expiresAt: DateTime.now().add(const Duration(hours: 1)),
+      );
+
+      final loaded = await storage.load();
+
+      expect(loaded.values, everyElement(isNull));
+      expect(await storage.loadTriageContinuation('account-a'), isNull);
+      expect(
+        await const FlutterSecureStorage().read(
+          key: 'cb_journey_onboarding_draft_account-a',
+        ),
+        isNull,
+      );
+    },
+  );
+
+  test(
     'account invalidation cannot be undone by a queued draft write',
     () async {
       const key = 'cb_postpartum_log_draft_account-a_journey-late';
@@ -141,4 +170,72 @@ void main() {
       expect(await const FlutterSecureStorage().read(key: key), isNull);
     },
   );
+
+  test('payload deletion still runs when marker invalidation fails', () async {
+    var payloadDeleted = false;
+    var accountCleaned = false;
+
+    await expectLater(
+      clearCredentialBundleFailClosed(
+        expectedUserId: 'account-a',
+        invalidateCommitMarker: () async {
+          throw StateError('marker delete and fallback failed');
+        },
+        deleteCredentialPayload: () async {
+          payloadDeleted = true;
+        },
+        clearAccountState: (userId) async {
+          expect(userId, 'account-a');
+          accountCleaned = true;
+        },
+      ),
+      throwsA(isA<StateError>()),
+    );
+
+    expect(payloadDeleted, isTrue);
+    expect(accountCleaned, isTrue);
+  });
+
+  test('trusted account ID bypasses failed storage lookup', () async {
+    var readCalls = 0;
+    String? cleanedUserId;
+
+    await clearCredentialBundleFailClosed(
+      expectedUserId: 'account-a',
+      readStoredUserId: () async {
+        readCalls++;
+        throw StateError('unavailable');
+      },
+      invalidateCommitMarker: () async {},
+      deleteCredentialPayload: () async {},
+      clearAccountState: (userId) async {
+        cleanedUserId = userId;
+      },
+    );
+
+    expect(readCalls, 0);
+    expect(cleanedUserId, 'account-a');
+  });
+
+  test('lookup failure does not skip credential cleanup', () async {
+    var markerInvalidated = false;
+    var payloadDeleted = false;
+
+    await expectLater(
+      clearCredentialBundleFailClosed(
+        readStoredUserId: () async => throw StateError('read failed'),
+        invalidateCommitMarker: () async {
+          markerInvalidated = true;
+        },
+        deleteCredentialPayload: () async {
+          payloadDeleted = true;
+        },
+        clearAccountState: (_) async {},
+      ),
+      throwsA(isA<StateError>()),
+    );
+
+    expect(markerInvalidated, isTrue);
+    expect(payloadDeleted, isTrue);
+  });
 }

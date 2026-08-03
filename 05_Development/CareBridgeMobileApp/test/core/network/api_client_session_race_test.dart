@@ -232,6 +232,104 @@ void main() {
     },
   );
 
+  test(
+    'late blocked 403 cannot clear newer same-session credentials',
+    () async {
+      final delayedResponse = Completer<http.Response>();
+      final requestStarted = Completer<void>();
+      final client = MockClient((_) {
+        requestStarted.complete();
+        return delayedResponse.future;
+      });
+      addTearDown(client.close);
+      final generation = AuthState.instance.sessionGeneration;
+
+      final request = http.runWithClient(
+        () => apiGet('/api/v1/triage/consent/status'),
+        () => client,
+      );
+      final requestExpectation = expectLater(
+        request,
+        throwsA(_sessionChangedException),
+      );
+      await requestStarted.future.timeout(const Duration(seconds: 2));
+      final published = await AuthState.instance.setTokensIfCurrent(
+        expectedGeneration: generation,
+        expectedAccessToken: 'access-a',
+        expectedRefreshToken: 'refresh-a',
+        expectedUserId: 'account-a',
+        accessToken: 'access-a-new',
+        refreshToken: 'refresh-a-new',
+        role: 'MOTHER',
+      );
+      expect(published, isTrue);
+
+      delayedResponse.complete(
+        http.Response('{"error":"ACCOUNT_DISABLED"}', 403),
+      );
+
+      await requestExpectation;
+      expect(AuthState.instance.userId, 'account-a');
+      expect(AuthState.instance.accessToken, 'access-a-new');
+      expect(AuthState.instance.refreshToken, 'refresh-a-new');
+      expect(AuthState.instance.blockedAccount, isNull);
+    },
+  );
+
+  test('late retry 401 cannot clear newer same-session credentials', () async {
+    final delayedRetry = Completer<http.Response>();
+    final retryStarted = Completer<void>();
+    var resourceRequests = 0;
+    final client = MockClient((request) async {
+      if (request.url.path == '/api/v1/triage/intake') {
+        resourceRequests++;
+        if (resourceRequests == 1) {
+          expect(request.headers['authorization'], 'Bearer access-a');
+          return http.Response('{"error":"TOKEN_EXPIRED"}', 401);
+        }
+        expect(request.headers['authorization'], 'Bearer access-a-new');
+        retryStarted.complete();
+        return delayedRetry.future;
+      }
+      if (request.url.path == '/api/v1/auth/refresh') {
+        return http.Response(
+          '{"data":{"accessToken":"access-a-new","refreshToken":"refresh-a-new"}}',
+          200,
+        );
+      }
+      throw StateError('Unexpected request: ${request.url.path}');
+    });
+    addTearDown(client.close);
+
+    final request = http.runWithClient(
+      () => apiPost('/api/v1/triage/intake', const {'symptoms': 'fever'}),
+      () => client,
+    );
+    final requestExpectation = expectLater(
+      request,
+      throwsA(_sessionChangedException),
+    );
+    await retryStarted.future.timeout(const Duration(seconds: 2));
+
+    final generation = AuthState.instance.sessionGeneration;
+    final published = await AuthState.instance.setTokensIfCurrent(
+      expectedGeneration: generation,
+      expectedAccessToken: 'access-a-new',
+      expectedRefreshToken: 'refresh-a-new',
+      expectedUserId: 'account-a',
+      accessToken: 'access-a-newer',
+      refreshToken: 'refresh-a-newer',
+      role: 'MOTHER',
+    );
+    expect(published, isTrue);
+    delayedRetry.complete(http.Response('{"error":"TOKEN_EXPIRED"}', 401));
+
+    await requestExpectation;
+    expect(AuthState.instance.userId, 'account-a');
+    expect(AuthState.instance.accessToken, 'access-a-newer');
+    expect(AuthState.instance.refreshToken, 'refresh-a-newer');
+  });
+
   test('multipart second 401 clears the refreshed initiating session', () async {
     var uploadRequests = 0;
     final client = MockClient((request) async {
@@ -269,6 +367,73 @@ void main() {
     expect(uploadRequests, 2);
     expect(AuthState.instance.isAuthenticated, isFalse);
   });
+
+  test(
+    'multipart retry 401 cannot clear newer same-session credentials',
+    () async {
+      final delayedRetry = Completer<http.Response>();
+      final retryStarted = Completer<void>();
+      var uploadRequests = 0;
+      final client = MockClient((request) async {
+        if (request.url.path == '/api/v1/evidence') {
+          uploadRequests++;
+          if (uploadRequests == 1) {
+            return http.Response('{"error":"TOKEN_EXPIRED"}', 401);
+          }
+          expect(request.headers['authorization'], 'Bearer access-a-new');
+          retryStarted.complete();
+          return delayedRetry.future;
+        }
+        if (request.url.path == '/api/v1/auth/refresh') {
+          return http.Response(
+            '{"data":{"accessToken":"access-a-new","refreshToken":"refresh-a-new"}}',
+            200,
+          );
+        }
+        throw StateError('Unexpected request: ${request.url.path}');
+      });
+      addTearDown(client.close);
+
+      final request = http.runWithClient(
+        () => apiMultipart(
+          '/api/v1/evidence',
+          const {'kind': 'triage'},
+          files: const [
+            MultipartUploadFile(
+              fieldName: 'file',
+              bytes: [1, 2, 3],
+              fileName: 'evidence.jpg',
+              mimeType: 'image/jpeg',
+            ),
+          ],
+        ),
+        () => client,
+      );
+      final requestExpectation = expectLater(
+        request,
+        throwsA(_sessionChangedException),
+      );
+      await retryStarted.future.timeout(const Duration(seconds: 2));
+
+      final generation = AuthState.instance.sessionGeneration;
+      final published = await AuthState.instance.setTokensIfCurrent(
+        expectedGeneration: generation,
+        expectedAccessToken: 'access-a-new',
+        expectedRefreshToken: 'refresh-a-new',
+        expectedUserId: 'account-a',
+        accessToken: 'access-a-newer',
+        refreshToken: 'refresh-a-newer',
+        role: 'MOTHER',
+      );
+      expect(published, isTrue);
+      delayedRetry.complete(http.Response('{"error":"TOKEN_EXPIRED"}', 401));
+
+      await requestExpectation;
+      expect(AuthState.instance.userId, 'account-a');
+      expect(AuthState.instance.accessToken, 'access-a-newer');
+      expect(AuthState.instance.refreshToken, 'refresh-a-newer');
+    },
+  );
 }
 
 final Matcher _sessionChangedException = isA<ApiException>()

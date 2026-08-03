@@ -217,5 +217,5 @@ class _MemoryTokenStorage implements TokenStorage {
   Future<Map<String, String?>> load() async => Map.of(values);
 
   @override
-  Future<void> clear() async => values.clear();
+  Future<void> clear({String? expectedUserId}) async => values.clear();
 }
