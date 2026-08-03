@@ -1,5 +1,6 @@
 package com.carebridge.backend.family.dto;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -53,7 +54,9 @@ public record FamilyDashboardResponse(
             boolean quickNoteWeight,
             boolean quickNoteHydration,
             boolean quickNoteEpds,
-            boolean quickNoteFetalMovement) {
+            boolean quickNoteFetalMovement,
+            boolean quickNoteBloodPressure,
+            boolean quickNoteBloodGlucose) {
     }
 
     public record Member(
@@ -72,6 +75,17 @@ public record FamilyDashboardResponse(
     public record SharedDataSummary(int totalItems, List<SharedDataCategory> categories) {
     }
 
+    /** Sanitized, read-only projection. Missing observations keep nullable values instead of fake zeroes. */
+    public record HealthMetricSummary(
+            String metricType,
+            BigDecimal valueNumeric,
+            BigDecimal valueSecondary,
+            String unit,
+            Instant measuredAt,
+            String measurementContext,
+            int recordCount) {
+    }
+
     public record Detail(
             UUID careGroupId,
             String motherDisplayName,
@@ -82,6 +96,7 @@ public record FamilyDashboardResponse(
             String relationshipRole,
             String customRelationshipRole,
             Permission permissionScope,
-            SharedDataSummary sharedDataSummary) {
+            SharedDataSummary sharedDataSummary,
+            List<HealthMetricSummary> healthMetricSummaries) {
     }
 }

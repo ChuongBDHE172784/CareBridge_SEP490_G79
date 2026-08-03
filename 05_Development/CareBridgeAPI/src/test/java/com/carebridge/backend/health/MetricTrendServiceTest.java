@@ -2,7 +2,6 @@ package com.carebridge.backend.health;
 
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.common.exception.BusinessException;
-import com.carebridge.backend.family.entity.InviteStatus;
 import com.carebridge.backend.family.repository.CareGroupMemberRepository;
 import com.carebridge.backend.family.repository.CareGroupRepository;
 import com.carebridge.backend.health.dto.MetricTrendResponse;
@@ -103,10 +102,6 @@ class MetricTrendServiceTest {
     void getMetricTrend_journeyNotOwned_throwsMetric021() {
         var otherJourney = MetricTrendTestFactory.makeOtherUsersJourney();
         when(journeyRepository.findById(MetricTrendTestFactory.JOURNEY_ID)).thenReturn(Optional.of(otherJourney));
-        when(careGroupMemberRepository.findByUserIdAndInviteStatus(
-                MetricTrendTestFactory.MOTHER_ID, InviteStatus.ACCEPTED))
-                .thenReturn(Collections.emptyList());
-
         assertThatThrownBy(() -> metricService.getMetricTrend(
                 MetricTrendTestFactory.MOTHER_ID, MetricTrendTestFactory.JOURNEY_ID,
                 MetricType.WEIGHT, FROM, TO))

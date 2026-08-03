@@ -5,6 +5,7 @@ import com.carebridge.backend.family.dto.FamilyDashboardResponse;
 import com.carebridge.backend.family.dto.SharedDataResponse;
 import com.carebridge.backend.family.entity.CareGroup;
 import com.carebridge.backend.family.entity.CareGroupMember;
+import com.carebridge.backend.family.entity.CareGroupStatus;
 import com.carebridge.backend.family.entity.CareTask;
 import com.carebridge.backend.family.entity.CareTaskStatus;
 import com.carebridge.backend.family.entity.InviteStatus;
@@ -12,6 +13,11 @@ import com.carebridge.backend.family.entity.PermissionFlag;
 import com.carebridge.backend.family.entity.SharedDataCategory;
 import com.carebridge.backend.family.policy.CareGroupAuthorizationPolicy;
 import com.carebridge.backend.family.repository.CareGroupMemberRepository;
+import com.carebridge.backend.health.entity.HealthObservation;
+import com.carebridge.backend.health.entity.MetricStatus;
+import com.carebridge.backend.health.repository.HealthObservationRepository;
+import com.carebridge.backend.journey.entity.MotherJourney;
+import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.notification.entity.NotificationRecord;
 import com.carebridge.backend.notification.entity.NotificationType;
 import com.carebridge.backend.notification.repository.NotificationRecordRepository;
@@ -20,14 +26,19 @@ import com.carebridge.backend.reminder.repository.ReminderRepository;
 import com.carebridge.backend.reminder.service.ReminderRecurrenceService;
 import com.carebridge.backend.security.repository.UserRepository;
 import jakarta.persistence.EntityManager;
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -48,6 +59,8 @@ public class FamilyDashboardService {
     private final UserRepository userRepository;
     private final ReminderRepository reminderRepository;
     private final ReminderRecurrenceService reminderRecurrenceService;
+    private final MotherJourneyRepository journeyRepository;
+    private final HealthObservationRepository observationRepository;
 
     public FamilyDashboardService(
             CareGroupMemberRepository memberRepository,
@@ -57,7 +70,9 @@ public class FamilyDashboardService {
             ISharedDataService sharedDataService,
             UserRepository userRepository,
             ReminderRepository reminderRepository,
-            ReminderRecurrenceService reminderRecurrenceService) {
+            ReminderRecurrenceService reminderRecurrenceService,
+            MotherJourneyRepository journeyRepository,
+            HealthObservationRepository observationRepository) {
         this.memberRepository = memberRepository;
         this.notificationRepository = notificationRepository;
         this.entityManager = entityManager;
@@ -66,6 +81,8 @@ public class FamilyDashboardService {
         this.userRepository = userRepository;
         this.reminderRepository = reminderRepository;
         this.reminderRecurrenceService = reminderRecurrenceService;
+        this.journeyRepository = journeyRepository;
+        this.observationRepository = observationRepository;
     }
 
     public FamilyDashboardResponse get(UUID userId, UUID requestedCareGroupId) {
@@ -115,7 +132,7 @@ public class FamilyDashboardService {
 
     private GroupContext loadGroupContext(CareGroupMember membership, UUID userId, Instant now) {
         CareGroup group = entityManager.find(CareGroup.class, membership.getCareGroupId());
-        if (group == null) {
+        if (group == null || group.getStatus() != CareGroupStatus.ACTIVE) {
             return null;
         }
 
@@ -209,7 +226,8 @@ public class FamilyDashboardService {
                 context.membership().getFamilyRelationshipRole(),
                 context.membership().getCustomFamilyRelationshipRole(),
                 context.permissionScope(),
-                new FamilyDashboardResponse.SharedDataSummary(sharedItemCount, sharedCategories));
+                new FamilyDashboardResponse.SharedDataSummary(sharedItemCount, sharedCategories),
+                loadHealthMetricSummaries(context.group(), context.permissionScope()));
     }
 
     private FamilyDashboardResponse.Member toMemberResponse(CareGroupMember member) {
@@ -288,7 +306,151 @@ public class FamilyDashboardService {
                 quickNotes && (owner || authorizationPolicy.hasPermission(
                         groupId, userId, PermissionFlag.QUICK_NOTE_EPDS)),
                 quickNotes && (owner || authorizationPolicy.hasPermission(
-                        groupId, userId, PermissionFlag.QUICK_NOTE_FETAL_MOVEMENT)));
+                        groupId, userId, PermissionFlag.QUICK_NOTE_FETAL_MOVEMENT)),
+                quickNotes && (owner || authorizationPolicy.hasPermission(
+                        groupId, userId, PermissionFlag.QUICK_NOTE_BLOOD_PRESSURE)),
+                quickNotes && (owner || authorizationPolicy.hasPermission(
+                        groupId, userId, PermissionFlag.QUICK_NOTE_BLOOD_GLUCOSE)));
+    }
+
+    private List<FamilyDashboardResponse.HealthMetricSummary> loadHealthMetricSummaries(
+            CareGroup group,
+            FamilyDashboardResponse.Permission permission) {
+        if (!permission.quickNotes()) {
+            return List.of();
+        }
+        List<SharedMetric> permittedMetrics = sharedMetrics(permission);
+        if (permittedMetrics.isEmpty()) {
+            return List.of();
+        }
+        Optional<MotherJourney> journey = linkedOrCanonicalJourney(group);
+        if (journey.isEmpty() || journey.get().getCareSubjectId() == null) {
+            return permittedMetrics.stream().map(this::emptyHealthMetricSummary).toList();
+        }
+
+        UUID careSubjectId = journey.get().getCareSubjectId();
+        List<String> canonicalCodes = permittedMetrics.stream()
+                .map(SharedMetric::canonicalCode).distinct().toList();
+        Map<String, HealthObservation> latestByCode = new LinkedHashMap<>();
+        observationRepository.findLatestByMetricCodes(
+                        careSubjectId, canonicalCodes, MetricStatus.ACTIVE)
+                .forEach(item -> latestByCode.putIfAbsent(item.getMetricCode(), item));
+
+        List<String> dailyCodes = permittedMetrics.stream()
+                .filter(SharedMetric::dailyAggregate)
+                .map(SharedMetric::canonicalCode)
+                .toList();
+        Map<String, List<HealthObservation>> todayByCode = new LinkedHashMap<>();
+        if (!dailyCodes.isEmpty()) {
+            LocalDate today = LocalDate.now(DASHBOARD_TIMEZONE);
+            Instant start = today.atStartOfDay(DASHBOARD_TIMEZONE).toInstant();
+            Instant end = today.plusDays(1).atStartOfDay(DASHBOARD_TIMEZONE).toInstant().minusNanos(1);
+            observationRepository.findTrendByMetricCodes(
+                            careSubjectId, dailyCodes, MetricStatus.ACTIVE, start, end)
+                    .forEach(item -> todayByCode
+                            .computeIfAbsent(item.getMetricCode(), ignored -> new ArrayList<>())
+                            .add(item));
+        }
+
+        return permittedMetrics.stream()
+                .map(metric -> metric.dailyAggregate()
+                        ? aggregateToday(metric, todayByCode.getOrDefault(metric.canonicalCode(), List.of()))
+                        : latestSummary(metric, latestByCode.get(metric.canonicalCode())))
+                .toList();
+    }
+
+    private List<SharedMetric> sharedMetrics(FamilyDashboardResponse.Permission permission) {
+        List<SharedMetric> result = new ArrayList<>();
+        if (permission.quickNoteWeight()) {
+            result.add(new SharedMetric("WEIGHT", "WEIGHT", "kg", false));
+        }
+        if (permission.quickNoteFetalMovement()) {
+            result.add(new SharedMetric("FETAL_MOVEMENT_COUNT", "FETAL_MOVEMENT_SESSION", "count", true));
+        }
+        if (permission.quickNoteBloodPressure()) {
+            result.add(new SharedMetric("BLOOD_PRESSURE", "BLOOD_PRESSURE", "mmHg", false));
+        }
+        if (permission.quickNoteHydration()) {
+            result.add(new SharedMetric("HYDRATION", "HYDRATION", "ml", true));
+        }
+        if (permission.quickNoteEpds()) {
+            result.add(new SharedMetric("EPDS_SCORE", "EPDS_SCORE", "điểm", false));
+        }
+        if (permission.quickNoteBloodGlucose()) {
+            result.add(new SharedMetric("BLOOD_GLUCOSE", "BLOOD_GLUCOSE", "mg/dL", false));
+        }
+        return result;
+    }
+
+    private Optional<MotherJourney> linkedOrCanonicalJourney(CareGroup group) {
+        if (group.getLinkedJourneyId() == null) {
+            return journeyRepository.findCanonical(group.getOwnerUserId());
+        }
+        return journeyRepository.findById(group.getLinkedJourneyId())
+                .filter(journey -> group.getOwnerUserId().equals(journey.getOwnerUserId()));
+    }
+
+    private FamilyDashboardResponse.HealthMetricSummary latestSummary(
+            SharedMetric metric, HealthObservation observation) {
+        if (observation == null) {
+            return emptyHealthMetricSummary(metric);
+        }
+        return new FamilyDashboardResponse.HealthMetricSummary(
+                metric.apiMetricType(),
+                observation.getValueNumeric(),
+                "EPDS_SCORE".equals(metric.canonicalCode())
+                        ? null : observation.getValueSecondary(),
+                unitOrDefault(observation.getUnit(), metric.defaultUnit()),
+                observation.getMeasuredAt(),
+                safeGlucoseContext(metric, observation),
+                1);
+    }
+
+    private FamilyDashboardResponse.HealthMetricSummary aggregateToday(
+            SharedMetric metric, List<HealthObservation> observations) {
+        if (observations.isEmpty()) {
+            return emptyHealthMetricSummary(metric);
+        }
+        BigDecimal total = observations.stream()
+                .map(HealthObservation::getValueNumeric)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal::add)
+                .orElse(null);
+        HealthObservation latest = observations.stream()
+                .max(Comparator.comparing(
+                        HealthObservation::getMeasuredAt,
+                        Comparator.nullsFirst(Comparator.naturalOrder())))
+                .orElseThrow();
+        return new FamilyDashboardResponse.HealthMetricSummary(
+                metric.apiMetricType(),
+                total,
+                null,
+                unitOrDefault(latest.getUnit(), metric.defaultUnit()),
+                latest.getMeasuredAt(),
+                null,
+                observations.size());
+    }
+
+    private FamilyDashboardResponse.HealthMetricSummary emptyHealthMetricSummary(SharedMetric metric) {
+        return new FamilyDashboardResponse.HealthMetricSummary(
+                metric.apiMetricType(), null, null, metric.defaultUnit(), null, null, 0);
+    }
+
+    private String safeGlucoseContext(SharedMetric metric, HealthObservation observation) {
+        if (!"BLOOD_GLUCOSE".equals(metric.canonicalCode()) || observation.getContext() == null) {
+            return null;
+        }
+        Object raw = observation.getContext().get("measurementContext");
+        if (raw == null) {
+            return null;
+        }
+        String value = raw.toString();
+        return Set.of("FASTING", "PRE_MEAL", "POST_MEAL_1H", "POST_MEAL_2H", "RANDOM", "OTHER_APPROVED")
+                .contains(value) ? value : null;
+    }
+
+    private String unitOrDefault(String unit, String defaultUnit) {
+        return unit == null || unit.isBlank() ? defaultUnit : unit;
     }
 
     private List<CareTask> loadRequesterTasks(UUID groupId, UUID userId) {
@@ -395,5 +557,12 @@ public class FamilyDashboardService {
             FamilyDashboardResponse.Permission permissionScope,
             Instant lastActivityAt,
             FamilyDashboardResponse.Aggregate aggregate) {
+    }
+
+    private record SharedMetric(
+            String apiMetricType,
+            String canonicalCode,
+            String defaultUnit,
+            boolean dailyAggregate) {
     }
 }

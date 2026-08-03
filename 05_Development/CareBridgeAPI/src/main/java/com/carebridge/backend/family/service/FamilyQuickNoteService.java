@@ -2,19 +2,22 @@ package com.carebridge.backend.family.service;
 
 import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.family.entity.CareGroup;
+import com.carebridge.backend.family.entity.CareGroupStatus;
 import com.carebridge.backend.family.entity.PermissionFlag;
 import com.carebridge.backend.family.policy.CareGroupAuthorizationPolicy;
 import com.carebridge.backend.family.repository.CareGroupRepository;
 import com.carebridge.backend.health.dto.MetricDataPoint;
 import com.carebridge.backend.health.dto.MetricTrendResponse;
-import com.carebridge.backend.health.entity.MaternalHealthMetric;
+import com.carebridge.backend.health.entity.HealthObservation;
 import com.carebridge.backend.health.entity.MetricStatus;
 import com.carebridge.backend.health.entity.MetricType;
-import com.carebridge.backend.health.repository.MaternalHealthMetricRepository;
+import com.carebridge.backend.health.repository.HealthObservationRepository;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import java.time.Instant;
-import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -28,17 +31,17 @@ public class FamilyQuickNoteService {
     private final CareGroupRepository groupRepository;
     private final CareGroupAuthorizationPolicy authorizationPolicy;
     private final MotherJourneyRepository journeyRepository;
-    private final MaternalHealthMetricRepository metricRepository;
+    private final HealthObservationRepository observationRepository;
 
     public FamilyQuickNoteService(
             CareGroupRepository groupRepository,
             CareGroupAuthorizationPolicy authorizationPolicy,
             MotherJourneyRepository journeyRepository,
-            MaternalHealthMetricRepository metricRepository) {
+            HealthObservationRepository observationRepository) {
         this.groupRepository = groupRepository;
         this.authorizationPolicy = authorizationPolicy;
         this.journeyRepository = journeyRepository;
-        this.metricRepository = metricRepository;
+        this.observationRepository = observationRepository;
     }
 
     public MetricTrendResponse getHistory(
@@ -50,6 +53,11 @@ public class FamilyQuickNoteService {
         CareGroup group = groupRepository.findById(careGroupId)
                 .orElseThrow(() -> new BusinessException(
                         HttpStatus.NOT_FOUND, "FAM-005", "Care group not found: " + careGroupId));
+
+        if (group.getStatus() != CareGroupStatus.ACTIVE) {
+            throw new BusinessException(
+                    HttpStatus.FORBIDDEN, "FAM-063", "Care group is not active.");
+        }
 
         if (!authorizationPolicy.isMember(careGroupId, callerId)) {
             throw new BusinessException(
@@ -68,23 +76,21 @@ public class FamilyQuickNoteService {
                 ? journeyRepository.findCanonical(group.getOwnerUserId())
                 : journeyRepository.findById(group.getLinkedJourneyId())
                         .filter(item -> item.getOwnerUserId().equals(group.getOwnerUserId()));
-        if (journey.isEmpty()) {
+        if (journey.isEmpty() || journey.get().getCareSubjectId() == null) {
             return empty(metricType);
         }
 
-        List<MaternalHealthMetric> metrics = metricRepository
-                .findByJourneyIdAndMetricTypeAndStatusAndMeasuredAtBetweenOrderByMeasuredAtAsc(
-                        journey.get().getId(), metricType, MetricStatus.ACTIVE, from, to);
-        List<MetricDataPoint> points = metrics.stream()
-                .sorted(Comparator.comparing(
-                        MaternalHealthMetric::getMeasuredAt,
-                        Comparator.nullsLast(Comparator.reverseOrder())))
+        String metricCode = canonicalMetricCode(metricType);
+        List<HealthObservation> observations = observationRepository.findTrend(
+                journey.get().getCareSubjectId(), metricCode, MetricStatus.ACTIVE, from, to);
+        List<MetricDataPoint> points = observations.reversed().stream()
                 .map(metric -> toReadOnlyPoint(metric, metricType))
                 .toList();
 
         return MetricTrendResponse.builder()
                 .metricType(metricType.name())
-                .unit(metrics.isEmpty() ? defaultUnit(metricType) : metrics.get(0).getUnit())
+                .unit(observations.isEmpty() || observations.get(0).getUnit() == null
+                        ? defaultUnit(metricType) : observations.get(0).getUnit())
                 .dataPoints(points)
                 .build();
     }
@@ -97,7 +103,11 @@ public class FamilyQuickNoteService {
             case WEIGHT -> PermissionFlag.QUICK_NOTE_WEIGHT;
             case HYDRATION -> PermissionFlag.QUICK_NOTE_HYDRATION;
             case EPDS_SCORE -> PermissionFlag.QUICK_NOTE_EPDS;
-            case FETAL_MOVEMENT_COUNT -> PermissionFlag.QUICK_NOTE_FETAL_MOVEMENT;
+            case FETAL_MOVEMENT_COUNT, FETAL_MOVEMENT_SESSION ->
+                    PermissionFlag.QUICK_NOTE_FETAL_MOVEMENT;
+            case BLOOD_PRESSURE, BLOOD_PRESSURE_SYSTOLIC, BLOOD_PRESSURE_DIASTOLIC ->
+                    PermissionFlag.QUICK_NOTE_BLOOD_PRESSURE;
+            case BLOOD_GLUCOSE -> PermissionFlag.QUICK_NOTE_BLOOD_GLUCOSE;
             default -> throw new BusinessException(
                     HttpStatus.BAD_REQUEST,
                     "FAM-066",
@@ -111,18 +121,65 @@ public class FamilyQuickNoteService {
         }
     }
 
-    private MetricDataPoint toReadOnlyPoint(MaternalHealthMetric metric, MetricType metricType) {
-        // Only fetal movement uses the note as the event type. Free-text notes and
-        // EPDS answer payloads remain private on this list-only family projection.
-        String visibleNote = metricType == MetricType.FETAL_MOVEMENT_COUNT ? metric.getNote() : null;
+    private MetricDataPoint toReadOnlyPoint(HealthObservation metric, MetricType metricType) {
         return MetricDataPoint.builder()
                 .metricId(metric.getId())
                 .measuredAt(metric.getMeasuredAt())
                 .valueNumeric(metric.getValueNumeric())
-                .valueSecondary(metric.getValueSecondary())
+                .valueSecondary(metricType == MetricType.EPDS_SCORE ? null : metric.getValueSecondary())
                 .sourceType(metric.getSourceType() == null ? null : metric.getSourceType().name())
-                .note(visibleNote)
+                .note(null)
+                .context(safeContext(metricType, metric.getContext()))
+                .periodStart(isFetalMovement(metricType) ? metric.getPeriodStart() : null)
+                .periodEnd(isFetalMovement(metricType) ? metric.getPeriodEnd() : null)
                 .build();
+    }
+
+    private Map<String, Object> safeContext(MetricType metricType, Map<String, Object> source) {
+        if (source == null || source.isEmpty()) {
+            return Map.of();
+        }
+        List<String> allowedKeys = switch (metricType) {
+            case BLOOD_GLUCOSE -> List.of("measurementContext");
+            case FETAL_MOVEMENT_COUNT, FETAL_MOVEMENT_SESSION ->
+                    List.of("protocolCode", "completionStatus", "gestationalAgeSnapshot");
+            default -> List.of();
+        };
+        Map<String, Object> sanitized = new LinkedHashMap<>();
+        allowedKeys.forEach(key -> {
+            Object value = source.get(key);
+            if (value != null && isAllowedContextValue(metricType, key, value)) {
+                sanitized.put(key, value);
+            }
+        });
+        return sanitized;
+    }
+
+    private boolean isAllowedContextValue(MetricType metricType, String key, Object value) {
+        if (metricType != MetricType.BLOOD_GLUCOSE || !"measurementContext".equals(key)) {
+            return true;
+        }
+        return Set.of("FASTING", "PRE_MEAL", "POST_MEAL_1H", "POST_MEAL_2H", "RANDOM", "OTHER_APPROVED")
+                .contains(value.toString());
+    }
+
+    private boolean isFetalMovement(MetricType metricType) {
+        return metricType == MetricType.FETAL_MOVEMENT_COUNT
+                || metricType == MetricType.FETAL_MOVEMENT_SESSION;
+    }
+
+    private String canonicalMetricCode(MetricType metricType) {
+        return switch (metricType) {
+            case WEIGHT -> "WEIGHT";
+            case HYDRATION -> "HYDRATION";
+            case EPDS_SCORE -> "EPDS_SCORE";
+            case FETAL_MOVEMENT_COUNT, FETAL_MOVEMENT_SESSION -> "FETAL_MOVEMENT_SESSION";
+            case BLOOD_PRESSURE, BLOOD_PRESSURE_SYSTOLIC, BLOOD_PRESSURE_DIASTOLIC -> "BLOOD_PRESSURE";
+            case BLOOD_GLUCOSE -> "BLOOD_GLUCOSE";
+            default -> throw new BusinessException(
+                    HttpStatus.BAD_REQUEST, "FAM-066",
+                    "Only shared health metric types can be accessed through this endpoint.");
+        };
     }
 
     private MetricTrendResponse empty(MetricType metricType) {
@@ -139,6 +196,9 @@ public class FamilyQuickNoteService {
             case HYDRATION -> "ml";
             case EPDS_SCORE -> "điểm";
             case FETAL_MOVEMENT_COUNT -> "lần";
+            case FETAL_MOVEMENT_SESSION -> "count";
+            case BLOOD_PRESSURE, BLOOD_PRESSURE_SYSTOLIC, BLOOD_PRESSURE_DIASTOLIC -> "mmHg";
+            case BLOOD_GLUCOSE -> "mg/dL";
             default -> "";
         };
     }

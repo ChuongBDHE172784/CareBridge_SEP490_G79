@@ -1109,7 +1109,11 @@ public class CareGroupServiceImpl implements ICareGroupService {
                 quickNotes && (request.getQuickNoteEpds() != null
                         ? request.getQuickNoteEpds() : previous.isQuickNoteEpds()),
                 quickNotes && (request.getQuickNoteFetalMovement() != null
-                        ? request.getQuickNoteFetalMovement() : previous.isQuickNoteFetalMovement())
+                        ? request.getQuickNoteFetalMovement() : previous.isQuickNoteFetalMovement()),
+                quickNotes && (request.getQuickNoteBloodPressure() != null
+                        ? request.getQuickNoteBloodPressure() : previous.isQuickNoteBloodPressure()),
+                quickNotes && (request.getQuickNoteBloodGlucose() != null
+                        ? request.getQuickNoteBloodGlucose() : previous.isQuickNoteBloodGlucose())
         );
         updated.copyAdditionalPermissionsFrom(previous);
 
@@ -1159,6 +1163,8 @@ public class CareGroupServiceImpl implements ICareGroupService {
                 .quickNoteHydration(updated.isQuickNoteHydration())
                 .quickNoteEpds(updated.isQuickNoteEpds())
                 .quickNoteFetalMovement(updated.isQuickNoteFetalMovement())
+                .quickNoteBloodPressure(updated.isQuickNoteBloodPressure())
+                .quickNoteBloodGlucose(updated.isQuickNoteBloodGlucose())
                 .updatedAt(saved.getUpdatedAt())
                 .build();
     }
@@ -1200,6 +1206,8 @@ public class CareGroupServiceImpl implements ICareGroupService {
                 .quickNoteHydration(perm.isQuickNoteHydration())
                 .quickNoteEpds(perm.isQuickNoteEpds())
                 .quickNoteFetalMovement(perm.isQuickNoteFetalMovement())
+                .quickNoteBloodPressure(perm.isQuickNoteBloodPressure())
+                .quickNoteBloodGlucose(perm.isQuickNoteBloodGlucose())
                 .updatedAt(member.getUpdatedAt())
                 .build();
     }

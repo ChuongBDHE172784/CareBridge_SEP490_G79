@@ -26,5 +26,7 @@ public class FamilyPermissionResponse {
     private boolean quickNoteHydration;
     private boolean quickNoteEpds;
     private boolean quickNoteFetalMovement;
+    private boolean quickNoteBloodPressure;
+    private boolean quickNoteBloodGlucose;
     private Instant updatedAt;
 }

@@ -188,6 +188,54 @@ class CareGroupServiceImplPermissionTest {
         assertThat(result.isQuickNoteFetalMovement()).isFalse();
     }
 
+    @Test
+    void updateFamilyPermission_supportsBloodPressureAndGlucoseWithoutLosingUnknownKeys() {
+        stubActiveGroup();
+        stubOwnerAuthorized();
+        CareGroupMember member = stubAcceptedMember(
+                "{\"quickNotes\":true,\"quickNoteWeight\":true,\"futurePermission\":true}");
+        stubSaveMember(member);
+        stubDeviceToken(MEMBER_USER_ID);
+        UpdateFamilyPermissionRequest request = new UpdateFamilyPermissionRequest();
+        request.setQuickNoteBloodPressure(true);
+        request.setQuickNoteBloodGlucose(true);
+
+        FamilyPermissionResponse result = service.updateFamilyPermission(
+                GROUP_ID, MEMBER_ID, request, OWNER_ID);
+
+        assertThat(result.isQuickNoteBloodPressure()).isTrue();
+        assertThat(result.isQuickNoteBloodGlucose()).isTrue();
+        assertThat(member.getPermissionJson())
+                .contains("\"quickNoteBloodPressure\":true")
+                .contains("\"quickNoteBloodGlucose\":true")
+                .contains("\"futurePermission\":true");
+    }
+
+    @Test
+    void updateFamilyPermission_turningParentOffClearsAllSixHealthMetricPermissions() {
+        stubActiveGroup();
+        stubOwnerAuthorized();
+        CareGroupMember member = stubAcceptedMember(
+                "{\"quickNotes\":true,\"quickNoteWeight\":true,\"quickNoteHydration\":true,"
+                        + "\"quickNoteEpds\":true,\"quickNoteFetalMovement\":true,"
+                        + "\"quickNoteBloodPressure\":true,\"quickNoteBloodGlucose\":true}");
+        stubSaveMember(member);
+        stubDeviceToken(MEMBER_USER_ID);
+        UpdateFamilyPermissionRequest request = new UpdateFamilyPermissionRequest();
+        request.setQuickNotes(false);
+
+        FamilyPermissionResponse result = service.updateFamilyPermission(
+                GROUP_ID, MEMBER_ID, request, OWNER_ID);
+
+        assertThat(result.isQuickNotes()).isFalse();
+        assertThat(result.isQuickNoteWeight()).isFalse();
+        assertThat(result.isQuickNoteHydration()).isFalse();
+        assertThat(result.isQuickNoteEpds()).isFalse();
+        assertThat(result.isQuickNoteFetalMovement()).isFalse();
+        assertThat(result.isQuickNoteBloodPressure()).isFalse();
+        assertThat(result.isQuickNoteBloodGlucose()).isFalse();
+    }
+
     // ── TC-003: Member views own permission grant ─────────────────────────────
 
     @Test
