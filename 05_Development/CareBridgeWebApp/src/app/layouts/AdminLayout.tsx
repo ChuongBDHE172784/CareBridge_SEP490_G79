@@ -31,7 +31,6 @@ const NAV_LINKS: readonly NavItem[] = [
     roles: ['SYSTEM_ADMIN'],
     children: [
       { to: '/admin/expert-verification-queue', label: 'Xét duyệt chuyên gia', icon: 'verified_user', roles: ['SYSTEM_ADMIN'] },
-      { to: '/admin/expert-trust-management', label: 'Duyệt bài chuyên gia', icon: 'article', roles: ['SYSTEM_ADMIN'] },
     ],
   },
   {
