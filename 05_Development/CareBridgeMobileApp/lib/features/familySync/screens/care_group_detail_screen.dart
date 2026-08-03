@@ -269,37 +269,37 @@ class _CareGroupDetailScreenState extends State<CareGroupDetailScreen> {
             code: 'WEIGHT',
             label: 'Cân nặng',
             icon: Icons.monitor_weight_outlined,
-            shared: permission.quickNotes && permission.quickNoteWeight,
+            shared: _isHealthMetricShared('WEIGHT', permission),
           ),
           (
             code: 'FETAL_MOVEMENT_COUNT',
             label: 'Cử động thai',
             icon: Icons.child_friendly_outlined,
-            shared: permission.quickNotes && permission.quickNoteFetalMovement,
+            shared: _isHealthMetricShared('FETAL_MOVEMENT_COUNT', permission),
           ),
           (
             code: 'BLOOD_PRESSURE',
             label: 'Huyết áp',
             icon: Icons.monitor_heart_outlined,
-            shared: permission.quickNotes && permission.quickNoteBloodPressure,
+            shared: _isHealthMetricShared('BLOOD_PRESSURE', permission),
           ),
           (
             code: 'HYDRATION',
             label: 'Nước',
             icon: Icons.water_drop_outlined,
-            shared: permission.quickNotes && permission.quickNoteHydration,
+            shared: _isHealthMetricShared('HYDRATION', permission),
           ),
           (
             code: 'EPDS_SCORE',
             label: 'Sàng lọc EPDS',
             icon: Icons.psychology_alt_outlined,
-            shared: permission.quickNotes && permission.quickNoteEpds,
+            shared: _isHealthMetricShared('EPDS_SCORE', permission),
           ),
           (
             code: 'BLOOD_GLUCOSE',
             label: 'Đường huyết',
             icon: Icons.bloodtype_outlined,
-            shared: permission.quickNotes && permission.quickNoteBloodGlucose,
+            shared: _isHealthMetricShared('BLOOD_GLUCOSE', permission),
           ),
         ].where((item) => item.shared).toList(growable: false);
 
@@ -408,6 +408,44 @@ class _CareGroupDetailScreenState extends State<CareGroupDetailScreen> {
           ),
       ],
     );
+  }
+
+  bool _isHealthMetricShared(
+    String metricCode,
+    FamilyHomePermission dashboardPermission,
+  ) {
+    final directPermission = _myPermissions;
+    if (directPermission == null) {
+      return switch (metricCode) {
+        'WEIGHT' =>
+          dashboardPermission.quickNotes && dashboardPermission.quickNoteWeight,
+        'FETAL_MOVEMENT_COUNT' =>
+          dashboardPermission.quickNotes &&
+              dashboardPermission.quickNoteFetalMovement,
+        'BLOOD_PRESSURE' =>
+          dashboardPermission.quickNotes &&
+              dashboardPermission.quickNoteBloodPressure,
+        'HYDRATION' =>
+          dashboardPermission.quickNotes &&
+              dashboardPermission.quickNoteHydration,
+        'EPDS_SCORE' =>
+          dashboardPermission.quickNotes && dashboardPermission.quickNoteEpds,
+        'BLOOD_GLUCOSE' =>
+          dashboardPermission.quickNotes &&
+              dashboardPermission.quickNoteBloodGlucose,
+        _ => false,
+      };
+    }
+    if (!directPermission.quickNotes) return false;
+    return switch (metricCode) {
+      'WEIGHT' => directPermission.quickNoteWeight,
+      'FETAL_MOVEMENT_COUNT' => directPermission.quickNoteFetalMovement,
+      'BLOOD_PRESSURE' => directPermission.quickNoteBloodPressure,
+      'HYDRATION' => directPermission.quickNoteHydration,
+      'EPDS_SCORE' => directPermission.quickNoteEpds,
+      'BLOOD_GLUCOSE' => directPermission.quickNoteBloodGlucose,
+      _ => false,
+    };
   }
 
   String _familyMetricTime(DateTime value) {

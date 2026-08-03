@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/network/api_client.dart';
 import '../models/health_metric_model.dart';
 import '../services/health_metric_service.dart';
 
@@ -273,7 +274,9 @@ class _AddMaternalHealthMetricScreenState
 
   String? _requiredPositive(String? value) {
     final parsed = double.tryParse(value?.trim() ?? '');
-    if (parsed == null || parsed <= 0) return 'Nhập giá trị hợp lệ';
+    if (parsed == null || !parsed.isFinite || parsed <= 0) {
+      return 'Nhập giá trị hợp lệ';
+    }
     return null;
   }
 
@@ -306,6 +309,15 @@ class _AddMaternalHealthMetricScreenState
     if (_isFetalMovement && !_resolvedPeriodEnd.isAfter(_resolvedPeriodStart)) {
       _showError('Thời điểm kết thúc phải sau thời điểm bắt đầu.');
       return;
+    }
+
+    if (_isBloodPressure) {
+      final systolic = double.tryParse(_primaryCtrl.text.trim());
+      final diastolic = double.tryParse(_secondaryCtrl.text.trim());
+      if (systolic == null || diastolic == null || systolic <= diastolic) {
+        _showError('Huyết áp tâm thu phải lớn hơn huyết áp tâm trương.');
+        return;
+      }
     }
 
     setState(() => _isSaving = true);
@@ -344,6 +356,8 @@ class _AddMaternalHealthMetricScreenState
         ),
       );
       Navigator.of(context).pop(true);
+    } on ApiException catch (error) {
+      _showError(_metricSaveError(error));
     } catch (_) {
       _showError('Không thể lưu chỉ số. Vui lòng kiểm tra dữ liệu và thử lại.');
     } finally {
@@ -355,6 +369,16 @@ class _AddMaternalHealthMetricScreenState
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message), backgroundColor: _error));
+  }
+
+  String _metricSaveError(ApiException error) {
+    return switch (error.errorCode) {
+      'METRIC-032' => 'Huyết áp tâm thu phải lớn hơn huyết áp tâm trương.',
+      'METRIC-033' => 'Đơn vị đo không hợp lệ. Vui lòng thử lại.',
+      'METRIC-038' => 'Giá trị chỉ số phải lớn hơn 0.',
+      'METRIC-004' => 'Thời điểm đo không được ở tương lai quá 5 phút.',
+      _ => 'Không thể lưu chỉ số. Vui lòng kiểm tra dữ liệu và thử lại.',
+    };
   }
 
   @override

@@ -171,6 +171,12 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
                     _buildNoGroup()
                   else ...[
                     const SizedBox(height: 28),
+                    if (_snapshot!.groups.length > 1) ...[
+                      _buildFollowingGroups(_snapshot!),
+                      const SizedBox(height: 20),
+                      _buildGroupSelector(_snapshot!),
+                    ],
+                    const SizedBox(height: 24),
                     _buildGlobalAggregate(_snapshot!.globalAggregate),
                     if (_loading)
                       const Padding(
@@ -178,11 +184,7 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
                         padding: EdgeInsets.only(top: 16),
                         child: LinearProgressIndicator(color: _primary),
                       ),
-                    if (_snapshot!.groups.length > 1) ...[
-                      const SizedBox(height: 24),
-                      _buildGroupSelector(_snapshot!),
-                    ],
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 28),
                     if (_snapshot!.selectedGroupDetail != null)
                       _buildSelectedGroupDetail(
                         _snapshot!.selectedGroupDetail!,
@@ -314,7 +316,7 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const _SectionTitle('Tổng quan tất cả nhóm'),
+        const _SectionTitle('Việc cần lưu ý trên tất cả nhóm'),
         const SizedBox(height: 12),
         GridView.count(
           crossAxisCount: 2,
@@ -355,26 +357,89 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
   }
 
   Widget _buildGroupSelector(FamilyHomeSnapshot snapshot) {
-    return DropdownButtonFormField<String>(
-      key: const Key('family-dashboard-group-selector'),
-      initialValue: snapshot.selectedCareGroupId,
-      decoration: const InputDecoration(
-        labelText: 'Nhóm đang xem',
-        border: OutlineInputBorder(),
+    return _DashboardCard(
+      child: DropdownButtonFormField<String>(
+        key: const Key('family-dashboard-group-selector'),
+        initialValue: snapshot.selectedCareGroupId,
+        isExpanded: true,
+        decoration: const InputDecoration(
+          labelText: 'Đang xem tình trạng của',
+          prefixIcon: Icon(Icons.switch_account_outlined),
+          border: InputBorder.none,
+        ),
+        items: snapshot.groups
+            .map(
+              (group) => DropdownMenuItem(
+                value: group.id,
+                child: Text(group.name, overflow: TextOverflow.ellipsis),
+              ),
+            )
+            .toList(growable: false),
+        onChanged: _loading
+            ? null
+            : (value) {
+                if (value == null || value == _selectedCareGroupId) return;
+                setState(() => _selectedCareGroupId = value);
+                _load();
+              },
       ),
-      items: snapshot.groups
-          .map(
-            (group) =>
-                DropdownMenuItem(value: group.id, child: Text(group.name)),
-          )
-          .toList(growable: false),
-      onChanged: _loading
-          ? null
-          : (value) {
-              if (value == null || value == _selectedCareGroupId) return;
-              setState(() => _selectedCareGroupId = value);
-              _load();
-            },
+    );
+  }
+
+  Widget _buildFollowingGroups(FamilyHomeSnapshot snapshot) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Bạn đang đồng hành cùng ${snapshot.groups.length} mẹ',
+          style: const TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            color: _onSurface,
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 54,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: snapshot.groups
+                  .map((group) {
+                    final selected = group.id == snapshot.selectedCareGroupId;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        key: Key('family-dashboard-group-chip-${group.id}'),
+                        label: Text(group.name),
+                        selected: selected,
+                        avatar: Icon(
+                          selected
+                              ? Icons.favorite_rounded
+                              : Icons.favorite_border,
+                          size: 17,
+                          color: selected ? Colors.white : _primary,
+                        ),
+                        selectedColor: _primary,
+                        labelStyle: TextStyle(
+                          color: selected ? Colors.white : _onSurface,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        onSelected: _loading || selected
+                            ? null
+                            : (_) {
+                                setState(() => _selectedCareGroupId = group.id);
+                                _load();
+                              },
+                      ),
+                    );
+                  })
+                  .toList(growable: false),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -386,23 +451,7 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
       key: Key('family-selected-group-${detail.careGroupId}'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          selectedGroup.name,
-          style: const TextStyle(
-            fontFamily: 'Lexend',
-            fontSize: 24,
-            fontWeight: FontWeight.w700,
-            color: _onSurface,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          _relationshipLabel(
-            detail.relationshipRole,
-            detail.customRelationshipRole,
-          ),
-          style: const TextStyle(color: _onSurfaceVariant),
-        ),
+        _buildMotherContextCard(detail, selectedGroup),
         const SizedBox(height: 24),
         _SectionTitle('Lịch nhắc của ${detail.motherDisplayName}'),
         const SizedBox(height: 10),
@@ -430,6 +479,74 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
         const SizedBox(height: 10),
         ...detail.members.map(_buildMemberCard),
       ],
+    );
+  }
+
+  Widget _buildMotherContextCard(
+    FamilyHomeGroupDetail detail,
+    FamilyHomeGroup group,
+  ) {
+    final sharedCount = detail.permissionScope.sharedHealthMetricCount;
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF845143), Color(0xFFB87565)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const CircleAvatar(
+                backgroundColor: Color(0x33FFFFFF),
+                foregroundColor: Colors.white,
+                child: Icon(Icons.favorite_rounded),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  detail.motherDisplayName,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 21,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              Text(
+                _relationshipLabel(
+                  detail.relationshipRole,
+                  detail.customRelationshipRole,
+                ),
+                style: const TextStyle(color: Color(0xFFFDEDEA)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(group.name, style: const TextStyle(color: Color(0xFFFDEDEA))),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _MotherContextPill(
+                icon: Icons.monitor_heart_outlined,
+                label: '$sharedCount chỉ số được chia sẻ',
+              ),
+              _MotherContextPill(
+                icon: Icons.groups_outlined,
+                label: '${detail.memberCount} thành viên',
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -956,6 +1073,39 @@ class _AggregateCard extends StatelessWidget {
           Text(
             '$value',
             style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MotherContextPill extends StatelessWidget {
+  const _MotherContextPill({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      decoration: BoxDecoration(
+        color: const Color(0x24FFFFFF),
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: Colors.white),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       ),

@@ -219,7 +219,9 @@ public class FamilyDashboardService {
         return new FamilyDashboardResponse.Detail(
                 groupId,
                 motherDisplayName(context.group().getOwnerUserId()),
-                loadMotherTodayReminders(context.group().getOwnerUserId()),
+                context.permissionScope().calendar()
+                        ? loadMotherTodayReminders(context.group().getOwnerUserId())
+                        : List.of(),
                 context.alerts(),
                 acceptedMembers.size(),
                 acceptedMembers,

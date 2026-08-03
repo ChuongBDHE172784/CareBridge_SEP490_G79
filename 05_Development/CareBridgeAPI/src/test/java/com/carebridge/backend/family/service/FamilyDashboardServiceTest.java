@@ -203,6 +203,7 @@ class FamilyDashboardServiceTest {
                 .status(ReminderStatus.PENDING)
                 .build();
         stubAcceptedGroups(List.of(membership), Map.of(groupId, group(groupId, "A")));
+        allowCalendar(groupId);
         when(memberRepository.findByCareGroupIdAndInviteStatusIn(
                         groupId, List.of(InviteStatus.ACCEPTED)))
                 .thenReturn(List.of(membership));
@@ -220,6 +221,9 @@ class FamilyDashboardServiceTest {
                         scheduledAt,
                         ReminderStatus.PENDING,
                         null)));
+        when(sharedDataService.getSharedData(
+                        groupId, userId, SharedDataCategory.CALENDAR, 0, Integer.MAX_VALUE))
+                .thenReturn(SharedDataResponse.builder().items(List.of()).build());
 
         var response = service.get(userId, groupId);
 
@@ -232,6 +236,22 @@ class FamilyDashboardServiceTest {
                     assertThat(todayReminder.type()).isEqualTo("MEDICATION");
                 });
         verify(reminderRepository)
+                .findByOwnerUserIdAndStatusNot(motherId, ReminderStatus.CANCELLED);
+    }
+
+    @Test
+    void selectedDetailWithoutCalendarPermissionDoesNotExposeMotherReminders() {
+        UUID groupId = UUID.randomUUID();
+        CareGroupMember membership = membership(groupId, userId, Instant.now());
+        stubAcceptedGroups(List.of(membership), Map.of(groupId, group(groupId, "A")));
+        when(memberRepository.findByCareGroupIdAndInviteStatusIn(
+                        groupId, List.of(InviteStatus.ACCEPTED)))
+                .thenReturn(List.of(membership));
+
+        var response = service.get(userId, groupId);
+
+        assertThat(response.selectedGroupDetail().todayReminders()).isEmpty();
+        verify(reminderRepository, never())
                 .findByOwnerUserIdAndStatusNot(motherId, ReminderStatus.CANCELLED);
     }
 
@@ -544,6 +564,10 @@ class FamilyDashboardServiceTest {
 
     private void allowAlerts(UUID groupId) {
         lenient().when(authorizationPolicy.hasPermission(groupId, userId, PermissionFlag.ALERTS)).thenReturn(true);
+    }
+
+    private void allowCalendar(UUID groupId) {
+        lenient().when(authorizationPolicy.hasPermission(groupId, userId, PermissionFlag.CALENDAR)).thenReturn(true);
     }
 
     private CareGroupMember membership(UUID groupId, UUID memberUserId, Instant joinedAt) {
