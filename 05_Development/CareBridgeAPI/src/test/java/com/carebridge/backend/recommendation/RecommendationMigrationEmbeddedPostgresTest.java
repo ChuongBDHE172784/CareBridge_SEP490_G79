@@ -56,7 +56,7 @@ class RecommendationMigrationEmbeddedPostgresTest {
                              where table_schema='public' and table_name='content_items'
                                and column_name in ('eligible_from_week', 'eligible_to_week', 'recommendation_priority')) = 3,
                           (select count(*) from public.community_topics where slug like 'rec-%'
-                               and type = 'TAG' and parent_id is null and is_hidden = false) = 79
+                               and type = 'TAG' and parent_id is null and is_hidden = false) = 107
                         """)) {
                     assertThat(columns.next()).isTrue();
                     for (int column = 1; column <= 9; column++) {

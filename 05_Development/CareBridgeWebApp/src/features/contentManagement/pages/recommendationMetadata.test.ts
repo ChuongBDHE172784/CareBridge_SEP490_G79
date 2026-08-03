@@ -23,6 +23,19 @@ describe('recommendation metadata authoring rules', () => {
       selectedTagIds: ['age-young', 'age-adult'],
       catalog,
     })).toContain('exclusive');
+    expect(recommendationMetadataError({
+      type: 'ARTICLE',
+      stage: 'PREGNANCY',
+      from: null,
+      to: null,
+      priority: 10,
+      selectedTagIds: ['sti-risk', 'sti-current'],
+      catalog: [
+        ...catalog,
+        { id: 'sti-risk', slug: 'rec-sti-risk', domain: 'STI', label: 'STI: risk' },
+        { id: 'sti-current', slug: 'rec-sti-suspected-or-known', domain: 'STI', label: 'STI: suspected' },
+      ],
+    })).toContain('exclusive');
   });
 
   it('requires pregnancy bounds to be paired and keeps other stages stage-wide', () => {

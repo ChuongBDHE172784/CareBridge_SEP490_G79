@@ -107,6 +107,44 @@ void main() {
     },
   );
 
+  testWidgets('shows optional sequence advance CTA and dispatches it', (
+    tester,
+  ) async {
+    var postPath = '';
+    final service = TodayTaskService(
+      getRequest: (_, {queryParams}) async => {
+        'data': {
+          ..._envelope(empty: true),
+          'sequence': {
+            'sequenceState': 'READY_TO_ADVANCE',
+            'currentInstanceId': 'instance-1',
+            'currentSetName': 'Bộ 1',
+            'currentPosition': 1,
+            'totalPositions': 2,
+            'qualifiedPositions': 1,
+            'advanceAvailable': true,
+            'nextSet': {'name': 'Bộ 2', 'position': 2},
+            'sequenceComplete': false,
+          },
+        },
+      },
+      postRequest: (path, body) async {
+        postPath = path;
+        return {'data': body};
+      },
+      clientRequestIdFactory: () =>
+          '00000000-0000-0000-0000-000000000001',
+    );
+
+    await tester.pumpWidget(_wrap(TodayTasksPanel(service: service)));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('sequence-advance-button')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('sequence-advance-button')));
+    await tester.pumpAndSettle();
+    expect(postPath, '/api/v1/checklists/sequences/advance');
+  });
+
   testWidgets('family audience does not offer user-created deletion', (
     tester,
   ) async {

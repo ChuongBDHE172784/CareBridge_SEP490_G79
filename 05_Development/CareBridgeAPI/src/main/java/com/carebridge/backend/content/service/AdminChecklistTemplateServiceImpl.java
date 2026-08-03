@@ -87,6 +87,7 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
                 .templateLineageId(lineageId)
                 .templateVersionId(versionId)
                 .stage(normalizedStage)
+                .sequencePosition(normalizeSequencePosition(request.displayOrder()))
                 .recipientScope(toRecipientScope(recipientRoles))
                 .eligibilityAnchorType(eligibility.anchor())
                 .eligibilityRangeUnit(eligibility.unit())
@@ -154,6 +155,11 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
                 ? normalizeTemplateType(template.getTemplateType())
                 : request.templateType());
         template.setStage(normalizedStage);
+        if (request.displayOrder() != null
+                && template.getStatus() != ChecklistTemplateStatus.APPROVED
+                && template.getStatus() != ChecklistTemplateStatus.ARCHIVED) {
+            template.setSequencePosition(normalizeSequencePosition(request.displayOrder()));
+        }
         template.setSubstageId(null);
         template.setRecipientScope(toRecipientScope(recipientRoles));
         template.setEligibilityAnchorType(eligibility.anchor());
@@ -277,6 +283,7 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
                 .templateLineageId(lineageId)
                 .templateVersionId(versionId)
                 .stage(source.getStage())
+                .sequencePosition(source.getSequencePosition())
                 .recipientScope(source.getRecipientScope())
                 .eligibilityAnchorType(source.getEligibilityAnchorType())
                 .eligibilityRangeUnit(source.getEligibilityRangeUnit())
@@ -483,5 +490,15 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
         private static InlineEligibility none() {
             return new InlineEligibility(null, null, null, null);
         }
+    }
+
+    private static int normalizeSequencePosition(Integer value) {
+        if (value == null) {
+            return 0;
+        }
+        if (value < 0) {
+            throw ContentException.validationFailed("displayOrder", "must be zero or a positive sequence position");
+        }
+        return value;
     }
 }

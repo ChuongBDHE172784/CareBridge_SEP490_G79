@@ -14,24 +14,29 @@ import com.carebridge.backend.checklist.model.ChecklistInstanceStatus;
 import com.carebridge.backend.checklist.model.ChecklistOrigin;
 import com.carebridge.backend.checklist.model.ChecklistRecipientRole;
 import com.carebridge.backend.checklist.model.ChecklistTaskStatus;
+import com.carebridge.backend.checklist.policy.ChecklistTemplateVisibilityPolicy;
 import com.carebridge.backend.checklist.repository.ChecklistInstanceRepository;
 import com.carebridge.backend.checklist.repository.ChecklistTaskInstanceRepository;
 import com.carebridge.backend.checklist.today.policy.UnifiedTaskMutationPolicy;
 import com.carebridge.backend.checklist.today.policy.UnifiedTaskAccessPolicy;
 import com.carebridge.backend.common.exception.BusinessException;
+import com.carebridge.backend.content.entity.ChecklistTemplate;
+import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
 import com.carebridge.backend.journey.entity.JourneyStatus;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Comparator;
+import java.util.Map;
 import java.util.UUID;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Creates idempotent user-owned tasks directly in the V2 checklist aggregate. */
 @Service
-@RequiredArgsConstructor
 public class UserCreatedChecklistTaskService {
 
     private final MotherJourneyRepository journeyRepository;
@@ -41,6 +46,40 @@ public class UserCreatedChecklistTaskService {
     private final UnifiedTaskMutationPolicy mutationPolicy;
     private final UnifiedTaskAccessPolicy accessPolicy;
     private final AuditService auditService;
+    private final ChecklistTemplateRepository templateRepository;
+
+    /** Compatibility constructor retained for focused unit tests and legacy callers. */
+    public UserCreatedChecklistTaskService(
+            MotherJourneyRepository journeyRepository,
+            BabyProfileRepository babyRepository,
+            ChecklistInstanceRepository instanceRepository,
+            ChecklistTaskInstanceRepository taskRepository,
+            UnifiedTaskMutationPolicy mutationPolicy,
+            UnifiedTaskAccessPolicy accessPolicy,
+            AuditService auditService) {
+        this(journeyRepository, babyRepository, instanceRepository, taskRepository,
+                mutationPolicy, accessPolicy, auditService, null);
+    }
+
+    @Autowired
+    public UserCreatedChecklistTaskService(
+            MotherJourneyRepository journeyRepository,
+            BabyProfileRepository babyRepository,
+            ChecklistInstanceRepository instanceRepository,
+            ChecklistTaskInstanceRepository taskRepository,
+            UnifiedTaskMutationPolicy mutationPolicy,
+            UnifiedTaskAccessPolicy accessPolicy,
+            AuditService auditService,
+            ChecklistTemplateRepository templateRepository) {
+        this.journeyRepository = journeyRepository;
+        this.babyRepository = babyRepository;
+        this.instanceRepository = instanceRepository;
+        this.taskRepository = taskRepository;
+        this.mutationPolicy = mutationPolicy;
+        this.accessPolicy = accessPolicy;
+        this.auditService = auditService;
+        this.templateRepository = templateRepository;
+    }
 
     @Transactional
     public ChecklistItemResponse create(AddChecklistItemRequest request, UUID actorUserId) {
@@ -120,8 +159,11 @@ public class UserCreatedChecklistTaskService {
         if (journeyId != null && babyId != null) {
             throw invalid("CHECKLIST_CONTEXT_REQUIRED", "Checklist filters are mutually exclusive");
         }
-        List<ChecklistInstance> instances = instanceRepository.findByRecipientUserId(actorUserId).stream()
+        List<ChecklistInstance> discovered = instanceRepository.findByRecipientUserId(actorUserId);
+        Map<UUID, ChecklistTemplate> templatesByVersion = templatesByVersion(discovered);
+        List<ChecklistInstance> instances = discovered.stream()
                 .filter(instance -> instance.getStatus() != ChecklistInstanceStatus.CANCELLED)
+                .filter(instance -> isVisibleTemplate(instance, templatesByVersion))
                 .filter(instance -> accessPolicy.canView(instance, actorUserId))
                 .filter(instance -> journeyId == null
                         || instance.getCareContextType() == ChecklistCareContextType.JOURNEY
@@ -139,6 +181,37 @@ public class UserCreatedChecklistTaskService {
                 .filter(task -> task.getStatus() != ChecklistTaskStatus.CANCELLED)
                 .map(task -> response(byId.get(task.getChecklistInstanceId()), task))
                 .toList();
+    }
+
+    private boolean isVisibleTemplate(
+            ChecklistInstance instance,
+            Map<UUID, ChecklistTemplate> templatesByVersion) {
+        if (templateRepository == null) {
+            // Preserve the seven-argument compatibility constructor used by
+            // callers that do not provide template metadata.
+            return true;
+        }
+        ChecklistTemplate template = templatesByVersion.get(instance.getTemplateVersionId());
+        return ChecklistTemplateVisibilityPolicy.isVisible(instance, template);
+    }
+
+    private Map<UUID, ChecklistTemplate> templatesByVersion(Collection<ChecklistInstance> instances) {
+        if (templateRepository == null) {
+            return Map.of();
+        }
+        List<UUID> versionIds = instances.stream()
+                .map(ChecklistInstance::getTemplateVersionId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        if (versionIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, ChecklistTemplate> result = new LinkedHashMap<>();
+        for (ChecklistTemplate template : templateRepository.findAllByTemplateVersionIdIn(versionIds)) {
+            result.putIfAbsent(template.getTemplateVersionId(), template);
+        }
+        return result;
     }
 
     private ResolvedContext resolveContext(AddChecklistItemRequest request, UUID actorUserId) {

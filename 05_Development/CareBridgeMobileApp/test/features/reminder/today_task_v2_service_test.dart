@@ -82,4 +82,31 @@ void main() {
       expect(calls[1].$2['reason'], 'USER_CHOICE');
     },
   );
+
+  test('advanceSequence sends the current instance and stable UUID', () async {
+    String? capturedPath;
+    Map<String, dynamic>? capturedBody;
+    final service = TodayTaskService(
+      getRequest: (_, {queryParams}) async => const {},
+      postRequest: (path, body) async {
+        capturedPath = path;
+        capturedBody = body;
+        return {
+          'data': {
+            'predecessorInstanceId': 'instance-1',
+            'successorInstanceId': 'instance-2',
+          },
+        };
+      },
+      clientRequestIdFactory: () => '00000000-0000-0000-0000-000000000001',
+    );
+
+    await service.advanceSequence(currentInstanceId: 'instance-1');
+
+    expect(capturedPath, '/api/v1/checklists/sequences/advance');
+    expect(capturedBody, {
+      'currentInstanceId': 'instance-1',
+      'clientRequestId': '00000000-0000-0000-0000-000000000001',
+    });
+  });
 }

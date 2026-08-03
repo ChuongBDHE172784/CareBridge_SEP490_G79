@@ -878,7 +878,8 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
   }
 
   Widget _buildTopicRow() {
-    if (widget.mode == ContentBrowseMode.lifecycle) return const SizedBox.shrink();
+    if (widget.mode == ContentBrowseMode.lifecycle)
+      return const SizedBox.shrink();
     final topics = _topics.where((item) => !item.isHidden).toList();
     final tags = _tags.where((item) => !item.isHidden).toList();
     if (topics.isEmpty && tags.isEmpty) return const SizedBox.shrink();
@@ -1448,18 +1449,26 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
               const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton.icon(
+                child: ElevatedButton(
                   onPressed: !assignmentContext.canAssign
                       ? null
                       : () => Navigator.pop(
                           sheetContext,
                           allItemsAdded ? 'open' : 'add',
                         ),
-                  icon: Icon(
-                    allItemsAdded ? Icons.checklist_rtl : Icons.add_task,
-                  ),
-                  label: Text(
-                    allItemsAdded ? 'Mở việc hôm nay' : 'Thêm vào Việc hôm nay',
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        allItemsAdded ? Icons.checklist_rtl : Icons.add_task,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        allItemsAdded
+                            ? 'Mở việc hôm nay'
+                            : 'Thêm vào Việc hôm nay',
+                      ),
+                    ],
                   ),
                 ),
               ),

@@ -7,6 +7,9 @@ import com.carebridge.backend.checklist.model.ChecklistAnchorType;
 import com.carebridge.backend.checklist.model.ChecklistCareContextType;
 import com.carebridge.backend.checklist.model.ChecklistRangeUnit;
 import com.carebridge.backend.checklist.model.ChecklistRecipientRole;
+import com.carebridge.backend.checklist.model.ChecklistOrigin;
+import com.carebridge.backend.checklist.entity.ChecklistInstance;
+import com.carebridge.backend.checklist.repository.ChecklistInstanceRepository;
 import com.carebridge.backend.content.entity.ChecklistItem;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
 import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
@@ -34,6 +37,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Enumerates REQUEST candidates from inline template metadata and canonical domain ownership. */
@@ -46,6 +50,7 @@ public class JpaChecklistReconciliationSource implements ChecklistReconciliation
     private final CareGroupMemberRepository memberRepository;
     private final MotherJourneyRepository journeyRepository;
     private final BabyProfileRepository babyRepository;
+    private final ChecklistInstanceRepository instanceRepository;
 
     public JpaChecklistReconciliationSource(
             ChecklistTemplateRepository templateRepository,
@@ -54,12 +59,26 @@ public class JpaChecklistReconciliationSource implements ChecklistReconciliation
             CareGroupMemberRepository memberRepository,
             MotherJourneyRepository journeyRepository,
             BabyProfileRepository babyRepository) {
+        this(templateRepository, itemRepository, careGroupRepository, memberRepository,
+                journeyRepository, babyRepository, null);
+    }
+
+    @Autowired
+    public JpaChecklistReconciliationSource(
+            ChecklistTemplateRepository templateRepository,
+            ChecklistItemRepository itemRepository,
+            CareGroupRepository careGroupRepository,
+            CareGroupMemberRepository memberRepository,
+            MotherJourneyRepository journeyRepository,
+            BabyProfileRepository babyRepository,
+            ChecklistInstanceRepository instanceRepository) {
         this.templateRepository = templateRepository;
         this.itemRepository = itemRepository;
         this.careGroupRepository = careGroupRepository;
         this.memberRepository = memberRepository;
         this.journeyRepository = journeyRepository;
         this.babyRepository = babyRepository;
+        this.instanceRepository = instanceRepository;
     }
 
     @Override
@@ -74,9 +93,20 @@ public class JpaChecklistReconciliationSource implements ChecklistReconciliation
         }
 
         List<AuthorizedFamilyGroup> authorizedGroups = authorizedFamilyGroups(actorUserId);
+        List<ChecklistInstance> currentPersonalInstances = instanceRepository == null
+                ? List.of()
+                : instanceRepository.findByRecipientUserIdAndHistoricalAtIsNull(actorUserId).stream()
+                        .filter(instance -> instance.getRecipientRole() == ChecklistRecipientRole.MOTHER)
+                        .filter(instance -> instance.getOrigin() == ChecklistOrigin.SYSTEM_TEMPLATE)
+                        .filter(instance -> instance.getHistoricalAt() == null)
+                        .filter(instance -> instance.getStatus() != com.carebridge.backend.checklist.model.ChecklistInstanceStatus.CANCELLED)
+                        .toList();
+        List<ChecklistTemplate> approvedTemplates = templateRepository
+                .findAllDistributionEnabledByStatus(ChecklistTemplateStatus.APPROVED);
+        boolean activeLegacyPreconception = approvedTemplates.stream()
+                .anyMatch(this::isActiveMotherLegacyCandidate);
         List<ChecklistDistributionCommand> commands = new ArrayList<>();
-        for (ChecklistTemplate template : templateRepository
-                .findAllDistributionEnabledByStatus(ChecklistTemplateStatus.APPROVED)) {
+        for (ChecklistTemplate template : approvedTemplates) {
             Set<ChecklistRecipientRole> roles = recipientRoles(template);
             if (roles.isEmpty()) {
                 continue;
@@ -89,6 +119,13 @@ public class JpaChecklistReconciliationSource implements ChecklistReconciliation
 
             if (roles.contains(ChecklistRecipientRole.MOTHER)) {
                 for (ContextSeed context : personalContexts(actorUserId, template.getStage())) {
+                    if (isSequenceTemplate(template) && activeLegacyPreconception) {
+                        continue;
+                    }
+                    if (isSequenceTemplate(template)
+                            && !isCurrentSequenceCandidate(template, context.id(), currentPersonalInstances)) {
+                        continue;
+                    }
                     commands.add(actorCommand(
                             template, null, context, actorUserId, ChecklistRecipientRole.MOTHER,
                             true, eligibility, items, effectiveDate, timezone, correlationId));
@@ -254,6 +291,47 @@ public class JpaChecklistReconciliationSource implements ChecklistReconciliation
                 item.getDueAnchorType(),
                 item.getDueOffsetStart(),
                 item.getDueOffsetUnit());
+    }
+
+    private boolean isSequenceTemplate(ChecklistTemplate template) {
+        return template.getStage() == ContentStage.PRE_PREGNANCY
+                && template.getRecipientScope() == com.carebridge.backend.checklist.model.ChecklistRecipientScope.MOTHER
+                && template.getTemplateType() == com.carebridge.backend.content.entity.ChecklistTemplateType.MANDATORY
+                && template.getSequencePosition() != null && template.getSequencePosition() > 0;
+    }
+
+    private boolean isActiveMotherLegacyCandidate(ChecklistTemplate template) {
+        return template.getStage() == ContentStage.PRE_PREGNANCY
+                && template.getRecipientScope() != null
+                && (template.getRecipientScope()
+                        == com.carebridge.backend.checklist.model.ChecklistRecipientScope.MOTHER
+                    || template.getRecipientScope()
+                        == com.carebridge.backend.checklist.model.ChecklistRecipientScope.BOTH)
+                && template.getTemplateType() == com.carebridge.backend.content.entity.ChecklistTemplateType.MANDATORY
+                && (template.getSequencePosition() == null || template.getSequencePosition() <= 0);
+    }
+
+    private boolean isCurrentSequenceCandidate(
+            ChecklistTemplate template,
+            UUID contextId,
+            List<ChecklistInstance> currentInstances) {
+        List<ChecklistInstance> contextInstances = currentInstances.stream()
+                .filter(instance -> instance.getCareContextType() == ChecklistCareContextType.JOURNEY)
+                .filter(instance -> Objects.equals(instance.getCareContextId(), contextId))
+                .toList();
+        if (contextInstances.isEmpty()) {
+            return template.getSequencePosition() == 1;
+        }
+        boolean legacy = contextInstances.stream().anyMatch(instance -> {
+            ChecklistTemplate existing = templateRepository.findByTemplateVersionId(instance.getTemplateVersionId())
+                    .orElse(null);
+            return existing == null || existing.getSequencePosition() == null || existing.getSequencePosition() <= 0;
+        });
+        if (legacy) {
+            return false;
+        }
+        return contextInstances.stream().anyMatch(instance ->
+                Objects.equals(instance.getTemplateVersionId(), template.getTemplateVersionId()));
     }
 
     private record ContextSeed(

@@ -20,7 +20,10 @@ class RecommendationService {
   static const _storagePrefix = 'cb_recommendation_profile_draft_v';
 
   String? get _userId => AuthState.instance.userId;
-  String get _draftKey => '$_storagePrefix${_schema}_${_userId ?? 'anonymous'}';
+  // Draft writes/deletes can originate from different service instances
+  // (profile, privacy, logout, Home). Queue them per account globally so a
+  // late write cannot overtake a clear issued by another instance.
+  static final Map<String, Future<void>> _draftOperationTails = {};
 
   Future<RecommendationProfileResponse> getProfile() async {
     final expectedUser = _userId;
@@ -31,15 +34,48 @@ class RecommendationService {
     );
   }
 
-  Future<bool> accountHasDateOfBirth() async {
+  /// Loads the canonical account DOB used to derive the recommendation age
+  /// signal.  The recommendation payload intentionally never contains a DOB
+  /// or an age number.
+  Future<String?> getDateOfBirth() async {
     final expectedUser = _userId;
     final response = await apiGet('/api/v1/profile');
     _ensureCurrent(expectedUser);
     final data = response['data'];
-    if (data is! Map) return false;
+    if (data is! Map) return null;
     final value = data['dateOfBirth'];
-    return value is String && value.trim().isNotEmpty;
+    final trimmed = value is String ? value.trim() : '';
+    return trimmed.isEmpty ? null : trimmed;
   }
+
+  /// Named alias kept for injectable screen/test seams.
+  Future<String?> loadDateOfBirth() => getDateOfBirth();
+
+  /// Named alias kept for callers that describe the account boundary
+  /// explicitly.
+  Future<String?> loadAccountDateOfBirth() => getDateOfBirth();
+
+  /// Compatibility helper for older callers that only need a presence check.
+  Future<bool> accountHasDateOfBirth() async =>
+      (await getDateOfBirth()) != null;
+
+  /// Persists only the date-of-birth field on the canonical account profile.
+  /// This is deliberately separate from recommendation PUT so a valid DOB
+  /// correction is not rolled back when a later recommendation submission
+  /// fails.
+  Future<void> updateDateOfBirth(String dateOfBirth) async {
+    final expectedUser = _userId;
+    await apiPatch('/api/v1/profile', {'dateOfBirth': dateOfBirth});
+    _ensureCurrent(expectedUser);
+  }
+
+  /// Alias used by the questionnaire's direct DOB editor.
+  Future<void> patchDateOfBirth(String dateOfBirth) =>
+      updateDateOfBirth(dateOfBirth);
+
+  /// Alias matching the account-profile terminology used by some tests.
+  Future<void> saveDateOfBirth(String dateOfBirth) =>
+      updateDateOfBirth(dateOfBirth);
 
   Future<RecommendationProfileResponse> putProfile({
     required Map<String, dynamic> profile,
@@ -70,7 +106,15 @@ class RecommendationService {
       'consentAccepted': false,
     });
     _ensureCurrent(expectedUser);
-    if (expectedUser != null) await clearDraftFor(expectedUser);
+    if (expectedUser != null) {
+      try {
+        await clearDraftFor(expectedUser);
+      } catch (_) {
+        // The decline is already committed on the server. A local draft
+        // cleanup failure must not turn that success into a retryable error.
+      }
+      _ensureCurrent(expectedUser);
+    }
     notifyProfileChanged();
     return RecommendationProfileResponse.fromJson(
       (response['data'] as Map).cast<String, dynamic>(),
@@ -113,21 +157,40 @@ class RecommendationService {
   }
 
   Future<void> saveDraft(Map<String, dynamic> profile) async {
-    if (_userId == null) return;
-    await storage.write(
-      key: _draftKey,
-      value: jsonEncode({
-        'userId': _userId,
-        'schemaVersion': _schema,
-        'profile': profile,
-      }),
-    );
+    final userId = _userId;
+    if (userId == null) return;
+    final key = '$_storagePrefix${_schema}_$userId';
+    final value = jsonEncode({
+      'userId': userId,
+      'schemaVersion': _schema,
+      'profile': profile,
+    });
+    await _enqueueDraftOperation(userId, () async {
+      if (_userId != userId) return;
+      await storage.write(key: key, value: value);
+    });
   }
 
-  Future<void> clearDraft() => storage.delete(key: _draftKey);
+  Future<void> clearDraft() {
+    final userId = _userId;
+    if (userId == null) return Future<void>.value();
+    return clearDraftFor(userId);
+  }
 
-  Future<void> clearDraftFor(String userId) =>
-      storage.delete(key: '$_storagePrefix${_schema}_$userId');
+  Future<void> clearDraftFor(String userId) => _enqueueDraftOperation(
+    userId,
+    () => storage.delete(key: '$_storagePrefix${_schema}_$userId'),
+  );
+
+  Future<void> _enqueueDraftOperation(
+    String userId,
+    Future<void> Function() operation,
+  ) {
+    final previous = _draftOperationTails[userId] ?? Future<void>.value();
+    final next = previous.then((_) => operation());
+    _draftOperationTails[userId] = next.catchError((_) {});
+    return next;
+  }
 
   void _ensureCurrent(String? expectedUser) {
     if (expectedUser == null || expectedUser != AuthState.instance.userId) {

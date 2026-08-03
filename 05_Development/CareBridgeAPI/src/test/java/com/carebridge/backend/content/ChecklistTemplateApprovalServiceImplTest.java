@@ -30,10 +30,13 @@ import com.carebridge.backend.content.entity.ChecklistTemplateType;
 import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
 import com.carebridge.backend.content.repository.ChecklistItemRepository;
+import com.carebridge.backend.checklist.repository.ChecklistInstanceRepository;
 import com.carebridge.backend.content.service.ChecklistTemplateApprovalServiceImpl;
 import com.carebridge.backend.notification.service.ContentReviewNotificationService;
 import java.security.Principal;
 import java.util.Optional;
+import java.util.List;
+import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
@@ -61,6 +64,9 @@ class ChecklistTemplateApprovalServiceImplTest {
 
     @Mock
     private ChecklistItemRepository checklistItemRepository;
+
+    @Mock
+    private ChecklistInstanceRepository checklistInstanceRepository;
 
     @InjectMocks
     private ChecklistTemplateApprovalServiceImpl service;
@@ -190,5 +196,222 @@ class ChecklistTemplateApprovalServiceImplTest {
 
         verify(checklistTemplateRepository, never()).save(any());
         verify(checklistAuditWriter, never()).write(any());
+    }
+
+    @Test
+    void decide_positiveSequenceWithActiveLegacy_rejectsBeforeMutationWithTypedReason() {
+        ChecklistTemplate legacy = makeTemplate(template -> {
+            template.setStage(com.carebridge.backend.content.entity.ContentStage.PRE_PREGNANCY);
+            template.setEligibilityAnchorType(ChecklistAnchorType.NONE);
+            template.setEligibilityRangeUnit(ChecklistRangeUnit.DAY);
+            template.setEligibilityStartInclusive(0);
+            template.setEligibilityEndInclusive(0);
+            template.setStatus(ChecklistTemplateStatus.APPROVED);
+            template.setDistributionEnabled(true);
+            template.setSequencePosition(0);
+        });
+        ChecklistTemplate sequence = makeTemplate(template -> {
+            template.setStage(com.carebridge.backend.content.entity.ContentStage.PRE_PREGNANCY);
+            template.setEligibilityAnchorType(ChecklistAnchorType.NONE);
+            template.setEligibilityRangeUnit(ChecklistRangeUnit.DAY);
+            template.setEligibilityStartInclusive(0);
+            template.setEligibilityEndInclusive(0);
+            template.setStatus(ChecklistTemplateStatus.PENDING_REVIEW);
+            template.setSequencePosition(1);
+        });
+        when(checklistTemplateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(sequence));
+        when(checklistTemplateRepository.findAllDistributionEnabledByStageAndStatus(
+                com.carebridge.backend.content.entity.ContentStage.PRE_PREGNANCY,
+                ChecklistTemplateStatus.APPROVED)).thenReturn(List.of(legacy));
+        ContentException ex = assertThrows(ContentException.class, () -> service.decide(
+                TEMPLATE_ID, new ContentDecisionRequest(ContentDecision.APPROVE, null), principal));
+
+        assertEquals("CNT-001", ex.getCode());
+        assertEquals(ChecklistTemplateApprovalServiceImpl.ACTIVE_LEGACY_CONFLICT,
+                ex.getMetadata().get("reasonCode"));
+        verify(checklistTemplateRepository, never()).save(any());
+        verify(checklistAuditWriter, never()).write(any());
+    }
+
+    @Test
+    void decide_activeCohortConflictWinsOverCandidateAuthoringErrors() {
+        ChecklistTemplate legacy = makeTemplate(template -> {
+            template.setStage(com.carebridge.backend.content.entity.ContentStage.PRE_PREGNANCY);
+            template.setEligibilityAnchorType(ChecklistAnchorType.NONE);
+            template.setEligibilityRangeUnit(ChecklistRangeUnit.DAY);
+            template.setEligibilityStartInclusive(0);
+            template.setEligibilityEndInclusive(0);
+            template.setStatus(ChecklistTemplateStatus.APPROVED);
+            template.setDistributionEnabled(true);
+            template.setSequencePosition(0);
+        });
+        ChecklistTemplate sequence = makeTemplate(template -> {
+            template.setStage(com.carebridge.backend.content.entity.ContentStage.PRE_PREGNANCY);
+            template.setEligibilityAnchorType(ChecklistAnchorType.NONE);
+            template.setEligibilityRangeUnit(ChecklistRangeUnit.DAY);
+            template.setEligibilityStartInclusive(0);
+            template.setEligibilityEndInclusive(0);
+            template.setStatus(ChecklistTemplateStatus.PENDING_REVIEW);
+            template.setSequencePosition(1);
+        });
+        when(checklistTemplateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(sequence));
+        when(checklistTemplateRepository.findAllDistributionEnabledByStageAndStatus(
+                com.carebridge.backend.content.entity.ContentStage.PRE_PREGNANCY,
+                ChecklistTemplateStatus.APPROVED)).thenReturn(List.of(legacy));
+        ContentException ex = assertThrows(ContentException.class, () -> service.decide(
+                TEMPLATE_ID, new ContentDecisionRequest(ContentDecision.APPROVE, null), principal));
+
+        assertEquals(ChecklistTemplateApprovalServiceImpl.ACTIVE_LEGACY_CONFLICT,
+                ex.getMetadata().get("reasonCode"));
+        verify(checklistTemplateRepository, never()).save(any());
+    }
+
+    @Test
+    void decide_legacyWithActiveSequence_rejectsBeforeMutationWithTypedReason() {
+        ChecklistTemplate sequence = makeTemplate(template -> {
+            template.setStage(com.carebridge.backend.content.entity.ContentStage.PRE_PREGNANCY);
+            template.setEligibilityAnchorType(ChecklistAnchorType.NONE);
+            template.setEligibilityRangeUnit(ChecklistRangeUnit.DAY);
+            template.setEligibilityStartInclusive(0);
+            template.setEligibilityEndInclusive(0);
+            template.setStatus(ChecklistTemplateStatus.APPROVED);
+            template.setDistributionEnabled(true);
+            template.setSequencePosition(1);
+        });
+        ChecklistTemplate legacy = makeTemplate(template -> {
+            template.setStage(com.carebridge.backend.content.entity.ContentStage.PRE_PREGNANCY);
+            template.setEligibilityAnchorType(ChecklistAnchorType.NONE);
+            template.setEligibilityRangeUnit(ChecklistRangeUnit.DAY);
+            template.setEligibilityStartInclusive(0);
+            template.setEligibilityEndInclusive(0);
+            template.setStatus(ChecklistTemplateStatus.PENDING_REVIEW);
+            template.setSequencePosition(0);
+        });
+        when(checklistTemplateRepository.findById(TEMPLATE_ID)).thenReturn(Optional.of(legacy));
+        when(checklistTemplateRepository.findAllDistributionEnabledByStageAndStatus(
+                com.carebridge.backend.content.entity.ContentStage.PRE_PREGNANCY,
+                ChecklistTemplateStatus.APPROVED)).thenReturn(List.of(sequence));
+
+        ContentException ex = assertThrows(ContentException.class, () -> service.decide(
+                TEMPLATE_ID, new ContentDecisionRequest(ContentDecision.APPROVE, null), principal));
+
+        assertEquals(ChecklistTemplateApprovalServiceImpl.ACTIVE_SEQUENCE_CONFLICT,
+                ex.getMetadata().get("reasonCode"));
+        verify(checklistTemplateRepository, never()).save(any());
+        verify(checklistAuditWriter, never()).write(any());
+    }
+
+    @Test
+    void decide_positiveSequenceApprovesContiguousPositionsInOrder() {
+        UUID positionOneId = UUID.fromString("00000000-0000-0000-0000-000000000101");
+        UUID positionTwoId = UUID.fromString("00000000-0000-0000-0000-000000000102");
+        UUID positionThreeId = UUID.fromString("00000000-0000-0000-0000-000000000103");
+        ChecklistTemplate positionOne = positiveTemplate(positionOneId, 1);
+        ChecklistTemplate positionTwo = positiveTemplate(positionTwoId, 2);
+        ChecklistTemplate positionThree = positiveTemplate(positionThreeId, 3);
+
+        when(checklistTemplateRepository.findById(positionOneId)).thenReturn(Optional.of(positionOne));
+        when(checklistTemplateRepository.findById(positionTwoId)).thenReturn(Optional.of(positionTwo));
+        when(checklistTemplateRepository.findById(positionThreeId)).thenReturn(Optional.of(positionThree));
+        when(checklistTemplateRepository.findAllDistributionEnabledByStageAndStatus(
+                com.carebridge.backend.content.entity.ContentStage.PRE_PREGNANCY,
+                ChecklistTemplateStatus.APPROVED))
+                .thenReturn(List.of(), List.of(positionOne), List.of(positionOne, positionTwo));
+        when(checklistItemRepository.findByTemplate_IdOrderByOrder(positionOneId))
+                .thenReturn(List.of(ChecklistTemplateTestFactory.makeItem(positionOne, 1)));
+        when(checklistItemRepository.findByTemplate_IdOrderByOrder(positionTwoId))
+                .thenReturn(List.of(ChecklistTemplateTestFactory.makeItem(positionTwo, 1)));
+        when(checklistItemRepository.findByTemplate_IdOrderByOrder(positionThreeId))
+                .thenReturn(List.of(ChecklistTemplateTestFactory.makeItem(positionThree, 1)));
+        when(checklistTemplateRepository.save(any(ChecklistTemplate.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.decide(positionOneId, new ContentDecisionRequest(ContentDecision.APPROVE, null), principal);
+        service.decide(positionTwoId, new ContentDecisionRequest(ContentDecision.APPROVE, null), principal);
+        service.decide(positionThreeId, new ContentDecisionRequest(ContentDecision.APPROVE, null), principal);
+
+        assertEquals(ChecklistTemplateStatus.APPROVED, positionOne.getStatus());
+        assertEquals(ChecklistTemplateStatus.APPROVED, positionTwo.getStatus());
+        assertEquals(ChecklistTemplateStatus.APPROVED, positionThree.getStatus());
+        assertEquals(Boolean.TRUE, positionOne.getDistributionEnabled());
+        assertEquals(Boolean.TRUE, positionTwo.getDistributionEnabled());
+        assertEquals(Boolean.TRUE, positionThree.getDistributionEnabled());
+        verify(checklistTemplateRepository, org.mockito.Mockito.times(3)).save(any(ChecklistTemplate.class));
+    }
+
+    @Test
+    void decide_positiveSequenceReplacesSameLineagePositionAfterValidation() {
+        UUID lineageId = UUID.fromString("00000000-0000-0000-0000-000000000201");
+        UUID activeId = UUID.fromString("00000000-0000-0000-0000-000000000202");
+        UUID candidateId = UUID.fromString("00000000-0000-0000-0000-000000000203");
+        ChecklistTemplate active = positiveTemplate(activeId, 1);
+        active.setTemplateLineageId(lineageId);
+        active.setStatus(ChecklistTemplateStatus.APPROVED);
+        active.setDistributionEnabled(true);
+        ChecklistTemplate candidate = positiveTemplate(candidateId, 1);
+        candidate.setTemplateLineageId(lineageId);
+
+        when(checklistTemplateRepository.findById(candidateId)).thenReturn(Optional.of(candidate));
+        when(checklistTemplateRepository.findAllDistributionEnabledByStageAndStatus(
+                com.carebridge.backend.content.entity.ContentStage.PRE_PREGNANCY,
+                ChecklistTemplateStatus.APPROVED)).thenReturn(List.of(active));
+        when(checklistItemRepository.findByTemplate_IdOrderByOrder(candidateId))
+                .thenReturn(List.of(ChecklistTemplateTestFactory.makeItem(candidate, 1)));
+        when(checklistTemplateRepository.save(any(ChecklistTemplate.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.decide(candidateId, new ContentDecisionRequest(ContentDecision.APPROVE, null), principal);
+
+        assertEquals(ChecklistTemplateStatus.ARCHIVED, active.getStatus());
+        assertEquals(Boolean.FALSE, active.getDistributionEnabled());
+        assertEquals(ChecklistTemplateStatus.APPROVED, candidate.getStatus());
+        verify(checklistTemplateRepository, org.mockito.Mockito.times(2)).save(any(ChecklistTemplate.class));
+    }
+
+    @Test
+    void decide_replacementValidationFailureDoesNotArchiveExistingPosition() {
+        UUID lineageId = UUID.fromString("00000000-0000-0000-0000-000000000301");
+        UUID activeTwoId = UUID.fromString("00000000-0000-0000-0000-000000000302");
+        UUID activeThreeId = UUID.fromString("00000000-0000-0000-0000-000000000303");
+        UUID candidateId = UUID.fromString("00000000-0000-0000-0000-000000000304");
+        ChecklistTemplate activeTwo = positiveTemplate(activeTwoId, 2);
+        activeTwo.setTemplateLineageId(lineageId);
+        activeTwo.setStatus(ChecklistTemplateStatus.APPROVED);
+        activeTwo.setDistributionEnabled(true);
+        ChecklistTemplate activeThree = positiveTemplate(activeThreeId, 3);
+        activeThree.setTemplateLineageId(lineageId);
+        activeThree.setStatus(ChecklistTemplateStatus.APPROVED);
+        activeThree.setDistributionEnabled(true);
+        ChecklistTemplate candidate = positiveTemplate(candidateId, 2);
+        candidate.setTemplateLineageId(lineageId);
+
+        when(checklistTemplateRepository.findById(candidateId)).thenReturn(Optional.of(candidate));
+        when(checklistTemplateRepository.findAllDistributionEnabledByStageAndStatus(
+                com.carebridge.backend.content.entity.ContentStage.PRE_PREGNANCY,
+                ChecklistTemplateStatus.APPROVED)).thenReturn(List.of(activeTwo, activeThree));
+        ContentException ex = assertThrows(ContentException.class, () -> service.decide(
+                candidateId, new ContentDecisionRequest(ContentDecision.APPROVE, null), principal));
+
+        assertEquals(ChecklistTemplateApprovalServiceImpl.SEQUENCE_POSITION_GAP,
+                ex.getMetadata().get("reasonCode"));
+        assertEquals(ChecklistTemplateStatus.APPROVED, activeTwo.getStatus());
+        assertEquals(Boolean.TRUE, activeTwo.getDistributionEnabled());
+        verify(checklistTemplateRepository, never()).save(any());
+    }
+
+    private static ChecklistTemplate positiveTemplate(UUID id, int position) {
+        ChecklistTemplate template = makeTemplate(value -> {
+            value.setId(id);
+            value.setTemplateLineageId(id);
+            value.setTemplateVersionId(id);
+            value.setStage(com.carebridge.backend.content.entity.ContentStage.PRE_PREGNANCY);
+            value.setEligibilityAnchorType(ChecklistAnchorType.NONE);
+            value.setEligibilityRangeUnit(ChecklistRangeUnit.DAY);
+            value.setEligibilityStartInclusive(0);
+            value.setEligibilityEndInclusive(0);
+            value.setStatus(ChecklistTemplateStatus.PENDING_REVIEW);
+            value.setSequencePosition(position);
+        });
+        return template;
     }
 }

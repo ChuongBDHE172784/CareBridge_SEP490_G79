@@ -332,10 +332,14 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
     );
     final host = uri.host.toLowerCase().replaceFirst(RegExp(r'^www\\.'), '');
     final path = uri.path.replaceAll('/', '').trim().toLowerCase();
-    final genericSearchHost = const {'google.com', 'bing.com', 'yahoo.com'}
-        .contains(host);
-    final genericSearchPath = RegExp(r'(^|/)(search|query|find)(/|$)')
-        .hasMatch(uri.path.toLowerCase());
+    final genericSearchHost = const {
+      'google.com',
+      'bing.com',
+      'yahoo.com',
+    }.contains(host);
+    final genericSearchPath = RegExp(
+      r'(^|/)(search|query|find)(/|$)',
+    ).hasMatch(uri.path.toLowerCase());
     return uri.scheme == 'https' &&
         uri.host.isNotEmpty &&
         (uri.port == -1 || uri.port == 443) &&
@@ -406,7 +410,12 @@ class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
                 ),
               ),
             ),
-            const SizedBox(width: 48, height: 48),
+            IconButton(
+              key: const Key('triage-result-history'),
+              tooltip: 'Lịch sử AI Triage',
+              onPressed: () => context.push('/triage/history'),
+              icon: const Icon(Icons.history_rounded, color: _primary),
+            ),
           ],
         ),
       ),

@@ -73,6 +73,7 @@ import '../../features/aiTriage/models/triage_entry_context.dart';
 import '../../features/aiTriage/models/triage_continuation.dart';
 import '../../features/aiTriage/services/triage_continuation_restore_coordinator.dart';
 import '../../features/aiTriage/screens/symptom_intake_screen.dart';
+import '../../features/aiTriage/screens/triage_history_screen.dart';
 import '../../features/aiTriage/widgets/floating_ai_triage_host.dart';
 import '../../features/aiTriage/screens/risk_triage_result_screen.dart';
 import '../../features/emergency/screens/emergency_map_screen.dart';
@@ -771,6 +772,10 @@ final GoRouter appRouter = GoRouter(
               extra as TriageEntryContext? ?? const TriageEntryContext(),
         );
       },
+    ),
+    GoRoute(
+      path: '/triage/history',
+      builder: (context, state) => const TriageHistoryScreen(),
     ),
     GoRoute(
       path: '/triage/result/:sessionId',

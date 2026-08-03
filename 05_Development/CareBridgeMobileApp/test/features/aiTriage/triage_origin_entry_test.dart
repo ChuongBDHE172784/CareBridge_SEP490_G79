@@ -9,8 +9,8 @@ import 'package:untitled/features/aiTriage/models/triage_intake_flow_model.dart'
 import 'package:untitled/features/aiTriage/models/triage_result_model.dart';
 import 'package:untitled/features/aiTriage/screens/symptom_intake_screen.dart';
 import 'package:untitled/features/aiTriage/services/triage_service.dart';
+import 'package:untitled/features/aiTriage/widgets/triage_safety_entry_action.dart';
 import 'package:untitled/features/baby/models/baby_model.dart';
-import 'package:untitled/features/baby/screens/baby_profile_detail_screen.dart';
 import 'package:untitled/features/baby/services/baby_service.dart';
 import 'package:untitled/features/emergency/models/emergency_session_model.dart';
 import 'package:untitled/features/emergency/services/emergency_service.dart';
@@ -113,34 +113,68 @@ Widget _entryProbe(GoRouterState state) {
   );
 }
 
-GoRouter _maternalRouter(JourneyDashboard dashboard) => GoRouter(
-  initialLocation: '/origin',
-  routes: [
-    GoRoute(
-      path: '/origin',
-      builder: (_, _) => Scaffold(
-        body: MotherJourneyScreen(loadData: false, initialDashboard: dashboard),
-      ),
-    ),
-    GoRoute(path: '/triage/intake', builder: (_, state) => _entryProbe(state)),
-  ],
+Widget _triageContractOrigin(TriageEntryContext entryContext) => Scaffold(
+  body: SingleChildScrollView(
+    child: TriageSafetyEntryAction(entryContext: entryContext),
+  ),
 );
 
-GoRouter _babyRouter(BabyProfile profile) => GoRouter(
-  initialLocation: '/origin',
-  routes: [
-    GoRoute(
-      path: '/origin',
-      builder: (_, _) => BabyProfileDetailScreen(
-        babyId: profile.id,
-        loadData: false,
-        loadCareCollectionsData: false,
-        initialProfile: profile,
+GoRouter _maternalRouter(JourneyDashboard dashboard) {
+  final stage = dashboard.isPrePregnancy
+      ? TriageStageIntent.preconception
+      : dashboard.isPostpartum
+      ? TriageStageIntent.postpartum
+      : TriageStageIntent.pregnancy;
+  return GoRouter(
+    initialLocation: '/origin',
+    routes: [
+      GoRoute(
+        path: '/origin',
+        builder: (_, _) => _triageContractOrigin(
+          TriageEntryContext.locked(
+            stage: stage,
+            origin: TriageOriginIntent.motherJourney,
+            journeyId: dashboard.journeyId,
+            originReferenceId: dashboard.journeyId,
+          ),
+        ),
       ),
-    ),
-    GoRoute(path: '/triage/intake', builder: (_, state) => _entryProbe(state)),
-  ],
-);
+      GoRoute(
+        path: '/triage/intake',
+        builder: (_, state) => _entryProbe(state),
+      ),
+    ],
+  );
+}
+
+GoRouter _babyRouter(BabyProfile profile) {
+  final ageMonths =
+      (DateTime.now().year - profile.birthDate.year) * 12 +
+      DateTime.now().month -
+      profile.birthDate.month;
+  final stage = ageMonths < 12
+      ? TriageStageIntent.infant
+      : TriageStageIntent.toddler;
+  return GoRouter(
+    initialLocation: '/origin',
+    routes: [
+      GoRoute(
+        path: '/origin',
+        builder: (_, _) => _triageContractOrigin(
+          TriageEntryContext.locked(
+            stage: stage,
+            origin: TriageOriginIntent.babyProfile,
+            originReferenceId: profile.id,
+          ),
+        ),
+      ),
+      GoRoute(
+        path: '/triage/intake',
+        builder: (_, state) => _entryProbe(state),
+      ),
+    ],
+  );
+}
 
 GoRouter _redRoundTripRouter(
   _LockedRedTriageService triage,
@@ -378,71 +412,54 @@ void main() {
   final redRoundTripCases = <({String stage, Widget origin})>[
     (
       stage: 'PRECONCEPTION',
-      origin: const Scaffold(
-        body: MotherJourneyScreen(
-          loadData: false,
-          initialDashboard: JourneyDashboard(
-            journeyId: 'journey-preconception-round-trip',
-            journeyType: 'PRE_PREGNANCY',
-            status: 'PRE_PREGNANCY',
-          ),
+      origin: _triageContractOrigin(
+        const TriageEntryContext.locked(
+          stage: TriageStageIntent.preconception,
+          origin: TriageOriginIntent.motherJourney,
+          journeyId: 'journey-preconception-round-trip',
+          originReferenceId: 'journey-preconception-round-trip',
         ),
       ),
     ),
     (
       stage: 'PREGNANCY',
-      origin: const Scaffold(
-        body: MotherJourneyScreen(
-          loadData: false,
-          initialDashboard: JourneyDashboard(
-            journeyId: 'journey-pregnancy-round-trip',
-            journeyType: 'PREGNANCY',
-            status: 'ACTIVE_PREGNANCY',
-            pregnancyWeek: 24,
-          ),
+      origin: _triageContractOrigin(
+        const TriageEntryContext.locked(
+          stage: TriageStageIntent.pregnancy,
+          origin: TriageOriginIntent.motherJourney,
+          journeyId: 'journey-pregnancy-round-trip',
+          originReferenceId: 'journey-pregnancy-round-trip',
         ),
       ),
     ),
     (
       stage: 'POSTPARTUM',
-      origin: const Scaffold(
-        body: MotherJourneyScreen(
-          loadData: false,
-          initialDashboard: JourneyDashboard(
-            journeyId: 'journey-postpartum-round-trip',
-            journeyType: 'POSTPARTUM',
-            status: 'ACTIVE_POSTPARTUM',
-          ),
+      origin: _triageContractOrigin(
+        const TriageEntryContext.locked(
+          stage: TriageStageIntent.postpartum,
+          origin: TriageOriginIntent.motherJourney,
+          journeyId: 'journey-postpartum-round-trip',
+          originReferenceId: 'journey-postpartum-round-trip',
         ),
       ),
     ),
     (
       stage: 'INFANT',
-      origin: BabyProfileDetailScreen(
-        babyId: 'baby-infant-round-trip',
-        loadData: false,
-        loadCareCollectionsData: false,
-        initialProfile: BabyProfile(
-          id: 'baby-infant-round-trip',
-          nickname: 'Infant safety fixture',
-          birthDate: DateTime.now().subtract(const Duration(days: 180)),
-          gender: BabyGender.unknown,
-          isActive: true,
+      origin: _triageContractOrigin(
+        const TriageEntryContext.locked(
+          stage: TriageStageIntent.infant,
+          origin: TriageOriginIntent.babyProfile,
+          originReferenceId: 'baby-infant-round-trip',
         ),
       ),
     ),
     (
       stage: 'TODDLER',
-      origin: BabyProfileDetailScreen(
-        babyId: 'baby-toddler-round-trip',
-        loadData: false,
-        loadCareCollectionsData: false,
-        initialProfile: BabyProfile(
-          id: 'baby-toddler-round-trip',
-          nickname: 'Toddler safety fixture',
-          birthDate: DateTime.now().subtract(const Duration(days: 500)),
-          gender: BabyGender.unknown,
-          isActive: true,
+      origin: _triageContractOrigin(
+        const TriageEntryContext.locked(
+          stage: TriageStageIntent.toddler,
+          origin: TriageOriginIntent.babyProfile,
+          originReferenceId: 'baby-toddler-round-trip',
         ),
       ),
     ),

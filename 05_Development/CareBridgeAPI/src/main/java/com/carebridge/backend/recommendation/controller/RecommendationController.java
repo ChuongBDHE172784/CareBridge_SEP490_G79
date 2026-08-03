@@ -6,8 +6,9 @@ import com.carebridge.backend.recommendation.dto.RecommendationContentResponse;
 import com.carebridge.backend.recommendation.dto.RecommendationProfileResponse;
 import com.carebridge.backend.recommendation.service.RecommendationService;
 import com.carebridge.backend.recommendation.exception.RecommendationException;
-import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.security.Principal;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class RecommendationController {
     private final RecommendationService recommendationService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/profile")
     public ResponseEntity<ApiResponse<RecommendationProfileResponse>> getProfile(Principal principal) {
@@ -34,9 +36,10 @@ public class RecommendationController {
 
     @PutMapping("/profile")
     public ResponseEntity<ApiResponse<RecommendationProfileResponse>> putProfile(
-            @RequestBody JsonNode request, Principal principal) {
+            @RequestBody Map<String, Object> request, Principal principal) {
         UUID owner = SecurityUtils.requireCurrentUserId(principal);
-        return ResponseEntity.ok(ApiResponse.success(recommendationService.putProfile(owner, request)));
+        return ResponseEntity.ok(ApiResponse.success(
+                recommendationService.putProfile(owner, objectMapper.valueToTree(request))));
     }
 
     @GetMapping("/content")

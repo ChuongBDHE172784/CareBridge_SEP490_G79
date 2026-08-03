@@ -2,14 +2,17 @@ package com.carebridge.backend.recommendation;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.carebridge.backend.common.config.JpaAuditingConfig;
+import com.carebridge.backend.common.config.JacksonConfig;
 import com.carebridge.backend.config.MockMvcSecurityBuilderConfig;
 import com.carebridge.backend.recommendation.controller.RecommendationController;
 import com.carebridge.backend.recommendation.dto.RecommendationContentResponse;
@@ -22,6 +25,7 @@ import com.carebridge.backend.recommendation.service.RecommendationService;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
 import com.carebridge.backend.security.repository.UserRepository;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -30,6 +34,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.ComponentScan.Filter;
 import org.springframework.context.annotation.FilterType;
+import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -37,7 +42,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @WebMvcTest(
         value = RecommendationController.class,
         excludeFilters = @Filter(type = FilterType.ASSIGNABLE_TYPE, classes = JpaAuditingConfig.class))
-@Import({SecurityConfig.class, MockMvcSecurityBuilderConfig.class})
+@Import({JacksonConfig.class, SecurityConfig.class, MockMvcSecurityBuilderConfig.class})
 class RecommendationControllerTest {
 
     private static final String USER = "00000000-0000-0000-0000-000000000001";
@@ -84,6 +89,31 @@ class RecommendationControllerTest {
                 .andExpect(jsonPath("$.error").value("RECOMMENDATION_LIMIT_INVALID"));
 
         verify(recommendationService, never()).getContent(any(UUID.class), anyInt());
+    }
+
+    @Test
+    @WithMockUser(username = USER, roles = "MOTHER")
+    void motherCanSubmitJsonProfile() throws Exception {
+        when(recommendationService.putProfile(eq(UUID.fromString(USER)), any(JsonNode.class))).thenReturn(
+                new RecommendationProfileResponse(
+                        RecommendationProfileStatus.ACTIVE, false, true, 1, 1, null,
+                        new RecommendationProfileResponse.ConsentSummary("GRANTED", null, null, null, null),
+                        null, null));
+
+        mockMvc.perform(put("/api/v1/recommendations/profile")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "submissionId":"00000000-0000-0000-0000-000000000002",
+                                  "schemaVersion":1,
+                                  "policyVersion":"MOTHER_PERSONALIZED_CONTENT_V1",
+                                  "consentAccepted":true,
+                                  "profile":{}
+                                }
+                                """))
+                .andExpect(status().isOk());
+
+        verify(recommendationService).putProfile(eq(UUID.fromString(USER)), any(JsonNode.class));
     }
 
     @Test

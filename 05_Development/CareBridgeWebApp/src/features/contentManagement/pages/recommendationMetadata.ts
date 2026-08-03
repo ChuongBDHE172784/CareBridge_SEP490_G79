@@ -10,6 +10,8 @@ const EXCLUSIVE_GROUPS: Array<[string, string]> = [
   ['rec-sti-screening-information', 'STI_STATUS'],
   ['rec-sti-past-history', 'STI_STATUS'],
   ['rec-sti-current-or-treatment', 'STI_STATUS'],
+  ['rec-sti-risk', 'STI_STATUS'],
+  ['rec-sti-suspected-or-known', 'STI_STATUS'],
 ];
 
 function groupForSlug(slug: string): string | null {

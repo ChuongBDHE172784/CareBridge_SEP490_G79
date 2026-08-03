@@ -1,16 +1,24 @@
 package com.carebridge.backend.content.exception;
 
 import org.springframework.http.HttpStatus;
+import java.util.Map;
 
 public class ContentException extends RuntimeException {
 
     private final String code;
     private final HttpStatus httpStatus;
+    private final Map<String, Object> metadata;
 
     public ContentException(String code, String message, HttpStatus httpStatus) {
+        this(code, message, httpStatus, Map.of());
+    }
+
+    public ContentException(
+            String code, String message, HttpStatus httpStatus, Map<String, Object> metadata) {
         super(message);
         this.code = code;
         this.httpStatus = httpStatus;
+        this.metadata = metadata == null ? Map.of() : Map.copyOf(metadata);
     }
 
     public String getCode() {
@@ -19,6 +27,14 @@ public class ContentException extends RuntimeException {
 
     public HttpStatus getHttpStatus() {
         return httpStatus;
+    }
+
+    /**
+     * Machine-readable context for clients.  The map is intentionally immutable so
+     * exception handling cannot accidentally mutate the response contract.
+     */
+    public Map<String, Object> getMetadata() {
+        return metadata;
     }
 
     public static ContentException duplicateContent() {
@@ -47,6 +63,16 @@ public class ContentException extends RuntimeException {
                 "CNT-001",
                 "Validation failed: " + field + " - " + message,
                 HttpStatus.BAD_REQUEST);
+    }
+
+    /** Checklist configuration validation retaining CNT-001 compatibility. */
+    public static ContentException checklistValidationFailed(
+            String field, String message, String reasonCode) {
+        return new ContentException(
+                "CNT-001",
+                "Validation failed: " + field + " - " + message,
+                HttpStatus.BAD_REQUEST,
+                Map.of("reasonCode", reasonCode));
     }
 
     // UC-107 (CB-CONTENT-IMP-006 §11.3)

@@ -95,6 +95,33 @@ class ChecklistHistoryReconciliationServiceTest {
         verify(instances, never()).save(current);
     }
 
+    @Test
+    void doesNotMutateTemplateArchivedDuringReadReconciliationRace() {
+        UUID owner = UUID.fromString("00000000-0000-0000-0000-000000000103");
+        ChecklistInstance archived = parent(owner,
+                UUID.fromString("00000000-0000-0000-0000-000000000203"));
+        ChecklistInstanceRepository instances = mock(ChecklistInstanceRepository.class);
+        ChecklistTaskInstanceRepository tasks = mock(ChecklistTaskInstanceRepository.class);
+        ChecklistCurrentScopePolicy policy = mock(ChecklistCurrentScopePolicy.class);
+        when(instances.findByContextOwnerUserIdAndRecipientRoleAndOriginAndHistoricalAtIsNull(
+                owner, ChecklistRecipientRole.MOTHER, ChecklistOrigin.SYSTEM_TEMPLATE))
+                .thenReturn(List.of(archived));
+        when(policy.isHistoryManaged(archived)).thenReturn(true);
+        // The archive commits after candidate discovery but before the locked recheck.
+        when(policy.isArchivedTemplate(archived)).thenReturn(false, true);
+        var service = new ChecklistHistoryReconciliationService(
+                instances, tasks, policy, Clock.systemUTC());
+
+        int marked = service.reconcile(owner, LocalDate.of(2026, 8, 1),
+                ZoneId.of("UTC"), UUID.randomUUID());
+
+        assertThat(marked).isZero();
+        assertThat(archived.getHistoricalAt()).isNull();
+        verify(instances).acquireDistributionKeyLock(anyString());
+        verify(instances, never()).save(archived);
+        verify(tasks, never()).findAllForUpdateByChecklistInstanceIdOrderByTaskKey(archived.getId());
+    }
+
     private static ChecklistInstance parent(UUID owner, UUID instanceId) {
         return ChecklistInstance.builder()
                 .id(instanceId)

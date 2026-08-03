@@ -267,7 +267,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ContentException.class)
     public ResponseEntity<ErrorResponse> handleContent(ContentException ex, HttpServletRequest request) {
-        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
+        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request, ex.getMetadata());
     }
 
     @ExceptionHandler(com.carebridge.backend.directchat.exception.DirectChatException.class)
@@ -502,7 +502,22 @@ public class GlobalExceptionHandler {
             String code,
             String message,
             HttpServletRequest request) {
-        ErrorResponse response = ErrorResponse.of(status.value(), code, message, request.getRequestURI());
+        return error(status, code, message, request, java.util.Map.of());
+    }
+
+    private ResponseEntity<ErrorResponse> error(
+            HttpStatus status,
+            String code,
+            String message,
+            HttpServletRequest request,
+            java.util.Map<String, Object> metadata) {
+        ErrorResponse response = ErrorResponse.builder()
+                .status(status.value())
+                .error(code)
+                .message(message)
+                .path(request.getRequestURI())
+                .metadata(metadata == null || metadata.isEmpty() ? null : metadata)
+                .build();
         return ResponseEntity.status(status).body(response);
     }
 }

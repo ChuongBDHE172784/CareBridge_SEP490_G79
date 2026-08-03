@@ -4,10 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/network/api_client.dart';
-import '../../aiTriage/models/triage_entry_context.dart';
 import '../../aiTriage/models/triage_continuation.dart';
 import '../../aiTriage/services/triage_continuation_restore_coordinator.dart';
-import '../../aiTriage/widgets/triage_safety_entry_action.dart';
 import '../../baby/models/baby_model.dart';
 import '../../baby/screens/add_baby_screen.dart';
 import '../../baby/screens/baby_profile_detail_screen.dart';
@@ -411,7 +409,8 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
     final journeyId = dashboard?.journeyId;
     final isExistingJourneyTransition =
         dashboard?.hasActiveJourney == true &&
-        (dashboard?.isPrePregnancy == true || dashboard?.isPostpartum == true) &&
+        (dashboard?.isPrePregnancy == true ||
+            dashboard?.isPostpartum == true) &&
         journeyId != null;
     final route = isExistingJourneyTransition
         ? Uri(
@@ -676,12 +675,10 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
     }
 
     if (dashboard.isPrePregnancy) {
-      final triageContext = _maternalTriageEntryContext(dashboard);
       return [
         _buildPrePregnancyCard(dashboard),
         const SizedBox(height: 16),
-        TriageSafetyEntryAction(entryContext: triageContext),
-        ..._buildMaternalHealthBlock(triageContext),
+        ..._buildMaternalHealthBlock(),
         if (_historyError != null) ...[
           const SizedBox(height: 16),
           _buildHistoryErrorCard(),
@@ -696,12 +693,10 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
     }
 
     if (dashboard.isPostpartum) {
-      final triageContext = _maternalTriageEntryContext(dashboard);
       return [
         _buildPostpartumCard(dashboard),
         const SizedBox(height: 16),
-        TriageSafetyEntryAction(entryContext: triageContext),
-        ..._buildMaternalHealthBlock(triageContext),
+        ..._buildMaternalHealthBlock(),
         if (_historyError != null) ...[
           const SizedBox(height: 16),
           _buildHistoryErrorCard(),
@@ -717,18 +712,15 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
       ];
     }
 
-    final triageContext = _maternalTriageEntryContext(dashboard);
     return [
       _buildHeroCard(dashboard),
-      const SizedBox(height: 16),
-      TriageSafetyEntryAction(entryContext: triageContext),
       const SizedBox(height: 16),
       _buildDueDateCard(dashboard),
       const SizedBox(height: 16),
       _buildPregnancyOutcomeEntry(dashboard),
       const SizedBox(height: 16),
       _buildSetupSourceCard(dashboard),
-      ..._buildMaternalHealthBlock(triageContext),
+      ..._buildMaternalHealthBlock(),
       if (_historyError != null) ...[
         const SizedBox(height: 24),
         _buildHistoryErrorCard(),
@@ -742,24 +734,10 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
     ];
   }
 
-  TriageEntryContext _maternalTriageEntryContext(JourneyDashboard dashboard) {
-    final stage = dashboard.isPrePregnancy
-        ? TriageStageIntent.preconception
-        : dashboard.isPostpartum
-        ? TriageStageIntent.postpartum
-        : TriageStageIntent.pregnancy;
-    return TriageEntryContext.locked(
-      stage: stage,
-      origin: TriageOriginIntent.motherJourney,
-      journeyId: dashboard.journeyId,
-      originReferenceId: dashboard.journeyId,
-    );
-  }
-
-  List<Widget> _buildMaternalHealthBlock(TriageEntryContext triageContext) {
+  List<Widget> _buildMaternalHealthBlock() {
     return [
       const SizedBox(height: 16),
-      _buildMetricButtons(triageContext),
+      _buildMetricButtons(),
       const SizedBox(height: 24),
       _buildBentoSummary(),
     ];
@@ -1942,11 +1920,10 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
     );
   }
 
-  Widget _buildMetricButtons(TriageEntryContext triageContext) {
+  Widget _buildMetricButtons() {
     final metrics = [
       (Icons.monitor_heart_outlined, 'Chỉ số sức khỏe', 'WEIGHT'),
       (Icons.history_edu, 'Hồ sơ sức khỏe', '/health-records'),
-      (Icons.psychology_alt_outlined, 'Kiểm tra triệu chứng', '/triage/intake'),
       (Icons.health_and_safety_outlined, 'Giám sát an toàn', '/safety'),
     ];
 
@@ -1966,10 +1943,6 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
                 onTap: () async {
                   if (metric.$3 == 'WEIGHT') {
                     await _openMetricRoute(metric.$3);
-                    return;
-                  }
-                  if (metric.$3 == '/triage/intake') {
-                    context.push(metric.$3, extra: triageContext);
                     return;
                   }
                   context.push(metric.$3);

@@ -39,9 +39,11 @@ public class RecommendationProfileValidator {
             "submissionId", "schemaVersion", "policyVersion", "consentAccepted", "profile");
     private static final Set<String> ROOT_DECLINE_KEYS = Set.of(
             "submissionId", "schemaVersion", "policyVersion", "consentAccepted");
-    private static final Set<String> LIFESTYLE_KEYS = Set.of("smoking", "alcohol", "physicalActivity", "sleep");
+    private static final Set<String> LIFESTYLE_KEYS = Set.of("smoking", "alcohol", "physicalActivity", "sleep", "flags");
+    private static final Set<String> LIFESTYLE_FLAG_CODES = Set.of("SUBSTANCE_USE", "STRESS", "UNHEALTHY_DIET");
     private static final Set<String> BMI_KEYS = Set.of("state", "heightCm", "weightKg", "weightContext", "measuredOn");
-    private static final Set<String> VACCINATION_KEYS = Set.of("answers");
+    private static final Set<String> VACCINATION_KEYS = Set.of("answers", "flags");
+    private static final Set<String> VACCINATION_FLAG_CODES = Set.of("NOT_ASSESSED");
     private static final Set<String> VACCINATION_ANSWER_KEYS = Set.of("code", "state", "value");
     private static final Set<String> STI_KEYS = Set.of("state", "status", "infectionCodes");
     private static final Set<String> BASIC_STATE_KEYS = Set.of("state");
@@ -82,18 +84,22 @@ public class RecommendationProfileValidator {
         validateAge(profileNode.get("age"), dateOfBirth, businessDate, profile, derived, signals);
         validateBmi(profileNode.get("bmi"), stage, businessDate, profile, derived, signals);
         validateCodeSetDomain(profileNode.get("reproductiveHistory"), "reproductiveHistory",
-                Set.copyOf(RecommendationConstants.REPRODUCTIVE_SIGNALS.keySet()), "NO_PRIOR_PREGNANCY",
+                new LinkedHashSet<>(java.util.stream.Stream.concat(
+                        RecommendationConstants.REPRODUCTIVE_SIGNALS.keySet().stream(),
+                        java.util.stream.Stream.of("NO_LISTED_REPRODUCTIVE_HISTORY")).toList()),
+                Set.of("NO_PRIOR_PREGNANCY", "NO_LISTED_REPRODUCTIVE_HISTORY"),
                 RecommendationConstants.REPRODUCTIVE_SIGNALS, profile, signals);
         validateCodeSetDomain(profileNode.get("underlyingConditions"), "underlyingConditions",
                 new LinkedHashSet<>(java.util.stream.Stream.concat(
                         RecommendationConstants.CONDITION_SIGNALS.keySet().stream(),
-                        java.util.stream.Stream.of("NONE_KNOWN")).toList()), "NONE_KNOWN",
+                        java.util.stream.Stream.of("NONE_KNOWN")).toList()), Set.of("NONE_KNOWN"),
                 RecommendationConstants.CONDITION_SIGNALS, profile, signals);
         validateLifestyle(profileNode.get("lifestyle"), profile, signals);
         validateCodeSetDomain(profileNode.get("nutrition"), "nutrition",
-                Set.of("NO_CURRENT_CONCERN", "VEGETARIAN", "VEGAN", "FOOD_INSECURITY", "LOW_APPETITE",
-                        "NAUSEA_OR_VOMITING", "IRON_OR_FOLATE_CONCERN", "OTHER_NUTRITION_CONCERN"),
-                "NO_CURRENT_CONCERN", RecommendationConstants.NUTRITION_SIGNALS, profile, signals);
+                new LinkedHashSet<>(java.util.stream.Stream.concat(
+                        RecommendationConstants.NUTRITION_SIGNALS.keySet().stream(),
+                        java.util.stream.Stream.of("NO_CURRENT_CONCERN")).toList()),
+                Set.of("NO_CURRENT_CONCERN"), RecommendationConstants.NUTRITION_SIGNALS, profile, signals);
         Object normalizedNutrition = profile.get("nutrition");
         if (normalizedNutrition instanceof Map<?, ?> nutrition
                 && nutrition.get("codes") instanceof List<?> codes
@@ -102,9 +108,10 @@ public class RecommendationProfileValidator {
         }
         validateVaccination(profileNode.get("vaccination"), profile, signals);
         validateCodeSetDomain(profileNode.get("currentMedications"), "currentMedications",
-                Set.of("NONE", "PRENATAL_VITAMIN", "FOLIC_ACID", "IRON", "THYROID_MEDICATION",
-                        "DIABETES_MEDICATION", "ANTIHYPERTENSIVE", "ANTICOAGULANT", "ANTIEPILEPTIC",
-                        "MENTAL_HEALTH_MEDICATION", "OTHER_PRESCRIBED"), "NONE",
+                new LinkedHashSet<>(java.util.stream.Stream.concat(
+                        RecommendationConstants.MEDICATION_SIGNALS.keySet().stream(),
+                        java.util.stream.Stream.of("NONE")).toList()),
+                Set.of("NONE"),
                 RecommendationConstants.MEDICATION_SIGNALS, profile, signals);
         validateSexualHealth(profileNode.get("sexualHealth"), profile, signals);
         validateSti(profileNode.get("sti"), profile, signals);
@@ -203,7 +210,7 @@ public class RecommendationProfileValidator {
         if (eligible) signals.add(RecommendationConstants.BMI_SIGNALS.get(category));
     }
 
-    private void validateCodeSetDomain(JsonNode node, String domain, Set<String> allowed, String exclusive,
+    private void validateCodeSetDomain(JsonNode node, String domain, Set<String> allowed, Set<String> exclusive,
                                        Map<String, String> signalMap, Map<String, Object> profile, Set<String> signals) {
         ensureObject(node, "profile." + domain);
         ensureAllowedKeys(node, Set.of("state", "codes"), "profile." + domain);
@@ -211,7 +218,9 @@ public class RecommendationProfileValidator {
         Map<String, Object> value = stateMap(state);
         if ("KNOWN".equals(state)) {
             List<String> codes = codeList(node, "codes", "profile." + domain + ".codes", allowed);
-            if (codes.contains(exclusive) && codes.size() > 1) throw RecommendationException.invalid("profile." + domain + ".codes", "exclusive negative code cannot be combined");
+            if (codes.stream().anyMatch(exclusive::contains) && codes.size() > 1) {
+                throw RecommendationException.invalid("profile." + domain + ".codes", "exclusive negative code cannot be combined");
+            }
             value.put("codes", codes);
             codes.stream().map(signalMap::get).filter(java.util.Objects::nonNull).forEach(signals::add);
         } else {
@@ -222,12 +231,19 @@ public class RecommendationProfileValidator {
 
     private void validateLifestyle(JsonNode node, Map<String, Object> profile, Set<String> signals) {
         ensureObject(node, "profile.lifestyle");
-        ensureKeys(node, LIFESTYLE_KEYS, "profile.lifestyle");
+        ensureAllowedKeys(node, LIFESTYLE_KEYS, "profile.lifestyle");
         Map<String, Object> lifestyle = new LinkedHashMap<>();
         validateAnswer(node.get("smoking"), "profile.lifestyle.smoking", Set.of("NEVER", "FORMER", "CURRENT"), false, lifestyle, signals, "smoking");
-        validateAnswer(node.get("alcohol"), "profile.lifestyle.alcohol", Set.of("NONE", "LESS_THAN_WEEKLY", "WEEKLY_OR_MORE"), false, lifestyle, signals, "alcohol");
+        validateAnswer(node.get("alcohol"), "profile.lifestyle.alcohol", Set.of("NONE", "LESS_THAN_WEEKLY", "WEEKLY_OR_MORE", "ANY_USE"), false, lifestyle, signals, "alcohol");
         validateAnswer(node.get("physicalActivity"), "profile.lifestyle.physicalActivity", Set.of("LOW", "MODERATE", "HIGH"), true, lifestyle, signals, "physicalActivity");
         validateAnswer(node.get("sleep"), "profile.lifestyle.sleep", Set.of("NO_CONCERN", "CONCERN"), false, lifestyle, signals, "sleep");
+        JsonNode flags = node.get("flags");
+        if (flags != null && !flags.isNull()) {
+            List<String> normalizedFlags = flagList(flags, "profile.lifestyle.flags", LIFESTYLE_FLAG_CODES);
+            lifestyle.put("flags", normalizedFlags);
+            normalizedFlags.stream().map(RecommendationConstants.LIFESTYLE_FLAG_SIGNALS::get)
+                    .filter(java.util.Objects::nonNull).forEach(signals::add);
+        }
         profile.put("lifestyle", lifestyle);
     }
 
@@ -250,7 +266,12 @@ public class RecommendationProfileValidator {
 
     private void validateVaccination(JsonNode node, Map<String, Object> profile, Set<String> signals) {
         ensureObject(node, "profile.vaccination");
-        ensureKeys(node, VACCINATION_KEYS, "profile.vaccination");
+        ensureAllowedKeys(node, VACCINATION_KEYS, "profile.vaccination");
+        List<String> flags = node.has("flags") && !node.get("flags").isNull()
+                ? flagList(node.get("flags"), "profile.vaccination.flags", VACCINATION_FLAG_CODES)
+                : List.of();
+        flags.stream().map(RecommendationConstants.VACCINATION_FLAG_SIGNALS::get)
+                .filter(java.util.Objects::nonNull).forEach(signals::add);
         JsonNode answers = required(node, "answers", "profile.vaccination.answers");
         if (!answers.isArray() || answers.size() != RecommendationConstants.VACCINE_CODES.size()) throw RecommendationException.invalid("profile.vaccination.answers", "must contain exactly five vaccine answers");
         Set<String> seen = new HashSet<>();
@@ -274,8 +295,14 @@ public class RecommendationProfileValidator {
             normalized.add(normalizedAnswer);
         }
         if (!seen.equals(RecommendationConstants.VACCINE_CODES)) throw RecommendationException.invalid("profile.vaccination.answers", "all five vaccine codes are required");
+        if (flags.contains("NOT_ASSESSED") && normalized.stream().anyMatch(answer -> "KNOWN".equals(answer.get("state")))) {
+            throw RecommendationException.invalid("profile.vaccination.flags", "not-assessed cannot contain known vaccine values");
+        }
         normalized.sort(Comparator.comparing(value -> value.get("code").toString()));
-        profile.put("vaccination", Map.of("answers", normalized));
+        Map<String, Object> vaccination = new LinkedHashMap<>();
+        vaccination.put("answers", normalized);
+        if (!flags.isEmpty()) vaccination.put("flags", flags);
+        profile.put("vaccination", vaccination);
     }
 
     private void validateSexualHealth(JsonNode node, Map<String, Object> profile, Set<String> signals) {
@@ -285,7 +312,9 @@ public class RecommendationProfileValidator {
         Map<String, Object> value = stateMap(state);
         if ("KNOWN".equals(state)) {
             List<String> codes = codeList(node, "codes", "profile.sexualHealth.codes",
-                    Set.of("NO_CURRENT_INFORMATION_NEED", "GENERAL_INFORMATION", "CONTRACEPTION_OR_FERTILITY", "INTIMACY_DURING_LIFECYCLE", "OTHER_NON_URGENT_INFORMATION"));
+                    new LinkedHashSet<>(java.util.stream.Stream.concat(
+                            RecommendationConstants.SEXUAL_HEALTH_SIGNALS.keySet().stream(),
+                            java.util.stream.Stream.of("NO_CURRENT_INFORMATION_NEED")).toList()));
             if (codes.contains("NO_CURRENT_INFORMATION_NEED") && codes.size() > 1) throw RecommendationException.invalid("profile.sexualHealth.codes", "no-current-need is exclusive");
             value.put("codes", codes);
             codes.stream().map(RecommendationConstants.SEXUAL_HEALTH_SIGNALS::get).filter(java.util.Objects::nonNull).forEach(signals::add);
@@ -302,7 +331,7 @@ public class RecommendationProfileValidator {
         Map<String, Object> value = stateMap(state);
         if ("KNOWN".equals(state)) {
             String status = textEnum(node, "status", "profile.sti.status",
-                    Set.of("NO_KNOWN_HISTORY", "SCREENING_INFORMATION", "PAST_HISTORY", "CURRENT_OR_UNDER_TREATMENT"));
+                    Set.of("NO_KNOWN_HISTORY", "SCREENING_INFORMATION", "PAST_HISTORY", "CURRENT_OR_UNDER_TREATMENT", "AT_RISK", "SUSPECTED_OR_KNOWN"));
             value.put("status", status);
             String statusSignal = RecommendationConstants.STI_STATUS_SIGNALS.get(status);
             if (statusSignal != null) signals.add(statusSignal);
@@ -336,6 +365,20 @@ public class RecommendationProfileValidator {
         List<String> result = new ArrayList<>();
         for (JsonNode value : values) {
             if (!value.isTextual() || !allowed.contains(value.textValue()) || !result.add(value.textValue())) throw RecommendationException.invalid(path, "contains an unknown or duplicate controlled code");
+        }
+        Collections.sort(result);
+        return result;
+    }
+
+    private List<String> flagList(JsonNode values, String path, Set<String> allowed) {
+        if (values == null || !values.isArray() || values.size() > 20) {
+            throw RecommendationException.invalid(path, "must contain zero to twenty controlled flags");
+        }
+        List<String> result = new ArrayList<>();
+        for (JsonNode value : values) {
+            if (!value.isTextual() || !allowed.contains(value.textValue()) || !result.add(value.textValue())) {
+                throw RecommendationException.invalid(path, "contains an unknown or duplicate controlled flag");
+            }
         }
         Collections.sort(result);
         return result;

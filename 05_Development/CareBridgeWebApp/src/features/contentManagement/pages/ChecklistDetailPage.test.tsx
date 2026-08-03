@@ -85,6 +85,7 @@ describe('ChecklistDetailPage version', () => {
     expect(screen.getByText('PHIÊN BẢN')).toBeTruthy();
     expect(screen.getByText('v3')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Checklist' })).toBeTruthy();
+    expect(screen.getByText(/Không áp dụng chuỗi PRE_PREGNANCY/)).toBeTruthy();
     expect(screen.getByTestId('checklist-detail-layout').className).toContain('grid-cols-1');
     expect(screen.getByTestId('checklist-detail-layout').className).toContain('lg:grid-cols-[minmax(0,1fr)_340px]');
     expect(screen.getByTestId('checklist-detail-page').className).toContain('bg-background');
@@ -94,6 +95,19 @@ describe('ChecklistDetailPage version', () => {
     expect(editButton.className).toContain('min-h-12');
     expect(editButton.className).toContain('rounded-full');
     expect(editButton.querySelector('[aria-hidden="true"]')).toBeTruthy();
+  });
+
+  it('shows a positive sequence position and guidance for preconception review', async () => {
+    harness.fetchChecklistTemplateDetail.mockResolvedValue({
+      ...checklistDetail(),
+      stage: 'PRE_PREGNANCY',
+      displayOrder: 2,
+    });
+
+    render(<ChecklistDetailPage />);
+
+    expect(await screen.findByText(/B.*chu.*i 2/)).toBeTruthy();
+    expect(screen.getByRole('note')).toBeTruthy();
   });
 
   it('wraps a maximum-length unbroken item without widening the viewport', async () => {

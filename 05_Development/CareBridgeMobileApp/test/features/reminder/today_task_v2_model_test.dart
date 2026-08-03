@@ -85,4 +85,37 @@ void main() {
     expect(task.allowedActions, {TodayTaskAction.reopen});
     expect(TodayTaskAction.reopen.apiValue, 'REOPEN');
   });
+
+  test('parses ready sequence projection and next-set metadata', () {
+    final snapshot = TodayTasksSnapshot.fromJson({
+      'asOf': '2026-08-03T01:00:00Z',
+      'zoneId': 'Asia/Ho_Chi_Minh',
+      'horizonDays': 7,
+      'sections': {
+        'overdue': [],
+        'today': [],
+        'upcoming': [],
+        'unscheduled': [],
+      },
+      'counts': {'overdue': 0, 'today': 0, 'upcoming': 0, 'unscheduled': 0},
+      'correlationId': 'correlation-2',
+      'sequence': {
+        'sequenceState': 'READY_TO_ADVANCE',
+        'currentInstanceId': 'instance-1',
+        'currentTemplateVersionId': 'version-1',
+        'currentSetName': 'Nền tảng sức khỏe',
+        'currentPosition': 1,
+        'totalPositions': 3,
+        'qualifiedPositions': 1,
+        'advanceAvailable': true,
+        'nextSet': {'name': 'Tư vấn trước thai kỳ', 'position': 2},
+        'sequenceComplete': false,
+      },
+    });
+
+    expect(snapshot.sequence?.state, TodaySequenceState.readyToAdvance);
+    expect(snapshot.sequence?.readyToAdvance, isTrue);
+    expect(snapshot.sequence?.nextSet?.position, 2);
+    expect(snapshot.sequence?.advanceAvailable, isTrue);
+  });
 }

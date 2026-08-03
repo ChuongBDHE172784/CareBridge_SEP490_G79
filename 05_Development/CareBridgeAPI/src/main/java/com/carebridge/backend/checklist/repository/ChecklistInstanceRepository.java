@@ -30,6 +30,8 @@ public interface ChecklistInstanceRepository extends JpaRepository<ChecklistInst
 
     List<ChecklistInstance> findByRecipientUserId(UUID recipientUserId);
 
+    boolean existsByTemplateLineageId(UUID templateLineageId);
+
     List<ChecklistInstance> findByRecipientUserIdAndHistoricalAtIsNull(UUID recipientUserId);
 
     List<ChecklistInstance> findByContextOwnerUserIdAndRecipientRoleAndOriginAndHistoricalAtIsNull(
@@ -37,19 +39,42 @@ public interface ChecklistInstanceRepository extends JpaRepository<ChecklistInst
             ChecklistRecipientRole recipientRole,
             ChecklistOrigin origin);
 
-    @Query("""
+    @Query(value = """
             select instance from ChecklistInstance instance
              where instance.contextOwnerUserId = :ownerUserId
                and instance.recipientUserId = :ownerUserId
                and instance.recipientRole = com.carebridge.backend.checklist.model.ChecklistRecipientRole.MOTHER
                and instance.origin = com.carebridge.backend.checklist.model.ChecklistOrigin.SYSTEM_TEMPLATE
                and instance.historicalAt is not null
+               and (instance.templateVersionId is null or exists (
+                    select template.id from ChecklistTemplate template
+                     where template.templateVersionId = instance.templateVersionId
+                       and template.status <> com.carebridge.backend.content.entity.ChecklistTemplateStatus.ARCHIVED
+               ))
                and (:targetSubject is null or exists (
                     select task.id from ChecklistTaskInstance task
                      where task.checklistInstanceId = instance.id
                        and task.targetSubject = :targetSubject
                ))
              order by instance.historicalAt desc, instance.updatedAt desc, instance.id desc
+            """,
+            countQuery = """
+            select count(instance) from ChecklistInstance instance
+             where instance.contextOwnerUserId = :ownerUserId
+               and instance.recipientUserId = :ownerUserId
+               and instance.recipientRole = com.carebridge.backend.checklist.model.ChecklistRecipientRole.MOTHER
+               and instance.origin = com.carebridge.backend.checklist.model.ChecklistOrigin.SYSTEM_TEMPLATE
+               and instance.historicalAt is not null
+               and (instance.templateVersionId is null or exists (
+                    select template.id from ChecklistTemplate template
+                     where template.templateVersionId = instance.templateVersionId
+                       and template.status <> com.carebridge.backend.content.entity.ChecklistTemplateStatus.ARCHIVED
+               ))
+               and (:targetSubject is null or exists (
+                    select task.id from ChecklistTaskInstance task
+                     where task.checklistInstanceId = instance.id
+                       and task.targetSubject = :targetSubject
+               ))
             """)
     Page<ChecklistInstance> findOwnerHistory(
             @Param("ownerUserId") UUID ownerUserId,
