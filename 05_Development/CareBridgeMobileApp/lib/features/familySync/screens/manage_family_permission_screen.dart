@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
+
 import '../models/care_group_model.dart';
+import '../models/family_permission_model.dart';
 import '../services/care_group_service.dart';
 
 class ManageFamilyPermissionScreen extends StatefulWidget {
-  final String groupId;
-  final CareGroupMember member;
-
   const ManageFamilyPermissionScreen({
     super.key,
     required this.groupId,
     required this.member,
+    this.service,
   });
+
+  final String groupId;
+  final CareGroupMember member;
+  final CareGroupService? service;
 
   @override
   State<ManageFamilyPermissionScreen> createState() =>
@@ -19,21 +23,63 @@ class ManageFamilyPermissionScreen extends StatefulWidget {
 
 class _ManageFamilyPermissionScreenState
     extends State<ManageFamilyPermissionScreen> {
-  final _service = CareGroupService();
-  bool _isLoading = true;
+  static const _canvas = Color(0xFFF6F1EC);
+  static const _surface = Color(0xFFFFFBF8);
+  static const _primary = Color(0xFF9B5E4E);
+  static const _accent = Color(0xFFC98C7B);
+  static const _text = Color(0xFF2E211D);
+  static const _muted = Color(0xFF74645F);
 
-  // Local state for switches before saving
+  late final CareGroupService _service = widget.service ?? CareGroupService();
+  bool _isLoading = true;
+  bool _isSaving = false;
+  bool _loadFailed = false;
+  List<bool>? _savedValues;
+
   bool _calendar = false;
   bool _logs = false;
   bool _alerts = false;
   bool _records = false;
   bool _quickNotes = false;
   bool _quickNoteWeight = false;
+  bool _quickNoteFetalMovement = false;
+  bool _quickNoteBloodPressure = false;
   bool _quickNoteHydration = false;
   bool _quickNoteEpds = false;
-  bool _quickNoteFetalMovement = false;
+  bool _quickNoteBloodGlucose = false;
 
-  bool _isSaving = false;
+  List<bool> get _values => [
+    _calendar,
+    _logs,
+    _alerts,
+    _records,
+    _quickNotes,
+    _quickNoteWeight,
+    _quickNoteFetalMovement,
+    _quickNoteBloodPressure,
+    _quickNoteHydration,
+    _quickNoteEpds,
+    _quickNoteBloodGlucose,
+  ];
+
+  bool get _isDirty {
+    final saved = _savedValues;
+    if (saved == null) return false;
+    final current = _values;
+    for (var i = 0; i < saved.length; i++) {
+      if (saved[i] != current[i]) return true;
+    }
+    return false;
+  }
+
+  int get _sharedMetricCount => [
+    _quickNoteWeight,
+    _quickNoteFetalMovement,
+    _quickNoteBloodPressure,
+    _quickNoteHydration,
+    _quickNoteEpds,
+    _quickNoteBloodGlucose,
+  ].where((value) => value).length;
 
   @override
   void initState() {
@@ -42,40 +88,49 @@ class _ManageFamilyPermissionScreenState
   }
 
   Future<void> _loadPermission() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _loadFailed = false;
+    });
     try {
-      final perm = await _service.getFamilyPermission(
+      final permission = await _service.getFamilyPermission(
         widget.groupId,
         widget.member.memberId,
       );
-      if (mounted) {
-        setState(() {
-          _calendar = perm.calendar;
-          _logs = perm.logs;
-          _alerts = perm.alerts;
-          _records = perm.records;
-          _quickNotes = perm.quickNotes;
-          _quickNoteWeight = perm.quickNoteWeight;
-          _quickNoteHydration = perm.quickNoteHydration;
-          _quickNoteEpds = perm.quickNoteEpds;
-          _quickNoteFetalMovement = perm.quickNoteFetalMovement;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Lỗi tải quyền: $e')));
-      }
+      if (!mounted) return;
+      setState(() {
+        _applyPermission(permission);
+        _savedValues = List<bool>.of(_values);
+        _isLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _loadFailed = true;
+      });
     }
   }
 
+  void _applyPermission(FamilyPermission permission) {
+    _calendar = permission.calendar;
+    _logs = permission.logs;
+    _alerts = permission.alerts;
+    _records = permission.records;
+    _quickNotes = permission.quickNotes;
+    _quickNoteWeight = permission.quickNoteWeight;
+    _quickNoteFetalMovement = permission.quickNoteFetalMovement;
+    _quickNoteBloodPressure = permission.quickNoteBloodPressure;
+    _quickNoteHydration = permission.quickNoteHydration;
+    _quickNoteEpds = permission.quickNoteEpds;
+    _quickNoteBloodGlucose = permission.quickNoteBloodGlucose;
+  }
+
   Future<void> _saveChanges() async {
+    if (!_isDirty || _isSaving) return;
     setState(() => _isSaving = true);
     try {
-      await _service.updateFamilyPermission(
+      final savedPermission = await _service.updateFamilyPermission(
         widget.groupId,
         widget.member.memberId,
         calendar: _calendar,
@@ -84,462 +139,384 @@ class _ManageFamilyPermissionScreenState
         records: _records,
         quickNotes: _quickNotes,
         quickNoteWeight: _quickNoteWeight,
+        quickNoteFetalMovement: _quickNoteFetalMovement,
+        quickNoteBloodPressure: _quickNoteBloodPressure,
         quickNoteHydration: _quickNoteHydration,
         quickNoteEpds: _quickNoteEpds,
-        quickNoteFetalMovement: _quickNoteFetalMovement,
+        quickNoteBloodGlucose: _quickNoteBloodGlucose,
       );
-      if (mounted) {
-        setState(() {
-          _isSaving = false;
-        });
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Đã cập nhật quyền hạn')));
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isSaving = false);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Lỗi cập nhật: $e')));
-      }
+      if (!mounted) return;
+      setState(() {
+        _applyPermission(savedPermission);
+        _savedValues = List<bool>.of(_values);
+        _isSaving = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã cập nhật quyền chia sẻ.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Chưa thể lưu thay đổi. Vui lòng thử lại.'),
+        ),
+      );
     }
   }
 
+  Future<void> _refreshPermission() async {
+    if (_isDirty || _isSaving) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Hãy lưu hoặc hoàn tác thay đổi trước khi làm mới.'),
+        ),
+      );
+      return;
+    }
+    await _loadPermission();
+  }
+
   Future<void> _removeMember() async {
-    final confirm = await showDialog<bool>(
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Thu hồi quyền'),
+        title: const Text(
+          'Xóa khỏi nhóm?',
+          style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700),
+        ),
         content: Text(
-          'Bạn có chắc chắn muốn xóa ${widget.member.displayName} khỏi nhóm?',
+          '${widget.member.displayName} sẽ không còn xem được dữ liệu của bạn.',
+          style: const TextStyle(fontFamily: 'Lexend'),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Hủy'),
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFFBA1A1A),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFBA1A1A),
             ),
-            child: const Text('Thu hồi'),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Xóa thành viên'),
           ),
         ],
       ),
     );
-
-    if (confirm == true && mounted) {
-      try {
-        await _service.removeMember(widget.groupId, widget.member.memberId);
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Đã xóa thành viên')));
-          Navigator.pop(context, true); // Return true to refresh list
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
-        }
-      }
+    if (confirmed != true || !mounted) return;
+    try {
+      await _service.removeMember(widget.groupId, widget.member.memberId);
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Chưa thể xóa thành viên. Vui lòng thử lại.'),
+        ),
+      );
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFEF8F4),
+      backgroundColor: _canvas,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFFEF8F4),
-        elevation: 0,
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Color(0xFF845143)),
-          onPressed: () => Navigator.pop(context),
-        ),
+        backgroundColor: _canvas,
+        surfaceTintColor: Colors.transparent,
         title: const Text(
           'Quản lý quyền chia sẻ',
           style: TextStyle(
-            color: Color(0xFF845143),
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            fontFamily: 'Quicksand',
+            fontFamily: 'Lexend',
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: _text,
           ),
         ),
       ),
       body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFFC98C7B)),
-            )
-          : SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16.0,
-                vertical: 8.0,
-              ),
-              child: Column(
+          ? const _PermissionLoading()
+          : _loadFailed
+          ? _buildLoadError()
+          : RefreshIndicator(
+              color: _primary,
+              onRefresh: _refreshPermission,
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                 children: [
-                  // Profile Header
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x14C98C7B),
-                          blurRadius: 20,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
+                  _buildMemberSummary(),
+                  const SizedBox(height: 16),
+                  _buildGeneralPermissions(),
+                  const SizedBox(height: 16),
+                  _buildHealthMetrics(),
+                  const SizedBox(height: 16),
+                  _buildPrivacyNote(),
+                  const SizedBox(height: 16),
+                  TextButton.icon(
+                    onPressed: _removeMember,
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFFBA1A1A),
+                      alignment: Alignment.centerLeft,
                     ),
-                    child: Column(
-                      children: [
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFE9E3),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: const Color(0xFFF2EAE4),
-                              width: 4,
-                            ),
-                          ),
-                          child: Center(
-                            child: Text(
-                              widget.member.displayName.isNotEmpty
-                                  ? widget.member.displayName[0]
-                                  : '?',
-                              style: const TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF845143),
-                                fontFamily: 'Quicksand',
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          widget.member.displayName,
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF845143),
-                            fontFamily: 'Quicksand',
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Vai trò: ${widget.member.roleLabel}',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Color(0xFF625D59),
-                            fontFamily: 'Quicksand',
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        OutlinedButton(
-                          onPressed: _removeMember,
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: const Color(0xFFBA1A1A),
-                            side: const BorderSide(
-                              color: Color(0xFFBA1A1A),
-                              width: 2,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 24,
-                              vertical: 12,
-                            ),
-                          ),
-                          child: const Text(
-                            'Thu hồi quyền',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontFamily: 'Quicksand',
-                            ),
-                          ),
-                        ),
-                      ],
+                    icon: const Icon(Icons.person_remove_outlined),
+                    label: const Text(
+                      'Xóa thành viên khỏi nhóm',
+                      style: TextStyle(fontFamily: 'Lexend'),
                     ),
                   ),
-
-                  const SizedBox(height: 24),
-
-                  // Permissions Grid
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x14C98C7B),
-                          blurRadius: 20,
-                          offset: Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Row(
-                          children: [
-                            Icon(Icons.security, color: Color(0xFF845143)),
-                            SizedBox(width: 8),
-                            Text(
-                              'Quyền hạn chi tiết',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF845143),
-                                fontFamily: 'Quicksand',
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-
-                        _buildPermissionSwitch(
-                          title: 'Việc cần làm',
-                          subtitle: 'Quản lý danh sách nhiệm vụ hôm nay',
-                          icon: Icons.checklist,
-                          value: _alerts,
-                          onChanged: (val) => setState(() => _alerts = val),
-                        ),
-                        const SizedBox(height: 16),
-                        _buildPermissionSwitch(
-                          title: 'Dữ liệu chia sẻ',
-                          subtitle:
-                              'Cho phép xem các thông tin sức khỏe được chia sẻ',
-                          icon: Icons.folder_shared,
-                          value: _records,
-                          onChanged: (val) => setState(() => _records = val),
-                        ),
-                        const SizedBox(height: 16),
-                        _buildPermissionSwitch(
-                          title: 'Ghi chú nhanh',
-                          subtitle:
-                              'Chỉ cho phép xem lịch sử của những mục bạn chọn',
-                          icon: Icons.sticky_note_2_outlined,
-                          value: _quickNotes,
-                          onChanged: _setQuickNotes,
-                        ),
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 220),
-                          child: !_quickNotes
-                              ? const SizedBox.shrink()
-                              : Padding(
-                                  key: const ValueKey('quick-note-children'),
-                                  padding: const EdgeInsets.only(top: 12),
-                                  child: Container(
-                                    padding: const EdgeInsets.all(14),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFFFF8F6),
-                                      borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(
-                                        color: const Color(0xFFF2EAE4),
-                                      ),
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        _buildQuickNoteSwitch(
-                                          title: 'Cân nặng',
-                                          icon: Icons.monitor_weight_outlined,
-                                          value: _quickNoteWeight,
-                                          onChanged: (value) => setState(
-                                            () => _quickNoteWeight = value,
-                                          ),
-                                        ),
-                                        _buildQuickNoteSwitch(
-                                          title: 'Nước',
-                                          icon: Icons.water_drop_outlined,
-                                          value: _quickNoteHydration,
-                                          onChanged: (value) => setState(
-                                            () => _quickNoteHydration = value,
-                                          ),
-                                        ),
-                                        _buildQuickNoteSwitch(
-                                          title: 'Sàng lọc EPDS',
-                                          icon: Icons.psychology_alt_outlined,
-                                          value: _quickNoteEpds,
-                                          onChanged: (value) => setState(
-                                            () => _quickNoteEpds = value,
-                                          ),
-                                        ),
-                                        _buildQuickNoteSwitch(
-                                          title: 'Cử động thai',
-                                          icon: Icons.child_friendly_outlined,
-                                          value: _quickNoteFetalMovement,
-                                          showDivider: false,
-                                          onChanged: (value) => setState(
-                                            () =>
-                                                _quickNoteFetalMovement = value,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Summary
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF2EAE4),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Minh bạch & Đồng thuận',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF845143),
-                            fontFamily: 'Quicksand',
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        _buildSummaryRow(
-                          Icons.check_circle,
-                          'Quyền truy cập của ${widget.member.displayName} được giới hạn trong phạm vi gia đình.',
-                        ),
-                        const SizedBox(height: 8),
-                        _buildSummaryRow(
-                          Icons.history,
-                          'Mọi thay đổi trong nhật ký sẽ được lưu vết với tên người thực hiện.',
-                        ),
-                        const SizedBox(height: 8),
-                        _buildSummaryRow(
-                          Icons.lock,
-                          'Dữ liệu sức khỏe chỉ có thể được xem, không có quyền xuất tập tin.',
-                        ),
-                        const SizedBox(height: 24),
-                        const Divider(color: Color(0x33845143)),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Bằng cách nhấn "Lưu thay đổi", bạn đồng ý chia sẻ các dữ liệu đã chọn với thành viên này. Bạn có thể thu hồi quyền bất cứ lúc nào.',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontStyle: FontStyle.italic,
-                            color: Color(0xFF84736F),
-                            fontFamily: 'Quicksand',
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        ElevatedButton(
-                          onPressed: _isSaving ? null : _saveChanges,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF845143),
-                            foregroundColor: Colors.white,
-                            minimumSize: const Size(double.infinity, 56),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            elevation: 4,
-                          ),
-                          child: _isSaving
-                              ? const CircularProgressIndicator(
-                                  color: Colors.white,
-                                )
-                              : const Text(
-                                  'Lưu thay đổi',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'Quicksand',
-                                  ),
-                                ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 48),
                 ],
+              ),
+            ),
+      bottomNavigationBar: _isLoading || _loadFailed
+          ? null
+          : SafeArea(
+              minimum: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+              child: FilledButton(
+                key: const Key('permission-save-button'),
+                onPressed: _isDirty && !_isSaving ? _saveChanges : null,
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(54),
+                  backgroundColor: _primary,
+                  disabledBackgroundColor: const Color(0xFFE0D8D3),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                ),
+                child: _isSaving
+                    ? const SizedBox.square(
+                        dimension: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.4,
+                          color: Colors.white,
+                        ),
+                      )
+                    : Text(
+                        _isDirty ? 'Lưu thay đổi' : 'Đã lưu',
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
               ),
             ),
     );
   }
 
-  Widget _buildPermissionSwitch({
-    required String title,
-    required String subtitle,
-    required IconData icon,
-    required bool value,
-    required ValueChanged<bool> onChanged,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFEF8F4),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: value ? const Color(0xFFC98C7B) : const Color(0xFFF2EAE4),
-          width: 2,
+  Widget _buildLoadError() {
+    return Center(
+      key: const Key('permission-load-error'),
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off_outlined, size: 48, color: _primary),
+            const SizedBox(height: 16),
+            const Text(
+              'Chưa tải được quyền chia sẻ',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: _text,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Kiểm tra kết nối và thử lại. Quyền hiện tại chưa bị thay đổi.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontFamily: 'Lexend', color: _muted),
+            ),
+            const SizedBox(height: 20),
+            FilledButton.icon(
+              key: const Key('permission-retry-button'),
+              onPressed: _loadPermission,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Thử lại'),
+            ),
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _buildMemberSummary() {
+    final initial = widget.member.displayName.trim().isEmpty
+        ? '?'
+        : widget.member.displayName.trim()[0].toUpperCase();
+    return _SectionCard(
       child: Row(
         children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: const Color(0x1A845143),
-              borderRadius: BorderRadius.circular(24),
+          CircleAvatar(
+            radius: 26,
+            backgroundColor: const Color(0xFFFFE5DE),
+            foregroundColor: _primary,
+            child: Text(
+              initial,
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontWeight: FontWeight.w700,
+                fontSize: 20,
+              ),
             ),
-            child: Icon(icon, color: const Color(0xFF845143)),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  title,
+                  widget.member.displayName,
                   style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF845143),
-                    fontFamily: 'Quicksand',
+                    fontFamily: 'Lexend',
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: _text,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
                 Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF625D59),
-                    fontFamily: 'Quicksand',
-                  ),
+                  widget.member.familyRelationshipLabel ??
+                      widget.member.roleLabel,
+                  style: const TextStyle(fontFamily: 'Lexend', color: _muted),
                 ),
               ],
             ),
           ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeThumbColor: Colors.white,
-            activeTrackColor: const Color(0xFFC98C7B),
-            inactiveThumbColor: Colors.white,
-            inactiveTrackColor: const Color(0xFFDFD9D5),
+          const _StatusPill(label: 'Chỉ xem'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGeneralPermissions() {
+    return _SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const _SectionTitle(
+            icon: Icons.shield_outlined,
+            title: 'Phạm vi hỗ trợ',
+            subtitle: 'Chọn những khu vực thành viên có thể xem.',
+          ),
+          const SizedBox(height: 10),
+          _permissionRow(
+            title: 'Lịch chăm sóc',
+            icon: Icons.calendar_month_outlined,
+            value: _calendar,
+            onChanged: (value) => setState(() => _calendar = value),
+          ),
+          _permissionRow(
+            title: 'Nhật ký chăm sóc',
+            icon: Icons.menu_book_outlined,
+            value: _logs,
+            onChanged: (value) => setState(() => _logs = value),
+          ),
+          _permissionRow(
+            title: 'Việc cần làm & cảnh báo',
+            icon: Icons.notifications_active_outlined,
+            value: _alerts,
+            onChanged: (value) => setState(() => _alerts = value),
+          ),
+          _permissionRow(
+            title: 'Hồ sơ được chia sẻ',
+            icon: Icons.folder_shared_outlined,
+            value: _records,
+            onChanged: (value) => setState(() => _records = value),
+            divider: false,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildHealthMetrics() {
+    return KeyedSubtree(
+      key: const Key('health-metrics-section'),
+      child: _SectionCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _SectionTitle(
+              icon: Icons.monitor_heart_outlined,
+              title: 'Chỉ số sức khỏe',
+              subtitle: _quickNotes
+                  ? '$_sharedMetricCount/6 chỉ số đang chia sẻ'
+                  : 'Thành viên không xem được chỉ số nào',
+              trailing: Switch.adaptive(
+                key: const Key('health-metrics-parent-switch'),
+                value: _quickNotes,
+                activeTrackColor: _accent,
+                onChanged: _isSaving ? null : _setQuickNotes,
+              ),
+            ),
+            if (_quickNotes) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  TextButton(
+                    key: const Key('health-metrics-select-all'),
+                    onPressed: _isSaving || _sharedMetricCount == 6
+                        ? null
+                        : () => _setAllMetrics(true),
+                    child: const Text('Chọn tất cả'),
+                  ),
+                  TextButton(
+                    key: const Key('health-metrics-clear-all'),
+                    onPressed: _isSaving || _sharedMetricCount == 0
+                        ? null
+                        : () => _setAllMetrics(false),
+                    child: const Text('Bỏ chọn'),
+                  ),
+                ],
+              ),
+              _metricRow(
+                title: 'Cân nặng',
+                icon: Icons.monitor_weight_outlined,
+                value: _quickNoteWeight,
+                onChanged: (value) => setState(() => _quickNoteWeight = value),
+              ),
+              _metricRow(
+                title: 'Cử động thai',
+                icon: Icons.child_friendly_outlined,
+                value: _quickNoteFetalMovement,
+                onChanged: (value) =>
+                    setState(() => _quickNoteFetalMovement = value),
+              ),
+              _metricRow(
+                title: 'Huyết áp',
+                icon: Icons.favorite_border,
+                value: _quickNoteBloodPressure,
+                onChanged: (value) =>
+                    setState(() => _quickNoteBloodPressure = value),
+              ),
+              _metricRow(
+                title: 'Nước',
+                icon: Icons.water_drop_outlined,
+                value: _quickNoteHydration,
+                onChanged: (value) =>
+                    setState(() => _quickNoteHydration = value),
+              ),
+              _metricRow(
+                title: 'Sàng lọc EPDS',
+                icon: Icons.psychology_alt_outlined,
+                value: _quickNoteEpds,
+                onChanged: (value) => setState(() => _quickNoteEpds = value),
+              ),
+              _metricRow(
+                title: 'Đường huyết',
+                icon: Icons.bloodtype_outlined,
+                value: _quickNoteBloodGlucose,
+                onChanged: (value) =>
+                    setState(() => _quickNoteBloodGlucose = value),
+                divider: false,
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
@@ -547,76 +524,242 @@ class _ManageFamilyPermissionScreenState
   void _setQuickNotes(bool value) {
     setState(() {
       _quickNotes = value;
-      if (!value) {
-        _quickNoteWeight = false;
-        _quickNoteHydration = false;
-        _quickNoteEpds = false;
-        _quickNoteFetalMovement = false;
-      }
+      if (!value) _setAllMetricsValue(false);
     });
   }
 
-  Widget _buildQuickNoteSwitch({
+  void _setAllMetrics(bool value) {
+    setState(() {
+      _quickNotes = value || _quickNotes;
+      _setAllMetricsValue(value);
+    });
+  }
+
+  void _setAllMetricsValue(bool value) {
+    _quickNoteWeight = value;
+    _quickNoteFetalMovement = value;
+    _quickNoteBloodPressure = value;
+    _quickNoteHydration = value;
+    _quickNoteEpds = value;
+    _quickNoteBloodGlucose = value;
+  }
+
+  Widget _permissionRow({
     required String title,
     required IconData icon,
     required bool value,
     required ValueChanged<bool> onChanged,
-    bool showDivider = true,
+    bool divider = true,
+  }) => _toggleRow(
+    title: title,
+    subtitle: value ? 'Đang chia sẻ' : 'Không chia sẻ',
+    icon: icon,
+    value: value,
+    onChanged: onChanged,
+    divider: divider,
+  );
+
+  Widget _metricRow({
+    required String title,
+    required IconData icon,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+    bool divider = true,
+  }) => _toggleRow(
+    title: title,
+    subtitle: value ? 'Được phép xem lịch sử' : 'Giữ riêng tư',
+    icon: icon,
+    value: value,
+    onChanged: onChanged,
+    divider: divider,
+  );
+
+  Widget _toggleRow({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+    required bool divider,
   }) {
     return Column(
       children: [
         SwitchListTile.adaptive(
           contentPadding: EdgeInsets.zero,
-          dense: true,
           secondary: Container(
-            width: 38,
-            height: 38,
+            width: 42,
+            height: 42,
             decoration: BoxDecoration(
-              color: const Color(0xFFFFE9E3),
-              borderRadius: BorderRadius.circular(12),
+              color: value ? const Color(0xFFFFE5DE) : const Color(0xFFF2ECE8),
+              borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(icon, size: 20, color: const Color(0xFF845143)),
+            child: Icon(icon, size: 21, color: value ? _primary : _muted),
           ),
           title: Text(
             title,
             style: const TextStyle(
-              fontFamily: 'Quicksand',
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF625D59),
+              fontFamily: 'Lexend',
+              fontWeight: FontWeight.w600,
+              color: _text,
             ),
           ),
-          subtitle: const Text(
-            'Chỉ xem lịch sử',
-            style: TextStyle(fontFamily: 'Quicksand', fontSize: 11),
+          subtitle: Text(
+            subtitle,
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 12,
+              color: _muted,
+            ),
           ),
           value: value,
-          activeThumbColor: Colors.white,
-          activeTrackColor: const Color(0xFFC98C7B),
-          onChanged: onChanged,
+          activeTrackColor: _accent,
+          onChanged: _isSaving ? null : onChanged,
         ),
-        if (showDivider) const Divider(height: 1, color: Color(0xFFF2EAE4)),
+        if (divider) const Divider(height: 1, color: Color(0xFFEDE4DF)),
       ],
     );
   }
 
-  Widget _buildSummaryRow(IconData icon, String text) {
+  Widget _buildPrivacyNote() {
+    return const _SectionCard(
+      color: Color(0xFFFFF3EA),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.lock_outline, color: _primary),
+          SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Bạn toàn quyền thay đổi hoặc thu hồi quyền bất cứ lúc nào. '
+              'Thành viên chỉ được xem dữ liệu bạn đã chọn.',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                height: 1.45,
+                color: _muted,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PermissionLoading extends StatelessWidget {
+  const _PermissionLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      key: const Key('permission-loading'),
+      padding: const EdgeInsets.all(16),
+      children: List.generate(
+        3,
+        (index) => Container(
+          height: index == 0 ? 86 : 190,
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFECE4DF),
+            borderRadius: BorderRadius.circular(20),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SectionCard extends StatelessWidget {
+  const _SectionCard({required this.child, this.color});
+
+  final Widget child;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: color ?? _ManageFamilyPermissionScreenState._surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(22),
+        side: const BorderSide(color: Color(0xFFEDE4DF)),
+      ),
+      child: Padding(padding: const EdgeInsets.all(18), child: child),
+    );
+  }
+}
+
+class _SectionTitle extends StatelessWidget {
+  const _SectionTitle({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    this.trailing,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 20, color: const Color(0xFF845143)),
-        const SizedBox(width: 12),
+        Icon(icon, color: _ManageFamilyPermissionScreenState._primary),
+        const SizedBox(width: 10),
         Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(
-              fontSize: 14,
-              color: Color(0xFF625D59),
-              fontFamily: 'Quicksand',
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  color: _ManageFamilyPermissionScreenState._text,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 12,
+                  color: _ManageFamilyPermissionScreenState._muted,
+                ),
+              ),
+            ],
           ),
         ),
+        ?trailing,
       ],
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  const _StatusPill({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEAF3EC),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          fontFamily: 'Lexend',
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: Color(0xFF356344),
+        ),
+      ),
     );
   }
 }

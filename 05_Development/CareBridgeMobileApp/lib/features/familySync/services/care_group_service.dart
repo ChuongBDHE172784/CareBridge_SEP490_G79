@@ -164,6 +164,8 @@ class CareGroupService {
     bool? quickNoteHydration,
     bool? quickNoteEpds,
     bool? quickNoteFetalMovement,
+    bool? quickNoteBloodPressure,
+    bool? quickNoteBloodGlucose,
   }) async {
     final body = <String, dynamic>{};
     if (calendar != null) body['calendar'] = calendar;
@@ -178,6 +180,12 @@ class CareGroupService {
     if (quickNoteEpds != null) body['quickNoteEpds'] = quickNoteEpds;
     if (quickNoteFetalMovement != null) {
       body['quickNoteFetalMovement'] = quickNoteFetalMovement;
+    }
+    if (quickNoteBloodPressure != null) {
+      body['quickNoteBloodPressure'] = quickNoteBloodPressure;
+    }
+    if (quickNoteBloodGlucose != null) {
+      body['quickNoteBloodGlucose'] = quickNoteBloodGlucose;
     }
 
     final data = await apiPatch(

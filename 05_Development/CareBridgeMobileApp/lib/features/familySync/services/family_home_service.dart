@@ -137,6 +137,7 @@ class FamilyHomeGroupDetail {
     required this.customRelationshipRole,
     required this.permissionScope,
     required this.sharedDataSummary,
+    this.healthMetricSummaries = const [],
   });
 
   final String careGroupId;
@@ -149,6 +150,7 @@ class FamilyHomeGroupDetail {
   final String? customRelationshipRole;
   final FamilyHomePermission permissionScope;
   final FamilyHomeSharedDataSummary sharedDataSummary;
+  final List<FamilyHomeHealthMetricSummary> healthMetricSummaries;
 
   factory FamilyHomeGroupDetail.fromJson(Map<String, dynamic> json) {
     return FamilyHomeGroupDetail(
@@ -175,6 +177,10 @@ class FamilyHomeGroupDetail {
       sharedDataSummary: FamilyHomeSharedDataSummary.fromJson(
         _requiredMap(json, 'sharedDataSummary'),
       ),
+      healthMetricSummaries: _optionalMapList(
+        json,
+        'healthMetricSummaries',
+      ).map(FamilyHomeHealthMetricSummary.fromJson).toList(growable: false),
     );
   }
 }
@@ -286,6 +292,8 @@ class FamilyHomePermission {
     this.quickNoteHydration = false,
     this.quickNoteEpds = false,
     this.quickNoteFetalMovement = false,
+    this.quickNoteBloodPressure = false,
+    this.quickNoteBloodGlucose = false,
   });
 
   final bool calendar;
@@ -297,6 +305,20 @@ class FamilyHomePermission {
   final bool quickNoteHydration;
   final bool quickNoteEpds;
   final bool quickNoteFetalMovement;
+  final bool quickNoteBloodPressure;
+  final bool quickNoteBloodGlucose;
+
+  int get sharedHealthMetricCount {
+    if (!quickNotes) return 0;
+    return [
+      quickNoteWeight,
+      quickNoteFetalMovement,
+      quickNoteBloodPressure,
+      quickNoteHydration,
+      quickNoteEpds,
+      quickNoteBloodGlucose,
+    ].where((shared) => shared).length;
+  }
 
   factory FamilyHomePermission.fromJson(Map<String, dynamic> json) {
     return FamilyHomePermission(
@@ -309,6 +331,53 @@ class FamilyHomePermission {
       quickNoteHydration: json['quickNoteHydration'] as bool? ?? false,
       quickNoteEpds: json['quickNoteEpds'] as bool? ?? false,
       quickNoteFetalMovement: json['quickNoteFetalMovement'] as bool? ?? false,
+      quickNoteBloodPressure: json['quickNoteBloodPressure'] as bool? ?? false,
+      quickNoteBloodGlucose: json['quickNoteBloodGlucose'] as bool? ?? false,
+    );
+  }
+}
+
+class FamilyHomeHealthMetricSummary {
+  const FamilyHomeHealthMetricSummary({
+    required this.metricType,
+    required this.valueNumeric,
+    required this.valueSecondary,
+    required this.unit,
+    required this.measuredAt,
+    required this.measurementContext,
+    required this.recordCount,
+  });
+
+  final String metricType;
+  final double? valueNumeric;
+  final double? valueSecondary;
+  final String? unit;
+  final DateTime? measuredAt;
+  final String? measurementContext;
+  final int recordCount;
+
+  bool get hasData => valueNumeric != null && measuredAt != null;
+
+  String? get valueDisplay {
+    final primary = valueNumeric;
+    if (primary == null) return null;
+    if (valueSecondary != null) {
+      return '${primary.toStringAsFixed(0)}/${valueSecondary!.toStringAsFixed(0)}';
+    }
+    return primary % 1 == 0
+        ? primary.toStringAsFixed(0)
+        : primary.toStringAsFixed(1);
+  }
+
+  factory FamilyHomeHealthMetricSummary.fromJson(Map<String, dynamic> json) {
+    return FamilyHomeHealthMetricSummary(
+      metricType: _requiredString(json, 'metricType'),
+      valueNumeric: _optionalDouble(json, 'valueNumeric'),
+      valueSecondary: _optionalDouble(json, 'valueSecondary'),
+      unit: _optionalString(json, 'unit'),
+      measuredAt: _optionalDateTime(json, 'measuredAt'),
+      measurementContext: _optionalString(json, 'measurementContext'),
+      recordCount: _optionalInt(json, 'recordCount') ?? 0,
     );
   }
 }
@@ -371,6 +440,16 @@ List<Map<String, dynamic>> _requiredMapList(
   return value.map((item) => _asMap(item, key)).toList(growable: false);
 }
 
+List<Map<String, dynamic>> _optionalMapList(
+  Map<String, dynamic> json,
+  String key,
+) {
+  final value = json[key];
+  if (value == null) return const [];
+  if (value is! List) throw FormatException('Expected list for "$key".');
+  return value.map((item) => _asMap(item, key)).toList(growable: false);
+}
+
 String _requiredString(Map<String, dynamic> json, String key) {
   final value = json[key];
   if (value is String) return value;
@@ -388,6 +467,20 @@ int _requiredInt(Map<String, dynamic> json, String key) {
   final value = json[key];
   if (value is num) return value.toInt();
   throw FormatException('Expected number for "$key".');
+}
+
+int? _optionalInt(Map<String, dynamic> json, String key) {
+  final value = json[key];
+  if (value == null) return null;
+  if (value is num) return value.toInt();
+  throw FormatException('Expected nullable number for "$key".');
+}
+
+double? _optionalDouble(Map<String, dynamic> json, String key) {
+  final value = json[key];
+  if (value == null) return null;
+  if (value is num) return value.toDouble();
+  throw FormatException('Expected nullable number for "$key".');
 }
 
 bool _requiredBool(Map<String, dynamic> json, String key) {

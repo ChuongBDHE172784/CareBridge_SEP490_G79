@@ -1,28 +1,29 @@
 import 'package:flutter/material.dart';
+
 import '../models/care_group_model.dart';
 import '../services/care_group_service.dart';
 import 'care_group_detail_screen.dart';
 
-/// CB-021 — Care Groups (Mother perspective, UC-69, UC-70, UC-71, UC-72, UC-73, UC-83, UC-216)
-/// Mother's view of care groups she manages: active group highlighted, member avatars,
-/// inactive groups, FAB to create, buttons to manage.
-/// Data: mock list (TODO: wire to GET /api/v1/care-groups when endpoint available).
 class CareGroupsScreen extends StatefulWidget {
-  const CareGroupsScreen({super.key});
+  const CareGroupsScreen({super.key, this.service});
+
+  final CareGroupService? service;
 
   @override
   State<CareGroupsScreen> createState() => _CareGroupsScreenState();
 }
 
 class _CareGroupsScreenState extends State<CareGroupsScreen> {
-  static const _primaryContainer = Color(0xFFC98C7B);
-  static const _canvas = Color(0xFFFFF8F6);
-  static const _onSurface = Color(0xFF271812);
-  static const _onSurfaceVariant = Color(0xFF524440);
+  static const _canvas = Color(0xFFF6F1EC);
+  static const _surface = Color(0xFFFFFBF8);
+  static const _primary = Color(0xFF9B5E4E);
+  static const _text = Color(0xFF2E211D);
+  static const _muted = Color(0xFF74645F);
 
-  final _service = CareGroupService();
-  List<CareGroup> _groups = [];
+  late final CareGroupService _service = widget.service ?? CareGroupService();
+  List<CareGroup> _groups = const [];
   bool _loading = true;
+  bool _loadFailed = false;
 
   @override
   void initState() {
@@ -31,105 +32,135 @@ class _CareGroupsScreenState extends State<CareGroupsScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _loadFailed = false;
+    });
     try {
-      final list = await _service.listMyGroups();
-      if (mounted) {
-        setState(() {
-          _groups = list;
-          _loading = false;
-        });
-      }
+      final groups = await _service.listMyGroups();
+      if (!mounted) return;
+      setState(() {
+        _groups = groups;
+        _loading = false;
+      });
     } catch (_) {
-      if (mounted) setState(() => _loading = false);
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _loadFailed = true;
+      });
     }
   }
 
   Future<void> _createGroup() async {
-    final nameCtrl = TextEditingController();
-    final ok = await showDialog<bool>(
+    final controller = TextEditingController();
+    final shouldCreate = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
         title: const Text(
-          'Tạo nhóm mới',
-          style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
+          'Tạo nhóm chăm sóc',
+          style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700),
         ),
         content: TextField(
-          controller: nameCtrl,
-          decoration: const InputDecoration(
-            labelText: 'Tên nhóm chăm sóc',
-            border: OutlineInputBorder(),
-          ),
+          controller: controller,
+          autofocus: true,
+          maxLength: 80,
+          textCapitalization: TextCapitalization.sentences,
           style: const TextStyle(fontFamily: 'Lexend'),
+          decoration: InputDecoration(
+            labelText: 'Tên nhóm',
+            hintText: 'Ví dụ: Gia đình của Lan',
+            filled: true,
+            fillColor: _canvas,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide.none,
+            ),
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Hủy', style: TextStyle(fontFamily: 'Lexend')),
+            child: const Text('Hủy'),
           ),
           FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: _primary),
             onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(backgroundColor: _primaryContainer),
-            child: const Text('Tạo', style: TextStyle(fontFamily: 'Lexend')),
+            child: const Text('Tạo nhóm'),
           ),
         ],
       ),
     );
-    if (ok != true) return;
-    final name = nameCtrl.text.trim();
-    if (name.isEmpty) return;
+    final name = controller.text.trim();
+    controller.dispose();
+    if (shouldCreate != true || name.isEmpty) return;
+
     try {
       await _service.createCareGroup(name);
-      _load();
-    } catch (e) {
+      await _load();
       if (!mounted) return;
-      final msg = e.toString().contains('FAM-015')
-          ? 'Tên nhóm này đã tồn tại. Vui lòng chọn tên khác.'
-          : 'Không thể tạo nhóm. Vui lòng thử lại.';
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Đã tạo nhóm chăm sóc.')));
+    } catch (error) {
+      if (!mounted) return;
+      final duplicate = error.toString().contains('FAM-015');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            duplicate
+                ? 'Tên nhóm đã tồn tại. Hãy chọn tên khác.'
+                : 'Chưa thể tạo nhóm. Vui lòng thử lại.',
+          ),
+        ),
+      );
     }
   }
 
-  Future<void> _deleteGroup(CareGroup g) async {
-    final ok = await showDialog<bool>(
+  Future<void> _deleteGroup(CareGroup group) async {
+    final confirmed = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
         title: const Text(
-          'Xóa nhóm?',
-          style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
+          'Xóa nhóm chăm sóc?',
+          style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700),
         ),
         content: Text(
-          'Nhóm "${g.groupName}" sẽ bị xóa vĩnh viễn khỏi hệ thống, '
-          'bao gồm tất cả thành viên và nhiệm vụ. Không thể hoàn tác!',
-          style: const TextStyle(fontFamily: 'Lexend'),
+          'Nhóm “${group.groupName}” và quyền của các thành viên sẽ bị xóa. '
+          'Thao tác này không thể hoàn tác.',
+          style: const TextStyle(fontFamily: 'Lexend', height: 1.45),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Hủy', style: TextStyle(fontFamily: 'Lexend')),
+            child: const Text('Hủy'),
           ),
           FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFBA1A1A),
+            ),
             onPressed: () => Navigator.pop(context, true),
-            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFBA1A1A)),
-            child: const Text('Xóa vĩnh viễn', style: TextStyle(fontFamily: 'Lexend')),
+            child: const Text('Xóa nhóm'),
           ),
         ],
       ),
     );
-    if (ok != true) return;
+    if (confirmed != true) return;
+
     try {
-      await _service.deleteCareGroup(g.id);
-      _load();
+      await _service.deleteCareGroup(group.id);
+      await _load();
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Đã xóa nhóm chăm sóc.')));
+    } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã xóa nhóm thành công.')),
+        const SnackBar(content: Text('Chưa thể xóa nhóm. Vui lòng thử lại.')),
       );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Không thể xóa nhóm: $e')));
     }
   }
 
@@ -137,303 +168,371 @@ class _CareGroupsScreenState extends State<CareGroupsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _canvas,
-      body: SafeArea(
-        child: _loading
-            ? const Center(
-                child: CircularProgressIndicator(color: _primaryContainer),
-              )
-            : RefreshIndicator(
-                color: _primaryContainer,
-                onRefresh: _load,
-                child: CustomScrollView(
-                  slivers: [
-                    SliverToBoxAdapter(child: _buildAppBar()),
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
-                      sliver: SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (_, i) => _buildGroupItem(_groups[i], i),
-                          childCount: _groups.length,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: _primaryContainer,
-        foregroundColor: Colors.white,
-        shape: const StadiumBorder(),
-        onPressed: _createGroup,
-        icon: const Icon(Icons.group_add),
-        label: const Text(
-          'Tạo nhóm',
-          style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
+      appBar: AppBar(
+        backgroundColor: _canvas,
+        surfaceTintColor: Colors.transparent,
+        title: const Text(
+          'Nhóm chăm sóc',
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            color: _text,
+          ),
         ),
       ),
+      body: _loading
+          ? const _GroupsLoading()
+          : _loadFailed
+          ? _buildError()
+          : RefreshIndicator(
+              color: _primary,
+              onRefresh: _load,
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverToBoxAdapter(child: _buildIntro()),
+                  if (_groups.isEmpty)
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: _buildEmpty(),
+                    )
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 104),
+                      sliver: SliverList.separated(
+                        itemCount: _groups.length,
+                        itemBuilder: (context, index) => _GroupCard(
+                          group: _groups[index],
+                          onOpen: () => _openDetail(_groups[index]),
+                          onDelete: () => _deleteGroup(_groups[index]),
+                        ),
+                        separatorBuilder: (_, _) => const SizedBox(height: 12),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+      floatingActionButton: _loadFailed
+          ? null
+          : FloatingActionButton.extended(
+              onPressed: _createGroup,
+              backgroundColor: _primary,
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.add),
+              label: const Text(
+                'Tạo nhóm',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
     );
   }
 
-  Widget _buildAppBar() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 16),
+  Widget _buildIntro() {
+    return const Padding(
+      padding: EdgeInsets.fromLTRB(16, 4, 16, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          Text(
+            'Cùng chăm sóc, đúng quyền riêng tư',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 19,
+              fontWeight: FontWeight.w700,
+              color: _text,
+            ),
+          ),
+          SizedBox(height: 6),
+          Text(
+            'Mời người thân, phân công hỗ trợ và kiểm soát dữ liệu bạn chia sẻ.',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 13,
+              height: 1.45,
+              color: _muted,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmpty() {
+    return Center(
+      key: const Key('care-groups-empty'),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(32, 16, 32, 120),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 84,
+              height: 84,
+              decoration: const BoxDecoration(
+                color: Color(0xFFFFE5DE),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.groups_outlined,
+                size: 42,
+                color: _primary,
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              'Bạn chưa có nhóm chăm sóc',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: _text,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Tạo nhóm đầu tiên để mời người thân đồng hành cùng bạn.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontFamily: 'Lexend', color: _muted),
+            ),
+            const SizedBox(height: 20),
+            OutlinedButton.icon(
+              onPressed: _createGroup,
+              icon: const Icon(Icons.group_add_outlined),
+              label: const Text('Tạo nhóm đầu tiên'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildError() {
+    return Center(
+      key: const Key('care-groups-error'),
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off_outlined, size: 50, color: _primary),
+            const SizedBox(height: 16),
+            const Text(
+              'Chưa tải được nhóm chăm sóc',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: _text,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Kiểm tra kết nối mạng rồi thử lại.',
+              style: TextStyle(fontFamily: 'Lexend', color: _muted),
+            ),
+            const SizedBox(height: 20),
+            FilledButton.icon(
+              key: const Key('care-groups-retry-button'),
+              onPressed: _load,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Thử lại'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openDetail(CareGroup group) async {
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CareGroupDetailScreen(
+          groupId: group.id,
+          groupName: group.groupName,
+        ),
+      ),
+    );
+    if (mounted) await _load();
+  }
+}
+
+class _GroupCard extends StatelessWidget {
+  const _GroupCard({
+    required this.group,
+    required this.onOpen,
+    required this.onDelete,
+  });
+
+  final CareGroup group;
+  final VoidCallback onOpen;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final description = group.description?.trim();
+    return Material(
+      color: _CareGroupsScreenState._surface,
+      borderRadius: BorderRadius.circular(22),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onOpen,
+        child: Container(
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: const Color(0xFFEDE4DF)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              IconButton(
-                onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.arrow_back, color: _onSurfaceVariant),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: group.isActive
+                          ? const Color(0xFFFFE5DE)
+                          : const Color(0xFFF0EAE6),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(
+                      Icons.diversity_1_outlined,
+                      color: group.isActive
+                          ? _CareGroupsScreenState._primary
+                          : _CareGroupsScreenState._muted,
+                    ),
+                  ),
+                  const SizedBox(width: 13),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          group.groupName,
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 17,
+                            fontWeight: FontWeight.w700,
+                            color: _CareGroupsScreenState._text,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${group.memberCount} thành viên',
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 12,
+                            color: _CareGroupsScreenState._muted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  PopupMenuButton<String>(
+                    tooltip: 'Tùy chọn nhóm',
+                    onSelected: (value) {
+                      if (value == 'delete') onDelete();
+                    },
+                    itemBuilder: (_) => const [
+                      PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.delete_outline,
+                              color: Color(0xFFBA1A1A),
+                            ),
+                            SizedBox(width: 10),
+                            Text('Xóa nhóm'),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              if (description != null && description.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  description,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 13,
+                    height: 1.4,
+                    color: _CareGroupsScreenState._muted,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  _MemberAvatars(members: group.members),
+                  const Spacer(),
+                  _ActivityPill(isActive: group.isActive),
+                  const SizedBox(width: 8),
+                  const Icon(
+                    Icons.chevron_right,
+                    color: _CareGroupsScreenState._muted,
+                  ),
+                ],
               ),
             ],
           ),
-          const Text(
-            'Nhóm chăm sóc',
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 24,
-              fontWeight: FontWeight.w700,
-              color: _onSurface,
-            ),
-          ),
-          const Text(
-            'Quản lý và chia sẻ chăm sóc',
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 14,
-              color: _onSurfaceVariant,
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
+}
 
-  Widget _buildGroupItem(CareGroup group, int idx) {
-    if (idx == 0 && group.isActive) {
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 16),
-        child: _ActiveGroupCard(
-          group: group,
-          onTap: () => _openDetail(group),
-          onDelete: () => _deleteGroup(group),
+class _MemberAvatars extends StatelessWidget {
+  const _MemberAvatars({required this.members});
+
+  final List<CareGroupMember> members;
+
+  @override
+  Widget build(BuildContext context) {
+    if (members.isEmpty) {
+      return const Text(
+        'Chưa có thông tin thành viên',
+        style: TextStyle(
+          fontFamily: 'Lexend',
+          fontSize: 11,
+          color: _CareGroupsScreenState._muted,
         ),
       );
     }
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: _SecondaryGroupCard(
-        group: group,
-        onTap: () => _openDetail(group),
-        onDelete: () => _deleteGroup(group),
-      ),
-    );
-  }
-
-  void _openDetail(CareGroup g) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) =>
-            CareGroupDetailScreen(groupId: g.id, groupName: g.groupName),
-      ),
-    );
-  }
-}
-
-// ─── Active group card (glassmorphism style) ──────────────────────────────────
-class _ActiveGroupCard extends StatelessWidget {
-  final CareGroup group;
-  final VoidCallback onTap;
-  final VoidCallback onDelete;
-
-  const _ActiveGroupCard({
-    required this.group,
-    required this.onTap,
-    required this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFFC98C7B), Color(0xFF845143)],
-          ),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFFC98C7B).withAlpha(77),
-              blurRadius: 24,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(51),
-                    borderRadius: BorderRadius.circular(99),
-                  ),
-                  child: const Text(
-                    'Đang hoạt động',
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 12,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  onPressed: onDelete,
-                  icon: const Icon(Icons.delete_outline, color: Colors.white),
-                  tooltip: 'Xóa nhóm',
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              group.groupName,
-              style: const TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '${group.memberCount} thành viên',
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 14,
-                color: Colors.white.withAlpha(204),
-              ),
-            ),
-            const SizedBox(height: 16),
-            // Stacked member avatars
-            _StackedAvatars(members: group.members),
-            const SizedBox(height: 16),
-            // Upcoming task preview
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withAlpha(38),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.event, size: 18, color: Colors.white),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Khám thai tuần 28 - Hôm nay 9:00',
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 12,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: onTap,
-                style: FilledButton.styleFrom(
-                  backgroundColor: Colors.white.withAlpha(51),
-                  foregroundColor: Colors.white,
-                  shape: const StadiumBorder(),
-                ),
-                icon: const Icon(Icons.settings, size: 18),
-                label: const Text(
-                  'Quản lý',
-                  style: TextStyle(fontFamily: 'Lexend'),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _StackedAvatars extends StatelessWidget {
-  final List<CareGroupMember> members;
-
-  const _StackedAvatars({required this.members});
-
-  @override
-  Widget build(BuildContext context) {
-    final show = members.take(4).toList();
+    final visible = members.take(3).toList();
     return SizedBox(
-      height: 36,
+      width: visible.length * 25 + 18,
+      height: 34,
       child: Stack(
         children: [
-          ...show.asMap().entries.map((e) {
-            return Positioned(
-              left: e.key * 24.0,
-              child: Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: const Color(0xFFC98C7B).withAlpha(128),
-                  border: Border.all(color: Colors.white, width: 2),
-                ),
-                child: Center(
-                  child: Text(
-                    e.value.displayName.isNotEmpty
-                        ? e.value.displayName[0]
-                        : '?',
-                    style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }),
-          if (members.length > 4)
+          for (final entry in visible.asMap().entries)
             Positioned(
-              left: 4 * 24.0,
-              child: Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withAlpha(51),
-                  border: Border.all(color: Colors.white, width: 2),
-                ),
-                child: Center(
-                  child: Text(
-                    '+${members.length - 4}',
-                    style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 11,
-                      color: Colors.white,
-                    ),
+              left: entry.key * 25,
+              child: CircleAvatar(
+                radius: 17,
+                backgroundColor: const Color(0xFFC98C7B),
+                foregroundColor: Colors.white,
+                child: Text(
+                  entry.value.displayName.trim().isEmpty
+                      ? '?'
+                      : entry.value.displayName.trim()[0].toUpperCase(),
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -444,83 +543,62 @@ class _StackedAvatars extends StatelessWidget {
   }
 }
 
-// ─── Secondary (inactive) group card ─────────────────────────────────────────
-class _SecondaryGroupCard extends StatelessWidget {
-  final CareGroup group;
-  final VoidCallback onTap;
-  final VoidCallback onDelete;
+class _ActivityPill extends StatelessWidget {
+  const _ActivityPill({required this.isActive});
 
-  const _SecondaryGroupCard({
-    required this.group,
-    required this.onTap,
-    required this.onDelete,
-  });
+  final bool isActive;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF5A463F).withAlpha(13),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: const BoxDecoration(
-                color: Color(0xFFFFE9E3),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.group, color: Color(0xFF845143)),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    group.groupName,
-                    style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Color(0xFF271812),
-                    ),
-                  ),
-                  Text(
-                    '${group.memberCount} thành viên',
-                    style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 12,
-                      color: Color(0xFF524440),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            IconButton(
-              onPressed: onDelete,
-              icon: const Icon(
-                Icons.delete_outline,
-                color: Color(0xFFBA1A1A),
-                size: 22,
-              ),
-              tooltip: 'Xóa nhóm',
-            ),
-          ],
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: isActive ? const Color(0xFFEAF3EC) : const Color(0xFFF0EAE6),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        isActive ? 'Đang hoạt động' : 'Đã tạm dừng',
+        style: TextStyle(
+          fontFamily: 'Lexend',
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          color: isActive
+              ? const Color(0xFF356344)
+              : _CareGroupsScreenState._muted,
         ),
       ),
+    );
+  }
+}
+
+class _GroupsLoading extends StatelessWidget {
+  const _GroupsLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      key: const Key('care-groups-loading'),
+      padding: const EdgeInsets.all(16),
+      children: [
+        Container(
+          height: 54,
+          decoration: BoxDecoration(
+            color: const Color(0xFFECE4DF),
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+        const SizedBox(height: 20),
+        for (var index = 0; index < 3; index++) ...[
+          Container(
+            height: 144,
+            decoration: BoxDecoration(
+              color: const Color(0xFFECE4DF),
+              borderRadius: BorderRadius.circular(22),
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+      ],
     );
   }
 }

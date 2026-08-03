@@ -10,6 +10,8 @@ class FamilyPermission {
   final bool quickNoteHydration;
   final bool quickNoteEpds;
   final bool quickNoteFetalMovement;
+  final bool quickNoteBloodPressure;
+  final bool quickNoteBloodGlucose;
   final DateTime updatedAt;
 
   FamilyPermission({
@@ -24,6 +26,8 @@ class FamilyPermission {
     this.quickNoteHydration = false,
     this.quickNoteEpds = false,
     this.quickNoteFetalMovement = false,
+    this.quickNoteBloodPressure = false,
+    this.quickNoteBloodGlucose = false,
     required this.updatedAt,
   });
 
@@ -40,6 +44,8 @@ class FamilyPermission {
       quickNoteHydration: json['quickNoteHydration'] ?? false,
       quickNoteEpds: json['quickNoteEpds'] ?? false,
       quickNoteFetalMovement: json['quickNoteFetalMovement'] ?? false,
+      quickNoteBloodPressure: json['quickNoteBloodPressure'] ?? false,
+      quickNoteBloodGlucose: json['quickNoteBloodGlucose'] ?? false,
       updatedAt: json['updatedAt'] != null
           ? DateTime.parse(json['updatedAt'])
           : DateTime.now(),

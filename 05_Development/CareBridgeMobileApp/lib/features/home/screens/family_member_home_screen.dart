@@ -27,7 +27,7 @@ class FamilyMemberHomeScreen extends StatefulWidget {
   });
 
   final Future<FamilyHomeSnapshot> Function({String? selectedCareGroupId})?
-      dashboardLoader;
+  dashboardLoader;
   final TodayTaskService? todayTaskService;
 
   @override
@@ -216,7 +216,7 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Family Dashboard',
+                'Đồng hành cùng mẹ',
                 style: TextStyle(
                   fontFamily: 'Lexend',
                   fontSize: 27,
@@ -243,23 +243,17 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
                       builder: (_) => const NotificationCenterScreen(),
                     ),
                   )
-                  .then(
-                    (_) {
-                      String? currentAccountId;
-                      try {
-                        currentAccountId = AuthState.instance.userId;
-                      } catch (_) {}
-                      _checkUnread(
-                        generation: _loadGeneration,
-                        accountId: currentAccountId,
-                      );
-                    },
-                  ),
-              icon: const Icon(
-                Icons.notifications,
-                size: 28,
-                color: _primary,
-              ),
+                  .then((_) {
+                    String? currentAccountId;
+                    try {
+                      currentAccountId = AuthState.instance.userId;
+                    } catch (_) {}
+                    _checkUnread(
+                      generation: _loadGeneration,
+                      accountId: currentAccountId,
+                    );
+                  }),
+              icon: const Icon(Icons.notifications, size: 28, color: _primary),
             ),
             if (_hasUnread)
               Positioned(
@@ -419,11 +413,8 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
           )
         else
           ...detail.todayReminders.map(_buildReminderCard),
-        if (detail.permissionScope.quickNotes &&
-            _sharedQuickNoteTypes(detail.permissionScope).isNotEmpty) ...[
-          const SizedBox(height: 24),
-          _buildQuickNotesSection(detail),
-        ],
+        const SizedBox(height: 24),
+        _buildQuickNotesSection(detail),
         const SizedBox(height: 24),
         const _SectionTitle('Cảnh báo theo nhóm'),
         const SizedBox(height: 10),
@@ -450,7 +441,7 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
       children: [
         Row(
           children: [
-            const Expanded(child: _SectionTitle('Ghi chú nhanh được chia sẻ')),
+            const Expanded(child: _SectionTitle('Chỉ số sức khỏe')),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
               decoration: BoxDecoration(
@@ -477,30 +468,49 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
         ),
         const SizedBox(height: 6),
         Text(
-          '${detail.motherDisplayName} đã chia sẻ ${types.length} mục lịch sử với bạn.',
+          types.isEmpty
+              ? '${detail.motherDisplayName} chưa chia sẻ chỉ số sức khỏe với bạn.'
+              : 'Dữ liệu sức khỏe ${detail.motherDisplayName} cho phép bạn theo dõi.',
           style: const TextStyle(color: _onSurfaceVariant, height: 1.35),
         ),
         const SizedBox(height: 12),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: types.length,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 1.35,
+        if (types.isEmpty)
+          const _EmptyCard(
+            key: Key('family-health-metrics-locked'),
+            message: 'Các chỉ số đang được giữ riêng tư bởi mẹ.',
+          )
+        else
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: types.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 1.02,
+            ),
+            itemBuilder: (context, index) {
+              final type = types[index];
+              FamilyHomeHealthMetricSummary? summary;
+              for (final item in detail.healthMetricSummaries) {
+                if (item.metricType == type.metricType) {
+                  summary = item;
+                  break;
+                }
+              }
+              return _buildQuickNoteTile(detail.careGroupId, type, summary);
+            },
           ),
-          itemBuilder: (context, index) {
-            final type = types[index];
-            return _buildQuickNoteTile(detail.careGroupId, type);
-          },
-        ),
       ],
     );
   }
 
-  Widget _buildQuickNoteTile(String groupId, _FamilyQuickNoteType type) {
+  Widget _buildQuickNoteTile(
+    String groupId,
+    _FamilyQuickNoteType type,
+    FamilyHomeHealthMetricSummary? summary,
+  ) {
     return Material(
       color: Colors.white,
       borderRadius: BorderRadius.circular(22),
@@ -523,7 +533,7 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.start,
             children: [
               Container(
                 width: 42,
@@ -534,6 +544,30 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
                 ),
                 child: Icon(type.icon, color: _primary, size: 22),
               ),
+              const SizedBox(height: 10),
+              Text(
+                summary?.valueDisplay == null
+                    ? 'Chưa có dữ liệu'
+                    : '${summary!.valueDisplay}${_localizedMetricUnit(summary.unit).isNotEmpty ? ' ${_localizedMetricUnit(summary.unit)}' : ''}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: summary?.hasData == true ? 17 : 12,
+                  fontWeight: FontWeight.w700,
+                  color: summary?.hasData == true ? _onSurface : _outline,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                summary?.measuredAt == null
+                    ? 'Mẹ chưa ghi nhận'
+                    : '${_dateLabel(summary!.measuredAt)}${_glucoseContextLabel(summary.measurementContext)}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 10, color: _onSurfaceVariant),
+              ),
+              const Spacer(),
               Row(
                 children: [
                   Expanded(
@@ -561,6 +595,14 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
     );
   }
 
+  String _localizedMetricUnit(String? unit) {
+    return switch (unit) {
+      'count' => 'lần',
+      null => '',
+      _ => unit,
+    };
+  }
+
   List<_FamilyQuickNoteType> _sharedQuickNoteTypes(
     FamilyHomePermission permission,
   ) {
@@ -572,6 +614,20 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
           label: 'Cân nặng',
           icon: Icons.monitor_weight_outlined,
           tint: Color(0xFFFFE9E3),
+        ),
+      if (permission.quickNoteFetalMovement)
+        const _FamilyQuickNoteType(
+          metricType: 'FETAL_MOVEMENT_COUNT',
+          label: 'Cử động thai',
+          icon: Icons.child_friendly_outlined,
+          tint: Color(0xFFFFF0D8),
+        ),
+      if (permission.quickNoteBloodPressure)
+        const _FamilyQuickNoteType(
+          metricType: 'BLOOD_PRESSURE',
+          label: 'Huyết áp',
+          icon: Icons.monitor_heart_outlined,
+          tint: Color(0xFFFFE4E8),
         ),
       if (permission.quickNoteHydration)
         const _FamilyQuickNoteType(
@@ -587,14 +643,26 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
           icon: Icons.psychology_alt_outlined,
           tint: Color(0xFFF1E9F7),
         ),
-      if (permission.quickNoteFetalMovement)
+      if (permission.quickNoteBloodGlucose)
         const _FamilyQuickNoteType(
-          metricType: 'FETAL_MOVEMENT_COUNT',
-          label: 'Cử động thai',
-          icon: Icons.child_friendly_outlined,
-          tint: Color(0xFFFFF0D8),
+          metricType: 'BLOOD_GLUCOSE',
+          label: 'Đường huyết',
+          icon: Icons.bloodtype_outlined,
+          tint: Color(0xFFE9F3E7),
         ),
     ];
+  }
+
+  String _glucoseContextLabel(String? value) {
+    return switch (value) {
+      'FASTING' => ' • Lúc đói',
+      'PRE_MEAL' => ' • Trước ăn',
+      'POST_MEAL_1H' => ' • Sau ăn 1h',
+      'POST_MEAL_2H' => ' • Sau ăn 2h',
+      'RANDOM' => ' • Ngẫu nhiên',
+      'OTHER_APPROVED' => ' • Khác',
+      _ => '',
+    };
   }
 
   Widget _buildReminderCard(FamilyHomeTodayReminder reminder) {

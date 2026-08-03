@@ -15,6 +15,8 @@ import 'assigned_tasks_screen.dart';
 import 'leave_care_group_confirmation_screen.dart';
 import 'shared_data_screen.dart';
 import '../models/family_permission_model.dart';
+import '../services/family_home_service.dart';
+import 'family_quick_note_history_screen.dart';
 
 /// CB-027 — Shared Care Group Detail (UC-83, UC-84, UC-71, UC-73, UC-216)
 /// Shows group info, member circles (64x64 with star for owner),
@@ -23,11 +25,16 @@ import '../models/family_permission_model.dart';
 class CareGroupDetailScreen extends StatefulWidget {
   final String groupId;
   final String groupName;
+  final CareGroupService? service;
+  final Future<FamilyHomeSnapshot> Function({String? selectedCareGroupId})?
+  dashboardLoader;
 
   const CareGroupDetailScreen({
     super.key,
     required this.groupId,
     required this.groupName,
+    this.service,
+    this.dashboardLoader,
   });
 
   @override
@@ -41,7 +48,7 @@ class _CareGroupDetailScreenState extends State<CareGroupDetailScreen> {
   static const _onSurface = Color(0xFF271812);
   static const _onSurfaceVariant = Color(0xFF524440);
 
-  final _service = CareGroupService();
+  late final CareGroupService _service = widget.service ?? CareGroupService();
   final _journeyService = JourneyService();
   final _healthMetricService = HealthMetricService();
   CareGroup? _group;
@@ -49,7 +56,10 @@ class _CareGroupDetailScreenState extends State<CareGroupDetailScreen> {
   JourneyDashboard? _dashboard;
   MetricTrend? _weightTrend;
   MetricTrend? _heartRateTrend;
+  FamilyHomeGroupDetail? _familyDetail;
+  Object? _familyDetailError;
   bool _loading = true;
+  Object? _loadError;
 
   @override
   void initState() {
@@ -58,28 +68,25 @@ class _CareGroupDetailScreenState extends State<CareGroupDetailScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _loadError = null;
+    });
     try {
       final g = await _service.getGroupMembers(widget.groupId);
       FamilyPermission? perm;
-      final isMotherUser =
-          AuthState.instance.role == 'MOTHER' ||
-          g.myRole == 'MOTHER' ||
-          g.myRole == 'OWNER';
+      final isMotherUser = g.myRole == 'MOTHER' || g.myRole == 'OWNER';
       if (!isMotherUser) {
         final currentUserId = AuthState.instance.userId;
-        final myMember = g.members.firstWhere(
-          (m) => m.userId == currentUserId || m.memberId == currentUserId,
-          orElse: () => g.members.isNotEmpty
-              ? g.members.first
-              : const CareGroupMember(
-                  memberId: '',
-                  displayName: '',
-                  memberRole: 'MEMBER',
-                  inviteStatus: 'ACCEPTED',
-                ),
-        );
-        if (myMember.memberId.isNotEmpty) {
+        CareGroupMember? myMember;
+        for (final member in g.members) {
+          if (member.userId == currentUserId ||
+              member.memberId == currentUserId) {
+            myMember = member;
+            break;
+          }
+        }
+        if (myMember != null) {
           try {
             perm = await _service.getFamilyPermission(
               widget.groupId,
@@ -92,27 +99,44 @@ class _CareGroupDetailScreenState extends State<CareGroupDetailScreen> {
       JourneyDashboard? dashboard;
       MetricTrend? weightTrend;
       MetricTrend? heartRateTrend;
-      try {
-        dashboard = await _journeyService.getDashboard();
-        if (dashboard.hasActiveJourney && dashboard.journeyId != null) {
-          try {
-            weightTrend = await _healthMetricService.getMetricTrend(
-              journeyId: dashboard.journeyId!,
-              metricType: 'WEIGHT',
-              from: DateTime.now().subtract(const Duration(days: 28)),
-              to: DateTime.now(),
-            );
-          } catch (_) {}
-          try {
-            heartRateTrend = await _healthMetricService.getMetricTrend(
-              journeyId: dashboard.journeyId!,
-              metricType: 'HEART_RATE',
-              from: DateTime.now().subtract(const Duration(days: 28)),
-              to: DateTime.now(),
-            );
-          } catch (_) {}
+      FamilyHomeGroupDetail? familyDetail;
+      Object? familyDetailError;
+      if (!isMotherUser) {
+        try {
+          final snapshot =
+              await (widget.dashboardLoader ??
+                  FamilyHomeService.instance.loadSnapshot)(
+                selectedCareGroupId: widget.groupId,
+              );
+          if (snapshot.selectedCareGroupId == widget.groupId) {
+            familyDetail = snapshot.selectedGroupDetail;
+          }
+        } catch (error) {
+          familyDetailError = error;
         }
-      } catch (_) {}
+      } else {
+        try {
+          dashboard = await _journeyService.getDashboard();
+          if (dashboard.hasActiveJourney && dashboard.journeyId != null) {
+            try {
+              weightTrend = await _healthMetricService.getMetricTrend(
+                journeyId: dashboard.journeyId!,
+                metricType: 'WEIGHT',
+                from: DateTime.now().subtract(const Duration(days: 28)),
+                to: DateTime.now(),
+              );
+            } catch (_) {}
+            try {
+              heartRateTrend = await _healthMetricService.getMetricTrend(
+                journeyId: dashboard.journeyId!,
+                metricType: 'HEART_RATE',
+                from: DateTime.now().subtract(const Duration(days: 28)),
+                to: DateTime.now(),
+              );
+            } catch (_) {}
+          }
+        } catch (_) {}
+      }
 
       if (mounted) {
         setState(() {
@@ -121,52 +145,22 @@ class _CareGroupDetailScreenState extends State<CareGroupDetailScreen> {
           _dashboard = dashboard;
           _weightTrend = weightTrend;
           _heartRateTrend = heartRateTrend;
+          _familyDetail = familyDetail;
+          _familyDetailError = familyDetailError;
           _loading = false;
         });
       }
-    } catch (_) {
-      // Fallback mock
+    } catch (error) {
       if (mounted) {
         setState(() {
-          _group = CareGroup(
-            id: widget.groupId,
-            groupName: widget.groupName,
-            isActive: true,
-            memberCount: 3,
-            members: [
-              CareGroupMember(
-                memberId: 'm-1',
-                displayName: 'Mẹ Linh',
-                memberRole: 'ADMIN',
-                inviteStatus: 'ACCEPTED',
-                joinedAt: DateTime(2024, 1, 5),
-              ),
-              CareGroupMember(
-                memberId: 'm-2',
-                displayName: 'Bố Tuấn',
-                memberRole: 'MEMBER',
-                inviteStatus: 'ACCEPTED',
-                joinedAt: DateTime(2024, 1, 10),
-              ),
-              CareGroupMember(
-                memberId: 'm-3',
-                displayName: 'Bà Ngoại',
-                memberRole: 'MEMBER',
-                inviteStatus: 'ACCEPTED',
-                joinedAt: DateTime(2024, 2, 3),
-              ),
-            ],
-          );
+          _loadError = error;
           _loading = false;
         });
       }
     }
   }
 
-  bool get _isMother =>
-      AuthState.instance.role == 'MOTHER' ||
-      _group?.myRole == 'MOTHER' ||
-      _group?.myRole == 'OWNER';
+  bool get _isMother => _group?.myRole == 'MOTHER' || _group?.myRole == 'OWNER';
 
   bool get _canAccessAlertsAndTasks =>
       _isMother || (_myPermissions != null ? _myPermissions!.alerts : false);
@@ -185,6 +179,8 @@ class _CareGroupDetailScreenState extends State<CareGroupDetailScreen> {
             ? const Center(
                 child: CircularProgressIndicator(color: _primaryContainer),
               )
+            : _loadError != null
+            ? _buildLoadError()
             : CustomScrollView(
                 slivers: [
                   SliverToBoxAdapter(child: _buildAppBar()),
@@ -196,13 +192,239 @@ class _CareGroupDetailScreenState extends State<CareGroupDetailScreen> {
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
                     sliver: SliverToBoxAdapter(
-                      child: _buildMotherJourneySection(),
+                      child: _isMother
+                          ? _buildMotherJourneySection()
+                          : _buildFamilyHealthSection(),
                     ),
                   ),
                 ],
               ),
       ),
     );
+  }
+
+  Widget _buildLoadError() {
+    return Center(
+      key: const Key('care-group-detail-error'),
+      child: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_off_outlined, size: 46, color: _primary),
+            const SizedBox(height: 12),
+            const Text(
+              'Không thể tải thông tin nhóm lúc này.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontFamily: 'Lexend', color: _onSurface),
+            ),
+            const SizedBox(height: 8),
+            TextButton.icon(
+              key: const Key('care-group-detail-retry'),
+              onPressed: _load,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Thử lại'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFamilyHealthSection() {
+    final detail = _familyDetail;
+    if (_familyDetailError != null) {
+      return _FamilyHealthStateCard(
+        key: const Key('family-group-health-error'),
+        icon: Icons.cloud_off_outlined,
+        message: 'Chưa thể tải chỉ số sức khỏe. Thông tin nhóm vẫn khả dụng.',
+        action: TextButton.icon(
+          onPressed: _load,
+          icon: const Icon(Icons.refresh_rounded),
+          label: const Text('Thử lại'),
+        ),
+      );
+    }
+    if (detail == null) {
+      return const _FamilyHealthStateCard(
+        key: Key('family-group-health-unavailable'),
+        icon: Icons.lock_outline_rounded,
+        message: 'Bạn chưa được chia sẻ thông tin sức khỏe trong nhóm này.',
+      );
+    }
+    final permission = detail.permissionScope;
+    final definitions =
+        <({String code, String label, IconData icon, bool shared})>[
+          (
+            code: 'WEIGHT',
+            label: 'Cân nặng',
+            icon: Icons.monitor_weight_outlined,
+            shared: permission.quickNotes && permission.quickNoteWeight,
+          ),
+          (
+            code: 'FETAL_MOVEMENT_COUNT',
+            label: 'Cử động thai',
+            icon: Icons.child_friendly_outlined,
+            shared: permission.quickNotes && permission.quickNoteFetalMovement,
+          ),
+          (
+            code: 'BLOOD_PRESSURE',
+            label: 'Huyết áp',
+            icon: Icons.monitor_heart_outlined,
+            shared: permission.quickNotes && permission.quickNoteBloodPressure,
+          ),
+          (
+            code: 'HYDRATION',
+            label: 'Nước',
+            icon: Icons.water_drop_outlined,
+            shared: permission.quickNotes && permission.quickNoteHydration,
+          ),
+          (
+            code: 'EPDS_SCORE',
+            label: 'Sàng lọc EPDS',
+            icon: Icons.psychology_alt_outlined,
+            shared: permission.quickNotes && permission.quickNoteEpds,
+          ),
+          (
+            code: 'BLOOD_GLUCOSE',
+            label: 'Đường huyết',
+            icon: Icons.bloodtype_outlined,
+            shared: permission.quickNotes && permission.quickNoteBloodGlucose,
+          ),
+        ].where((item) => item.shared).toList(growable: false);
+
+    return Column(
+      key: const Key('family-group-health-section'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Tình trạng sức khỏe của ${detail.motherDisplayName}',
+          style: const TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: _onSurface,
+          ),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Thông tin do mẹ chủ động chia sẻ • Chỉ xem',
+          style: TextStyle(color: _onSurfaceVariant),
+        ),
+        const SizedBox(height: 14),
+        if (definitions.isEmpty)
+          const _FamilyHealthStateCard(
+            key: Key('family-group-health-locked'),
+            icon: Icons.lock_outline_rounded,
+            message: 'Mẹ chưa chia sẻ chỉ số sức khỏe với bạn.',
+          )
+        else
+          ...definitions.map((definition) {
+            FamilyHomeHealthMetricSummary? summary;
+            for (final item in detail.healthMetricSummaries) {
+              if (item.metricType == definition.code) {
+                summary = item;
+                break;
+              }
+            }
+            final value = summary?.valueDisplay;
+            final unit = _localizedFamilyMetricUnit(summary?.unit);
+            final measuredAt = summary?.measuredAt;
+            return Card(
+              margin: const EdgeInsets.only(bottom: 10),
+              elevation: 0,
+              color: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: const BorderSide(color: Color(0xFFF0E4DF)),
+              ),
+              child: ListTile(
+                key: Key(
+                  'family-group-health-${definition.code.toLowerCase()}',
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 7,
+                ),
+                leading: CircleAvatar(
+                  backgroundColor: const Color(0xFFFFE9E3),
+                  foregroundColor: _primary,
+                  child: Icon(definition.icon),
+                ),
+                title: Text(
+                  definition.label,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                subtitle: Text(
+                  measuredAt == null
+                      ? 'Đã chia sẻ • Chưa có dữ liệu'
+                      : 'Cập nhật ${_familyMetricTime(measuredAt)}${_familyGlucoseContext(summary?.measurementContext)}',
+                ),
+                trailing: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 112),
+                  child: Text(
+                    value == null
+                        ? '—'
+                        : '$value${unit?.isNotEmpty == true ? ' $unit' : ''}',
+                    textAlign: TextAlign.end,
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontWeight: FontWeight.w700,
+                      color: _primary,
+                    ),
+                  ),
+                ),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => FamilyQuickNoteHistoryScreen(
+                      careGroupId: widget.groupId,
+                      metricType: definition.code,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+        if (definitions.any((item) => item.code == 'EPDS_SCORE'))
+          const Padding(
+            padding: EdgeInsets.only(top: 2),
+            child: Text(
+              'Điểm EPDS là công cụ sàng lọc, không thay thế chẩn đoán chuyên môn.',
+              style: TextStyle(fontSize: 12, color: _onSurfaceVariant),
+            ),
+          ),
+      ],
+    );
+  }
+
+  String _familyMetricTime(DateTime value) {
+    final local = value.toLocal();
+    return '${local.hour.toString().padLeft(2, '0')}:'
+        '${local.minute.toString().padLeft(2, '0')} '
+        '${local.day.toString().padLeft(2, '0')}/'
+        '${local.month.toString().padLeft(2, '0')}/${local.year}';
+  }
+
+  String? _localizedFamilyMetricUnit(String? unit) {
+    return switch (unit) {
+      'count' => 'lần',
+      _ => unit,
+    };
+  }
+
+  String _familyGlucoseContext(String? value) {
+    return switch (value) {
+      'FASTING' => ' • Lúc đói',
+      'PRE_MEAL' => ' • Trước ăn',
+      'POST_MEAL_1H' => ' • Sau ăn 1 giờ',
+      'POST_MEAL_2H' => ' • Sau ăn 2 giờ',
+      'RANDOM' => ' • Ngẫu nhiên',
+      'OTHER_APPROVED' => ' • Thời điểm khác',
+      _ => '',
+    };
   }
 
   Widget _buildMotherJourneySection() {
@@ -798,6 +1020,53 @@ class _CareGroupDetailScreenState extends State<CareGroupDetailScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _FamilyHealthStateCard extends StatelessWidget {
+  const _FamilyHealthStateCard({
+    super.key,
+    required this.icon,
+    required this.message,
+    this.action,
+  });
+
+  final IconData icon;
+  final String message;
+  final Widget? action;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFF0E4DF)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: const Color(0xFF845143)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  message,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    color: Color(0xFF524440),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (action != null) ...[const SizedBox(height: 8), action!],
+        ],
+      ),
     );
   }
 }
