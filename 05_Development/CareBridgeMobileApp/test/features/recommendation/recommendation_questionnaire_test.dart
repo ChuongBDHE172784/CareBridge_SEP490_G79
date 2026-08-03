@@ -4,7 +4,7 @@ import 'package:untitled/features/recommendation/models/recommendation_questionn
 
 void main() {
   test('catalog has one ordered question for every answer node', () {
-    expect(RecommendationQuestionnaire.questionCount, 17);
+    expect(RecommendationQuestionnaire.questionCount, 9);
     expect(
       RecommendationQuestionnaire.questions.map((question) => question.id),
       [
@@ -12,19 +12,11 @@ void main() {
         'bmi',
         'reproductiveHistory',
         'underlyingConditions',
-        'smoking',
-        'alcohol',
-        'physicalActivity',
-        'sleep',
+        'lifestyle',
         'nutrition',
-        'vaccination.INFLUENZA',
-        'vaccination.COVID_19',
-        'vaccination.TDAP',
-        'vaccination.HEPATITIS_B',
-        'vaccination.RUBELLA_IMMUNITY',
+        'vaccination',
         'currentMedications',
         'sexualHealth',
-        'sti',
       ],
     );
     expect(
@@ -34,7 +26,53 @@ void main() {
       isTrue,
     );
     expect(RecommendationQuestionnaire.labelFor('DUE'), 'Đến hạn tiêm');
+    expect(
+      RecommendationQuestionnaire.labelFor('PRIOR_PREECLAMPSIA'),
+      'Từng bị tiền sản giật',
+    );
     expect(RecommendationQuestionnaire.labelFor('UNKNOWN'), 'Lựa chọn');
+    expect(
+      RecommendationQuestionnaire.lifestyleGroupOptions,
+      containsAll(<String>[
+        'SMOKING',
+        'ALCOHOL_USE',
+        'SUBSTANCE_USE',
+        'SLEEP_CONCERN',
+        'STRESS',
+        'LOW_ACTIVITY',
+        'UNHEALTHY_DIET',
+        'NONE_KNOWN_LIFESTYLE',
+      ]),
+    );
+    expect(
+      RecommendationQuestionnaire.vaccinationGroupOptions,
+      containsAll(<String>[
+        'NOT_ASSESSED',
+        'RUBELLA_NONIMMUNE',
+        'HEPATITIS_B_INCOMPLETE',
+        'INFLUENZA_DUE',
+        'COVID_19_UPDATE',
+        'NONE_KNOWN_VACCINATION',
+      ]),
+    );
+    expect(
+      RecommendationQuestionnaire.codeOptions['sexualHealth'],
+      <String>[
+        'SAFE_SEX_COUNSELING_NEEDED',
+        'STI_RISK',
+        'REPRODUCTIVE_TRACT_INFECTION',
+        'STI_SUSPECTED_OR_KNOWN',
+        'NO_PREGNANCY_PLAN',
+      ],
+    );
+    expect(
+      RecommendationQuestionnaire.labelFor('PRIOR_PREGNANCY_LOSS'),
+      'Từng sảy thai',
+    );
+    expect(
+      RecommendationQuestionnaire.labelFor('NONE_KNOWN'),
+      'Không thuộc các trường hợp trên',
+    );
   });
 
   test('legacy disclosure states become an explicit unknown skip', () {
@@ -118,6 +156,23 @@ void main() {
       ),
       isTrue,
     );
+  });
+
+  test('grouped sexual-health answers derive the STI status domain', () {
+    var profile = RecommendationProfileDraft.empty();
+    profile['sexualHealth'] = {
+      'state': 'KNOWN',
+      'codes': ['STI_RISK'],
+    };
+    profile['sti'] = {'state': 'KNOWN', 'status': 'AT_RISK'};
+
+    final question = RecommendationQuestionnaire.questions.singleWhere(
+      (item) => item.id == 'sexualHealth',
+    );
+    expect(RecommendationQuestionnaire.isComplete(profile, question), isTrue);
+    final skipped = RecommendationQuestionnaire.skipQuestion(profile, question);
+    expect(skipped['sexualHealth'], {'state': 'UNKNOWN'});
+    expect(skipped['sti'], {'state': 'UNKNOWN'});
   });
 
   test(

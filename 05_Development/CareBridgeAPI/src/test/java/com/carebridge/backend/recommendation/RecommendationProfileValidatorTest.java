@@ -49,6 +49,62 @@ class RecommendationProfileValidatorTest {
     }
 
     @Test
+    void mapsNineGroupQuestionnaireAnswersToControlledSignals() {
+        ObjectNode profile = baseProfile();
+        profile.set("reproductiveHistory", withCodes("KNOWN", "PRIOR_PREECLAMPSIA"));
+        profile.set("underlyingConditions", withCodes("KNOWN", "PCOS", "ANEMIA"));
+        ObjectNode lifestyle = objectMapper.createObjectNode();
+        lifestyle.set("smoking", answer("CURRENT"));
+        lifestyle.set("alcohol", answer("ANY_USE"));
+        lifestyle.set("physicalActivity", answer("LOW"));
+        lifestyle.set("sleep", answer("CONCERN"));
+        lifestyle.set("flags", objectMapper.createArrayNode().add("SUBSTANCE_USE").add("STRESS").add("UNHEALTHY_DIET"));
+        profile.set("lifestyle", lifestyle);
+        profile.set("nutrition", withCodes("KNOWN", "FOLIC_ACID_NOT_STARTED",
+                "IODINE_UNASSESSED_OR_INSUFFICIENT", "VITAMIN_D_INSUFFICIENT_OR_SUPPLEMENT",
+                "IRON_INSUFFICIENT_OR_SUPPLEMENT", "CALCIUM_INSUFFICIENT_OR_SUPPLEMENT"));
+        ObjectNode vaccination = objectMapper.createObjectNode();
+        vaccination.set("flags", objectMapper.createArrayNode().add("NOT_ASSESSED"));
+        vaccination.set("answers", objectMapper.createArrayNode()
+                .add(state("UNKNOWN").put("code", "COVID_19"))
+                .add(state("UNKNOWN").put("code", "HEPATITIS_B"))
+                .add(state("UNKNOWN").put("code", "INFLUENZA"))
+                .add(state("UNKNOWN").put("code", "RUBELLA_IMMUNITY"))
+                .add(state("UNKNOWN").put("code", "TDAP")));
+        profile.set("vaccination", vaccination);
+        profile.set("currentMedications", withCodes("KNOWN", "HIGH_RISK_OR_CONTRAINDICATED", "NEEDS_ADJUSTMENT"));
+        profile.set("sexualHealth", withCodes("KNOWN", "SAFE_SEX_COUNSELING_NEEDED",
+                "REPRODUCTIVE_TRACT_INFECTION", "STI_RISK", "STI_SUSPECTED_OR_KNOWN", "NO_PREGNANCY_PLAN"));
+        profile.set("sti", state("KNOWN").put("status", "SUSPECTED_OR_KNOWN"));
+
+        ValidatedRecommendationProfile validated = validator.validateAccept(
+                accepted(profile), JourneyType.PRE_PREGNANCY, null);
+
+        assertThat(validated.signalSlugs()).contains(
+                "rec-reproductive-preeclampsia",
+                "rec-condition-pcos",
+                "rec-condition-anemia",
+                "rec-alcohol-use",
+                "rec-lifestyle-substance-use",
+                "rec-lifestyle-stress",
+                "rec-lifestyle-unhealthy-diet",
+                "rec-nutrition-folic-acid-needed",
+                "rec-nutrition-iodine-review",
+                "rec-nutrition-vitamin-d-review",
+                "rec-nutrition-iron-review",
+                "rec-nutrition-calcium-review",
+                "rec-vaccination-assessment-needed",
+                "rec-medication-high-risk-or-contraindicated",
+                "rec-medication-adjustment-needed",
+                "rec-sexual-health-safe-sex-counseling",
+                "rec-sexual-health-reproductive-tract-infection",
+                "rec-sexual-health-sti-risk",
+                "rec-sexual-health-sti-suspected-or-known",
+                "rec-sexual-health-no-pregnancy-plan",
+                "rec-sti-suspected-or-known");
+    }
+
+    @Test
     void rejectsStiInfectionCodesForNonHistoryStatus() {
         ObjectNode profile = baseProfile();
         profile.set("sti", objectMapper.createObjectNode()
@@ -116,5 +172,17 @@ class RecommendationProfileValidatorTest {
 
     private ObjectNode state(String value) {
         return objectMapper.createObjectNode().put("state", value);
+    }
+
+    private ObjectNode answer(String value) {
+        return state("KNOWN").put("value", value);
+    }
+
+    private ObjectNode withCodes(String state, String... codes) {
+        ObjectNode value = state(state);
+        var values = objectMapper.createArrayNode();
+        for (String code : codes) values.add(code);
+        value.set("codes", values);
+        return value;
     }
 }

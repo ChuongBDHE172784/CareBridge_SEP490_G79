@@ -12,6 +12,7 @@ import type {
   ReviewFeedback,
 } from '../models/content';
 import { STAGE_LABELS, STAGE_OPTIONS } from '../models/content';
+import { checklistSequenceLabel } from './checklistApprovalPresentation';
 import {
   createChecklistTemplate,
   fetchChecklistTemplateDetail,
@@ -111,6 +112,10 @@ export default function ChecklistFormPage() {
     && recipientRoles.length === 1
     && recipientRoles[0] === 'MOTHER'
     && stage === 'PRE_PREGNANCY';
+  const legacyPreconceptionWarning = templateType === 'MANDATORY'
+    && hasMotherRecipient
+    && stage === 'PRE_PREGNANCY'
+    && displayOrder <= 0;
   const isImmutable = status === 'APPROVED' || status === 'ARCHIVED';
   const isValid = name.trim().length > 0
     && recipientRoles.length > 0
@@ -311,7 +316,17 @@ export default function ChecklistFormPage() {
                   <span className="text-xs font-normal text-on-surface-variant">
                     Nhập 1, 2, 3... theo thứ tự các bộ. Vị trí được kiểm tra lại khi phê duyệt.
                   </span>
+                  {legacyPreconceptionWarning && (
+                    <span role="note" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-normal text-amber-900">
+                      {checklistSequenceLabel(displayOrder)}: checklist này không thuộc chuỗi 1, 2, 3... và không thể hoạt động cùng chuỗi mới.
+                    </span>
+                  )}
                 </label>
+              )}
+              {legacyPreconceptionWarning && !sequenceEligible && (
+                <div role="note" className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-normal text-amber-900">
+                  Checklist Mẹ + Gia đình ở vị trí legacy (0) không thuộc chuỗi 1, 2, 3... và không thể hoạt động cùng chuỗi mới. Hãy lưu trữ hoặc tắt checklist này trước khi xuất bản bộ chuỗi.
+                </div>
               )}
               {substage && <div className="mt-4 rounded-2xl bg-surface-bright border border-surface-container-highest p-4"><strong className="text-on-surface text-sm">{substage.code}</strong><p className="mt-1 text-xs text-on-surface-variant">{substage.anchor} · {substage.startInclusive}–{substage.endInclusive} {substage.unit}</p></div>}
             </section>

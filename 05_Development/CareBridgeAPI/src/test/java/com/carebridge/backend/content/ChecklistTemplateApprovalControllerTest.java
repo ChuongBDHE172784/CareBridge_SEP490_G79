@@ -1,15 +1,19 @@
 package com.carebridge.backend.content;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.carebridge.backend.common.config.JpaAuditingConfig;
 import com.carebridge.backend.config.MockMvcSecurityBuilderConfig;
 import com.carebridge.backend.content.controller.ChecklistTemplateApprovalController;
+import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.service.ChecklistTemplateApprovalService;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
@@ -78,5 +82,21 @@ class ChecklistTemplateApprovalControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"decision\":\"APPROVE\"}"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000001", roles = "SYSTEM_ADMIN")
+    void decide_checklistConflictSerializesStableReasonMetadata() throws Exception {
+        when(checklistTemplateApprovalService.decide(eq(ID), any(), any()))
+                .thenThrow(ContentException.checklistValidationFailed(
+                        "displayOrder", "active legacy candidate", "CHECKLIST_ACTIVE_LEGACY_CONFLICT"));
+
+        mockMvc.perform(post(url()).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"decision\":\"APPROVE\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("CNT-001"))
+                .andExpect(jsonPath("$.metadata.reasonCode")
+                        .value("CHECKLIST_ACTIVE_LEGACY_CONFLICT"));
     }
 }

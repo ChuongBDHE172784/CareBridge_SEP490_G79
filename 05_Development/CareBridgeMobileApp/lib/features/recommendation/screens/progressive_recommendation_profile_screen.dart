@@ -195,6 +195,10 @@ class _RecommendationProfileScreenState
         : <String, dynamic>{};
   }
 
+  Map<String, dynamic> _mapValue(dynamic raw) => raw is Map
+      ? raw.map((key, value) => MapEntry(key.toString(), value))
+      : <String, dynamic>{};
+
   Map<String, dynamic> _lifestyleAnswer(String key) {
     final lifestyle = _map('lifestyle');
     final raw = lifestyle[key];
@@ -517,21 +521,53 @@ class _RecommendationProfileScreenState
   }
 
   Widget _buildLifestyleQuestion(RecommendationQuestion question) {
-    final key = question.code!;
-    final value = _lifestyleAnswer(key);
-    return _choiceWrap(
-      values: RecommendationQuestionnaire.lifestyleOptions[key] ?? const [],
-      selected: value['value'] as String?,
-      onSelected: (option) {
-        _setLifestyle(key, <String, dynamic>{
-          'state': 'KNOWN',
-          'value': option,
-        });
-      },
+    if (question.code != null) {
+      final key = question.code!;
+      final value = _lifestyleAnswer(key);
+      return _choiceWrap(
+        values: RecommendationQuestionnaire.lifestyleOptions[key] ?? const [],
+        selected: value['value'] as String?,
+        onSelected: (option) {
+          _setLifestyle(key, <String, dynamic>{
+            'state': 'KNOWN',
+            'value': option,
+          });
+        },
+      );
+    }
+    final selected = _selectedLifestyleFlags();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Text('Có thể chọn một hoặc nhiều lựa chọn.'),
+        const SizedBox(height: 12),
+        _choiceWrap(
+          values: RecommendationQuestionnaire.lifestyleGroupOptions,
+          selected: selected,
+          multiSelect: true,
+          onSelected: _toggleLifestyleFlag,
+        ),
+      ],
     );
   }
 
   Widget _buildVaccinationQuestion(RecommendationQuestion question) {
+    if (question.code == null) {
+      final selected = _selectedVaccinationFlags();
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text('Có thể chọn một hoặc nhiều lựa chọn.'),
+          const SizedBox(height: 12),
+          _choiceWrap(
+            values: RecommendationQuestionnaire.vaccinationGroupOptions,
+            selected: selected,
+            multiSelect: true,
+            onSelected: _toggleVaccinationFlag,
+          ),
+        ],
+      );
+    }
     final answer = _vaccineAnswer(question.code!);
     return _choiceWrap(
       values: const ['UP_TO_DATE', 'DUE', 'NOT_RECEIVED'],
@@ -634,22 +670,269 @@ class _RecommendationProfileScreenState
     );
   }
 
+  Set<String> _selectedLifestyleFlags() {
+    final lifestyle = _map('lifestyle');
+    final selected = <String>{};
+    final rawFlags = lifestyle['flags'];
+    if (rawFlags is List) {
+      selected.addAll(
+        rawFlags.whereType<String>().where(
+          RecommendationQuestionnaire.lifestyleFlagValues.contains,
+        ),
+      );
+    }
+    final smoking = _mapValue(lifestyle['smoking']);
+    final alcohol = _mapValue(lifestyle['alcohol']);
+    final activity = _mapValue(lifestyle['physicalActivity']);
+    final sleep = _mapValue(lifestyle['sleep']);
+    if (smoking['value'] == 'CURRENT') selected.add('SMOKING');
+    if (alcohol['value'] != null && alcohol['value'] != 'NONE') {
+      selected.add('ALCOHOL_USE');
+    }
+    if (activity['value'] == 'LOW') selected.add('LOW_ACTIVITY');
+    if (sleep['value'] == 'CONCERN') selected.add('SLEEP_CONCERN');
+    if (selected.isEmpty &&
+        [
+          smoking,
+          alcohol,
+          activity,
+          sleep,
+        ].every((answer) => answer['state'] == 'KNOWN')) {
+      selected.add('NONE_KNOWN_LIFESTYLE');
+    }
+    return selected;
+  }
+
+  void _toggleLifestyleFlag(String code) {
+    final selected = _selectedLifestyleFlags();
+    if (code == 'NONE_KNOWN_LIFESTYLE') {
+      selected
+        ..clear()
+        ..add(code);
+    } else if (!selected.remove(code)) {
+      selected
+        ..remove('NONE_KNOWN_LIFESTYLE')
+        ..add(code);
+    }
+    final next = _map('lifestyle');
+    if (selected.isEmpty) {
+      for (final key in const [
+        'smoking',
+        'alcohol',
+        'physicalActivity',
+        'sleep',
+      ]) {
+        next[key] = <String, dynamic>{'state': 'UNKNOWN'};
+      }
+      next.remove('flags');
+    } else if (selected.contains('NONE_KNOWN_LIFESTYLE')) {
+      next
+        ..['smoking'] = <String, dynamic>{'state': 'KNOWN', 'value': 'NEVER'}
+        ..['alcohol'] = <String, dynamic>{'state': 'KNOWN', 'value': 'NONE'}
+        ..['physicalActivity'] = <String, dynamic>{
+          'state': 'KNOWN',
+          'value': 'MODERATE',
+        }
+        ..['sleep'] = <String, dynamic>{'state': 'KNOWN', 'value': 'NO_CONCERN'}
+        ..remove('flags');
+    } else {
+      next['smoking'] = <String, dynamic>{
+        'state': 'KNOWN',
+        'value': selected.contains('SMOKING') ? 'CURRENT' : 'NEVER',
+      };
+      next['alcohol'] = <String, dynamic>{
+        'state': 'KNOWN',
+        'value': selected.contains('ALCOHOL_USE') ? 'ANY_USE' : 'NONE',
+      };
+      next['physicalActivity'] = <String, dynamic>{
+        'state': 'KNOWN',
+        'value': selected.contains('LOW_ACTIVITY') ? 'LOW' : 'MODERATE',
+      };
+      next['sleep'] = <String, dynamic>{
+        'state': 'KNOWN',
+        'value': selected.contains('SLEEP_CONCERN') ? 'CONCERN' : 'NO_CONCERN',
+      };
+      final extraFlags =
+          selected
+              .where(
+                (item) => const {
+                  'SUBSTANCE_USE',
+                  'STRESS',
+                  'UNHEALTHY_DIET',
+                }.contains(item),
+              )
+              .toList()
+            ..sort();
+      if (extraFlags.isEmpty) {
+        next.remove('flags');
+      } else {
+        next['flags'] = extraFlags;
+      }
+    }
+    _setDomain('lifestyle', next);
+  }
+
+  Set<String> _selectedVaccinationFlags() {
+    final vaccination = _map('vaccination');
+    final selected = <String>{};
+    final rawFlags = vaccination['flags'];
+    if (rawFlags is List) {
+      selected.addAll(
+        rawFlags.whereType<String>().where(
+          RecommendationQuestionnaire.vaccinationFlags.contains,
+        ),
+      );
+    }
+    final answers = vaccination['answers'];
+    if (answers is List) {
+      final byCode = <String, Map<String, dynamic>>{};
+      for (final raw in answers.whereType<Map>()) {
+        final code = raw['code'];
+        if (code is String) byCode[code] = _mapValue(raw);
+      }
+      if (byCode.values.every((answer) => answer['state'] == 'KNOWN')) {
+        if (byCode['RUBELLA_IMMUNITY']?['value'] == 'NOT_RECEIVED') {
+          selected.add('RUBELLA_NONIMMUNE');
+        }
+        if (byCode['HEPATITIS_B']?['value'] != 'UP_TO_DATE') {
+          selected.add('HEPATITIS_B_INCOMPLETE');
+        }
+        if (byCode['INFLUENZA']?['value'] != 'UP_TO_DATE') {
+          selected.add('INFLUENZA_DUE');
+        }
+        if (byCode['COVID_19']?['value'] != 'UP_TO_DATE') {
+          selected.add('COVID_19_UPDATE');
+        }
+        if (selected.isEmpty) selected.add('NONE_KNOWN_VACCINATION');
+      }
+    }
+    return selected;
+  }
+
+  void _toggleVaccinationFlag(String code) {
+    final selected = _selectedVaccinationFlags();
+    if (code == 'NOT_ASSESSED') {
+      selected
+        ..clear()
+        ..add(code);
+    } else if (code == 'NONE_KNOWN_VACCINATION') {
+      selected
+        ..clear()
+        ..add(code);
+    } else if (!selected.remove(code)) {
+      selected
+        ..remove('NOT_ASSESSED')
+        ..remove('NONE_KNOWN_VACCINATION')
+        ..add(code);
+    }
+    final next = _map('vaccination');
+    final answers = <Map<String, dynamic>>[
+      for (final vaccineCode in RecommendationQuestionnaire.vaccineCodes)
+        <String, dynamic>{
+          'code': vaccineCode,
+          'state': selected.contains('NOT_ASSESSED') ? 'UNKNOWN' : 'KNOWN',
+          if (!selected.contains('NOT_ASSESSED')) 'value': 'UP_TO_DATE',
+        },
+    ];
+    if (selected.contains('RUBELLA_NONIMMUNE')) {
+      answers.singleWhere(
+        (answer) => answer['code'] == 'RUBELLA_IMMUNITY',
+      )['value'] = 'NOT_RECEIVED';
+    }
+    if (selected.contains('HEPATITIS_B_INCOMPLETE')) {
+      answers.singleWhere(
+        (answer) => answer['code'] == 'HEPATITIS_B',
+      )['value'] = 'DUE';
+    }
+    if (selected.contains('INFLUENZA_DUE')) {
+      answers.singleWhere((answer) => answer['code'] == 'INFLUENZA')['value'] =
+          'DUE';
+    }
+    if (selected.contains('COVID_19_UPDATE')) {
+      answers.singleWhere((answer) => answer['code'] == 'COVID_19')['value'] =
+          'DUE';
+    }
+    next['answers'] = answers;
+    if (selected.contains('NOT_ASSESSED')) {
+      next['flags'] = ['NOT_ASSESSED'];
+    } else {
+      next.remove('flags');
+    }
+    if (selected.isEmpty) {
+      next['answers'] = [
+        for (final vaccineCode in RecommendationQuestionnaire.vaccineCodes)
+          <String, dynamic>{'code': vaccineCode, 'state': 'UNKNOWN'},
+      ];
+    }
+    _setDomain('vaccination', next);
+  }
+
+  void _toggleSexualHealthCode(String code) {
+    final value = _map('sexualHealth');
+    final selected = (value['codes'] is List
+        ? (value['codes'] as List).whereType<String>().toSet()
+        : <String>{});
+    if (!selected.add(code)) selected.remove(code);
+    final next = <String, dynamic>{'state': 'KNOWN'};
+    if (selected.isNotEmpty) {
+      next['codes'] = selected.toList()..sort();
+    } else {
+      next['state'] = 'UNKNOWN';
+    }
+    final sti = <String, dynamic>{'state': 'UNKNOWN'};
+    if (selected.contains('STI_SUSPECTED_OR_KNOWN')) {
+      sti
+        ..['state'] = 'KNOWN'
+        ..['status'] = 'SUSPECTED_OR_KNOWN';
+    } else if (selected.contains('STI_RISK')) {
+      sti
+        ..['state'] = 'KNOWN'
+        ..['status'] = 'AT_RISK';
+    }
+    final profile = Map<String, dynamic>.from(_profile)
+      ..['sexualHealth'] = next
+      ..['sti'] = sti;
+    _setProfile(profile);
+  }
+
   void _toggleCode(String domain, String code) {
+    if (domain == 'sexualHealth') {
+      _toggleSexualHealthCode(code);
+      return;
+    }
     final value = _map(domain);
     final selected = (value['codes'] is List
         ? (value['codes'] as List).whereType<String>().toSet()
         : <String>{});
     if (!selected.add(code)) selected.remove(code);
-    final isNone =
-        code.startsWith('NO_') || code == 'NONE' || code == 'NONE_KNOWN';
-    if (isNone && selected.contains(code)) {
+    final isExclusiveCode = switch (domain) {
+      'reproductiveHistory' => const {
+        'NO_PRIOR_PREGNANCY',
+        'NO_LISTED_REPRODUCTIVE_HISTORY',
+      }.contains(code),
+      'underlyingConditions' => code == 'NONE_KNOWN',
+      'nutrition' => code == 'NO_CURRENT_CONCERN',
+      'currentMedications' => code == 'NONE',
+      'sexualHealth' => code == 'NO_CURRENT_INFORMATION_NEED',
+      _ => false,
+    };
+    if (isExclusiveCode && selected.contains(code)) {
       selected
         ..clear()
         ..add(code);
-    } else if (!isNone) {
+    } else if (!isExclusiveCode) {
       selected.removeWhere(
-        (item) =>
-            item.startsWith('NO_') || item == 'NONE' || item == 'NONE_KNOWN',
+        (item) => switch (domain) {
+          'reproductiveHistory' => const {
+            'NO_PRIOR_PREGNANCY',
+            'NO_LISTED_REPRODUCTIVE_HISTORY',
+          }.contains(item),
+          'underlyingConditions' => item == 'NONE_KNOWN',
+          'nutrition' => item == 'NO_CURRENT_CONCERN',
+          'currentMedications' => item == 'NONE',
+          'sexualHealth' => item == 'NO_CURRENT_INFORMATION_NEED',
+          _ => false,
+        },
       );
       if (domain == 'nutrition') {
         if (code == 'VEGETARIAN') selected.remove('VEGAN');

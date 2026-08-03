@@ -31,6 +31,15 @@ public interface ChecklistTemplateRepository extends JpaRepository<ChecklistTemp
             nativeQuery = true)
     void acquireLineageLock(@Param("lineageId") UUID lineageId);
 
+    /**
+     * Serializes approval/activation decisions that can change the single
+     * PRE_PREGNANCY MOTHER sequence cohort. The transaction-scoped advisory lock
+     * closes the race between reading active candidates and saving the decision.
+     */
+    @Query(value = "select pg_advisory_xact_lock(hashtextextended('CHECKLIST_PRE_PREGNANCY_SEQUENCE_COHORT', 0))",
+            nativeQuery = true)
+    void acquirePreconceptionSequenceCohortLock();
+
     List<ChecklistTemplate> findByStage(ContentStage stage);
 
     List<ChecklistTemplate> findByStatusOrderByUpdatedAtDesc(ChecklistTemplateStatus status);

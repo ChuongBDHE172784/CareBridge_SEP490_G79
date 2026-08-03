@@ -131,7 +131,7 @@ void main() {
     await tester.tap(find.byKey(const Key('recommendation-skip-button')));
     await tester.pumpAndSettle();
     expect(
-      find.text('Bạn có muốn chia sẻ chỉ số và cân nặng gần đây không?'),
+      find.text('Vui lòng nhập cân nặng và chiều cao hiện tại của bạn.'),
       findsOneWidget,
     );
     expect(
@@ -170,7 +170,7 @@ void main() {
     expect(service.dateOfBirth, '1995-08-21');
     expect((service.lastDraft?['age'] as Map?)?['state'], 'KNOWN');
     expect(
-      find.text('Bạn có muốn chia sẻ chỉ số và cân nặng gần đây không?'),
+      find.text('Vui lòng nhập cân nặng và chiều cao hiện tại của bạn.'),
       findsOneWidget,
     );
   });
@@ -208,5 +208,101 @@ void main() {
     final bmi = service.lastDraft?['bmi'] as Map?;
     expect(bmi?['weightContext'], 'CURRENT_NON_PREGNANT');
     expect(bmi?['measuredOn'], '2026-08-03');
+  });
+
+  testWidgets('grouped lifestyle choices map to new audience flags', (
+    tester,
+  ) async {
+    final service = _FakeRecommendationService();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: RecommendationProfileScreen(
+          service: service,
+          journeyService: _FakeJourneyService(),
+          now: () => DateTime(2026, 8, 3),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Đồng ý và tiếp tục'));
+    await tester.pumpAndSettle();
+    for (var i = 0; i < 4; i++) {
+      await tester.tap(find.byKey(const Key('recommendation-skip-button')));
+      await tester.pumpAndSettle();
+    }
+
+    await tester.tap(find.text('Sử dụng ma túy hoặc chất kích thích'));
+    await tester.tap(find.text('Stress'));
+    await tester.tap(find.byKey(const Key('recommendation-continue-button')));
+    await tester.pumpAndSettle();
+
+    final lifestyle = service.lastDraft?['lifestyle'] as Map?;
+    expect(lifestyle?['flags'], ['STRESS', 'SUBSTANCE_USE']);
+    expect((lifestyle?['alcohol'] as Map?)?['value'], 'NONE');
+  });
+
+  testWidgets('vaccination assessment flag keeps five answers unknown', (
+    tester,
+  ) async {
+    final service = _FakeRecommendationService();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: RecommendationProfileScreen(
+          service: service,
+          journeyService: _FakeJourneyService(),
+          now: () => DateTime(2026, 8, 3),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Đồng ý và tiếp tục'));
+    await tester.pumpAndSettle();
+    for (var i = 0; i < 6; i++) {
+      await tester.tap(find.byKey(const Key('recommendation-skip-button')));
+      await tester.pumpAndSettle();
+    }
+    await tester.tap(find.text('Chưa được đánh giá tình trạng tiêm chủng'));
+    await tester.tap(find.byKey(const Key('recommendation-continue-button')));
+    await tester.pumpAndSettle();
+
+    final vaccination = service.lastDraft?['vaccination'] as Map?;
+    expect(vaccination?['flags'], ['NOT_ASSESSED']);
+    expect(
+      (vaccination?['answers'] as List).whereType<Map>().every(
+        (answer) => answer['state'] == 'UNKNOWN',
+      ),
+      isTrue,
+    );
+  });
+
+  testWidgets('sexual-health choices populate sexual and STI domains', (
+    tester,
+  ) async {
+    final service = _FakeRecommendationService();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: RecommendationProfileScreen(
+          service: service,
+          journeyService: _FakeJourneyService(),
+          now: () => DateTime(2026, 8, 3),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Đồng ý và tiếp tục'));
+    await tester.pumpAndSettle();
+    for (var i = 0; i < 8; i++) {
+      await tester.tap(find.byKey(const Key('recommendation-skip-button')));
+      await tester.pumpAndSettle();
+    }
+    await tester.tap(
+      find.text('Có nguy cơ mắc bệnh lây truyền qua đường tình dục (STIs)'),
+    );
+    await tester.tap(find.byKey(const Key('recommendation-continue-button')));
+    await tester.pumpAndSettle();
+
+    final sexual = service.lastDraft?['sexualHealth'] as Map?;
+    expect(sexual?['codes'], ['STI_RISK']);
+    expect(service.lastDraft?['sti'], {'state': 'KNOWN', 'status': 'AT_RISK'});
   });
 }

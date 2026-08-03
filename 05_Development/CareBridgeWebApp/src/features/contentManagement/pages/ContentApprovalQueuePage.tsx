@@ -9,6 +9,12 @@ import {
 } from '../services/contentApi';
 import type { AdminChecklistTemplate, ContentDetail, ContentStage, ContentType } from '../models/content';
 import { STAGE_LABELS, STAGE_OPTIONS, TYPE_LABELS } from '../models/content';
+import {
+  checklistApprovalErrorMessage,
+  checklistCoexistenceGuidance,
+  checklistRecipientLabel,
+  checklistSequenceLabel,
+} from './checklistApprovalPresentation';
 import { SortableTableHeader, type SortDirection } from '../components/SortableTableHeader';
 import { nextSortDirection, sortRows } from '../utils/tableSorting';
 
@@ -22,9 +28,11 @@ type QueueEntry = {
   title: string;
   type: ContentType;
   typeLabel: string;
-  stage: ContentStage;
+  stage: ContentStage | null;
   stageLabel: string;
   detail: string;
+  displayOrder?: number | null;
+  recipientRoles?: AdminChecklistTemplate['recipientRoles'];
   submittedAt: string | null;
   searchText: string;
 };
@@ -55,11 +63,12 @@ function toContentEntry(item: ContentDetail): QueueEntry {
   };
 }
 
-function toChecklistEntry(item: AdminChecklistTemplate): QueueEntry | null {
-  if (!item.stage) return null;
+function toChecklistEntry(item: AdminChecklistTemplate): QueueEntry {
   const typeLabel = TYPE_LABELS.CHECKLIST;
-  const stageLabel = STAGE_LABELS[item.stage];
-  const detail = `Phiên bản ${item.versionNo} · ${item.itemCount} mục`;
+  const stageLabel = item.stage ? STAGE_LABELS[item.stage] : 'Chưa xác định giai đoạn';
+  const sequenceLabel = checklistSequenceLabel(item.displayOrder, item.stage);
+  const recipientLabel = checklistRecipientLabel(item.recipientRoles);
+  const detail = `${sequenceLabel} · ${recipientLabel} · Phiên bản ${item.versionNo} · ${item.itemCount} mục`;
 
   return {
     kind: 'CHECKLIST',
@@ -70,8 +79,10 @@ function toChecklistEntry(item: AdminChecklistTemplate): QueueEntry | null {
     stage: item.stage,
     stageLabel,
     detail,
+    displayOrder: item.displayOrder,
+    recipientRoles: item.recipientRoles,
     submittedAt: item.updatedAt,
-    searchText: [item.name, typeLabel, stageLabel, detail, item.description].join(' ').toLowerCase(),
+    searchText: [item.name, typeLabel, stageLabel, detail, item.description, recipientLabel].join(' ').toLowerCase(),
   };
 }
 
@@ -114,7 +125,7 @@ export default function ContentApprovalQueuePage() {
       ]);
       setItems([
         ...contentPage.content.map(toContentEntry),
-        ...checklistPage.content.map(toChecklistEntry).filter((entry): entry is QueueEntry => entry !== null),
+        ...checklistPage.content.map(toChecklistEntry),
       ]);
     } catch {
       setItems([]);
@@ -190,12 +201,12 @@ export default function ContentApprovalQueuePage() {
       }
       setPendingDecision(null);
       await load();
-    } catch {
-      setDialogError(
-        decision === 'APPROVE'
+    } catch (approvalError) {
+      setDialogError(entry.kind === 'CHECKLIST'
+        ? checklistApprovalErrorMessage(approvalError, decision)
+        : (decision === 'APPROVE'
           ? 'Không thể xuất bản mục này. Vui lòng thử lại.'
-          : 'Không thể trả mục này về nháp. Vui lòng thử lại.',
-      );
+          : 'Không thể trả mục này về nháp. Vui lòng thử lại.'));
     } finally {
       setWorking(null);
     }
@@ -213,6 +224,10 @@ export default function ContentApprovalQueuePage() {
   const dialogDescription = pendingDecision?.decision === 'APPROVE'
     ? 'Mục đã duyệt sẽ chuyển sang trạng thái xuất bản và có thể hiển thị trong thư viện nội dung.'
     : 'Mục sẽ quay về bản nháp để Content Admin chỉnh sửa trước khi gửi duyệt lại.';
+  const checklistDialogGuidance = pendingDecision?.entry.kind === 'CHECKLIST'
+    && pendingDecision.entry.stage === 'PRE_PREGNANCY'
+    ? checklistCoexistenceGuidance(pendingDecision.entry.displayOrder, pendingDecision.entry.stage)
+    : null;
 
   return (
     <div className="p-8 font-sans">
@@ -454,7 +469,9 @@ export default function ContentApprovalQueuePage() {
         key={pendingDecision ? `${pendingDecision.entry.kind}-${pendingDecision.entry.id}-${pendingDecision.decision}` : 'none'}
         open={pendingDecision !== null}
         title={dialogTitle}
-        description={pendingDecision ? `${dialogDescription} Mục: "${pendingDecision.entry.title}".` : undefined}
+        description={pendingDecision
+          ? `${dialogDescription} ${checklistDialogGuidance ? `${checklistDialogGuidance} ` : ''}Mục: "${pendingDecision.entry.title}".`
+          : undefined}
         icon={pendingDecision?.decision === 'APPROVE' ? 'publish' : 'assignment_return'}
         tone={pendingDecision?.decision === 'APPROVE' ? 'default' : 'danger'}
         confirmLabel={pendingDecision?.decision === 'APPROVE' ? 'Xuất bản' : 'Trả về nháp'}

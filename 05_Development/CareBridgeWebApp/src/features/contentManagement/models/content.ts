@@ -194,6 +194,8 @@ export interface AdminChecklistTemplate {
   lineageId?: string;
   versionId?: string;
   recipientRoles?: ChecklistRecipientRole[];
+  /** 0/null is the legacy, unsequenced cohort; positive values are sequence positions. */
+  displayOrder?: number | null;
   stage: ContentStage | null;
   substage?: ChecklistSubstage | null;
   status: ChecklistTemplateStatus;

@@ -275,7 +275,12 @@ Future<dynamic> apiPost(
     }
     await _handle401(response);
   }
-  if (response.statusCode == 403) await _handleBlockedResponse(response);
+  if (response.statusCode == 403) {
+    if (expectedSession != null && !expectedSession.isCurrent) {
+      throw ApiException(response.statusCode, _sessionChangedBody);
+    }
+    await _handleBlockedResponse(response);
+  }
   throw ApiException(response.statusCode, response.body);
 }
 

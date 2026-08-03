@@ -10,6 +10,7 @@ import {
 } from '../services/contentApi';
 import type { AdminChecklistTemplateDetail } from '../models/content';
 import { CHECKLIST_STATUS_LABELS, STAGE_LABELS } from '../models/content';
+import { checklistCoexistenceGuidance, checklistRecipientLabel, checklistSequenceLabel } from './checklistApprovalPresentation';
 import { useAuth } from '../../../shared/auth/useAuth';
 import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
 
@@ -246,10 +247,21 @@ export default function ChecklistDetailPage() {
               </div>
             </div>
             <div>
+              <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.05em] text-outline">CHUỖI CHECKLIST</div>
+              <div className="text-sm font-medium text-on-surface">{checklistSequenceLabel(detail.displayOrder, detail.stage)}</div>
+            </div>
+            <div>
               <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.05em] text-outline">CỬA SỔ VÒNG ĐỜI</div>
               <span className={warmBadge}>{detail.substage?.code ?? 'Không áp dụng'}</span>
             </div>
           </div>
+
+          {detail.stage === 'PRE_PREGNANCY' && detail.templateType === 'MANDATORY' && (
+            <div role="note" className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+              {checklistCoexistenceGuidance(detail.displayOrder)}
+              <span className="mt-1 block text-xs">Người nhận: {checklistRecipientLabel(detail.recipientRoles)}</span>
+            </div>
+          )}
 
           {/* Description */}
           {detail.description && (

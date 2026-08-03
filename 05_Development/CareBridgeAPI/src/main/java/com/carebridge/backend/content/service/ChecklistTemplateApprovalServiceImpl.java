@@ -39,6 +39,14 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ChecklistTemplateApprovalServiceImpl implements ChecklistTemplateApprovalService {
 
+    /** Stable reason codes consumed by the admin reviewer; HTTP CNT-001 remains unchanged. */
+    public static final String ACTIVE_LEGACY_CONFLICT = "CHECKLIST_ACTIVE_LEGACY_CONFLICT";
+    public static final String ACTIVE_SEQUENCE_CONFLICT = "CHECKLIST_ACTIVE_SEQUENCE_CONFLICT";
+    public static final String REQUIRED_ITEM_MISSING = "CHECKLIST_REQUIRED_ITEM_MISSING";
+    public static final String DUPLICATE_SEQUENCE_POSITION = "CHECKLIST_DUPLICATE_SEQUENCE_POSITION";
+    public static final String SEQUENCE_POSITION_GAP = "CHECKLIST_SEQUENCE_POSITION_GAP";
+    public static final String SEQUENCE_POSITION_IMMUTABLE = "CHECKLIST_SEQUENCE_POSITION_IMMUTABLE";
+
     private final ChecklistTemplateRepository checklistTemplateRepository;
     private final ChecklistAuditWriter auditService;
     private final ContentReviewNotificationService contentReviewNotificationService;
@@ -82,8 +90,8 @@ public class ChecklistTemplateApprovalServiceImpl implements ChecklistTemplateAp
                 ? ChecklistTemplateStatus.APPROVED
                 : ChecklistTemplateStatus.DRAFT;
         if (approving) {
-            validateAuthoringContract(template);
             prepareSequenceApproval(template);
+            validateAuthoringContract(template);
         }
         template.setStatus(newStatus);
 
@@ -176,8 +184,8 @@ public class ChecklistTemplateApprovalServiceImpl implements ChecklistTemplateAp
         if (template.getStatus() != ChecklistTemplateStatus.PENDING_REVIEW) {
             throw ContentException.checklistTemplateNotPendingReview();
         }
-        validateAuthoringContract(template);
         prepareSequenceApproval(template);
+        validateAuthoringContract(template);
 
         ChecklistTemplateStatus previousStatus = template.getStatus();
         Instant activatedAt = Instant.now();
@@ -272,20 +280,32 @@ public class ChecklistTemplateApprovalServiceImpl implements ChecklistTemplateAp
             boolean hasRequired = checklistItemRepository.findByTemplate_IdOrderByOrder(template.getId()).stream()
                     .anyMatch(item -> Boolean.TRUE.equals(item.getIsRequired()));
             if (!hasRequired) {
-                throw ContentException.validationFailed(
-                        "items", "a sequence checklist must contain at least one required item");
+                throw ContentException.checklistValidationFailed(
+                        "items", "a sequence checklist must contain at least one required item",
+                        REQUIRED_ITEM_MISSING);
             }
         }
     }
 
     /**
      * Approving a new version at an occupied position is a replacement, not a second
-     * active candidate. Archive/disable the previous candidate before the new row is
-     * saved so the partial unique index can enforce one active version per position.
-     * The complete active chain is then validated (position 1 and no gaps).
+     * active candidate. All cohort and chain checks complete before any existing row is
+     * archived/disabled, preserving the fail-closed approval boundary. The previous
+     * candidate is then archived as part of the same transaction so the partial unique
+     * index can enforce one active version per position.
      */
     private void prepareSequenceApproval(ChecklistTemplate template) {
         UUID lineageId = template.getTemplateLineageId();
+        boolean positiveSequence = isPositiveSequenceTemplate(template);
+        boolean legacyPreconception = isLegacyPreconceptionTemplate(template);
+
+        // Legacy and positive candidates are one mutually-exclusive cohort. Lock
+        // before reading active rows and retain the transaction-scoped lock through
+        // the eventual save so concurrent approvals cannot both pass the guards.
+        if (positiveSequence || legacyPreconception) {
+            checklistTemplateRepository.acquirePreconceptionSequenceCohortLock();
+        }
+
         if (lineageId != null && checklistInstanceRepository.existsByTemplateLineageId(lineageId)) {
             List<ChecklistTemplate> lineageVersions = checklistTemplateRepository
                     .findByTemplateLineageId(lineageId);
@@ -296,41 +316,55 @@ public class ChecklistTemplateApprovalServiceImpl implements ChecklistTemplateAp
                     .anyMatch(existing -> !existing.getSequencePosition()
                             .equals(template.getSequencePosition()));
             if (conflictingPosition) {
-                throw ContentException.validationFailed(
-                        "displayOrder", "sequence position is immutable after the lineage has started");
+                throw ContentException.checklistValidationFailed(
+                        "displayOrder", "sequence position is immutable after the lineage has started",
+                        SEQUENCE_POSITION_IMMUTABLE);
             }
         }
         List<ChecklistTemplate> approved = checklistTemplateRepository
                 .findAllDistributionEnabledByStageAndStatus(
                         ContentStage.PRE_PREGNANCY, ChecklistTemplateStatus.APPROVED);
-        if (!isPositiveSequenceTemplate(template)) {
-            return;
-        }
+
         boolean activeLegacyCandidate = approved.stream()
                 .filter(ChecklistTemplateApprovalServiceImpl::isMotherPreconceptionCandidate)
-                .anyMatch(existing -> existing.getSequencePosition() == null
-                        || existing.getSequencePosition() <= 0);
-        if (activeLegacyCandidate) {
-            throw ContentException.validationFailed(
-                    "displayOrder", "archive or disable active legacy PRE_PREGNANCY candidates first");
+                .anyMatch(ChecklistTemplateApprovalServiceImpl::isLegacyPreconceptionTemplate);
+        boolean activeSequenceCandidate = approved.stream()
+                .anyMatch(ChecklistTemplateApprovalServiceImpl::isPositiveSequenceTemplate);
+
+        // The two cohorts are mutually exclusive in both approval directions. Keep this
+        // guard ahead of all status/distribution/audit/save operations.
+        if (positiveSequence && activeLegacyCandidate) {
+            throw ContentException.checklistValidationFailed(
+                    "displayOrder", "archive or disable active legacy PRE_PREGNANCY candidates first",
+                    ACTIVE_LEGACY_CONFLICT);
         }
+        if (legacyPreconception && activeSequenceCandidate) {
+            throw ContentException.checklistValidationFailed(
+                    "displayOrder", "archive or disable active sequence PRE_PREGNANCY candidates first",
+                    ACTIVE_SEQUENCE_CONFLICT);
+        }
+        if (!positiveSequence) {
+            return;
+        }
+
+        List<ChecklistTemplate> replacements = new ArrayList<>();
         for (ChecklistTemplate existing : approved) {
             if (existing.getId() != null && !existing.getId().equals(template.getId())
                     && existing.getSequencePosition() != null
                     && existing.getSequencePosition().equals(template.getSequencePosition())) {
                 UUID existingLineage = existing.getTemplateLineageId();
                 if (lineageId == null || existingLineage == null || !lineageId.equals(existingLineage)) {
-                    throw ContentException.validationFailed("displayOrder", "duplicate sequence position");
+                    throw ContentException.checklistValidationFailed(
+                            "displayOrder", "duplicate sequence position", DUPLICATE_SEQUENCE_POSITION);
                 }
-                existing.setStatus(ChecklistTemplateStatus.ARCHIVED);
-                existing.setDistributionEnabled(false);
-                checklistTemplateRepository.save(existing);
+                replacements.add(existing);
             }
         }
 
         List<Integer> positions = new ArrayList<>();
         for (ChecklistTemplate existing : approved) {
-            if (existing.getId() != null && existing.getId().equals(template.getId())) {
+            if ((existing.getId() != null && existing.getId().equals(template.getId()))
+                    || replacements.contains(existing)) {
                 continue;
             }
             if (isPositiveSequenceTemplate(existing)
@@ -342,13 +376,22 @@ public class ChecklistTemplateApprovalServiceImpl implements ChecklistTemplateAp
         positions.add(template.getSequencePosition());
         Set<Integer> unique = new HashSet<>(positions);
         if (unique.size() != positions.size()) {
-            throw ContentException.validationFailed("displayOrder", "duplicate sequence position");
+            throw ContentException.checklistValidationFailed(
+                    "displayOrder", "duplicate sequence position", DUPLICATE_SEQUENCE_POSITION);
         }
         int max = unique.stream().max(Comparator.naturalOrder()).orElse(0);
         for (int expected = 1; expected <= max; expected++) {
             if (!unique.contains(expected)) {
-                throw ContentException.validationFailed("displayOrder", "sequence positions must be contiguous from 1");
+                throw ContentException.checklistValidationFailed(
+                        "displayOrder", "sequence positions must be contiguous from 1", SEQUENCE_POSITION_GAP);
             }
+        }
+
+        // Mutation is intentionally last: every validation above must pass first.
+        for (ChecklistTemplate replacement : replacements) {
+            replacement.setStatus(ChecklistTemplateStatus.ARCHIVED);
+            replacement.setDistributionEnabled(false);
+            checklistTemplateRepository.save(replacement);
         }
     }
 
@@ -359,6 +402,15 @@ public class ChecklistTemplateApprovalServiceImpl implements ChecklistTemplateAp
                 && template.getRecipientScope() == ChecklistRecipientScope.MOTHER
                 && template.getSequencePosition() != null
                 && template.getSequencePosition() > 0;
+    }
+
+    private static boolean isLegacyPreconceptionTemplate(ChecklistTemplate template) {
+        return template != null
+                && template.getStage() == ContentStage.PRE_PREGNANCY
+                && template.getTemplateType() == ChecklistTemplateType.MANDATORY
+                && (template.getRecipientScope() == ChecklistRecipientScope.MOTHER
+                    || template.getRecipientScope() == ChecklistRecipientScope.BOTH)
+                && (template.getSequencePosition() == null || template.getSequencePosition() <= 0);
     }
 
     private static boolean isMotherPreconceptionCandidate(ChecklistTemplate template) {
