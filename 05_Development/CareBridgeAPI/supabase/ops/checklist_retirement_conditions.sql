@@ -3,8 +3,10 @@
 -- The managed postgres role is not SUPERUSER, so the privileged finalizer cannot
 -- run there. This script creates only the non-login role names and guard objects
 -- that V20260731070000 requires. It grants no data privileges and no passwords.
--- Run through `supabase db query --linked --file ...` immediately before the
--- application starts with the supabase-roll-forward profile.
+-- Run through `supabase db query --linked --file ...` only as a separately
+-- reviewed, explicitly approved database-remediation step. It is not an
+-- application-startup prerequisite; startup no longer supports the former
+-- supabase-roll-forward profile.
 
 BEGIN;
 
