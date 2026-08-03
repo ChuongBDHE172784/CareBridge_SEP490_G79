@@ -58,6 +58,9 @@ public class ChecklistHistoryReconciliationService {
                 .stream()
                 .filter(instance -> Objects.equals(ownerUserId, instance.getRecipientUserId()))
                 .filter(currentScopePolicy::isHistoryManaged)
+                // Admin/approval archive is a read-time visibility change, not a lifecycle
+                // transition. Keep the current instance and child evidence untouched.
+                .filter(instance -> !currentScopePolicy.isArchivedTemplate(instance))
                 .sorted(Comparator.comparing(ChecklistHistoryReconciliationService::lifecycleKey)
                         .thenComparing(ChecklistInstance::getId))
                 .toList();
@@ -73,6 +76,7 @@ public class ChecklistHistoryReconciliationService {
             if (locked == null
                     || locked.getHistoricalAt() != null
                     || !currentScopePolicy.isHistoryManaged(locked)
+                    || currentScopePolicy.isArchivedTemplate(locked)
                     || currentScopePolicy.isCurrent(locked, effectiveDate)) {
                 continue;
             }

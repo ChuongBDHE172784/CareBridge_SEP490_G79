@@ -6,6 +6,7 @@ import com.carebridge.backend.checklist.model.ChecklistCareContextType;
 import com.carebridge.backend.checklist.model.ChecklistOrigin;
 import com.carebridge.backend.checklist.model.ChecklistRecipientRole;
 import com.carebridge.backend.checklist.model.ChecklistTaskStatus;
+import com.carebridge.backend.checklist.policy.ChecklistTemplateVisibilityPolicy;
 import com.carebridge.backend.checklist.repository.ChecklistInstanceRepository;
 import com.carebridge.backend.checklist.repository.ChecklistTaskInstanceRepository;
 import com.carebridge.backend.checklist.today.dto.TodaySequenceNextSet;
@@ -105,12 +106,14 @@ public class ChecklistSequenceResolver {
         if (!chain.valid()) {
             return blocked(chain.reason());
         }
+        Map<UUID, ChecklistTemplate> templateCache = new HashMap<>();
 
         List<ChecklistInstance> currentInstances = instanceRepository
                 .findByRecipientUserIdAndHistoricalAtIsNull(ownerUserId).stream()
                 .filter(this::isPersonalSystemInstance)
                 .filter(instance -> instance.getStatus()
                         != com.carebridge.backend.checklist.model.ChecklistInstanceStatus.CANCELLED)
+                .filter(instance -> isVisibleTemplateInstance(instance, templateCache))
                 .filter(instance -> canonicalJourneyId == null
                         || Objects.equals(instance.getCareContextId(), canonicalJourneyId))
                 .filter(instance -> chain.versionIds().contains(instance.getTemplateVersionId()))
@@ -123,10 +126,11 @@ public class ChecklistSequenceResolver {
                 .filter(this::isPersonalSystemInstance)
                 .filter(instance -> instance.getStatus()
                         != com.carebridge.backend.checklist.model.ChecklistInstanceStatus.CANCELLED)
+                .filter(instance -> isVisibleTemplateInstance(instance, templateCache))
                 .filter(instance -> canonicalJourneyId == null
                         || Objects.equals(instance.getCareContextId(), canonicalJourneyId))
                 .anyMatch(instance -> {
-                    ChecklistTemplate template = template(instance.getTemplateVersionId());
+                    ChecklistTemplate template = template(instance.getTemplateVersionId(), templateCache);
                     return template != null && position(template) == 0;
                 });
         if (legacyCurrent) {
@@ -151,7 +155,7 @@ public class ChecklistSequenceResolver {
                         .isEmpty())) {
             return null;
         }
-        ChecklistTemplate currentTemplate = template(current.getTemplateVersionId());
+        ChecklistTemplate currentTemplate = template(current.getTemplateVersionId(), templateCache);
         int currentPosition = position(currentTemplate);
         if (currentTemplate == null || !chain.positions().containsKey(currentPosition)) {
             return blocked("POSITION_NOT_CONFIGURED");
@@ -168,7 +172,7 @@ public class ChecklistSequenceResolver {
                         .filter(instance -> instance.getHistoricalAt() != null)
                         .filter(instance -> "SEQUENCE_STEP_COMPLETED"
                                 .equals(instance.getHistoryReasonCode()))
-                        .map(instance -> template(instance.getTemplateVersionId()))
+                        .map(instance -> template(instance.getTemplateVersionId(), templateCache))
                         .anyMatch(template -> position(template) == expectedPosition);
                 if (!predecessorAdvanced) {
                     return blocked("PREDECESSOR_NOT_ADVANCED");
@@ -311,8 +315,22 @@ public class ChecklistSequenceResolver {
         return next == null ? null : new TodaySequenceNextSet(next.getName(), position(next));
     }
 
-    private ChecklistTemplate template(UUID versionId) {
-        return versionId == null ? null : templateRepository.findByTemplateVersionId(versionId).orElse(null);
+    private ChecklistTemplate template(UUID versionId, Map<UUID, ChecklistTemplate> cache) {
+        if (versionId == null) {
+            return null;
+        }
+        if (cache.containsKey(versionId)) {
+            return cache.get(versionId);
+        }
+        ChecklistTemplate resolved = templateRepository.findByTemplateVersionId(versionId).orElse(null);
+        cache.put(versionId, resolved);
+        return resolved;
+    }
+
+    private boolean isVisibleTemplateInstance(
+            ChecklistInstance instance, Map<UUID, ChecklistTemplate> cache) {
+        return ChecklistTemplateVisibilityPolicy.isVisible(
+                instance, template(instance.getTemplateVersionId(), cache));
     }
 
     private boolean isSequenceTemplate(ChecklistTemplate template) {

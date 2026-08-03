@@ -10,6 +10,7 @@ import com.carebridge.backend.checklist.history.dto.ChecklistHistoryPageResponse
 import com.carebridge.backend.checklist.history.dto.ChecklistHistoryTaskResponse;
 import com.carebridge.backend.checklist.model.ChecklistCareContextType;
 import com.carebridge.backend.checklist.model.ChecklistTargetSubject;
+import com.carebridge.backend.checklist.policy.ChecklistTemplateVisibilityPolicy;
 import com.carebridge.backend.checklist.repository.ChecklistInstanceRepository;
 import com.carebridge.backend.checklist.repository.ChecklistTaskInstanceRepository;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
@@ -94,7 +95,11 @@ public class ChecklistHistoryService {
 
         Page<ChecklistInstance> historyPage = instanceRepository.findOwnerHistory(
                 ownerUserId, targetSubject, PageRequest.of(safePage, safeSize));
-        List<ChecklistInstance> instances = historyPage.getContent();
+        List<ChecklistInstance> fetchedInstances = historyPage.getContent();
+        Map<UUID, ChecklistTemplate> fetchedTemplates = templatesByVersion(fetchedInstances);
+        List<ChecklistInstance> instances = fetchedInstances.stream()
+                .filter(instance -> isVisibleTemplate(instance, fetchedTemplates))
+                .toList();
         if (instances.isEmpty()) {
             return new ChecklistHistoryPageResponse(
                     List.of(), historyPage.getNumber(), historyPage.getSize(),
@@ -102,7 +107,7 @@ public class ChecklistHistoryService {
         }
 
         Map<UUID, List<ChecklistTaskInstance>> tasksByInstance = tasksByInstance(instances, targetSubject);
-        Map<UUID, ChecklistTemplate> templatesByVersion = templatesByVersion(instances);
+        Map<UUID, ChecklistTemplate> templatesByVersion = fetchedTemplates;
         Map<UUID, String> journeyLabels = journeyLabels(ownerUserId, instances);
         Map<UUID, String> babyLabels = babyLabels(ownerUserId, instances);
 
@@ -151,6 +156,13 @@ public class ChecklistHistoryService {
         return templateRepository.findAllByTemplateVersionIdIn(templateVersionIds).stream()
                 .collect(Collectors.toMap(ChecklistTemplate::getTemplateVersionId, Function.identity(),
                         (left, right) -> left));
+    }
+
+    private boolean isVisibleTemplate(
+            ChecklistInstance instance,
+            Map<UUID, ChecklistTemplate> templatesByVersion) {
+        ChecklistTemplate template = templatesByVersion.get(instance.getTemplateVersionId());
+        return ChecklistTemplateVisibilityPolicy.isVisible(instance, template);
     }
 
     private Map<UUID, String> journeyLabels(UUID ownerUserId, Collection<ChecklistInstance> instances) {
@@ -265,4 +277,5 @@ public class ChecklistHistoryService {
         }
         return Math.min(size, MAX_SIZE);
     }
+
 }

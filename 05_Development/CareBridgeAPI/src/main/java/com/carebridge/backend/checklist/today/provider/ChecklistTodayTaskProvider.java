@@ -5,6 +5,7 @@ import com.carebridge.backend.checklist.entity.ChecklistTaskInstance;
 import com.carebridge.backend.checklist.model.ChecklistInstanceStatus;
 import com.carebridge.backend.checklist.model.ChecklistRecipientRole;
 import com.carebridge.backend.checklist.model.ChecklistTaskStatus;
+import com.carebridge.backend.checklist.policy.ChecklistTemplateVisibilityPolicy;
 import com.carebridge.backend.checklist.repository.ChecklistInstanceRepository;
 import com.carebridge.backend.checklist.repository.ChecklistTaskInstanceRepository;
 import com.carebridge.backend.checklist.sequence.ChecklistSequenceResolver;
@@ -19,8 +20,10 @@ import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -68,10 +71,14 @@ public class ChecklistTodayTaskProvider implements TodayTaskProvider {
     public List<TodayTaskCandidate> findAuthorizedTasks(UUID actorUserId) {
         TodaySequenceProjection sequence = sequenceResolver == null
                 ? null : sequenceResolver.resolve(actorUserId);
+        List<ChecklistInstance> currentInstances = instanceRepository
+                .findByRecipientUserIdAndHistoricalAtIsNull(actorUserId);
+        Map<UUID, ChecklistTemplate> templatesByVersion = templatesByVersion(currentInstances);
         List<AuthorizedInstance> authorizedInstances = new ArrayList<>();
-        for (var instance : instanceRepository.findByRecipientUserIdAndHistoricalAtIsNull(actorUserId)) {
+        for (var instance : currentInstances) {
             if (instance.getStatus() != ChecklistInstanceStatus.CANCELLED
-                    && isVisibleSequenceInstance(instance, sequence)
+                    && isVisibleTemplate(instance, templatesByVersion)
+                    && isVisibleSequenceInstance(instance, sequence, templatesByVersion)
                     && accessPolicy.canView(instance, actorUserId)) {
                 authorizedInstances.add(new AuthorizedInstance(
                         instance, accessPolicy.canComplete(instance, actorUserId)));
@@ -118,9 +125,42 @@ public class ChecklistTodayTaskProvider implements TodayTaskProvider {
         return List.copyOf(result);
     }
 
+    private Map<UUID, ChecklistTemplate> templatesByVersion(Collection<ChecklistInstance> instances) {
+        if (templateRepository == null) {
+            return Map.of();
+        }
+        List<UUID> versionIds = instances.stream()
+                .map(ChecklistInstance::getTemplateVersionId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        if (versionIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, ChecklistTemplate> result = new LinkedHashMap<>();
+        for (ChecklistTemplate template : templateRepository.findAllByTemplateVersionIdIn(versionIds)) {
+            result.putIfAbsent(template.getTemplateVersionId(), template);
+        }
+        return result;
+    }
+
+    private boolean isVisibleTemplate(
+            ChecklistInstance instance,
+            Map<UUID, ChecklistTemplate> templatesByVersion) {
+        if (templateRepository == null) {
+            // Preserve the lightweight compatibility constructor used by callers
+            // that do not provide template metadata.
+            return true;
+        }
+        ChecklistTemplate template = templatesByVersion.get(instance.getTemplateVersionId());
+        return ChecklistTemplateVisibilityPolicy.isVisible(instance, template);
+    }
+
     private boolean isVisibleSequenceInstance(
-            ChecklistInstance instance, TodaySequenceProjection sequence) {
-        if (sequence == null || !isSequenceInstance(instance)) {
+            ChecklistInstance instance,
+            TodaySequenceProjection sequence,
+            Map<UUID, ChecklistTemplate> templatesByVersion) {
+        if (sequence == null || !isSequenceInstance(instance, templatesByVersion)) {
             return true;
         }
         // A blocked projection deliberately has no current instance, so all sequence
@@ -129,12 +169,13 @@ public class ChecklistTodayTaskProvider implements TodayTaskProvider {
                 && sequence.currentInstanceId().equals(instance.getId());
     }
 
-    private boolean isSequenceInstance(ChecklistInstance instance) {
+    private boolean isSequenceInstance(
+            ChecklistInstance instance,
+            Map<UUID, ChecklistTemplate> templatesByVersion) {
         if (templateRepository == null || instance.getTemplateVersionId() == null) {
             return false;
         }
-        ChecklistTemplate template = templateRepository.findByTemplateVersionId(
-                instance.getTemplateVersionId()).orElse(null);
+        ChecklistTemplate template = templatesByVersion.get(instance.getTemplateVersionId());
         return template != null
                 && template.getStage() == ContentStage.PRE_PREGNANCY
                 && template.getTemplateType() == ChecklistTemplateType.MANDATORY

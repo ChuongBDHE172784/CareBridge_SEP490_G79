@@ -23,6 +23,9 @@ import com.carebridge.backend.checklist.repository.ChecklistTaskInstanceReposito
 import com.carebridge.backend.checklist.service.UserCreatedChecklistTaskService;
 import com.carebridge.backend.checklist.today.policy.UnifiedTaskAccessPolicy;
 import com.carebridge.backend.checklist.today.policy.UnifiedTaskMutationPolicy;
+import com.carebridge.backend.content.entity.ChecklistTemplate;
+import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
+import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
 import com.carebridge.backend.journey.entity.JourneyStatus;
 import com.carebridge.backend.journey.entity.JourneyType;
 import com.carebridge.backend.journey.entity.MotherJourney;
@@ -147,5 +150,41 @@ class UserCreatedChecklistTaskServiceTest {
         assertThat(parent.getCancelledAt()).isNull();
         assertThat(parent.getCancellationReasonCode()).isNull();
         verify(instances).save(parent);
+    }
+
+    @Test
+    void listAuthorizedOmitsArchivedSystemTemplateInstances() {
+        UUID actor = UUID.randomUUID();
+        UUID instanceId = UUID.randomUUID();
+        UUID versionId = UUID.randomUUID();
+        ChecklistInstance archived = ChecklistInstance.builder()
+                .id(instanceId)
+                .templateVersionId(versionId)
+                .recipientUserId(actor)
+                .recipientRole(com.carebridge.backend.checklist.model.ChecklistRecipientRole.MOTHER)
+                .careContextType(com.carebridge.backend.checklist.model.ChecklistCareContextType.JOURNEY)
+                .careContextId(UUID.randomUUID())
+                .contextOwnerUserId(actor)
+                .origin(ChecklistOrigin.SYSTEM_TEMPLATE)
+                .status(ChecklistInstanceStatus.PENDING)
+                .build();
+        MotherJourneyRepository journeys = mock(MotherJourneyRepository.class);
+        BabyProfileRepository babies = mock(BabyProfileRepository.class);
+        ChecklistInstanceRepository instances = mock(ChecklistInstanceRepository.class);
+        ChecklistTaskInstanceRepository tasks = mock(ChecklistTaskInstanceRepository.class);
+        UnifiedTaskMutationPolicy mutationPolicy = mock(UnifiedTaskMutationPolicy.class);
+        UnifiedTaskAccessPolicy accessPolicy = mock(UnifiedTaskAccessPolicy.class);
+        AuditService audit = mock(AuditService.class);
+        ChecklistTemplateRepository templates = mock(ChecklistTemplateRepository.class);
+        when(instances.findByRecipientUserId(actor)).thenReturn(List.of(archived));
+        when(templates.findAllByTemplateVersionIdIn(List.of(versionId))).thenReturn(List.of(
+                ChecklistTemplate.builder().templateVersionId(versionId)
+                        .status(ChecklistTemplateStatus.ARCHIVED).build()));
+
+        UserCreatedChecklistTaskService service = new UserCreatedChecklistTaskService(
+                journeys, babies, instances, tasks, mutationPolicy, accessPolicy, audit, templates);
+
+        assertThat(service.listAuthorized(actor, null, null)).isEmpty();
+        verify(tasks, org.mockito.Mockito.never()).findAllByChecklistInstanceIds(any());
     }
 }

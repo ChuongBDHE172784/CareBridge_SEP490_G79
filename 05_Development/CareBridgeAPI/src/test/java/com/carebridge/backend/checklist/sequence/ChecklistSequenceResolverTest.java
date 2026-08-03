@@ -103,6 +103,39 @@ class ChecklistSequenceResolverTest {
         assertThat(projection.sequenceComplete()).isTrue();
     }
 
+    @Test
+    void archivedCurrentTemplateIsNotExposedBySequenceProjection() {
+        ChecklistTemplateRepository templates = mock(ChecklistTemplateRepository.class);
+        ChecklistInstanceRepository instances = mock(ChecklistInstanceRepository.class);
+        ChecklistTaskInstanceRepository tasks = mock(ChecklistTaskInstanceRepository.class);
+        ChecklistTemplate archivedFirst = template(VERSION_1, 1, "Archived set 1");
+        archivedFirst.setStatus(ChecklistTemplateStatus.ARCHIVED);
+        ChecklistTemplate activeSecond = template(VERSION_2, 2, "Set 2");
+        when(templates.findAllDistributionEnabledByStageAndStatus(
+                ContentStage.PRE_PREGNANCY, ChecklistTemplateStatus.APPROVED))
+                .thenReturn(List.of(activeSecond));
+        when(templates.findByStageAndStatusOrderByUpdatedAtDesc(
+                ContentStage.PRE_PREGNANCY, ChecklistTemplateStatus.ARCHIVED))
+                .thenReturn(List.of(archivedFirst));
+        when(templates.findByTemplateVersionId(VERSION_1)).thenReturn(Optional.of(archivedFirst));
+        ChecklistInstance current = ChecklistInstance.builder()
+                .id(INSTANCE)
+                .templateVersionId(VERSION_1)
+                .recipientUserId(OWNER)
+                .recipientRole(ChecklistRecipientRole.MOTHER)
+                .careContextType(ChecklistCareContextType.JOURNEY)
+                .careContextId(UUID.fromString("20000000-0000-0000-0000-000000000005"))
+                .contextOwnerUserId(OWNER)
+                .origin(ChecklistOrigin.SYSTEM_TEMPLATE)
+                .build();
+        when(instances.findByRecipientUserIdAndHistoricalAtIsNull(OWNER)).thenReturn(List.of(current));
+
+        var projection = new ChecklistSequenceResolver(templates, instances, tasks).resolve(OWNER);
+
+        assertThat(projection.currentInstanceId()).isNull();
+        assertThat(projection.nextSet()).isNull();
+    }
+
     private static ChecklistTemplate template(UUID version, int position, String name) {
         return ChecklistTemplate.builder().id(UUID.randomUUID()).templateVersionId(version)
                 .templateLineageId(UUID.randomUUID()).name(name).stage(ContentStage.PRE_PREGNANCY)
