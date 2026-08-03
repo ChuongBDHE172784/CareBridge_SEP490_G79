@@ -451,6 +451,16 @@ export async function getExpertReviewCases(
 	return data.data;
 }
 
+export async function getExpertReviewCase(profileId: string): Promise<ExpertReviewCaseResponse> {
+	const { data } = await apiClient.get(`/api/v1/expert/review-cases/${profileId}`);
+	return data.data;
+}
+
+export async function getAdminExpertProfiles(): Promise<ExpertProfileResponse[]> {
+	const { data } = await apiClient.get('/api/v1/expert/admin/profiles');
+	return data.data;
+}
+
 export async function getCredentialDocumentPreview(
 	credentialId: string
 ): Promise<CredentialDocumentPreviewResponse> {
@@ -509,4 +519,3 @@ export async function postCommunityAnswer(
 	);
 	return data.data;
 }
-

@@ -30,6 +30,7 @@ const NAV_LINKS: readonly NavItem[] = [
     icon: 'medical_services',
     roles: ['SYSTEM_ADMIN'],
     children: [
+      { to: '/admin/experts', label: 'Danh sách chuyên gia', icon: 'group', roles: ['SYSTEM_ADMIN'] },
       { to: '/admin/expert-verification-queue', label: 'Xét duyệt chuyên gia', icon: 'verified_user', roles: ['SYSTEM_ADMIN'] },
     ],
   },
@@ -74,7 +75,7 @@ export default function AdminLayout() {
   const isModerator = user?.role === 'MODERATOR';
 
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => ({
-    'Quản lý chuyên gia': location.pathname.startsWith('/admin/expert-'),
+    'Quản lý chuyên gia': location.pathname.startsWith('/admin/expert'),
     'Hệ thống kiểm duyệt': [
       '/admin/safety-rules',
       '/admin/system-configuration',
@@ -202,4 +203,3 @@ export default function AdminLayout() {
     </div>
   );
 }
-
