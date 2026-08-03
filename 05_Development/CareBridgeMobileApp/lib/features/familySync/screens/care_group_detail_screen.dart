@@ -75,7 +75,7 @@ class _CareGroupDetailScreenState extends State<CareGroupDetailScreen> {
     try {
       final g = await _service.getGroupMembers(widget.groupId);
       FamilyPermission? perm;
-      final isMotherUser = g.myRole == 'MOTHER' || g.myRole == 'OWNER';
+      final isMotherUser = _isOwnerInGroup(g);
       if (!isMotherUser) {
         final currentUserId = AuthState.instance.userId;
         CareGroupMember? myMember;
@@ -160,7 +160,17 @@ class _CareGroupDetailScreenState extends State<CareGroupDetailScreen> {
     }
   }
 
-  bool get _isMother => _group?.myRole == 'MOTHER' || _group?.myRole == 'OWNER';
+  bool _isOwnerInGroup(CareGroup group) {
+    if (group.myRole == 'OWNER' || group.myRole == 'MOTHER') return true;
+    final currentUserId = AuthState.instance.userId;
+    return currentUserId != null &&
+        group.members.any(
+          (member) =>
+              member.userId == currentUserId && member.memberRole == 'OWNER',
+        );
+  }
+
+  bool get _isMother => _group != null && _isOwnerInGroup(_group!);
 
   bool get _canAccessAlertsAndTasks =>
       _isMother || (_myPermissions != null ? _myPermissions!.alerts : false);
