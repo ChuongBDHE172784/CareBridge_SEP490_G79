@@ -115,6 +115,9 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
   StreamSubscription<ImuDiagnosticsSnapshot>? _diagnosticsSubscription;
   ImuDiagnosticsSnapshot? _imuDiagnostics;
   Timer? _demoRecoveryTimer;
+  Timer? _demoGestureArmTimer;
+  int? _demoGestureGeneration;
+  int _lastDemoGestureSequence = 0;
   final SafetyRealEventQueue _pendingRealEvents = SafetyRealEventQueue();
   String? _countdownEventId;
   bool _loading = true;
@@ -143,17 +146,67 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
     _detectedEventSubscription?.cancel();
     _diagnosticsSubscription?.cancel();
     _demoRecoveryTimer?.cancel();
+    _demoGestureArmTimer?.cancel();
     super.dispose();
   }
 
   void _onDiagnosticsSnapshot(ImuDiagnosticsSnapshot snapshot) {
     if (!mounted) return;
     setState(() => _imuDiagnostics = snapshot);
+    _handleDemoGesture(snapshot);
     if (!safetyDemoMode || snapshot.state != ImuSamplingState.stopped) return;
     if (_demoRecoveryTimer?.isActive ?? false) return;
     _demoRecoveryTimer = Timer(const Duration(seconds: 1), () {
       if (mounted) unawaited(_foregroundCoordinator.reconcile());
     });
+  }
+
+  void _handleDemoGesture(ImuDiagnosticsSnapshot snapshot) {
+    if (!safetyDemoMode) return;
+    if (_demoGestureGeneration != snapshot.generation) {
+      _demoGestureGeneration = snapshot.generation;
+      _lastDemoGestureSequence = snapshot.demoGestureSequence;
+      return;
+    }
+    final gestureDetected =
+        snapshot.demoGestureSequence > _lastDemoGestureSequence;
+    _lastDemoGestureSequence = snapshot.demoGestureSequence;
+    if (!gestureDetected || !(_demoGestureArmTimer?.isActive ?? false)) {
+      return;
+    }
+    _demoGestureArmTimer?.cancel();
+    setState(() {});
+    unawaited(_runSafeSimulation());
+  }
+
+  void _armDemoGesture() {
+    final diagnostics = _imuDiagnostics;
+    final eligible = isSafeFallSimulationEligible(
+      config: _config,
+      coordinatorRunning: _foregroundCoordinator.isRunning,
+      diagnostics: diagnostics,
+      now: DateTime.now().toUtc(),
+    );
+    if (!safetyDemoMode || !eligible || _countdownEventId != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('IMU phải đang nhận mẫu trước khi bật cử chỉ demo.'),
+        ),
+      );
+      return;
+    }
+
+    _demoGestureGeneration = diagnostics?.generation;
+    _lastDemoGestureSequence = diagnostics?.demoGestureSequence ?? 0;
+    _demoGestureArmTimer?.cancel();
+    _demoGestureArmTimer = Timer(const Duration(seconds: 8), () {
+      if (!mounted) return;
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã hết 8 giây chờ cử chỉ demo.')),
+      );
+    });
+    setState(() {});
   }
 
   @override
@@ -704,6 +757,32 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
           if (diagnostics?.errorMessage case final message?)
             Text(message, style: const TextStyle(color: _onErrorContainer)),
           const SizedBox(height: 12),
+          if (safetyDemoMode) ...[
+            FilledButton.icon(
+              key: const Key('arm-safety-demo-gesture'),
+              onPressed: _armDemoGesture,
+              icon: Icon(
+                _demoGestureArmTimer?.isActive ?? false
+                    ? Icons.sensors
+                    : Icons.sports_handball_outlined,
+              ),
+              label: Text(
+                _demoGestureArmTimer?.isActive ?? false
+                    ? 'ĐÃ SẴN SÀNG — HÃY VUNG MÁY'
+                    : 'Sẵn sàng vung điện thoại',
+              ),
+            ),
+            if (_demoGestureArmTimer?.isActive ?? false) ...[
+              const SizedBox(height: 6),
+              const Text(
+                'Giơ máy cao, vung mạnh từ trên xuống rồi giữ chắc. Không thả máy.',
+                key: Key('safety-demo-gesture-instruction'),
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+              ),
+            ],
+            const SizedBox(height: 8),
+          ],
           OutlinedButton.icon(
             key: const Key('run-safe-fall-simulation'),
             onPressed: _runSafeSimulation,

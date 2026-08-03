@@ -58,6 +58,7 @@ class ImuDiagnosticsSnapshot {
     this.detectorPhase = FallDetectionPhase.idle,
     this.detectorReason = ImuDetectorDecisionReason.awaitingFreeFall,
     this.errorMessage,
+    this.demoGestureSequence = 0,
   });
 
   factory ImuDiagnosticsSnapshot.awaiting({
@@ -83,7 +84,12 @@ class ImuDiagnosticsSnapshot {
     final generation = json['generation'];
     final capturedAt = json['capturedAt'];
     final state = json['state'];
-    if (generation is! int || capturedAt is! String || state is! String) {
+    final demoGestureSequence = json['demoGestureSequence'] ?? 0;
+    if (generation is! int ||
+        capturedAt is! String ||
+        state is! String ||
+        demoGestureSequence is! int ||
+        demoGestureSequence < 0) {
       throw const FormatException('Invalid IMU diagnostics payload');
     }
     return ImuDiagnosticsSnapshot(
@@ -101,6 +107,7 @@ class ImuDiagnosticsSnapshot {
             ImuDetectorDecisionReason.awaitingFreeFall.name,
       ),
       errorMessage: json['errorMessage'] as String?,
+      demoGestureSequence: demoGestureSequence,
     );
   }
 
@@ -133,6 +140,7 @@ class ImuDiagnosticsSnapshot {
   final FallDetectionPhase detectorPhase;
   final ImuDetectorDecisionReason detectorReason;
   final String? errorMessage;
+  final int demoGestureSequence;
 
   Duration ageAt(DateTime now) {
     final age = now.toUtc().difference(capturedAt);
@@ -149,6 +157,7 @@ class ImuDiagnosticsSnapshot {
     'detectorPhase': detectorPhase.name,
     'detectorReason': detectorReason.name,
     'errorMessage': errorMessage,
+    'demoGestureSequence': demoGestureSequence,
   };
 
   @override
@@ -162,7 +171,8 @@ class ImuDiagnosticsSnapshot {
       gyroscopeMagnitude == other.gyroscopeMagnitude &&
       detectorPhase == other.detectorPhase &&
       detectorReason == other.detectorReason &&
-      errorMessage == other.errorMessage;
+      errorMessage == other.errorMessage &&
+      demoGestureSequence == other.demoGestureSequence;
 
   @override
   int get hashCode => Object.hash(
@@ -175,5 +185,6 @@ class ImuDiagnosticsSnapshot {
     detectorPhase,
     detectorReason,
     errorMessage,
+    demoGestureSequence,
   );
 }

@@ -57,6 +57,8 @@ class FallDetectionSensorService {
   StreamSubscription<AccelerometerEvent>? _accelerometerSubscription;
   StreamSubscription<GyroscopeEvent>? _gyroscopeSubscription;
   final ImuFallDetector _detector = ImuFallDetector();
+  final SafetyDemoGestureDetector _demoGestureDetector =
+      SafetyDemoGestureDetector();
   GyroscopeEvent? _latestGyroscope;
   bool _sending = false;
   bool _running = false;
@@ -108,6 +110,7 @@ class FallDetectionSensorService {
         : _runGeneration + 1;
     _accelerometerStreamError = null;
     _gyroscopeStreamError = null;
+    _demoGestureDetector.reset();
     if (safetyDiagnosticsEnabled) {
       _lastAccelerometerAt = null;
       _sampleRateHz = null;
@@ -216,7 +219,11 @@ class FallDetectionSensorService {
       gyroscopeTimestamp: gyro?.timestamp.toUtc(),
     );
     final candidate = _detector.addSample(sample);
-    if (safetyDiagnosticsEnabled) _publishSamplingDiagnostics(sample);
+    final demoGestureDetected =
+        safetyDemoMode && _demoGestureDetector.addSample(sample);
+    if (safetyDiagnosticsEnabled) {
+      _publishSamplingDiagnostics(sample, force: demoGestureDetected);
+    }
     if (_locationSharingAllowed &&
         (_locationReadAt == null ||
             timestamp.difference(_locationReadAt!) >
@@ -235,7 +242,7 @@ class FallDetectionSensorService {
     _latestGyroscope = event;
   }
 
-  void _publishSamplingDiagnostics(ImuSample sample) {
+  void _publishSamplingDiagnostics(ImuSample sample, {bool force = false}) {
     final previousAt = _lastAccelerometerAt;
     if (previousAt != null && sample.timestamp.isAfter(previousAt)) {
       final micros = sample.timestamp.difference(previousAt).inMicroseconds;
@@ -266,7 +273,9 @@ class FallDetectionSensorService {
           accelerationMagnitude: sample.accelerationMagnitude,
           detectorPhase: _detector.latestDecision.phase,
           detectorReason: ImuDetectorDecisionReason.gyroscopeMissing,
+          demoGestureSequence: _demoGestureDetector.sequence,
         ),
+        force: force,
       );
       return;
     }
@@ -282,7 +291,9 @@ class FallDetectionSensorService {
           gyroscopeMagnitude: sample.gyroscopeMagnitude,
           detectorPhase: _detector.latestDecision.phase,
           detectorReason: ImuDetectorDecisionReason.gyroscopeStale,
+          demoGestureSequence: _demoGestureDetector.sequence,
         ),
+        force: force,
       );
       return;
     }
@@ -298,7 +309,9 @@ class FallDetectionSensorService {
             : sample.gyroscopeMagnitude,
         detectorPhase: _detector.latestDecision.phase,
         detectorReason: _detector.latestDecision.reason,
+        demoGestureSequence: _demoGestureDetector.sequence,
       ),
+      force: force,
     );
   }
 

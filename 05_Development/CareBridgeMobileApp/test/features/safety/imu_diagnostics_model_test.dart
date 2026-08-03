@@ -13,6 +13,7 @@ void main() {
       gyroscopeMagnitude: 0.12,
       detectorPhase: FallDetectionPhase.impact,
       detectorReason: ImuDetectorDecisionReason.impactDetected,
+      demoGestureSequence: 4,
     );
 
     expect(ImuDiagnosticsSnapshot.fromJson(snapshot.toJson()), snapshot);
@@ -21,6 +22,15 @@ void main() {
   test('rejects malformed payloads without throwing', () {
     expect(ImuDiagnosticsSnapshot.tryParse({'state': 'sampling'}), isNull);
     expect(ImuDiagnosticsSnapshot.tryParse('invalid'), isNull);
+    expect(
+      ImuDiagnosticsSnapshot.tryParse({
+        'generation': 1,
+        'state': 'sampling',
+        'capturedAt': DateTime.utc(2026).toIso8601String(),
+        'demoGestureSequence': -1,
+      }),
+      isNull,
+    );
     expect(
       ImuDiagnosticsSnapshot.tryParse({
         'generation': 1,

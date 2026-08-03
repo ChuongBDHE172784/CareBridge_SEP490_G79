@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:untitled/features/safety/models/imu_diagnostics_model.dart';
 import 'package:untitled/features/safety/services/fall_detection_sensor_service.dart';
+import 'package:untitled/features/safety/services/safety_demo_mode.dart';
 
 void main() {
   test(
@@ -117,5 +118,41 @@ void main() {
       expect(snapshots.last.state, ImuSamplingState.error);
       await subscription.cancel();
     },
+  );
+
+  test(
+    'demo gesture bypasses diagnostics throttle with a new sequence',
+    () async {
+      final accelerometer = StreamController<AccelerometerEvent>.broadcast();
+      final gyroscope = StreamController<GyroscopeEvent>.broadcast();
+      var now = DateTime.utc(2026, 8, 4, 10);
+      final service = FallDetectionSensorService.forTesting(
+        accelerometerEvents: () => accelerometer.stream,
+        gyroscopeEvents: () => gyroscope.stream,
+        now: () => now,
+      );
+      final snapshots = <ImuDiagnosticsSnapshot>[];
+      final subscription = service.diagnostics.listen(snapshots.add);
+      await service.start();
+
+      gyroscope.add(GyroscopeEvent(0.1, 0, 0, now));
+      accelerometer.add(AccelerometerEvent(9.81, 0, 0, now));
+      await Future<void>.delayed(Duration.zero);
+      final beforeGestureCount = snapshots.length;
+
+      now = now.add(const Duration(milliseconds: 50));
+      gyroscope.add(GyroscopeEvent(1, 0, 0, now));
+      accelerometer.add(AccelerometerEvent(6, 0, 0, now));
+      await Future<void>.delayed(Duration.zero);
+
+      expect(snapshots, hasLength(beforeGestureCount + 1));
+      expect(snapshots.last.demoGestureSequence, 1);
+
+      await service.stop();
+      await subscription.cancel();
+      await accelerometer.close();
+      await gyroscope.close();
+    },
+    skip: !safetyDemoMode,
   );
 }
