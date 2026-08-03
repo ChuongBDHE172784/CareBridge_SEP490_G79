@@ -1,14 +1,11 @@
 import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
-import 'package:trackasia_gl/trackasia_gl.dart'
-    if (dart.library.js) '../widgets/trackasia_gl_stub.dart'
-    if (dart.library.html) '../widgets/trackasia_gl_stub.dart';
+import 'package:trackasia_gl/trackasia_gl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/auth/auth_state.dart';
@@ -983,17 +980,15 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
 
   Widget _buildTrackAsiaMap() {
     final position = _position;
-    if (kIsWeb || _trackAsiaMapKey.isEmpty || position == null) {
+    if (_trackAsiaMapKey.isEmpty || position == null) {
       return Container(
         key: const Key('trackasia-map-unavailable'),
         color: const Color(0xFFF0E8E5),
         alignment: Alignment.center,
         child: Text(
-          kIsWeb
-              ? 'Bản đồ TrackAsia không hỗ trợ Flutter Web'
-              : position == null
-                  ? 'Đang chờ vị trí để mở TrackAsia Map'
-                  : 'Thiếu TRACKASIA_MAP_KEY cho bản đồ TrackAsia',
+          position == null
+              ? 'Đang chờ vị trí để mở TrackAsia Map'
+              : 'Thiếu TRACKASIA_MAP_KEY cho bản đồ TrackAsia',
           textAlign: TextAlign.center,
         ),
       );

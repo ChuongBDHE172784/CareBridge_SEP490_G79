@@ -545,6 +545,7 @@ void main() {
 
         await clearLocalSessionAfterLogout(
           accountId: 'account-a',
+          isCapturedSessionCurrent: () => true,
           clearDraft: (_) async => throw StateError('draft storage failed'),
           clearRecommendationDraft: (accountId) async {
             expect(accountId, 'account-a');
@@ -568,6 +569,7 @@ void main() {
 
         await clearLocalSessionAfterLogout(
           accountId: 'account-a',
+          isCapturedSessionCurrent: () => true,
           clearDraft: (accountId) async {
             expect(accountId, 'account-a');
             pregnancyDraftCleared = true;
@@ -591,6 +593,7 @@ void main() {
 
       await clearLocalSessionAfterLogout(
         accountId: null,
+        isCapturedSessionCurrent: () => true,
         clearDraft: (_) async {
           pregnancyDraftCalls++;
         },

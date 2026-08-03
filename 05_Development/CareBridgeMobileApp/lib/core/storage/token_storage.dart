@@ -1,4 +1,5 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../features/aiTriage/models/triage_continuation.dart';
 import '../../features/aiTriage/services/triage_continuation_store.dart';
@@ -11,7 +12,7 @@ abstract class TokenStorage {
     required String role,
   });
   Future<Map<String, String?>> load();
-  Future<void> clear();
+  Future<void> clear({String? expectedUserId});
 }
 
 class SecureTokenStorage implements TokenStorage {
@@ -71,7 +72,12 @@ class SecureTokenStorage implements TokenStorage {
     ]);
     if (results.any((value) => value == null || value.isEmpty)) {
       if (results.any((value) => value != null)) {
-        await _deleteCredentialKeys();
+        final storedUserId = results[2];
+        await clear(
+          expectedUserId: storedUserId != null && storedUserId.isNotEmpty
+              ? storedUserId
+              : null,
+        );
       }
       return {
         'accessToken': null,
@@ -92,25 +98,46 @@ class SecureTokenStorage implements TokenStorage {
   }
 
   @override
-  Future<void> clear() async {
-    final userId = await _store.read(key: _keyUserId);
-    await _deleteCredentialKeys();
-    if (userId != null) {
-      await Future.wait([
-        PostpartumDraftStorageCoordinator.invalidateUser(userId),
-        _triageContinuationStore.invalidateUser(userId),
-        _store.delete(key: _onboardingDraftKey(userId)),
-      ]);
-    }
-  }
+  Future<void> clear({String? expectedUserId}) =>
+      clearCredentialBundleFailClosed(
+        expectedUserId: expectedUserId,
+        readStoredUserId: () => _store.read(key: _keyUserId),
+        invalidateCommitMarker: _invalidateCredentialCommitMarker,
+        deleteCredentialPayload: _deleteCredentialPayloadKeys,
+        clearAccountState: (userId) => Future.wait([
+          PostpartumDraftStorageCoordinator.invalidateUser(userId),
+          _triageContinuationStore.invalidateUser(userId),
+          _store.delete(key: _onboardingDraftKey(userId)),
+        ]),
+      );
 
   static String _onboardingDraftKey(String userId) =>
       'cb_journey_onboarding_draft_$userId';
 
-  static Future<void> _deleteCredentialKeys() => Future.wait([
+  static Future<void> _deleteCredentialKeys() =>
+      clearCredentialBundleFailClosed(
+        invalidateCommitMarker: _invalidateCredentialCommitMarker,
+        deleteCredentialPayload: _deleteCredentialPayloadKeys,
+      );
+
+  /// The user ID is the bundle commit marker. Deleting it first prevents a
+  /// partially failed cleanup from ever being accepted by [load]. If delete
+  /// itself fails, an empty marker provides the same fail-closed behavior.
+  static Future<void> _invalidateCredentialCommitMarker() async {
+    try {
+      await _store.delete(key: _keyUserId);
+    } catch (deleteError, deleteStackTrace) {
+      try {
+        await _store.write(key: _keyUserId, value: '');
+      } catch (_) {
+        Error.throwWithStackTrace(deleteError, deleteStackTrace);
+      }
+    }
+  }
+
+  static Future<void> _deleteCredentialPayloadKeys() => Future.wait([
     _store.delete(key: _keyAccess),
     _store.delete(key: _keyRefresh),
-    _store.delete(key: _keyUserId),
     _store.delete(key: _keyRole),
   ]);
 
@@ -138,6 +165,63 @@ class SecureTokenStorage implements TokenStorage {
 
   Future<void> invalidateTriageContinuation(String userId) =>
       _triageContinuationStore.invalidateUser(userId);
+}
+
+/// Runs credential invalidation as a fail-closed sequence while preserving the
+/// first failure for the caller. Every later cleanup step is still attempted,
+/// so one broken secure-storage operation cannot prevent payload deletion or
+/// account-scoped AI Triage/draft invalidation.
+@visibleForTesting
+Future<void> clearCredentialBundleFailClosed({
+  String? expectedUserId,
+  Future<String?> Function()? readStoredUserId,
+  required Future<void> Function() invalidateCommitMarker,
+  required Future<void> Function() deleteCredentialPayload,
+  Future<void> Function(String userId)? clearAccountState,
+}) async {
+  Object? firstError;
+  StackTrace? firstStackTrace;
+
+  void capture(Object error, StackTrace stackTrace) {
+    firstError ??= error;
+    firstStackTrace ??= stackTrace;
+  }
+
+  var cleanupUserId = expectedUserId;
+  if (cleanupUserId == null &&
+      readStoredUserId != null &&
+      clearAccountState != null) {
+    try {
+      cleanupUserId = await readStoredUserId();
+    } catch (error, stackTrace) {
+      capture(error, stackTrace);
+    }
+  }
+
+  try {
+    await invalidateCommitMarker();
+  } catch (error, stackTrace) {
+    capture(error, stackTrace);
+  }
+
+  try {
+    await deleteCredentialPayload();
+  } catch (error, stackTrace) {
+    capture(error, stackTrace);
+  }
+
+  if (cleanupUserId != null && clearAccountState != null) {
+    try {
+      await clearAccountState(cleanupUserId);
+    } catch (error, stackTrace) {
+      capture(error, stackTrace);
+    }
+  }
+
+  final error = firstError;
+  if (error != null) {
+    Error.throwWithStackTrace(error, firstStackTrace!);
+  }
 }
 
 /// Serializes encrypted postpartum-draft operations per account.

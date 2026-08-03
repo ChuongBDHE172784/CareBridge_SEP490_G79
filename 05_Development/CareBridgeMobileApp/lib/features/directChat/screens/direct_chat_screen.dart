@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
@@ -492,15 +491,26 @@ class _DirectChatScreenState extends State<DirectChatScreen>
                   Container(
                     width: double.infinity,
                     color: const Color(0xFFFEF3C7),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
                     child: Row(
                       children: [
-                        const Icon(Icons.info_outline, color: Color(0xFFD97706), size: 20),
+                        const Icon(
+                          Icons.info_outline,
+                          color: Color(0xFFD97706),
+                          size: 20,
+                        ),
                         const SizedBox(width: 10),
                         const Expanded(
                           child: Text(
                             'Chuyên gia hiện không khả dụng. Bạn vẫn có thể xem lại lịch sử trò chuyện.',
-                            style: TextStyle(color: Color(0xFF92400E), fontSize: 13, height: 1.3),
+                            style: TextStyle(
+                              color: Color(0xFF92400E),
+                              fontSize: 13,
+                              height: 1.3,
+                            ),
                           ),
                         ),
                       ],
@@ -525,7 +535,10 @@ class _DirectChatScreenState extends State<DirectChatScreen>
                           return const Padding(
                             padding: EdgeInsets.symmetric(vertical: 8),
                             child: Center(
-                              child: CircularProgressIndicator(strokeWidth: 2, color: _primary),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: _primary,
+                              ),
                             ),
                           );
                         }
@@ -572,14 +585,19 @@ class _DirectChatScreenState extends State<DirectChatScreen>
                 shape: BoxShape.circle,
               ),
               child: IconButton(
-                icon: const Icon(Icons.add_photo_alternate_rounded, color: _primaryDark),
+                icon: const Icon(
+                  Icons.add_photo_alternate_rounded,
+                  color: _primaryDark,
+                ),
                 onPressed: _sending
                     ? null
                     : () => showModalBottomSheet<void>(
                         context: context,
                         backgroundColor: Colors.white,
                         shape: const RoundedRectangleBorder(
-                          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(24),
+                          ),
                         ),
                         builder: (sheetContext) => SafeArea(
                           child: Wrap(
@@ -596,7 +614,10 @@ class _DirectChatScreenState extends State<DirectChatScreen>
                                 ),
                               ),
                               ListTile(
-                                leading: const Icon(Icons.photo_library_outlined, color: _primary),
+                                leading: const Icon(
+                                  Icons.photo_library_outlined,
+                                  color: _primary,
+                                ),
                                 title: const Text('Chọn từ thư viện'),
                                 onTap: () {
                                   Navigator.pop(sheetContext);
@@ -604,7 +625,10 @@ class _DirectChatScreenState extends State<DirectChatScreen>
                                 },
                               ),
                               ListTile(
-                                leading: const Icon(Icons.attach_file_rounded, color: _primary),
+                                leading: const Icon(
+                                  Icons.attach_file_rounded,
+                                  color: _primary,
+                                ),
                                 title: const Text('Chọn tài liệu'),
                                 onTap: () {
                                   Navigator.pop(sheetContext);
@@ -612,7 +636,10 @@ class _DirectChatScreenState extends State<DirectChatScreen>
                                 },
                               ),
                               ListTile(
-                                leading: const Icon(Icons.camera_alt_outlined, color: _primary),
+                                leading: const Icon(
+                                  Icons.camera_alt_outlined,
+                                  color: _primary,
+                                ),
                                 title: const Text('Chụp ảnh'),
                                 onTap: () {
                                   Navigator.pop(sheetContext);
@@ -642,7 +669,10 @@ class _DirectChatScreenState extends State<DirectChatScreen>
                   decoration: const InputDecoration(
                     hintText: 'Nhập tin nhắn...',
                     hintStyle: TextStyle(color: _onVariant, fontSize: 14),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
                     border: InputBorder.none,
                   ),
                   onSubmitted: (_) => _send(),
@@ -656,7 +686,11 @@ class _DirectChatScreenState extends State<DirectChatScreen>
                 shape: BoxShape.circle,
               ),
               child: IconButton(
-                icon: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                icon: const Icon(
+                  Icons.send_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
                 onPressed: _sending ? null : _send,
               ),
             ),
@@ -809,7 +843,10 @@ class _TimelineTile extends StatelessWidget {
             TextButton.icon(
               onPressed: onRetry,
               icon: const Icon(Icons.refresh, size: 14, color: Colors.red),
-              label: const Text('Gửi lại', style: TextStyle(fontSize: 12, color: Colors.red)),
+              label: const Text(
+                'Gửi lại',
+                style: TextStyle(fontSize: 12, color: Colors.red),
+              ),
             )
           else if (sending)
             const Padding(
@@ -905,13 +942,21 @@ class _TimelineTile extends StatelessWidget {
       final extension = separator > 0
           ? originalName.substring(separator + 1)
           : '';
-      await FileSaver.instance.saveAs(
-        name: name,
-        link: LinkDetails(link: url),
-        fileExtension: extension,
-        mimeType: MimeType.custom,
-        customMimeType: mimeType,
-      );
+      if (kIsWeb) {
+        final opened = await launchUrl(
+          Uri.parse(url),
+          mode: LaunchMode.externalApplication,
+        );
+        if (!opened) throw const FormatException('Cannot open download URL');
+      } else {
+        await FileSaver.instance.saveAs(
+          name: name,
+          link: LinkDetails(link: url),
+          fileExtension: extension,
+          mimeType: MimeType.custom,
+          customMimeType: mimeType,
+        );
+      }
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Đã tải tài liệu xuống máy')),

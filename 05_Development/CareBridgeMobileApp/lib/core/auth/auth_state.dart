@@ -23,11 +23,14 @@ class AuthState extends ChangeNotifier {
   String? _role;
   bool _isRestoring = true;
   BlockedAccountState? _blockedAccount;
+  Completer<void>? _credentialMutationLock;
+  int _sessionGeneration = 0;
 
   String? get accessToken => _accessToken;
   String? get refreshToken => _refreshToken;
   String? get role => _role;
   String? get userId => _userId;
+  int get sessionGeneration => _sessionGeneration;
   bool get isRestoring => _isRestoring;
   bool get isAuthenticated => _accessToken != null && !_isRestoring;
   BlockedAccountState? get blockedAccount => _blockedAccount;
@@ -36,7 +39,7 @@ class AuthState extends ChangeNotifier {
   /// Hydrate auth state from secure storage on app start.
   /// Validates the stored access token locally (JWT expiry check).
   /// No network call — avoids circular dependency with api_client.
-  Future<void> init() async {
+  Future<void> init() => _serializeCredentialMutation(() async {
     try {
       final tokens = await _storage.load();
       final access = tokens['accessToken'];
@@ -49,25 +52,29 @@ class AuthState extends ChangeNotifier {
         _refreshToken = refresh;
         _userId = tokens['userId'];
         _role = tokens['role'];
+        _sessionGeneration++;
         debugPrint('[AuthState] init: valid credentials restored');
       } else if (refresh != null) {
         _refreshToken = refresh;
         _userId = tokens['userId'];
         _role = tokens['role'];
         _accessToken = 'expired';
+        _sessionGeneration++;
         debugPrint('[AuthState] init: refresh required');
       } else {
         debugPrint('[AuthState] init: no tokens → clearing, redirect to login');
-        unawaited(_storage.clear());
+        await _storage.clear();
       }
     } catch (_) {
       debugPrint('[AuthState] init: credential restore failed; clearing');
-      unawaited(_storage.clear());
+      try {
+        await _storage.clear(expectedUserId: _userId);
+      } catch (_) {}
     } finally {
       _isRestoring = false;
       notifyListeners();
     }
-  }
+  });
 
   /// Set tokens after successful OTP verification.
   Future<void> setTokens({
@@ -75,7 +82,7 @@ class AuthState extends ChangeNotifier {
     required String refreshToken,
     required String userId,
     required String role,
-  }) async {
+  }) => _serializeCredentialMutation(() async {
     debugPrint('[AuthState] setTokens: persisting authenticated session');
     try {
       await _storage.save(
@@ -87,7 +94,7 @@ class AuthState extends ChangeNotifier {
     } catch (error, stackTrace) {
       debugPrint('[AuthState] setTokens: persistence failed; clearing session');
       try {
-        await _storage.clear();
+        await _storage.clear(expectedUserId: userId);
       } catch (clearError) {
         debugPrint(
           '[AuthState] setTokens: durable rollback failed: '
@@ -102,9 +109,118 @@ class AuthState extends ChangeNotifier {
     _refreshToken = refreshToken;
     _userId = userId;
     _role = role;
+    _sessionGeneration++;
     notifyListeners();
     debugPrint('[AuthState] setTokens: authenticated session published');
+  });
+
+  /// Publishes refreshed credentials only while the initiating session is
+  /// still current. A completed refresh must never replace a later login.
+  Future<bool> setTokensIfCurrent({
+    required int expectedGeneration,
+    required String expectedAccessToken,
+    required String? expectedRefreshToken,
+    required String expectedUserId,
+    required String accessToken,
+    required String refreshToken,
+    required String role,
+  }) => _serializeCredentialMutation(() async {
+    if (!matchesCredentials(
+      generation: expectedGeneration,
+      accessToken: expectedAccessToken,
+      refreshToken: expectedRefreshToken,
+      userId: expectedUserId,
+      role: role,
+    )) {
+      return false;
+    }
+
+    try {
+      await _storage.save(
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+        userId: expectedUserId,
+        role: role,
+      );
+    } catch (error, stackTrace) {
+      try {
+        await _storage.save(
+          accessToken: expectedAccessToken,
+          refreshToken: expectedRefreshToken ?? '',
+          userId: expectedUserId,
+          role: role,
+        );
+      } catch (_) {
+        _clearCredentialsInMemory();
+        try {
+          await _storage.clear(expectedUserId: expectedUserId);
+        } catch (_) {}
+      }
+      Error.throwWithStackTrace(error, stackTrace);
+    }
+
+    _accessToken = accessToken;
+    _refreshToken = refreshToken;
+    _userId = expectedUserId;
+    _role = role;
+    notifyListeners();
+    return true;
+  });
+
+  bool matchesSession({required int generation, required String userId}) {
+    return _sessionGeneration == generation && _userId == userId;
   }
+
+  bool matchesCredentials({
+    required int generation,
+    required String accessToken,
+    required String? refreshToken,
+    required String userId,
+    required String role,
+  }) {
+    return matchesSession(generation: generation, userId: userId) &&
+        _accessToken == accessToken &&
+        _refreshToken == refreshToken &&
+        _role == role;
+  }
+
+  Future<bool> clearIfCurrentSession({
+    required int generation,
+    required String userId,
+  }) => _serializeCredentialMutation(() async {
+    if (!matchesSession(generation: generation, userId: userId)) {
+      return false;
+    }
+    _blockedAccount = null;
+    _clearCredentialsInMemory();
+    await _storage.clear(expectedUserId: userId);
+    return true;
+  });
+
+  /// Clears only when the exact credential snapshot is still active when the
+  /// serialized mutation executes. This prevents a queued stale 401 from
+  /// erasing credentials published by a newer refresh in the same session.
+  Future<bool> clearIfCurrentCredentials({
+    required int generation,
+    required String accessToken,
+    required String? refreshToken,
+    required String userId,
+    required String role,
+  }) => _serializeCredentialMutation(() async {
+    if (!matchesCredentials(
+      generation: generation,
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      userId: userId,
+      role: role,
+    )) {
+      return false;
+    }
+    _blockedAccount = null;
+    _clearCredentialsInMemory();
+    await _storage.clear(expectedUserId: userId);
+    return true;
+  });
 
   /// Clear in-memory state immediately (synchronous).
   /// Called by api_client on 401; storage clear is fire-and-forget.
@@ -117,25 +233,67 @@ class AuthState extends ChangeNotifier {
     _refreshToken = null;
     _userId = null;
     _role = null;
+    _sessionGeneration++;
     notifyListeners();
   }
 
   /// Full logout: clear state + erase secure storage.
   /// Also resets any blocked reason so a normal 401 logout never strands
   /// the user on the blocked screen.
-  Future<void> clear() async {
+  Future<void> clear() => _serializeCredentialMutation(() async {
+    final userId = _userId;
     _blockedAccount = null;
-    clearState();
-    await _storage.clear();
-  }
+    _clearCredentialsInMemory();
+    await _storage.clear(expectedUserId: userId);
+  });
 
   /// Sets structured restriction state before clearing credentials so routing
   /// transitions directly to BlockedAccountScreen.
-  Future<void> clearWithBlockedAccount(BlockedAccountState state) async {
+  Future<void> clearWithBlockedAccount(BlockedAccountState state) =>
+      _serializeCredentialMutation(() async {
+        final userId = _userId;
+        _blockedAccount = state;
+        _clearCredentialsInMemory();
+        await _storage.clear(expectedUserId: userId);
+      });
+
+  Future<bool> clearWithBlockedAccountIfCurrentSession({
+    required int generation,
+    required String userId,
+    required BlockedAccountState state,
+  }) => _serializeCredentialMutation(() async {
+    if (!matchesSession(generation: generation, userId: userId)) return false;
     _blockedAccount = state;
-    clearState();
-    unawaited(_storage.clear());
-  }
+    _clearCredentialsInMemory();
+    await _storage.clear(expectedUserId: userId);
+    return true;
+  });
+
+  /// Applies a blocked-account response only while the exact credentials that
+  /// produced it are still active. Token rotation intentionally preserves the
+  /// session generation, so session identity alone is not sufficient here.
+  Future<bool> clearWithBlockedAccountIfCurrentCredentials({
+    required int generation,
+    required String accessToken,
+    required String? refreshToken,
+    required String userId,
+    required String role,
+    required BlockedAccountState state,
+  }) => _serializeCredentialMutation(() async {
+    if (!matchesCredentials(
+      generation: generation,
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      userId: userId,
+      role: role,
+    )) {
+      return false;
+    }
+    _blockedAccount = state;
+    _clearCredentialsInMemory();
+    await _storage.clear(expectedUserId: userId);
+    return true;
+  });
 
   /// Compatibility entry point for older tests and callers.
   Future<void> clearWithReason(String reason) =>
@@ -144,6 +302,29 @@ class AuthState extends ChangeNotifier {
   void clearBlockedReason() {
     _blockedAccount = null;
     notifyListeners();
+  }
+
+  Future<T> _serializeCredentialMutation<T>(
+    Future<T> Function() operation,
+  ) async {
+    late Completer<void> acquiredLock;
+    while (true) {
+      final pending = _credentialMutationLock;
+      if (pending == null) {
+        acquiredLock = Completer<void>();
+        _credentialMutationLock = acquiredLock;
+        break;
+      }
+      await pending.future;
+    }
+    try {
+      return await operation();
+    } finally {
+      if (identical(_credentialMutationLock, acquiredLock)) {
+        _credentialMutationLock = null;
+      }
+      acquiredLock.complete();
+    }
   }
 
   static bool _isJwtExpired(String token) {
