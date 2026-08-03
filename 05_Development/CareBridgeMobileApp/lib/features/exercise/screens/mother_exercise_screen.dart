@@ -5,6 +5,7 @@ import '../models/exercise_model.dart';
 import '../services/exercise_service.dart';
 import 'exercise_history_screen.dart';
 import 'exercise_session_screen.dart';
+import 'enable_posture_camera_sheet.dart';
 import 'pre_exercise_safety_check_screen.dart';
 
 class MotherExerciseScreen extends StatefulWidget {
@@ -115,6 +116,15 @@ class _MotherExerciseScreenState extends State<MotherExerciseScreen> {
         safetyCheck.id,
       );
       if (!mounted) return;
+
+      var enableRealtimePostureCamera = false;
+      if (detail.supportsPostureAnalysis) {
+        enableRealtimePostureCamera = await EnablePostureCameraSheet.show(
+          context,
+        );
+        if (!mounted) return;
+      }
+
       await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => ExerciseSessionScreen(
@@ -127,6 +137,7 @@ class _MotherExerciseScreenState extends State<MotherExerciseScreen> {
             safetyWarning: detail.safetyWarning,
             durationMinutes: detail.durationMinutes,
             sessionId: session.id,
+            enableRealtimePostureCamera: enableRealtimePostureCamera,
           ),
         ),
       );
