@@ -5,11 +5,15 @@ class FamilyPermission {
   final bool logs;
   final bool alerts;
   final bool records;
+  final bool checklistView;
+  final bool checklistComplete;
   final bool quickNotes;
   final bool quickNoteWeight;
   final bool quickNoteHydration;
   final bool quickNoteEpds;
   final bool quickNoteFetalMovement;
+  final bool quickNoteBloodPressure;
+  final bool quickNoteBloodGlucose;
   final DateTime updatedAt;
 
   FamilyPermission({
@@ -19,11 +23,15 @@ class FamilyPermission {
     required this.logs,
     required this.alerts,
     required this.records,
+    this.checklistView = false,
+    this.checklistComplete = false,
     this.quickNotes = false,
     this.quickNoteWeight = false,
     this.quickNoteHydration = false,
     this.quickNoteEpds = false,
     this.quickNoteFetalMovement = false,
+    this.quickNoteBloodPressure = false,
+    this.quickNoteBloodGlucose = false,
     required this.updatedAt,
   });
 
@@ -35,11 +43,16 @@ class FamilyPermission {
       logs: json['logs'] ?? false,
       alerts: json['alerts'] ?? false,
       records: json['records'] ?? false,
+      checklistView: json['checklistView'] ?? json['CHECKLIST_VIEW'] ?? false,
+      checklistComplete:
+          json['checklistComplete'] ?? json['CHECKLIST_COMPLETE'] ?? false,
       quickNotes: json['quickNotes'] ?? false,
       quickNoteWeight: json['quickNoteWeight'] ?? false,
       quickNoteHydration: json['quickNoteHydration'] ?? false,
       quickNoteEpds: json['quickNoteEpds'] ?? false,
       quickNoteFetalMovement: json['quickNoteFetalMovement'] ?? false,
+      quickNoteBloodPressure: json['quickNoteBloodPressure'] ?? false,
+      quickNoteBloodGlucose: json['quickNoteBloodGlucose'] ?? false,
       updatedAt: json['updatedAt'] != null
           ? DateTime.parse(json['updatedAt'])
           : DateTime.now(),

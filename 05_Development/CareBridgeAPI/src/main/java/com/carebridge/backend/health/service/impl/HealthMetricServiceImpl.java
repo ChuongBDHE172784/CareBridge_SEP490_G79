@@ -3,12 +3,6 @@ package com.carebridge.backend.health.service.impl;
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.common.exception.BusinessException;
-import com.carebridge.backend.family.entity.CareGroupStatus;
-import com.carebridge.backend.family.entity.InviteStatus;
-import com.carebridge.backend.family.repository.CareGroupMemberRepository;
-import com.carebridge.backend.family.repository.CareGroupRepository;
-import com.carebridge.backend.family.entity.PermissionFlag;
-import com.carebridge.backend.family.policy.CareGroupAuthorizationPolicy;
 import com.carebridge.backend.health.dto.AddMetricRequest;
 import com.carebridge.backend.health.dto.MetricCapabilityResponse;
 import com.carebridge.backend.health.dto.MetricDataPoint;
@@ -46,7 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class HealthMetricServiceImpl implements IHealthMetricService {
 
     private static final java.util.Set<String> P0_MANUAL_METRICS = java.util.Set.of(
-            "WEIGHT", "BLOOD_PRESSURE", "BLOOD_GLUCOSE", "FETAL_MOVEMENT_SESSION");
+            "WEIGHT", "BLOOD_PRESSURE", "BLOOD_GLUCOSE", "FETAL_MOVEMENT_SESSION", "HYDRATION", "EPDS_SCORE");
     private static final String DISCLAIMER = "Đây là dữ liệu theo dõi, không phải chẩn đoán y khoa.";
 
     private final HealthObservationRepository observationRepository;
@@ -54,9 +48,6 @@ public class HealthMetricServiceImpl implements IHealthMetricService {
     private final MotherJourneyRepository journeyRepository;
     private final AuditService auditService;
     private final ApplicationEventPublisher eventPublisher;
-    private final CareGroupMemberRepository careGroupMemberRepository;
-    private final CareGroupRepository careGroupRepository;
-    private final CareGroupAuthorizationPolicy careGroupAuthorizationPolicy;
     private final MetricObservationValidator validator;
 
     @Override
@@ -260,20 +251,10 @@ public class HealthMetricServiceImpl implements IHealthMetricService {
     }
 
     private void requireTrendAccess(MotherJourney journey, UUID userId) {
-        if (journey.getOwnerUserId().equals(userId)) return;
-        boolean member = careGroupMemberRepository.findByUserIdAndInviteStatus(userId, InviteStatus.ACCEPTED)
-                .stream()
-                .map(membership -> careGroupRepository.findById(membership.getCareGroupId())
-                        .map(group -> new java.util.AbstractMap.SimpleImmutableEntry<>(membership, group))
-                        .orElse(null))
-                .anyMatch(entry -> entry != null
-                        && entry.getValue().getStatus() == CareGroupStatus.ACTIVE
-                        && entry.getValue().getOwnerUserId().equals(journey.getOwnerUserId())
-                        && entry.getValue().getLinkedJourneyId() != null
-                        && entry.getValue().getLinkedJourneyId().equals(journey.getId())
-                        && careGroupAuthorizationPolicy.hasPermission(
-                                entry.getValue().getId(), userId, PermissionFlag.RECORDS));
-        if (!member) {
+        // Family members must use the group-scoped projection, which enforces the
+        // parent permission and the requested metric's child permission. Allowing
+        // RECORDS here would expose every journey metric through this generic API.
+        if (!journey.getOwnerUserId().equals(userId)) {
             throw new BusinessException(HttpStatus.FORBIDDEN, "METRIC-021", "Access denied to journey");
         }
     }
@@ -293,6 +274,8 @@ public class HealthMetricServiceImpl implements IHealthMetricService {
             case "BLOOD_PRESSURE" -> MetricType.BLOOD_PRESSURE;
             case "BLOOD_GLUCOSE" -> MetricType.BLOOD_GLUCOSE;
             case "FETAL_MOVEMENT_SESSION" -> MetricType.FETAL_MOVEMENT_SESSION;
+            case "HYDRATION" -> MetricType.HYDRATION;
+            case "EPDS_SCORE" -> MetricType.EPDS_SCORE;
             default -> throw new BusinessException(HttpStatus.BAD_REQUEST, "METRIC-030", "Unsupported metric type");
         };
     }

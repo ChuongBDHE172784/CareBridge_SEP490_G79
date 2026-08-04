@@ -42,6 +42,9 @@ export interface ContentDetail {
   stage: ContentStage;
   topicId: string;
   tagIds?: string[];
+  eligibleFromWeek?: number | null;
+  eligibleToWeek?: number | null;
+  recommendationPriority?: number;
   version: number;
   publishedAt: string | null;
   status: ContentStatus;
@@ -50,6 +53,18 @@ export interface ContentDetail {
   sourceLabel?: string | null;
   sources?: ContentSource[];
   latestReviewFeedback?: ReviewFeedback | null;
+}
+
+export interface RecommendationTag {
+  id: string;
+  slug: string;
+  domain: string;
+  label: string;
+}
+
+export interface RecommendationTagCatalog {
+  catalogVersion: string;
+  items: RecommendationTag[];
 }
 
 export interface ContentSource { title: string; url?: string; publisher?: string; }
@@ -70,6 +85,7 @@ export interface ChecklistTemplate {
   status: ChecklistTemplateStatus;
   description: string;
   templateType: ChecklistTemplateType;
+  displayOrder?: number | null;
   items: ChecklistItem[];
   latestReviewFeedback?: ReviewFeedback | null;
 }
@@ -80,6 +96,10 @@ export interface ContentVersionSnapshot {
   stage: string | null;
   status: string;
   sourceSummary: string | null;
+  tagIds?: string[];
+  eligibleFromWeek?: number | null;
+  eligibleToWeek?: number | null;
+  recommendationPriority?: number | null;
   changedBy: string | null;
   createdAt: string;
 }
@@ -131,6 +151,7 @@ export interface CreateChecklistTemplatePayload {
   recipientRoles: ChecklistRecipientRole[];
   stage: ContentStage | null;
   substage: ChecklistSubstage | null;
+  displayOrder?: number;
   items: ChecklistItemInput[];
 }
 
@@ -142,6 +163,7 @@ export interface UpdateChecklistTemplatePayload {
   stage: ContentStage | null;
   substage: ChecklistSubstage | null;
   status: ChecklistTemplateStatus;
+  displayOrder?: number;
   // null/undefined = keep existing items unchanged; [] = clear all; non-empty = full replace
   items?: ChecklistItemInput[] | null;
 }
@@ -172,6 +194,8 @@ export interface AdminChecklistTemplate {
   lineageId?: string;
   versionId?: string;
   recipientRoles?: ChecklistRecipientRole[];
+  /** 0/null is the legacy, unsequenced cohort; positive values are sequence positions. */
+  displayOrder?: number | null;
   stage: ContentStage | null;
   substage?: ChecklistSubstage | null;
   status: ChecklistTemplateStatus;

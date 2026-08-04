@@ -3,6 +3,7 @@ package com.carebridge.backend.family.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
@@ -15,6 +16,7 @@ import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.family.dto.SharedDataResponse;
 import com.carebridge.backend.family.entity.CareGroup;
 import com.carebridge.backend.family.entity.CareGroupMember;
+import com.carebridge.backend.family.entity.CareGroupStatus;
 import com.carebridge.backend.family.entity.CareTask;
 import com.carebridge.backend.family.entity.CareTaskStatus;
 import com.carebridge.backend.family.entity.GroupMemberRole;
@@ -23,6 +25,11 @@ import com.carebridge.backend.family.entity.PermissionFlag;
 import com.carebridge.backend.family.entity.SharedDataCategory;
 import com.carebridge.backend.family.policy.CareGroupAuthorizationPolicy;
 import com.carebridge.backend.family.repository.CareGroupMemberRepository;
+import com.carebridge.backend.health.entity.HealthObservation;
+import com.carebridge.backend.health.entity.MetricStatus;
+import com.carebridge.backend.health.repository.HealthObservationRepository;
+import com.carebridge.backend.journey.entity.MotherJourney;
+import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.notification.entity.NotificationRecord;
 import com.carebridge.backend.notification.entity.NotificationType;
 import com.carebridge.backend.notification.repository.NotificationRecordRepository;
@@ -35,6 +42,7 @@ import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.repository.UserRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.TypedQuery;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
@@ -67,6 +75,10 @@ class FamilyDashboardServiceTest {
     private ReminderRepository reminderRepository;
     @Mock
     private ReminderRecurrenceService reminderRecurrenceService;
+    @Mock
+    private MotherJourneyRepository journeyRepository;
+    @Mock
+    private HealthObservationRepository observationRepository;
 
     private final UUID userId = UUID.randomUUID();
     private final UUID motherId = UUID.randomUUID();
@@ -83,7 +95,9 @@ class FamilyDashboardServiceTest {
                 sharedDataService,
                 userRepository,
                 reminderRepository,
-                reminderRecurrenceService);
+                reminderRecurrenceService,
+                journeyRepository,
+                observationRepository);
         stubTaskQuery();
     }
 
@@ -99,6 +113,23 @@ class FamilyDashboardServiceTest {
         assertThat(response.selectedGroupDetail()).isNull();
         assertThat(response.globalAggregate().overdue()).isZero();
         assertThat(response.globalAggregate().alerts()).isZero();
+    }
+
+    @Test
+    void archivedAcceptedGroupIsExcludedFromDashboard() {
+        UUID groupId = UUID.randomUUID();
+        CareGroup archived = group(groupId, "Archived");
+        archived.setStatus(CareGroupStatus.ARCHIVED);
+        stubAcceptedGroups(
+                List.of(membership(groupId, userId, Instant.now())),
+                Map.of(groupId, archived));
+
+        var response = service.get(userId, null);
+
+        assertThat(response.groups()).isEmpty();
+        assertThat(response.selectedGroupDetail()).isNull();
+        verify(observationRepository, never())
+                .findLatestByMetricCodes(any(), anyList(), any());
     }
 
     @Test
@@ -166,12 +197,20 @@ class FamilyDashboardServiceTest {
         Reminder reminder = Reminder.builder()
                 .id(UUID.randomUUID())
                 .ownerUserId(motherId)
-                .reminderType(ReminderType.MEDICATION)
-                .title("Uống vitamin")
+                .journeyId(UUID.randomUUID())
+                .reminderType(ReminderType.APPOINTMENT)
+                .title("Khám thai")
                 .scheduledAt(scheduledAt)
                 .status(ReminderStatus.PENDING)
                 .build();
-        stubAcceptedGroups(List.of(membership), Map.of(groupId, group(groupId, "A")));
+        CareGroup group = group(groupId, "A");
+        group.setLinkedJourneyId(reminder.getJourneyId());
+        stubAcceptedGroups(List.of(membership), Map.of(groupId, group));
+        allowCalendar(groupId);
+        when(journeyRepository.existsByIdAndOwnerUserIdAndStatus(
+                        reminder.getJourneyId(), motherId,
+                        com.carebridge.backend.journey.entity.JourneyStatus.ACTIVE))
+                .thenReturn(true);
         when(memberRepository.findByCareGroupIdAndInviteStatusIn(
                         groupId, List.of(InviteStatus.ACCEPTED)))
                 .thenReturn(List.of(membership));
@@ -189,6 +228,9 @@ class FamilyDashboardServiceTest {
                         scheduledAt,
                         ReminderStatus.PENDING,
                         null)));
+        when(sharedDataService.getSharedData(
+                        groupId, userId, SharedDataCategory.CALENDAR, 0, Integer.MAX_VALUE))
+                .thenReturn(SharedDataResponse.builder().items(List.of()).build());
 
         var response = service.get(userId, groupId);
 
@@ -197,10 +239,26 @@ class FamilyDashboardServiceTest {
                 .singleElement()
                 .satisfies(todayReminder -> {
                     assertThat(todayReminder.id()).isEqualTo(reminder.getId());
-                    assertThat(todayReminder.title()).isEqualTo("Uống vitamin");
-                    assertThat(todayReminder.type()).isEqualTo("MEDICATION");
+                    assertThat(todayReminder.title()).isEqualTo("Khám thai");
+                    assertThat(todayReminder.type()).isEqualTo("APPOINTMENT");
                 });
         verify(reminderRepository)
+                .findByOwnerUserIdAndStatusNot(motherId, ReminderStatus.CANCELLED);
+    }
+
+    @Test
+    void selectedDetailWithoutCalendarPermissionDoesNotExposeMotherReminders() {
+        UUID groupId = UUID.randomUUID();
+        CareGroupMember membership = membership(groupId, userId, Instant.now());
+        stubAcceptedGroups(List.of(membership), Map.of(groupId, group(groupId, "A")));
+        when(memberRepository.findByCareGroupIdAndInviteStatusIn(
+                        groupId, List.of(InviteStatus.ACCEPTED)))
+                .thenReturn(List.of(membership));
+
+        var response = service.get(userId, groupId);
+
+        assertThat(response.selectedGroupDetail().todayReminders()).isEmpty();
+        verify(reminderRepository, never())
                 .findByOwnerUserIdAndStatusNot(motherId, ReminderStatus.CANCELLED);
     }
 
@@ -372,6 +430,120 @@ class FamilyDashboardServiceTest {
                 .getSharedData(groupId, userId, SharedDataCategory.LOGS, 0, Integer.MAX_VALUE);
     }
 
+    @Test
+    void healthMetricSummariesContainOnlyPermittedCanonicalDataAndSafeGlucoseContext() {
+        UUID groupId = UUID.randomUUID();
+        UUID journeyId = UUID.randomUUID();
+        UUID careSubjectId = UUID.randomUUID();
+        CareGroupMember membership = membership(groupId, userId, Instant.now());
+        CareGroup group = CareGroup.builder()
+                .id(groupId).ownerUserId(motherId).groupName("A")
+                .status(CareGroupStatus.ACTIVE).linkedJourneyId(journeyId).build();
+        stubAcceptedGroups(List.of(membership), Map.of(groupId, group));
+        when(memberRepository.findByCareGroupIdAndInviteStatusIn(groupId, List.of(InviteStatus.ACCEPTED)))
+                .thenReturn(List.of(membership));
+        lenient().when(authorizationPolicy.hasPermission(groupId, userId, PermissionFlag.QUICK_NOTES))
+                .thenReturn(true);
+        lenient().when(authorizationPolicy.hasPermission(
+                groupId, userId, PermissionFlag.QUICK_NOTE_BLOOD_PRESSURE)).thenReturn(true);
+        lenient().when(authorizationPolicy.hasPermission(
+                groupId, userId, PermissionFlag.QUICK_NOTE_BLOOD_GLUCOSE)).thenReturn(true);
+        lenient().when(authorizationPolicy.hasPermission(
+                groupId, userId, PermissionFlag.QUICK_NOTE_EPDS)).thenReturn(true);
+        when(journeyRepository.findById(journeyId)).thenReturn(Optional.of(MotherJourney.builder()
+                .id(journeyId).ownerUserId(motherId).careSubjectId(careSubjectId).build()));
+        HealthObservation pressure = observation(
+                careSubjectId, "BLOOD_PRESSURE", "118", Instant.parse("2026-08-03T02:00:00Z"));
+        pressure.setValueSecondary(new BigDecimal("76"));
+        HealthObservation glucose = observation(
+                careSubjectId, "BLOOD_GLUCOSE", "96", Instant.parse("2026-08-03T03:00:00Z"));
+        glucose.setContext(Map.of("measurementContext", "FASTING", "privateField", "secret"));
+        HealthObservation epds = observation(
+                careSubjectId, "EPDS_SCORE", "12", Instant.parse("2026-08-03T04:00:00Z"));
+        epds.setValueSecondary(new BigDecimal("3"));
+        epds.setNote("private answers");
+        when(observationRepository.findLatestByMetricCodes(
+                eq(careSubjectId), anyList(), eq(MetricStatus.ACTIVE)))
+                .thenReturn(List.of(pressure, glucose, epds));
+
+        var response = service.get(userId, groupId);
+
+        assertThat(response.selectedGroupDetail().healthMetricSummaries())
+                .extracting(summary -> summary.metricType())
+                .containsExactly("BLOOD_PRESSURE", "EPDS_SCORE", "BLOOD_GLUCOSE");
+        assertThat(response.selectedGroupDetail().healthMetricSummaries().get(0).valueSecondary())
+                .isEqualByComparingTo("76");
+        assertThat(response.selectedGroupDetail().healthMetricSummaries().get(1).valueSecondary())
+                .isNull();
+        assertThat(response.selectedGroupDetail().healthMetricSummaries().get(2).measurementContext())
+                .isEqualTo("FASTING");
+    }
+
+    @Test
+    void permittedMetricWithoutObservationProducesHonestEmptySummary() {
+        UUID groupId = UUID.randomUUID();
+        UUID careSubjectId = UUID.randomUUID();
+        CareGroupMember membership = membership(groupId, userId, Instant.now());
+        stubAcceptedGroups(List.of(membership), Map.of(groupId, group(groupId, "A")));
+        when(memberRepository.findByCareGroupIdAndInviteStatusIn(groupId, List.of(InviteStatus.ACCEPTED)))
+                .thenReturn(List.of(membership));
+        lenient().when(authorizationPolicy.hasPermission(groupId, userId, PermissionFlag.QUICK_NOTES))
+                .thenReturn(true);
+        lenient().when(authorizationPolicy.hasPermission(
+                groupId, userId, PermissionFlag.QUICK_NOTE_WEIGHT)).thenReturn(true);
+        when(journeyRepository.findCanonical(motherId)).thenReturn(Optional.of(MotherJourney.builder()
+                .id(UUID.randomUUID()).ownerUserId(motherId).careSubjectId(careSubjectId).build()));
+        when(observationRepository.findLatestByMetricCodes(
+                eq(careSubjectId), anyList(), eq(MetricStatus.ACTIVE))).thenReturn(List.of());
+
+        var summary = service.get(userId, groupId)
+                .selectedGroupDetail().healthMetricSummaries().getFirst();
+
+        assertThat(summary.metricType()).isEqualTo("WEIGHT");
+        assertThat(summary.valueNumeric()).isNull();
+        assertThat(summary.measuredAt()).isNull();
+        assertThat(summary.recordCount()).isZero();
+    }
+
+    @Test
+    void hydrationAndFetalMovementSummariesAggregateOnlyCanonicalTodayRows() {
+        UUID groupId = UUID.randomUUID();
+        UUID careSubjectId = UUID.randomUUID();
+        CareGroupMember membership = membership(groupId, userId, Instant.now());
+        stubAcceptedGroups(List.of(membership), Map.of(groupId, group(groupId, "A")));
+        when(memberRepository.findByCareGroupIdAndInviteStatusIn(groupId, List.of(InviteStatus.ACCEPTED)))
+                .thenReturn(List.of(membership));
+        lenient().when(authorizationPolicy.hasPermission(groupId, userId, PermissionFlag.QUICK_NOTES))
+                .thenReturn(true);
+        lenient().when(authorizationPolicy.hasPermission(
+                groupId, userId, PermissionFlag.QUICK_NOTE_HYDRATION)).thenReturn(true);
+        lenient().when(authorizationPolicy.hasPermission(
+                groupId, userId, PermissionFlag.QUICK_NOTE_FETAL_MOVEMENT)).thenReturn(true);
+        when(journeyRepository.findCanonical(motherId)).thenReturn(Optional.of(MotherJourney.builder()
+                .id(UUID.randomUUID()).ownerUserId(motherId).careSubjectId(careSubjectId).build()));
+        when(observationRepository.findLatestByMetricCodes(
+                eq(careSubjectId), anyList(), eq(MetricStatus.ACTIVE))).thenReturn(List.of());
+        HealthObservation waterOne = observation(careSubjectId, "HYDRATION", "250", Instant.now());
+        waterOne.setUnit("ml");
+        HealthObservation waterTwo = observation(careSubjectId, "HYDRATION", "300", Instant.now());
+        waterTwo.setUnit("ml");
+        HealthObservation movement = observation(
+                careSubjectId, "FETAL_MOVEMENT_SESSION", "8", Instant.now());
+        movement.setUnit("count");
+        when(observationRepository.findTrendByMetricCodes(
+                eq(careSubjectId), anyList(), eq(MetricStatus.ACTIVE), any(), any()))
+                .thenReturn(List.of(waterOne, waterTwo, movement));
+
+        var summaries = service.get(userId, groupId).selectedGroupDetail().healthMetricSummaries();
+
+        assertThat(summaries).extracting(summary -> summary.metricType())
+                .containsExactly("FETAL_MOVEMENT_COUNT", "HYDRATION");
+        assertThat(summaries.get(0).valueNumeric()).isEqualByComparingTo("8");
+        assertThat(summaries.get(0).recordCount()).isEqualTo(1);
+        assertThat(summaries.get(1).valueNumeric()).isEqualByComparingTo("550");
+        assertThat(summaries.get(1).recordCount()).isEqualTo(2);
+    }
+
     @SuppressWarnings("unchecked")
     private void stubTaskQuery() {
         lenient().when(entityManager.createQuery(anyString(), eq(CareTask.class))).thenAnswer(invocation -> {
@@ -401,6 +573,10 @@ class FamilyDashboardServiceTest {
         lenient().when(authorizationPolicy.hasPermission(groupId, userId, PermissionFlag.ALERTS)).thenReturn(true);
     }
 
+    private void allowCalendar(UUID groupId) {
+        lenient().when(authorizationPolicy.hasPermission(groupId, userId, PermissionFlag.CALENDAR)).thenReturn(true);
+    }
+
     private CareGroupMember membership(UUID groupId, UUID memberUserId, Instant joinedAt) {
         return CareGroupMember.builder()
                 .id(UUID.randomUUID())
@@ -418,6 +594,7 @@ class FamilyDashboardServiceTest {
                 .id(groupId)
                 .ownerUserId(motherId)
                 .groupName(name)
+                .status(CareGroupStatus.ACTIVE)
                 .build();
     }
 
@@ -443,6 +620,19 @@ class FamilyDashboardServiceTest {
                 .title("Cảnh báo")
                 .body("Nội dung")
                 .createdAt(Instant.now())
+                .build();
+    }
+
+    private HealthObservation observation(
+            UUID careSubjectId, String metricCode, String value, Instant measuredAt) {
+        return HealthObservation.builder()
+                .id(UUID.randomUUID())
+                .careSubjectId(careSubjectId)
+                .metricCode(metricCode)
+                .valueNumeric(new BigDecimal(value))
+                .unit("BLOOD_PRESSURE".equals(metricCode) ? "mmHg" : "mg/dL")
+                .measuredAt(measuredAt)
+                .context(Map.of())
                 .build();
     }
 }

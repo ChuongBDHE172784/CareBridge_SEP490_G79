@@ -4,10 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/network/api_client.dart';
-import '../../aiTriage/models/triage_entry_context.dart';
 import '../../aiTriage/models/triage_continuation.dart';
 import '../../aiTriage/services/triage_continuation_restore_coordinator.dart';
-import '../../aiTriage/widgets/triage_safety_entry_action.dart';
 import '../../baby/models/baby_model.dart';
 import '../../baby/screens/add_baby_screen.dart';
 import '../../baby/screens/baby_profile_detail_screen.dart';
@@ -411,7 +409,8 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
     final journeyId = dashboard?.journeyId;
     final isExistingJourneyTransition =
         dashboard?.hasActiveJourney == true &&
-        (dashboard?.isPrePregnancy == true || dashboard?.isPostpartum == true) &&
+        (dashboard?.isPrePregnancy == true ||
+            dashboard?.isPostpartum == true) &&
         journeyId != null;
     final route = isExistingJourneyTransition
         ? Uri(
@@ -517,7 +516,7 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
       child: CustomScrollView(
         slivers: [
           SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
                 if (_loading)
@@ -531,6 +530,32 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
                     ),
                   )
                 else ...[
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Hành trình',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 26,
+                            fontWeight: FontWeight.w700,
+                            color: _onSurface,
+                          ),
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          'Theo dõi sức khỏe của mẹ và bé theo từng giai đoạn.',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 13,
+                            color: _onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   _buildSectionTabs(),
                   if (_showContinuationConfirmation) ...[
                     const SizedBox(height: 16),
@@ -650,12 +675,10 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
     }
 
     if (dashboard.isPrePregnancy) {
-      final triageContext = _maternalTriageEntryContext(dashboard);
       return [
         _buildPrePregnancyCard(dashboard),
         const SizedBox(height: 16),
-        TriageSafetyEntryAction(entryContext: triageContext),
-        ..._buildMaternalHealthBlock(triageContext),
+        ..._buildMaternalHealthBlock(),
         if (_historyError != null) ...[
           const SizedBox(height: 16),
           _buildHistoryErrorCard(),
@@ -670,12 +693,10 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
     }
 
     if (dashboard.isPostpartum) {
-      final triageContext = _maternalTriageEntryContext(dashboard);
       return [
         _buildPostpartumCard(dashboard),
         const SizedBox(height: 16),
-        TriageSafetyEntryAction(entryContext: triageContext),
-        ..._buildMaternalHealthBlock(triageContext),
+        ..._buildMaternalHealthBlock(),
         if (_historyError != null) ...[
           const SizedBox(height: 16),
           _buildHistoryErrorCard(),
@@ -691,18 +712,15 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
       ];
     }
 
-    final triageContext = _maternalTriageEntryContext(dashboard);
     return [
       _buildHeroCard(dashboard),
-      const SizedBox(height: 16),
-      TriageSafetyEntryAction(entryContext: triageContext),
       const SizedBox(height: 16),
       _buildDueDateCard(dashboard),
       const SizedBox(height: 16),
       _buildPregnancyOutcomeEntry(dashboard),
       const SizedBox(height: 16),
       _buildSetupSourceCard(dashboard),
-      ..._buildMaternalHealthBlock(triageContext),
+      ..._buildMaternalHealthBlock(),
       if (_historyError != null) ...[
         const SizedBox(height: 24),
         _buildHistoryErrorCard(),
@@ -716,24 +734,10 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
     ];
   }
 
-  TriageEntryContext _maternalTriageEntryContext(JourneyDashboard dashboard) {
-    final stage = dashboard.isPrePregnancy
-        ? TriageStageIntent.preconception
-        : dashboard.isPostpartum
-        ? TriageStageIntent.postpartum
-        : TriageStageIntent.pregnancy;
-    return TriageEntryContext.locked(
-      stage: stage,
-      origin: TriageOriginIntent.motherJourney,
-      journeyId: dashboard.journeyId,
-      originReferenceId: dashboard.journeyId,
-    );
-  }
-
-  List<Widget> _buildMaternalHealthBlock(TriageEntryContext triageContext) {
+  List<Widget> _buildMaternalHealthBlock() {
     return [
       const SizedBox(height: 16),
-      _buildMetricButtons(triageContext),
+      _buildMetricButtons(),
       const SizedBox(height: 24),
       _buildBentoSummary(),
     ];
@@ -1916,74 +1920,84 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
     );
   }
 
-  Widget _buildMetricButtons(TriageEntryContext triageContext) {
+  Widget _buildMetricButtons() {
     final metrics = [
       (Icons.monitor_heart_outlined, 'Chỉ số sức khỏe', 'WEIGHT'),
       (Icons.history_edu, 'Hồ sơ sức khỏe', '/health-records'),
-      (Icons.psychology_alt_outlined, 'Kiểm tra triệu chứng', '/triage/intake'),
       (Icons.health_and_safety_outlined, 'Giám sát an toàn', '/safety'),
     ];
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return IntrinsicHeight(
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: metrics.asMap().entries.map((entry) {
           final i = entry.key;
           final metric = entry.value;
-          return Padding(
-            padding: EdgeInsets.only(right: i < metrics.length - 1 ? 12 : 0),
-            child: Semantics(
-              button: true,
-              label: metric.$2,
-              excludeSemantics: true,
-              child: GestureDetector(
-                onTap: () async {
-                  if (metric.$3 == 'WEIGHT') {
-                    await _openMetricRoute(metric.$3);
-                    return;
-                  }
-                  if (metric.$3 == '/triage/intake') {
-                    context.push(metric.$3, extra: triageContext);
-                    return;
-                  }
-                  context.push(metric.$3);
-                },
-                child: Container(
-                  width: 104,
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 16,
-                    horizontal: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _surfaceContainerLowest,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: _outlineVariant),
-                  ),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: const BoxDecoration(
-                          color: _surfaceContainerHigh,
-                          shape: BoxShape.circle,
+          return Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(right: i < metrics.length - 1 ? 12 : 0),
+              child: Semantics(
+                button: true,
+                label: metric.$2,
+                excludeSemantics: true,
+                child: GestureDetector(
+                  onTap: () async {
+                    if (metric.$3 == 'WEIGHT') {
+                      await _openMetricRoute(metric.$3);
+                      return;
+                    }
+                    context.push(metric.$3);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 16,
+                      horizontal: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _surfaceContainerLowest,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: _outlineVariant),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x0F5A463F),
+                          blurRadius: 12,
+                          offset: Offset(0, 2),
                         ),
-                        child: Icon(metric.$1, color: _primary, size: 20),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        metric.$2,
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: _onSurfaceVariant,
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: const BoxDecoration(
+                            color: _surfaceContainerHigh,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(metric.$1, color: _primary, size: 22),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          height: 36,
+                          child: Center(
+                            child: Text(
+                              metric.$2,
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: _onSurfaceVariant,
+                                height: 1.25,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

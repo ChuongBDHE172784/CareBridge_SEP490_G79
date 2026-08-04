@@ -388,6 +388,28 @@ class ChecklistAuthorizationAndTodayApiEmbeddedPostgresTest
     }
 
     @Test
+    void acceptedFamilyCanCompleteOwnScopedChecklistTaskWithViewPermissionOnly() throws Exception {
+        MvcResult result = mockMvc.perform(post(
+                        "/api/v1/care-groups/{groupId}/checklists/tasks/{taskId}/actions",
+                        primaryGroup, f1Tasks.checklistTaskId())
+                        .with(csrf())
+                        .with(user(f1Ok.toString()).roles("FAMILY"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "action", "COMPLETE",
+                                "clientRequestId", UUID.randomUUID()))))
+                .andReturn();
+
+        assertThat(result.getResponse().getStatus()).isEqualTo(200);
+        JsonNode response = objectMapper.readTree(result.getResponse().getContentAsString());
+        assertThat(response.path("action").asText()).isEqualTo("COMPLETE");
+        assertThat(response.path("status").asText()).isEqualTo("COMPLETED");
+        assertThat(jdbcTemplate.queryForObject(
+                "select status from checklist_task_instances where checklist_task_instance_id=?",
+                String.class, f1Tasks.checklistTaskId())).isEqualTo("COMPLETED");
+    }
+
+    @Test
     void acceptedMembershipRemainsAuthorizedAfterInvitationExpiry() throws Exception {
         jdbcTemplate.update("""
                 update care_group_members

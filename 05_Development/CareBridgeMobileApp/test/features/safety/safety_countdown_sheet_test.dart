@@ -75,7 +75,11 @@ void main() {
       findsOneWidget,
     );
     expect(find.byKey(const Key('safety-countdown-help')), findsOneWidget);
-    expect(find.textContaining('30 giây'), findsOneWidget);
+    expect(find.text('30'), findsOneWidget);
+    expect(
+      find.byKey(const Key('safety-countdown-large-timer')),
+      findsOneWidget,
+    );
     expect(feedback.starts, 1);
   });
 
@@ -201,4 +205,103 @@ void main() {
     expect(find.byType(SimpleDialog), findsNothing);
     expect(feedback.stops, 1);
   });
+
+  testWidgets('simulation is unmistakable and does not start alert feedback', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SafetyCountdownSheet(
+            event: event,
+            simulated: true,
+            feedback: feedback,
+            now: () => now,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('MÔ PHỎNG AN TOÀN'), findsOneWidget);
+    expect(find.textContaining('không gửi cảnh báo'), findsOneWidget);
+    expect(feedback.starts, isZero);
+    await tester.pumpWidget(const SizedBox.shrink());
+    expect(feedback.stops, isZero);
+  });
+
+  testWidgets('demo gesture presents the production fall-alert experience', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SafetyCountdownSheet(
+            event: event,
+            simulated: true,
+            presentAsRealAlert: true,
+            feedback: feedback,
+            now: () => now,
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('MÔ PHỎNG AN TOÀN'), findsNothing);
+    expect(
+      find.textContaining('phát hiện dấu hiệu nghi ngờ ngã'),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('safety-countdown-large-timer')),
+      findsOneWidget,
+    );
+    expect(find.textContaining('gửi cảnh báo cho người thân'), findsOneWidget);
+    expect(find.textContaining('bước gọi 115'), findsOneWidget);
+    expect(find.text('Tôi vẫn ổn — tắt cảnh báo'), findsOneWidget);
+    expect(feedback.starts, 1);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    expect(feedback.stops, 1);
+  });
+
+  testWidgets(
+    'persisted sensor rehearsal shows real actions with safe banner',
+    (tester) async {
+      final rehearsal = SafetyEvent(
+        id: 'self-test-1',
+        eventType: 'SENSOR_SELF_TEST',
+        magnitude: 17.2,
+        status: 'TEST_OPEN',
+        countdownDeadlineAt: now.add(const Duration(seconds: 30)),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SafetyCountdownSheet(
+              event: rehearsal,
+              feedback: feedback,
+              now: () => now,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(
+        find.byKey(const Key('sensor-self-test-countdown-banner')),
+        findsOneWidget,
+      );
+      expect(find.textContaining('KHÔNG GỬI CẢNH BÁO THẬT'), findsOneWidget);
+      expect(find.text('Tôi vẫn ổn — tắt cảnh báo'), findsOneWidget);
+      expect(find.byKey(const Key('safety-countdown-help')), findsOneWidget);
+      expect(find.textContaining('luồng thật mới'), findsOneWidget);
+      expect(feedback.starts, 1);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      expect(feedback.stops, 1);
+    },
+  );
 }

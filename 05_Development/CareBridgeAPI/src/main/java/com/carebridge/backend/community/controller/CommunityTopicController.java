@@ -43,10 +43,21 @@ public class CommunityTopicController {
             @RequestParam(required = false) TopicType type,
             Authentication authentication) {
         boolean canManageTopics = SecurityUtils.hasRole("MODERATOR") || SecurityUtils.hasRole("CONTENT_ADMIN");
+        // Recommendation catalog labels can contain sensitive audience vocabulary
+        // (for example STI or mental-health tags). General topic moderators may
+        // manage community taxonomy but are not authorized for the catalog.
+        boolean canViewRecommendationCatalog = SecurityUtils.hasRole("CONTENT_ADMIN")
+                || SecurityUtils.hasRole("SYSTEM_ADMIN");
         boolean effectiveInclude = includeHidden && canManageTopics;
         UUID currentUserId = SecurityUtils.requireCurrentUserId(authentication);
-        return ResponseEntity.ok(
-                ApiResponse.success(topicService.searchTopics(keyword, effectiveInclude, type, currentUserId)));
+        List<CommunityTopicResponse> response = topicService.searchTopics(
+                keyword, effectiveInclude, type, currentUserId);
+        if (!canViewRecommendationCatalog) {
+            response = response.stream()
+                    .filter(topic -> topic.getSlug() == null || !topic.getSlug().startsWith("rec-"))
+                    .toList();
+        }
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 
     @PostMapping

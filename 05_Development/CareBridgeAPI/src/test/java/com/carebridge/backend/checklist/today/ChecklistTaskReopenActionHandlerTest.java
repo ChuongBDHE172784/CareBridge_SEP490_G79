@@ -1,6 +1,7 @@
 package com.carebridge.backend.checklist.today;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -23,6 +24,10 @@ import com.carebridge.backend.checklist.today.model.TaskAction;
 import com.carebridge.backend.checklist.today.provider.AuthorizedTask;
 import com.carebridge.backend.checklist.today.provider.ChecklistTaskActionHandler;
 import com.carebridge.backend.checklist.today.policy.UnifiedTaskAccessPolicy;
+import com.carebridge.backend.content.entity.ChecklistTemplate;
+import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
+import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
+import com.carebridge.backend.common.exception.BusinessException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -96,5 +101,54 @@ class ChecklistTaskReopenActionHandlerTest {
         assertThat(event.getValue().beforeStatus()).isEqualTo("COMPLETED");
         assertThat(event.getValue().afterStatus()).isEqualTo("PENDING");
         assertThat(event.getValue().reasonCode()).isNull();
+    }
+
+    @Test
+    void archivedTemplateTaskIsRejectedAsNotFoundWithoutAuthorizationOrMutation() {
+        UUID actor = UUID.randomUUID();
+        UUID taskId = UUID.randomUUID();
+        UUID instanceId = UUID.randomUUID();
+        UUID versionId = UUID.randomUUID();
+        ChecklistTaskInstance task = ChecklistTaskInstance.builder()
+                .id(taskId)
+                .checklistInstanceId(instanceId)
+                .taskKey("task-key")
+                .status(ChecklistTaskStatus.PENDING)
+                .build();
+        ChecklistInstance instance = ChecklistInstance.builder()
+                .id(instanceId)
+                .templateVersionId(versionId)
+                .recipientUserId(actor)
+                .recipientRole(ChecklistRecipientRole.MOTHER)
+                .careContextType(ChecklistCareContextType.JOURNEY)
+                .careContextId(UUID.randomUUID())
+                .contextOwnerUserId(actor)
+                .origin(ChecklistOrigin.SYSTEM_TEMPLATE)
+                .status(ChecklistInstanceStatus.PENDING)
+                .build();
+        ChecklistTaskInstanceRepository tasks = mock(ChecklistTaskInstanceRepository.class);
+        ChecklistInstanceRepository instances = mock(ChecklistInstanceRepository.class);
+        UnifiedTaskAccessPolicy access = mock(UnifiedTaskAccessPolicy.class);
+        ChecklistAuditWriter audit = mock(ChecklistAuditWriter.class);
+        ChecklistTemplateRepository templates = mock(ChecklistTemplateRepository.class);
+        when(tasks.findById(taskId)).thenReturn(Optional.of(task));
+        when(instances.findById(instanceId)).thenReturn(Optional.of(instance));
+        when(instances.findForUpdateById(instanceId)).thenReturn(Optional.of(instance));
+        when(tasks.findAllForUpdateByChecklistInstanceIdOrderByTaskKey(instanceId))
+                .thenReturn(List.of(task));
+        when(templates.findByTemplateVersionId(versionId)).thenReturn(Optional.of(
+                ChecklistTemplate.builder().templateVersionId(versionId)
+                        .status(ChecklistTemplateStatus.ARCHIVED).build()));
+        ChecklistTaskActionHandler handler = new ChecklistTaskActionHandler(
+                tasks, instances, access, audit, mock(jakarta.persistence.EntityManager.class),
+                null, templates);
+
+        assertThatThrownBy(() -> handler.authorize(actor, taskId))
+                .isInstanceOf(BusinessException.class)
+                .extracting(exception -> ((BusinessException) exception).getCode())
+                .isEqualTo("TASK_NOT_FOUND");
+        verify(access, org.mockito.Mockito.never()).canComplete(instance, actor);
+        verify(tasks, org.mockito.Mockito.never()).save(org.mockito.ArgumentMatchers.any());
+        verify(audit, org.mockito.Mockito.never()).write(org.mockito.ArgumentMatchers.any());
     }
 }

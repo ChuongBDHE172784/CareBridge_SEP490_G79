@@ -22,6 +22,7 @@ import com.carebridge.backend.community.exception.QuestionNotAnswerableException
 import com.carebridge.backend.community.exception.QuestionNotFoundException;
 import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.exception.ModerationException;
+import com.carebridge.backend.recommendation.exception.RecommendationException;
 import com.carebridge.backend.integration.gemini.exception.RagException;
 import com.carebridge.backend.partner.exception.PartnerException;
 import com.carebridge.backend.emergency.exception.EmergencyException;
@@ -51,6 +52,15 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 public class GlobalExceptionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    @ExceptionHandler(RecommendationException.class)
+    public ResponseEntity<ErrorResponse> handleRecommendation(
+            RecommendationException ex, HttpServletRequest request) {
+        // RecommendationException messages are constructed from field/rule constants only.
+        // Never route health DTOs through the generic rejectedValue/logging handler.
+        logger.warn("Recommendation request rejected: code={}, path={}", ex.getCode(), request.getRequestURI());
+        return error(ex.getStatus(), ex.getCode(), ex.getMessage(), request);
+    }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(
@@ -257,7 +267,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ContentException.class)
     public ResponseEntity<ErrorResponse> handleContent(ContentException ex, HttpServletRequest request) {
-        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
+        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request, ex.getMetadata());
     }
 
     @ExceptionHandler(com.carebridge.backend.directchat.exception.DirectChatException.class)
@@ -492,7 +502,22 @@ public class GlobalExceptionHandler {
             String code,
             String message,
             HttpServletRequest request) {
-        ErrorResponse response = ErrorResponse.of(status.value(), code, message, request.getRequestURI());
+        return error(status, code, message, request, java.util.Map.of());
+    }
+
+    private ResponseEntity<ErrorResponse> error(
+            HttpStatus status,
+            String code,
+            String message,
+            HttpServletRequest request,
+            java.util.Map<String, Object> metadata) {
+        ErrorResponse response = ErrorResponse.builder()
+                .status(status.value())
+                .error(code)
+                .message(message)
+                .path(request.getRequestURI())
+                .metadata(metadata == null || metadata.isEmpty() ? null : metadata)
+                .build();
         return ResponseEntity.status(status).body(response);
     }
 }

@@ -1,4 +1,6 @@
-# Uncomment this line to define a global platform for your project
+source 'https://cdn.cocoapods.org/'
+source 'https://github.com/track-asia/trackasia-flutter-podspecs.git'
+
 platform :ios, '13.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
@@ -53,6 +55,24 @@ post_install do |installer|
         'PERMISSION_CAMERA=1',
         'PERMISSION_MICROPHONE=1',
       ]
+      config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+    end
+  end
+
+  # Fix for TrackAsia 2.0.0 framework header bug where MLNMapViewDelegate.h has <MLNTileOperation.h> instead of "MLNTileOperation.h"
+  trackasia_header = File.join(installer.sandbox.root, 'TrackAsia/TrackAsia.xcframework/ios-arm64/TrackAsia.framework/Headers/MLNMapViewDelegate.h')
+  if File.exist?(trackasia_header)
+    content = File.read(trackasia_header)
+    if content.include?('<MLNTileOperation.h>')
+      File.write(trackasia_header, content.gsub('<MLNTileOperation.h>', '"MLNTileOperation.h"'))
+    end
+  end
+  trackasia_sim_header = File.join(installer.sandbox.root, 'TrackAsia/TrackAsia.xcframework/ios-arm64_x86_64-simulator/TrackAsia.framework/Headers/MLNMapViewDelegate.h')
+  if File.exist?(trackasia_sim_header)
+    content = File.read(trackasia_sim_header)
+    if content.include?('<MLNTileOperation.h>')
+      File.write(trackasia_sim_header, content.gsub('<MLNTileOperation.h>', '"MLNTileOperation.h"'))
     end
   end
 end
+

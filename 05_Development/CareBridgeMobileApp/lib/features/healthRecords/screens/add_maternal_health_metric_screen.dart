@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/network/api_client.dart';
 import '../models/health_metric_model.dart';
 import '../services/health_metric_service.dart';
 
@@ -78,6 +79,7 @@ class _AddMaternalHealthMetricScreenState
   bool get _isBloodPressure => _metricType == 'BLOOD_PRESSURE';
   bool get _isGlucose => _metricType == 'BLOOD_GLUCOSE';
   bool get _isFetalMovement => _metricType == 'FETAL_MOVEMENT_SESSION';
+  bool get _isHydration => _metricType == 'HYDRATION';
 
   MetricCapability? get _capability {
     for (final capability in _capabilities) {
@@ -112,6 +114,8 @@ class _AddMaternalHealthMetricScreenState
         return 'Cel';
       case 'FETAL_MOVEMENT_SESSION':
         return 'count';
+      case 'HYDRATION':
+        return 'ml';
       case 'WEIGHT':
       default:
         return _capability?.canonicalUnit.isNotEmpty == true
@@ -132,6 +136,8 @@ class _AddMaternalHealthMetricScreenState
         return 'nhiệt độ';
       case 'FETAL_MOVEMENT_SESSION':
         return 'cử động thai';
+      case 'HYDRATION':
+        return 'lượng nước uống';
       case 'WEIGHT':
       default:
         return 'cân nặng';
@@ -268,7 +274,9 @@ class _AddMaternalHealthMetricScreenState
 
   String? _requiredPositive(String? value) {
     final parsed = double.tryParse(value?.trim() ?? '');
-    if (parsed == null || parsed <= 0) return 'Nhập giá trị hợp lệ';
+    if (parsed == null || !parsed.isFinite || parsed <= 0) {
+      return 'Nhập giá trị hợp lệ';
+    }
     return null;
   }
 
@@ -301,6 +309,15 @@ class _AddMaternalHealthMetricScreenState
     if (_isFetalMovement && !_resolvedPeriodEnd.isAfter(_resolvedPeriodStart)) {
       _showError('Thời điểm kết thúc phải sau thời điểm bắt đầu.');
       return;
+    }
+
+    if (_isBloodPressure) {
+      final systolic = double.tryParse(_primaryCtrl.text.trim());
+      final diastolic = double.tryParse(_secondaryCtrl.text.trim());
+      if (systolic == null || diastolic == null || systolic <= diastolic) {
+        _showError('Huyết áp tâm thu phải lớn hơn huyết áp tâm trương.');
+        return;
+      }
     }
 
     setState(() => _isSaving = true);
@@ -339,6 +356,8 @@ class _AddMaternalHealthMetricScreenState
         ),
       );
       Navigator.of(context).pop(true);
+    } on ApiException catch (error) {
+      _showError(_metricSaveError(error));
     } catch (_) {
       _showError('Không thể lưu chỉ số. Vui lòng kiểm tra dữ liệu và thử lại.');
     } finally {
@@ -350,6 +369,16 @@ class _AddMaternalHealthMetricScreenState
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message), backgroundColor: _error));
+  }
+
+  String _metricSaveError(ApiException error) {
+    return switch (error.errorCode) {
+      'METRIC-032' => 'Huyết áp tâm thu phải lớn hơn huyết áp tâm trương.',
+      'METRIC-033' => 'Đơn vị đo không hợp lệ. Vui lòng thử lại.',
+      'METRIC-038' => 'Giá trị chỉ số phải lớn hơn 0.',
+      'METRIC-004' => 'Thời điểm đo không được ở tương lai quá 5 phút.',
+      _ => 'Không thể lưu chỉ số. Vui lòng kiểm tra dữ liệu và thử lại.',
+    };
   }
 
   @override
@@ -521,7 +550,9 @@ class _AddMaternalHealthMetricScreenState
 
   Widget _buildMetricDescription() {
     return Text(
-      'Dữ liệu được lưu để theo dõi, không thay thế chẩn đoán y khoa.',
+      _isHydration
+          ? 'Ghi nhận từng lần uống để theo dõi tiến độ trong ngày. Mục tiêu nước cần được cá nhân hoá theo tư vấn của bác sĩ.'
+          : 'Dữ liệu được lưu để theo dõi, không thay thế chẩn đoán y khoa.',
       style: TextStyle(
         fontFamily: 'Lexend',
         fontSize: 12,
@@ -650,6 +681,7 @@ class _AddMaternalHealthMetricScreenState
     );
   }
 }
+
 class _PickerTile extends StatelessWidget {
   final String label;
   final String value;

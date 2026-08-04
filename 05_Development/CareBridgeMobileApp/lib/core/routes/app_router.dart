@@ -7,6 +7,8 @@ import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/blocked_account_screen.dart';
 import '../../features/auth/screens/auth_landing_screen.dart';
 import '../../features/auth/screens/role_selection_screen.dart';
+import '../../features/checklist/screens/checklist_history_screen.dart';
+import '../../features/checklist/screens/checklist_detail_screen.dart';
 import '../../features/home/screens/home_shell.dart';
 import '../../features/home/screens/expert_home_shell.dart';
 import '../../features/home/screens/family_member_home_screen.dart';
@@ -14,11 +16,14 @@ import '../../features/journey/screens/mother_stage_selection_screen.dart';
 import '../../features/journey/screens/journey_setup_screen.dart';
 import '../../features/journey/screens/postpartum_recovery_setup_screen.dart';
 import '../../features/journey/services/journey_onboarding_service.dart';
+import '../../features/recommendation/screens/recommendation_profile_screen.dart';
 
 import '../../features/healthRecords/screens/maternal_health_metric_screen.dart';
 import '../../features/healthRecords/screens/health_record_timeline_screen.dart';
 import '../../features/healthRecords/screens/add_health_record_screen.dart';
 import '../../features/healthRecords/screens/add_maternal_health_metric_screen.dart';
+import '../../features/healthRecords/screens/hydration_tracker_screen.dart';
+import '../../features/healthRecords/screens/fetal_movement_tracker_screen.dart';
 import '../../features/healthRecords/screens/edit_health_metric_screen.dart';
 import '../../features/healthRecords/screens/postpartum_log_list_screen.dart';
 import '../../features/healthRecords/screens/postpartum_log_detail_screen.dart';
@@ -44,17 +49,18 @@ import '../../features/reminder/screens/create_appointment_reminder_screen.dart'
 import '../../features/reminder/screens/create_medication_reminder_screen.dart';
 import '../../features/reminder/screens/create_vaccination_reminder_screen.dart';
 import '../../features/reminder/screens/update_snooze_reminder_screen.dart';
-import '../../features/reminder/screens/all_reminders_screen.dart';
 import '../../features/reminder/screens/appointment_calendar_screen.dart';
+import '../../features/reminder/screens/reminder_schedules_screen.dart';
 import '../../features/reminder/models/reminder_model.dart';
 
 import '../../features/fileManager/screens/file_viewer_screen.dart';
 import '../../features/fileManager/screens/shared_file_viewer_screen.dart';
 
 import '../../features/reminder/screens/reminder_detail_screen.dart';
+import '../../features/reminder/screens/shared_appointment_detail_screen.dart';
+import '../../features/reminder/screens/all_reminders_screen.dart';
 import '../../features/familySync/screens/care_groups_screen.dart';
 import '../../features/familySync/screens/care_group_members_screen.dart';
-import '../../features/familySync/screens/pending_invitations_screen.dart';
 import '../../features/baby/screens/baby_profiles_screen.dart';
 import '../../features/baby/screens/baby_care_hub_screen.dart';
 import '../../features/baby/screens/baby_profile_detail_screen.dart';
@@ -70,6 +76,7 @@ import '../../features/aiTriage/models/triage_entry_context.dart';
 import '../../features/aiTriage/models/triage_continuation.dart';
 import '../../features/aiTriage/services/triage_continuation_restore_coordinator.dart';
 import '../../features/aiTriage/screens/symptom_intake_screen.dart';
+import '../../features/aiTriage/screens/triage_history_screen.dart';
 import '../../features/aiTriage/widgets/floating_ai_triage_host.dart';
 import '../../features/aiTriage/screens/risk_triage_result_screen.dart';
 import '../../features/emergency/screens/emergency_map_screen.dart';
@@ -77,7 +84,6 @@ import '../../features/emergency/screens/emergency_alert_detail_screen.dart';
 import '../../features/emergency/screens/family_alert_detail_screen.dart';
 import '../../features/safety/screens/safety_monitoring_screen.dart';
 import '../../features/safety/screens/enable_fall_detection_screen.dart';
-import '../../features/expert/screens/expert_question_queue_screen.dart';
 import '../../features/expert/screens/expert_profile_setup_screen.dart';
 import '../../features/expert/screens/upload_verification_docs_screen.dart';
 import '../../features/expert/screens/verification_status_screen.dart';
@@ -166,7 +172,9 @@ String? resolveAppRedirect({
     '/mother-stage-selection',
     '/journey-setup',
     '/postpartum-recovery-setup',
+    '/recommendation-profile',
   };
+  const motherOrFamilyChecklistRoutes = {'/checklists/history'};
 
   if (isRestoring) return null;
 
@@ -185,6 +193,13 @@ String? resolveAppRedirect({
       hasAssignedRole &&
       normalizedRole != 'MOTHER' &&
       motherOnlySetupRoutes.contains(location)) {
+    return '/';
+  }
+  if (isAuthenticated &&
+      hasAssignedRole &&
+      normalizedRole != 'MOTHER' &&
+      normalizedRole != 'FAMILY' &&
+      motherOrFamilyChecklistRoutes.contains(location)) {
     return '/';
   }
   if (isAuthenticated && hasAssignedRole && location == '/role-selection') {
@@ -310,6 +325,38 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const AuthLandingScreen(),
     ),
     GoRoute(
+      path: '/checklists/history',
+      builder: (context, state) => ChecklistHistoryScreen(
+        careGroupId: state.uri.queryParameters['careGroupId'],
+      ),
+    ),
+    GoRoute(
+      path: '/checklists/detail',
+      builder: (context, state) {
+        final extraMap = state.extra is Map<String, dynamic>
+            ? state.extra as Map<String, dynamic>
+            : <String, dynamic>{};
+        final template = extraMap['template'] as ChecklistTemplate?;
+        if (template == null) {
+          return const Scaffold(
+            body: Center(
+              child: Text(
+                'Không tìm thấy thông tin checklist',
+                style: TextStyle(fontFamily: 'Lexend'),
+              ),
+            ),
+          );
+        }
+        return ChecklistDetailScreen(
+          template: template,
+          importedItemIds:
+              (extraMap['importedItemIds'] as Set<String>?) ?? const {},
+          journeyId: extraMap['journeyId'] as String?,
+          isLifecycleMode: extraMap['isLifecycleMode'] as bool? ?? false,
+        );
+      },
+    ),
+    GoRoute(
       path: '/journey-onboarding',
       redirect: (context, state) => '/mother-stage-selection',
     ),
@@ -320,6 +367,12 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/postpartum-recovery-setup',
       builder: (context, state) => const PostpartumRecoverySetupScreen(),
+    ),
+    GoRoute(
+      path: '/recommendation-profile',
+      builder: (context, state) => RecommendationProfileScreen(
+        journeyStage: state.extra is String ? state.extra as String : null,
+      ),
     ),
     GoRoute(
       path: '/',
@@ -437,6 +490,14 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) {
         final journeyId = state.pathParameters['journeyId'] ?? '';
         final metricType = state.uri.queryParameters['metricType'] ?? 'WEIGHT';
+        if (metricType == 'FETAL_MOVEMENT_SESSION' ||
+            metricType == 'FETAL_MOVEMENT_COUNT' ||
+            metricType == 'FETAL_MOVEMENT') {
+          return FetalMovementTrackerScreen(journeyId: journeyId);
+        }
+        if (metricType == 'HYDRATION') {
+          return HydrationTrackerScreen(journeyId: journeyId);
+        }
         return AddMaternalHealthMetricScreen(
           journeyId: journeyId,
           initialMetricType: metricType,
@@ -478,11 +539,40 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/reminders/all',
+      // Compatibility read for older deep links; canonical new entry is
+      // /reminder-schedules and appointments have their own calendar.
       builder: (context, state) => const AllRemindersScreen(),
     ),
     GoRoute(
       path: '/reminders/calendar',
-      builder: (context, state) => const AppointmentCalendarScreen(),
+      builder: (context, state) {
+        final careGroupId = state.uri.queryParameters['careGroupId'];
+        return AppointmentCalendarScreen(
+          careGroupId: _isUuid(careGroupId) ? careGroupId : null,
+        );
+      },
+    ),
+    GoRoute(
+      path: '/appointments/calendar',
+      builder: (context, state) {
+        final careGroupId = state.uri.queryParameters['careGroupId'];
+        return AppointmentCalendarScreen(
+          careGroupId: _isUuid(careGroupId) ? careGroupId : null,
+        );
+      },
+    ),
+    GoRoute(
+      path: '/reminder-schedules',
+      builder: (context, state) => const ReminderSchedulesScreen(),
+    ),
+    GoRoute(
+      path: '/reminder-schedules/:id',
+      builder: (context, state) {
+        final id = state.pathParameters['id'];
+        return _isUuid(id)
+            ? ReminderSchedulesScreen(scheduleId: id)
+            : const _InvalidRouteScreen();
+      },
     ),
     GoRoute(
       path: '/health-records/add',
@@ -508,10 +598,56 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(
+      path: '/appointments/add',
+      builder: (context, state) {
+        final rawDate = state.uri.queryParameters['date'];
+        final parsedDate = rawDate == null ? null : DateTime.tryParse(rawDate);
+        return CreateAppointmentReminderScreen(initialDate: parsedDate);
+      },
+    ),
+    GoRoute(
       path: '/reminders/detail/:id',
       builder: (context, state) {
         final id = state.pathParameters['id'] ?? '';
         return ReminderDetailScreen(reminderId: id);
+      },
+    ),
+    GoRoute(
+      path: '/appointments/detail/:id',
+      builder: (context, state) {
+        final id = state.pathParameters['id'];
+        return _isUuid(id)
+            ? ReminderDetailScreen(reminderId: id!, appointmentResource: true)
+            : const _InvalidRouteScreen();
+      },
+    ),
+    GoRoute(
+      path: '/care-groups/:careGroupId/appointments/:id',
+      builder: (context, state) {
+        final careGroupId = state.pathParameters['careGroupId'];
+        final appointmentId = state.pathParameters['id'];
+        return _isUuid(careGroupId) && _isUuid(appointmentId)
+            ? SharedAppointmentDetailScreen(
+                careGroupId: careGroupId!,
+                appointmentId: appointmentId!,
+              )
+            : const _InvalidRouteScreen();
+      },
+    ),
+    GoRoute(
+      path: '/appointments/:id/edit',
+      builder: (context, state) {
+        final id = state.pathParameters['id'];
+        final initialReminder = state.extra is Reminder
+            ? state.extra as Reminder
+            : null;
+        return _isUuid(id)
+            ? UpdateSnoozeReminderScreen(
+                reminderId: id!,
+                initialReminder: initialReminder,
+                appointmentResource: true,
+              )
+            : const _InvalidRouteScreen();
       },
     ),
     GoRoute(
@@ -534,10 +670,6 @@ final GoRouter appRouter = GoRouter(
           members: const [],
         );
       },
-    ),
-    GoRoute(
-      path: '/care-groups/invitations',
-      builder: (context, state) => const PendingInvitationsScreen(),
     ),
     GoRoute(
       path: '/babies',
@@ -750,9 +882,14 @@ final GoRouter appRouter = GoRouter(
         }
         return SymptomIntakeScreen(
           entryContext:
-              extra as TriageEntryContext? ?? const TriageEntryContext(),
+              extra as TriageEntryContext? ??
+                  const TriageEntryContext(requiresStageSelection: true),
         );
       },
+    ),
+    GoRoute(
+      path: '/triage/history',
+      builder: (context, state) => const TriageHistoryScreen(),
     ),
     GoRoute(
       path: '/triage/result/:sessionId',
@@ -812,10 +949,6 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/safety/fall-detection/enable',
       builder: (context, state) => const EnableFallDetectionScreen(),
-    ),
-    GoRoute(
-      path: '/expert-queue',
-      builder: (context, state) => const ExpertQuestionQueueScreen(),
     ),
     // CB-033: Expert Profile Setup (UC-87)
     GoRoute(

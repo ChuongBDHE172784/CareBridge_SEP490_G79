@@ -48,6 +48,8 @@ public class DirectConversationPolicyImpl implements IDirectConversationPolicy {
 
     @Override
     public String resolveRole(UUID currentUserId, DirectConversation conversation) {
-        return currentUserId.equals(conversation.getMotherUserId()) ? "MOTHER" : "EXPERT";
+        if (currentUserId.equals(conversation.getMotherUserId())) return "MOTHER";
+        if (currentUserId.equals(conversation.getExpertUserId())) return "EXPERT";
+        throw DirectChatException.notParticipant();
     }
 }

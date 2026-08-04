@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/auth/auth_state.dart';
 import '../../../core/network/api_client.dart';
 import '../models/expert_onboarding_model.dart';
 import '../services/expert_image_capture.dart';
@@ -35,6 +36,11 @@ class _ExpertIdentityCaptureScreenState
 
   ExpertImageCapture get _capture =>
       widget.capture ?? ImagePickerExpertCapture();
+
+  Future<void> _returnToLogin() async {
+    await AuthState.instance.clear();
+    if (mounted) context.go('/login');
+  }
 
   Future<void> _pick(ExpertEvidenceKind kind, ImageSource source) async {
     try {
@@ -127,6 +133,11 @@ class _ExpertIdentityCaptureScreenState
     return Scaffold(
       backgroundColor: const Color(0xFFF7F1ED),
       appBar: AppBar(
+        leading: IconButton(
+          tooltip: 'Quay lại đăng nhập',
+          icon: const Icon(Icons.arrow_back),
+          onPressed: _submitting ? null : _returnToLogin,
+        ),
         title: const Text('Xác minh danh tính'),
         backgroundColor: Colors.transparent,
       ),

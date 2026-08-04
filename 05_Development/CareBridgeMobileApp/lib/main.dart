@@ -8,6 +8,7 @@ import 'core/notifications/fcm_service.dart';
 import 'core/routes/app_router.dart';
 import 'features/auth/services/auth_service.dart';
 import 'features/aiTriage/widgets/floating_ai_triage_host.dart';
+import 'features/aiTriage/models/triage_entry_context.dart';
 import 'features/directChat/calls/direct_call_host.dart';
 import 'features/reminder/services/reminder_service.dart';
 import 'features/safety/services/safety_foreground_service.dart';
@@ -112,7 +113,12 @@ class CareBridgeApp extends StatelessWidget {
             currentPath: () =>
                 appRouter.routeInformationProvider.value.uri.path,
             hasModal: () => floatingAiTriageRouteObserver.hasPopupRoute,
-            onOpen: () => appRouter.push('/triage/intake'),
+            onOpen: () async {
+              await appRouter.push(
+                '/triage/intake',
+                extra: const TriageEntryContext(requiresStageSelection: true),
+              );
+            },
             child: app,
           ),
         );

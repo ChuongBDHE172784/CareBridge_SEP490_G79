@@ -374,7 +374,7 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
     if (isUpdate) {
       context.pop();
     } else {
-      context.go('/');
+      context.go('/recommendation-profile', extra: 'PREGNANCY');
     }
   }
 

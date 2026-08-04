@@ -3,6 +3,7 @@ package com.carebridge.backend.community.repository;
 import com.carebridge.backend.community.entity.CommunityQuestion;
 import com.carebridge.backend.community.entity.PregnancyStage;
 import com.carebridge.backend.community.entity.QuestionStatus;
+import com.carebridge.backend.community.entity.UrgencyLevel;
 import com.carebridge.backend.content.entity.ReportStatus;
 import com.carebridge.backend.content.entity.ReportTargetType;
 import jakarta.persistence.LockModeType;
@@ -93,9 +94,12 @@ public interface CommunityQuestionRepository extends JpaRepository<CommunityQues
                    OR LOWER(q.body) LIKE LOWER(CONCAT('%', CAST(:keyword AS String), '%')))
               AND (:topicId IS NULL OR q.topicId = :topicId)
               AND (:stage IS NULL OR q.stage = :stage)
+              AND (:urgency IS NULL OR q.urgency = :urgency)
               AND (:hasExpertAnswer IS NULL
-                   OR (:hasExpertAnswer = false)
-                   OR (q.answerCount > 0 AND EXISTS (
+                   OR (:hasExpertAnswer = true AND q.answerCount > 0 AND EXISTS (
+                       SELECT a FROM CommunityAnswer a
+                       WHERE a.questionId = q.id AND a.expertLabeled = true))
+                   OR (:hasExpertAnswer = false AND NOT EXISTS (
                        SELECT a FROM CommunityAnswer a
                        WHERE a.questionId = q.id AND a.expertLabeled = true)))
             ORDER BY q.createdAt DESC
@@ -104,6 +108,7 @@ public interface CommunityQuestionRepository extends JpaRepository<CommunityQues
             @Param("keyword") String keyword,
             @Param("topicId") UUID topicId,
             @Param("stage") PregnancyStage stage,
+            @Param("urgency") UrgencyLevel urgency,
             @Param("hasExpertAnswer") Boolean hasExpertAnswer,
             Pageable pageable);
 

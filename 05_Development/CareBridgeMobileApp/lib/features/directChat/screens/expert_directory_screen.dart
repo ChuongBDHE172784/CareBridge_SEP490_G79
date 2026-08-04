@@ -187,6 +187,14 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
     });
   }
 
+  static const _primary = Color(0xFFC98C7B);
+  static const _primaryDark = Color(0xFF845143);
+  static const _surface = Color(0xFFF6F1EC);
+  static const _surfaceLow = Color(0xFFF2EAE4);
+  static const _onSurface = Color(0xFF271812);
+  static const _onVariant = Color(0xFF524440);
+  static const _outline = Color(0xFFD6C2BD);
+
   void _selectSpecialty(String? specialty) {
     if (_selectedSpecialty == specialty) return;
     setState(() => _selectedSpecialty = specialty);
@@ -196,46 +204,114 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Chuyên gia đã xác thực')),
+      backgroundColor: _surface,
+      appBar: AppBar(
+        backgroundColor: _primaryDark,
+        elevation: 0,
+        foregroundColor: Colors.white,
+        centerTitle: true,
+        title: const Text(
+          'Chuyên gia đã xác thực',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+        ),
+      ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(12),
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             child: TextField(
               controller: _searchController,
               onChanged: _onSearchChanged,
+              style: const TextStyle(color: _onSurface, fontSize: 14),
               decoration: InputDecoration(
-                hintText: 'Tìm theo tên, chuyên khoa...',
-                prefixIcon: const Icon(Icons.search),
+                hintText: 'Tìm theo tên bác sĩ, chuyên khoa...',
+                hintStyle: const TextStyle(color: _onVariant, fontSize: 14),
+                prefixIcon: const Icon(Icons.search_rounded, color: _primary),
+                filled: true,
+                fillColor: _surface,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 10,
+                ),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide(
+                    color: _outline.withValues(alpha: 0.4),
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: const BorderSide(color: _primary, width: 1.5),
                 ),
                 isDense: true,
               ),
             ),
           ),
           if (_specialties.isNotEmpty)
-            SizedBox(
-              height: 44,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                children: [
-                  ChoiceChip(
-                    label: const Text('Tất cả'),
-                    selected: _selectedSpecialty == null,
-                    onSelected: (_) => _selectSpecialty(null),
-                  ),
-                  const SizedBox(width: 8),
-                  for (final specialty in _specialties) ...[
+            Container(
+              color: Colors.white,
+              padding: const EdgeInsets.only(bottom: 12),
+              child: SizedBox(
+                height: 38,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  children: [
                     ChoiceChip(
-                      label: Text(specialty),
-                      selected: _selectedSpecialty == specialty,
-                      onSelected: (_) => _selectSpecialty(specialty),
+                      label: const Text('Tất cả'),
+                      selected: _selectedSpecialty == null,
+                      onSelected: (_) => _selectSpecialty(null),
+                      selectedColor: _primaryDark,
+                      labelStyle: TextStyle(
+                        color: _selectedSpecialty == null
+                            ? Colors.white
+                            : _onVariant,
+                        fontSize: 13,
+                        fontWeight: _selectedSpecialty == null
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                      ),
+                      backgroundColor: _surface,
+                      side: BorderSide(
+                        color: _selectedSpecialty == null
+                            ? Colors.transparent
+                            : _outline,
+                      ),
+                      shape: StadiumBorder(),
                     ),
                     const SizedBox(width: 8),
+                    for (final specialty in _specialties) ...[
+                      ChoiceChip(
+                        label: Text(specialty),
+                        selected: _selectedSpecialty == specialty,
+                        onSelected: (_) => _selectSpecialty(specialty),
+                        selectedColor: _primaryDark,
+                        labelStyle: TextStyle(
+                          color: _selectedSpecialty == specialty
+                              ? Colors.white
+                              : _onVariant,
+                          fontSize: 13,
+                          fontWeight: _selectedSpecialty == specialty
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                        ),
+                        backgroundColor: _surface,
+                        side: BorderSide(
+                          color: _selectedSpecialty == specialty
+                              ? Colors.transparent
+                              : _outline,
+                        ),
+                        shape: const StadiumBorder(),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           Expanded(child: _buildBody()),
@@ -246,30 +322,54 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
 
   Widget _buildBody() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(child: CircularProgressIndicator(color: _primary));
     }
     if (_error != null) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(_error!),
+            const Icon(Icons.error_outline, size: 48, color: _primaryDark),
             const SizedBox(height: 12),
-            FilledButton(
+            Text(_error!, style: const TextStyle(color: _onVariant)),
+            const SizedBox(height: 16),
+            FilledButton.icon(
               onPressed: () => _load(reset: true),
-              child: const Text('Thử lại'),
+              icon: const Icon(Icons.refresh),
+              label: const Text('Thử lại'),
+              style: FilledButton.styleFrom(backgroundColor: _primaryDark),
             ),
           ],
         ),
       );
     }
     if (_experts.isEmpty) {
-      return const Center(child: Text('Không tìm thấy chuyên gia phù hợp'));
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.person_search_rounded,
+              size: 56,
+              color: _primary.withValues(alpha: 0.5),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Không tìm thấy chuyên gia phù hợp',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: _onSurface,
+              ),
+            ),
+          ],
+        ),
+      );
     }
-    return ListView.separated(
+    return ListView.builder(
       controller: _scrollController,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
       itemCount: _experts.length + (_hasMore ? 1 : 0),
-      separatorBuilder: (_, _) => const Divider(height: 1),
       itemBuilder: (context, index) {
         if (index >= _experts.length) {
           return Padding(
@@ -281,59 +381,161 @@ class _ExpertDirectoryScreenState extends State<ExpertDirectoryScreen> {
                       icon: const Icon(Icons.refresh),
                       label: const Text('Tải lại'),
                     )
-                  : const CircularProgressIndicator(strokeWidth: 2),
+                  : const CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: _primary,
+                    ),
             ),
           );
         }
         final expert = _experts[index];
-        return ListTile(
-          leading: CircleAvatar(
-            backgroundImage: expert.avatarUrl != null
-                ? NetworkImage(expert.avatarUrl!)
-                : null,
-            child: expert.avatarUrl == null
-                ? Text(
-                    (expert.displayName?.isNotEmpty == true
-                            ? expert.displayName![0]
-                            : '?')
-                        .toUpperCase(),
-                  )
-                : null,
-          ),
-          title: Row(
-            children: [
-              Flexible(
-                child: Text(
-                  expert.displayName ??
-                      expert.professionalTitle ??
-                      'Chuyên gia',
-                  overflow: TextOverflow.ellipsis,
-                ),
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () =>
+                context.push('/expert/public/${expert.expertProfileId}'),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: _outline.withValues(alpha: 0.5)),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x0C5A463F),
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
+                  ),
+                ],
               ),
-              const SizedBox(width: 6),
-              if (expert.verificationStatus == 'APPROVED')
-                const Icon(
-                  Icons.verified,
-                  size: 18,
-                  color: Color(0xFFC98C7B),
-                  semanticLabel: 'Đã xác thực',
-                ),
-            ],
+              child: Row(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: _primary.withValues(alpha: 0.4),
+                        width: 2,
+                      ),
+                    ),
+                    child: CircleAvatar(
+                      radius: 26,
+                      backgroundColor: _surfaceLow,
+                      backgroundImage: expert.avatarUrl != null
+                          ? NetworkImage(expert.avatarUrl!)
+                          : null,
+                      child: expert.avatarUrl == null
+                          ? Text(
+                              (expert.displayName?.isNotEmpty == true
+                                      ? expert.displayName![0]
+                                      : 'B')
+                                  .toUpperCase(),
+                              style: const TextStyle(
+                                color: _primaryDark,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 18,
+                              ),
+                            )
+                          : null,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                expert.displayName ??
+                                    expert.professionalTitle ??
+                                    'Chuyên gia',
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: _onSurface,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            if (expert.verificationStatus == 'APPROVED')
+                              const Icon(
+                                Icons.verified_rounded,
+                                size: 18,
+                                color: _primary,
+                                semanticLabel: 'Đã xác thực',
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          [
+                            if (expert.specialty != null) expert.specialty!,
+                            if (expert.experienceYears != null)
+                              '${expert.experienceYears} năm kinh nghiệm',
+                          ].join(' · '),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: _onVariant,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (expert.ratingAvg != null) ...[
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.star_rounded,
+                                size: 16,
+                                color: Color(0xFFF59E0B),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                expert.ratingAvg!.toStringAsFixed(1),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: _onSurface,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton(
+                    onPressed: () => context.push(
+                      '/expert/public/${expert.expertProfileId}',
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: _primaryDark,
+                      side: const BorderSide(color: _primary),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                    ),
+                    child: const Text(
+                      'Xem hồ sơ',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
-          subtitle: Text(
-            [
-              if (expert.specialty != null) expert.specialty!,
-              if (expert.experienceYears != null)
-                '${expert.experienceYears} năm kinh nghiệm',
-              if (expert.ratingAvg != null)
-                '★ ${expert.ratingAvg!.toStringAsFixed(1)}',
-            ].join(' · '),
-          ),
-          trailing: OutlinedButton(
-            onPressed: () => context.push('/expert/public/${expert.expertProfileId}'),
-            child: const Text('Xem hồ sơ'),
-          ),
-          onTap: () => context.push('/expert/public/${expert.expertProfileId}'),
         );
       },
     );

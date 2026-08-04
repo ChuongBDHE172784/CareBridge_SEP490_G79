@@ -123,7 +123,7 @@ public class DirectConversationServiceImpl implements IDirectConversationService
     public List<DirectConversationSummaryResponse> listMyConversations(UUID currentUserId) {
         // ADR-MEDI-002 mục 6 — exactly 5 fixed queries below, regardless of conversation count (C1).
         List<DirectConversation> conversations = conversationRepository
-                .findByMotherUserIdOrExpertUserIdOrderByLastActivityAtDesc(currentUserId, currentUserId); // 1/5
+                .findByMotherUserIdOrExpertUserIdOrderByLastActivityAtDesc(currentUserId, currentUserId);
         if (conversations.isEmpty()) {
             return List.of();
         }
@@ -133,7 +133,8 @@ public class DirectConversationServiceImpl implements IDirectConversationService
         Set<UUID> conversationIds = new HashSet<>();
         for (DirectConversation c : conversations) {
             boolean viewerIsMother = currentUserId.equals(c.getMotherUserId());
-            counterpartUserIds.add(viewerIsMother ? c.getExpertUserId() : c.getMotherUserId());
+            boolean viewerIsExpert = currentUserId.equals(c.getExpertUserId());
+            counterpartUserIds.add(viewerIsMother || !viewerIsExpert ? c.getExpertUserId() : c.getMotherUserId());
             expertUserIds.add(c.getExpertUserId());
             conversationIds.add(c.getId());
         }
@@ -159,8 +160,10 @@ public class DirectConversationServiceImpl implements IDirectConversationService
             Map<UUID, LastMessageRow> lastMessages,
             Map<UUID, Integer> unreadCounts) {
         boolean viewerIsMother = currentUserId.equals(conversation.getMotherUserId());
-        UUID counterpartUserId = viewerIsMother ? conversation.getExpertUserId() : conversation.getMotherUserId();
-        String counterpartRole = viewerIsMother ? "EXPERT" : "MOTHER";
+        boolean viewerIsExpert = currentUserId.equals(conversation.getExpertUserId());
+        UUID counterpartUserId = viewerIsMother || !viewerIsExpert
+                ? conversation.getExpertUserId() : conversation.getMotherUserId();
+        String counterpartRole = viewerIsMother || !viewerIsExpert ? "EXPERT" : "MOTHER";
         User counterpartUser = usersById.get(counterpartUserId);
         ExpertProfile conversationExpert = expertProfilesByUserId.get(conversation.getExpertUserId());
         String counterpartSpecialty = "EXPERT".equals(counterpartRole) && conversationExpert != null
@@ -216,16 +219,15 @@ public class DirectConversationServiceImpl implements IDirectConversationService
         DirectMessage resolvedMessage = messageRepository.findByIdAndConversationId(lastSeenMessageId, conversationId)
                 .orElseThrow(DirectChatException::messageNotInConversation);
 
-        boolean mother = currentUserId.equals(conversation.getMotherUserId());
-        return aggregateRepository.advanceReadCursor(conversationId, currentUserId, mother,
+        return aggregateRepository.advanceReadCursor(conversationId, currentUserId,
                 resolvedMessage.getCreatedAt(), resolvedMessage.getId());
     }
 
     @Override
     @Transactional(readOnly = true)
     public UnreadSummaryResponse getUnreadSummary(UUID currentUserId) {
-        List<DirectConversation> conversations =
-                conversationRepository.findByMotherUserIdOrExpertUserId(currentUserId, currentUserId);
+        List<DirectConversation> conversations = conversationRepository
+                .findByMotherUserIdOrExpertUserId(currentUserId, currentUserId);
         if (conversations.isEmpty()) {
             return new UnreadSummaryResponse(0, 0);
         }

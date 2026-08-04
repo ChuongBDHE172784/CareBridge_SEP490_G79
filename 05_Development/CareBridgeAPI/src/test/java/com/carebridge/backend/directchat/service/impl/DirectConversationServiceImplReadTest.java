@@ -79,12 +79,12 @@ class DirectConversationServiceImplReadTest {
                 .thenReturn(Optional.of(message(M1_ID, T0)));
 
         var expected = new com.carebridge.backend.directchat.repository.ConversationSummaryAggregateRepository.ReadCursor(T0, M1_ID);
-        when(aggregateRepository.advanceReadCursor(CONVERSATION_ID, EXPERT_ID, false, T0, M1_ID)).thenReturn(expected);
+        when(aggregateRepository.advanceReadCursor(CONVERSATION_ID, EXPERT_ID, T0, M1_ID)).thenReturn(expected);
         var cursor = service.markRead(CONVERSATION_ID, EXPERT_ID, M1_ID);
 
         assertThat(cursor.createdAt()).isEqualTo(T0);
         assertThat(cursor.messageId()).isEqualTo(M1_ID);
-        verify(aggregateRepository).advanceReadCursor(CONVERSATION_ID, EXPERT_ID, false, T0, M1_ID);
+        verify(aggregateRepository).advanceReadCursor(CONVERSATION_ID, EXPERT_ID, T0, M1_ID);
     }
 
     // MEDI-TC-012 step 2/3 — monotonic: an older lastSeenMessageId never pulls the cursor backward.
@@ -97,11 +97,11 @@ class DirectConversationServiceImplReadTest {
                 .thenReturn(Optional.of(message(M2_ID, T1)));
 
         var expected = new com.carebridge.backend.directchat.repository.ConversationSummaryAggregateRepository.ReadCursor(T1, M2_ID);
-        when(aggregateRepository.advanceReadCursor(CONVERSATION_ID, MOTHER_ID, true, T1, M2_ID)).thenReturn(expected);
+        when(aggregateRepository.advanceReadCursor(CONVERSATION_ID, MOTHER_ID, T1, M2_ID)).thenReturn(expected);
         var cursor = service.markRead(CONVERSATION_ID, MOTHER_ID, M2_ID);
 
         assertThat(cursor).isEqualTo(expected);
-        verify(aggregateRepository).advanceReadCursor(CONVERSATION_ID, MOTHER_ID, true, T1, M2_ID);
+        verify(aggregateRepository).advanceReadCursor(CONVERSATION_ID, MOTHER_ID, T1, M2_ID);
     }
 
     // MEDI-TC-012 step 4/5 — lastSeenMessageId not found (wrong conversation or nonexistent) -> DCC-006,

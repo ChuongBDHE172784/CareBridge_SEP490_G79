@@ -3,6 +3,7 @@ package com.carebridge.backend.content.repository;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
 import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
 import com.carebridge.backend.content.entity.ContentStage;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -18,6 +19,10 @@ public interface ChecklistTemplateRepository extends JpaRepository<ChecklistTemp
 
     Optional<ChecklistTemplate> findByTemplateVersionId(UUID templateVersionId);
 
+    List<ChecklistTemplate> findByTemplateLineageId(UUID templateLineageId);
+
+    List<ChecklistTemplate> findAllByTemplateVersionIdIn(Collection<UUID> templateVersionIds);
+
     @Query("select coalesce(max(t.versionNo), 0) from ChecklistTemplate t " +
             "where t.id=:lineageId or t.templateLineageId=:lineageId")
     int findMaxVersionNoForLineage(@Param("lineageId") UUID lineageId);
@@ -25,6 +30,15 @@ public interface ChecklistTemplateRepository extends JpaRepository<ChecklistTemp
     @Query(value = "select pg_advisory_xact_lock(hashtextextended(cast(:lineageId as text), 0))",
             nativeQuery = true)
     void acquireLineageLock(@Param("lineageId") UUID lineageId);
+
+    /**
+     * Serializes approval/activation decisions that can change the single
+     * PRE_PREGNANCY MOTHER sequence cohort. The transaction-scoped advisory lock
+     * closes the race between reading active candidates and saving the decision.
+     */
+    @Query(value = "select pg_advisory_xact_lock(hashtextextended('CHECKLIST_PRE_PREGNANCY_SEQUENCE_COHORT', 0))",
+            nativeQuery = true)
+    void acquirePreconceptionSequenceCohortLock();
 
     List<ChecklistTemplate> findByStage(ContentStage stage);
 

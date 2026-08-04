@@ -5,11 +5,13 @@ import com.carebridge.backend.checklist.audit.ChecklistAuditActorType;
 import com.carebridge.backend.checklist.audit.ChecklistAuditEvent;
 import com.carebridge.backend.checklist.audit.ChecklistAuditResourceType;
 import com.carebridge.backend.checklist.audit.ChecklistAuditWriter;
+import com.carebridge.backend.checklist.distribution.ChecklistCurrentScopePolicy;
 import com.carebridge.backend.checklist.model.ChecklistInstanceStatus;
 import com.carebridge.backend.checklist.model.ChecklistTaskStatus;
 import com.carebridge.backend.checklist.key.ChecklistDistributionKeyFactory;
 import com.carebridge.backend.checklist.entity.ChecklistInstance;
 import com.carebridge.backend.checklist.entity.ChecklistTaskInstance;
+import com.carebridge.backend.checklist.policy.ChecklistTemplateVisibilityPolicy;
 import com.carebridge.backend.checklist.repository.ChecklistInstanceRepository;
 import com.carebridge.backend.checklist.repository.ChecklistTaskInstanceRepository;
 import com.carebridge.backend.checklist.today.dto.TaskActionResponse;
@@ -17,24 +19,99 @@ import com.carebridge.backend.checklist.today.model.TaskAction;
 import com.carebridge.backend.checklist.today.model.TaskKind;
 import com.carebridge.backend.checklist.today.policy.UnifiedTaskAccessPolicy;
 import com.carebridge.backend.common.exception.BusinessException;
+import com.carebridge.backend.content.entity.ChecklistTemplate;
+import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
+import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
 import jakarta.persistence.EntityManager;
+import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 @Component
-@RequiredArgsConstructor
 public class ChecklistTaskActionHandler implements TaskActionHandler {
+    private static final ZoneId DEFAULT_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+
     private final ChecklistTaskInstanceRepository taskRepository;
     private final ChecklistInstanceRepository instanceRepository;
     private final UnifiedTaskAccessPolicy accessPolicy;
     private final ChecklistAuditWriter auditWriter;
     private final EntityManager entityManager;
+    private final ChecklistCurrentScopePolicy currentScopePolicy;
+    private final Clock clock;
+    private final ChecklistTemplateRepository templateRepository;
+
+    public ChecklistTaskActionHandler(
+            ChecklistTaskInstanceRepository taskRepository,
+            ChecklistInstanceRepository instanceRepository,
+            UnifiedTaskAccessPolicy accessPolicy,
+            ChecklistAuditWriter auditWriter,
+            EntityManager entityManager) {
+        this(taskRepository, instanceRepository, accessPolicy, auditWriter, entityManager,
+                null, Clock.systemUTC(), null);
+    }
+
+    public ChecklistTaskActionHandler(
+            ChecklistTaskInstanceRepository taskRepository,
+            ChecklistInstanceRepository instanceRepository,
+            UnifiedTaskAccessPolicy accessPolicy,
+            ChecklistAuditWriter auditWriter,
+            EntityManager entityManager,
+            ChecklistCurrentScopePolicy currentScopePolicy) {
+        this(taskRepository, instanceRepository, accessPolicy, auditWriter, entityManager,
+                currentScopePolicy, Clock.systemUTC(), null);
+    }
+
+    @Autowired
+    public ChecklistTaskActionHandler(
+            ChecklistTaskInstanceRepository taskRepository,
+            ChecklistInstanceRepository instanceRepository,
+            UnifiedTaskAccessPolicy accessPolicy,
+            ChecklistAuditWriter auditWriter,
+            EntityManager entityManager,
+            ChecklistCurrentScopePolicy currentScopePolicy,
+            ChecklistTemplateRepository templateRepository) {
+        this(taskRepository, instanceRepository, accessPolicy, auditWriter, entityManager,
+                currentScopePolicy, Clock.systemUTC(), templateRepository);
+    }
+
+    public ChecklistTaskActionHandler(
+            ChecklistTaskInstanceRepository taskRepository,
+            ChecklistInstanceRepository instanceRepository,
+            UnifiedTaskAccessPolicy accessPolicy,
+            ChecklistAuditWriter auditWriter,
+            EntityManager entityManager,
+            ChecklistCurrentScopePolicy currentScopePolicy,
+            Clock clock) {
+        this(taskRepository, instanceRepository, accessPolicy, auditWriter, entityManager,
+                currentScopePolicy, clock, null);
+    }
+
+    public ChecklistTaskActionHandler(
+            ChecklistTaskInstanceRepository taskRepository,
+            ChecklistInstanceRepository instanceRepository,
+            UnifiedTaskAccessPolicy accessPolicy,
+            ChecklistAuditWriter auditWriter,
+            EntityManager entityManager,
+            ChecklistCurrentScopePolicy currentScopePolicy,
+            Clock clock,
+            ChecklistTemplateRepository templateRepository) {
+        this.taskRepository = taskRepository;
+        this.instanceRepository = instanceRepository;
+        this.accessPolicy = accessPolicy;
+        this.auditWriter = auditWriter;
+        this.entityManager = entityManager;
+        this.currentScopePolicy = currentScopePolicy;
+        this.clock = clock;
+        this.templateRepository = templateRepository;
+    }
 
     @Override
     public TaskKind taskKind() {
@@ -43,16 +120,42 @@ public class ChecklistTaskActionHandler implements TaskActionHandler {
 
     @Override
     public AuthorizedTask authorize(UUID actorUserId, UUID taskId) {
+        return authorizeScoped(actorUserId, taskId, null);
+    }
+
+    @Override
+    public AuthorizedTask authorize(UUID actorUserId, UUID taskId, UUID careGroupId) {
+        return authorizeScoped(actorUserId, taskId, careGroupId);
+    }
+
+    /** Re-check the same explicit FAMILY scope after the action lock is held. */
+    @Override
+    public AuthorizedTask authorizeForUpdate(
+        UUID actorUserId, AuthorizedTask task, UUID careGroupId) {
+        if (careGroupId == null) {
+            return authorizeForUpdate(actorUserId, task);
+        }
+        return authorize(actorUserId, task.taskId(), careGroupId);
+    }
+
+    private AuthorizedTask authorizeScoped(
+            UUID actorUserId, UUID taskId, UUID careGroupId) {
         var aggregate = lockAggregate(taskId);
         var task = aggregate.task();
         var instance = aggregate.instance();
-        if (!accessPolicy.canComplete(instance, actorUserId)) {
+        if (isHistoricalOrStale(instance) || !isTemplateVisible(instance)) {
+            throw notFound();
+        }
+        boolean permitted = careGroupId == null
+                ? accessPolicy.canComplete(instance, actorUserId)
+                : accessPolicy.canComplete(instance, actorUserId, careGroupId);
+        if (!permitted) {
             throw notFound();
         }
         Set<TaskAction> actions = EnumSet.noneOf(TaskAction.class);
         if (instance.getStatus() == ChecklistInstanceStatus.CANCELLED) {
             return new AuthorizedTask(TaskKind.CHECKLIST, taskId, instance.getId(),
-                    ChecklistInstanceStatus.CANCELLED.name(), actions);
+                    ChecklistInstanceStatus.CANCELLED.name(), actions, careGroupId);
         }
         if (task.getStatus() == ChecklistTaskStatus.PENDING
                 || task.getStatus() == ChecklistTaskStatus.IN_PROGRESS) {
@@ -61,7 +164,7 @@ public class ChecklistTaskActionHandler implements TaskActionHandler {
             actions.add(TaskAction.REOPEN);
         }
         return new AuthorizedTask(TaskKind.CHECKLIST, taskId, instance.getId(),
-                task.getStatus().name(), actions);
+                task.getStatus().name(), actions, careGroupId);
     }
 
     @Override
@@ -72,7 +175,13 @@ public class ChecklistTaskActionHandler implements TaskActionHandler {
         var instance = aggregate.instance();
         if (authorized.instanceId() == null
                 || !authorized.instanceId().equals(instance.getId())
-                || instance.getStatus() == ChecklistInstanceStatus.CANCELLED) {
+                || instance.getStatus() == ChecklistInstanceStatus.CANCELLED
+                || isHistoricalOrStale(instance)
+                || !isTemplateVisible(instance)
+                || !(authorized.authorizationCareGroupId() == null
+                    ? accessPolicy.canComplete(instance, actorUserId)
+                    : accessPolicy.canComplete(
+                            instance, actorUserId, authorized.authorizationCareGroupId()))) {
             throw notFound();
         }
         String previousStatus = task.getStatus().name();
@@ -164,6 +273,37 @@ public class ChecklistTaskActionHandler implements TaskActionHandler {
                 instance.getTemplateVersionId(), instance.getRecipientUserId(),
                 instance.getRecipientRole().name(), instance.getCareGroupId(),
                 instance.getCareContextType().name(), instance.getCareContextId());
+    }
+
+    private boolean isHistoricalOrStale(ChecklistInstance instance) {
+        if (instance.getHistoricalAt() != null) {
+            return true;
+        }
+        if (currentScopePolicy == null || !currentScopePolicy.isHistoryManaged(instance)) {
+            return false;
+        }
+        LocalDate today = LocalDate.ofInstant(clock.instant(), DEFAULT_ZONE);
+        return !currentScopePolicy.isCurrent(instance, today);
+    }
+
+    private boolean isTemplateVisible(ChecklistInstance instance) {
+        if (templateRepository == null) {
+            // Preserve compatibility constructors that do not provide template metadata.
+            return true;
+        }
+        if (instance == null || instance.getTemplateVersionId() == null) {
+            return ChecklistTemplateVisibilityPolicy.isVisible(instance, null);
+        }
+        ChecklistTemplate template = templateRepository
+                .findByTemplateVersionId(instance.getTemplateVersionId())
+                .orElse(null);
+        return template != null
+                && template.getStatus() == ChecklistTemplateStatus.APPROVED
+                && (template.getRecipientScope()
+                        == com.carebridge.backend.checklist.model.ChecklistRecipientScope.MOTHER
+                    || template.getRecipientScope()
+                        == com.carebridge.backend.checklist.model.ChecklistRecipientScope.BOTH)
+                && ChecklistTemplateVisibilityPolicy.isVisible(instance, template);
     }
 
     private record LockedAggregate(

@@ -44,8 +44,17 @@ public class DirectMessage {
     @Column(name = "message_type", nullable = false, length = 30)
     private MessageType messageType = MessageType.TEXT;
 
-    @Column(name = "message_body", nullable = false, columnDefinition = "text")
+    @Column(name = "message_body", columnDefinition = "text")
     private String messageBody;
+
+    @Column(name = "attachment_id")
+    private UUID attachmentId;
+
+    @Column(name = "recalled_at")
+    private Instant recalledAt;
+
+    @Column(name = "recalled_by_user_id")
+    private UUID recalledByUserId;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

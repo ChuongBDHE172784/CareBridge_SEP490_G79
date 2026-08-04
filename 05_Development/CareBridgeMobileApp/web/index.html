@@ -31,9 +31,9 @@
 
   <title>untitled</title>
   <link rel="manifest" href="manifest.json">
-  <script src="https://unpkg.com/trackasia-gl@latest/dist/trackasia-gl.js"></script>
+  <script src="https://unpkg.com/trackasia-gl@2.0.1/dist/trackasia-gl.js"></script>
   <link
-    href="https://unpkg.com/trackasia-gl@latest/dist/trackasia-gl.css"
+    href="https://unpkg.com/trackasia-gl@2.0.1/dist/trackasia-gl.css"
     rel="stylesheet">
   <script
     type="application/javascript"
@@ -45,6 +45,13 @@
   </script>
 </head>
 <body>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/firebase-messaging-sw.js').catch(() => {
+        // Flutter surfaces token-registration readiness through FcmService.
+      });
+    }
+  </script>
   <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader

@@ -6,6 +6,8 @@ import type { ContentDetail } from '../models/content';
 
 const harness = vi.hoisted(() => ({
   fetchStaffContentDetail: vi.fn(),
+  fetchRecommendationTags: vi.fn(),
+  fetchTags: vi.fn(),
   updateContent: vi.fn(),
   archiveContent: vi.fn(),
   navigate: vi.fn(),
@@ -14,6 +16,8 @@ const harness = vi.hoisted(() => ({
 
 vi.mock('../services/contentApi', () => ({
   fetchStaffContentDetail: harness.fetchStaffContentDetail,
+  fetchRecommendationTags: harness.fetchRecommendationTags,
+  fetchTags: harness.fetchTags,
   updateContent: harness.updateContent,
   archiveContent: harness.archiveContent,
 }));
@@ -57,6 +61,8 @@ function contentDetail(overrides: Partial<ContentDetail> = {}): ContentDetail {
 describe('ContentDetailPage', () => {
   beforeEach(() => {
     harness.fetchStaffContentDetail.mockReset();
+    harness.fetchRecommendationTags.mockReset();
+    harness.fetchTags.mockReset();
     harness.updateContent.mockReset();
     harness.archiveContent.mockReset();
     harness.navigate.mockReset();
@@ -93,5 +99,28 @@ describe('ContentDetailPage', () => {
     expect(await screen.findByText('System Admin yêu cầu chỉnh sửa')).toBeTruthy();
     expect(screen.getByText('Cần bổ sung nguồn y khoa đáng tin cậy')).toBeTruthy();
     expect(screen.getByText('Cần chỉnh sửa')).toBeTruthy();
+  });
+
+  it('classifies recommendation metadata using catalog tags, not ordinary tags', async () => {
+    harness.fetchStaffContentDetail.mockResolvedValue(contentDetail({
+      type: 'ARTICLE',
+      tagIds: ['ordinary-1', 'rec-1'],
+      eligibleFromWeek: null,
+      eligibleToWeek: null,
+      recommendationPriority: 20,
+    }));
+    harness.fetchRecommendationTags.mockResolvedValue({
+      catalogVersion: 'RECOMMENDATION_TAG_CATALOG_V1',
+      items: [{ id: 'rec-1', slug: 'rec-age-18-24', domain: 'AGE', label: 'Age 18-24' }],
+    });
+    harness.fetchTags.mockResolvedValue([
+      { id: 'ordinary-1', slug: 'nutrition', name: 'Nutrition', type: 'TAG' },
+    ]);
+
+    render(<ContentDetailPage />);
+
+    expect(await screen.findByText(/Classification: TARGETED/)).toBeTruthy();
+    expect(screen.getByText(/Audience: Age 18-24/)).toBeTruthy();
+    expect(screen.queryByText(/Retired or unknown audience IDs/)).toBeNull();
   });
 });

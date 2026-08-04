@@ -171,6 +171,8 @@ Future<void> _runScenario() async {
     'BLOOD_PRESSURE',
     'BLOOD_GLUCOSE',
     'FETAL_MOVEMENT_SESSION',
+    'HYDRATION',
+    'EPDS_SCORE',
   });
 
   final now = DateTime.now().toUtc().subtract(const Duration(minutes: 2));
@@ -178,6 +180,21 @@ Future<void> _runScenario() async {
   final sessionEnd = now;
   final cleanupIds = <String>[];
   final cases = [
+    _MetricCase(
+      code: 'HYDRATION',
+      addRequest: AddMetricRequest(
+        metricType: 'HYDRATION',
+        valueNumeric: 250,
+        unit: 'ml',
+        measuredAt: now.add(const Duration(seconds: 4)),
+        note: '[E2E] hydration add',
+      ),
+      updateRequest: const UpdateMetricRequest(
+        valueNumeric: 350,
+        note: '[E2E] hydration update',
+      ),
+      updatedPrimary: 350,
+    ),
     _MetricCase(
       code: 'WEIGHT',
       addRequest: AddMetricRequest(

@@ -73,6 +73,17 @@ public class ExpertIdentityVerificationController {
                 identityService.getAdminReviewCases(search, status, pageable, reviewerId)));
     }
 
+    /** Read-only, full registration case for the admin expert directory. */
+    @GetMapping("/review-cases/{expertProfileId}")
+    @PreAuthorize("hasRole('SYSTEM_ADMIN')")
+    public ResponseEntity<ApiResponse<ExpertReviewCaseResponse>> getReviewCase(
+            Principal principal,
+            @PathVariable UUID expertProfileId) {
+        UUID reviewerId = SecurityUtils.requireCurrentUserId(principal);
+        return ResponseEntity.ok(ApiResponse.success(
+                identityService.getAdminReviewCase(expertProfileId, reviewerId)));
+    }
+
     @PutMapping("/identity/{attemptId}/review")
     @PreAuthorize("hasRole('SYSTEM_ADMIN')")
     public ResponseEntity<ApiResponse<IdentityVerificationResponse>> review(

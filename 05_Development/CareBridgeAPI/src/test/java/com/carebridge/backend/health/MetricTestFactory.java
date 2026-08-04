@@ -70,9 +70,11 @@ public final class MetricTestFactory {
 
     public static AddMetricRequest makeBloodPressureRequest() {
         AddMetricRequest req = new AddMetricRequest();
-        req.setMetricType(MetricType.BLOOD_PRESSURE_DIASTOLIC);
-        req.setValueNumeric(new BigDecimal("80"));
-        req.setValueSecondary(new BigDecimal("120"));
+        req.setMetricType(MetricType.BLOOD_PRESSURE);
+        // valueNumeric is systolic and valueSecondary is diastolic everywhere
+        // in the canonical paired-observation contract.
+        req.setValueNumeric(new BigDecimal("120"));
+        req.setValueSecondary(new BigDecimal("80"));
         req.setUnit("mmHg");
         req.setMeasuredAt(Instant.now().minusSeconds(300));
         req.setSourceType(DataSource.MANUAL);

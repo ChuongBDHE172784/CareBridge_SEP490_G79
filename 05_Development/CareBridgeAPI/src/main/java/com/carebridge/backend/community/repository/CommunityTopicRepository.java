@@ -29,6 +29,11 @@ public interface CommunityTopicRepository extends JpaRepository<CommunityTopic, 
 
     boolean existsBySlugAndIdNot(String slug, UUID id);
 
+    List<CommunityTopic> findAllBySlugIn(Collection<String> slugs);
+
+    /** Public projection/privacy helper: discover retired or malformed rec-* rows in one query. */
+    List<CommunityTopic> findAllBySlugStartingWith(String slugPrefix);
+
     boolean existsByParentId(UUID parentId);
 
     Optional<CommunityTopic> findByIdAndIsHiddenFalse(UUID id);

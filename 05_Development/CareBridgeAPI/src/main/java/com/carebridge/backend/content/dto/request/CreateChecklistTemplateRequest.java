@@ -18,7 +18,8 @@ public record CreateChecklistTemplateRequest(
         ContentStage stage,
         @Valid ChecklistSubstageRequest substage,
         // §11.2: empty/null both valid — an empty draft shell is allowed (matches existing seed data)
-        @Valid List<ChecklistItemRequest> items
+        @Valid List<ChecklistItemRequest> items,
+        @JsonAlias("sequencePosition") Integer displayOrder
 ) {
 
     public CreateChecklistTemplateRequest(
@@ -28,7 +29,7 @@ public record CreateChecklistTemplateRequest(
             ContentStage stage,
             ChecklistSubstageRequest substage,
             List<ChecklistItemRequest> items) {
-        this(name, description, ChecklistTemplateType.MANDATORY, recipientRoles, stage, substage, items);
+        this(name, description, ChecklistTemplateType.MANDATORY, recipientRoles, stage, substage, items, 0);
     }
 
     /** Legacy constructor retained for existing callers while V2 metadata is adopted. */
@@ -38,6 +39,17 @@ public record CreateChecklistTemplateRequest(
             ContentStage stage,
             List<ChecklistItemRequest> items) {
         this(name, description, ChecklistTemplateType.MANDATORY,
-                Set.of(ChecklistRecipientRole.MOTHER), stage, null, items);
+                Set.of(ChecklistRecipientRole.MOTHER), stage, null, items, 0);
+    }
+
+    public CreateChecklistTemplateRequest(
+            String name,
+            String description,
+            ChecklistTemplateType templateType,
+            Set<ChecklistRecipientRole> recipientRoles,
+            ContentStage stage,
+            ChecklistSubstageRequest substage,
+            List<ChecklistItemRequest> items) {
+        this(name, description, templateType, recipientRoles, stage, substage, items, 0);
     }
 }

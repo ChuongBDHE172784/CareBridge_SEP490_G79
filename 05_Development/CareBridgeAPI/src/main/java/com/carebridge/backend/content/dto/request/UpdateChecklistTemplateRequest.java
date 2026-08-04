@@ -21,7 +21,8 @@ public record UpdateChecklistTemplateRequest(
         @Valid ChecklistSubstageRequest substage,
         @NotNull ChecklistTemplateStatus status,
         // null = keep existing items unchanged; [] = clear all items; non-empty = full replace
-        @Valid List<ChecklistItemRequest> items
+        @Valid List<ChecklistItemRequest> items,
+        @JsonAlias("sequencePosition") Integer displayOrder
 ) {
 
     public UpdateChecklistTemplateRequest(
@@ -33,7 +34,7 @@ public record UpdateChecklistTemplateRequest(
             ChecklistTemplateStatus status,
             List<ChecklistItemRequest> items) {
         this(name, description, ChecklistTemplateType.MANDATORY,
-                recipientRoles, stage, substage, status, items);
+                recipientRoles, stage, substage, status, items, 0);
     }
 
     /** Legacy constructor retained for existing callers while V2 metadata is adopted. */
@@ -44,6 +45,18 @@ public record UpdateChecklistTemplateRequest(
             ChecklistTemplateStatus status,
             List<ChecklistItemRequest> items) {
         this(name, description, ChecklistTemplateType.MANDATORY,
-                Set.of(ChecklistRecipientRole.MOTHER), stage, null, status, items);
+                Set.of(ChecklistRecipientRole.MOTHER), stage, null, status, items, 0);
+    }
+
+    public UpdateChecklistTemplateRequest(
+            String name,
+            String description,
+            ChecklistTemplateType templateType,
+            Set<ChecklistRecipientRole> recipientRoles,
+            ContentStage stage,
+            ChecklistSubstageRequest substage,
+            ChecklistTemplateStatus status,
+            List<ChecklistItemRequest> items) {
+        this(name, description, templateType, recipientRoles, stage, substage, status, items, 0);
     }
 }

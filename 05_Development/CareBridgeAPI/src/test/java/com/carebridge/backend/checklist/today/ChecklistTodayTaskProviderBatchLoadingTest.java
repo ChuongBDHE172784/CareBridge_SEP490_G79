@@ -20,6 +20,9 @@ import com.carebridge.backend.checklist.repository.ChecklistTaskInstanceReposito
 import com.carebridge.backend.checklist.today.policy.UnifiedTaskAccessPolicy;
 import com.carebridge.backend.checklist.today.model.TaskAction;
 import com.carebridge.backend.checklist.today.provider.ChecklistTodayTaskProvider;
+import com.carebridge.backend.content.entity.ChecklistTemplate;
+import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
+import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -40,7 +43,7 @@ class ChecklistTodayTaskProviderBatchLoadingTest {
         ChecklistInstanceRepository instances = mock(ChecklistInstanceRepository.class);
         ChecklistTaskInstanceRepository tasks = mock(ChecklistTaskInstanceRepository.class);
         UnifiedTaskAccessPolicy access = mock(UnifiedTaskAccessPolicy.class);
-        when(instances.findByRecipientUserId(ACTOR_ID)).thenReturn(List.of(first, second));
+        when(instances.findByRecipientUserIdAndHistoricalAtIsNull(ACTOR_ID)).thenReturn(List.of(first, second));
         when(access.canView(first, ACTOR_ID)).thenReturn(true);
         when(access.canView(second, ACTOR_ID)).thenReturn(true);
         when(access.canComplete(first, ACTOR_ID)).thenReturn(true);
@@ -75,7 +78,7 @@ class ChecklistTodayTaskProviderBatchLoadingTest {
         ChecklistInstanceRepository instances = mock(ChecklistInstanceRepository.class);
         ChecklistTaskInstanceRepository tasks = mock(ChecklistTaskInstanceRepository.class);
         UnifiedTaskAccessPolicy access = mock(UnifiedTaskAccessPolicy.class);
-        when(instances.findByRecipientUserId(ACTOR_ID)).thenReturn(List.of(instance));
+        when(instances.findByRecipientUserIdAndHistoricalAtIsNull(ACTOR_ID)).thenReturn(List.of(instance));
         when(access.canView(instance, ACTOR_ID)).thenReturn(true);
         when(access.canComplete(instance, ACTOR_ID)).thenReturn(true);
         when(tasks.findAllByChecklistInstanceIds(List.of(FIRST_INSTANCE_ID)))
@@ -88,6 +91,29 @@ class ChecklistTodayTaskProviderBatchLoadingTest {
         assertThat(candidates.getFirst().taskId()).isEqualTo(FIRST_TASK_ID);
         assertThat(candidates.getFirst().allowedActions())
                 .containsExactly(TaskAction.REOPEN);
+    }
+
+    @Test
+    void archivedTemplateInstanceIsExcludedBeforeLoadingTasks() {
+        ChecklistInstance instance = instance(FIRST_INSTANCE_ID, uuid(401));
+        ChecklistInstanceRepository instances = mock(ChecklistInstanceRepository.class);
+        ChecklistTaskInstanceRepository tasks = mock(ChecklistTaskInstanceRepository.class);
+        UnifiedTaskAccessPolicy access = mock(UnifiedTaskAccessPolicy.class);
+        ChecklistTemplateRepository templates = mock(ChecklistTemplateRepository.class);
+        ChecklistTemplate archived = ChecklistTemplate.builder()
+                .templateVersionId(instance.getTemplateVersionId())
+                .status(ChecklistTemplateStatus.ARCHIVED)
+                .build();
+        when(instances.findByRecipientUserIdAndHistoricalAtIsNull(ACTOR_ID)).thenReturn(List.of(instance));
+        when(templates.findAllByTemplateVersionIdIn(List.of(instance.getTemplateVersionId())))
+                .thenReturn(List.of(archived));
+
+        var candidates = new ChecklistTodayTaskProvider(instances, tasks, access, null, templates)
+                .findAuthorizedTasks(ACTOR_ID);
+
+        assertThat(candidates).isEmpty();
+        verify(tasks, never()).findAllByChecklistInstanceIds(any());
+        verify(access, never()).canView(instance, ACTOR_ID);
     }
 
     private static ChecklistInstance instance(UUID instanceId, UUID contextId) {

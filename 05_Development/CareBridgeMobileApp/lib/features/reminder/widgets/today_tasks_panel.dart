@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../checklist/services/user_checklist_service.dart';
-import '../models/reminder_model.dart';
 import '../models/today_task_model.dart';
 import '../services/today_task_service.dart';
 
@@ -12,18 +12,26 @@ enum TodayTasksLayout { timeBuckets, sourceGroups }
 class TodayTasksPanelController {
   Object? _owner;
   Future<void> Function()? _refresh;
+  Future<void> Function()? _clear;
 
   Future<void> refresh() => _refresh?.call() ?? Future<void>.value();
+  Future<void> clear() => _clear?.call() ?? Future<void>.value();
 
-  void _attach(Object owner, Future<void> Function() refresh) {
+  void _attach(
+    Object owner,
+    Future<void> Function() refresh,
+    Future<void> Function() clear,
+  ) {
     _owner = owner;
     _refresh = refresh;
+    _clear = clear;
   }
 
   void _detach(Object owner) {
     if (identical(_owner, owner)) {
       _owner = null;
       _refresh = null;
+      _clear = null;
     }
   }
 }
@@ -35,6 +43,7 @@ class TodayTasksPanel extends StatefulWidget {
     this.checklistService,
     this.audience = TodayTasksAudience.mother,
     this.layout = TodayTasksLayout.timeBuckets,
+    this.careGroupId,
     this.showHeading = true,
     this.controller,
     this.headingAction,
@@ -44,6 +53,7 @@ class TodayTasksPanel extends StatefulWidget {
   final UserChecklistService? checklistService;
   final TodayTasksAudience audience;
   final TodayTasksLayout layout;
+  final String? careGroupId;
   final bool showHeading;
   final TodayTasksPanelController? controller;
   final Widget? headingAction;
@@ -62,7 +72,10 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
   bool _loading = true;
   int _loadGeneration = 0;
   final Set<String> _acting = {};
+  final Map<String, String> _actionRequestIds = {};
   String? _announcement;
+  bool _advancingSequence = false;
+  String? _sequenceRequestId;
 
   int _selectedSourceTabIndex = 0;
 
@@ -75,7 +88,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
     _service = widget.service ?? TodayTaskService.instance;
     _checklistService =
         widget.checklistService ?? UserChecklistService.instance;
-    widget.controller?._attach(this, _load);
+    widget.controller?._attach(this, _load, _clear);
     _load();
   }
 
@@ -88,13 +101,18 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
       _failure = null;
       _load();
     }
+    if (oldWidget.careGroupId != widget.careGroupId) {
+      _snapshot = null;
+      _failure = null;
+      _load();
+    }
     if (oldWidget.checklistService != widget.checklistService) {
       _checklistService =
           widget.checklistService ?? UserChecklistService.instance;
     }
     if (oldWidget.controller != widget.controller) {
       oldWidget.controller?._detach(this);
-      widget.controller?._attach(this, _load);
+      widget.controller?._attach(this, _load, _clear);
     }
   }
 
@@ -113,7 +131,9 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
       });
     }
     try {
-      final snapshot = await _service.loadToday();
+      final snapshot = await _service.loadToday(
+        careGroupId: widget.careGroupId,
+      );
       if (!mounted || generation != _loadGeneration) return;
       setState(() {
         _snapshot = snapshot;
@@ -123,25 +143,47 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
       if (!mounted || generation != _loadGeneration) return;
       setState(() {
         _failure = failure;
+        if (failure.kind == TodayFailureKind.terminal) {
+          _snapshot = null;
+        }
         _loading = false;
       });
     }
   }
 
+  Future<void> _clear() async {
+    ++_loadGeneration;
+    if (!mounted) return;
+    setState(() {
+      _snapshot = null;
+      _failure = null;
+      _loading = true;
+      _announcement = null;
+      _acting.clear();
+      _actionRequestIds.clear();
+      _advancingSequence = false;
+      _sequenceRequestId = null;
+    });
+  }
+
   Future<void> _act(TodayTask task, TodayTaskAction action) async {
     if (_acting.contains(task.id)) return;
     setState(() => _acting.add(task.id));
+    final requestKey =
+        '${widget.careGroupId ?? ''}:${task.id}:${action.apiValue}';
+    final requestId = _actionRequestIds.putIfAbsent(requestKey, _newRequestId);
     try {
-      await _service.performAction(
-        taskKind: task.kind,
+      await _service.performChecklistAction(
         taskId: task.id,
         action: action,
-        reason: action == TodayTaskAction.skip
-            ? TodayTaskSkipReason.userChoice
-            : null,
+        careGroupId: widget.careGroupId,
+        clientRequestId: requestId,
       );
       await _load();
       if (!mounted) return;
+      if (_failure == null) {
+        _actionRequestIds.remove(requestKey);
+      }
       setState(() {
         _announcement = switch (action) {
           TodayTaskAction.complete => 'Đã hoàn tất ${task.title}',
@@ -193,14 +235,55 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
     }
   }
 
+  Future<void> _advanceSequence(TodaySequenceProjection sequence) async {
+    final instanceId = sequence.currentInstanceId;
+    if (instanceId == null || _advancingSequence) return;
+    final requestId = _sequenceRequestId ??= _newRequestId();
+    setState(() => _advancingSequence = true);
+    try {
+      await _service.advanceSequence(
+        currentInstanceId: instanceId,
+        clientRequestId: requestId,
+      );
+      await _load();
+      if (!mounted) return;
+      setState(() {
+        // Keep the same idempotency key if the follow-up refresh failed; a
+        // retry must replay the committed advance instead of issuing a new
+        // command against the now-historical predecessor.
+        if (_failure == null) {
+          _sequenceRequestId = null;
+          _announcement = 'Đã chuyển sang checklist tiếp theo';
+        }
+      });
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Không thể chuyển checklist. Vui lòng thử lại.'),
+          backgroundColor: _text,
+          behavior: SnackBarBehavior.floating,
+          shape: StadiumBorder(),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _advancingSequence = false);
+    }
+  }
+
+  String _newRequestId() => const Uuid().v4();
+
   List<TodayTask> get _sourceGroupedTasks {
     if (_snapshot == null) return const [];
     final tasks = _snapshot!.sections.all
-        .where((task) => task.type != ReminderType.appointment)
+        .where((task) => task.isChecklist)
         .toList();
     tasks.sort(_compareNewestFirst);
     return tasks;
   }
+
+  List<TodayTask> _checklistOnly(List<TodayTask> tasks) =>
+      tasks.toList(growable: false);
 
   static int _compareNewestFirst(TodayTask left, TodayTask right) {
     final leftTime = left.dueAt ?? left.scheduledAt;
@@ -220,9 +303,12 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
     final sourceGroupedTasks = widget.layout == TodayTasksLayout.sourceGroups
         ? _sourceGroupedTasks
         : const <TodayTask>[];
+    final checklistCount = _snapshot == null
+        ? 0
+        : _checklistOnly(_snapshot!.sections.all.toList()).length;
     final hasVisibleTasks = widget.layout == TodayTasksLayout.sourceGroups
         ? sourceGroupedTasks.isNotEmpty
-        : (_snapshot?.totalCount ?? 0) > 0;
+        : checklistCount > 0 || _snapshot?.sequence != null;
 
     final systemTasks = sourceGroupedTasks
         .where((task) => task.origin == TodayTaskOrigin.systemTemplate)
@@ -279,6 +365,13 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
               const _OfflineBanner(),
             if (_failure?.kind == TodayFailureKind.retryable)
               _StaleRetryBanner(onRetry: _load),
+            if (widget.audience == TodayTasksAudience.mother &&
+                _snapshot?.sequence != null)
+              _SequencePanel(
+                sequence: _snapshot!.sequence!,
+                busy: _advancingSequence,
+                onAdvance: () => _advanceSequence(_snapshot!.sequence!),
+              ),
             if (!hasVisibleTasks)
               const _EmptyState()
             else if (widget.layout == TodayTasksLayout.sourceGroups) ...[
@@ -332,7 +425,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
               _Section(
                 title: 'Quá hạn',
                 icon: Icons.error_outline_rounded,
-                tasks: _snapshot!.sections.overdue,
+                tasks: _checklistOnly(_snapshot!.sections.overdue),
                 acting: _acting,
                 onAction: _act,
                 onDelete: _delete,
@@ -341,7 +434,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
               _Section(
                 title: 'Hôm nay',
                 icon: Icons.wb_sunny_outlined,
-                tasks: _snapshot!.sections.today,
+                tasks: _checklistOnly(_snapshot!.sections.today),
                 acting: _acting,
                 onAction: _act,
                 onDelete: _delete,
@@ -350,7 +443,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
               _Section(
                 title: '7 ngày tới',
                 icon: Icons.date_range_rounded,
-                tasks: _snapshot!.sections.upcoming,
+                tasks: _checklistOnly(_snapshot!.sections.upcoming),
                 acting: _acting,
                 onAction: _act,
                 onDelete: _delete,
@@ -359,7 +452,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
               _Section(
                 title: 'Chưa xếp lịch',
                 icon: Icons.event_busy_rounded,
-                tasks: _snapshot!.sections.unscheduled,
+                tasks: _checklistOnly(_snapshot!.sections.unscheduled),
                 acting: _acting,
                 onAction: _act,
                 onDelete: _delete,
@@ -368,6 +461,121 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
             ],
           ],
         ],
+      ),
+    );
+  }
+}
+
+class _SequencePanel extends StatelessWidget {
+  const _SequencePanel({
+    required this.sequence,
+    required this.busy,
+    required this.onAdvance,
+  });
+
+  final TodaySequenceProjection sequence;
+  final bool busy;
+  final VoidCallback onAdvance;
+
+  @override
+  Widget build(BuildContext context) {
+    if (sequence.state == TodaySequenceState.configurationBlocked) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Semantics(
+          key: const Key('sequence-configuration-blocked'),
+          liveRegion: true,
+          child: const _StateCard(
+            icon: Icons.warning_amber_rounded,
+            message: 'Checklist chuẩn bị đang tạm thời chưa sẵn sàng.',
+          ),
+        ),
+      );
+    }
+    final position = sequence.currentPosition;
+    final total = sequence.totalPositions;
+    final name = sequence.currentSetName ?? 'Checklist hiện tại';
+    final title = sequence.sequenceComplete
+        ? 'Bạn đã hoàn thành toàn bộ checklist chuẩn bị.'
+        : sequence.readyToAdvance
+        ? 'Bạn đã hoàn thành $name${position == null ? '' : ' (bộ $position)'}.'
+        : name;
+    final message = sequence.sequenceComplete
+        ? 'Bạn đã hoàn thành toàn bộ các bộ checklist.'
+        : sequence.readyToAdvance
+        ? 'Bạn có thể chuyển sang checklist tiếp theo khi sẵn sàng.'
+        : 'Hoàn thành các mục bắt buộc để mở checklist tiếp theo.';
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Semantics(
+        key: const Key('sequence-status-panel'),
+        liveRegion: true,
+        container: true,
+        label: message,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF7F1),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFE8CFC2)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.route_rounded, color: Color(0xFFC98C7B)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: const TextStyle(
+                        fontFamily: 'Quicksand',
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF5A463F),
+                      ),
+                    ),
+                  ),
+                  if (position != null && total != null)
+                    _InfoPill(
+                      icon: Icons.layers_outlined,
+                      text: '$position/$total',
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                message,
+                style: const TextStyle(
+                  fontFamily: 'Quicksand',
+                  color: Color(0xFF735E56),
+                ),
+              ),
+              if (sequence.readyToAdvance && sequence.advanceAvailable) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    key: const Key('sequence-advance-button'),
+                    onPressed: busy ? null : onAdvance,
+                    icon: busy
+                        ? const SizedBox.square(
+                            dimension: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.arrow_forward_rounded),
+                    label: Text(
+                      sequence.nextSet?.name == null
+                          ? 'Chuyển sang checklist tiếp theo'
+                          : 'Chuyển sang ${sequence.nextSet!.name}',
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -694,7 +902,7 @@ class _TodayTaskCard extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           key: Key('task-item-${task.id}'),
-          onTap: busy || tapAction == null ? null : () => onAction(tapAction!),
+          onTap: busy || tapAction == null ? null : () => onAction(tapAction),
           borderRadius: BorderRadius.circular(20),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
@@ -751,23 +959,39 @@ class _TodayTaskCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        task.title,
-                        style: TextStyle(
-                          fontFamily: 'Quicksand',
-                          fontSize: 15.5,
-                          fontWeight: isCompleted
-                              ? FontWeight.w600
-                              : FontWeight.w700,
-                          color: isCompleted
-                              ? const Color(0xFF9C857C)
-                              : const Color(0xFF4A3831),
-                          decoration: isCompleted
-                              ? TextDecoration.lineThrough
-                              : TextDecoration.none,
-                          decorationColor: const Color(0xFF9C857C),
-                          height: 1.35,
-                        ),
+                      Row(
+                        children: [
+                          Icon(
+                            task.target == TodayTaskTarget.baby
+                                ? Icons.child_care_rounded
+                                : Icons.pregnant_woman_rounded,
+                            color: isCompleted
+                                ? const Color(0xFF9C857C)
+                                : const Color(0xFFC98C7B),
+                            size: 18,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              task.title,
+                              style: TextStyle(
+                                fontFamily: 'Quicksand',
+                                fontSize: 15.5,
+                                fontWeight: isCompleted
+                                    ? FontWeight.w600
+                                    : FontWeight.w700,
+                                color: isCompleted
+                                    ? const Color(0xFF9C857C)
+                                    : const Color(0xFF4A3831),
+                                decoration: isCompleted
+                                    ? TextDecoration.lineThrough
+                                    : TextDecoration.none,
+                                decorationColor: const Color(0xFF9C857C),
+                                height: 1.35,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       if (task.careGroupLabel != null ||
                           task.careContextLabel != null) ...[
@@ -832,21 +1056,16 @@ class _TodayTaskCard extends StatelessWidget {
 }
 
 class _InfoPill extends StatelessWidget {
-  const _InfoPill({
-    required this.icon,
-    required this.text,
-    this.backgroundColor,
-  });
+  const _InfoPill({required this.icon, required this.text});
 
   final IconData icon;
   final String text;
-  final Color? backgroundColor;
 
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
     decoration: BoxDecoration(
-      color: backgroundColor ?? const Color(0xFFF9F4F0),
+      color: const Color(0xFFF9F4F0),
       borderRadius: BorderRadius.circular(20),
       border: Border.all(color: const Color(0xFFEDE4DC).withValues(alpha: .7)),
     ),

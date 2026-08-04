@@ -100,8 +100,10 @@ describe('ChecklistFormPage version', () => {
     render(<ChecklistFormPage />);
 
     expect(screen.getByRole('region', { name: 'Lifecycle targeting' })).toBeTruthy();
+    await user.selectOptions(screen.getByLabelText('Lifecycle stage'), 'PRE_PREGNANCY');
     await user.click(screen.getByRole('checkbox', { name: 'Recipient FAMILY' }));
     expect(screen.getByRole('region', { name: 'Lifecycle targeting' })).toBeTruthy();
+    expect(screen.getByRole('note').textContent).toContain('legacy');
   });
 
   it('hides and normalizes lifecycle targeting for a FAMILY-only draft before submit', async () => {

@@ -19,6 +19,8 @@ import com.carebridge.backend.health.entity.RecordType;
 import com.carebridge.backend.health.repository.HealthRecordFileRepository;
 import com.carebridge.backend.health.repository.HealthRecordRepository;
 import com.carebridge.backend.health.service.IHealthRecordService;
+import com.carebridge.backend.family.entity.PermissionFlag;
+import com.carebridge.backend.family.policy.CareGroupAuthorizationPolicy;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -46,6 +48,7 @@ public class HealthRecordServiceImpl implements IHealthRecordService {
     private final AuditService auditService;
     private final com.carebridge.backend.family.repository.CareGroupRepository careGroupRepository;
     private final com.carebridge.backend.family.repository.CareGroupMemberRepository careGroupMemberRepository;
+    private final CareGroupAuthorizationPolicy careGroupAuthorizationPolicy;
 
     @Override
     public AddHealthRecordResponse addHealthRecord(AddHealthRecordRequest request, UUID callerId) {
@@ -264,15 +267,18 @@ public class HealthRecordServiceImpl implements IHealthRecordService {
     @Transactional(readOnly = true)
     public TimelineResponse getTimeline(UUID ownerUserId, TimelineFilter filter) {
         UUID targetOwnerId = ownerUserId;
-        if (recordRepository.countByOwnerUserIdAndStatus(ownerUserId, HealthRecordStatus.ACTIVE) == 0) {
-            List<com.carebridge.backend.family.entity.CareGroupMember> memberships =
-                    careGroupMemberRepository.findByUserIdAndInviteStatus(ownerUserId, com.carebridge.backend.family.entity.InviteStatus.ACCEPTED);
-            if (!memberships.isEmpty()) {
-                var groupOpt = careGroupRepository.findById(memberships.get(0).getCareGroupId());
-                if (groupOpt.isPresent()) {
-                    targetOwnerId = groupOpt.get().getOwnerUserId();
-                }
+        if (filter.getCareGroupId() != null) {
+            var group = careGroupRepository.findById(filter.getCareGroupId())
+                    .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "FAM-005",
+                            "Care group not found: " + filter.getCareGroupId()));
+            if (!careGroupAuthorizationPolicy.isMember(group.getId(), ownerUserId)
+                    || (!careGroupAuthorizationPolicy.isOwner(group.getId(), ownerUserId)
+                    && !careGroupAuthorizationPolicy.hasPermission(
+                            group.getId(), ownerUserId, PermissionFlag.RECORDS))) {
+                throw new BusinessException(HttpStatus.FORBIDDEN, "FAM-011",
+                        "You do not have permission to view shared health records");
             }
+            targetOwnerId = group.getOwnerUserId();
         }
 
         org.springframework.data.domain.Pageable pageable =

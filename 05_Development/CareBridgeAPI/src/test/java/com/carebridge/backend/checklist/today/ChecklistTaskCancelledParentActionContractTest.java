@@ -11,10 +11,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.carebridge.backend.checklist.audit.ChecklistAuditWriter;
+import com.carebridge.backend.checklist.distribution.ChecklistCurrentScopePolicy;
 import com.carebridge.backend.checklist.entity.ChecklistInstance;
 import com.carebridge.backend.checklist.entity.ChecklistTaskInstance;
 import com.carebridge.backend.checklist.model.ChecklistInstanceStatus;
 import com.carebridge.backend.checklist.model.ChecklistCareContextType;
+import com.carebridge.backend.checklist.model.ChecklistOrigin;
 import com.carebridge.backend.checklist.model.ChecklistRecipientRole;
 import com.carebridge.backend.checklist.model.ChecklistTaskStatus;
 import com.carebridge.backend.checklist.repository.ChecklistActionCommandRepository;
@@ -31,6 +33,7 @@ import com.carebridge.backend.common.exception.BusinessException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
@@ -80,6 +83,58 @@ class ChecklistTaskCancelledParentActionContractTest {
         lockOrder.verify(instances).acquireDistributionKeyLock(anyString());
         lockOrder.verify(instances).findForUpdateById(instanceId);
         lockOrder.verify(tasks).findAllForUpdateByChecklistInstanceIdOrderByTaskKey(instanceId);
+    }
+
+    @Test
+    void unmarkedStaleParentIsDeniedAsNotFoundWithoutMutation() {
+        UUID actorId = UUID.fromString("00000000-0000-0000-0000-000000000103");
+        UUID instanceId = UUID.fromString("00000000-0000-0000-0000-000000000203");
+        UUID taskId = UUID.fromString("00000000-0000-0000-0000-000000000303");
+        ChecklistTaskInstanceRepository tasks = mock(ChecklistTaskInstanceRepository.class);
+        ChecklistInstanceRepository instances = mock(ChecklistInstanceRepository.class);
+        UnifiedTaskAccessPolicy access = mock(UnifiedTaskAccessPolicy.class);
+        ChecklistAuditWriter audit = mock(ChecklistAuditWriter.class);
+        ChecklistCurrentScopePolicy scope = mock(ChecklistCurrentScopePolicy.class);
+        ChecklistTaskInstance task = ChecklistTaskInstance.builder()
+                .id(taskId)
+                .checklistInstanceId(instanceId)
+                .status(ChecklistTaskStatus.PENDING)
+                .build();
+        ChecklistInstance parent = ChecklistInstance.builder()
+                .id(instanceId)
+                .templateVersionId(UUID.fromString("00000000-0000-0000-0000-000000000403"))
+                .recipientUserId(actorId)
+                .recipientRole(ChecklistRecipientRole.MOTHER)
+                .careGroupId(null)
+                .careContextType(ChecklistCareContextType.JOURNEY)
+                .careContextId(UUID.fromString("00000000-0000-0000-0000-000000000603"))
+                .contextOwnerUserId(actorId)
+                .origin(ChecklistOrigin.SYSTEM_TEMPLATE)
+                .status(ChecklistInstanceStatus.IN_PROGRESS)
+                .build();
+        when(tasks.findById(taskId)).thenReturn(Optional.of(task));
+        when(instances.findById(instanceId)).thenReturn(Optional.of(parent));
+        when(instances.findForUpdateById(instanceId)).thenReturn(Optional.of(parent));
+        when(tasks.findAllForUpdateByChecklistInstanceIdOrderByTaskKey(instanceId))
+                .thenReturn(List.of(task));
+        when(scope.isHistoryManaged(parent)).thenReturn(true);
+        when(scope.isCurrent(parent, LocalDate.of(2026, 8, 1))).thenReturn(false);
+        var handler = new ChecklistTaskActionHandler(
+                tasks,
+                instances,
+                access,
+                audit,
+                mock(jakarta.persistence.EntityManager.class),
+                scope,
+                Clock.fixed(Instant.parse("2026-08-01T02:00:00Z"), ZoneOffset.UTC));
+
+        assertThatThrownBy(() -> handler.authorize(actorId, taskId))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        exception -> assertThat(exception.getCode()).isEqualTo("TASK_NOT_FOUND"));
+        verify(access, never()).canComplete(parent, actorId);
+        verify(tasks, never()).save(any());
+        verify(instances, never()).save(any());
+        verify(audit, never()).write(any());
     }
 
     @Test

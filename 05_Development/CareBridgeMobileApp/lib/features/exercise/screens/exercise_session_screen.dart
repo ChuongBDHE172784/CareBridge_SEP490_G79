@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../../core/network/api_client.dart';
+import '../models/posture_event_model.dart';
 import '../services/exercise_service.dart';
+import '../services/posture_camera_source.dart';
+import '../services/posture_event_streamer.dart';
 import 'exercise_session_result_screen.dart';
 
 class ExerciseSessionScreen extends StatefulWidget {
@@ -13,6 +16,16 @@ class ExerciseSessionScreen extends StatefulWidget {
   final int durationMinutes;
   final String sessionId;
 
+  /// Optional output from a camera/pose extractor.
+  final Stream<Map<String, dynamic>>? postureLandmarkFrames;
+
+  /// Starts the platform-selected camera source when no injected frame stream
+  /// is provided. The caller should set this only after camera consent.
+  final bool enableRealtimePostureCamera;
+
+  /// Injectable source for deterministic tests or another pose provider.
+  final PostureCameraSource? postureCameraSource;
+
   const ExerciseSessionScreen({
     super.key,
     required this.exerciseId,
@@ -22,6 +35,9 @@ class ExerciseSessionScreen extends StatefulWidget {
     this.safetyWarning,
     required this.durationMinutes,
     required this.sessionId,
+    this.postureLandmarkFrames,
+    this.enableRealtimePostureCamera = false,
+    this.postureCameraSource,
   });
 
   @override
@@ -41,8 +57,14 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
   int _elapsedSeconds = 0;
   bool _isPaused = false;
   bool _isCompleting = false;
-  final String _postureStatus = 'Tư thế chuẩn';
-  final bool _postureGood = true;
+  String _postureStatus = 'Tư thế chuẩn';
+  bool _postureGood = true;
+  PostureEventStreamer? _postureStreamer;
+  StreamSubscription<Map<String, dynamic>>? _postureFramesSubscription;
+  PostureCameraSource? _cameraSource;
+  StreamSubscription<String>? _cameraErrorsSubscription;
+  String? _cameraError;
+  bool _cameraStarted = false;
 
   int get _totalSeconds => widget.durationMinutes * 60;
 
@@ -55,7 +77,116 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
   @override
   void initState() {
     super.initState();
+    final frames = widget.postureLandmarkFrames;
+    if (frames != null) {
+      _startPostureTransport(frames);
+    } else if (widget.enableRealtimePostureCamera) {
+      unawaited(_startCameraSource());
+    }
     _startTimer();
+  }
+
+  Future<void> _startCameraSource() async {
+    final source = widget.postureCameraSource ?? createPostureCameraSource();
+    _cameraSource = source;
+    _cameraErrorsSubscription = source.errors.listen((message) {
+      if (!mounted) return;
+      setState(() {
+        _cameraError = message;
+        _cameraStarted = false;
+      });
+    });
+
+    if (!source.isSupported) {
+      if (mounted) {
+        setState(() {
+          _cameraError =
+              'Phân tích camera realtime hiện chỉ hỗ trợ trên Flutter Web.';
+        });
+      }
+      return;
+    }
+
+    try {
+      await source.start();
+      if (!mounted) {
+        await source.stop();
+        return;
+      }
+      setState(() => _cameraStarted = true);
+      _startPostureTransport(source.frames);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _cameraError = source.lastError ?? _postureErrorText(error);
+        _cameraStarted = false;
+      });
+    }
+  }
+
+  void _startPostureTransport(Stream<Map<String, dynamic>> frames) {
+    final streamer = PostureEventStreamer(
+      send: (eventTimeMs, landmarks) =>
+          ExerciseService.instance.analyzePostureEvent(
+            sessionId: widget.sessionId,
+            eventTimeMs: eventTimeMs,
+            landmarks: landmarks,
+          ),
+      onFeedback: _applyPostureFeedback,
+      onError: (error, _) {
+        if (!mounted) return;
+        setState(() {
+          _postureGood = false;
+          _postureStatus = _postureErrorText(error);
+        });
+      },
+    )..start();
+    _postureStreamer = streamer;
+    _postureFramesSubscription = frames.listen((rawFrame) {
+      if (_isPaused || _isCompleting) return;
+      final landmarks = _parseLandmarks(rawFrame);
+      if (landmarks.isEmpty) return;
+      streamer.push(
+        eventTimeMs: DateTime.now().millisecondsSinceEpoch,
+        landmarks: landmarks,
+      );
+    });
+  }
+
+  Map<String, PostureLandmark> _parseLandmarks(Map<String, dynamic> rawFrame) {
+    final parsed = <String, PostureLandmark>{};
+    for (final entry in rawFrame.entries) {
+      final value = entry.value;
+      if (value is! Map<String, dynamic>) continue;
+      try {
+        parsed[entry.key] = PostureLandmark.fromPoseJson(value);
+      } on FormatException {
+        // A partial pose is ignored; the sidecar only receives valid points.
+      }
+    }
+    return parsed;
+  }
+
+  void _applyPostureFeedback(PostureFeedback feedback) {
+    if (!mounted) return;
+    final severity = feedback.severity.toUpperCase();
+    final warning =
+        severity == 'WARNING' ||
+        severity == 'CRITICAL' ||
+        feedback.postureCode == 'MODEL_UNAVAILABLE';
+    setState(() {
+      _postureGood = !warning;
+      _postureStatus = feedback.feedbackText?.trim().isNotEmpty == true
+          ? feedback.feedbackText!.trim()
+          : feedback.postureCode;
+    });
+  }
+
+  String _postureErrorText(Object error) {
+    if (error is ApiException) {
+      return 'Không thể nhận phản hồi tư thế (${error.statusCode}).';
+    }
+    return 'Không thể kết nối phân tích tư thế.';
   }
 
   void _startTimer() {
@@ -119,6 +250,11 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
 
   Future<void> _completeSession() async {
     if (_isCompleting) return;
+    _postureStreamer?.dispose();
+    await _postureFramesSubscription?.cancel();
+    _postureFramesSubscription = null;
+    await _cameraSource?.stop();
+    _cameraStarted = false;
     setState(() => _isCompleting = true);
     try {
       final result = await ExerciseService.instance.completeSession(
@@ -145,6 +281,10 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    _postureStreamer?.dispose();
+    _postureFramesSubscription?.cancel();
+    _cameraErrorsSubscription?.cancel();
+    unawaited(_cameraSource?.dispose());
     super.dispose();
   }
 
@@ -311,6 +451,7 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
   }
 
   Widget _buildMediaCard() {
+    final showCamera = _cameraSource?.isSupported == true && _cameraStarted;
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
       child: Stack(
@@ -320,7 +461,9 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
             width: double.infinity,
             height: 360,
             color: const Color(0xFFD6C2BD),
-            child: widget.mediaUrl != null
+            child: showCamera
+                ? SizedBox.expand(child: _cameraSource!.buildPreview())
+                : widget.mediaUrl != null
                 ? Image.network(
                     widget.mediaUrl!,
                     fit: BoxFit.cover,
@@ -340,6 +483,30 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
                     ),
                   ),
           ),
+
+          if (_cameraError != null)
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: 16,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.72),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Text(
+                    _cameraError!,
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 12,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ),
 
           // Posture status badge
           Positioned(

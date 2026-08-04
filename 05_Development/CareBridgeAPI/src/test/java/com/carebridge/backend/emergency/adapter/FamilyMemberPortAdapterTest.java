@@ -36,10 +36,10 @@ class FamilyMemberPortAdapterTest {
     @InjectMocks private FamilyMemberPortAdapter adapter;
 
     @Test
-    void recipientsUseDesignatedContactOrderAndOnlyActiveDeviceTokens() {
+    void recipientsUseAllAcceptedFamilyAccountsAndOnlyActiveDeviceTokens() {
         DeviceToken firstDevice = token(FIRST_CONTACT_ID, "first-device");
         DeviceToken secondDevice = token(SECOND_CONTACT_ID, "second-device");
-        when(careGroupMemberRepository.findEmergencyContactUserIds(OWNER_ID))
+        when(careGroupMemberRepository.findAcceptedFamilyUserIds(OWNER_ID))
                 .thenReturn(List.of(FIRST_CONTACT_ID, SECOND_CONTACT_ID));
         when(deviceTokenRepository.findByUserIdAndActiveTrue(FIRST_CONTACT_ID))
                 .thenReturn(List.of(firstDevice));
@@ -51,7 +51,7 @@ class FamilyMemberPortAdapterTest {
         assertThat(recipients).containsExactly(
                 new AlertRecipientEndpoint(FIRST_CONTACT_ID, firstDevice.getId(), "first-device"),
                 new AlertRecipientEndpoint(SECOND_CONTACT_ID, secondDevice.getId(), "second-device"));
-        verify(careGroupMemberRepository).findEmergencyContactUserIds(OWNER_ID);
+        verify(careGroupMemberRepository).findAcceptedFamilyUserIds(OWNER_ID);
         verifyNoInteractions(careGroupRepository);
     }
 

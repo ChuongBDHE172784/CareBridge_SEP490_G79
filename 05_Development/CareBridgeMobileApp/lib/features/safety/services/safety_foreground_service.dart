@@ -8,11 +8,14 @@ import '../../../core/auth/auth_state.dart';
 import '../../privacy/models/privacy_model.dart';
 import '../../privacy/services/privacy_service.dart';
 import '../models/safety_config_model.dart';
+import '../models/imu_diagnostics_model.dart';
 import 'fall_detection_sensor_service.dart';
+import 'safety_demo_mode.dart';
 import 'safety_service.dart';
 
 typedef SafetyConfigLoader = Future<SafetyConfig> Function();
 typedef SafetyConsentLoader = Future<List<ConsentGrant>> Function();
+typedef SafetyPermissionRequester = Future<bool> Function();
 
 abstract class SafetyForegroundGateway {
   Future<bool> isRunning();
@@ -29,23 +32,32 @@ class SafetyForegroundServiceCoordinator {
     required SafetyConfigLoader loadConfig,
     required SafetyConsentLoader loadConsents,
     required bool Function() platformSupported,
+    required bool Function() platformAndroid,
+    required SafetyPermissionRequester requestAndroidPermissions,
   }) : _gateway = gateway,
        _isAuthenticated = isAuthenticated,
        _loadConfig = loadConfig,
        _loadConsents = loadConsents,
-       _platformSupported = platformSupported;
+       _platformSupported = platformSupported,
+       _platformAndroid = platformAndroid,
+       _requestAndroidPermissions = requestAndroidPermissions;
 
   factory SafetyForegroundServiceCoordinator.forTesting({
     required SafetyForegroundGateway gateway,
     required bool Function() isAuthenticated,
     required SafetyConfigLoader loadConfig,
     required SafetyConsentLoader loadConsents,
+    bool platformSupported = true,
+    bool platformAndroid = true,
+    SafetyPermissionRequester? requestAndroidPermissions,
   }) => SafetyForegroundServiceCoordinator._(
     gateway: gateway,
     isAuthenticated: isAuthenticated,
     loadConfig: loadConfig,
     loadConsents: loadConsents,
-    platformSupported: () => true,
+    platformSupported: () => platformSupported,
+    platformAndroid: () => platformAndroid,
+    requestAndroidPermissions: requestAndroidPermissions ?? () async => true,
   );
 
   static final SafetyForegroundServiceCoordinator instance =
@@ -54,7 +66,10 @@ class SafetyForegroundServiceCoordinator {
         isAuthenticated: () => AuthState.instance.isAuthenticated,
         loadConfig: SafetyService().getConfig,
         loadConsents: PrivacyService.instance.listConsents,
-        platformSupported: () => !kIsWeb && Platform.isAndroid,
+        platformSupported: () =>
+            !kIsWeb && (Platform.isAndroid || Platform.isIOS),
+        platformAndroid: () => !kIsWeb && Platform.isAndroid,
+        requestAndroidPermissions: _requestAndroidForegroundPermissions,
       );
 
   final SafetyForegroundGateway _gateway;
@@ -62,14 +77,27 @@ class SafetyForegroundServiceCoordinator {
   final SafetyConfigLoader _loadConfig;
   final SafetyConsentLoader _loadConsents;
   final bool Function() _platformSupported;
+  final bool Function() _platformAndroid;
+  final SafetyPermissionRequester _requestAndroidPermissions;
   final StreamController<SafetyEvent> _eventController =
       StreamController<SafetyEvent>.broadcast();
+  final StreamController<ImuDiagnosticsSnapshot> _diagnosticsController =
+      StreamController<ImuDiagnosticsSnapshot>.broadcast();
+  final StreamController<SensorSelfTestResult> _sensorSelfTestController =
+      StreamController<SensorSelfTestResult>.broadcast();
 
   Future<void>? _reconcileInFlight;
   bool _initialized = false;
   bool _isRunning = false;
+  int _latestDiagnosticsGeneration = -1;
+  ImuDiagnosticsSnapshot? _latestDiagnostics;
 
   Stream<SafetyEvent> get detectedEvents => _eventController.stream;
+  Stream<SensorSelfTestResult> get sensorSelfTestResults =>
+      _sensorSelfTestController.stream;
+  Stream<ImuDiagnosticsSnapshot> get diagnostics => safetyDiagnosticsEnabled
+      ? _diagnosticsController.stream
+      : const Stream.empty();
   bool get isRunning => _isRunning;
   bool get isSupported => _platformSupported();
 
@@ -144,11 +172,13 @@ class SafetyForegroundServiceCoordinator {
         return;
       }
 
-      if (!await _gateway.isRunning()) {
+      final gatewayRunning = await _gateway.isRunning();
+      _isRunning = true;
+      if (!gatewayRunning) {
+        _publishCoordinatorRunning();
         // MF-14 deliberately does not request background-location access.
         await _gateway.start(locationSharingAllowed: false);
       }
-      _isRunning = true;
     } catch (error) {
       debugPrint(
         '[SafetyForegroundServiceCoordinator] reconciliation failed: $error',
@@ -159,23 +189,39 @@ class SafetyForegroundServiceCoordinator {
 
   Future<bool> requestRequiredPermissions() async {
     if (!_platformSupported()) return false;
-    var notificationPermission =
-        await FlutterForegroundTask.checkNotificationPermission();
-    if (notificationPermission != NotificationPermission.granted) {
-      notificationPermission =
-          await FlutterForegroundTask.requestNotificationPermission();
-    }
-    if (!await FlutterForegroundTask.isIgnoringBatteryOptimizations) {
-      await FlutterForegroundTask.requestIgnoreBatteryOptimization();
-    }
-    return notificationPermission == NotificationPermission.granted;
+    if (!_platformAndroid()) return true;
+    return _requestAndroidPermissions();
   }
 
   Future<void> stop() => _stopIfRunning();
 
   Future<void> _stopIfRunning() async {
-    if (await _gateway.isRunning()) await _gateway.stop();
+    final gatewayRunning = await _gateway.isRunning();
+    final shouldPublishStopped = gatewayRunning || _isRunning;
+    if (gatewayRunning) await _gateway.stop();
     _isRunning = false;
+    if (safetyDiagnosticsEnabled && shouldPublishStopped) {
+      _publishDiagnosticsSnapshot(
+        ImuDiagnosticsSnapshot.stopped(
+          generation: _latestDiagnosticsGeneration,
+          capturedAt: DateTime.now().toUtc(),
+        ),
+        force: true,
+      );
+    }
+  }
+
+  void _publishCoordinatorRunning() {
+    if (!safetyDiagnosticsEnabled) return;
+    final latest = _latestDiagnostics;
+    if (latest != null && latest.state != ImuSamplingState.stopped) return;
+    _publishDiagnosticsSnapshot(
+      ImuDiagnosticsSnapshot(
+        generation: _latestDiagnosticsGeneration,
+        state: ImuSamplingState.coordinatorRunning,
+        capturedAt: DateTime.now().toUtc(),
+      ),
+    );
   }
 
   bool _hasActiveConsent(
@@ -192,15 +238,61 @@ class SafetyForegroundServiceCoordinator {
   void _onTaskData(Object data) {
     if (data is! Map) return;
     final normalized = Map<String, dynamic>.from(data);
-    if (normalized['type'] != 'safety_event') return;
-    final payload = normalized['event'];
-    if (payload is! Map) return;
-    _eventController.add(
-      SafetyEvent.fromJson(Map<String, dynamic>.from(payload)),
-    );
+    if (normalized['type'] == 'safety_event') {
+      final payload = normalized['event'];
+      if (payload is! Map) return;
+      _eventController.add(
+        SafetyEvent.fromJson(Map<String, dynamic>.from(payload)),
+      );
+      return;
+    }
+    if (normalized['type'] == 'sensor_self_test_result') {
+      final result = SensorSelfTestResult.tryParse(normalized['result']);
+      if (result != null) _sensorSelfTestController.add(result);
+      return;
+    }
+    if (!safetyDiagnosticsEnabled || normalized['type'] != 'imu_diagnostics') {
+      return;
+    }
+    final snapshot = ImuDiagnosticsSnapshot.tryParse(normalized['snapshot']);
+    if (snapshot != null) _publishDiagnosticsSnapshot(snapshot);
   }
 
+  void _publishDiagnosticsSnapshot(
+    ImuDiagnosticsSnapshot snapshot, {
+    bool force = false,
+  }) {
+    final latest = _latestDiagnostics;
+    if (!force &&
+        (snapshot.generation < _latestDiagnosticsGeneration ||
+            (snapshot.generation == _latestDiagnosticsGeneration &&
+                latest != null &&
+                !snapshot.capturedAt.isAfter(latest.capturedAt)))) {
+      return;
+    }
+    _latestDiagnosticsGeneration = snapshot.generation;
+    _latestDiagnostics = snapshot;
+    if (snapshot.state == ImuSamplingState.stopped) _isRunning = false;
+    _diagnosticsController.add(snapshot);
+  }
+
+  @visibleForTesting
+  void handleTaskDataForTesting(Object data) => _onTaskData(data);
+
   void _onAuthStateChanged() => unawaited(reconcile());
+}
+
+Future<bool> _requestAndroidForegroundPermissions() async {
+  var notificationPermission =
+      await FlutterForegroundTask.checkNotificationPermission();
+  if (notificationPermission != NotificationPermission.granted) {
+    notificationPermission =
+        await FlutterForegroundTask.requestNotificationPermission();
+  }
+  if (!await FlutterForegroundTask.isIgnoringBatteryOptimizations) {
+    await FlutterForegroundTask.requestIgnoreBatteryOptimization();
+  }
+  return notificationPermission == NotificationPermission.granted;
 }
 
 class _FlutterSafetyForegroundGateway implements SafetyForegroundGateway {
@@ -236,12 +328,22 @@ class _SafetyForegroundTaskHandler extends TaskHandler {
   final FallDetectionSensorService _sensorService =
       FallDetectionSensorService.instance;
   StreamSubscription<SafetyEvent>? _eventSubscription;
+  StreamSubscription<SensorSelfTestResult>? _sensorSelfTestSubscription;
+  StreamSubscription<ImuDiagnosticsSnapshot>? _diagnosticsSubscription;
   bool _validating = false;
 
   @override
   Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
     await AuthState.instance.init();
     _eventSubscription = _sensorService.detectedEvents.listen(_publishEvent);
+    _sensorSelfTestSubscription = _sensorService.sensorSelfTestResults.listen(
+      _publishSensorSelfTestResult,
+    );
+    if (safetyDiagnosticsEnabled) {
+      _diagnosticsSubscription = _sensorService.diagnostics.listen(
+        _publishDiagnostics,
+      );
+    }
     await _validateEligibility();
   }
 
@@ -257,6 +359,21 @@ class _SafetyForegroundTaskHandler extends TaskHandler {
         notificationInitialRoute: '/safety',
       ),
     );
+  }
+
+  void _publishSensorSelfTestResult(SensorSelfTestResult result) {
+    FlutterForegroundTask.sendDataToMain({
+      'type': 'sensor_self_test_result',
+      'result': result.toJson(),
+    });
+  }
+
+  void _publishDiagnostics(ImuDiagnosticsSnapshot snapshot) {
+    if (!safetyDiagnosticsEnabled) return;
+    FlutterForegroundTask.sendDataToMain({
+      'type': 'imu_diagnostics',
+      'snapshot': snapshot.toJson(),
+    });
   }
 
   @override
@@ -305,7 +422,11 @@ class _SafetyForegroundTaskHandler extends TaskHandler {
   Future<void> onDestroy(DateTime timestamp, bool isTimeout) async {
     await _eventSubscription?.cancel();
     _eventSubscription = null;
+    await _sensorSelfTestSubscription?.cancel();
+    _sensorSelfTestSubscription = null;
     await _sensorService.stop();
+    await _diagnosticsSubscription?.cancel();
+    _diagnosticsSubscription = null;
   }
 
   @override

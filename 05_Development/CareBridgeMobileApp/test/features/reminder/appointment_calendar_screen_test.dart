@@ -240,7 +240,7 @@ void main() {
           ),
         ),
         GoRoute(
-          path: '/reminders/detail/:id',
+          path: '/appointments/detail/:id',
           builder: (context, _) => Scaffold(
             body: Center(
               child: FilledButton(

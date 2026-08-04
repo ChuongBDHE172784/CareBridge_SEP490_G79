@@ -158,6 +158,7 @@ public class ChecklistDistributionService {
                             command.templateVersionId(), ChecklistOrigin.SYSTEM_TEMPLATE)
                     .stream()
                     .filter(candidate -> candidate.getStatus() != ChecklistInstanceStatus.CANCELLED)
+                    .filter(candidate -> candidate.getHistoricalAt() == null)
                     .filter(candidate -> sameWindow(candidate, decision))
                     .toList();
             if (!legacy.isEmpty()) {
@@ -268,24 +269,62 @@ public class ChecklistDistributionService {
             ChecklistDistributionRecipient recipient,
             ChecklistEligibilityDecision decision,
             Counters counters) {
-        List<ChecklistInstance> prior = isPersonalMother(recipient)
-                ? instanceRepository.findAllByLogicalPersonalIdentity(
-                        recipient.userId(), recipient.role(), command.contextType(), command.contextId(),
-                        command.templateVersionId(), ChecklistOrigin.SYSTEM_TEMPLATE)
-                : instanceRepository
-                        .findAllByRecipientUserIdAndRecipientRoleAndCareGroupIdAndCareContextTypeAndCareContextIdAndTemplateVersionId(
-                                recipient.userId(), recipient.role(), command.careGroupId(), command.contextType(),
-                                command.contextId(), command.templateVersionId());
+        if (isPersonalMother(recipient)) {
+            markObsoleteMotherHistory(command, recipient, decision, counters);
+            return;
+        }
+        cancelObsoleteNonMotherPending(command, recipient, decision, counters);
+    }
+
+    private void markObsoleteMotherHistory(
+            ChecklistDistributionCommand command,
+            ChecklistDistributionRecipient recipient,
+            ChecklistEligibilityDecision decision,
+            Counters counters) {
+        List<ChecklistInstance> prior = instanceRepository.findAllByLogicalPersonalIdentity(
+                recipient.userId(), recipient.role(), command.contextType(), command.contextId(),
+                command.templateVersionId(), ChecklistOrigin.SYSTEM_TEMPLATE);
         for (ChecklistInstance discovered : prior.stream()
                 .sorted(java.util.Comparator.comparing(ChecklistInstance::getDistributionKey))
                 .toList()) {
             ChecklistInstance instance = instanceRepository.findForUpdateById(discovered.getId())
                     .orElse(null);
-            if (instance == null || instance.getStatus() != ChecklistInstanceStatus.PENDING
+            if (instance == null || instance.getStatus() == ChecklistInstanceStatus.CANCELLED
+                    || sameWindow(instance, decision)
+                    || instance.getHistoricalAt() != null) {
+                continue;
+            }
+            taskRepository.findAllForUpdateByChecklistInstanceIdOrderByTaskKey(instance.getId());
+            instance.setHistoricalAt(clock.instant());
+            instance.setHistoryReasonCode(ChecklistHistoryReconciliationService.HISTORY_REASON_CODE);
+            instanceRepository.save(instance);
+            counters.cancelledInstances++;
+        }
+    }
+
+    private void cancelObsoleteNonMotherPending(
+            ChecklistDistributionCommand command,
+            ChecklistDistributionRecipient recipient,
+            ChecklistEligibilityDecision decision,
+            Counters counters) {
+        List<ChecklistInstance> prior = instanceRepository
+                .findAllByRecipientUserIdAndRecipientRoleAndCareGroupIdAndCareContextTypeAndCareContextIdAndTemplateVersionId(
+                        recipient.userId(), recipient.role(), command.careGroupId(), command.contextType(),
+                        command.contextId(), command.templateVersionId());
+        for (ChecklistInstance discovered : prior.stream()
+                .sorted(java.util.Comparator.comparing(ChecklistInstance::getDistributionKey))
+                .toList()) {
+            ChecklistInstance instance = instanceRepository.findForUpdateById(discovered.getId())
+                    .orElse(null);
+            if (instance == null
+                    || instance.getOrigin() != ChecklistOrigin.SYSTEM_TEMPLATE
+                    || instance.getStatus() != ChecklistInstanceStatus.PENDING
                     || sameWindow(instance, decision)
                     || instance.getCompletedAt() != null
                     || instance.getCancelledAt() != null
-                    || instance.getCancellationReasonCode() != null) {
+                    || instance.getCancellationReasonCode() != null
+                    || instance.getHistoricalAt() != null
+                    || instance.getHistoryReasonCode() != null) {
                 continue;
             }
             List<ChecklistTaskInstance> lockedTasks = taskRepository

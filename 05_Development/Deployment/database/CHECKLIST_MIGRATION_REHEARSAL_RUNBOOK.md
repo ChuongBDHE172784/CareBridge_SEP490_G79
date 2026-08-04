@@ -2,16 +2,9 @@
 
 ## Existing Supabase history (`20260731020000`)
 
-Run the approved privileged pre-finalizer first, then start the backend with the opt-in profile so Flyway scans only the compatibility location:
+Application-startup roll-forward support has been retired. Do not activate the former `supabase-roll-forward` profile or start the backend to apply `V20260731070000`. For an existing database at `20260731020000`, stop and obtain a separately reviewed, explicitly approved migration procedure before any schema-changing or backend-startup action. This runbook no longer supplies an application-startup command for that transition.
 
-```powershell
-$env:SPRING_PROFILES_ACTIVE = 'supabase-roll-forward'
-& "$HOME\.m2\wrapper\dists\apache-maven-3.9.16\56ba1f9f\bin\mvn.cmd" spring-boot:run
-```
-
-The expected Flyway result is one migration, `20260731070000`, followed by a no-op replay. Do not start this profile against a clean database.
-
-> **Canonical migration note (2026-07-31):** The active clean-bootstrap Flyway location contains one post-baseline migration, `V20260731060000__canonical_post_20260719180000_schema.sql`. The CHK-041 `psql` verifier below remains a historical staged-chain rehearsal and therefore uses the test-only `db/migration-legacy` fixtures through `20260730050000`; its post-query intentionally reads the pre-retirement support catalog. Do not point that verifier at the canonical final schema, where the nine support tables are retired atomically. For an existing database at `20260731020000`, start the backend with profile `supabase-roll-forward`; it scans only `db/migration-roll-forward` and applies `V20260731070000` after the approved pre-finalizer. Canonical clean bootstrap/replay/retirement evidence is provided by `ChecklistFlywayEmbeddedPostgresTest` and the PostgreSQL 18 canonical integration gate.
+> **Canonical migration note (2026-07-31):** The active clean-bootstrap Flyway location contains one post-baseline migration, `V20260731060000__canonical_post_20260719180000_schema.sql`. The CHK-041 `psql` verifier below remains a historical staged-chain rehearsal and therefore uses the test-only `db/migration-legacy` fixtures through `20260730050000`; its post-query intentionally reads the pre-retirement support catalog. Do not point that verifier at the canonical final schema, where the nine support tables are retired atomically. For an existing database at `20260731020000`, application startup no longer supports the former roll-forward profile or applies `V20260731070000`; use a separately reviewed migration procedure before starting the backend. Canonical clean bootstrap/replay/retirement evidence is provided by `ChecklistFlywayEmbeddedPostgresTest` and the PostgreSQL 18 canonical integration gate.
 
 > **Approved local reference decision — 2026-07-30:** the owner approved a deterministic synthetic production-representative fixture on a local disposable PostgreSQL 18 cluster in place of the unavailable sanitized external backup/host. All other controls in this runbook remain mandatory and unchanged. The final evidence must bind the sealed fixture and exact local host profile, and the result makes no capacity claim beyond that profile.
 

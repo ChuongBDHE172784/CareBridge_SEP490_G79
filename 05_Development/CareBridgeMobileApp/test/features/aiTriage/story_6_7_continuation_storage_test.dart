@@ -537,17 +537,76 @@ void main() {
       store.releaseSave.complete();
     });
 
-    test('ancillary logout cleanup failure cannot skip auth cleanup', () async {
+    test(
+      'pregnancy draft cleanup failure cannot skip recommendation or auth cleanup',
+      () async {
+        var recommendationCleared = false;
+        var authCleared = false;
+
+        await clearLocalSessionAfterLogout(
+          accountId: 'account-a',
+          isCapturedSessionCurrent: () => true,
+          clearDraft: (_) async => throw StateError('draft storage failed'),
+          clearRecommendationDraft: (accountId) async {
+            expect(accountId, 'account-a');
+            recommendationCleared = true;
+          },
+          clearAuth: () async {
+            authCleared = true;
+          },
+        );
+
+        expect(recommendationCleared, isTrue);
+        expect(authCleared, isTrue);
+      },
+    );
+
+    test(
+      'recommendation draft cleanup failure cannot skip auth cleanup',
+      () async {
+        var pregnancyDraftCleared = false;
+        var authCleared = false;
+
+        await clearLocalSessionAfterLogout(
+          accountId: 'account-a',
+          isCapturedSessionCurrent: () => true,
+          clearDraft: (accountId) async {
+            expect(accountId, 'account-a');
+            pregnancyDraftCleared = true;
+          },
+          clearRecommendationDraft: (_) async =>
+              throw StateError('recommendation storage failed'),
+          clearAuth: () async {
+            authCleared = true;
+          },
+        );
+
+        expect(pregnancyDraftCleared, isTrue);
+        expect(authCleared, isTrue);
+      },
+    );
+
+    test('missing account skips draft cleanup but still clears auth', () async {
+      var pregnancyDraftCalls = 0;
+      var recommendationDraftCalls = 0;
       var authCleared = false;
 
       await clearLocalSessionAfterLogout(
-        accountId: 'account-a',
-        clearDraft: (_) async => throw StateError('draft storage failed'),
+        accountId: null,
+        isCapturedSessionCurrent: () => true,
+        clearDraft: (_) async {
+          pregnancyDraftCalls++;
+        },
+        clearRecommendationDraft: (_) async {
+          recommendationDraftCalls++;
+        },
         clearAuth: () async {
           authCleared = true;
         },
       );
 
+      expect(pregnancyDraftCalls, 0);
+      expect(recommendationDraftCalls, 0);
       expect(authCleared, isTrue);
     });
   });

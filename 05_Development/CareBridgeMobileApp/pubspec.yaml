@@ -50,6 +50,7 @@ dependencies:
   intl: ^0.20.3
   permission_handler: 12.0.1
   image_picker: ^1.1.2
+  image_gallery_saver_plus: ^5.1.1
   zego_express_engine: 3.24.1
 
   http_parser: ^4.1.2
@@ -57,10 +58,17 @@ dependencies:
   google_sign_in: ^7.2.0
   freezed_annotation: ^3.0.0
   file_picker: ^10.1.0
+  file_saver: ^0.3.1
   flutter_html: ^3.0.0
   universal_io: ^2.3.1
-  trackasia_gl: 2.0.3
+  trackasia_gl: ^2.0.3
   flutter_tts: 4.2.5
+dependency_overrides:
+  # Official 2.0.1 source with its platform-view registration migrated to
+  # dart:ui_web for Flutter 3.38 compatibility. No map behavior is stubbed.
+  trackasia_gl_web:
+    path: third_party/trackasia_gl_web
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

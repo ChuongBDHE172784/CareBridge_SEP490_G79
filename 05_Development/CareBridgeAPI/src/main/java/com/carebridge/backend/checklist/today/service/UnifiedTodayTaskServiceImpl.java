@@ -1,12 +1,15 @@
 package com.carebridge.backend.checklist.today.service;
 
 import com.carebridge.backend.checklist.distribution.EnsureEligibleChecklistAssignmentsService;
+import com.carebridge.backend.checklist.distribution.ChecklistHistoryReconciliationService;
+import com.carebridge.backend.checklist.sequence.ChecklistSequenceResolver;
 import com.carebridge.backend.checklist.today.dto.TodayTasksResponse;
 import com.carebridge.backend.checklist.today.dto.TodayTaskCounts;
 import com.carebridge.backend.checklist.today.dto.TodayTaskItemResponse;
 import com.carebridge.backend.checklist.today.dto.TodayTaskSections;
 import com.carebridge.backend.checklist.today.dto.TodayTaskCandidate;
 import com.carebridge.backend.checklist.today.model.TaskTimeBucket;
+import com.carebridge.backend.checklist.today.model.TaskKind;
 import com.carebridge.backend.checklist.today.provider.TodayTaskProvider;
 import java.time.DateTimeException;
 import java.time.Clock;
@@ -19,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Set;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,24 +35,29 @@ public class UnifiedTodayTaskServiceImpl implements UnifiedTodayTaskService {
     private final List<TodayTaskProvider> providers;
     private final TodayTaskContextLabelResolver labelResolver;
     private final EnsureEligibleChecklistAssignmentsService ensureAssignments;
+    private final ChecklistHistoryReconciliationService historyReconciliationService;
+    private final ChecklistSequenceResolver sequenceResolver;
     private final Clock clock;
 
     @Autowired
     public UnifiedTodayTaskServiceImpl(
             List<TodayTaskProvider> providers,
             TodayTaskContextLabelResolver labelResolver,
-            EnsureEligibleChecklistAssignmentsService ensureAssignments) {
-        this(providers, labelResolver, ensureAssignments, Clock.systemUTC());
+            EnsureEligibleChecklistAssignmentsService ensureAssignments,
+            ChecklistHistoryReconciliationService historyReconciliationService,
+            ChecklistSequenceResolver sequenceResolver) {
+        this(providers, labelResolver, ensureAssignments, historyReconciliationService,
+                sequenceResolver, Clock.systemUTC());
     }
 
     public UnifiedTodayTaskServiceImpl(List<TodayTaskProvider> providers, Clock clock) {
-        this(providers, null, null, clock);
+        this(providers, null, null, null, null, clock);
     }
 
     public UnifiedTodayTaskServiceImpl(
             List<TodayTaskProvider> providers,
             TodayTaskContextLabelResolver labelResolver) {
-        this(providers, labelResolver, null, Clock.systemUTC());
+        this(providers, labelResolver, null, null, null, Clock.systemUTC());
     }
 
     public UnifiedTodayTaskServiceImpl(
@@ -56,20 +65,59 @@ public class UnifiedTodayTaskServiceImpl implements UnifiedTodayTaskService {
             TodayTaskContextLabelResolver labelResolver,
             EnsureEligibleChecklistAssignmentsService ensureAssignments,
             Clock clock) {
+        this(providers, labelResolver, ensureAssignments, null, null, clock);
+    }
+
+    public UnifiedTodayTaskServiceImpl(
+            List<TodayTaskProvider> providers,
+            TodayTaskContextLabelResolver labelResolver,
+            EnsureEligibleChecklistAssignmentsService ensureAssignments,
+            ChecklistHistoryReconciliationService historyReconciliationService,
+            Clock clock) {
+        this(providers, labelResolver, ensureAssignments, historyReconciliationService, null, clock);
+    }
+
+    public UnifiedTodayTaskServiceImpl(
+            List<TodayTaskProvider> providers,
+            TodayTaskContextLabelResolver labelResolver,
+            EnsureEligibleChecklistAssignmentsService ensureAssignments,
+            ChecklistHistoryReconciliationService historyReconciliationService,
+            ChecklistSequenceResolver sequenceResolver,
+            Clock clock) {
         this.providers = List.copyOf(providers);
         this.labelResolver = labelResolver;
         this.ensureAssignments = ensureAssignments;
+        this.historyReconciliationService = historyReconciliationService;
+        this.sequenceResolver = sequenceResolver;
         this.clock = clock;
     }
 
     @Override
     @Transactional
     public TodayTasksResponse getTodayTasks(UUID actorUserId, LocalDate date, String timezoneHeader) {
+        return getTodayTasks(actorUserId, date, timezoneHeader, null, true);
+    }
+
+    @Override
+    @Transactional
+    public TodayTasksResponse getTodayTasks(
+            UUID actorUserId, LocalDate date, String timezoneHeader, Set<TaskKind> kinds) {
+        return getTodayTasks(actorUserId, date, timezoneHeader, kinds, true);
+    }
+
+    @Override
+    @Transactional
+    public TodayTasksResponse getTodayTasks(
+            UUID actorUserId, LocalDate date, String timezoneHeader,
+            Set<TaskKind> kinds, boolean reconcile) {
         ZoneId zone = resolveZone(timezoneHeader);
         LocalDate effectiveDate = date == null ? LocalDate.ofInstant(clock.instant(), zone) : date;
         UUID correlationId = UUID.randomUUID();
-        if (ensureAssignments != null) {
+        if (reconcile && ensureAssignments != null) {
             ensureAssignments.ensureEligibleAssignments(actorUserId, effectiveDate, zone, correlationId);
+        }
+        if (reconcile && historyReconciliationService != null) {
+            historyReconciliationService.reconcile(actorUserId, effectiveDate, zone, correlationId);
         }
         Instant dayStart = effectiveDate.atStartOfDay(zone).toInstant();
         Instant nextDayStart = effectiveDate.plusDays(1).atStartOfDay(zone).toInstant();
@@ -77,7 +125,13 @@ public class UnifiedTodayTaskServiceImpl implements UnifiedTodayTaskService {
 
         List<TodayTaskCandidate> candidates = new ArrayList<>();
         for (TodayTaskProvider provider : providers) {
-            candidates.addAll(provider.findAuthorizedTasks(actorUserId));
+            if (kinds != null && !kinds.contains(provider.taskKind())) continue;
+            List<TodayTaskCandidate> provided = provider.supportsDateAwareRead()
+                    ? provider.findAuthorizedTasks(actorUserId, effectiveDate, zone)
+                    : provider.findAuthorizedTasks(actorUserId);
+            if (provided != null) {
+                candidates.addAll(provided);
+            }
         }
         Map<TodayTaskContextLabelResolver.ContextKey, TodayTaskContextLabelResolver.Labels> labels =
                 labelResolver == null ? Map.of() : labelResolver.resolve(candidates);
@@ -106,10 +160,11 @@ public class UnifiedTodayTaskServiceImpl implements UnifiedTodayTaskService {
         List<TodayTaskItemResponse> today = section(unique, TaskTimeBucket.TODAY);
         List<TodayTaskItemResponse> upcoming = section(unique, TaskTimeBucket.UPCOMING);
         List<TodayTaskItemResponse> unscheduled = section(unique, TaskTimeBucket.UNSCHEDULED);
+        var sequence = sequenceResolver == null ? null : sequenceResolver.resolve(actorUserId);
         return new TodayTasksResponse(clock.instant(), zone.getId(), HORIZON_DAYS,
                 new TodayTaskSections(overdue, today, upcoming, unscheduled),
                 new TodayTaskCounts(overdue.size(), today.size(), upcoming.size(), unscheduled.size()),
-                correlationId);
+                correlationId, sequence);
     }
 
     private static List<TodayTaskItemResponse> section(

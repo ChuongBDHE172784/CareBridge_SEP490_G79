@@ -122,6 +122,8 @@ public class MetricObservationValidator {
             case BLOOD_PRESSURE, BLOOD_PRESSURE_SYSTOLIC, BLOOD_PRESSURE_DIASTOLIC -> "BLOOD_PRESSURE";
             case BLOOD_GLUCOSE -> "BLOOD_GLUCOSE";
             case FETAL_MOVEMENT_SESSION, FETAL_MOVEMENT_COUNT -> "FETAL_MOVEMENT_SESSION";
+            case HYDRATION -> "HYDRATION";
+            case EPDS_SCORE -> "EPDS_SCORE";
             default -> null;
         };
     }

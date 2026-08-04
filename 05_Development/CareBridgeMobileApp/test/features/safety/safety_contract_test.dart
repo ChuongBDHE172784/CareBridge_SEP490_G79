@@ -4,6 +4,7 @@ import 'package:untitled/features/privacy/models/privacy_model.dart';
 import 'package:untitled/features/safety/models/safety_config_model.dart';
 import 'package:untitled/features/safety/services/safety_permission_service.dart';
 import 'package:untitled/features/safety/services/safety_service.dart';
+import 'package:untitled/features/safety/services/safety_demo_mode.dart';
 import 'package:untitled/features/safety/widgets/safety_countdown_sheet.dart';
 
 void main() {
@@ -65,6 +66,22 @@ void main() {
     expect(event.responseType, 'TIMEOUT');
     expect(event.emergencySessionId, 'session-1');
     expect(event.countdownDeadlineAt, isNotNull);
+  });
+
+  test('sensor self-test request serializes stable id and IMU metrics', () {
+    final result = SensorSelfTestResult(
+      sequence: 7,
+      detectedAt: DateTime.utc(2026, 8, 4, 10),
+      accelerationMagnitude: 17.2,
+      gyroscopeMagnitude: 3.4,
+    );
+
+    final request = SafetyService.buildSensorSelfTestRequest(result);
+
+    expect(request['testId'], contains('-7'));
+    expect(request['detectedAt'], '2026-08-04T10:00:00.000Z');
+    expect(request['accelerationMagnitude'], 17.2);
+    expect(request['gyroscopeMagnitude'], 3.4);
   });
 
   test('expired consent is not treated as active', () {

@@ -51,6 +51,36 @@ public interface HealthObservationRepository extends JpaRepository<HealthObserva
             @Param("from") Instant from,
             @Param("to") Instant to);
 
+    @Query(value = """
+            SELECT DISTINCT ON (observation_type) *
+              FROM health_observations
+             WHERE care_subject_id = :careSubjectId
+               AND legacy_source = 'maternal_health_observations'
+               AND observation_type IN (:metricCodes)
+               AND COALESCE(raw_payload_jsonb->>'recordStatus', 'ACTIVE') = :#{#status.name()}
+             ORDER BY observation_type, observed_at DESC, health_observation_id DESC
+            """, nativeQuery = true)
+    List<HealthObservation> findLatestByMetricCodes(
+            @Param("careSubjectId") UUID careSubjectId,
+            @Param("metricCodes") List<String> metricCodes,
+            @Param("status") MetricStatus status);
+
+    @Query(value = """
+            SELECT * FROM health_observations
+             WHERE care_subject_id = :careSubjectId
+               AND legacy_source = 'maternal_health_observations'
+               AND observation_type IN (:metricCodes)
+               AND COALESCE(raw_payload_jsonb->>'recordStatus', 'ACTIVE') = :#{#status.name()}
+               AND observed_at BETWEEN :from AND :to
+             ORDER BY observed_at ASC
+            """, nativeQuery = true)
+    List<HealthObservation> findTrendByMetricCodes(
+            @Param("careSubjectId") UUID careSubjectId,
+            @Param("metricCodes") List<String> metricCodes,
+            @Param("status") MetricStatus status,
+            @Param("from") Instant from,
+            @Param("to") Instant to);
+
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query(value = """
             UPDATE health_observations

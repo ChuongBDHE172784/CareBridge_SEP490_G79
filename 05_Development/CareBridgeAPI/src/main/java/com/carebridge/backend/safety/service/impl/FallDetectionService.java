@@ -2,6 +2,7 @@ package com.carebridge.backend.safety.service.impl;
 
 import com.carebridge.backend.safety.ImuSessionStatus;
 import com.carebridge.backend.safety.SafetyEventStatus;
+import com.carebridge.backend.safety.SafetyEventType;
 import com.carebridge.backend.safety.dto.response.ImuMonitoringSessionResponse;
 import com.carebridge.backend.safety.dto.response.SafetyEventResponse;
 import com.carebridge.backend.safety.entity.ImuMonitoringSession;
@@ -187,6 +188,11 @@ public class FallDetectionService implements IFallDetectionService {
 
     @Override
     public void sendEmergencyAlert(UUID userId, UUID eventId) {
+        SafetyEvent requestedEvent = findOwnedEvent(userId, eventId);
+        if (requestedEvent.getEventType() == SafetyEventType.SENSOR_SELF_TEST) {
+            throw new SafetyException(HttpStatus.CONFLICT, "SAFETY-013",
+                    "Sensor self-test events cannot trigger emergency alerts");
+        }
         SafetyEvent saved = respondEntity(userId, eventId, "NEED_HELP", SafetyEventStatus.ESCALATION_REQUESTED, null, true);
         openEmergency(saved);
     }

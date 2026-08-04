@@ -18,6 +18,9 @@ public class EditAnswerRequest {
     @NotNull(message = "isPersonalExperience is required")
     private Boolean isPersonalExperience;
 
+    @Size(max = 80, message = "experienceTag must not exceed 80 characters")
+    private String experienceTag;
+
     @Size(max = 3, message = "imageUrls must contain at most 3 images")
     private List<@NotBlank @Pattern(
             regexp = "^https://res\\.cloudinary\\.com/.+",

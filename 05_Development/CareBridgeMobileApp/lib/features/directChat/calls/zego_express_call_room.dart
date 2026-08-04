@@ -7,6 +7,7 @@ import '../models/zego_join_credentials.dart';
 import 'rtc_error_handling.dart';
 import 'rtc_permissions.dart';
 import 'rtc_platform_capabilities.dart';
+import 'zego_stream_extra_info.dart';
 
 class ZegoExpressCallRoom extends StatefulWidget {
   const ZegoExpressCallRoom({
@@ -132,6 +133,7 @@ class _ZegoExpressCallRoomState extends State<ZegoExpressCallRoom>
         );
       }
       stage = RtcSetupStage.mediaPublish;
+      await _syncStreamExtraInfo();
       await ZegoExpressEngine.instance.startPublishingStream(_localStreamId);
     } on RtcSetupException catch (error, stackTrace) {
       _debugLogFailure(
@@ -296,12 +298,24 @@ class _ZegoExpressCallRoomState extends State<ZegoExpressCallRoom>
     final muted = !_microphoneMuted;
     setState(() => _microphoneMuted = muted);
     await ZegoExpressEngine.instance.muteMicrophone(muted);
+    await _syncStreamExtraInfo();
   }
 
   Future<void> _toggleCamera() async {
     final enabled = !_cameraEnabled;
     setState(() => _cameraEnabled = enabled);
     await ZegoExpressEngine.instance.enableCamera(enabled);
+    await _syncStreamExtraInfo();
+  }
+
+  Future<void> _syncStreamExtraInfo() async {
+    await ZegoExpressEngine.instance.setStreamExtraInfo(
+      buildZegoUIKitStreamExtraInfo(
+        isCameraOn: widget.isVideo && _cameraEnabled,
+        isMicrophoneOn: !_microphoneMuted,
+        hasVideo: widget.isVideo,
+      ),
+    );
   }
 
   Future<void> _switchCamera() async {

@@ -1,93 +1,35 @@
-.chat-panel {
-  display: flex;
-  flex-direction: column;
-  height: calc(100vh - 120px);
-  max-width: 720px;
-  margin: 0 auto;
+/* Custom scrollbar for ChatPanel messages area */
+.chat-panel-messages::-webkit-scrollbar {
+  width: 6px;
+}
+.chat-panel-messages::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+  border-radius: 9999px;
+}
+.chat-panel-messages::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
 }
 
-.chat-panel-toolbar {
-  display: flex;
-  gap: 8px;
-  padding: 8px 0;
+.chat-inline-image {
+  display: block;
+  width: min(320px, 58vw);
+  max-height: 280px;
+  object-fit: cover;
 }
 
-.chat-panel-banner {
-  background: #fff3e0;
-  color: #e65100;
-  padding: 10px 14px;
-  border-radius: 6px;
-  margin-bottom: 8px;
+.chat-attachment-action {
+  display: inline-flex;
+  width: 2rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.62);
+  color: #fff;
+  cursor: pointer;
 }
 
-.chat-panel-error {
-  background: #ffebee;
-  color: #c62828;
-  padding: 8px 12px;
-  border-radius: 6px;
-  margin-bottom: 8px;
-}
-
-.chat-panel-messages {
-  flex: 1;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 8px 0;
-}
-
-.chat-panel-message {
-  display: flex;
-  flex-direction: column;
-  max-width: 70%;
-}
-
-.chat-panel-message.own {
-  align-self: flex-end;
-  align-items: flex-end;
-}
-
-.chat-panel-message.other {
-  align-self: flex-start;
-  align-items: flex-start;
-}
-
-.chat-panel-message-bubble {
-  padding: 8px 12px;
-  border-radius: 10px;
-  background: #e3f2fd;
-}
-
-.chat-panel-message.other .chat-panel-message-bubble {
-  background: #f1f1f1;
-}
-
-.chat-panel-status {
-  font-size: 11px;
-  color: #999;
-}
-
-.chat-panel-retry {
-  font-size: 12px;
-}
-
-.chat-panel-call-event {
-  align-self: center;
-  font-size: 12px;
-  color: #777;
-  background: #f5f5f5;
-  padding: 4px 10px;
-  border-radius: 12px;
-}
-
-.chat-panel-input {
-  display: flex;
-  gap: 8px;
-  padding: 8px 0;
-}
-
-.chat-panel-input input {
-  flex: 1;
-  padding: 8px;
+.chat-attachment-action:hover {
+  background: rgba(0, 0, 0, 0.82);
 }

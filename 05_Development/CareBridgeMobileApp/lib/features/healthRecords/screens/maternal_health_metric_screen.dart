@@ -296,7 +296,7 @@ class _MaternalHealthMetricScreenState
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                m.valueDisplay,
+                _displayMetricValue(m),
                 style: const TextStyle(
                   fontFamily: 'Lexend',
                   fontSize: 40,
@@ -357,7 +357,8 @@ class _MaternalHealthMetricScreenState
             value: m.sourceType.displayLabel,
             showDivider: m.note != null && m.note!.isNotEmpty,
           ),
-          if (m.note != null && m.note!.isNotEmpty) _NoteRow(note: m.note!),
+          if (m.note != null && m.note!.isNotEmpty)
+            _NoteRow(note: _displayMetricNote(m.metricCode, m.note!)),
         ],
       ),
     );
@@ -414,6 +415,26 @@ class _MaternalHealthMetricScreenState
       ],
     );
   }
+}
+
+String _displayMetricValue(HealthMetricDetail metric) {
+  if (metric.metricCode == 'FETAL_MOVEMENT_SESSION' ||
+      metric.metricCode == 'FETAL_MOVEMENT_COUNT') {
+    return '${metric.valueNumeric.toStringAsFixed(0)} cử động';
+  }
+  return metric.valueDisplay;
+}
+
+String _displayMetricNote(String metricCode, String note) {
+  if (metricCode != 'FETAL_MOVEMENT_SESSION' &&
+      metricCode != 'FETAL_MOVEMENT_COUNT') return note;
+  return switch (note.trim().toUpperCase()) {
+    'KICK' => 'Bé đạp',
+    'ROLL' => 'Bé xoay người',
+    'STRETCH' => 'Bé co duỗi',
+    'HICCUP' => 'Bé nấc cụt',
+    _ => 'Cử động thai',
+  };
 }
 
 // ─── Sub-widgets ──────────────────────────────────────────────────────────────

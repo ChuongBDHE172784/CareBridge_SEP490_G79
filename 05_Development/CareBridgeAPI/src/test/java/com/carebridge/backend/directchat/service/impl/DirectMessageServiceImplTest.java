@@ -26,6 +26,9 @@ import com.carebridge.backend.expert.entity.ExpertProfile;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import com.carebridge.backend.expert.truststatus.TrustStatus;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
+import com.carebridge.backend.file.entity.FileStatus;
+import com.carebridge.backend.file.entity.UploadedFile;
+import com.carebridge.backend.file.repository.UploadedFileRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -38,6 +41,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class DirectMessageServiceImplTest {
@@ -51,6 +55,7 @@ class DirectMessageServiceImplTest {
     @Mock private ExpertProfileRepository expertProfileRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private AuditService auditService;
+    @Mock private UploadedFileRepository uploadedFileRepository;
 
     private DirectMessageServiceImpl service;
     private final Instant fixedNow = Instant.parse("2026-07-15T08:00:00Z");
@@ -66,9 +71,62 @@ class DirectMessageServiceImplTest {
         service = new DirectMessageServiceImpl(conversationRepository, messageRepository, callRepository,
                 timelineRepository, messageWriter, policy, expertProfileRepository,
                 eventPublisher, auditService, fixedClock);
+        ReflectionTestUtils.setField(service, "uploadedFileRepository", uploadedFileRepository);
         org.mockito.Mockito.lenient()
                 .when(expertProfileRepository.findByUserIdForUpdate(EXPERT_ID))
                 .thenReturn(Optional.of(eligibleExpert()));
+    }
+
+    @Test
+    void sendImage_requiresActiveAttachmentOwnedBySender() {
+        UUID fileId = UUID.randomUUID();
+        SendDirectMessageRequest request = request("");
+        request.setMessageType("IMAGE");
+        request.setAttachmentId(fileId);
+        when(conversationRepository.findById(CONVERSATION_ID)).thenReturn(Optional.of(conversation()));
+        when(uploadedFileRepository.findByIdAndStatus(fileId, FileStatus.ACTIVE))
+                .thenReturn(Optional.of(UploadedFile.builder().id(fileId).ownerUserId(MOTHER_ID).build()));
+        when(messageRepository.findByConversationIdAndSenderUserIdAndClientMessageId(CONVERSATION_ID, MOTHER_ID, CLIENT_MESSAGE_ID))
+                .thenReturn(Optional.empty());
+        when(messageWriter.insertIfAbsent(any())).thenReturn(true);
+
+        SendDirectMessageResult result = service.sendMessage(CONVERSATION_ID, MOTHER_ID, request);
+
+        assertThat(result.message().getMessageType()).isEqualTo("IMAGE");
+        assertThat(result.message().getAttachmentId()).isEqualTo(fileId);
+    }
+
+    @Test
+    void sendImage_rejectsAttachmentOwnedByAnotherUser() {
+        UUID fileId = UUID.randomUUID();
+        SendDirectMessageRequest request = request("");
+        request.setMessageType("IMAGE");
+        request.setAttachmentId(fileId);
+        when(conversationRepository.findById(CONVERSATION_ID)).thenReturn(Optional.of(conversation()));
+        when(uploadedFileRepository.findByIdAndStatus(fileId, FileStatus.ACTIVE))
+                .thenReturn(Optional.of(UploadedFile.builder().id(fileId).ownerUserId(EXPERT_ID).build()));
+
+        assertThatThrownBy(() -> service.sendMessage(CONVERSATION_ID, MOTHER_ID, request))
+                .isInstanceOf(DirectChatException.class);
+        verify(messageWriter, never()).insertIfAbsent(any());
+    }
+
+    @Test
+    void recallMessage_clearsPayloadAndSoftDeletesOwnedAttachment() {
+        UUID messageId = UUID.randomUUID();
+        UUID fileId = UUID.randomUUID();
+        DirectMessage message = DirectMessage.builder().id(messageId).conversationId(CONVERSATION_ID)
+                .senderUserId(MOTHER_ID).messageType(MessageType.IMAGE).attachmentId(fileId).createdAt(fixedNow).build();
+        UploadedFile file = UploadedFile.builder().id(fileId).ownerUserId(MOTHER_ID).status(FileStatus.ACTIVE).build();
+        when(conversationRepository.findById(CONVERSATION_ID)).thenReturn(Optional.of(conversation()));
+        when(messageRepository.findByIdAndConversationId(messageId, CONVERSATION_ID)).thenReturn(Optional.of(message));
+        when(uploadedFileRepository.findByIdAndStatus(fileId, FileStatus.ACTIVE)).thenReturn(Optional.of(file));
+
+        service.recallMessage(CONVERSATION_ID, messageId, MOTHER_ID);
+
+        assertThat(message.getAttachmentId()).isNull();
+        assertThat(message.getRecalledAt()).isEqualTo(fixedNow);
+        assertThat(file.getStatus()).isEqualTo(FileStatus.DELETED);
     }
 
     private static DirectConversation conversation() {

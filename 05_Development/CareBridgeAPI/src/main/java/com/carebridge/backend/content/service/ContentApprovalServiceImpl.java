@@ -10,6 +10,10 @@ import com.carebridge.backend.content.entity.ContentItem;
 import com.carebridge.backend.content.entity.ContentStatus;
 import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.repository.ContentRepository;
+import com.carebridge.backend.community.repository.CommunityTopicRepository;
+import com.carebridge.backend.community.entity.TopicType;
+import com.carebridge.backend.recommendation.RecommendationConstants;
+import com.carebridge.backend.recommendation.service.RecommendationMetadataPolicy;
 import com.carebridge.backend.notification.service.ContentReviewNotificationService;
 import java.security.Principal;
 import java.time.Instant;
@@ -17,6 +21,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +31,9 @@ public class ContentApprovalServiceImpl implements ContentApprovalService {
     private final AuditService auditService;
     private final com.carebridge.backend.aimoderation.service.AiScanEnqueueService aiScanEnqueueService;
     private final ContentReviewNotificationService contentReviewNotificationService;
+
+    @Autowired(required = false)
+    private CommunityTopicRepository communityTopicRepository;
 
     @Override
     @Transactional
@@ -44,6 +52,34 @@ public class ContentApprovalServiceImpl implements ContentApprovalService {
         if (request.decision() == ContentDecision.REJECT
                 && (request.reason() == null || request.reason().isBlank())) {
             throw ContentException.decisionReasonRequired();
+        }
+
+        if (request.decision() == ContentDecision.APPROVE) {
+            boolean recommendationMetadataPresent = item.getTagIds() != null && item.getTagIds().stream()
+                    .anyMatch(tagId -> RecommendationConstants.ALL_TAG_SLUGS.stream()
+                            .map(RecommendationConstants::catalogIdFor)
+                            .anyMatch(tagId::equals))
+                    || item.getEligibleFromWeek() != null
+                    || item.getEligibleToWeek() != null
+                    || item.getRecommendationPriority() != null && item.getRecommendationPriority() != 0;
+            if (communityTopicRepository == null && recommendationMetadataPresent) {
+                throw ContentException.validationFailed(
+                        "recommendationMetadata", "Recommendation catalog is unavailable; approval is fail-closed");
+            }
+            if (communityTopicRepository != null) {
+                var tagIds = item.getTagIds() == null ? java.util.List.<UUID>of() : item.getTagIds();
+                var uniqueTagIds = new java.util.LinkedHashSet<>(tagIds);
+                var tags = communityTopicRepository.findAllById(uniqueTagIds);
+                if (tags.size() != uniqueTagIds.size()
+                        || tags.stream().anyMatch(tag -> tag.getType() != TopicType.TAG || tag.isHidden())) {
+                    throw ContentException.validationFailed(
+                            "tagIds", "All tags must exist, be visible, and have type TAG");
+                }
+                RecommendationMetadataPolicy.validate(item.getType(), item.getStage(),
+                        item.getEligibleFromWeek() == null ? null : item.getEligibleFromWeek().intValue(),
+                        item.getEligibleToWeek() == null ? null : item.getEligibleToWeek().intValue(),
+                        item.getRecommendationPriority() == null ? 0 : item.getRecommendationPriority().intValue(), tags);
+            }
         }
 
         ContentStatus previousStatus = item.getStatus();

@@ -1,9 +1,11 @@
 package com.carebridge.backend.reminder.notification.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -47,6 +49,7 @@ class AppointmentNotificationProcessingServiceTest {
     @Mock private AppointmentNotificationConfigRepository configRepository;
     @Mock private ReminderRepository reminderRepository;
     @Mock private IReminderNotificationService notificationService;
+    @Mock private CareGroupAppointmentNotificationService familyNotificationService;
 
     private AppointmentNotificationProcessingService service;
 
@@ -57,9 +60,13 @@ class AppointmentNotificationProcessingServiceTest {
                 configRepository,
                 reminderRepository,
                 notificationService,
+                familyNotificationService,
                 Clock.fixed(NOW, ZoneOffset.UTC),
                 4,
                 10);
+        org.mockito.Mockito.lenient().when(jobRepository.transitionAfterProcessing(
+                any(), any(), eq(AppointmentNotificationJobStatus.PROCESSING), any(), any(), any(), any(), any()))
+                .thenReturn(1);
     }
 
     @Test
@@ -90,19 +97,75 @@ class AppointmentNotificationProcessingServiceTest {
     }
 
     @Test
+    void claimDueJobs_clampsNonPositiveBatchSize() {
+        when(jobRepository.findClaimableIds(
+                eq(AppointmentNotificationJobStatus.PENDING), eq(NOW), any(Pageable.class)))
+                .thenReturn(List.of());
+
+        service.claimDueJobs("worker-a", 0);
+
+        org.mockito.ArgumentCaptor<Pageable> pageable =
+                org.mockito.ArgumentCaptor.forClass(Pageable.class);
+        verify(jobRepository).findClaimableIds(
+                eq(AppointmentNotificationJobStatus.PENDING), eq(NOW), pageable.capture());
+        assertThat(pageable.getValue().getPageSize()).isEqualTo(1);
+    }
+
+    @Test
     void process_successMarksJobSent() {
         AppointmentNotificationJob job = processingJob(1, 1L, 0L, -30);
         stubEligible(job, ReminderStatus.PENDING, RecurrenceType.NONE, 1L, 0L);
         when(notificationService.sendAppointmentNotification(any()))
                 .thenReturn(response("SENT"));
 
-        service.process(JOB_ID);
+        service.process(JOB_ID, "worker-a");
 
         assertThat(job.getStatus()).isEqualTo(AppointmentNotificationJobStatus.SENT);
         assertThat(job.getNotificationRecordId()).isEqualTo(RECORD_ID);
         assertThat(job.getLockedBy()).isNull();
         assertThat(job.getLockedAt()).isNull();
-        verify(jobRepository).save(job);
+    }
+
+    @Test
+    void process_successInvokesFamilyFanoutAfterMotherDelivery() {
+        AppointmentNotificationJob job = processingJob(1, 1L, 0L, -30);
+        stubEligible(job, ReminderStatus.PENDING, RecurrenceType.NONE, 1L, 0L);
+        when(notificationService.sendAppointmentNotification(any()))
+                .thenReturn(response("SENT"));
+
+        service.process(JOB_ID, "worker-a");
+
+        verify(familyNotificationService).notifyMilestone(
+                any(Reminder.class), eq(job), eq("Asia/Ho_Chi_Minh"));
+    }
+
+    @Test
+    void process_familyFanoutFailureDoesNotChangeMotherJobResult() {
+        AppointmentNotificationJob job = processingJob(1, 1L, 0L, -30);
+        stubEligible(job, ReminderStatus.PENDING, RecurrenceType.NONE, 1L, 0L);
+        when(notificationService.sendAppointmentNotification(any()))
+                .thenReturn(response("SENT"));
+        org.mockito.Mockito.doThrow(new IllegalStateException("family provider failed"))
+                .when(familyNotificationService)
+                .notifyMilestone(any(Reminder.class), eq(job), any());
+
+        service.process(JOB_ID, "worker-a");
+
+        assertThat(job.getStatus()).isEqualTo(AppointmentNotificationJobStatus.SENT);
+        assertThat(job.getLastErrorCode()).isNull();
+    }
+
+    @Test
+    void process_deliveredRecordAlsoCompletesJobWithoutRetry() {
+        AppointmentNotificationJob job = processingJob(1, 1L, 0L, -30);
+        stubEligible(job, ReminderStatus.PENDING, RecurrenceType.NONE, 1L, 0L);
+        when(notificationService.sendAppointmentNotification(any()))
+                .thenReturn(response("DELIVERED"));
+
+        service.process(JOB_ID, "worker-a");
+
+        assertThat(job.getStatus()).isEqualTo(AppointmentNotificationJobStatus.SENT);
+        assertThat(job.getLastErrorCode()).isNull();
     }
 
     @Test
@@ -110,7 +173,7 @@ class AppointmentNotificationProcessingServiceTest {
         AppointmentNotificationJob job = processingJob(1, 1L, 0L, -30);
         stubEligible(job, ReminderStatus.PENDING, RecurrenceType.NONE, 2L, 0L);
 
-        service.process(JOB_ID);
+        service.process(JOB_ID, "worker-a");
 
         assertThat(job.getStatus()).isEqualTo(AppointmentNotificationJobStatus.SUPPRESSED);
         assertThat(job.getLastErrorCode()).isEqualTo("APPOINTMENT_NOT_ACTIVE");
@@ -122,7 +185,7 @@ class AppointmentNotificationProcessingServiceTest {
         AppointmentNotificationJob job = processingJob(1, 1L, 0L, -30);
         stubEligible(job, ReminderStatus.PENDING, RecurrenceType.NONE, 1L, 1L);
 
-        service.process(JOB_ID);
+        service.process(JOB_ID, "worker-a");
 
         assertThat(job.getStatus()).isEqualTo(AppointmentNotificationJobStatus.SUPPRESSED);
         verify(notificationService, never()).sendAppointmentNotification(any());
@@ -135,7 +198,7 @@ class AppointmentNotificationProcessingServiceTest {
         when(notificationService.sendAppointmentNotification(any()))
                 .thenThrow(new IllegalStateException("temporary FCM failure"));
 
-        service.process(JOB_ID);
+        service.process(JOB_ID, "worker-a");
 
         assertThat(job.getStatus()).isEqualTo(AppointmentNotificationJobStatus.PENDING);
         assertThat(job.getNextAttemptAt()).isEqualTo(NOW.plusSeconds(60));
@@ -151,10 +214,26 @@ class AppointmentNotificationProcessingServiceTest {
         when(notificationService.sendAppointmentNotification(any()))
                 .thenThrow(new IllegalStateException("permanent FCM failure"));
 
-        service.process(JOB_ID);
+        service.process(JOB_ID, "worker-a");
 
         assertThat(job.getStatus()).isEqualTo(AppointmentNotificationJobStatus.FAILED);
         assertThat(job.getLastErrorCode()).isEqualTo("APPOINTMENT_DELIVERY_ERROR");
+    }
+
+    @Test
+    void process_terminalTransitionFailureIsNotRetriedInsideTheAbortedTransaction() {
+        AppointmentNotificationJob job = processingJob(1, 1L, 0L, -30);
+        stubEligible(job, ReminderStatus.PENDING, RecurrenceType.NONE, 1L, 0L);
+        when(notificationService.sendAppointmentNotification(any())).thenReturn(response("FAILED"));
+        when(jobRepository.transitionAfterProcessing(
+                any(), any(), eq(AppointmentNotificationJobStatus.PROCESSING), any(), any(), any(), any(), any()))
+                .thenThrow(new IllegalStateException("transition failed"));
+
+        assertThatThrownBy(() -> service.process(JOB_ID, "worker-a"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("transition failed");
+        verify(jobRepository, times(1)).transitionAfterProcessing(
+                any(), any(), eq(AppointmentNotificationJobStatus.PROCESSING), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -162,10 +241,35 @@ class AppointmentNotificationProcessingServiceTest {
         AppointmentNotificationJob job = processingJob(1, 1L, 0L, 15);
         stubEligible(job, ReminderStatus.COMPLETED, RecurrenceType.NONE, 1L, 0L);
 
-        service.process(JOB_ID);
+        service.process(JOB_ID, "worker-a");
 
         assertThat(job.getStatus()).isEqualTo(AppointmentNotificationJobStatus.SUPPRESSED);
         verify(notificationService, never()).sendAppointmentNotification(any());
+    }
+
+    @Test
+    void process_staleBacklogSuppressesWithoutDelivery() {
+        AppointmentNotificationJob job = processingJob(1, 1L, 0L, -30);
+        job.setDueAt(NOW.minusSeconds(2 * 60 * 60));
+        when(jobRepository.findById(JOB_ID)).thenReturn(Optional.of(job));
+
+        service.process(JOB_ID, "worker-a");
+
+        assertThat(job.getStatus()).isEqualTo(AppointmentNotificationJobStatus.SUPPRESSED);
+        assertThat(job.getLastErrorCode()).isEqualTo("STALE_BACKLOG");
+        verify(notificationService, never()).sendAppointmentNotification(any());
+    }
+
+    @Test
+    void process_rejectsStaleWorkerBeforeDelivery() {
+        AppointmentNotificationJob job = processingJob(1, 1L, 0L, -30);
+        job.setLockedBy("new-worker");
+        when(jobRepository.findById(JOB_ID)).thenReturn(Optional.of(job));
+
+        service.process(JOB_ID, "old-worker");
+
+        verify(notificationService, never()).sendAppointmentNotification(any());
+        verify(jobRepository, never()).save(job);
     }
 
     private void stubEligible(

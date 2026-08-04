@@ -7,6 +7,16 @@ import com.carebridge.backend.notification.dto.FcmDeliveryResult;
 public interface FcmService {
 
     /**
+     * Whether this implementation is backed by an initialized delivery provider.
+     * A worker must not claim durable reminder jobs while this capability is false.
+     * Test doubles default to ready so they can exercise scheduling logic without
+     * coupling unit tests to Firebase configuration.
+     */
+    default boolean isReady() {
+        return true;
+    }
+
+    /**
      * Send a push notification to a single FCM token.
      * Returns the FCM message ID on success, or null if FCM is disabled/unavailable.
      */

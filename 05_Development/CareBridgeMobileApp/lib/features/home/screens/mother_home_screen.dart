@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/auth/auth_state.dart';
 import '../../checklist/services/checklist_assignment_refresh_bus.dart';
 import '../../checklist/widgets/add_user_checklist_task_button.dart';
 import '../../journey/models/journey_model.dart';
@@ -17,9 +18,13 @@ import '../../../core/network/api_client.dart';
 import '../../community/screens/community_feed_screen.dart';
 import '../../community/screens/view_content_screen.dart';
 import '../../community/models/content_model.dart';
+import '../../community/screens/verified_content_detail_screen.dart';
+import '../../community/services/content_service.dart';
 import '../../exercise/screens/mother_exercise_screen.dart';
 import '../../healthRecords/screens/fetal_movement_tracker_screen.dart';
 import '../../healthRecords/screens/epds_screen.dart';
+import '../../recommendation/models/recommendation_model.dart';
+import '../../recommendation/services/recommendation_service.dart';
 
 /// CB-008 — Mother Home (UC-24, UC-49)
 /// Main home screen showing journey status card, next appointment alert,
@@ -32,12 +37,16 @@ class MotherHomeScreen extends StatefulWidget {
     this.todayTaskService,
     this.dashboardLoader,
     this.reminderLoader,
+    this.recommendationService,
+    this.recommendationLoader,
   });
 
   final String? recoveryNotice;
   final TodayTaskService? todayTaskService;
   final Future<JourneyDashboard> Function()? dashboardLoader;
   final Future<List<Reminder>> Function()? reminderLoader;
+  final RecommendationService? recommendationService;
+  final Future<RecommendationContentResponse> Function()? recommendationLoader;
 
   @override
   State<MotherHomeScreen> createState() => _MotherHomeScreenState();
@@ -59,6 +68,7 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
 
   final _journeyService = JourneyService();
   late final TodayTaskService _todayTaskService;
+  late final RecommendationService _recommendationService;
   final TodayTasksPanelController _todayTasksController =
       TodayTasksPanelController();
   StreamSubscription<void>? _checklistAssignmentRefreshSubscription;
@@ -68,11 +78,23 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
   bool _loading = true;
   bool _hasUnread = false;
   int _loadGeneration = 0;
+  int _recommendationLoadGeneration = 0;
+  bool _recommendationLoading = false;
+  RecommendationContentResponse? _recommendations;
+  String? _recommendationError;
+  String? _observedAccountId;
 
   @override
   void initState() {
     super.initState();
     _todayTaskService = widget.todayTaskService ?? TodayTaskService.instance;
+    _recommendationService =
+        widget.recommendationService ?? RecommendationService();
+    _observedAccountId = AuthState.instance.userId;
+    AuthState.instance.addListener(_onAccountChanged);
+    RecommendationService.profileChangeRevision.addListener(
+      _onRecommendationProfileChanged,
+    );
     WidgetsBinding.instance.addObserver(this);
     JourneyService.dashboardRevision.addListener(_onJourneyDashboardChanged);
     _checklistAssignmentRefreshSubscription = ChecklistAssignmentRefreshBus
@@ -86,6 +108,10 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    AuthState.instance.removeListener(_onAccountChanged);
+    RecommendationService.profileChangeRevision.removeListener(
+      _onRecommendationProfileChanged,
+    );
     JourneyService.dashboardRevision.removeListener(_onJourneyDashboardChanged);
     _checklistAssignmentRefreshSubscription?.cancel();
     super.dispose();
@@ -104,25 +130,68 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
     }
   }
 
-  Future<void> _checkUnread() async {
+  void _onAccountChanged() {
+    final accountId = AuthState.instance.userId;
+    if (accountId == _observedAccountId) return;
+    _observedAccountId = accountId;
+    // Do not render the previous account while the new account is resolving.
+    // Increment both generations so every in-flight response is discarded.
+    _loadGeneration++;
+    _recommendationLoadGeneration++;
+    if (mounted) {
+      unawaited(_todayTasksController.clear());
+      setState(() {
+        _dashboard = null;
+        _reminders = [];
+        _hasUnread = false;
+        _recommendations = null;
+        _recommendationLoading = false;
+        _recommendationError = null;
+        _loading = true;
+      });
+      unawaited(_load());
+    }
+  }
+
+  void _onRecommendationProfileChanged() {
+    if (!mounted) return;
+    // Revoke/decline clears the server profile in the same transaction. Drop
+    // any personalized cards immediately while the replacement response is in
+    // flight so an IndexedStack-retained Home cannot display stale sensitive
+    // content after returning from Privacy or Profile.
+    setState(() {
+      _recommendations = null;
+      _recommendationError = null;
+      _recommendationLoading = false;
+    });
+    unawaited(_loadRecommendations());
+  }
+
+  Future<void> _checkUnread({
+    required int generation,
+    required String? accountId,
+  }) async {
     try {
       final notifs = await NotificationService.instance.getNotifications(
         size: 20,
       );
-      if (mounted) {
+      if (mounted &&
+          generation == _loadGeneration &&
+          accountId == AuthState.instance.userId) {
         setState(() => _hasUnread = notifs.any((n) => n.isUnread));
       }
     } catch (_) {}
   }
 
   Future<void> _load() async {
+    unawaited(_loadRecommendations());
     final todayRefresh = _todayTasksController.refresh();
     final generation = ++_loadGeneration;
     final isInitialLoad = _dashboard == null;
     if (isInitialLoad) {
       setState(() => _loading = true);
     }
-    _checkUnread();
+    _checkUnread(generation: generation, accountId: AuthState.instance.userId);
     try {
       final dashboard =
           await (widget.dashboardLoader?.call() ??
@@ -148,14 +217,96 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
     }
   }
 
+  Future<void> _loadRecommendations() async {
+    final generation = ++_recommendationLoadGeneration;
+    final accountId = AuthState.instance.userId;
+    final hasInjectedLoader = widget.recommendationLoader != null;
+    if (!hasInjectedLoader && accountId == null) {
+      if (mounted && generation == _recommendationLoadGeneration) {
+        setState(() {
+          _recommendationLoading = false;
+          _recommendationError = null;
+          _recommendations = null;
+        });
+      }
+      return;
+    }
+    if (mounted && generation == _recommendationLoadGeneration) {
+      setState(() {
+        // Keep recommendation progress independent from the main dashboard
+        // load while the eligibility context is being resolved.
+        _recommendationLoading = true;
+        _recommendationError = null;
+      });
+    }
+    try {
+      final dashboard =
+          _dashboard ??
+          await (widget.dashboardLoader?.call() ??
+              _journeyService.getDashboard());
+      if (!mounted || generation != _recommendationLoadGeneration) return;
+      if (accountId != AuthState.instance.userId) return;
+      // Recommendation content is meaningful only for an active maternal
+      // lifecycle.  In particular, never call the recommendation endpoint
+      // for a missing journey, BABY_CARE, or an unknown/retired stage.
+      if (!_isRecommendationEligibleDashboard(dashboard)) {
+        _clearRecommendationState(generation);
+        return;
+      }
+    } catch (_) {
+      // Fail closed: without a trustworthy maternal dashboard we must not
+      // fabricate a stage or call the recommendation endpoint.
+      _clearRecommendationState(generation);
+      return;
+    }
+    try {
+      final response =
+          await (widget.recommendationLoader?.call() ??
+              _recommendationService.getContent(limit: 3));
+      if (!mounted || generation != _recommendationLoadGeneration) return;
+      if (accountId != null && accountId != AuthState.instance.userId) return;
+      setState(() {
+        _recommendations = response;
+        _recommendationLoading = false;
+        _recommendationError = null;
+      });
+    } catch (_) {
+      if (!mounted || generation != _recommendationLoadGeneration) return;
+      if (accountId != null && accountId != AuthState.instance.userId) return;
+      setState(() {
+        _recommendationLoading = false;
+        _recommendationError =
+            'Chưa tải được nội dung phù hợp. Vui lòng thử lại.';
+      });
+    }
+  }
+
+  bool _isRecommendationEligibleDashboard(JourneyDashboard dashboard) {
+    const activeMaternalStatuses = {
+      'ACTIVE_PREGNANCY',
+      'ACTIVE_POSTPARTUM',
+      'PRE_PREGNANCY',
+    };
+    return dashboard.hasActiveJourney &&
+        dashboard.isMaternalLifecycle &&
+        activeMaternalStatuses.contains(dashboard.status);
+  }
+
+  void _clearRecommendationState(int generation) {
+    if (!mounted || generation != _recommendationLoadGeneration) return;
+    setState(() {
+      _recommendationLoading = false;
+      _recommendationError = null;
+      _recommendations = null;
+    });
+  }
+
   Future<List<Reminder>> _loadReminders() async {
     if (widget.reminderLoader != null) {
       return widget.reminderLoader!();
     }
     try {
-      final upcoming = await ReminderService.instance.listUpcomingReminders();
-      if (upcoming.isNotEmpty) return upcoming;
-      return await ReminderService.instance.listTodayReminders();
+      return await ReminderService.instance.listAppointmentsOrThrow();
     } catch (_) {
       return _reminders;
     }
@@ -222,10 +373,11 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
                   ],
                   _buildTasksSection(),
                   const SizedBox(height: 24),
+                  _buildRecommendationSection(),
+                  const SizedBox(height: 24),
                 ]),
               ),
             ),
-            if (!_loading) SliverToBoxAdapter(child: _buildContentSection()),
             const SliverToBoxAdapter(child: SizedBox(height: 104)),
           ],
         ),
@@ -321,7 +473,12 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
                           builder: (_) => const NotificationCenterScreen(),
                         ),
                       )
-                      .then((_) => _checkUnread()),
+                      .then(
+                        (_) => _checkUnread(
+                          generation: _loadGeneration,
+                          accountId: AuthState.instance.userId,
+                        ),
+                      ),
                   icon: const Icon(
                     Icons.notifications,
                     size: 28,
@@ -630,7 +787,7 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
     return GestureDetector(
       key: const Key('mother-home-next-appointment-card'),
       onTap: () async {
-        await context.push('/reminders/calendar');
+        await context.push('/appointments/calendar');
         if (mounted) await _load();
       },
       child: Container(
@@ -837,11 +994,30 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
     audience: TodayTasksAudience.mother,
     layout: TodayTasksLayout.sourceGroups,
     controller: _todayTasksController,
-    headingAction: (_dashboard?.journeyId?.isNotEmpty ?? false)
-        ? AddUserChecklistTaskButton(journeyId: _dashboard!.journeyId)
-        : null,
+    headingAction: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          key: const Key('mother-home-checklist-history-button'),
+          tooltip: 'Lịch sử checklist',
+          onPressed: () => context.push('/checklists/history'),
+          icon: const Icon(Icons.history_rounded),
+          color: _primary,
+        ),
+        IconButton(
+          key: const Key('mother-home-reminder-schedules-button'),
+          tooltip: 'Lịch nhắc',
+          onPressed: () => context.push('/reminder-schedules'),
+          icon: const Icon(Icons.alarm_rounded),
+          color: _primary,
+        ),
+        if (_dashboard?.journeyId?.isNotEmpty ?? false)
+          AddUserChecklistTaskButton(journeyId: _dashboard!.journeyId),
+      ],
+    ),
   );
 
+  // ignore: unused_element, legacy lifecycle-week heading retained for compatibility.
   Widget _buildContentSection() {
     if (_dashboard == null) return const SizedBox.shrink();
     final week = _dashboard!.displayPregnancyWeek;
@@ -923,6 +1099,287 @@ class _QuickAction extends StatelessWidget {
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+extension _MotherHomeRecommendationView on _MotherHomeScreenState {
+  Widget _buildRecommendationSection() {
+    final response = _recommendations;
+    if (response == null && _recommendationLoading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 24),
+        child: _RecommendationLoadingState(),
+      );
+    }
+    if (response == null && _recommendationError != null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: _RecommendationErrorState(
+          message: _recommendationError!,
+          onRetry: _loadRecommendations,
+        ),
+      );
+    }
+    if (response == null) return const SizedBox.shrink();
+    final items = response.items;
+    final title = switch (response.stage) {
+      'PRE_PREGNANCY' => 'Gợi ý cho chuẩn bị mang thai',
+      'PREGNANCY' when response.pregnancyWeek != null =>
+        'Gợi ý dành riêng cho tuần ${response.pregnancyWeek}',
+      'PREGNANCY' => 'Gợi ý cho thai kỳ',
+      'POSTPARTUM' => 'Gợi ý cho sau sinh',
+      'BABY_CARE' => 'Gợi ý chăm sóc bé',
+      _ => 'Gợi ý dành cho bạn',
+    };
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: _MotherHomeScreenState._onSurface,
+            ),
+          ),
+          if (response.profileStatus ==
+                  RecommendationProfileStatus.reviewRequired ||
+              response.profileStatus ==
+                  RecommendationProfileStatus.reconsentRequired) ...[
+            const SizedBox(height: 4),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                key: const Key('mother-home-recommendation-review-profile'),
+                onPressed: () => context.push(
+                  '/recommendation-profile',
+                  extra: response.stage,
+                ),
+                child: const Text('Xem lại hồ sơ cá nhân hóa'),
+              ),
+            ),
+          ],
+          if (_recommendationLoading) ...[
+            const SizedBox(height: 8),
+            const LinearProgressIndicator(
+              key: Key('mother-home-recommendation-refreshing'),
+              color: _MotherHomeScreenState._primaryContainer,
+              backgroundColor: _MotherHomeScreenState._surfaceContainerLow,
+            ),
+          ],
+          if (_recommendationError != null) ...[
+            const SizedBox(height: 8),
+            _RecommendationErrorState(
+              message: _recommendationError!,
+              onRetry: _loadRecommendations,
+            ),
+          ],
+          if (response.selectionMode == 'FALLBACK_ONLY')
+            const _RecommendationCoverageNotice(
+              key: Key('mother-home-recommendation-fallback-only'),
+              message: 'Đây là nội dung nền an toàn cho giai đoạn hiện tại.',
+            ),
+          if (response.coverageStatus == 'PARTIAL')
+            _RecommendationCoverageNotice(
+              key: const Key('mother-home-recommendation-partial'),
+              message:
+                  'Hiện có một số nội dung phù hợp. Bạn có thể xem thêm trong thư viện.',
+              onBrowse: () => context.push('/content'),
+            ),
+          if (response.coverageStatus == 'EMPTY')
+            _RecommendationCoverageNotice(
+              key: const Key('mother-home-recommendation-empty-coverage'),
+              message:
+                  'Chưa có bài viết phù hợp; hãy xem toàn bộ thư viện nội dung.',
+              onBrowse: () => context.push('/content'),
+            ),
+          const SizedBox(height: 12),
+          if (items.isNotEmpty) ...items.map(_buildRecommendationCard),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecommendationCard(RecommendationContentItem item) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Semantics(
+        button: true,
+        label: item.title,
+        child: Card(
+          key: Key('mother-home-recommendation-card-${item.id}'),
+          margin: EdgeInsets.zero,
+          color: _MotherHomeScreenState._surface,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(
+              color: _MotherHomeScreenState._surfaceContainerHighest,
+            ),
+          ),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(16),
+            onTap: () => _openRecommendation(item.id),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.menu_book_outlined,
+                    color: _MotherHomeScreenState._primary,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.title,
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: _MotherHomeScreenState._onSurface,
+                          ),
+                        ),
+                        if (item.summary?.trim().isNotEmpty ?? false) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            item.summary!,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 13,
+                              color: _MotherHomeScreenState._onSurfaceVariant,
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 8),
+                        Text(
+                          item.reasonLabel,
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 12,
+                            color: _MotherHomeScreenState._primary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Icon(
+                    Icons.chevron_right_rounded,
+                    color: _MotherHomeScreenState._onSurfaceVariant,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openRecommendation(String contentId) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => VerifiedContentDetailScreen(
+          contentId: contentId,
+          mode: ContentBrowseMode.lifecycle,
+          contentService: ContentService.instance,
+        ),
+      ),
+    );
+  }
+}
+
+class _RecommendationLoadingState extends StatelessWidget {
+  const _RecommendationLoadingState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      key: const Key('mother-home-recommendation-loading'),
+      margin: EdgeInsets.zero,
+      child: const Padding(
+        padding: EdgeInsets.all(24),
+        child: Center(
+          child: CircularProgressIndicator(color: Color(0xFFC98C7B)),
+        ),
+      ),
+    );
+  }
+}
+
+class _RecommendationErrorState extends StatelessWidget {
+  const _RecommendationErrorState({
+    required this.message,
+    required this.onRetry,
+  });
+
+  final String message;
+  final Future<void> Function() onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      key: const Key('mother-home-recommendation-error'),
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            const Icon(Icons.info_outline, color: Color(0xFF845143)),
+            const SizedBox(width: 10),
+            Expanded(child: Text(message)),
+            IconButton(
+              key: const Key('mother-home-recommendation-retry'),
+              tooltip: 'Thử lại',
+              onPressed: () => unawaited(onRetry()),
+              icon: const Icon(Icons.refresh),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _RecommendationCoverageNotice extends StatelessWidget {
+  const _RecommendationCoverageNotice({
+    super.key,
+    required this.message,
+    this.onBrowse,
+  });
+
+  final String message;
+  final VoidCallback? onBrowse;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.only(top: 8),
+      color: const Color(0xFFFFF1EC),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+        child: Row(
+          children: [
+            const Icon(Icons.menu_book_outlined, color: Color(0xFF845143)),
+            const SizedBox(width: 10),
+            Expanded(child: Text(message)),
+            if (onBrowse != null)
+              TextButton(onPressed: onBrowse, child: const Text('Xem thêm')),
+          ],
         ),
       ),
     );

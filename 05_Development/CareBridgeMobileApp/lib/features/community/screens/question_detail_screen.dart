@@ -353,6 +353,14 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
           ),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(
+              Icons.smart_toy_outlined,
+              color: _onSurfaceVariant,
+            ),
+            onPressed: () => context.push('/rag-chat'),
+            tooltip: 'Hỏi AI CareBridge (UC-132)',
+          ),
           if (_question != null && !_isMyQuestion)
             IconButton(
               icon: const Icon(Icons.flag_outlined, color: _onSurfaceVariant),
@@ -843,8 +851,7 @@ class _AnswerCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (isOwnAnswer &&
-              (answer.status == 'PENDING' ||
-                  answer.status == 'AI_PENDING')) ...[
+              (answer.status == 'PENDING' || answer.status == 'AI_PENDING')) ...[
             Container(
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -950,8 +957,8 @@ class _AnswerCard extends StatelessWidget {
                     color: const Color(0xFFFFE2D9),
                     borderRadius: BorderRadius.circular(4),
                   ),
-                  child: const Text(
-                    'Kinh nghiệm',
+                  child: Text(
+                    answer.experienceTag ?? 'Kinh nghiệm',
                     style: TextStyle(fontSize: 10, color: Color(0xFF845143)),
                   ),
                 ),

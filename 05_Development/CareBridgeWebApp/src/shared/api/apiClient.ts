@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { type AxiosRequestConfig, type InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '../auth/authStore';
 import { saveBlockedAccountState } from '../../features/auth/models/blockedAccount';
 
@@ -7,8 +7,30 @@ const apiClient = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+export interface ApiRequestSessionIdentity {
+  userId: string;
+  accessToken: string;
+}
+
+export type ApiSessionBoundRequestConfig = AxiosRequestConfig & {
+  carebridgeSession: ApiRequestSessionIdentity;
+};
+
+type SessionBoundInternalConfig = InternalAxiosRequestConfig & {
+  carebridgeSession?: ApiRequestSessionIdentity;
+};
+
+export function isApiRequestSessionCurrent(
+  session: ApiRequestSessionIdentity | undefined,
+): boolean {
+  if (!session) return true;
+  const current = useAuthStore.getState();
+  return current.user?.id === session.userId && current.accessToken === session.accessToken;
+}
+
 apiClient.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().accessToken;
+  const session = (config as SessionBoundInternalConfig).carebridgeSession;
+  const token = session?.accessToken ?? useAuthStore.getState().accessToken;
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
@@ -40,6 +62,9 @@ export function shouldRedirectToMaintenance(status: number | undefined, errorCod
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
+    const requestSession = (error.config as SessionBoundInternalConfig | undefined)?.carebridgeSession;
+    if (!isApiRequestSessionCurrent(requestSession)) return Promise.reject(error);
+
     const status = error.response?.status;
     const errorCode = error.response?.data?.error;
     const url: string = error.config?.url ?? '';

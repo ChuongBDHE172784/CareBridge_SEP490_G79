@@ -30,6 +30,11 @@ public class FirebaseFcmServiceImpl implements FcmService {
     private final FirebaseApp firebaseApp;
 
     @Override
+    public boolean isReady() {
+        return firebaseApp != null;
+    }
+
+    @Override
     public String sendToToken(String fcmToken, String title, String body) {
         try {
             Message message = Message.builder()

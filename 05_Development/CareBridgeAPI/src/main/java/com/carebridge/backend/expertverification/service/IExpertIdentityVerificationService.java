@@ -24,4 +24,6 @@ public interface IExpertIdentityVerificationService {
     IdentityVerificationResponse review(UUID attemptId, ReviewIdentityRequest request, UUID reviewerId);
 
     Page<ExpertReviewCaseResponse> getAdminReviewCases(String search, String status, Pageable pageable, UUID reviewerId);
+
+    ExpertReviewCaseResponse getAdminReviewCase(UUID expertProfileId, UUID reviewerId);
 }

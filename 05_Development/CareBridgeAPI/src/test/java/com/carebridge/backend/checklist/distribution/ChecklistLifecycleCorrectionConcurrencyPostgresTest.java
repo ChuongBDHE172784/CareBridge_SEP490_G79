@@ -46,8 +46,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 class ChecklistLifecycleCorrectionConcurrencyPostgresTest
         extends AbstractEmbeddedPostgresIntegrationTest {
 
-    private static final LocalDate OLD_ANCHOR = LocalDate.of(2026, 1, 1);
-    private static final LocalDate CORRECTED_ANCHOR = LocalDate.of(2026, 2, 1);
+    private static final ZoneId DEFAULT_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
+    private static final LocalDate OLD_ANCHOR = LocalDate.now(DEFAULT_ZONE).minusDays(1);
+    private static final LocalDate CORRECTED_ANCHOR = OLD_ANCHOR.plusDays(1);
     private static final int WAIT_SECONDS = 15;
 
     @Autowired private ChecklistDistributionService distributionService;
@@ -140,16 +141,15 @@ class ChecklistLifecycleCorrectionConcurrencyPostgresTest
                 .containsExactlyInAnyOrder(0, 1);
         assertThat(parentCount()).isEqualTo(2L);
         assertThat(taskCount()).isEqualTo(2L);
-        assertParent(old.parentId(), "CANCELLED", 1L);
-        assertTask(old.taskId(), "CANCELLED", 1L);
+        assertHistorical(old.parentId(), "PENDING", 1L);
+        assertTask(old.taskId(), "PENDING", 0L);
         assertCorrectedOccurrence("PENDING", 0L, "PENDING", 0L);
 
-        assertTypedAuditCount(correctionCorrelation, "CHECKLIST_CANCELLED", old.taskId(), 1L);
-        assertTypedParentAuditCount(correctionCorrelation, "CHECKLIST_CANCELLED", 1L);
         assertTypedParentAuditCount(correctionCorrelation, "CHECKLIST_DISTRIBUTED", 1L);
         UUID replacementTask = correctedTaskId();
         assertTypedAuditCount(correctionCorrelation, "CHECKLIST_ASSIGNED", replacementTask, 1L);
-        assertThat(auditCount(correctionCorrelation)).isEqualTo(4L);
+        assertThat(cancelAuditCount(correctionCorrelation)).isZero();
+        assertThat(auditCount(correctionCorrelation)).isEqualTo(2L);
         assertThat(templateActionCommandCount()).isZero();
     }
 
@@ -197,10 +197,10 @@ class ChecklistLifecycleCorrectionConcurrencyPostgresTest
         assertThat(action.taskId()).isEqualTo(old.taskId());
         assertThat(action.instanceId()).isEqualTo(old.parentId());
         assertThat(corrected.createdInstances()).isEqualTo(1);
-        assertThat(corrected.cancelledInstances()).isZero();
+        assertThat(corrected.cancelledInstances()).isEqualTo(1);
         assertThat(parentCount()).isEqualTo(2L);
         assertThat(taskCount()).isEqualTo(2L);
-        assertParent(old.parentId(), "COMPLETED", 1L);
+        assertHistorical(old.parentId(), "COMPLETED", 2L);
         assertTask(old.taskId(), "COMPLETED", 1L);
         assertCorrectedOccurrence("PENDING", 0L, "PENDING", 0L);
         assertTypedAuditCount(action.correlationId(), "CHECKLIST_COMPLETED", old.taskId(), 1L);
@@ -258,15 +258,14 @@ class ChecklistLifecycleCorrectionConcurrencyPostgresTest
         assertThat(action.response()).isNull();
         assertThat(action.error()).isInstanceOf(BusinessException.class);
         assertThat(((BusinessException) action.error()).getCode()).isEqualTo("TASK_NOT_FOUND");
-        assertParent(old.parentId(), "CANCELLED", 1L);
-        assertTask(old.taskId(), "CANCELLED", 1L);
+        assertHistorical(old.parentId(), "PENDING", 1L);
+        assertTask(old.taskId(), "PENDING", 0L);
         assertCorrectedOccurrence("PENDING", 0L, "PENDING", 0L);
-        assertTypedAuditCount(correctionCorrelation, "CHECKLIST_CANCELLED", old.taskId(), 1L);
-        assertTypedParentAuditCount(correctionCorrelation, "CHECKLIST_CANCELLED", 1L);
         assertTypedParentAuditCount(correctionCorrelation, "CHECKLIST_DISTRIBUTED", 1L);
         assertTypedAuditCount(
                 correctionCorrelation, "CHECKLIST_ASSIGNED", correctedTaskId(), 1L);
-        assertThat(auditCount(correctionCorrelation)).isEqualTo(4L);
+        assertThat(cancelAuditCount(correctionCorrelation)).isZero();
+        assertThat(auditCount(correctionCorrelation)).isEqualTo(2L);
         assertThat(completedAuditCount(old.taskId())).isZero();
         assertThat(actionCommandCount(old.taskId())).isZero();
         assertThat(templateActionCommandCount()).isZero();
@@ -287,10 +286,8 @@ class ChecklistLifecycleCorrectionConcurrencyPostgresTest
         ChecklistDistributionResult corrected = inTransaction(
                 () -> distributionService.distribute(command(CORRECTED_ANCHOR, UUID.randomUUID())));
 
-        assertThat(corrected.cancelledInstances()).isZero();
-        assertThat(jdbcTemplate.queryForObject(
-                "select status from checklist_instances where checklist_instance_id=?",
-                String.class, old.parentId())).isEqualTo("PENDING");
+        assertThat(corrected.cancelledInstances()).isEqualTo(1);
+        assertHistorical(old.parentId(), "PENDING", 1L);
         assertThat(jdbcTemplate.queryForObject(
                 "select status from checklist_task_instances where checklist_task_instance_id=?",
                 String.class, old.taskId())).isEqualTo("PENDING");
@@ -395,6 +392,22 @@ class ChecklistLifecycleCorrectionConcurrencyPostgresTest
                 """, parentId))
                 .containsEntry("status", status)
                 .containsEntry("lock_version", version);
+    }
+
+    private void assertHistorical(UUID parentId, String status, long version) {
+        assertThat(jdbcTemplate.queryForMap("""
+                select status, historical_at, history_reason_code, lock_version
+                  from checklist_instances
+                 where checklist_instance_id = ?
+                """, parentId))
+                .containsEntry("status", status)
+                .containsEntry("history_reason_code", "LIFECYCLE_STAGE_OBSOLETE")
+                .containsEntry("lock_version", version);
+        assertThat(jdbcTemplate.queryForObject("""
+                select historical_at is not null
+                  from checklist_instances
+                 where checklist_instance_id = ?
+                """, Boolean.class, parentId)).isTrue();
     }
 
     private void assertTask(UUID taskId, String status, long version) {

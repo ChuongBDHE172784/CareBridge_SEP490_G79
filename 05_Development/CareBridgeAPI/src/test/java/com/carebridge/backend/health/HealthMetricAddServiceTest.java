@@ -67,6 +67,27 @@ class HealthMetricAddServiceTest {
                 eq("HealthObservation"), any(), any());
     }
 
+    @Test
+    void addMetric_bloodPressureHappyPath_persistsSystolicAndDiastolicInOrder() {
+        var journey = MetricTestFactory.makeActiveJourney();
+        var req = MetricTestFactory.makeBloodPressureRequest();
+        var saved = MetricTestFactory.makeSavedObservation();
+        saved.setMetricCode("BLOOD_PRESSURE");
+        saved.setValueNumeric(req.getValueNumeric());
+        saved.setValueSecondary(req.getValueSecondary());
+        when(journeyRepository.findById(MetricTestFactory.JOURNEY_ID)).thenReturn(Optional.of(journey));
+        when(definitionRepository.findByMetricCodeAndActiveTrue("BLOOD_PRESSURE"))
+                .thenReturn(Optional.of(MetricTestFactory.makeBloodPressureDefinition()));
+        when(observationRepository.save(any())).thenReturn(saved);
+
+        metricService.addMetric(MetricTestFactory.MOTHER_ID, MetricTestFactory.JOURNEY_ID, req);
+
+        var observation = org.mockito.ArgumentCaptor.forClass(HealthObservation.class);
+        verify(observationRepository).save(observation.capture());
+        assertThat(observation.getValue().getValueNumeric()).isEqualByComparingTo("120");
+        assertThat(observation.getValue().getValueSecondary()).isEqualByComparingTo("80");
+    }
+
     /** METRIC-TC-025-002: CRITICAL — BP requires both valueNumeric AND valueSecondary → METRIC-005 (400). */
     @Test
     void addMetric_bloodPressureMissingSecondary_throwsMetric005() {

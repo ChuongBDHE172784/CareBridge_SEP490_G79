@@ -14,24 +14,38 @@ import com.carebridge.backend.checklist.model.ChecklistInstanceStatus;
 import com.carebridge.backend.checklist.model.ChecklistOrigin;
 import com.carebridge.backend.checklist.model.ChecklistRecipientRole;
 import com.carebridge.backend.checklist.model.ChecklistTaskStatus;
+import com.carebridge.backend.checklist.policy.ChecklistTemplateVisibilityPolicy;
 import com.carebridge.backend.checklist.repository.ChecklistInstanceRepository;
 import com.carebridge.backend.checklist.repository.ChecklistTaskInstanceRepository;
 import com.carebridge.backend.checklist.today.policy.UnifiedTaskMutationPolicy;
 import com.carebridge.backend.checklist.today.policy.UnifiedTaskAccessPolicy;
 import com.carebridge.backend.common.exception.BusinessException;
+import com.carebridge.backend.content.entity.ChecklistTemplate;
+import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
+import com.carebridge.backend.family.entity.CareGroup;
+import com.carebridge.backend.family.entity.CareGroupMember;
+import com.carebridge.backend.family.entity.CareGroupStatus;
+import com.carebridge.backend.family.entity.GroupMemberRole;
+import com.carebridge.backend.family.entity.InviteStatus;
+import com.carebridge.backend.family.entity.PermissionFlag;
+import com.carebridge.backend.family.policy.CareGroupAuthorizationPolicy;
+import com.carebridge.backend.family.repository.CareGroupMemberRepository;
+import com.carebridge.backend.family.repository.CareGroupRepository;
 import com.carebridge.backend.journey.entity.JourneyStatus;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
+import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Comparator;
+import java.util.Map;
 import java.util.UUID;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /** Creates idempotent user-owned tasks directly in the V2 checklist aggregate. */
 @Service
-@RequiredArgsConstructor
 public class UserCreatedChecklistTaskService {
 
     private final MotherJourneyRepository journeyRepository;
@@ -41,30 +55,96 @@ public class UserCreatedChecklistTaskService {
     private final UnifiedTaskMutationPolicy mutationPolicy;
     private final UnifiedTaskAccessPolicy accessPolicy;
     private final AuditService auditService;
+    private final ChecklistTemplateRepository templateRepository;
+    private final CareGroupRepository groupRepository;
+    private final CareGroupMemberRepository memberRepository;
+    private final CareGroupAuthorizationPolicy groupAuthorizationPolicy;
+
+    /** Compatibility constructor retained for focused unit tests and legacy callers. */
+    public UserCreatedChecklistTaskService(
+            MotherJourneyRepository journeyRepository,
+            BabyProfileRepository babyRepository,
+            ChecklistInstanceRepository instanceRepository,
+            ChecklistTaskInstanceRepository taskRepository,
+            UnifiedTaskMutationPolicy mutationPolicy,
+            UnifiedTaskAccessPolicy accessPolicy,
+            AuditService auditService) {
+        this(journeyRepository, babyRepository, instanceRepository, taskRepository,
+                mutationPolicy, accessPolicy, auditService, null, null, null, null);
+    }
+
+    public UserCreatedChecklistTaskService(
+            MotherJourneyRepository journeyRepository,
+            BabyProfileRepository babyRepository,
+            ChecklistInstanceRepository instanceRepository,
+            ChecklistTaskInstanceRepository taskRepository,
+            UnifiedTaskMutationPolicy mutationPolicy,
+            UnifiedTaskAccessPolicy accessPolicy,
+            AuditService auditService,
+            ChecklistTemplateRepository templateRepository) {
+        this(journeyRepository, babyRepository, instanceRepository, taskRepository,
+                mutationPolicy, accessPolicy, auditService, templateRepository,
+                null, null, null);
+    }
+
+    @Autowired
+    public UserCreatedChecklistTaskService(
+            MotherJourneyRepository journeyRepository,
+            BabyProfileRepository babyRepository,
+            ChecklistInstanceRepository instanceRepository,
+            ChecklistTaskInstanceRepository taskRepository,
+            UnifiedTaskMutationPolicy mutationPolicy,
+            UnifiedTaskAccessPolicy accessPolicy,
+            AuditService auditService,
+            ChecklistTemplateRepository templateRepository,
+            CareGroupRepository groupRepository,
+            CareGroupMemberRepository memberRepository,
+            CareGroupAuthorizationPolicy groupAuthorizationPolicy) {
+        this.journeyRepository = journeyRepository;
+        this.babyRepository = babyRepository;
+        this.instanceRepository = instanceRepository;
+        this.taskRepository = taskRepository;
+        this.mutationPolicy = mutationPolicy;
+        this.accessPolicy = accessPolicy;
+        this.auditService = auditService;
+        this.templateRepository = templateRepository;
+        this.groupRepository = groupRepository;
+        this.memberRepository = memberRepository;
+        this.groupAuthorizationPolicy = groupAuthorizationPolicy;
+    }
 
     @Transactional
     public ChecklistItemResponse create(AddChecklistItemRequest request, UUID actorUserId) {
         if (request == null || actorUserId == null) {
             throw invalid("CHECKLIST-001", "Checklist task request is required");
         }
-        if ((request.journeyId() == null) == (request.babyId() == null)) {
+        if (request.careGroupId() == null
+                && (request.journeyId() == null) == (request.babyId() == null)) {
             throw invalid("CHECKLIST_CONTEXT_REQUIRED", "Exactly one checklist care context is required");
+        }
+        if (request.careGroupId() != null
+                && (request.journeyId() != null || request.babyId() != null)) {
+            throw invalid("CHECKLIST_CONTEXT_CONFLICT",
+                    "Family checklist context is resolved from the care group");
         }
         mutationPolicy.requireUserCreatedTarget(ChecklistOrigin.USER_CREATED, request.targetSubject());
         if (request.clientTaskId() == null) {
             throw invalid("CHECKLIST_CLIENT_TASK_ID_REQUIRED", "clientTaskId is required");
         }
 
-        ResolvedContext context = resolveContext(request, actorUserId);
+        CreateScope scope = request.careGroupId() == null
+                ? resolveMotherScope(request, actorUserId)
+                : resolveFamilyScope(request.careGroupId(), actorUserId);
+        ResolvedContext context = scope.context();
         String instanceKey = ChecklistDistributionKeyFactory.userCreatedInstanceKey(
-                actorUserId, ChecklistRecipientRole.MOTHER.name(), null,
+                actorUserId, scope.recipientRole().name(), scope.careGroupId(),
                 context.type().name(), context.id(), null, null);
         String lifecycleKey = ChecklistDistributionKeyFactory.lifecycleScopeKey(
-                null, actorUserId, ChecklistRecipientRole.MOTHER.name(), null,
+                null, actorUserId, scope.recipientRole().name(), scope.careGroupId(),
                 context.type().name(), context.id());
         instanceRepository.acquireDistributionKeyLock(lifecycleKey);
         ChecklistInstance instance = instanceRepository.findByDistributionKey(instanceKey).orElse(null);
-        if (instance == null) {
+        if (instance == null && scope.recipientRole() == ChecklistRecipientRole.MOTHER) {
             List<ChecklistInstance> legacy = instanceRepository.findAllByLogicalPersonalIdentity(
                             actorUserId, ChecklistRecipientRole.MOTHER, context.type(), context.id(),
                             null, ChecklistOrigin.USER_CREATED)
@@ -89,16 +169,16 @@ public class UserCreatedChecklistTaskService {
             instance = instanceRepository.saveAndFlush(ChecklistInstance.builder()
                         .distributionKey(instanceKey)
                         .recipientUserId(actorUserId)
-                        .recipientRole(ChecklistRecipientRole.MOTHER)
-                        .careGroupId(null)
+                        .recipientRole(scope.recipientRole())
+                        .careGroupId(scope.careGroupId())
                         .careContextType(context.type())
                         .careContextId(context.id())
-                        .contextOwnerUserId(actorUserId)
+                        .contextOwnerUserId(scope.contextOwnerUserId())
                         .origin(ChecklistOrigin.USER_CREATED)
                         .status(ChecklistInstanceStatus.PENDING)
                         .build());
         } else {
-            instance = requireCanonicalParent(instance, actorUserId, context);
+            instance = requireCanonicalParent(instance, actorUserId, scope);
         }
 
         ChecklistInstance parent = instance;
@@ -120,8 +200,11 @@ public class UserCreatedChecklistTaskService {
         if (journeyId != null && babyId != null) {
             throw invalid("CHECKLIST_CONTEXT_REQUIRED", "Checklist filters are mutually exclusive");
         }
-        List<ChecklistInstance> instances = instanceRepository.findByRecipientUserId(actorUserId).stream()
+        List<ChecklistInstance> discovered = instanceRepository.findByRecipientUserId(actorUserId);
+        Map<UUID, ChecklistTemplate> templatesByVersion = templatesByVersion(discovered);
+        List<ChecklistInstance> instances = discovered.stream()
                 .filter(instance -> instance.getStatus() != ChecklistInstanceStatus.CANCELLED)
+                .filter(instance -> isVisibleTemplate(instance, templatesByVersion))
                 .filter(instance -> accessPolicy.canView(instance, actorUserId))
                 .filter(instance -> journeyId == null
                         || instance.getCareContextType() == ChecklistCareContextType.JOURNEY
@@ -141,7 +224,38 @@ public class UserCreatedChecklistTaskService {
                 .toList();
     }
 
-    private ResolvedContext resolveContext(AddChecklistItemRequest request, UUID actorUserId) {
+    private boolean isVisibleTemplate(
+            ChecklistInstance instance,
+            Map<UUID, ChecklistTemplate> templatesByVersion) {
+        if (templateRepository == null) {
+            // Preserve the seven-argument compatibility constructor used by
+            // callers that do not provide template metadata.
+            return true;
+        }
+        ChecklistTemplate template = templatesByVersion.get(instance.getTemplateVersionId());
+        return ChecklistTemplateVisibilityPolicy.isVisible(instance, template);
+    }
+
+    private Map<UUID, ChecklistTemplate> templatesByVersion(Collection<ChecklistInstance> instances) {
+        if (templateRepository == null) {
+            return Map.of();
+        }
+        List<UUID> versionIds = instances.stream()
+                .map(ChecklistInstance::getTemplateVersionId)
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .toList();
+        if (versionIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, ChecklistTemplate> result = new LinkedHashMap<>();
+        for (ChecklistTemplate template : templateRepository.findAllByTemplateVersionIdIn(versionIds)) {
+            result.putIfAbsent(template.getTemplateVersionId(), template);
+        }
+        return result;
+    }
+
+    private ResolvedContext resolveMotherContext(AddChecklistItemRequest request, UUID actorUserId) {
         if (request.journeyId() != null) {
             journeyRepository.findByIdAndOwnerUserIdAndStatus(
                             request.journeyId(), actorUserId, JourneyStatus.ACTIVE)
@@ -151,6 +265,59 @@ public class UserCreatedChecklistTaskService {
         babyRepository.findOwnedActiveByIdForUpdate(request.babyId(), actorUserId)
                 .orElseThrow(UserCreatedChecklistTaskService::contextUnavailable);
         return new ResolvedContext(ChecklistCareContextType.BABY, request.babyId());
+    }
+
+    private CreateScope resolveMotherScope(AddChecklistItemRequest request, UUID actorUserId) {
+        return new CreateScope(
+                ChecklistRecipientRole.MOTHER,
+                null,
+                actorUserId,
+                resolveMotherContext(request, actorUserId));
+    }
+
+    private CreateScope resolveFamilyScope(UUID careGroupId, UUID actorUserId) {
+        if (groupRepository == null || memberRepository == null || groupAuthorizationPolicy == null) {
+            throw contextUnavailable();
+        }
+        CareGroup group = groupRepository.findByIdAndStatus(careGroupId, CareGroupStatus.ACTIVE)
+                .orElseThrow(UserCreatedChecklistTaskService::contextUnavailable);
+        CareGroupMember member = memberRepository.findByCareGroupIdAndUserId(careGroupId, actorUserId)
+                .filter(candidate -> candidate.getInviteStatus() == InviteStatus.ACCEPTED)
+                .filter(candidate -> candidate.getMemberRole() != GroupMemberRole.OWNER)
+                .orElseThrow(UserCreatedChecklistTaskService::contextUnavailable);
+        if (!groupAuthorizationPolicy.hasPermission(careGroupId, actorUserId, PermissionFlag.CHECKLIST_VIEW)) {
+            throw contextUnavailable();
+        }
+        // A group may expose both lifecycle contexts. Keep the same canonical
+        // preference as the mother's composer (journey first), while falling
+        // back to an active linked baby when the journey has ended.
+        if (group.getLinkedJourneyId() != null) {
+            var journey = journeyRepository.findByIdAndOwnerUserIdAndStatus(
+                    group.getLinkedJourneyId(), group.getOwnerUserId(), JourneyStatus.ACTIVE)
+                    .orElse(null);
+            if (journey != null) {
+                return new CreateScope(
+                        ChecklistRecipientRole.FAMILY,
+                        careGroupId,
+                        group.getOwnerUserId(),
+                        new ResolvedContext(ChecklistCareContextType.JOURNEY, group.getLinkedJourneyId()));
+            }
+        }
+        if (group.getLinkedBabyProfileId() != null) {
+            var baby = babyRepository.findByIdAndOwnerUserId(
+                            group.getLinkedBabyProfileId(), group.getOwnerUserId())
+                    .filter(candidate -> candidate.getStatus()
+                            == com.carebridge.backend.baby.entity.BabyProfileStatus.ACTIVE)
+                    .orElse(null);
+            if (baby != null) {
+                return new CreateScope(
+                        ChecklistRecipientRole.FAMILY,
+                        careGroupId,
+                        group.getOwnerUserId(),
+                        new ResolvedContext(ChecklistCareContextType.BABY, group.getLinkedBabyProfileId()));
+            }
+        }
+        throw contextUnavailable();
     }
 
     private ChecklistTaskInstance createTask(
@@ -189,12 +356,13 @@ public class UserCreatedChecklistTaskService {
     private static ChecklistInstance requireCanonicalParent(
             ChecklistInstance instance,
             UUID actorUserId,
-            ResolvedContext context) {
+            CreateScope scope) {
+        ResolvedContext context = scope.context();
         if (instance.getOrigin() != ChecklistOrigin.USER_CREATED
-                || instance.getRecipientRole() != ChecklistRecipientRole.MOTHER
-                || instance.getCareGroupId() != null
+                || instance.getRecipientRole() != scope.recipientRole()
+                || !java.util.Objects.equals(instance.getCareGroupId(), scope.careGroupId())
                 || !actorUserId.equals(instance.getRecipientUserId())
-                || !actorUserId.equals(instance.getContextOwnerUserId())
+                || !scope.contextOwnerUserId().equals(instance.getContextOwnerUserId())
                 || instance.getCareContextType() != context.type()
                 || !context.id().equals(instance.getCareContextId())) {
             throw new BusinessException(HttpStatus.CONFLICT, "CHECKLIST_KEY_CONFLICT",
@@ -245,5 +413,12 @@ public class UserCreatedChecklistTaskService {
     }
 
     private record ResolvedContext(ChecklistCareContextType type, UUID id) {
+    }
+
+    private record CreateScope(
+            ChecklistRecipientRole recipientRole,
+            UUID careGroupId,
+            UUID contextOwnerUserId,
+            ResolvedContext context) {
     }
 }

@@ -1,39 +1,114 @@
 import 'package:flutter/material.dart';
 import '../../../../core/auth/auth_state.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/notifications/fcm_service.dart';
 import '../../journey/services/pregnancy_outcome_draft_store.dart';
-import '../models/auth_model.dart';
+import '../../recommendation/services/recommendation_service.dart';
 import '../services/auth_service.dart';
 
 @visibleForTesting
 Future<void> clearLocalSessionAfterLogout({
   required String? accountId,
+  required bool Function() isCapturedSessionCurrent,
   required Future<void> Function(String accountId) clearDraft,
+  Future<void> Function(String accountId)? clearRecommendationDraft,
   required Future<void> Function() clearAuth,
 }) async {
   try {
-    if (accountId != null) await clearDraft(accountId);
-  } catch (_) {
-    debugPrint('[Logout] ancillary draft cleanup failed');
+    if (accountId != null) {
+      try {
+        await clearDraft(accountId);
+      } catch (_) {
+        debugPrint('[Logout] pregnancy outcome draft cleanup failed');
+      }
+      if (clearRecommendationDraft != null) {
+        try {
+          await clearRecommendationDraft(accountId);
+        } catch (_) {
+          debugPrint('[Logout] recommendation draft cleanup failed');
+        }
+      }
+    }
   } finally {
-    await clearAuth();
+    if (isCapturedSessionCurrent()) await clearAuth();
   }
 }
 
-Future<void> showLogoutConfirmationSheet(BuildContext context) {
-  return showModalBottomSheet<void>(
+Future<void> showLogoutConfirmationSheet(BuildContext context) async {
+  final auth = AuthState.instance;
+  final accountId = auth.userId;
+  final sessionGeneration = auth.sessionGeneration;
+  if (accountId == null || auth.accessToken == null) return;
+
+  bool isCapturedSessionCurrent() =>
+      auth.matchesSession(generation: sessionGeneration, userId: accountId);
+
+  final confirmed = await showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
+    isDismissible: false,
+    enableDrag: false,
     backgroundColor: Colors.transparent,
     barrierColor: Colors.black.withValues(alpha: 0.5),
-    builder: (_) => const LogoutConfirmationSheet(),
+    builder: (_) => LogoutConfirmationSheet(
+      onLogout: () {
+        if (!isCapturedSessionCurrent()) {
+          throw ApiException(401, '{"error":"AUTH_SESSION_CHANGED"}');
+        }
+        return _logoutAndDeregister(
+          auth: auth,
+          accountId: accountId,
+          isCapturedSessionCurrent: isCapturedSessionCurrent,
+        );
+      },
+    ),
+  );
+
+  if (confirmed != true) return;
+
+  // Let the popup route finish leaving the Navigator before AuthState notifies
+  // GoRouter and redirects to the unauthenticated landing route.
+  await WidgetsBinding.instance.endOfFrame;
+  await clearLocalSessionAfterLogout(
+    accountId: accountId,
+    isCapturedSessionCurrent: isCapturedSessionCurrent,
+    clearDraft: SecurePregnancyOutcomeDraftStore.instance.clearForAccount,
+    clearRecommendationDraft: RecommendationService().clearDraftFor,
+    clearAuth: () async {
+      await auth.clearIfCurrentSession(
+        generation: sessionGeneration,
+        userId: accountId,
+      );
+    },
+  );
+}
+
+Future<void> _logoutAndDeregister({
+  required AuthState auth,
+  required String accountId,
+  required bool Function() isCapturedSessionCurrent,
+}) async {
+  try {
+    await FcmService.instance.deregisterToken();
+  } catch (error) {
+    debugPrint('[Logout] notification token cleanup failed: ${error.runtimeType}');
+  }
+  if (!isCapturedSessionCurrent()) {
+    throw ApiException(401, '{"error":"AUTH_SESSION_CHANGED"}');
+  }
+  await AuthService.instance.logout(
+    token: auth.accessToken,
+    expectedAccountId: accountId,
+    refreshToken: auth.refreshToken,
   );
 }
 
 /// CB-116 - Logout Confirmation (UC-04)
 /// Confirms logout, calls the real backend contract, then clears local auth state.
 class LogoutConfirmationSheet extends StatefulWidget {
-  const LogoutConfirmationSheet({super.key});
+  const LogoutConfirmationSheet({required this.onLogout, super.key});
+
+  final Future<void> Function() onLogout;
 
   @override
   State<LogoutConfirmationSheet> createState() =>
@@ -48,15 +123,8 @@ class _LogoutConfirmationSheetState extends State<LogoutConfirmationSheet> {
   static const _secondaryTextColor = Color(0xFF524440);
   static const _outlineColor = Color(0xFFD6C2BD);
 
-  late final Future<UserProfile> _profileFuture;
   bool _isSubmitting = false;
   String? _errorMessage;
-
-  @override
-  void initState() {
-    super.initState();
-    _profileFuture = AuthService.instance.getProfile();
-  }
 
   Future<void> _confirmLogout() async {
     if (_isSubmitting) return;
@@ -67,15 +135,11 @@ class _LogoutConfirmationSheetState extends State<LogoutConfirmationSheet> {
     });
 
     try {
-      final accountId = AuthState.instance.userId;
-      await AuthService.instance.logout();
-      await _clearLocalSession(accountId);
-      if (mounted) Navigator.of(context).pop();
+      await widget.onLogout();
+      if (mounted) Navigator.of(context).pop(true);
     } on ApiException catch (error) {
       if (error.statusCode == 401) {
-        final accountId = AuthState.instance.userId;
-        await _clearLocalSession(accountId);
-        if (mounted) Navigator.of(context).pop();
+        if (mounted) Navigator.of(context).pop(true);
         return;
       }
 
@@ -94,84 +158,80 @@ class _LogoutConfirmationSheetState extends State<LogoutConfirmationSheet> {
     }
   }
 
-  Future<void> _clearLocalSession(String? accountId) =>
-      clearLocalSessionAfterLogout(
-        accountId: accountId,
-        clearDraft: SecurePregnancyOutcomeDraftStore.instance.clearForAccount,
-        clearAuth: AuthState.instance.clear,
-      );
-
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
-    return AnimatedPadding(
-      duration: const Duration(milliseconds: 200),
-      curve: Curves.easeOut,
-      padding: EdgeInsets.only(bottom: bottomInset),
-      child: SafeArea(
-        top: false,
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
-          decoration: const BoxDecoration(
-            color: _surfaceColor,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-            boxShadow: [
-              BoxShadow(
-                color: Color.fromRGBO(90, 70, 63, 0.12),
-                blurRadius: 32,
-                offset: Offset(0, -8),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 52,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: _outlineColor,
-                  borderRadius: BorderRadius.circular(999),
+    return PopScope(
+      canPop: !_isSubmitting,
+      child: AnimatedPadding(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+        padding: EdgeInsets.only(bottom: bottomInset),
+        child: SafeArea(
+          top: false,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(24, 12, 24, 32),
+            decoration: const BoxDecoration(
+              color: _surfaceColor,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+              boxShadow: [
+                BoxShadow(
+                  color: Color.fromRGBO(90, 70, 63, 0.12),
+                  blurRadius: 32,
+                  offset: Offset(0, -8),
                 ),
-              ),
-              const SizedBox(height: 28),
-              _buildIconCluster(),
-              const SizedBox(height: 28),
-              const Text(
-                'Đăng xuất',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 24,
-                  fontWeight: FontWeight.w700,
-                  color: _textColor,
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Bạn có chắc chắn muốn đăng xuất?',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 16,
-                  fontWeight: FontWeight.w400,
-                  color: _secondaryTextColor,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 18),
-              _buildAccountPill(),
-              if (_errorMessage != null) ...[
-                const SizedBox(height: 16),
-                _buildErrorBanner(),
               ],
-              const SizedBox(height: 28),
-              _buildPrimaryButton(),
-              const SizedBox(height: 14),
-              _buildSecondaryButton(),
-            ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 52,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: _outlineColor,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                const SizedBox(height: 28),
+                _buildIconCluster(),
+                const SizedBox(height: 28),
+                const Text(
+                  'Đăng xuất',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    color: _textColor,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Bạn có chắc chắn muốn đăng xuất?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w400,
+                    color: _secondaryTextColor,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 18),
+                _buildAccountPill(),
+                if (_errorMessage != null) ...[
+                  const SizedBox(height: 16),
+                  _buildErrorBanner(),
+                ],
+                const SizedBox(height: 28),
+                _buildPrimaryButton(),
+                const SizedBox(height: 14),
+                _buildSecondaryButton(),
+              ],
+            ),
           ),
         ),
       ),
@@ -245,82 +305,58 @@ class _LogoutConfirmationSheetState extends State<LogoutConfirmationSheet> {
   }
 
   Widget _buildAccountPill() {
-    return FutureBuilder<UserProfile>(
-      future: _profileFuture,
-      builder: (context, snapshot) {
-        final accountName = _resolveAccountName(snapshot.data);
-
-        return Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-          decoration: BoxDecoration(
-            color: _canvasColor,
-            borderRadius: BorderRadius.circular(999),
+    final accountName = _resolveAccountName();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+      decoration: BoxDecoration(
+        color: _canvasColor,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.account_circle_outlined,
+            color: Color(0xFF845143),
+            size: 24,
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.account_circle_outlined,
-                color: Color(0xFF845143),
-                size: 24,
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: RichText(
-                  overflow: TextOverflow.ellipsis,
-                  text: TextSpan(
+          const SizedBox(width: 10),
+          Expanded(
+            child: RichText(
+              overflow: TextOverflow.ellipsis,
+              text: TextSpan(
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w400,
+                  color: _secondaryTextColor,
+                ),
+                children: [
+                  const TextSpan(text: 'Tài khoản: '),
+                  TextSpan(
+                    text: accountName,
                     style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w400,
-                      color: _secondaryTextColor,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF845143),
                     ),
-                    children: [
-                      const TextSpan(text: 'Tài khoản: '),
-                      TextSpan(
-                        text: accountName,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF845143),
-                        ),
-                      ),
-                    ],
                   ),
-                ),
+                ],
               ),
-              if (snapshot.connectionState == ConnectionState.waiting)
-                const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: _primaryColor,
-                  ),
-                ),
-            ],
+            ),
           ),
-        );
-      },
+        ],
+      ),
     );
   }
 
-  String _resolveAccountName(UserProfile? profile) {
-    final candidates = [
-      profile?.name,
-      profile?.email,
-      profile?.phone,
-      AuthState.instance.role,
-    ];
-
-    for (final candidate in candidates) {
-      final value = candidate?.trim();
-      if (value != null && value.isNotEmpty) {
-        return value;
-      }
-    }
-
-    return 'CareBridge';
+  String _resolveAccountName() {
+    return switch (AuthState.instance.role?.trim().toUpperCase()) {
+      'MOTHER' => 'Mẹ',
+      'FAMILY' => 'Gia đình',
+      'EXPERT' => 'Chuyên gia',
+      _ => 'CareBridge',
+    };
   }
 
   Widget _buildErrorBanner() {

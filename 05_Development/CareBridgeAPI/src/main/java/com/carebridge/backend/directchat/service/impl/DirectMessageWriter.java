@@ -19,12 +19,13 @@ class DirectMessageWriter {
         return jdbcTemplate.update("""
                 INSERT INTO direct_messages
                     (message_id, conversation_id, sender_user_id, client_message_id,
-                     message_type, message_body, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                     message_type, message_body, attachment_id, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT (conversation_id, sender_user_id, client_message_id) DO NOTHING
                 """,
                 message.getId(), message.getConversationId(), message.getSenderUserId(),
                 message.getClientMessageId(), message.getMessageType().name(),
-                message.getMessageBody(), Timestamp.from(message.getCreatedAt())) == 1;
+                message.getMessageBody(), message.getAttachmentId(),
+                Timestamp.from(message.getCreatedAt())) == 1;
     }
 }

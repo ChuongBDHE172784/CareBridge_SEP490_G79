@@ -121,7 +121,7 @@ class SearchIntegrationTest extends AbstractPostgresIntegrationTest {
         assertThat(page1Ids).hasSize(10);
         assertThat(page0Ids).doesNotContainAnyElementsOf(page1Ids);
 
-        long count = questionRepository.searchApproved("dinh dưỡng", null, null, null,
+        long count = questionRepository.searchApproved("dinh dưỡng", null, null, null, null,
                 org.springframework.data.domain.PageRequest.of(0, 100)).getTotalElements();
         assertThat(count).isEqualTo(25);
     }

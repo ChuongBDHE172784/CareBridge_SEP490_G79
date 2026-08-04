@@ -99,6 +99,7 @@ class CareGroup {
     return CareGroup(
       id: json['groupId'] as String? ?? json['id'] as String,
       groupName: json['groupName'] as String,
+      description: json['description'] as String?,
       isActive: json['isActive'] as bool? ?? true,
       memberCount: json['totalMembers'] as int? ?? 0,
       myRole: json['myRole'] as String?,

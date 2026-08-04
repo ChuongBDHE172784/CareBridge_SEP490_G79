@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/network/api_client.dart';
+import '../../familySync/models/care_group_model.dart';
+import '../../familySync/screens/care_group_invitation_screen.dart';
 import '../models/notification_model.dart';
 import '../services/notification_service.dart';
 import '../routing/consultation_notification_routing.dart';
@@ -249,6 +251,27 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
           context.push('/direct-chat/$conversationId');
           return;
         }
+        final type = n.type.toUpperCase();
+        if (type == 'GROUP_INVITE' ||
+            type == 'CARE_GROUP_INVITATION' ||
+            type == 'FAMILY_SYNC') {
+          final groupId = n.referenceId ?? n.metadata?['groupId'] as String?;
+          if (groupId != null) {
+            final pendingInvite = PendingInvitation(
+              groupId: groupId,
+              groupName: n.metadata?['groupName'] as String? ?? 'Nhóm chăm sóc',
+              memberRole: 'MEMBER',
+            );
+            await Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) =>
+                    CareGroupInvitationScreen(invitation: pendingInvite),
+              ),
+            );
+            _load();
+            return;
+          }
+        }
         final consultationRoute = resolveNotificationRoute(n);
         if (consultationRoute != null) {
           context.push(consultationRoute);
@@ -384,6 +407,14 @@ class _NotificationCenterScreenState extends State<NotificationCenterScreen> {
         break;
       case 'CONSULTATION':
         icon = Icons.medical_services_outlined;
+        bgColor = isUnread ? _surfaceContainerHigh : _surfaceContainerLow;
+        iconColor = isUnread ? _primary : _onSurfaceVariant;
+        break;
+      case 'GROUP_INVITE':
+      case 'CARE_GROUP':
+      case 'CARE_GROUP_INVITATION':
+      case 'FAMILY_SYNC':
+        icon = Icons.group_add_outlined;
         bgColor = isUnread ? _surfaceContainerHigh : _surfaceContainerLow;
         iconColor = isUnread ? _primary : _onSurfaceVariant;
         break;

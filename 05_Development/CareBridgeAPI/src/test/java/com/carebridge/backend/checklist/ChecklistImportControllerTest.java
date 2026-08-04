@@ -91,6 +91,29 @@ class ChecklistImportControllerTest {
     }
 
     @Test
+    void familyCanCreateCanonicalPersonalTaskWithExplicitGroupScope() throws Exception {
+        UUID taskId = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
+        UUID journeyId = UUID.randomUUID();
+        UUID clientTaskId = UUID.randomUUID();
+        org.mockito.Mockito.when(userCreatedTaskService.create(any(), eq(USER_ID)))
+                .thenReturn(new ChecklistItemResponse(taskId, USER_ID, journeyId, null,
+                        null, null, false, "Pack water", "GENERAL", false, null, 0,
+                        Instant.parse("2026-07-30T00:00:00Z"), "MOTHER", "USER_CREATED"));
+
+        mockMvc.perform(post("/api/v1/user-checklist-items").with(csrf())
+                        .with(user(USER_ID.toString()).roles("FAMILY"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"careGroupId":"%s","itemText":"Pack water","targetSubject":"MOTHER",
+                                 "clientTaskId":"%s"}
+                                """.formatted(groupId, clientTaskId)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.itemId").value(taskId.toString()));
+        verify(userCreatedTaskService).create(any(), eq(USER_ID));
+    }
+
+    @Test
     void optionalTemplateSelfAssignmentDelegatesToCanonicalV2Service() throws Exception {
         UUID templateId = UUID.randomUUID();
         UUID journeyId = UUID.randomUUID();

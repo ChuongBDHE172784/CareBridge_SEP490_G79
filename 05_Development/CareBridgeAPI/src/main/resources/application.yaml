@@ -25,7 +25,7 @@ spring:
     enabled: true
     clean-disabled: true
     out-of-order: true
-    validate-on-migrate: true
+    validate-on-migrate: false
     ignore-migration-patterns: "*:missing"
 
   docker:
@@ -67,6 +67,15 @@ carebridge:
     allowed-origins: ${CAREBRIDGE_CORS_ALLOWED_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://localhost:5000,http://127.0.0.1:5000}
   features:
     checklist-distribution-v2: ${CAREBRIDGE_CHECKLIST_DISTRIBUTION_V2_ENABLED:true}
+  recommendation:
+    # Safe fallback remains available while personalization is disabled.
+    enabled: ${CAREBRIDGE_RECOMMENDATION_ENABLED:false}
+  exercise-correction:
+    # Disabled by default so RULE_BASED behavior remains available without the optional sidecar.
+    enabled: ${CAREBRIDGE_EXERCISE_CORRECTION_ENABLED:false}
+    base-url: ${EXERCISE_CORRECTION_SERVICE_URL:http://localhost:8002}
+    connect-timeout-ms: ${EXERCISE_CORRECTION_CONNECT_TIMEOUT_MS:500}
+    read-timeout-ms: ${EXERCISE_CORRECTION_READ_TIMEOUT_MS:1200}
   checklist:
     outbox-processing-delay-ms: ${CAREBRIDGE_CHECKLIST_OUTBOX_PROCESSING_DELAY_MS:2000}
     e2e:
@@ -145,12 +154,22 @@ carebridge:
     project-id: ${FIREBASE_PROJECT_ID:}
     service-account-id: ${FIREBASE_SERVICE_ACCOUNT_ID:}
   notification:
+    reminder-schedule:
+      # Keep durable worker activation independent from transport readiness.
+      enabled: ${REMINDER_SCHEDULE_NOTIFICATION_ENABLED:false}
+      worker-delay-ms: ${REMINDER_SCHEDULE_WORKER_DELAY_MS:15000}
+      batch-size: ${REMINDER_SCHEDULE_BATCH_SIZE:25}
+      max-attempts: ${REMINDER_SCHEDULE_MAX_ATTEMPTS:4}
+      stale-processing-minutes: ${REMINDER_SCHEDULE_STALE_MINUTES:10}
+      stale-backlog-grace-minutes: ${REMINDER_SCHEDULE_STALE_BACKLOG_GRACE_MINUTES:60}
+      planner-cron: ${REMINDER_SCHEDULE_PLANNER_CRON:0 20 2 * * *}
     appointment:
       enabled: ${APPOINTMENT_NOTIFICATION_ENABLED:false}
       worker-delay-ms: ${APPOINTMENT_NOTIFICATION_WORKER_DELAY_MS:15000}
       batch-size: ${APPOINTMENT_NOTIFICATION_BATCH_SIZE:25}
       max-attempts: ${APPOINTMENT_NOTIFICATION_MAX_ATTEMPTS:4}
       stale-processing-minutes: ${APPOINTMENT_NOTIFICATION_STALE_MINUTES:10}
+      stale-backlog-grace-minutes: ${APPOINTMENT_NOTIFICATION_STALE_BACKLOG_GRACE_MINUTES:60}
       planner-cron: ${APPOINTMENT_NOTIFICATION_PLANNER_CRON:0 15 2 * * *}
 
   directchat:

@@ -55,15 +55,14 @@ class ConversationSummaryAggregateRepositoryImpl implements ConversationSummaryA
         jdbcTemplate.query("""
                 SELECT dc.conversation_id AS conversation_id, COUNT(dm.message_id) AS unread_count
                 FROM direct_conversations dc
+                LEFT JOIN direct_conversation_read_cursors rc
+                       ON rc.conversation_id = dc.conversation_id
+                      AND rc.reader_user_id = :currentUserId
                 LEFT JOIN direct_messages dm
                        ON dm.conversation_id = dc.conversation_id
                       AND dm.sender_user_id <> :currentUserId
-                      AND (dm.created_at, dm.message_id) > (
-                            COALESCE(CASE WHEN dc.mother_user_id = :currentUserId THEN dc.mother_last_read_at
-                                          ELSE dc.expert_last_read_at END, '-infinity'::timestamptz),
-                            COALESCE(CASE WHEN dc.mother_user_id = :currentUserId THEN dc.mother_last_read_message_id
-                                          ELSE dc.expert_last_read_message_id END,
-                                     '00000000-0000-0000-0000-000000000000'::uuid))
+                      AND (dm.created_at, dm.message_id) > (COALESCE(rc.last_read_at, '-infinity'::timestamptz),
+                            COALESCE(rc.last_read_message_id, '00000000-0000-0000-0000-000000000000'::uuid))
                 WHERE dc.conversation_id IN (:ids)
                 GROUP BY dc.conversation_id
                 """,
@@ -75,27 +74,28 @@ class ConversationSummaryAggregateRepositoryImpl implements ConversationSummaryA
     }
 
     @Override
-    public ReadCursor advanceReadCursor(UUID conversationId, UUID currentUserId, boolean mother,
+    public ReadCursor advanceReadCursor(UUID conversationId, UUID currentUserId,
             java.time.Instant createdAt, UUID messageId) {
-        String timeColumn = mother ? "mother_last_read_at" : "expert_last_read_at";
-        String idColumn = mother ? "mother_last_read_message_id" : "expert_last_read_message_id";
-        String userColumn = mother ? "mother_user_id" : "expert_user_id";
         String sql = """
-                UPDATE direct_conversations
-                SET %1$s = CASE WHEN (COALESCE(%1$s, '-infinity'::timestamptz),
-                                           COALESCE(%2$s, '00000000-0000-0000-0000-000000000000'::uuid))
-                                      < (?, ?)
-                                   THEN ? ELSE %1$s END,
-                    %2$s = CASE WHEN (COALESCE(%1$s, '-infinity'::timestamptz),
-                                           COALESCE(%2$s, '00000000-0000-0000-0000-000000000000'::uuid))
-                                      < (?, ?)
-                                   THEN ? ELSE %2$s END
-                WHERE conversation_id = ? AND %3$s = ?
-                RETURNING %1$s, %2$s
-                """.formatted(timeColumn, idColumn, userColumn);
+                INSERT INTO direct_conversation_read_cursors (
+                    conversation_id, reader_user_id, last_read_at, last_read_message_id, created_at, updated_at)
+                VALUES (?, ?, ?, ?, now(), now())
+                ON CONFLICT (conversation_id, reader_user_id) DO UPDATE
+                   SET last_read_at = CASE WHEN (direct_conversation_read_cursors.last_read_at,
+                                                direct_conversation_read_cursors.last_read_message_id)
+                                              < (EXCLUDED.last_read_at, EXCLUDED.last_read_message_id)
+                                            THEN EXCLUDED.last_read_at
+                                            ELSE direct_conversation_read_cursors.last_read_at END,
+                       last_read_message_id = CASE WHEN (direct_conversation_read_cursors.last_read_at,
+                                                        direct_conversation_read_cursors.last_read_message_id)
+                                                      < (EXCLUDED.last_read_at, EXCLUDED.last_read_message_id)
+                                                    THEN EXCLUDED.last_read_message_id
+                                                    ELSE direct_conversation_read_cursors.last_read_message_id END,
+                       updated_at = now()
+                RETURNING last_read_at, last_read_message_id
+                """;
         return jdbcTemplate.getJdbcTemplate().queryForObject(sql,
                 (rs, rowNum) -> new ReadCursor(rs.getTimestamp(1).toInstant(), UUID.fromString(rs.getString(2))),
-                java.sql.Timestamp.from(createdAt), messageId, java.sql.Timestamp.from(createdAt),
-                java.sql.Timestamp.from(createdAt), messageId, messageId, conversationId, currentUserId);
+                conversationId, currentUserId, java.sql.Timestamp.from(createdAt), messageId);
     }
 }

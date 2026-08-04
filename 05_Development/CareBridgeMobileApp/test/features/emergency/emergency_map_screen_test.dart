@@ -298,7 +298,7 @@ void main() {
 
       expect(service.openCalls, 0);
       expect(service.activeCalls, 1);
-      expect(find.textContaining('đang được xử lý'), findsWidgets);
+      expect(find.byKey(const Key('emergency-session-status')), findsNothing);
       expect(find.textContaining('Đã gửi báo động'), findsNothing);
     },
   );
@@ -326,7 +326,7 @@ void main() {
       );
       expect(find.textContaining('Bệnh viện Nhi Đồng'), findsNothing);
       expect(find.text('Chỉ đường'), findsNothing);
-      expect(find.textContaining('đang được xử lý'), findsOneWidget);
+      expect(find.byKey(const Key('emergency-session-status')), findsNothing);
     },
   );
 
@@ -543,7 +543,7 @@ void main() {
 
     expect(service.activeCalls, 2);
     expect(service.openCalls, 0);
-    expect(find.textContaining('đang được xử lý'), findsOneWidget);
+    expect(find.byKey(const Key('emergency-session-status')), findsNothing);
   });
 
   testWidgets('manual entry still opens a MANUAL emergency session', (
@@ -574,7 +574,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
 
     expect(service.openCalls, 2);
-    expect(find.textContaining('đang được xử lý'), findsNothing);
+    expect(find.byKey(const Key('emergency-session-status')), findsNothing);
     expect(find.text('Không thể gửi báo động. Hãy thử lại.'), findsOneWidget);
   });
 
@@ -611,7 +611,6 @@ void main() {
 
     expect(service.openCalls, 0);
     expect(find.byKey(const Key('emergency-session-retry')), findsNothing);
-    expect(find.textContaining('đang hoạt động'), findsOneWidget);
   });
 
   testWidgets(
@@ -879,5 +878,32 @@ void main() {
       ),
     );
     expect(tester.takeException(), isA<ArgumentError>());
+  });
+
+  testWidgets('nearby hospital panel can be collapsed and expanded', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: EmergencyMapScreen(
+          emergencyService: _RecordingEmergencyService(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('radius-5000')), findsOneWidget);
+    expect(find.byKey(const Key('facility-panel-toggle')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('facility-panel-toggle')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('radius-5000')), findsNothing);
+    expect(find.byKey(const Key('emergency-call')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('facility-panel-toggle')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('radius-5000')), findsOneWidget);
   });
 }

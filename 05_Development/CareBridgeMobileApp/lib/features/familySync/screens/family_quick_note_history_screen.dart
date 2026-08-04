@@ -8,10 +8,18 @@ class FamilyQuickNoteHistoryScreen extends StatefulWidget {
     super.key,
     required this.careGroupId,
     required this.metricType,
+    this.historyLoader,
   });
 
   final String careGroupId;
   final String metricType;
+  final Future<MetricTrend> Function({
+    required String careGroupId,
+    required String metricType,
+    required DateTime from,
+    required DateTime to,
+  })?
+  historyLoader;
 
   @override
   State<FamilyQuickNoteHistoryScreen> createState() =>
@@ -51,12 +59,14 @@ class _FamilyQuickNoteHistoryScreenState
         .add(const Duration(days: 1))
         .subtract(const Duration(milliseconds: 1));
     try {
-      final history = await FamilyHomeService.instance.loadQuickNoteHistory(
-        careGroupId: widget.careGroupId,
-        metricType: widget.metricType,
-        from: from,
-        to: to,
-      );
+      final history =
+          await (widget.historyLoader ??
+              FamilyHomeService.instance.loadQuickNoteHistory)(
+            careGroupId: widget.careGroupId,
+            metricType: widget.metricType,
+            from: from,
+            to: to,
+          );
       if (!mounted) return;
       setState(() {
         _history = history;
@@ -223,6 +233,12 @@ class _FamilyQuickNoteHistoryScreenState
 
   Widget _buildSummary() {
     final points = _history?.dataPoints ?? const <MetricDataPoint>[];
+    final latestPoint = points.isEmpty
+        ? null
+        : points.reduce(
+            (latest, point) =>
+                point.measuredAt.isAfter(latest.measuredAt) ? point : latest,
+          );
     final total = points.fold<double>(
       0,
       (sum, point) => sum + point.valueNumeric,
@@ -231,20 +247,28 @@ class _FamilyQuickNoteHistoryScreenState
       'HYDRATION' => '${total.toStringAsFixed(0)} ml',
       'FETAL_MOVEMENT_COUNT' => '${total.toStringAsFixed(0)} lần',
       'WEIGHT' =>
-        points.isEmpty
+        latestPoint == null
             ? '—'
-            : '${points.first.valueNumeric.toStringAsFixed(1)} kg',
+            : '${latestPoint.valueNumeric.toStringAsFixed(1)} kg',
       'EPDS_SCORE' =>
-        points.isEmpty
+        latestPoint == null
             ? '—'
-            : '${points.first.valueNumeric.toStringAsFixed(0)}/30',
+            : '${latestPoint.valueNumeric.toStringAsFixed(0)}/30',
+      'BLOOD_PRESSURE' =>
+        latestPoint == null ? '—' : '${latestPoint.valueDisplay} mmHg',
+      'BLOOD_GLUCOSE' =>
+        latestPoint == null
+            ? '—'
+            : '${latestPoint.valueDisplay} ${_history?.unit ?? ''}'.trim(),
       _ => '—',
     };
     final label = switch (widget.metricType) {
       'HYDRATION' => 'Tổng lượng nước trong ngày',
       'FETAL_MOVEMENT_COUNT' => 'Tổng cử động trong ngày',
       'WEIGHT' => 'Lần ghi gần nhất trong ngày',
-      'EPDS_SCORE' => 'Lần sàng lọc gần nhất',
+      'EPDS_SCORE' => 'Điểm sàng lọc gần nhất • Không phải chẩn đoán',
+      'BLOOD_PRESSURE' => 'Lần đo gần nhất trong ngày',
+      'BLOOD_GLUCOSE' => 'Lần đo gần nhất trong ngày',
       _ => 'Tổng quan trong ngày',
     };
 
@@ -382,17 +406,27 @@ class _FamilyQuickNoteHistoryScreenState
       'WEIGHT' => '${point.valueNumeric.toStringAsFixed(1)} kg',
       'HYDRATION' => '${point.valueNumeric.toStringAsFixed(0)} ml',
       'EPDS_SCORE' =>
-        '${point.valueNumeric.toStringAsFixed(0)}/30 • ${_epdsBand(point.valueNumeric)}',
+        '${point.valueNumeric.toStringAsFixed(0)}/30 • Điểm sàng lọc',
       'FETAL_MOVEMENT_COUNT' =>
         '${_movementLabel(point.note)} • ${point.valueNumeric.toStringAsFixed(0)} lần',
+      'BLOOD_PRESSURE' => '${point.valueDisplay} mmHg',
+      'BLOOD_GLUCOSE' =>
+        '${point.valueDisplay} ${_history?.unit ?? ''}${_glucoseContext(point.context['measurementContext'])}',
       _ => point.valueDisplay,
     };
   }
 
-  String _epdsBand(double score) {
-    if (score >= 13) return 'Nguy cơ cao';
-    if (score >= 10) return 'Cần theo dõi';
-    return 'Nguy cơ thấp';
+  String _glucoseContext(Object? value) {
+    return switch (value?.toString().toUpperCase()) {
+      'FASTING' => ' • Lúc đói',
+      'BEFORE_MEAL' || 'PRE_MEAL' => ' • Trước ăn',
+      'AFTER_MEAL' || 'POSTPRANDIAL' => ' • Sau ăn',
+      'POST_MEAL_1H' => ' • Sau ăn 1 giờ',
+      'POST_MEAL_2H' => ' • Sau ăn 2 giờ',
+      'RANDOM' => ' • Ngẫu nhiên',
+      'OTHER_APPROVED' => ' • Thời điểm khác',
+      _ => '',
+    };
   }
 
   String _movementLabel(String? value) {
@@ -429,7 +463,9 @@ class _FamilyQuickNoteHistoryScreenState
     'HYDRATION' => 'Lịch sử uống nước',
     'EPDS_SCORE' => 'Lịch sử sàng lọc EPDS',
     'FETAL_MOVEMENT_COUNT' => 'Lịch sử cử động thai',
-    _ => 'Lịch sử ghi chú nhanh',
+    'BLOOD_PRESSURE' => 'Lịch sử huyết áp',
+    'BLOOD_GLUCOSE' => 'Lịch sử đường huyết',
+    _ => 'Lịch sử chỉ số sức khỏe',
   };
 
   IconData get _icon => switch (widget.metricType) {
@@ -437,6 +473,8 @@ class _FamilyQuickNoteHistoryScreenState
     'HYDRATION' => Icons.water_drop_outlined,
     'EPDS_SCORE' => Icons.psychology_alt_outlined,
     'FETAL_MOVEMENT_COUNT' => Icons.child_friendly_outlined,
+    'BLOOD_PRESSURE' => Icons.monitor_heart_outlined,
+    'BLOOD_GLUCOSE' => Icons.bloodtype_outlined,
     _ => Icons.sticky_note_2_outlined,
   };
 }

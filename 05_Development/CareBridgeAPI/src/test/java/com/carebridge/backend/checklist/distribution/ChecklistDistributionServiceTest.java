@@ -227,7 +227,7 @@ class ChecklistDistributionServiceTest {
     }
 
     @Test
-    void lifecycleCorrectionCancelsOnlyObsoletePendingParentAndCreatesOneReplacement() {
+    void lifecycleCorrectionMarksAllObsoleteParentsHistoricalAndCreatesOneReplacement() {
         var command = command(ChecklistCareContextType.JOURNEY,
                 ChecklistDistributionTestFactory.CONTEXT_ID,
                 ChecklistDistributionTestFactory.RECIPIENT_ID,
@@ -258,11 +258,17 @@ class ChecklistDistributionServiceTest {
 
         var result = service.distribute(command);
 
-        assertThat(result.cancelledInstances()).isEqualTo(1);
-        assertThat(obsolete.getStatus()).isEqualTo(ChecklistInstanceStatus.CANCELLED);
-        assertThat(obsolete.getCancellationReasonCode()).isEqualTo("LIFECYCLE_WINDOW_OBSOLETE");
-        assertThat(obsoleteTask.getStatus()).isEqualTo(ChecklistTaskStatus.CANCELLED);
-        assertThat(obsoleteTask.getActionReasonCode()).isEqualTo("LIFECYCLE_WINDOW_OBSOLETE");
+        assertThat(result.cancelledInstances()).isEqualTo(2);
+        assertThat(obsolete.getHistoricalAt()).isNotNull();
+        assertThat(obsolete.getHistoryReasonCode()).isEqualTo(
+                ChecklistHistoryReconciliationService.HISTORY_REASON_CODE);
+        assertThat(obsolete.getStatus()).isEqualTo(ChecklistInstanceStatus.PENDING);
+        assertThat(obsolete.getCancellationReasonCode()).isNull();
+        assertThat(obsoleteTask.getStatus()).isEqualTo(ChecklistTaskStatus.PENDING);
+        assertThat(obsoleteTask.getActionReasonCode()).isNull();
+        assertThat(started.getHistoricalAt()).isNotNull();
+        assertThat(started.getHistoryReasonCode()).isEqualTo(
+                ChecklistHistoryReconciliationService.HISTORY_REASON_CODE);
         assertThat(started.getStatus()).isEqualTo(ChecklistInstanceStatus.IN_PROGRESS);
         assertThat(result.createdInstances()).isEqualTo(1);
     }
@@ -322,8 +328,10 @@ class ChecklistDistributionServiceTest {
 
         var result = service.distribute(command);
 
-        assertThat(result.cancelledInstances()).isZero();
-        assertThat(obsolete.getStatus()).isEqualTo(ChecklistInstanceStatus.PENDING);
+        assertThat(result.cancelledInstances()).isEqualTo(1);
+        assertThat(obsolete.getHistoricalAt()).isNotNull();
+        assertThat(obsolete.getHistoryReasonCode()).isEqualTo(
+                ChecklistHistoryReconciliationService.HISTORY_REASON_CODE);
         assertThat(lockedProgressed.getStatus()).isEqualTo(ChecklistTaskStatus.IN_PROGRESS);
     }
 
@@ -349,15 +357,64 @@ class ChecklistDistributionServiceTest {
         when(instances.findForUpdateById(obsolete.getId())).thenReturn(Optional.of(obsolete));
         when(tasks.findAllForUpdateByChecklistInstanceIdOrderByTaskKey(obsolete.getId()))
                 .thenReturn(List.of(pending));
-        when(commands.existsByTaskKindAndTaskIdIn("CHECKLIST", List.of(pending.getId())))
-                .thenReturn(true);
         when(instances.findByDistributionKey(any())).thenReturn(Optional.empty());
 
         var result = service.distribute(command);
 
-        assertThat(result.cancelledInstances()).isZero();
-        assertThat(obsolete.getStatus()).isEqualTo(ChecklistInstanceStatus.PENDING);
+        assertThat(result.cancelledInstances()).isEqualTo(1);
+        assertThat(obsolete.getHistoricalAt()).isNotNull();
+        assertThat(obsolete.getHistoryReasonCode()).isEqualTo(
+                ChecklistHistoryReconciliationService.HISTORY_REASON_CODE);
         assertThat(pending.getStatus()).isEqualTo(ChecklistTaskStatus.PENDING);
+    }
+
+    @Test
+    void familyObsoleteWindowUsesLegacyCancellationAndNeverChecklistHistory() {
+        UUID familyUserId = UUID.fromString("77777777-7777-7777-7777-777777777777");
+        var familyRecipient = new ChecklistDistributionRecipient(
+                familyUserId, ChecklistRecipientRole.FAMILY, true, true, true);
+        var command = command(ChecklistCareContextType.JOURNEY,
+                ChecklistDistributionTestFactory.CONTEXT_ID,
+                ChecklistDistributionTestFactory.RECIPIENT_ID,
+                List.of(familyRecipient),
+                ChecklistDistributionTestFactory.CARE_GROUP_ID);
+        var obsolete = familyInstance(command, familyUserId,
+                UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"));
+        obsolete.setWindowStart(LocalDate.of(2025, 12, 1));
+        obsolete.setWindowEnd(LocalDate.of(2025, 12, 7));
+        var pending = ChecklistTaskInstance.builder()
+                .id(UUID.fromString("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaa04"))
+                .checklistInstanceId(obsolete.getId())
+                .taskKey("b".repeat(64))
+                .status(ChecklistTaskStatus.PENDING)
+                .build();
+        when(instances
+                .findAllByRecipientUserIdAndRecipientRoleAndCareGroupIdAndCareContextTypeAndCareContextIdAndTemplateVersionId(
+                        familyUserId,
+                        ChecklistRecipientRole.FAMILY,
+                        ChecklistDistributionTestFactory.CARE_GROUP_ID,
+                        command.contextType(),
+                        command.contextId(),
+                        command.templateVersionId()))
+                .thenReturn(List.of(obsolete));
+        when(instances.findForUpdateById(obsolete.getId())).thenReturn(Optional.of(obsolete));
+        when(tasks.findAllForUpdateByChecklistInstanceIdOrderByTaskKey(obsolete.getId()))
+                .thenReturn(List.of(pending));
+        when(instances.findByDistributionKey(any())).thenReturn(Optional.empty());
+        when(tasks.findByTaskKey(any())).thenReturn(Optional.empty());
+
+        var result = service.distribute(command);
+
+        assertThat(result.cancelledInstances()).isOne();
+        assertThat(obsolete.getStatus()).isEqualTo(ChecklistInstanceStatus.CANCELLED);
+        assertThat(obsolete.getCancelledAt()).isEqualTo(clock.instant());
+        assertThat(obsolete.getCancellationReasonCode()).isEqualTo("LIFECYCLE_WINDOW_OBSOLETE");
+        assertThat(obsolete.getHistoricalAt()).isNull();
+        assertThat(obsolete.getHistoryReasonCode()).isNull();
+        assertThat(pending.getStatus()).isEqualTo(ChecklistTaskStatus.CANCELLED);
+        assertThat(pending.getCancelledAt()).isEqualTo(clock.instant());
+        assertThat(pending.getActionReasonCode()).isEqualTo("LIFECYCLE_WINDOW_OBSOLETE");
+        assertThat(result.createdInstances()).isEqualTo(1);
     }
 
     @Test
@@ -445,6 +502,25 @@ class ChecklistDistributionServiceTest {
                 .recipientUserId(ChecklistDistributionTestFactory.RECIPIENT_ID)
                 .recipientRole(ChecklistRecipientRole.MOTHER)
                 .careGroupId(null)
+                .careContextType(command.contextType())
+                .careContextId(command.contextId())
+                .contextOwnerUserId(command.contextOwnerUserId())
+                .origin(com.carebridge.backend.checklist.model.ChecklistOrigin.SYSTEM_TEMPLATE)
+                .windowStart(LocalDate.of(2026, 1, 1))
+                .windowEnd(LocalDate.of(2026, 1, 8))
+                .status(ChecklistInstanceStatus.PENDING)
+                .build();
+    }
+
+    private static ChecklistInstance familyInstance(ChecklistDistributionCommand command, UUID familyUserId, UUID id) {
+        return ChecklistInstance.builder()
+                .id(id)
+                .distributionKey("will-be-matched-by-service")
+                .templateLineageId(command.templateLineageId())
+                .templateVersionId(command.templateVersionId())
+                .recipientUserId(familyUserId)
+                .recipientRole(ChecklistRecipientRole.FAMILY)
+                .careGroupId(command.careGroupId())
                 .careContextType(command.contextType())
                 .careContextId(command.contextId())
                 .contextOwnerUserId(command.contextOwnerUserId())

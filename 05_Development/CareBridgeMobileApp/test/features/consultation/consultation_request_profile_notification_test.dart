@@ -73,7 +73,7 @@ void main() {
   });
 
   // CONREQ-FL-01
-  testWidgets('eligible profile enables both chat and consultation CTAs', (
+  testWidgets('eligible profile shows consultation request CTA when not in conversation list', (
     tester,
   ) async {
     DirectChatService.instance = _ProfileService(true);
@@ -90,9 +90,12 @@ void main() {
     );
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     await tester.pumpAndSettle();
+    expect(find.text('Trò chuyện'), findsNothing);
     expect(
       tester
-          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Trò chuyện'))
+          .widget<OutlinedButton>(
+            find.widgetWithText(OutlinedButton, 'Yêu cầu tư vấn'),
+          )
           .onPressed,
       isNotNull,
     );
@@ -102,7 +105,7 @@ void main() {
   });
 
   // CONREQ-FL-17
-  testWidgets('approved but ineligible profile disables both CTAs', (
+  testWidgets('approved but ineligible profile disables consultation CTA when not in conversation list', (
     tester,
   ) async {
     DirectChatService.instance = _ProfileService(false);
@@ -112,12 +115,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    expect(
-      tester
-          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Trò chuyện'))
-          .onPressed,
-      isNull,
-    );
+    expect(find.text('Trò chuyện'), findsNothing);
     expect(
       tester
           .widget<OutlinedButton>(

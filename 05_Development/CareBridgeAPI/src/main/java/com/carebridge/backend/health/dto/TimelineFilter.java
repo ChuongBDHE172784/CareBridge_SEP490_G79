@@ -18,6 +18,9 @@ public class TimelineFilter {
 
     private UUID babyId;
 
+    /** Required when a Family member opens records shared from one care group. */
+    private UUID careGroupId;
+
     private String sourceType;
 
     @Min(0)

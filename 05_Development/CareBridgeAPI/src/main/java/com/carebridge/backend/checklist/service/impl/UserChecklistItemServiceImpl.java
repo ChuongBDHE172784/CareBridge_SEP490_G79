@@ -7,6 +7,7 @@ import com.carebridge.backend.checklist.dto.*;
 import com.carebridge.backend.checklist.entity.ChecklistCategory;
 import com.carebridge.backend.checklist.entity.UserChecklistItem;
 import com.carebridge.backend.checklist.repository.UserChecklistItemRepository;
+import com.carebridge.backend.checklist.policy.ChecklistTemplateVisibilityPolicy;
 import com.carebridge.backend.checklist.service.IUserChecklistItemService;
 import com.carebridge.backend.checklist.today.policy.UnifiedTaskMutationPolicy;
 import com.carebridge.backend.checklist.model.ChecklistOrigin;
@@ -76,8 +77,19 @@ public class UserChecklistItemServiceImpl implements IUserChecklistItemService {
                         .map(UserChecklistItem::getTemplateItemId).filter(java.util.Objects::nonNull).toList())
                 .stream().collect(Collectors.toMap(ChecklistItem::getId, Function.identity()));
         return items.stream()
+                .filter(item -> isVisibleLegacyItem(item, templates))
                 .map(item -> toResponse(item, templates.get(item.getTemplateItemId())))
                 .toList();
+    }
+
+    private static boolean isVisibleLegacyItem(
+            UserChecklistItem item, Map<UUID, ChecklistItem> templates) {
+        ChecklistItem templateItem = templates.get(item.getTemplateItemId());
+        if (item.getTemplateItemId() != null && templateItem == null) {
+            return false;
+        }
+        return ChecklistTemplateVisibilityPolicy.isVisible(
+                templateItem == null ? null : templateItem.getTemplate());
     }
 
     @Override

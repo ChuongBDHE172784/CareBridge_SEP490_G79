@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Map;
 import java.util.UUID;
+import java.time.Instant;
 
 @Slf4j
 @Component
@@ -25,8 +26,7 @@ public class CareGroupAuthorizationPolicy {
 
     public boolean isOwner(UUID groupId, UUID userId) {
         return memberRepository.findByCareGroupIdAndUserId(groupId, userId)
-                .map(m -> m.getMemberRole() == GroupMemberRole.OWNER
-                        && m.getInviteStatus() == InviteStatus.ACCEPTED)
+                .map(m -> m.getMemberRole() == GroupMemberRole.OWNER && isActiveMembership(m))
                 .orElse(false);
     }
 
@@ -50,7 +50,7 @@ public class CareGroupAuthorizationPolicy {
     /** UC-74 (ADR-FAM-002): ACCEPTED membership check for read access. */
     public boolean isMember(UUID groupId, UUID userId) {
         return memberRepository.findByCareGroupIdAndUserId(groupId, userId)
-                .map(member -> member.getInviteStatus() == InviteStatus.ACCEPTED)
+                .map(this::isActiveMembership)
                 .orElse(false);
     }
 
@@ -73,7 +73,7 @@ public class CareGroupAuthorizationPolicy {
     public boolean hasPermission(UUID groupId, UUID userId, PermissionFlag flag) {
         return memberRepository.findByCareGroupIdAndUserId(groupId, userId)
                 .map(m -> {
-                    if (m.getInviteStatus() != InviteStatus.ACCEPTED) {
+                    if (!isActiveMembership(m)) {
                         return false;
                     }
                         String json = m.getPermissionJson();
@@ -88,5 +88,11 @@ public class CareGroupAuthorizationPolicy {
                     }
                 })
                 .orElse(false);
+    }
+
+    private boolean isActiveMembership(CareGroupMember member) {
+        return member.getInviteStatus() == InviteStatus.ACCEPTED
+                && (member.getInviteExpiresAt() == null
+                || !member.getInviteExpiresAt().isBefore(Instant.now()));
     }
 }

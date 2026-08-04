@@ -3,6 +3,9 @@ package com.carebridge.backend.reminder;
 
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.common.exception.BusinessException;
+import com.carebridge.backend.journey.entity.JourneyStatus;
+import com.carebridge.backend.journey.entity.MotherJourney;
+import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.reminder.dto.CreateReminderRequest;
 import com.carebridge.backend.reminder.dto.CreateReminderResponse;
 import com.carebridge.backend.reminder.dto.ReminderDetailResponse;
@@ -15,6 +18,7 @@ import com.carebridge.backend.reminder.service.INotificationService;
 import com.carebridge.backend.reminder.service.impl.ReminderServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -36,10 +40,12 @@ class ReminderServiceImplTest {
     @Mock private INotificationService notificationService;
     @Mock private AuditService auditService;
     @Mock private AppointmentNotificationScheduleService appointmentNotificationScheduleService;
+    @Mock private MotherJourneyRepository motherJourneyRepository;
     @InjectMocks private ReminderServiceImpl reminderService;
 
     private static final UUID CALLER_ID    = UUID.fromString("00000000-0000-0000-0000-000000000001");
     private static final UUID REMINDER_ID  = UUID.fromString("00000000-0000-0000-0000-000000000002");
+    private static final UUID JOURNEY_ID   = UUID.fromString("00000000-0000-0000-0000-000000000003");
 
     private CreateReminderRequest makeRequest(Instant scheduledAt) {
         CreateReminderRequest req = new CreateReminderRequest();
@@ -99,6 +105,45 @@ class ReminderServiceImplTest {
 
         verify(appointmentNotificationScheduleService).createSnapshot(saved, null, null);
         verify(notificationService, never()).scheduleFcmPush(any(), any(), any(), any());
+    }
+
+    @Test
+    void createReminder_contextlessAppointmentInheritsLatestActiveJourney() {
+        Instant future = Instant.now().plus(10, ChronoUnit.MINUTES);
+        when(motherJourneyRepository.findFirstByOwnerUserIdAndStatusOrderByCreatedAtDesc(
+                CALLER_ID, JourneyStatus.ACTIVE))
+                .thenReturn(Optional.of(MotherJourney.builder().id(JOURNEY_ID).build()));
+        when(reminderRepository.save(any(Reminder.class))).thenAnswer(invocation -> {
+            Reminder reminder = invocation.getArgument(0);
+            reminder.setId(REMINDER_ID);
+            return reminder;
+        });
+
+        reminderService.createReminder(makeRequest(future), CALLER_ID);
+
+        ArgumentCaptor<Reminder> captor = ArgumentCaptor.forClass(Reminder.class);
+        verify(reminderRepository, atLeastOnce()).save(captor.capture());
+        assertThat(captor.getAllValues().getFirst().getJourneyId()).isEqualTo(JOURNEY_ID);
+    }
+
+    @Test
+    void createReminder_explicitContextIsNotOverwrittenByFallback() {
+        Instant future = Instant.now().plus(10, ChronoUnit.MINUTES);
+        CreateReminderRequest request = makeRequest(future);
+        request.setJourneyId(JOURNEY_ID);
+        when(reminderRepository.save(any(Reminder.class))).thenAnswer(invocation -> {
+            Reminder reminder = invocation.getArgument(0);
+            reminder.setId(REMINDER_ID);
+            return reminder;
+        });
+
+        reminderService.createReminder(request, CALLER_ID);
+
+        verify(motherJourneyRepository, never())
+                .findFirstByOwnerUserIdAndStatusOrderByCreatedAtDesc(any(), any());
+        ArgumentCaptor<Reminder> captor = ArgumentCaptor.forClass(Reminder.class);
+        verify(reminderRepository, atLeastOnce()).save(captor.capture());
+        assertThat(captor.getAllValues().getFirst().getJourneyId()).isEqualTo(JOURNEY_ID);
     }
 
     // REM-VIEW-TC-001: Owner views PENDING reminder → 200 with correct status and type

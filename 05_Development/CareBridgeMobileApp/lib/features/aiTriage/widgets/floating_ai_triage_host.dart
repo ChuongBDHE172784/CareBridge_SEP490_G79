@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 final floatingAiTriageRouteObserver = FloatingAiTriageRouteObserver();
 
@@ -17,22 +18,38 @@ class FloatingAiTriageRouteObserver extends NavigatorObserver
     notifyListeners();
   }
 
+  void _notifyNavigationChanged() => notifyListeners();
+
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
     super.didPush(route, previousRoute);
-    if (_isPopup(route)) _updatePopupDepth(1);
+    if (_isPopup(route)) {
+      _updatePopupDepth(1);
+    } else {
+      _popupDepth = 0;
+      _notifyNavigationChanged();
+    }
   }
 
   @override
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
     super.didPop(route, previousRoute);
-    if (_isPopup(route)) _updatePopupDepth(-1);
+    if (_isPopup(route)) {
+      _updatePopupDepth(-1);
+    } else {
+      _popupDepth = 0;
+      _notifyNavigationChanged();
+    }
   }
 
   @override
   void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
     super.didRemove(route, previousRoute);
-    if (_isPopup(route)) _updatePopupDepth(-1);
+    if (_isPopup(route)) {
+      _updatePopupDepth(-1);
+    } else {
+      _notifyNavigationChanged();
+    }
   }
 
   @override
@@ -40,6 +57,10 @@ class FloatingAiTriageRouteObserver extends NavigatorObserver
     super.didReplace(newRoute: newRoute, oldRoute: oldRoute);
     if (_isPopup(oldRoute)) _updatePopupDepth(-1);
     if (_isPopup(newRoute)) _updatePopupDepth(1);
+    if (!_isPopup(oldRoute) && !_isPopup(newRoute)) {
+      _popupDepth = 0;
+      _notifyNavigationChanged();
+    }
   }
 }
 
@@ -65,7 +86,7 @@ class FloatingAiTriageHost extends StatefulWidget {
   final String? Function() currentRole;
   final String Function() currentPath;
   final bool Function() hasModal;
-  final VoidCallback onOpen;
+  final Future<void> Function() onOpen;
 
   static bool _neverHasModal() => false;
 
@@ -81,6 +102,8 @@ class _FloatingAiTriageHostState extends State<FloatingAiTriageHost> {
   static const _deepCocoa = Color(0xFF5A463F);
 
   Offset? _position;
+  bool _refreshScheduled = false;
+  bool _isOpening = false;
 
   @override
   void initState() {
@@ -116,10 +139,26 @@ class _FloatingAiTriageHostState extends State<FloatingAiTriageHost> {
   }
 
   void _refresh() {
-    if (mounted) setState(() {});
+    if (!mounted || _refreshScheduled) return;
+
+    if (SchedulerBinding.instance.schedulerPhase !=
+        SchedulerPhase.persistentCallbacks) {
+      setState(() {});
+      return;
+    }
+
+    // Navigator observers may notify while Flutter is mounting or redirecting
+    // routes. Deferring this rebuild avoids calling setState while Navigator
+    // is build-locked (notably during logout redirects).
+    _refreshScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshScheduled = false;
+      if (mounted) setState(() {});
+    });
   }
 
   bool get _shouldShow {
+    if (_isOpening) return false;
     if (!widget.isAuthenticated()) return false;
     if (widget.hasModal()) return false;
     final role = (widget.currentRole() ?? '').trim().toUpperCase();
@@ -223,6 +262,22 @@ class _FloatingAiTriageHostState extends State<FloatingAiTriageHost> {
     });
   }
 
+  Future<void> _open() async {
+    if (_isOpening) return;
+
+    setState(() => _isOpening = true);
+    try {
+      await widget.onOpen();
+    } catch (error) {
+      debugPrint(
+        '[FloatingAiTriageHost] failed to open CareBridge AI: '
+        '${error.runtimeType}',
+      );
+    } finally {
+      if (mounted) setState(() => _isOpening = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -252,7 +307,7 @@ class _FloatingAiTriageHostState extends State<FloatingAiTriageHost> {
                       child: GestureDetector(
                         key: const Key('floating-ai-triage-robot'),
                         behavior: HitTestBehavior.opaque,
-                        onTap: widget.onOpen,
+                        onTap: _open,
                         onPanUpdate: (details) => _move(
                           details,
                           constraints,

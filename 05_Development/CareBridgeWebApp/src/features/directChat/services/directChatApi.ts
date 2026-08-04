@@ -32,13 +32,49 @@ export async function getTimeline(
 export async function sendMessage(
   conversationId: string,
   clientMessageId: string,
-  messageBody: string
+  messageBody?: string,
+  messageType: 'TEXT' | 'IMAGE' | 'FILE' = 'TEXT',
+  attachmentId?: string
 ): Promise<TimelineItem> {
   const { data } = await apiClient.post(`/api/v1/direct-conversations/${conversationId}/messages`, {
     clientMessageId,
-    messageBody,
+    ...(messageBody !== undefined ? { messageBody } : {}),
+    messageType,
+    ...(attachmentId ? { attachmentId } : {}),
   });
   return data.data;
+}
+
+export interface DirectChatAttachment {
+  fileId: string;
+  originalName: string;
+  mimeType: string;
+  presignedUrl: string;
+}
+
+export async function uploadAttachment(
+  conversationId: string,
+  file: File,
+  kind: 'IMAGE' | 'DOCUMENT'
+): Promise<DirectChatAttachment> {
+  const form = new FormData();
+  form.append('file', file);
+  const { data } = await apiClient.post(
+    `/api/v1/direct-conversations/${conversationId}/attachments?kind=${kind}`,
+    form
+  );
+  return data.data;
+}
+
+export async function viewAttachment(conversationId: string, messageId: string): Promise<DirectChatAttachment> {
+  const { data } = await apiClient.get(
+    `/api/v1/direct-conversations/${conversationId}/messages/${messageId}/attachment`
+  );
+  return data.data;
+}
+
+export async function recallMessage(conversationId: string, messageId: string): Promise<void> {
+  await apiClient.patch(`/api/v1/direct-conversations/${conversationId}/messages/${messageId}/recall`);
 }
 
 export async function initiateCall(

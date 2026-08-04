@@ -54,7 +54,10 @@ class _SharedDataScreenState extends State<SharedDataScreen> {
       _errorMessage = null;
     });
     try {
-      final records = await _service.listHealthRecords(size: 100);
+      final records = await _service.listHealthRecords(
+        size: 100,
+        careGroupId: widget.groupId,
+      );
       setState(() {
         _allRecords = records;
         _isLoading = false;
@@ -83,8 +86,22 @@ class _SharedDataScreenState extends State<SharedDataScreen> {
 
         // Date range filter matching
         if (_filterApplied && _fromDate != null && _toDate != null) {
-          final start = DateTime(_fromDate!.year, _fromDate!.month, _fromDate!.day, 0, 0, 0);
-          final end = DateTime(_toDate!.year, _toDate!.month, _toDate!.day, 23, 59, 59);
+          final start = DateTime(
+            _fromDate!.year,
+            _fromDate!.month,
+            _fromDate!.day,
+            0,
+            0,
+            0,
+          );
+          final end = DateTime(
+            _toDate!.year,
+            _toDate!.month,
+            _toDate!.day,
+            23,
+            59,
+            59,
+          );
           final recordDt = record.recordDate;
           if (recordDt.isBefore(start) || recordDt.isAfter(end)) {
             return false;
@@ -111,7 +128,9 @@ class _SharedDataScreenState extends State<SharedDataScreen> {
     _applyFilters();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Đã lọc hồ sơ từ ${DateFormat('dd/MM/yyyy').format(_fromDate!)} đến ${DateFormat('dd/MM/yyyy').format(_toDate!)}'),
+        content: Text(
+          'Đã lọc hồ sơ từ ${DateFormat('dd/MM/yyyy').format(_fromDate!)} đến ${DateFormat('dd/MM/yyyy').format(_toDate!)}',
+        ),
         backgroundColor: _primary,
       ),
     );
@@ -223,9 +242,8 @@ class _SharedDataScreenState extends State<SharedDataScreen> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const Center(
-        child: CircularProgressIndicator(color: _primary),
-      ),
+      builder: (_) =>
+          const Center(child: CircularProgressIndicator(color: _primary)),
     );
 
     try {
@@ -355,17 +373,26 @@ class _SharedDataScreenState extends State<SharedDataScreen> {
                     fontSize: 14,
                     color: _onSurfaceVariant,
                   ),
-                  prefixIcon: const Icon(Icons.search_rounded, color: _primaryContainer),
+                  prefixIcon: const Icon(
+                    Icons.search_rounded,
+                    color: _primaryContainer,
+                  ),
                   suffixIcon: _searchCtrl.text.isNotEmpty
                       ? IconButton(
-                          icon: const Icon(Icons.clear_rounded, color: _onSurfaceVariant),
+                          icon: const Icon(
+                            Icons.clear_rounded,
+                            color: _onSurfaceVariant,
+                          ),
                           onPressed: () {
                             _searchCtrl.clear();
                           },
                         )
                       : null,
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 14,
+                    horizontal: 16,
+                  ),
                 ),
               ),
             ),
@@ -407,26 +434,41 @@ class _SharedDataScreenState extends State<SharedDataScreen> {
                           onTap: _selectFromDate,
                           borderRadius: BorderRadius.circular(12),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
                             decoration: BoxDecoration(
                               color: _surfaceVariant,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: const Color(0xFFE5D5D0)),
+                              border: Border.all(
+                                color: const Color(0xFFE5D5D0),
+                              ),
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.calendar_today_rounded, size: 14, color: _primary),
+                                const Icon(
+                                  Icons.calendar_today_rounded,
+                                  size: 14,
+                                  color: _primary,
+                                ),
                                 const SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
                                     _fromDate != null
-                                        ? DateFormat('dd/MM/yyyy').format(_fromDate!)
+                                        ? DateFormat(
+                                            'dd/MM/yyyy',
+                                          ).format(_fromDate!)
                                         : 'Từ ngày',
                                     style: TextStyle(
                                       fontFamily: 'Lexend',
                                       fontSize: 12,
-                                      fontWeight: _fromDate != null ? FontWeight.w600 : FontWeight.normal,
-                                      color: _fromDate != null ? _onSurface : _onSurfaceVariant,
+                                      fontWeight: _fromDate != null
+                                          ? FontWeight.w600
+                                          : FontWeight.normal,
+                                      color: _fromDate != null
+                                          ? _onSurface
+                                          : _onSurfaceVariant,
                                     ),
                                   ),
                                 ),
@@ -437,7 +479,11 @@ class _SharedDataScreenState extends State<SharedDataScreen> {
                       ),
                       const Padding(
                         padding: EdgeInsets.symmetric(horizontal: 6.0),
-                        child: Icon(Icons.arrow_forward_rounded, size: 14, color: _onSurfaceVariant),
+                        child: Icon(
+                          Icons.arrow_forward_rounded,
+                          size: 14,
+                          color: _onSurfaceVariant,
+                        ),
                       ),
                       // To Date
                       Expanded(
@@ -445,26 +491,41 @@ class _SharedDataScreenState extends State<SharedDataScreen> {
                           onTap: _selectToDate,
                           borderRadius: BorderRadius.circular(12),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
                             decoration: BoxDecoration(
                               color: _surfaceVariant,
                               borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: const Color(0xFFE5D5D0)),
+                              border: Border.all(
+                                color: const Color(0xFFE5D5D0),
+                              ),
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.calendar_today_rounded, size: 14, color: _primary),
+                                const Icon(
+                                  Icons.calendar_today_rounded,
+                                  size: 14,
+                                  color: _primary,
+                                ),
                                 const SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
                                     _toDate != null
-                                        ? DateFormat('dd/MM/yyyy').format(_toDate!)
+                                        ? DateFormat(
+                                            'dd/MM/yyyy',
+                                          ).format(_toDate!)
                                         : 'Đến ngày',
                                     style: TextStyle(
                                       fontFamily: 'Lexend',
                                       fontSize: 12,
-                                      fontWeight: _toDate != null ? FontWeight.w600 : FontWeight.normal,
-                                      color: _toDate != null ? _onSurface : _onSurfaceVariant,
+                                      fontWeight: _toDate != null
+                                          ? FontWeight.w600
+                                          : FontWeight.normal,
+                                      color: _toDate != null
+                                          ? _onSurface
+                                          : _onSurfaceVariant,
                                     ),
                                   ),
                                 ),
@@ -501,11 +562,16 @@ class _SharedDataScreenState extends State<SharedDataScreen> {
                           ),
                         ),
                       ),
-                      if (_fromDate != null || _toDate != null || _filterApplied) ...[
+                      if (_fromDate != null ||
+                          _toDate != null ||
+                          _filterApplied) ...[
                         const SizedBox(width: 8),
                         IconButton(
                           onPressed: _resetFilter,
-                          icon: const Icon(Icons.restart_alt_rounded, color: _primary),
+                          icon: const Icon(
+                            Icons.restart_alt_rounded,
+                            color: _primary,
+                          ),
                           tooltip: 'Xóa bộ lọc',
                         ),
                       ],
@@ -532,7 +598,10 @@ class _SharedDataScreenState extends State<SharedDataScreen> {
                 ),
                 if (_filterApplied)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFE2D9),
                       borderRadius: BorderRadius.circular(10),
@@ -569,25 +638,40 @@ class _SharedDataScreenState extends State<SharedDataScreen> {
                 ),
                 child: Column(
                   children: [
-                    const Icon(Icons.error_outline_rounded, size: 40, color: Colors.red),
+                    const Icon(
+                      Icons.error_outline_rounded,
+                      size: 40,
+                      color: Colors.red,
+                    ),
                     const SizedBox(height: 8),
                     Text(
                       _errorMessage!,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontFamily: 'Lexend', color: Colors.red),
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        color: Colors.red,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     ElevatedButton(
                       onPressed: _loadRecords,
-                      style: ElevatedButton.styleFrom(backgroundColor: _primary),
-                      child: const Text('Thử lại', style: TextStyle(color: Colors.white)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _primary,
+                      ),
+                      child: const Text(
+                        'Thử lại',
+                        style: TextStyle(color: Colors.white),
+                      ),
                     ),
                   ],
                 ),
               )
             else if (_filteredRecords.isEmpty)
               Container(
-                padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 40,
+                  horizontal: 20,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(20),
@@ -624,7 +708,9 @@ class _SharedDataScreenState extends State<SharedDataScreen> {
                 ),
               )
             else
-              ..._filteredRecords.map((record) => _buildHealthRecordTile(record)),
+              ..._filteredRecords.map(
+                (record) => _buildHealthRecordTile(record),
+              ),
           ],
         ),
       ),
@@ -700,7 +786,10 @@ class _SharedDataScreenState extends State<SharedDataScreen> {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: _surfaceVariant,
                       borderRadius: BorderRadius.circular(6),
@@ -715,7 +804,8 @@ class _SharedDataScreenState extends State<SharedDataScreen> {
                       ),
                     ),
                   ),
-                  if (record.facilityName != null && record.facilityName!.isNotEmpty) ...[
+                  if (record.facilityName != null &&
+                      record.facilityName!.isNotEmpty) ...[
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(

@@ -110,7 +110,11 @@ void main() {
 
       expect(
         paths,
-        containsAll(const {'/journey-onboarding', '/mother-stage-selection'}),
+        containsAll(const {
+          '/checklists/history',
+          '/journey-onboarding',
+          '/mother-stage-selection',
+        }),
       );
     });
 
@@ -157,6 +161,30 @@ void main() {
       );
 
       expect(redirect, '/');
+    });
+
+    test('experts cannot deep-link into checklist history', () {
+      final redirect = resolveAppRedirect(
+        isAuthenticated: true,
+        isRestoring: false,
+        blockedReason: null,
+        role: 'EXPERT',
+        location: '/checklists/history',
+      );
+
+      expect(redirect, '/');
+    });
+
+    test('family can deep-link into selected-group checklist history', () {
+      final redirect = resolveAppRedirect(
+        isAuthenticated: true,
+        isRestoring: false,
+        blockedReason: null,
+        role: 'FAMILY',
+        location: '/checklists/history',
+      );
+
+      expect(redirect, isNull);
     });
   });
 

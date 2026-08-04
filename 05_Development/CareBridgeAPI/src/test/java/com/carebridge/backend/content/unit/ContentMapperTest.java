@@ -16,6 +16,7 @@ import com.carebridge.backend.content.entity.ContentStatus;
 import com.carebridge.backend.content.entity.ContentType;
 import com.carebridge.backend.content.mapper.ContentMapper;
 import com.carebridge.backend.content.ViewContentDetailTestFactory;
+import com.carebridge.backend.recommendation.RecommendationConstants;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -97,6 +98,26 @@ class ContentMapperTest {
         ContentDetailResponse response = contentMapper.toDetailResponse(item);
 
         assertThat(response.getVersion()).isEqualTo(1);
+    }
+
+    @Test
+    void publicContentProjectionsDoNotExposeRecommendationMetadataOrCatalogIds() {
+        UUID catalogId = RecommendationConstants.catalogIdFor("rec-age-18-24");
+        UUID ordinaryId = UUID.randomUUID();
+        ContentItem item = makeContentItem(ContentStatus.APPROVED, ContentStage.PREGNANCY, ContentType.ARTICLE);
+        item.setTagIds(List.of(catalogId, ordinaryId));
+        item.setEligibleFromWeek((short) 12);
+        item.setEligibleToWeek((short) 20);
+        item.setRecommendationPriority((short) 70);
+
+        ContentDetailResponse detail = contentMapper.toDetailResponse(item);
+        ContentListResponse list = contentMapper.toListResponse(item);
+
+        assertThat(detail.getTagIds()).isNull();
+        assertThat(detail.getEligibleFromWeek()).isNull();
+        assertThat(detail.getEligibleToWeek()).isNull();
+        assertThat(detail.getRecommendationPriority()).isNull();
+        assertThat(list.getTagIds()).containsExactly(ordinaryId);
     }
 
     @Test

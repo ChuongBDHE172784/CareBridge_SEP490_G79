@@ -10,7 +10,6 @@ import '../../../core/auth/auth_state.dart';
 import '../../../features/session/screens/login_sessions_screen.dart';
 import '../../../features/privacy/screens/privacy_settings_screen.dart';
 import '../../../features/familySync/screens/care_groups_screen.dart';
-import '../../../features/expert/screens/expert_question_queue_screen.dart';
 import '../../../features/fileManager/screens/file_manager_screen.dart';
 
 class AccountProfileScreen extends StatefulWidget {
@@ -185,25 +184,6 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
               );
             }),
           ]),
-          if (AuthState.instance.role == 'EXPERT') ...[
-            const SizedBox(height: 16),
-            _buildMenuCard([
-              _menuItem(
-                Icons.question_answer_outlined,
-                'Hàng đợi câu hỏi (Expert)',
-                () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => ExpertQuestionQueueScreen(
-                        expertName: _profile?.name,
-                        expertAvatarUrl: _profile?.avatarUrl,
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ]),
-          ],
           const SizedBox(height: 16),
           _buildLogoutCard(),
         ],

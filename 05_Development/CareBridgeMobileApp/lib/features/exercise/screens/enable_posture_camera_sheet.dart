@@ -93,14 +93,15 @@ class EnablePostureCameraSheet extends StatelessWidget {
           _infoCard(
             icon: Icons.shield_outlined,
             title: 'Bảo mật tối đa',
-            body: 'Hình ảnh chỉ được xử lý trực tiếp trên thiết bị của bạn.',
+            body:
+                'Hình ảnh chỉ xử lý trực tiếp trên thiết bị; không quay hay lưu video.',
           ),
           const SizedBox(height: 12),
           _infoCard(
             icon: Icons.cloud_off_outlined,
             title: 'Không lưu trữ',
             body:
-                'Chúng tôi cam kết không quay video hay lưu trữ bất kỳ hình ảnh nào.',
+                'Chỉ điểm khớp đã chuẩn hóa được gửi đến CareBridge để phản hồi tư thế.',
           ),
           const SizedBox(height: 28),
 

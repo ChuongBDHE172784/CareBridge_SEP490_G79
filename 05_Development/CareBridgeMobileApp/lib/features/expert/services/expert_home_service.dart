@@ -30,7 +30,6 @@ class ExpertHomeService {
     ExpertHomeProfile profile = const ExpertHomeProfile();
     var online = false;
     var requestCount = 0;
-    var questionCount = 0;
     ExpertConsultation? nextConsultation;
     final supportRequests = <ExpertSupportRequest>[];
 
@@ -93,19 +92,10 @@ class ExpertHomeService {
       );
     } catch (_) {}
 
-    try {
-      final questionsJson = await api.get(
-        '/api/v1/community/questions?page=0&size=20&hasExpertAnswer=false',
-      );
-      final rows = questionsJson['data'] as List? ?? [];
-      questionCount = rows.length;
-    } catch (_) {}
-
     return ExpertHomeSnapshot(
       profile: profile,
       online: online,
       requestCount: requestCount,
-      questionCount: questionCount,
       nextConsultation: nextConsultation,
       supportRequests: supportRequests,
     );
@@ -159,7 +149,6 @@ class ExpertHomeSnapshot {
   final ExpertHomeProfile profile;
   final bool online;
   final int requestCount;
-  final int questionCount;
   final ExpertConsultation? nextConsultation;
   final List<ExpertSupportRequest> supportRequests;
 
@@ -167,7 +156,6 @@ class ExpertHomeSnapshot {
     required this.profile,
     required this.online,
     this.requestCount = 0,
-    required this.questionCount,
     this.nextConsultation,
     required this.supportRequests,
   });
@@ -176,7 +164,6 @@ class ExpertHomeSnapshot {
     ExpertHomeProfile? profile,
     bool? online,
     int? requestCount,
-    int? questionCount,
     ExpertConsultation? nextConsultation,
     List<ExpertSupportRequest>? supportRequests,
   }) {
@@ -184,7 +171,6 @@ class ExpertHomeSnapshot {
       profile: profile ?? this.profile,
       online: online ?? this.online,
       requestCount: requestCount ?? this.requestCount,
-      questionCount: questionCount ?? this.questionCount,
       nextConsultation: nextConsultation ?? this.nextConsultation,
       supportRequests: supportRequests ?? this.supportRequests,
     );

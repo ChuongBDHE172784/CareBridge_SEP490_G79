@@ -45,6 +45,8 @@ import UpdateUserRolePage from '../../features/admin/pages/UpdateUserRolePage';
 import CreateStaffAccountPage from '../../features/admin/pages/CreateStaffAccountPage';
 import AccountLockAppealsPage from '../../features/admin/pages/AccountLockAppealsPage';
 import AccountLockAppealDetailPage from '../../features/admin/pages/AccountLockAppealDetailPage';
+import ExpertListPage from '../../features/admin/pages/ExpertListPage';
+import ExpertDetailPage from '../../features/admin/pages/ExpertDetailPage';
 
 // Security & admin screens (TV1 Sprint 0)
 import SecurityIncidentListPage from '../../features/security/pages/SecurityIncidentListPage';
@@ -171,8 +173,9 @@ export const router = createBrowserRouter([
               { path: '/admin/staff-accounts/create', element: <CreateStaffAccountPage /> },
               { path: '/admin/account-lock-appeals', element: <AccountLockAppealsPage /> },
               { path: '/admin/account-lock-appeals/:appealId', element: <AccountLockAppealDetailPage /> },
+              { path: '/admin/experts', element: <ExpertListPage /> },
+              { path: '/admin/experts/:expertProfileId', element: <ExpertDetailPage /> },
               { path: '/admin/expert-verification-queue', element: <ExpertVerificationQueuePage /> },
-              { path: '/admin/expert-trust-management', element: <ContentApprovalQueuePage /> },
               { path: '/admin/content-approval-queue', element: <ContentApprovalQueuePage /> },
               // Read-only review routes for the approval queue's "Xem chi tiết" links — System Admin
               // lacks CONTENT_ADMIN, so it cannot use /content/:id or /content/checklists/:id directly

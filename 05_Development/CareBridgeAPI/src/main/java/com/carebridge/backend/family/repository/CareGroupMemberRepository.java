@@ -29,7 +29,47 @@ public interface CareGroupMemberRepository extends JpaRepository<CareGroupMember
             """, nativeQuery = true)
     List<UUID> findEmergencyContactUserIds(@Param("ownerUserId") UUID ownerUserId);
 
+    /**
+     * Emergency fall alerts are delivered to every eligible Family account in an
+     * active care group, not only members manually marked as primary contacts.
+     * The role join prevents alerts from being delivered to the Mother herself or
+     * to non-Family accounts that could otherwise share the same group.
+     */
+    @Query(value = """
+            SELECT cgm.user_id
+              FROM care_groups cg
+              JOIN care_group_members cgm
+                ON cgm.care_group_id = cg.care_group_id
+              JOIN users u
+                ON u.user_id = cgm.user_id
+             WHERE cg.owner_user_id = :ownerUserId
+               AND cg.status = 'ACTIVE'
+               AND cgm.invitation_status = 'ACCEPTED'
+               AND u.role = 'FAMILY'
+               AND u.enabled = TRUE
+               AND u.locked = FALSE
+             GROUP BY cgm.user_id
+             ORDER BY cgm.user_id ASC
+            """, nativeQuery = true)
+    List<UUID> findAcceptedFamilyUserIds(@Param("ownerUserId") UUID ownerUserId);
+
     boolean existsByCareGroupIdAndUserIdAndInviteStatus(UUID careGroupId, UUID userId, InviteStatus status);
+
+    /** A delegated Family account may act in the Mother's direct conversation only while its
+     * membership is accepted and the Mother's care group remains active. */
+    @Query(value = """
+            SELECT EXISTS (
+                SELECT 1
+                  FROM care_groups cg
+                  JOIN care_group_members cgm ON cgm.care_group_id = cg.care_group_id
+                 WHERE cg.owner_user_id = :motherUserId
+                   AND cg.status = 'ACTIVE'
+                   AND cgm.user_id = :familyUserId
+                   AND cgm.invitation_status = 'ACCEPTED'
+            )
+            """, nativeQuery = true)
+    boolean existsAcceptedMemberOfActiveMotherCareGroup(
+            @Param("motherUserId") UUID motherUserId, @Param("familyUserId") UUID familyUserId);
 
     List<CareGroupMember> findByCareGroupIdAndInviteStatusIn(UUID careGroupId, List<InviteStatus> statuses);
 
@@ -41,7 +81,14 @@ public interface CareGroupMemberRepository extends JpaRepository<CareGroupMember
 
     default Optional<CareGroupMember> findByCareGroupIdAndUserId(UUID careGroupId, UUID userId) {
         List<CareGroupMember> list = findAllByCareGroupIdAndUserId(careGroupId, userId);
-        return list.isEmpty() ? Optional.empty() : Optional.of(list.get(0));
+        // A user can have an old REVOKED/EXPIRED invite alongside a later ACCEPTED
+        // membership. Authorization must always resolve the active membership first.
+        return list.stream()
+                .filter(member -> member.getInviteStatus() == InviteStatus.ACCEPTED
+                        && (member.getInviteExpiresAt() == null
+                        || !member.getInviteExpiresAt().isBefore(Instant.now())))
+                .findFirst()
+                .or(() -> list.stream().findFirst());
     }
 
     /**

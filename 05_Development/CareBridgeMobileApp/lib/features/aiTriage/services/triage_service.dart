@@ -9,6 +9,7 @@ import '../../../core/network/api_client.dart';
 import '../models/triage_consent_status.dart';
 import '../models/triage_continuation.dart';
 import '../models/triage_intake_flow_model.dart';
+import '../models/triage_history_model.dart';
 import '../models/triage_result_model.dart';
 import 'triage_continuation_store.dart';
 
@@ -68,6 +69,24 @@ class TriageService implements TriageContinuationGateway {
     return status;
   }
 
+  Future<List<TriageHistoryItem>> listHistory() async {
+    final requestContext = _captureContinuationContext();
+    final data = await _getRequest(
+      '/api/v1/triage/intake',
+    ).timeout(_requestTimeout);
+    final rawItems = data['data'];
+    if (rawItems is! List) {
+      throw const FormatException('Invalid triage history response');
+    }
+    _throwIfStale(requestContext);
+    return rawItems
+        .whereType<Map>()
+        .map(
+          (item) => TriageHistoryItem.fromJson(Map<String, dynamic>.from(item)),
+        )
+        .toList(growable: false);
+  }
+
   Future<TriageConsentStatus> acceptConsent({
     required String policyVersion,
     String locale = 'vi',
@@ -89,7 +108,21 @@ class TriageService implements TriageContinuationGateway {
     required Map<String, dynamic> currentIntake,
   }) async {
     final requestContext = _captureContinuationContext();
-    final stage = currentIntake['stage']?.toString() ?? 'INFANT';
+    final stage = currentIntake['stage']?.toString();
+    const validStages = {
+      'PRECONCEPTION',
+      'PREGNANCY',
+      'POSTPARTUM',
+      'INFANT',
+      'TODDLER',
+    };
+    if (stage == null || !validStages.contains(stage)) {
+      throw ArgumentError.value(
+        currentIntake['stage'],
+        'currentIntake.stage',
+        'A canonical triage stage is required',
+      );
+    }
     final fingerprint = jsonEncode({
       'userId': requestContext?.userId,
       'initialText': initialText,
@@ -144,6 +177,14 @@ class TriageService implements TriageContinuationGateway {
     required Map<String, dynamic> newAnswers,
     required int round,
   }) async {
+    final stage = currentIntake['stage']?.toString();
+    if (stage == null || stage.isEmpty) {
+      throw ArgumentError.value(
+        currentIntake['stage'],
+        'currentIntake.stage',
+        'A canonical triage stage is required',
+      );
+    }
     final requestContext = _captureContinuationContext();
     final data =
         await _postRequest('/api/v1/triage/intake/conversation/continue', {

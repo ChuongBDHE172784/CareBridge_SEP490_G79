@@ -68,6 +68,21 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
         AuthState.instance.userId != requestAccountId) {
       throw const _StaleExpertProfileResponse();
     }
+    final expertUserId = (profile['userId'] ?? profile['expertUserId'])
+        ?.toString();
+    if (expertUserId != null && expertUserId.isNotEmpty) {
+      try {
+        final conversations = await DirectChatService.instance
+            .listMyConversations();
+        final existing = conversations.where(
+          (item) => item.counterpartUserId == expertUserId,
+        );
+        if (existing.isNotEmpty)
+          profile['_conversationId'] = existing.first.conversationId;
+      } catch (_) {
+        // Consultation stays available if the optional conversation lookup fails.
+      }
+    }
     return profile;
   }
 
@@ -77,6 +92,23 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
     if (number == 0) return 'Miễn phí';
     final format = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
     return format.format(number);
+  }
+
+  Future<void> _openChat(String? conversationId) async {
+    if (conversationId != null && conversationId.isNotEmpty) {
+      if (mounted) context.push('/direct-chat/$conversationId');
+      return;
+    }
+    try {
+      final conversation = await DirectChatService.instance
+          .findOrCreateConversation(widget.expertProfileId);
+      if (mounted) context.push('/direct-chat/${conversation.conversationId}');
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không thể mở cuộc trò chuyện.')),
+      );
+    }
   }
 
   @override
@@ -147,6 +179,7 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
                 final consultationScope =
                     profile['consultationScope'] as String?;
                 final isVerified = profile['verificationStatus'] == 'APPROVED';
+                final conversationId = profile['_conversationId'] as String?;
 
                 return SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
@@ -240,6 +273,14 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
                       ),
                       const SizedBox(height: 16),
 
+                      _buildActionButtons(
+                        context: context,
+                        isConsultationEligible: isConsultationEligible,
+                        conversationId: conversationId,
+                        expertDisplayName: expertDisplayName,
+                      ),
+                      const SizedBox(height: 16),
+
                       // Details Card
                       Container(
                         width: double.infinity,
@@ -317,39 +358,6 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
                         ),
 
                       const SizedBox(height: 32),
-
-                      // Action Button
-                      SizedBox(
-                        width: double.infinity,
-                        height: 52,
-                        child: FilledButton(
-                          onPressed: isConsultationEligible
-                              ? () => Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        ConsultationRequestFormScreen(
-                                          expertProfileId:
-                                              widget.expertProfileId,
-                                          expertDisplayName: expertDisplayName,
-                                        ),
-                                  ),
-                                )
-                              : null,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: _primary,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: const Text(
-                            'Yêu cầu tư vấn',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
                       if (!isConsultationEligible) ...[
                         const SizedBox(height: 12),
                         const Text(
@@ -367,6 +375,64 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
                 );
               },
             ),
+    );
+  }
+
+  Widget _buildActionButtons({
+    required BuildContext context,
+    required bool isConsultationEligible,
+    required String? conversationId,
+    required String expertDisplayName,
+  }) {
+    final hasConversation =
+        conversationId != null && conversationId.isNotEmpty;
+
+    if (hasConversation) {
+      return SizedBox(
+        width: double.infinity,
+        height: 52,
+        child: FilledButton(
+          onPressed: () => _openChat(conversationId),
+          style: FilledButton.styleFrom(
+            backgroundColor: _primary,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+          child: const Text(
+            'Trò chuyện',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: OutlinedButton(
+        onPressed: isConsultationEligible
+            ? () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ConsultationRequestFormScreen(
+                    expertProfileId: widget.expertProfileId,
+                    expertDisplayName: expertDisplayName,
+                  ),
+                ),
+              )
+            : null,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: _primary,
+          side: const BorderSide(color: _primary),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: const Text(
+          'Yêu cầu tư vấn',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
+      ),
     );
   }
 

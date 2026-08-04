@@ -108,6 +108,19 @@ class DirectConversationPolicyImplTest {
                 });
     }
 
+    @Test
+    void assertIsParticipant_familyMemberOfMother_isNotAChatParticipant() {
+        UUID motherUserId = UUID.randomUUID();
+        UUID familyUserId = UUID.randomUUID();
+        DirectConversation conversation = conversation(motherUserId, UUID.randomUUID());
+        assertThatThrownBy(() -> policy.assertIsParticipant(familyUserId, conversation))
+                .isInstanceOfSatisfying(DirectChatException.class, ex ->
+                        assertThat(ex.getCode()).isEqualTo("DCC-003"));
+        assertThatThrownBy(() -> policy.resolveRole(familyUserId, conversation))
+                .isInstanceOfSatisfying(DirectChatException.class, ex ->
+                        assertThat(ex.getCode()).isEqualTo("DCC-003"));
+    }
+
     // DCC-TC-004 — Expert not APPROVED rejected at creation time (422).
     @Test
     void assertExpertEligible_approvedAndActive_passes() {
