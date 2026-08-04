@@ -17,7 +17,7 @@ ONTOLOGY: dict[str, tuple[str, ...]] = {
     "difficulty_breathing": ("kho tho", "tho gap", "wheeze", "difficulty breathing", "kho khe", "tho rit"),
     "chest_indrawing": ("rut lom", "chest indrawing"),
     "cyanosis": ("tim tai", "moi tim", "da tim", "cyanosis"),
-    "seizure": ("co giat", "seizure", "convulsion"),
+    "seizure": ("co giat", "seizure", "seizures", "convulsion", "convulsions"),
     "lethargy": ("li bi", "lo mo", "ngu ga", "lethargy", "lu du", "lu đu"),
     "difficult_to_wake": ("kho danh thuc", "difficult to wake"),
     "unable_to_drink": ("khong uong", "khong bu", "unable to drink"),

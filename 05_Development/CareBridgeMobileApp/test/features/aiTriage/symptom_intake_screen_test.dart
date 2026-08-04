@@ -364,24 +364,25 @@ Future<void> _submitInitial(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('unscoped floating entry requires an explicit stage before sending', (
-    tester,
-  ) async {
-    await _pumpScreen(
-      tester,
-      triage: _ThrowingTriageService(),
-      entryContext: const TriageEntryContext(requiresStageSelection: true),
-    );
+  testWidgets(
+    'unscoped floating entry requires an explicit stage before sending',
+    (tester) async {
+      await _pumpScreen(
+        tester,
+        triage: _ThrowingTriageService(),
+        entryContext: const TriageEntryContext(requiresStageSelection: true),
+      );
 
-    await _submitInitial(tester);
-    await tester.pumpAndSettle();
+      await _submitInitial(tester);
+      await tester.pumpAndSettle();
 
-    expect(
-      find.textContaining('Vui lòng chọn giai đoạn sức khỏe'),
-      findsOneWidget,
-    );
-    expect(find.textContaining('Không thể gửi triệu chứng'), findsNothing);
-  });
+      expect(
+        find.textContaining('Vui lòng chọn giai đoạn sức khỏe'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Không thể gửi triệu chứng'), findsNothing);
+    },
+  );
 
   testWidgets(
     'typed postpartum entry is neutral and sends POSTPARTUM without infant defaults',
@@ -411,6 +412,45 @@ void main() {
       expect(triage.receivedIntake?.containsKey('childAgeMonths'), isFalse);
       expect(triage.receivedIntake?.containsKey('feedingStatus'), isFalse);
       expect(find.byKey(const Key('triage-emergency-cta')), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'maternal vomiting follow-up is not rejected as a child question',
+    (tester) async {
+      await _pumpScreen(
+        tester,
+        entryContext: const TriageEntryContext.locked(
+          stage: TriageStageIntent.pregnancy,
+          origin: TriageOriginIntent.direct,
+        ),
+        triage: _StaticTriageService(
+          const IntakeFlowResponse(
+            status: 'ASK_MORE',
+            intakeSessionId: _sessionId,
+            stage: 'PREGNANCY',
+            mergedIntake: {'stage': 'PREGNANCY'},
+            questions: [
+              IntakeQuestion(
+                questionKey: 'vomiting',
+                text: 'Bạn có buồn nôn hoặc nôn không?',
+                answerType: 'SINGLE_CHOICE',
+                options: ['Không', 'Buồn nôn', 'Nôn ít'],
+              ),
+            ],
+            round: 1,
+          ),
+        ),
+      );
+
+      await _submitInitial(tester);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Bạn có buồn nôn hoặc nôn không?'), findsWidgets);
+      expect(
+        find.textContaining('Không thể dùng bộ câu hỏi dành cho bé'),
+        findsNothing,
+      );
     },
   );
 
@@ -892,6 +932,62 @@ void main() {
     expect(find.textContaining('Không thể gửi triệu chứng'), findsOneWidget);
     expect(find.textContaining('RAW_SECRET_BACKEND_DETAIL'), findsNothing);
     expect(find.byKey(const Key('triage-consent-dialog')), findsNothing);
+  });
+
+  testWidgets('malformed intake error is actionable without exposing details', (
+    tester,
+  ) async {
+    await _pumpScreen(
+      tester,
+      triage: TriageService(
+        postRequest: (_, _) => Future.error(
+          ApiException(
+            400,
+            jsonEncode({
+              'error': 'TRIAGE-010',
+              'message': 'RAW_BACKEND_DETAIL',
+            }),
+          ),
+        ),
+      ),
+    );
+
+    await _submitInitial(tester);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('Thông tin triệu chứng chưa hợp lệ'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('RAW_BACKEND_DETAIL'), findsNothing);
+  });
+
+  testWidgets('server failure is actionable without exposing details', (
+    tester,
+  ) async {
+    await _pumpScreen(
+      tester,
+      triage: TriageService(
+        postRequest: (_, _) => Future.error(
+          ApiException(
+            500,
+            jsonEncode({
+              'error': 'INTERNAL_ERROR',
+              'message': 'RAW_BACKEND_DETAIL',
+            }),
+          ),
+        ),
+      ),
+    );
+
+    await _submitInitial(tester);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('Dịch vụ phân loại đang tạm thời'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('RAW_BACKEND_DETAIL'), findsNothing);
   });
 
   test('service maps only the exact backend consent-required code', () async {

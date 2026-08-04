@@ -35,6 +35,12 @@ class TriageService implements TriageContinuationGateway {
   static const _requestTimeout = Duration(
     seconds: int.fromEnvironment('AI_TRIAGE_TIMEOUT_SECONDS', defaultValue: 8),
   );
+  // Keyed by "userId::operation" (not just userId) so an unrelated background
+  // triage call (e.g. a consent/history check) can never mark an in-flight
+  // start/continue mutation as stale. Regression: a single successful
+  // start/continue could be discarded as "stale" — and shown as a generic
+  // send failure — whenever any other TriageService call for the same user
+  // happened to race it, even though the two operations were independent.
   static final Map<String, int> _latestRequestSequenceByUser = {};
 
   String? _pendingStartRequestId;
@@ -46,7 +52,7 @@ class TriageService implements TriageContinuationGateway {
   _onContinuationPersistenceFailure;
 
   Future<TriageResult> getResult(String sessionId) async {
-    final requestContext = _captureContinuationContext();
+    final requestContext = _captureContinuationContext('getResult');
     final data = await _getRequest(
       '/api/v1/triage/intake/$sessionId',
     ).timeout(_requestTimeout);
@@ -58,7 +64,7 @@ class TriageService implements TriageContinuationGateway {
   }
 
   Future<TriageConsentStatus> getConsentStatus() async {
-    final requestContext = _captureContinuationContext();
+    final requestContext = _captureContinuationContext('getConsentStatus');
     final data = await _getRequest(
       '/api/v1/triage/consent',
     ).timeout(_requestTimeout);
@@ -70,7 +76,7 @@ class TriageService implements TriageContinuationGateway {
   }
 
   Future<List<TriageHistoryItem>> listHistory() async {
-    final requestContext = _captureContinuationContext();
+    final requestContext = _captureContinuationContext('listHistory');
     final data = await _getRequest(
       '/api/v1/triage/intake',
     ).timeout(_requestTimeout);
@@ -91,7 +97,7 @@ class TriageService implements TriageContinuationGateway {
     required String policyVersion,
     String locale = 'vi',
   }) async {
-    final requestContext = _captureContinuationContext();
+    final requestContext = _captureContinuationContext('acceptConsent');
     final data = await _postRequest('/api/v1/triage/consent/accept', {
       'policyVersion': policyVersion,
       'locale': locale,
@@ -107,7 +113,7 @@ class TriageService implements TriageContinuationGateway {
     required String initialText,
     required Map<String, dynamic> currentIntake,
   }) async {
-    final requestContext = _captureContinuationContext();
+    final requestContext = _captureContinuationContext('startConversation');
     final stage = currentIntake['stage']?.toString();
     const validStages = {
       'PRECONCEPTION',
@@ -185,7 +191,7 @@ class TriageService implements TriageContinuationGateway {
         'A canonical triage stage is required',
       );
     }
-    final requestContext = _captureContinuationContext();
+    final requestContext = _captureContinuationContext('continueConversation');
     final data =
         await _postRequest('/api/v1/triage/intake/conversation/continue', {
           'intakeSessionId': intakeSessionId,
@@ -232,23 +238,29 @@ class TriageService implements TriageContinuationGateway {
     }).timeout(_requestTimeout);
   }
 
-  _ContinuationRequestContext? _captureContinuationContext() {
+  _ContinuationRequestContext? _captureContinuationContext(String operation) {
     final userId = AuthState.instance.userId;
     if (userId == null || userId.isEmpty) return null;
-    final requestSequence = (_latestRequestSequenceByUser[userId] ?? 0) + 1;
-    _latestRequestSequenceByUser[userId] = requestSequence;
+    final key = _sequenceKey(userId, operation);
+    final requestSequence = (_latestRequestSequenceByUser[key] ?? 0) + 1;
+    _latestRequestSequenceByUser[key] = requestSequence;
     return _ContinuationRequestContext(
       userId: userId,
+      operation: operation,
       generation: _continuationStore.generationFor(userId),
       requestSequence: requestSequence,
     );
   }
 
+  static String _sequenceKey(String userId, String operation) =>
+      '$userId::$operation';
+
   bool _isCurrent(_ContinuationRequestContext requestContext) {
     final userId = requestContext.userId;
+    final key = _sequenceKey(userId, requestContext.operation);
     return AuthState.instance.userId == userId &&
         requestContext.generation == _continuationStore.generationFor(userId) &&
-        requestContext.requestSequence == _latestRequestSequenceByUser[userId];
+        requestContext.requestSequence == _latestRequestSequenceByUser[key];
   }
 
   void _throwIfStale(_ContinuationRequestContext? requestContext) {
@@ -324,11 +336,13 @@ class TriageConsentRequiredFailure implements Exception {
 class _ContinuationRequestContext {
   const _ContinuationRequestContext({
     required this.userId,
+    required this.operation,
     required this.generation,
     required this.requestSequence,
   });
 
   final String userId;
+  final String operation;
   final int generation;
   final int requestSequence;
 }

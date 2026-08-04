@@ -97,6 +97,15 @@ EVIDENCE_REGISTRY_URL = (os.getenv("AI_TRIAGE_EVIDENCE_REGISTRY_URL") or "").rst
 EVIDENCE_REGISTRY_INTERNAL_KEY = (os.getenv("AI_TRIAGE_INTERNAL_API_KEY") or "").strip()
 EVIDENCE_REGISTRY_CACHE_SECONDS = _int_env("AI_TRIAGE_EVIDENCE_REGISTRY_CACHE_SECONDS", 300, 30, 3600)
 
+# Realtime official-source search backend (Google Programmable Search Engine —
+# https://programmablesearchengine.google.com/ — free tier: 100 queries/day).
+# Plain HTML scraping of a general search engine is not used here: it is
+# unreliable (bot-detection/CAPTCHA challenges) and would violate the "no
+# CAPTCHA bypass" policy this service must follow. Leave both blank to disable
+# realtime search entirely (local Knowledge Base citations still work).
+GOOGLE_SEARCH_API_KEY = (os.getenv("GOOGLE_SEARCH_API_KEY") or "").strip()
+GOOGLE_SEARCH_ENGINE_ID = (os.getenv("GOOGLE_SEARCH_ENGINE_ID") or "").strip()
+
 GRAPH_VERSION = "tv5-gemini-assisted-triage-1.1"
 RULE_SET_VERSION = "pediatric-risk-rules-1.0"
 ONTOLOGY_VERSION = "child-symptoms-1.0"

@@ -124,7 +124,9 @@ def apply_red_flag_rules(
         add("RED_LETHARGY", "Lơ mơ, li bì hoặc khó đánh thức")
     if {"unable_to_drink", "poor_feeding"} & symptoms:
         add("RED_POOR_FEEDING", "Bỏ bú hoặc không uống được")
-    if {"mild_dehydration", "severe_dehydration"} & symptoms and ("diarrhea" in symptoms or intake.diarrhea):
+    # NOTE: intake.diarrhea is a free-text field (str | None); any non-empty answer (including
+    # a negative one like "Không") is truthy, so only the normalized "diarrhea" code is used here.
+    if {"mild_dehydration", "severe_dehydration"} & symptoms and "diarrhea" in symptoms:
         add("RED_DIARRHEA_DEHYDRATION", "Tiêu chảy kèm dấu hiệu mất nước")
     elif "severe_dehydration" in symptoms:
         add("RED_SEVERE_DEHYDRATION", "Dấu hiệu mất nước nặng")

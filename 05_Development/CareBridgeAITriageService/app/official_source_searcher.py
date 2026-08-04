@@ -2,14 +2,20 @@ from __future__ import annotations
 
 import hashlib
 import html
+import json
 import re
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from urllib.parse import parse_qs, quote_plus, unquote, urlparse
+from urllib.parse import urlencode, urlparse
 from urllib.request import Request, urlopen
 
-from app.config import EVIDENCE_CACHE_TTL_DAYS, REALTIME_SEARCH_TIMEOUT_SECONDS
+from app.config import (
+    EVIDENCE_CACHE_TTL_DAYS,
+    GOOGLE_SEARCH_API_KEY,
+    GOOGLE_SEARCH_ENGINE_ID,
+    REALTIME_SEARCH_TIMEOUT_SECONDS,
+)
 from app.evidence_registry_client import approved_sources_for_stage
 from app.schemas import SourceDocument
 from app.source_validator import domain_from_url, is_whitelisted_url, validate_source
@@ -22,7 +28,10 @@ class SearchHit:
     snippet: str = ""
 
 
-_SEARCH_CACHE: dict[tuple[tuple[str, ...], tuple[str, ...], int], tuple[float, list[SourceDocument]]] = {}
+_SEARCH_CACHE: dict[
+    tuple[str, tuple[str, ...], tuple[str, ...], int, tuple[str, ...]],
+    tuple[float, list[SourceDocument]],
+] = {}
 
 _SYMPTOM_TERMS: dict[str, tuple[str, ...]] = {
     "fever": ("fever", "high temperature", "sốt"),
@@ -57,7 +66,20 @@ def realtime_official_search(
     if not symptoms:
         return []
 
-    cache_key = (tuple(sorted(symptoms)), tuple(sorted(matched_rules)), max_results)
+    domains = {source.domain for source in approved_sources_for_stage(stage)}
+    if not domains:
+        return []
+
+    # Stage AND the approved-domain set are part of the key: the same symptom
+    # codes mean different search terms and a different validated domain set for
+    # maternal vs pediatric stages (see build_search_queries), so a cached
+    # pediatric hit must never be served back for a maternal request with the
+    # same normalized symptom codes — and a newly whitelisted/revoked domain
+    # must not be masked by a stale cache entry keyed only on symptoms/stage.
+    cache_key = (
+        stage.upper(), tuple(sorted(symptoms)), tuple(sorted(matched_rules)),
+        max_results, tuple(sorted(domains)),
+    )
     cached = _SEARCH_CACHE.get(cache_key)
     ttl_seconds = EVIDENCE_CACHE_TTL_DAYS * 24 * 60 * 60
     if cached and time.monotonic() - cached[0] < ttl_seconds:
@@ -68,10 +90,7 @@ def realtime_official_search(
         time.monotonic() + REALTIME_SEARCH_TIMEOUT_SECONDS,
     )
     candidates: list[SourceDocument] = []
-    domains = {source.domain for source in approved_sources_for_stage(stage)}
-    if not domains:
-        return []
-    for query in build_search_queries(symptoms, domains):
+    for query in build_search_queries(symptoms, domains, stage):
         if _remaining(deadline) <= 0:
             break
         for hit in _search_web(query, deadline):
@@ -91,10 +110,23 @@ def realtime_official_search(
     return [source.model_copy(deep=True) for source in result]
 
 
-def build_search_queries(symptoms: list[str], approved_domains: set[str] | None = None) -> list[str]:
+_MATERNAL_SUBJECT_TERMS: dict[str, str] = {
+    "PRECONCEPTION": "woman planning pregnancy",
+    "PREGNANCY": "pregnant woman",
+    "POSTPARTUM": "postpartum woman",
+}
+
+
+def build_search_queries(
+    symptoms: list[str], approved_domains: set[str] | None = None, stage: str = "INFANT",
+) -> list[str]:
     symptom_terms = " ".join(symptom.replace("_", " ") for symptom in symptoms[:3])
+    # The user is describing her own symptoms at a specific life stage, not a
+    # child's — searching "child <symptom>" (or the wrong maternal stage) returns
+    # pages that don't match what she actually reported.
+    subject_term = _MATERNAL_SUBJECT_TERMS.get(stage.upper(), "child")
     return [
-        f"site:{domain} child {symptom_terms} official medical source"
+        f"site:{domain} {subject_term} {symptom_terms} official medical source"
         for domain in sorted(approved_domains or set())
     ]
 
@@ -117,24 +149,42 @@ def _search_web(query: str, deadline: float | None = None) -> list[SearchHit]:
     deadline = deadline or (time.monotonic() + REALTIME_SEARCH_TIMEOUT_SECONDS)
     if _remaining(deadline) <= 0:
         return []
-    url = f"https://duckduckgo.com/html/?q={quote_plus(query)}"
+    # Scraping a general search engine's HTML results page is not used here: it
+    # is unreliable behind bot-detection/CAPTCHA challenges, and working around
+    # that would violate this service's "no CAPTCHA bypass" policy. A configured
+    # search API is required instead; with none configured, realtime search
+    # simply contributes no results (local Knowledge Base citations still work).
+    if not GOOGLE_SEARCH_API_KEY or not GOOGLE_SEARCH_ENGINE_ID:
+        return []
+    params = urlencode({
+        "key": GOOGLE_SEARCH_API_KEY,
+        "cx": GOOGLE_SEARCH_ENGINE_ID,
+        "q": query,
+        "num": 5,
+    })
+    url = f"https://www.googleapis.com/customsearch/v1?{params}"
     try:
         request = Request(url, headers={"User-Agent": "CareBridgeAITriage/1.0"})
         with urlopen(request, timeout=_io_timeout(deadline)) as response:
             body = response.read(120_000).decode("utf-8", errors="ignore")
+        payload = json.loads(body)
     except Exception:
         return []
 
     hits: list[SearchHit] = []
-    for match in re.finditer(r'<a rel="nofollow" class="result__a" href="(?P<href>[^"]+)".*?>(?P<title>.*?)</a>', body, re.S):
-        title = re.sub(r"<.*?>", "", html.unescape(match.group("title"))).strip()
-        href = html.unescape(match.group("href"))
-        parsed = urlparse(href)
-        if parsed.query:
-            redirect = parse_qs(parsed.query).get("uddg", [""])[0]
-            href = unquote(redirect) if redirect else href
-        if urlparse(href).scheme == "https":
-            hits.append(SearchHit(title=title, url=href))
+    items = payload.get("items") if isinstance(payload, dict) else None
+    if not isinstance(items, list):
+        items = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        link = item.get("link")
+        title = item.get("title")
+        if not isinstance(link, str) or not isinstance(title, str):
+            continue
+        if urlparse(link).scheme != "https":
+            continue
+        hits.append(SearchHit(title=title.strip(), url=link, snippet=str(item.get("snippet") or "")))
     return hits[:5]
 
 

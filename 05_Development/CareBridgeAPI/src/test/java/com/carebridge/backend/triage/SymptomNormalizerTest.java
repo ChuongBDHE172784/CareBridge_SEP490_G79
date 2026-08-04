@@ -184,4 +184,67 @@ class SymptomNormalizerTest {
         assertThat(makeNormalizer().normalize(makeFreeTextRequest("sot sinh sich")))
                 .as("TSSE-TC-09 stripped").contains("fever");
     }
+
+    // Regression fix (pediatric fallback / Python parity): SymptomNormalizer previously had NO
+    // negation guard at all, so "không khó thở" (no difficulty breathing) matched the raw
+    // substring "kho tho" and was misread as the red-flag symptom being PRESENT. Python's
+    // symptom_normalizer.py strips negated candidates before matching (_without_negated_candidate).
+    @Test
+    void negatedSymptomTextIsNotNormalizedAsPresent() {
+        assertThat(makeNormalizer().normalize(makeFreeTextRequest("Trẻ không khó thở, bú tốt")))
+                .as("negated difficulty_breathing must not normalize as present")
+                .doesNotContain("difficulty_breathing");
+        assertThat(makeNormalizer().normalize(makeFreeTextRequest("Bé không co giật, tỉnh táo")))
+                .as("negated seizure must not normalize as present")
+                .doesNotContain("seizure");
+        assertThat(makeNormalizer().normalize(makeFreeTextRequest("Bé không lơ mơ")))
+                .as("negated lethargy must not normalize as present")
+                .doesNotContain("lethargy");
+    }
+
+    // Regression fix: matching switched from plain substring (String::contains) to
+    // word-boundary regex, so the short keyword "non" (vomiting) no longer false-positives
+    // inside unrelated words like "nong" (fever synonym). Python already used word-boundary regex.
+    @Test
+    void shortKeywordDoesNotFalsePositiveInsideLongerWord() {
+        List<String> codes = makeNormalizer().normalize(makeFreeTextRequest("Bé nóng người"));
+        assertThat(codes).as("'nong' must mean fever, not leak into vomiting").contains("fever");
+        assertThat(codes).as("'nong' substring must not false-positive into vomiting's 'non' keyword")
+                .doesNotContain("vomiting");
+    }
+
+    // Guard against a regression introduced by the word-boundary rewrite itself: plural English
+    // inflections ("seizures", "convulsions") matched under the old substring::contains check
+    // ("seizure" is a literal substring of "seizures") but would silently stop matching under
+    // strict word-boundary regex. Explicit plural aliases restore detection (mirrored in Python).
+    @Test
+    void pluralEnglishSeizureAliasesStillNormalize() {
+        assertThat(makeNormalizer().normalize(makeFreeTextRequest("the baby had seizures")))
+                .as("plural 'seizures' must still normalize to seizure").contains("seizure");
+        assertThat(makeNormalizer().normalize(makeFreeTextRequest("repeated convulsions overnight")))
+                .as("plural 'convulsions' must still normalize to seizure").contains("seizure");
+    }
+
+    // Regression fix (pre-existing, unrelated to the word-boundary rewrite): 'đ' has no NFD
+    // decomposition, so stripAccents() never turns "đánh" into "danh" — the diacritic form of
+    // "khó đánh thức" needs its own KEYWORDS alias or RED_LETHARGY is silently missed.
+    @Test
+    void diacriticDifficultToWakePhraseNormalizes() {
+        assertThat(makeNormalizer().normalize(makeFreeTextRequest("Bé khó đánh thức, gọi không dậy")))
+                .as("diacritic 'khó đánh thức' must normalize to difficult_to_wake")
+                .contains("difficult_to_wake");
+    }
+
+    // Regression fix: "high_fever" is now recognized directly from free text ("sốt cao"/"high
+    // fever"), not only from a numeric temperatureC >= 39.0 reading — parity with Python's
+    // ONTOLOGY entry "high_fever": ("sot cao", "high fever").
+    @Test
+    void highFeverIsRecognizedFromFreeTextWithoutTemperature() {
+        assertThat(makeNormalizer().normalize(makeFreeTextRequest("Bé sốt cao liên tục")))
+                .as("'sot cao' text alone should normalize to high_fever")
+                .contains("high_fever");
+        assertThat(makeNormalizer().normalize(makeFreeTextRequest("high fever since last night")))
+                .as("'high fever' English text should normalize to high_fever")
+                .contains("high_fever");
+    }
 }
