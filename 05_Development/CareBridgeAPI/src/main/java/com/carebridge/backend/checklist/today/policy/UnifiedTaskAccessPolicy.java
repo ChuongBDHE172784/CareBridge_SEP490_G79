@@ -47,6 +47,26 @@ public class UnifiedTaskAccessPolicy {
                 instance.getCareGroupId(), actorUserId, PermissionFlag.CHECKLIST_VIEW);
     }
 
+    /** Explicit FAMILY scope. Mother checklist rows remain personal (careGroupId null),
+     * so this path validates the selected group against the row's linked owner/context
+     * instead of pretending the family member is the recipient. */
+    public boolean canView(ChecklistInstance instance, UUID actorUserId, UUID careGroupId) {
+        if (!isCanonicalMotherInstance(instance)) {
+            return false;
+        }
+        if (careGroupId == null || actorUserId == null
+                || !careGroupAuthorizationPolicy.hasPermission(
+                        careGroupId, actorUserId, PermissionFlag.CHECKLIST_VIEW)) {
+            return false;
+        }
+        return groupRepository.findById(careGroupId)
+                .filter(group -> group.getStatus() == CareGroupStatus.ACTIVE)
+                .filter(group -> instance.getContextOwnerUserId().equals(group.getOwnerUserId()))
+                .filter(group -> hasMatchingLinkedContext(instance, group))
+                .filter(group -> hasActiveCanonicalContext(instance, group))
+                .isPresent();
+    }
+
     public boolean canComplete(ChecklistInstance instance, UUID actorUserId) {
         if (!canView(instance, actorUserId)) {
             return false;
@@ -54,6 +74,23 @@ public class UnifiedTaskAccessPolicy {
         return instance.getRecipientRole() == ChecklistRecipientRole.MOTHER
                 || careGroupAuthorizationPolicy.hasPermission(
                 instance.getCareGroupId(), actorUserId, PermissionFlag.CHECKLIST_COMPLETE);
+    }
+
+    public boolean canComplete(ChecklistInstance instance, UUID actorUserId, UUID careGroupId) {
+        return canView(instance, actorUserId, careGroupId)
+                && careGroupAuthorizationPolicy.hasPermission(
+                        careGroupId, actorUserId, PermissionFlag.CHECKLIST_COMPLETE);
+    }
+
+    private static boolean isCanonicalMotherInstance(ChecklistInstance instance) {
+        return instance != null
+                && instance.getRecipientRole() == ChecklistRecipientRole.MOTHER
+                && instance.getRecipientUserId() != null
+                && instance.getRecipientUserId().equals(instance.getContextOwnerUserId())
+                && instance.getCareGroupId() == null
+                && instance.getOrigin() == com.carebridge.backend.checklist.model.ChecklistOrigin.SYSTEM_TEMPLATE
+                && instance.getCareContextType() != null
+                && instance.getCareContextId() != null;
     }
 
     private static boolean isCanonicalRecipient(ChecklistInstance instance, UUID actorUserId) {

@@ -69,6 +69,30 @@ public interface AppointmentNotificationJobRepository
     @Modifying
     @Query("""
             update AppointmentNotificationJob j
+               set j.status = :status,
+                   j.nextAttemptAt = :nextAttemptAt,
+                   j.lastErrorCode = :errorCode,
+                   j.notificationRecordId = :notificationRecordId,
+                   j.lockedBy = null,
+                   j.lockedAt = null,
+                   j.updatedAt = :updatedAt
+             where j.id = :jobId
+               and j.status = :processing
+               and j.lockedBy = :workerId
+            """)
+    int transitionAfterProcessing(
+            @Param("jobId") UUID jobId,
+            @Param("workerId") String workerId,
+            @Param("processing") AppointmentNotificationJobStatus processing,
+            @Param("status") AppointmentNotificationJobStatus status,
+            @Param("nextAttemptAt") Instant nextAttemptAt,
+            @Param("errorCode") String errorCode,
+            @Param("notificationRecordId") UUID notificationRecordId,
+            @Param("updatedAt") Instant updatedAt);
+
+    @Modifying
+    @Query("""
+            update AppointmentNotificationJob j
                set j.status = :cancelled,
                    j.lockedBy = null,
                    j.lockedAt = null,

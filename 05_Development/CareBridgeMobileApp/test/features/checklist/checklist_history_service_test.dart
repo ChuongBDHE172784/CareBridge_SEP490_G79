@@ -37,4 +37,26 @@ void main() {
       expect(page.hasNextPage, isFalse);
     },
   );
+
+  test('binds FAMILY history to the selected care group', () async {
+    String? capturedPath;
+    final service = ChecklistHistoryService(
+      getRequest: (path, {queryParams}) async {
+        capturedPath = path;
+        return {
+          'data': {
+            'items': const [],
+            'page': 0,
+            'size': 20,
+            'totalElements': 0,
+            'totalPages': 0,
+          },
+        };
+      },
+    );
+
+    await service.loadHistory(careGroupId: 'group-b');
+
+    expect(capturedPath, '/api/v1/care-groups/group-b/checklists/history');
+  });
 }

@@ -126,7 +126,12 @@ public class UnifiedTodayTaskServiceImpl implements UnifiedTodayTaskService {
         List<TodayTaskCandidate> candidates = new ArrayList<>();
         for (TodayTaskProvider provider : providers) {
             if (kinds != null && !kinds.contains(provider.taskKind())) continue;
-            candidates.addAll(provider.findAuthorizedTasks(actorUserId));
+            List<TodayTaskCandidate> provided = provider.supportsDateAwareRead()
+                    ? provider.findAuthorizedTasks(actorUserId, effectiveDate, zone)
+                    : provider.findAuthorizedTasks(actorUserId);
+            if (provided != null) {
+                candidates.addAll(provided);
+            }
         }
         Map<TodayTaskContextLabelResolver.ContextKey, TodayTaskContextLabelResolver.Labels> labels =
                 labelResolver == null ? Map.of() : labelResolver.resolve(candidates);

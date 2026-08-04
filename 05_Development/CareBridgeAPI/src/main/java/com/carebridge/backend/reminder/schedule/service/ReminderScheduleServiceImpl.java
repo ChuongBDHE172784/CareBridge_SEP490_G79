@@ -155,11 +155,10 @@ public class ReminderScheduleServiceImpl implements ReminderScheduleService {
     @Transactional
     public void delete(UUID ownerUserId, UUID scheduleId) {
         ReminderSchedule schedule = requireOwned(ownerUserId, scheduleId);
-        schedule.setActive(false);
-        schedule.setRevision(schedule.getRevision() + 1L);
-        scheduleRepository.save(schedule);
         jobRepository.cancelActiveByScheduleId(schedule.getId(), ACTIVE_STATUSES,
                 AppointmentNotificationJobStatus.CANCELLED, clock.instant());
+        timeRepository.deleteByScheduleId(schedule.getId());
+        scheduleRepository.delete(schedule);
     }
 
     /** Invoked by the gated horizon planner; it never changes the schedule revision. */

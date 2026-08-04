@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/network/api_client.dart';
 import '../models/checklist_history_model.dart';
 import '../services/checklist_history_service.dart';
 
 class ChecklistHistoryScreen extends StatefulWidget {
-  const ChecklistHistoryScreen({super.key, this.service});
+  const ChecklistHistoryScreen({super.key, this.service, this.careGroupId});
 
   final ChecklistHistoryService? service;
+  final String? careGroupId;
 
   @override
   State<ChecklistHistoryScreen> createState() => _ChecklistHistoryScreenState();
@@ -43,6 +45,9 @@ class _ChecklistHistoryScreenState extends State<ChecklistHistoryScreen> {
       _service = widget.service ?? ChecklistHistoryService.instance;
       _load(reset: true);
     }
+    if (oldWidget.careGroupId != widget.careGroupId) {
+      _load(reset: true);
+    }
   }
 
   Future<void> _load({required bool reset}) async {
@@ -53,9 +58,7 @@ class _ChecklistHistoryScreenState extends State<ChecklistHistoryScreen> {
         _error = null;
         _page = 0;
         _hasMore = false;
-        if (!_loadingMore) {
-          _items = [];
-        }
+        _items = [];
       });
     }
     try {
@@ -64,6 +67,7 @@ class _ChecklistHistoryScreenState extends State<ChecklistHistoryScreen> {
         page: pageToLoad,
         size: 20,
         targetSubject: _filter,
+        careGroupId: widget.careGroupId,
       );
       if (!mounted || requestGeneration != _requestGeneration) return;
       setState(() {
@@ -80,6 +84,13 @@ class _ChecklistHistoryScreenState extends State<ChecklistHistoryScreen> {
         _loading = false;
         _loadingMore = false;
         _error = error.toString();
+        if (error is ApiException &&
+            (error.statusCode == 401 ||
+                error.statusCode == 403 ||
+                error.statusCode == 404)) {
+          _items = [];
+          _hasMore = false;
+        }
       });
     }
   }
@@ -233,7 +244,8 @@ class _ChecklistHistoryScreenState extends State<ChecklistHistoryScreen> {
                           Row(
                             children: [
                               Icon(
-                                item.targetSubject == ChecklistHistoryTargetSubject.baby
+                                item.targetSubject ==
+                                        ChecklistHistoryTargetSubject.baby
                                     ? Icons.child_care_rounded
                                     : Icons.pregnant_woman_rounded,
                                 color: _primary,

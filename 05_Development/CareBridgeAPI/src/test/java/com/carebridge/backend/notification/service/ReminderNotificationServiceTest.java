@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.notification.dto.FcmDeliveryResult;
 import com.carebridge.backend.notification.dto.NotificationRecordResponse;
+import com.carebridge.backend.notification.dto.ReminderNotificationCommand;
 import com.carebridge.backend.notification.entity.DevicePlatform;
 import com.carebridge.backend.notification.entity.DeviceToken;
 import com.carebridge.backend.notification.entity.NotificationRecord;
@@ -21,6 +22,8 @@ import com.carebridge.backend.notification.repository.NotificationRecordReposito
 import com.carebridge.backend.notification.service.impl.ReminderNotificationService;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -121,6 +124,44 @@ class ReminderNotificationServiceTest {
         verify(notificationRecordRepository).save(captor.capture());
         assertThat(captor.getValue().getReferenceId()).isEqualTo(REMINDER_ID);
         assertThat(captor.getValue().getReferenceType()).isEqualTo("REMINDER");
+    }
+
+    @Test
+    @DisplayName("NOTIF-TC-007: eligible appointment retry reuses a FAILED record")
+    void sendAppointmentNotification_failedRecordIsRetriedInPlace() {
+        UUID jobId = UUID.fromString("20000000-0000-0000-0000-000000000158");
+        UUID occurrenceId = UUID.fromString("30000000-0000-0000-0000-000000000158");
+        NotificationRecord failed = NotificationRecord.builder()
+                .id(UUID.fromString("40000000-0000-0000-0000-000000000158"))
+                .userId(USER_ID)
+                .type(NotificationType.REMINDER)
+                .title("Old appointment reminder")
+                .body("old body")
+                .referenceId(REMINDER_ID)
+                .referenceType("APPOINTMENT")
+                .status(NotificationRecordStatus.FAILED)
+                .attemptCount(3)
+                .build();
+        ReminderNotificationCommand command = new ReminderNotificationCommand(
+                jobId, REMINDER_ID, occurrenceId, USER_ID, "Prenatal appointment",
+                Instant.parse("2026-08-04T01:00:00Z"), -30, "UTC");
+
+        when(preferenceRepository.isPushEnabled(USER_ID, NotificationType.REMINDER)).thenReturn(true);
+        when(notificationRecordRepository.findAppointmentMilestoneByJobId(jobId))
+                .thenReturn(Optional.of(failed));
+        when(deviceTokenRepository.findByUserIdAndActiveTrue(USER_ID))
+                .thenReturn(List.of(token("token-1")));
+        when(fcmService.sendWithRetry(eq("token-1"), any(), any(), any(Map.class), eq(3)))
+                .thenReturn(FcmDeliveryResult.success("fcm-retry-001", 1));
+        when(notificationRecordRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        NotificationRecordResponse response = service.sendAppointmentNotification(command);
+
+        assertThat(response.status()).isEqualTo("SENT");
+        assertThat(response.id()).isEqualTo(failed.getId());
+        verify(fcmService).sendWithRetry(eq("token-1"), any(), any(), any(Map.class), eq(3));
+        assertThat(failed.getStatus()).isEqualTo(NotificationRecordStatus.SENT);
+        assertThat(failed.getAttemptCount()).isEqualTo(1);
     }
 
     private DeviceToken token(String value) {

@@ -42,6 +42,9 @@ class ReminderScheduleProcessingServiceTest {
     void setUp() {
         service = new ReminderScheduleProcessingService(jobRepository, scheduleRepository,
                 notificationService, Clock.fixed(NOW, ZoneOffset.UTC), 4, 10);
+        org.mockito.Mockito.lenient().when(jobRepository.transitionAfterProcessing(
+                any(), any(), eq(AppointmentNotificationJobStatus.PROCESSING), any(), any(), any(), any(), any()))
+                .thenReturn(1);
     }
 
     @Test
@@ -74,9 +77,24 @@ class ReminderScheduleProcessingServiceTest {
 
         service.process(JOB_ID, "worker-1");
 
-        verify(jobRepository).save(job);
         org.assertj.core.api.Assertions.assertThat(job.getStatus())
                 .isEqualTo(AppointmentNotificationJobStatus.PENDING);
+    }
+
+    @Test
+    void staleBacklogIsSuppressedWithoutCallingTheSender() {
+        ReminderScheduleJob job = job("worker-1");
+        job.setDueAt(NOW.minusSeconds(2 * 60 * 60));
+        when(jobRepository.findById(JOB_ID)).thenReturn(Optional.of(job));
+
+        service.process(JOB_ID, "worker-1");
+
+        org.assertj.core.api.Assertions.assertThat(job.getStatus())
+                .isEqualTo(AppointmentNotificationJobStatus.SUPPRESSED);
+        org.assertj.core.api.Assertions.assertThat(job.getLastErrorCode())
+                .isEqualTo("STALE_BACKLOG");
+        verify(notificationService, never()).sendReminderScheduleNotification(
+                any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     private static ReminderScheduleJob job(String worker) {

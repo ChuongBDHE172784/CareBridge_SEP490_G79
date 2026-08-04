@@ -51,6 +51,30 @@ public interface ReminderScheduleJobRepository extends JpaRepository<ReminderSch
     @Modifying
     @Query("""
             update ReminderScheduleJob j
+               set j.status = :status,
+                   j.nextAttemptAt = :nextAttemptAt,
+                   j.lastErrorCode = :errorCode,
+                   j.notificationRecordId = :notificationRecordId,
+                   j.lockedBy = null,
+                   j.lockedAt = null,
+                   j.updatedAt = :updatedAt
+             where j.id = :jobId
+               and j.status = :processing
+               and j.lockedBy = :workerId
+            """)
+    int transitionAfterProcessing(
+            @Param("jobId") UUID jobId,
+            @Param("workerId") String workerId,
+            @Param("processing") AppointmentNotificationJobStatus processing,
+            @Param("status") AppointmentNotificationJobStatus status,
+            @Param("nextAttemptAt") Instant nextAttemptAt,
+            @Param("errorCode") String errorCode,
+            @Param("notificationRecordId") UUID notificationRecordId,
+            @Param("updatedAt") Instant updatedAt);
+
+    @Modifying
+    @Query("""
+            update ReminderScheduleJob j
                set j.status = :cancelled, j.lockedBy = null, j.lockedAt = null, j.updatedAt = :now
              where j.scheduleId = :scheduleId and j.status in :activeStatuses
             """)

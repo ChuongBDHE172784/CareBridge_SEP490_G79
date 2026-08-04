@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/foundation.dart';
 import 'package:untitled/core/notifications/fcm_service.dart';
 
 // MEDI-FL-09 — this codebase has no Firebase Messaging platform-channel mocking
@@ -111,6 +112,24 @@ void main() {
   test('unknown type resolves to no route', () {
     final route = FcmService.resolveTapRoute({'type': 'SOMETHING_ELSE'});
     expect(route, isNull);
+  });
+
+  test('platform registration labels Web separately from Android and iOS', () {
+    expect(FcmService.platformNameForTesting(isWeb: true), 'WEB');
+    expect(
+      FcmService.platformNameForTesting(
+        isWeb: false,
+        platform: TargetPlatform.android,
+      ),
+      'ANDROID',
+    );
+    expect(
+      FcmService.platformNameForTesting(
+        isWeb: false,
+        platform: TargetPlatform.iOS,
+      ),
+      'IOS',
+    );
   });
 
   test('malformed consultation request identifier is rejected', () {

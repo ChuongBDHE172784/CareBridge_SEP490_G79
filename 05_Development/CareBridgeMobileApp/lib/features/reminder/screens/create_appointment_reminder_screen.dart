@@ -207,34 +207,6 @@ class _CreateAppointmentReminderScreenState
                     'Lịch hẹn, khám định kỳ hoặc tái khám *',
                   ),
                 ),
-                const SizedBox(height: 10),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFF8F6),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(
-                        Icons.info_outline_rounded,
-                        size: 18,
-                        color: _primary,
-                      ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Nhắc nhở này sẽ giúp bạn không quên lịch hẹn quan trọng với bác sĩ.',
-                          style: TextStyle(
-                            fontFamily: 'Lexend',
-                            fontSize: 12,
-                            color: _onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ],
             ),
           ),
@@ -245,14 +217,6 @@ class _CreateAppointmentReminderScreenState
               minLines: 2,
               maxLines: 4,
               decoration: _inputDecoration('Địa điểm hoặc phòng khám'),
-            ),
-          ),
-          const SizedBox(height: 14),
-          _Section(
-            child: _DateButton(
-              label: 'Ngày hẹn',
-              value: _formatDate(_startDate),
-              onTap: _pickStartDate,
             ),
           ),
           const SizedBox(height: 14),
@@ -333,15 +297,6 @@ class _CreateAppointmentReminderScreenState
                         ),
                       )
                       .toList(),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Lịch hẹn chỉ có một giờ. Muốn đặt nhiều giờ lặp lại, hãy dùng Lịch nhắc.',
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 12,
-                    color: _onSurfaceVariant,
-                  ),
                 ),
               ],
             ),

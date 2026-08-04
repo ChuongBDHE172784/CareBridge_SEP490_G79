@@ -37,22 +37,12 @@ class AddUserChecklistTaskButton extends StatelessWidget {
     return Semantics(
       button: true,
       label: 'Thêm việc do tôi tạo',
-      child: OutlinedButton.icon(
+      child: IconButton(
         key: const Key('add-user-checklist-task'),
+        tooltip: 'Thêm việc',
         onPressed: () => _openComposer(context),
         icon: const Icon(Icons.add_rounded),
-        label: const Text('Thêm việc'),
-        style: OutlinedButton.styleFrom(
-          minimumSize: const Size(48, 48),
-          foregroundColor: const Color(0xFF845143),
-          backgroundColor: Colors.white,
-          side: const BorderSide(color: Color(0xFFD6C2BD)),
-          shape: const StadiumBorder(),
-          textStyle: const TextStyle(
-            fontFamily: 'Quicksand',
-            fontWeight: FontWeight.w800,
-          ),
-        ),
+        color: const Color(0xFF845143),
       ),
     );
   }

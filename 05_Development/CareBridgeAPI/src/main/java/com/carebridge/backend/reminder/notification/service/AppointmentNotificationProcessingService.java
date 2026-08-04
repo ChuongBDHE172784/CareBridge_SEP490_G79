@@ -35,6 +35,7 @@ public class AppointmentNotificationProcessingService {
     private final Clock clock;
     private final int maxAttempts;
     private final long staleProcessingMinutes;
+    private final long staleBacklogGraceMinutes;
 
     @Autowired
     public AppointmentNotificationProcessingService(
@@ -43,9 +44,11 @@ public class AppointmentNotificationProcessingService {
             ReminderRepository reminderRepository,
             IReminderNotificationService notificationService,
             @Value("${carebridge.notification.appointment.max-attempts:4}") int maxAttempts,
-            @Value("${carebridge.notification.appointment.stale-processing-minutes:10}") long staleProcessingMinutes) {
+            @Value("${carebridge.notification.appointment.stale-processing-minutes:10}") long staleProcessingMinutes,
+            @Value("${carebridge.notification.appointment.stale-backlog-grace-minutes:60}")
+            long staleBacklogGraceMinutes) {
         this(jobRepository, configRepository, reminderRepository, notificationService,
-                Clock.systemUTC(), maxAttempts, staleProcessingMinutes);
+                Clock.systemUTC(), maxAttempts, staleProcessingMinutes, staleBacklogGraceMinutes);
     }
 
     AppointmentNotificationProcessingService(
@@ -56,13 +59,27 @@ public class AppointmentNotificationProcessingService {
             Clock clock,
             int maxAttempts,
             long staleProcessingMinutes) {
+        this(jobRepository, configRepository, reminderRepository, notificationService, clock,
+                maxAttempts, staleProcessingMinutes, 60);
+    }
+
+    AppointmentNotificationProcessingService(
+            AppointmentNotificationJobRepository jobRepository,
+            AppointmentNotificationConfigRepository configRepository,
+            ReminderRepository reminderRepository,
+            IReminderNotificationService notificationService,
+            Clock clock,
+            int maxAttempts,
+            long staleProcessingMinutes,
+            long staleBacklogGraceMinutes) {
         this.jobRepository = jobRepository;
         this.configRepository = configRepository;
         this.reminderRepository = reminderRepository;
         this.notificationService = notificationService;
         this.clock = clock;
-        this.maxAttempts = maxAttempts;
-        this.staleProcessingMinutes = staleProcessingMinutes;
+        this.maxAttempts = Math.max(1, maxAttempts);
+        this.staleProcessingMinutes = Math.max(0, staleProcessingMinutes);
+        this.staleBacklogGraceMinutes = Math.max(0, staleBacklogGraceMinutes);
     }
 
     @Transactional
@@ -74,7 +91,7 @@ public class AppointmentNotificationProcessingService {
                 AppointmentNotificationJobStatus.PROCESSING);
         List<UUID> claimed = new ArrayList<>();
         for (UUID id : jobRepository.findClaimableIds(
-                AppointmentNotificationJobStatus.PENDING, now, PageRequest.of(0, batchSize))) {
+                AppointmentNotificationJobStatus.PENDING, now, PageRequest.of(0, Math.max(1, batchSize)))) {
             if (jobRepository.claim(
                     id, workerId, now,
                     AppointmentNotificationJobStatus.PENDING,
@@ -86,18 +103,37 @@ public class AppointmentNotificationProcessingService {
     }
 
     @Async
+    @Transactional
+    public void processAsync(UUID jobId, String workerId) {
+        process(jobId, workerId);
+    }
+
+    /** Compatibility entry point for callers that process an already-loaded job directly. */
+    @Async
+    @Transactional
     public void processAsync(UUID jobId) {
-        process(jobId);
+        process(jobId, null);
     }
 
     @Transactional
     public void process(UUID jobId) {
+        process(jobId, null);
+    }
+
+    @Transactional
+    public void process(UUID jobId, String workerId) {
         AppointmentNotificationJob job = jobRepository.findById(jobId).orElse(null);
-        if (job == null || job.getStatus() != AppointmentNotificationJobStatus.PROCESSING) return;
+        if (job == null || job.getStatus() != AppointmentNotificationJobStatus.PROCESSING
+                || (workerId != null && !workerId.equals(job.getLockedBy()))) return;
+        Instant now = clock.instant();
+        if (isStaleBacklog(job, now)) {
+            finish(job, AppointmentNotificationJobStatus.SUPPRESSED, "STALE_BACKLOG", null, workerId);
+            return;
+        }
         Reminder reminder = reminderRepository.findById(job.getReminderId()).orElse(null);
         AppointmentNotificationConfig config = configRepository.findById(job.getReminderId()).orElse(null);
         if (!eligible(job, reminder, config)) {
-            finish(job, AppointmentNotificationJobStatus.SUPPRESSED, "APPOINTMENT_NOT_ACTIVE", null);
+            finish(job, AppointmentNotificationJobStatus.SUPPRESSED, "APPOINTMENT_NOT_ACTIVE", null, workerId);
             return;
         }
         try {
@@ -107,15 +143,20 @@ public class AppointmentNotificationProcessingService {
                             reminder.getTitle(), job.getOccurrenceScheduledAt(), job.getOffsetMinutes(),
                             config.getTimeZone()));
             if (response == null) {
-                finish(job, AppointmentNotificationJobStatus.SUPPRESSED, "REMINDER_PUSH_DISABLED", null);
-            } else if ("SENT".equals(response.status())) {
-                finish(job, AppointmentNotificationJobStatus.SENT, null, response.id());
+                finish(job, AppointmentNotificationJobStatus.SUPPRESSED, "REMINDER_PUSH_DISABLED", null, workerId);
+            } else if ("SENT".equals(response.status()) || "DELIVERED".equals(response.status())) {
+                finish(job, AppointmentNotificationJobStatus.SENT, null, response.id(), workerId);
             } else {
-                retryOrFail(job, "APPOINTMENT_DELIVERY_FAILED", response.id());
+                retryOrFail(job, "APPOINTMENT_DELIVERY_FAILED", response.id(), workerId);
             }
         } catch (RuntimeException exception) {
-            retryOrFail(job, "APPOINTMENT_DELIVERY_ERROR", null);
+            retryOrFail(job, "APPOINTMENT_DELIVERY_ERROR", null, workerId);
         }
+    }
+
+    private boolean isStaleBacklog(AppointmentNotificationJob job, Instant now) {
+        return job.getDueAt() != null
+                && job.getDueAt().isBefore(now.minus(Duration.ofMinutes(staleBacklogGraceMinutes)));
     }
 
     private boolean eligible(
@@ -138,33 +179,60 @@ public class AppointmentNotificationProcessingService {
         return true;
     }
 
-    private void retryOrFail(AppointmentNotificationJob job, String errorCode, UUID recordId) {
+    private void retryOrFail(
+            AppointmentNotificationJob job, String errorCode, UUID recordId, String workerId) {
         if (job.getAttemptCount() >= maxAttempts) {
-            finish(job, AppointmentNotificationJobStatus.FAILED, errorCode, recordId);
+            finish(job, AppointmentNotificationJobStatus.FAILED, errorCode, recordId, workerId);
             return;
         }
         long delaySeconds = Math.min(30L * (1L << Math.min(Math.max(job.getAttemptCount() - 1, 0), 5)), 900L);
-        job.setStatus(AppointmentNotificationJobStatus.PENDING);
-        job.setNextAttemptAt(clock.instant().plusSeconds(delaySeconds));
-        job.setLastErrorCode(errorCode);
-        job.setNotificationRecordId(recordId);
-        job.setLockedAt(null);
-        job.setLockedBy(null);
-        job.setUpdatedAt(clock.instant());
-        jobRepository.save(job);
+        transition(job, AppointmentNotificationJobStatus.PENDING, errorCode, recordId,
+                clock.instant().plusSeconds(delaySeconds), workerId);
     }
 
     private void finish(
             AppointmentNotificationJob job,
             AppointmentNotificationJobStatus status,
             String errorCode,
-            UUID notificationRecordId) {
+            UUID notificationRecordId,
+            String workerId) {
+        transition(job, status, errorCode, notificationRecordId, job.getNextAttemptAt(), workerId);
+    }
+
+    private void transition(
+            AppointmentNotificationJob job,
+            AppointmentNotificationJobStatus status,
+            String errorCode,
+            UUID notificationRecordId,
+            Instant nextAttemptAt,
+            String workerId) {
+        Instant updatedAt = clock.instant();
+        if (workerId == null) {
+            applyTransition(job, status, errorCode, notificationRecordId, nextAttemptAt, updatedAt);
+            jobRepository.save(job);
+            return;
+        }
+        int updated = jobRepository.transitionAfterProcessing(
+                job.getId(), workerId, AppointmentNotificationJobStatus.PROCESSING,
+                status, nextAttemptAt, errorCode, notificationRecordId, updatedAt);
+        if (updated == 1) {
+            applyTransition(job, status, errorCode, notificationRecordId, nextAttemptAt, updatedAt);
+        }
+    }
+
+    private void applyTransition(
+            AppointmentNotificationJob job,
+            AppointmentNotificationJobStatus status,
+            String errorCode,
+            UUID notificationRecordId,
+            Instant nextAttemptAt,
+            Instant updatedAt) {
         job.setStatus(status);
         job.setLastErrorCode(errorCode);
         job.setNotificationRecordId(notificationRecordId);
+        job.setNextAttemptAt(nextAttemptAt);
         job.setLockedAt(null);
         job.setLockedBy(null);
-        job.setUpdatedAt(clock.instant());
-        jobRepository.save(job);
+        job.setUpdatedAt(updatedAt);
     }
 }

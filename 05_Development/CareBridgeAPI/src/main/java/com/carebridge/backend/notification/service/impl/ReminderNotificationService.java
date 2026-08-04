@@ -137,7 +137,9 @@ public class ReminderNotificationService implements IReminderNotificationService
         NotificationRecord existing = notificationRecordRepository
                 .findAppointmentMilestoneByJobId(command.jobId())
                 .orElse(null);
-        if (existing != null) {
+        if (existing != null
+                && (existing.getStatus() == NotificationRecordStatus.SENT
+                || existing.getStatus() == NotificationRecordStatus.DELIVERED)) {
             return toResponse(existing);
         }
 
@@ -154,9 +156,18 @@ public class ReminderNotificationService implements IReminderNotificationService
         metadata.put("referenceType", "APPOINTMENT");
         metadata.put("route", "/appointments/detail/" + command.reminderId());
 
-        NotificationRecord record = baseRecord(
+        NotificationRecord record = existing != null ? existing : baseRecord(
                 command.userId(), NotificationType.REMINDER, title, body,
                 command.reminderId(), "APPOINTMENT");
+        record.setTitle(title);
+        record.setBody(body);
+        record.setReferenceId(command.reminderId());
+        record.setReferenceType("APPOINTMENT");
+        record.setStatus(NotificationRecordStatus.PROCESSING);
+        record.setFailedAt(null);
+        record.setSentAt(null);
+        record.setFcmMessageId(null);
+        record.setAttemptCount(0);
         record.setMetadata(metadata);
         List<DeviceToken> tokens = deviceTokenRepository.findByUserIdAndActiveTrue(command.userId());
         if (tokens.isEmpty()) {

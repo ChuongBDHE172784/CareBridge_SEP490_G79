@@ -46,14 +46,14 @@ class _ReminderSchedulesScreenState extends State<ReminderSchedulesScreen> {
           _openedInitial = true;
           WidgetsBinding.instance.addPostFrameCallback((_) => _edit(schedule));
         } else if (mounted) {
-          setState(() => _error = 'Khong tim thay lich nhac.');
+          setState(() => _error = 'Không tìm thấy lịch nhắc.');
         }
       }
     } catch (_) {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _error = 'Khong the tai lich nhac.';
+        _error = 'Không thể tải lịch nhắc.';
       });
     }
   }
@@ -68,29 +68,19 @@ class _ReminderSchedulesScreenState extends State<ReminderSchedulesScreen> {
     if (changed == true) _load();
   }
 
-  Future<void> _toggle(ReminderSchedule schedule) async {
-    try {
-      await (schedule.active
-          ? _service.disable(schedule.id)
-          : _service.enable(schedule.id));
-      await _load();
-    } catch (_) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Khong the cap nhat lich nhac.')),
-      );
-    }
-  }
-
   Future<void> _delete(ReminderSchedule schedule) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Tat lich nhac?'),
-        content: Text('Lich "${schedule.title}" se dung nhac va co the bat lai.'),
+        title: const Text('Xóa lịch nhắc?'),
+        content: Text('Bạn có chắc chắn muốn xóa lịch nhắc "${schedule.title}" không?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Huy')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Tat')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Hủy')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: const Color(0xFFBA1A1A)),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Xóa'),
+          ),
         ],
       ),
     );
@@ -101,7 +91,7 @@ class _ReminderSchedulesScreenState extends State<ReminderSchedulesScreen> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Khong the xoa lich nhac.')),
+        const SnackBar(content: Text('Không thể xóa lịch nhắc.')),
       );
     }
   }
@@ -109,7 +99,7 @@ class _ReminderSchedulesScreenState extends State<ReminderSchedulesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Lich nhac')),
+      appBar: AppBar(title: const Text('Lịch nhắc')),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _edit(),
         child: const Icon(Icons.add_alarm_rounded),
@@ -124,7 +114,7 @@ class _ReminderSchedulesScreenState extends State<ReminderSchedulesScreen> {
                   ? ListView(
                       children: const [
                         SizedBox(height: 180),
-                        Center(child: Text('Chua co lich nhac.')),
+                        Center(child: Text('Chưa có lịch nhắc.')),
                       ],
                     )
                   : ListView.separated(
@@ -137,7 +127,7 @@ class _ReminderSchedulesScreenState extends State<ReminderSchedulesScreen> {
                           child: ListTile(
                             title: Text(schedule.title),
                             subtitle: Text(
-                              '${schedule.times.join(' · ')}  •  ${schedule.recurrence == ReminderScheduleRecurrence.daily ? 'Hang ngay' : 'Mot lan'}',
+                              '${schedule.times.join(' · ')}  •  ${schedule.recurrence == ReminderScheduleRecurrence.daily ? 'Hàng ngày' : 'Một lần'}',
                             ),
                             leading: Icon(
                               schedule.active
@@ -145,24 +135,10 @@ class _ReminderSchedulesScreenState extends State<ReminderSchedulesScreen> {
                                   : Icons.notifications_off_outlined,
                             ),
                             onTap: () => _edit(schedule),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  tooltip: schedule.active ? 'Tat' : 'Bat',
-                                  onPressed: () => _toggle(schedule),
-                                  icon: Icon(
-                                    schedule.active
-                                        ? Icons.pause_circle_outline
-                                        : Icons.play_circle_outline,
-                                  ),
-                                ),
-                                IconButton(
-                                  tooltip: 'Xoa',
-                                  onPressed: () => _delete(schedule),
-                                  icon: const Icon(Icons.delete_outline),
-                                ),
-                              ],
+                            trailing: IconButton(
+                              tooltip: 'Xóa',
+                              onPressed: () => _delete(schedule),
+                              icon: const Icon(Icons.delete_outline),
                             ),
                           ),
                         );
@@ -189,6 +165,7 @@ class _ReminderScheduleEditorState extends State<_ReminderScheduleEditor> {
   late List<TimeOfDay> _times;
   late ReminderScheduleRecurrence _recurrence;
   bool _saving = false;
+  String? _errorText;
 
   @override
   void initState() {
@@ -214,18 +191,30 @@ class _ReminderScheduleEditorState extends State<_ReminderScheduleEditor> {
       context: context,
       initialTime: const TimeOfDay(hour: 8, minute: 0),
     );
-    if (picked == null || _times.any((value) => _sameTime(value, picked)))
+    if (picked == null || _times.any((value) => _sameTime(value, picked))) {
       return;
+    }
     setState(() {
       _times.add(picked);
       _times.sort((a, b) => _minutes(a).compareTo(_minutes(b)));
+      if (_errorText != null && _times.isNotEmpty) _errorText = null;
     });
   }
 
   Future<void> _save() async {
     final title = _title.text.trim();
-    if (title.isEmpty || _times.isEmpty) return;
-    setState(() => _saving = true);
+    if (title.isEmpty) {
+      setState(() => _errorText = 'Vui lòng nhập nội dung nhắc.');
+      return;
+    }
+    if (_times.isEmpty) {
+      setState(() => _errorText = 'Vui lòng thêm ít nhất một giờ nhắc.');
+      return;
+    }
+    setState(() {
+      _saving = true;
+      _errorText = null;
+    });
     final times = _times.map(_formatTime).toList();
     try {
       if (widget.initial == null) {
@@ -247,9 +236,7 @@ class _ReminderScheduleEditorState extends State<_ReminderScheduleEditor> {
       if (mounted) Navigator.pop(context, true);
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Khong the luu lich nhac.')),
-        );
+        setState(() => _errorText = 'Không thể lưu lịch nhắc.');
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -271,7 +258,15 @@ class _ReminderScheduleEditorState extends State<_ReminderScheduleEditor> {
         children: [
           TextField(
             controller: _title,
-            decoration: const InputDecoration(labelText: 'Noi dung nhac'),
+            onChanged: (_) {
+              if (_errorText != null) {
+                setState(() => _errorText = null);
+              }
+            },
+            decoration: InputDecoration(
+              labelText: 'Nội dung nhắc',
+              errorText: _errorText,
+            ),
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -292,7 +287,7 @@ class _ReminderScheduleEditorState extends State<_ReminderScheduleEditor> {
             child: TextButton.icon(
               onPressed: _saving ? null : _addTime,
               icon: const Icon(Icons.add_alarm_outlined),
-              label: const Text('Them gio'),
+              label: const Text('Thêm giờ'),
             ),
           ),
           DropdownButtonFormField<ReminderScheduleRecurrence>(
@@ -300,11 +295,11 @@ class _ReminderScheduleEditorState extends State<_ReminderScheduleEditor> {
             items: const [
               DropdownMenuItem(
                 value: ReminderScheduleRecurrence.none,
-                child: Text('Mot lan'),
+                child: Text('Một lần'),
               ),
               DropdownMenuItem(
                 value: ReminderScheduleRecurrence.daily,
-                child: Text('Hang ngay'),
+                child: Text('Hàng ngày'),
               ),
             ],
             onChanged: _saving
@@ -314,7 +309,7 @@ class _ReminderScheduleEditorState extends State<_ReminderScheduleEditor> {
           const SizedBox(height: 12),
           FilledButton(
             onPressed: _saving ? null : _save,
-            child: Text(widget.initial == null ? 'Luu lich nhac' : 'Cap nhat'),
+            child: Text(widget.initial == null ? 'Lưu lịch nhắc' : 'Cập nhật'),
           ),
         ],
       ),

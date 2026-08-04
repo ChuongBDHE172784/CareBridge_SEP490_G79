@@ -9,7 +9,6 @@ import '../../features/auth/screens/auth_landing_screen.dart';
 import '../../features/auth/screens/role_selection_screen.dart';
 import '../../features/checklist/screens/checklist_history_screen.dart';
 import '../../features/checklist/screens/checklist_detail_screen.dart';
-import '../../features/community/models/content_model.dart';
 import '../../features/home/screens/home_shell.dart';
 import '../../features/home/screens/expert_home_shell.dart';
 import '../../features/home/screens/family_member_home_screen.dart';
@@ -168,13 +167,13 @@ String? resolveAppRedirect({
   final normalizedRole = role?.trim().toUpperCase();
   final hasAssignedRole = normalizedRole != null && normalizedRole.isNotEmpty;
   const motherOnlySetupRoutes = {
-    '/checklists/history',
     '/journey-onboarding',
     '/mother-stage-selection',
     '/journey-setup',
     '/postpartum-recovery-setup',
     '/recommendation-profile',
   };
+  const motherOrFamilyChecklistRoutes = {'/checklists/history'};
 
   if (isRestoring) return null;
 
@@ -193,6 +192,13 @@ String? resolveAppRedirect({
       hasAssignedRole &&
       normalizedRole != 'MOTHER' &&
       motherOnlySetupRoutes.contains(location)) {
+    return '/';
+  }
+  if (isAuthenticated &&
+      hasAssignedRole &&
+      normalizedRole != 'MOTHER' &&
+      normalizedRole != 'FAMILY' &&
+      motherOrFamilyChecklistRoutes.contains(location)) {
     return '/';
   }
   if (isAuthenticated && hasAssignedRole && location == '/role-selection') {
@@ -319,15 +325,16 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/checklists/history',
-      builder: (context, state) => const ChecklistHistoryScreen(),
+      builder: (context, state) => ChecklistHistoryScreen(
+        careGroupId: state.uri.queryParameters['careGroupId'],
+      ),
     ),
     GoRoute(
       path: '/checklists/detail',
       builder: (context, state) {
-        final extraMap =
-            state.extra is Map<String, dynamic>
-                ? state.extra as Map<String, dynamic>
-                : <String, dynamic>{};
+        final extraMap = state.extra is Map<String, dynamic>
+            ? state.extra as Map<String, dynamic>
+            : <String, dynamic>{};
         final template = extraMap['template'] as ChecklistTemplate?;
         if (template == null) {
           return const Scaffold(

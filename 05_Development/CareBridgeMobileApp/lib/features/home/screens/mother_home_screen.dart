@@ -1006,15 +1006,13 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
         ),
         IconButton(
           key: const Key('mother-home-reminder-schedules-button'),
-          tooltip: 'Lich nhac',
+          tooltip: 'Lịch nhắc',
           onPressed: () => context.push('/reminder-schedules'),
           icon: const Icon(Icons.alarm_rounded),
           color: _primary,
         ),
-        if (_dashboard?.journeyId?.isNotEmpty ?? false) ...[
-          const SizedBox(width: 8),
+        if (_dashboard?.journeyId?.isNotEmpty ?? false)
           AddUserChecklistTaskButton(journeyId: _dashboard!.journeyId),
-        ],
       ],
     ),
   );

@@ -107,6 +107,41 @@ class UnifiedTaskPolicyTest {
     }
 
     @Test
+    void familyCanViewCanonicalMotherTemplateOnlyThroughExplicitGroupScope() {
+        CareGroupRepository groups = mock(CareGroupRepository.class);
+        CareGroupAuthorizationPolicy familyPolicy = mock(CareGroupAuthorizationPolicy.class);
+        MotherJourneyRepository journeys = mock(MotherJourneyRepository.class);
+        BabyProfileRepository babies = mock(BabyProfileRepository.class);
+        when(groups.findById(GROUP)).thenReturn(Optional.of(CareGroup.builder()
+                .id(GROUP).ownerUserId(MOTHER).linkedJourneyId(CONTEXT)
+                .status(CareGroupStatus.ACTIVE).build()));
+        when(journeys.existsByIdAndOwnerUserIdAndStatus(CONTEXT, MOTHER, JourneyStatus.ACTIVE))
+                .thenReturn(true);
+        when(familyPolicy.hasPermission(GROUP, FAMILY, PermissionFlag.CHECKLIST_VIEW))
+                .thenReturn(true);
+        UnifiedTaskAccessPolicy policy = new UnifiedTaskAccessPolicy(
+                groups, familyPolicy, journeys, babies);
+        ChecklistInstance instance = ChecklistInstance.builder()
+                .recipientUserId(MOTHER)
+                .recipientRole(ChecklistRecipientRole.MOTHER)
+                .careGroupId(null)
+                .careContextType(ChecklistCareContextType.JOURNEY)
+                .careContextId(CONTEXT)
+                .contextOwnerUserId(MOTHER)
+                .origin(ChecklistOrigin.SYSTEM_TEMPLATE)
+                .build();
+
+        assertThat(policy.canView(instance, FAMILY, GROUP)).isTrue();
+        assertThat(policy.canComplete(instance, FAMILY, GROUP)).isFalse();
+        when(familyPolicy.hasPermission(GROUP, FAMILY, PermissionFlag.CHECKLIST_COMPLETE))
+                .thenReturn(true);
+        assertThat(policy.canComplete(instance, FAMILY, GROUP)).isTrue();
+
+        instance.setOrigin(ChecklistOrigin.USER_CREATED);
+        assertThat(policy.canView(instance, FAMILY, GROUP)).isFalse();
+    }
+
+    @Test
     void activeCanonicalGroupContextDoesNotRequireReviewedMapping() {
         CareGroupRepository groups = mock(CareGroupRepository.class);
         CareGroupAuthorizationPolicy familyPolicy = mock(CareGroupAuthorizationPolicy.class);

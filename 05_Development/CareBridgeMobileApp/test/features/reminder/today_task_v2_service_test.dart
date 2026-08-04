@@ -45,6 +45,60 @@ void main() {
   );
 
   test(
+    'binds FAMILY current reads and actions to the selected care group',
+    () async {
+      String? capturedGetPath;
+      String? capturedPostPath;
+      final service = TodayTaskService(
+        getRequest: (path, {queryParams}) async {
+          capturedGetPath = path;
+          return {
+            'data': {
+              'asOf': '2026-08-03T01:00:00Z',
+              'zoneId': 'Asia/Ho_Chi_Minh',
+              'horizonDays': 7,
+              'sections': {
+                'overdue': [],
+                'today': [],
+                'upcoming': [],
+                'unscheduled': [],
+              },
+              'counts': {
+                'overdue': 0,
+                'today': 0,
+                'upcoming': 0,
+                'unscheduled': 0,
+              },
+              'correlationId': 'c-2',
+            },
+          };
+        },
+        postRequest: (path, body) async {
+          capturedPostPath = path;
+          return {'data': body};
+        },
+        clientRequestIdFactory: () => 'client-group-1',
+      );
+
+      await service.loadToday(careGroupId: 'group-b');
+      await service.performChecklistAction(
+        taskId: 'task-1',
+        action: TodayTaskAction.complete,
+        careGroupId: 'group-b',
+      );
+
+      expect(
+        capturedGetPath,
+        '/api/v1/care-groups/group-b/checklists/current/tasks',
+      );
+      expect(
+        capturedPostPath,
+        '/api/v1/care-groups/group-b/checklists/tasks/task-1/actions',
+      );
+    },
+  );
+
+  test(
     'complete and skip dispatch through unified retry-safe facade',
     () async {
       final calls = <(String, Map<String, dynamic>)>[];

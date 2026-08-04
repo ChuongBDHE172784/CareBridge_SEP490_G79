@@ -163,7 +163,19 @@ void main() {
       expect(redirect, '/');
     });
 
-    test('non-mothers cannot deep-link into checklist history', () {
+    test('experts cannot deep-link into checklist history', () {
+      final redirect = resolveAppRedirect(
+        isAuthenticated: true,
+        isRestoring: false,
+        blockedReason: null,
+        role: 'EXPERT',
+        location: '/checklists/history',
+      );
+
+      expect(redirect, '/');
+    });
+
+    test('family can deep-link into selected-group checklist history', () {
       final redirect = resolveAppRedirect(
         isAuthenticated: true,
         isRestoring: false,
@@ -172,7 +184,7 @@ void main() {
         location: '/checklists/history',
       );
 
-      expect(redirect, '/');
+      expect(redirect, isNull);
     });
   });
 

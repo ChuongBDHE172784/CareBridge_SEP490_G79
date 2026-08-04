@@ -41,11 +41,17 @@ class TodayTaskService {
   final TodayPostRequest _postRequest;
   final String Function() _clientRequestIdFactory;
 
-  Future<TodayTasksSnapshot> loadToday({DateTime? date}) async {
+  Future<TodayTasksSnapshot> loadToday({
+    DateTime? date,
+    String? careGroupId,
+  }) async {
     try {
       final effective = date ?? DateTime.now();
+      final path = careGroupId == null
+          ? '/api/v1/checklists/current/tasks'
+          : '/api/v1/care-groups/$careGroupId/checklists/current/tasks';
       final payload = await _getRequest(
-        '/api/v1/checklists/current/tasks',
+        path,
         queryParams: {'date': _dateOnly(effective)},
       );
       final envelope = Map<String, dynamic>.from(payload as Map);
@@ -95,13 +101,19 @@ class TodayTaskService {
   Future<Map<String, dynamic>> performChecklistAction({
     required String taskId,
     required TodayTaskAction action,
+    String? careGroupId,
+    String? clientRequestId,
   }) async {
-    if (action != TodayTaskAction.complete && action != TodayTaskAction.reopen) {
+    if (action != TodayTaskAction.complete &&
+        action != TodayTaskAction.reopen) {
       throw ArgumentError('Checklist actions support COMPLETE and REOPEN only');
     }
-    final payload = await _postRequest('/api/v1/checklists/tasks/$taskId/actions', {
+    final path = careGroupId == null
+        ? '/api/v1/checklists/tasks/$taskId/actions'
+        : '/api/v1/care-groups/$careGroupId/checklists/tasks/$taskId/actions';
+    final payload = await _postRequest(path, {
       'action': action.apiValue,
-      'clientRequestId': _clientRequestIdFactory(),
+      'clientRequestId': clientRequestId ?? _clientRequestIdFactory(),
     });
     final envelope = Map<String, dynamic>.from(payload as Map);
     final raw = envelope['data'] is Map ? envelope['data'] as Map : envelope;
