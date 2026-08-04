@@ -24,7 +24,7 @@ public class CurrentChecklistServiceImpl implements CurrentChecklistService {
             UUID actorUserId, LocalDate date, String timezoneHeader) {
         TodayTasksResponse response = unifiedTodayTaskService.getTodayTasks(
                 actorUserId, date, timezoneHeader,
-                Set.of(com.carebridge.backend.checklist.today.model.TaskKind.CHECKLIST), false);
+                Set.of(com.carebridge.backend.checklist.today.model.TaskKind.CHECKLIST), true);
         TodayTaskSections sections = response.sections();
         CurrentChecklistSections currentSections = new CurrentChecklistSections(
                 map(sections.overdue()), map(sections.today()),
