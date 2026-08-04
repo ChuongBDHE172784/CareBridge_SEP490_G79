@@ -199,6 +199,8 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
   bool get _usesProductionPresentation =>
       !widget.simulated || widget.presentAsRealAlert;
 
+  bool get _isSensorSelfTest => widget.event.eventType == 'SENSOR_SELF_TEST';
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -207,6 +209,29 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (_isSensorSelfTest) ...[
+              Container(
+                key: const Key('sensor-self-test-countdown-banner'),
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFE9E3),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Text(
+                  'DIỄN TẬP AN TOÀN · KHÔNG GỬI CẢNH BÁO THẬT',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF845143),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             if (widget.simulated && !widget.presentAsRealAlert) ...[
               Container(
                 key: const Key('safety-countdown-simulation-banner'),
@@ -293,15 +318,18 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
                 ),
               ),
               const SizedBox(height: 14),
-              const _EmergencyStep(
+              _EmergencyStep(
                 number: '1',
-                text: 'Không phản hồi: CareBridge gửi cảnh báo cho người thân.',
+                text: _isSensorSelfTest
+                    ? 'Khi ngã thật: CareBridge gửi cảnh báo cho người thân.'
+                    : 'Không phản hồi: CareBridge gửi cảnh báo cho người thân.',
               ),
               const SizedBox(height: 8),
-              const _EmergencyStep(
+              _EmergencyStep(
                 number: '2',
-                text:
-                    'Nếu người thân chưa thể hỗ trợ, chuyển sang bước gọi 115.',
+                text: _isSensorSelfTest
+                    ? 'Diễn tập dừng an toàn; luồng thật mới chuyển sang bước gọi 115.'
+                    : 'Nếu người thân chưa thể hỗ trợ, chuyển sang bước gọi 115.',
               ),
             ],
             const SizedBox(height: 20),

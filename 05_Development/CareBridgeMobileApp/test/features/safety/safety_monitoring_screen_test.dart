@@ -39,6 +39,49 @@ void main() {
     expect(safeWrites, 1);
   });
 
+  test('sensor rehearsal routes help to safe test completion only', () async {
+    var emergencyWrites = 0;
+    String? completedOutcome;
+
+    await dispatchSensorSelfTestCountdownResult(
+      result: const SafetyCountdownResult.help(),
+      onSafe: () async {},
+      onFalsePositive: (_, _) async {},
+      onComplete: (outcome) async => completedOutcome = outcome,
+    );
+
+    expect(completedOutcome, 'NEED_HELP');
+    expect(emergencyWrites, isZero);
+  });
+
+  test('sensor rehearsal timeout is persisted as test timeout', () async {
+    String? completedOutcome;
+
+    await dispatchSensorSelfTestCountdownResult(
+      result: const SafetyCountdownResult.timeout(),
+      onSafe: () async {},
+      onFalsePositive: (_, _) async {},
+      onComplete: (outcome) async => completedOutcome = outcome,
+    );
+
+    expect(completedOutcome, 'TIMEOUT');
+  });
+
+  test('TEST_OPEN rehearsal participates in pending countdown selection', () {
+    const rehearsal = SafetyEvent(
+      id: 'self-test-1',
+      eventType: 'SENSOR_SELF_TEST',
+      magnitude: 17.2,
+      status: 'TEST_OPEN',
+    );
+
+    expect(isPendingSafetyCountdown(rehearsal), isTrue);
+    expect(
+      selectNextOpenSafetyEvent(const [rehearsal], excludingId: 'other'),
+      same(rehearsal),
+    );
+  });
+
   test('selects a queued real OPEN event after local simulation closes', () {
     const simulationId = 'local-simulation-1';
     const resolved = SafetyEvent(

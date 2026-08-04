@@ -1,6 +1,7 @@
 import '../../../core/network/api_client.dart';
 import 'package:flutter/foundation.dart';
 import '../models/safety_config_model.dart';
+import 'safety_demo_mode.dart';
 
 class SafetyService {
   // UC-133
@@ -96,6 +97,38 @@ class SafetyService {
     return items
         .map((item) => SafetyEvent.fromJson(item as Map<String, dynamic>))
         .toList();
+  }
+
+  Future<SafetyEvent> createSensorSelfTestEvent(
+    SensorSelfTestResult result,
+  ) async {
+    final data = await apiPost(
+      '/api/v1/safety/events/sensor-self-test',
+      buildSensorSelfTestRequest(result),
+    );
+    return SafetyEvent.fromJson(data['data'] as Map<String, dynamic>);
+  }
+
+  @visibleForTesting
+  static Map<String, dynamic> buildSensorSelfTestRequest(
+    SensorSelfTestResult result,
+  ) => <String, dynamic>{
+    'testId':
+        'self-test-${result.detectedAt.microsecondsSinceEpoch}-${result.sequence}',
+    'detectedAt': result.detectedAt.toUtc().toIso8601String(),
+    'accelerationMagnitude': result.accelerationMagnitude,
+    'gyroscopeMagnitude': result.gyroscopeMagnitude,
+  };
+
+  Future<SafetyEvent> completeSensorSelfTest(
+    String eventId, {
+    required String outcome,
+  }) async {
+    final data = await apiPost(
+      '/api/v1/safety/events/$eventId/sensor-self-test/complete',
+      {'outcome': outcome},
+    );
+    return SafetyEvent.fromJson(data['data'] as Map<String, dynamic>);
   }
 
   Future<SafetyEvent> confirmSafetyCheck(String eventId, {String? note}) async {

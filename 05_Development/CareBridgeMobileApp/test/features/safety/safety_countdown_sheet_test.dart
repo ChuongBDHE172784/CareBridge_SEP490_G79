@@ -265,4 +265,43 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
     expect(feedback.stops, 1);
   });
+
+  testWidgets(
+    'persisted sensor rehearsal shows real actions with safe banner',
+    (tester) async {
+      final rehearsal = SafetyEvent(
+        id: 'self-test-1',
+        eventType: 'SENSOR_SELF_TEST',
+        magnitude: 17.2,
+        status: 'TEST_OPEN',
+        countdownDeadlineAt: now.add(const Duration(seconds: 30)),
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: SafetyCountdownSheet(
+              event: rehearsal,
+              feedback: feedback,
+              now: () => now,
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(
+        find.byKey(const Key('sensor-self-test-countdown-banner')),
+        findsOneWidget,
+      );
+      expect(find.textContaining('KHÔNG GỬI CẢNH BÁO THẬT'), findsOneWidget);
+      expect(find.text('Tôi vẫn ổn — tắt cảnh báo'), findsOneWidget);
+      expect(find.byKey(const Key('safety-countdown-help')), findsOneWidget);
+      expect(find.textContaining('luồng thật mới'), findsOneWidget);
+      expect(feedback.starts, 1);
+
+      await tester.pumpWidget(const SizedBox.shrink());
+      expect(feedback.stops, 1);
+    },
+  );
 }

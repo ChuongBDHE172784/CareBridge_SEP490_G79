@@ -36,9 +36,34 @@ SafetyEvent? selectNextOpenSafetyEvent(
   required String excludingId,
 }) {
   for (final event in events) {
-    if (event.status == 'OPEN' && event.id != excludingId) return event;
+    if (isPendingSafetyCountdown(event) && event.id != excludingId) {
+      return event;
+    }
   }
   return null;
+}
+
+bool isPendingSafetyCountdown(SafetyEvent event) =>
+    event.status == 'OPEN' || event.status == 'TEST_OPEN';
+
+Future<void> dispatchSensorSelfTestCountdownResult({
+  required SafetyCountdownResult? result,
+  required Future<void> Function() onSafe,
+  required Future<void> Function(String? reasonCode, String? reason)
+  onFalsePositive,
+  required Future<void> Function(String outcome) onComplete,
+}) async {
+  if (result == null) return;
+  switch (result.action) {
+    case SafetyCountdownAction.safe:
+      await onSafe();
+    case SafetyCountdownAction.falsePositive:
+      await onFalsePositive(result.reasonCode, result.reason);
+    case SafetyCountdownAction.help:
+      await onComplete('NEED_HELP');
+    case SafetyCountdownAction.timeout:
+      await onComplete('TIMEOUT');
+  }
 }
 
 bool isSafeFallSimulationEligible({
@@ -237,7 +262,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
         });
         SafetyEvent? pending;
         for (final event in events) {
-          if (event.status == 'OPEN') {
+          if (isPendingSafetyCountdown(event)) {
             pending = event;
             break;
           }
@@ -277,7 +302,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
   }) async {
     final deadline = event.countdownDeadlineAt;
     if (!mounted ||
-        event.status != 'OPEN' ||
+        !isPendingSafetyCountdown(event) ||
         deadline == null ||
         _countdownEventId != null) {
       return;
@@ -296,20 +321,37 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
       ),
     );
     try {
-      await dispatchSafetyCountdownResult(
-        result: result,
-        simulated: simulated,
-        onSafe: () => _confirmEventSafe(
-          event,
-          note: 'Người dùng xác nhận an toàn trong thời gian đếm ngược.',
-        ),
-        onFalsePositive: (reasonCode, reason) =>
-            _reportEventFalsePositive(event, note: '$reasonCode: $reason'),
-        onEmergency: () => _safetyService.sendEmergencyAlertForEvent(event.id),
-      );
+      final isSensorSelfTest = event.eventType == 'SENSOR_SELF_TEST';
+      if (isSensorSelfTest) {
+        await dispatchSensorSelfTestCountdownResult(
+          result: result,
+          onSafe: () => _confirmEventSafe(
+            event,
+            note: 'Diễn tập IMU: người dùng thử thao tác Tôi vẫn ổn.',
+          ),
+          onFalsePositive: (reasonCode, reason) => _reportEventFalsePositive(
+            event,
+            note: 'Diễn tập IMU · $reasonCode: $reason',
+          ),
+          onComplete: (outcome) =>
+              _safetyService.completeSensorSelfTest(event.id, outcome: outcome),
+        );
+      } else {
+        await dispatchSafetyCountdownResult(
+          result: result,
+          simulated: simulated,
+          onSafe: () => _confirmEventSafe(
+            event,
+            note: 'Người dùng xác nhận an toàn trong thời gian đếm ngược.',
+          ),
+          onFalsePositive: (reasonCode, reason) =>
+              _reportEventFalsePositive(event, note: '$reasonCode: $reason'),
+          onEmergency: () =>
+              _safetyService.sendEmergencyAlertForEvent(event.id),
+        );
+      }
       final showDemoEscalation =
-          simulated &&
-          presentAsRealAlert &&
+          (isSensorSelfTest || (simulated && presentAsRealAlert)) &&
           (result?.action == SafetyCountdownAction.help ||
               result?.action == SafetyCountdownAction.timeout);
       if (showDemoEscalation && mounted) {
@@ -349,14 +391,22 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text(
+              'ĐÂY LÀ DIỄN TẬP — KHÔNG GỬI CẢNH BÁO THẬT',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontWeight: FontWeight.w800, color: _primary),
+            ),
+            SizedBox(height: 16),
             _EmergencyEscalationRow(
               icon: Icons.notifications_active_outlined,
-              text: 'Liên hệ người thân đã đăng ký để yêu cầu kiểm tra ngay.',
+              text:
+                  'Khi ngã thật: CareBridge liên hệ người thân đã đăng ký để yêu cầu kiểm tra ngay.',
             ),
             SizedBox(height: 14),
             _EmergencyEscalationRow(
               icon: Icons.phone_in_talk_outlined,
-              text: 'Nếu chưa nhận được hỗ trợ, chuyển sang bước gọi 115.',
+              text:
+                  'Nếu chưa nhận được hỗ trợ, luồng thật sẽ chuyển sang bước gọi 115.',
             ),
           ],
         ),
@@ -374,42 +424,19 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
 
   Future<void> _showDemoFallAlert(SensorSelfTestResult result) async {
     if (!mounted) return;
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        key: const Key('sensor-self-test-success-dialog'),
-        icon: const Icon(Icons.verified, size: 52, color: Color(0xFF2E7D32)),
-        title: const Text(
-          'Kiểm tra cảm biến thành công',
-          textAlign: TextAlign.center,
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Gia tốc kế và con quay hồi chuyển đang phản hồi tốt. '
-              'Bộ phát hiện ngã thật vẫn tiếp tục hoạt động với ngưỡng an toàn riêng.',
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Gia tốc khi đạt ngưỡng: ${result.accelerationMagnitude.toStringAsFixed(1)} m/s²',
-              key: const Key('sensor-self-test-acceleration'),
-            ),
-            Text(
-              'Gyro khi đạt ngưỡng: ${result.gyroscopeMagnitude.toStringAsFixed(1)} rad/s',
-              key: const Key('sensor-self-test-gyroscope'),
-            ),
-          ],
-        ),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Hoàn tất'),
-          ),
-        ],
-      ),
-    );
+    try {
+      final event = await _safetyService.createSensorSelfTestEvent(result);
+      if (!mounted) return;
+      setState(() {
+        _events = [event, ..._events.where((item) => item.id != event.id)];
+      });
+      await _showCountdown(event);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Không thể bắt đầu diễn tập cảnh báo: $error')),
+      );
+    }
   }
 
   Future<void> _confirmEventSafe(SafetyEvent event, {String? note}) async {
@@ -477,7 +504,6 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
       setState(() => _imuSensorActive = _foregroundCoordinator.isRunning);
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -932,6 +958,26 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
   }
 
   _SafetyEventDisplay _toEventDisplay(SafetyEvent event) {
+    if (event.eventType == 'SENSOR_SELF_TEST') {
+      final description = switch ((event.status, event.responseType)) {
+        ('TEST_OPEN', _) => 'Đang chờ người dùng thử phản hồi cảnh báo.',
+        ('CONFIRMED_SAFE', _) => 'Đã thử thao tác “Tôi vẫn ổn”.',
+        ('FALSE_POSITIVE', _) => 'Đã thử thao tác báo phát hiện nhầm.',
+        ('TIMED_OUT', 'TEST_NEED_HELP') =>
+          'Đã thử thao tác “Cần trợ giúp”; không gửi cảnh báo thật.',
+        ('TIMED_OUT', 'TEST_TIMEOUT') =>
+          'Đã thử tình huống không phản hồi; không gửi cảnh báo thật.',
+        _ => 'Đã hoàn tất kiểm tra luồng cảnh báo bằng cảm biến IMU.',
+      };
+      return _SafetyEventDisplay(
+        event: event,
+        icon: Icons.science_outlined,
+        color: _primary,
+        title: 'Diễn tập cảnh báo ngã',
+        description: description,
+        time: _formatEventTime(event.detectedAt),
+      );
+    }
     final isOpen = event.status == 'OPEN';
     final isFalsePositive = event.status == 'FALSE_POSITIVE';
     final isSafe = event.status == 'CONFIRMED_SAFE';
@@ -982,6 +1028,10 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
   }
 
   Future<void> _showEventActions(SafetyEvent event) async {
+    if (event.eventType == 'SENSOR_SELF_TEST') {
+      if (event.status == 'TEST_OPEN') await _showCountdown(event);
+      return;
+    }
     if (event.status != 'OPEN') return;
     await showModalBottomSheet<void>(
       context: context,
@@ -1190,5 +1240,3 @@ class _EventActionButton extends StatelessWidget {
     );
   }
 }
-
-
