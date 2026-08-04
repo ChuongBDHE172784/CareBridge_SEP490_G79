@@ -1,6 +1,6 @@
 import time
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 
 from app.config import GEMINI_SETTINGS, PYTHON_SERVICE_TIMEOUT_SECONDS
@@ -8,6 +8,7 @@ from app.gemini_client import get_gemini_client
 from app.graph import run_triage
 from app.intake_question_engine import (
     ask_followup_questions,
+    extract_triage_intent,
     has_red_flag,
     merge_answers,
     naturalize_followup_questions,
@@ -77,15 +78,13 @@ def _run_deterministic_readiness_probe() -> None:
 @app.post("/triage/child", response_model=ChildTriageResponse)
 def triage_child(request: ChildTriageRequest) -> ChildTriageResponse:
     if request.stage is None:
-        request = request.model_copy(update={"stage": "INFANT"})
+        raise HTTPException(status_code=422, detail="A canonical triage stage is required")
     return run_triage(request)
 
 
 @app.post("/triage/intake/start", response_model=IntakeFlowResponse)
 def start_intake(request: IntakeStartRequest) -> IntakeFlowResponse:
-    intake = request.currentIntake
-    if intake.stage is None:
-        intake = intake.model_copy(update={"stage": "INFANT"})
+    intake = _canonical_intake(request.currentIntake, request.stage)
     if request.initialText and not intake.parentFreeText:
         intake = intake.model_copy(update={
             "parentFreeText": request.initialText,
@@ -98,17 +97,35 @@ def start_intake(request: IntakeStartRequest) -> IntakeFlowResponse:
         intake_session_id=request.intakeSessionId or new_session_id(),
         intake=intake,
         round_number=1,
+        asked_question_keys=set(),
     )
 
 
 @app.post("/triage/intake/continue", response_model=IntakeFlowResponse)
 def continue_intake(request: IntakeContinueRequest) -> IntakeFlowResponse:
-    merged = merge_answers(request.currentIntake, request.newAnswers)
+    merged = merge_answers(_canonical_intake(request.currentIntake, request.stage), request.newAnswers)
     return _build_intake_response(
         intake_session_id=request.intakeSessionId,
         intake=merged,
         round_number=request.round,
+        asked_question_keys=set(request.askedQuestionKeys),
     )
+
+
+def _canonical_intake(
+    intake: ChildTriageRequest, requested_stage: str | None
+) -> ChildTriageRequest:
+    """Reconcile the two wire locations without silently choosing a different subject.
+
+    Legacy direct callers may provide only the nested stage. Production callers provide
+    both values, which must agree; an absent value in both locations is rejected.
+    """
+    if requested_stage is not None and intake.stage is not None and requested_stage != intake.stage:
+        raise HTTPException(status_code=422, detail="Conflicting triage stages")
+    stage = requested_stage or intake.stage
+    if stage is None:
+        raise HTTPException(status_code=422, detail="A canonical triage stage is required")
+    return intake.model_copy(update={"stage": stage})
 
 
 def _build_intake_response(
@@ -116,6 +133,7 @@ def _build_intake_response(
     intake_session_id: str,
     intake: ChildTriageRequest,
     round_number: int,
+    asked_question_keys: set[str],
 ) -> IntakeFlowResponse:
     request_deadline = time.monotonic() + PYTHON_SERVICE_TIMEOUT_SECONDS
     client = get_gemini_client()
@@ -140,7 +158,9 @@ def _build_intake_response(
         # back through mergedIntake (the Java side re-loads it server-side per intake).
         "healthContext": [],
     })
-    questions = ask_followup_questions(intake)
+    intent = extract_triage_intent(intake)
+    questions = ask_followup_questions(intake, asked_keys=asked_question_keys)
+    issued_question_keys = list(dict.fromkeys([*asked_question_keys, *(q.questionKey for q in questions)]))
     if questions and not red_flag and not reached_question_limit(round_number):
         questions, assistant_message, followup_gemini_used = naturalize_followup_questions(
             questions,
@@ -171,19 +191,39 @@ def _build_intake_response(
             assistantProvider="GEMINI" if followup_gemini_used else "DETERMINISTIC_FALLBACK",
             assistantFallbackUsed=not followup_gemini_used,
             conversationSummary=conversation_summary,
+            intent=intent,
+            askedQuestionKeys=issued_question_keys,
         )
 
     force_cautious = bool(
         not red_flag
-        and reached_question_limit(round_number)
         and (
-            questions
-            or intake.stage in MATERNAL_STAGES
+            (
+                reached_question_limit(round_number)
+                and (
+                    # A missing thermometer reading alone must not erase a
+                    # completed respiratory assessment at the hard stop; it
+                    # remains useful context, but is not a danger-sign gate.
+                    any(question.questionKey != "temperatureC" for question in questions)
+                    or intake.stage in MATERNAL_STAGES
+                    or (
+                        intake.stage in {"INFANT", "TODDLER"}
+                        and not normalized_details
+                    )
+                )
+            )
+            # One explicit clarification is the most we can safely request for
+            # unrecognized text.  Do not loop on the same free-text prompt.
             or (
-                intake.stage in {"INFANT", "TODDLER"}
-                and not normalized_details
+                intent.careGoal == "CLARIFY_SYMPTOM"
+                and "parentFreeText" in asked_question_keys
             )
         )
+    )
+    suppress_followups = bool(
+        reached_question_limit(round_number)
+        and questions
+        and all(question.questionKey == "temperatureC" for question in questions)
     )
     triage_result = run_triage(
         intake,
@@ -196,9 +236,10 @@ def _build_intake_response(
         normalized_details=normalized_details,
         normalization_gemini_used=normalization_gemini_used,
         request_deadline=request_deadline,
+        suppress_followups=suppress_followups,
     )
     if triage_result.riskLevel == "NEED_MORE_INFO":
-        generic_questions = ask_followup_questions(intake)
+        generic_questions = ask_followup_questions(intake, asked_keys=asked_question_keys)
         if not generic_questions:
             generic_questions = [IntakeQuestion(
                 questionKey="parentFreeText",
@@ -228,6 +269,8 @@ def _build_intake_response(
             conversationSummary=_conversation_summary(
                 intake, [item.normalizedCode for item in normalized_details]
             ),
+            intent=intent,
+            askedQuestionKeys=list(dict.fromkeys([*asked_question_keys, *(q.questionKey for q in generic_questions)])),
         )
     conversation_summary = _conversation_summary(
         intake, [item.normalizedCode for item in normalized_details]
@@ -251,6 +294,8 @@ def _build_intake_response(
         assistantProvider=triage_result.assistantProvider,
         assistantFallbackUsed=triage_result.assistantFallbackUsed,
         conversationSummary=conversation_summary,
+        intent=intent,
+        askedQuestionKeys=issued_question_keys,
     )
 
 

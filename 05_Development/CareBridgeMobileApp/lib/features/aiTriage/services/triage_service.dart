@@ -108,7 +108,21 @@ class TriageService implements TriageContinuationGateway {
     required Map<String, dynamic> currentIntake,
   }) async {
     final requestContext = _captureContinuationContext();
-    final stage = currentIntake['stage']?.toString() ?? 'INFANT';
+    final stage = currentIntake['stage']?.toString();
+    const validStages = {
+      'PRECONCEPTION',
+      'PREGNANCY',
+      'POSTPARTUM',
+      'INFANT',
+      'TODDLER',
+    };
+    if (stage == null || !validStages.contains(stage)) {
+      throw ArgumentError.value(
+        currentIntake['stage'],
+        'currentIntake.stage',
+        'A canonical triage stage is required',
+      );
+    }
     final fingerprint = jsonEncode({
       'userId': requestContext?.userId,
       'initialText': initialText,
@@ -163,6 +177,14 @@ class TriageService implements TriageContinuationGateway {
     required Map<String, dynamic> newAnswers,
     required int round,
   }) async {
+    final stage = currentIntake['stage']?.toString();
+    if (stage == null || stage.isEmpty) {
+      throw ArgumentError.value(
+        currentIntake['stage'],
+        'currentIntake.stage',
+        'A canonical triage stage is required',
+      );
+    }
     final requestContext = _captureContinuationContext();
     final data =
         await _postRequest('/api/v1/triage/intake/conversation/continue', {

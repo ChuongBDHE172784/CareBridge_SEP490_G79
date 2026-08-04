@@ -55,6 +55,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
   String? _sessionId;
   int _round = 1;
   bool _loading = false;
+  late bool _stageConfirmed;
   bool _openingEmergency = false;
   bool _dialing115 = false;
   bool _emergencyFailed = false;
@@ -77,11 +78,14 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
           gateway: _service,
         );
     _selectedStage = widget.entryContext.stage.apiValue;
+    _stageConfirmed = !widget.entryContext.requiresStageSelection;
     _currentIntake = _newIntake(stage: _selectedStage);
     _messages.add(
       _ChatMessage(
         role: _ChatRole.assistant,
-        text: widget.entryContext.isMaternal
+        text: widget.entryContext.requiresStageSelection
+            ? 'Hãy chọn đúng giai đoạn trước khi mô tả triệu chứng. CareBridge sẽ giữ nguyên ngữ cảnh đó trong suốt phiên.'
+            : widget.entryContext.isMaternal
             ? 'Hãy mô tả dấu hiệu bạn đang gặp. CareBridge chỉ hỗ trợ phân loại rủi ro ban đầu theo giai đoạn sức khỏe hiện tại.'
             : 'Hãy mô tả triệu chứng của bé. CareBridge sẽ hỏi thêm nếu cần và chỉ phân loại rủi ro ban đầu.',
       ),
@@ -102,6 +106,8 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
       'breathingStatus': null,
       'consciousnessStatus': null,
       'seizure': null,
+      'painSeverity': null,
+      'urinarySymptoms': null,
       'parentFreeText': null,
     };
     if (_maternalStages.contains(stage)) return common;
@@ -202,6 +208,13 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
 
   Future<void> _start() async {
     if (_loading) return;
+    if (!_stageConfirmed) {
+      setState(
+        () => _error =
+            'Vui lòng chọn giai đoạn sức khỏe trước khi bắt đầu AI Triage.',
+      );
+      return;
+    }
     final text = _initialController.text.trim();
     if (text.isEmpty) return;
     final triageUserId = AuthState.instance.userId;
@@ -485,6 +498,8 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
       'diarrhea': 'Tiêu chảy',
       'duration': 'Thời gian triệu chứng',
       'rash': 'Phát ban',
+      'painSeverity': 'Mức độ đau',
+      'urinarySymptoms': 'Triệu chứng tiểu tiện',
       'parentFreeText': 'Mô tả bổ sung',
     };
     return answers.entries
@@ -961,6 +976,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
     const stages = {
       'PRECONCEPTION': 'Chuẩn bị mang thai',
       'PREGNANCY': 'Đang mang thai',
+      'POSTPARTUM': 'Sau sinh',
       'INFANT': 'Bé 0-12 tháng',
       'TODDLER': 'Bé 12-24 tháng',
     };
@@ -1001,6 +1017,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
                     ? null
                     : (_) => setState(() {
                         _selectedStage = entry.key;
+                        _stageConfirmed = true;
                         _currentIntake = _newIntake(stage: entry.key);
                       }),
               );

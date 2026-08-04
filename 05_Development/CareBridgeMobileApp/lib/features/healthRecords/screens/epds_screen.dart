@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../aiTriage/models/triage_entry_context.dart';
 import '../models/health_metric_model.dart';
 import '../services/health_metric_service.dart';
 
@@ -418,7 +419,10 @@ class _EpdsScreenState extends State<EpdsScreen> {
           FilledButton(
             onPressed: () {
               Navigator.pop(dialogContext);
-              context.push('/triage/intake');
+              context.push(
+                '/triage/intake',
+                extra: const TriageEntryContext(requiresStageSelection: true),
+              );
             },
             child: const Text('Mở hỗ trợ khẩn cấp'),
           ),

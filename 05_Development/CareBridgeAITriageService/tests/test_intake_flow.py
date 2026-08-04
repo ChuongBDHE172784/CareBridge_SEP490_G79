@@ -21,7 +21,7 @@ def test_start_echoes_canonical_session_id_from_spring():
     assert response.intakeSessionId == "spring-session-123"
 
 
-def test_missing_breathing_status_asks_breathing():
+def test_fever_questions_temperature_before_unrelated_breathing_screen():
     request = IntakeStartRequest(
         currentIntake=ChildTriageRequest(
             childAgeMonths=8,
@@ -35,7 +35,11 @@ def test_missing_breathing_status_asks_breathing():
     response = start_intake(request)
 
     assert response.status == "ASK_MORE"
-    assert any(q.questionKey == "breathingStatus" for q in response.questions)
+    keys = [q.questionKey for q in response.questions]
+    assert "temperatureC" in keys
+    # Cough is explicitly present, so breathing is a relevant third fact after
+    # fever-specific temperature and duration checks.
+    assert "breathingStatus" in keys
 
 
 def test_red_flag_in_first_round_completes_red():
