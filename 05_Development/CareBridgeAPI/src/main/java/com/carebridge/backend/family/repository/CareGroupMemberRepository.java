@@ -29,6 +29,30 @@ public interface CareGroupMemberRepository extends JpaRepository<CareGroupMember
             """, nativeQuery = true)
     List<UUID> findEmergencyContactUserIds(@Param("ownerUserId") UUID ownerUserId);
 
+    /**
+     * Emergency fall alerts are delivered to every eligible Family account in an
+     * active care group, not only members manually marked as primary contacts.
+     * The role join prevents alerts from being delivered to the Mother herself or
+     * to non-Family accounts that could otherwise share the same group.
+     */
+    @Query(value = """
+            SELECT cgm.user_id
+              FROM care_groups cg
+              JOIN care_group_members cgm
+                ON cgm.care_group_id = cg.care_group_id
+              JOIN users u
+                ON u.user_id = cgm.user_id
+             WHERE cg.owner_user_id = :ownerUserId
+               AND cg.status = 'ACTIVE'
+               AND cgm.invitation_status = 'ACCEPTED'
+               AND u.role = 'FAMILY'
+               AND u.enabled = TRUE
+               AND u.locked = FALSE
+             GROUP BY cgm.user_id
+             ORDER BY cgm.user_id ASC
+            """, nativeQuery = true)
+    List<UUID> findAcceptedFamilyUserIds(@Param("ownerUserId") UUID ownerUserId);
+
     boolean existsByCareGroupIdAndUserIdAndInviteStatus(UUID careGroupId, UUID userId, InviteStatus status);
 
     /** A delegated Family account may act in the Mother's direct conversation only while its
