@@ -1477,6 +1477,7 @@ class TriageServiceTest {
     private IntakeSession conversationSession(IntakeStatus status, String rawResponse) {
         return TriageTestFactory.makeIntakeSession(session -> {
             session.setStatus(status);
+            session.setStage(TriageStage.INFANT);
             session.setRawAiResponse(rawResponse);
             session.setSymptoms("CONVERSATION_INTAKE");
             session.setCreatedAt(Instant.parse("2026-07-13T00:00:00Z"));

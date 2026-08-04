@@ -111,6 +111,10 @@ void main() {
     );
 
     expect(detector.phase, FallDetectionPhase.idle);
+    expect(
+      detector.latestDecision.reason,
+      ImuDetectorDecisionReason.impactWindowExpired,
+    );
     expect(completeImmobility(detector), isNull);
   });
 
@@ -123,6 +127,10 @@ void main() {
     );
 
     expect(detector.phase, FallDetectionPhase.freeFall);
+    expect(
+      detector.latestDecision.reason,
+      ImuDetectorDecisionReason.jerkTooLow,
+    );
   });
 
   test('cancels a candidate on post-impact strong rotation', () {
@@ -141,6 +149,10 @@ void main() {
     );
 
     expect(detector.phase, FallDetectionPhase.idle);
+    expect(
+      detector.latestDecision.reason,
+      ImuDetectorDecisionReason.excessiveMovement,
+    );
     expect(completeImmobility(detector), isNull);
   });
 
@@ -160,6 +172,10 @@ void main() {
     );
 
     expect(detector.phase, FallDetectionPhase.idle);
+    expect(
+      detector.latestDecision.reason,
+      ImuDetectorDecisionReason.gyroscopeStale,
+    );
   });
 
   test('fails safe when post-impact sampling has a long gap', () {
@@ -175,6 +191,7 @@ void main() {
 
     expect(result, isNull);
     expect(detector.phase, FallDetectionPhase.idle);
+    expect(detector.latestDecision.reason, ImuDetectorDecisionReason.sampleGap);
   });
 
   test('fails safe when gyroscope data is missing', () {
@@ -190,6 +207,10 @@ void main() {
     );
 
     expect(detector.phase, FallDetectionPhase.idle);
+    expect(
+      detector.latestDecision.reason,
+      ImuDetectorDecisionReason.gyroscopeMissing,
+    );
   });
 
   test('rejects out-of-order samples and exact exclusive thresholds', () {
@@ -209,6 +230,10 @@ void main() {
       sample(at: const Duration(milliseconds: 150), acceleration: 30),
     );
     expect(detector.phase, FallDetectionPhase.idle);
+    expect(
+      detector.latestDecision.reason,
+      ImuDetectorDecisionReason.outOfOrder,
+    );
   });
 
   test('requires at least 80 percent stationary post-impact samples', () {
@@ -231,6 +256,10 @@ void main() {
 
     expect(result, isNull);
     expect(detector.phase, FallDetectionPhase.idle);
+    expect(
+      detector.latestDecision.reason,
+      ImuDetectorDecisionReason.insufficientStationarySamples,
+    );
   });
 
   test('suppresses duplicate candidates during the 30-second cooldown', () {
@@ -249,5 +278,45 @@ void main() {
     );
 
     expect(detector.phase, FallDetectionPhase.idle);
+    expect(detector.latestDecision.reason, ImuDetectorDecisionReason.cooldown);
+  });
+
+  test('reports structured phase transitions and rejection reasons', () {
+    final detector = ImuFallDetector();
+
+    detector.addSample(sample(at: Duration.zero, acceleration: 2));
+    expect(detector.latestDecision.phase, FallDetectionPhase.freeFall);
+    expect(
+      detector.latestDecision.reason,
+      ImuDetectorDecisionReason.freeFallDetected,
+    );
+
+    detector.addSample(
+      sample(
+        at: const Duration(milliseconds: 100),
+        acceleration: 30,
+        hasGyroscope: false,
+      ),
+    );
+    expect(detector.latestDecision.phase, FallDetectionPhase.idle);
+    expect(
+      detector.latestDecision.reason,
+      ImuDetectorDecisionReason.gyroscopeMissing,
+    );
+  });
+
+  test('canonical simulation uses the real detector and emits a candidate', () {
+    final detector = ImuFallDetector();
+    FallCandidate? candidate;
+
+    for (final simulated in ImuFallDetector.canonicalSimulationSamples(
+      DateTime.utc(2026, 8, 4),
+    )) {
+      candidate = detector.addSample(simulated) ?? candidate;
+    }
+
+    expect(candidate, isNotNull);
+    expect(detector.latestDecision.reason, ImuDetectorDecisionReason.accepted);
+    expect(candidate!.stationarySampleRatio, 1);
   });
 }

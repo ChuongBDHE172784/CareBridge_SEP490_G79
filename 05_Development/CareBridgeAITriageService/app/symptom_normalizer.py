@@ -25,9 +25,19 @@ ONTOLOGY: dict[str, tuple[str, ...]] = {
     "vomiting": ("non", "oi", "vomit", "vomiting", "tro sua", "oc sua"),
     "persistent_vomiting": ("non lien tuc", "non nhieu", "vomiting everything", "persistent vomiting"),
     "diarrhea": ("tieu chay", "diarrhea", "di ngoai", "đi ngoai", "ia chay"),
+    # Common presentations are intentionally descriptive rather than diagnostic.
+    # They only select a bounded, stage-scoped follow-up policy.
+    "abdominal_pain": ("dau bung", "dau da day", "dau quanh ron", "abdominal pain", "stomach ache", "tummy ache", "belly pain"),
+    "nausea": ("buon non", "non nao", "nausea", "queasy"),
+    "constipation": ("tao bon", "kho di ngoai", "khong di ngoai duoc", "constipation", "hard stool"),
     "mild_dehydration": ("moi kho", "tieu it", "mild dehydration"),
     "severe_dehydration": ("mat nuoc nang", "mat trung", "khoc khong co nuoc mat", "severe dehydration"),
     "rash": ("phat ban", "noi ban", "rash", "rom say"),
+    "itching": ("ngua", "ngua da", "itch", "itchy"),
+    "urinary_discomfort": ("tieu buot", "tieu rat", "dau khi tieu", "dysuria", "painful urination"),
+    "ear_pain": ("dau tai", "nhuc tai", "earache", "ear pain"),
+    "headache": ("dau dau", "nhuc dau", "headache", "head pain"),
+    "cold_symptoms": ("cam lanh", "cam cum", "cold symptoms", "common cold"),
     "worsening_condition": ("nang hon", "xau di", "worsening"),
 }
 
@@ -43,7 +53,7 @@ INSTRUCTION_PATTERNS = (
 def strip_accents(value: str) -> str:
     normalized = unicodedata.normalize("NFD", value.lower())
     normalized = "".join(ch for ch in normalized if unicodedata.category(ch) != "Mn")
-    return re.sub(r"\s+", " ", normalized).strip()
+    return re.sub(r"\s+", " ", normalized.replace("đ", "d")).strip()
 
 
 def remove_instruction_like_text(value: str) -> str:
@@ -60,7 +70,8 @@ def normalize_symptom_details_deterministic(intake: ChildTriageRequest) -> list[
     fragments = list(intake.symptomList)
     fragments.extend(filter(None, [
         intake.feedingStatus, intake.breathingStatus, intake.consciousnessStatus,
-        intake.vomiting, intake.diarrhea, intake.rash, *intake.dehydrationSigns,
+        intake.vomiting, intake.diarrhea, intake.rash, intake.painSeverity,
+        intake.urinarySymptoms, *intake.dehydrationSigns,
         intake.parentFreeText,
     ]))
     safe_text = f" {remove_instruction_like_text(' '.join(fragments))} "

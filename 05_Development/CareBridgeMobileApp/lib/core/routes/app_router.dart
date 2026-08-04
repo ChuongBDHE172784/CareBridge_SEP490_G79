@@ -858,7 +858,8 @@ final GoRouter appRouter = GoRouter(
         }
         return SymptomIntakeScreen(
           entryContext:
-              extra as TriageEntryContext? ?? const TriageEntryContext(),
+              extra as TriageEntryContext? ??
+                  const TriageEntryContext(requiresStageSelection: true),
         );
       },
     ),

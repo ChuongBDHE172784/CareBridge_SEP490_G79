@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../models/imu_diagnostics_model.dart';
 import '../models/safety_config_model.dart';
+import '../services/safety_demo_mode.dart';
 import '../services/safety_foreground_service.dart';
 import '../services/safety_service.dart';
 import '../widgets/disable_fall_detection_sheet.dart';
@@ -10,6 +12,69 @@ import 'enable_fall_detection_screen.dart';
 import '../../emergency/screens/emergency_contacts_screen.dart';
 import '../../emergency/services/emergency_service.dart';
 import '../../emergency/models/emergency_session_model.dart';
+
+Future<void> dispatchSafetyCountdownResult({
+  required SafetyCountdownResult? result,
+  required bool simulated,
+  required Future<void> Function() onSafe,
+  required Future<void> Function(String? reasonCode, String? reason)
+  onFalsePositive,
+  required Future<void> Function() onEmergency,
+}) async {
+  if (simulated || result == null) return;
+  switch (result.action) {
+    case SafetyCountdownAction.safe:
+      await onSafe();
+    case SafetyCountdownAction.falsePositive:
+      await onFalsePositive(result.reasonCode, result.reason);
+    case SafetyCountdownAction.help:
+    case SafetyCountdownAction.timeout:
+      await onEmergency();
+  }
+}
+
+SafetyEvent? selectNextOpenSafetyEvent(
+  Iterable<SafetyEvent> events, {
+  required String excludingId,
+}) {
+  for (final event in events) {
+    if (event.status == 'OPEN' && event.id != excludingId) return event;
+  }
+  return null;
+}
+
+bool isSafeFallSimulationEligible({
+  required SafetyConfig? config,
+  required bool coordinatorRunning,
+  required ImuDiagnosticsSnapshot? diagnostics,
+  required DateTime now,
+}) =>
+    (config?.fallDetectionEnabled ?? false) &&
+    (config?.sensorPermissionGranted ?? false) &&
+    coordinatorRunning &&
+    diagnostics?.state == ImuSamplingState.sampling &&
+    diagnostics!.ageAt(now) <= const Duration(seconds: 2);
+
+class SafetyRealEventQueue {
+  final List<SafetyEvent> _events = [];
+
+  void enqueue(SafetyEvent event) {
+    if (event.status != 'OPEN' || _events.any((item) => item.id == event.id)) {
+      return;
+    }
+    _events.add(event);
+  }
+
+  void remove(String eventId) {
+    _events.removeWhere((event) => event.id == eventId);
+  }
+
+  SafetyEvent? takeNext({required String excludingId}) {
+    final index = _events.indexWhere((event) => event.id != excludingId);
+    if (index < 0) return null;
+    return _events.removeAt(index);
+  }
+}
 
 /// CB-023 — Safety Monitoring (UC-133..UC-141, UC-176)
 /// Hub screen for fall detection, SOS, and safety event history.
@@ -46,6 +111,13 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
   List<SafetyEvent> _events = const [];
   EmergencySession? _activeEmergency;
   StreamSubscription<SafetyEvent>? _detectedEventSubscription;
+  StreamSubscription<ImuDiagnosticsSnapshot>? _diagnosticsSubscription;
+  ImuDiagnosticsSnapshot? _imuDiagnostics;
+  Timer? _demoRecoveryTimer;
+  Timer? _demoGestureArmTimer;
+  int? _demoGestureGeneration;
+  int _lastDemoGestureSequence = 0;
+  final SafetyRealEventQueue _pendingRealEvents = SafetyRealEventQueue();
   String? _countdownEventId;
   bool _loading = true;
   // Local sensor-stream toggle backed by sensors_plus accelerometer/gyroscope
@@ -59,6 +131,11 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
     _detectedEventSubscription = _foregroundCoordinator.detectedEvents.listen(
       _onDetectedEvent,
     );
+    if (safetyDiagnosticsEnabled) {
+      _diagnosticsSubscription = _foregroundCoordinator.diagnostics.listen(
+        _onDiagnosticsSnapshot,
+      );
+    }
     _load();
   }
 
@@ -66,7 +143,69 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _detectedEventSubscription?.cancel();
+    _diagnosticsSubscription?.cancel();
+    _demoRecoveryTimer?.cancel();
+    _demoGestureArmTimer?.cancel();
     super.dispose();
+  }
+
+  void _onDiagnosticsSnapshot(ImuDiagnosticsSnapshot snapshot) {
+    if (!mounted) return;
+    setState(() => _imuDiagnostics = snapshot);
+    _handleDemoGesture(snapshot);
+    if (!safetyDemoMode || snapshot.state != ImuSamplingState.stopped) return;
+    if (_demoRecoveryTimer?.isActive ?? false) return;
+    _demoRecoveryTimer = Timer(const Duration(seconds: 1), () {
+      if (mounted) unawaited(_foregroundCoordinator.reconcile());
+    });
+  }
+
+  void _handleDemoGesture(ImuDiagnosticsSnapshot snapshot) {
+    if (!safetyDemoMode) return;
+    if (_demoGestureGeneration != snapshot.generation) {
+      _demoGestureGeneration = snapshot.generation;
+      _lastDemoGestureSequence = snapshot.demoGestureSequence;
+      return;
+    }
+    final gestureDetected =
+        snapshot.demoGestureSequence > _lastDemoGestureSequence;
+    _lastDemoGestureSequence = snapshot.demoGestureSequence;
+    if (!gestureDetected || !(_demoGestureArmTimer?.isActive ?? false)) {
+      return;
+    }
+    _demoGestureArmTimer?.cancel();
+    setState(() {});
+    unawaited(_showDemoFallAlert());
+  }
+
+  void _armDemoGesture() {
+    final diagnostics = _imuDiagnostics;
+    final eligible = isSafeFallSimulationEligible(
+      config: _config,
+      coordinatorRunning: _foregroundCoordinator.isRunning,
+      diagnostics: diagnostics,
+      now: DateTime.now().toUtc(),
+    );
+    if (!safetyDemoMode || !eligible || _countdownEventId != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('IMU phải đang nhận mẫu trước khi bật cử chỉ demo.'),
+        ),
+      );
+      return;
+    }
+
+    _demoGestureGeneration = diagnostics?.generation;
+    _lastDemoGestureSequence = diagnostics?.demoGestureSequence ?? 0;
+    _demoGestureArmTimer?.cancel();
+    _demoGestureArmTimer = Timer(const Duration(seconds: 8), () {
+      if (!mounted) return;
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã hết 8 giây chờ cử chỉ demo.')),
+      );
+    });
+    setState(() {});
   }
 
   @override
@@ -118,13 +257,18 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
 
   void _onDetectedEvent(SafetyEvent event) {
     if (!mounted) return;
+    _pendingRealEvents.enqueue(event);
     setState(() {
       _events = [event, ..._events.where((item) => item.id != event.id)];
     });
     unawaited(_showCountdown(event));
   }
 
-  Future<void> _showCountdown(SafetyEvent event) async {
+  Future<void> _showCountdown(
+    SafetyEvent event, {
+    bool simulated = false,
+    bool presentAsRealAlert = false,
+  }) async {
     final deadline = event.countdownDeadlineAt;
     if (!mounted ||
         event.status != 'OPEN' ||
@@ -133,27 +277,37 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
       return;
     }
     _countdownEventId = event.id;
+    if (!simulated) _pendingRealEvents.remove(event.id);
     final result = await showModalBottomSheet<SafetyCountdownResult>(
       context: context,
       isDismissible: false,
       enableDrag: false,
       isScrollControlled: true,
-      builder: (_) => SafetyCountdownSheet(event: event),
+      builder: (_) => SafetyCountdownSheet(
+        event: event,
+        simulated: simulated,
+        presentAsRealAlert: presentAsRealAlert,
+      ),
     );
     try {
-      if (result?.action == SafetyCountdownAction.safe) {
-        await _confirmEventSafe(
+      await dispatchSafetyCountdownResult(
+        result: result,
+        simulated: simulated,
+        onSafe: () => _confirmEventSafe(
           event,
           note: 'Người dùng xác nhận an toàn trong thời gian đếm ngược.',
-        );
-      } else if (result?.action == SafetyCountdownAction.falsePositive) {
-        await _reportEventFalsePositive(
-          event,
-          note: '${result?.reasonCode}: ${result?.reason}',
-        );
-      } else if (result?.action == SafetyCountdownAction.help ||
-          result?.action == SafetyCountdownAction.timeout) {
-        await _safetyService.sendEmergencyAlertForEvent(event.id);
+        ),
+        onFalsePositive: (reasonCode, reason) =>
+            _reportEventFalsePositive(event, note: '$reasonCode: $reason'),
+        onEmergency: () => _safetyService.sendEmergencyAlertForEvent(event.id),
+      );
+      final showDemoEscalation =
+          simulated &&
+          presentAsRealAlert &&
+          (result?.action == SafetyCountdownAction.help ||
+              result?.action == SafetyCountdownAction.timeout);
+      if (showDemoEscalation && mounted) {
+        await _showDemoEmergencyEscalation();
       }
     } catch (error) {
       if (mounted) {
@@ -164,19 +318,86 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
         );
       }
     } finally {
-      if (mounted) await _load();
+      if (!simulated && mounted) await _load();
       _countdownEventId = null;
       if (mounted) {
-        SafetyEvent? next;
-        for (final candidate in _events) {
-          if (candidate.status == 'OPEN' && candidate.id != event.id) {
-            next = candidate;
-            break;
-          }
-        }
+        final next =
+            _pendingRealEvents.takeNext(excludingId: event.id) ??
+            selectNextOpenSafetyEvent(_events, excludingId: event.id);
         if (next != null) unawaited(_showCountdown(next));
       }
     }
+  }
+
+  Future<void> _showDemoEmergencyEscalation() async {
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(Icons.emergency, size: 48, color: _onErrorContainer),
+        title: const Text(
+          'Không nhận được phản hồi',
+          textAlign: TextAlign.center,
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _EmergencyEscalationRow(
+              icon: Icons.notifications_active_outlined,
+              text: 'Liên hệ người thân đã đăng ký để yêu cầu kiểm tra ngay.',
+            ),
+            SizedBox(height: 14),
+            _EmergencyEscalationRow(
+              icon: Icons.phone_in_talk_outlined,
+              text: 'Nếu chưa nhận được hỗ trợ, chuyển sang bước gọi 115.',
+            ),
+          ],
+        ),
+        actions: [
+          FilledButton.icon(
+            key: const Key('close-demo-emergency-escalation'),
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            icon: const Icon(Icons.check_circle_outline),
+            label: const Text('Tôi đã an toàn — đóng cảnh báo'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showDemoFallAlert() async {
+    if (!safetyDemoMode) return;
+    final eligible = isSafeFallSimulationEligible(
+      config: _config,
+      coordinatorRunning: _foregroundCoordinator.isRunning,
+      diagnostics: _imuDiagnostics,
+      now: DateTime.now().toUtc(),
+    );
+    if (!eligible || _countdownEventId != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Hãy bật phát hiện ngã, quyền cảm biến và dịch vụ IMU trước khi thử cử chỉ.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final startedAt = DateTime.now().toUtc();
+    final event = SafetyEvent(
+      id: 'local-demo-alert-${startedAt.microsecondsSinceEpoch}',
+      eventType: 'SUSPECTED_FALL',
+      magnitude: _imuDiagnostics?.accelerationMagnitude ?? 0,
+      status: 'OPEN',
+      detectedAt: startedAt,
+      countdownDeadlineAt: DateTime.now().toUtc().add(
+        Duration(seconds: (_config?.countdownSeconds ?? 30).clamp(1, 300)),
+      ),
+      notes: 'Local demo alert; never persisted or transmitted.',
+    );
+    await _showCountdown(event, simulated: true, presentAsRealAlert: true);
   }
 
   Future<void> _confirmEventSafe(SafetyEvent event, {String? note}) async {
@@ -322,6 +543,10 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
                       ),
                       const SizedBox(height: 24),
                       _buildStatusCard(fallDetectionEnabled),
+                      if (safetyDiagnosticsEnabled) ...[
+                        const SizedBox(height: 16),
+                        _buildImuDiagnosticsCard(),
+                      ],
                       if (_activeEmergency != null) ...[
                         const SizedBox(height: 16),
                         _buildActiveEmergencyCard(),
@@ -490,6 +715,94 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildImuDiagnosticsCard() {
+    final diagnostics = _imuDiagnostics;
+    final state =
+        diagnostics?.state ??
+        (_foregroundCoordinator.isRunning
+            ? ImuSamplingState.coordinatorRunning
+            : ImuSamplingState.stopped);
+    final age = diagnostics?.ageAt(DateTime.now().toUtc());
+    String metric(double? value, String suffix) =>
+        value == null ? '—' : '${value.toStringAsFixed(1)} $suffix';
+
+    return Container(
+      key: const Key('imu-diagnostics-card'),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _surfaceContainer,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _primaryContainer.withValues(alpha: 0.45)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'Chẩn đoán IMU · $safetyDiagnosticsModeLabel',
+            style: TextStyle(fontWeight: FontWeight.w800, color: _primary),
+          ),
+          if (safetyDemoMode) ...[
+            const SizedBox(height: 6),
+            const Text(
+              'BẢN TRÌNH DIỄN · MÔ PHỎNG KHÔNG GỬI SOS',
+              key: Key('safety-demo-mode-banner'),
+              style: TextStyle(
+                color: _onErrorContainer,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+          const SizedBox(height: 8),
+          Text(state.label, key: const Key('imu-sampling-state')),
+          const SizedBox(height: 6),
+          Text(
+            'Tần số: ${metric(diagnostics?.sampleRateHz, 'Hz')} · '
+            'Tuổi mẫu: ${age == null ? '—' : '${age.inMilliseconds} ms'}',
+          ),
+          Text(
+            'Gia tốc: ${metric(diagnostics?.accelerationMagnitude, 'm/s²')} · '
+            'Gyro: ${metric(diagnostics?.gyroscopeMagnitude, 'rad/s')}',
+          ),
+          Text(
+            'Pha: ${diagnostics?.detectorPhase.name ?? 'idle'} · '
+            '${diagnostics?.detectorReason.label ?? 'Chưa có quyết định'}',
+          ),
+          if (diagnostics?.errorMessage case final message?)
+            Text(message, style: const TextStyle(color: _onErrorContainer)),
+          const SizedBox(height: 12),
+          if (safetyDemoMode) ...[
+            FilledButton.icon(
+              key: const Key('arm-safety-demo-gesture'),
+              onPressed: _armDemoGesture,
+              icon: Icon(
+                _demoGestureArmTimer?.isActive ?? false
+                    ? Icons.sensors
+                    : Icons.sports_handball_outlined,
+              ),
+              label: Text(
+                _demoGestureArmTimer?.isActive ?? false
+                    ? 'ĐÃ SẴN SÀNG — HÃY VUNG MÁY'
+                    : 'Sẵn sàng vung điện thoại',
+              ),
+            ),
+            if (_demoGestureArmTimer?.isActive ?? false) ...[
+              const SizedBox(height: 6),
+              const Text(
+                'Giữ máy yên trong chốc lát, giơ cao rồi vung nhanh ít nhất khoảng '
+                '50 cm từ trên xuống. Luôn giữ chắc, không thả máy.',
+                key: Key('safety-demo-gesture-instruction'),
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+              ),
+            ],
+            const SizedBox(height: 4),
+          ],
         ],
       ),
     );
@@ -860,6 +1173,30 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
           ),
         ],
       ),
+    );
+  }
+}
+
+class _EmergencyEscalationRow extends StatelessWidget {
+  const _EmergencyEscalationRow({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, color: const Color(0xFF93000A)),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Text(
+            text,
+            style: const TextStyle(fontWeight: FontWeight.w600),
+          ),
+        ),
+      ],
     );
   }
 }

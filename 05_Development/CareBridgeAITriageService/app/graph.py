@@ -92,6 +92,7 @@ class TriageState(TypedDict, total=False):
     warning: str | None
     disclaimer: str
     forceCautiousYellow: bool
+    suppressFollowups: bool
     forcedWarning: str | None
     realtimeSearchSkippedForDeadline: bool
 
@@ -169,6 +170,10 @@ def determine_missing_information_node(state: TriageState) -> TriageState:
 
 
 def select_followup_question_keys(state: TriageState) -> TriageState:
+    if state.get("suppressFollowups"):
+        state["followupQuestions"] = []
+        state["questions"] = []
+        return state
     questions = ask_followup_questions(state["intake"])
     if not state.get("normalizedSymptoms") and not state.get("redFlags"):
         generic = IntakeQuestion(
@@ -541,12 +546,14 @@ def run_triage(
     normalization_gemini_used: bool = False,
     request_deadline: float | None = None,
     deterministic_only: bool = False,
+    suppress_followups: bool = False,
 ) -> ChildTriageResponse:
     client = None if deterministic_only else (gemini_client if gemini_client is not None else get_gemini_client())
     initial: TriageState = {
         "intake": intake,
         "geminiClient": client,
         "forceCautiousYellow": force_cautious_yellow,
+        "suppressFollowups": suppress_followups,
         "forcedWarning": forced_warning,
         "requestDeadline": request_deadline or (time.monotonic() + PYTHON_SERVICE_TIMEOUT_SECONDS),
     }

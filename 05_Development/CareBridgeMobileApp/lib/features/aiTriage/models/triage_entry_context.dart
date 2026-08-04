@@ -16,6 +16,7 @@ class TriageEntryContext {
   const TriageEntryContext({
     this.stage = TriageStageIntent.infant,
     this.lockStage = false,
+    this.requiresStageSelection = false,
     this.origin = TriageOriginIntent.direct,
     this.journeyId,
     this.originReferenceId,
@@ -26,17 +27,23 @@ class TriageEntryContext {
     this.journeyId,
     this.originReferenceId,
   }) : stage = TriageStageIntent.postpartum,
-       lockStage = true;
+       lockStage = true,
+       requiresStageSelection = false;
 
   const TriageEntryContext.locked({
     required this.stage,
     required this.origin,
     this.journeyId,
     this.originReferenceId,
-  }) : lockStage = true;
+  }) : lockStage = true,
+       requiresStageSelection = false;
 
   final TriageStageIntent stage;
   final bool lockStage;
+
+  /// Direct/floating entry has no trusted lifecycle source.  Do not let its
+  /// display default be serialized until the user explicitly selects a stage.
+  final bool requiresStageSelection;
   final TriageOriginIntent origin;
   final String? journeyId;
   final String? originReferenceId;

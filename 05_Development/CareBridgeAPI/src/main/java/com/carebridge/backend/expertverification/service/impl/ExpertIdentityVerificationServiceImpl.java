@@ -4,6 +4,7 @@ import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.expert.exception.ExpertException;
+import com.carebridge.backend.expert.entity.ExpertProfile;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
 import org.springframework.data.domain.Page;
@@ -346,39 +347,45 @@ public class ExpertIdentityVerificationServiceImpl implements IExpertIdentityVer
         String searchQuery = (search != null && !search.isBlank()) ? search.trim() : null;
 
         return profileRepository.findForReview(searchQuery, verificationStatuses, pageable)
-                .map(profile -> {
-                    var user = profile.getUser();
-                    var latestIdentity = identityRepository
-                            .findFirstByExpertProfileIdOrderByCreatedAtDesc(
-                                    profile.getExpertProfileId())
-                            .map(this::toResponse)
-                            .orElse(null);
-                    var credentials = credentialService.getAdminCredentialsForProfile(
-                            profile.getExpertProfileId(), reviewerId);
-                    String identityStatus = latestIdentity == null
-                            ? "MISSING" : latestIdentity.getReviewStatus().name();
-                    String professionalCredentialStatus = credentialStatusFromResponses(credentials);
-                    boolean facilityReady = profile.getFacilityId() == null
-                            || careFacilityRepository.findById(profile.getFacilityId())
-                                    .map(facility -> facility.getVerificationStatus()
-                                            == FacilityStatus.VERIFIED)
-                                    .orElse(false);
-                    return ExpertReviewCaseResponse.builder()
-                            .profile(profileMapper.toResponse(
-                                    profile,
-                                    user != null ? user.getName() : null,
-                                    user != null ? user.getAvatarUrl() : null))
-                            .latestIdentity(latestIdentity)
-                            .credentials(credentials)
-                            .identityStatus(identityStatus)
-                            .credentialStatus(professionalCredentialStatus)
-                            .readyForFinalApproval(
-                                    profile.getVerificationStatus() != VerificationStatus.APPROVED
-                                    && "APPROVED".equals(identityStatus)
-                                    && "APPROVED".equals(professionalCredentialStatus)
-                                    && facilityReady)
-                            .build();
-                });
+                .map(profile -> toAdminReviewCase(profile, reviewerId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ExpertReviewCaseResponse getAdminReviewCase(UUID expertProfileId, UUID reviewerId) {
+        var profile = profileRepository.findById(expertProfileId)
+                .orElseThrow(() -> new ExpertException(HttpStatus.NOT_FOUND,
+                        "EXPERT-003", "Expert profile not found"));
+        return toAdminReviewCase(profile, reviewerId);
+    }
+
+    private ExpertReviewCaseResponse toAdminReviewCase(ExpertProfile profile, UUID reviewerId) {
+        var user = profile.getUser();
+        var latestIdentity = identityRepository
+                .findFirstByExpertProfileIdOrderByCreatedAtDesc(profile.getExpertProfileId())
+                .map(this::toResponse)
+                .orElse(null);
+        var credentials = credentialService.getAdminCredentialsForProfile(
+                profile.getExpertProfileId(), reviewerId);
+        String identityStatus = latestIdentity == null ? "MISSING" : latestIdentity.getReviewStatus().name();
+        String professionalCredentialStatus = credentialStatusFromResponses(credentials);
+        boolean facilityReady = profile.getFacilityId() == null
+                || careFacilityRepository.findById(profile.getFacilityId())
+                        .map(facility -> facility.getVerificationStatus() == FacilityStatus.VERIFIED)
+                        .orElse(false);
+        return ExpertReviewCaseResponse.builder()
+                .profile(profileMapper.toResponse(profile,
+                        user != null ? user.getName() : null,
+                        user != null ? user.getAvatarUrl() : null))
+                .latestIdentity(latestIdentity)
+                .credentials(credentials)
+                .identityStatus(identityStatus)
+                .credentialStatus(professionalCredentialStatus)
+                .readyForFinalApproval(profile.getVerificationStatus() != VerificationStatus.APPROVED
+                        && "APPROVED".equals(identityStatus)
+                        && "APPROVED".equals(professionalCredentialStatus)
+                        && facilityReady)
+                .build();
     }
 
     @Override

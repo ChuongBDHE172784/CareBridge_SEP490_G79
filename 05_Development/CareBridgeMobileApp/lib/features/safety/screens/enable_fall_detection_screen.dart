@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../services/safety_service.dart';
 import '../services/safety_foreground_service.dart';
@@ -45,7 +46,7 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Giám sát phát hiện ngã ở chế độ nền hiện chỉ hỗ trợ Android.',
+            'Thiết bị hoặc nền tảng này chưa hỗ trợ giám sát phát hiện ngã.',
           ),
         ),
       );
@@ -427,14 +428,14 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: RichText(
-                  text: const TextSpan(
-                    style: TextStyle(
+                  text: TextSpan(
+                    style: const TextStyle(
                       fontSize: 14,
                       color: _onSurfaceVariant,
                       height: 1.4,
                     ),
                     children: [
-                      TextSpan(
+                      const TextSpan(
                         text: 'Cảnh báo quan trọng\n',
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
@@ -450,6 +451,12 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
                         text:
                             ' hoặc hệ thống cứu hộ chuyên nghiệp. Độ chính xác phụ thuộc vào phần cứng thiết bị.',
                       ),
+                      if (!kIsWeb &&
+                          defaultTargetPlatform == TargetPlatform.iOS)
+                        const TextSpan(
+                          text:
+                              '\n\nTrên iPhone, iOS quyết định thời điểm và thời lượng chạy nền nên giám sát không liên tục và không được đảm bảo. Đóng cưỡng bức ứng dụng sẽ dừng giám sát; SOS thủ công vẫn luôn sẵn sàng.',
+                        ),
                     ],
                   ),
                 ),
