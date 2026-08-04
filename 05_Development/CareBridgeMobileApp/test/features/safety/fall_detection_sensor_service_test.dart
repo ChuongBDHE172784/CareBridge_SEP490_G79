@@ -121,7 +121,7 @@ void main() {
   );
 
   test(
-    'demo gesture bypasses diagnostics throttle with a new sequence',
+    'product sensor self-test emits locally without creating a fall event',
     () async {
       final accelerometer = StreamController<AccelerometerEvent>.broadcast();
       final gyroscope = StreamController<GyroscopeEvent>.broadcast();
@@ -131,8 +131,14 @@ void main() {
         gyroscopeEvents: () => gyroscope.stream,
         now: () => now,
       );
-      final snapshots = <ImuDiagnosticsSnapshot>[];
-      final subscription = service.diagnostics.listen(snapshots.add);
+      final results = <SensorSelfTestResult>[];
+      final safetyEvents = <Object>[];
+      final resultSubscription = service.sensorSelfTestResults.listen(
+        results.add,
+      );
+      final safetySubscription = service.detectedEvents.listen(
+        safetyEvents.add,
+      );
       await service.start();
 
       final startedAt = now;
@@ -142,31 +148,27 @@ void main() {
         accelerometer.add(AccelerometerEvent(9.81, 0, 0, now));
         await Future<void>.delayed(Duration.zero);
       }
-      expect(snapshots.last.demoGestureSequence, isZero);
+      expect(results, isEmpty);
 
-      var detectedAndForcePublished = false;
       for (var index = 0; index < 26; index++) {
         now = startedAt.add(Duration(milliseconds: 420 + index * 20));
-        final beforeSampleCount = snapshots.length;
         gyroscope.add(GyroscopeEvent(2.8, 0, 0, now));
         accelerometer.add(AccelerometerEvent(16.5, 0, 0, now));
         await Future<void>.delayed(Duration.zero);
-        if (snapshots.last.demoGestureSequence == 1) {
-          expect(snapshots.length, greaterThan(beforeSampleCount));
-          expect(snapshots.last.capturedAt, now);
-          detectedAndForcePublished = true;
-          break;
-        }
+        if (results.isNotEmpty) break;
       }
 
-      expect(detectedAndForcePublished, isTrue);
-      expect(snapshots.last.demoGestureSequence, 1);
+      expect(results, hasLength(1));
+      expect(results.single.sequence, 1);
+      expect(results.single.accelerationMagnitude, closeTo(16.5, 0.001));
+      expect(results.single.gyroscopeMagnitude, closeTo(2.8, 0.001));
+      expect(safetyEvents, isEmpty);
 
       await service.stop();
-      await subscription.cancel();
+      await resultSubscription.cancel();
+      await safetySubscription.cancel();
       await accelerometer.close();
       await gyroscope.close();
     },
-    skip: !safetyDemoMode,
   );
 }

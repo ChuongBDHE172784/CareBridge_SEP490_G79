@@ -127,4 +127,64 @@ void main() {
       isFalse,
     );
   });
+
+  test('product sensor self-test requires enabled and running IMU', () {
+    const enabled = SafetyConfig(
+      fallDetectionEnabled: true,
+      sensitivityLevel: 'MEDIUM',
+      emergencyAutoAlert: true,
+      sensorPermissionGranted: true,
+    );
+    const missingPermission = SafetyConfig(
+      fallDetectionEnabled: true,
+      sensitivityLevel: 'MEDIUM',
+      emergencyAutoAlert: true,
+      sensorPermissionGranted: false,
+    );
+
+    expect(
+      isSensorSelfTestEligible(config: enabled, coordinatorRunning: true),
+      isTrue,
+    );
+    expect(
+      isSensorSelfTestEligible(
+        config: missingPermission,
+        coordinatorRunning: true,
+      ),
+      isFalse,
+    );
+    expect(
+      isSensorSelfTestEligible(config: enabled, coordinatorRunning: false),
+      isFalse,
+    );
+  });
+
+  test('sensor self-test accepts only results captured after arming', () {
+    final armedAt = DateTime.utc(2026, 8, 4, 10);
+
+    expect(
+      shouldAcceptSensorSelfTestResult(
+        armed: true,
+        armedAt: armedAt,
+        detectedAt: armedAt.add(const Duration(milliseconds: 20)),
+      ),
+      isTrue,
+    );
+    expect(
+      shouldAcceptSensorSelfTestResult(
+        armed: true,
+        armedAt: armedAt,
+        detectedAt: armedAt.subtract(const Duration(milliseconds: 1)),
+      ),
+      isFalse,
+    );
+    expect(
+      shouldAcceptSensorSelfTestResult(
+        armed: false,
+        armedAt: armedAt,
+        detectedAt: armedAt.add(const Duration(milliseconds: 20)),
+      ),
+      isFalse,
+    );
+  });
 }

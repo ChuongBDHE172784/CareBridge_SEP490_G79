@@ -17,8 +17,8 @@ const String safetyDiagnosticsModeLabel = safetyDemoMode
     ? 'CHẾ ĐỘ TRÌNH DIỄN'
     : 'DEBUG';
 
-/// Recognizes an intentionally exaggerated hand swing while demo mode is
-/// armed. These are presentation-gesture thresholds, not fall thresholds.
+/// Recognizes an intentionally exaggerated hand swing for the user-initiated
+/// sensor self-test. These thresholds never participate in fall detection.
 class SafetyDemoGestureDetector {
   static const double gravity = 9.81;
   static const double stationaryAccelerationTolerance = 0.8;
@@ -182,4 +182,63 @@ class SafetyDemoGestureDetector {
     _resetMotionPreparation();
     _sequence = 0;
   }
+}
+
+/// Product-facing name for the gesture detector. The original class remains
+/// available so older diagnostics/tests keep source compatibility.
+class SafetySensorSelfTestDetector extends SafetyDemoGestureDetector {}
+
+class SensorSelfTestResult {
+  const SensorSelfTestResult({
+    required this.sequence,
+    required this.detectedAt,
+    required this.accelerationMagnitude,
+    required this.gyroscopeMagnitude,
+  });
+
+  factory SensorSelfTestResult.fromJson(Map<String, dynamic> json) {
+    final sequence = json['sequence'];
+    final detectedAt = json['detectedAt'];
+    final acceleration = json['accelerationMagnitude'];
+    final gyroscope = json['gyroscopeMagnitude'];
+    if (sequence is! int ||
+        sequence <= 0 ||
+        detectedAt is! String ||
+        acceleration is! num ||
+        gyroscope is! num) {
+      throw const FormatException('Invalid sensor self-test result');
+    }
+    final accelerationValue = acceleration.toDouble();
+    final gyroscopeValue = gyroscope.toDouble();
+    if (!accelerationValue.isFinite || !gyroscopeValue.isFinite) {
+      throw const FormatException('Non-finite sensor self-test result');
+    }
+    return SensorSelfTestResult(
+      sequence: sequence,
+      detectedAt: DateTime.parse(detectedAt).toUtc(),
+      accelerationMagnitude: accelerationValue,
+      gyroscopeMagnitude: gyroscopeValue,
+    );
+  }
+
+  static SensorSelfTestResult? tryParse(Object? value) {
+    if (value is! Map) return null;
+    try {
+      return SensorSelfTestResult.fromJson(Map<String, dynamic>.from(value));
+    } catch (_) {
+      return null;
+    }
+  }
+
+  final int sequence;
+  final DateTime detectedAt;
+  final double accelerationMagnitude;
+  final double gyroscopeMagnitude;
+
+  Map<String, dynamic> toJson() => {
+    'sequence': sequence,
+    'detectedAt': detectedAt.toUtc().toIso8601String(),
+    'accelerationMagnitude': accelerationMagnitude,
+    'gyroscopeMagnitude': gyroscopeMagnitude,
+  };
 }

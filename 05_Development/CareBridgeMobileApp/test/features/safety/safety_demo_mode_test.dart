@@ -18,8 +18,24 @@ void main() {
     );
   });
 
+  test('sensor self-test result uses a strict JSON-safe contract', () {
+    final result = SensorSelfTestResult(
+      sequence: 2,
+      detectedAt: DateTime.utc(2026, 8, 4, 10),
+      accelerationMagnitude: 16.5,
+      gyroscopeMagnitude: 2.8,
+    );
+
+    final decoded = SensorSelfTestResult.fromJson(result.toJson());
+    expect(decoded.sequence, 2);
+    expect(decoded.detectedAt, result.detectedAt);
+    expect(decoded.accelerationMagnitude, 16.5);
+    expect(decoded.gyroscopeMagnitude, 2.8);
+    expect(SensorSelfTestResult.tryParse({'sequence': -1}), isNull);
+  });
+
   test('stationary 50 Hz samples and a gentle lift do not trigger', () {
-    final detector = SafetyDemoGestureDetector();
+    final detector = SafetySensorSelfTestDetector();
     final startedAt = DateTime.utc(2026, 8, 4);
 
     ImuSample sample(Duration offset, double acceleration, {double gyro = 0}) {
@@ -56,7 +72,7 @@ void main() {
   });
 
   test('short hard jerk is rejected but a fast long swing triggers once', () {
-    final detector = SafetyDemoGestureDetector();
+    final detector = SafetySensorSelfTestDetector();
     final startedAt = DateTime.utc(2026, 8, 4);
 
     ImuSample sample(Duration offset, double acceleration, {double gyro = 0}) {

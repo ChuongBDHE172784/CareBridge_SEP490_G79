@@ -53,12 +53,14 @@ class FallDetectionSensorService {
       StreamController<SafetyEvent>.broadcast();
   final StreamController<ImuDiagnosticsSnapshot> _diagnosticsController =
       StreamController<ImuDiagnosticsSnapshot>.broadcast();
+  final StreamController<SensorSelfTestResult> _sensorSelfTestController =
+      StreamController<SensorSelfTestResult>.broadcast();
 
   StreamSubscription<AccelerometerEvent>? _accelerometerSubscription;
   StreamSubscription<GyroscopeEvent>? _gyroscopeSubscription;
   final ImuFallDetector _detector = ImuFallDetector();
-  final SafetyDemoGestureDetector _demoGestureDetector =
-      SafetyDemoGestureDetector();
+  final SafetySensorSelfTestDetector _sensorSelfTestDetector =
+      SafetySensorSelfTestDetector();
   GyroscopeEvent? _latestGyroscope;
   bool _sending = false;
   bool _running = false;
@@ -80,6 +82,8 @@ class FallDetectionSensorService {
 
   bool get isRunning => _running;
   Stream<SafetyEvent> get detectedEvents => _eventController.stream;
+  Stream<SensorSelfTestResult> get sensorSelfTestResults =>
+      _sensorSelfTestController.stream;
   Stream<ImuDiagnosticsSnapshot> get diagnostics => safetyDiagnosticsEnabled
       ? _diagnosticsController.stream
       : const Stream.empty();
@@ -110,7 +114,7 @@ class FallDetectionSensorService {
         : _runGeneration + 1;
     _accelerometerStreamError = null;
     _gyroscopeStreamError = null;
-    _demoGestureDetector.reset();
+    _sensorSelfTestDetector.reset();
     if (safetyDiagnosticsEnabled) {
       _lastAccelerometerAt = null;
       _sampleRateHz = null;
@@ -219,10 +223,19 @@ class FallDetectionSensorService {
       gyroscopeTimestamp: gyro?.timestamp.toUtc(),
     );
     final candidate = _detector.addSample(sample);
-    final demoGestureDetected =
-        safetyDemoMode && _demoGestureDetector.addSample(sample);
+    final sensorSelfTestDetected = _sensorSelfTestDetector.addSample(sample);
+    if (sensorSelfTestDetected) {
+      _sensorSelfTestController.add(
+        SensorSelfTestResult(
+          sequence: _sensorSelfTestDetector.sequence,
+          detectedAt: sample.timestamp,
+          accelerationMagnitude: sample.accelerationMagnitude,
+          gyroscopeMagnitude: sample.gyroscopeMagnitude,
+        ),
+      );
+    }
     if (safetyDiagnosticsEnabled) {
-      _publishSamplingDiagnostics(sample, force: demoGestureDetected);
+      _publishSamplingDiagnostics(sample, force: sensorSelfTestDetected);
     }
     if (_locationSharingAllowed &&
         (_locationReadAt == null ||
@@ -273,7 +286,7 @@ class FallDetectionSensorService {
           accelerationMagnitude: sample.accelerationMagnitude,
           detectorPhase: _detector.latestDecision.phase,
           detectorReason: ImuDetectorDecisionReason.gyroscopeMissing,
-          demoGestureSequence: _demoGestureDetector.sequence,
+          demoGestureSequence: _sensorSelfTestDetector.sequence,
         ),
         force: force,
       );
@@ -291,7 +304,7 @@ class FallDetectionSensorService {
           gyroscopeMagnitude: sample.gyroscopeMagnitude,
           detectorPhase: _detector.latestDecision.phase,
           detectorReason: ImuDetectorDecisionReason.gyroscopeStale,
-          demoGestureSequence: _demoGestureDetector.sequence,
+          demoGestureSequence: _sensorSelfTestDetector.sequence,
         ),
         force: force,
       );
@@ -309,7 +322,7 @@ class FallDetectionSensorService {
             : sample.gyroscopeMagnitude,
         detectorPhase: _detector.latestDecision.phase,
         detectorReason: _detector.latestDecision.reason,
-        demoGestureSequence: _demoGestureDetector.sequence,
+        demoGestureSequence: _sensorSelfTestDetector.sequence,
       ),
       force: force,
     );

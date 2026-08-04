@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:untitled/features/privacy/models/privacy_model.dart';
 import 'package:untitled/features/safety/models/safety_config_model.dart';
 import 'package:untitled/features/safety/models/imu_diagnostics_model.dart';
+import 'package:untitled/features/safety/services/safety_demo_mode.dart';
 import 'package:untitled/features/safety/services/safety_foreground_service.dart';
 
 class _FakeForegroundGateway implements SafetyForegroundGateway {
@@ -208,6 +209,38 @@ void main() {
 
     expect(snapshots, hasLength(1));
     expect(snapshots.single.state, ImuSamplingState.awaitingSamples);
+    await subscription.cancel();
+  });
+
+  test('forwards product sensor self-test results independently', () async {
+    final coordinator = SafetyForegroundServiceCoordinator.forTesting(
+      gateway: _FakeForegroundGateway(),
+      isAuthenticated: () => true,
+      loadConfig: () async => enabledConfig,
+      loadConsents: () async => [consent('SENSOR_DATA', 'CREATE')],
+    );
+    final results = <SensorSelfTestResult>[];
+    final subscription = coordinator.sensorSelfTestResults.listen(results.add);
+    final result = SensorSelfTestResult(
+      sequence: 1,
+      detectedAt: DateTime.utc(2026, 8, 4),
+      accelerationMagnitude: 16.5,
+      gyroscopeMagnitude: 2.8,
+    );
+
+    coordinator.handleTaskDataForTesting({
+      'type': 'sensor_self_test_result',
+      'result': result.toJson(),
+    });
+    coordinator.handleTaskDataForTesting({
+      'type': 'sensor_self_test_result',
+      'result': {'sequence': -1},
+    });
+    await Future<void>.delayed(Duration.zero);
+
+    expect(results, hasLength(1));
+    expect(results.single.sequence, 1);
+    expect(results.single.accelerationMagnitude, 16.5);
     await subscription.cancel();
   });
 

@@ -83,6 +83,8 @@ class SafetyForegroundServiceCoordinator {
       StreamController<SafetyEvent>.broadcast();
   final StreamController<ImuDiagnosticsSnapshot> _diagnosticsController =
       StreamController<ImuDiagnosticsSnapshot>.broadcast();
+  final StreamController<SensorSelfTestResult> _sensorSelfTestController =
+      StreamController<SensorSelfTestResult>.broadcast();
 
   Future<void>? _reconcileInFlight;
   bool _initialized = false;
@@ -91,6 +93,8 @@ class SafetyForegroundServiceCoordinator {
   ImuDiagnosticsSnapshot? _latestDiagnostics;
 
   Stream<SafetyEvent> get detectedEvents => _eventController.stream;
+  Stream<SensorSelfTestResult> get sensorSelfTestResults =>
+      _sensorSelfTestController.stream;
   Stream<ImuDiagnosticsSnapshot> get diagnostics => safetyDiagnosticsEnabled
       ? _diagnosticsController.stream
       : const Stream.empty();
@@ -242,6 +246,11 @@ class SafetyForegroundServiceCoordinator {
       );
       return;
     }
+    if (normalized['type'] == 'sensor_self_test_result') {
+      final result = SensorSelfTestResult.tryParse(normalized['result']);
+      if (result != null) _sensorSelfTestController.add(result);
+      return;
+    }
     if (!safetyDiagnosticsEnabled || normalized['type'] != 'imu_diagnostics') {
       return;
     }
@@ -319,6 +328,7 @@ class _SafetyForegroundTaskHandler extends TaskHandler {
   final FallDetectionSensorService _sensorService =
       FallDetectionSensorService.instance;
   StreamSubscription<SafetyEvent>? _eventSubscription;
+  StreamSubscription<SensorSelfTestResult>? _sensorSelfTestSubscription;
   StreamSubscription<ImuDiagnosticsSnapshot>? _diagnosticsSubscription;
   bool _validating = false;
 
@@ -326,6 +336,9 @@ class _SafetyForegroundTaskHandler extends TaskHandler {
   Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
     await AuthState.instance.init();
     _eventSubscription = _sensorService.detectedEvents.listen(_publishEvent);
+    _sensorSelfTestSubscription = _sensorService.sensorSelfTestResults.listen(
+      _publishSensorSelfTestResult,
+    );
     if (safetyDiagnosticsEnabled) {
       _diagnosticsSubscription = _sensorService.diagnostics.listen(
         _publishDiagnostics,
@@ -346,6 +359,13 @@ class _SafetyForegroundTaskHandler extends TaskHandler {
         notificationInitialRoute: '/safety',
       ),
     );
+  }
+
+  void _publishSensorSelfTestResult(SensorSelfTestResult result) {
+    FlutterForegroundTask.sendDataToMain({
+      'type': 'sensor_self_test_result',
+      'result': result.toJson(),
+    });
   }
 
   void _publishDiagnostics(ImuDiagnosticsSnapshot snapshot) {
@@ -402,6 +422,8 @@ class _SafetyForegroundTaskHandler extends TaskHandler {
   Future<void> onDestroy(DateTime timestamp, bool isTimeout) async {
     await _eventSubscription?.cancel();
     _eventSubscription = null;
+    await _sensorSelfTestSubscription?.cancel();
+    _sensorSelfTestSubscription = null;
     await _sensorService.stop();
     await _diagnosticsSubscription?.cancel();
     _diagnosticsSubscription = null;

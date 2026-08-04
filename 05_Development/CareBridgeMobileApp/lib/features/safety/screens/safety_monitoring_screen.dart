@@ -55,6 +55,20 @@ bool isSafeFallSimulationEligible({
     diagnostics?.state == ImuSamplingState.sampling &&
     diagnostics!.ageAt(now) <= const Duration(seconds: 2);
 
+bool isSensorSelfTestEligible({
+  required SafetyConfig? config,
+  required bool coordinatorRunning,
+}) =>
+    (config?.fallDetectionEnabled ?? false) &&
+    (config?.sensorPermissionGranted ?? false) &&
+    coordinatorRunning;
+
+bool shouldAcceptSensorSelfTestResult({
+  required bool armed,
+  required DateTime? armedAt,
+  required DateTime detectedAt,
+}) => armed && armedAt != null && !detectedAt.toUtc().isBefore(armedAt.toUtc());
+
 class SafetyRealEventQueue {
   final List<SafetyEvent> _events = [];
 
@@ -111,12 +125,12 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
   List<SafetyEvent> _events = const [];
   EmergencySession? _activeEmergency;
   StreamSubscription<SafetyEvent>? _detectedEventSubscription;
+  StreamSubscription<SensorSelfTestResult>? _sensorSelfTestSubscription;
   StreamSubscription<ImuDiagnosticsSnapshot>? _diagnosticsSubscription;
   ImuDiagnosticsSnapshot? _imuDiagnostics;
   Timer? _demoRecoveryTimer;
   Timer? _demoGestureArmTimer;
-  int? _demoGestureGeneration;
-  int _lastDemoGestureSequence = 0;
+  DateTime? _sensorSelfTestArmedAt;
   final SafetyRealEventQueue _pendingRealEvents = SafetyRealEventQueue();
   String? _countdownEventId;
   bool _loading = true;
@@ -131,6 +145,8 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
     _detectedEventSubscription = _foregroundCoordinator.detectedEvents.listen(
       _onDetectedEvent,
     );
+    _sensorSelfTestSubscription = _foregroundCoordinator.sensorSelfTestResults
+        .listen(_onSensorSelfTestResult);
     if (safetyDiagnosticsEnabled) {
       _diagnosticsSubscription = _foregroundCoordinator.diagnostics.listen(
         _onDiagnosticsSnapshot,
@@ -143,6 +159,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _detectedEventSubscription?.cancel();
+    _sensorSelfTestSubscription?.cancel();
     _diagnosticsSubscription?.cancel();
     _demoRecoveryTimer?.cancel();
     _demoGestureArmTimer?.cancel();
@@ -152,7 +169,6 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
   void _onDiagnosticsSnapshot(ImuDiagnosticsSnapshot snapshot) {
     if (!mounted) return;
     setState(() => _imuDiagnostics = snapshot);
-    _handleDemoGesture(snapshot);
     if (!safetyDemoMode || snapshot.state != ImuSamplingState.stopped) return;
     if (_demoRecoveryTimer?.isActive ?? false) return;
     _demoRecoveryTimer = Timer(const Duration(seconds: 1), () {
@@ -160,49 +176,47 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
     });
   }
 
-  void _handleDemoGesture(ImuDiagnosticsSnapshot snapshot) {
-    if (!safetyDemoMode) return;
-    if (_demoGestureGeneration != snapshot.generation) {
-      _demoGestureGeneration = snapshot.generation;
-      _lastDemoGestureSequence = snapshot.demoGestureSequence;
-      return;
-    }
-    final gestureDetected =
-        snapshot.demoGestureSequence > _lastDemoGestureSequence;
-    _lastDemoGestureSequence = snapshot.demoGestureSequence;
-    if (!gestureDetected || !(_demoGestureArmTimer?.isActive ?? false)) {
-      return;
-    }
+  void _onSensorSelfTestResult(SensorSelfTestResult result) {
+    final accepted = shouldAcceptSensorSelfTestResult(
+      armed: _demoGestureArmTimer?.isActive ?? false,
+      armedAt: _sensorSelfTestArmedAt,
+      detectedAt: result.detectedAt,
+    );
+    if (!mounted || !accepted) return;
     _demoGestureArmTimer?.cancel();
+    _sensorSelfTestArmedAt = null;
     setState(() {});
-    unawaited(_showDemoFallAlert());
+    unawaited(_showDemoFallAlert(result));
   }
 
   void _armDemoGesture() {
-    final diagnostics = _imuDiagnostics;
-    final eligible = isSafeFallSimulationEligible(
+    final eligible = isSensorSelfTestEligible(
       config: _config,
       coordinatorRunning: _foregroundCoordinator.isRunning,
-      diagnostics: diagnostics,
-      now: DateTime.now().toUtc(),
     );
-    if (!safetyDemoMode || !eligible || _countdownEventId != null) {
+    if (!eligible || _countdownEventId != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('IMU phải đang nhận mẫu trước khi bật cử chỉ demo.'),
+          content: Text(
+            'Hãy bật phát hiện ngã, quyền cảm biến và dịch vụ IMU trước khi kiểm tra.',
+          ),
         ),
       );
       return;
     }
 
-    _demoGestureGeneration = diagnostics?.generation;
-    _lastDemoGestureSequence = diagnostics?.demoGestureSequence ?? 0;
+    _sensorSelfTestArmedAt = DateTime.now().toUtc();
     _demoGestureArmTimer?.cancel();
     _demoGestureArmTimer = Timer(const Duration(seconds: 8), () {
       if (!mounted) return;
+      _sensorSelfTestArmedAt = null;
       setState(() {});
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã hết 8 giây chờ cử chỉ demo.')),
+        const SnackBar(
+          content: Text(
+            'Chưa nhận được cử chỉ. Hãy giữ máy yên rồi vung nhanh và thử lại.',
+          ),
+        ),
       );
     });
     setState(() {});
@@ -366,38 +380,44 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
     );
   }
 
-  Future<void> _showDemoFallAlert() async {
-    if (!safetyDemoMode) return;
-    final eligible = isSafeFallSimulationEligible(
-      config: _config,
-      coordinatorRunning: _foregroundCoordinator.isRunning,
-      diagnostics: _imuDiagnostics,
-      now: DateTime.now().toUtc(),
-    );
-    if (!eligible || _countdownEventId != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Hãy bật phát hiện ngã, quyền cảm biến và dịch vụ IMU trước khi thử cử chỉ.',
-          ),
+  Future<void> _showDemoFallAlert(SensorSelfTestResult result) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        key: const Key('sensor-self-test-success-dialog'),
+        icon: const Icon(Icons.verified, size: 52, color: Color(0xFF2E7D32)),
+        title: const Text(
+          'Kiểm tra cảm biến thành công',
+          textAlign: TextAlign.center,
         ),
-      );
-      return;
-    }
-
-    final startedAt = DateTime.now().toUtc();
-    final event = SafetyEvent(
-      id: 'local-demo-alert-${startedAt.microsecondsSinceEpoch}',
-      eventType: 'SUSPECTED_FALL',
-      magnitude: _imuDiagnostics?.accelerationMagnitude ?? 0,
-      status: 'OPEN',
-      detectedAt: startedAt,
-      countdownDeadlineAt: DateTime.now().toUtc().add(
-        Duration(seconds: (_config?.countdownSeconds ?? 30).clamp(1, 300)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Gia tốc kế và con quay hồi chuyển đang phản hồi tốt. '
+              'Bộ phát hiện ngã thật vẫn tiếp tục hoạt động với ngưỡng an toàn riêng.',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Gia tốc khi đạt ngưỡng: ${result.accelerationMagnitude.toStringAsFixed(1)} m/s²',
+              key: const Key('sensor-self-test-acceleration'),
+            ),
+            Text(
+              'Gyro khi đạt ngưỡng: ${result.gyroscopeMagnitude.toStringAsFixed(1)} rad/s',
+              key: const Key('sensor-self-test-gyroscope'),
+            ),
+          ],
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Hoàn tất'),
+          ),
+        ],
       ),
-      notes: 'Local demo alert; never persisted or transmitted.',
     );
-    await _showCountdown(event, simulated: true, presentAsRealAlert: true);
   }
 
   Future<void> _confirmEventSafe(SafetyEvent event, {String? note}) async {
@@ -543,6 +563,8 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
                       ),
                       const SizedBox(height: 24),
                       _buildStatusCard(fallDetectionEnabled),
+                      const SizedBox(height: 16),
+                      _buildSensorSelfTestCard(),
                       if (safetyDiagnosticsEnabled) ...[
                         const SizedBox(height: 16),
                         _buildImuDiagnosticsCard(),
@@ -720,6 +742,67 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
     );
   }
 
+  Widget _buildSensorSelfTestCard() {
+    final armed = _demoGestureArmTimer?.isActive ?? false;
+    return Container(
+      key: const Key('sensor-self-test-card'),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: _surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _surfaceContainer),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.health_and_safety_outlined, color: _primary),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Kiểm tra cảm biến IMU',
+                  style: TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w700,
+                    color: _onSurface,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Kiểm tra gia tốc kế và con quay hồi chuyển bằng một cử chỉ có chủ ý. '
+            'Thao tác này không tạo cảnh báo ngã và không liên hệ người thân.',
+            style: TextStyle(fontSize: 13, color: _onSurfaceVariant),
+          ),
+          const SizedBox(height: 14),
+          FilledButton.icon(
+            key: const Key('arm-sensor-self-test'),
+            onPressed: armed ? null : _armDemoGesture,
+            icon: Icon(armed ? Icons.sensors : Icons.sports_handball_outlined),
+            label: Text(
+              armed
+                  ? 'ĐÃ SẴN SÀNG — HÃY VUNG MÁY'
+                  : 'Bắt đầu kiểm tra cảm biến',
+            ),
+          ),
+          if (armed) ...[
+            const SizedBox(height: 8),
+            const Text(
+              'Giữ máy yên trong chốc lát, giơ cao rồi vung nhanh ít nhất khoảng '
+              '50 cm từ trên xuống. Luôn giữ chắc, không thả máy.',
+              key: Key('sensor-self-test-instruction'),
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildImuDiagnosticsCard() {
     final diagnostics = _imuDiagnostics;
     final state =
@@ -775,34 +858,6 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
           ),
           if (diagnostics?.errorMessage case final message?)
             Text(message, style: const TextStyle(color: _onErrorContainer)),
-          const SizedBox(height: 12),
-          if (safetyDemoMode) ...[
-            FilledButton.icon(
-              key: const Key('arm-safety-demo-gesture'),
-              onPressed: _armDemoGesture,
-              icon: Icon(
-                _demoGestureArmTimer?.isActive ?? false
-                    ? Icons.sensors
-                    : Icons.sports_handball_outlined,
-              ),
-              label: Text(
-                _demoGestureArmTimer?.isActive ?? false
-                    ? 'ĐÃ SẴN SÀNG — HÃY VUNG MÁY'
-                    : 'Sẵn sàng vung điện thoại',
-              ),
-            ),
-            if (_demoGestureArmTimer?.isActive ?? false) ...[
-              const SizedBox(height: 6),
-              const Text(
-                'Giữ máy yên trong chốc lát, giơ cao rồi vung nhanh ít nhất khoảng '
-                '50 cm từ trên xuống. Luôn giữ chắc, không thả máy.',
-                key: Key('safety-demo-gesture-instruction'),
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-              ),
-            ],
-            const SizedBox(height: 4),
-          ],
         ],
       ),
     );
