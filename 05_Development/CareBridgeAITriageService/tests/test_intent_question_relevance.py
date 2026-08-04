@@ -88,7 +88,7 @@ def test_missing_or_mismatched_stage_fails_closed():
 @pytest.mark.parametrize(
     ("stage", "text", "family", "expected_keys"),
     [
-        ("PREGNANCY", "Tôi đau bụng", "ABDOMINAL", ["painSeverity", "duration", "vomiting"]),
+        ("PREGNANCY", "Tôi đau bụng", "ABDOMINAL", ["abdominalPainPattern", "painSeverity", "duration"]),
         ("INFANT", "Bé đau bụng", "ABDOMINAL", ["painSeverity", "duration", "vomiting"]),
         ("PREGNANCY", "Tôi tiểu buốt", "URINARY", ["urinarySymptoms", "duration", "temperatureC"]),
         ("INFANT", "Bé đau tai", "EAR", ["painSeverity", "duration", "temperatureC"]),
@@ -118,6 +118,8 @@ def test_mixed_common_gastrointestinal_symptoms_preserve_both_families_and_dedup
     assert response.intent is not None
     assert {"ABDOMINAL", "DIARRHEA"} <= set(response.intent.symptomFamilies)
     keys = [question.questionKey for question in response.questions]
+    # Multi-family case: abdominalPainPattern is deliberately NOT prioritised here (see
+    # _relevant_missing_keys) so DIARRHEA's own follow-up isn't crowded out of the round budget.
     assert keys == ["painSeverity", "duration", "vomiting"]
     assert len(keys) == len(set(keys))
 
@@ -145,3 +147,56 @@ def test_mixed_families_keep_the_second_family_available_after_first_answers():
 def test_common_symptom_normalization_handles_uppercase_and_negation():
     assert "abdominal_pain" in normalize_symptoms(ChildTriageRequest(parentFreeText="TÔI ĐAU BỤNG"))
     assert "headache" not in normalize_symptoms(ChildTriageRequest(parentFreeText="Tôi không đau đầu"))
+
+
+@pytest.mark.parametrize("stage", ["PRECONCEPTION", "POSTPARTUM"])
+def test_abdominal_pain_pattern_question_is_pregnancy_only(stage):
+    # CB-TRIAGE-MATQ-IMP-001: continuous-vs-labor-pattern framing is only meaningful during
+    # PREGNANCY; PRECONCEPTION/POSTPARTUM abdominal pain keeps the original question set.
+    response = start_intake(IntakeStartRequest(
+        stage=stage,
+        initialText="Tôi đau bụng",
+        currentIntake=ChildTriageRequest(stage=stage),
+    ))
+    assert "abdominalPainPattern" not in [q.questionKey for q in response.questions]
+
+
+def test_abdominal_pain_pattern_answer_persists_through_mergedIntake():
+    start = start_intake(IntakeStartRequest(
+        stage="PREGNANCY",
+        initialText="Tôi đau bụng",
+        currentIntake=ChildTriageRequest(stage="PREGNANCY"),
+    ))
+    assert "abdominalPainPattern" in [q.questionKey for q in start.questions]
+
+    next_response = continue_intake(IntakeContinueRequest(
+        stage="PREGNANCY",
+        intakeSessionId="pain-pattern",
+        currentIntake=start.mergedIntake,
+        newAnswers={"abdominalPainPattern": "Từng cơn đều đặn"},
+        askedQuestionKeys=start.askedQuestionKeys,
+        round=start.round,
+    ))
+    assert next_response.mergedIntake.abdominalPainPattern == "Từng cơn đều đặn"
+    assert "abdominalPainPattern" not in [q.questionKey for q in next_response.questions]
+
+
+def test_gestational_weeks_is_descriptive_only_and_never_affects_risk():
+    # CB-TRIAGE-MATQ-IMP-001 (BR-SAFETY): a trusted, server-bound gestational week must never
+    # change the deterministic risk classification for otherwise-identical facts.
+    without_week = ChildTriageRequest(
+        stage="PREGNANCY", symptomList=["abdominal_pain"], painSeverity="Nặng",
+    )
+    with_week = without_week.model_copy(update={"gestationalWeeks": 32})
+    from app.risk_rules import apply_red_flag_rules
+    without_flags, without_rules = apply_red_flag_rules(without_week, without_week.symptomList)
+    with_flags, with_rules = apply_red_flag_rules(with_week, with_week.symptomList)
+    assert without_flags == with_flags
+    assert without_rules == with_rules
+
+
+def test_gestational_weeks_out_of_bounds_is_rejected_by_schema():
+    with pytest.raises(Exception):
+        ChildTriageRequest(stage="PREGNANCY", gestationalWeeks=0)
+    with pytest.raises(Exception):
+        ChildTriageRequest(stage="PREGNANCY", gestationalWeeks=46)

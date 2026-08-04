@@ -91,6 +91,15 @@ Map<String, dynamic> _completedResultPayload({
   },
 };
 
+Map<String, dynamic> _consentStatusPayload({String status = 'ACCEPTED'}) => {
+  'data': {
+    'status': status,
+    'currentVersion': 'v1',
+    'acceptedVersion': status == 'ACCEPTED' ? 'v1' : null,
+    'disclaimerText': 'disclaimer',
+  },
+};
+
 Map<String, dynamic> _completedFlowPayload({
   required String sessionId,
   required String token,
@@ -401,6 +410,54 @@ void main() {
 
         await expectLater(oldRequest, throwsA(isA<StateError>()));
         expect(store.values['account-a']?.token, 'new-token');
+      },
+    );
+
+    // Regression: the staleness sequence used to be tracked per-userId only,
+    // shared across every TriageService operation. An unrelated background
+    // getConsentStatus/listHistory/getResult call racing a start/continue
+    // mutation would bump that shared counter and make the mutation's own
+    // (successful) response look "stale", surfacing a false
+    // "Không thể gửi triệu chứng" error to the user even though the server
+    // had already processed the request. Fixed by scoping the sequence per
+    // "userId::operation" instead of per-userId.
+    test(
+      'unrelated concurrent getConsentStatus does not stale-fail startConversation',
+      () async {
+        await AuthState.instance.clear();
+        await AuthState.instance.setTokens(
+          accessToken: 'access-a',
+          refreshToken: 'refresh-a',
+          userId: 'account-a',
+          role: 'MOTHER',
+        );
+        addTearDown(AuthState.instance.clear);
+        final startResponse = Completer<dynamic>();
+        final consentResponse = Completer<dynamic>();
+        final store = _MemoryContinuationStore();
+        final service = TriageService(
+          continuationStore: store,
+          postRequest: (_, _) => startResponse.future,
+          getRequest: (_) => consentResponse.future,
+        );
+
+        final startRequest = service.startConversation(
+          initialText: 'symptom text',
+          currentIntake: {'stage': 'PREGNANCY'},
+        );
+        final consentRequest = service.getConsentStatus();
+
+        // The unrelated background consent check resolves first...
+        consentResponse.complete(_consentStatusPayload());
+        await consentRequest;
+        // ...then the actual mutation resolves. It must NOT be treated as
+        // stale just because a different-purpose call finished in between.
+        startResponse.complete(
+          _completedFlowPayload(sessionId: 'session-a', token: 'start-token'),
+        );
+
+        await expectLater(startRequest, completes);
+        expect(store.values['account-a']?.token, 'start-token');
       },
     );
 

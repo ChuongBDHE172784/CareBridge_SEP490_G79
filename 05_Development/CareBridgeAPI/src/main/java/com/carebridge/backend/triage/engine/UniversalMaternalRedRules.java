@@ -16,10 +16,11 @@ import java.util.regex.Pattern;
  */
 final class UniversalMaternalRedRules {
 
+    // Kept in parity with Python's app/risk_rules.py negation set and clause-boundary regex.
     private static final Set<String> NEGATIONS = Set.of(
-            "khong", "chua", "chang", "no", "not", "without", "denies", "denied");
+            "khong", "chua", "chang", "cha", "no", "not", "never", "without", "denies", "denied");
     private static final Set<String> CLAUSE_BOUNDARIES = Set.of(
-            "va", "and", "nhung", "song", "however", "but");
+            "va", "and", "nhung", "song", "ma", "however", "but");
 
     private UniversalMaternalRedRules() {
     }
@@ -98,6 +99,10 @@ final class UniversalMaternalRedRules {
         String normalized = Normalizer.normalize(value.trim().toLowerCase(Locale.ROOT), Normalizer.Form.NFD)
                 .replaceAll("\\p{M}+", "")
                 .replace('đ', 'd')
+                // "tuy nhien" (however) is a two-word clause boundary; fold it into the same
+                // pipe-delimiter treatment as punctuation so negation scope resets across it,
+                // matching Python's risk_rules.py clause-split regex.
+                .replaceAll("\\btuy nhien\\b", " | ")
                 .replaceAll("[.,;!?]+", " | ")
                 .replaceAll("[^a-z0-9|]+", " ")
                 .replaceAll("\\s+", " ")

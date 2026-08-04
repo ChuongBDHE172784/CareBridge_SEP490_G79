@@ -47,6 +47,12 @@ class ChildTriageRequest(BaseModel):
     parentFreeText: str | None = None
     # Additive (CB-TRIAGE-THMC-IMP-001): defaults keep every existing client valid.
     healthContext: list[HealthContextItem] = Field(default_factory=list, max_length=5)
+    # Additive (CB-TRIAGE-MATQ-IMP-001): trusted, server-derived context auto-bound by the
+    # Java backend from the caller's active PREGNANCY journey — never user-supplied, never a
+    # risk-rule input (BR-SAFETY). Descriptive-only follow-up fact for PREGNANCY abdominal
+    # pain; also never a risk-rule input.
+    gestationalWeeks: int | None = Field(default=None, ge=1, le=45)
+    abdominalPainPattern: str | None = None
 
 
 class Citation(BaseModel):

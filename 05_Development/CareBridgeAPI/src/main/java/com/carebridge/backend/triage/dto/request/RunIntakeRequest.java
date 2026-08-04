@@ -41,4 +41,11 @@ public class RunIntakeRequest {
     private UUID babyProfileId;
     private UUID motherProfileId;
     private TriageStage stage;
+
+    // CB-TRIAGE-MATQ-IMP-001: trusted, server-derived gestational week auto-bound from the
+    // caller's active PREGNANCY journey (never user-supplied, never a risk-rule input).
+    private Integer gestationalWeeks;
+
+    @Size(max = 2000, message = "abdominalPainPattern must not exceed 2000 characters")
+    private String abdominalPainPattern;
 }

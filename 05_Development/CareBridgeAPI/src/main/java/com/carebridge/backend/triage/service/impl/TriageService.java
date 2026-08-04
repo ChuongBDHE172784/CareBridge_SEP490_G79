@@ -110,7 +110,8 @@ public class TriageService implements ITriageService {
             "parentFreeText",
             "babyProfileId",
             "motherProfileId",
-            "stage");
+            "stage",
+            "abdominalPainPattern");
 
     private final IIntakeSessionRepository intakeSessionRepository;
     private final ChildTriageAiClient childTriageAiClient;
@@ -161,6 +162,13 @@ public class TriageService implements ITriageService {
     /** Optional for legacy unit-test constructors; production wiring always provides RAG. */
     @Autowired(required = false)
     private TriageRagEnrichmentService triageRagEnrichmentService;
+
+    // CB-TRIAGE-MATQ-IMP-001 — trusted gestational-week auto-bind from the caller's active
+    // PREGNANCY journey (US safe-scope: never a question, never a risk-rule input). Optional
+    // wiring keeps every existing test constructor byte-compatible, same pattern as the
+    // collaborators above.
+    @Autowired(required = false)
+    private com.carebridge.backend.journey.service.IJourneyService journeyService;
 
     @Autowired
     public TriageService(
@@ -432,6 +440,12 @@ public class TriageService implements ITriageService {
             // to an empty list on the Python side (default_factory=list).
             canonicalRequest.put("healthContext", healthContextPayload(healthContext));
         }
+        // CB-TRIAGE-MATQ-IMP-001: injected into currentIntake (not a top-level key) so the Java
+        // fallback engine sees the same value via its existing RunIntakeRequest conversion.
+        Integer gestationalWeeks = loadGestationalWeeksFailOpen(userId, sessionStage(session));
+        if (gestationalWeeks != null) {
+            castToMap(canonicalRequest.get("currentIntake")).put("gestationalWeeks", gestationalWeeks);
+        }
         Map<String, Object> envelope;
         try {
             envelope = readJsonObject(childTriageAiClient.startIntake(canonicalRequest));
@@ -504,6 +518,14 @@ public class TriageService implements ITriageService {
                     "newAnswers must answer a currently requested question");
         }
 
+        // CB-TRIAGE-MATQ-IMP-001: re-derived fresh each round (not just echoed from
+        // mergedIntake) so a freshly-updated journey always wins; a failed/absent lookup
+        // leaves whatever value already carried through from the previous round untouched.
+        Integer gestationalWeeks = loadGestationalWeeksFailOpen(userId, stage);
+        if (gestationalWeeks != null) {
+            castToMap(canonical.get("currentIntake")).put("gestationalWeeks", gestationalWeeks);
+        }
+
         // CB-TRIAGE-IMP-003 C1: pre-screen BEFORE the AI call, AFTER the TRIAGE-010 answer filter.
         PreScreenResult preScreen = preScreenPolicy == null ? null : preScreenPolicy.screen(
                 preScreenText(null, normalizedAnswers, castToMap(canonical.get("currentIntake"))));
@@ -549,6 +571,10 @@ public class TriageService implements ITriageService {
         ensureDisclaimerConsent(userId);
         TriageStage stage = resolveStage(request.getStage(), Map.of(), request.getBabyProfileId(), request.getMotherProfileId());
         request.setStage(stage);
+        // CB-TRIAGE-MATQ-IMP-001: this endpoint binds RunIntakeRequest straight from the request
+        // body, so overwrite unconditionally — a client-supplied week must never survive, and null
+        // is the correct value when no journey is wired.
+        request.setGestationalWeeks(loadGestationalWeeksFailOpen(userId, stage));
         ensurePostpartumEligible(stage, userId);
         validateStageProfile(stage, request.getBabyProfileId(), request.getMotherProfileId(), false);
         IntakeSession session = IntakeSession.builder()
@@ -1106,6 +1132,26 @@ public class TriageService implements ITriageService {
         }
     }
 
+    /**
+     * CB-TRIAGE-MATQ-IMP-001: trusted, server-derived gestational week for PREGNANCY-stage
+     * intake, auto-bound from the caller's own active Journey (never a user-supplied value,
+     * never wired into risk thresholds — BR-SAFETY). Fail-open: any error, absent journey, or
+     * an out-of-range computed week (the Python contract bounds it to 1-45) degrades to null
+     * rather than sending a value that would fail upstream validation and force fallback.
+     */
+    private Integer loadGestationalWeeksFailOpen(UUID userId, TriageStage stage) {
+        if (journeyService == null || stage != TriageStage.PREGNANCY) {
+            return null;
+        }
+        try {
+            Integer week = journeyService.getDashboard(userId).getPregnancyWeek();
+            return week != null && week >= 1 && week <= 45 ? week : null;
+        } catch (RuntimeException exception) {
+            log.warn("Gestational week context unavailable reason={}", exception.getClass().getSimpleName());
+            return null;
+        }
+    }
+
     /** Serialization-safe map form of the context for the canonical start payload (§9.2). */
     private List<Map<String, Object>> healthContextPayload(List<HealthMemoryContextItem> healthContext) {
         return healthContext.stream()
@@ -1275,6 +1321,26 @@ public class TriageService implements ITriageService {
         return questions.stream().limit(3).toList();
     }
 
+    // Alternation kept byte-for-byte in sync with the Python ABDOMINAL family
+    // (symptom_normalizer.py SYMPTOM_SYNONYMS["abdominal_pain"]) so the Java fallback never asks a
+    // question Python would not. The [ _] variant also catches the canonical `abdominal_pain`
+    // token that arrives via symptomList (CB-TRIAGE-MATQ-IMP-001).
+    private static final java.util.regex.Pattern ABDOMINAL_PAIN_TEXT_PATTERN = java.util.regex.Pattern.compile(
+            "(?<![a-z0-9])(dau bung|dau da day|dau quanh ron|abdominal[ _]pain"
+                    + "|stomach ache|tummy ache|belly pain)(?![a-z0-9])");
+
+    private boolean mentionsAbdominalPain(RunIntakeRequest intake) {
+        String raw = String.join(" | ",
+                intake.getParentFreeText() == null ? "" : intake.getParentFreeText(),
+                intake.getSymptoms() == null ? "" : intake.getSymptoms(),
+                intake.getSymptomList() == null ? "" : String.join(" | ", intake.getSymptomList()));
+        String normalized = java.text.Normalizer
+                .normalize(raw.toLowerCase(java.util.Locale.ROOT), java.text.Normalizer.Form.NFD)
+                .replaceAll("\\p{M}+", "")
+                .replace('đ', 'd');
+        return ABDOMINAL_PAIN_TEXT_PATTERN.matcher(normalized).find();
+    }
+
     private List<Map<String, Object>> maternalFallbackQuestions(RunIntakeRequest intake) {
         List<Map<String, Object>> questions = new ArrayList<>();
         if (intake.getDuration() == null || intake.getDuration().isBlank()) {
@@ -1297,6 +1363,18 @@ public class TriageService implements ITriageService {
                     "Bạn có lơ mơ, ngất hoặc khó giữ tỉnh táo không?",
                     "SINGLE_CHOICE",
                     List.of("Tỉnh táo", "Lơ mơ", "Ngất", "Khó giữ tỉnh táo", "Không chắc")));
+        }
+        // Appended last, never prepended: the three screeners above are the fallback's RED safety
+        // net and must keep their slots in the limit(3) budget. This descriptive question only
+        // surfaces once they are answered (CB-TRIAGE-MATQ-IMP-001).
+        if (intake.getStage() == TriageStage.PREGNANCY
+                && (intake.getAbdominalPainPattern() == null || intake.getAbdominalPainPattern().isBlank())
+                && mentionsAbdominalPain(intake)) {
+            questions.add(fallbackQuestion(
+                    "abdominalPainPattern",
+                    "Cơn đau bụng của bạn diễn ra liên tục hay từng cơn đều đặn (co thắt)?",
+                    "SINGLE_CHOICE",
+                    List.of("Liên tục", "Từng cơn đều đặn", "Từng cơn không đều", "Không chắc")));
         }
         if (questions.isEmpty()) {
             questions.add(fallbackQuestion(
@@ -1570,7 +1648,8 @@ public class TriageService implements ITriageService {
                 "breathingStatus",
                 "consciousnessStatus",
                 "seizure",
-                "temperatureC").contains(questionKey);
+                "temperatureC",
+                "abdominalPainPattern").contains(questionKey);
     }
 
     private java.util.Set<String> outstandingQuestionKeys(Map<String, Object> envelope) {

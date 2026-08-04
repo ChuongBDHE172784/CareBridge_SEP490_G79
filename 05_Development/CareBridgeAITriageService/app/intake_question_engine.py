@@ -49,6 +49,10 @@ MATERNAL_QUESTION_BANK: dict[str, IntakeQuestion] = {
     "seizure": _question("seizure", "Bạn có bị co giật không?", "BOOLEAN", ["Không", "Có", "Không chắc"]),
     "painSeverity": _question("painSeverity", "Mức độ đau hiện thế nào?", "SINGLE_CHOICE", ["Nhẹ", "Vừa", "Nhiều", "Không chắc"]),
     "urinarySymptoms": _question("urinarySymptoms", "Bạn có tiểu buốt, tiểu rắt hoặc thay đổi nước tiểu không?", "SINGLE_CHOICE", ["Không", "Có", "Không chắc"]),
+    # Descriptive-only (CB-TRIAGE-MATQ-IMP-001): pattern of pain, never a risk-rule input.
+    # Only offered for PREGNANCY (see _relevant_missing_keys) — routine vs. labor-pattern
+    # abdominal pain is not a meaningful distinction outside pregnancy.
+    "abdominalPainPattern": _question("abdominalPainPattern", "Cơn đau bụng của bạn diễn ra liên tục hay từng cơn đều đặn (co thắt)?", "SINGLE_CHOICE", ["Liên tục", "Từng cơn đều đặn", "Từng cơn không đều", "Không chắc"]),
 }
 
 
@@ -159,13 +163,19 @@ def _relevant_missing_keys(intake: ChildTriageRequest, intent: TriageIntent) -> 
                 "RASH": ["duration", "rash", "temperatureC", "childAgeMonths"],
             }
         )
+        # Note: abdominalPainPattern is intentionally NOT added here (multi-family case). With
+        # >1 family in play, prioritising it would consume the whole per-conversation question
+        # budget and crowd out the other family's own follow-up entirely (MAX_QUESTIONS_PER_ROUND
+        # x MAX_FOLLOWUP_ROUNDS is tight). It is only prioritised below when ABDOMINAL is the
+        # sole reported family, matching the reported scenario exactly (CB-TRIAGE-MATQ-IMP-001).
         priority = ("ABDOMINAL", "DIARRHEA", "VOMITING", "URINARY", "EAR", "HEADACHE", "FEVER", "RESPIRATORY", "RASH")
         return list(dict.fromkeys(
             key for family in priority if family in families for key in policies[family]
         ))
     if intake.stage in MATERNAL_STAGES:
         if "ABDOMINAL" in families:
-            return ["painSeverity", "duration", "vomiting", "hydrationStatus", "temperatureC"]
+            base = ["painSeverity", "duration", "vomiting", "hydrationStatus", "temperatureC"]
+            return ["abdominalPainPattern", *base] if intake.stage == "PREGNANCY" else base
         if "URINARY" in families:
             return ["urinarySymptoms", "duration", "temperatureC"]
         if "EAR" in families:

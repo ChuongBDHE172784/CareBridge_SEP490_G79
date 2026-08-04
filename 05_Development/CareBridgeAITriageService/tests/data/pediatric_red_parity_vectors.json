@@ -8,5 +8,6 @@
   {"name":"persistent_vomiting","symptoms":["persistent_vomiting"],"expectedRule":"RED_PERSISTENT_VOMITING"},
   {"name":"rash_high_fever","childAgeMonths":12,"temperatureC":39.0,"symptoms":["rash","high_fever"],"expectedRule":"RED_RASH_HIGH_FEVER"},
   {"name":"infant_fever_under_3_months","childAgeMonths":2,"temperatureC":38.0,"symptoms":["fever"],"expectedRule":"RED_INFANT_FEVER_UNDER_3_MONTHS"},
-  {"name":"high_fever","childAgeMonths":12,"temperatureC":39.0,"symptoms":["high_fever"],"expectedRule":"RED_HIGH_FEVER"}
+  {"name":"high_fever","childAgeMonths":12,"temperatureC":39.0,"symptoms":["high_fever"],"expectedRule":"RED_HIGH_FEVER"},
+  {"name":"high_fever_from_text_no_temperature","childAgeMonths":12,"symptoms":["high_fever"],"expectedRule":"RED_HIGH_FEVER"}
 ]

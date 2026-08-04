@@ -112,7 +112,9 @@ public class TriageRagEnrichmentService {
 
         String symptomText = buildSymptomText(intake);
         if (symptomText.length() < 3) {
-            markFallback(result, NO_GROUNDED_SOURCE_WARNING);
+            removeRagFields(result);
+            result.put("ragFallback", true);
+            appendNoGroundedSourceWarning(result);
             return;
         }
         String query = buildRagQuery(intake, stage);
@@ -145,11 +147,12 @@ public class TriageRagEnrichmentService {
                 removeRagFields(result);
                 result.put("ragFallback", true);
             }
-            if (response.isFallback() || citations.isEmpty()) {
-                appendWarning(result, NO_GROUNDED_SOURCE_WARNING);
-            }
-            if (response.getSources() != null && citations.size() < response.getSources().size()) {
-                appendWarning(result, NO_GROUNDED_SOURCE_WARNING);
+            boolean someSourcesDropped = response.getSources() != null
+                    && citations.size() < response.getSources().size();
+            if (response.isFallback() || citations.isEmpty() || someSourcesDropped) {
+                // Single call: the two conditions overlap, and appending twice printed the
+                // same sentence to the user verbatim.
+                appendNoGroundedSourceWarning(result);
             }
         } catch (RuntimeException exception) {
             // Do not include query, health values or provider details in logs/responses.
@@ -409,6 +412,19 @@ public class TriageRagEnrichmentService {
     private String cap(String value, int max) {
         if (value == null || value.length() <= max) return value;
         return value.substring(0, max).trim();
+    }
+
+    /**
+     * NO_GROUNDED_SOURCE_WARNING describes only this Java RAG corpus, but the user reads it next
+     * to the citation list. Python-side citations survive RAG fallback (sanitizeExistingCitations
+     * keeps them), so appending it unconditionally printed "no official source found" directly
+     * above a rendered list of official sources. Only claim it when the user really sees none.
+     */
+    private void appendNoGroundedSourceWarning(Map<String, Object> result) {
+        if (result.get("citations") instanceof List<?> citations && !citations.isEmpty()) {
+            return;
+        }
+        appendWarning(result, NO_GROUNDED_SOURCE_WARNING);
     }
 
     private void appendWarning(Map<String, Object> result, String warning) {
