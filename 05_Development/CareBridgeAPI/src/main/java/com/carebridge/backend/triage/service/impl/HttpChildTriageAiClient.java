@@ -106,6 +106,9 @@ public class HttpChildTriageAiClient implements ChildTriageAiClient {
         payload.put("feedingStatus", request.getFeedingStatus());
         payload.put("breathingStatus", request.getBreathingStatus());
         payload.put("consciousnessStatus", request.getConsciousnessStatus());
+        payload.put("painSeverity", request.getPainSeverity());
+        payload.put("urinarySymptoms", request.getUrinarySymptoms());
+        payload.put("hydrationStatus", request.getHydrationStatus());
         payload.put("vomiting", request.getVomiting());
         payload.put("diarrhea", request.getDiarrhea());
         payload.put("rash", request.getRash());

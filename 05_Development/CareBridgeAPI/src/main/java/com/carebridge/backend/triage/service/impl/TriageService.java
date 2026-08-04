@@ -89,6 +89,28 @@ public class TriageService implements ITriageService {
             "intent",
             "askedQuestionKeys",
             "ragQueryText");
+    /** Closed map contract used before converting conversation intake to RunIntakeRequest. */
+    private static final Set<String> CURRENT_INTAKE_FIELDS = Set.of(
+            "symptoms",
+            "childAgeMonths",
+            "symptomList",
+            "duration",
+            "temperatureC",
+            "feedingStatus",
+            "breathingStatus",
+            "consciousnessStatus",
+            "painSeverity",
+            "urinarySymptoms",
+            "hydrationStatus",
+            "vomiting",
+            "diarrhea",
+            "rash",
+            "seizure",
+            "dehydrationSigns",
+            "parentFreeText",
+            "babyProfileId",
+            "motherProfileId",
+            "stage");
 
     private final IIntakeSessionRepository intakeSessionRepository;
     private final ChildTriageAiClient childTriageAiClient;
@@ -316,6 +338,7 @@ public class TriageService implements ITriageService {
         // validation or persistence (TDC-TC-07: no session row may leak before rejection).
         ensureDisclaimerConsent(userId);
         validateBoundedPayload(request.getCurrentIntake(), "currentIntake");
+        validateCurrentIntakeContract(request.getCurrentIntake());
         TriageStage stage = resolveStartStage(request.getStage(), request.getCurrentIntake(),
                 request.getBabyProfileId(), request.getMotherProfileId(), userId);
         ensurePostpartumEligible(stage, userId);
@@ -1156,7 +1179,7 @@ public class TriageService implements ITriageService {
             coerceConversationAnswers(objectMapper.convertValue(
                     answers, new TypeReference<Map<String, Object>>() {})).forEach(current::put);
         }
-        RunIntakeRequest intake = objectMapper.convertValue(current, RunIntakeRequest.class);
+        RunIntakeRequest intake = toRunIntakeRequest(current);
         // CB-TRIAGE-THMC-IMP-001: the conversation fallback receives the same server-loaded
         // context that was placed on the canonical request (narrative-only, BR-THMC-004).
         List<HealthMemoryContextItem> fallbackContext =
@@ -1543,6 +1566,7 @@ public class TriageService implements ITriageService {
                 "hydrationStatus",
                 "painSeverity",
                 "urinarySymptoms",
+                "vomiting",
                 "breathingStatus",
                 "consciousnessStatus",
                 "seizure",
@@ -1676,6 +1700,30 @@ public class TriageService implements ITriageService {
         }
     }
 
+    private void validateCurrentIntakeContract(Map<String, Object> currentIntake) {
+        if (currentIntake == null || currentIntake.isEmpty()) {
+            return;
+        }
+        List<String> unknownFields = currentIntake.keySet().stream()
+                .filter(key -> !CURRENT_INTAKE_FIELDS.contains(key))
+                .sorted()
+                .toList();
+        if (!unknownFields.isEmpty()) {
+            throw new TriageException(HttpStatus.BAD_REQUEST, "TRIAGE-010",
+                    "currentIntake contains unsupported field(s)");
+        }
+        toRunIntakeRequest(currentIntake);
+    }
+
+    private RunIntakeRequest toRunIntakeRequest(Map<String, Object> intake) {
+        try {
+            return objectMapper.convertValue(intake, RunIntakeRequest.class);
+        } catch (IllegalArgumentException exception) {
+            throw new TriageException(HttpStatus.BAD_REQUEST, "TRIAGE-010",
+                    "currentIntake contains an invalid value");
+        }
+    }
+
     private boolean isBoundedValue(Object value, int depth) {
         if (value == null || value instanceof Number || value instanceof Boolean) return true;
         if (depth > 4) return false;
@@ -1772,7 +1820,6 @@ public class TriageService implements ITriageService {
                 "babyProfileId",
                 "childAgeMonths",
                 "feedingStatus",
-                "vomiting",
                 "diarrhea",
                 "rash",
                 "dehydrationSigns").forEach(intake::remove);

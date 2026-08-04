@@ -22,6 +22,16 @@ public class RunIntakeRequest {
     private String feedingStatus;
     private String breathingStatus;
     private String consciousnessStatus;
+
+    @Size(max = 2000, message = "painSeverity must not exceed 2000 characters")
+    private String painSeverity;
+
+    @Size(max = 2000, message = "urinarySymptoms must not exceed 2000 characters")
+    private String urinarySymptoms;
+
+    @Size(max = 2000, message = "hydrationStatus must not exceed 2000 characters")
+    private String hydrationStatus;
+
     private String vomiting;
     private String diarrhea;
     private String rash;
