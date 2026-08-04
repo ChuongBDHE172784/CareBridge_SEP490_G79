@@ -77,8 +77,7 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
   List<JourneyTimelineItem> _journeyTimeline = [];
   List<BabyProfile> _babyProfiles = [];
   String? _selectedBabyProfileId;
-  MetricTrend? _weightTrend;
-  MetricTrend? _heartRateTrend;
+  MetricTrend? _bmiTrend;
   _JourneySection _selectedSection = _JourneySection.pregnancy;
   bool _didChooseInitialSection = false;
   bool _loading = true;
@@ -189,18 +188,12 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
         journeyHistory = const <JourneyTransition>[];
         journeyTimeline = const <JourneyTimelineItem>[];
       }
-      final weightTrend =
+      final bmiTrend =
           widget.loadSupportingData &&
               hasMaternalJourney &&
               dashboard.journeyId != null
-          ? await _loadWeightTrend(dashboard.journeyId!)
-          : _weightTrend;
-      final heartRateTrend =
-          widget.loadSupportingData &&
-              hasMaternalJourney &&
-              dashboard.journeyId != null
-          ? await _loadHeartRateTrend(dashboard.journeyId!)
-          : _heartRateTrend;
+          ? await _loadBmiTrend(dashboard.journeyId!)
+          : _bmiTrend;
       if (!mounted || generation != _loadGeneration) return;
       setState(() {
         _dashboard = dashboard;
@@ -212,8 +205,7 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
           babyProfiles,
           preferredBabyProfileId: lastOpenedBabyProfileId,
         );
-        _weightTrend = weightTrend;
-        _heartRateTrend = heartRateTrend;
+        _bmiTrend = bmiTrend;
         if (!_didChooseInitialSection && shouldShowBabyCare) {
           _selectedSection = _JourneySection.babyCare;
         }
@@ -362,24 +354,11 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
     return _babyProfiles.isEmpty ? null : _babyProfiles.first;
   }
 
-  Future<MetricTrend?> _loadWeightTrend(String journeyId) async {
+  Future<MetricTrend?> _loadBmiTrend(String journeyId) async {
     try {
       return await _healthMetricService.getMetricTrend(
         journeyId: journeyId,
-        metricType: 'WEIGHT',
-        from: DateTime.now().subtract(const Duration(days: 28)),
-        to: DateTime.now(),
-      );
-    } catch (_) {
-      return null;
-    }
-  }
-
-  Future<MetricTrend?> _loadHeartRateTrend(String journeyId) async {
-    try {
-      return await _healthMetricService.getMetricTrend(
-        journeyId: journeyId,
-        metricType: 'HEART_RATE',
+        metricType: 'BMI',
         from: DateTime.now().subtract(const Duration(days: 28)),
         to: DateTime.now(),
       );
@@ -1922,7 +1901,7 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
 
   Widget _buildMetricButtons() {
     final metrics = [
-      (Icons.monitor_heart_outlined, 'Chỉ số sức khỏe', 'WEIGHT'),
+      (Icons.monitor_heart_outlined, 'Chỉ số sức khỏe', 'BMI'),
       (Icons.history_edu, 'Hồ sơ sức khỏe', '/health-records'),
       (Icons.health_and_safety_outlined, 'Giám sát an toàn', '/safety'),
     ];
@@ -1942,7 +1921,7 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
                 excludeSemantics: true,
                 child: GestureDetector(
                   onTap: () async {
-                    if (metric.$3 == 'WEIGHT') {
+                    if (metric.$3 == 'BMI') {
                       await _openMetricRoute(metric.$3);
                       return;
                     }
@@ -2009,38 +1988,36 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
   }
 
   Widget _buildBentoSummary() {
-    final weightPoint = _weightTrend?.dataPoints.isNotEmpty == true
-        ? _weightTrend!.dataPoints.last
+    final bmiPoint = _bmiTrend?.dataPoints.isNotEmpty == true
+        ? _bmiTrend!.dataPoints.last
         : null;
-    final hrPoint = _heartRateTrend?.dataPoints.isNotEmpty == true
-        ? _heartRateTrend!.dataPoints.last
-        : null;
-
-    final weightValue = weightPoint?.valueDisplay ?? '—';
-    final weightTrendPct = _weightTrend?.trend;
-
-    final hrValue = hrPoint?.valueDisplay ?? '—';
-    final hrTrendPct = _heartRateTrend?.trend;
+    final height = (bmiPoint?.context['heightCm'] as num?)?.toDouble();
+    final bmiValue = bmiPoint?.valueDisplay ?? '—';
+    final bmiTrendPct = _bmiTrend?.trend;
+    final heightValue = height == null
+        ? '—'
+        : height % 1 == 0
+        ? height.toStringAsFixed(0)
+        : height.toStringAsFixed(1);
 
     return Row(
       children: [
         Expanded(
           child: _buildBentoCard(
-            icon: Icons.monitor_weight_outlined,
-            label: 'Cân nặng',
-            value: weightValue,
-            unit: 'kg',
-            trend: weightTrendPct,
+            icon: Icons.calculate_outlined,
+            label: 'Chỉ số BMI',
+            value: bmiValue,
+            unit: 'kg/m²',
+            trend: bmiTrendPct,
           ),
         ),
         const SizedBox(width: 12),
         Expanded(
           child: _buildBentoCard(
-            icon: Icons.show_chart_rounded,
-            label: 'Nhịp tim',
-            value: hrValue,
-            unit: 'bpm',
-            trend: hrTrendPct,
+            icon: Icons.height_rounded,
+            label: 'Chiều cao',
+            value: heightValue,
+            unit: 'cm',
           ),
         ),
       ],

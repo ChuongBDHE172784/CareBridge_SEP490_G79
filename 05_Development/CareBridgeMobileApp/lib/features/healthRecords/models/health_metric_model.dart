@@ -219,14 +219,13 @@ class MetricTrend {
 }
 
 enum MetricType {
-  weight,
+  bmi,
   hydration,
   mood,
   epds,
   bloodPressure,
   bloodSugar,
   temperature,
-  heartRate,
   fetalMovement,
   other,
 }
@@ -234,8 +233,8 @@ enum MetricType {
 extension MetricTypeExtension on MetricType {
   String get displayLabel {
     switch (this) {
-      case MetricType.weight:
-        return 'Cân nặng';
+      case MetricType.bmi:
+        return 'Chỉ số BMI';
       case MetricType.hydration:
         return 'Nước';
       case MetricType.mood:
@@ -248,8 +247,6 @@ extension MetricTypeExtension on MetricType {
         return 'Đường huyết';
       case MetricType.temperature:
         return 'Nhiệt độ';
-      case MetricType.heartRate:
-        return 'Nhịp tim';
       case MetricType.fetalMovement:
         return 'Cử động thai';
       case MetricType.other:
@@ -259,8 +256,8 @@ extension MetricTypeExtension on MetricType {
 
   static MetricType fromApi(String? value) {
     switch (value) {
-      case 'WEIGHT':
-        return MetricType.weight;
+      case 'BMI':
+        return MetricType.bmi;
       case 'HYDRATION':
         return MetricType.hydration;
       case 'MOOD':
@@ -276,9 +273,6 @@ extension MetricTypeExtension on MetricType {
         return MetricType.bloodSugar;
       case 'TEMPERATURE':
         return MetricType.temperature;
-      case 'HEART_RATE':
-      case 'MATERNAL_HEART_RATE':
-        return MetricType.heartRate;
       case 'FETAL_MOVEMENT':
       case 'FETAL_MOVEMENT_COUNT':
       case 'FETAL_MOVEMENT_SESSION':

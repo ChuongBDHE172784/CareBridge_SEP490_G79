@@ -239,7 +239,7 @@ class HealthMetricServiceImplTest {
     @Test
     void getCapabilities_exposesOnlySupportedP0ManualMetrics() {
         MotherJourney journey = makeJourney(CALLER_ID);
-        MetricDefinition weight = weightDefinition();
+        MetricDefinition bmi = definition("BMI", ObservationShape.POINT, "kg/m²", true);
         MetricDefinition bloodPressure = definition("BLOOD_PRESSURE", ObservationShape.PAIRED_POINT, "mmHg", true);
         MetricDefinition bloodGlucose = definition("BLOOD_GLUCOSE", ObservationShape.POINT, "mg/dL", true);
         MetricDefinition fetalMovement = definition("FETAL_MOVEMENT_SESSION", ObservationShape.SESSION, "count", true);
@@ -249,13 +249,13 @@ class HealthMetricServiceImplTest {
         when(journeyRepository.findById(JOURNEY_ID)).thenReturn(Optional.of(journey));
         when(definitionRepository.findAllEffectiveAt(any(Instant.class)))
                 .thenReturn(java.util.List.of(
-                        weight, bloodPressure, bloodGlucose, fetalMovement, temperature, steps));
+                        bmi, bloodPressure, bloodGlucose, fetalMovement, temperature, steps));
 
         var capabilities = metricService.getCapabilities(JOURNEY_ID, CALLER_ID);
 
         assertThat(capabilities)
                 .extracting("metricCode")
-                .containsExactly("WEIGHT", "BLOOD_PRESSURE", "BLOOD_GLUCOSE", "FETAL_MOVEMENT_SESSION");
+                .containsExactly("BMI", "BLOOD_PRESSURE", "BLOOD_GLUCOSE", "FETAL_MOVEMENT_SESSION");
     }
 
     @Test

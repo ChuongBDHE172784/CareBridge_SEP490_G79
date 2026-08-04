@@ -29,7 +29,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class DeviceDataImportService implements IDeviceDataImportService {
 
     private static final Map<MetricType, Range> RANGES = Map.of(
-            MetricType.HEART_RATE, new Range("30", "250"),
             MetricType.SLEEP_DURATION, new Range("0", "24"),
             MetricType.STEPS_COUNT, new Range("0", "100000"),
             MetricType.SPO2, new Range("50", "100"),

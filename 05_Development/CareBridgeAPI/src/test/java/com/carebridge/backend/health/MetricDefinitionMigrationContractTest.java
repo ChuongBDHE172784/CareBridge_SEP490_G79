@@ -13,6 +13,10 @@ class MetricDefinitionMigrationContractTest {
             "/db/migration-legacy/V20260731040000__add_health_metric_definitions.sql";
     private static final String OBSERVATIONS_MIGRATION =
             "/db/migration-legacy/V20260731050000__extend_health_observations_for_p0_metrics.sql";
+    private static final String BMI_MIGRATION =
+            "/db/migration/V20260804090000__replace_maternal_heart_rate_with_bmi.sql";
+    private static final String RETIRE_WEIGHT_MIGRATION =
+            "/db/migration/V20260804100000__retire_standalone_weight_metric.sql";
 
     @Test
     void migrationCreatesExactlyOneAdditiveDefinitionsTable() throws IOException {
@@ -63,6 +67,31 @@ class MetricDefinitionMigrationContractTest {
                 .doesNotContain("DROP TABLE")
                 .doesNotContain("DROP COLUMN")
                 .doesNotContain("DELETE FROM");
+    }
+
+    @Test
+    void bmiMigrationReusesMetricCatalogAndDeactivatesHeartRate() throws IOException {
+        String migration = readMigration(BMI_MIGRATION);
+
+        assertThat(migration)
+                .contains("metric_code = 'MATERNAL_HEART_RATE'")
+                .contains("'BMI'")
+                .contains("weightKg")
+                .contains("heightCm")
+                .doesNotContain("CREATE TABLE")
+                .doesNotContain("DROP TABLE")
+                .doesNotContain("DELETE FROM");
+    }
+
+    @Test
+    void standaloneWeightRetirementKeepsHistoricalObservations() throws IOException {
+        String migration = readMigration(RETIRE_WEIGHT_MIGRATION);
+
+        assertThat(migration)
+                .contains("metric_code = 'WEIGHT'")
+                .contains("is_active = false")
+                .doesNotContain("DELETE FROM")
+                .doesNotContain("health_observations");
     }
 
     private String readMigration() throws IOException {

@@ -82,10 +82,10 @@ void main() {
       'shared metric without observation remains an honest no-data item',
       () {
         final metric = FamilyHomeHealthMetricSummary.fromJson({
-          'metricType': 'WEIGHT',
+          'metricType': 'BMI',
           'valueNumeric': null,
           'valueSecondary': null,
-          'unit': 'kg',
+          'unit': 'kg/m²',
           'measuredAt': null,
           'recordCount': 0,
         });
@@ -269,10 +269,10 @@ Map<String, dynamic> _dashboardWithMetrics() => {
     'sharedDataSummary': {'totalItems': 0, 'categories': <Object?>[]},
     'healthMetricSummaries': [
       {
-        'metricType': 'WEIGHT',
+        'metricType': 'BMI',
         'valueNumeric': null,
         'valueSecondary': null,
-        'unit': 'kg',
+        'unit': 'kg/m²',
         'measuredAt': null,
         'recordCount': 0,
       },

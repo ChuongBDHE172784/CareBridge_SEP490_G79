@@ -67,7 +67,8 @@ class _MaternalHealthMetricScreenState
       if (mounted) {
         setState(() {
           _metric = null;
-          _error = 'Không thể tải chỉ số. Vui lòng kiểm tra quyền truy cập hoặc thử lại.';
+          _error =
+              'Không thể tải chỉ số. Vui lòng kiểm tra quyền truy cập hoặc thử lại.';
           _loading = false;
         });
       }
@@ -268,8 +269,10 @@ class _MaternalHealthMetricScreenState
                   color: _primaryContainer.withAlpha(51),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
-                  Icons.monitor_weight,
+                child: Icon(
+                  m.metricCode == 'BMI'
+                      ? Icons.calculate_outlined
+                      : Icons.monitor_heart_outlined,
                   color: _primary,
                   size: 20,
                 ),
@@ -325,6 +328,8 @@ class _MaternalHealthMetricScreenState
   }
 
   Widget _buildDetailsCard(HealthMetricDetail m) {
+    final bmiWeight = _metricContextNumber(m.context['weightKg']);
+    final bmiHeight = _metricContextNumber(m.context['heightCm']);
     return _Card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -351,6 +356,20 @@ class _MaternalHealthMetricScreenState
             value: _formatTime(m.measuredAt),
             showDivider: true,
           ),
+          if (m.metricCode == 'BMI' && bmiWeight != null)
+            _DetailRow(
+              icon: Icons.monitor_weight_outlined,
+              label: 'Cân nặng',
+              value: '${bmiWeight.toStringAsFixed(1)} kg',
+              showDivider: true,
+            ),
+          if (m.metricCode == 'BMI' && bmiHeight != null)
+            _DetailRow(
+              icon: Icons.height_rounded,
+              label: 'Chiều cao',
+              value: '${bmiHeight.toStringAsFixed(1)} cm',
+              showDivider: true,
+            ),
           _DetailRow(
             icon: Icons.devices_outlined,
             label: 'Nguồn',
@@ -417,6 +436,11 @@ class _MaternalHealthMetricScreenState
   }
 }
 
+double? _metricContextNumber(Object? value) {
+  if (value is num) return value.toDouble();
+  return double.tryParse(value?.toString() ?? '');
+}
+
 String _displayMetricValue(HealthMetricDetail metric) {
   if (metric.metricCode == 'FETAL_MOVEMENT_SESSION' ||
       metric.metricCode == 'FETAL_MOVEMENT_COUNT') {
@@ -427,7 +451,9 @@ String _displayMetricValue(HealthMetricDetail metric) {
 
 String _displayMetricNote(String metricCode, String note) {
   if (metricCode != 'FETAL_MOVEMENT_SESSION' &&
-      metricCode != 'FETAL_MOVEMENT_COUNT') return note;
+      metricCode != 'FETAL_MOVEMENT_COUNT') {
+    return note;
+  }
   return switch (note.trim().toUpperCase()) {
     'KICK' => 'Bé đạp',
     'ROLL' => 'Bé xoay người',

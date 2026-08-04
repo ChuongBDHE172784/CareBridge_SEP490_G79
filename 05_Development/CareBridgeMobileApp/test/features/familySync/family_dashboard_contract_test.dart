@@ -267,7 +267,7 @@ void main() {
         find.byKey(const Key('family-dashboard-quick-notes')),
         findsOneWidget,
       );
-      expect(find.byKey(const Key('family-quick-note-weight')), findsOneWidget);
+      expect(find.byKey(const Key('family-quick-note-bmi')), findsOneWidget);
       expect(
         find.byKey(const Key('family-quick-note-hydration')),
         findsOneWidget,

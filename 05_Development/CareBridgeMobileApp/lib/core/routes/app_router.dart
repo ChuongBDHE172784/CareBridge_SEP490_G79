@@ -451,7 +451,7 @@ final GoRouter appRouter = GoRouter(
       path: '/journeys/:journeyId/metrics/add',
       builder: (context, state) {
         final journeyId = state.pathParameters['journeyId'] ?? '';
-        final metricType = state.uri.queryParameters['metricType'] ?? 'WEIGHT';
+        final metricType = state.uri.queryParameters['metricType'] ?? 'BMI';
         if (metricType == 'FETAL_MOVEMENT_SESSION' ||
             metricType == 'FETAL_MOVEMENT_COUNT' ||
             metricType == 'FETAL_MOVEMENT') {
@@ -770,7 +770,7 @@ final GoRouter appRouter = GoRouter(
         return SymptomIntakeScreen(
           entryContext:
               extra as TriageEntryContext? ??
-                  const TriageEntryContext(requiresStageSelection: true),
+              const TriageEntryContext(requiresStageSelection: true),
         );
       },
     ),

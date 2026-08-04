@@ -50,6 +50,19 @@ public class MetricObservationValidator {
         }
         Map<String, Object> context = copyContext(request.getContext());
 
+        if ("BMI".equals(metricCode)) {
+            BigDecimal weightKg = contextNumber(context, "weightKg");
+            BigDecimal heightCm = contextNumber(context, "heightCm");
+            requireRange(weightKg, new BigDecimal("20"), new BigDecimal("300"),
+                    "Weight must be between 20 and 300 kg");
+            requireRange(heightCm, new BigDecimal("100"), new BigDecimal("230"),
+                    "Height must be between 100 and 230 cm");
+            BigDecimal heightMeters = heightCm.movePointLeft(2);
+            primary = weightKg.divide(heightMeters.multiply(heightMeters), 2, RoundingMode.HALF_UP);
+            context.put("weightKg", weightKg.setScale(2, RoundingMode.HALF_UP));
+            context.put("heightCm", heightCm.setScale(1, RoundingMode.HALF_UP));
+        }
+
         if (definition.getObservationShape() == ObservationShape.PAIRED_POINT) {
             requirePositive(primary, "Systolic value is required");
             requirePositive(secondary, "Diastolic value is required");
@@ -118,7 +131,9 @@ public class MetricObservationValidator {
     public String canonicalCode(MetricType type) {
         if (type == null) return null;
         return switch (type) {
+            // Legacy compatibility only. WEIGHT is retired from capabilities and its DB definition is inactive.
             case WEIGHT -> "WEIGHT";
+            case BMI -> "BMI";
             case BLOOD_PRESSURE, BLOOD_PRESSURE_SYSTOLIC, BLOOD_PRESSURE_DIASTOLIC -> "BLOOD_PRESSURE";
             case BLOOD_GLUCOSE -> "BLOOD_GLUCOSE";
             case FETAL_MOVEMENT_SESSION, FETAL_MOVEMENT_COUNT -> "FETAL_MOVEMENT_SESSION";
@@ -185,6 +200,23 @@ public class MetricObservationValidator {
         Object value = context == null ? null : context.get(key);
         if (value == null || value.toString().isBlank()) return null;
         return value.toString().trim().toUpperCase(Locale.ROOT);
+    }
+
+    private BigDecimal contextNumber(Map<String, Object> context, String key) {
+        Object value = context == null ? null : context.get(key);
+        if (value == null) reject("METRIC-039", key + " is required for BMI");
+        try {
+            return new BigDecimal(value.toString());
+        } catch (NumberFormatException exception) {
+            reject("METRIC-039", key + " must be numeric");
+            return null;
+        }
+    }
+
+    private void requireRange(BigDecimal value, BigDecimal min, BigDecimal max, String message) {
+        if (value == null || value.compareTo(min) < 0 || value.compareTo(max) > 0) {
+            reject("METRIC-039", message);
+        }
     }
 
     private void requireDefinition(MetricDefinition definition, String metricCode) {

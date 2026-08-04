@@ -6,7 +6,6 @@ class EmergencyAlert {
   final String? address;
   final double? latitude;
   final double? longitude;
-  final int? heartRate;
   final int? deviceBattery;
   final String? phoneNumber;
   final DateTime createdAt;
@@ -20,7 +19,6 @@ class EmergencyAlert {
     this.address,
     this.latitude,
     this.longitude,
-    this.heartRate,
     this.deviceBattery,
     this.phoneNumber,
     required this.createdAt,
@@ -36,7 +34,6 @@ class EmergencyAlert {
       address: json['address'] as String?,
       latitude: (json['latitude'] as num?)?.toDouble(),
       longitude: (json['longitude'] as num?)?.toDouble(),
-      heartRate: json['heartRate'] as int?,
       deviceBattery: json['deviceBattery'] as int?,
       phoneNumber: json['phoneNumber'] as String?,
       createdAt: json['createdAt'] != null
@@ -47,8 +44,8 @@ class EmergencyAlert {
   }
 
   // UC-65/UC-141: real alert detail from GET /api/v1/emergency/sessions/{id}/alert.
-  // No wearable/device data source exists yet, so heartRate/deviceBattery/
-  // phoneNumber/address stay null — the screen already renders those as "--"
+  // No wearable/device data source exists yet, so deviceBattery/phoneNumber/
+  // address stay null — the screen already renders those as "--"
   // / "Không xác định" when absent.
   factory EmergencyAlert.fromDetailJson(Map<String, dynamic> json) {
     final triggerSource = json['triggerSource'] as String?;

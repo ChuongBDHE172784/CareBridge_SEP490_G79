@@ -17,7 +17,7 @@ class _ShareHealthSummaryScreenState extends State<ShareHealthSummaryScreen> {
 
   final List<String> _selectedPurposes = ['Khám bệnh'];
   final List<String> _selectedScopes = [
-    'Nhịp tim & HA',
+    'Huyết áp',
     'Xét nghiệm máu',
     'Đơn thuốc',
     'Vận động',
@@ -211,7 +211,7 @@ class _ShareHealthSummaryScreenState extends State<ShareHealthSummaryScreen> {
                       } else {
                         _selectedScopes.clear();
                         _selectedScopes.addAll([
-                          'Nhịp tim & HA',
+                          'Huyết áp',
                           'Xét nghiệm máu',
                           'Đơn thuốc',
                           'Vận động',
@@ -241,7 +241,7 @@ class _ShareHealthSummaryScreenState extends State<ShareHealthSummaryScreen> {
               physics: const NeverScrollableScrollPhysics(),
               children: [
                 _buildScopeCard(
-                  'Nhịp tim & HA',
+                  'Huyết áp',
                   '7 ngày gần nhất',
                   Icons.monitor_heart,
                   const Color(0xFFF9EAE1),

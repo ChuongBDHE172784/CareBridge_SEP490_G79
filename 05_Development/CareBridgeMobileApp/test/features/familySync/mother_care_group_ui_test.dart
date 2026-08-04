@@ -55,7 +55,7 @@ void main() {
 
       expect(find.text('Chỉ số sức khỏe'), findsOneWidget);
       for (final label in const [
-        'Cân nặng',
+        'Chỉ số BMI',
         'Cử động thai',
         'Huyết áp',
         'Nước',

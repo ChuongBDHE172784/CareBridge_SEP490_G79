@@ -364,7 +364,7 @@ public class FamilyDashboardService {
     private List<SharedMetric> sharedMetrics(FamilyDashboardResponse.Permission permission) {
         List<SharedMetric> result = new ArrayList<>();
         if (permission.quickNoteWeight()) {
-            result.add(new SharedMetric("WEIGHT", "WEIGHT", "kg", false));
+            result.add(new SharedMetric("BMI", "BMI", "kg/m²", false));
         }
         if (permission.quickNoteFetalMovement()) {
             result.add(new SharedMetric("FETAL_MOVEMENT_COUNT", "FETAL_MOVEMENT_SESSION", "count", true));

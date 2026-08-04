@@ -729,9 +729,9 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
     return [
       if (permission.quickNoteWeight)
         const _FamilyQuickNoteType(
-          metricType: 'WEIGHT',
-          label: 'Cân nặng',
-          icon: Icons.monitor_weight_outlined,
+          metricType: 'BMI',
+          label: 'Chỉ số BMI',
+          icon: Icons.calculate_outlined,
           tint: Color(0xFFFFE9E3),
         ),
       if (permission.quickNoteFetalMovement)

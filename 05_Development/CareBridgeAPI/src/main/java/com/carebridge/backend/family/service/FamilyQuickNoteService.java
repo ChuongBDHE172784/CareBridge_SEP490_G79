@@ -100,7 +100,7 @@ public class FamilyQuickNoteService {
         boolean parentAllowed = owner || authorizationPolicy.hasPermission(
                 groupId, callerId, PermissionFlag.QUICK_NOTES);
         PermissionFlag child = switch (metricType) {
-            case WEIGHT -> PermissionFlag.QUICK_NOTE_WEIGHT;
+            case BMI -> PermissionFlag.QUICK_NOTE_WEIGHT;
             case HYDRATION -> PermissionFlag.QUICK_NOTE_HYDRATION;
             case EPDS_SCORE -> PermissionFlag.QUICK_NOTE_EPDS;
             case FETAL_MOVEMENT_COUNT, FETAL_MOVEMENT_SESSION ->
@@ -170,7 +170,7 @@ public class FamilyQuickNoteService {
 
     private String canonicalMetricCode(MetricType metricType) {
         return switch (metricType) {
-            case WEIGHT -> "WEIGHT";
+            case BMI -> "BMI";
             case HYDRATION -> "HYDRATION";
             case EPDS_SCORE -> "EPDS_SCORE";
             case FETAL_MOVEMENT_COUNT, FETAL_MOVEMENT_SESSION -> "FETAL_MOVEMENT_SESSION";
@@ -192,7 +192,7 @@ public class FamilyQuickNoteService {
 
     private String defaultUnit(MetricType metricType) {
         return switch (metricType) {
-            case WEIGHT -> "kg";
+            case BMI -> "kg/m²";
             case HYDRATION -> "ml";
             case EPDS_SCORE -> "điểm";
             case FETAL_MOVEMENT_COUNT -> "lần";
