@@ -226,7 +226,7 @@ public class CareGroupServiceImpl implements ICareGroupService {
         return memberships.stream()
                 .map(m -> {
                     CareGroup group = groupRepository.findById(m.getCareGroupId()).orElse(null);
-                    if (group == null) return null;
+                    if (group == null || group.getStatus() != CareGroupStatus.ACTIVE) return null;
                     long count = memberRepository.countByCareGroupIdAndInviteStatus(
                             group.getId(), InviteStatus.ACCEPTED);
                     return CareGroupSummaryDto.builder()

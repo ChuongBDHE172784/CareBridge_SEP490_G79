@@ -683,9 +683,21 @@ class _CareGroupDetailScreenState extends State<CareGroupDetailScreen> {
     final bmiPoint = _bmiTrend?.dataPoints.isNotEmpty == true
         ? _bmiTrend!.dataPoints.last
         : null;
-    final height = (bmiPoint?.context['heightCm'] as num?)?.toDouble();
-    final bmiValue = bmiPoint?.valueDisplay ?? '—';
-    final bmiTrendPct = _bmiTrend?.trend;
+    final weight = switch (bmiPoint?.context['weightKg']) {
+      final num value => value.toDouble(),
+      final String value => double.tryParse(value),
+      _ => null,
+    };
+    final height = switch (bmiPoint?.context['heightCm']) {
+      final num value => value.toDouble(),
+      final String value => double.tryParse(value),
+      _ => null,
+    };
+    final weightValue = weight == null
+        ? '—'
+        : weight % 1 == 0
+        ? weight.toStringAsFixed(0)
+        : weight.toStringAsFixed(1);
     final heightValue = height == null
         ? '—'
         : height % 1 == 0
@@ -696,11 +708,10 @@ class _CareGroupDetailScreenState extends State<CareGroupDetailScreen> {
       children: [
         Expanded(
           child: _buildBentoMetricCard(
-            icon: Icons.calculate_outlined,
-            label: 'Chỉ số BMI',
-            value: bmiValue,
-            unit: 'kg/m²',
-            trend: bmiTrendPct,
+            icon: Icons.monitor_weight_outlined,
+            label: 'Cân nặng',
+            value: weightValue,
+            unit: 'kg',
           ),
         ),
         const SizedBox(width: 12),

@@ -141,6 +141,28 @@ class CareGroupServiceImplTest {
         verify(groupRepository, never()).deleteById(any());
     }
 
+    @Test
+    void listMyGroups_excludesArchivedGroups() {
+        UUID archivedGroupId = UUID.randomUUID();
+        CareGroup active = savedGroup(GROUP_ID);
+        CareGroup archived = savedGroup(archivedGroupId);
+        archived.setStatus(CareGroupStatus.ARCHIVED);
+        CareGroupMember activeMembership = ownerMember(GROUP_ID);
+        CareGroupMember archivedMembership = ownerMember(archivedGroupId);
+        when(memberRepository.findByUserIdAndInviteStatus(CALLER_ID, InviteStatus.ACCEPTED))
+                .thenReturn(List.of(activeMembership, archivedMembership));
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(active));
+        when(groupRepository.findById(archivedGroupId)).thenReturn(Optional.of(archived));
+        when(memberRepository.countByCareGroupIdAndInviteStatus(GROUP_ID, InviteStatus.ACCEPTED))
+                .thenReturn(1L);
+
+        var groups = careGroupService.listMyGroups(CALLER_ID);
+
+        assertThat(groups).extracting("groupId").containsExactly(GROUP_ID);
+        verify(memberRepository, never()).countByCareGroupIdAndInviteStatus(
+                archivedGroupId, InviteStatus.ACCEPTED);
+    }
+
     // FAM-TC-004: List members — ACCEPTED member can view (C1 — isMember uses ACCEPTED)
     @Test
     void listMembers_acceptedMember_returnsMembers() {

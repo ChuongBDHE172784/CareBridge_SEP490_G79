@@ -114,8 +114,12 @@ class _CareGroupsScreenState extends State<CareGroupsScreen> {
 
     try {
       await _service.deleteCareGroup(group.id);
-      await _load();
       if (!mounted) return;
+      setState(() {
+        _groups = _groups
+            .where((candidate) => candidate.id != group.id)
+            .toList(growable: false);
+      });
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Đã xóa nhóm chăm sóc.')));
@@ -629,4 +633,3 @@ class _CreateCareGroupDialogState extends State<_CreateCareGroupDialog> {
     );
   }
 }
-

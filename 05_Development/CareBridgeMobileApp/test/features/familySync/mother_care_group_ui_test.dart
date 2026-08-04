@@ -272,6 +272,32 @@ void main() {
       expect(service.createdGroupName, 'Gia đình Lan');
       expect(find.text('Đã tạo nhóm chăm sóc.'), findsOneWidget);
     });
+
+    testWidgets('removes a deleted care group from the visible list', (
+      tester,
+    ) async {
+      final group = CareGroup(
+        id: 'group-delete',
+        groupName: 'Nhóm cần xóa',
+        memberCount: 1,
+        members: [_member()],
+      );
+      final service = _FakeCareGroupService(groups: [group]);
+      await tester.pumpWidget(_app(CareGroupsScreen(service: service)));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Tùy chọn nhóm'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Xóa nhóm'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Xóa nhóm'));
+      await tester.pumpAndSettle();
+
+      expect(service.deletedGroupId, 'group-delete');
+      expect(find.text('Nhóm cần xóa'), findsNothing);
+      expect(find.text('Đã xóa nhóm chăm sóc.'), findsOneWidget);
+      expect(find.byKey(const Key('care-groups-empty')), findsOneWidget);
+    });
   });
 }
 
@@ -313,6 +339,7 @@ class _FakeCareGroupService extends CareGroupService {
   Map<String, bool?>? lastUpdate;
 
   String? createdGroupName;
+  String? deletedGroupId;
 
   @override
   Future<Map<String, dynamic>> createCareGroup(
@@ -327,6 +354,11 @@ class _FakeCareGroupService extends CareGroupService {
   Future<List<CareGroup>> listMyGroups() async {
     if (failGroupLoads-- > 0) throw Exception('private server detail');
     return groups;
+  }
+
+  @override
+  Future<void> deleteCareGroup(String groupId) async {
+    deletedGroupId = groupId;
   }
 
   @override
