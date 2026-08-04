@@ -1,9 +1,11 @@
 package com.carebridge.backend.reminder.notification.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -185,6 +187,22 @@ class AppointmentNotificationProcessingServiceTest {
 
         assertThat(job.getStatus()).isEqualTo(AppointmentNotificationJobStatus.FAILED);
         assertThat(job.getLastErrorCode()).isEqualTo("APPOINTMENT_DELIVERY_ERROR");
+    }
+
+    @Test
+    void process_terminalTransitionFailureIsNotRetriedInsideTheAbortedTransaction() {
+        AppointmentNotificationJob job = processingJob(1, 1L, 0L, -30);
+        stubEligible(job, ReminderStatus.PENDING, RecurrenceType.NONE, 1L, 0L);
+        when(notificationService.sendAppointmentNotification(any())).thenReturn(response("FAILED"));
+        when(jobRepository.transitionAfterProcessing(
+                any(), any(), eq(AppointmentNotificationJobStatus.PROCESSING), any(), any(), any(), any(), any()))
+                .thenThrow(new IllegalStateException("transition failed"));
+
+        assertThatThrownBy(() -> service.process(JOB_ID, "worker-a"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("transition failed");
+        verify(jobRepository, times(1)).transitionAfterProcessing(
+                any(), any(), eq(AppointmentNotificationJobStatus.PROCESSING), any(), any(), any(), any(), any());
     }
 
     @Test

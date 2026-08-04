@@ -6,7 +6,7 @@ import '../services/user_checklist_service.dart';
 
 typedef UserChecklistTaskCreated = Future<void> Function();
 
-/// Opens the Mother-only composer for a canonical V2 user-created task.
+/// Opens the personal-task composer for a canonical V2 user-created task.
 ///
 /// The entry is hidden unless exactly one authorized care context is supplied,
 /// so callers never expose a button that can only fail server validation.
@@ -15,6 +15,7 @@ class AddUserChecklistTaskButton extends StatelessWidget {
     super.key,
     this.journeyId,
     this.babyId,
+    this.careGroupId,
     this.service,
     this.onCreated,
     this.clientTaskIdFactory,
@@ -22,13 +23,19 @@ class AddUserChecklistTaskButton extends StatelessWidget {
 
   final String? journeyId;
   final String? babyId;
+  final String? careGroupId;
   final UserChecklistService? service;
   final UserChecklistTaskCreated? onCreated;
   final String Function()? clientTaskIdFactory;
 
-  bool get _hasOneContext =>
-      (journeyId != null && journeyId!.isNotEmpty) !=
-      (babyId != null && babyId!.isNotEmpty);
+  bool get _hasOneContext {
+    final contexts = [
+      careGroupId,
+      journeyId,
+      babyId,
+    ].where((value) => value != null && value.isNotEmpty).length;
+    return contexts == 1;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,6 +63,7 @@ class AddUserChecklistTaskButton extends StatelessWidget {
       builder: (_) => _UserChecklistTaskSheet(
         journeyId: journeyId,
         babyId: babyId,
+        careGroupId: careGroupId,
         service: service ?? UserChecklistService.instance,
         clientTaskIdFactory: clientTaskIdFactory ?? const Uuid().v4,
       ),
@@ -79,12 +87,14 @@ class _UserChecklistTaskSheet extends StatefulWidget {
   const _UserChecklistTaskSheet({
     required this.journeyId,
     required this.babyId,
+    required this.careGroupId,
     required this.service,
     required this.clientTaskIdFactory,
   });
 
   final String? journeyId;
   final String? babyId;
+  final String? careGroupId;
   final UserChecklistService service;
   final String Function() clientTaskIdFactory;
 
@@ -367,6 +377,7 @@ class _UserChecklistTaskSheetState extends State<_UserChecklistTaskSheet> {
         category: _category,
         journeyId: widget.journeyId,
         babyId: widget.babyId,
+        careGroupId: widget.careGroupId,
       );
       if (!mounted) return;
       Navigator.of(context).pop(true);

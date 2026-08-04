@@ -31,6 +31,11 @@ String? resolveNotificationRoute(NotificationRecord notification) {
   if (referenceType == 'APPOINTMENT' &&
       referenceId != null &&
       _uuidPattern.hasMatch(referenceId)) {
+    final careGroupId = notification.metadata?['careGroupId'];
+    if (careGroupId is String && _uuidPattern.hasMatch(careGroupId)) {
+      return '/care-groups/${Uri.encodeComponent(careGroupId)}/appointments/'
+          '${Uri.encodeComponent(referenceId)}';
+    }
     return '/appointments/detail/${Uri.encodeComponent(referenceId)}';
   }
   if (notification.type.trim().toUpperCase() == 'REMINDER' &&

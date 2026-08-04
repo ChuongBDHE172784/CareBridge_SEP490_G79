@@ -51,6 +51,11 @@ public class UnifiedTaskAccessPolicy {
      * so this path validates the selected group against the row's linked owner/context
      * instead of pretending the family member is the recipient. */
     public boolean canView(ChecklistInstance instance, UUID actorUserId, UUID careGroupId) {
+        if (isPersonalFamilyInstance(instance, actorUserId, careGroupId)) {
+            return careGroupAuthorizationPolicy.hasPermission(
+                    careGroupId, actorUserId, PermissionFlag.CHECKLIST_VIEW)
+                    && hasCurrentGroupContext(instance, careGroupId);
+        }
         if (!isCanonicalMotherInstance(instance)) {
             return false;
         }
@@ -77,9 +82,31 @@ public class UnifiedTaskAccessPolicy {
     }
 
     public boolean canComplete(ChecklistInstance instance, UUID actorUserId, UUID careGroupId) {
-        return canView(instance, actorUserId, careGroupId)
-                && careGroupAuthorizationPolicy.hasPermission(
-                        careGroupId, actorUserId, PermissionFlag.CHECKLIST_COMPLETE);
+        if (!canView(instance, actorUserId, careGroupId)) {
+            return false;
+        }
+        // A FAMILY member may complete/reopen their own USER_CREATED task. The
+        // separate CHECKLIST_COMPLETE grant controls mutations of the mother's
+        // shared checklist, not the member's private task.
+        if (isPersonalFamilyInstance(instance, actorUserId, careGroupId)) {
+            return true;
+        }
+        return careGroupAuthorizationPolicy.hasPermission(
+                careGroupId, actorUserId, PermissionFlag.CHECKLIST_COMPLETE);
+    }
+
+    private static boolean isPersonalFamilyInstance(
+            ChecklistInstance instance, UUID actorUserId, UUID careGroupId) {
+        return instance != null
+                && actorUserId != null
+                && careGroupId != null
+                && instance.getRecipientRole() == ChecklistRecipientRole.FAMILY
+                && instance.getOrigin() == com.carebridge.backend.checklist.model.ChecklistOrigin.USER_CREATED
+                && actorUserId.equals(instance.getRecipientUserId())
+                && careGroupId.equals(instance.getCareGroupId())
+                && instance.getCareContextType() != null
+                && instance.getCareContextId() != null
+                && instance.getContextOwnerUserId() != null;
     }
 
     private static boolean isCanonicalMotherInstance(ChecklistInstance instance) {
@@ -113,7 +140,11 @@ public class UnifiedTaskAccessPolicy {
     }
 
     private boolean hasCurrentGroupContext(ChecklistInstance instance) {
-        return groupRepository.findById(instance.getCareGroupId())
+        return hasCurrentGroupContext(instance, instance.getCareGroupId());
+    }
+
+    private boolean hasCurrentGroupContext(ChecklistInstance instance, UUID careGroupId) {
+        return careGroupId != null && groupRepository.findById(careGroupId)
                 .filter(group -> group.getStatus() == CareGroupStatus.ACTIVE)
                 .filter(group -> instance.getContextOwnerUserId().equals(group.getOwnerUserId()))
                 .filter(group -> hasMatchingLinkedContext(instance, group))

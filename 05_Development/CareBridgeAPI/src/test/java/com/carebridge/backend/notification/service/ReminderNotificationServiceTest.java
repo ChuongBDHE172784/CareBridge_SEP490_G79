@@ -53,7 +53,7 @@ class ReminderNotificationServiceTest {
         when(deviceTokenRepository.findByUserIdAndActiveTrue(USER_ID)).thenReturn(List.of(token("token-1")));
         when(fcmService.sendWithRetry("token-1", "Reminder", "Take vitamin", 3))
                 .thenReturn(FcmDeliveryResult.success("fcm-msg-001", 1));
-        when(notificationRecordRepository.save(any())).thenAnswer(inv -> withId(inv.getArgument(0)));
+        when(notificationRecordRepository.saveAndFlush(any())).thenAnswer(inv -> withId(inv.getArgument(0)));
 
         NotificationRecordResponse response =
                 service.sendReminderNotification(REMINDER_ID, USER_ID, "Reminder", "Take vitamin");
@@ -83,14 +83,14 @@ class ReminderNotificationServiceTest {
         when(deviceTokenRepository.findByUserIdAndActiveTrue(USER_ID)).thenReturn(List.of(token("token-1")));
         when(fcmService.sendWithRetry("token-1", "Reminder", "Take vitamin", 3))
                 .thenReturn(FcmDeliveryResult.failed("SERVICE_UNAVAILABLE", 3));
-        when(notificationRecordRepository.save(any())).thenAnswer(inv -> withId(inv.getArgument(0)));
+        when(notificationRecordRepository.saveAndFlush(any())).thenAnswer(inv -> withId(inv.getArgument(0)));
 
         NotificationRecordResponse response =
                 service.sendReminderNotification(REMINDER_ID, USER_ID, "Reminder", "Take vitamin");
 
         assertThat(response.status()).isEqualTo("FAILED");
         ArgumentCaptor<NotificationRecord> captor = ArgumentCaptor.forClass(NotificationRecord.class);
-        verify(notificationRecordRepository).save(captor.capture());
+        verify(notificationRecordRepository).saveAndFlush(captor.capture());
         assertThat(captor.getValue().getAttemptCount()).isEqualTo(3);
         assertThat(captor.getValue().getFailedAt()).isNotNull();
     }
@@ -100,7 +100,7 @@ class ReminderNotificationServiceTest {
     void sendReminderNotification_noActiveToken_recordsFailed() {
         when(preferenceRepository.isPushEnabled(USER_ID, NotificationType.REMINDER)).thenReturn(true);
         when(deviceTokenRepository.findByUserIdAndActiveTrue(USER_ID)).thenReturn(List.of());
-        when(notificationRecordRepository.save(any())).thenAnswer(inv -> withId(inv.getArgument(0)));
+        when(notificationRecordRepository.saveAndFlush(any())).thenAnswer(inv -> withId(inv.getArgument(0)));
 
         NotificationRecordResponse response =
                 service.sendReminderNotification(REMINDER_ID, USER_ID, "Reminder", "Take vitamin");
@@ -116,14 +116,38 @@ class ReminderNotificationServiceTest {
         when(deviceTokenRepository.findByUserIdAndActiveTrue(USER_ID)).thenReturn(List.of(token("token-1")));
         when(fcmService.sendWithRetry(any(), any(), any(), eq(3)))
                 .thenReturn(FcmDeliveryResult.success("fcm-msg-001", 1));
-        when(notificationRecordRepository.save(any())).thenAnswer(inv -> withId(inv.getArgument(0)));
+        when(notificationRecordRepository.saveAndFlush(any())).thenAnswer(inv -> withId(inv.getArgument(0)));
 
         service.sendReminderNotification(REMINDER_ID, USER_ID, "Reminder", "Take vitamin");
 
         ArgumentCaptor<NotificationRecord> captor = ArgumentCaptor.forClass(NotificationRecord.class);
-        verify(notificationRecordRepository).save(captor.capture());
+        verify(notificationRecordRepository).saveAndFlush(captor.capture());
         assertThat(captor.getValue().getReferenceId()).isEqualTo(REMINDER_ID);
         assertThat(captor.getValue().getReferenceType()).isEqualTo("REMINDER");
+    }
+
+    @Test
+    @DisplayName("NOTIF-TC-008: schedule without an active token flushes its FAILED record")
+    void sendReminderScheduleNotification_noActiveToken_flushesRecordBeforeReturning() {
+        UUID scheduleId = UUID.fromString("50000000-0000-0000-0000-000000000158");
+        UUID jobId = UUID.fromString("60000000-0000-0000-0000-000000000158");
+        when(preferenceRepository.isPushEnabled(USER_ID, NotificationType.REMINDER)).thenReturn(true);
+        when(notificationRecordRepository.findReminderScheduleByJobId(jobId))
+                .thenReturn(Optional.empty());
+        when(deviceTokenRepository.findByUserIdAndActiveTrue(USER_ID)).thenReturn(List.of());
+        when(notificationRecordRepository.saveAndFlush(any()))
+                .thenAnswer(inv -> withId(inv.getArgument(0)));
+
+        NotificationRecordResponse response = service.sendReminderScheduleNotification(
+                scheduleId, jobId, USER_ID, "Reminder", "Reminder body",
+                java.time.LocalDate.of(2026, 8, 4), java.time.LocalTime.of(13, 40), "UTC+07:00");
+
+        assertThat(response.status()).isEqualTo("FAILED");
+        ArgumentCaptor<NotificationRecord> captor = ArgumentCaptor.forClass(NotificationRecord.class);
+        verify(notificationRecordRepository).saveAndFlush(captor.capture());
+        assertThat(captor.getValue().getStatus()).isEqualTo(NotificationRecordStatus.FAILED);
+        assertThat(captor.getValue().getReferenceType()).isEqualTo("REMINDER_SCHEDULE");
+        assertThat(captor.getValue().getMetadata()).containsEntry("scheduleJobId", jobId.toString());
     }
 
     @Test
@@ -153,7 +177,7 @@ class ReminderNotificationServiceTest {
                 .thenReturn(List.of(token("token-1")));
         when(fcmService.sendWithRetry(eq("token-1"), any(), any(), any(Map.class), eq(3)))
                 .thenReturn(FcmDeliveryResult.success("fcm-retry-001", 1));
-        when(notificationRecordRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(notificationRecordRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
 
         NotificationRecordResponse response = service.sendAppointmentNotification(command);
 

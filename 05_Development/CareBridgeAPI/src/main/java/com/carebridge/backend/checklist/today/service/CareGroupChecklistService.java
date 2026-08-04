@@ -1,6 +1,12 @@
 package com.carebridge.backend.checklist.today.service;
 
 import com.carebridge.backend.checklist.model.ChecklistOrigin;
+import com.carebridge.backend.checklist.model.ChecklistRecipientRole;
+import com.carebridge.backend.checklist.model.ChecklistTaskStatus;
+import com.carebridge.backend.checklist.entity.ChecklistInstance;
+import com.carebridge.backend.checklist.entity.ChecklistTaskInstance;
+import com.carebridge.backend.checklist.repository.ChecklistInstanceRepository;
+import com.carebridge.backend.checklist.repository.ChecklistTaskInstanceRepository;
 import com.carebridge.backend.checklist.today.dto.CurrentChecklistResponse;
 import com.carebridge.backend.checklist.today.dto.CurrentChecklistSections;
 import com.carebridge.backend.checklist.today.dto.CurrentChecklistTaskResponse;
@@ -22,6 +28,7 @@ import java.time.LocalDate;
 import java.util.Map;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -39,6 +46,8 @@ public class CareGroupChecklistService {
     private final CareGroupChecklistScopeResolver scopeResolver;
     private final UnifiedTaskActionFacade actionFacade;
     private final ChecklistTemplateRepository templateRepository;
+    private final ChecklistInstanceRepository instanceRepository;
+    private final ChecklistTaskInstanceRepository taskRepository;
     private final boolean lockScope;
 
     @Autowired
@@ -46,8 +55,11 @@ public class CareGroupChecklistService {
             UnifiedTodayTaskService unifiedTodayTaskService,
             CareGroupChecklistScopeResolver scopeResolver,
             UnifiedTaskActionFacade actionFacade,
-            ChecklistTemplateRepository templateRepository) {
-        this(unifiedTodayTaskService, scopeResolver, actionFacade, templateRepository, true);
+            ChecklistTemplateRepository templateRepository,
+            ChecklistInstanceRepository instanceRepository,
+            ChecklistTaskInstanceRepository taskRepository) {
+        this(unifiedTodayTaskService, scopeResolver, actionFacade, templateRepository,
+                instanceRepository, taskRepository, true);
     }
 
     private CareGroupChecklistService(
@@ -55,12 +67,26 @@ public class CareGroupChecklistService {
             CareGroupChecklistScopeResolver scopeResolver,
             UnifiedTaskActionFacade actionFacade,
             ChecklistTemplateRepository templateRepository,
+            ChecklistInstanceRepository instanceRepository,
+            ChecklistTaskInstanceRepository taskRepository,
             boolean lockScope) {
         this.unifiedTodayTaskService = unifiedTodayTaskService;
         this.scopeResolver = scopeResolver;
         this.actionFacade = actionFacade;
         this.templateRepository = templateRepository;
+        this.instanceRepository = instanceRepository;
+        this.taskRepository = taskRepository;
         this.lockScope = lockScope;
+    }
+
+    /** Compatibility constructor retained for callers that only provide template metadata. */
+    public CareGroupChecklistService(
+            UnifiedTodayTaskService unifiedTodayTaskService,
+            CareGroupChecklistScopeResolver scopeResolver,
+            UnifiedTaskActionFacade actionFacade,
+            ChecklistTemplateRepository templateRepository) {
+        this(unifiedTodayTaskService, scopeResolver, actionFacade, templateRepository,
+                null, null, true);
     }
 
     /** Compatibility constructor for lightweight service tests. */
@@ -68,7 +94,7 @@ public class CareGroupChecklistService {
         UnifiedTodayTaskService unifiedTodayTaskService,
             CareGroupChecklistScopeResolver scopeResolver,
             UnifiedTaskActionFacade actionFacade) {
-        this(unifiedTodayTaskService, scopeResolver, actionFacade, null, false);
+        this(unifiedTodayTaskService, scopeResolver, actionFacade, null, null, null, false);
     }
 
     @Transactional
@@ -82,11 +108,16 @@ public class CareGroupChecklistService {
                 scope.ownerUserId(), date, timezoneHeader, Set.of(TaskKind.CHECKLIST), false);
         TodayTaskSections ownerSections = ownerResponse.sections();
         Map<UUID, ChecklistTemplate> shareableTemplates = shareableTemplates(ownerSections);
+        List<CurrentChecklistTaskResponse> personalTasks = mapPersonalFamilyTasks(
+                actorUserId, scope);
+        List<CurrentChecklistTaskResponse> unscheduled = new ArrayList<>(
+                map(ownerSections.unscheduled(), scope, canComplete, shareableTemplates));
+        unscheduled.addAll(personalTasks);
         CurrentChecklistSections sections = new CurrentChecklistSections(
                 map(ownerSections.overdue(), scope, canComplete, shareableTemplates),
                 map(ownerSections.today(), scope, canComplete, shareableTemplates),
                 map(ownerSections.upcoming(), scope, canComplete, shareableTemplates),
-                map(ownerSections.unscheduled(), scope, canComplete, shareableTemplates));
+                List.copyOf(unscheduled));
         requireSameScope(actorUserId, careGroupId, scope);
         TodayTaskCounts counts = new TodayTaskCounts(
                 sections.overdue().size(), sections.today().size(),
@@ -127,6 +158,51 @@ public class CareGroupChecklistService {
                         item.targetSubject(), item.origin(), item.status(), item.timeBucket(),
                 canComplete ? item.allowedActions() : java.util.Set.of(), item.dueAt()))
                 .toList();
+    }
+
+    /** Projects only the selected member's private FAMILY USER_CREATED tasks. */
+    private List<CurrentChecklistTaskResponse> mapPersonalFamilyTasks(
+            UUID actorUserId, CareGroupChecklistScope scope) {
+        if (instanceRepository == null || taskRepository == null) {
+            return List.of();
+        }
+        List<ChecklistInstance> parents = instanceRepository
+                .findByRecipientUserIdAndHistoricalAtIsNull(actorUserId).stream()
+                .filter(instance -> instance.getRecipientRole() == ChecklistRecipientRole.FAMILY)
+                .filter(instance -> instance.getOrigin() == ChecklistOrigin.USER_CREATED)
+                .filter(instance -> scope.careGroupId().equals(instance.getCareGroupId()))
+                .filter(instance -> instance.getStatus() != com.carebridge.backend.checklist.model.ChecklistInstanceStatus.CANCELLED)
+                .filter(instance -> scope.includes(instance.getCareContextType(), instance.getCareContextId()))
+                .toList();
+        if (parents.isEmpty()) {
+            return List.of();
+        }
+        Map<UUID, ChecklistInstance> parentsById = parents.stream()
+                .collect(Collectors.toMap(ChecklistInstance::getId, value -> value));
+        return taskRepository.findAllByChecklistInstanceIds(parentsById.keySet().stream().toList()).stream()
+                .filter(task -> task.getStatus() != ChecklistTaskStatus.CANCELLED)
+                .map(task -> personalTaskResponse(parentsById.get(task.getChecklistInstanceId()), task, scope))
+                .toList();
+    }
+
+    private static CurrentChecklistTaskResponse personalTaskResponse(
+            ChecklistInstance parent,
+            ChecklistTaskInstance task,
+            CareGroupChecklistScope scope) {
+        Set<TaskAction> actions = new java.util.LinkedHashSet<>();
+        if (task.getStatus() == ChecklistTaskStatus.PENDING
+                || task.getStatus() == ChecklistTaskStatus.IN_PROGRESS) {
+            actions.add(TaskAction.COMPLETE);
+        } else if (task.getStatus() == ChecklistTaskStatus.COMPLETED) {
+            actions.add(TaskAction.REOPEN);
+        }
+        return new CurrentChecklistTaskResponse(
+                task.getId(), parent.getId(), null, scope.careGroupId(),
+                parent.getCareContextType(), parent.getCareContextId(),
+                scope.careGroupLabel(), null, task.getTitleSnapshot(), task.getTargetSubject(),
+                ChecklistOrigin.USER_CREATED, task.getStatus().name(),
+                com.carebridge.backend.checklist.today.model.TaskTimeBucket.UNSCHEDULED,
+                Set.copyOf(actions), task.getDueAt());
     }
 
     private Map<UUID, ChecklistTemplate> shareableTemplates(TodayTaskSections sections) {
@@ -186,9 +262,12 @@ public class CareGroupChecklistService {
             UUID careGroupId,
             UUID taskId,
             TaskActionRequest request) {
+        // View permission is enough to enter this endpoint: the action handler
+        // applies the stricter CHECKLIST_COMPLETE rule to the mother's shared
+        // rows, while a member's own USER_CREATED row is mutable with view only.
         boolean permitted = (lockScope
-                ? scopeResolver.resolveCompleteForUpdate(actorUserId, careGroupId)
-                : scopeResolver.resolveComplete(actorUserId, careGroupId)) != null;
+                ? scopeResolver.resolveViewForUpdate(actorUserId, careGroupId)
+                : scopeResolver.resolveView(actorUserId, careGroupId)) != null;
         if (!permitted) {
             throw new BusinessException(HttpStatus.NOT_FOUND, "TASK_NOT_FOUND", "Task not found");
         }

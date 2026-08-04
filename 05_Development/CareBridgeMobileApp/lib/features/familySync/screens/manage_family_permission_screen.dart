@@ -115,7 +115,9 @@ class _ManageFamilyPermissionScreenState
   void _applyPermission(FamilyPermission permission) {
     _calendar = permission.calendar;
     _logs = permission.logs;
-    _alerts = permission.alerts;
+    // The existing row controls both legacy alerts and checklist visibility;
+    // keep it enabled when either persisted grant is present.
+    _alerts = permission.alerts || permission.checklistView;
     _records = permission.records;
     _quickNotes = permission.quickNotes;
     _quickNoteWeight = permission.quickNoteWeight;
@@ -137,6 +139,10 @@ class _ManageFamilyPermissionScreenState
         logs: _logs,
         alerts: _alerts,
         records: _records,
+        // The existing "Việc cần làm & cảnh báo" switch is the family-facing
+        // read grant for checklist content. Family members remain read-only.
+        checklistView: _alerts,
+        checklistComplete: false,
         quickNotes: _quickNotes,
         quickNoteWeight: _quickNoteWeight,
         quickNoteFetalMovement: _quickNoteFetalMovement,

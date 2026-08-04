@@ -65,6 +65,30 @@ class ReminderService extends ChangeNotifier {
         .toList();
   }
 
+  /// Read-only appointment projection for one selected FAMILY care group.
+  Future<List<Reminder>> listSharedAppointmentsOrThrow(
+    String careGroupId,
+  ) async {
+    final data = await apiGet('/api/v1/care-groups/$careGroupId/appointments');
+    final raw = data is Map && data['data'] is List ? data['data'] : data;
+    final list = raw as List? ?? [];
+    return list
+        .map((e) => Reminder.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Read-only detail used by FAMILY appointment calendar/notification routes.
+  Future<Reminder> getSharedAppointment(
+    String careGroupId,
+    String appointmentId,
+  ) async {
+    final data = await apiGet(
+      '/api/v1/care-groups/$careGroupId/appointments/$appointmentId',
+    );
+    final raw = data is Map && data['data'] is Map ? data['data'] : data;
+    return Reminder.fromJson(Map<String, dynamic>.from(raw as Map));
+  }
+
   Future<List<Reminder>> listAllReminders() async {
     try {
       return await listAllRemindersOrThrow();

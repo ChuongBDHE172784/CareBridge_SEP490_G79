@@ -3,6 +3,7 @@ package com.carebridge.backend.reminder.schedule.service;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -79,6 +80,34 @@ class ReminderScheduleProcessingServiceTest {
 
         org.assertj.core.api.Assertions.assertThat(job.getStatus())
                 .isEqualTo(AppointmentNotificationJobStatus.PENDING);
+    }
+
+    @Test
+    void terminalTransitionFailureIsNotRetriedInsideTheAbortedTransaction() {
+        ReminderScheduleJob job = job("worker-1");
+        ReminderSchedule schedule = ReminderSchedule.builder()
+                .id(SCHEDULE_ID).ownerUserId(OWNER_ID).title("Cho con bu")
+                .timeZone("UTC").startDate(LocalDate.of(2026, 8, 1))
+                .revision(1L).active(true).build();
+        UUID recordId = UUID.fromString("00000000-0000-0000-0000-000000000204");
+        NotificationRecordResponse failed = new NotificationRecordResponse(
+                recordId, OWNER_ID, "REMINDER", "Cho con bu", "body", SCHEDULE_ID,
+                "REMINDER_SCHEDULE", "FAILED", null, null, false, null,
+                "PUSH", null, 1, null, NOW, java.util.Map.of());
+        when(jobRepository.findById(JOB_ID)).thenReturn(Optional.of(job));
+        when(scheduleRepository.findById(SCHEDULE_ID)).thenReturn(Optional.of(schedule));
+        when(notificationService.sendReminderScheduleNotification(
+                eq(SCHEDULE_ID), eq(JOB_ID), eq(OWNER_ID), eq("Cho con bu"),
+                any(), any(), any(), any())).thenReturn(failed);
+        when(jobRepository.transitionAfterProcessing(
+                any(), any(), eq(AppointmentNotificationJobStatus.PROCESSING), any(), any(), any(), any(), any()))
+                .thenThrow(new IllegalStateException("transition failed"));
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.process(JOB_ID, "worker-1"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("transition failed");
+        verify(jobRepository, times(1)).transitionAfterProcessing(
+                any(), any(), eq(AppointmentNotificationJobStatus.PROCESSING), any(), any(), any(), any(), any());
     }
 
     @Test

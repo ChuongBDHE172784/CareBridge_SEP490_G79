@@ -5,6 +5,8 @@ class FamilyPermission {
   final bool logs;
   final bool alerts;
   final bool records;
+  final bool checklistView;
+  final bool checklistComplete;
   final bool quickNotes;
   final bool quickNoteWeight;
   final bool quickNoteHydration;
@@ -21,6 +23,8 @@ class FamilyPermission {
     required this.logs,
     required this.alerts,
     required this.records,
+    this.checklistView = false,
+    this.checklistComplete = false,
     this.quickNotes = false,
     this.quickNoteWeight = false,
     this.quickNoteHydration = false,
@@ -39,6 +43,9 @@ class FamilyPermission {
       logs: json['logs'] ?? false,
       alerts: json['alerts'] ?? false,
       records: json['records'] ?? false,
+      checklistView: json['checklistView'] ?? json['CHECKLIST_VIEW'] ?? false,
+      checklistComplete:
+          json['checklistComplete'] ?? json['CHECKLIST_COMPLETE'] ?? false,
       quickNotes: json['quickNotes'] ?? false,
       quickNoteWeight: json['quickNoteWeight'] ?? false,
       quickNoteHydration: json['quickNoteHydration'] ?? false,

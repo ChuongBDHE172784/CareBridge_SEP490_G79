@@ -20,6 +20,8 @@ class FcmService {
 
   static const String webVapidKey = String.fromEnvironment(
     'FIREBASE_WEB_VAPID_KEY',
+    defaultValue:
+        'BE04XXa8O9s798lwm7oUNkBkR_a00h0begIg0MQiO-Jgm_X6C-hb266J-fnk1Oxz7N6pOo9CyGv99eHRI73_e84',
   );
 
   StreamSubscription<String>? _refreshSub;
@@ -198,6 +200,11 @@ class FcmService {
         data['referenceType'] == 'APPOINTMENT' &&
         reminderId is String &&
         _uuidPattern.hasMatch(reminderId)) {
+      final careGroupId = data['careGroupId'] ?? data['groupId'];
+      if (careGroupId is String && _uuidPattern.hasMatch(careGroupId)) {
+        return '/care-groups/${Uri.encodeComponent(careGroupId)}/appointments/'
+            '${Uri.encodeComponent(reminderId)}';
+      }
       return '/appointments/detail/${Uri.encodeComponent(reminderId)}';
     }
     if (data['type'] == 'REMINDER' &&

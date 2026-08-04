@@ -22,6 +22,30 @@ void main() {
     );
   });
 
+  test(
+    'shared appointment notification opens the selected care-group detail',
+    () {
+      final notification = NotificationRecord(
+        id: 'notification-shared',
+        userId: 'user-1',
+        type: 'REMINDER',
+        title: 'Lịch hẹn đã thay đổi',
+        body: 'Lịch hẹn đã cập nhật',
+        referenceId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+        referenceType: 'APPOINTMENT',
+        status: 'SENT',
+        createdAt: DateTime.utc(2026, 7, 30),
+        metadata: {'careGroupId': 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee'},
+      );
+
+      expect(
+        resolveNotificationRoute(notification),
+        '/care-groups/eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee/appointments/'
+        'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+      );
+    },
+  );
+
   test('metadata reminder id is a safe fallback for legacy records', () {
     final notification = NotificationRecord(
       id: 'notification-2',

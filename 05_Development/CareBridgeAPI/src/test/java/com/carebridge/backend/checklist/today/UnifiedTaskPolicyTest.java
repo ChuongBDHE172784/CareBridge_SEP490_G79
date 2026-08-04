@@ -142,6 +142,39 @@ class UnifiedTaskPolicyTest {
     }
 
     @Test
+    void familyOwnUserCreatedTaskIsCompletableWithViewPermissionOnly() {
+        CareGroupRepository groups = mock(CareGroupRepository.class);
+        CareGroupAuthorizationPolicy familyPolicy = mock(CareGroupAuthorizationPolicy.class);
+        MotherJourneyRepository journeys = mock(MotherJourneyRepository.class);
+        BabyProfileRepository babies = mock(BabyProfileRepository.class);
+        when(groups.findById(GROUP)).thenReturn(Optional.of(CareGroup.builder()
+                .id(GROUP).ownerUserId(MOTHER).linkedJourneyId(CONTEXT)
+                .status(CareGroupStatus.ACTIVE).build()));
+        when(journeys.existsByIdAndOwnerUserIdAndStatus(CONTEXT, MOTHER, JourneyStatus.ACTIVE))
+                .thenReturn(true);
+        when(familyPolicy.hasPermission(GROUP, FAMILY, PermissionFlag.CHECKLIST_VIEW))
+                .thenReturn(true);
+        UnifiedTaskAccessPolicy policy = new UnifiedTaskAccessPolicy(
+                groups, familyPolicy, journeys, babies);
+        ChecklistInstance instance = ChecklistInstance.builder()
+                .recipientUserId(FAMILY)
+                .recipientRole(ChecklistRecipientRole.FAMILY)
+                .careGroupId(GROUP)
+                .careContextType(ChecklistCareContextType.JOURNEY)
+                .careContextId(CONTEXT)
+                .contextOwnerUserId(MOTHER)
+                .origin(ChecklistOrigin.USER_CREATED)
+                .build();
+
+        assertThat(policy.canView(instance, FAMILY, GROUP)).isTrue();
+        assertThat(policy.canComplete(instance, FAMILY, GROUP)).isTrue();
+        when(familyPolicy.hasPermission(GROUP, FAMILY, PermissionFlag.CHECKLIST_VIEW))
+                .thenReturn(false);
+        assertThat(policy.canView(instance, FAMILY, GROUP)).isFalse();
+        assertThat(policy.canComplete(instance, FAMILY, GROUP)).isFalse();
+    }
+
+    @Test
     void activeCanonicalGroupContextDoesNotRequireReviewedMapping() {
         CareGroupRepository groups = mock(CareGroupRepository.class);
         CareGroupAuthorizationPolicy familyPolicy = mock(CareGroupAuthorizationPolicy.class);

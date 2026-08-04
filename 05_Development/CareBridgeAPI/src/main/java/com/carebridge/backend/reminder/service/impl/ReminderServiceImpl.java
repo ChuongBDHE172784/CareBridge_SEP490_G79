@@ -20,6 +20,7 @@ import com.carebridge.backend.reminder.entity.Reminder;
 import com.carebridge.backend.reminder.entity.ReminderStatus;
 import com.carebridge.backend.reminder.entity.ReminderType;
 import com.carebridge.backend.reminder.repository.ReminderRepository;
+import com.carebridge.backend.reminder.notification.service.CareGroupAppointmentNotificationService;
 import com.carebridge.backend.reminder.notification.service.AppointmentNotificationScheduleService;
 import com.carebridge.backend.reminder.service.INotificationService;
 import com.carebridge.backend.reminder.service.IReminderService;
@@ -54,6 +55,7 @@ public class ReminderServiceImpl implements IReminderService {
     private final VaccinationRecordRepository vaccinationRecordRepository;
     private final EntityManager entityManager;
     private final AppointmentNotificationScheduleService appointmentNotificationScheduleService;
+    private final CareGroupAppointmentNotificationService careGroupAppointmentNotificationService;
 
     /** Compatibility constructor for focused unit tests that do not exercise locking or appointment schedules. */
     public ReminderServiceImpl(
@@ -63,7 +65,7 @@ public class ReminderServiceImpl implements IReminderService {
             BabyProfileRepository babyProfileRepository,
             VaccinationRecordRepository vaccinationRecordRepository) {
         this(reminderRepository, notificationService, auditService, babyProfileRepository,
-                vaccinationRecordRepository, null, null);
+                vaccinationRecordRepository, null, null, null);
     }
 
     // ─── UC45: Create Appointment Reminder ────────────────────────────────────
@@ -100,6 +102,7 @@ public class ReminderServiceImpl implements IReminderService {
 
         auditService.log(AuditAction.REMINDER_CREATED, callerId,
                 "Reminder", saved.getId().toString(), "created");
+        notifyAppointmentCreated(saved);
 
         return toCreateResponse(saved);
     }
@@ -215,6 +218,15 @@ public class ReminderServiceImpl implements IReminderService {
         requireActionableState(reminder, "REM-007",
                 "Reminder in terminal state " + reminder.getStatus() + " cannot be modified");
 
+        boolean appointmentChanged = reminder.getReminderType() == ReminderType.APPOINTMENT
+                && (request.getTitle() != null
+                || request.getScheduledAt() != null
+                || request.getRecurrenceType() != null
+                || request.getRecurrenceEndDate() != null
+                || Boolean.TRUE.equals(request.getRecurrenceEndDateSet())
+                || request.getTimeZone() != null
+                || Boolean.TRUE.equals(request.getNotificationOffsetsMinutesSet()));
+
         if (request.getTitle() != null) {
             reminder.setTitle(request.getTitle());
         }
@@ -259,6 +271,9 @@ public class ReminderServiceImpl implements IReminderService {
                     request.getNotificationOffsetsMinutes(),
                     Boolean.TRUE.equals(request.getNotificationOffsetsMinutesSet()),
                     request.getTimeZone());
+        }
+        if (appointmentChanged) {
+            notifyAppointmentUpdated(saved);
         }
         return toDetailResponse(saved);
     }
@@ -482,6 +497,7 @@ public class ReminderServiceImpl implements IReminderService {
 
         auditService.log(AuditAction.REMINDER_CANCELLED, callerId,
                 "Reminder", reminderId.toString(), "cancelled");
+        notifyAppointmentCancelled(reminder);
     }
 
     @Override
@@ -515,6 +531,7 @@ public class ReminderServiceImpl implements IReminderService {
         }
         auditService.log(AuditAction.REMINDER_CREATED, callerId,
                 "Reminder", reminderId.toString(), "enabled");
+        notifyAppointmentUpdated(saved);
         return toDetailResponse(saved);
     }
 
@@ -533,6 +550,7 @@ public class ReminderServiceImpl implements IReminderService {
 
         auditService.log(AuditAction.REMINDER_CANCELLED, callerId,
                 "Reminder", reminderId.toString(), "permanently deleted");
+        notifyAppointmentCancelled(reminder);
         reminderRepository.delete(reminder);
     }
 
@@ -643,6 +661,45 @@ public class ReminderServiceImpl implements IReminderService {
     private boolean isRecurringReminder(Reminder reminder) {
         RecurrenceType recurrenceType = reminder.getRecurrenceType();
         return recurrenceType != null && recurrenceType != RecurrenceType.NONE;
+    }
+
+    private void notifyAppointmentCreated(Reminder reminder) {
+        if (careGroupAppointmentNotificationService == null
+                || reminder.getReminderType() != ReminderType.APPOINTMENT) return;
+        dispatchAppointmentNotification(() -> careGroupAppointmentNotificationService.notifyCreated(reminder));
+    }
+
+    private void notifyAppointmentUpdated(Reminder reminder) {
+        if (careGroupAppointmentNotificationService == null
+                || reminder.getReminderType() != ReminderType.APPOINTMENT) return;
+        dispatchAppointmentNotification(() -> careGroupAppointmentNotificationService.notifyUpdated(reminder));
+    }
+
+    private void notifyAppointmentCancelled(Reminder reminder) {
+        if (careGroupAppointmentNotificationService == null
+                || reminder.getReminderType() != ReminderType.APPOINTMENT) return;
+        dispatchAppointmentNotification(() -> careGroupAppointmentNotificationService.notifyCancelled(reminder));
+    }
+
+    private void dispatchAppointmentNotification(Runnable notification) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            try {
+                notification.run();
+            } catch (RuntimeException ignored) {
+                // Notification fan-out must not roll back the mother's appointment write.
+            }
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    notification.run();
+                } catch (RuntimeException ignored) {
+                    // Notification fan-out must not roll back the mother's appointment write.
+                }
+            }
+        });
     }
 
     private CreateReminderResponse toCreateResponse(Reminder saved) {

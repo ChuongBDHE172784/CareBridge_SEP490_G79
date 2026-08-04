@@ -32,6 +32,7 @@ public class AppointmentNotificationProcessingService {
     private final AppointmentNotificationConfigRepository configRepository;
     private final ReminderRepository reminderRepository;
     private final IReminderNotificationService notificationService;
+    private final CareGroupAppointmentNotificationService careGroupNotificationService;
     private final Clock clock;
     private final int maxAttempts;
     private final long staleProcessingMinutes;
@@ -43,11 +44,27 @@ public class AppointmentNotificationProcessingService {
             AppointmentNotificationConfigRepository configRepository,
             ReminderRepository reminderRepository,
             IReminderNotificationService notificationService,
+            CareGroupAppointmentNotificationService careGroupNotificationService,
             @Value("${carebridge.notification.appointment.max-attempts:4}") int maxAttempts,
             @Value("${carebridge.notification.appointment.stale-processing-minutes:10}") long staleProcessingMinutes,
             @Value("${carebridge.notification.appointment.stale-backlog-grace-minutes:60}")
             long staleBacklogGraceMinutes) {
         this(jobRepository, configRepository, reminderRepository, notificationService,
+                careGroupNotificationService,
+                Clock.systemUTC(), maxAttempts, staleProcessingMinutes, staleBacklogGraceMinutes);
+    }
+
+    /** Compatibility constructor for worker tests that do not exercise FAMILY fan-out. */
+    public AppointmentNotificationProcessingService(
+            AppointmentNotificationJobRepository jobRepository,
+            AppointmentNotificationConfigRepository configRepository,
+            ReminderRepository reminderRepository,
+            IReminderNotificationService notificationService,
+            @Value("${carebridge.notification.appointment.max-attempts:4}") int maxAttempts,
+            @Value("${carebridge.notification.appointment.stale-processing-minutes:10}") long staleProcessingMinutes,
+            @Value("${carebridge.notification.appointment.stale-backlog-grace-minutes:60}")
+            long staleBacklogGraceMinutes) {
+        this(jobRepository, configRepository, reminderRepository, notificationService, null,
                 Clock.systemUTC(), maxAttempts, staleProcessingMinutes, staleBacklogGraceMinutes);
     }
 
@@ -56,10 +73,12 @@ public class AppointmentNotificationProcessingService {
             AppointmentNotificationConfigRepository configRepository,
             ReminderRepository reminderRepository,
             IReminderNotificationService notificationService,
+            CareGroupAppointmentNotificationService careGroupNotificationService,
             Clock clock,
             int maxAttempts,
             long staleProcessingMinutes) {
-        this(jobRepository, configRepository, reminderRepository, notificationService, clock,
+        this(jobRepository, configRepository, reminderRepository, notificationService,
+                careGroupNotificationService, clock,
                 maxAttempts, staleProcessingMinutes, 60);
     }
 
@@ -70,12 +89,26 @@ public class AppointmentNotificationProcessingService {
             IReminderNotificationService notificationService,
             Clock clock,
             int maxAttempts,
+            long staleProcessingMinutes) {
+        this(jobRepository, configRepository, reminderRepository, notificationService, null,
+                clock, maxAttempts, staleProcessingMinutes, 60);
+    }
+
+    AppointmentNotificationProcessingService(
+            AppointmentNotificationJobRepository jobRepository,
+            AppointmentNotificationConfigRepository configRepository,
+            ReminderRepository reminderRepository,
+            IReminderNotificationService notificationService,
+            CareGroupAppointmentNotificationService careGroupNotificationService,
+            Clock clock,
+            int maxAttempts,
             long staleProcessingMinutes,
             long staleBacklogGraceMinutes) {
         this.jobRepository = jobRepository;
         this.configRepository = configRepository;
         this.reminderRepository = reminderRepository;
         this.notificationService = notificationService;
+        this.careGroupNotificationService = careGroupNotificationService;
         this.clock = clock;
         this.maxAttempts = Math.max(1, maxAttempts);
         this.staleProcessingMinutes = Math.max(0, staleProcessingMinutes);
@@ -136,21 +169,33 @@ public class AppointmentNotificationProcessingService {
             finish(job, AppointmentNotificationJobStatus.SUPPRESSED, "APPOINTMENT_NOT_ACTIVE", null, workerId);
             return;
         }
+        NotificationRecordResponse response;
         try {
-            NotificationRecordResponse response = notificationService.sendAppointmentNotification(
+            response = notificationService.sendAppointmentNotification(
                     new ReminderNotificationCommand(
                             job.getId(), reminder.getId(), job.getOccurrenceId(), reminder.getOwnerUserId(),
                             reminder.getTitle(), job.getOccurrenceScheduledAt(), job.getOffsetMinutes(),
                             config.getTimeZone()));
-            if (response == null) {
-                finish(job, AppointmentNotificationJobStatus.SUPPRESSED, "REMINDER_PUSH_DISABLED", null, workerId);
-            } else if ("SENT".equals(response.status()) || "DELIVERED".equals(response.status())) {
-                finish(job, AppointmentNotificationJobStatus.SENT, null, response.id(), workerId);
-            } else {
-                retryOrFail(job, "APPOINTMENT_DELIVERY_FAILED", response.id(), workerId);
-            }
         } catch (RuntimeException exception) {
             retryOrFail(job, "APPOINTMENT_DELIVERY_ERROR", null, workerId);
+            return;
+        }
+        if (careGroupNotificationService != null) {
+            try {
+                careGroupNotificationService.notifyMilestone(reminder, job, config.getTimeZone());
+            } catch (RuntimeException ignored) {
+                // FAMILY fan-out must not retry the mother's durable milestone job.
+            }
+        }
+        // Keep terminal transition failures outside the delivery catch block. If
+        // the database rejects a fenced transition, retrying inside the same
+        // aborted transaction only produces a second misleading SQL error.
+        if (response == null) {
+            finish(job, AppointmentNotificationJobStatus.SUPPRESSED, "REMINDER_PUSH_DISABLED", null, workerId);
+        } else if ("SENT".equals(response.status()) || "DELIVERED".equals(response.status())) {
+            finish(job, AppointmentNotificationJobStatus.SENT, null, response.id(), workerId);
+        } else {
+            retryOrFail(job, "APPOINTMENT_DELIVERY_FAILED", response.id(), workerId);
         }
     }
 

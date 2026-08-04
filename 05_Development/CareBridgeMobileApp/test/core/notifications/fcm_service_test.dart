@@ -65,6 +65,23 @@ void main() {
     expect(route, '/appointments/detail/dddddddd-dddd-4ddd-8ddd-dddddddddddd');
   });
 
+  test(
+    'shared appointment payload resolves to the read-only care-group detail',
+    () {
+      final route = FcmService.resolveTapRoute({
+        'type': 'REMINDER',
+        'referenceType': 'APPOINTMENT',
+        'reminderId': 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+        'careGroupId': 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+      });
+      expect(
+        route,
+        '/care-groups/eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee/appointments/'
+        'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+      );
+    },
+  );
+
   test('MESSAGE type without a conversationId resolves to no route', () {
     final route = FcmService.resolveTapRoute({'type': 'MESSAGE'});
     expect(route, isNull);
@@ -130,6 +147,10 @@ void main() {
       ),
       'IOS',
     );
+  });
+
+  test('Web VAPID configuration has a checked-in public local default', () {
+    expect(FcmService.webVapidKey, isNotEmpty);
   });
 
   test('malformed consultation request identifier is rejected', () {

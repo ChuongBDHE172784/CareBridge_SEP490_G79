@@ -23,5 +23,20 @@ public record AddChecklistItemRequest(
 
         ChecklistTargetSubject targetSubject,
 
-        UUID clientTaskId
-) {}
+        UUID clientTaskId,
+
+        /** Explicit FAMILY group scope; MOTHER requests leave this null. */
+        UUID careGroupId
+) {
+    /** Compatibility constructor for the existing MOTHER-only callers. */
+    public AddChecklistItemRequest(
+            UUID journeyId,
+            UUID babyId,
+            String itemText,
+            ChecklistCategory category,
+            Integer itemOrder,
+            ChecklistTargetSubject targetSubject,
+            UUID clientTaskId) {
+        this(journeyId, babyId, itemText, category, itemOrder, targetSubject, clientTaskId, null);
+    }
+}

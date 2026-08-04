@@ -9,11 +9,13 @@ class AppointmentCalendarScreen extends StatefulWidget {
   const AppointmentCalendarScreen({
     super.key,
     this.reminderLoader,
+    this.careGroupId,
     this.initialMonth,
     this.nowProvider,
   });
 
   final Future<List<Reminder>> Function()? reminderLoader;
+  final String? careGroupId;
   final DateTime? initialMonth;
   final DateTime Function()? nowProvider;
 
@@ -78,7 +80,11 @@ class _AppointmentCalendarScreenState extends State<AppointmentCalendarScreen>
     try {
       final reminders =
           await (widget.reminderLoader?.call() ??
-              _service.listAppointmentsOrThrow());
+              (widget.careGroupId == null
+                  ? _service.listAppointmentsOrThrow()
+                  : _service.listSharedAppointmentsOrThrow(
+                      widget.careGroupId!,
+                    )));
       final appointments =
           reminders
               .where(
@@ -169,7 +175,7 @@ class _AppointmentCalendarScreenState extends State<AppointmentCalendarScreen>
       builder: (context) => _AppointmentDaySheet(
         date: selected,
         appointments: _appointmentsByDate[selected] ?? const [],
-        canCreate: !_isBeforeToday(selected),
+        canCreate: widget.careGroupId == null && !_isBeforeToday(selected),
       ),
     );
     if (!mounted || action == null) return;
@@ -178,12 +184,14 @@ class _AppointmentCalendarScreenState extends State<AppointmentCalendarScreen>
     switch (action.type) {
       case _CalendarActionType.add:
         result = await context.push(
-          '/appointments/add?date=${_routeDate(selected)}',
+          '/reminders/add?date=${_routeDate(selected)}',
         );
       case _CalendarActionType.detail:
-        result = await context.push(
-          '/appointments/detail/${action.reminderId}',
-        );
+        result = widget.careGroupId == null
+            ? await context.push('/appointments/detail/${action.reminderId}')
+            : await context.push(
+                '/care-groups/${widget.careGroupId}/appointments/${action.reminderId}',
+              );
     }
     if (!mounted) return;
     if (result == true || result == 'deleted') {

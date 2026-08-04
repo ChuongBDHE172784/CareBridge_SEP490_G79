@@ -57,6 +57,7 @@ import '../../features/fileManager/screens/file_viewer_screen.dart';
 import '../../features/fileManager/screens/shared_file_viewer_screen.dart';
 
 import '../../features/reminder/screens/reminder_detail_screen.dart';
+import '../../features/reminder/screens/shared_appointment_detail_screen.dart';
 import '../../features/reminder/screens/all_reminders_screen.dart';
 import '../../features/familySync/screens/care_groups_screen.dart';
 import '../../features/familySync/screens/care_group_members_screen.dart';
@@ -544,11 +545,21 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/reminders/calendar',
-      builder: (context, state) => const AppointmentCalendarScreen(),
+      builder: (context, state) {
+        final careGroupId = state.uri.queryParameters['careGroupId'];
+        return AppointmentCalendarScreen(
+          careGroupId: _isUuid(careGroupId) ? careGroupId : null,
+        );
+      },
     ),
     GoRoute(
       path: '/appointments/calendar',
-      builder: (context, state) => const AppointmentCalendarScreen(),
+      builder: (context, state) {
+        final careGroupId = state.uri.queryParameters['careGroupId'];
+        return AppointmentCalendarScreen(
+          careGroupId: _isUuid(careGroupId) ? careGroupId : null,
+        );
+      },
     ),
     GoRoute(
       path: '/reminder-schedules',
@@ -607,6 +618,19 @@ final GoRouter appRouter = GoRouter(
         final id = state.pathParameters['id'];
         return _isUuid(id)
             ? ReminderDetailScreen(reminderId: id!, appointmentResource: true)
+            : const _InvalidRouteScreen();
+      },
+    ),
+    GoRoute(
+      path: '/care-groups/:careGroupId/appointments/:id',
+      builder: (context, state) {
+        final careGroupId = state.pathParameters['careGroupId'];
+        final appointmentId = state.pathParameters['id'];
+        return _isUuid(careGroupId) && _isUuid(appointmentId)
+            ? SharedAppointmentDetailScreen(
+                careGroupId: careGroupId!,
+                appointmentId: appointmentId!,
+              )
             : const _InvalidRouteScreen();
       },
     ),

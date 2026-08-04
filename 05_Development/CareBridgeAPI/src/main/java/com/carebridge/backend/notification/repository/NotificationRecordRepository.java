@@ -106,6 +106,37 @@ public interface NotificationRecordRepository extends JpaRepository<Notification
     @Query(value = """
             SELECT *
               FROM notification_records
+             WHERE user_id = :userId
+               AND care_group_id = :careGroupId
+               AND type = 'REMINDER'
+               AND reference_type = 'APPOINTMENT'
+               AND metadata ->> 'eventKey' = :eventKey
+             ORDER BY created_at DESC
+             LIMIT 1
+            """, nativeQuery = true)
+    Optional<NotificationRecord> findAppointmentEventByRecipientAndGroup(
+            @Param("userId") UUID userId,
+            @Param("careGroupId") UUID careGroupId,
+            @Param("eventKey") String eventKey);
+
+    @Query(value = """
+            SELECT *
+              FROM notification_records
+             WHERE user_id = :userId
+               AND care_group_id = :careGroupId
+               AND type = 'REMINDER'
+               AND reference_type = 'APPOINTMENT'
+               AND metadata ->> 'milestoneJobId' = CAST(:jobId AS text)
+             LIMIT 1
+            """, nativeQuery = true)
+    Optional<NotificationRecord> findAppointmentMilestoneByRecipientAndGroupAndJob(
+            @Param("userId") UUID userId,
+            @Param("careGroupId") UUID careGroupId,
+            @Param("jobId") UUID jobId);
+
+    @Query(value = """
+            SELECT *
+              FROM notification_records
              WHERE type = 'REMINDER'
                AND reference_type = 'REMINDER_SCHEDULE'
                AND metadata ->> 'scheduleJobId' = CAST(:jobId AS text)

@@ -46,7 +46,7 @@ void main() {
       expect(snapshot.selectedGroupDetail!.motherDisplayName, 'Nguyễn Lan');
       expect(
         snapshot.selectedGroupDetail!.todayReminders.single.type,
-        'MEDICATION',
+        'APPOINTMENT',
       );
       expect(
         snapshot.selectedGroupDetail!.alerts.single.careGroupId,
@@ -130,7 +130,7 @@ void main() {
         find.byKey(const Key('family-selected-group-group-a')),
         findsOneWidget,
       );
-      expect(find.text('Lịch nhắc của Nguyễn Lan'), findsOneWidget);
+      expect(find.text('Lịch hẹn của Nguyễn Lan'), findsOneWidget);
       expect(
         find.byKey(const Key('family-reminder-reminder-a')),
         findsOneWidget,
@@ -138,6 +138,36 @@ void main() {
       expect(find.text('Quyền được chia sẻ'), findsNothing);
       expect(find.text('Dữ liệu chia sẻ'), findsNothing);
     });
+
+    testWidgets(
+      'renders arrow icon for appointment calendar in mother appointments section header',
+      (tester) async {
+        await _pumpDashboard(
+          tester,
+          ({selectedCareGroupId}) async => _snapshot(
+            selectedId: 'group-a',
+            groups: [_group('group-a', 'Nhóm A')],
+            detail: _detail('group-a'),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final button = find.byKey(
+          const Key('family-home-appointment-calendar-button'),
+        );
+        await tester.scrollUntilVisible(
+          button,
+          250,
+          scrollable: find.byType(Scrollable).first,
+        );
+        expect(button, findsOneWidget);
+        final iconWidget = tester.widget<IconButton>(button);
+        expect(
+          (iconWidget.icon as Icon).icon,
+          equals(Icons.arrow_forward_rounded),
+        );
+      },
+    );
 
     testWidgets(
       'two groups show selector and changing detail preserves global aggregate',
@@ -387,13 +417,13 @@ FamilyHomeGroupDetail _detail(
         : [
             FamilyHomeTodayReminder(
               id: 'reminder-$suffix',
-              title: 'Uống vitamin',
-              type: 'MEDICATION',
+              title: 'Khám thai',
+              type: 'APPOINTMENT',
               status: 'PENDING',
               scheduledAt: DateTime.utc(2026, 7, 30, 2),
               dueAt: DateTime.utc(2026, 7, 31),
               snoozedUntil: null,
-              priority: 2,
+              priority: 3,
             ),
           ],
     alerts: empty
@@ -445,6 +475,7 @@ const _permission = FamilyHomePermission(
   calendar: true,
   logs: false,
   alerts: true,
+  checklistView: true,
   records: true,
 );
 
@@ -462,6 +493,7 @@ Map<String, dynamic> _dashboardJson() {
           'calendar': true,
           'logs': false,
           'alerts': true,
+          'checklistView': true,
           'records': true,
           'quickNotes': true,
           'quickNoteWeight': true,
@@ -500,13 +532,13 @@ Map<String, dynamic> _dashboardJson() {
       'todayReminders': [
         {
           'id': 'reminder-a',
-          'title': 'Uống vitamin',
-          'type': 'MEDICATION',
+          'title': 'Khám thai',
+          'type': 'APPOINTMENT',
           'status': 'PENDING',
           'scheduledAt': '2026-07-30T02:00:00Z',
           'dueAt': '2026-07-30T02:00:00Z',
           'snoozedUntil': null,
-          'priority': 2,
+          'priority': 3,
         },
       ],
       'alerts': [
@@ -537,6 +569,7 @@ Map<String, dynamic> _dashboardJson() {
         'calendar': true,
         'logs': false,
         'alerts': true,
+        'checklistView': true,
         'records': true,
         'quickNotes': true,
         'quickNoteWeight': true,

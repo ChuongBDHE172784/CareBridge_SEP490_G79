@@ -32,7 +32,7 @@ public class UserChecklistItemController {
 
     // UC50: Add custom checklist item
     @PostMapping
-    @PreAuthorize("hasRole('MOTHER')")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<ChecklistItemResponse>> addItem(
             @Valid @RequestBody AddChecklistItemRequest request,
             Principal principal) {

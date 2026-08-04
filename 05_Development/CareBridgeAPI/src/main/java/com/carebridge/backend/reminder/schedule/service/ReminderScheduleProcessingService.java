@@ -121,20 +121,25 @@ public class ReminderScheduleProcessingService {
         }
         String time = job.getLocalTime().format(DateTimeFormatter.ofPattern("HH:mm"));
         String body = schedule.getTitle() + " lúc " + time;
+        NotificationRecordResponse response;
         try {
-            NotificationRecordResponse response = notificationService.sendReminderScheduleNotification(
+            response = notificationService.sendReminderScheduleNotification(
                     schedule.getId(), job.getId(), schedule.getOwnerUserId(), schedule.getTitle(), body,
                     job.getOccurrenceDate(), job.getLocalTime(), job.getTimeZone());
-            if (response == null) {
-                finish(job, AppointmentNotificationJobStatus.SUPPRESSED,
-                        "REMINDER_PUSH_DISABLED", null, workerId);
-            } else if ("SENT".equals(response.status()) || "DELIVERED".equals(response.status())) {
-                finish(job, AppointmentNotificationJobStatus.SENT, null, response.id(), workerId);
-            } else {
-                retryOrFail(job, "REMINDER_DELIVERY_FAILED", response.id(), workerId);
-            }
         } catch (RuntimeException exception) {
             retryOrFail(job, "REMINDER_DELIVERY_ERROR", null, workerId);
+            return;
+        }
+        // Keep terminal transition failures outside the delivery catch block. If
+        // the database rejects a fenced transition, retrying inside the same
+        // aborted transaction only produces a second misleading SQL error.
+        if (response == null) {
+            finish(job, AppointmentNotificationJobStatus.SUPPRESSED,
+                    "REMINDER_PUSH_DISABLED", null, workerId);
+        } else if ("SENT".equals(response.status()) || "DELIVERED".equals(response.status())) {
+            finish(job, AppointmentNotificationJobStatus.SENT, null, response.id(), workerId);
+        } else {
+            retryOrFail(job, "REMINDER_DELIVERY_FAILED", response.id(), workerId);
         }
     }
 

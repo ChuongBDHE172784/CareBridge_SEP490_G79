@@ -20,6 +20,7 @@ import '../../notification/screens/notification_center_screen.dart';
 import '../../notification/services/notification_service.dart';
 import '../../recommendation/models/recommendation_model.dart';
 import '../../recommendation/services/recommendation_service.dart';
+import '../../checklist/widgets/add_user_checklist_task_button.dart';
 import '../../reminder/services/today_task_service.dart';
 import '../../reminder/widgets/today_tasks_panel.dart';
 
@@ -284,16 +285,16 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
                             icon: const Icon(Icons.history_rounded),
                             color: _primary,
                           ),
-                          IconButton(
-                            key: const Key(
-                              'family-home-reminder-schedules-button',
+                          if (_selectedCareGroupId != null &&
+                              _snapshot!
+                                      .selectedGroupDetail
+                                      ?.permissionScope
+                                      .checklistView ==
+                                  true)
+                            AddUserChecklistTaskButton(
+                              careGroupId: _selectedCareGroupId,
+                              onCreated: _todayTasksController.refresh,
                             ),
-                            tooltip: 'Lịch nhắc',
-                            onPressed: () =>
-                                context.push('/reminder-schedules'),
-                            icon: const Icon(Icons.alarm_rounded),
-                            color: _primary,
-                          ),
                         ],
                       ),
                     ),
@@ -558,15 +559,39 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
       children: [
         _buildMotherContextCard(detail, selectedGroup),
         const SizedBox(height: 24),
-        _SectionTitle('Lịch nhắc của ${detail.motherDisplayName}'),
+        Row(
+          children: [
+            Expanded(
+              child: _SectionTitle(
+                'Lịch hẹn của ${detail.motherDisplayName}',
+              ),
+            ),
+            if (detail.permissionScope.calendar)
+              IconButton(
+                key: const Key(
+                  'family-home-appointment-calendar-button',
+                ),
+                tooltip: 'Xem chi tiết lịch hẹn',
+                onPressed: () {
+                  context.push(
+                    '/appointments/calendar?careGroupId=${detail.careGroupId}',
+                  );
+                },
+                icon: const Icon(Icons.arrow_forward_rounded),
+                color: _primary,
+              ),
+          ],
+        ),
         const SizedBox(height: 10),
         if (detail.todayReminders.isEmpty)
           _EmptyCard(
             key: Key('family-dashboard-empty-reminders'),
-            message: 'Hôm nay ${detail.motherDisplayName} chưa có lịch nhắc.',
+            message: 'Hôm nay ${detail.motherDisplayName} chưa có lịch hẹn.',
           )
         else
-          ...detail.todayReminders.map(_buildReminderCard),
+          ...detail.todayReminders.map(
+            (reminder) => _buildReminderCard(detail.careGroupId, reminder),
+          ),
         const SizedBox(height: 24),
         _buildQuickNotesSection(detail),
         const SizedBox(height: 24),
@@ -887,16 +912,27 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
     };
   }
 
-  Widget _buildReminderCard(FamilyHomeTodayReminder reminder) {
+  Widget _buildReminderCard(
+    String careGroupId,
+    FamilyHomeTodayReminder reminder,
+  ) {
     return _DashboardCard(
       key: Key('family-reminder-${reminder.id}'),
-      child: ListTile(
-        contentPadding: EdgeInsets.zero,
-        leading: Icon(_reminderIcon(reminder.type), color: _primary),
-        title: Text(reminder.title),
-        subtitle: Text(
-          '${_reminderTypeLabel(reminder.type)} • '
-          '${_statusLabel(reminder.status)} • ${_dateLabel(reminder.dueAt)}',
+      child: Material(
+        color: Colors.transparent,
+        child: ListTile(
+          contentPadding: EdgeInsets.zero,
+          onTap: reminder.type == 'APPOINTMENT'
+              ? () => context.push(
+                  '/care-groups/$careGroupId/appointments/${reminder.id}',
+                )
+              : null,
+          leading: Icon(_reminderIcon(reminder.type), color: _primary),
+          title: Text(reminder.title),
+          subtitle: Text(
+            '${_reminderTypeLabel(reminder.type)} • '
+            '${_statusLabel(reminder.status)} • ${_dateLabel(reminder.dueAt)}',
+          ),
         ),
       ),
     );

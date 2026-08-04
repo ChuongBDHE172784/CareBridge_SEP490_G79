@@ -244,7 +244,10 @@ public class ReminderNotificationService implements IReminderNotificationService
     }
 
     private NotificationRecordResponse saveAndAudit(NotificationRecord record) {
-        NotificationRecord saved = notificationRecordRepository.save(record);
+        // The job terminal transition stores this record ID under a PostgreSQL FK.
+        // Flush before returning so the subsequent fenced bulk update cannot race
+        // the INSERT inside the same worker transaction.
+        NotificationRecord saved = notificationRecordRepository.saveAndFlush(record);
         AuditAction action = saved.getStatus() == NotificationRecordStatus.FAILED
                 ? AuditAction.NOTIFICATION_FAILED
                 : AuditAction.NOTIFICATION_SENT;

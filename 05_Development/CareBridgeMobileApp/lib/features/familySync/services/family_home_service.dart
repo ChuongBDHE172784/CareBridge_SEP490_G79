@@ -286,6 +286,7 @@ class FamilyHomePermission {
     required this.calendar,
     required this.logs,
     required this.alerts,
+    this.checklistView = false,
     required this.records,
     this.quickNotes = false,
     this.quickNoteWeight = false,
@@ -299,6 +300,7 @@ class FamilyHomePermission {
   final bool calendar;
   final bool logs;
   final bool alerts;
+  final bool checklistView;
   final bool records;
   final bool quickNotes;
   final bool quickNoteWeight;
@@ -325,6 +327,7 @@ class FamilyHomePermission {
       calendar: _requiredBool(json, 'calendar'),
       logs: _requiredBool(json, 'logs'),
       alerts: _requiredBool(json, 'alerts'),
+      checklistView: json['checklistView'] as bool? ?? false,
       records: _requiredBool(json, 'records'),
       quickNotes: json['quickNotes'] as bool? ?? false,
       quickNoteWeight: json['quickNoteWeight'] as bool? ?? false,

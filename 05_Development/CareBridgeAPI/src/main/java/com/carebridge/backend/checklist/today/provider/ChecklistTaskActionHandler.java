@@ -128,6 +128,16 @@ public class ChecklistTaskActionHandler implements TaskActionHandler {
         return authorizeScoped(actorUserId, taskId, careGroupId);
     }
 
+    /** Re-check the same explicit FAMILY scope after the action lock is held. */
+    @Override
+    public AuthorizedTask authorizeForUpdate(
+        UUID actorUserId, AuthorizedTask task, UUID careGroupId) {
+        if (careGroupId == null) {
+            return authorizeForUpdate(actorUserId, task);
+        }
+        return authorize(actorUserId, task.taskId(), careGroupId);
+    }
+
     private AuthorizedTask authorizeScoped(
             UUID actorUserId, UUID taskId, UUID careGroupId) {
         var aggregate = lockAggregate(taskId);

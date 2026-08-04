@@ -66,7 +66,7 @@ public interface AppointmentNotificationJobRepository
             @Param("pending") AppointmentNotificationJobStatus pending,
             @Param("processing") AppointmentNotificationJobStatus processing);
 
-    @Modifying
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             update AppointmentNotificationJob j
                set j.status = :status,

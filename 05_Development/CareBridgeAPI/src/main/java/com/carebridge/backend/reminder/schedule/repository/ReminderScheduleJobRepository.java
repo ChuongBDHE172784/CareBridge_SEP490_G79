@@ -48,7 +48,7 @@ public interface ReminderScheduleJobRepository extends JpaRepository<ReminderSch
                      @Param("pending") AppointmentNotificationJobStatus pending,
                      @Param("processing") AppointmentNotificationJobStatus processing);
 
-    @Modifying
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("""
             update ReminderScheduleJob j
                set j.status = :status,
