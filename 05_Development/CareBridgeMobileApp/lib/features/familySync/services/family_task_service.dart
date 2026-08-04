@@ -5,9 +5,14 @@ class FamilyTaskService {
   // UC73: List all care tasks in a group
   Future<List<FamilyTask>> listTasks(String groupId) async {
     final data = await apiGet('/api/v1/care-groups/$groupId/tasks');
-    final tasksList = data['data']['tasks'] as List<dynamic>? ?? [];
+    final payload = data['data'] as Map<String, dynamic>? ?? const {};
+    final responseGroupId = payload['groupId'] as String? ?? groupId;
+    final tasksList = payload['tasks'] as List<dynamic>? ?? [];
     return tasksList
-        .map((e) => FamilyTask.fromJson(e as Map<String, dynamic>))
+        .map((e) => FamilyTask.fromJson({
+              ...Map<String, dynamic>.from(e as Map),
+              'careGroupId': responseGroupId,
+            }))
         .toList();
   }
 

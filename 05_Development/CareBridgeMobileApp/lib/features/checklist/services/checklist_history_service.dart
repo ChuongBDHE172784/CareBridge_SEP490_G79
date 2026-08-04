@@ -18,9 +18,13 @@ class ChecklistHistoryService {
     int page = 0,
     int size = 20,
     ChecklistHistoryTargetSubject? targetSubject,
+    String? careGroupId,
   }) async {
+    final path = careGroupId == null
+        ? '/api/v1/checklists/history'
+        : '/api/v1/care-groups/$careGroupId/checklists/history';
     final envelope = await _getRequest(
-      '/api/v1/checklists/history',
+      path,
       queryParams: {
         'page': page,
         'size': size,

@@ -7,8 +7,13 @@ import '../services/reminder_service.dart';
 
 class ReminderDetailScreen extends StatefulWidget {
   final String reminderId;
+  final bool appointmentResource;
 
-  const ReminderDetailScreen({super.key, required this.reminderId});
+  const ReminderDetailScreen({
+    super.key,
+    required this.reminderId,
+    this.appointmentResource = false,
+  });
 
   @override
   State<ReminderDetailScreen> createState() => _ReminderDetailScreenState();
@@ -39,7 +44,9 @@ class _ReminderDetailScreenState extends State<ReminderDetailScreen> {
       _errorText = null;
     });
     try {
-      final reminder = await _service.getReminderDetail(widget.reminderId);
+      final reminder = widget.appointmentResource
+          ? await _service.getAppointmentDetail(widget.reminderId)
+          : await _service.getReminderDetail(widget.reminderId);
       if (!mounted) return;
       setState(() {
         _reminder = reminder;
@@ -143,7 +150,11 @@ class _ReminderDetailScreenState extends State<ReminderDetailScreen> {
     );
     if (!ok) return;
     await _runAction(() async {
-      await _service.deleteReminder(widget.reminderId);
+      if (widget.appointmentResource) {
+        await _service.deleteAppointment(widget.reminderId);
+      } else {
+        await _service.deleteReminder(widget.reminderId);
+      }
     });
   }
 
@@ -173,11 +184,14 @@ class _ReminderDetailScreenState extends State<ReminderDetailScreen> {
           ? _ErrorState(message: _errorText!, onRetry: _load)
           : _ReminderContent(
               reminder: _reminder!,
+              appointmentResource: widget.appointmentResource,
               processing: _processing,
               onComplete: _complete,
               onEdit: () async {
                 final changed = await context.push(
-                  '/reminders/${_reminder!.id}/manage',
+                  widget.appointmentResource
+                      ? '/appointments/${_reminder!.id}/edit'
+                      : '/reminders/${_reminder!.id}/manage',
                   extra: _reminder,
                 );
                 if (!context.mounted) return;
@@ -196,6 +210,7 @@ class _ReminderDetailScreenState extends State<ReminderDetailScreen> {
 
 class _ReminderContent extends StatelessWidget {
   final Reminder reminder;
+  final bool appointmentResource;
   final bool processing;
   final VoidCallback onComplete;
   final VoidCallback onEdit;
@@ -204,6 +219,7 @@ class _ReminderContent extends StatelessWidget {
 
   const _ReminderContent({
     required this.reminder,
+    required this.appointmentResource,
     required this.processing,
     required this.onComplete,
     required this.onEdit,
@@ -288,16 +304,18 @@ class _ReminderContent extends StatelessWidget {
                 label: 'Giờ nhắc',
                 value: _formatTimeOnly(reminder.scheduledAt),
               ),
-              _InfoRow(
-                icon: Icons.event_available_rounded,
-                label: 'Ngày kết thúc',
-                value: _formatEndDate(reminder),
-              ),
-              _InfoRow(
-                icon: Icons.repeat_rounded,
-                label: 'Lặp lại',
-                value: _recurrenceLabel(reminder.recurrenceType),
-              ),
+              if (!appointmentResource) ...[
+                _InfoRow(
+                  icon: Icons.event_available_rounded,
+                  label: 'Ngày kết thúc',
+                  value: _formatEndDate(reminder),
+                ),
+                _InfoRow(
+                  icon: Icons.repeat_rounded,
+                  label: 'Lặp lại',
+                  value: _recurrenceLabel(reminder.recurrenceType),
+                ),
+              ],
               _InfoRow(
                 icon: Icons.flag_rounded,
                 label: 'Trạng thái',
@@ -345,7 +363,13 @@ class _ReminderContent extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 18),
-        if (isTerminal)
+        if (appointmentResource)
+          _AppointmentActions(
+            processing: processing,
+            onEdit: onEdit,
+            onDelete: onDelete,
+          )
+        else if (isTerminal)
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -579,6 +603,41 @@ class _SmallAction extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _AppointmentActions extends StatelessWidget {
+  const _AppointmentActions({
+    required this.processing,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  final bool processing;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: FilledButton.icon(
+            onPressed: processing ? null : onEdit,
+            icon: const Icon(Icons.edit_outlined),
+            label: const Text('Chỉnh sửa'),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: processing ? null : onDelete,
+            icon: const Icon(Icons.cancel_outlined),
+            label: const Text('Hủy lịch'),
+          ),
+        ),
+      ],
     );
   }
 }

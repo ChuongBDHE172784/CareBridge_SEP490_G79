@@ -45,12 +45,78 @@ public interface ChecklistInstanceRepository extends JpaRepository<ChecklistInst
                and instance.recipientUserId = :ownerUserId
                and instance.recipientRole = com.carebridge.backend.checklist.model.ChecklistRecipientRole.MOTHER
                and instance.origin = com.carebridge.backend.checklist.model.ChecklistOrigin.SYSTEM_TEMPLATE
+               and instance.careGroupId is null
                and instance.historicalAt is not null
-               and (instance.templateVersionId is null or exists (
+               and instance.templateVersionId is not null
+               and exists (
                     select template.id from ChecklistTemplate template
                      where template.templateVersionId = instance.templateVersionId
-                       and template.status <> com.carebridge.backend.content.entity.ChecklistTemplateStatus.ARCHIVED
+                       and template.status = com.carebridge.backend.content.entity.ChecklistTemplateStatus.APPROVED
+                       and template.recipientScope in (
+                           com.carebridge.backend.checklist.model.ChecklistRecipientScope.MOTHER,
+                           com.carebridge.backend.checklist.model.ChecklistRecipientScope.BOTH)
+               )
+               and (:targetSubject is null or exists (
+                    select task.id from ChecklistTaskInstance task
+                     where task.checklistInstanceId = instance.id
+                       and task.targetSubject = :targetSubject
                ))
+             order by instance.historicalAt desc, instance.updatedAt desc, instance.id desc
+            """,
+            countQuery = """
+    select count(instance) from ChecklistInstance instance
+             where instance.contextOwnerUserId = :ownerUserId
+               and instance.recipientUserId = :ownerUserId
+               and instance.recipientRole = com.carebridge.backend.checklist.model.ChecklistRecipientRole.MOTHER
+               and instance.origin = com.carebridge.backend.checklist.model.ChecklistOrigin.SYSTEM_TEMPLATE
+               and instance.careGroupId is null
+               and instance.historicalAt is not null
+               and instance.templateVersionId is not null
+               and exists (
+                    select template.id from ChecklistTemplate template
+                     where template.templateVersionId = instance.templateVersionId
+                       and template.status = com.carebridge.backend.content.entity.ChecklistTemplateStatus.APPROVED
+                       and template.recipientScope in (
+                           com.carebridge.backend.checklist.model.ChecklistRecipientScope.MOTHER,
+                           com.carebridge.backend.checklist.model.ChecklistRecipientScope.BOTH)
+               )
+               and (:targetSubject is null or exists (
+                    select task.id from ChecklistTaskInstance task
+                     where task.checklistInstanceId = instance.id
+                       and task.targetSubject = :targetSubject
+               ))
+            """)
+    Page<ChecklistInstance> findOwnerHistory(
+            @Param("ownerUserId") UUID ownerUserId,
+            @Param("targetSubject") ChecklistTargetSubject targetSubject,
+            Pageable pageable);
+
+    /** Historical mother rows visible through one explicit family group.  The
+     * context predicates are repeated in the count query so pagination totals
+     * cannot include another journey/baby or an archived template. */
+    @Query(value = """
+            select instance from ChecklistInstance instance
+             where instance.contextOwnerUserId = :ownerUserId
+               and instance.recipientUserId = :ownerUserId
+               and instance.recipientRole = com.carebridge.backend.checklist.model.ChecklistRecipientRole.MOTHER
+               and instance.origin = com.carebridge.backend.checklist.model.ChecklistOrigin.SYSTEM_TEMPLATE
+               and instance.careGroupId is null
+               and instance.historicalAt is not null
+               and ((:journeyId is not null
+                     and instance.careContextType = com.carebridge.backend.checklist.model.ChecklistCareContextType.JOURNEY
+                     and instance.careContextId = :journeyId)
+                    or (:babyId is not null
+                     and instance.careContextType = com.carebridge.backend.checklist.model.ChecklistCareContextType.BABY
+                     and instance.careContextId = :babyId))
+               and instance.templateVersionId is not null
+               and exists (
+                    select template.id from ChecklistTemplate template
+                     where template.templateVersionId = instance.templateVersionId
+                       and template.status = com.carebridge.backend.content.entity.ChecklistTemplateStatus.APPROVED
+                       and template.recipientScope in (
+                           com.carebridge.backend.checklist.model.ChecklistRecipientScope.MOTHER,
+                           com.carebridge.backend.checklist.model.ChecklistRecipientScope.BOTH)
+               )
                and (:targetSubject is null or exists (
                     select task.id from ChecklistTaskInstance task
                      where task.checklistInstanceId = instance.id
@@ -64,20 +130,33 @@ public interface ChecklistInstanceRepository extends JpaRepository<ChecklistInst
                and instance.recipientUserId = :ownerUserId
                and instance.recipientRole = com.carebridge.backend.checklist.model.ChecklistRecipientRole.MOTHER
                and instance.origin = com.carebridge.backend.checklist.model.ChecklistOrigin.SYSTEM_TEMPLATE
+               and instance.careGroupId is null
                and instance.historicalAt is not null
-               and (instance.templateVersionId is null or exists (
+               and ((:journeyId is not null
+                     and instance.careContextType = com.carebridge.backend.checklist.model.ChecklistCareContextType.JOURNEY
+                     and instance.careContextId = :journeyId)
+                    or (:babyId is not null
+                     and instance.careContextType = com.carebridge.backend.checklist.model.ChecklistCareContextType.BABY
+                     and instance.careContextId = :babyId))
+               and instance.templateVersionId is not null
+               and exists (
                     select template.id from ChecklistTemplate template
                      where template.templateVersionId = instance.templateVersionId
-                       and template.status <> com.carebridge.backend.content.entity.ChecklistTemplateStatus.ARCHIVED
-               ))
+                       and template.status = com.carebridge.backend.content.entity.ChecklistTemplateStatus.APPROVED
+                       and template.recipientScope in (
+                           com.carebridge.backend.checklist.model.ChecklistRecipientScope.MOTHER,
+                           com.carebridge.backend.checklist.model.ChecklistRecipientScope.BOTH)
+               )
                and (:targetSubject is null or exists (
                     select task.id from ChecklistTaskInstance task
                      where task.checklistInstanceId = instance.id
                        and task.targetSubject = :targetSubject
                ))
             """)
-    Page<ChecklistInstance> findOwnerHistory(
+    Page<ChecklistInstance> findSharedHistory(
             @Param("ownerUserId") UUID ownerUserId,
+            @Param("journeyId") UUID journeyId,
+            @Param("babyId") UUID babyId,
             @Param("targetSubject") ChecklistTargetSubject targetSubject,
             Pageable pageable);
 

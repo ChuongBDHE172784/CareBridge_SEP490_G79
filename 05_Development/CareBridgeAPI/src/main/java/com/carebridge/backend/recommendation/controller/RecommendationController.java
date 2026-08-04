@@ -22,19 +22,20 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/recommendations")
-@PreAuthorize("hasRole('MOTHER')")
 @RequiredArgsConstructor
 public class RecommendationController {
     private final RecommendationService recommendationService;
     private final ObjectMapper objectMapper;
 
     @GetMapping("/profile")
+    @PreAuthorize("hasRole('MOTHER')")
     public ResponseEntity<ApiResponse<RecommendationProfileResponse>> getProfile(Principal principal) {
         UUID owner = SecurityUtils.requireCurrentUserId(principal);
         return ResponseEntity.ok(ApiResponse.success(recommendationService.getProfile(owner)));
     }
 
     @PutMapping("/profile")
+    @PreAuthorize("hasRole('MOTHER')")
     public ResponseEntity<ApiResponse<RecommendationProfileResponse>> putProfile(
             @RequestBody Map<String, Object> request, Principal principal) {
         UUID owner = SecurityUtils.requireCurrentUserId(principal);
@@ -43,6 +44,7 @@ public class RecommendationController {
     }
 
     @GetMapping("/content")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
     public ResponseEntity<ApiResponse<RecommendationContentResponse>> getContent(
             @RequestParam(name = "limit", defaultValue = "3") String rawLimit, Principal principal) {
         final int limit;

@@ -64,9 +64,18 @@ CareBridge_SEP490_G79/
    - *Note: Values containing spaces or `&` must be wrapped in quotes.*
 2. Run the application:
    ```bash
-   set -a && source .env && set +a && ./mvnw spring-boot:run
-   .\run.ps1
+   cd 05_Development/CareBridgeAPI
+
+   # Windows PowerShell
+   .\mvnw.cmd spring-boot:run
+
+   # macOS/Linux
+   ./mvnw spring-boot:run
    ```
+The Maven run goal injects the local Flutter origins and enables FCM plus both
+notification workers; FIREBASE_CREDENTIALS_BASE64 remains in the ignored API
+.env file.
+
 3. Build and Package:
    ```bash
    ./mvnw clean package
@@ -95,7 +104,8 @@ CareBridge_SEP490_G79/
 
 - Run on Chrome:
   ```bash
-  flutter run -d chrome
+  cd 05_Development/CareBridgeMobileApp
+  flutter run -d chrome --web-port=5000
   ```
 - Run on Emulator:
   ```bash

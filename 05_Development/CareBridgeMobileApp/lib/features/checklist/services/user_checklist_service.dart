@@ -85,6 +85,7 @@ class UserChecklistService {
     ChecklistCategory category = ChecklistCategory.general,
     String? journeyId,
     String? babyId,
+    String? careGroupId,
     int? itemOrder,
   }) async {
     final data = await _postRequest('/api/v1/user-checklist-items', {
@@ -94,6 +95,8 @@ class UserChecklistService {
       'category': category.apiValue,
       if (journeyId != null && journeyId.isNotEmpty) 'journeyId': journeyId,
       if (babyId != null && babyId.isNotEmpty) 'babyId': babyId,
+      if (careGroupId != null && careGroupId.isNotEmpty)
+        'careGroupId': careGroupId,
       'itemOrder': ?itemOrder,
     });
     final item = UserChecklistItem.fromJson(

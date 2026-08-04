@@ -61,6 +61,38 @@ public interface ReminderRepository extends JpaRepository<Reminder, UUID> {
     List<Reminder> findByOwnerUserIdAndReminderTypeAndStatusIn(
             UUID ownerUserId, ReminderType reminderType, List<ReminderStatus> statuses);
 
+    /**
+     * Read-only FAMILY projection source. Appointments remain owned by the
+     * mother; the selected care-group context is the only sharing boundary.
+     */
+    @Query("""
+            SELECT r FROM Reminder r
+             WHERE r.ownerUserId = :ownerUserId
+               AND r.reminderType = com.carebridge.backend.reminder.entity.ReminderType.APPOINTMENT
+               AND r.status <> com.carebridge.backend.reminder.entity.ReminderStatus.CANCELLED
+               AND ((:journeyId IS NOT NULL AND r.journeyId = :journeyId)
+                    OR (:babyId IS NOT NULL AND r.babyId = :babyId))
+             ORDER BY r.scheduledAt ASC, r.id ASC
+            """)
+    List<Reminder> findSharedAppointments(
+            @Param("ownerUserId") UUID ownerUserId,
+            @Param("journeyId") UUID journeyId,
+            @Param("babyId") UUID babyId);
+
+    @Query("""
+            SELECT r FROM Reminder r
+               WHERE r.id = :reminderId
+               AND r.ownerUserId = :ownerUserId
+               AND r.reminderType = com.carebridge.backend.reminder.entity.ReminderType.APPOINTMENT
+               AND ((:journeyId IS NOT NULL AND r.journeyId = :journeyId)
+                    OR (:babyId IS NOT NULL AND r.babyId = :babyId))
+            """)
+    Optional<Reminder> findSharedAppointment(
+            @Param("reminderId") UUID reminderId,
+            @Param("ownerUserId") UUID ownerUserId,
+            @Param("journeyId") UUID journeyId,
+            @Param("babyId") UUID babyId);
+
     List<Reminder> findByReminderTypeAndStatusIn(
             ReminderType reminderType, List<ReminderStatus> statuses);
 

@@ -197,13 +197,20 @@ class FamilyDashboardServiceTest {
         Reminder reminder = Reminder.builder()
                 .id(UUID.randomUUID())
                 .ownerUserId(motherId)
-                .reminderType(ReminderType.MEDICATION)
-                .title("Uống vitamin")
+                .journeyId(UUID.randomUUID())
+                .reminderType(ReminderType.APPOINTMENT)
+                .title("Khám thai")
                 .scheduledAt(scheduledAt)
                 .status(ReminderStatus.PENDING)
                 .build();
-        stubAcceptedGroups(List.of(membership), Map.of(groupId, group(groupId, "A")));
+        CareGroup group = group(groupId, "A");
+        group.setLinkedJourneyId(reminder.getJourneyId());
+        stubAcceptedGroups(List.of(membership), Map.of(groupId, group));
         allowCalendar(groupId);
+        when(journeyRepository.existsByIdAndOwnerUserIdAndStatus(
+                        reminder.getJourneyId(), motherId,
+                        com.carebridge.backend.journey.entity.JourneyStatus.ACTIVE))
+                .thenReturn(true);
         when(memberRepository.findByCareGroupIdAndInviteStatusIn(
                         groupId, List.of(InviteStatus.ACCEPTED)))
                 .thenReturn(List.of(membership));
@@ -232,8 +239,8 @@ class FamilyDashboardServiceTest {
                 .singleElement()
                 .satisfies(todayReminder -> {
                     assertThat(todayReminder.id()).isEqualTo(reminder.getId());
-                    assertThat(todayReminder.title()).isEqualTo("Uống vitamin");
-                    assertThat(todayReminder.type()).isEqualTo("MEDICATION");
+                    assertThat(todayReminder.title()).isEqualTo("Khám thai");
+                    assertThat(todayReminder.type()).isEqualTo("APPOINTMENT");
                 });
         verify(reminderRepository)
                 .findByOwnerUserIdAndStatusNot(motherId, ReminderStatus.CANCELLED);

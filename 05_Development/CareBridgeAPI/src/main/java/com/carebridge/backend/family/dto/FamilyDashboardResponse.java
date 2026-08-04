@@ -49,6 +49,7 @@ public record FamilyDashboardResponse(
             boolean calendar,
             boolean logs,
             boolean alerts,
+            boolean checklistView,
             boolean records,
             boolean quickNotes,
             boolean quickNoteWeight,

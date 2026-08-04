@@ -231,6 +231,22 @@
   <groupId>org.springframework.boot</groupId>
   <artifactId>spring-boot-maven-plugin</artifactId>
   <configuration>
+   <!-- Keep the fork predictable and disable DevTools' second restart process. -->
+   <fork>true</fork>
+   <jvmArguments>-Dspring.devtools.restart.enabled=false</jvmArguments>
+   <!-- Local Flutter Web values for the direct .\mvnw.cmd spring-boot:run command. -->
+   <environmentVariables>
+    <CAREBRIDGE_CORS_ALLOWED_ORIGINS>http://localhost:5000,http://127.0.0.1:5000,http://localhost:5173,http://127.0.0.1:5173</CAREBRIDGE_CORS_ALLOWED_ORIGINS>
+    <CAREBRIDGE_FCM_ENABLED>true</CAREBRIDGE_FCM_ENABLED>
+    <APPOINTMENT_NOTIFICATION_ENABLED>true</APPOINTMENT_NOTIFICATION_ENABLED>
+   <REMINDER_SCHEDULE_NOTIFICATION_ENABLED>true</REMINDER_SCHEDULE_NOTIFICATION_ENABLED>
+   </environmentVariables>
+   <systemPropertyVariables>
+    <carebridge.cors.allowed-origins>http://localhost:5000,http://127.0.0.1:5000,http://localhost:5173,http://127.0.0.1:5173</carebridge.cors.allowed-origins>
+    <carebridge.fcm.enabled>true</carebridge.fcm.enabled>
+    <carebridge.notification.reminder-schedule.enabled>true</carebridge.notification.reminder-schedule.enabled>
+    <carebridge.notification.appointment.enabled>true</carebridge.notification.appointment.enabled>
+   </systemPropertyVariables>
   <excludes>
    <exclude>
     <groupId>org.projectlombok</groupId>

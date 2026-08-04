@@ -1,9 +1,22 @@
 import '../../../core/network/api_client.dart';
 import '../models/exercise_model.dart';
+import '../models/posture_event_model.dart';
 
 class ExerciseService {
   static final ExerciseService instance = ExerciseService._();
-  ExerciseService._();
+
+  ExerciseService._() : _post = _defaultPost;
+
+  /// Test seam for request-contract tests without changing the shared client.
+  ExerciseService.forTesting({
+    required Future<dynamic> Function(String path, Map<String, dynamic> body)
+    post,
+  }) : _post = post;
+
+  final Future<dynamic> Function(String path, Map<String, dynamic> body) _post;
+
+  static Future<dynamic> _defaultPost(String path, Map<String, dynamic> body) =>
+      apiPost(path, body);
 
   Future<List<ExerciseSummary>> getExercises({
     String? trimester,
@@ -22,8 +35,8 @@ class ExerciseService {
     final list = raw is List
         ? raw
         : raw is Map<String, dynamic>
-            ? raw['content'] as List<dynamic>? ?? const []
-            : const [];
+        ? raw['content'] as List<dynamic>? ?? const []
+        : const [];
     return list
         .map((e) => ExerciseSummary.fromJson(e as Map<String, dynamic>))
         .toList();
@@ -52,10 +65,9 @@ class ExerciseService {
     String exerciseId,
     String safetyCheckId,
   ) async {
-    final res = await apiPost(
-      '/api/v1/exercises/$exerciseId/sessions',
-      {'safetyCheckId': safetyCheckId},
-    );
+    final res = await apiPost('/api/v1/exercises/$exerciseId/sessions', {
+      'safetyCheckId': safetyCheckId,
+    });
     return ExerciseSession.fromJson(res['data'] as Map<String, dynamic>);
   }
 
@@ -65,6 +77,46 @@ class ExerciseService {
 
   Future<void> resumeSession(String sessionId) async {
     await apiPatch('/api/v1/exercises/sessions/$sessionId/resume', {});
+  }
+
+  /// Sends one normalized landmark sample to Spring.
+  ///
+  /// The caller is responsible for sampling camera frames. A realtime source
+  /// should use [PostureEventStreamer] so only one request is in flight and
+  /// stale frames are dropped while Spring or the sidecar is busy.
+  Future<PostureFeedback> analyzePostureEvent({
+    required String sessionId,
+    required int eventTimeMs,
+    required Map<String, PostureLandmark> landmarks,
+  }) async {
+    if (sessionId.isEmpty) {
+      throw ArgumentError.value(sessionId, 'sessionId', 'must not be empty');
+    }
+    if (eventTimeMs < 0) {
+      throw ArgumentError.value(
+        eventTimeMs,
+        'eventTimeMs',
+        'must be non-negative',
+      );
+    }
+    if (landmarks.isEmpty) {
+      throw ArgumentError.value(landmarks, 'landmarks', 'must not be empty');
+    }
+
+    final response = await _post(
+      '/api/v1/exercises/sessions/$sessionId/posture-events',
+      <String, dynamic>{
+        'eventTimeMs': eventTimeMs,
+        'keypointSummaryJson': landmarks.map(
+          (name, point) => MapEntry(name, point.toJson()),
+        ),
+      },
+    );
+    final data = response is Map<String, dynamic> ? response['data'] : null;
+    if (data is! Map<String, dynamic>) {
+      throw const FormatException('Posture response data is missing');
+    }
+    return PostureFeedback.fromJson(data);
   }
 
   Future<SessionResult> completeSession(String sessionId) async {

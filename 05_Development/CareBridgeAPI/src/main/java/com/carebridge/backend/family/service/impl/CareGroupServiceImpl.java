@@ -102,12 +102,26 @@ public class CareGroupServiceImpl implements ICareGroupService {
         }
 
         // C4: accountId from JWT
+        UUID linkedJourneyId = request.getLinkedJourneyId();
+        UUID linkedBabyProfileId = request.getLinkedBabyProfileId();
+        if (linkedJourneyId == null && linkedBabyProfileId == null && journeyRepository != null) {
+            // A group created without an explicit context must still be usable by
+            // the scoped FAMILY checklist and appointment projections. Bind it to
+            // the owner's current active journey; callers can still supply an
+            // explicit journey/baby context when creating a group.
+            linkedJourneyId = journeyRepository
+                    .findFirstByOwnerUserIdAndStatusOrderByCreatedAtDesc(
+                            callerId, JourneyStatus.ACTIVE)
+                    .map(journey -> journey.getId())
+                    .orElse(null);
+        }
+
         CareGroup group = CareGroup.builder()
                 .ownerUserId(callerId)
                 .groupName(request.getGroupName())
                 .description(request.getDescription())
-                .linkedJourneyId(request.getLinkedJourneyId())
-                .linkedBabyProfileId(request.getLinkedBabyProfileId())
+                .linkedJourneyId(linkedJourneyId)
+                .linkedBabyProfileId(linkedBabyProfileId)
                 .status(CareGroupStatus.ACTIVE)
                 .build();
 
