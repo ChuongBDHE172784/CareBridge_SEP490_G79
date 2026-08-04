@@ -384,56 +384,55 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
     required String? conversationId,
     required String expertDisplayName,
   }) {
-    return Column(
-      children: [
-        SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: FilledButton(
-            onPressed: isConsultationEligible
-                ? () => _openChat(conversationId)
-                : null,
-            style: FilledButton.styleFrom(
-              backgroundColor: _primary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text(
-              'Trò chuyện',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+    final hasConversation =
+        conversationId != null && conversationId.isNotEmpty;
+
+    if (hasConversation) {
+      return SizedBox(
+        width: double.infinity,
+        height: 52,
+        child: FilledButton(
+          onPressed: () => _openChat(conversationId),
+          style: FilledButton.styleFrom(
+            backgroundColor: _primary,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
             ),
           ),
-        ),
-        const SizedBox(height: 12),
-        SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: OutlinedButton(
-            onPressed: isConsultationEligible
-                ? () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => ConsultationRequestFormScreen(
-                        expertProfileId: widget.expertProfileId,
-                        expertDisplayName: expertDisplayName,
-                      ),
-                    ),
-                  )
-                : null,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: _primary,
-              side: const BorderSide(color: _primary),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Text(
-              'Yêu cầu tư vấn',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
+          child: const Text(
+            'Trò chuyện',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           ),
         ),
-      ],
+      );
+    }
+
+    return SizedBox(
+      width: double.infinity,
+      height: 52,
+      child: OutlinedButton(
+        onPressed: isConsultationEligible
+            ? () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => ConsultationRequestFormScreen(
+                    expertProfileId: widget.expertProfileId,
+                    expertDisplayName: expertDisplayName,
+                  ),
+                ),
+              )
+            : null,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: _primary,
+          side: const BorderSide(color: _primary),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+        child: const Text(
+          'Yêu cầu tư vấn',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+        ),
+      ),
     );
   }
 
