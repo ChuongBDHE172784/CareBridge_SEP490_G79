@@ -93,13 +93,61 @@ public interface NotificationRecordRepository extends JpaRepository<Notification
     Optional<NotificationRecord> findByUserIdAndReferenceIdAndTypeAndReferenceType(
             UUID userId, UUID referenceId, NotificationType type, String referenceType);
 
+    /** Mother's personal appointment milestone row; shared Family rows are scoped by care group. */
+    @Query(value = """
+            SELECT *
+              FROM notification_records
+             WHERE user_id = :userId
+               AND care_group_id IS NULL
+               AND type = 'REMINDER'
+               AND reference_type = 'APPOINTMENT'
+               AND metadata ->> 'milestoneJobId' = CAST(:jobId AS text)
+             ORDER BY created_at DESC, id DESC
+             LIMIT 1
+            """, nativeQuery = true)
+    Optional<NotificationRecord> findAppointmentMilestoneByRecipientAndJob(
+            @Param("userId") UUID userId,
+            @Param("jobId") UUID jobId);
+
+    @Query(value = """
+            SELECT *
+              FROM notification_records
+             WHERE user_id = :userId
+               AND care_group_id = :careGroupId
+               AND type = 'REMINDER'
+               AND reference_type = 'APPOINTMENT'
+               AND metadata ->> 'eventKey' = :eventKey
+             ORDER BY created_at DESC
+             LIMIT 1
+            """, nativeQuery = true)
+    Optional<NotificationRecord> findAppointmentEventByRecipientAndGroup(
+            @Param("userId") UUID userId,
+            @Param("careGroupId") UUID careGroupId,
+            @Param("eventKey") String eventKey);
+
+    /** Shared appointment milestone lookup is recipient-scoped, not group-scoped. */
+    @Query(value = """
+            SELECT *
+              FROM notification_records
+             WHERE user_id = :userId
+               AND care_group_id IS NOT NULL
+               AND type = 'REMINDER'
+               AND reference_type = 'APPOINTMENT'
+               AND metadata ->> 'milestoneJobId' = CAST(:jobId AS text)
+             ORDER BY created_at ASC
+             LIMIT 1
+            """, nativeQuery = true)
+    Optional<NotificationRecord> findAppointmentMilestoneByRecipientAndJobShared(
+            @Param("userId") UUID userId,
+            @Param("jobId") UUID jobId);
+
     @Query(value = """
             SELECT *
               FROM notification_records
              WHERE type = 'REMINDER'
-               AND reference_type = 'APPOINTMENT'
-               AND metadata ->> 'milestoneJobId' = CAST(:jobId AS text)
+               AND reference_type = 'REMINDER_SCHEDULE'
+               AND metadata ->> 'scheduleJobId' = CAST(:jobId AS text)
              LIMIT 1
             """, nativeQuery = true)
-    Optional<NotificationRecord> findAppointmentMilestoneByJobId(@Param("jobId") UUID jobId);
+    Optional<NotificationRecord> findReminderScheduleByJobId(@Param("jobId") UUID jobId);
 }

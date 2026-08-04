@@ -159,6 +159,8 @@ class CareGroupService {
     bool? logs,
     bool? alerts,
     bool? records,
+    bool? checklistView,
+    bool? checklistComplete,
     bool? quickNotes,
     bool? quickNoteWeight,
     bool? quickNoteHydration,
@@ -172,6 +174,10 @@ class CareGroupService {
     if (logs != null) body['logs'] = logs;
     if (alerts != null) body['alerts'] = alerts;
     if (records != null) body['records'] = records;
+    if (checklistView != null) body['checklistView'] = checklistView;
+    if (checklistComplete != null) {
+      body['checklistComplete'] = checklistComplete;
+    }
     if (quickNotes != null) body['quickNotes'] = quickNotes;
     if (quickNoteWeight != null) body['quickNoteWeight'] = quickNoteWeight;
     if (quickNoteHydration != null) {

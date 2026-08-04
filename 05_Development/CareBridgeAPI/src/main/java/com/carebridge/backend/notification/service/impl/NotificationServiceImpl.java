@@ -39,6 +39,10 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional
     public void registerDeviceToken(UUID userId, RegisterDeviceTokenRequest request) {
+        Instant now = Instant.now();
+        // A provider token belongs to one authenticated account in this registry.
+        // Deactivate stale ownership before reactivating it for the current account.
+        deviceTokenRepository.deactivateByTokenForOtherUsers(userId, request.token(), now);
         deviceTokenRepository.findByUserIdAndToken(userId, request.token())
                 .ifPresentOrElse(
                         existing -> {
@@ -59,7 +63,7 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     @Transactional
     public void deregisterDeviceToken(UUID userId, String token) {
-        deviceTokenRepository.deactivateByToken(token, Instant.now());
+        deviceTokenRepository.deactivateByUserIdAndToken(userId, token, Instant.now());
     }
 
     @Override

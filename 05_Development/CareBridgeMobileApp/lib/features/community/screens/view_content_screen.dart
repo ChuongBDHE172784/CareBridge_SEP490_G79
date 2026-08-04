@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import '../../../core/auth/auth_state.dart';
 import '../../../core/constants/content_stages.dart';
 import '../../checklist/models/user_checklist_item_model.dart';
+import '../../checklist/screens/checklist_detail_screen.dart';
 import '../../reminder/screens/today_tasks_screen.dart';
 import '../../checklist/services/user_checklist_service.dart';
 import '../../journey/models/journey_model.dart';
 import '../../journey/screens/mother_journey_screen.dart';
 import '../../journey/services/journey_service.dart';
 import '../models/community_model.dart';
-import '../models/checklist_assignment_context.dart';
 import '../models/content_model.dart';
 import '../services/community_service.dart';
 import '../services/content_service.dart';
@@ -1373,140 +1373,43 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
 
   Future<void> _openChecklistTemplate(ChecklistTemplate template) async {
     final importedIds = _importedTemplateItemIds;
-    final allItemsAdded =
-        template.items.isNotEmpty &&
-        template.items.every((item) => importedIds.contains(item.id));
     final rawJourneyId = _dashboard?.journeyId;
     final journeyId = rawJourneyId == null || rawJourneyId.isEmpty
         ? null
         : rawJourneyId;
-    final assignmentContext = ChecklistAssignmentContext.resolve(
-      templateStage: template.stage,
-      journeyId: journeyId,
-      lifecycleMode: widget.mode == ContentBrowseMode.lifecycle,
-    );
-    final action = await showModalBottomSheet<String>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: _canvas,
-      builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                template.name,
-                style: const TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: _onSurface,
-                ),
-              ),
-              if (template.description.isNotEmpty) ...[
-                const SizedBox(height: 6),
-                Text(
-                  template.description,
-                  style: const TextStyle(color: _onSurfaceVariant),
-                ),
-              ],
-              const SizedBox(height: 16),
-              Flexible(
-                child: ListView.separated(
-                  shrinkWrap: true,
-                  itemCount: template.items.length,
-                  separatorBuilder: (_, _) => const Divider(height: 1),
-                  itemBuilder: (_, index) {
-                    final item = template.items[index];
-                    final imported = importedIds.contains(item.id);
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: Icon(
-                        imported ? Icons.check_circle : Icons.circle_outlined,
-                        color: imported ? _primary : _onSurfaceVariant,
-                      ),
-                      title: Text(item.itemText),
-                      trailing: item.isRequired
-                          ? const Icon(
-                              Icons.star_rounded,
-                              color: Color(0xFFBA1A1A),
-                              semanticLabel: 'Mục bắt buộc',
-                            )
-                          : null,
-                    );
-                  },
-                ),
-              ),
-              if (!assignmentContext.canAssign) ...[
-                const SizedBox(height: 12),
-                const Text(
-                  'Hãy thiết lập hành trình trước khi thêm checklist.',
-                  style: TextStyle(color: _error),
-                ),
-              ],
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: !assignmentContext.canAssign
-                      ? null
-                      : () => Navigator.pop(
-                          sheetContext,
-                          allItemsAdded ? 'open' : 'add',
-                        ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        allItemsAdded ? Icons.checklist_rtl : Icons.add_task,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        allItemsAdded
-                            ? 'Mở việc hôm nay'
-                            : 'Thêm vào Việc hôm nay',
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => ChecklistDetailScreen(
+          template: template,
+          importedItemIds: importedIds,
+          journeyId: journeyId,
+          isLifecycleMode: widget.mode == ContentBrowseMode.lifecycle,
+          userChecklistService: _userChecklistService,
         ),
       ),
     );
 
-    if (!mounted || action == null) return;
-    if (action == 'add') {
+    if (mounted && journeyId != null) {
       try {
-        await _userChecklistService.addTemplate(
-          templateId: template.id,
-          journeyId: assignmentContext.journeyId,
-        );
         final items = await _userChecklistService.listItems(
-          journeyId: assignmentContext.journeyId,
+          journeyId: journeyId,
         );
-        if (!mounted) return;
-        setState(() => _userChecklistItems = items);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã thêm checklist vào Việc hôm nay.')),
-        );
+        if (mounted) {
+          setState(() => _userChecklistItems = items);
+        }
       } catch (_) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Không thể thêm checklist. Vui lòng thử lại.'),
-            backgroundColor: _error,
-          ),
+          const SnackBar(content: Text('Khong the tai lai danh sach checklist.')),
         );
-        return;
       }
     }
-    await _openMyChecklist(journeyId: assignmentContext.journeyId);
   }
 
+  // Legacy route retained for older content links; canonical checklist entry
+  // now opens ChecklistDetailScreen above.
+  // ignore: unused_element
   Future<void> _openMyChecklist({String? journeyId}) async {
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => TodayTasksScreen(journeyId: journeyId)),

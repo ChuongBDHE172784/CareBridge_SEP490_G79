@@ -25,6 +25,8 @@ void main() {
         'logs': false,
         'alerts': false,
         'records': false,
+        'checklistView': true,
+        'checklistComplete': false,
         'quickNoteBloodPressure': true,
         'quickNoteBloodGlucose': true,
         'updatedAt': '2026-08-03T00:00:00Z',
@@ -34,6 +36,8 @@ void main() {
       expect(legacy.quickNoteBloodGlucose, isFalse);
       expect(current.quickNoteBloodPressure, isTrue);
       expect(current.quickNoteBloodGlucose, isTrue);
+      expect(current.checklistView, isTrue);
+      expect(current.checklistComplete, isFalse);
     });
 
     testWidgets('shows six real metric permissions and saves select all', (
@@ -87,6 +91,8 @@ void main() {
       expect(service.lastUpdate?['quickNoteHydration'], isTrue);
       expect(service.lastUpdate?['quickNoteEpds'], isTrue);
       expect(service.lastUpdate?['quickNoteBloodGlucose'], isTrue);
+      expect(service.lastUpdate?['checklistView'], isFalse);
+      expect(service.lastUpdate?['checklistComplete'], isFalse);
     });
 
     testWidgets('renders a safe retry state when permission loading fails', (
@@ -378,6 +384,8 @@ class _FakeCareGroupService extends CareGroupService {
     bool? logs,
     bool? alerts,
     bool? records,
+    bool? checklistView,
+    bool? checklistComplete,
     bool? quickNotes,
     bool? quickNoteWeight,
     bool? quickNoteHydration,
@@ -388,6 +396,8 @@ class _FakeCareGroupService extends CareGroupService {
   }) async {
     updateCalls += 1;
     lastUpdate = {
+      'checklistView': checklistView,
+      'checklistComplete': checklistComplete,
       'quickNotes': quickNotes,
       'quickNoteWeight': quickNoteWeight,
       'quickNoteHydration': quickNoteHydration,
@@ -404,6 +414,8 @@ class _FakeCareGroupService extends CareGroupService {
       logs: logs ?? permission.logs,
       alerts: alerts ?? permission.alerts,
       records: records ?? permission.records,
+      checklistView: checklistView ?? permission.checklistView,
+      checklistComplete: checklistComplete ?? permission.checklistComplete,
       quickNotes: quickNotes ?? permission.quickNotes,
       quickNoteWeight: quickNoteWeight ?? permission.quickNoteWeight,
       quickNoteHydration: quickNoteHydration ?? permission.quickNoteHydration,

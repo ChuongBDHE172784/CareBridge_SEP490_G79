@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/auth/auth_state.dart';
 import '../../../../core/network/api_client.dart';
+import '../../../../core/notifications/fcm_service.dart';
 import '../../journey/services/pregnancy_outcome_draft_store.dart';
 import '../../recommendation/services/recommendation_service.dart';
 import '../services/auth_service.dart';
@@ -54,10 +55,10 @@ Future<void> showLogoutConfirmationSheet(BuildContext context) async {
         if (!isCapturedSessionCurrent()) {
           throw ApiException(401, '{"error":"AUTH_SESSION_CHANGED"}');
         }
-        return AuthService.instance.logout(
-          token: auth.accessToken,
-          expectedAccountId: accountId,
-          refreshToken: auth.refreshToken,
+        return _logoutAndDeregister(
+          auth: auth,
+          accountId: accountId,
+          isCapturedSessionCurrent: isCapturedSessionCurrent,
         );
       },
     ),
@@ -79,6 +80,26 @@ Future<void> showLogoutConfirmationSheet(BuildContext context) async {
         userId: accountId,
       );
     },
+  );
+}
+
+Future<void> _logoutAndDeregister({
+  required AuthState auth,
+  required String accountId,
+  required bool Function() isCapturedSessionCurrent,
+}) async {
+  try {
+    await FcmService.instance.deregisterToken();
+  } catch (error) {
+    debugPrint('[Logout] notification token cleanup failed: ${error.runtimeType}');
+  }
+  if (!isCapturedSessionCurrent()) {
+    throw ApiException(401, '{"error":"AUTH_SESSION_CHANGED"}');
+  }
+  await AuthService.instance.logout(
+    token: auth.accessToken,
+    expectedAccountId: accountId,
+    refreshToken: auth.refreshToken,
   );
 }
 

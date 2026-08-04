@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../core/auth/auth_state.dart';
+import '../../../core/network/api_client.dart';
 import '../../emergency/services/emergency_service.dart';
 import '../models/triage_continuation.dart';
 import '../models/triage_entry_context.dart';
@@ -260,20 +261,28 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
                 'Không thể xác nhận điều khoản AI Triage. Vui lòng thử lại.';
           });
         }
-      } catch (_) {
+      } catch (error) {
         if (mounted) {
-          setState(
-            () => _error = 'Không thể gửi triệu chứng. Vui lòng thử lại.',
-          );
+          setState(() => _error = _startFailureMessage(error));
         }
       }
-    } catch (_) {
+    } catch (error) {
       if (mounted) {
-        setState(() => _error = 'Không thể gửi triệu chứng. Vui lòng thử lại.');
+        setState(() => _error = _startFailureMessage(error));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  String _startFailureMessage(Object error) {
+    if (error is ApiException && error.statusCode == 400) {
+      return 'Thông tin triệu chứng chưa hợp lệ. Vui lòng kiểm tra lại và thử lại.';
+    }
+    if (error is ApiException && error.statusCode >= 500) {
+      return 'Dịch vụ phân loại đang tạm thời gặp sự cố. Vui lòng thử lại sau ít phút.';
+    }
+    return 'Không thể gửi triệu chứng. Vui lòng thử lại.';
   }
 
   Future<void> _sendAnswers() async {
@@ -412,7 +421,6 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
           (question) => const {
             'childAgeMonths',
             'feedingStatus',
-            'vomiting',
             'diarrhea',
             'rash',
             'dehydrationSigns',

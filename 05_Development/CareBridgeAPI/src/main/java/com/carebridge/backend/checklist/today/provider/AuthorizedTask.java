@@ -10,5 +10,15 @@ public record AuthorizedTask(
         UUID taskId,
         UUID instanceId,
         String status,
-        Set<TaskAction> allowedActions) {
+        Set<TaskAction> allowedActions,
+        UUID authorizationCareGroupId) {
+
+    public AuthorizedTask(
+            TaskKind taskKind,
+            UUID taskId,
+            UUID instanceId,
+            String status,
+            Set<TaskAction> allowedActions) {
+        this(taskKind, taskId, instanceId, status, allowedActions, null);
+    }
 }

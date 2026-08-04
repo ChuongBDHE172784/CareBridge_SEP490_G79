@@ -57,6 +57,11 @@ public class UnifiedTaskActionFacade {
 
     public TaskActionResponse apply(UUID actorUserId, TaskKind taskKind, UUID taskId,
                                     TaskActionRequest request) {
+        return apply(actorUserId, taskKind, taskId, request, null);
+    }
+
+    public TaskActionResponse apply(UUID actorUserId, TaskKind taskKind, UUID taskId,
+                                    TaskActionRequest request, UUID careGroupId) {
         TaskActionHandler handler = handlers.get(taskKind);
         if (handler == null) {
             throw taskNotFound();
@@ -66,7 +71,9 @@ public class UnifiedTaskActionFacade {
         // recipient's task or turn a revoked membership into a successful response.
         AuthorizedTask authorized;
         try {
-            authorized = handler.authorize(actorUserId, taskId);
+            authorized = careGroupId == null
+                    ? handler.authorize(actorUserId, taskId)
+                    : handler.authorize(actorUserId, taskId, careGroupId);
         } catch (BusinessException exception) {
             if (taskKind != TaskKind.REMINDER
                     || !"TASK_NOT_FOUND".equals(exception.getCode())
@@ -106,7 +113,7 @@ public class UnifiedTaskActionFacade {
                     "Reopen does not accept a reason");
         }
 
-        String payloadHash = hash(taskKind, canonicalTaskId, request);
+        String payloadHash = hash(taskKind, canonicalTaskId, request, careGroupId);
         commandRepository.acquireTaskActionLock(
                 taskActionScope(taskKind, handler.actionScopeId(authorized)));
         commandRepository.acquireIdempotencyClaimLock(
@@ -114,6 +121,13 @@ public class UnifiedTaskActionFacade {
         var existing = commandRepository.findByActorUserIdAndTaskKindAndTaskIdAndClientRequestId(
                 actorUserId, taskKind.name(), canonicalTaskId, request.clientRequestId());
         if (existing.isPresent()) {
+            // A durable replay is still an authorization-sensitive read.  Scoped
+            // FAMILY actions must recheck the exact group after the serialization
+            // locks are held; otherwise a membership/permission revoke racing
+            // with this request could turn an old command into a successful replay.
+            if (careGroupId != null) {
+                handler.authorize(actorUserId, taskId, careGroupId);
+            }
             var command = existing.get();
             if (!payloadHash.equals(command.getPayloadHash())) {
                 throw new BusinessException(HttpStatus.CONFLICT, "IDEMPOTENCY_KEY_REUSE",
@@ -125,7 +139,9 @@ public class UnifiedTaskActionFacade {
                 throw new IllegalStateException("Stored task action result is unreadable", exception);
             }
         }
-        var current = handler.authorizeForUpdate(actorUserId, authorized);
+        var current = careGroupId == null
+                ? handler.authorizeForUpdate(actorUserId, authorized)
+                : handler.authorizeForUpdate(actorUserId, authorized, careGroupId);
         if (!current.allowedActions().contains(request.action())) {
             if (isTerminal(current.status())) {
                 throw new BusinessException(HttpStatus.CONFLICT, "TASK_ALREADY_TERMINAL",
@@ -161,9 +177,13 @@ public class UnifiedTaskActionFacade {
         return response;
     }
 
-    private static String hash(TaskKind taskKind, UUID taskId, TaskActionRequest request) {
+    private static String hash(
+            TaskKind taskKind, UUID taskId, TaskActionRequest request, UUID careGroupId) {
         String canonical = taskKind.name() + "|" + taskId + "|" + request.action().name()
                 + "|" + (request.reason() == null ? "" : request.reason());
+        if (careGroupId != null) {
+            canonical += "|" + careGroupId;
+        }
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256")
                     .digest(canonical.getBytes(StandardCharsets.UTF_8));

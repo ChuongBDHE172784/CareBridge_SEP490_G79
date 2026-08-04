@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../checklist/services/user_checklist_service.dart';
-import '../models/reminder_model.dart';
 import '../models/today_task_model.dart';
 import '../services/today_task_service.dart';
 
@@ -44,6 +43,7 @@ class TodayTasksPanel extends StatefulWidget {
     this.checklistService,
     this.audience = TodayTasksAudience.mother,
     this.layout = TodayTasksLayout.timeBuckets,
+    this.careGroupId,
     this.showHeading = true,
     this.controller,
     this.headingAction,
@@ -53,6 +53,7 @@ class TodayTasksPanel extends StatefulWidget {
   final UserChecklistService? checklistService;
   final TodayTasksAudience audience;
   final TodayTasksLayout layout;
+  final String? careGroupId;
   final bool showHeading;
   final TodayTasksPanelController? controller;
   final Widget? headingAction;
@@ -71,6 +72,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
   bool _loading = true;
   int _loadGeneration = 0;
   final Set<String> _acting = {};
+  final Map<String, String> _actionRequestIds = {};
   String? _announcement;
   bool _advancingSequence = false;
   String? _sequenceRequestId;
@@ -95,6 +97,11 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.service != widget.service) {
       _service = widget.service ?? TodayTaskService.instance;
+      _snapshot = null;
+      _failure = null;
+      _load();
+    }
+    if (oldWidget.careGroupId != widget.careGroupId) {
       _snapshot = null;
       _failure = null;
       _load();
@@ -124,7 +131,9 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
       });
     }
     try {
-      final snapshot = await _service.loadToday();
+      final snapshot = await _service.loadToday(
+        careGroupId: widget.careGroupId,
+      );
       if (!mounted || generation != _loadGeneration) return;
       setState(() {
         _snapshot = snapshot;
@@ -134,6 +143,9 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
       if (!mounted || generation != _loadGeneration) return;
       setState(() {
         _failure = failure;
+        if (failure.kind == TodayFailureKind.terminal) {
+          _snapshot = null;
+        }
         _loading = false;
       });
     }
@@ -148,6 +160,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
       _loading = true;
       _announcement = null;
       _acting.clear();
+      _actionRequestIds.clear();
       _advancingSequence = false;
       _sequenceRequestId = null;
     });
@@ -156,17 +169,21 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
   Future<void> _act(TodayTask task, TodayTaskAction action) async {
     if (_acting.contains(task.id)) return;
     setState(() => _acting.add(task.id));
+    final requestKey =
+        '${widget.careGroupId ?? ''}:${task.id}:${action.apiValue}';
+    final requestId = _actionRequestIds.putIfAbsent(requestKey, _newRequestId);
     try {
-      await _service.performAction(
-        taskKind: task.kind,
+      await _service.performChecklistAction(
         taskId: task.id,
         action: action,
-        reason: action == TodayTaskAction.skip
-            ? TodayTaskSkipReason.userChoice
-            : null,
+        careGroupId: widget.careGroupId,
+        clientRequestId: requestId,
       );
       await _load();
       if (!mounted) return;
+      if (_failure == null) {
+        _actionRequestIds.remove(requestKey);
+      }
       setState(() {
         _announcement = switch (action) {
           TodayTaskAction.complete => 'Đã hoàn tất ${task.title}',
@@ -259,11 +276,14 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
   List<TodayTask> get _sourceGroupedTasks {
     if (_snapshot == null) return const [];
     final tasks = _snapshot!.sections.all
-        .where((task) => task.type != ReminderType.appointment)
+        .where((task) => task.isChecklist)
         .toList();
     tasks.sort(_compareNewestFirst);
     return tasks;
   }
+
+  List<TodayTask> _checklistOnly(List<TodayTask> tasks) =>
+      tasks.toList(growable: false);
 
   static int _compareNewestFirst(TodayTask left, TodayTask right) {
     final leftTime = left.dueAt ?? left.scheduledAt;
@@ -283,9 +303,12 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
     final sourceGroupedTasks = widget.layout == TodayTasksLayout.sourceGroups
         ? _sourceGroupedTasks
         : const <TodayTask>[];
+    final checklistCount = _snapshot == null
+        ? 0
+        : _checklistOnly(_snapshot!.sections.all.toList()).length;
     final hasVisibleTasks = widget.layout == TodayTasksLayout.sourceGroups
         ? sourceGroupedTasks.isNotEmpty
-        : (_snapshot?.totalCount ?? 0) > 0 || _snapshot?.sequence != null;
+        : checklistCount > 0 || _snapshot?.sequence != null;
 
     final systemTasks = sourceGroupedTasks
         .where((task) => task.origin == TodayTaskOrigin.systemTemplate)
@@ -402,7 +425,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
               _Section(
                 title: 'Quá hạn',
                 icon: Icons.error_outline_rounded,
-                tasks: _snapshot!.sections.overdue,
+                tasks: _checklistOnly(_snapshot!.sections.overdue),
                 acting: _acting,
                 onAction: _act,
                 onDelete: _delete,
@@ -411,7 +434,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
               _Section(
                 title: 'Hôm nay',
                 icon: Icons.wb_sunny_outlined,
-                tasks: _snapshot!.sections.today,
+                tasks: _checklistOnly(_snapshot!.sections.today),
                 acting: _acting,
                 onAction: _act,
                 onDelete: _delete,
@@ -420,7 +443,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
               _Section(
                 title: '7 ngày tới',
                 icon: Icons.date_range_rounded,
-                tasks: _snapshot!.sections.upcoming,
+                tasks: _checklistOnly(_snapshot!.sections.upcoming),
                 acting: _acting,
                 onAction: _act,
                 onDelete: _delete,
@@ -429,7 +452,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
               _Section(
                 title: 'Chưa xếp lịch',
                 icon: Icons.event_busy_rounded,
-                tasks: _snapshot!.sections.unscheduled,
+                tasks: _checklistOnly(_snapshot!.sections.unscheduled),
                 acting: _acting,
                 onAction: _act,
                 onDelete: _delete,
@@ -879,7 +902,7 @@ class _TodayTaskCard extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           key: Key('task-item-${task.id}'),
-          onTap: busy || tapAction == null ? null : () => onAction(tapAction!),
+          onTap: busy || tapAction == null ? null : () => onAction(tapAction),
           borderRadius: BorderRadius.circular(20),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
@@ -1033,21 +1056,16 @@ class _TodayTaskCard extends StatelessWidget {
 }
 
 class _InfoPill extends StatelessWidget {
-  const _InfoPill({
-    required this.icon,
-    required this.text,
-    this.backgroundColor,
-  });
+  const _InfoPill({required this.icon, required this.text});
 
   final IconData icon;
   final String text;
-  final Color? backgroundColor;
 
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
     decoration: BoxDecoration(
-      color: backgroundColor ?? const Color(0xFFF9F4F0),
+      color: const Color(0xFFF9F4F0),
       borderRadius: BorderRadius.circular(20),
       border: Border.all(color: const Color(0xFFEDE4DC).withValues(alpha: .7)),
     ),

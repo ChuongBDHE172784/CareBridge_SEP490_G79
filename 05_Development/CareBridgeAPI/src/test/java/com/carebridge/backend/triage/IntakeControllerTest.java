@@ -166,6 +166,29 @@ class IntakeControllerTest {
 
     @Test
     @WithMockUser(username = "00000000-0000-0000-0000-000000000010", roles = "MOTHER")
+    void startConversation_unsupportedCurrentIntakeField_shouldReturn400() throws Exception {
+        doThrow(new TriageException(HttpStatus.BAD_REQUEST, "TRIAGE-010",
+                "currentIntake contains unsupported field(s)"))
+                .when(triageService).startConversation(any(), any());
+
+        mockMvc.perform(post(BASE_URL + "/conversation/start")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "initialText": "toi bi dau bung",
+                                  "stage": "PREGNANCY",
+                                  "currentIntake": {
+                                    "stage": "PREGNANCY",
+                                    "unexpectedFact": "value"
+                                  }
+                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("TRIAGE-010"));
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000010", roles = "MOTHER")
     void ov01E2e008_startConversationReturnsTypedMaternalOrigin() throws Exception {
         UUID journeyId = UUID.fromString("00000000-0000-0000-0000-000000000098");
         UUID continuationToken = UUID.fromString("00000000-0000-0000-0000-000000000097");

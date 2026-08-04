@@ -53,6 +53,8 @@ void main() {
     expect(mother, contains('TodayTasksAudience.mother'));
     expect(family, contains('TodayTasksPanel('));
     expect(family, contains('TodayTasksAudience.family'));
+    expect(family, contains('AddUserChecklistTaskButton('));
+    expect(family, contains('careGroupId: _selectedCareGroupId'));
   });
 
   test('only the canonical Family Home implementation remains', () {

@@ -20,6 +20,7 @@ import com.carebridge.backend.checklist.today.model.TaskKind;
 import com.carebridge.backend.checklist.today.policy.UnifiedTaskAccessPolicy;
 import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
+import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
 import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
 import jakarta.persistence.EntityManager;
 import java.time.Clock;
@@ -119,19 +120,42 @@ public class ChecklistTaskActionHandler implements TaskActionHandler {
 
     @Override
     public AuthorizedTask authorize(UUID actorUserId, UUID taskId) {
+        return authorizeScoped(actorUserId, taskId, null);
+    }
+
+    @Override
+    public AuthorizedTask authorize(UUID actorUserId, UUID taskId, UUID careGroupId) {
+        return authorizeScoped(actorUserId, taskId, careGroupId);
+    }
+
+    /** Re-check the same explicit FAMILY scope after the action lock is held. */
+    @Override
+    public AuthorizedTask authorizeForUpdate(
+        UUID actorUserId, AuthorizedTask task, UUID careGroupId) {
+        if (careGroupId == null) {
+            return authorizeForUpdate(actorUserId, task);
+        }
+        return authorize(actorUserId, task.taskId(), careGroupId);
+    }
+
+    private AuthorizedTask authorizeScoped(
+            UUID actorUserId, UUID taskId, UUID careGroupId) {
         var aggregate = lockAggregate(taskId);
         var task = aggregate.task();
         var instance = aggregate.instance();
         if (isHistoricalOrStale(instance) || !isTemplateVisible(instance)) {
             throw notFound();
         }
-        if (!accessPolicy.canComplete(instance, actorUserId)) {
+        boolean permitted = careGroupId == null
+                ? accessPolicy.canComplete(instance, actorUserId)
+                : accessPolicy.canComplete(instance, actorUserId, careGroupId);
+        if (!permitted) {
             throw notFound();
         }
         Set<TaskAction> actions = EnumSet.noneOf(TaskAction.class);
         if (instance.getStatus() == ChecklistInstanceStatus.CANCELLED) {
             return new AuthorizedTask(TaskKind.CHECKLIST, taskId, instance.getId(),
-                    ChecklistInstanceStatus.CANCELLED.name(), actions);
+                    ChecklistInstanceStatus.CANCELLED.name(), actions, careGroupId);
         }
         if (task.getStatus() == ChecklistTaskStatus.PENDING
                 || task.getStatus() == ChecklistTaskStatus.IN_PROGRESS) {
@@ -140,7 +164,7 @@ public class ChecklistTaskActionHandler implements TaskActionHandler {
             actions.add(TaskAction.REOPEN);
         }
         return new AuthorizedTask(TaskKind.CHECKLIST, taskId, instance.getId(),
-                task.getStatus().name(), actions);
+                task.getStatus().name(), actions, careGroupId);
     }
 
     @Override
@@ -153,7 +177,11 @@ public class ChecklistTaskActionHandler implements TaskActionHandler {
                 || !authorized.instanceId().equals(instance.getId())
                 || instance.getStatus() == ChecklistInstanceStatus.CANCELLED
                 || isHistoricalOrStale(instance)
-                || !isTemplateVisible(instance)) {
+                || !isTemplateVisible(instance)
+                || !(authorized.authorizationCareGroupId() == null
+                    ? accessPolicy.canComplete(instance, actorUserId)
+                    : accessPolicy.canComplete(
+                            instance, actorUserId, authorized.authorizationCareGroupId()))) {
             throw notFound();
         }
         String previousStatus = task.getStatus().name();
@@ -269,7 +297,13 @@ public class ChecklistTaskActionHandler implements TaskActionHandler {
         ChecklistTemplate template = templateRepository
                 .findByTemplateVersionId(instance.getTemplateVersionId())
                 .orElse(null);
-        return ChecklistTemplateVisibilityPolicy.isVisible(instance, template);
+        return template != null
+                && template.getStatus() == ChecklistTemplateStatus.APPROVED
+                && (template.getRecipientScope()
+                        == com.carebridge.backend.checklist.model.ChecklistRecipientScope.MOTHER
+                    || template.getRecipientScope()
+                        == com.carebridge.backend.checklist.model.ChecklistRecipientScope.BOTH)
+                && ChecklistTemplateVisibilityPolicy.isVisible(instance, template);
     }
 
     private record LockedAggregate(

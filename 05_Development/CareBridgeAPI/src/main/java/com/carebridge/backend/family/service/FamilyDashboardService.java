@@ -1,6 +1,8 @@
 package com.carebridge.backend.family.service;
 
 import com.carebridge.backend.common.exception.BusinessException;
+import com.carebridge.backend.baby.entity.BabyProfile;
+import com.carebridge.backend.baby.entity.BabyProfileStatus;
 import com.carebridge.backend.family.dto.FamilyDashboardResponse;
 import com.carebridge.backend.family.dto.SharedDataResponse;
 import com.carebridge.backend.family.entity.CareGroup;
@@ -17,11 +19,13 @@ import com.carebridge.backend.health.entity.HealthObservation;
 import com.carebridge.backend.health.entity.MetricStatus;
 import com.carebridge.backend.health.repository.HealthObservationRepository;
 import com.carebridge.backend.journey.entity.MotherJourney;
+import com.carebridge.backend.journey.entity.JourneyStatus;
 import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.notification.entity.NotificationRecord;
 import com.carebridge.backend.notification.entity.NotificationType;
 import com.carebridge.backend.notification.repository.NotificationRecordRepository;
 import com.carebridge.backend.reminder.entity.ReminderStatus;
+import com.carebridge.backend.reminder.entity.Reminder;
 import com.carebridge.backend.reminder.repository.ReminderRepository;
 import com.carebridge.backend.reminder.service.ReminderRecurrenceService;
 import com.carebridge.backend.security.repository.UserRepository;
@@ -232,7 +236,7 @@ public class FamilyDashboardService {
                 motherDisplayName(context.group().getOwnerUserId()),
                 motherJourney,
                 context.permissionScope().calendar()
-                        ? loadMotherTodayReminders(context.group().getOwnerUserId())
+                        ? loadMotherTodayReminders(context.group())
                         : List.of(),
                 context.alerts(),
                 acceptedMembers.size(),
@@ -311,6 +315,7 @@ public class FamilyDashboardService {
                 owner || authorizationPolicy.hasPermission(groupId, userId, PermissionFlag.CALENDAR),
                 owner || authorizationPolicy.hasPermission(groupId, userId, PermissionFlag.LOGS),
                 owner || authorizationPolicy.hasPermission(groupId, userId, PermissionFlag.ALERTS),
+                owner || authorizationPolicy.hasPermission(groupId, userId, PermissionFlag.CHECKLIST_VIEW),
                 owner || authorizationPolicy.hasPermission(groupId, userId, PermissionFlag.RECORDS),
                 quickNotes,
                 quickNotes && (owner || authorizationPolicy.hasPermission(
@@ -498,11 +503,18 @@ public class FamilyDashboardService {
                 .orElse("Mẹ");
     }
 
-    private List<FamilyDashboardResponse.TodayReminder> loadMotherTodayReminders(UUID motherId) {
+    private List<FamilyDashboardResponse.TodayReminder> loadMotherTodayReminders(CareGroup group) {
         LocalDate today = LocalDate.now(DASHBOARD_TIMEZONE);
         return reminderRepository
-                .findByOwnerUserIdAndStatusNot(motherId, ReminderStatus.CANCELLED)
+                .findByOwnerUserIdAndStatusNot(group.getOwnerUserId(), ReminderStatus.CANCELLED)
                 .stream()
+                .filter(reminder -> reminder.getReminderType()
+                        == com.carebridge.backend.reminder.entity.ReminderType.APPOINTMENT)
+                .filter(reminder -> (group.getLinkedJourneyId() != null
+                        && group.getLinkedJourneyId().equals(reminder.getJourneyId()))
+                        || (group.getLinkedBabyProfileId() != null
+                        && group.getLinkedBabyProfileId().equals(reminder.getBabyId())))
+                .filter(reminder -> hasActiveLinkedContext(group, reminder))
                 .map(reminder -> reminderRecurrenceService.occurrenceForDate(
                         reminder, today, DASHBOARD_TIMEZONE))
                 .flatMap(java.util.Optional::stream)
@@ -526,6 +538,24 @@ public class FamilyDashboardService {
                                 FamilyDashboardResponse.TodayReminder::dueAt,
                                 Comparator.nullsLast(Comparator.naturalOrder())))
                 .toList();
+    }
+
+    private boolean hasActiveLinkedContext(CareGroup group, Reminder reminder) {
+        boolean activeJourney = reminder.getJourneyId() != null
+                && group.getLinkedJourneyId() != null
+                && reminder.getJourneyId().equals(group.getLinkedJourneyId())
+                && journeyRepository.existsByIdAndOwnerUserIdAndStatus(
+                        group.getLinkedJourneyId(), group.getOwnerUserId(),
+                        JourneyStatus.ACTIVE);
+        boolean activeBaby = false;
+        if (reminder.getBabyId() != null && group.getLinkedBabyProfileId() != null
+                && reminder.getBabyId().equals(group.getLinkedBabyProfileId())) {
+            BabyProfile baby = entityManager.find(BabyProfile.class, group.getLinkedBabyProfileId());
+            activeBaby = baby != null
+                    && group.getOwnerUserId().equals(baby.getOwnerUserId())
+                    && baby.getStatus() == BabyProfileStatus.ACTIVE;
+        }
+        return activeJourney || activeBaby;
     }
 
     private int reminderPriority(String reminderType) {

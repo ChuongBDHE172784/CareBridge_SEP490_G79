@@ -51,9 +51,13 @@ public class PediatricRiskRules implements StageRiskRules {
                 "RED_PERSISTENT_VOMITING", "Nôn liên tục");
         addIf(symptoms.contains("rash") && hasHighFever(request), matchedRules, redFlags,
                 "RED_RASH_HIGH_FEVER", "Phát ban kèm sốt cao");
-        addIf(request.getChildAgeMonths() != null && request.getChildAgeMonths() < 3 && hasFever(request), matchedRules, redFlags,
+        boolean infantFeverUnder3Months = request.getChildAgeMonths() != null && request.getChildAgeMonths() < 3
+                && hasFever(request);
+        addIf(infantFeverUnder3Months, matchedRules, redFlags,
                 "RED_INFANT_FEVER_UNDER_3_MONTHS", "Trẻ dưới 3 tháng có sốt");
-        addIf((request.getChildAgeMonths() == null || request.getChildAgeMonths() >= 3) && hasHighFever(request), matchedRules, redFlags,
+        // Mirrors Python's risk_rules.apply_red_flag_rules elif: high fever reported purely as
+        // free text ("sot cao") must trigger RED even without a numeric temperatureC reading.
+        addIf(!infantFeverUnder3Months && (symptoms.contains("high_fever") || hasHighFever(request)), matchedRules, redFlags,
                 "RED_HIGH_FEVER", "Sốt cao");
 
         if (!redFlags.isEmpty()) {
@@ -75,7 +79,10 @@ public class PediatricRiskRules implements StageRiskRules {
         if (symptoms.contains("rash")) {
             matchedRules.add("YELLOW_MILD_RASH");
         }
-        if (symptoms.contains("fever") && hasFever(request) && breathingNormal(request) && !feedingBad(request)) {
+        // Mirrors Python's risk_rules.score_risk: fever monitoring applies whenever fever is
+        // reported, regardless of breathing/feeding text — those already have their own RED
+        // rules above and must not silently suppress this YELLOW rule.
+        if (symptoms.contains("fever") && hasFever(request)) {
             matchedRules.add("YELLOW_FEVER_MONITOR");
         }
         if (!matchedRules.isEmpty()) {
@@ -102,14 +109,6 @@ public class PediatricRiskRules implements StageRiskRules {
 
     private boolean durationPersistent(String value) {
         return containsAny(value, "3", "keo dai", "nhieu ngay", "hon 2");
-    }
-
-    private boolean feedingBad(RunIntakeRequest request) {
-        return containsAny(request.getFeedingStatus(), "bo", "khong", "kem");
-    }
-
-    private boolean breathingNormal(RunIntakeRequest request) {
-        return !containsAny(request.getBreathingStatus(), "kho", "nhanh", "tim", "rut lom");
     }
 
     private boolean containsAny(String value, String... needles) {

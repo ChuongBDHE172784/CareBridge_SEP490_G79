@@ -47,9 +47,7 @@ void main() {
       find.byKey(const Key('user-checklist-task-text')),
       'Chuẩn bị quần áo cho bé',
     );
-    await tester.tap(
-      find.byKey(const Key('user-checklist-target-baby')),
-    );
+    await tester.tap(find.byKey(const Key('user-checklist-target-baby')));
     await tester.tap(find.byKey(const Key('save-user-checklist-task')));
     await tester.pumpAndSettle();
 
@@ -97,9 +95,7 @@ void main() {
       find.byKey(const Key('user-checklist-task-text')),
       'Đặt lịch tiêm cho bé',
     );
-    await tester.tap(
-      find.byKey(const Key('user-checklist-target-baby')),
-    );
+    await tester.tap(find.byKey(const Key('user-checklist-target-baby')));
     await tester.tap(find.byKey(const Key('save-user-checklist-task')));
     await tester.pumpAndSettle();
     expect(find.text('Không thể thêm việc. Vui lòng thử lại.'), findsOneWidget);
@@ -111,11 +107,64 @@ void main() {
     expect(clientTaskIds[1], clientTaskIds[0]);
   });
 
+  testWidgets('family personal task sends the selected care group scope', (
+    tester,
+  ) async {
+    Map<String, dynamic>? request;
+    final service = UserChecklistService(
+      postRequest: (path, body) async {
+        expect(path, '/api/v1/user-checklist-items');
+        request = Map<String, dynamic>.from(body);
+        return _createdItem(body);
+      },
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AddUserChecklistTaskButton(
+            careGroupId: '44444444-4444-4444-8444-444444444444',
+            service: service,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.byKey(const Key('add-user-checklist-task')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('add-user-checklist-task')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('user-checklist-task-text')),
+      'Nhắc mẹ uống nước',
+    );
+    await tester.tap(find.byKey(const Key('save-user-checklist-task')));
+    await tester.pumpAndSettle();
+
+    expect(request?['careGroupId'], '44444444-4444-4444-8444-444444444444');
+    expect(request?.containsKey('journeyId'), isFalse);
+    expect(request?.containsKey('babyId'), isFalse);
+  });
+
   testWidgets('does not render a dead create entry without one context', (
     tester,
   ) async {
     await tester.pumpWidget(
       const MaterialApp(home: Scaffold(body: AddUserChecklistTaskButton())),
+    );
+
+    expect(find.byKey(const Key('add-user-checklist-task')), findsNothing);
+  });
+
+  testWidgets('does not render when contexts are ambiguous', (tester) async {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: AddUserChecklistTaskButton(
+            careGroupId: '44444444-4444-4444-8444-444444444444',
+            journeyId: '22222222-2222-4222-8222-222222222222',
+          ),
+        ),
+      ),
     );
 
     expect(find.byKey(const Key('add-user-checklist-task')), findsNothing);

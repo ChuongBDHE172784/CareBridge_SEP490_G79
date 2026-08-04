@@ -30,10 +30,16 @@ class _CreateAppointmentReminderScreenState
   final _locationController = TextEditingController();
   final List<TimeOfDay> _times = [];
   late DateTime _startDate;
+  // Retained only for compatibility with the legacy hidden form branch. The
+  // appointment UI does not render recurrence or end-date controls.
   DateTime? _endDate;
   RecurrenceType _recurrence = RecurrenceType.none;
   List<int> _notificationOffsets = AppointmentNotificationTiming.systemDefaults;
   bool _saving = false;
+
+  // Kept as a runtime compatibility switch so legacy recurrence fields are
+  // not rendered by the non-recurring appointment flow.
+  bool get _showLegacyForm => false;
 
   @override
   void initState() {
@@ -92,21 +98,14 @@ class _CreateAppointmentReminderScreenState
     if (picked != null) setState(() => _endDate = picked);
   }
 
-  Future<void> _addTime() async {
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: const TimeOfDay(hour: 8, minute: 0),
-    );
+  Future<void> _pickAppointmentTime() async {
+    final current = _times.isEmpty ? TimeOfDay.now() : _times.first;
+    final picked = await showTimePicker(context: context, initialTime: current);
     if (picked == null) return;
     setState(() {
-      if (!_times.any(
-        (t) => t.hour == picked.hour && t.minute == picked.minute,
-      )) {
-        _times.add(picked);
-        _times.sort(
-          (a, b) => (a.hour * 60 + a.minute).compareTo(b.hour * 60 + b.minute),
-        );
-      }
+      _times
+        ..clear()
+        ..add(picked);
     });
   }
 
@@ -119,7 +118,7 @@ class _CreateAppointmentReminderScreenState
       return;
     }
     if (_times.isEmpty) {
-      _showError('Vui lòng thêm ít nhất một giờ nhắc.');
+      _showError('Vui lòng chọn giờ hẹn.');
       return;
     }
 
@@ -139,7 +138,7 @@ class _CreateAppointmentReminderScreenState
 
     final minimum = DateTime.now().add(const Duration(minutes: 5));
     if (scheduledTimes.any((time) => time.isBefore(minimum))) {
-      _showError('Giờ nhắc phải sau hiện tại ít nhất 5 phút.');
+      _showError('Giờ hẹn phải sau hiện tại ít nhất 5 phút.');
       return;
     }
 
@@ -147,17 +146,12 @@ class _CreateAppointmentReminderScreenState
     try {
       final location = _locationController.text.trim();
       final reminderTitle = location.isEmpty ? title : '$title - $location';
-      var createdCount = 0;
-      for (final scheduledAt in scheduledTimes) {
-        await _service.createAppointmentReminder(
-          title: reminderTitle,
-          scheduledAt: scheduledAt,
-          recurrenceType: _recurrence,
-          recurrenceEndDate: _endDate,
-          notificationOffsetsMinutes: _notificationOffsets,
-        );
-        createdCount++;
-      }
+      await _service.createAppointmentReminder(
+        title: reminderTitle,
+        scheduledAt: scheduledTimes.first,
+        notificationOffsetsMinutes: _notificationOffsets,
+      );
+      const createdCount = 1;
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Đã tạo $createdCount nhắc lịch hẹn.')),
@@ -213,34 +207,6 @@ class _CreateAppointmentReminderScreenState
                     'Lịch hẹn, khám định kỳ hoặc tái khám *',
                   ),
                 ),
-                const SizedBox(height: 10),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFF8F6),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(
-                        Icons.info_outline_rounded,
-                        size: 18,
-                        color: _primary,
-                      ),
-                      SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Nhắc nhở này sẽ giúp bạn không quên lịch hẹn quan trọng với bác sĩ.',
-                          style: TextStyle(
-                            fontFamily: 'Lexend',
-                            fontSize: 12,
-                            color: _onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
               ],
             ),
           ),
@@ -254,44 +220,47 @@ class _CreateAppointmentReminderScreenState
             ),
           ),
           const SizedBox(height: 14),
-          _Section(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                DropdownButtonFormField<RecurrenceType>(
-                  initialValue: _recurrence,
-                  decoration: _inputDecoration('Lặp lại'),
-                  items: RecurrenceType.values
-                      .map(
-                        (value) => DropdownMenuItem(
-                          value: value,
-                          child: Text(value.displayLabel),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: _saving
-                      ? null
-                      : (value) => setState(
-                          () => _recurrence = value ?? RecurrenceType.none,
-                        ),
-                ),
-                const SizedBox(height: 10),
-                _DateButton(
-                  label: 'Ngày bắt đầu',
-                  value: _formatDate(_startDate),
-                  onTap: _pickStartDate,
-                ),
-                const SizedBox(height: 10),
-                _DateButton(
-                  label: 'Ngày kết thúc',
-                  value: _endDate == null
-                      ? 'Không có ngày kết thúc'
-                      : _formatDate(_endDate!),
-                  onTap: _pickEndDate,
-                ),
-              ],
+          if (_showLegacyForm)
+            _Section(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (_showLegacyForm)
+                    DropdownButtonFormField<RecurrenceType>(
+                      initialValue: _recurrence,
+                      decoration: _inputDecoration('Lặp lại'),
+                      items: RecurrenceType.values
+                          .map(
+                            (value) => DropdownMenuItem(
+                              value: value,
+                              child: Text(value.displayLabel),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: _saving
+                          ? null
+                          : (value) => setState(
+                              () => _recurrence = value ?? RecurrenceType.none,
+                            ),
+                    ),
+                  const SizedBox(height: 10),
+                  if (_showLegacyForm)
+                    _DateButton(
+                      label: 'Ngày bắt đầu',
+                      value: _formatDate(_startDate),
+                      onTap: _pickStartDate,
+                    ),
+                  const SizedBox(height: 10),
+                  _DateButton(
+                    label: 'Ngày kết thúc',
+                    value: _endDate == null
+                        ? 'Không có ngày kết thúc'
+                        : _formatDate(_endDate!),
+                    onTap: _pickEndDate,
+                  ),
+                ],
+              ),
             ),
-          ),
           const SizedBox(height: 14),
           _Section(
             child: Column(
@@ -301,7 +270,7 @@ class _CreateAppointmentReminderScreenState
                   children: [
                     const Expanded(
                       child: Text(
-                        'Giờ nhắc',
+                        'Giờ hẹn',
                         style: TextStyle(
                           fontFamily: 'Lexend',
                           fontWeight: FontWeight.w800,
@@ -309,12 +278,11 @@ class _CreateAppointmentReminderScreenState
                         ),
                       ),
                     ),
-                    IconButton(
-                      onPressed: _saving ? null : _addTime,
-                      icon: const Icon(
-                        Icons.add_alarm_rounded,
-                        color: _primary,
-                      ),
+                    TextButton.icon(
+                      key: const Key('appointment-time-picker'),
+                      onPressed: _saving ? null : _pickAppointmentTime,
+                      icon: const Icon(Icons.schedule_rounded, color: _primary),
+                      label: const Text('Chọn giờ'),
                     ),
                   ],
                 ),
@@ -325,9 +293,7 @@ class _CreateAppointmentReminderScreenState
                       .map(
                         (time) => InputChip(
                           label: Text(time.format(context)),
-                          onDeleted: _times.length == 1 || _saving
-                              ? null
-                              : () => setState(() => _times.remove(time)),
+                          onDeleted: null,
                         ),
                       )
                       .toList(),

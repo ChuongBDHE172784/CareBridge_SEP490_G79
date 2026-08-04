@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
-import '../../reminder/models/reminder_model.dart';
-import '../../reminder/models/today_task_model.dart';
-import '../../reminder/services/reminder_service.dart';
+import '../models/family_task_model.dart';
+import '../services/family_task_service.dart';
 
 /// CB-028 — Assigned / Group Tasks Screen (Read-Only)
-/// Displays tasks synced from "Việc hôm nay" (ReminderService).
+/// Displays tasks assigned through the group-scoped care-task resource.
 /// Read-only view with filter tabs (Cần làm, Bỏ qua, Đã xong, Quá hạn).
 class AssignedTasksScreen extends StatefulWidget {
   final String groupId;
@@ -21,9 +20,9 @@ class AssignedTasksScreen extends StatefulWidget {
 }
 
 class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
-  final _reminderService = ReminderService.instance;
+  final _familyTaskService = FamilyTaskService();
   bool _isLoading = true;
-  List<TodayTask> _allTasks = [];
+  List<FamilyTask> _allTasks = [];
   String _currentFilter = 'TODO'; // TODO, SKIPPED, COMPLETED, OVERDUE
 
   @override
@@ -35,7 +34,7 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
-      final tasks = await _reminderService.listTodayTasks();
+      final tasks = await _familyTaskService.listTasks(widget.groupId);
       if (mounted) {
         setState(() {
           _allTasks = tasks;
@@ -55,23 +54,25 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    List<TodayTask> filteredTasks = _allTasks.where((t) {
-      final isOverdue =
-          !t.isCompleted &&
-          !t.isSkipped &&
-          t.dueAt != null &&
-          t.dueAt!.isBefore(now);
+    List<FamilyTask> filteredTasks = _allTasks.where((t) {
+      final completed =
+          t.status.toUpperCase() == 'COMPLETED' ||
+          t.status.toUpperCase() == 'DONE';
+      final skipped =
+          t.status.toUpperCase() == 'CANCELLED' ||
+          t.status.toUpperCase() == 'SKIPPED';
+      final isOverdue = !completed && !skipped && t.dueAt.isBefore(now);
       if (_currentFilter == 'OVERDUE') {
         return isOverdue;
       }
       if (_currentFilter == 'COMPLETED') {
-        return t.isCompleted;
+        return completed;
       }
       if (_currentFilter == 'SKIPPED') {
-        return t.isSkipped;
+        return skipped;
       }
       // TODO filter
-      return t.isPending && !isOverdue;
+      return !completed && !skipped && !isOverdue;
     }).toList();
 
     return Scaffold(
@@ -229,28 +230,30 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
     );
   }
 
-  Widget _buildTaskCard(TodayTask task) {
+  Widget _buildTaskCard(FamilyTask task) {
+    final completed =
+        task.status.toUpperCase() == 'COMPLETED' ||
+        task.status.toUpperCase() == 'DONE';
+    final skipped =
+        task.status.toUpperCase() == 'CANCELLED' ||
+        task.status.toUpperCase() == 'SKIPPED';
     Color indicatorColor;
-    if (task.isCompleted) {
+    if (completed) {
       indicatorColor = Colors.green;
-    } else if (task.isSkipped) {
+    } else if (skipped) {
       indicatorColor = const Color(0xFF84736F);
-    } else if (task.isSnoozed) {
-      indicatorColor = const Color(0xFF845143);
-    } else if (task.dueAt?.isBefore(DateTime.now()) == true) {
+    } else if (task.dueAt.isBefore(DateTime.now())) {
       indicatorColor = const Color(0xFFBA1A1A);
     } else {
       indicatorColor = const Color(0xFFA09A95);
     }
 
     String statusText = 'Cần làm';
-    if (task.isCompleted) {
+    if (completed) {
       statusText = 'Đã xong';
-    } else if (task.isSkipped) {
+    } else if (skipped) {
       statusText = 'Bỏ qua';
-    } else if (task.isSnoozed) {
-      statusText = 'Hoãn';
-    } else if (task.dueAt?.isBefore(DateTime.now()) == true) {
+    } else if (task.dueAt.isBefore(DateTime.now())) {
       statusText = 'Quá hạn';
     }
 
@@ -338,7 +341,7 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
                   const SizedBox(height: 4),
                   Builder(
                     builder: (context) {
-                      final dueLocal = task.dueAt?.toLocal();
+                      final DateTime? dueLocal = task.dueAt.toLocal();
                       return Row(
                         children: [
                           const Icon(
@@ -370,7 +373,7 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
     );
   }
 
-  void _showReadOnlyTaskDetails(TodayTask task) {
+  void _showReadOnlyTaskDetails(FamilyTask task) {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
@@ -430,7 +433,7 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
               const SizedBox(height: 12),
               Builder(
                 builder: (context) {
-                  final dueLocal = task.dueAt?.toLocal();
+                  final DateTime? dueLocal = task.dueAt.toLocal();
                   return Row(
                     children: [
                       const Icon(
@@ -463,7 +466,7 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    'Loại: ${task.type.displayLabel}',
+                    'Loại: Công việc gia đình',
                     style: const TextStyle(
                       fontFamily: 'Lexend',
                       fontSize: 14,

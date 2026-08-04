@@ -13,6 +13,9 @@ import com.carebridge.backend.checklist.model.ChecklistTargetSubject;
 import com.carebridge.backend.checklist.policy.ChecklistTemplateVisibilityPolicy;
 import com.carebridge.backend.checklist.repository.ChecklistInstanceRepository;
 import com.carebridge.backend.checklist.repository.ChecklistTaskInstanceRepository;
+import com.carebridge.backend.checklist.today.policy.CareGroupChecklistScopeResolver;
+import com.carebridge.backend.checklist.today.policy.CareGroupChecklistScopeResolver.CareGroupChecklistScope;
+import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
 import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
@@ -35,6 +38,7 @@ import java.util.stream.StreamSupport;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,6 +55,7 @@ public class ChecklistHistoryService {
     private final ChecklistTemplateRepository templateRepository;
     private final MotherJourneyRepository journeyRepository;
     private final BabyProfileRepository babyRepository;
+    private final CareGroupChecklistScopeResolver scopeResolver;
     private final Clock clock;
 
     @Autowired
@@ -60,9 +65,21 @@ public class ChecklistHistoryService {
             ChecklistTaskInstanceRepository taskRepository,
             ChecklistTemplateRepository templateRepository,
             MotherJourneyRepository journeyRepository,
+            BabyProfileRepository babyRepository,
+            CareGroupChecklistScopeResolver scopeResolver) {
+        this(reconciliationService, instanceRepository, taskRepository, templateRepository,
+                journeyRepository, babyRepository, scopeResolver, Clock.systemUTC());
+    }
+
+    public ChecklistHistoryService(
+            ChecklistHistoryReconciliationService reconciliationService,
+            ChecklistInstanceRepository instanceRepository,
+            ChecklistTaskInstanceRepository taskRepository,
+            ChecklistTemplateRepository templateRepository,
+            MotherJourneyRepository journeyRepository,
             BabyProfileRepository babyRepository) {
         this(reconciliationService, instanceRepository, taskRepository, templateRepository,
-                journeyRepository, babyRepository, Clock.systemUTC());
+                journeyRepository, babyRepository, null, Clock.systemUTC());
     }
 
     public ChecklistHistoryService(
@@ -73,12 +90,26 @@ public class ChecklistHistoryService {
             MotherJourneyRepository journeyRepository,
             BabyProfileRepository babyRepository,
             Clock clock) {
+        this(reconciliationService, instanceRepository, taskRepository, templateRepository,
+                journeyRepository, babyRepository, null, clock);
+    }
+
+    public ChecklistHistoryService(
+            ChecklistHistoryReconciliationService reconciliationService,
+            ChecklistInstanceRepository instanceRepository,
+            ChecklistTaskInstanceRepository taskRepository,
+            ChecklistTemplateRepository templateRepository,
+            MotherJourneyRepository journeyRepository,
+            BabyProfileRepository babyRepository,
+            CareGroupChecklistScopeResolver scopeResolver,
+            Clock clock) {
         this.reconciliationService = reconciliationService;
         this.instanceRepository = instanceRepository;
         this.taskRepository = taskRepository;
         this.templateRepository = templateRepository;
         this.journeyRepository = journeyRepository;
         this.babyRepository = babyRepository;
+        this.scopeResolver = scopeResolver;
         this.clock = clock;
     }
 
@@ -95,6 +126,43 @@ public class ChecklistHistoryService {
 
         Page<ChecklistInstance> historyPage = instanceRepository.findOwnerHistory(
                 ownerUserId, targetSubject, PageRequest.of(safePage, safeSize));
+        return materialize(ownerUserId, targetSubject, historyPage);
+    }
+
+    @Transactional
+    public ChecklistHistoryPageResponse listSharedHistory(
+            UUID actorUserId,
+            UUID careGroupId,
+            ChecklistTargetSubject targetSubject,
+            int page,
+            int size) {
+        if (scopeResolver == null) {
+            throw new IllegalStateException("Care-group checklist scope resolver is unavailable");
+        }
+        CareGroupChecklistScope scope = scopeResolver.resolveViewForUpdate(actorUserId, careGroupId);
+        if (scope == null) {
+            throw new BusinessException(HttpStatus.NOT_FOUND, "CHECKLIST_NOT_FOUND",
+                    "Checklist scope not found");
+        }
+        int safePage = Math.max(0, page);
+        int safeSize = clampSize(size);
+        Page<ChecklistInstance> historyPage = instanceRepository.findSharedHistory(
+                scope.ownerUserId(), scope.linkedJourneyId(), scope.linkedBabyProfileId(),
+                targetSubject, PageRequest.of(safePage, safeSize));
+        CareGroupChecklistScope currentScope = scopeResolver.resolveViewForUpdate(actorUserId, careGroupId);
+        if (currentScope == null
+                || !scope.ownerUserId().equals(currentScope.ownerUserId())
+                || !scope.linkedContexts().equals(currentScope.linkedContexts())) {
+            throw new BusinessException(HttpStatus.NOT_FOUND, "CHECKLIST_NOT_FOUND",
+                    "Checklist scope not found");
+        }
+        return materialize(scope.ownerUserId(), targetSubject, historyPage);
+    }
+
+    private ChecklistHistoryPageResponse materialize(
+            UUID ownerUserId,
+            ChecklistTargetSubject targetSubject,
+            Page<ChecklistInstance> historyPage) {
         List<ChecklistInstance> fetchedInstances = historyPage.getContent();
         Map<UUID, ChecklistTemplate> fetchedTemplates = templatesByVersion(fetchedInstances);
         List<ChecklistInstance> instances = fetchedInstances.stream()
@@ -115,7 +183,9 @@ public class ChecklistHistoryService {
                 .map(instance -> toResponse(
                         instance,
                         tasksByInstance.getOrDefault(instance.getId(), List.of()),
-                        templatesByVersion.get(instance.getTemplateVersionId()),
+                        instance.getTemplateVersionId() == null
+                                ? null
+                                : templatesByVersion.get(instance.getTemplateVersionId()),
                         journeyLabels,
                         babyLabels,
                         targetSubject))
@@ -161,7 +231,10 @@ public class ChecklistHistoryService {
     private boolean isVisibleTemplate(
             ChecklistInstance instance,
             Map<UUID, ChecklistTemplate> templatesByVersion) {
-        ChecklistTemplate template = templatesByVersion.get(instance.getTemplateVersionId());
+        UUID templateVersionId = instance.getTemplateVersionId();
+        ChecklistTemplate template = templateVersionId == null
+                ? null
+                : templatesByVersion.get(templateVersionId);
         return ChecklistTemplateVisibilityPolicy.isVisible(instance, template);
     }
 

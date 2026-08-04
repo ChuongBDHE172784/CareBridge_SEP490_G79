@@ -18,6 +18,11 @@ import org.springframework.stereotype.Service;
 public class FcmServiceImpl implements FcmService {
 
     @Override
+    public boolean isReady() {
+        return false;
+    }
+
+    @Override
     public String sendToToken(String fcmToken, String title, String body) {
         // Never write device tokens or health-related notification content to logs.
         log.info("[FCM-STUB] delivery suppressed tokenPresent={} titleLength={} bodyLength={}",

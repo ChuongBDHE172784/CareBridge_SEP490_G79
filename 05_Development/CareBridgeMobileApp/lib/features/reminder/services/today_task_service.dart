@@ -41,11 +41,17 @@ class TodayTaskService {
   final TodayPostRequest _postRequest;
   final String Function() _clientRequestIdFactory;
 
-  Future<TodayTasksSnapshot> loadToday({DateTime? date}) async {
+  Future<TodayTasksSnapshot> loadToday({
+    DateTime? date,
+    String? careGroupId,
+  }) async {
     try {
       final effective = date ?? DateTime.now();
+      final path = careGroupId == null
+          ? '/api/v1/checklists/current/tasks'
+          : '/api/v1/care-groups/$careGroupId/checklists/current/tasks';
       final payload = await _getRequest(
-        '/api/v1/tasks/today',
+        path,
         queryParams: {'date': _dateOnly(effective)},
       );
       final envelope = Map<String, dynamic>.from(payload as Map);
@@ -63,6 +69,11 @@ class TodayTaskService {
     required TodayTaskAction action,
     TodayTaskSkipReason? reason,
   }) async {
+    if (taskKind == TodayTaskKind.checklist &&
+        action != TodayTaskAction.complete &&
+        action != TodayTaskAction.reopen) {
+      throw ArgumentError('Checklist actions support COMPLETE and REOPEN only');
+    }
     if (action == TodayTaskAction.skip && reason == null) {
       throw ArgumentError.value(
         reason,
@@ -70,14 +81,40 @@ class TodayTaskService {
         'SKIP requires a controlled reason',
       );
     }
-    final payload = await _postRequest(
-      '/api/v1/tasks/${taskKind.apiValue}/$taskId/actions',
-      {
-        'action': action.apiValue,
-        'clientRequestId': _clientRequestIdFactory(),
-        'reason': reason?.apiValue,
-      },
-    );
+    final actionPath = taskKind == TodayTaskKind.checklist
+        ? '/api/v1/checklists/tasks/$taskId/actions'
+        // Kept only for older family/reminder clients during the compatibility
+        // window; canonical checklist callers never send these task kinds.
+        : '/api/v1/tasks/${taskKind.apiValue}/$taskId/actions';
+    final payload = await _postRequest(actionPath, {
+      'action': action.apiValue,
+      'clientRequestId': _clientRequestIdFactory(),
+      'reason': reason?.apiValue,
+    });
+    final envelope = Map<String, dynamic>.from(payload as Map);
+    final raw = envelope['data'] is Map ? envelope['data'] as Map : envelope;
+    return Map<String, dynamic>.from(raw);
+  }
+
+  /// Canonical current-stage checklist action. It never accepts a task kind
+  /// discriminator or falls back to a mixed compatibility endpoint.
+  Future<Map<String, dynamic>> performChecklistAction({
+    required String taskId,
+    required TodayTaskAction action,
+    String? careGroupId,
+    String? clientRequestId,
+  }) async {
+    if (action != TodayTaskAction.complete &&
+        action != TodayTaskAction.reopen) {
+      throw ArgumentError('Checklist actions support COMPLETE and REOPEN only');
+    }
+    final path = careGroupId == null
+        ? '/api/v1/checklists/tasks/$taskId/actions'
+        : '/api/v1/care-groups/$careGroupId/checklists/tasks/$taskId/actions';
+    final payload = await _postRequest(path, {
+      'action': action.apiValue,
+      'clientRequestId': clientRequestId ?? _clientRequestIdFactory(),
+    });
     final envelope = Map<String, dynamic>.from(payload as Map);
     final raw = envelope['data'] is Map ? envelope['data'] as Map : envelope;
     return Map<String, dynamic>.from(raw);
@@ -87,13 +124,10 @@ class TodayTaskService {
     required String currentInstanceId,
     String? clientRequestId,
   }) async {
-    final payload = await _postRequest(
-      '/api/v1/checklists/sequences/advance',
-      {
-        'currentInstanceId': currentInstanceId,
-        'clientRequestId': clientRequestId ?? _clientRequestIdFactory(),
-      },
-    );
+    final payload = await _postRequest('/api/v1/checklists/sequences/advance', {
+      'currentInstanceId': currentInstanceId,
+      'clientRequestId': clientRequestId ?? _clientRequestIdFactory(),
+    });
     final envelope = Map<String, dynamic>.from(payload as Map);
     final raw = envelope['data'] is Map ? envelope['data'] as Map : envelope;
     return Map<String, dynamic>.from(raw);

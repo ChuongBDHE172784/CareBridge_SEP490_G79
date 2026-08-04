@@ -1,3 +1,5 @@
+import json
+
 import frontmatter
 
 from app import source_retriever
@@ -126,6 +128,22 @@ def test_diarrhea_dehydration_red():
     assert "RED_DIARRHEA_DEHYDRATION" in response.matchedRules
 
 
+def test_diarrhea_negative_free_text_answer_does_not_trigger_dehydration_red():
+    # Regression: intake.diarrhea is str | None, so a negative answer like "Khong" (no
+    # diarrhea) was truthy in Python's `or intake.diarrhea` check and could wrongly satisfy
+    # RED_DIARRHEA_DEHYDRATION together with an unrelated dehydration sign. Only the
+    # normalized "diarrhea" symptom code (from symptomList/parentFreeText) should count.
+    from app.risk_rules import apply_red_flag_rules
+
+    intake = make_request(
+        symptomList=[],
+        diarrhea="Khong",
+        dehydrationSigns=["moi kho", "tieu it"],
+    )
+    red_flags, matched_rules = apply_red_flag_rules(intake, ["mild_dehydration"])
+    assert "RED_DIARRHEA_DEHYDRATION" not in matched_rules
+
+
 def test_missing_child_age_need_more_info():
     response = run_triage(make_request(childAgeMonths=None))
     assert response.riskLevel == "NEED_MORE_INFO"
@@ -167,6 +185,47 @@ def test_non_whitelisted_source_is_filtered(monkeypatch, tmp_path):
     assert source_retriever.load_sources() == []
     response = run_triage(make_request(symptomList=["co giat"], seizure=True))
     assert response.citations == []
+
+
+def test_maternal_stage_local_kb_source_is_not_blocked_by_age_filter(monkeypatch, tmp_path):
+    # Regression: load_sources() used to require _applies_to_age(childAgeMonths), but
+    # maternal-stage requests never have a childAgeMonths (mothers aren't children),
+    # so local KB citations were unconditionally empty for every maternal stage.
+    post = frontmatter.Post(
+        "Dau bung khi mang thai co the la dau hieu can theo doi.",
+        id="MATERNAL_ABDOMINAL_PAIN_001",
+        title="Dau bung khi mang thai",
+        organization="WHO",
+        url="https://www.who.int/maternal-health/abdominal-pain",
+        domain="who.int",
+        topic="abdominal_pain",
+        # Wide enough to cover the INFANT@12-months check below too, so that check
+        # isolates the applicableStages filter instead of accidentally passing/failing
+        # on an unrelated age-range mismatch.
+        ageRange="0-59 months",
+        riskLevels=["YELLOW"],
+        symptoms=["abdominal_pain"],
+        applicableStages=["PREGNANCY"],
+        sourceStatus="APPROVED",
+    )
+    (tmp_path / "maternal.md").write_text(frontmatter.dumps(post), encoding="utf-8")
+    monkeypatch.setattr(source_retriever, "MEDICAL_SOURCES_DIR", tmp_path)
+
+    sources = source_retriever.load_sources(stage="PREGNANCY", child_age_months=None)
+    assert [source.id for source in sources] == ["MATERNAL_ABDOMINAL_PAIN_001"]
+
+    # Same source, same age range: only applicableStages=["PREGNANCY"] should
+    # exclude it from an INFANT-stage lookup (age range alone would have matched).
+    assert source_retriever.load_sources(stage="INFANT", child_age_months=12) == []
+
+
+def test_attach_citations_blocks_pending_review_not_from_realtime_search():
+    # Defense-in-depth: only realtime_official_search-originated PENDING_REVIEW
+    # sources are user-facing; any other PENDING_REVIEW origin stays blocked even
+    # though it is otherwise domain-approved.
+    source = official_source(symptoms=["fever"], url="https://www.who.int/x")
+    source = source.model_copy(update={"retrievedBy": "some_other_pipeline"})
+    assert source_retriever.attach_citations([source], ["fever"]) == []
 
 
 def test_attach_citations_filters_non_whitelisted_source():
@@ -223,7 +282,7 @@ def test_immediate_red_bypasses_realtime_search(monkeypatch, tmp_path):
     assert response.warning
 
 
-def test_yellow_realtime_who_source_attaches_pending_citation(monkeypatch, tmp_path):
+def test_yellow_realtime_who_source_attaches_as_transparent_pending_citation(monkeypatch, tmp_path):
     realtime_source = official_source(
         symptoms=["fever"],
         url="https://www.who.int/publications/i/item/978-92-4-154837-3",
@@ -237,8 +296,13 @@ def test_yellow_realtime_who_source_attaches_pending_citation(monkeypatch, tmp_p
     response = run_triage(make_request(symptomList=["sot"], temperatureC=38.2))
 
     assert response.riskLevel == "YELLOW"
-    # PENDING_REVIEW sources are never user-facing evidence.
-    assert response.citations == []
+    # Realtime-discovered, relevance-validated sources are shown directly to the user.
+    # sourceStatus stays PENDING_REVIEW and retrievalMode stays REALTIME so the
+    # response is honest about provenance (not manually clinician-approved yet).
+    assert len(response.citations) == 1
+    assert response.citations[0].sourceStatus == "PENDING_REVIEW"
+    assert response.citations[0].retrievalMode == "REALTIME"
+    # Still cached for the admin evidence-source review queue.
     assert cached == [realtime_source]
 
 
@@ -326,7 +390,9 @@ def test_realtime_search_does_not_change_risk(monkeypatch, tmp_path):
     response = run_triage(make_request(symptomList=["ho"], temperatureC=None))
 
     assert response.riskLevel == "YELLOW"
-    assert response.citations == []
+    # Citations (including realtime-discovered ones) are evidence/explanation only —
+    # they must never influence the deterministic risk level.
+    assert len(response.citations) == 1
 
 
 def test_build_search_queries_are_site_restricted():
@@ -334,6 +400,130 @@ def test_build_search_queries_are_site_restricted():
     assert queries
     assert all(query.startswith("site:") for query in queries)
     assert all("child fever official medical source" in query for query in queries)
+
+
+def test_build_search_queries_uses_pregnant_woman_term_for_maternal_stage():
+    # Regression: the query used to hardcode "child" for every stage, so a
+    # maternal-stage search for the mother's own symptoms actually searched for
+    # pediatric content.
+    pediatric_queries = official_source_searcher.build_search_queries(
+        ["abdominal_pain"], {"who.int"}, stage="INFANT",
+    )
+    maternal_queries = official_source_searcher.build_search_queries(
+        ["abdominal_pain"], {"who.int"}, stage="PREGNANCY",
+    )
+    assert all("child abdominal pain" in query for query in pediatric_queries)
+    assert all("pregnant woman abdominal pain" in query for query in maternal_queries)
+    assert all("child" not in query for query in maternal_queries)
+
+
+def test_build_search_queries_distinguishes_preconception_pregnancy_postpartum():
+    # Regression: an earlier fix used "pregnant woman" for ALL maternal stages,
+    # which is wrong for PRECONCEPTION (not yet pregnant) and POSTPARTUM (no
+    # longer pregnant) — each must search for its own distinct subject term.
+    preconception = official_source_searcher.build_search_queries(
+        ["headache"], {"who.int"}, stage="PRECONCEPTION",
+    )
+    pregnancy = official_source_searcher.build_search_queries(
+        ["headache"], {"who.int"}, stage="PREGNANCY",
+    )
+    postpartum = official_source_searcher.build_search_queries(
+        ["headache"], {"who.int"}, stage="POSTPARTUM",
+    )
+    assert all("woman planning pregnancy headache" in query for query in preconception)
+    assert all("pregnant woman headache" in query for query in pregnancy)
+    assert all("postpartum woman headache" in query for query in postpartum)
+
+
+def test_search_web_returns_empty_when_google_search_not_configured(monkeypatch):
+    # Regression guard for the DuckDuckGo-scraping removal: with no search API
+    # configured (the default), realtime search must fail closed to "no results"
+    # rather than attempting an unreliable/CAPTCHA-blocked scrape.
+    monkeypatch.setattr(official_source_searcher, "GOOGLE_SEARCH_API_KEY", "")
+    monkeypatch.setattr(official_source_searcher, "GOOGLE_SEARCH_ENGINE_ID", "test-cx")
+
+    def fail_if_called(*_args, **_kwargs):
+        raise AssertionError("urlopen must not be called without a configured search API")
+
+    monkeypatch.setattr(official_source_searcher, "urlopen", fail_if_called)
+    assert official_source_searcher._search_web("site:who.int fever") == []
+
+
+def test_search_web_parses_google_custom_search_response(monkeypatch):
+    monkeypatch.setattr(official_source_searcher, "GOOGLE_SEARCH_API_KEY", "test-key")
+    monkeypatch.setattr(official_source_searcher, "GOOGLE_SEARCH_ENGINE_ID", "test-cx")
+
+    payload = json.dumps({
+        "items": [
+            {
+                "title": "WHO fever guidance",
+                "link": "https://www.who.int/fever-guidance",
+                "snippet": "Fever in children...",
+            },
+            # Missing "link" must be skipped rather than raising.
+            {"title": "No link here"},
+        ]
+    }).encode("utf-8")
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self, _limit):
+            return payload
+
+    monkeypatch.setattr(official_source_searcher, "urlopen", lambda *_a, **_k: FakeResponse())
+
+    hits = official_source_searcher._search_web("site:who.int fever")
+    assert len(hits) == 1
+    assert hits[0].url == "https://www.who.int/fever-guidance"
+    assert hits[0].title == "WHO fever guidance"
+
+
+def test_search_web_handles_malformed_items_field(monkeypatch):
+    # Regression: a well-formed JSON response where "items" is present but not a
+    # list (e.g. the API changes shape, or returns an error object under a 200)
+    # must fail closed to no hits rather than raising TypeError.
+    monkeypatch.setattr(official_source_searcher, "GOOGLE_SEARCH_API_KEY", "test-key")
+    monkeypatch.setattr(official_source_searcher, "GOOGLE_SEARCH_ENGINE_ID", "test-cx")
+    payload = json.dumps({"items": {"unexpected": "shape"}}).encode("utf-8")
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self, _limit):
+            return payload
+
+    monkeypatch.setattr(official_source_searcher, "urlopen", lambda *_a, **_k: FakeResponse())
+    assert official_source_searcher._search_web("site:who.int fever") == []
+
+
+def test_realtime_cache_key_is_scoped_by_stage(monkeypatch):
+    # Regression: the search cache key omitted stage, so a pediatric hit for a
+    # given symptom code could be served back for a maternal request (or vice
+    # versa) with the same normalized symptom codes.
+    official_source_searcher._SEARCH_CACHE.clear()
+    calls = {"count": 0}
+
+    def fake_web(_query, _deadline):
+        calls["count"] += 1
+        return []
+
+    monkeypatch.setattr(official_source_searcher, "_search_web", fake_web)
+
+    official_source_searcher.realtime_official_search(["abdominal_pain"], ["YELLOW_ABDOMINAL"], stage="INFANT")
+    after_pediatric = calls["count"]
+    assert after_pediatric > 0
+
+    official_source_searcher.realtime_official_search(["abdominal_pain"], ["YELLOW_ABDOMINAL"], stage="PREGNANCY")
+    assert calls["count"] > after_pediatric
 
 
 def test_realtime_empty_result_is_not_cached(monkeypatch):

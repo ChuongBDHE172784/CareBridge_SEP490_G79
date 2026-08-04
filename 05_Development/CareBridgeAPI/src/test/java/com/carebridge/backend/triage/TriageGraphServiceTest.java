@@ -331,6 +331,73 @@ class TriageGraphServiceTest {
         }
     }
 
+    // Regression fix: UniversalMaternalRedRules previously had no "ma" ("but") clause-boundary
+    // word, so the leading "không" (no) negation scope leaked across "mà" and swallowed the
+    // later, affirmed red sign — a missed RED. Parity with Python's risk_rules.py clause split.
+    @Test
+    void clauseBoundaryMaAfterNegation_shouldStillDetectLaterRedSign() {
+        for (TriageStage stage : List.of(TriageStage.PRECONCEPTION, TriageStage.PREGNANCY, TriageStage.POSTPARTUM)) {
+            ChildTriageResult result = graph.run(RunIntakeRequest.builder()
+                    .stage(stage)
+                    .duration("vừa xuất hiện")
+                    .parentFreeText("Tôi không khó thở mà ngất")
+                    .build());
+
+            assertThat(result.getRiskLevel()).as(stage.name()).isEqualTo("RED");
+            assertThat(result.getMatchedRules()).as(stage.name())
+                    .containsExactly("RED_" + stage.name() + "_ALTERED_CONSCIOUSNESS");
+        }
+    }
+
+    // Regression fix: CLAUSE_BOUNDARIES had no multi-word "tuy nhien" ("however") entry; it is
+    // now folded into the same pipe-delimiter treatment as punctuation before scanning.
+    @Test
+    void clauseBoundaryTuyNhienAfterNegation_shouldStillDetectLaterRedSign() {
+        for (TriageStage stage : List.of(TriageStage.PRECONCEPTION, TriageStage.PREGNANCY, TriageStage.POSTPARTUM)) {
+            ChildTriageResult result = graph.run(RunIntakeRequest.builder()
+                    .stage(stage)
+                    .duration("vừa xuất hiện")
+                    .parentFreeText("Tôi không khó thở, tuy nhiên tôi bị co giật")
+                    .build());
+
+            assertThat(result.getRiskLevel()).as(stage.name()).isEqualTo("RED");
+            assertThat(result.getMatchedRules()).as(stage.name())
+                    .containsExactly("RED_" + stage.name() + "_SEIZURE");
+        }
+    }
+
+    // Regression fix: NEGATIONS previously omitted "never", so "I never had difficulty
+    // breathing" was misread as an affirmed red sign instead of a negated one (false RED).
+    @Test
+    void neverNegationWord_shouldKeepRedSignSuppressed() {
+        for (TriageStage stage : List.of(TriageStage.PRECONCEPTION, TriageStage.PREGNANCY, TriageStage.POSTPARTUM)) {
+            ChildTriageResult result = graph.run(RunIntakeRequest.builder()
+                    .stage(stage)
+                    .duration("1 ngày")
+                    .parentFreeText("I never had difficulty breathing")
+                    .build());
+
+            assertThat(result.getStatus()).as(stage.name()).isEqualTo("NEED_MORE_INFO");
+            assertThat(result.getRiskLevel()).as(stage.name()).isNull();
+        }
+    }
+
+    // Regression fix: NEGATIONS previously omitted "cha" (colloquial Vietnamese negation, e.g.
+    // "chả khó thở"), so it was misread as an affirmed red sign instead of a negated one.
+    @Test
+    void chaNegationWord_shouldKeepRedSignSuppressed() {
+        for (TriageStage stage : List.of(TriageStage.PRECONCEPTION, TriageStage.PREGNANCY, TriageStage.POSTPARTUM)) {
+            ChildTriageResult result = graph.run(RunIntakeRequest.builder()
+                    .stage(stage)
+                    .duration("1 ngày")
+                    .parentFreeText("Tôi chả khó thở")
+                    .build());
+
+            assertThat(result.getStatus()).as(stage.name()).isEqualTo("NEED_MORE_INFO");
+            assertThat(result.getRiskLevel()).as(stage.name()).isNull();
+        }
+    }
+
     @Test
     void preconceptionAndPregnancyParitySynonyms_shouldEmitExactlyOneStageSpecificRule() {
         List<MaternalDangerVector> vectors = List.of(

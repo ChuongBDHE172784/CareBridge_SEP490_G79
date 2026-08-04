@@ -151,6 +151,7 @@ class AuthService {
       throw const FormatException('Federated response is incomplete');
     }
     await _tokenPersister(auth);
+    unawaited(_postLoginAction());
     return auth;
   }
 
@@ -301,7 +302,7 @@ class AuthService {
       userId: auth.user.id,
       role: auth.user.role,
     );
-    unawaited(FcmService.instance.registerToken());
+    unawaited(_postLoginAction());
     return auth;
   }
 
@@ -328,6 +329,7 @@ class AuthService {
       userId: auth.user.id,
       role: auth.user.role,
     );
+    unawaited(_postLoginAction());
     return auth;
   }
 

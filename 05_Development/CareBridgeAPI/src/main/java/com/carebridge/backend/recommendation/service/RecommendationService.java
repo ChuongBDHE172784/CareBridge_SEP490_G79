@@ -61,6 +61,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.carebridge.backend.family.repository.CareGroupMemberRepository;
+import com.carebridge.backend.family.repository.CareGroupRepository;
 
 @Service
 @Slf4j
@@ -82,6 +84,10 @@ public class RecommendationService implements RecommendationConsentCleanup {
     private final RecommendationRanker ranker;
     private final Clock clock;
     private final boolean enabled;
+    @Autowired(required = false)
+    private CareGroupMemberRepository careGroupMemberRepository;
+    @Autowired(required = false)
+    private CareGroupRepository careGroupRepository;
 
     @Autowired
     public RecommendationService(
@@ -551,6 +557,22 @@ public class RecommendationService implements RecommendationConsentCleanup {
     private MotherJourney canonical(UUID ownerUserId, boolean lock) {
         Optional<MotherJourney> journey = lock ? journeyRepository.findCanonicalForUpdate(ownerUserId)
                 : journeyRepository.findCanonical(ownerUserId);
+        if (journey.isEmpty() && careGroupMemberRepository != null && careGroupRepository != null) {
+            var memberships = careGroupMemberRepository.findByUserIdAndInviteStatus(
+                    ownerUserId, com.carebridge.backend.family.entity.InviteStatus.ACCEPTED);
+            for (var member : memberships) {
+                var groupOpt = careGroupRepository.findById(member.getCareGroupId());
+                if (groupOpt.isPresent()) {
+                    UUID groupOwnerId = groupOpt.get().getOwnerUserId();
+                    var ownerJourney = lock ? journeyRepository.findCanonicalForUpdate(groupOwnerId)
+                            : journeyRepository.findCanonical(groupOwnerId);
+                    if (ownerJourney.isPresent()) {
+                        journey = ownerJourney;
+                        break;
+                    }
+                }
+            }
+        }
         MotherJourney value = journey.orElseThrow(RecommendationException::journeyRequired);
         if (value.getJourneyType() == JourneyType.BABY_CARE) throw RecommendationException.journeyRequired();
         return value;

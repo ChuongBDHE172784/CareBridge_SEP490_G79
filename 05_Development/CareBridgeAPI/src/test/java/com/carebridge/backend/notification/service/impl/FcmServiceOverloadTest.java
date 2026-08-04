@@ -13,6 +13,7 @@ class FcmServiceOverloadTest {
     void disabledStubAcceptsDataOverloadWithoutBreakingLegacyMethods() {
         FcmServiceImpl service = new FcmServiceImpl();
 
+        assertThat(service.isReady()).isFalse();
         assertThat(service.sendWithRetry(
                         "token",
                         "Title",

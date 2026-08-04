@@ -26,6 +26,14 @@ import com.carebridge.backend.checklist.today.policy.UnifiedTaskMutationPolicy;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
 import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
 import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
+import com.carebridge.backend.family.entity.CareGroup;
+import com.carebridge.backend.family.entity.CareGroupMember;
+import com.carebridge.backend.family.entity.CareGroupStatus;
+import com.carebridge.backend.family.entity.GroupMemberRole;
+import com.carebridge.backend.family.entity.InviteStatus;
+import com.carebridge.backend.family.policy.CareGroupAuthorizationPolicy;
+import com.carebridge.backend.family.repository.CareGroupMemberRepository;
+import com.carebridge.backend.family.repository.CareGroupRepository;
 import com.carebridge.backend.journey.entity.JourneyStatus;
 import com.carebridge.backend.journey.entity.JourneyType;
 import com.carebridge.backend.journey.entity.MotherJourney;
@@ -91,6 +99,67 @@ class UserCreatedChecklistTaskServiceTest {
                         null, actor, "MOTHER", null, "JOURNEY", journeyId));
         lockOrder.verify(instances).saveAndFlush(any());
         lockOrder.verify(tasks).findAllForUpdateByChecklistInstanceIdOrderByTaskKey(any());
+    }
+
+    @Test
+    void createsPrivateFamilyTaskInsideTheSelectedGroupContext() {
+        UUID actor = UUID.randomUUID();
+        UUID owner = UUID.randomUUID();
+        UUID groupId = UUID.randomUUID();
+        UUID journeyId = UUID.randomUUID();
+        UUID clientTaskId = UUID.randomUUID();
+        MotherJourneyRepository journeys = mock(MotherJourneyRepository.class);
+        BabyProfileRepository babies = mock(BabyProfileRepository.class);
+        ChecklistInstanceRepository instances = mock(ChecklistInstanceRepository.class);
+        ChecklistTaskInstanceRepository tasks = mock(ChecklistTaskInstanceRepository.class);
+        UnifiedTaskMutationPolicy mutationPolicy = mock(UnifiedTaskMutationPolicy.class);
+        UnifiedTaskAccessPolicy accessPolicy = mock(UnifiedTaskAccessPolicy.class);
+        AuditService audit = mock(AuditService.class);
+        ChecklistTemplateRepository templates = mock(ChecklistTemplateRepository.class);
+        CareGroupRepository groups = mock(CareGroupRepository.class);
+        CareGroupMemberRepository members = mock(CareGroupMemberRepository.class);
+        CareGroupAuthorizationPolicy permissions = mock(CareGroupAuthorizationPolicy.class);
+        UserCreatedChecklistTaskService service = new UserCreatedChecklistTaskService(
+                journeys, babies, instances, tasks, mutationPolicy, accessPolicy, audit, templates,
+                groups, members, permissions);
+
+        when(groups.findByIdAndStatus(groupId, CareGroupStatus.ACTIVE)).thenReturn(Optional.of(
+                CareGroup.builder().id(groupId).ownerUserId(owner).status(CareGroupStatus.ACTIVE)
+                        .linkedJourneyId(journeyId).build()));
+        when(members.findByCareGroupIdAndUserId(groupId, actor)).thenReturn(Optional.of(
+                CareGroupMember.builder().careGroupId(groupId).userId(actor)
+                        .memberRole(GroupMemberRole.MEMBER).inviteStatus(InviteStatus.ACCEPTED).build()));
+        when(permissions.hasPermission(groupId, actor,
+                com.carebridge.backend.family.entity.PermissionFlag.CHECKLIST_VIEW)).thenReturn(true);
+        when(journeys.findByIdAndOwnerUserIdAndStatus(journeyId, owner, JourneyStatus.ACTIVE))
+                .thenReturn(Optional.of(MotherJourney.builder().id(journeyId).ownerUserId(owner)
+                        .journeyType(JourneyType.PREGNANCY).status(JourneyStatus.ACTIVE).build()));
+        when(instances.findByDistributionKey(any())).thenReturn(Optional.empty());
+        when(instances.saveAndFlush(any())).thenAnswer(invocation -> {
+            ChecklistInstance value = invocation.getArgument(0);
+            value.setId(UUID.randomUUID());
+            return value;
+        });
+        when(tasks.findAllForUpdateByChecklistInstanceIdOrderByTaskKey(any())).thenReturn(List.of());
+        when(tasks.saveAndFlush(any())).thenAnswer(invocation -> {
+            ChecklistTaskInstance value = invocation.getArgument(0);
+            value.setId(UUID.randomUUID());
+            return value;
+        });
+
+        var response = service.create(new AddChecklistItemRequest(
+                null, null, "Nhắc mẹ uống nước", ChecklistCategory.GENERAL, 0,
+                ChecklistTargetSubject.MOTHER, clientTaskId, groupId), actor);
+
+        ArgumentCaptor<ChecklistInstance> parent = ArgumentCaptor.forClass(ChecklistInstance.class);
+        verify(instances).saveAndFlush(parent.capture());
+        assertThat(parent.getValue().getRecipientRole())
+                .isEqualTo(com.carebridge.backend.checklist.model.ChecklistRecipientRole.FAMILY);
+        assertThat(parent.getValue().getRecipientUserId()).isEqualTo(actor);
+        assertThat(parent.getValue().getCareGroupId()).isEqualTo(groupId);
+        assertThat(parent.getValue().getContextOwnerUserId()).isEqualTo(owner);
+        assertThat(parent.getValue().getCareContextId()).isEqualTo(journeyId);
+        assertThat(response.journeyId()).isEqualTo(journeyId);
     }
 
     @Test

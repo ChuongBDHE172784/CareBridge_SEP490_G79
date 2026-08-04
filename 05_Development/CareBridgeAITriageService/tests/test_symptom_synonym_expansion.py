@@ -140,6 +140,18 @@ def test_tc09_sot_sinh_sich_already_normalizes_to_fever(text):
 
 
 # ---------------------------------------------------------------------------
+# Java fallback parity fix — "seizures"/"convulsions" plural aliases added to keep the Java
+# deterministic fallback's word-boundary rewrite from missing red-flag detection; mirrored
+# here so the Python primary engine does not lag behind on the same English inflections.
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("text", ["the baby had seizures", "repeated convulsions overnight"])
+def test_plural_seizure_aliases_normalize_to_seizure(text):
+    codes = normalize_symptoms(make_free_text_request(text))
+    assert "seizure" in codes, f"plural alias '{text}' must map to seizure"
+
+
+# ---------------------------------------------------------------------------
 # BR-SAFETY guard — S1 stays deferred: no new canonical code may appear (ADR-TSSE-001 / C3)
 # ---------------------------------------------------------------------------
 

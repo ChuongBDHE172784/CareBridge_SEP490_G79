@@ -3,6 +3,7 @@ package com.carebridge.backend.family.service.impl;
 import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.family.dto.SharedDataItemDto;
 import com.carebridge.backend.family.dto.SharedDataResponse;
+import com.carebridge.backend.family.entity.CareGroup;
 import com.carebridge.backend.family.entity.CareTask;
 import com.carebridge.backend.family.entity.PermissionFlag;
 import com.carebridge.backend.family.entity.SharedDataCategory;
@@ -13,6 +14,8 @@ import com.carebridge.backend.family.service.ISharedDataService;
 import com.carebridge.backend.notification.entity.NotificationRecord;
 import com.carebridge.backend.notification.entity.NotificationType;
 import com.carebridge.backend.notification.repository.NotificationRecordRepository;
+import com.carebridge.backend.reminder.entity.Reminder;
+import com.carebridge.backend.reminder.repository.ReminderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -31,6 +34,7 @@ public class SharedDataServiceImpl implements ISharedDataService {
 
     private final CareGroupRepository groupRepository;
     private final CareTaskRepository taskRepository;
+    private final ReminderRepository reminderRepository;
     private final NotificationRecordRepository notificationRepository;
     private final CareGroupAuthorizationPolicy accessPolicy;
 
@@ -38,7 +42,7 @@ public class SharedDataServiceImpl implements ISharedDataService {
     public SharedDataResponse getSharedData(UUID groupId, UUID callerId,
                                              SharedDataCategory category, int page, int size) {
         // Step 1: group must exist
-        groupRepository.findById(groupId)
+        CareGroup group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "FAM-005",
                         "Care group not found: " + groupId));
 
@@ -59,7 +63,7 @@ public class SharedDataServiceImpl implements ISharedDataService {
 
         // Step 4: query data per category
         List<SharedDataItemDto> items = switch (category) {
-            case CALENDAR -> getCalendarItems(groupId);
+            case CALENDAR -> getCalendarItems(groupId, group);
             case LOGS -> getLogItems(groupId);
             case ALERTS -> getAlertItems(groupId, callerId, page, size);
         };
@@ -81,10 +85,35 @@ public class SharedDataServiceImpl implements ISharedDataService {
         };
     }
 
-    private List<SharedDataItemDto> getCalendarItems(UUID groupId) {
-        return taskRepository.findByCareGroupId(groupId).stream()
+    private List<SharedDataItemDto> getCalendarItems(UUID groupId, CareGroup group) {
+        List<SharedDataItemDto> items = taskRepository.findByCareGroupId(groupId).stream()
                 .map(this::taskToSharedItem)
                 .collect(Collectors.toList());
+        if (reminderRepository != null
+                && (group.getLinkedJourneyId() != null || group.getLinkedBabyProfileId() != null)) {
+            items.addAll(reminderRepository.findSharedAppointments(
+                            group.getOwnerUserId(),
+                            group.getLinkedJourneyId(),
+                            group.getLinkedBabyProfileId()).stream()
+                    .map(this::appointmentToSharedItem)
+                    .toList());
+        }
+        return items.stream()
+                .sorted(Comparator.comparing(
+                        SharedDataItemDto::getOccurredAt,
+                        Comparator.nullsLast(Comparator.naturalOrder())))
+                .toList();
+    }
+
+    private SharedDataItemDto appointmentToSharedItem(Reminder reminder) {
+        return SharedDataItemDto.builder()
+                .itemId(reminder.getId())
+                .itemType("APPOINTMENT")
+                .title(reminder.getTitle())
+                .summary("APPOINTMENT")
+                .occurredAt(reminder.getScheduledAt())
+                .status(reminder.getStatus() == null ? null : reminder.getStatus().name())
+                .build();
     }
 
     private SharedDataItemDto taskToSharedItem(CareTask task) {

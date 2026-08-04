@@ -18,10 +18,14 @@ import com.carebridge.backend.family.repository.CareGroupMemberRepository;
 import com.carebridge.backend.family.repository.CareGroupRepository;
 import com.carebridge.backend.family.repository.CareTaskRepository;
 import com.carebridge.backend.family.service.impl.CareGroupServiceImpl;
+import com.carebridge.backend.journey.entity.JourneyStatus;
+import com.carebridge.backend.journey.entity.MotherJourney;
+import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.security.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -43,11 +47,13 @@ class CareGroupServiceImplTest {
     @Mock private UserRepository userRepository;
     @Mock private AuditService auditService;
     @Mock private CareTaskRepository taskRepository;
+    @Mock private MotherJourneyRepository journeyRepository;
     @InjectMocks private CareGroupServiceImpl careGroupService;
 
     private static final UUID CALLER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
     private static final UUID GROUP_ID  = UUID.fromString("00000000-0000-0000-0000-000000000002");
     private static final UUID INVITEE_ID = UUID.fromString("00000000-0000-0000-0000-000000000003");
+    private static final UUID JOURNEY_ID = UUID.fromString("00000000-0000-0000-0000-000000000004");
 
     private CreateCareGroupRequest makeRequest() {
         CreateCareGroupRequest req = new CreateCareGroupRequest();
@@ -121,6 +127,29 @@ class CareGroupServiceImplTest {
                 m.getMemberRole() == GroupMemberRole.OWNER &&
                 m.getInviteStatus() == InviteStatus.ACCEPTED &&
                 m.getUserId().equals(CALLER_ID)));
+    }
+
+    @Test
+    void createCareGroup_withoutContextAutoLinksOwnersLatestActiveJourney() {
+        when(groupRepository.countByOwnerUserIdAndStatus(CALLER_ID, CareGroupStatus.ACTIVE)).thenReturn(0L);
+        when(journeyRepository.findFirstByOwnerUserIdAndStatusOrderByCreatedAtDesc(
+                CALLER_ID, JourneyStatus.ACTIVE))
+                .thenReturn(Optional.of(MotherJourney.builder().id(JOURNEY_ID).build()));
+        when(groupRepository.save(any(CareGroup.class)))
+                .thenAnswer(invocation -> {
+                    CareGroup candidate = invocation.getArgument(0);
+                    candidate.setId(GROUP_ID);
+                    return candidate;
+                });
+        when(memberRepository.save(any())).thenReturn(ownerMember(GROUP_ID));
+        when(memberRepository.countByCareGroupId(any())).thenReturn(1L);
+
+        careGroupService.createCareGroup(makeRequest(), CALLER_ID);
+
+        ArgumentCaptor<CareGroup> group = ArgumentCaptor.forClass(CareGroup.class);
+        verify(groupRepository).save(group.capture());
+        assertThat(group.getValue().getLinkedJourneyId()).isEqualTo(JOURNEY_ID);
+        assertThat(group.getValue().getLinkedBabyProfileId()).isNull();
     }
 
     @Test
@@ -291,8 +320,10 @@ class CareGroupServiceImplTest {
     void acceptInvite_pendingInvite_setsAcceptedAndJoinedAt() {
         CareGroupMember pending = CareGroupMember.builder()
                 .id(UUID.randomUUID()).careGroupId(GROUP_ID).userId(INVITEE_ID)
-                .memberRole(GroupMemberRole.MEMBER).inviteStatus(InviteStatus.PENDING).build();
-        when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, INVITEE_ID)).thenReturn(Optional.of(pending));
+                .memberRole(GroupMemberRole.MEMBER).inviteStatus(InviteStatus.PENDING)
+                .inviteToken("invite-token").build();
+        when(memberRepository.findFirstByCareGroupIdAndUserIdAndInviteStatus(
+                GROUP_ID, INVITEE_ID, InviteStatus.PENDING)).thenReturn(Optional.of(pending));
         when(memberRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         CareGroupMemberDto result = careGroupService.acceptInvite(GROUP_ID, INVITEE_ID);
@@ -303,7 +334,8 @@ class CareGroupServiceImplTest {
 
     @Test
     void acceptInvite_noPendingInvite_throwsNotFound() {
-        when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, INVITEE_ID)).thenReturn(Optional.empty());
+        when(memberRepository.findFirstByCareGroupIdAndUserIdAndInviteStatus(
+                GROUP_ID, INVITEE_ID, InviteStatus.PENDING)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> careGroupService.acceptInvite(GROUP_ID, INVITEE_ID))
                 .isInstanceOf(BusinessException.class)
@@ -314,8 +346,10 @@ class CareGroupServiceImplTest {
     void declineInvite_pendingInvite_setsRevoked() {
         CareGroupMember pending = CareGroupMember.builder()
                 .id(UUID.randomUUID()).careGroupId(GROUP_ID).userId(INVITEE_ID)
-                .memberRole(GroupMemberRole.MEMBER).inviteStatus(InviteStatus.PENDING).build();
-        when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, INVITEE_ID)).thenReturn(Optional.of(pending));
+                .memberRole(GroupMemberRole.MEMBER).inviteStatus(InviteStatus.PENDING)
+                .inviteToken("invite-token").build();
+        when(memberRepository.findFirstByCareGroupIdAndUserIdAndInviteStatus(
+                GROUP_ID, INVITEE_ID, InviteStatus.PENDING)).thenReturn(Optional.of(pending));
         when(memberRepository.save(pending)).thenReturn(pending);
 
         careGroupService.declineInvite(GROUP_ID, INVITEE_ID);
@@ -359,7 +393,8 @@ class CareGroupServiceImplTest {
     void listMyInvitations_returnsPendingOnly() {
         CareGroupMember pending = CareGroupMember.builder()
                 .careGroupId(GROUP_ID).userId(INVITEE_ID)
-                .memberRole(GroupMemberRole.MEMBER).inviteStatus(InviteStatus.PENDING).build();
+                .memberRole(GroupMemberRole.MEMBER).inviteStatus(InviteStatus.PENDING)
+                .inviteToken("invite-token").build();
         when(memberRepository.findByUserIdAndInviteStatus(INVITEE_ID, InviteStatus.PENDING))
                 .thenReturn(List.of(pending));
         when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(savedGroup(GROUP_ID)));

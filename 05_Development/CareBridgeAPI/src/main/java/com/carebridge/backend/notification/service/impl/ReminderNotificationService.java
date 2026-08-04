@@ -59,14 +59,87 @@ public class ReminderNotificationService implements IReminderNotificationService
 
     @Override
     @Transactional
+    public NotificationRecordResponse sendReminderScheduleNotification(
+            UUID scheduleId, UUID jobId, UUID userId, String title, String body,
+            java.time.LocalDate occurrenceDate, java.time.LocalTime localTime, String timeZone) {
+        if (!preferenceRepository.isPushEnabled(userId, NotificationType.REMINDER)) {
+            return null;
+        }
+        NotificationRecord existing = notificationRecordRepository
+                .findReminderScheduleByJobId(jobId).orElse(null);
+        if (existing != null
+                && (existing.getStatus() == NotificationRecordStatus.SENT
+                || existing.getStatus() == NotificationRecordStatus.DELIVERED)) {
+            return toResponse(existing);
+        }
+
+        Map<String, String> metadata = new LinkedHashMap<>();
+        metadata.put("type", "REMINDER_SCHEDULE");
+        metadata.put("referenceType", "REMINDER_SCHEDULE");
+        metadata.put("referenceId", scheduleId.toString());
+        metadata.put("scheduleJobId", jobId.toString());
+        metadata.put("scheduleId", scheduleId.toString());
+        metadata.put("occurrenceDate", occurrenceDate.toString());
+        metadata.put("localTime", localTime.toString());
+        metadata.put("timeZone", timeZone);
+        metadata.put("route", "/reminder-schedules/" + scheduleId);
+        NotificationRecord record = existing != null ? existing : baseRecord(
+                userId, NotificationType.REMINDER, title, body, scheduleId, "REMINDER_SCHEDULE");
+        record.setTitle(title);
+        record.setBody(body);
+        record.setReferenceId(scheduleId);
+        record.setReferenceType("REMINDER_SCHEDULE");
+        record.setStatus(NotificationRecordStatus.PROCESSING);
+        record.setFailedAt(null);
+        record.setSentAt(null);
+        record.setFcmMessageId(null);
+        record.setAttemptCount(0);
+        record.setMetadata(metadata);
+        List<DeviceToken> tokens = deviceTokenRepository.findByUserIdAndActiveTrue(userId);
+        if (tokens.isEmpty()) {
+            record.setStatus(NotificationRecordStatus.FAILED);
+            record.setAttemptCount(0);
+            record.setFailedAt(Instant.now());
+            return saveAndAudit(record);
+        }
+        int successfulDevices = 0;
+        int totalAttempts = 0;
+        String firstMessageId = null;
+        for (DeviceToken token : tokens) {
+            FcmDeliveryResult delivery = fcmService.sendWithRetry(
+                    token.getToken(), title, body, metadata, 3);
+            totalAttempts += delivery.attempts();
+            if (delivery.success()) {
+                successfulDevices++;
+                if (firstMessageId == null) firstMessageId = delivery.messageId();
+            }
+        }
+        metadata.put("deviceCount", Integer.toString(tokens.size()));
+        metadata.put("successfulDeviceCount", Integer.toString(successfulDevices));
+        record.setAttemptCount(totalAttempts);
+        if (successfulDevices > 0) {
+            record.setStatus(NotificationRecordStatus.SENT);
+            record.setFcmMessageId(firstMessageId);
+            record.setSentAt(Instant.now());
+        } else {
+            record.setStatus(NotificationRecordStatus.FAILED);
+            record.setFailedAt(Instant.now());
+        }
+        return saveAndAudit(record);
+    }
+
+    @Override
+    @Transactional
     public NotificationRecordResponse sendAppointmentNotification(ReminderNotificationCommand command) {
         if (!preferenceRepository.isPushEnabled(command.userId(), NotificationType.REMINDER)) {
             return null;
         }
         NotificationRecord existing = notificationRecordRepository
-                .findAppointmentMilestoneByJobId(command.jobId())
+                .findAppointmentMilestoneByRecipientAndJob(command.userId(), command.jobId())
                 .orElse(null);
-        if (existing != null) {
+        if (existing != null
+                && (existing.getStatus() == NotificationRecordStatus.SENT
+                || existing.getStatus() == NotificationRecordStatus.DELIVERED)) {
             return toResponse(existing);
         }
 
@@ -74,15 +147,27 @@ public class ReminderNotificationService implements IReminderNotificationService
         String body = milestoneBody(command);
         Map<String, String> metadata = new LinkedHashMap<>();
         metadata.put("type", "REMINDER");
+        metadata.put("referenceType", "APPOINTMENT");
+        metadata.put("referenceId", command.reminderId().toString());
         metadata.put("milestoneJobId", command.jobId().toString());
         metadata.put("reminderId", command.reminderId().toString());
         metadata.put("occurrenceId", command.occurrenceId().toString());
         metadata.put("offsetMinutes", Integer.toString(command.offsetMinutes()));
-        metadata.put("route", "/reminders/detail/" + command.reminderId());
+        metadata.put("referenceType", "APPOINTMENT");
+        metadata.put("route", "/appointments/detail/" + command.reminderId());
 
-        NotificationRecord record = baseRecord(
+        NotificationRecord record = existing != null ? existing : baseRecord(
                 command.userId(), NotificationType.REMINDER, title, body,
                 command.reminderId(), "APPOINTMENT");
+        record.setTitle(title);
+        record.setBody(body);
+        record.setReferenceId(command.reminderId());
+        record.setReferenceType("APPOINTMENT");
+        record.setStatus(NotificationRecordStatus.PROCESSING);
+        record.setFailedAt(null);
+        record.setSentAt(null);
+        record.setFcmMessageId(null);
+        record.setAttemptCount(0);
         record.setMetadata(metadata);
         List<DeviceToken> tokens = deviceTokenRepository.findByUserIdAndActiveTrue(command.userId());
         if (tokens.isEmpty()) {
@@ -159,7 +244,10 @@ public class ReminderNotificationService implements IReminderNotificationService
     }
 
     private NotificationRecordResponse saveAndAudit(NotificationRecord record) {
-        NotificationRecord saved = notificationRecordRepository.save(record);
+        // The job terminal transition stores this record ID under a PostgreSQL FK.
+        // Flush before returning so the subsequent fenced bulk update cannot race
+        // the INSERT inside the same worker transaction.
+        NotificationRecord saved = notificationRecordRepository.saveAndFlush(record);
         AuditAction action = saved.getStatus() == NotificationRecordStatus.FAILED
                 ? AuditAction.NOTIFICATION_FAILED
                 : AuditAction.NOTIFICATION_SENT;

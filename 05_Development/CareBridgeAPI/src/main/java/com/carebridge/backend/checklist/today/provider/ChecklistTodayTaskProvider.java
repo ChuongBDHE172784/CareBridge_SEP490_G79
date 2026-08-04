@@ -9,6 +9,7 @@ import com.carebridge.backend.checklist.policy.ChecklistTemplateVisibilityPolicy
 import com.carebridge.backend.checklist.repository.ChecklistInstanceRepository;
 import com.carebridge.backend.checklist.repository.ChecklistTaskInstanceRepository;
 import com.carebridge.backend.checklist.sequence.ChecklistSequenceResolver;
+import com.carebridge.backend.checklist.distribution.ChecklistCurrentScopePolicy;
 import com.carebridge.backend.checklist.today.dto.TodaySequenceProjection;
 import com.carebridge.backend.checklist.today.dto.TodayTaskCandidate;
 import com.carebridge.backend.checklist.today.model.TaskAction;
@@ -19,6 +20,8 @@ import com.carebridge.backend.content.entity.ChecklistTemplateType;
 import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumSet;
@@ -39,12 +42,23 @@ public class ChecklistTodayTaskProvider implements TodayTaskProvider {
     private final UnifiedTaskAccessPolicy accessPolicy;
     private final ChecklistSequenceResolver sequenceResolver;
     private final ChecklistTemplateRepository templateRepository;
+    private final ChecklistCurrentScopePolicy currentScopePolicy;
 
     public ChecklistTodayTaskProvider(
             ChecklistInstanceRepository instanceRepository,
             ChecklistTaskInstanceRepository taskRepository,
             UnifiedTaskAccessPolicy accessPolicy) {
-        this(instanceRepository, taskRepository, accessPolicy, null, null);
+        this(instanceRepository, taskRepository, accessPolicy, null, null, null);
+    }
+
+    public ChecklistTodayTaskProvider(
+            ChecklistInstanceRepository instanceRepository,
+            ChecklistTaskInstanceRepository taskRepository,
+            UnifiedTaskAccessPolicy accessPolicy,
+            ChecklistSequenceResolver sequenceResolver,
+            ChecklistTemplateRepository templateRepository) {
+        this(instanceRepository, taskRepository, accessPolicy, sequenceResolver,
+                templateRepository, null);
     }
 
     @Autowired
@@ -53,12 +67,14 @@ public class ChecklistTodayTaskProvider implements TodayTaskProvider {
             ChecklistTaskInstanceRepository taskRepository,
             UnifiedTaskAccessPolicy accessPolicy,
             ChecklistSequenceResolver sequenceResolver,
-            ChecklistTemplateRepository templateRepository) {
+            ChecklistTemplateRepository templateRepository,
+            ChecklistCurrentScopePolicy currentScopePolicy) {
         this.instanceRepository = instanceRepository;
         this.taskRepository = taskRepository;
         this.accessPolicy = accessPolicy;
         this.sequenceResolver = sequenceResolver;
         this.templateRepository = templateRepository;
+        this.currentScopePolicy = currentScopePolicy;
     }
 
     @Override
@@ -67,8 +83,20 @@ public class ChecklistTodayTaskProvider implements TodayTaskProvider {
     }
 
     @Override
+    public boolean supportsDateAwareRead() {
+        return true;
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<TodayTaskCandidate> findAuthorizedTasks(UUID actorUserId) {
+        return findAuthorizedTasks(actorUserId, null, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TodayTaskCandidate> findAuthorizedTasks(
+            UUID actorUserId, LocalDate effectiveDate, ZoneId zone) {
         TodaySequenceProjection sequence = sequenceResolver == null
                 ? null : sequenceResolver.resolve(actorUserId);
         List<ChecklistInstance> currentInstances = instanceRepository
@@ -77,6 +105,7 @@ public class ChecklistTodayTaskProvider implements TodayTaskProvider {
         List<AuthorizedInstance> authorizedInstances = new ArrayList<>();
         for (var instance : currentInstances) {
             if (instance.getStatus() != ChecklistInstanceStatus.CANCELLED
+                    && isCurrentRead(instance, effectiveDate)
                     && isVisibleTemplate(instance, templatesByVersion)
                     && isVisibleSequenceInstance(instance, sequence, templatesByVersion)
                     && accessPolicy.canView(instance, actorUserId)) {
@@ -125,6 +154,13 @@ public class ChecklistTodayTaskProvider implements TodayTaskProvider {
         return List.copyOf(result);
     }
 
+    private boolean isCurrentRead(ChecklistInstance instance, LocalDate effectiveDate) {
+        return effectiveDate == null
+                || currentScopePolicy == null
+                || !currentScopePolicy.isHistoryManaged(instance)
+                || currentScopePolicy.isCurrent(instance, effectiveDate);
+    }
+
     private Map<UUID, ChecklistTemplate> templatesByVersion(Collection<ChecklistInstance> instances) {
         if (templateRepository == null) {
             return Map.of();
@@ -152,7 +188,10 @@ public class ChecklistTodayTaskProvider implements TodayTaskProvider {
             // that do not provide template metadata.
             return true;
         }
-        ChecklistTemplate template = templatesByVersion.get(instance.getTemplateVersionId());
+        UUID templateVersionId = instance.getTemplateVersionId();
+        ChecklistTemplate template = templateVersionId == null
+                ? null
+                : templatesByVersion.get(templateVersionId);
         return ChecklistTemplateVisibilityPolicy.isVisible(instance, template);
     }
 

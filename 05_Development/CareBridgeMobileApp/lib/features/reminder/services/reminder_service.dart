@@ -25,6 +25,12 @@ class ReminderService extends ChangeNotifier {
     return Reminder.fromJson(data['data'] as Map<String, dynamic>);
   }
 
+  Future<Reminder> getAppointmentDetail(String appointmentId) async {
+    final data = await apiGet('/api/v1/appointments/$appointmentId');
+    final raw = data is Map && data['data'] is Map ? data['data'] : data;
+    return Reminder.fromJson(Map<String, dynamic>.from(raw as Map));
+  }
+
   Future<List<Reminder>> listTodayReminders() async {
     try {
       final data = await apiGet('/api/v1/reminders/today');
@@ -48,6 +54,39 @@ class ReminderService extends ChangeNotifier {
     return list
         .map((e) => Reminder.fromJson(e as Map<String, dynamic>))
         .toList();
+  }
+
+  Future<List<Reminder>> listAppointmentsOrThrow() async {
+    final data = await apiGet('/api/v1/appointments');
+    final raw = data is Map && data['data'] is List ? data['data'] : data;
+    final list = raw as List? ?? [];
+    return list
+        .map((e) => Reminder.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Read-only appointment projection for one selected FAMILY care group.
+  Future<List<Reminder>> listSharedAppointmentsOrThrow(
+    String careGroupId,
+  ) async {
+    final data = await apiGet('/api/v1/care-groups/$careGroupId/appointments');
+    final raw = data is Map && data['data'] is List ? data['data'] : data;
+    final list = raw as List? ?? [];
+    return list
+        .map((e) => Reminder.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Read-only detail used by FAMILY appointment calendar/notification routes.
+  Future<Reminder> getSharedAppointment(
+    String careGroupId,
+    String appointmentId,
+  ) async {
+    final data = await apiGet(
+      '/api/v1/care-groups/$careGroupId/appointments/$appointmentId',
+    );
+    final raw = data is Map && data['data'] is Map ? data['data'] : data;
+    return Reminder.fromJson(Map<String, dynamic>.from(raw as Map));
   }
 
   Future<List<Reminder>> listAllReminders() async {
@@ -159,22 +198,45 @@ class ReminderService extends ChangeNotifier {
     List<int>? notificationOffsetsMinutes,
     String timeZone = AppointmentNotificationTiming.appTimeZone,
   }) async {
+    if (recurrenceType != RecurrenceType.none || recurrenceEndDate != null) {
+      throw ArgumentError('Appointments cannot recur');
+    }
     final body = <String, dynamic>{
       'reminderType': 'APPOINTMENT',
       'title': title,
       'scheduledAt': scheduledAt.toUtc().toIso8601String(),
-      'recurrenceType': recurrenceType == RecurrenceType.none
-          ? null
-          : recurrenceType.toApiValue(),
-      if (recurrenceEndDate != null)
-        'recurrenceEndDate': recurrenceEndDate.toUtc().toIso8601String(),
+      'recurrenceType': 'NONE',
       'journeyId': ?journeyId,
       'babyId': ?babyId,
       'notificationOffsetsMinutes': ?notificationOffsetsMinutes,
       'timeZone': timeZone,
     };
-    final data = await apiPost('/api/v1/reminders', body);
+    final data = await apiPost('/api/v1/appointments', body);
     return Reminder.fromJson(data['data'] as Map<String, dynamic>);
+  }
+
+  Future<Reminder> updateAppointment(
+    String appointmentId, {
+    String? title,
+    DateTime? scheduledAt,
+    List<int>? notificationOffsetsMinutes,
+    bool notificationOffsetsMinutesSet = false,
+    String? timeZone,
+  }) async {
+    final body = <String, dynamic>{
+      'title': ?title,
+      if (scheduledAt != null)
+        'scheduledAt': scheduledAt.toUtc().toIso8601String(),
+      if (notificationOffsetsMinutesSet) ...{
+        'notificationOffsetsMinutes':
+            notificationOffsetsMinutes ?? const <int>[],
+        'notificationOffsetsMinutesSet': true,
+      },
+      'timeZone': ?timeZone,
+    };
+    final data = await apiPatch('/api/v1/appointments/$appointmentId', body);
+    final raw = data is Map && data['data'] is Map ? data['data'] : data;
+    return Reminder.fromJson(Map<String, dynamic>.from(raw as Map));
   }
 
   // UC-47: Get vaccination suggestions for baby
@@ -249,6 +311,10 @@ class ReminderService extends ChangeNotifier {
   // UC-215: Delete reminder
   Future<void> deleteReminder(String reminderId) async {
     await apiDelete('/api/v1/reminders/$reminderId');
+  }
+
+  Future<void> deleteAppointment(String appointmentId) async {
+    await apiDelete('/api/v1/appointments/$appointmentId');
   }
 
   Future<Reminder> enableReminder(String reminderId) async {
