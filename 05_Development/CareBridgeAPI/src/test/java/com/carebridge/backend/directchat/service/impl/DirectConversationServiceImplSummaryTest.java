@@ -113,11 +113,29 @@ class DirectConversationServiceImplSummaryTest {
     }
 
     @Test
-    void listMyConversations_familyViewer_seesDelegatedConversationWithExpertCounterpart() {
+    void listMyConversations_familyViewer_doesNotSeeMothersDelegatedConversation() {
         when(conversationRepository.findByMotherUserIdOrExpertUserIdOrderByLastActivityAtDesc(FAMILY_USER_ID, FAMILY_USER_ID))
                 .thenReturn(List.of());
-        when(conversationRepository.findDelegatedToFamilyUserOrderByLastActivityAtDesc(FAMILY_USER_ID))
-                .thenReturn(List.of(conversation()));
+
+        List<DirectConversationSummaryResponse> summaries = service.listMyConversations(FAMILY_USER_ID);
+
+        assertThat(summaries).isEmpty();
+        verify(userRepository, never()).findAllById(anySet());
+        verify(aggregateRepository, never()).fetchLastMessages(any());
+        verify(aggregateRepository, never()).fetchUnreadCounts(any(), any());
+    }
+
+    @Test
+    void listMyConversations_familyViewer_seesOwnConversationWithExpert() {
+        DirectConversation familyConversation = DirectConversation.builder()
+                .id(CONVERSATION_ID)
+                .motherUserId(FAMILY_USER_ID)
+                .expertUserId(EXPERT_USER_ID)
+                .status("ACTIVE")
+                .lastActivityAt(Instant.parse("2026-07-15T09:00:00Z"))
+                .build();
+        when(conversationRepository.findByMotherUserIdOrExpertUserIdOrderByLastActivityAtDesc(
+                FAMILY_USER_ID, FAMILY_USER_ID)).thenReturn(List.of(familyConversation));
         User expertUser = User.builder().id(EXPERT_USER_ID).name("BS. Nguyễn Văn A").build();
         when(userRepository.findAllById(anySet())).thenReturn(List.of(expertUser));
         when(expertProfileRepository.findByUserIdIn(anySet())).thenReturn(List.of(approvedExpert()));
@@ -130,6 +148,18 @@ class DirectConversationServiceImplSummaryTest {
             assertThat(summary.getCounterpartRole()).isEqualTo("EXPERT");
             assertThat(summary.getCounterpartUserId()).isEqualTo(EXPERT_USER_ID);
         });
+    }
+
+    @Test
+    void getUnreadSummary_familyViewer_doesNotCountMothersDelegatedConversation() {
+        when(conversationRepository.findByMotherUserIdOrExpertUserId(FAMILY_USER_ID, FAMILY_USER_ID))
+                .thenReturn(List.of());
+
+        UnreadSummaryResponse summary = service.getUnreadSummary(FAMILY_USER_ID);
+
+        assertThat(summary.unreadConversationCount()).isZero();
+        assertThat(summary.totalUnreadMessageCount()).isZero();
+        verify(aggregateRepository, never()).fetchUnreadCounts(any(), any());
     }
 
     // MEDI-TC-010 — lastMessagePreview / lastMessageAt come from the aggregate query

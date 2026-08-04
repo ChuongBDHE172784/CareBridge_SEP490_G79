@@ -5,7 +5,6 @@ import com.carebridge.backend.directchat.exception.DirectChatException;
 import com.carebridge.backend.expert.entity.ExpertProfile;
 import com.carebridge.backend.expert.repository.ExpertProfileRepository;
 import com.carebridge.backend.expert.verificationstatus.VerificationStatus;
-import com.carebridge.backend.family.repository.CareGroupMemberRepository;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -15,7 +14,6 @@ import org.springframework.stereotype.Component;
 public class DirectConversationPolicyImpl implements IDirectConversationPolicy {
 
     private final ExpertProfileRepository expertProfileRepository;
-    private final CareGroupMemberRepository careGroupMemberRepository;
 
     @Override
     public void assertIsParticipant(UUID currentUserId, DirectConversation conversation) {
@@ -29,10 +27,6 @@ public class DirectConversationPolicyImpl implements IDirectConversationPolicy {
             if (expertProfile.getVerificationStatus() != VerificationStatus.APPROVED) {
                 throw DirectChatException.expertNoLongerApproved();
             }
-            return;
-        }
-        if (careGroupMemberRepository.existsAcceptedMemberOfActiveMotherCareGroup(
-                conversation.getMotherUserId(), currentUserId)) {
             return;
         }
         throw DirectChatException.notParticipant();
@@ -56,8 +50,6 @@ public class DirectConversationPolicyImpl implements IDirectConversationPolicy {
     public String resolveRole(UUID currentUserId, DirectConversation conversation) {
         if (currentUserId.equals(conversation.getMotherUserId())) return "MOTHER";
         if (currentUserId.equals(conversation.getExpertUserId())) return "EXPERT";
-        if (careGroupMemberRepository.existsAcceptedMemberOfActiveMotherCareGroup(
-                conversation.getMotherUserId(), currentUserId)) return "FAMILY";
         throw DirectChatException.notParticipant();
     }
 }
