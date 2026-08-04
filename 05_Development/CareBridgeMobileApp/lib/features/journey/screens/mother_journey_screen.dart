@@ -1927,62 +1927,77 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
       (Icons.health_and_safety_outlined, 'Giám sát an toàn', '/safety'),
     ];
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
+    return IntrinsicHeight(
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: metrics.asMap().entries.map((entry) {
           final i = entry.key;
           final metric = entry.value;
-          return Padding(
-            padding: EdgeInsets.only(right: i < metrics.length - 1 ? 12 : 0),
-            child: Semantics(
-              button: true,
-              label: metric.$2,
-              excludeSemantics: true,
-              child: GestureDetector(
-                onTap: () async {
-                  if (metric.$3 == 'WEIGHT') {
-                    await _openMetricRoute(metric.$3);
-                    return;
-                  }
-                  context.push(metric.$3);
-                },
-                child: Container(
-                  width: 104,
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 16,
-                    horizontal: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _surfaceContainerLowest,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: _outlineVariant),
-                  ),
-                  child: Column(
-                    children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: const BoxDecoration(
-                          color: _surfaceContainerHigh,
-                          shape: BoxShape.circle,
+          return Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(right: i < metrics.length - 1 ? 12 : 0),
+              child: Semantics(
+                button: true,
+                label: metric.$2,
+                excludeSemantics: true,
+                child: GestureDetector(
+                  onTap: () async {
+                    if (metric.$3 == 'WEIGHT') {
+                      await _openMetricRoute(metric.$3);
+                      return;
+                    }
+                    context.push(metric.$3);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 16,
+                      horizontal: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: _surfaceContainerLowest,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: _outlineVariant),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x0F5A463F),
+                          blurRadius: 12,
+                          offset: Offset(0, 2),
                         ),
-                        child: Icon(metric.$1, color: _primary, size: 20),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        metric.$2,
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: _onSurfaceVariant,
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: const BoxDecoration(
+                            color: _surfaceContainerHigh,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(metric.$1, color: _primary, size: 22),
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          height: 36,
+                          child: Center(
+                            child: Text(
+                              metric.$2,
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: _onSurfaceVariant,
+                                height: 1.25,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

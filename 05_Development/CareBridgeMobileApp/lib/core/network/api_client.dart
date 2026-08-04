@@ -764,6 +764,17 @@ class ApiException implements Exception {
     }
   }
 
+  String get displayMessage {
+    try {
+      final decoded = jsonDecode(message);
+      if (decoded is Map<String, dynamic>) {
+        final msg = decoded['message']?.toString();
+        if (msg != null && msg.isNotEmpty) return msg;
+      }
+    } catch (_) {}
+    return message;
+  }
+
   @override
   String toString() => 'ApiException($statusCode): $message';
 }

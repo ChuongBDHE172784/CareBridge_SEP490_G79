@@ -9,9 +9,7 @@ import '../services/safety_service.dart';
 import '../widgets/disable_fall_detection_sheet.dart';
 import '../widgets/safety_countdown_sheet.dart';
 import 'enable_fall_detection_screen.dart';
-import '../../emergency/screens/emergency_contacts_screen.dart';
 import '../../emergency/services/emergency_service.dart';
-import '../../emergency/models/emergency_session_model.dart';
 
 Future<void> dispatchSafetyCountdownResult({
   required SafetyCountdownResult? result,
@@ -112,10 +110,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
   static const _surfaceVariant = Color(0xFFFADCD3);
   static const _onSurface = Color(0xFF271812);
   static const _onSurfaceVariant = Color(0xFF524440);
-  static const _errorContainer = Color(0xFFFFDAD6);
   static const _onErrorContainer = Color(0xFF93000A);
-  static const _secondaryContainer = Color(0xFFF6DACF);
-  static const _onSecondaryContainer = Color(0xFF735E56);
   static const _tertiary = Color(0xFF625D59);
 
   final _safetyService = SafetyService();
@@ -123,7 +118,6 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
   final _foregroundCoordinator = SafetyForegroundServiceCoordinator.instance;
   SafetyConfig? _config;
   List<SafetyEvent> _events = const [];
-  EmergencySession? _activeEmergency;
   StreamSubscription<SafetyEvent>? _detectedEventSubscription;
   StreamSubscription<SensorSelfTestResult>? _sensorSelfTestSubscription;
   StreamSubscription<ImuDiagnosticsSnapshot>? _diagnosticsSubscription;
@@ -234,14 +228,12 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
     try {
       final config = await _safetyService.getConfig();
       final events = await _safetyService.getSafetyEvents();
-      final activeEmergency = await _emergencyService.getActive();
       await _foregroundCoordinator.reconcile();
       if (mounted) {
         setState(() {
           _config = config;
           _events = events;
           _imuSensorActive = _foregroundCoordinator.isRunning;
-          _activeEmergency = activeEmergency;
         });
         SafetyEvent? pending;
         for (final event in events) {
@@ -443,24 +435,6 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
     final sessionId = event.emergencySessionId;
     if (sessionId == null || sessionId.isEmpty) return;
     await _emergencyService.resolve(sessionId);
-    if (_activeEmergency?.sessionId == sessionId && mounted) {
-      setState(() => _activeEmergency = null);
-    }
-  }
-
-  Future<void> _resolveActiveEmergency() async {
-    final active = _activeEmergency;
-    if (active == null) return;
-    try {
-      await _emergencyService.resolve(active.sessionId);
-      if (mounted) setState(() => _activeEmergency = null);
-    } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Không thể kết thúc phiên khẩn cấp: $error')),
-        );
-      }
-    }
   }
 
   Future<void> _onFallDetectionToggle(bool enable) async {
@@ -504,26 +478,6 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
     }
   }
 
-  Future<void> _triggerManualEmergency() async {
-    try {
-      await _emergencyService.openFlow(triggerSource: 'MANUAL');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Đã kích hoạt hỗ trợ khẩn cấp và gửi cảnh báo người thân',
-            ),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Không thể kích hoạt hỗ trợ khẩn cấp: $e')),
-        );
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -569,12 +523,6 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
                         const SizedBox(height: 16),
                         _buildImuDiagnosticsCard(),
                       ],
-                      if (_activeEmergency != null) ...[
-                        const SizedBox(height: 16),
-                        _buildActiveEmergencyCard(),
-                      ],
-                      const SizedBox(height: 24),
-                      _buildSosButtons(),
                       const SizedBox(height: 24),
                       _buildEventHistory(),
                       const SizedBox(height: 16),
@@ -860,68 +808,6 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
             Text(message, style: const TextStyle(color: _onErrorContainer)),
         ],
       ),
-    );
-  }
-
-  Widget _buildActiveEmergencyCard() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _errorContainer,
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.emergency, color: _onErrorContainer),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Phiên hỗ trợ khẩn cấp đang hoạt động',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-                Text('Chỉ kết thúc khi bạn xác nhận hiện đã an toàn.'),
-              ],
-            ),
-          ),
-          TextButton(
-            onPressed: _resolveActiveEmergency,
-            child: const Text('Tôi an toàn'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSosButtons() {
-    return Row(
-      children: [
-        Expanded(
-          child: _BentoButton(
-            icon: Icons.emergency,
-            label: 'Gọi khẩn cấp SOS',
-            background: _errorContainer,
-            foreground: _onErrorContainer,
-            onTap: _triggerManualEmergency,
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: _BentoButton(
-            icon: Icons.contacts,
-            label: 'Liên hệ người thân',
-            background: _secondaryContainer,
-            foreground: _onSecondaryContainer,
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const EmergencyContactsScreen(),
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -1305,52 +1191,4 @@ class _EventActionButton extends StatelessWidget {
   }
 }
 
-class _BentoButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color background;
-  final Color foreground;
-  final VoidCallback onTap;
 
-  const _BentoButton({
-    required this.icon,
-    required this.label,
-    required this.background,
-    required this.foreground,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(28),
-      child: Container(
-        height: 120,
-        decoration: BoxDecoration(
-          color: background,
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x0F5A463F),
-              blurRadius: 20,
-              offset: Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: foreground, size: 32),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: foreground, fontWeight: FontWeight.w600),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
