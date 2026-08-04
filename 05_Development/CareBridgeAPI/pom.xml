@@ -242,7 +242,7 @@
    <REMINDER_SCHEDULE_NOTIFICATION_ENABLED>true</REMINDER_SCHEDULE_NOTIFICATION_ENABLED>
    </environmentVariables>
    <systemPropertyVariables>
-    <carebridge.cors.allowed-origins>http://localhost:5000,http://127.0.0.1:5000,http://localhost:5173,http://127.0.0.1:5173</carebridge.cors.allowed-origins>
+    <carebridge.cors.allowed-origins>http://localhost:5000,http://127.0.0.1:5000,http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000</carebridge.cors.allowed-origins>
     <carebridge.fcm.enabled>true</carebridge.fcm.enabled>
     <carebridge.notification.reminder-schedule.enabled>true</carebridge.notification.reminder-schedule.enabled>
     <carebridge.notification.appointment.enabled>true</carebridge.notification.appointment.enabled>
