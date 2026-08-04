@@ -253,6 +253,25 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('care-groups-empty')), findsOneWidget);
     });
+
+    testWidgets('creates new care group without controller assertion error', (
+      tester,
+    ) async {
+      final service = _FakeCareGroupService(groups: const []);
+      await tester.pumpWidget(_app(CareGroupsScreen(service: service)));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Tạo nhóm đầu tiên'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Tạo nhóm chăm sóc'), findsOneWidget);
+      await tester.enterText(find.byType(TextField), 'Gia đình Lan');
+      await tester.tap(find.widgetWithText(FilledButton, 'Tạo nhóm'));
+      await tester.pumpAndSettle();
+
+      expect(service.createdGroupName, 'Gia đình Lan');
+      expect(find.text('Đã tạo nhóm chăm sóc.'), findsOneWidget);
+    });
   });
 }
 
@@ -292,6 +311,17 @@ class _FakeCareGroupService extends CareGroupService {
   int failSaves;
   int updateCalls = 0;
   Map<String, bool?>? lastUpdate;
+
+  String? createdGroupName;
+
+  @override
+  Future<Map<String, dynamic>> createCareGroup(
+    String groupName, {
+    String? description,
+  }) async {
+    createdGroupName = groupName;
+    return {'id': 'group-new', 'groupName': groupName};
+  }
 
   @override
   Future<List<CareGroup>> listMyGroups() async {

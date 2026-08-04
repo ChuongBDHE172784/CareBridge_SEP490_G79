@@ -49,112 +49,19 @@ class _MyCareGroupsScreenState extends State<MyCareGroupsScreen> {
   }
 
   Future<void> _joinGroupWithCode() async {
-    final codeCtrl = TextEditingController();
-    final customRoleCtrl = TextEditingController();
-    String relationshipRole = 'CHONG';
-    final ok = await showDialog<bool>(
+    final result = await showDialog<_JoinGroupResult>(
       context: context,
-      builder: (_) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: const Text(
-            'Tham gia nhóm',
-            style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Nhập mã nhóm (UUID hoặc mã mời) được chia sẻ từ Mẹ bầu:',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 13,
-                  color: Color(0xFF524440),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: codeCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Mã nhóm chăm sóc',
-                  hintText: 'VD: cb51dfb1-c615-41af-ae16-47df06cbca80',
-                  prefixIcon: const Icon(Icons.key, color: _primaryContainer),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                style: const TextStyle(fontFamily: 'Lexend'),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: relationshipRole,
-                decoration: InputDecoration(
-                  labelText: 'Vai trò trong gia đình',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                items: familyRelationshipLabels.entries
-                    .map(
-                      (entry) => DropdownMenuItem(
-                        value: entry.key,
-                        child: Text(entry.value),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (value) =>
-                    setDialogState(() => relationshipRole = value!),
-              ),
-              if (relationshipRole == 'KHAC') ...[
-                const SizedBox(height: 12),
-                TextField(
-                  controller: customRoleCtrl,
-                  decoration: InputDecoration(
-                    labelText: 'Vai trò tùy chỉnh',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Hủy', style: TextStyle(fontFamily: 'Lexend')),
-            ),
-            FilledButton(
-              onPressed: () {
-                if (relationshipRole == 'KHAC' &&
-                    customRoleCtrl.text.trim().isEmpty)
-                  return;
-                Navigator.pop(context, true);
-              },
-              style: FilledButton.styleFrom(backgroundColor: _primaryContainer),
-              child: const Text(
-                'Tham gia',
-                style: TextStyle(fontFamily: 'Lexend'),
-              ),
-            ),
-          ],
-        ),
-      ),
+      builder: (_) => const _JoinGroupDialog(),
     );
 
-    if (ok != true) return;
-    final code = codeCtrl.text.trim();
-    if (code.isEmpty) return;
+    if (result == null || result.code.isEmpty) return;
 
     try {
       setState(() => _loading = true);
       await _service.joinGroupByCode(
-        code,
-        familyRelationshipRole: relationshipRole,
-        customFamilyRelationshipRole: customRoleCtrl.text.trim(),
+        result.code,
+        familyRelationshipRole: result.relationshipRole,
+        customFamilyRelationshipRole: result.customRole,
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -575,3 +482,150 @@ class _GroupCard extends StatelessWidget {
     );
   }
 }
+
+class _JoinGroupResult {
+  final String code;
+  final String relationshipRole;
+  final String customRole;
+
+  const _JoinGroupResult({
+    required this.code,
+    required this.relationshipRole,
+    required this.customRole,
+  });
+}
+
+class _JoinGroupDialog extends StatefulWidget {
+  const _JoinGroupDialog();
+
+  @override
+  State<_JoinGroupDialog> createState() => _JoinGroupDialogState();
+}
+
+class _JoinGroupDialogState extends State<_JoinGroupDialog> {
+  late final TextEditingController _codeCtrl;
+  late final TextEditingController _customRoleCtrl;
+  String _relationshipRole = 'CHONG';
+
+  @override
+  void initState() {
+    super.initState();
+    _codeCtrl = TextEditingController();
+    _customRoleCtrl = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _codeCtrl.dispose();
+    _customRoleCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
+      title: const Text(
+        'Tham gia nhóm',
+        style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Nhập mã nhóm (UUID hoặc mã mời) được chia sẻ từ Mẹ bầu:',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 13,
+              color: Color(0xFF524440),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _codeCtrl,
+            decoration: InputDecoration(
+              labelText: 'Mã nhóm chăm sóc',
+              hintText: 'VD: cb51dfb1-c615-41af-ae16-47df06cbca80',
+              prefixIcon: const Icon(
+                Icons.key,
+                color: _MyCareGroupsScreenState._primaryContainer,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            style: const TextStyle(fontFamily: 'Lexend'),
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            value: _relationshipRole,
+            decoration: InputDecoration(
+              labelText: 'Vai trò trong gia đình',
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            items: familyRelationshipLabels.entries
+                .map(
+                  (entry) => DropdownMenuItem(
+                    value: entry.key,
+                    child: Text(entry.value),
+                  ),
+                )
+                .toList(),
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => _relationshipRole = value);
+              }
+            },
+          ),
+          if (_relationshipRole == 'KHAC') ...[
+            const SizedBox(height: 12),
+            TextField(
+              controller: _customRoleCtrl,
+              decoration: InputDecoration(
+                labelText: 'Vai trò tùy chỉnh',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, null),
+          child: const Text('Hủy', style: TextStyle(fontFamily: 'Lexend')),
+        ),
+        FilledButton(
+          onPressed: () {
+            if (_relationshipRole == 'KHAC' &&
+                _customRoleCtrl.text.trim().isEmpty) {
+              return;
+            }
+            Navigator.pop(
+              context,
+              _JoinGroupResult(
+                code: _codeCtrl.text.trim(),
+                relationshipRole: _relationshipRole,
+                customRole: _customRoleCtrl.text.trim(),
+              ),
+            );
+          },
+          style: FilledButton.styleFrom(
+            backgroundColor: _MyCareGroupsScreenState._primaryContainer,
+          ),
+          child: const Text(
+            'Tham gia',
+            style: TextStyle(fontFamily: 'Lexend'),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
