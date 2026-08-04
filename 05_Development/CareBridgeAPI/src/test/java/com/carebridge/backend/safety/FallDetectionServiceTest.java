@@ -236,6 +236,21 @@ class FallDetectionServiceTest {
     }
 
     @Test
+    void sendEmergencyAlert_sensorSelfTestShouldNeverOpenEmergency() {
+        SafetyEvent event = makeSafetyEvent();
+        event.setEventType(SafetyEventType.SENSOR_SELF_TEST);
+        event.setStatus(SafetyEventStatus.TEST_OPEN);
+        when(safetyEventRepository.findLockedByIdAndUserId(event.getId(), USER_ID)).thenReturn(Optional.of(event));
+
+        assertThatThrownBy(() -> fallDetectionService.sendEmergencyAlert(USER_ID, event.getId()))
+                .isInstanceOf(SafetyException.class)
+                .hasMessageContaining("cannot trigger emergency alerts");
+
+        verify(emergencyService, never()).openFlow(any(), any());
+        verify(responseRepository, never()).insert(any());
+    }
+
+    @Test
     void sendEmergencyAlert_sameResponseTwiceOpensOnlyOneEmergency() {
         SafetyEvent event = makeSafetyEvent();
         UUID emergencySessionId = UUID.randomUUID();
@@ -248,7 +263,7 @@ class FallDetectionServiceTest {
         fallDetectionService.sendEmergencyAlert(USER_ID, event.getId());
         fallDetectionService.sendEmergencyAlert(USER_ID, event.getId());
 
-        verify(safetyEventRepository, times(2)).findLockedByIdAndUserId(event.getId(), USER_ID);
+        verify(safetyEventRepository, times(4)).findLockedByIdAndUserId(event.getId(), USER_ID);
         verify(emergencyService, times(1)).openFlow(any(), eq(USER_ID));
         verify(eventPublisher, never()).publishEvent(any(SuspectedFallDetected.class));
     }
