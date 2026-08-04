@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/network/api_client.dart';
 import '../models/care_group_model.dart';
 import '../services/care_group_service.dart';
 import 'care_group_detail_screen.dart';
@@ -123,6 +124,14 @@ class _CareGroupsScreenState extends State<CareGroupsScreen> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Đã xóa nhóm chăm sóc.')));
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      final message = error.errorCode == 'FAM-069'
+          ? 'Hãy xóa tất cả thành viên khác trước khi xóa nhóm chăm sóc.'
+          : 'Chưa thể xóa nhóm. Vui lòng thử lại.';
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

@@ -172,6 +172,14 @@ public class CareGroupServiceImpl implements ICareGroupService {
         memberRepository.findByCareGroupIdAndUserId(groupId, callerId)
                 .orElseThrow(() -> new BusinessException(HttpStatus.CONFLICT, "FAM-065",
                         "Care group owner membership is unavailable"));
+
+        long acceptedMemberCount = memberRepository.countByCareGroupIdAndInviteStatus(
+                groupId, InviteStatus.ACCEPTED);
+        if (acceptedMemberCount > 1) {
+            throw new BusinessException(HttpStatus.CONFLICT, "FAM-069",
+                    "Remove all other members before deleting the care group");
+        }
+
         group.setStatus(CareGroupStatus.ARCHIVED);
         groupRepository.save(group);
 

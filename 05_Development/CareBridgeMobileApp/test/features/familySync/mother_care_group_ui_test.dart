@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:untitled/core/network/api_client.dart';
 import 'package:untitled/features/familySync/models/care_group_model.dart';
 import 'package:untitled/features/familySync/models/family_permission_model.dart';
 import 'package:untitled/features/familySync/screens/care_groups_screen.dart';
@@ -304,6 +305,43 @@ void main() {
       expect(find.text('Đã xóa nhóm chăm sóc.'), findsOneWidget);
       expect(find.byKey(const Key('care-groups-empty')), findsOneWidget);
     });
+
+    testWidgets('keeps group visible when it still has accepted members', (
+      tester,
+    ) async {
+      final group = CareGroup(
+        id: 'group-with-members',
+        groupName: 'Nhóm còn thành viên',
+        memberCount: 2,
+        members: [_member()],
+      );
+      final service = _FakeCareGroupService(
+        groups: [group],
+        deleteError: ApiException(
+          409,
+          '{"error":{"code":"FAM-069"},"message":"Remove members first"}',
+        ),
+      );
+      await tester.pumpWidget(_app(CareGroupsScreen(service: service)));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Tùy chọn nhóm'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Xóa nhóm'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Xóa nhóm'));
+      await tester.pumpAndSettle();
+
+      expect(service.deletedGroupId, 'group-with-members');
+      expect(find.text('Nhóm còn thành viên'), findsOneWidget);
+      expect(find.text('Đã xóa nhóm chăm sóc.'), findsNothing);
+      expect(
+        find.text(
+          'Hãy xóa tất cả thành viên khác trước khi xóa nhóm chăm sóc.',
+        ),
+        findsOneWidget,
+      );
+    });
   });
 }
 
@@ -334,6 +372,7 @@ class _FakeCareGroupService extends CareGroupService {
     this.failPermissionLoads = 0,
     this.failGroupLoads = 0,
     this.failSaves = 0,
+    this.deleteError,
   }) : permission = permission ?? _permission();
 
   final FamilyPermission permission;
@@ -341,6 +380,7 @@ class _FakeCareGroupService extends CareGroupService {
   int failPermissionLoads;
   int failGroupLoads;
   int failSaves;
+  final Object? deleteError;
   int updateCalls = 0;
   Map<String, bool?>? lastUpdate;
 
@@ -365,6 +405,7 @@ class _FakeCareGroupService extends CareGroupService {
   @override
   Future<void> deleteCareGroup(String groupId) async {
     deletedGroupId = groupId;
+    if (deleteError != null) throw deleteError!;
   }
 
   @override

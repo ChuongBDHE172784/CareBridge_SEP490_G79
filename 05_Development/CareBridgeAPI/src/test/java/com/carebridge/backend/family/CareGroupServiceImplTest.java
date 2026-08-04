@@ -159,6 +159,8 @@ class CareGroupServiceImplTest {
         when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
         when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, CALLER_ID))
                 .thenReturn(Optional.of(owner));
+        when(memberRepository.countByCareGroupIdAndInviteStatus(GROUP_ID, InviteStatus.ACCEPTED))
+                .thenReturn(1L);
         when(groupRepository.save(group)).thenReturn(group);
 
         careGroupService.deleteCareGroup(GROUP_ID, CALLER_ID);
@@ -168,6 +170,29 @@ class CareGroupServiceImplTest {
         verify(memberRepository, never()).deleteByCareGroupId(any());
         verify(taskRepository, never()).deleteByCareGroupId(any());
         verify(groupRepository, never()).deleteById(any());
+    }
+
+    @Test
+    void deleteCareGroup_withAnotherAcceptedMember_throwsConflictAndKeepsGroupActive() {
+        CareGroup group = savedGroup(GROUP_ID);
+        CareGroupMember owner = ownerMember(GROUP_ID);
+        when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
+        when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, CALLER_ID))
+                .thenReturn(Optional.of(owner));
+        when(memberRepository.countByCareGroupIdAndInviteStatus(GROUP_ID, InviteStatus.ACCEPTED))
+                .thenReturn(2L);
+
+        assertThatThrownBy(() -> careGroupService.deleteCareGroup(GROUP_ID, CALLER_ID))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(ex -> {
+                    BusinessException businessException = (BusinessException) ex;
+                    assertThat(businessException.getHttpStatus()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(businessException.getCode()).isEqualTo("FAM-069");
+                });
+
+        assertThat(group.getStatus()).isEqualTo(CareGroupStatus.ACTIVE);
+        verify(groupRepository, never()).save(any());
+        verify(auditService, never()).log(any(), any(), any(), any(), any());
     }
 
     @Test
