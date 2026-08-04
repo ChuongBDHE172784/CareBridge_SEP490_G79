@@ -83,8 +83,8 @@ class FamilyQuickNoteServiceTest {
 
         assertThat(response.getDataPoints()).extracting(point -> point.getValueNumeric())
                 .containsExactly(new BigDecimal("21.5"), new BigDecimal("21.2"));
-        assertThat(response.getDataPoints()).allSatisfy(point -> assertThat(point.getNote()).isNull());
-        assertThat(response.getDataPoints()).allSatisfy(point -> assertThat(point.getContext()).isEmpty());
+        assertThat(response.getDataPoints()).allSatisfy(point -> assertThat(point.getContext())
+                .containsOnlyKeys("weightKg", "heightCm"));
     }
 
     @Test

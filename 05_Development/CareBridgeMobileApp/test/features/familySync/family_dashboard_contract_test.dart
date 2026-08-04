@@ -156,8 +156,11 @@ void main() {
         await _pumpDashboard(tester, loader);
         await tester.pumpAndSettle();
 
-        await tester.drag(find.byType(ListView), const Offset(0, -450));
-        await tester.pumpAndSettle();
+        await tester.scrollUntilVisible(
+          find.byKey(const Key('family-dashboard-group-selector')),
+          300,
+          scrollable: find.byType(Scrollable).first,
+        );
         expect(
           find.byKey(const Key('family-dashboard-group-selector')),
           findsOneWidget,

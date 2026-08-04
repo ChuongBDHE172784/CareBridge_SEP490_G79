@@ -140,6 +140,7 @@ public class FamilyQuickNoteService {
             return Map.of();
         }
         List<String> allowedKeys = switch (metricType) {
+            case BMI -> List.of("weightKg", "heightCm");
             case BLOOD_GLUCOSE -> List.of("measurementContext");
             case FETAL_MOVEMENT_COUNT, FETAL_MOVEMENT_SESSION ->
                     List.of("protocolCode", "completionStatus", "gestationalAgeSnapshot");

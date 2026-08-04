@@ -216,9 +216,21 @@ public class FamilyDashboardService {
                 .mapToInt(FamilyDashboardResponse.SharedDataCategory::itemCount)
                 .sum();
 
+        Optional<MotherJourney> journey = linkedOrCanonicalJourney(context.group());
+        FamilyDashboardResponse.MotherJourneySummary motherJourney = journey
+                .map(j -> new FamilyDashboardResponse.MotherJourneySummary(
+                        j.getId(),
+                        j.getJourneyType() != null ? j.getJourneyType().name() : null,
+                        j.getStatus() != null ? j.getStatus().name() : null,
+                        j.getEstimatedDueDate(),
+                        j.getLastMenstrualDate(),
+                        j.getStartDate()))
+                .orElse(null);
+
         return new FamilyDashboardResponse.Detail(
                 groupId,
                 motherDisplayName(context.group().getOwnerUserId()),
+                motherJourney,
                 context.permissionScope().calendar()
                         ? loadMotherTodayReminders(context.group().getOwnerUserId())
                         : List.of(),

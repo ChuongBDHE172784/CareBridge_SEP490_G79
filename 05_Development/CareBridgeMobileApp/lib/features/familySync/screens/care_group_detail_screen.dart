@@ -108,9 +108,24 @@ class _CareGroupDetailScreenState extends State<CareGroupDetailScreen> {
               );
           if (snapshot.selectedCareGroupId == widget.groupId) {
             familyDetail = snapshot.selectedGroupDetail;
+            if (familyDetail?.motherJourney != null) {
+              dashboard = familyDetail!.motherJourney!.toJourneyDashboard();
+            }
           }
         } catch (error) {
           familyDetailError = error;
+        }
+
+        if (familyDetail != null &&
+            _isHealthMetricShared('BMI', familyDetail.permissionScope)) {
+          try {
+            bmiTrend = await FamilyHomeService.instance.loadQuickNoteHistory(
+              careGroupId: widget.groupId,
+              metricType: 'BMI',
+              from: DateTime.now().subtract(const Duration(days: 90)),
+              to: DateTime.now(),
+            );
+          } catch (_) {}
         }
       } else {
         try {
@@ -184,6 +199,13 @@ class _CareGroupDetailScreenState extends State<CareGroupDetailScreen> {
                 slivers: [
                   SliverToBoxAdapter(child: _buildAppBar()),
                   SliverToBoxAdapter(child: _buildMemberSection()),
+                  if (!_isMother && _dashboard != null && _dashboard!.hasActiveJourney)
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                      sliver: SliverToBoxAdapter(
+                        child: _buildFamilyMotherJourneySection(),
+                      ),
+                    ),
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                     sliver: SliverToBoxAdapter(child: _buildBentoGrid()),
@@ -227,6 +249,52 @@ class _CareGroupDetailScreenState extends State<CareGroupDetailScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildFamilyMotherJourneySection() {
+    final dashboard = _dashboard;
+    final motherName = _familyDetail?.motherDisplayName ?? 'Mẹ bầu';
+    if (dashboard == null || !dashboard.hasActiveJourney) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      key: const Key('family-mother-journey-section'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Hành trình của $motherName',
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: _onSurface,
+                ),
+              ),
+              const SizedBox(height: 2),
+              const Text(
+                'Thông tin thai kỳ và chỉ số mẹ bầu chủ nhóm',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 12,
+                  color: _onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+        _buildJourneyHeroCard(dashboard),
+        const SizedBox(height: 12),
+        _buildJourneyDueDateCard(dashboard),
+        const SizedBox(height: 12),
+        _buildJourneyMetricsBentoSummary(),
+      ],
     );
   }
 
