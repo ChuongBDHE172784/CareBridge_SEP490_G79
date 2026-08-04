@@ -25,6 +25,7 @@ import com.carebridge.backend.exercise.repository.ExerciseRepository;
 import com.carebridge.backend.exercise.repository.ExerciseSafetyCheckRepository;
 import com.carebridge.backend.exercise.repository.ExerciseSessionRepository;
 import com.carebridge.backend.exercise.repository.PostureFeedbackEventRepository;
+import com.carebridge.backend.exercise.service.ExerciseCareContextResolver;
 import com.carebridge.backend.exercise.service.impl.ExerciseSessionServiceImpl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.OffsetDateTime;
@@ -58,6 +59,9 @@ class ExerciseSessionServiceTest {
 
     @Mock
     private PostureFeedbackEventRepository postureFeedbackEventRepository;
+
+    @Mock
+    private ExerciseCareContextResolver careContextResolver;
 
     @Spy
     private ExerciseSessionMapper sessionMapper;
@@ -99,6 +103,9 @@ class ExerciseSessionServiceTest {
                 .thenReturn(Optional.of(clearedCheck(USER_ID, EXERCISE_ID, SafetyCheckStatus.CLEARED)));
         when(sessionRepository.findActiveSessionToday(eq(EXERCISE_ID), eq(USER_ID), anyList(), any()))
                 .thenReturn(Optional.empty());
+        when(careContextResolver.resolve(USER_ID, null))
+                .thenReturn(new ExerciseCareContextResolver.CareContext(
+                        UUID.randomUUID(), UUID.randomUUID()));
         when(sessionRepository.save(any(ExerciseSession.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 

@@ -39,7 +39,6 @@ public class SafetyCheckMapper {
             EvaluationResult evaluationResult) {
         OffsetDateTime now = OffsetDateTime.now();
         return ExerciseSafetyCheck.builder()
-                .safetyCheckId(UUID.randomUUID())
                 .exerciseId(exerciseId)
                 .userId(userId)
                 .journeyId(request.getJourneyId())

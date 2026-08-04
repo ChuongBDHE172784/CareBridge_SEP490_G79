@@ -28,6 +28,7 @@ import com.carebridge.backend.exercise.inference.PostureInferenceUnavailableExce
 import com.carebridge.backend.exercise.repository.ExerciseSessionRepository;
 import com.carebridge.backend.exercise.repository.PostureAnalysisConfigRepository;
 import com.carebridge.backend.exercise.repository.PostureFeedbackEventRepository;
+import com.carebridge.backend.exercise.service.ExerciseCareContextResolver;
 import com.carebridge.backend.exercise.service.impl.PostureAnalysisServiceImpl;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -50,6 +51,8 @@ class PostureAnalysisServiceTest {
     private static final UUID EXERCISE_ID = UUID.randomUUID();
     private static final UUID MOTHER_USER_ID = UUID.randomUUID();
     private static final UUID OTHER_USER_ID = UUID.randomUUID();
+    private static final UUID JOURNEY_ID = UUID.randomUUID();
+    private static final UUID CARE_SUBJECT_ID = UUID.randomUUID();
 
     @Mock
     private ExerciseSessionRepository sessionRepository;
@@ -66,6 +69,9 @@ class PostureAnalysisServiceTest {
     @Mock
     private PostureInferenceConfigResolver inferenceConfigResolver;
 
+    @Mock
+    private ExerciseCareContextResolver careContextResolver;
+
     @InjectMocks
     private PostureAnalysisServiceImpl service;
 
@@ -74,10 +80,16 @@ class PostureAnalysisServiceTest {
                 .exerciseSessionId(SESSION_ID)
                 .exerciseId(EXERCISE_ID)
                 .userId(MOTHER_USER_ID)
+                .journeyId(JOURNEY_ID)
                 .startedAt(OffsetDateTime.now())
                 .sessionStatus(SessionStatus.IN_PROGRESS)
                 .warningCount(0)
                 .build();
+    }
+
+    private void stubCareContext() {
+        when(careContextResolver.resolve(MOTHER_USER_ID, JOURNEY_ID))
+                .thenReturn(new ExerciseCareContextResolver.CareContext(JOURNEY_ID, CARE_SUBJECT_ID));
     }
 
     private PostureAnalysisConfig activeConfig(String feedbackLevel) {
@@ -129,6 +141,7 @@ class PostureAnalysisServiceTest {
     @DisplayName("EX-TC-030-005: submit posture event returns feedback with severity, saves event")
     void analyzePosture_happyPath_returnsFeedbackAndSavesEvent() {
         when(sessionRepository.findById(SESSION_ID)).thenReturn(Optional.of(inProgressSession()));
+        stubCareContext();
         when(postureConfigRepository.findActiveConfigByExerciseId(eq(EXERCISE_ID), any()))
                 .thenReturn(Optional.of(activeConfig("DETAILED")));
 
@@ -150,6 +163,7 @@ class PostureAnalysisServiceTest {
     @DisplayName("EX-TC-030-005: CRITICAL severity (large backAngle) increments session warningCount")
     void analyzePosture_criticalSeverity_incrementsWarningCount() {
         when(sessionRepository.findById(SESSION_ID)).thenReturn(Optional.of(inProgressSession()));
+        stubCareContext();
         when(postureConfigRepository.findActiveConfigByExerciseId(eq(EXERCISE_ID), any()))
                 .thenReturn(Optional.of(activeConfig("DETAILED")));
 
@@ -168,6 +182,7 @@ class PostureAnalysisServiceTest {
     @DisplayName("EX-TC-030-005-B: no posture config falls back to RULE_BASED default, no exception")
     void analyzePosture_noConfig_fallsBackToRuleBased() {
         when(sessionRepository.findById(SESSION_ID)).thenReturn(Optional.of(inProgressSession()));
+        stubCareContext();
         when(postureConfigRepository.findActiveConfigByExerciseId(eq(EXERCISE_ID), any()))
                 .thenReturn(Optional.empty());
 
@@ -228,6 +243,7 @@ class PostureAnalysisServiceTest {
     @DisplayName("analyzePosture: SILENT feedback level produces null feedbackText")
     void analyzePosture_silentFeedbackLevel_nullFeedbackText() {
         when(sessionRepository.findById(SESSION_ID)).thenReturn(Optional.of(inProgressSession()));
+        stubCareContext();
         when(postureConfigRepository.findActiveConfigByExerciseId(eq(EXERCISE_ID), any()))
                 .thenReturn(Optional.of(activeConfig("SILENT")));
 
@@ -242,6 +258,7 @@ class PostureAnalysisServiceTest {
     void analyzePosture_modelBased_dispatchesAndMapsInference() {
         PostureAnalysisConfig config = modelConfig("MODEL_BASED", new BigDecimal("0.60"));
         when(sessionRepository.findById(SESSION_ID)).thenReturn(Optional.of(inProgressSession()));
+        stubCareContext();
         when(postureConfigRepository.findActiveConfigByExerciseId(eq(EXERCISE_ID), any()))
                 .thenReturn(Optional.of(config));
         when(inferenceConfigResolver.resolve(config)).thenReturn(new ResolvedInferenceConfig(
@@ -273,6 +290,7 @@ class PostureAnalysisServiceTest {
     void analyzePosture_modelBasedSidecarFailure_returnsUnavailable() {
         PostureAnalysisConfig config = modelConfig("MODEL_BASED", new BigDecimal("0.60"));
         when(sessionRepository.findById(SESSION_ID)).thenReturn(Optional.of(inProgressSession()));
+        stubCareContext();
         when(postureConfigRepository.findActiveConfigByExerciseId(eq(EXERCISE_ID), any()))
                 .thenReturn(Optional.of(config));
         when(inferenceConfigResolver.resolve(config)).thenReturn(new ResolvedInferenceConfig(
@@ -300,6 +318,7 @@ class PostureAnalysisServiceTest {
     void analyzePosture_hybridSidecarFailure_usesExplicitRuleFallback() {
         PostureAnalysisConfig config = modelConfig("HYBRID", new BigDecimal("0.60"));
         when(sessionRepository.findById(SESSION_ID)).thenReturn(Optional.of(inProgressSession()));
+        stubCareContext();
         when(postureConfigRepository.findActiveConfigByExerciseId(eq(EXERCISE_ID), any()))
                 .thenReturn(Optional.of(config));
         when(inferenceConfigResolver.resolve(config)).thenReturn(new ResolvedInferenceConfig(
@@ -322,6 +341,7 @@ class PostureAnalysisServiceTest {
     void analyzePosture_modelBelowThreshold_returnsLowConfidence() {
         PostureAnalysisConfig config = modelConfig("MODEL_BASED", new BigDecimal("0.75"));
         when(sessionRepository.findById(SESSION_ID)).thenReturn(Optional.of(inProgressSession()));
+        stubCareContext();
         when(postureConfigRepository.findActiveConfigByExerciseId(eq(EXERCISE_ID), any()))
                 .thenReturn(Optional.of(config));
         when(inferenceConfigResolver.resolve(config)).thenReturn(new ResolvedInferenceConfig(
@@ -342,6 +362,7 @@ class PostureAnalysisServiceTest {
     void analyzePosture_providerLowConfidence_returnsLowConfidence() {
         PostureAnalysisConfig config = modelConfig("MODEL_BASED", new BigDecimal("0.50"));
         when(sessionRepository.findById(SESSION_ID)).thenReturn(Optional.of(inProgressSession()));
+        stubCareContext();
         when(postureConfigRepository.findActiveConfigByExerciseId(eq(EXERCISE_ID), any()))
                 .thenReturn(Optional.of(config));
         when(inferenceConfigResolver.resolve(config)).thenReturn(new ResolvedInferenceConfig(

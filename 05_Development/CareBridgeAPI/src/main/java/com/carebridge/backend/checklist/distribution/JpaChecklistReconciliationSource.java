@@ -9,6 +9,7 @@ import com.carebridge.backend.checklist.model.ChecklistRangeUnit;
 import com.carebridge.backend.checklist.model.ChecklistRecipientRole;
 import com.carebridge.backend.checklist.model.ChecklistOrigin;
 import com.carebridge.backend.checklist.entity.ChecklistInstance;
+import com.carebridge.backend.checklist.policy.ChecklistTemplateVisibilityPolicy;
 import com.carebridge.backend.checklist.repository.ChecklistInstanceRepository;
 import com.carebridge.backend.content.entity.ChecklistItem;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
@@ -93,7 +94,7 @@ public class JpaChecklistReconciliationSource implements ChecklistReconciliation
         }
 
         List<AuthorizedFamilyGroup> authorizedGroups = authorizedFamilyGroups(actorUserId);
-        List<ChecklistInstance> currentPersonalInstances = instanceRepository == null
+        List<ChecklistInstance> discoveredPersonalInstances = instanceRepository == null
                 ? List.of()
                 : instanceRepository.findByRecipientUserIdAndHistoricalAtIsNull(actorUserId).stream()
                         .filter(instance -> instance.getRecipientRole() == ChecklistRecipientRole.MOTHER)
@@ -101,6 +102,11 @@ public class JpaChecklistReconciliationSource implements ChecklistReconciliation
                         .filter(instance -> instance.getHistoricalAt() == null)
                         .filter(instance -> instance.getStatus() != com.carebridge.backend.checklist.model.ChecklistInstanceStatus.CANCELLED)
                         .toList();
+        Map<UUID, ChecklistTemplate> currentTemplatesByVersion = templatesByVersion(discoveredPersonalInstances);
+        List<ChecklistInstance> currentPersonalInstances = discoveredPersonalInstances.stream()
+                .filter(instance -> ChecklistTemplateVisibilityPolicy.isVisible(
+                        instance, currentTemplatesByVersion.get(instance.getTemplateVersionId())))
+                .toList();
         List<ChecklistTemplate> approvedTemplates = templateRepository
                 .findAllDistributionEnabledByStatus(ChecklistTemplateStatus.APPROVED);
         boolean activeLegacyPreconception = approvedTemplates.stream()
@@ -123,7 +129,8 @@ public class JpaChecklistReconciliationSource implements ChecklistReconciliation
                         continue;
                     }
                     if (isSequenceTemplate(template)
-                            && !isCurrentSequenceCandidate(template, context.id(), currentPersonalInstances)) {
+                            && !isCurrentSequenceCandidate(
+                                    template, context.id(), currentPersonalInstances, currentTemplatesByVersion)) {
                         continue;
                     }
                     commands.add(actorCommand(
@@ -314,7 +321,8 @@ public class JpaChecklistReconciliationSource implements ChecklistReconciliation
     private boolean isCurrentSequenceCandidate(
             ChecklistTemplate template,
             UUID contextId,
-            List<ChecklistInstance> currentInstances) {
+            List<ChecklistInstance> currentInstances,
+            Map<UUID, ChecklistTemplate> currentTemplatesByVersion) {
         List<ChecklistInstance> contextInstances = currentInstances.stream()
                 .filter(instance -> instance.getCareContextType() == ChecklistCareContextType.JOURNEY)
                 .filter(instance -> Objects.equals(instance.getCareContextId(), contextId))
@@ -323,8 +331,7 @@ public class JpaChecklistReconciliationSource implements ChecklistReconciliation
             return template.getSequencePosition() == 1;
         }
         boolean legacy = contextInstances.stream().anyMatch(instance -> {
-            ChecklistTemplate existing = templateRepository.findByTemplateVersionId(instance.getTemplateVersionId())
-                    .orElse(null);
+            ChecklistTemplate existing = currentTemplatesByVersion.get(instance.getTemplateVersionId());
             return existing == null || existing.getSequencePosition() == null || existing.getSequencePosition() <= 0;
         });
         if (legacy) {
@@ -332,6 +339,22 @@ public class JpaChecklistReconciliationSource implements ChecklistReconciliation
         }
         return contextInstances.stream().anyMatch(instance ->
                 Objects.equals(instance.getTemplateVersionId(), template.getTemplateVersionId()));
+    }
+
+    private Map<UUID, ChecklistTemplate> templatesByVersion(List<ChecklistInstance> instances) {
+        List<UUID> versionIds = instances.stream()
+                .map(ChecklistInstance::getTemplateVersionId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (versionIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, ChecklistTemplate> templates = new LinkedHashMap<>();
+        for (ChecklistTemplate template : templateRepository.findAllByTemplateVersionIdIn(versionIds)) {
+            templates.putIfAbsent(template.getTemplateVersionId(), template);
+        }
+        return Map.copyOf(templates);
     }
 
     private record ContextSeed(
