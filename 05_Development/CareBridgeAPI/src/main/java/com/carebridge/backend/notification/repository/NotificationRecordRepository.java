@@ -93,15 +93,21 @@ public interface NotificationRecordRepository extends JpaRepository<Notification
     Optional<NotificationRecord> findByUserIdAndReferenceIdAndTypeAndReferenceType(
             UUID userId, UUID referenceId, NotificationType type, String referenceType);
 
+    /** Mother's personal appointment milestone row; shared Family rows are scoped by care group. */
     @Query(value = """
             SELECT *
               FROM notification_records
-             WHERE type = 'REMINDER'
+             WHERE user_id = :userId
+               AND care_group_id IS NULL
+               AND type = 'REMINDER'
                AND reference_type = 'APPOINTMENT'
                AND metadata ->> 'milestoneJobId' = CAST(:jobId AS text)
+             ORDER BY created_at DESC, id DESC
              LIMIT 1
             """, nativeQuery = true)
-    Optional<NotificationRecord> findAppointmentMilestoneByJobId(@Param("jobId") UUID jobId);
+    Optional<NotificationRecord> findAppointmentMilestoneByRecipientAndJob(
+            @Param("userId") UUID userId,
+            @Param("jobId") UUID jobId);
 
     @Query(value = """
             SELECT *
@@ -119,19 +125,20 @@ public interface NotificationRecordRepository extends JpaRepository<Notification
             @Param("careGroupId") UUID careGroupId,
             @Param("eventKey") String eventKey);
 
+    /** Shared appointment milestone lookup is recipient-scoped, not group-scoped. */
     @Query(value = """
             SELECT *
               FROM notification_records
              WHERE user_id = :userId
-               AND care_group_id = :careGroupId
+               AND care_group_id IS NOT NULL
                AND type = 'REMINDER'
                AND reference_type = 'APPOINTMENT'
                AND metadata ->> 'milestoneJobId' = CAST(:jobId AS text)
+             ORDER BY created_at ASC
              LIMIT 1
             """, nativeQuery = true)
-    Optional<NotificationRecord> findAppointmentMilestoneByRecipientAndGroupAndJob(
+    Optional<NotificationRecord> findAppointmentMilestoneByRecipientAndJobShared(
             @Param("userId") UUID userId,
-            @Param("careGroupId") UUID careGroupId,
             @Param("jobId") UUID jobId);
 
     @Query(value = """

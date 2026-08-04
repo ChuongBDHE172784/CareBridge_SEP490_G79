@@ -2,18 +2,25 @@ package com.carebridge.backend.reminder.notification.repository;
 
 import com.carebridge.backend.reminder.notification.entity.AppointmentNotificationJob;
 import com.carebridge.backend.reminder.notification.entity.AppointmentNotificationJobStatus;
+import jakarta.persistence.LockModeType;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface AppointmentNotificationJobRepository
         extends JpaRepository<AppointmentNotificationJob, UUID> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select j from AppointmentNotificationJob j where j.id = :jobId")
+    Optional<AppointmentNotificationJob> findByIdForUpdate(@Param("jobId") UUID jobId);
 
     boolean existsByReminderIdAndOccurrenceIdAndConfigRevisionAndOffsetMinutes(
             UUID reminderId, UUID occurrenceId, long configRevision, int offsetMinutes);

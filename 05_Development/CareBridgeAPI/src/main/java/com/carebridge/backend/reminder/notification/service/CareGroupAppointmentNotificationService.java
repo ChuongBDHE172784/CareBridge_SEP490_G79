@@ -24,14 +24,19 @@ import com.carebridge.backend.notification.repository.NotificationPreferenceRepo
 import com.carebridge.backend.notification.repository.NotificationRecordRepository;
 import com.carebridge.backend.notification.service.FcmService;
 import com.carebridge.backend.reminder.entity.Reminder;
+import com.carebridge.backend.reminder.entity.ReminderType;
 import com.carebridge.backend.reminder.notification.entity.AppointmentNotificationJob;
+import com.carebridge.backend.reminder.notification.repository.AppointmentNotificationJobRepository;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +46,7 @@ import org.springframework.transaction.annotation.Transactional;
  * members that have the CALENDAR permission. No appointment copies are made.
  */
 @Service
+@Slf4j
 public class CareGroupAppointmentNotificationService {
 
     private static final DateTimeFormatter DATE_TIME =
@@ -56,7 +62,35 @@ public class CareGroupAppointmentNotificationService {
     private final NotificationRecordRepository notificationRepository;
     private final FcmService fcmService;
     private final AuditService auditService;
+    private final AppointmentNotificationJobRepository appointmentJobRepository;
 
+    @Autowired
+    public CareGroupAppointmentNotificationService(
+            CareGroupRepository groupRepository,
+            CareGroupMemberRepository memberRepository,
+            CareGroupAuthorizationPolicy authorizationPolicy,
+            MotherJourneyRepository journeyRepository,
+            BabyProfileRepository babyRepository,
+            NotificationPreferenceRepository preferenceRepository,
+            DeviceTokenRepository deviceTokenRepository,
+            NotificationRecordRepository notificationRepository,
+            FcmService fcmService,
+            AuditService auditService,
+            AppointmentNotificationJobRepository appointmentJobRepository) {
+        this.groupRepository = groupRepository;
+        this.memberRepository = memberRepository;
+        this.authorizationPolicy = authorizationPolicy;
+        this.journeyRepository = journeyRepository;
+        this.babyRepository = babyRepository;
+        this.preferenceRepository = preferenceRepository;
+        this.deviceTokenRepository = deviceTokenRepository;
+        this.notificationRepository = notificationRepository;
+        this.fcmService = fcmService;
+        this.auditService = auditService;
+        this.appointmentJobRepository = appointmentJobRepository;
+    }
+
+    /** Compatibility constructor for focused unit tests that do not exercise the job lock. */
     public CareGroupAppointmentNotificationService(
             CareGroupRepository groupRepository,
             CareGroupMemberRepository memberRepository,
@@ -68,16 +102,9 @@ public class CareGroupAppointmentNotificationService {
             NotificationRecordRepository notificationRepository,
             FcmService fcmService,
             AuditService auditService) {
-        this.groupRepository = groupRepository;
-        this.memberRepository = memberRepository;
-        this.authorizationPolicy = authorizationPolicy;
-        this.journeyRepository = journeyRepository;
-        this.babyRepository = babyRepository;
-        this.preferenceRepository = preferenceRepository;
-        this.deviceTokenRepository = deviceTokenRepository;
-        this.notificationRepository = notificationRepository;
-        this.fcmService = fcmService;
-        this.auditService = auditService;
+        this(groupRepository, memberRepository, authorizationPolicy, journeyRepository, babyRepository,
+                preferenceRepository, deviceTokenRepository, notificationRepository, fcmService, auditService,
+                null);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -107,17 +134,26 @@ public class CareGroupAppointmentNotificationService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void notifyMilestone(Reminder reminder, AppointmentNotificationJob job, String timeZone) {
-        if (reminder == null || job == null) return;
+        if (reminder == null || job == null || reminder.getReminderType() != ReminderType.APPOINTMENT) return;
+        if (job.getId() == null) return;
+        if (appointmentJobRepository != null
+                && appointmentJobRepository.findByIdForUpdate(job.getId()).isEmpty()) {
+            return;
+        }
         String eventKey = "MILESTONE|" + job.getId();
         String title = milestoneTitle(job.getOffsetMinutes());
         String body = milestoneBody(reminder, job, timeZone);
         for (Recipient recipient : recipients(reminder)) {
-            if (notificationRepository.findAppointmentMilestoneByRecipientAndGroupAndJob(
-                    recipient.userId(), recipient.careGroupId(), job.getId()).isPresent()) {
+            Map<String, String> values = metadata(
+                    recipient, reminder, "MILESTONE", eventKey, job.getId());
+            var existing = notificationRepository.findAppointmentMilestoneByRecipientAndJobShared(
+                    recipient.userId(), job.getId());
+            if (existing.isPresent()) {
+                refreshSharedRoute(existing.get(), recipient, values);
                 continue;
             }
             saveAndDeliver(recipient, reminder, eventKey, "MILESTONE", title, body,
-                    metadata(recipient, reminder, "MILESTONE", eventKey, job.getId()));
+                    values);
         }
     }
 
@@ -143,16 +179,37 @@ public class CareGroupAppointmentNotificationService {
 
     private List<Recipient> recipients(Reminder reminder) {
         if (reminder.getOwnerUserId() == null) return List.of();
-        return groupRepository.findByOwnerUserIdAndStatus(
+        Map<UUID, Recipient> byUser = new TreeMap<>();
+        groupRepository.findByOwnerUserIdAndStatus(
                         reminder.getOwnerUserId(), CareGroupStatus.ACTIVE).stream()
                 .filter(group -> hasActiveLinkedContext(group, reminder))
                 .flatMap(group -> memberRepository.findByCareGroupIdAndInviteStatusIn(
-                                group.getId(), List.of(InviteStatus.ACCEPTED)).stream()
+                        group.getId(), List.of(InviteStatus.ACCEPTED)).stream()
+                        .filter(member -> member.getUserId() != null)
                         .filter(member -> !reminder.getOwnerUserId().equals(member.getUserId()))
                         .filter(member -> authorizationPolicy.hasPermission(
                                 group.getId(), member.getUserId(), PermissionFlag.CALENDAR))
                         .map(member -> new Recipient(group.getId(), member.getUserId())))
-                .toList();
+                .forEach(recipient -> byUser.merge(
+                        recipient.userId(), recipient,
+                        CareGroupAppointmentNotificationService::preferDeterministicGroup));
+        return List.copyOf(byUser.values());
+    }
+
+    private void refreshSharedRoute(
+            NotificationRecord existing, Recipient recipient, Map<String, String> metadata) {
+        if (!recipient.careGroupId().equals(existing.getCareGroupId())
+                || !metadata.equals(existing.getMetadata())) {
+            existing.setCareGroupId(recipient.careGroupId());
+            existing.setMetadata(metadata);
+            notificationRepository.save(existing);
+        }
+    }
+
+    private static Recipient preferDeterministicGroup(Recipient first, Recipient second) {
+        if (first.careGroupId() == null) return second;
+        if (second.careGroupId() == null) return first;
+        return first.careGroupId().compareTo(second.careGroupId()) <= 0 ? first : second;
     }
 
     private boolean hasActiveLinkedContext(CareGroup group, Reminder reminder) {
@@ -179,11 +236,23 @@ public class CareGroupAppointmentNotificationService {
             String title,
             String body,
             Map<String, String> metadata) {
-        boolean pushEnabled = preferenceRepository.isPushEnabled(
-                recipient.userId(), NotificationType.REMINDER);
-        List<DeviceToken> tokens = pushEnabled
-                ? deviceTokenRepository.findByUserIdAndActiveTrue(recipient.userId())
-                : List.of();
+        boolean pushEnabled = false;
+        try {
+            pushEnabled = preferenceRepository.isPushEnabled(
+                    recipient.userId(), NotificationType.REMINDER);
+        } catch (RuntimeException exception) {
+            log.warn("Appointment family preference lookup failed user={} group={} error={}",
+                    recipient.userId(), recipient.careGroupId(), exception.getClass().getSimpleName());
+        }
+        List<DeviceToken> tokens = List.of();
+        if (pushEnabled) {
+            try {
+                tokens = deviceTokenRepository.findByUserIdAndActiveTrue(recipient.userId());
+            } catch (RuntimeException exception) {
+                log.warn("Appointment family token lookup failed user={} group={} error={}",
+                        recipient.userId(), recipient.careGroupId(), exception.getClass().getSimpleName());
+            }
+        }
         NotificationRecord record = NotificationRecord.builder()
                 .userId(recipient.userId())
                 .type(NotificationType.REMINDER)
@@ -198,17 +267,41 @@ public class CareGroupAppointmentNotificationService {
                 .metadata(metadata)
                 .build();
 
-        if (pushEnabled && fcmService.isReady() && !tokens.isEmpty()) {
+        boolean providerReady = false;
+        if (pushEnabled && !tokens.isEmpty()) {
+            try {
+                providerReady = fcmService.isReady();
+            } catch (RuntimeException exception) {
+                log.warn("Appointment family provider readiness failed user={} group={} error={}",
+                        recipient.userId(), recipient.careGroupId(), exception.getClass().getSimpleName());
+            }
+        }
+        if (pushEnabled && providerReady && !tokens.isEmpty()) {
             int attempts = 0;
             int successes = 0;
             String firstMessageId = null;
             for (DeviceToken token : tokens) {
-                FcmDeliveryResult delivery = fcmService.sendWithRetry(
-                        token.getToken(), title, body, metadata, 3);
-                attempts += delivery.attempts();
-                if (delivery.success()) {
-                    successes++;
-                    if (firstMessageId == null) firstMessageId = delivery.messageId();
+                try {
+                    FcmDeliveryResult delivery = fcmService.sendWithRetry(
+                            token.getToken(), title, body, metadata, 3);
+                    if (delivery == null) {
+                        attempts++;
+                        log.warn("Appointment family provider returned no result user={} group={} platform={}",
+                                recipient.userId(), recipient.careGroupId(), token.getPlatform());
+                        continue;
+                    }
+                    attempts += delivery.attempts();
+                    if (delivery.success()) {
+                        successes++;
+                        if (firstMessageId == null) firstMessageId = delivery.messageId();
+                    }
+                } catch (RuntimeException ignored) {
+                    // A provider/token failure is isolated to this token. The
+                    // authorized in-app record is still persisted below.
+                    attempts++;
+                    log.warn("Appointment family push failed user={} group={} platform={} error={}",
+                            recipient.userId(), recipient.careGroupId(), token.getPlatform(),
+                            ignored.getClass().getSimpleName());
                 }
             }
             record.setAttemptCount(attempts);

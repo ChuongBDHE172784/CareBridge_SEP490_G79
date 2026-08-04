@@ -135,7 +135,7 @@ public class ReminderNotificationService implements IReminderNotificationService
             return null;
         }
         NotificationRecord existing = notificationRecordRepository
-                .findAppointmentMilestoneByJobId(command.jobId())
+                .findAppointmentMilestoneByRecipientAndJob(command.userId(), command.jobId())
                 .orElse(null);
         if (existing != null
                 && (existing.getStatus() == NotificationRecordStatus.SENT

@@ -49,6 +49,7 @@ class AppointmentNotificationProcessingServiceTest {
     @Mock private AppointmentNotificationConfigRepository configRepository;
     @Mock private ReminderRepository reminderRepository;
     @Mock private IReminderNotificationService notificationService;
+    @Mock private CareGroupAppointmentNotificationService familyNotificationService;
 
     private AppointmentNotificationProcessingService service;
 
@@ -59,6 +60,7 @@ class AppointmentNotificationProcessingServiceTest {
                 configRepository,
                 reminderRepository,
                 notificationService,
+                familyNotificationService,
                 Clock.fixed(NOW, ZoneOffset.UTC),
                 4,
                 10);
@@ -122,6 +124,35 @@ class AppointmentNotificationProcessingServiceTest {
         assertThat(job.getNotificationRecordId()).isEqualTo(RECORD_ID);
         assertThat(job.getLockedBy()).isNull();
         assertThat(job.getLockedAt()).isNull();
+    }
+
+    @Test
+    void process_successInvokesFamilyFanoutAfterMotherDelivery() {
+        AppointmentNotificationJob job = processingJob(1, 1L, 0L, -30);
+        stubEligible(job, ReminderStatus.PENDING, RecurrenceType.NONE, 1L, 0L);
+        when(notificationService.sendAppointmentNotification(any()))
+                .thenReturn(response("SENT"));
+
+        service.process(JOB_ID, "worker-a");
+
+        verify(familyNotificationService).notifyMilestone(
+                any(Reminder.class), eq(job), eq("Asia/Ho_Chi_Minh"));
+    }
+
+    @Test
+    void process_familyFanoutFailureDoesNotChangeMotherJobResult() {
+        AppointmentNotificationJob job = processingJob(1, 1L, 0L, -30);
+        stubEligible(job, ReminderStatus.PENDING, RecurrenceType.NONE, 1L, 0L);
+        when(notificationService.sendAppointmentNotification(any()))
+                .thenReturn(response("SENT"));
+        org.mockito.Mockito.doThrow(new IllegalStateException("family provider failed"))
+                .when(familyNotificationService)
+                .notifyMilestone(any(Reminder.class), eq(job), any());
+
+        service.process(JOB_ID, "worker-a");
+
+        assertThat(job.getStatus()).isEqualTo(AppointmentNotificationJobStatus.SENT);
+        assertThat(job.getLastErrorCode()).isNull();
     }
 
     @Test

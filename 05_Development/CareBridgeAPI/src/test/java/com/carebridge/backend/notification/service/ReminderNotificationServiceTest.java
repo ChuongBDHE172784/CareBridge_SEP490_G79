@@ -171,7 +171,7 @@ class ReminderNotificationServiceTest {
                 Instant.parse("2026-08-04T01:00:00Z"), -30, "UTC");
 
         when(preferenceRepository.isPushEnabled(USER_ID, NotificationType.REMINDER)).thenReturn(true);
-        when(notificationRecordRepository.findAppointmentMilestoneByJobId(jobId))
+        when(notificationRecordRepository.findAppointmentMilestoneByRecipientAndJob(USER_ID, jobId))
                 .thenReturn(Optional.of(failed));
         when(deviceTokenRepository.findByUserIdAndActiveTrue(USER_ID))
                 .thenReturn(List.of(token("token-1")));
@@ -186,6 +186,35 @@ class ReminderNotificationServiceTest {
         verify(fcmService).sendWithRetry(eq("token-1"), any(), any(), any(Map.class), eq(3));
         assertThat(failed.getStatus()).isEqualTo(NotificationRecordStatus.SENT);
         assertThat(failed.getAttemptCount()).isEqualTo(1);
+    }
+
+    @Test
+    @DisplayName("NOTIF-TC-009: a shared Family row cannot satisfy the Mother's milestone lookup")
+    void sendAppointmentNotification_scopesMilestoneLookupToMother() {
+        UUID jobId = UUID.fromString("20000000-0000-0000-0000-000000000159");
+        UUID occurrenceId = UUID.fromString("30000000-0000-0000-0000-000000000159");
+        ReminderNotificationCommand command = new ReminderNotificationCommand(
+                jobId, REMINDER_ID, occurrenceId, USER_ID, "Prenatal appointment",
+                Instant.parse("2026-08-04T01:00:00Z"), -30, "UTC");
+
+        when(preferenceRepository.isPushEnabled(USER_ID, NotificationType.REMINDER)).thenReturn(true);
+        when(notificationRecordRepository.findAppointmentMilestoneByRecipientAndJob(USER_ID, jobId))
+                .thenReturn(Optional.empty());
+        when(deviceTokenRepository.findByUserIdAndActiveTrue(USER_ID))
+                .thenReturn(List.of(token("mother-token")));
+        when(fcmService.sendWithRetry(eq("mother-token"), any(), any(), any(Map.class), eq(3)))
+                .thenReturn(FcmDeliveryResult.success("fcm-mother-001", 1));
+        when(notificationRecordRepository.saveAndFlush(any())).thenAnswer(invocation -> {
+            NotificationRecord record = invocation.getArgument(0);
+            record.setId(UUID.fromString("40000000-0000-0000-0000-000000000159"));
+            return record;
+        });
+
+        NotificationRecordResponse response = service.sendAppointmentNotification(command);
+
+        assertThat(response.userId()).isEqualTo(USER_ID);
+        verify(notificationRecordRepository).findAppointmentMilestoneByRecipientAndJob(USER_ID, jobId);
+        verify(fcmService).sendWithRetry(eq("mother-token"), any(), any(), any(Map.class), eq(3));
     }
 
     private DeviceToken token(String value) {

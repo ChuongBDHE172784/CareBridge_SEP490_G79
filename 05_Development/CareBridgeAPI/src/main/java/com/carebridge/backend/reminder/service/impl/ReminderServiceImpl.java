@@ -7,6 +7,8 @@ import com.carebridge.backend.checklist.model.ChecklistCareContextType;
 import com.carebridge.backend.checklist.today.provider.ReminderOccurrenceIdFactory;
 import com.carebridge.backend.baby.repository.BabyProfileRepository;
 import com.carebridge.backend.common.exception.BusinessException;
+import com.carebridge.backend.journey.entity.JourneyStatus;
+import com.carebridge.backend.journey.repository.MotherJourneyRepository;
 import com.carebridge.backend.reminder.dto.CreateMedicationReminderRequest;
 import com.carebridge.backend.reminder.dto.CreateReminderRequest;
 import com.carebridge.backend.reminder.dto.CreateReminderResponse;
@@ -52,6 +54,7 @@ public class ReminderServiceImpl implements IReminderService {
     private final INotificationService notificationService;
     private final AuditService auditService;
     private final BabyProfileRepository babyProfileRepository;
+    private final MotherJourneyRepository motherJourneyRepository;
     private final VaccinationRecordRepository vaccinationRecordRepository;
     private final EntityManager entityManager;
     private final AppointmentNotificationScheduleService appointmentNotificationScheduleService;
@@ -65,7 +68,7 @@ public class ReminderServiceImpl implements IReminderService {
             BabyProfileRepository babyProfileRepository,
             VaccinationRecordRepository vaccinationRecordRepository) {
         this(reminderRepository, notificationService, auditService, babyProfileRepository,
-                vaccinationRecordRepository, null, null, null);
+                null, vaccinationRecordRepository, null, null, null);
     }
 
     // ─── UC45: Create Appointment Reminder ────────────────────────────────────
@@ -74,9 +77,23 @@ public class ReminderServiceImpl implements IReminderService {
     public CreateReminderResponse createReminder(CreateReminderRequest request, UUID callerId) {
         validateScheduledAt(request.getScheduledAt());
 
+        // Flutter's canonical appointment form does not always have lifecycle
+        // context at create time. Resolve only this contextless appointment case
+        // from the Mother's latest ACTIVE journey; explicit journey/baby context
+        // remains authoritative and is never overwritten.
+        UUID journeyId = request.getJourneyId();
+        if (request.getReminderType() == ReminderType.APPOINTMENT
+                && journeyId == null && request.getBabyId() == null
+                && motherJourneyRepository != null) {
+            journeyId = motherJourneyRepository
+                    .findFirstByOwnerUserIdAndStatusOrderByCreatedAtDesc(callerId, JourneyStatus.ACTIVE)
+                    .map(journey -> journey.getId())
+                    .orElse(null);
+        }
+
         Reminder reminder = Reminder.builder()
                 .ownerUserId(callerId)
-                .journeyId(request.getJourneyId())
+                .journeyId(journeyId)
                 .babyId(request.getBabyId())
                 .reminderType(request.getReminderType())
                 .title(request.getTitle())
