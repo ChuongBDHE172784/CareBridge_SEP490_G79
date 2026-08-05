@@ -11,13 +11,13 @@ typedef PostureEventSender =
 /// Latest-sample-wins transport for realtime posture feedback.
 ///
 /// Camera/pose extraction can emit many frames per second, while the backend
-/// contract deliberately samples at roughly two requests per second. This
+/// contract deliberately samples at up to ten requests per second. This
 /// class keeps at most one request in flight, drops stale frames, and never
 /// retries a failed sample automatically.
 class PostureEventStreamer {
   PostureEventStreamer({
     required PostureEventSender send,
-    this.minimumInterval = const Duration(milliseconds: 550),
+    this.minimumInterval = const Duration(milliseconds: 100),
     this.onFeedback,
     this.onError,
   }) : _send = send;
