@@ -72,7 +72,7 @@ carebridge:
     enabled: ${CAREBRIDGE_RECOMMENDATION_ENABLED:false}
   exercise-correction:
     # Disabled by default so RULE_BASED behavior remains available without the optional sidecar.
-    enabled: ${CAREBRIDGE_EXERCISE_CORRECTION_ENABLED:false}
+    enabled: ${CAREBRIDGE_EXERCISE_CORRECTION_ENABLED:true}
     base-url: ${EXERCISE_CORRECTION_SERVICE_URL:http://localhost:8002}
     connect-timeout-ms: ${EXERCISE_CORRECTION_CONNECT_TIMEOUT_MS:500}
     read-timeout-ms: ${EXERCISE_CORRECTION_READ_TIMEOUT_MS:1200}
