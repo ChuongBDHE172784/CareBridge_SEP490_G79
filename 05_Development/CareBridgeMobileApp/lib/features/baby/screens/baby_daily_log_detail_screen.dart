@@ -31,6 +31,7 @@ class _BabyDailyLogDetailScreenState extends State<BabyDailyLogDetailScreen> {
   bool _isLoading = true;
   bool _isDeleting = false;
   String? _errorMessage;
+  int _fetchGeneration = 0;
 
   @override
   void initState() {
@@ -39,20 +40,24 @@ class _BabyDailyLogDetailScreenState extends State<BabyDailyLogDetailScreen> {
   }
 
   Future<void> _fetchLogDetail() async {
+    final generation = ++_fetchGeneration;
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
     try {
       final log = await _service.getDailyLogDetail(widget.babyId, widget.logId);
-      if (mounted) {
+      if (log.babyId != widget.babyId) {
+        throw const FormatException('Baby daily-log scope mismatch');
+      }
+      if (mounted && generation == _fetchGeneration) {
         setState(() {
           _log = log;
           _isLoading = false;
         });
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && generation == _fetchGeneration) {
         setState(() {
           _errorMessage = 'Không thể tải chi tiết nhật ký. $e';
           _isLoading = false;
@@ -68,9 +73,9 @@ class _BabyDailyLogDetailScreenState extends State<BabyDailyLogDetailScreen> {
       if (mounted) Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Không thể xóa nhật ký. $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Không thể xóa nhật ký. $e')));
       }
     } finally {
       if (mounted) setState(() => _isDeleting = false);
@@ -78,11 +83,16 @@ class _BabyDailyLogDetailScreenState extends State<BabyDailyLogDetailScreen> {
   }
 
   Future<void> _openEdit() async {
-    await context.push(
+    final result = await context.push(
       '/babies/${widget.babyId}/daily-logs/${widget.logId}/edit',
       extra: _log,
     );
-    if (mounted) _fetchLogDetail();
+    if (!mounted) return;
+    if (result == 'deleted') {
+      Navigator.of(context).pop(true);
+      return;
+    }
+    if (result == true) await _fetchLogDetail();
   }
 
   @override
@@ -110,8 +120,8 @@ class _BabyDailyLogDetailScreenState extends State<BabyDailyLogDetailScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: _primary))
           : _errorMessage != null
-              ? _buildErrorState()
-              : _buildDetail(),
+          ? _buildErrorState()
+          : _buildDetail(),
     );
   }
 
@@ -153,11 +163,15 @@ class _BabyDailyLogDetailScreenState extends State<BabyDailyLogDetailScreen> {
               color: Color(0xFFF6DACF),
               shape: BoxShape.circle,
             ),
-            child: Icon(_iconFor(log.logType), color: _primary, size: 40),
+            child: Icon(
+              _iconFor(log.logType, log.rawLogType),
+              color: _primary,
+              size: 40,
+            ),
           ),
           const SizedBox(height: 16),
           Text(
-            log.logType.displayLabel,
+            log.displayTypeLabel,
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 24,
@@ -327,7 +341,16 @@ class _BabyDailyLogDetailScreenState extends State<BabyDailyLogDetailScreen> {
     );
   }
 
-  IconData _iconFor(LogType type) {
+  IconData _iconFor(LogType type, [String? rawType]) {
+    switch (rawType?.toUpperCase()) {
+      case 'FEVER':
+      case 'SYMPTOM':
+        return Icons.thermostat;
+      case 'VOMITING':
+        return Icons.sick;
+      case 'MEDICINE':
+        return Icons.medication;
+    }
     switch (type) {
       case LogType.feeding:
         return Icons.restaurant;
@@ -335,6 +358,12 @@ class _BabyDailyLogDetailScreenState extends State<BabyDailyLogDetailScreen> {
         return Icons.bedtime;
       case LogType.diaper:
         return Icons.cleaning_services;
+      case LogType.fever:
+        return Icons.thermostat;
+      case LogType.vomiting:
+        return Icons.sick;
+      case LogType.medicine:
+        return Icons.medication;
       case LogType.symptom:
         return Icons.health_and_safety;
     }

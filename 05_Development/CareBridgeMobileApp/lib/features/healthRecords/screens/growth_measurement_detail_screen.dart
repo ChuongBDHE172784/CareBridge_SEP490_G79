@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/growth_measurement_model.dart';
 import '../services/growth_measurement_service.dart';
+import 'growth_measurement_form_screen.dart';
 
 class GrowthMeasurementDetailScreen extends StatefulWidget {
   final String babyId;
@@ -65,6 +66,18 @@ class _GrowthMeasurementDetailScreenState
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  Future<void> _edit() async {
+    final changed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => GrowthMeasurementFormScreen(
+          babyId: widget.babyId,
+          measurement: widget.measurement,
+        ),
+      ),
+    );
+    if (changed == true && mounted) Navigator.of(context).pop(true);
   }
 
   @override
@@ -310,18 +323,8 @@ class _GrowthMeasurementDetailScreenState
 
                 const SizedBox(height: 24),
                 ElevatedButton.icon(
-                  onPressed: _isLoading
-                      ? null
-                      : () {
-                          // Navigate to Edit screen
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text(
-                                'Tính năng chỉnh sửa đang phát triển',
-                              ),
-                            ),
-                          );
-                        },
+                  key: const Key('growth-edit-button'),
+                  onPressed: _isLoading ? null : _edit,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF845143),
                     foregroundColor: Colors.white,

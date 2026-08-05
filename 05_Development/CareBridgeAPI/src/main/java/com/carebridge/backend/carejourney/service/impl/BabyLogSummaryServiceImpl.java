@@ -12,13 +12,14 @@ import com.carebridge.backend.common.exception.AccessDeniedBusinessException;
 import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.common.exception.ResourceNotFoundException;
 import com.carebridge.backend.common.util.SecurityUtils;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.security.Principal;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.HashMap;
@@ -29,7 +30,6 @@ import java.util.UUID;
 
 @Service
 @Transactional(readOnly = true)
-@RequiredArgsConstructor
 public class BabyLogSummaryServiceImpl implements IBabyLogSummaryService {
 
     private static final Set<String> VALID_PERIODS = Set.of("24h", "7d");
@@ -39,6 +39,26 @@ public class BabyLogSummaryServiceImpl implements IBabyLogSummaryService {
     private final BabyDailyLogRepository babyDailyLogRepository;
     private final BabyProfileRepository babyProfileRepository;
     private final BabyAccessPolicy babyAccessPolicy;
+    private final Clock clock;
+
+    @Autowired
+    public BabyLogSummaryServiceImpl(
+            BabyDailyLogRepository babyDailyLogRepository,
+            BabyProfileRepository babyProfileRepository,
+            BabyAccessPolicy babyAccessPolicy) {
+        this(babyDailyLogRepository, babyProfileRepository, babyAccessPolicy, Clock.systemUTC());
+    }
+
+    public BabyLogSummaryServiceImpl(
+            BabyDailyLogRepository babyDailyLogRepository,
+            BabyProfileRepository babyProfileRepository,
+            BabyAccessPolicy babyAccessPolicy,
+            Clock clock) {
+        this.babyDailyLogRepository = babyDailyLogRepository;
+        this.babyProfileRepository = babyProfileRepository;
+        this.babyAccessPolicy = babyAccessPolicy;
+        this.clock = clock;
+    }
 
     @Override
     public BabyLogSummaryResponse getSummary(UUID babyId, String period, Principal principal) {
@@ -60,7 +80,7 @@ public class BabyLogSummaryServiceImpl implements IBabyLogSummaryService {
         }
 
         // C2: calculate rolling window bounds — NOT calendar-based (L1 fix)
-        Instant toDate = Instant.now();
+        Instant toDate = Instant.now(clock);
         Instant fromDate = "24h".equals(period)
                 ? toDate.minus(Duration.ofHours(24))
                 : toDate.minus(Duration.ofDays(7));

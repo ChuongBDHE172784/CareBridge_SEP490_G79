@@ -17,18 +17,13 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface ExerciseSessionRepository extends JpaRepository<ExerciseSession, UUID> {
 
-    @Query("""
-        SELECT s FROM ExerciseSession s
-        WHERE s.exerciseId = :exerciseId
-          AND s.userId = :userId
-          AND s.sessionStatus IN :statuses
-          AND s.startedAt >= :dayStart
-    """)
-    Optional<ExerciseSession> findActiveSessionToday(
-            @Param("exerciseId") UUID exerciseId,
-            @Param("userId") UUID userId,
-            @Param("statuses") List<SessionStatus> statuses,
-            @Param("dayStart") OffsetDateTime dayStart);
+    Optional<ExerciseSession>
+            findFirstByExerciseIdAndUserIdAndSessionStatusInAndStartedAtGreaterThanEqualAndStartedAtLessThanOrderByStartedAtAscExerciseSessionIdAsc(
+                    UUID exerciseId,
+                    UUID userId,
+                    List<SessionStatus> statuses,
+                    OffsetDateTime dayStart,
+                    OffsetDateTime dayEnd);
 
     List<ExerciseSession> findByUserIdAndSessionStatusOrderByStartedAtDesc(
             UUID userId, SessionStatus status, Pageable pageable);

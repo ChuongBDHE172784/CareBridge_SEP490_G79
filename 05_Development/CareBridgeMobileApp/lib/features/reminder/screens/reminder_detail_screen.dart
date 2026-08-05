@@ -141,6 +141,43 @@ class _ReminderDetailScreenState extends State<ReminderDetailScreen> {
     });
   }
 
+  Future<void> _snooze() async {
+    final choice = await showModalBottomSheet<Duration>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const ListTile(
+              title: Text(
+                'Hoãn nhắc lịch',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              subtitle: Text('Chọn thời điểm nhắc lại trong 24 giờ tới.'),
+            ),
+            for (final option in const <MapEntry<String, Duration>>[
+              MapEntry('Sau 15 phút', Duration(minutes: 15)),
+              MapEntry('Sau 1 giờ', Duration(hours: 1)),
+              MapEntry('Ngày mai', Duration(hours: 23, minutes: 30)),
+            ])
+              ListTile(
+                leading: const Icon(Icons.snooze_rounded),
+                title: Text(option.key),
+                onTap: () => Navigator.pop(sheetContext, option.value),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || choice == null) return;
+    await _runAction(() async {
+      await _service.snoozeReminder(
+        widget.reminderId,
+        DateTime.now().add(choice),
+      );
+    });
+  }
+
   Future<void> _delete() async {
     final ok = await _confirm(
       title: 'Tắt nhắc lịch?',
@@ -187,6 +224,7 @@ class _ReminderDetailScreenState extends State<ReminderDetailScreen> {
               appointmentResource: widget.appointmentResource,
               processing: _processing,
               onComplete: _complete,
+              onSnooze: _snooze,
               onEdit: () async {
                 final changed = await context.push(
                   widget.appointmentResource
@@ -213,6 +251,7 @@ class _ReminderContent extends StatelessWidget {
   final bool appointmentResource;
   final bool processing;
   final VoidCallback onComplete;
+  final VoidCallback onSnooze;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onSkip;
@@ -222,6 +261,7 @@ class _ReminderContent extends StatelessWidget {
     required this.appointmentResource,
     required this.processing,
     required this.onComplete,
+    required this.onSnooze,
     required this.onEdit,
     required this.onDelete,
     required this.onSkip,
@@ -387,6 +427,26 @@ class _ReminderContent extends StatelessWidget {
             ),
           )
         else ...[
+          OutlinedButton.icon(
+            onPressed: processing ? null : onEdit,
+            icon: const Icon(Icons.edit_rounded),
+            label: const Text(
+              'Chỉnh sửa nhắc lịch',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _primary,
+              minimumSize: const Size.fromHeight(50),
+              side: BorderSide(color: _primaryContainer.withAlpha(150)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
           FilledButton.icon(
             onPressed: processing ? null : onComplete,
             style: FilledButton.styleFrom(
@@ -402,6 +462,26 @@ class _ReminderContent extends StatelessWidget {
               style: TextStyle(
                 fontFamily: 'Lexend',
                 fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          OutlinedButton.icon(
+            onPressed: processing ? null : onSnooze,
+            icon: const Icon(Icons.snooze_rounded),
+            label: const Text(
+              'Hoãn nhắc lịch',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _primary,
+              minimumSize: const Size.fromHeight(50),
+              side: BorderSide(color: _primaryContainer.withAlpha(150)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
               ),
             ),
           ),

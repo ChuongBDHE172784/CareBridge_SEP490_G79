@@ -81,6 +81,7 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
   BabyProfile? _profile;
   List<Milestone> _milestones = const [];
   List<VaccinationRecord> _vaccinations = const [];
+  VaccinationSchedule? _vaccinationSchedule;
   BabyLogSummaryResponse? _summary;
   List<GrowthMeasurement> _growthMeasurements = const [];
   bool _summaryLoading = false;
@@ -132,6 +133,7 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
       _profile = widget.initialProfile;
       _milestones = widget.initialMilestones;
       _vaccinations = widget.initialVaccinations;
+      _vaccinationSchedule = null;
       _summary = widget.initialSummary;
       _growthMeasurements = _sortGrowthMeasurements(
         widget.initialGrowthMeasurements,
@@ -390,6 +392,7 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
 
     List<Milestone>? milestones;
     List<VaccinationRecord>? vaccinations;
+    VaccinationSchedule? schedule;
     var failed = false;
     try {
       milestones = await _babyLogService.getMilestones(babyId);
@@ -401,6 +404,11 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
     } catch (_) {
       failed = true;
     }
+    try {
+      schedule = await _vaccinationService.getVaccinationSchedule(babyId);
+    } catch (_) {
+      failed = true;
+    }
 
     if (!mounted || babyId != widget.babyId || generation != _loadGeneration) {
       return;
@@ -408,6 +416,7 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
     setState(() {
       if (milestones != null) _milestones = milestones;
       if (vaccinations != null) _vaccinations = vaccinations;
+      if (schedule != null) _vaccinationSchedule = schedule;
       _careCollectionsLoading = false;
       _careCollectionsError = failed
           ? 'Một phần dữ liệu chăm sóc chưa thể tải.'
@@ -429,6 +438,12 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
 
   Future<void> _openLogSummary() async {
     await context.push('/babies/${widget.babyId}/log-summary');
+    if (mounted) await _refreshAfterReturn();
+  }
+
+  Future<void> _openCareHub() async {
+    final babyId = Uri.encodeComponent(widget.babyId);
+    await context.push('/baby-care-hub?babyId=$babyId');
     if (mounted) await _refreshAfterReturn();
   }
 
@@ -862,47 +877,63 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
         _horizontalPadding,
         20,
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: OutlinedButton.icon(
-              key: const Key('baby-care-journal'),
-              onPressed: _openLogSummary,
-              icon: const Icon(Icons.list_alt_outlined, size: 18),
-              label: const Text('Log'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: _primary,
-                side: const BorderSide(color: _outlineVariant),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  key: const Key('baby-care-journal'),
+                  onPressed: _openLogSummary,
+                  icon: const Icon(Icons.list_alt_outlined, size: 18),
+                  label: const Text('Log'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: _primary,
+                    side: const BorderSide(color: _outlineVariant),
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  key: const Key('baby-care-milestone-add'),
+                  onPressed: () {
+                    _openAddMilestone();
+                  },
+                  icon: const Icon(Icons.flag_outlined, size: 18),
+                  label: const Text('Milestone'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: _primary,
+                    side: const BorderSide(color: _outlineVariant),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    _openEditProfile();
+                  },
+                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  label: const Text('Edit'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: _primary,
+                    side: const BorderSide(color: _outlineVariant),
+                  ),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: OutlinedButton.icon(
-              key: const Key('baby-care-milestone-add'),
-              onPressed: () {
-                _openAddMilestone();
-              },
-              icon: const Icon(Icons.flag_outlined, size: 18),
-              label: const Text('Milestone'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: _primary,
-                side: const BorderSide(color: _outlineVariant),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: () {
-                _openEditProfile();
-              },
-              icon: const Icon(Icons.edit_outlined, size: 18),
-              label: const Text('Edit'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: _primary,
-                side: const BorderSide(color: _outlineVariant),
-              ),
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            key: const Key('baby-care-hub'),
+            onPressed: _openCareHub,
+            icon: const Icon(Icons.dashboard_customize_outlined, size: 18),
+            label: const Text('Tổng quan chăm sóc'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _primary,
+              side: const BorderSide(color: _outlineVariant),
             ),
           ),
         ],
@@ -998,6 +1029,10 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
             ),
           ),
           const SizedBox(height: 16),
+          if (_vaccinationSchedule != null) ...[
+            _buildSchedulePreview(_vaccinationSchedule!),
+            const SizedBox(height: 16),
+          ],
           _buildCollectionStatus(
             empty: _vaccinations.isEmpty,
             emptyLabel: 'Chưa có bản ghi tiêm chủng.',
@@ -1044,6 +1079,61 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSchedulePreview(VaccinationSchedule schedule) {
+    final visible = schedule.doses
+        .where((dose) => dose.status != VaccinationStatus.completed)
+        .take(4)
+        .toList(growable: false);
+    if (visible.isEmpty) {
+      return const Text(
+        'Lịch tham khảo đã hoàn thành.',
+        style: TextStyle(color: _onSurfaceVariant),
+      );
+    }
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _surfaceContainer.withAlpha(90),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Lịch tham khảo theo độ tuổi',
+            style: TextStyle(fontWeight: FontWeight.w700, color: _onSurface),
+          ),
+          const SizedBox(height: 8),
+          for (final dose in visible)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 3),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '${dose.vaccineName} · mũi ${dose.doseNumber}',
+                      style: const TextStyle(color: _onSurfaceVariant),
+                    ),
+                  ),
+                  Text(
+                    dose.status.displayLabel,
+                    style: TextStyle(
+                      color: dose.status == VaccinationStatus.overdue
+                          ? Colors.red.shade700
+                          : _primary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );

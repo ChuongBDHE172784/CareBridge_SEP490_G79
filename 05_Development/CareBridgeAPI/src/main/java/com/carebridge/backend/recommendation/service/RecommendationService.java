@@ -60,6 +60,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import com.carebridge.backend.family.repository.CareGroupMemberRepository;
 import com.carebridge.backend.family.repository.CareGroupRepository;
@@ -435,7 +436,7 @@ public class RecommendationService implements RecommendationConsentCleanup {
         }
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void markStageReview(UUID ownerUserId, UUID journeyId, JourneyType stage) {
         journeyRepository.findByIdAndOwnerUserIdForUpdate(journeyId, ownerUserId).ifPresent(journey -> {
             if (journey.getRecommendationProfileStatus() == RecommendationProfileStatus.ACTIVE) {

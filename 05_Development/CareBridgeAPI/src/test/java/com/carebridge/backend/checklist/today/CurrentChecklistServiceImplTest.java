@@ -17,6 +17,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 class CurrentChecklistServiceImplTest {
 
@@ -46,5 +49,35 @@ class CurrentChecklistServiceImplTest {
                 ACTOR, DATE, ZONE, Set.of(TaskKind.CHECKLIST), true);
         assertThat(result.correlationId()).isEqualTo(CORRELATION);
         assertThat(result.counts()).isEqualTo(response.counts());
+    }
+
+    @Test
+    void familyCurrentChecklistReadDoesNotRequestReconciliation() {
+        UnifiedTodayTaskService unifiedTodayTaskService = mock(UnifiedTodayTaskService.class);
+        TodayTasksResponse response = new TodayTasksResponse(
+                Instant.parse("2026-08-05T01:00:00Z"),
+                ZONE,
+                7,
+                new TodayTaskSections(List.of(), List.of(), List.of(), List.of()),
+                new TodayTaskCounts(0, 0, 0, 0),
+                CORRELATION,
+                null);
+        when(unifiedTodayTaskService.getTodayTasks(
+                ACTOR, DATE, ZONE, Set.of(TaskKind.CHECKLIST), false)).thenReturn(response);
+
+        var context = SecurityContextHolder.createEmptyContext();
+        context.setAuthentication(new UsernamePasswordAuthenticationToken(
+                ACTOR.toString(), "n/a", List.of(new SimpleGrantedAuthority("ROLE_FAMILY"))));
+        SecurityContextHolder.setContext(context);
+        try {
+            var result = new CurrentChecklistServiceImpl(unifiedTodayTaskService)
+                    .getCurrentTasks(ACTOR, DATE, ZONE);
+
+            verify(unifiedTodayTaskService).getTodayTasks(
+                    ACTOR, DATE, ZONE, Set.of(TaskKind.CHECKLIST), false);
+            assertThat(result.correlationId()).isEqualTo(CORRELATION);
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
     }
 }
