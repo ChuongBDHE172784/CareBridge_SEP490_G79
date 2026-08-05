@@ -27,8 +27,8 @@ public interface BabyDailyLogRepository extends JpaRepository<BabyDailyLog, UUID
                MAX(unit) AS unit
         FROM care_logs
         WHERE care_subject_id = :babyId
-          AND created_at >= :fromDate
-          AND created_at <= :toDate
+          AND COALESCE(started_at, created_at) >= :fromDate
+          AND COALESCE(started_at, created_at) < :toDate
           AND COALESCE(status, 'ACTIVE') = 'ACTIVE'
         GROUP BY log_type
         """, nativeQuery = true)
@@ -42,8 +42,8 @@ public interface BabyDailyLogRepository extends JpaRepository<BabyDailyLog, UUID
         SELECT note FROM care_logs
         WHERE care_subject_id = :babyId
           AND log_type = :logType
-          AND created_at >= :fromDate
-          AND created_at <= :toDate
+          AND COALESCE(started_at, created_at) >= :fromDate
+          AND COALESCE(started_at, created_at) < :toDate
           AND note IS NOT NULL
           AND COALESCE(status, 'ACTIVE') = 'ACTIVE'
         ORDER BY created_at DESC

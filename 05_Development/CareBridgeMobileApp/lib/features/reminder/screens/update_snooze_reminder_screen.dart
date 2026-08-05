@@ -85,23 +85,25 @@ class _UpdateSnoozeReminderScreenState
     }
   }
 
-  Future<void> _run(Future<Reminder> Function() action) async {
+  Future<bool> _run(Future<Reminder> Function() action) async {
     setState(() => _processing = true);
     try {
       final updated = await action();
-      if (!mounted) return;
+      if (!mounted) return false;
       setState(() => _reminder = updated);
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Đã cập nhật nhắc lịch')));
+      return true;
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted) return false;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Thao tác thất bại: $e'),
           backgroundColor: _error,
         ),
       );
+      return false;
     } finally {
       if (mounted) setState(() => _processing = false);
     }
@@ -146,6 +148,10 @@ class _UpdateSnoozeReminderScreenState
 
   Future<void> _disableReminder() async {
     if (_reminder == null) return;
+    if (_reminder!.status.isTerminal &&
+        _reminder!.status != ReminderStatus.cancelled) {
+      return;
+    }
     final ok = await _confirmAction(
       title: 'Tắt nhắc lịch?',
       message: 'Nhắc lịch này sẽ không còn xuất hiện khi đến hạn.',
@@ -219,8 +225,54 @@ class _UpdateSnoozeReminderScreenState
     }
   }
 
+  Future<void> _snoozeReminder() async {
+    if (_reminder == null || _reminder!.status.isTerminal) return;
+    final choice = await showModalBottomSheet<Duration>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const ListTile(
+              title: Text(
+                'Hoãn nhắc lịch',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+            for (final option in const <MapEntry<String, Duration>>[
+              MapEntry('Sau 15 phút', Duration(minutes: 15)),
+              MapEntry('Sau 1 giờ', Duration(hours: 1)),
+              MapEntry('Ngày mai', Duration(hours: 23, minutes: 30)),
+            ])
+              ListTile(
+                leading: const Icon(Icons.snooze_rounded),
+                title: Text(option.key),
+                onTap: () => Navigator.pop(sheetContext, option.value),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (choice == null) return;
+    await _run(
+      () => _service.snoozeReminder(
+        widget.reminderId,
+        DateTime.now().add(choice),
+      ),
+    );
+  }
+
   Future<void> _hardDeleteReminder() async {
     if (_reminder == null) return;
+    if (_reminder!.status == ReminderStatus.done ||
+        _reminder!.status == ReminderStatus.skipped) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Nhắc lịch đã kết thúc và không thể xoá.'),
+        ),
+      );
+      return;
+    }
     final ok = await _confirmAction(
       title: 'Xóa nhắc lịch?',
       message:
@@ -323,6 +375,14 @@ class _UpdateSnoozeReminderScreenState
 
   Future<void> _save() async {
     if (_startDate == null || _reminder == null) return;
+    if (_reminder!.status.isTerminal) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Nhắc lịch đã kết thúc và không thể chỉnh sửa.'),
+        ),
+      );
+      return;
+    }
     if (_titleController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -346,6 +406,15 @@ class _UpdateSnoozeReminderScreenState
 
     final titleChanged = _reminder!.title != _titleController.text.trim();
     final dateChanged = !_reminder!.scheduledAt.isAtSameMomentAs(_startDate!);
+    if (dateChanged &&
+        !_startDate!.isAfter(DateTime.now().add(const Duration(minutes: 5)))) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Giờ nhắc phải cách hiện tại ít nhất 5 phút.'),
+        ),
+      );
+      return;
+    }
     final recurrenceChanged = _reminder!.recurrenceType != _recurrence;
     final notificationOffsetsChanged =
         _reminder!.notificationOffsetsMinutes.length !=
@@ -367,37 +436,35 @@ class _UpdateSnoozeReminderScreenState
       );
     }
 
-    if (widget.appointmentResource) {
-      await _run(
-        () => _service.updateAppointment(
-          widget.reminderId,
-          title: titleChanged ? _titleController.text.trim() : null,
-          scheduledAt: dateChanged ? _startDate!.toUtc() : null,
-          notificationOffsetsMinutes: notificationOffsetsChanged
-              ? _notificationOffsets
-              : null,
-          notificationOffsetsMinutesSet: notificationOffsetsChanged,
-          timeZone: notificationOffsetsChanged ? _reminder!.timeZone : null,
-        ),
-      );
-    } else {
-      await _run(
-        () => _service.updateReminder(
-          widget.reminderId,
-          title: titleChanged ? _titleController.text.trim() : null,
-          scheduledAt: dateChanged ? _startDate!.toUtc() : null,
-          recurrenceType: recurrenceChanged ? _recurrence : null,
-          recurrenceEndDate: endDateChanged ? _endDate?.toUtc() : null,
-          recurrenceEndDateSet: endDateChanged,
-          notificationOffsetsMinutes: notificationOffsetsChanged
-              ? _notificationOffsets
-              : null,
-          notificationOffsetsMinutesSet: notificationOffsetsChanged,
-          timeZone: notificationOffsetsChanged ? _reminder!.timeZone : null,
-        ),
-      );
-    }
-    if (mounted) Navigator.pop(context, true);
+    final saved = widget.appointmentResource
+        ? await _run(
+            () => _service.updateAppointment(
+              widget.reminderId,
+              title: titleChanged ? _titleController.text.trim() : null,
+              scheduledAt: dateChanged ? _startDate!.toUtc() : null,
+              notificationOffsetsMinutes: notificationOffsetsChanged
+                  ? _notificationOffsets
+                  : null,
+              notificationOffsetsMinutesSet: notificationOffsetsChanged,
+              timeZone: notificationOffsetsChanged ? _reminder!.timeZone : null,
+            ),
+          )
+        : await _run(
+            () => _service.updateReminder(
+              widget.reminderId,
+              title: titleChanged ? _titleController.text.trim() : null,
+              scheduledAt: dateChanged ? _startDate!.toUtc() : null,
+              recurrenceType: recurrenceChanged ? _recurrence : null,
+              recurrenceEndDate: endDateChanged ? _endDate?.toUtc() : null,
+              recurrenceEndDateSet: endDateChanged,
+              notificationOffsetsMinutes: notificationOffsetsChanged
+                  ? _notificationOffsets
+                  : null,
+              notificationOffsetsMinutesSet: notificationOffsetsChanged,
+              timeZone: notificationOffsetsChanged ? _reminder!.timeZone : null,
+            ),
+          );
+    if (saved && mounted) Navigator.pop(context, true);
   }
 
   @override
@@ -409,7 +476,7 @@ class _UpdateSnoozeReminderScreenState
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded, color: _onSurface),
-          onPressed: () => Navigator.pop(context, true),
+          onPressed: () => Navigator.pop(context, false),
         ),
         title: const Text(
           'Chỉnh sửa nhắc nhở',
@@ -444,6 +511,8 @@ class _UpdateSnoozeReminderScreenState
         : () {
             _disableReminder();
           };
+    final canToggle = !_processing && (isDisabled || !isTerminal);
+    final canHardDelete = !_processing && (isDisabled || !isTerminal);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
@@ -603,106 +672,106 @@ class _UpdateSnoozeReminderScreenState
               if (!widget.appointmentResource) ...[
                 const SizedBox(height: 16),
                 const Text(
-                'Ngày kết thúc',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  color: _onSurfaceVariant,
-                  fontSize: 13,
+                  'Ngày kết thúc',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    color: _onSurfaceVariant,
+                    fontSize: 13,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Expanded(
-                    child: InkWell(
-                      onTap: canEdit ? _pickEndDate : null,
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: _primaryContainer.withAlpha(80),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Expanded(
+                      child: InkWell(
+                        onTap: canEdit ? _pickEndDate : null,
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: _primaryContainer.withAlpha(80),
+                            ),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.event_available_rounded,
-                              color: _primary,
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              _endDate != null
-                                  ? _formatDateOnly(_endDate!)
-                                  : 'Không giới hạn',
-                              style: const TextStyle(
-                                fontFamily: 'Lexend',
-                                fontSize: 16,
-                                color: _onSurface,
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.event_available_rounded,
+                                color: _primary,
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 12),
+                              Text(
+                                _endDate != null
+                                    ? _formatDateOnly(_endDate!)
+                                    : 'Không giới hạn',
+                                style: const TextStyle(
+                                  fontFamily: 'Lexend',
+                                  fontSize: 16,
+                                  color: _onSurface,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  if (_endDate != null && canEdit)
-                    IconButton(
-                      icon: const Icon(Icons.clear, color: _onSurfaceVariant),
-                      onPressed: () => setState(() => _endDate = null),
-                    ),
-                ],
-              ),
+                    if (_endDate != null && canEdit)
+                      IconButton(
+                        icon: const Icon(Icons.clear, color: _onSurfaceVariant),
+                        onPressed: () => setState(() => _endDate = null),
+                      ),
+                  ],
+                ),
 
                 const SizedBox(height: 16),
                 const Text(
-                'Lặp lại',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  color: _onSurfaceVariant,
-                  fontSize: 13,
-                ),
-              ),
-              const SizedBox(height: 4),
-                Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  border: Border.all(color: _primaryContainer.withAlpha(80)),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<RecurrenceType>(
-                    isExpanded: true,
-                    value: _recurrence,
-                    icon: const Icon(
-                      Icons.expand_more_rounded,
-                      color: _primary,
-                    ),
-                    onChanged: canEdit
-                        ? (v) => setState(
-                            () => _recurrence = v ?? RecurrenceType.none,
-                          )
-                        : null,
-                    items: RecurrenceType.values
-                        .map(
-                          (r) => DropdownMenuItem(
-                            value: r,
-                            child: Text(
-                              _recurrenceLabel(r),
-                              style: const TextStyle(
-                                fontFamily: 'Lexend',
-                                fontSize: 16,
-                              ),
-                            ),
-                          ),
-                        )
-                        .toList(),
+                  'Lặp lại',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    color: _onSurfaceVariant,
+                    fontSize: 13,
                   ),
                 ),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: _primaryContainer.withAlpha(80)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<RecurrenceType>(
+                      isExpanded: true,
+                      value: _recurrence,
+                      icon: const Icon(
+                        Icons.expand_more_rounded,
+                        color: _primary,
+                      ),
+                      onChanged: canEdit
+                          ? (v) => setState(
+                              () => _recurrence = v ?? RecurrenceType.none,
+                            )
+                          : null,
+                      items: RecurrenceType.values
+                          .map(
+                            (r) => DropdownMenuItem(
+                              value: r,
+                              child: Text(
+                                _recurrenceLabel(r),
+                                style: const TextStyle(
+                                  fontFamily: 'Lexend',
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                          )
+                          .toList(),
+                    ),
+                  ),
                 ),
               ],
               if (reminder.reminderType == ReminderType.appointment) ...[
@@ -746,9 +815,31 @@ class _UpdateSnoozeReminderScreenState
             ),
           ),
         ),
+        if (!widget.appointmentResource) ...[
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: canEdit ? _snoozeReminder : null,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _primary,
+              side: const BorderSide(color: _primary),
+              minimumSize: const Size.fromHeight(54),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            icon: const Icon(Icons.snooze_rounded),
+            label: const Text(
+              'Hoãn nhắc lịch',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
         const SizedBox(height: 12),
         OutlinedButton.icon(
-          onPressed: _processing ? null : toggleAction,
+          onPressed: canToggle ? toggleAction : null,
           style: OutlinedButton.styleFrom(
             foregroundColor: toggleColor,
             side: BorderSide(color: toggleColor),
@@ -769,7 +860,7 @@ class _UpdateSnoozeReminderScreenState
         ),
         const SizedBox(height: 12),
         OutlinedButton.icon(
-          onPressed: _processing ? null : _hardDeleteReminder,
+          onPressed: canHardDelete ? _hardDeleteReminder : null,
           style: OutlinedButton.styleFrom(
             foregroundColor: _error,
             side: BorderSide(color: _error.withAlpha(180)),

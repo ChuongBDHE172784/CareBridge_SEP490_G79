@@ -20,6 +20,7 @@ import com.carebridge.backend.exercise.inference.PostureInferenceUnavailableExce
 import com.carebridge.backend.exercise.repository.ExerciseSessionRepository;
 import com.carebridge.backend.exercise.repository.PostureAnalysisConfigRepository;
 import com.carebridge.backend.exercise.repository.PostureFeedbackEventRepository;
+import com.carebridge.backend.exercise.service.ExerciseCareContextResolver;
 import com.carebridge.backend.exercise.service.IPostureAnalysisService;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -32,6 +33,7 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -43,8 +45,10 @@ public class PostureAnalysisServiceImpl implements IPostureAnalysisService {
     private final PostureFeedbackEventRepository postureFeedbackEventRepository;
     private final PostureInferencePort postureInferencePort;
     private final PostureInferenceConfigResolver inferenceConfigResolver;
+    private final ExerciseCareContextResolver careContextResolver;
 
     @Override
+    @Transactional
     public ApiResponse<PostureFeedbackResponse> analyzePosture(
             UUID sessionId, UUID userId, PostureEventRequest request) {
         ExerciseSession session = sessionRepository
@@ -57,6 +61,9 @@ public class PostureAnalysisServiceImpl implements IPostureAnalysisService {
         if (session.getSessionStatus() != SessionStatus.IN_PROGRESS) {
             throw InvalidSessionStateException.notInProgress();
         }
+
+        ExerciseCareContextResolver.CareContext careContext = careContextResolver.resolve(
+                session.getUserId(), session.getJourneyId());
 
         // Logic Issue L2 — a missing active config is NOT an error; fall back to a
         // RULE_BASED default and log a warning, rather than throwing PAC-004/EX-014.
@@ -75,9 +82,8 @@ public class PostureAnalysisServiceImpl implements IPostureAnalysisService {
 
         com.carebridge.backend.exercise.entity.PostureFeedbackEvent event =
                 com.carebridge.backend.exercise.entity.PostureFeedbackEvent.builder()
-                        .feedbackEventId(UUID.randomUUID())
                         .exerciseSessionId(sessionId)
-                        .journeyId(session.getJourneyId())
+                        .journeyId(careContext.careSubjectId())
                         .postureConfigId(config != null ? config.getPostureConfigId() : null)
                         .eventTimeMs(request.getEventTimeMs())
                         .postureCode(analysis.postureCode())

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../models/vaccination_model.dart';
 import '../services/vaccination_service.dart';
 import '../../../core/network/api_client.dart';
@@ -47,15 +48,15 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
     _load();
   }
 
-  Future<void> _load() async {
+  Future<void> _load({bool forceRefresh = false}) async {
     setState(() {
       _loading = true;
       _error2 = null;
     });
     try {
-      final r =
-          widget.initialRecord ??
-          await _service.getVaccination(widget.babyId, widget.vaccinationId);
+      final r = !forceRefresh && _record == null && widget.initialRecord != null
+          ? widget.initialRecord!
+          : await _service.getVaccination(widget.babyId, widget.vaccinationId);
       if (mounted) {
         setState(() {
           _record = r;
@@ -80,35 +81,44 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
   }
 
   Future<void> _reschedule() async {
-    final now = DateTime.now();
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: now,
-      firstDate: now,
-      lastDate: now.add(const Duration(days: 365)),
-      builder: (ctx, child) => Theme(
-        data: Theme.of(ctx).copyWith(
-          colorScheme: const ColorScheme.light(primary: _primaryContainer),
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'Dời lịch mũi tiêm từ hồ sơ chưa được hỗ trợ. Bạn có thể tạo nhắc tiêm riêng.',
         ),
-        child: child!,
       ),
     );
-    if (picked == null) return;
-    try {
-      await _service.rescheduleVaccination(
-        widget.babyId,
-        widget.vaccinationId,
-        picked,
-      );
-      if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Đã dời lịch thành công!')));
-      _load();
-    } catch (_) {
-      if (!mounted) return;
+  }
+
+  Future<void> _edit() async {
+    final changed = await context.push<bool>(
+      '/babies/${widget.babyId}/vaccinations/${widget.vaccinationId}/edit',
+      extra: _record,
+    );
+    if (changed == true && mounted) _load(forceRefresh: true);
+  }
+
+  Future<void> _createReminder() async {
+    final record = _record;
+    if (record == null ||
+        record.status == VaccinationStatus.deleted ||
+        record.status == VaccinationStatus.unknown) {
+      return;
+    }
+    final suggestion = <String, dynamic>{
+      'vaccinationRecordId': record.vaccinationId,
+      'vaccineName': record.vaccineName,
+      if (record.doseNumber != null) 'doseNumber': record.doseNumber,
+      if (record.plannedDate != null)
+        'scheduledDate': _dateOnlyString(record.plannedDate!),
+    };
+    final created = await context.push<bool>(
+      '/reminders/vaccination/add?babyId=${Uri.encodeComponent(widget.babyId)}',
+      extra: suggestion,
+    );
+    if (created == true && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Không thể dời lịch. Vui lòng thử lại.')),
+        const SnackBar(content: Text('Đã tạo nhắc tiêm riêng cho bé.')),
       );
     }
   }
@@ -195,6 +205,7 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
   }
 
   Widget _buildContent(VaccinationRecord r) {
+    final note = r.note?.trim().isNotEmpty == true ? r.note : r.postponeReason;
     return SingleChildScrollView(
       child: Column(
         children: [
@@ -210,9 +221,9 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
                 _buildFacilityCard(r),
                 const SizedBox(height: 16),
                 _buildChildCard(r),
-                if (r.note != null && r.note!.isNotEmpty) ...[
+                if (note?.trim().isNotEmpty == true) ...[
                   const SizedBox(height: 16),
-                  _buildNoteCard(r.note!),
+                  _buildNoteCard(note!),
                 ],
                 const SizedBox(height: 32),
                 _buildActions(r),
@@ -490,6 +501,14 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
   }
 
   Widget _buildActions(VaccinationRecord r) {
+    final canEdit =
+        r.status != VaccinationStatus.deleted &&
+        r.status != VaccinationStatus.unknown;
+    final canDelete = canEdit;
+    final canPostpone =
+        r.status != VaccinationStatus.completed &&
+        r.status != VaccinationStatus.deleted &&
+        r.status != VaccinationStatus.unknown;
     return Column(
       children: [
         // Primary: Cập nhật thông tin
@@ -497,9 +516,7 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
           width: double.infinity,
           height: 56,
           child: FilledButton.icon(
-            onPressed: () {
-              // TODO: open EditVaccinationScreen (UC-230/231)
-            },
+            onPressed: canEdit ? _edit : null,
             style: FilledButton.styleFrom(
               backgroundColor: _primary,
               foregroundColor: Colors.white,
@@ -518,6 +535,31 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
           ),
         ),
         const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: OutlinedButton.icon(
+            onPressed:
+                r.status == VaccinationStatus.deleted ||
+                    r.status == VaccinationStatus.unknown
+                ? null
+                : _createReminder,
+            icon: const Icon(Icons.notifications_active_outlined),
+            label: const Text(
+              'Nhắc mũi tiếp theo',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _primary,
+              side: const BorderSide(color: _primaryContainer),
+              shape: const StadiumBorder(),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
         // Secondary row: Dời lịch + Xóa hồ sơ
         Row(
           children: [
@@ -525,7 +567,7 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
               child: SizedBox(
                 height: 48,
                 child: OutlinedButton(
-                  onPressed: _reschedule,
+                  onPressed: canPostpone ? _reschedule : null,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: _textHeading,
                     side: BorderSide(color: _surfaceVariant, width: 2),
@@ -547,7 +589,7 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
               child: SizedBox(
                 height: 48,
                 child: FilledButton(
-                  onPressed: _delete,
+                  onPressed: canDelete ? _delete : null,
                   style: FilledButton.styleFrom(
                     backgroundColor: _errorContainer,
                     foregroundColor: _onErrorContainer,
@@ -568,6 +610,13 @@ class _VaccinationDetailScreenState extends State<VaccinationDetailScreen> {
         ),
       ],
     );
+  }
+
+  static String _dateOnlyString(DateTime value) {
+    final local = value.toLocal();
+    return '${local.year.toString().padLeft(4, '0')}-'
+        '${local.month.toString().padLeft(2, '0')}-'
+        '${local.day.toString().padLeft(2, '0')}';
   }
 }
 

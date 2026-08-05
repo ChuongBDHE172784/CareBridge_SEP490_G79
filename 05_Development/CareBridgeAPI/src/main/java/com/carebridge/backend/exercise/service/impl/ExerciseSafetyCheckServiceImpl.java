@@ -14,6 +14,7 @@ import com.carebridge.backend.exercise.policy.EvaluationResult;
 import com.carebridge.backend.exercise.policy.SafetyCheckPolicy;
 import com.carebridge.backend.exercise.repository.ExerciseRepository;
 import com.carebridge.backend.exercise.repository.ExerciseSafetyCheckRepository;
+import com.carebridge.backend.exercise.service.ExerciseCareContextResolver;
 import com.carebridge.backend.exercise.service.IExerciseSafetyCheckService;
 import java.time.OffsetDateTime;
 import java.util.Map;
@@ -30,6 +31,7 @@ public class ExerciseSafetyCheckServiceImpl implements IExerciseSafetyCheckServi
     private final ExerciseRepository exerciseRepository;
     private final SafetyCheckMapper safetyCheckMapper;
     private final SafetyCheckPolicy safetyCheckPolicy;
+    private final ExerciseCareContextResolver careContextResolver;
 
     @Override
     @Transactional
@@ -40,6 +42,9 @@ public class ExerciseSafetyCheckServiceImpl implements IExerciseSafetyCheckServi
                 .findByExerciseIdAndStatus(exerciseId, ExerciseStatus.PUBLISHED)
                 .orElseThrow(ExerciseNotFoundException::notFound);
 
+        ExerciseCareContextResolver.CareContext careContext = careContextResolver.resolve(
+                userId, request.getJourneyId());
+
         // 2. Evaluate answers via the policy (the only red-flag evaluator).
         // PDPA: never log the answer values.
         Map<SafetyQuestion, Boolean> answers = safetyCheckMapper.toQuestionMap(request);
@@ -48,6 +53,9 @@ public class ExerciseSafetyCheckServiceImpl implements IExerciseSafetyCheckServi
         // 3. Build the entity and resolve outcome fields.
         ExerciseSafetyCheck check =
                 safetyCheckMapper.buildEntity(exerciseId, userId, request, evaluation);
+        // The canonical health_observations column is care_subject_id. Keep the public
+        // request field as a journey id, but persist the resolved subject id.
+        check.setJourneyId(careContext.careSubjectId());
 
         if (evaluation.isCleared()) {
             check.setRedFlagDetected(false);

@@ -12,6 +12,7 @@ from app.config import (
     RULE_SOURCE_MAPPING_FILE,
 )
 from app.evidence_registry_client import approved_sources_for_stage
+from app.risk_rules import MATERNAL_STAGES
 from app.schemas import Citation, Evidence, SourceDocument
 from app.source_validator import validate_source
 from app import official_source_searcher
@@ -55,7 +56,10 @@ def load_sources(stage: str = "INFANT", child_age_months: int | None = None) -> 
         source for source in sources
         if is_approved_source(source, stage)
         and source.sourceStatus == "APPROVED"
-        and _applies_to_age(source, child_age_months)
+        and stage in source.applicableStages
+        # Mothers have no childAgeMonths; the age-range gate only makes sense for
+        # pediatric stages. Maternal applicability is decided by applicableStages above.
+        and (stage in MATERNAL_STAGES or _applies_to_age(source, child_age_months))
     ]
 
 
@@ -111,7 +115,15 @@ def attach_citations(
     retrieved_at = datetime.now(timezone.utc).isoformat()
     citations: list[Citation] = []
     for source in sources:
-        if not is_approved_source(source, stage) or source.sourceStatus in {"DRAFT", "PENDING_REVIEW", "DEPRECATED", "ARCHIVED"}:
+        if not is_approved_source(source, stage) or source.sourceStatus in {"DRAFT", "DEPRECATED", "ARCHIVED"}:
+            continue
+        # PENDING_REVIEW is intentionally allowed through, but only when it came
+        # from realtime_official_search (see official_source_searcher._source_from_hit),
+        # which by this point has already passed domain whitelisting + relevance
+        # validation. This is deliberately narrower than "any PENDING_REVIEW source"
+        # so a future, differently-sourced PENDING_REVIEW entry does not silently
+        # become user-facing without going through that same validation.
+        if source.sourceStatus == "PENDING_REVIEW" and source.retrievedBy != "realtime_official_search":
             continue
         excerpt = " ".join(source.body.split())[:240]
         source_matched_symptoms = _matched_symptoms(source, normalized_symptoms)

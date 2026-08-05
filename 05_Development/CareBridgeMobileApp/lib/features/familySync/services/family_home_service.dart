@@ -1,5 +1,6 @@
 import '../../../core/network/api_client.dart';
 import '../../healthRecords/models/health_metric_model.dart';
+import '../../journey/models/journey_model.dart';
 
 class FamilyHomeService {
   static final FamilyHomeService instance = FamilyHomeService._();
@@ -125,10 +126,51 @@ class FamilyHomeGroup {
   }
 }
 
+class FamilyMotherJourney {
+  const FamilyMotherJourney({
+    this.journeyId,
+    this.journeyType,
+    this.status,
+    this.estimatedDueDate,
+    this.lastMenstrualDate,
+    this.startDate,
+  });
+
+  final String? journeyId;
+  final String? journeyType;
+  final String? status;
+  final DateTime? estimatedDueDate;
+  final DateTime? lastMenstrualDate;
+  final DateTime? startDate;
+
+  factory FamilyMotherJourney.fromJson(Map<String, dynamic> json) {
+    return FamilyMotherJourney(
+      journeyId: _optionalString(json, 'journeyId'),
+      journeyType: _optionalString(json, 'journeyType'),
+      status: _optionalString(json, 'status'),
+      estimatedDueDate: _optionalDateTime(json, 'estimatedDueDate'),
+      lastMenstrualDate: _optionalDateTime(json, 'lastMenstrualDate'),
+      startDate: _optionalDateTime(json, 'startDate'),
+    );
+  }
+
+  JourneyDashboard toJourneyDashboard() {
+    return JourneyDashboard(
+      journeyId: journeyId,
+      journeyType: journeyType ?? 'PREGNANCY',
+      status: status ?? 'ACTIVE_PREGNANCY',
+      estimatedDueDate: estimatedDueDate,
+      lastMenstrualDate: lastMenstrualDate,
+      startDate: startDate,
+    );
+  }
+}
+
 class FamilyHomeGroupDetail {
   const FamilyHomeGroupDetail({
     required this.careGroupId,
     required this.motherDisplayName,
+    this.motherJourney,
     required this.todayReminders,
     required this.alerts,
     required this.memberCount,
@@ -142,6 +184,7 @@ class FamilyHomeGroupDetail {
 
   final String careGroupId;
   final String motherDisplayName;
+  final FamilyMotherJourney? motherJourney;
   final List<FamilyHomeTodayReminder> todayReminders;
   final List<FamilyHomeAlert> alerts;
   final int memberCount;
@@ -153,9 +196,15 @@ class FamilyHomeGroupDetail {
   final List<FamilyHomeHealthMetricSummary> healthMetricSummaries;
 
   factory FamilyHomeGroupDetail.fromJson(Map<String, dynamic> json) {
+    final rawJourney = json['motherJourney'];
     return FamilyHomeGroupDetail(
       careGroupId: _requiredString(json, 'careGroupId'),
       motherDisplayName: _requiredString(json, 'motherDisplayName'),
+      motherJourney: rawJourney == null
+          ? null
+          : FamilyMotherJourney.fromJson(
+              _asMap(rawJourney, 'motherJourney'),
+            ),
       todayReminders: _requiredMapList(
         json,
         'todayReminders',

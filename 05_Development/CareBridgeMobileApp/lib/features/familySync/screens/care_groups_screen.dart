@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/network/api_client.dart';
 import '../models/care_group_model.dart';
 import '../services/care_group_service.dart';
 import 'care_group_detail_screen.dart';
@@ -53,51 +54,14 @@ class _CareGroupsScreenState extends State<CareGroupsScreen> {
   }
 
   Future<void> _createGroup() async {
-    final controller = TextEditingController();
-    final shouldCreate = await showDialog<bool>(
+    final name = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
-        title: const Text(
-          'Tạo nhóm chăm sóc',
-          style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700),
-        ),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLength: 80,
-          textCapitalization: TextCapitalization.sentences,
-          style: const TextStyle(fontFamily: 'Lexend'),
-          decoration: InputDecoration(
-            labelText: 'Tên nhóm',
-            hintText: 'Ví dụ: Gia đình của Lan',
-            filled: true,
-            fillColor: _canvas,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide.none,
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Hủy'),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: _primary),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Tạo nhóm'),
-          ),
-        ],
-      ),
+      builder: (context) => const _CreateCareGroupDialog(),
     );
-    final name = controller.text.trim();
-    controller.dispose();
-    if (shouldCreate != true || name.isEmpty) return;
+    if (name == null || name.trim().isEmpty) return;
 
     try {
-      await _service.createCareGroup(name);
+      await _service.createCareGroup(name.trim());
       await _load();
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -151,11 +115,23 @@ class _CareGroupsScreenState extends State<CareGroupsScreen> {
 
     try {
       await _service.deleteCareGroup(group.id);
-      await _load();
       if (!mounted) return;
+      setState(() {
+        _groups = _groups
+            .where((candidate) => candidate.id != group.id)
+            .toList(growable: false);
+      });
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Đã xóa nhóm chăm sóc.')));
+    } on ApiException catch (error) {
+      if (!mounted) return;
+      final message = error.errorCode == 'FAM-069'
+          ? 'Hãy xóa tất cả thành viên khác trước khi xóa nhóm chăm sóc.'
+          : 'Chưa thể xóa nhóm. Vui lòng thử lại.';
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -598,6 +574,70 @@ class _GroupsLoading extends StatelessWidget {
           ),
           const SizedBox(height: 12),
         ],
+      ],
+    );
+  }
+}
+
+class _CreateCareGroupDialog extends StatefulWidget {
+  const _CreateCareGroupDialog();
+
+  @override
+  State<_CreateCareGroupDialog> createState() => _CreateCareGroupDialogState();
+}
+
+class _CreateCareGroupDialogState extends State<_CreateCareGroupDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      title: const Text(
+        'Tạo nhóm chăm sóc',
+        style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700),
+      ),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        maxLength: 80,
+        textCapitalization: TextCapitalization.sentences,
+        style: const TextStyle(fontFamily: 'Lexend'),
+        decoration: InputDecoration(
+          labelText: 'Tên nhóm',
+          hintText: 'Ví dụ: Gia đình của Lan',
+          filled: true,
+          fillColor: _CareGroupsScreenState._canvas,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16),
+            borderSide: BorderSide.none,
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, null),
+          child: const Text('Hủy'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: _CareGroupsScreenState._primary,
+          ),
+          onPressed: () => Navigator.pop(context, _controller.text),
+          child: const Text('Tạo nhóm'),
+        ),
       ],
     );
   }

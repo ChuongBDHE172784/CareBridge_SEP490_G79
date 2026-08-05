@@ -67,6 +67,7 @@ import '../../features/baby/screens/baby_profile_detail_screen.dart';
 import '../../features/baby/screens/add_baby_screen.dart';
 import '../../features/fileManager/screens/upload_file_screen.dart';
 import '../../features/healthRecords/screens/vaccination_detail_screen.dart';
+import '../../features/healthRecords/screens/edit_vaccination_record_screen.dart';
 import '../../features/healthRecords/models/vaccination_model.dart';
 import '../../features/healthRecords/screens/growth_measurement_history_screen.dart';
 import '../../features/healthRecords/screens/add_vaccination_record_screen.dart';
@@ -489,7 +490,7 @@ final GoRouter appRouter = GoRouter(
       path: '/journeys/:journeyId/metrics/add',
       builder: (context, state) {
         final journeyId = state.pathParameters['journeyId'] ?? '';
-        final metricType = state.uri.queryParameters['metricType'] ?? 'WEIGHT';
+        final metricType = state.uri.queryParameters['metricType'] ?? 'BMI';
         if (metricType == 'FETAL_MOVEMENT_SESSION' ||
             metricType == 'FETAL_MOVEMENT_COUNT' ||
             metricType == 'FETAL_MOVEMENT') {
@@ -677,7 +678,8 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/baby-care-hub',
-      builder: (context, state) => const BabyCareHubScreen(),
+      builder: (context, state) =>
+          BabyCareHubScreen(initialBabyId: state.uri.queryParameters['babyId']),
     ),
     GoRoute(
       path: '/babies/add',
@@ -723,7 +725,9 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) {
         final babyId = state.pathParameters['babyId'] ?? '';
         final logId = state.pathParameters['logId'] ?? '';
-        final initialLog = state.extra as BabyDailyLog?;
+        final initialLog = state.extra is BabyDailyLog
+            ? state.extra as BabyDailyLog
+            : null;
         return EditBabyDailyLogScreen(
           babyId: babyId,
           logId: logId,
@@ -782,7 +786,15 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/reminders/vaccination/add',
-      builder: (context, state) => const CreateVaccinationReminderScreen(),
+      builder: (context, state) {
+        final extra = state.extra;
+        return CreateVaccinationReminderScreen(
+          initialBabyId: state.uri.queryParameters['babyId'],
+          initialSuggestion: extra is Map
+              ? Map<String, dynamic>.from(extra)
+              : null,
+        );
+      },
     ),
     GoRoute(
       path: '/reminders/:id/manage',
@@ -853,9 +865,21 @@ final GoRouter appRouter = GoRouter(
         return VaccinationDetailScreen(
           babyId: babyId,
           vaccinationId: recordId,
-          initialRecord: state.extra as VaccinationRecord?,
+          initialRecord: state.extra is VaccinationRecord
+              ? state.extra as VaccinationRecord
+              : null,
         );
       },
+    ),
+    GoRoute(
+      path: '/babies/:babyId/vaccinations/:recordId/edit',
+      builder: (context, state) => EditVaccinationRecordScreen(
+        babyId: state.pathParameters['babyId'] ?? '',
+        recordId: state.pathParameters['recordId'] ?? '',
+        initialRecord: state.extra is VaccinationRecord
+            ? state.extra as VaccinationRecord
+            : null,
+      ),
     ),
     GoRoute(
       path: '/vaccination/:id',
@@ -864,7 +888,9 @@ final GoRouter appRouter = GoRouter(
         return VaccinationDetailScreen(
           babyId: state.uri.queryParameters['babyId'] ?? '',
           vaccinationId: id,
-          initialRecord: state.extra as VaccinationRecord?,
+          initialRecord: state.extra is VaccinationRecord
+              ? state.extra as VaccinationRecord
+              : null,
         );
       },
     ),
@@ -883,7 +909,7 @@ final GoRouter appRouter = GoRouter(
         return SymptomIntakeScreen(
           entryContext:
               extra as TriageEntryContext? ??
-                  const TriageEntryContext(requiresStageSelection: true),
+              const TriageEntryContext(requiresStageSelection: true),
         );
       },
     ),

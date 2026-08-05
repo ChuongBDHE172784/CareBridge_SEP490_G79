@@ -246,10 +246,10 @@ class _FamilyQuickNoteHistoryScreenState
     final value = switch (widget.metricType) {
       'HYDRATION' => '${total.toStringAsFixed(0)} ml',
       'FETAL_MOVEMENT_COUNT' => '${total.toStringAsFixed(0)} lần',
-      'WEIGHT' =>
+      'BMI' =>
         latestPoint == null
             ? '—'
-            : '${latestPoint.valueNumeric.toStringAsFixed(1)} kg',
+            : '${latestPoint.valueNumeric.toStringAsFixed(1)} kg/m²',
       'EPDS_SCORE' =>
         latestPoint == null
             ? '—'
@@ -265,7 +265,7 @@ class _FamilyQuickNoteHistoryScreenState
     final label = switch (widget.metricType) {
       'HYDRATION' => 'Tổng lượng nước trong ngày',
       'FETAL_MOVEMENT_COUNT' => 'Tổng cử động trong ngày',
-      'WEIGHT' => 'Lần ghi gần nhất trong ngày',
+      'BMI' => 'Lần tính gần nhất trong ngày',
       'EPDS_SCORE' => 'Điểm sàng lọc gần nhất • Không phải chẩn đoán',
       'BLOOD_PRESSURE' => 'Lần đo gần nhất trong ngày',
       'BLOOD_GLUCOSE' => 'Lần đo gần nhất trong ngày',
@@ -403,7 +403,7 @@ class _FamilyQuickNoteHistoryScreenState
 
   String _pointTitle(MetricDataPoint point) {
     return switch (widget.metricType) {
-      'WEIGHT' => '${point.valueNumeric.toStringAsFixed(1)} kg',
+      'BMI' => '${point.valueNumeric.toStringAsFixed(1)} kg/m²',
       'HYDRATION' => '${point.valueNumeric.toStringAsFixed(0)} ml',
       'EPDS_SCORE' =>
         '${point.valueNumeric.toStringAsFixed(0)}/30 • Điểm sàng lọc',
@@ -459,7 +459,7 @@ class _FamilyQuickNoteHistoryScreenState
   }
 
   String get _title => switch (widget.metricType) {
-    'WEIGHT' => 'Lịch sử cân nặng',
+    'BMI' => 'Lịch sử chỉ số BMI',
     'HYDRATION' => 'Lịch sử uống nước',
     'EPDS_SCORE' => 'Lịch sử sàng lọc EPDS',
     'FETAL_MOVEMENT_COUNT' => 'Lịch sử cử động thai',
@@ -469,7 +469,7 @@ class _FamilyQuickNoteHistoryScreenState
   };
 
   IconData get _icon => switch (widget.metricType) {
-    'WEIGHT' => Icons.monitor_weight_outlined,
+    'BMI' => Icons.calculate_outlined,
     'HYDRATION' => Icons.water_drop_outlined,
     'EPDS_SCORE' => Icons.psychology_alt_outlined,
     'FETAL_MOVEMENT_COUNT' => Icons.child_friendly_outlined,

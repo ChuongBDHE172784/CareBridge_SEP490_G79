@@ -480,8 +480,8 @@ class _ManageFamilyPermissionScreenState
                 ],
               ),
               _metricRow(
-                title: 'Cân nặng',
-                icon: Icons.monitor_weight_outlined,
+                title: 'Chỉ số BMI',
+                icon: Icons.calculate_outlined,
                 value: _quickNoteWeight,
                 onChanged: (value) => setState(() => _quickNoteWeight = value),
               ),

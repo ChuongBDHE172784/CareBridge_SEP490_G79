@@ -147,7 +147,7 @@ void main() {
       expect(find.text('Lịch hẹn tiếp theo'), findsNothing);
       expect(find.text('Thông tin tiêm phòng'), findsNothing);
 
-      for (final label in const ['Chỉ số sức khỏe', 'Cân nặng', 'Nhịp tim']) {
+      for (final label in const ['Chỉ số sức khỏe', 'Cân nặng', 'Chiều cao']) {
         await tester.scrollUntilVisible(
           find.text(label),
           250,

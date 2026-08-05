@@ -20,6 +20,7 @@ import com.carebridge.backend.exercise.mapper.SafetyCheckMapper;
 import com.carebridge.backend.exercise.policy.SafetyCheckPolicy;
 import com.carebridge.backend.exercise.repository.ExerciseRepository;
 import com.carebridge.backend.exercise.repository.ExerciseSafetyCheckRepository;
+import com.carebridge.backend.exercise.service.ExerciseCareContextResolver;
 import com.carebridge.backend.exercise.service.impl.ExerciseSafetyCheckServiceImpl;
 import java.util.Optional;
 import java.util.UUID;
@@ -42,6 +43,9 @@ class ExerciseSafetyCheckServiceTest {
 
     @Mock
     private ExerciseRepository exerciseRepository;
+
+    @Mock
+    private ExerciseCareContextResolver careContextResolver;
 
     @Spy
     private SafetyCheckMapper safetyCheckMapper;
@@ -101,6 +105,9 @@ class ExerciseSafetyCheckServiceTest {
     void submitSafetyCheck_allTrue_returnsClearedResponse() {
         when(exerciseRepository.findByExerciseIdAndStatus(EXERCISE_ID, ExerciseStatus.PUBLISHED))
                 .thenReturn(Optional.of(publishedExercise()));
+        when(careContextResolver.resolve(USER_ID, null))
+                .thenReturn(new ExerciseCareContextResolver.CareContext(
+                        UUID.randomUUID(), UUID.randomUUID()));
         when(safetyCheckRepository.save(any(ExerciseSafetyCheck.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -119,6 +126,9 @@ class ExerciseSafetyCheckServiceTest {
     void submitSafetyCheck_q1False_returnsBlockedResponse() {
         when(exerciseRepository.findByExerciseIdAndStatus(EXERCISE_ID, ExerciseStatus.PUBLISHED))
                 .thenReturn(Optional.of(publishedExercise()));
+        when(careContextResolver.resolve(USER_ID, null))
+                .thenReturn(new ExerciseCareContextResolver.CareContext(
+                        UUID.randomUUID(), UUID.randomUUID()));
         when(safetyCheckRepository.save(any(ExerciseSafetyCheck.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 

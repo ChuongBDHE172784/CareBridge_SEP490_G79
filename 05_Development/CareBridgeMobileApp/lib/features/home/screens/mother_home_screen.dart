@@ -903,9 +903,9 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
         Row(
           children: [
             _QuickAction(
-              icon: Icons.monitor_weight,
-              label: 'Cân nặng',
-              onTap: () => _openQuickMetric('WEIGHT'),
+              icon: Icons.calculate_outlined,
+              label: 'Chỉ số BMI',
+              onTap: () => _openQuickMetric('BMI'),
             ),
             const SizedBox(width: 12),
             _QuickAction(

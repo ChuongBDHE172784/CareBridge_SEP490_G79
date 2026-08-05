@@ -499,7 +499,7 @@ class FamilyDashboardServiceTest {
         var summary = service.get(userId, groupId)
                 .selectedGroupDetail().healthMetricSummaries().getFirst();
 
-        assertThat(summary.metricType()).isEqualTo("WEIGHT");
+        assertThat(summary.metricType()).isEqualTo("BMI");
         assertThat(summary.valueNumeric()).isNull();
         assertThat(summary.measuredAt()).isNull();
         assertThat(summary.recordCount()).isZero();

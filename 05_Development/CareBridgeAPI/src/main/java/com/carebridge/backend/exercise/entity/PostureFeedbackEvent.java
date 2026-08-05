@@ -2,6 +2,8 @@ package com.carebridge.backend.exercise.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PostLoad;
 import jakarta.persistence.PrePersist;
@@ -34,12 +36,16 @@ import org.hibernate.type.SqlTypes;
 public class PostureFeedbackEvent {
 
     @Id
+    // Leave the id null until persist so transient posture fields are included in
+    // the canonical payload by the entity callback.
+    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "health_observation_id", nullable = false)
     private UUID feedbackEventId;
 
     @Column(name = "source_record_id", nullable = false)
     private UUID exerciseSessionId;
 
+    /** Canonical care_subject_id; the legacy Java name is retained for API compatibility. */
     @Column(name = "care_subject_id", nullable = false)
     private UUID journeyId;
 

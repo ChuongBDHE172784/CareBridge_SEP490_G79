@@ -83,8 +83,6 @@ class _EmergencyAlertDetailScreenState
     switch (_alert!.alertType) {
       case 'FALL_DETECTED':
         return 'Phát hiện ngã!';
-      case 'HEART_RATE':
-        return 'Nhịp tim bất thường!';
       case 'SOS':
         return 'Cuộc gọi SOS!';
       default:
@@ -345,16 +343,6 @@ class _EmergencyAlertDetailScreenState
   Widget _buildStatsRow() {
     return Row(
       children: [
-        Expanded(
-          child: _buildStatCard(
-            Icons.favorite_outline,
-            'Nhịp tim',
-            '${_alert!.heartRate ?? '--'}',
-            'bpm',
-            _primaryColor,
-          ),
-        ),
-        const SizedBox(width: 16),
         Expanded(
           child: _buildStatCard(
             Icons.battery_charging_full_outlined,

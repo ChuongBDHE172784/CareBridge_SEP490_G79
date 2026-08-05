@@ -69,6 +69,32 @@ class MetricObservationValidatorTest {
                 .satisfies(error -> assertThat(((BusinessException) error).getCode()).isEqualTo("METRIC-030"));
     }
 
+    @Test
+    void bmiIsCalculatedFromWeightAndHeightContext() {
+        AddMetricRequest request = base(MetricType.BMI, "1", "kg/m²");
+        request.setContext(new LinkedHashMap<>());
+        request.getContext().put("weightKg", "55");
+        request.getContext().put("heightCm", "160");
+
+        var result = validator.normalize(request,
+                definition("BMI", ObservationShape.POINT, "kg/m²", List.of("kg/m²")));
+
+        assertThat(result.metricCode()).isEqualTo("BMI");
+        assertThat(result.valueNumeric()).isEqualByComparingTo("21.48");
+        assertThat(result.context()).containsEntry("weightKg", new BigDecimal("55.00"));
+        assertThat(result.context()).containsEntry("heightCm", new BigDecimal("160.0"));
+    }
+
+    @Test
+    void bmiRejectsMissingSourceMeasurements() {
+        AddMetricRequest request = base(MetricType.BMI, "21.5", "kg/m²");
+
+        assertThatThrownBy(() -> validator.normalize(request,
+                definition("BMI", ObservationShape.POINT, "kg/m²", List.of("kg/m²"))))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(error -> assertThat(((BusinessException) error).getCode()).isEqualTo("METRIC-039"));
+    }
+
     private AddMetricRequest base(MetricType type, String value, String unit) {
         AddMetricRequest request = new AddMetricRequest();
         request.setMetricType(type);

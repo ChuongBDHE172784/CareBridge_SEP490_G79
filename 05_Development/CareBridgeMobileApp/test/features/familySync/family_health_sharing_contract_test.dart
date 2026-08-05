@@ -82,10 +82,10 @@ void main() {
       'shared metric without observation remains an honest no-data item',
       () {
         final metric = FamilyHomeHealthMetricSummary.fromJson({
-          'metricType': 'WEIGHT',
+          'metricType': 'BMI',
           'valueNumeric': null,
           'valueSecondary': null,
-          'unit': 'kg',
+          'unit': 'kg/m²',
           'measuredAt': null,
           'recordCount': 0,
         });
@@ -220,6 +220,47 @@ void main() {
       expect(find.byKey(const Key('family-quick-note-empty')), findsOneWidget);
       expect(find.textContaining('Không phải chẩn đoán'), findsOneWidget);
     });
+
+    testWidgets(
+      'renders mother journey section in middle of care group detail for family role',
+      (tester) async {
+        final detailWithJourney = Map<String, dynamic>.from(
+          _dashboardWithMetrics(),
+        );
+        (detailWithJourney['selectedGroupDetail']
+            as Map<String, dynamic>)['motherJourney'] = {
+          'journeyId': 'journey-lan',
+          'journeyType': 'PREGNANCY',
+          'status': 'ACTIVE_PREGNANCY',
+          'estimatedDueDate': '2026-11-25',
+          'lastMenstrualDate': '2026-02-18',
+        };
+
+        final snapshot = FamilyHomeSnapshot.fromJson(detailWithJourney);
+        await tester.pumpWidget(
+          MaterialApp(
+            home: CareGroupDetailScreen(
+              groupId: 'group-a',
+              groupName: 'Nhóm của Lan',
+              service: _DetailCareGroupService(),
+              dashboardLoader: ({selectedCareGroupId}) async => snapshot,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(const Key('family-mother-journey-section')),
+          findsOneWidget,
+        );
+        expect(find.text('Hành trình của Nguyễn Lan'), findsOneWidget);
+        expect(find.textContaining('Tuần'), findsOneWidget);
+        expect(find.text('Ngày dự sinh'), findsOneWidget);
+        expect(find.text('THG 11'), findsOneWidget);
+        expect(find.text('Cân nặng'), findsOneWidget);
+        expect(find.text('Chiều cao'), findsOneWidget);
+      },
+    );
   });
 }
 
@@ -269,10 +310,10 @@ Map<String, dynamic> _dashboardWithMetrics() => {
     'sharedDataSummary': {'totalItems': 0, 'categories': <Object?>[]},
     'healthMetricSummaries': [
       {
-        'metricType': 'WEIGHT',
+        'metricType': 'BMI',
         'valueNumeric': null,
         'valueSecondary': null,
-        'unit': 'kg',
+        'unit': 'kg/m²',
         'measuredAt': null,
         'recordCount': 0,
       },

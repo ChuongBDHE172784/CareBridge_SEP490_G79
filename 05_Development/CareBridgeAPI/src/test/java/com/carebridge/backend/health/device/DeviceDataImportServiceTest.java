@@ -84,7 +84,7 @@ class DeviceDataImportServiceTest {
                         .build()));
 
         assertThatThrownBy(() -> service.importMetric(new ImportDeviceMetricRequest(
-                JOURNEY_ID, MetricType.HEART_RATE, new BigDecimal("90"), null, "bpm", Instant.now(),
+                JOURNEY_ID, MetricType.SPO2, new BigDecimal("98"), null, "%", Instant.now(),
                 DataSource.DEVICE, connectionId, null), USER_ID))
                 .isInstanceOf(DeviceOperationException.class)
                 .hasMessageContaining("Device connection not active");
@@ -104,4 +104,3 @@ class DeviceDataImportServiceTest {
         verify(metricRepository, never()).save(any());
     }
 }
-

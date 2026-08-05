@@ -220,9 +220,21 @@ public class FamilyDashboardService {
                 .mapToInt(FamilyDashboardResponse.SharedDataCategory::itemCount)
                 .sum();
 
+        Optional<MotherJourney> journey = linkedOrCanonicalJourney(context.group());
+        FamilyDashboardResponse.MotherJourneySummary motherJourney = journey
+                .map(j -> new FamilyDashboardResponse.MotherJourneySummary(
+                        j.getId(),
+                        j.getJourneyType() != null ? j.getJourneyType().name() : null,
+                        j.getStatus() != null ? j.getStatus().name() : null,
+                        j.getEstimatedDueDate(),
+                        j.getLastMenstrualDate(),
+                        j.getStartDate()))
+                .orElse(null);
+
         return new FamilyDashboardResponse.Detail(
                 groupId,
                 motherDisplayName(context.group().getOwnerUserId()),
+                motherJourney,
                 context.permissionScope().calendar()
                         ? loadMotherTodayReminders(context.group())
                         : List.of(),
@@ -369,7 +381,7 @@ public class FamilyDashboardService {
     private List<SharedMetric> sharedMetrics(FamilyDashboardResponse.Permission permission) {
         List<SharedMetric> result = new ArrayList<>();
         if (permission.quickNoteWeight()) {
-            result.add(new SharedMetric("WEIGHT", "WEIGHT", "kg", false));
+            result.add(new SharedMetric("BMI", "BMI", "kg/m²", false));
         }
         if (permission.quickNoteFetalMovement()) {
             result.add(new SharedMetric("FETAL_MOVEMENT_COUNT", "FETAL_MOVEMENT_SESSION", "count", true));

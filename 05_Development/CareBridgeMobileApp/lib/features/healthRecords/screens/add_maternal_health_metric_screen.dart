@@ -77,6 +77,7 @@ class _AddMaternalHealthMetricScreenState
   String get _metricType => _canonicalMetricType(widget.initialMetricType);
 
   bool get _isBloodPressure => _metricType == 'BLOOD_PRESSURE';
+  bool get _isBmi => _metricType == 'BMI';
   bool get _isGlucose => _metricType == 'BLOOD_GLUCOSE';
   bool get _isFetalMovement => _metricType == 'FETAL_MOVEMENT_SESSION';
   bool get _isHydration => _metricType == 'HYDRATION';
@@ -98,6 +99,7 @@ class _AddMaternalHealthMetricScreenState
 
   String get _primaryLabel {
     if (_isBloodPressure) return 'Tâm thu (mmHg)';
+    if (_isBmi) return 'Cân nặng (kg)';
     if (_isFetalMovement) return 'Số cử động';
     return '$_metricLabel ($_unit)';
   }
@@ -108,19 +110,18 @@ class _AddMaternalHealthMetricScreenState
         return 'mmHg';
       case 'BLOOD_GLUCOSE':
         return 'mg/dL';
-      case 'MATERNAL_HEART_RATE':
-        return 'bpm';
+      case 'BMI':
+        return 'kg/m²';
       case 'TEMPERATURE':
         return 'Cel';
       case 'FETAL_MOVEMENT_SESSION':
         return 'count';
       case 'HYDRATION':
         return 'ml';
-      case 'WEIGHT':
       default:
         return _capability?.canonicalUnit.isNotEmpty == true
             ? _capability!.canonicalUnit
-            : 'kg';
+            : '';
     }
   }
 
@@ -130,17 +131,16 @@ class _AddMaternalHealthMetricScreenState
         return 'huyết áp';
       case 'BLOOD_GLUCOSE':
         return 'đường huyết';
-      case 'MATERNAL_HEART_RATE':
-        return 'nhịp tim';
+      case 'BMI':
+        return 'chỉ số BMI';
       case 'TEMPERATURE':
         return 'nhiệt độ';
       case 'FETAL_MOVEMENT_SESSION':
         return 'cử động thai';
       case 'HYDRATION':
         return 'lượng nước uống';
-      case 'WEIGHT':
       default:
-        return 'cân nặng';
+        return 'chỉ số sức khỏe';
     }
   }
 
@@ -154,8 +154,6 @@ class _AddMaternalHealthMetricScreenState
       case 'FETAL_MOVEMENT_COUNT':
       case 'FETAL_MOVEMENT_SESSION':
         return 'FETAL_MOVEMENT_SESSION';
-      case 'HEART_RATE':
-        return 'MATERNAL_HEART_RATE';
       default:
         return value;
     }
@@ -320,6 +318,21 @@ class _AddMaternalHealthMetricScreenState
       }
     }
 
+    final weightKg = _isBmi ? double.tryParse(_primaryCtrl.text.trim()) : null;
+    final heightCm = _isBmi
+        ? double.tryParse(_secondaryCtrl.text.trim())
+        : null;
+    if (_isBmi &&
+        (weightKg == null ||
+            weightKg < 20 ||
+            weightKg > 300 ||
+            heightCm == null ||
+            heightCm < 100 ||
+            heightCm > 230)) {
+      _showError('Nhập cân nặng 20–300 kg và chiều cao 100–230 cm.');
+      return;
+    }
+
     setState(() => _isSaving = true);
     try {
       final contextPayload = <String, dynamic>{};
@@ -330,12 +343,21 @@ class _AddMaternalHealthMetricScreenState
         contextPayload['gestationalAgeSnapshot'] = _gestationalAgeCtrl.text
             .trim();
       }
+      if (_isBmi) {
+        contextPayload['weightKg'] = weightKg;
+        contextPayload['heightCm'] = heightCm;
+        contextPayload['pregnancyBasis'] = 'CURRENT_MEASUREMENT';
+      }
+
+      final bmi = _isBmi
+          ? weightKg! / ((heightCm! / 100) * (heightCm / 100))
+          : null;
 
       await _service.addMetric(
         widget.journeyId,
         AddMetricRequest(
           metricType: _metricType,
-          valueNumeric: double.parse(_primaryCtrl.text.trim()),
+          valueNumeric: bmi ?? double.parse(_primaryCtrl.text.trim()),
           valueSecondary: _isBloodPressure
               ? double.parse(_secondaryCtrl.text.trim())
               : null,
@@ -423,9 +445,10 @@ class _AddMaternalHealthMetricScreenState
                         validator: _isFetalMovement
                             ? _requiredNonNegative
                             : _requiredPositive,
+                        onChanged: _isBmi ? (_) => setState(() {}) : null,
                         decoration: _inputDecoration(_primaryLabel),
                       ),
-                      if (_isBloodPressure) ...[
+                      if (_isBloodPressure || _isBmi) ...[
                         const SizedBox(height: 14),
                         TextFormField(
                           controller: _secondaryCtrl,
@@ -438,8 +461,15 @@ class _AddMaternalHealthMetricScreenState
                             ),
                           ],
                           validator: _requiredPositive,
-                          decoration: _inputDecoration('Tâm trương (mmHg)'),
+                          onChanged: _isBmi ? (_) => setState(() {}) : null,
+                          decoration: _inputDecoration(
+                            _isBmi ? 'Chiều cao (cm)' : 'Tâm trương (mmHg)',
+                          ),
                         ),
+                      ],
+                      if (_isBmi && _bmiPreview != null) ...[
+                        const SizedBox(height: 14),
+                        _buildBmiPreview(_bmiPreview!),
                       ],
                       if (_isGlucose) ...[
                         const SizedBox(height: 14),
@@ -550,13 +580,49 @@ class _AddMaternalHealthMetricScreenState
 
   Widget _buildMetricDescription() {
     return Text(
-      _isHydration
+      _isBmi
+          ? 'BMI được tính từ cân nặng và chiều cao bạn nhập. Trong thai kỳ, BMI trước khi mang thai mới là mốc chính để bác sĩ khuyến nghị mức tăng cân; kết quả hiện tại chỉ mang tính theo dõi tham khảo.'
+          : _isHydration
           ? 'Ghi nhận từng lần uống để theo dõi tiến độ trong ngày. Mục tiêu nước cần được cá nhân hoá theo tư vấn của bác sĩ.'
           : 'Dữ liệu được lưu để theo dõi, không thay thế chẩn đoán y khoa.',
       style: TextStyle(
         fontFamily: 'Lexend',
         fontSize: 12,
         color: _onSurfaceVariant,
+      ),
+    );
+  }
+
+  double? get _bmiPreview {
+    final weight = double.tryParse(_primaryCtrl.text.trim());
+    final heightCm = double.tryParse(_secondaryCtrl.text.trim());
+    if (weight == null || heightCm == null || weight <= 0 || heightCm <= 0) {
+      return null;
+    }
+    final heightMeters = heightCm / 100;
+    return weight / (heightMeters * heightMeters);
+  }
+
+  Widget _buildBmiPreview(double bmi) {
+    final classification = switch (bmi) {
+      < 18.5 => 'Thiếu cân',
+      < 25 => 'Bình thường',
+      < 30 => 'Thừa cân',
+      _ => 'Béo phì',
+    };
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _surfaceContainer,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Text(
+        'BMI dự kiến: ${bmi.toStringAsFixed(1)} • $classification',
+        style: const TextStyle(
+          fontFamily: 'Lexend',
+          fontWeight: FontWeight.w700,
+          color: _primary,
+        ),
       ),
     );
   }

@@ -40,7 +40,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class HealthMetricServiceImpl implements IHealthMetricService {
 
     private static final java.util.Set<String> P0_MANUAL_METRICS = java.util.Set.of(
-            "WEIGHT", "BLOOD_PRESSURE", "BLOOD_GLUCOSE", "FETAL_MOVEMENT_SESSION", "HYDRATION", "EPDS_SCORE");
+            "BMI", "BLOOD_PRESSURE", "BLOOD_GLUCOSE", "FETAL_MOVEMENT_SESSION", "HYDRATION",
+            "EPDS_SCORE");
     private static final String DISCLAIMER = "Đây là dữ liệu theo dõi, không phải chẩn đoán y khoa.";
 
     private final HealthObservationRepository observationRepository;
@@ -270,7 +271,9 @@ public class HealthMetricServiceImpl implements IHealthMetricService {
 
     private MetricType legacyTypeForCanonical(String metricCode) {
         return switch (metricCode) {
+            // Existing historical records can still be interpreted, but WEIGHT is not exposed as a capability.
             case "WEIGHT" -> MetricType.WEIGHT;
+            case "BMI" -> MetricType.BMI;
             case "BLOOD_PRESSURE" -> MetricType.BLOOD_PRESSURE;
             case "BLOOD_GLUCOSE" -> MetricType.BLOOD_GLUCOSE;
             case "FETAL_MOVEMENT_SESSION" -> MetricType.FETAL_MOVEMENT_SESSION;

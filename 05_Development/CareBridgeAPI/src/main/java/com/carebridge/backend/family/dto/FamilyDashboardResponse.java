@@ -76,7 +76,6 @@ public record FamilyDashboardResponse(
     public record SharedDataSummary(int totalItems, List<SharedDataCategory> categories) {
     }
 
-    /** Sanitized, read-only projection. Missing observations keep nullable values instead of fake zeroes. */
     public record HealthMetricSummary(
             String metricType,
             BigDecimal valueNumeric,
@@ -87,9 +86,19 @@ public record FamilyDashboardResponse(
             int recordCount) {
     }
 
+    public record MotherJourneySummary(
+            UUID journeyId,
+            String journeyType,
+            String status,
+            java.time.LocalDate estimatedDueDate,
+            java.time.LocalDate lastMenstrualDate,
+            java.time.LocalDate startDate) {
+    }
+
     public record Detail(
             UUID careGroupId,
             String motherDisplayName,
+            MotherJourneySummary motherJourney,
             List<TodayReminder> todayReminders,
             List<Alert> alerts,
             int memberCount,

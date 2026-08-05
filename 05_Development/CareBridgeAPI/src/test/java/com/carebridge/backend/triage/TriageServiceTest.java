@@ -115,6 +115,109 @@ class TriageServiceTest {
     }
 
     @Test
+    void startConversation_commonMaternalIntakeWithDescriptiveFields_shouldReachFallback() {
+        IntakeSession session = conversationSession(IntakeStatus.PROCESSING, null);
+        session.setId(UUID.randomUUID());
+        session.setStage(TriageStage.PREGNANCY);
+        when(intakeSessionRepository.save(any())).thenReturn(session);
+        when(childTriageAiClient.startIntake(any())).thenThrow(new RuntimeException("AI unavailable"));
+        when(triageGraphService.run(any())).thenReturn(greenResult());
+
+        IntakeConversationResponse response = service().startConversation(
+                StartIntakeConversationRequest.builder()
+                        .stage(TriageStage.PREGNANCY)
+                        .initialText("toi bi dau bung tieu chay")
+                        .currentIntake(Map.of(
+                                "stage", "PREGNANCY",
+                                "symptomList", java.util.List.of("toi bi dau bung tieu chay"),
+                                "parentFreeText", "toi bi dau bung tieu chay",
+                                "painSeverity", "vua",
+                                "urinarySymptoms", "khong",
+                                "hydrationStatus", "kho mieng"))
+                        .build(), USER_ID);
+
+        ArgumentCaptor<com.carebridge.backend.triage.dto.request.RunIntakeRequest> intakeCaptor =
+                ArgumentCaptor.forClass(com.carebridge.backend.triage.dto.request.RunIntakeRequest.class);
+        verify(triageGraphService).run(intakeCaptor.capture());
+        assertThat(intakeCaptor.getValue().getStage()).isEqualTo(TriageStage.PREGNANCY);
+        assertThat(intakeCaptor.getValue().getPainSeverity()).isEqualTo("vua");
+        assertThat(intakeCaptor.getValue().getUrinarySymptoms()).isEqualTo("khong");
+        assertThat(intakeCaptor.getValue().getHydrationStatus()).isEqualTo("kho mieng");
+        assertThat(response.getStage()).isEqualTo(TriageStage.PREGNANCY.name());
+    }
+
+    @Test
+    void startConversation_maternalAbdominalFollowUp_shouldKeepVomitingQuestionFromAi() {
+        IntakeSession session = conversationSession(IntakeStatus.PROCESSING, null);
+        session.setStage(TriageStage.PREGNANCY);
+        when(intakeSessionRepository.save(any())).thenReturn(session);
+        when(childTriageAiClient.startIntake(any())).thenReturn("""
+                {"status":"ASK_MORE","stage":"PREGNANCY",
+                 "mergedIntake":{"stage":"PREGNANCY","symptomList":["abdominal_pain"]},
+                 "questions":[
+                   {"questionKey":"painSeverity","text":"Mức độ đau hiện thế nào?","answerType":"SINGLE_CHOICE","options":["Nhẹ","Vừa","Nhiều"]},
+                   {"questionKey":"duration","text":"Triệu chứng xuất hiện bao lâu rồi?","answerType":"SINGLE_CHOICE","options":["Dưới 1 ngày","1-3 ngày"]},
+                   {"questionKey":"vomiting","text":"Bạn có buồn nôn hoặc nôn không?","answerType":"SINGLE_CHOICE","options":["Không","Buồn nôn","Nôn ít"]}
+                 ],"round":1}
+                """);
+
+        IntakeConversationResponse response = service().startConversation(
+                StartIntakeConversationRequest.builder()
+                        .stage(TriageStage.PREGNANCY)
+                        .initialText("toi bi dau bung tieu chay")
+                        .currentIntake(Map.of("stage", "PREGNANCY"))
+                        .build(), USER_ID);
+
+        assertThat(response.getQuestions())
+                .extracting(question -> String.valueOf(((Map<?, ?>) question).get("questionKey")))
+                .containsExactly("painSeverity", "duration", "vomiting");
+        verify(triageGraphService, never()).run(any());
+    }
+
+    @Test
+    void startConversation_maternalEnvelope_shouldRetainVomitingForTheNextRound() {
+        IntakeSession session = conversationSession(IntakeStatus.PROCESSING, null);
+        session.setStage(TriageStage.PREGNANCY);
+        when(intakeSessionRepository.save(any())).thenReturn(session);
+        when(childTriageAiClient.startIntake(any())).thenReturn("""
+                {"status":"ASK_MORE","stage":"PREGNANCY",
+                 "mergedIntake":{"stage":"PREGNANCY","vomiting":"Nôn ít"},
+                 "questions":[
+                   {"questionKey":"duration","text":"Triệu chứng xuất hiện bao lâu rồi?","answerType":"SINGLE_CHOICE","options":["Dưới 1 ngày","1-3 ngày"]}
+                 ],"round":2}
+                """);
+
+        IntakeConversationResponse response = service().startConversation(
+                StartIntakeConversationRequest.builder()
+                        .stage(TriageStage.PREGNANCY)
+                        .initialText("toi bi dau bung")
+                        .currentIntake(Map.of("stage", "PREGNANCY"))
+                        .build(), USER_ID);
+
+        assertThat(response.getMergedIntake()).containsEntry("vomiting", "Nôn ít");
+    }
+
+    @Test
+    void startConversation_unknownCurrentIntakeField_shouldRejectBeforePersistence() {
+        StartIntakeConversationRequest request = StartIntakeConversationRequest.builder()
+                .stage(TriageStage.PREGNANCY)
+                .initialText("toi bi dau bung")
+                .currentIntake(Map.of("stage", "PREGNANCY", "unexpectedFact", "value"))
+                .build();
+
+        assertThatThrownBy(() -> service().startConversation(request, USER_ID))
+                .isInstanceOf(TriageException.class)
+                .satisfies(exception -> {
+                    TriageException triageException = (TriageException) exception;
+                    assertThat(triageException.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
+                    assertThat(triageException.getCode()).isEqualTo("TRIAGE-010");
+                });
+
+        verify(intakeSessionRepository, never()).save(any());
+        verify(childTriageAiClient, never()).startIntake(any());
+    }
+
+    @Test
     void runIntake_pythonRed_shouldEscalateExactlyOnceBeforeGeneralCompletion() {
         when(childTriageAiClient.triageChild(any())).thenReturn(redJson());
         when(intakeSessionRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));

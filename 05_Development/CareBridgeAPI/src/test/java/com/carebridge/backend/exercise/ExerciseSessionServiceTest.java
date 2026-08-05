@@ -17,7 +17,6 @@ import com.carebridge.backend.exercise.entity.ExerciseStatus;
 import com.carebridge.backend.exercise.entity.PregnancyExercise;
 import com.carebridge.backend.exercise.entity.SafetyCheckStatus;
 import com.carebridge.backend.exercise.entity.SessionStatus;
-import com.carebridge.backend.exercise.exception.DuplicateSessionException;
 import com.carebridge.backend.exercise.exception.ExerciseNotFoundException;
 import com.carebridge.backend.exercise.exception.SafetyCheckNotClearedException;
 import com.carebridge.backend.exercise.mapper.ExerciseSessionMapper;
@@ -25,7 +24,9 @@ import com.carebridge.backend.exercise.repository.ExerciseRepository;
 import com.carebridge.backend.exercise.repository.ExerciseSafetyCheckRepository;
 import com.carebridge.backend.exercise.repository.ExerciseSessionRepository;
 import com.carebridge.backend.exercise.repository.PostureFeedbackEventRepository;
+import com.carebridge.backend.exercise.service.ExerciseCareContextResolver;
 import com.carebridge.backend.exercise.service.impl.ExerciseSessionServiceImpl;
+import com.carebridge.backend.security.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -58,6 +59,12 @@ class ExerciseSessionServiceTest {
 
     @Mock
     private PostureFeedbackEventRepository postureFeedbackEventRepository;
+
+    @Mock
+    private ExerciseCareContextResolver careContextResolver;
+
+    @Mock
+    private UserRepository userRepository;
 
     @Spy
     private ExerciseSessionMapper sessionMapper;
@@ -97,8 +104,13 @@ class ExerciseSessionServiceTest {
                 .thenReturn(Optional.of(publishedExercise()));
         when(safetyCheckRepository.findById(SAFETY_CHECK_ID))
                 .thenReturn(Optional.of(clearedCheck(USER_ID, EXERCISE_ID, SafetyCheckStatus.CLEARED)));
-        when(sessionRepository.findActiveSessionToday(eq(EXERCISE_ID), eq(USER_ID), anyList(), any()))
+        when(sessionRepository
+                        .findFirstByExerciseIdAndUserIdAndSessionStatusInAndStartedAtGreaterThanEqualAndStartedAtLessThanOrderByStartedAtAscExerciseSessionIdAsc(
+                                eq(EXERCISE_ID), eq(USER_ID), anyList(), any(), any()))
                 .thenReturn(Optional.empty());
+        when(careContextResolver.resolve(USER_ID, null))
+                .thenReturn(new ExerciseCareContextResolver.CareContext(
+                        UUID.randomUUID(), UUID.randomUUID()));
         when(sessionRepository.save(any(ExerciseSession.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -155,19 +167,41 @@ class ExerciseSessionServiceTest {
     }
 
     @Test
-    @DisplayName("SESS-TC-005: duplicate active session today → DuplicateSessionException")
-    void startSession_duplicateActiveSession_throws() {
+    @DisplayName("SESS-TC-005: duplicate active session today → returns existing session")
+    void startSession_existingActiveSession_returnsExistingSession() {
         when(exerciseRepository.findByExerciseIdAndStatus(EXERCISE_ID, ExerciseStatus.PUBLISHED))
                 .thenReturn(Optional.of(publishedExercise()));
         when(safetyCheckRepository.findById(SAFETY_CHECK_ID))
                 .thenReturn(Optional.of(clearedCheck(USER_ID, EXERCISE_ID, SafetyCheckStatus.CLEARED)));
-        when(sessionRepository.findActiveSessionToday(eq(EXERCISE_ID), eq(USER_ID), anyList(), any()))
-                .thenReturn(Optional.of(new ExerciseSession()));
+        OffsetDateTime startedAt = OffsetDateTime.parse("2026-08-05T01:00:00Z");
+        UUID existingSessionId = UUID.randomUUID();
+        UUID journeyId = UUID.randomUUID();
+        ExerciseSession existing = ExerciseSession.builder()
+                .exerciseSessionId(existingSessionId)
+                .exerciseId(EXERCISE_ID)
+                .userId(USER_ID)
+                .safetyCheckId(SAFETY_CHECK_ID)
+                .journeyId(journeyId)
+                .startedAt(startedAt)
+                .sessionStatus(SessionStatus.PAUSED)
+                .pausedSeconds(45)
+                .warningCount(2)
+                .build();
+        when(sessionRepository
+                        .findFirstByExerciseIdAndUserIdAndSessionStatusInAndStartedAtGreaterThanEqualAndStartedAtLessThanOrderByStartedAtAscExerciseSessionIdAsc(
+                                eq(EXERCISE_ID), eq(USER_ID), anyList(), any(), any()))
+                .thenReturn(Optional.of(existing));
 
-        assertThatThrownBy(() -> service.startSession(EXERCISE_ID, request(), USER_ID))
-                .isInstanceOf(DuplicateSessionException.class)
-                .extracting("code").isEqualTo("EXSESS-004");
+        StartSessionResponse response = service.startSession(EXERCISE_ID, request(), USER_ID);
 
+        assertThat(response.getExerciseSessionId()).isEqualTo(existingSessionId);
+        assertThat(response.getExerciseId()).isEqualTo(EXERCISE_ID);
+        assertThat(response.getUserId()).isEqualTo(USER_ID);
+        assertThat(response.getSafetyCheckId()).isEqualTo(SAFETY_CHECK_ID);
+        assertThat(response.getJourneyId()).isEqualTo(journeyId);
+        assertThat(response.getSessionStatus()).isEqualTo(SessionStatus.PAUSED.name());
+        assertThat(response.getStartedAt()).isEqualTo(startedAt);
         verify(sessionRepository, never()).save(any());
+        verify(careContextResolver, never()).resolve(any(), any());
     }
 }

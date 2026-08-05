@@ -4,6 +4,8 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PostLoad;
 import jakarta.persistence.PrePersist;
@@ -34,12 +36,16 @@ import org.hibernate.type.SqlTypes;
 public class ExerciseSafetyCheck {
 
     @Id
+    // Leave the id null until persist so Spring Data does not take the canonical
+    // observation through merge (the exercise/user projections are transient).
+    @GeneratedValue(strategy = GenerationType.UUID)
     @Column(name = "health_observation_id", nullable = false)
     private UUID safetyCheckId;
 
     @Transient
     private UUID exerciseId;
 
+    /** Canonical care_subject_id; the legacy Java name is retained for API compatibility. */
     @Column(name = "care_subject_id", nullable = false)
     private UUID journeyId;
 

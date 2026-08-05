@@ -25,27 +25,24 @@ T? getProperty<T>(Object object, String property) {
 Object? jsify(Object? value) => value.jsify();
 
 T callConstructor<T>(Object constructor, List<Object?> arguments) {
-  final jsArguments = arguments
-      .map((argument) => argument.jsify())
-      .toList()
-      .cast<JSAny?>();
+  final jsArguments = _externalizeArguments(arguments);
   return (constructor as JSFunction).callAsConstructorVarArgs<JSObject>(
         jsArguments,
       )
       as T;
 }
 
-T callMethod<T>(Object object, String method, List<Object?> arguments) {
-  final jsArguments = arguments
-      .map((argument) => argument.jsify())
-      .toList()
-      .cast<JSAny?>();
-  final result = (object as JSObject).callMethodVarArgs<JSAny?>(
+Object? callMethod(Object object, String method, List<Object?> arguments) {
+  final jsArguments = _externalizeArguments(arguments);
+  return (object as JSObject).callMethodVarArgs<JSAny?>(
     method.toJS,
     jsArguments,
   );
-  return (result?.dartify() ?? result) as T;
 }
+
+List<JSAny?> _externalizeArguments(List<Object?> arguments) => <JSAny?>[
+  for (final argument in arguments) argument.jsify(),
+];
 
 Object allowInteropString(String Function(String) function) => function.toJS;
 
@@ -53,5 +50,6 @@ Object allowInteropResults(void Function(JSAny?) function) => function.toJS;
 
 Future<T> promiseToFuture<T>(Object promise) async {
   final result = await (promise as JSPromise<JSAny?>).toDart;
-  return result as T;
+  final dartResult = result.dartify();
+  return (dartResult ?? result) as T;
 }

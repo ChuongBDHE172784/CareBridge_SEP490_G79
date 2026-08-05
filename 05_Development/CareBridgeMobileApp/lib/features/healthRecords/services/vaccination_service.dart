@@ -10,6 +10,12 @@ class VaccinationService {
         .toList();
   }
 
+  Future<VaccinationSchedule> getVaccinationSchedule(String babyId) async {
+    final data = await apiGet('/api/v1/vaccination/babies/$babyId/schedule');
+    final raw = data is Map && data['data'] is Map ? data['data'] : data;
+    return VaccinationSchedule.fromJson(Map<String, dynamic>.from(raw as Map));
+  }
+
   // UC-228: Get vaccination detail
   Future<VaccinationRecord> getVaccination(
     String babyId,
@@ -23,15 +29,17 @@ class VaccinationService {
   }
 
   // UC-230/231: Update vaccination info
-  Future<void> updateVaccination(
+  Future<VaccinationRecord> updateVaccination(
     String babyId,
     String vaccinationId,
     Map<String, dynamic> payload,
   ) async {
-    await apiPatch(
+    final data = await apiPatch(
       '/api/v1/vaccination/babies/$babyId/records/$vaccinationId',
       payload,
     );
+    final raw = data is Map && data['data'] is Map ? data['data'] : data;
+    return VaccinationRecord.fromJson(Map<String, dynamic>.from(raw as Map));
   }
 
   // UC-232: Reschedule vaccination
@@ -45,6 +53,24 @@ class VaccinationService {
     );
   }
 
+  Future<void> markVaccinationCompleted({
+    required String babyId,
+    required String vaccineName,
+    required int doseNumber,
+    required DateTime administeredDate,
+    String? facilityName,
+    String? proofRecordId,
+  }) async {
+    await apiPost('/api/v1/vaccination/babies/$babyId/completions', {
+      'vaccineName': vaccineName,
+      'doseNumber': doseNumber,
+      'administeredDate': _dateOnly(administeredDate),
+      if (facilityName != null && facilityName.trim().isNotEmpty)
+        'facilityName': facilityName.trim(),
+      'proofRecordId': ?proofRecordId,
+    });
+  }
+
   // UC-233: Delete vaccination record
   Future<void> deleteVaccination(String babyId, String vaccinationId) async {
     await apiDelete(
@@ -53,10 +79,22 @@ class VaccinationService {
   }
 
   // UC-229: Add vaccination record
-  Future<void> addVaccinationRecord(
+  Future<VaccinationRecord> addVaccinationRecord(
     String babyId,
     Map<String, dynamic> payload,
   ) async {
-    await apiPost('/api/v1/vaccination/babies/$babyId/records', payload);
+    final data = await apiPost(
+      '/api/v1/vaccination/babies/$babyId/records',
+      payload,
+    );
+    final raw = data is Map && data['data'] is Map ? data['data'] : data;
+    return VaccinationRecord.fromJson(Map<String, dynamic>.from(raw as Map));
+  }
+
+  static String _dateOnly(DateTime value) {
+    final local = value.toLocal();
+    return '${local.year.toString().padLeft(4, '0')}-'
+        '${local.month.toString().padLeft(2, '0')}-'
+        '${local.day.toString().padLeft(2, '0')}';
   }
 }

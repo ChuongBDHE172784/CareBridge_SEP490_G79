@@ -6,6 +6,7 @@ import com.carebridge.backend.checklist.today.dto.CurrentChecklistTaskResponse;
 import com.carebridge.backend.checklist.today.dto.TodayTaskItemResponse;
 import com.carebridge.backend.checklist.today.dto.TodayTaskSections;
 import com.carebridge.backend.checklist.today.dto.TodayTasksResponse;
+import com.carebridge.backend.common.util.SecurityUtils;
 import java.time.LocalDate;
 import java.util.Set;
 import java.util.UUID;
@@ -22,9 +23,14 @@ public class CurrentChecklistServiceImpl implements CurrentChecklistService {
     @Override
     public CurrentChecklistResponse getCurrentTasks(
             UUID actorUserId, LocalDate date, String timezoneHeader) {
+        // The generic route is still readable by FAMILY for compatibility, but
+        // authenticated FAMILY reads stay read-only. Internal callers without a
+        // security context retain the Mother-compatible reconciliation behavior.
+        boolean reconcile = SecurityUtils.currentAuthorities().isEmpty()
+                || SecurityUtils.hasRole("MOTHER");
         TodayTasksResponse response = unifiedTodayTaskService.getTodayTasks(
                 actorUserId, date, timezoneHeader,
-                Set.of(com.carebridge.backend.checklist.today.model.TaskKind.CHECKLIST), false);
+                Set.of(com.carebridge.backend.checklist.today.model.TaskKind.CHECKLIST), reconcile);
         TodayTaskSections sections = response.sections();
         CurrentChecklistSections currentSections = new CurrentChecklistSections(
                 map(sections.overdue()), map(sections.today()),

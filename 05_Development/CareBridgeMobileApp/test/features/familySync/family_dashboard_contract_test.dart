@@ -188,7 +188,7 @@ void main() {
 
         await tester.scrollUntilVisible(
           find.byKey(const Key('family-dashboard-group-selector')),
-          100.0,
+          300,
           scrollable: find.byType(Scrollable).first,
         );
         await tester.pumpAndSettle();
@@ -301,7 +301,7 @@ void main() {
         find.byKey(const Key('family-dashboard-quick-notes')),
         findsOneWidget,
       );
-      expect(find.byKey(const Key('family-quick-note-weight')), findsOneWidget);
+      expect(find.byKey(const Key('family-quick-note-bmi')), findsOneWidget);
       expect(
         find.byKey(const Key('family-quick-note-hydration')),
         findsOneWidget,

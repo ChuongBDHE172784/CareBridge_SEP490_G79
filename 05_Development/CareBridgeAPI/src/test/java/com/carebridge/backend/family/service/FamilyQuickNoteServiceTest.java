@@ -66,22 +66,25 @@ class FamilyQuickNoteServiceTest {
     }
 
     @Test
-    void allowedWeightHistoryIsReadOnlyAndNewestFirst() {
+    void allowedBmiHistoryIsReadOnlyAndNewestFirst() {
         allow(PermissionFlag.QUICK_NOTE_WEIGHT);
         when(journeyRepository.findCanonical(motherId)).thenReturn(Optional.of(
                 MotherJourney.builder().id(journeyId).ownerUserId(motherId)
                         .careSubjectId(careSubjectId).build()));
-        var older = observation("WEIGHT", "61.2", from.plusSeconds(60), "private note", Map.of());
-        var newer = observation("WEIGHT", "62.1", from.plusSeconds(120), "private note", Map.of());
+        var older = observation("BMI", "21.2", from.plusSeconds(60), "private note",
+                Map.of("weightKg", "54.3", "heightCm", "160"));
+        var newer = observation("BMI", "21.5", from.plusSeconds(120), "private note",
+                Map.of("weightKg", "55.0", "heightCm", "160"));
         when(observationRepository.findTrend(
-                        careSubjectId, "WEIGHT", MetricStatus.ACTIVE, from, to))
+                        careSubjectId, "BMI", MetricStatus.ACTIVE, from, to))
                 .thenReturn(List.of(older, newer));
 
-        var response = service.getHistory(groupId, familyId, MetricType.WEIGHT, from, to);
+        var response = service.getHistory(groupId, familyId, MetricType.BMI, from, to);
 
         assertThat(response.getDataPoints()).extracting(point -> point.getValueNumeric())
-                .containsExactly(new BigDecimal("62.1"), new BigDecimal("61.2"));
-        assertThat(response.getDataPoints()).allSatisfy(point -> assertThat(point.getNote()).isNull());
+                .containsExactly(new BigDecimal("21.5"), new BigDecimal("21.2"));
+        assertThat(response.getDataPoints()).allSatisfy(point -> assertThat(point.getContext())
+                .containsOnlyKeys("weightKg", "heightCm"));
     }
 
     @Test
@@ -139,7 +142,7 @@ class FamilyQuickNoteServiceTest {
                 .status(CareGroupStatus.ARCHIVED).build()));
 
         assertThatThrownBy(() -> service.getHistory(
-                groupId, familyId, MetricType.WEIGHT, from, to))
+                groupId, familyId, MetricType.BMI, from, to))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).getHttpStatus())
                         .isEqualTo(HttpStatus.FORBIDDEN));
@@ -246,7 +249,7 @@ class FamilyQuickNoteServiceTest {
                 .careSubjectId(careSubjectId)
                 .metricCode(metricCode)
                 .valueNumeric(new BigDecimal(value))
-                .unit("WEIGHT".equals(metricCode) ? "kg" : "")
+                .unit("BMI".equals(metricCode) ? "kg/m²" : "")
                 .measuredAt(measuredAt)
                 .sourceType(DataSource.MANUAL)
                 .note(note)

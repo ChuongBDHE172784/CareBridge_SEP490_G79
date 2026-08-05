@@ -22,10 +22,14 @@ production allowlist and never fabricates citations.
 
 When local Knowledge Base citations are not available, the service may perform
 realtime official-source search restricted to whitelisted domains. Realtime
-results are used only as citations/evidence, never for deciding risk. They are
-cached under `data/medical_sources_pending` with `sourceStatus: PENDING_REVIEW`
-and require internal admin review before promotion to the reviewed Knowledge
-Base.
+results are used only as citations/evidence, never for deciding risk. A result
+is only ever cited to the user after passing domain whitelisting and per-request
+symptom relevance validation; it keeps `sourceStatus: PENDING_REVIEW` and
+`retrievalMode: REALTIME` in the response so callers can tell it apart from a
+clinician-reviewed local Knowledge Base entry. It is also cached under
+`data/medical_sources_pending` for internal admin review; promotion to a
+permanent, clinician-approved local Knowledge Base entry still requires that
+review.
 
 ## Run
 
@@ -79,6 +83,31 @@ Set `GEMINI_ENABLED=false` to run the complete deterministic-only flow without
 a Gemini key. When Gemini is enabled but unavailable, times out, is rate
 limited, or returns invalid structured output, each assistant task falls back
 to its deterministic implementation; RED is never lowered or delayed.
+
+### Realtime official-source search
+
+Realtime search calls the [Google Programmable Search Engine](https://programmablesearchengine.google.com/)
+JSON API (free tier: 100 queries/day) restricted to the domains approved in the
+`knowledge_sources` DB registry. Plain HTML-scraping of a general search engine
+is intentionally not used — it is unreliable behind bot-detection/CAPTCHA
+challenges, and working around that would violate this service's "never bypass
+a CAPTCHA" policy.
+
+```dotenv
+GOOGLE_SEARCH_API_KEY=
+GOOGLE_SEARCH_ENGINE_ID=
+```
+
+To obtain these:
+1. Create a Programmable Search Engine at https://programmablesearchengine.google.com/,
+   set it to search the entire web, and copy its Search Engine ID (`cx`).
+2. Create an API key for the Custom Search JSON API in Google Cloud Console
+   (enable the "Custom Search API").
+
+Leave both blank to disable realtime search — local Knowledge Base citations
+still work, and the deterministic risk classification is never affected either
+way (search results are attached as supporting evidence only, after risk is
+already decided).
 
 ## Timeout Budget
 

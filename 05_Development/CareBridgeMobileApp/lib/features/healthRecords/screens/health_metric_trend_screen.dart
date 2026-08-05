@@ -34,9 +34,9 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
 
   static const _fallbackMetricOptions = [
     _MetricOption(
-      apiValue: 'WEIGHT',
-      label: 'Cân nặng',
-      unit: 'kg',
+      apiValue: 'BMI',
+      label: 'Chỉ số BMI',
+      unit: 'kg/m²',
       icon: Icons.monitor_weight_outlined,
     ),
     _MetricOption(
@@ -123,9 +123,9 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
     final fallback = _fallbackMetricOptions.firstWhere(
       (option) => option.apiValue == code,
       orElse: () => const _MetricOption(
-        apiValue: 'WEIGHT',
-        label: 'Cân nặng',
-        unit: 'kg',
+        apiValue: 'BMI',
+        label: 'Chỉ số BMI',
+        unit: 'kg/m²',
         icon: Icons.monitor_weight_outlined,
       ),
     );
@@ -149,10 +149,8 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
       case 'FETAL_MOVEMENT_COUNT':
       case 'FETAL_MOVEMENT_SESSION':
         return 'FETAL_MOVEMENT_SESSION';
-      case 'HEART_RATE':
-        return 'MATERNAL_HEART_RATE';
       default:
-        return value ?? 'WEIGHT';
+        return value ?? 'BMI';
     }
   }
 
@@ -647,7 +645,8 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
 
   Widget _buildHistoryCard() {
     final points = _historyPoints;
-    final height = math.min(420.0, math.max(96.0, points.length * 74.0));
+    final rowHeight = _selectedMetric.apiValue == 'BMI' ? 94.0 : 74.0;
+    final height = math.min(470.0, math.max(96.0, points.length * rowHeight));
 
     return _Card(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
@@ -869,6 +868,19 @@ class _HistoryTile extends StatelessWidget {
                       color: _HealthMetricTrendScreenState._onSurfaceVariant,
                     ),
                   ),
+                  if (metric.apiValue == 'BMI' &&
+                      _bmiSourceMeasurements(point) != null) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      _bmiSourceMeasurements(point)!,
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: _HealthMetricTrendScreenState._primary,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -881,4 +893,16 @@ class _HistoryTile extends StatelessWidget {
       ),
     );
   }
+}
+
+String? _bmiSourceMeasurements(MetricDataPoint point) {
+  final weight = _contextNumber(point.context['weightKg']);
+  final height = _contextNumber(point.context['heightCm']);
+  if (weight == null || height == null) return null;
+  return 'Cân nặng ${weight.toStringAsFixed(1)} kg • Chiều cao ${height.toStringAsFixed(1)} cm';
+}
+
+double? _contextNumber(Object? value) {
+  if (value is num) return value.toDouble();
+  return double.tryParse(value?.toString() ?? '');
 }
