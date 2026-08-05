@@ -18,7 +18,6 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir --only-binary=:all: -r requirements.txt
 
 COPY --chown=exercise:exercise app ./app
-COPY --chown=exercise:exercise scripts ./scripts
 COPY --chown=exercise:exercise models ./models
 
 USER 10001:10001

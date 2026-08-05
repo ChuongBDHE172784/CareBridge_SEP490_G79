@@ -1,0 +1,223 @@
+# CareBridge — server deployment stack (AWS EC2 / VM).
+#
+# Implements the runtime architecture: Cloudflare Tunnel terminates public
+# traffic, cloudflared dials out from the VM so no inbound port is opened, and
+# nginx-edge is the only thing the tunnel can reach. Nothing here publishes a
+# port on the host.
+#
+#   Internet -> Cloudflare -> cloudflared -> nginx-edge -+-> web:8080     (portal)
+#                                                        +-> backend:8080 (API)
+#
+# CompreFace is Container B in docker-compose.server.compreface.yml; it attaches
+# to the internal carebridge-face-origin network created here and is never
+# published. Supabase, Gemini, Firebase, R2 and Cloudinary stay managed and
+# external; only the two egress-capable services can reach them.
+#
+#   docker compose --env-file 05_Development/Deployment/.env.server \
+#     -f docker-compose.server.yml up -d --build
+#
+# See 05_Development/Deployment/DEPLOY-SERVER.md.
+name: carebridge-server
+
+services:
+  ai-triage:
+    # Set AI_IMAGE to a registry digest to deploy a CI-built image instead of
+    # building on the VM. The build block is ignored by `docker compose pull`.
+    image: ${AI_IMAGE:-carebridge-ai-triage:server}
+    build:
+      context: ./05_Development/CareBridgeAITriageService
+    # Least privilege: this container never receives the backend env file, only
+    # the values it actually needs.
+    environment:
+      AI_TRIAGE_EVIDENCE_REGISTRY_URL: "http://backend:8080"
+      AI_TRIAGE_INTERNAL_API_KEY: ${AI_TRIAGE_INTERNAL_API_KEY:?Set the shared evidence-registry key}
+      AI_TRIAGE_EVIDENCE_REGISTRY_CACHE_SECONDS: ${AI_TRIAGE_EVIDENCE_REGISTRY_CACHE_SECONDS:-300}
+      AI_TRIAGE_SERVICE_TIMEOUT_SECONDS: ${AI_TRIAGE_SERVICE_TIMEOUT_SECONDS:-7}
+      AI_TRIAGE_REALTIME_TIMEOUT_SECONDS: ${AI_TRIAGE_REALTIME_TIMEOUT_SECONDS:-3.5}
+      GEMINI_ENABLED: ${AI_GEMINI_ENABLED:-false}
+      GEMINI_API_KEY: ${AI_GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${AI_GEMINI_MODEL:-gemini-2.5-flash}
+      GEMINI_TIMEOUT_SECONDS: ${AI_GEMINI_TIMEOUT_SECONDS:-6}
+      GEMINI_MAX_RETRIES: ${AI_GEMINI_MAX_RETRIES:-1}
+      GEMINI_TEMPERATURE: ${AI_GEMINI_TEMPERATURE:-0.2}
+    expose:
+      - "8001"
+    networks:
+      - ai-origin
+      - service-egress
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=3).read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  exercise-correction:
+    image: ${EXERCISE_IMAGE:-carebridge-exercise-correction:server}
+    build:
+      context: ./05_Development/MachineLearning/MediaPipe_Posture/exercise_correction_sidecar
+    environment:
+      EXERCISE_MODEL_DIR: /app/models
+      EXERCISE_MODEL_MANIFEST: /app/models/SHA256SUMS
+    expose:
+      - "8002"
+    # Pure inference over bundled models: no credentials, no egress.
+    networks:
+      - exercise-origin
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: ${EXERCISE_MEM_LIMIT:-512m}
+    cpus: ${EXERCISE_CPUS:-1.0}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/health', timeout=2).read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  backend:
+    image: ${BACKEND_IMAGE:-carebridge-backend:server}
+    build:
+      context: ./05_Development/CareBridgeAPI
+    env_file:
+      - ${BACKEND_ENV_FILE:-./05_Development/Deployment/.env.server}
+    environment:
+      # Container DNS. "localhost" inside this container is the backend itself.
+      AI_TRIAGE_SERVICE_URL: "http://ai-triage:8001"
+      # Posture analysis sidecar. Disabled in application.yaml by default, so the
+      # flag has to be set here or the backend silently falls back to RULE_BASED.
+      CAREBRIDGE_EXERCISE_CORRECTION_ENABLED: ${CAREBRIDGE_EXERCISE_CORRECTION_ENABLED:-true}
+      EXERCISE_CORRECTION_SERVICE_URL: "http://exercise-correction:8002"
+      # Exactly the browser origin of the portal, nothing wider.
+      CAREBRIDGE_CORS_ALLOWED_ORIGINS: "https://${CAREBRIDGE_PORTAL_HOSTNAME:?Set CAREBRIDGE_PORTAL_HOSTNAME}"
+      # application.yaml hard-codes carebridge.compreface.*; only these
+      # relaxed-binding env vars can override those literals.
+      CAREBRIDGE_COMPREFACE_ENABLED: ${CAREBRIDGE_COMPREFACE_ENABLED:-false}
+      CAREBRIDGE_COMPREFACE_BASE_URL: ${CAREBRIDGE_COMPREFACE_BASE_URL:-http://compreface-fe}
+      # Seeding test accounts on a public deployment is never correct, so it is
+      # forced off here rather than left to the env file.
+      CAREBRIDGE_DEV_SEED_ENABLED: "false"
+    expose:
+      - "8080"
+    networks:
+      - backend-origin
+      - ai-origin
+      - face-origin
+      - exercise-origin
+      - service-egress
+    depends_on:
+      ai-triage:
+        condition: service_healthy
+      exercise-correction:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "http://127.0.0.1:8080/actuator/health/readiness"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+  web:
+    image: ${WEB_IMAGE:-carebridge-web:server}
+    build:
+      context: ./05_Development/CareBridgeWebApp
+      # Vite inlines these at build time, so the image is environment-specific:
+      # rebuild when a hostname or Firebase project changes.
+      args:
+        VITE_API_URL: "https://${CAREBRIDGE_API_HOSTNAME:?Set CAREBRIDGE_API_HOSTNAME}"
+        VITE_FIREBASE_API_KEY: ${VITE_FIREBASE_API_KEY:?Set VITE_FIREBASE_API_KEY}
+        VITE_FIREBASE_AUTH_DOMAIN: ${VITE_FIREBASE_AUTH_DOMAIN:?Set VITE_FIREBASE_AUTH_DOMAIN}
+        VITE_FIREBASE_PROJECT_ID: ${VITE_FIREBASE_PROJECT_ID:?Set VITE_FIREBASE_PROJECT_ID}
+        VITE_FIREBASE_APP_ID: ${VITE_FIREBASE_APP_ID:?Set VITE_FIREBASE_APP_ID}
+        VITE_FIREBASE_STORAGE_BUCKET: ${VITE_FIREBASE_STORAGE_BUCKET:-}
+        VITE_FIREBASE_MESSAGING_SENDER_ID: ${VITE_FIREBASE_MESSAGING_SENDER_ID:-}
+    expose:
+      - "8080"
+    # Static assets only: no egress network, so a compromised nginx cannot call out.
+    networks:
+      - portal-origin
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8080/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  nginx-edge:
+    image: ${EDGE_NGINX_IMAGE:-nginxinc/nginx-unprivileged:1.29.0-alpine}
+    environment:
+      CAREBRIDGE_PORTAL_HOSTNAME: ${CAREBRIDGE_PORTAL_HOSTNAME:?Set CAREBRIDGE_PORTAL_HOSTNAME}
+      CAREBRIDGE_API_HOSTNAME: ${CAREBRIDGE_API_HOSTNAME:?Set CAREBRIDGE_API_HOSTNAME}
+      CAREBRIDGE_CLOUDFLARED_IP: ${CAREBRIDGE_CLOUDFLARED_IP:-172.31.0.2}
+    volumes:
+      - ./05_Development/Deployment/nginx/edge-server.conf:/etc/nginx/templates/default.conf.template:ro
+    expose:
+      - "8080"
+    networks:
+      # Pinned: this container is created before cloudflared, and dynamic IPAM
+      # hands out .2 first, which would collide with cloudflared's static IP.
+      tunnel:
+        ipv4_address: ${CAREBRIDGE_NGINX_EDGE_IP:-172.31.0.3}
+      backend-origin:
+      portal-origin:
+    depends_on:
+      backend:
+        condition: service_healthy
+      web:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://backend:8080/actuator/health/readiness && wget -q -O /dev/null http://web:8080/"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  cloudflared:
+    image: ${CLOUDFLARED_IMAGE:-cloudflare/cloudflared:2026.7.2}
+    command: ["tunnel", "--no-autoupdate", "run"]
+    environment:
+      TUNNEL_TOKEN_FILE: /run/secrets/cloudflare_tunnel_token
+    secrets:
+      - cloudflare_tunnel_token
+    # Only network it joins, so the tunnel can reach nginx-edge and nothing else.
+    networks:
+      tunnel:
+        ipv4_address: ${CAREBRIDGE_CLOUDFLARED_IP:-172.31.0.2}
+    depends_on:
+      nginx-edge:
+        condition: service_healthy
+    restart: unless-stopped
+
+networks:
+  tunnel:
+    ipam:
+      config:
+        - subnet: ${CAREBRIDGE_TUNNEL_SUBNET:-172.31.0.0/29}
+  backend-origin:
+    internal: true
+  portal-origin:
+    internal: true
+  ai-origin:
+    internal: true
+  exercise-origin:
+    internal: true
+  # Fixed name so the CompreFace stack can join it as an external network.
+  face-origin:
+    name: carebridge-face-origin
+    internal: true
+  # The only network with a route out: Supabase, Gemini, Firebase, R2, Cloudinary.
+  service-egress:
+
+secrets:
+  cloudflare_tunnel_token:
+    file: ${CLOUDFLARE_TUNNEL_TOKEN_FILE:?Set path to the Cloudflare tunnel token file}
