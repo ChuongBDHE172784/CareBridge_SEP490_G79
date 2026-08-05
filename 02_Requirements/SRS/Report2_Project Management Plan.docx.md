@@ -651,19 +651,17 @@ Source code is managed through GitLab repositories using a Git-based version con
 | Category | Tools / Infrastructure | Usage |
 | ----- | ----- | ----- |
 | **Mobile Technology** | Flutter (Dart) | Primary mobile application for care seekers, family members and community users. |
-| **Web Technology** | React \+ TypeScript | Web portal development for Admin Portal, Expert Portal, Moderator and Partner management functions.  |
+| **Web Technology** | React \+ TypeScript \+ Tailwind CSS | Web portal development for Admin Portal, Expert Portal, Moderator. |
 | **Backend Technology** | Java Spring Boot | Backend APIs, business services, RBAC, consent, triage and governance logic, Spring Security. |
 | **Security & Access Control** | Spring Security \+ JWT | User authentication, role-based authorization, session management and protected API access for different user roles. |
-| **Database** | PostgreSQL | Structured relational data and flexible document/log/content data as needed.Main relational database for user profiles, pregnancy records, baby information, expert profiles, consultation data, payment records and system transactions. |
-| **Document / Content Storage** | Firebase Storage / AWS S3 | Flexible storage for community content, uploaded documents, images, health records and unstructured data when required. |
-| **Caching / Performance** | Redis or lightweight caching strategy | Community feed, FAQ, checklist and read-heavy data optimization when implemented. |
-| **Realtime Communication** | WebSocket / Firebase Realtime Database | Real-time messaging, consultation chat, live status updates and community interaction features. |
-| **Video Consultation** | ZegoCloud/ Agora SDK  | Supports online consultation through voice call and video call between users and verified experts. |
+| **Database** | PostgreSQL | Structured relational data and flexible document/log/content data as needed. Main relational database for user profiles, pregnancy records, baby information, expert profiles, consultation data, payment records and system transactions. |
+| **Document / Content Storage** | Cloudinary, Cloudflare R2 | Flexible storage for community content, uploaded documents, images, health records and unstructured data when required. |
+| **Realtime Communication** | Firebase Realtime Database | Real-time messaging, consultation chat, live status updates and community interaction features. |
+| **Video Consultation** | ZegoCloud | Supports online consultation through voice call and video call between users and verified experts. |
 | **Notification** | Firebase Cloud Messaging (FCM) | Push notifications for pregnancy reminders, baby care reminders, consultation updates, expert responses and safety alerts. |
 | **AI & Intelligent Support** | Python FastAPI, LangChain / LangGraph, LLM API | AI assistant, RAG-based FAQ retrieval, conversation summarization and safe support guidance. AI is used for assistance and information organization, not medical diagnosis. |
 | **Map / Location** | TrackAsia link/API or mock nearby-care dataset | Emergency map, nearby care search and routing support in Vietnam. |
 | **Sensor Prototype** | Phone accelerometer/gyroscope | Smart activity monitoring and suspected fall/impact detection demo. |
-| **Payment Integration** | VNPay Sandbox / Payment Gateway API | Supports paid expert consultation transactions, payment verification and revenue sharing workflow demonstration. |
 | **IDEs / Editors** | Visual Studio Code, IntelliJ IDEA, Android Studio | Development environment for frontend, backend and mobile application coding, debugging and testing. |
 | **Diagramming** | DrawIO, PlantUML, Mermaid | Design use case diagrams, architecture diagrams, ERD, sequence diagrams and workflow documentation. |
 | **Documentation** | Microsoft Office, Google Docs/Sheets/Slides | Project reports, requirement documents, meeting notes, schedules and presentation materials. |
