@@ -78,27 +78,28 @@ class GrowthChartResponse <<read-model>> {
 }
 
 class MilestoneController {
-  - milestoneService: MilestoneService
-  + record(babyId, request): ResponseEntity
-  + list(babyId): ResponseEntity
+  - milestoneService: IMilestoneService
+  + addMilestone(babyId, request): ApiResponse
+  + listMilestones(babyId): ApiResponse
 }
 
 class GrowthMeasurementController {
-  - growthMeasurementService: GrowthMeasurementService
-  + add(babyId, request): ResponseEntity
-  + list(babyId): ResponseEntity
+  - growthService: IGrowthService
+  + addGrowthMeasurement(babyId, request): ResponseEntity
+  + getGrowthMeasurementHistory(babyId, pageable): ResponseEntity
 }
 
 class GrowthChartController {
-  + chart(babyId): ResponseEntity
+  - growthService: IGrowthService
+  + getGrowthChart(babyId): ResponseEntity
 }
 
-interface GrowthMeasurementService <<interface>> {
-  + add(ownerId: UUID, babyId: UUID, request): GrowthMeasurement
-  + chart(ownerId: UUID, babyId: UUID): GrowthChartResponse
+interface IGrowthService <<interface>> {
+  + addGrowthMeasurement(userId: UUID, babyId: UUID, request): GrowthMeasurementResponse
+  + getGrowthChart(userId: UUID, babyId: UUID): GrowthChartResponse
 }
 
-class GrowthMeasurementServiceImpl implements GrowthMeasurementService {
+class GrowthServiceImpl implements IGrowthService {
   - growthMeasurementRepository: GrowthMeasurementRepository
   - auditService: AuditService
 }
@@ -107,10 +108,10 @@ BabyProfile "1" *-- "0..*" DevelopmentMilestone : has
 BabyProfile "1" *-- "0..*" GrowthMeasurement : has
 DevelopmentMilestone --> MilestoneAchievementStatus
 DevelopmentMilestone --> MilestoneRecordStatus
-MilestoneController --> MilestoneService : uses
-GrowthMeasurementController --> GrowthMeasurementService : uses
-GrowthChartController ..> GrowthChartResponse : builds
-GrowthMeasurementServiceImpl --> AuditService : emits GROWTH_MEASUREMENT_ADDED
+MilestoneController --> IMilestoneService : uses
+GrowthMeasurementController --> IGrowthService : uses
+GrowthChartController --> IGrowthService : uses
+GrowthServiceImpl --> AuditService : emits GROWTH_MEASUREMENT_ADDED
 
 @enduml
 ```
@@ -126,18 +127,21 @@ skinparam roundcorner 10
 skinparam backgroundColor #FAFAFA
 
 actor "Mother" as M
+participant "Web / Mobile UI" as UI
 participant "MilestoneController" as MilestoneController
-participant "MilestoneServiceImpl" as MilestoneService
-participant "DevelopmentMilestoneRepository" as MilestoneRepo
 participant "GrowthMeasurementController" as GrowthController
-participant "GrowthMeasurementServiceImpl" as GrowthService
-participant "GrowthMeasurementRepository" as GrowthRepo
 participant "GrowthChartController" as ChartController
+participant "MilestoneServiceImpl" as MilestoneService
+participant "GrowthServiceImpl" as GrowthService
 participant "AuditService" as Audit
+participant "DevelopmentMilestoneRepository" as MilestoneRepo
+participant "GrowthMeasurementRepository" as GrowthRepo
 database "PostgreSQL" as DB
 
 == UC-39 Record Development Milestone ==
-M -> MilestoneController : 1. POST /api/v1/babies/{babyId}/milestones\n{milestoneType="FIRST_SMILE", achievedDate}
+M -> UI : 1. Submit request
+activate UI
+UI -> MilestoneController : 1a. POST /api/v1/babies/{babyId}/milestones\n{milestoneType="FIRST_SMILE", achievedDate}
 activate MilestoneController
 MilestoneController -> MilestoneService : 2. record(ownerId, babyId, request)
 activate MilestoneService
@@ -156,11 +160,15 @@ Audit --> MilestoneService : 9. void
 deactivate Audit
 MilestoneService --> MilestoneController : 10. DevelopmentMilestone
 deactivate MilestoneService
-MilestoneController --> M : 11. HTTP 201 Created
+MilestoneController --> UI : 11. HTTP 201 Created
 deactivate MilestoneController
+UI --> M : 11a. Display HTTP 201 Created
+deactivate UI
 
 == UC-41 Add Growth Measurement ==
-M -> GrowthController : 12. POST /api/v1/babies/{babyId}/growth-measurements\n{measuredDate, weightKg, heightCm, headCircumferenceCm}
+M -> UI : 12. Submit request
+activate UI
+UI -> GrowthController : 12a. POST /api/v1/babies/{babyId}/growth-measurements\n{measuredDate, weightKg, heightCm, headCircumferenceCm}
 activate GrowthController
 GrowthController -> GrowthService : 13. add(ownerId, babyId, request)
 activate GrowthService
@@ -179,11 +187,15 @@ Audit --> GrowthService : 20. void
 deactivate Audit
 GrowthService --> GrowthController : 21. GrowthMeasurement
 deactivate GrowthService
-GrowthController --> M : 22. HTTP 201 Created
+GrowthController --> UI : 22. HTTP 201 Created
 deactivate GrowthController
+UI --> M : 22a. Display HTTP 201 Created
+deactivate UI
 
 == UC-43 View Growth Trend and Measurement History ==
-M -> ChartController : 23. GET /api/v1/babies/{babyId}/growth-chart
+M -> UI : 23. Submit request
+activate UI
+UI -> ChartController : 23a. GET /api/v1/babies/{babyId}/growth-chart
 activate ChartController
 ChartController -> GrowthService : 24. chart(ownerId, babyId)
 activate GrowthService
@@ -198,48 +210,19 @@ deactivate GrowthRepo
 GrowthService -> GrowthService : 29. plot trend + compare with reference range\n(WHO/MOH) + guidanceNote if far off
 GrowthService --> ChartController : 30. GrowthChartResponse
 deactivate GrowthService
-ChartController --> M : 31. HTTP 200 OK {GrowthChartResponse}
+ChartController --> UI : 31. HTTP 200 OK {GrowthChartResponse}
 deactivate ChartController
+UI --> M : 31a. Display HTTP 200 OK {GrowthChartResponse}
+deactivate UI
 
 @enduml
 ```
 
 **Hình 2 — Sequence Diagram: Record Milestone → Add Growth Measurement → View Trend (Main Flow)**
 
-## 4. State Machine — `DevelopmentMilestone.milestoneStatus` & `recordStatus`
 
-```plantuml
-@startuml MF03_02_Milestone_StateMachine
-skinparam backgroundColor #FAFAFA
-skinparam StateBackgroundColor #D5E8F0
-skinparam StateBorderColor #2E75B6
+## 4. Business Rules Applied
 
-state "Achievement (milestoneStatus)" as Achievement {
-  [*] --> PENDING : Mốc phát triển được kỳ vọng nhưng chưa ghi nhận
-  PENDING --> ACHIEVED : Mother ghi nhận đạt mốc (UC-39)
-  PENDING --> DELAYED : Quá thời điểm kỳ vọng mà chưa đạt
-  DELAYED --> ACHIEVED : Mother ghi nhận đạt mốc muộn hơn
-}
-
-state "Record (recordStatus)" as Record {
-  [*] --> ACTIVE : Bản ghi được tạo (UC-39)
-  ACTIVE --> DELETED : Mother xoá bản ghi (UC-40)
-  DELETED --> [*]
-}
-
-note bottom of Achievement
-  GrowthMeasurement chỉ có 1 trục trạng thái đơn giản:
-  ACTIVE (deletedAt = null) → DELETED (deletedAt set),
-  không có khái niệm "achievement" vì là số đo, không phải mốc.
-end note
-
-@enduml
-```
-
-**Hình 3 — State Machine: `DevelopmentMilestone` — Achievement vs. Record Status (2 trục độc lập)**
-
-## 5. Business Rules Applied
-
-- BR-RBAC / ownership — chỉ chủ sở hữu baby (và gia đình có quyền theo MF-10) mới ghi/xem được.
+- BR-RBAC / ownership — chỉ chủ sở hữu baby (và gia đình có quyền theo MF-08) mới ghi/xem được.
 - UC-39 — milestone là quan sát của caregiver, không phải đánh giá phát triển chính thức; luôn kèm `note` ngữ cảnh.
 - UC-43 — trend hiển thị kèm reference range (WHO/tham chiếu) và nhắc tìm chuyên gia khi số đo lệch xa, không tự đưa ra kết luận chẩn đoán.

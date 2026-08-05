@@ -6,20 +6,20 @@
 | Use Cases Covered | UC-19 Initialize Mother Care Journey, UC-20 Update Mother Journey Stage and Dates, UC-21 View Mother Journey Dashboard |
 | Primary Actor(s) | Mother |
 | Platform | Mother Mobile App |
-| Main Flow Summary | A Mother initializes a `MotherJourney` (pre-pregnancy / pregnancy / postpartum / baby-care), updates stage and key dates as circumstances change, and consumes a stage-aware dashboard that aggregates metrics, reminders, checklist and reviewed content for the current stage/week. |
+| Main Flow Summary | A Mother initializes a `MotherJourney` for preconception, pregnancy or postpartum recovery, updates permitted dates/transitions, and consumes a stage-aware dashboard that aggregates metrics, reminders, checklist and reviewed content for the current stage/week. Baby care is handled independently by MF-03. |
 | Grounding (source code) | `journey/entity/MotherJourney.java`, `JourneyStatus.java`, `JourneyType.java`, `journey/controller/JourneyController.java` (`/api/v1/journeys`) |
 
 ## 1. Tổng quan luồng chính (Main Flow Overview)
 
-`MotherJourney` là entity gốc mà gần như toàn bộ MF-02 và MF-09 (reminders) neo vào
+`MotherJourney` là entity gốc mà gần như toàn bộ MF-02, kể cả reminder ở spec-05, neo vào
 (`journeyId`). Mother khởi tạo journey với `journeyType` + ngày tối thiểu cần thiết
 (kỳ kinh cuối/ngày dự sinh/ngày sinh tuỳ loại) — UC-19. Khi hoàn cảnh thay đổi (ví dụ
 chuyển từ PREGNANCY sang POSTPARTUM sau khi sinh), Mother cập nhật lại `journeyType`
 và các ngày liên quan — UC-20. Dashboard (UC-21) không phải một entity riêng mà là một
 read-model tổng hợp: tính stage/week hiện tại từ `MotherJourney`, rồi kéo dữ liệu liên
 quan (metric gần nhất, reminder đến hạn, checklist, nội dung đã duyệt theo giai đoạn)
-— các nguồn dữ liệu phụ này được mô hình hoá trong các spec khác (MF-02/02, MF-09,
-MF-11), ở đây chỉ thể hiện quan hệ tổng hợp.
+— các nguồn dữ liệu phụ này được mô hình hoá trong các spec khác (MF-02/spec-02, spec-05,
+MF-09), ở đây chỉ thể hiện quan hệ tổng hợp.
 
 ## 2. Class Diagram
 
@@ -48,7 +48,6 @@ enum JourneyType {
   PRE_PREGNANCY
   PREGNANCY
   POSTPARTUM
-  BABY_CARE
 }
 
 enum JourneyStatus {
@@ -57,7 +56,7 @@ enum JourneyStatus {
   ARCHIVED
 }
 
-class MotherJourneyDashboardResponse <<read-model>> {
+class JourneyDashboardResponse <<read-model>> {
   + journeyId: UUID
   + journeyType: JourneyType
   + currentWeekOrStage: String
@@ -82,36 +81,36 @@ class UpdateJourneyRequest {
 }
 
 class JourneyController {
-  - journeyService: JourneyService
-  + create(CreateJourneyRequest): ResponseEntity
-  + update(journeyId, UpdateJourneyRequest): ResponseEntity
-  + myDashboard(): ResponseEntity
+  - journeyService: IJourneyService
+  + createJourney(CreateJourneyRequest): ResponseEntity
+  + updateJourney(journeyId, UpdateJourneyRequest): ResponseEntity
+  + getDashboard(): ResponseEntity
 }
 
-interface JourneyService <<interface>> {
-  + create(ownerUserId: UUID, request): MotherJourney
-  + update(ownerUserId: UUID, journeyId: UUID, request): MotherJourney
-  + buildDashboard(ownerUserId: UUID): MotherJourneyDashboardResponse
+interface IJourneyService <<interface>> {
+  + createJourney(request, callerId: UUID): CreateJourneyResponse
+  + updateJourney(journeyId: UUID, request, callerId: UUID): JourneyResponse
+  + getDashboard(userId: UUID): JourneyDashboardResponse
 }
 
-class JourneyServiceImpl implements JourneyService {
-  - journeyRepository: JourneyRepository
+class JourneyServiceImpl implements IJourneyService {
+  - journeyRepository: MotherJourneyRepository
   - metricService: IHealthMetricService
   - reminderService: ReminderService
   - checklistService: IUserChecklistItemService
   - auditService: AuditService
 }
 
-interface JourneyRepository <<interface>> {
+interface MotherJourneyRepository <<interface>> {
   + findByOwnerUserIdAndStatus(ownerUserId, status): List<MotherJourney>
   + save(journey): MotherJourney
 }
 
 MotherJourney --> JourneyType
 MotherJourney --> JourneyStatus
-JourneyController --> JourneyService : uses
-JourneyServiceImpl --> JourneyRepository : uses
-JourneyServiceImpl ..> MotherJourneyDashboardResponse : builds
+JourneyController --> IJourneyService : uses
+JourneyServiceImpl --> MotherJourneyRepository : uses
+JourneyServiceImpl ..> JourneyDashboardResponse : builds
 JourneyServiceImpl --> AuditService : emits JOURNEY_CREATED / JOURNEY_UPDATED
 
 @enduml
@@ -128,14 +127,17 @@ skinparam roundcorner 10
 skinparam backgroundColor #FAFAFA
 
 actor "Mother" as M
+participant "Web / Mobile UI" as UI
 participant "JourneyController" as Controller
 participant "JourneyServiceImpl" as Service
-participant "MotherJourneyRepository" as Repo
 participant "AuditService" as Audit
+participant "MotherJourneyRepository" as Repo
 database "PostgreSQL" as DB
 
 == UC-19 Initialize Mother Care Journey ==
-M -> Controller : 1. POST /api/v1/journeys\n{journeyType=PREGNANCY, lastMenstrualDate, estimatedDueDate}
+M -> UI : 1. Submit request
+activate UI
+UI -> Controller : 1a. POST /api/v1/journeys\n{journeyType=PREGNANCY, lastMenstrualDate, estimatedDueDate}
 activate Controller
 Controller -> Service : 2. create(ownerUserId, request)
 activate Service
@@ -154,11 +156,15 @@ Audit --> Service : 9. void
 deactivate Audit
 Service --> Controller : 10. MotherJourney
 deactivate Service
-Controller --> M : 11. HTTP 201 Created
+Controller --> UI : 11. HTTP 201 Created
 deactivate Controller
+UI --> M : 11a. Display HTTP 201 Created
+deactivate UI
 
 == UC-20 Update Mother Journey Stage and Dates ==
-M -> Controller : 12. PUT /api/v1/journeys/{journeyId}\n{journeyType=POSTPARTUM, deliveryDate}
+M -> UI : 12. Submit request
+activate UI
+UI -> Controller : 12a. PUT /api/v1/journeys/{journeyId}\n{journeyType=POSTPARTUM, deliveryDate}
 activate Controller
 Controller -> Service : 13. update(ownerUserId, journeyId, request)
 activate Service
@@ -185,11 +191,15 @@ Audit --> Service : 24. void
 deactivate Audit
 Service --> Controller : 25. MotherJourney
 deactivate Service
-Controller --> M : 26. HTTP 200 OK
+Controller --> UI : 26. HTTP 200 OK
 deactivate Controller
+UI --> M : 26a. Display HTTP 200 OK
+deactivate UI
 
 == UC-21 View Mother Journey Dashboard ==
-M -> Controller : 27. GET /api/v1/journeys/me/dashboard
+M -> UI : 27. Submit request
+activate UI
+UI -> Controller : 27a. GET /api/v1/journeys/me/dashboard
 activate Controller
 Controller -> Service : 28. buildDashboard(ownerUserId)
 activate Service
@@ -203,47 +213,23 @@ Repo --> Service : 32. journey
 deactivate Repo
 Service -> Service : 33. compute current stage/week from journeyType + dates
 Service -> Service : 34. aggregate recent metrics, due reminders,\nchecklist progress, suggested content
-Service --> Controller : 35. MotherJourneyDashboardResponse
+Service --> Controller : 35. JourneyDashboardResponse
 deactivate Service
-Controller --> M : 36. HTTP 200 OK {dashboard}
+Controller --> UI : 36. HTTP 200 OK {dashboard}
 deactivate Controller
+UI --> M : 36a. Display HTTP 200 OK {dashboard}
+deactivate UI
 
 @enduml
 ```
 
 **Hình 2 — Sequence Diagram: Initialize → Update Stage → View Dashboard (Main Flow)**
 
-## 4. State Machine — `MotherJourney.status`
 
-```plantuml
-@startuml MF02_01_JourneyStatus_StateMachine
-skinparam backgroundColor #FAFAFA
-skinparam StateBackgroundColor #D5E8F0
-skinparam StateBorderColor #2E75B6
-
-[*] --> ACTIVE : POST /journeys (UC-19)
-
-ACTIVE --> ACTIVE : journeyType thay đổi\nPRE_PREGNANCY → PREGNANCY → POSTPARTUM → BABY_CARE (UC-20)
-ACTIVE --> COMPLETED : Mother đánh dấu hành trình đã hoàn tất
-ACTIVE --> ARCHIVED : Mother lưu trữ hành trình không còn theo dõi
-
-COMPLETED --> ARCHIVED : dọn dẹp/lưu trữ theo thời gian
-ARCHIVED --> [*]
-
-note right of ACTIVE
-  journeyType là một chiều dữ liệu độc lập với status —
-  một journey ACTIVE có thể đổi journeyType nhiều lần (UC-20)
-  mà không đổi status.
-end note
-
-@enduml
-```
-
-**Hình 3 — State Machine: `MotherJourney.status` Lifecycle**
-
-## 5. Business Rules Applied
+## 4. Business Rules Applied
 
 - BR-RBAC — chỉ chủ sở hữu (`ownerUserId`) mới được đọc/ghi journey của chính họ.
 - UC-19 precondition — journey được tạo với "minimum dates and stage context required for stage-based support".
 - UC-20 — chỉ các trường ngày/giai đoạn được liệt kê là "permitted" mới có thể cập nhật.
 - UC-21 — dashboard chỉ hiển thị dữ liệu mà Mother được phép xem (không lộ dữ liệu của journey khác).
+- `BABY_CARE` còn tồn tại trong enum/API cũ không phải stage của MF-02; hồ sơ và dashboard của bé thuộc MF-03.

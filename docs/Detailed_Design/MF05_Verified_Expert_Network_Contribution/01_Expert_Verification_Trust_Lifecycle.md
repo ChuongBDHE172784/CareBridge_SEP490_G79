@@ -39,12 +39,11 @@ class ExpertProfile {
   + professionalTitle: String
   + experienceYears: Integer
   + workplace: String
-  + consultationScope: String
+  + serviceScope: String
   + verificationStatus: VerificationStatus
   + trustStatus: TrustStatus
   + verifiedAt: LocalDateTime
   + verifiedBy: UUID
-  + ratingAvg: BigDecimal
 }
 
 enum VerificationStatus {
@@ -135,17 +134,20 @@ skinparam roundcorner 10
 skinparam backgroundColor #FAFAFA
 
 actor "Expert Applicant" as EA
-participant "ExpertProfileController" as ProfileController
-participant "ExpertProfileServiceImpl" as Service
-participant "ExpertProfileRepository" as ProfileRepo
-participant "ExpertCredentialController" as CredController
-participant "ExpertCredentialServiceImpl" as CredService
-participant "ExpertCredentialRepository" as CredRepo
 actor "System Admin" as Admin
+participant "CareBridge Expert Network UI" as UI
+participant "ExpertProfileController" as ProfileController
+participant "ExpertCredentialController" as CredController
+participant "ExpertProfileServiceImpl" as Service
+participant "ExpertCredentialServiceImpl" as CredService
+participant "ExpertProfileRepository" as ProfileRepo
+participant "ExpertCredentialRepository" as CredRepo
 database "PostgreSQL" as DB
 
 == UC-60 Submit Expert Profile ==
-EA -> ProfileController : 1. POST /api/v1/expert/profiles\n{specialty, professionalTitle, consultationScope}
+EA -> UI : 1. Submit expert profile
+activate UI
+UI -> ProfileController : 1a. POST /api/v1/expert/profiles\n{specialty, professionalTitle, serviceScope}
 activate ProfileController
 ProfileController -> Service : 2. submit(userId, request)
 activate Service
@@ -159,11 +161,15 @@ ProfileRepo --> Service : 6. ExpertProfile
 deactivate ProfileRepo
 Service --> ProfileController : 7. ExpertProfile
 deactivate Service
-ProfileController --> EA : 8. HTTP 201 Created
+ProfileController --> UI : 8. HTTP 201 Created
 deactivate ProfileController
+UI --> EA : 8a. Display profile submission status
+deactivate UI
 
 == UC-62 Submit Verification Documents ==
-EA -> CredController : 9. POST /api/v1/expert/credentials (multipart)\n{credentialType, credentialNumber, file}
+EA -> UI : 9. Upload verification document
+activate UI
+UI -> CredController : 9a. POST /api/v1/expert/credentials (multipart)\n{credentialType, credentialNumber, file}
 activate CredController
 CredController -> CredService : 10. upload(userId, request)
 activate CredService
@@ -177,11 +183,15 @@ CredRepo --> CredService : 14. ExpertCredential
 deactivate CredRepo
 CredService --> CredController : 15. ExpertCredential
 deactivate CredService
-CredController --> EA : 16. HTTP 201 Created
+CredController --> UI : 16. HTTP 201 Created
 deactivate CredController
+UI --> EA : 16a. Display credential submission status
+deactivate UI
 
 == UC-70 Review Expert Verification Submission ==
-Admin -> CredController : 17. GET /api/v1/expert/credentials/pending
+Admin -> UI : 17. Open pending credential queue
+activate UI
+UI -> CredController : 17a. GET /api/v1/expert/credentials/pending
 activate CredController
 CredController -> CredService : 18. pending()
 activate CredService
@@ -195,10 +205,14 @@ CredRepo --> CredService : 22. credentials[]
 deactivate CredRepo
 CredService --> CredController : 23. credentials[]
 deactivate CredService
-CredController --> Admin : 24. HTTP 200 OK {credentials[]}
+CredController --> UI : 24. HTTP 200 OK {credentials[]}
 deactivate CredController
+UI --> Admin : 24a. Display pending credentials
+deactivate UI
 
-Admin -> CredController : 25. PUT /api/v1/expert/credentials/{credentialId}/review\n{reviewStatus=APPROVED}
+Admin -> UI : 25. Approve credential
+activate UI
+UI -> CredController : 25a. PUT /api/v1/expert/credentials/{credentialId}/review\n{reviewStatus=APPROVED}
 activate CredController
 CredController -> CredService : 26. review(adminId, credentialId, APPROVED)
 activate CredService
@@ -212,10 +226,14 @@ CredRepo --> CredService : 30. void
 deactivate CredRepo
 CredService --> CredController : 31. void
 deactivate CredService
-CredController --> Admin : 32. HTTP 200 OK
+CredController --> UI : 32. HTTP 200 OK
 deactivate CredController
+UI --> Admin : 32a. Display credential review result
+deactivate UI
 
-Admin -> ProfileController : 33. POST /api/v1/expert/profiles/{id}/approve
+Admin -> UI : 33. Approve expert profile
+activate UI
+UI -> ProfileController : 33a. POST /api/v1/expert/profiles/{id}/approve
 activate ProfileController
 ProfileController -> Service : 34. approve(adminId, expertProfileId)
 activate Service
@@ -227,72 +245,89 @@ DB --> CredRepo : 37. credentials[]
 deactivate DB
 CredRepo --> Service : 38. credentials[]
 deactivate CredRepo
-Service -> Service : 39. require all mandatory credentials are APPROVED
-Service -> ProfileRepo : 40. save(profile{verificationStatus=APPROVED, verifiedAt=now(), verifiedBy=adminId})
-activate ProfileRepo
-ProfileRepo -> DB : 41. UPDATE expert_profiles\nSET verification_status='APPROVED', verified_at=now(), verified_by=adminId
-activate DB
-DB --> ProfileRepo : 42. updated
-deactivate DB
-ProfileRepo --> Service : 43. ExpertProfile
-deactivate ProfileRepo
-Service --> ProfileController : 44. ExpertProfile{verificationStatus=APPROVED}
+Service -> Service : 34a. require profile/identity/credential review preconditions
+activate Service
+Service --> Service : 34b. preconditions satisfied
 deactivate Service
-ProfileController --> Admin : 45. HTTP 200 OK
+Service -> ProfileRepo : 39. save(profile{verificationStatus=APPROVED, verifiedAt=now(), verifiedBy=adminId})
+activate ProfileRepo
+ProfileRepo -> DB : 40. UPDATE expert_profiles\nSET verification_status='APPROVED', verified_at=now(), verified_by=adminId
+activate DB
+DB --> ProfileRepo : 41. updated
+deactivate DB
+ProfileRepo --> Service : 42. ExpertProfile
+deactivate ProfileRepo
+Service --> ProfileController : 43. ExpertProfile{verificationStatus=APPROVED}
+deactivate Service
+ProfileController --> UI : 44. HTTP 200 OK
 deactivate ProfileController
+UI --> Admin : 44a. Display profile approval result
+deactivate UI
 
 == UC-71 Restrict, Suspend or Reinstate Expert Trust Status ==
-Admin -> ProfileController : 46. PATCH /api/v1/expert/profiles/{id}/trust\n{trustStatus=SUSPENDED, reason}
+Admin -> UI : 45. Change expert trust status
+activate UI
+UI -> ProfileController : 45a. PATCH /api/v1/expert/profiles/{id}/trust\n{trustStatus=SUSPENDED, reason}
 activate ProfileController
-ProfileController -> Service : 47. updateTrust(adminId, expertProfileId, SUSPENDED)
+ProfileController -> Service : 46. updateTrust(adminId, expertProfileId, SUSPENDED)
 activate Service
-Service -> ProfileRepo : 48. save(profile{trustStatus=SUSPENDED})
+Service -> ProfileRepo : 47. save(profile{trustStatus=SUSPENDED})
 activate ProfileRepo
-ProfileRepo -> DB : 49. UPDATE expert_profiles SET trust_status='SUSPENDED'
+ProfileRepo -> DB : 48. UPDATE expert_profiles SET trust_status='SUSPENDED'
 activate DB
-DB --> ProfileRepo : 50. updated
+DB --> ProfileRepo : 49. updated
 deactivate DB
-ProfileRepo --> Service : 51. ExpertProfile
+ProfileRepo --> Service : 50. ExpertProfile
 deactivate ProfileRepo
-Service --> ProfileController : 52. ExpertProfile{trustStatus=SUSPENDED}
+Service --> ProfileController : 51. ExpertProfile{trustStatus=SUSPENDED}
 deactivate Service
-ProfileController --> Admin : 53. HTTP 200 OK
+ProfileController --> UI : 52. HTTP 200 OK
 deactivate ProfileController
+UI --> Admin : 52a. Display updated trust status
+deactivate UI
 
 == UC-63 View Verification Status and Renew Submission ==
-EA -> ProfileController : 54. GET /api/v1/expert/profiles/me/verification-status
+EA -> UI : 53. View verification status
+activate UI
+UI -> ProfileController : 53a. GET /api/v1/expert/profiles/me/verification-status
 activate ProfileController
-ProfileController -> Service : 55. verificationStatus(userId)
+ProfileController -> Service : 54. verificationStatus(userId)
 activate Service
-Service -> ProfileRepo : 56. findByUserId(userId)
+Service -> ProfileRepo : 55. findByUserId(userId)
 activate ProfileRepo
-ProfileRepo -> DB : 57. SELECT * FROM expert_profiles WHERE user_id=?
+ProfileRepo -> DB : 56. SELECT * FROM expert_profiles WHERE user_id=?
 activate DB
-DB --> ProfileRepo : 58. profile
+DB --> ProfileRepo : 57. profile
 deactivate DB
-ProfileRepo --> Service : 59. profile
+ProfileRepo --> Service : 58. profile
 deactivate ProfileRepo
-Service --> ProfileController : 60. {verificationStatus, trustStatus, expiredCredentials[]}
+Service --> ProfileController : 59. {verificationStatus, trustStatus, expiredCredentials[]}
 deactivate Service
-ProfileController --> EA : 61. HTTP 200 OK {verificationStatus, trustStatus, expiredCredentials[]}
+ProfileController --> UI : 60. HTTP 200 OK {verificationStatus, trustStatus, expiredCredentials[]}
 deactivate ProfileController
+UI --> EA : 60a. Display verification and credential status
+deactivate UI
 
-EA -> ProfileController : 62. POST /api/v1/expert/profiles/me/renew
+EA -> UI : 61. Submit expert profile renewal
+activate UI
+UI -> ProfileController : 61a. POST /api/v1/expert/profiles/me/renew
 activate ProfileController
-ProfileController -> Service : 63. submit(userId, renewalRequest)
+ProfileController -> Service : 62. submit(userId, renewalRequest)
 activate Service
-Service -> ProfileRepo : 64. save(profile{verificationStatus=PENDING})
+Service -> ProfileRepo : 63. save(profile{verificationStatus=PENDING})
 activate ProfileRepo
-ProfileRepo -> DB : 65. UPDATE expert_profiles SET verification_status='PENDING'
+ProfileRepo -> DB : 64. UPDATE expert_profiles SET verification_status='PENDING'
 activate DB
-DB --> ProfileRepo : 66. updated
+DB --> ProfileRepo : 65. updated
 deactivate DB
-ProfileRepo --> Service : 67. void
+ProfileRepo --> Service : 66. void
 deactivate ProfileRepo
-Service --> ProfileController : 68. void
+Service --> ProfileController : 67. void
 deactivate Service
-ProfileController --> EA : 69. HTTP 200 OK
+ProfileController --> UI : 68. HTTP 200 OK
 deactivate ProfileController
+UI --> EA : 68a. Display renewal submission status
+deactivate UI
 
 @enduml
 ```
@@ -305,47 +340,8 @@ deactivate ProfileController
 
 **Hình 2 — Sequence Diagram: Submit Profile → Submit Credentials → Admin Review → Trust Management → Renew (Main Flow)**
 
-## 4. State Machine — `ExpertProfile.verificationStatus` & `trustStatus`
 
-```plantuml
-@startuml MF05_01_ExpertVerification_StateMachine
-skinparam backgroundColor #FAFAFA
-skinparam StateBackgroundColor #D5E8F0
-skinparam StateBorderColor #2E75B6
-
-state "verificationStatus" as VS {
-  [*] --> PENDING : Nộp hồ sơ (UC-60)
-  PENDING --> UNDER_REVIEW : Admin bắt đầu rà soát (UC-70)
-  UNDER_REVIEW --> APPROVED : Admin duyệt (UC-70)
-  UNDER_REVIEW --> REJECTED : Admin từ chối, có lý do (UC-70)
-  APPROVED --> EXPIRED : Credential/verification hết hạn
-  REJECTED --> PENDING : Expert nộp lại sau khi bổ sung
-  EXPIRED --> PENDING : Expert nộp gia hạn (UC-63)
-  APPROVED --> SUSPENDED : Admin tạm ngưng do vi phạm (UC-71)
-  SUSPENDED --> APPROVED : Admin khôi phục (UC-71)
-}
-
-state "trustStatus" as TS {
-  [*] --> ACTIVE : Mặc định khi APPROVED lần đầu
-  ACTIVE --> SUSPENDED : Admin đình chỉ (UC-71)
-  SUSPENDED --> ACTIVE : Admin khôi phục (UC-71)
-  ACTIVE --> REVOKED : Admin thu hồi vĩnh viễn (UC-71)
-  SUSPENDED --> REVOKED : Admin thu hồi sau đình chỉ (UC-71)
-}
-
-note bottom of TS
-  trustStatus quyết định expert có được hiển thị trong directory
-  (spec 02) và được gắn expertLabeled trong MF-04 hay không,
-  độc lập với verificationStatus (một expert APPROVED vẫn có
-  thể bị SUSPENDED tạm thời).
-end note
-
-@enduml
-```
-
-**Hình 3 — State Machine: `ExpertProfile.verificationStatus` (6 trạng thái) & `trustStatus` (3 trạng thái)**
-
-## 5. Business Rules Applied
+## 4. Business Rules Applied
 
 - BR-RBAC — chỉ System Admin mới duyệt/từ chối hồ sơ và thay đổi trust status.
 - UC-70 — quyết định duyệt phải dựa trên rà soát credential (`ExpertCredential.reviewStatus`), không được duyệt hồ sơ khi credential bắt buộc còn `PENDING`/`REJECTED`.

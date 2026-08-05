@@ -6,8 +6,8 @@
 | Use Cases Covered | UC-32 Create Baby Profile, UC-33 Update or Archive Baby Profile, UC-34 Switch Active Baby Profile, UC-35 View Baby Care Overview, UC-36 Add Baby Daily Log, UC-38 View Baby Log Summary |
 | Primary Actor(s) | Mother |
 | Platform | Mother Mobile App |
-| Main Flow Summary | A Mother creates a `BabyProfile`, selects which baby is "active" for the current session, records daily feeding/sleep/diaper observations against that baby, and reads back both a full care overview and a rolling 24h/7-day log summary. |
-| Grounding (source code) | `baby/entity/BabyProfile.java`, `BabyProfileStatus.java`, `baby/controller/BabyController.java` (`/api/v1/babies`), `carejourney/entity/BabyDailyLog.java`, `carejourney/controller/BabyDailyLogController.java` (`/api/v1/babies/{babyId}/daily-logs`), `BabyCareOverviewController.java`, `BabyLogSummaryController.java` |
+| Main Flow Summary | A Mother creates a `BabyProfile`, selects which baby is active, records daily observations, and reads the care overview/summary. Medical documents for the baby reuse the shared health-record API with `babyId` and protected `fileIds`; MF-03 does not introduce a second baby-document model. |
+| Grounding (source code) | `baby/entity/BabyProfile.java`, `BabyProfileStatus.java`, `baby/controller/BabyController.java` (`/api/v1/babies`), `carejourney/entity/BabyDailyLog.java`, `carejourney/controller/BabyDailyLogController.java`, `BabyCareOverviewController.java`, `BabyLogSummaryController.java`; shared implementation: `health/entity/HealthRecord.java` (`babyId`), `health/dto/AddHealthRecordRequest.java` (`babyId`, `fileIds`), `health/controller/HealthRecordController.java`, `health/service/impl/HealthRecordServiceImpl.java`, `file/entity/UploadedFile.java` |
 
 ## 1. Tổng quan luồng chính (Main Flow Overview)
 
@@ -17,8 +17,15 @@ liên quan (UC-33), và chọn baby nào là "đang theo dõi" cho dashboard hi�
 flag — UC-34). Ghi nhật ký hằng ngày (`BabyDailyLog` — cho bú/ngủ/tã/triệu chứng — UC-36)
 là hành động lặp lại nhiều nhất trong MF-03, nên gộp chung với UC-38 (tổng hợp 24h/7 ngày)
 làm luồng chính; growth/milestone/vaccination được tách thành hai spec riêng (02, 03) vì
-chúng có state machine và nhịp độ nghiệp vụ khác (đo định kỳ / mốc phát triển / tiêm
+chúng có vòng đời và nhịp độ nghiệp vụ khác (đo định kỳ / mốc phát triển / tiêm
 chủng theo lịch tham khảo).
+
+Hồ sơ khám, xét nghiệm hoặc đơn thuốc của bé không được lưu trong `BabyDailyLog`.
+Implementation hiện tại dùng chung `HealthRecord`: request mang `babyId` để liên kết
+đúng bé và `fileIds` để gắn các `UploadedFile` đã upload. Timeline có
+`TimelineFilter.babyId`; attachment chỉ trả URL có thời hạn sau kiểm tra quyền. Thiết kế
+API record/attachment được dùng chung ở tầng code, nhưng flow có `babyId` và quyền truy
+cập của child record thuộc MF-03; MF-02/spec-04 chỉ mô tả maternal record.
 
 ## 2. Class Diagram
 
@@ -88,6 +95,22 @@ class BabyLogSummaryResponse <<read-model>> {
   + diaperCount: int
 }
 
+class HealthRecord <<shared API; MF-03 child record>> {
+  + id: UUID
+  + ownerUserId: UUID
+  + babyId: UUID
+  + recordType: RecordType
+  + title: String
+  + status: HealthRecordStatus
+}
+
+class UploadedFile <<attachments table>> {
+  + id: UUID
+  + ownerUserId: UUID
+  + healthRecordId: UUID
+  + status: FileStatus
+}
+
 class BabyController {
   - babyService: IBabyService
   + create(CreateBabyProfileRequest): ResponseEntity
@@ -124,6 +147,8 @@ class BabyServiceImpl implements IBabyService {
 BabyProfile --> BabyProfileStatus
 BabyProfile --> Gender
 BabyProfile "1" *-- "0..*" BabyDailyLog : has
+BabyProfile "1" <-- "0..*" HealthRecord : babyId
+HealthRecord "1" <-- "0..*" UploadedFile : healthRecordId
 BabyDailyLog --> BabyDailyLogStatus
 BabyController --> IBabyService : uses
 BabyDailyLogController --> BabyDailyLogService : uses
@@ -134,7 +159,7 @@ BabyLogSummaryController ..> BabyLogSummaryResponse : builds
 @enduml
 ```
 
-**Hình 1 — Class Diagram: Baby Profile, Daily Log & Care Overview Read-Models**
+**Hình 1 — Class Diagram: Baby Profile, Daily Log, Care Overview & Shared Baby Health Records**
 
 ## 3. Sequence Diagram — Main Flow
 
@@ -145,21 +170,28 @@ skinparam roundcorner 10
 skinparam backgroundColor #FAFAFA
 
 actor "Mother" as M
+participant "Web / Mobile UI" as UI
 participant "BabyController" as BabyController
-participant "BabyServiceImpl" as BabyService
-participant "BabyProfileRepository" as BabyRepo
 participant "BabyDailyLogController" as LogController
-participant "BabyDailyLogServiceImpl" as LogService
-participant "BabyDailyLogRepository" as LogRepo
 participant "BabyCareOverviewController" as OverviewController
-participant "BabyCareOverviewServiceImpl" as OverviewService
 participant "BabyLogSummaryController" as SummaryController
+participant "HealthRecordController" as HealthController
+participant "BabyServiceImpl" as BabyService
+participant "BabyDailyLogServiceImpl" as LogService
+participant "BabyCareOverviewServiceImpl" as OverviewService
 participant "BabyLogSummaryServiceImpl" as SummaryService
+participant "HealthRecordServiceImpl" as HealthService
 participant "AuditService" as Audit
+participant "BabyProfileRepository" as BabyRepo
+participant "BabyDailyLogRepository" as LogRepo
+participant "HealthRecordRepository" as HealthRepo
+participant "UploadedFileRepository" as FileRepo
 database "PostgreSQL" as DB
 
 == UC-32 Create Baby Profile ==
-M -> BabyController : 1. POST /api/v1/babies\n{nickname, birthDate, gender}
+M -> UI : 1. Submit request
+activate UI
+UI -> BabyController : 1a. POST /api/v1/babies\n{nickname, birthDate, gender}
 activate BabyController
 BabyController -> BabyService : 2. create(ownerId, request)
 activate BabyService
@@ -177,11 +209,15 @@ Audit --> BabyService : 8. void
 deactivate Audit
 BabyService --> BabyController : 9. BabyProfile
 deactivate BabyService
-BabyController --> M : 10. HTTP 201 Created
+BabyController --> UI : 10. HTTP 201 Created
 deactivate BabyController
+UI --> M : 10a. Display HTTP 201 Created
+deactivate UI
 
 == UC-34 Switch Active Baby Profile ==
-M -> BabyController : 11. PATCH /api/v1/babies/{babyId}/active
+M -> UI : 11. Submit request
+activate UI
+UI -> BabyController : 11a. PATCH /api/v1/babies/{babyId}/active
 activate BabyController
 BabyController -> BabyService : 12. switchActive(ownerId, babyId)
 activate BabyService
@@ -207,11 +243,15 @@ Audit --> BabyService : 22. void
 deactivate Audit
 BabyService --> BabyController : 23. void
 deactivate BabyService
-BabyController --> M : 24. HTTP 200 OK
+BabyController --> UI : 24. HTTP 200 OK
 deactivate BabyController
+UI --> M : 24a. Display HTTP 200 OK
+deactivate UI
 
 == UC-36 Add Baby Daily Log ==
-M -> LogController : 25. POST /api/v1/babies/{babyId}/daily-logs\n{logType=FEEDING, startedAt, quantity, unit}
+M -> UI : 25. Submit request
+activate UI
+UI -> LogController : 25a. POST /api/v1/babies/{babyId}/daily-logs\n{logType=FEEDING, startedAt, quantity, unit}
 activate LogController
 LogController -> LogService : 26. add(ownerId, babyId, request)
 activate LogService
@@ -229,11 +269,15 @@ Audit --> LogService : 32. void
 deactivate Audit
 LogService --> LogController : 33. BabyDailyLog
 deactivate LogService
-LogController --> M : 34. HTTP 201 Created
+LogController --> UI : 34. HTTP 201 Created
 deactivate LogController
+UI --> M : 34a. Display HTTP 201 Created
+deactivate UI
 
 == UC-35 View Baby Care Overview ==
-M -> OverviewController : 35. GET /api/v1/babies/{babyId}/care-overview
+M -> UI : 35. Submit request
+activate UI
+UI -> OverviewController : 35a. GET /api/v1/babies/{babyId}/care-overview
 activate OverviewController
 OverviewController -> OverviewService : 36. overview(ownerId, babyId)
 activate OverviewService
@@ -243,11 +287,15 @@ DB --> OverviewService : 38. aggregated rows
 deactivate DB
 OverviewService --> OverviewController : 39. BabyCareOverviewResponse
 deactivate OverviewService
-OverviewController --> M : 40. HTTP 200 OK {BabyCareOverviewResponse}
+OverviewController --> UI : 40. HTTP 200 OK {BabyCareOverviewResponse}
 deactivate OverviewController
+UI --> M : 40a. Display HTTP 200 OK {BabyCareOverviewResponse}
+deactivate UI
 
 == UC-38 View Baby Log Summary ==
-M -> SummaryController : 41. GET /api/v1/babies/{babyId}/daily-logs/summary?window=24h
+M -> UI : 41. Submit request
+activate UI
+UI -> SummaryController : 41a. GET /api/v1/babies/{babyId}/daily-logs/summary?window=24h
 activate SummaryController
 SummaryController -> SummaryService : 42. summary(ownerId, babyId, window)
 activate SummaryService
@@ -262,42 +310,60 @@ deactivate LogRepo
 SummaryService -> SummaryService : 47. aggregate feeding/sleep/diaper counts
 SummaryService --> SummaryController : 48. BabyLogSummaryResponse
 deactivate SummaryService
-SummaryController --> M : 49. HTTP 200 OK {BabyLogSummaryResponse}
+SummaryController --> UI : 49. HTTP 200 OK {BabyLogSummaryResponse}
 deactivate SummaryController
+UI --> M : 49a. Display HTTP 200 OK {BabyLogSummaryResponse}
+deactivate UI
+
+== Baby-linked Health Record with Attachments (shared API, MF-03 flow) ==
+M -> UI : 50. Submit request
+activate UI
+UI -> HealthController : 50a. POST /api/v1/health-records\n{babyId, recordType, title, fileIds[]}
+activate HealthController
+HealthController -> HealthService : 51. addHealthRecord(request, ownerId)
+activate HealthService
+HealthService -> FileRepo : 52. findAllByIdInAndOwnerUserIdAndStatus(fileIds, ownerId, ACTIVE)
+activate FileRepo
+FileRepo -> DB : 53. SELECT owned active attachments
+activate DB
+DB --> FileRepo : 54. uploadedFiles[]
+deactivate DB
+FileRepo --> HealthService : 55. uploadedFiles[]
+deactivate FileRepo
+HealthService -> HealthRepo : 56. save(HealthRecord{ownerUserId, babyId})
+activate HealthRepo
+HealthRepo -> DB : 57. INSERT INTO health_records ...
+activate DB
+DB --> HealthRepo : 58. savedRecord
+deactivate DB
+HealthRepo --> HealthService : 59. savedRecord
+deactivate HealthRepo
+HealthService -> FileRepo : 60. link each attachment to healthRecordId
+activate FileRepo
+FileRepo -> DB : 61. UPDATE attachments SET health_record_id=?
+activate DB
+DB --> FileRepo : 62. linked
+deactivate DB
+FileRepo --> HealthService : 63. void
+deactivate FileRepo
+HealthService --> HealthController : 64. AddHealthRecordResponse{healthRecordId, fileIds}
+deactivate HealthService
+HealthController --> UI : 65. HTTP 201 Created
+deactivate HealthController
+UI --> M : 65a. Display HTTP 201 Created
+deactivate UI
 
 @enduml
 ```
 
-**Hình 2 — Sequence Diagram: Create Profile → Switch Active → Log Daily Care → View Overview/Summary (Main Flow)**
+**Hình 2 — Sequence Diagram: Baby Profile, Daily Care & Baby-linked Health Record (Main Flow)**
 
-## 4. State Machine — `BabyProfile.status`
 
-```plantuml
-@startuml MF03_01_BabyProfileStatus_StateMachine
-skinparam backgroundColor #FAFAFA
-skinparam StateBackgroundColor #D5E8F0
-skinparam StateBorderColor #2E75B6
+## 4. Business Rules Applied
 
-[*] --> ACTIVE : POST /babies (UC-32)
-
-ACTIVE --> ARCHIVED : POST /babies/{id}/archive (UC-33)\n[không xoá dữ liệu lịch sử liên quan]
-ARCHIVED --> ACTIVE : Mother phục hồi hồ sơ (UC-33)
-
-note right of ACTIVE
-  Cờ `active` (boolean, tối đa 1 baby active tại một thời điểm
-  cho mỗi ownerUserId) là độc lập với `status` — dùng cho UC-34
-  để chọn baby hiển thị trên dashboard, không phải trạng thái
-  vòng đời hồ sơ.
-end note
-
-@enduml
-```
-
-**Hình 3 — State Machine: `BabyProfile.status` Lifecycle**
-
-## 5. Business Rules Applied
-
-- BR-RBAC / ownership — chỉ `ownerUserId` (và thành viên gia đình có quyền theo MF-10) mới truy cập được hồ sơ bé.
+- BR-RBAC / ownership — chỉ `ownerUserId` (và thành viên gia đình có quyền theo MF-08) mới truy cập được hồ sơ bé.
 - UC-33 postcondition — archive không được phá huỷ lịch sử nhật ký/tăng trưởng/tiêm chủng liên kết.
 - UC-34 — dashboard/nhắc lịch hiện tại luôn theo baby đang `active`, không phải toàn bộ danh sách baby.
 - UC-38 — summary chỉ tổng hợp log ở trạng thái `ACTIVE` trong cửa sổ thời gian yêu cầu (24h hoặc 7 ngày).
+- Baby-linked record — `babyId` phải trỏ tới bé mà caller được phép truy cập; `fileIds` chỉ nhận file `ACTIVE` thuộc chính caller và chỉ hỗ trợ image/PDF theo `HealthRecordServiceImpl`.
+- Attachment access — file vật lý vẫn thuộc module `file`; `HealthRecordFile` chỉ là compatibility projection trên cột `attachments.health_record_id`, không phải bảng liên kết mới.

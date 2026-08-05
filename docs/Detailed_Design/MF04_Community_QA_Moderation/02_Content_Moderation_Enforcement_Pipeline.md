@@ -140,18 +140,21 @@ skinparam roundcorner 10
 skinparam backgroundColor #FAFAFA
 
 actor "User (Reporter)" as U
-participant "ReportController" as ReportController
-participant "ReportServiceImpl" as ReportService
-participant "ContentReportRepository" as ReportRepo
 actor "Moderator" as Mod
+participant "CareBridge Community UI" as UI
+participant "ReportController" as ReportController
 participant "ModerationController" as ModController
+participant "ReportServiceImpl" as ReportService
 participant "ModerationServiceImpl" as Service
-participant "ModerationActionRepository" as ActionRepo
 participant "AuditService" as Audit
+participant "ContentReportRepository" as ReportRepo
+participant "ModerationActionRepository" as ActionRepo
 database "PostgreSQL" as DB
 
 == UC-55 Report Unsafe Community Content or Account ==
-U -> ReportController : 1. POST /api/v1/reports\n{targetId, targetType=ANSWER, category, description}
+U -> UI : 1. Submit unsafe-content report
+activate UI
+UI -> ReportController : 1a. POST /api/v1/reports\n{targetId, targetType=ANSWER, category, description}
 activate ReportController
 ReportController -> ReportService : 2. submit(reporterId, request)
 activate ReportService
@@ -169,11 +172,15 @@ Audit --> ReportService : 8. void
 deactivate Audit
 ReportService --> ReportController : 9. ContentReport
 deactivate ReportService
-ReportController --> U : 10. HTTP 201 Created
+ReportController --> UI : 10. HTTP 201 Created
 deactivate ReportController
+UI --> U : 10a. Display report confirmation
+deactivate UI
 
 == UC-56 View Moderation Queue ==
-Mod -> ModController : 11. GET /api/v1/admin/moderation/queue
+Mod -> UI : 11. Open moderation queue
+activate UI
+UI -> ModController : 11a. GET /api/v1/admin/moderation/queue
 activate ModController
 ModController -> Service : 12. queue(moderatorId, filter)
 activate Service
@@ -187,11 +194,15 @@ ReportRepo --> Service : 16. queueItems[]
 deactivate ReportRepo
 Service --> ModController : 17. queueItems[]
 deactivate Service
-ModController --> Mod : 18. HTTP 200 OK {queueItems[]}
+ModController --> UI : 18. HTTP 200 OK {queueItems[]}
 deactivate ModController
+UI --> Mod : 18a. Display moderation queue
+deactivate UI
 
 == UC-57 Moderate Community Content ==
-Mod -> ModController : 19. POST /api/v1/admin/moderation/actions\n{targetId, targetType=ANSWER, actionType=HIDE, reason}
+Mod -> UI : 19. Submit moderation action
+activate UI
+UI -> ModController : 19a. POST /api/v1/admin/moderation/actions\n{targetId, targetType=ANSWER, actionType=HIDE, reason}
 activate ModController
 ModController -> Service : 20. applyAction(moderatorId, request)
 activate Service
@@ -213,11 +224,15 @@ Audit --> Service : 28. void
 deactivate Audit
 Service --> ModController : 29. ModerationAction
 deactivate Service
-ModController --> Mod : 30. HTTP 201 Created
+ModController --> UI : 30. HTTP 201 Created
 deactivate ModController
+UI --> Mod : 30a. Display applied moderation action
+deactivate UI
 
 == UC-58 Resolve Content or Account Report and Apply Enforcement ==
-Mod -> ModController : 31. POST /api/v1/admin/moderation/reports/{reportId}/resolve\n{outcome=RESOLVED, linkedActionId}
+Mod -> UI : 31. Resolve moderation report
+activate UI
+UI -> ModController : 31a. POST /api/v1/admin/moderation/reports/{reportId}/resolve\n{outcome=RESOLVED, linkedActionId}
 activate ModController
 ModController -> Service : 32. resolveReport(moderatorId, reportId, outcome)
 activate Service
@@ -235,42 +250,18 @@ Audit --> Service : 38. void
 deactivate Audit
 Service --> ModController : 39. ContentReport{status=RESOLVED}
 deactivate Service
-ModController --> Mod : 40. HTTP 200 OK
+ModController --> UI : 40. HTTP 200 OK
 deactivate ModController
+UI --> Mod : 40a. Display resolved report status
+deactivate UI
 
 @enduml
 ```
 
 **Hình 2 — Sequence Diagram: Report → Queue → Moderate Content → Resolve Report (Main Flow)**
 
-## 4. State Machine — `ContentReport.status`
 
-```plantuml
-@startuml MF04_02_ReportStatus_StateMachine
-skinparam backgroundColor #FAFAFA
-skinparam StateBackgroundColor #D5E8F0
-skinparam StateBorderColor #2E75B6
-
-[*] --> PENDING : User báo cáo (UC-55) hoặc\nhệ thống tự phát hiện (NS-04/NS-05)
-
-PENDING --> RESOLVED : Moderator/System Admin xử lý xong,\ncó ModerationAction liên kết (UC-57 → UC-58)
-PENDING --> DISMISSED : Moderator xác định không vi phạm
-
-RESOLVED --> [*]
-DISMISSED --> [*]
-
-note right of PENDING
-  Trong lúc PENDING, ModerationAction (APPROVE/HIDE/LOCK/...)
-  có thể được áp dụng nhiều lần lên targetId trước khi report
-  chính thức đóng — status của report chỉ đóng ở bước UC-58.
-end note
-
-@enduml
-```
-
-**Hình 3 — State Machine: `ContentReport.status` Lifecycle**
-
-## 5. Business Rules Applied
+## 4. Business Rules Applied
 
 - BR-COMMUNITY-01 / CC-01 — mọi nội dung công khai chịu kiểm duyệt trước/sau xuất bản; bằng chứng kiểm duyệt được lưu giữ (`ModerationAction`, append-only theo `actionAt`).
 - Separation-of-duties (UC-58) — hành động lên tài khoản (WARN/SUSPEND/RESTRICT) vượt phạm vi Moderator phải qua `ESCALATE` để System Admin xử lý.

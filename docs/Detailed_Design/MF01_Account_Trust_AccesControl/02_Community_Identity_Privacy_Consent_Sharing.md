@@ -17,8 +17,9 @@ MF-01 tách rõ hai lớp danh tính (BR-PRIVACY): `UserProfile` là dữ liệu
 liệu riêng tư (hồ sơ sức khỏe mẹ/bé, vị trí, dữ liệu gia đình...) cho người khác **không
 bao giờ** xảy ra ngầm định — nó luôn đi qua một `ConsentGrant` tường minh có
 `dataType` + `purpose` + `recipient` + `expiryAt`, do chính chủ dữ liệu tạo (UC-15) và
-có thể thu hồi bất cứ lúc nào (UC-16). Đây là cơ chế nền tảng mà MF-08 (Health Records)
-và MF-10 (Family Sync) tái sử dụng, nên được mô hình hoá tại MF-01 thay vì lặp lại ở
+có thể thu hồi bất cứ lúc nào (UC-16). Đây là cơ chế nền tảng mà MF-02/spec-04
+(maternal health records), MF-03 (baby records) và MF-08 (Family Sync) tái sử dụng,
+nên được mô hình hoá tại MF-01 thay vì lặp lại ở
 từng feature tiêu dùng nó.
 
 ## 2. Class Diagram
@@ -89,20 +90,20 @@ class CommunityProfileController {
   + updateMine(request): ResponseEntity
 }
 
-class ConsentGrantController {
-  - consentGrantService: ConsentGrantService
-  + create(request): ResponseEntity
-  + listMine(): ResponseEntity
+class ConsentController {
+  - consentService: ConsentService
+  + grant(request): ResponseEntity
+  + list(): ResponseEntity
   + revoke(consentId): ResponseEntity
 }
 
-interface ConsentGrantService <<interface>> {
-  + grant(ownerId: UUID, request): ConsentGrant
-  + listForOwner(ownerId: UUID): List<ConsentGrant>
-  + revoke(ownerId: UUID, consentId: Long): void
+interface ConsentService <<interface>> {
+  + grantConsent(userId: UUID, request): ConsentGrantResponse
+  + listConsents(userId: UUID): List<ConsentGrantResponse>
+  + revokeConsent(userId: UUID, consentId: Long): ConsentGrantResponse
 }
 
-class ConsentGrantServiceImpl implements ConsentGrantService {
+class ConsentServiceImpl implements ConsentService {
   - consentGrantRepository: ConsentGrantRepository
   - auditService: AuditService
 }
@@ -115,8 +116,8 @@ interface ConsentGrantRepository <<interface>> {
 UserProfile "1" -- "1" ConsentGrant : owner data protected by >
 ConsentGrant --> ConsentDataType
 ConsentGrant --> ConsentPurpose
-ConsentGrantController --> ConsentGrantService : uses
-ConsentGrantServiceImpl --> ConsentGrantRepository : uses
+ConsentController --> ConsentService : uses
+ConsentServiceImpl --> ConsentGrantRepository : uses
 CommunityProfileController --> CommunityProfileService : uses
 
 note bottom of CommunityProfile
@@ -138,18 +139,21 @@ skinparam roundcorner 10
 skinparam backgroundColor #FAFAFA
 
 actor "User (Owner)" as Owner
-participant "CommunityProfileController" as CPController
-participant "CommunityProfileServiceImpl" as CPService
-participant "CommunityProfileRepository" as CPRepo
-participant "ConsentGrantController" as CGController
-participant "ConsentGrantServiceImpl" as Service
-participant "ConsentGrantRepository" as Repo
-participant "AuditService" as Audit
-database "PostgreSQL" as DB
 actor "Family Member / Verified Expert" as Recipient
+participant "Web / Mobile UI" as UI
+participant "CommunityProfileController" as CPController
+participant "ConsentController" as CGController
+participant "CommunityProfileServiceImpl" as CPService
+participant "ConsentServiceImpl" as Service
+participant "AuditService" as Audit
+participant "CommunityProfileRepository" as CPRepo
+participant "ConsentGrantRepository" as Repo
+database "PostgreSQL" as DB
 
 == UC-10 Manage Community Identity ==
-Owner -> CPController : 1. PUT /api/v1/community/profiles/me\n{displayName, bio, avatarUrl, visible}
+Owner -> UI : 1. Submit request
+activate UI
+UI -> CPController : 1a. PUT /api/v1/community/profiles/me\n{displayName, bio, avatarUrl, visible}
 activate CPController
 CPController -> CPService : 2. updateMine(ownerId, request)
 activate CPService
@@ -164,13 +168,17 @@ CPRepo --> CPService : 7. CommunityProfile
 deactivate CPRepo
 CPService --> CPController : 8. CommunityProfile
 deactivate CPService
-CPController --> Owner : 9. HTTP 200 OK {CommunityProfile}
+CPController --> UI : 9. HTTP 200 OK {CommunityProfile}
 deactivate CPController
+UI --> Owner : 9a. Display HTTP 200 OK {CommunityProfile}
+deactivate UI
 
 == UC-15 Grant Data Permission ==
-Owner -> CGController : 10. POST /api/v1/consent/grants\n{dataType, purpose, recipient, scope, expiryAt}
+Owner -> UI : 10. Submit request
+activate UI
+UI -> CGController : 10a. POST /api/v1/consent/grants\n{dataType, purpose, recipient, scope, expiryAt}
 activate CGController
-CGController -> Service : 11. grant(ownerId, request)
+CGController -> Service : 11. grantConsent(ownerId, request)
 activate Service
 Service -> Repo : 12. save(ConsentGrant{consentGivenAt=now})
 activate Repo
@@ -186,15 +194,19 @@ Audit --> Service : 17. void
 deactivate Audit
 Service --> CGController : 18. ConsentGrant
 deactivate Service
-CGController --> Owner : 19. HTTP 201 Created
+CGController --> UI : 19. HTTP 201 Created
 deactivate CGController
+UI --> Owner : 19a. Display HTTP 201 Created
+deactivate UI
 
-Recipient -> Recipient : 20. accesses shared data\n(checked via NS-02 consent enforcement\nin the consuming feature, e.g. MF-08/MF-10)
+Recipient -> Recipient : 20. accesses shared data\n(checked via NS-02 consent enforcement\nin the consuming feature, e.g. MF-02/MF-08)
 
 == UC-16 Review and Revoke Data Permission ==
-Owner -> CGController : 21. GET /api/v1/consent/grants
+Owner -> UI : 21. Submit request
+activate UI
+UI -> CGController : 21a. GET /api/v1/consent/grants
 activate CGController
-CGController -> Service : 22. listForOwner(ownerId)
+CGController -> Service : 22. listConsents(ownerId)
 activate Service
 Service -> Repo : 23. findByUserId(ownerId)
 activate Repo
@@ -206,12 +218,16 @@ Repo --> Service : 26. grants[]
 deactivate Repo
 Service --> CGController : 27. grants[]
 deactivate Service
-CGController --> Owner : 28. HTTP 200 OK {grants[]}
+CGController --> UI : 28. HTTP 200 OK {grants[]}
 deactivate CGController
+UI --> Owner : 28a. Display HTTP 200 OK {grants[]}
+deactivate UI
 
-Owner -> CGController : 29. DELETE /api/v1/consent/grants/{consentId}
+Owner -> UI : 29. Submit request
+activate UI
+UI -> CGController : 29a. DELETE /api/v1/consent/grants/{consentId}
 activate CGController
-CGController -> Service : 30. revoke(ownerId, consentId)
+CGController -> Service : 30. revokeConsent(ownerId, consentId)
 activate Service
 Service -> Repo : 31. setRevokedAt(consentId, now, revokedBy=ownerId)
 activate Repo
@@ -227,42 +243,18 @@ Audit --> Service : 36. void
 deactivate Audit
 Service --> CGController : 37. void
 deactivate Service
-CGController --> Owner : 38. HTTP 204 No Content
+CGController --> UI : 38. HTTP 204 No Content
 deactivate CGController
+UI --> Owner : 38a. Display HTTP 204 No Content
+deactivate UI
 
 @enduml
 ```
 
 **Hình 2 — Sequence Diagram: Grant → Consume → Revoke Data Permission (Main Flow)**
 
-## 4. State Machine — `ConsentGrant` Lifecycle
 
-```plantuml
-@startuml MF01_02_ConsentGrant_StateMachine
-skinparam backgroundColor #FAFAFA
-skinparam StateBackgroundColor #D5E8F0
-skinparam StateBorderColor #2E75B6
-
-[*] --> ACTIVE : POST /consent/grants (UC-15)\nconsentGivenAt = now
-
-ACTIVE --> EXPIRED : now() > expiryAt\n[hệ thống tự đánh giá khi kiểm tra quyền truy cập]
-ACTIVE --> REVOKED : DELETE /consent/grants/{id} (UC-16)\nrevokedAt = now(), revokedBy = owner
-
-EXPIRED --> [*]
-REVOKED --> [*]
-
-note right of ACTIVE
-  ConsentGrant không có cột status riêng — trạng thái
-  được suy ra (derived) từ consentGivenAt / expiryAt / revokedAt
-  mỗi lần NS-02 kiểm tra quyền truy cập dữ liệu bảo vệ.
-end note
-
-@enduml
-```
-
-**Hình 3 — State Machine: `ConsentGrant` Lifecycle (derived state)**
-
-## 5. Business Rules Applied
+## 4. Business Rules Applied
 
 - BR-PRIVACY — dữ liệu riêng tư (mẹ/bé/gia đình/sức khỏe) tách biệt khỏi danh tính cộng đồng công khai.
 - BR-PRIVACY-02 — danh tính cộng đồng không mặc định để lộ hồ sơ sức khỏe riêng tư.

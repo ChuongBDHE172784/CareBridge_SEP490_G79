@@ -6,7 +6,7 @@
 | Use Cases Covered | UC-46 Browse Community Feed and Topics, UC-47 View Community Question Detail, UC-48 Create Community Question, UC-50 Post Community Answer |
 | Primary Actor(s) | User (Mother / Family / Expert) |
 | Platform | Mobile App / Expert Portal |
-| Main Flow Summary | A User browses the moderated feed, opens a question's detail, posts a new topic-based question (optionally anonymous), and answers an existing question — either as a personal-experience answer or, if verified, a badge-labeled expert answer. Everything a user posts enters `PENDING` and only becomes visible after passing the community safety pipeline (spec 02). |
+| Main Flow Summary | A User browses the moderated feed, opens a question's detail, posts a new topic-based question (optionally anonymous), and answers an approved question. New or edited content starts at `AI_PENDING`; the AI scan may approve it automatically or move it to `PENDING` for human review. |
 | Grounding (source code) | `community/entity/CommunityQuestion.java`, `QuestionStatus.java`, `community/entity/CommunityAnswer.java`, `AnswerStatus.java`, `community/controller/CommunityFeedController.java`, `CommunityQuestionController.java` (`/api/v1/community/questions`), `CommunityAnswerController.java` (`/api/v1/community/questions/{questionId}/answers`) |
 
 ## 1. Tổng quan luồng chính (Main Flow Overview)
@@ -18,9 +18,9 @@
 bằng `CommunityAnswer` — nếu là chuyên gia đã xác thực thì `expertLabeled=true` (liên kết
 MF-05); nếu là chia sẻ kinh nghiệm cá nhân thì `personalExperience=true`, không được gắn
 nhãn chuyên gia (UC-50). Cả hai entity khởi tạo ở `PENDING` và cần đi qua kiểm duyệt
-(spec 02) trước khi cộng đồng nhìn thấy — reaction/bookmark/follow (UC-52/53/54) và
-edit/delete bài của chính mình (UC-49/51) là thao tác phụ, không lặp lại thành spec
-riêng ở đây.
+(spec 02) trước khi cộng đồng nhìn thấy. Edit/delete nội dung của chính mình là nhánh
+quản lý trong cùng flow. Like/reaction, bookmark và follow còn xuất hiện ở một số màn
+hình/API cũ nhưng không nằm trong mô tả MF-04 đã rút gọn, nên không thuộc Spec này.
 
 ## 2. Class Diagram
 
@@ -51,7 +51,6 @@ class CommunityQuestion {
   + urgency: UrgencyLevel
   + anonymous: boolean
   + status: QuestionStatus
-  + likeCount: int
   + answerCount: int
 }
 
@@ -71,7 +70,6 @@ class CommunityAnswer {
   + expertLabeled: boolean
   + personalExperience: boolean
   + status: AnswerStatus
-  + likeCount: int
 }
 
 enum AnswerStatus {
@@ -115,7 +113,8 @@ interface CommunityQuestionService <<interface>> {
 
 class CommunityQuestionServiceImpl implements CommunityQuestionService {
   - communityQuestionRepository: CommunityQuestionRepository
-  - contentSafetyPipeline: ContentSafetyPipeline
+  - communitySafetyPolicy: CommunitySafetyPolicy
+  - aiScanEnqueueService: AiScanEnqueueService
   - auditService: AuditService
 }
 
@@ -125,8 +124,8 @@ interface CommunityAnswerService <<interface>> {
 
 class CommunityAnswerServiceImpl implements CommunityAnswerService {
   - communityAnswerRepository: CommunityAnswerRepository
-  - expertProfileRepository: ExpertProfileRepository
-  - contentSafetyPipeline: ContentSafetyPipeline
+  - communitySafetyPolicy: CommunitySafetyPolicy
+  - aiScanEnqueueService: AiScanEnqueueService
 }
 
 CommunityTopic "1" *-- "0..*" CommunityQuestion : categorizes
@@ -136,8 +135,10 @@ CommunityAnswer --> AnswerStatus
 CommunityFeedController ..> CommunityQuestion : reads (embedded search/filter)
 CommunityQuestionController --> CommunityQuestionService : uses
 CommunityAnswerController --> CommunityAnswerService : uses
-CommunityQuestionServiceImpl --> ContentSafetyPipeline : NS-04 pre-check
-CommunityAnswerServiceImpl --> ExpertProfileRepository : xác định expertLabeled
+CommunityQuestionServiceImpl --> CommunitySafetyPolicy : posting guard
+CommunityQuestionServiceImpl --> AiScanEnqueueService : enqueue question scan
+CommunityAnswerServiceImpl --> CommunitySafetyPolicy : posting guard + expert label
+CommunityAnswerServiceImpl --> AiScanEnqueueService : enqueue answer scan
 
 @enduml
 ```
@@ -153,19 +154,22 @@ skinparam roundcorner 10
 skinparam backgroundColor #FAFAFA
 
 actor "User" as U
+participant "CareBridge Community UI" as UI
 participant "CommunityFeedController" as FeedController
-participant "CommunityFeedServiceImpl" as FeedService
 participant "CommunityQuestionController" as QController
-participant "CommunityQuestionServiceImpl" as QService
-participant "CommunityQuestionRepository" as QRepo
 participant "CommunityAnswerController" as AController
+participant "CommunityFeedServiceImpl" as FeedService
+participant "CommunityQuestionServiceImpl" as QService
 participant "CommunityAnswerServiceImpl" as AService
-participant "CommunityAnswerRepository" as ARepo
 participant "AuditService" as Audit
+participant "CommunityQuestionRepository" as QRepo
+participant "CommunityAnswerRepository" as ARepo
 database "PostgreSQL" as DB
 
 == UC-46 Browse Community Feed and Topics ==
-U -> FeedController : 1. GET /api/v1/community/feed?topic=&keyword=&stage=
+U -> UI : 1. Browse community feed
+activate UI
+UI -> FeedController : 1a. GET /api/v1/community/feed?topic=&keyword=&stage=
 activate FeedController
 FeedController -> FeedService : 2. feed(filter)
 activate FeedService
@@ -179,15 +183,19 @@ QRepo --> FeedService : 6. questions[]
 deactivate QRepo
 FeedService --> FeedController : 7. questions[]
 deactivate FeedService
-FeedController --> U : 8. HTTP 200 OK {questions[]}
+FeedController --> UI : 8. HTTP 200 OK {questions[]}
 deactivate FeedController
+UI --> U : 8a. Display approved questions
+deactivate UI
 
 == UC-48 Create Community Question ==
-U -> QController : 9. POST /api/v1/community/questions\n{topicId, title, body, anonymous}
+U -> UI : 9. Submit community question
+activate UI
+UI -> QController : 9a. POST /api/v1/community/questions\n{topicId, title, body, anonymous}
 activate QController
 QController -> QService : 10. create(authorId, request)
 activate QService
-QService -> QRepo : 11. save(CommunityQuestion{status=PENDING})
+QService -> QRepo : 11. save(CommunityQuestion{status=AI_PENDING})
 activate QRepo
 QRepo -> DB : 12. INSERT INTO community_questions ...
 activate DB
@@ -199,10 +207,12 @@ QService -> Audit : 15. log(COMMUNITY_QUESTION_CREATED)
 activate Audit
 Audit --> QService : 16. void
 deactivate Audit
-QService --> QController : 17. CommunityQuestion{status=PENDING}
+QService --> QController : 17. CommunityQuestion{status=AI_PENDING|PENDING|APPROVED}
 deactivate QService
-QController --> U : 18. HTTP 201 Created
+QController --> UI : 18. HTTP 201 Created
 deactivate QController
+UI --> U : 18a. Display submitted question status
+deactivate UI
 
 note over QService
   status=PENDING → wait for NS-04 safety pipeline (spec 02)
@@ -210,7 +220,9 @@ note over QService
 end note
 
 == UC-47 View Community Question Detail ==
-U -> QController : 19. GET /api/v1/community/questions/{id}
+U -> UI : 19. Open community question detail
+activate UI
+UI -> QController : 19a. GET /api/v1/community/questions/{id}
 activate QController
 QController -> QService : 20. detail(id)
 activate QService
@@ -224,70 +236,47 @@ QRepo --> QService : 24. question + answers[]
 deactivate QRepo
 QService --> QController : 25. question + answers[]
 deactivate QService
-QController --> U : 26. HTTP 200 OK {question, answers[]}
+QController --> UI : 26. HTTP 200 OK {question, answers[]}
 deactivate QController
+UI --> U : 26a. Display question and answers
+deactivate UI
 
 == UC-50 Post Community Answer ==
-U -> AController : 27. POST /api/v1/community/questions/{questionId}/answers\n{body, personalExperience=true}
+U -> UI : 27. Submit answer
+activate UI
+UI -> AController : 27a. POST /api/v1/community/questions/{questionId}/answers\n{body, personalExperience=true}
 activate AController
 AController -> AService : 28. post(authorId, questionId, request)
 activate AService
-AService -> AService : 29. lookup ExpertProfile(authorId) →\nexpertLabeled = (verified && trustStatus=ACTIVE)
-AService -> ARepo : 30. save(CommunityAnswer{status=PENDING, expertLabeled})
-activate ARepo
-ARepo -> DB : 31. INSERT INTO community_answers ...
-activate DB
-DB --> ARepo : 32. saved
-deactivate DB
-ARepo --> AService : 33. CommunityAnswer
-deactivate ARepo
-AService -> Audit : 34. log(COMMUNITY_ANSWER_POSTED)
-activate Audit
-Audit --> AService : 35. void
-deactivate Audit
-AService --> AController : 36. CommunityAnswer{status=PENDING}
+AService -> AService : 28a. requirePostingAllowed(authorId) +\nisVerifiedActiveExpert(author)
+activate AService
 deactivate AService
-AController --> U : 37. HTTP 201 Created
+AService -> ARepo : 29. save(CommunityAnswer{status=AI_PENDING, expertLabeled})
+activate ARepo
+ARepo -> DB : 30. INSERT INTO community_answers ...
+activate DB
+DB --> ARepo : 31. saved
+deactivate DB
+ARepo --> AService : 32. CommunityAnswer
+deactivate ARepo
+AService -> Audit : 33. log(COMMUNITY_ANSWER_POSTED)
+activate Audit
+Audit --> AService : 34. void
+deactivate Audit
+AService --> AController : 35. CommunityAnswer{status=AI_PENDING|PENDING|APPROVED}
+deactivate AService
+AController --> UI : 36. HTTP 201 Created
 deactivate AController
+UI --> U : 36a. Display submitted answer status
+deactivate UI
 
 @enduml
 ```
 
 **Hình 2 — Sequence Diagram: Browse Feed → View Detail → Create Question → Post Answer (Main Flow)**
 
-## 4. State Machine — `CommunityQuestion.status` / `CommunityAnswer.status`
 
-```plantuml
-@startuml MF04_01_QuestionAnswerStatus_StateMachine
-skinparam backgroundColor #FAFAFA
-skinparam StateBackgroundColor #D5E8F0
-skinparam StateBorderColor #2E75B6
-
-[*] --> PENDING : User đăng câu hỏi/câu trả lời (UC-48 / UC-50)
-
-PENDING --> APPROVED : NS-04 safety pipeline / moderator duyệt (spec 02, UC-57)
-PENDING --> HIDDEN : Moderator ẩn do vi phạm chính sách (spec 02, UC-57)
-
-APPROVED --> HIDDEN : Bị báo cáo và moderator xử lý (UC-55 → UC-57)
-APPROVED --> LOCKED : Câu hỏi bị khoá do đang điều tra\n[chỉ CommunityQuestion]
-HIDDEN --> APPROVED : Moderator khôi phục sau rà soát
-
-APPROVED --> DELETED : Chủ bài viết tự xoá (UC-49 / UC-51)\n[chỉ khi chưa bị khoá]
-LOCKED --> DELETED : sau khi điều tra kết thúc, moderator xử lý (UC-58)
-
-DELETED --> [*]
-
-note right of LOCKED
-  LOCKED chỉ áp dụng cho CommunityQuestion — CommunityAnswer
-  chỉ có PENDING / APPROVED / HIDDEN / DELETED (không có LOCKED).
-end note
-
-@enduml
-```
-
-**Hình 3 — State Machine: `CommunityQuestion.status` (5 trạng thái) & `CommunityAnswer.status` (4 trạng thái)**
-
-## 5. Business Rules Applied
+## 4. Business Rules Applied
 
 - BR-PRIVACY — `authorId` luôn được lưu nội bộ để truy vết trách nhiệm ngay cả khi `anonymous=true` hiển thị công khai.
 - BR-COMMUNITY-01 — nội dung công khai (câu hỏi/câu trả lời) chịu kiểm duyệt trước và sau khi xuất bản.

@@ -59,7 +59,6 @@ enum Role {
   MODERATOR
   CONTENT_ADMIN
   SYSTEM_ADMIN
-  PARTNER
 }
 
 class OtpVerification {
@@ -172,17 +171,20 @@ skinparam roundcorner 10
 skinparam backgroundColor #FAFAFA
 
 actor "Guest / User" as Client
+participant "Web / Mobile UI" as UI
 participant "AuthController" as Controller
 participant "AuthServiceImpl" as Service
-participant "UserRepository" as Repo
 participant "OtpService" as Otp
+participant "AuditService" as Audit
+participant "UserRepository" as Repo
 participant "OtpVerificationRepository" as OtpRepo
 participant "RefreshTokenRepository" as RefreshRepo
-participant "AuditService" as Audit
 database "PostgreSQL" as DB
 
 == UC-01 Register Account ==
-Client -> Controller : 1. POST /api/v1/auth/register\n{email|phone, password, role}
+Client -> UI : 1. Submit request
+activate UI
+UI -> Controller : 1a. POST /api/v1/auth/register\n{email|phone, password, role}
 activate Controller
 Controller -> Service : 2. register(request)
 activate Service
@@ -220,11 +222,15 @@ Audit --> Service : 18. void
 deactivate Audit
 Service --> Controller : 19. AuthResponse{status=PENDING_ACTIVATION}
 deactivate Service
-Controller --> Client : 20. HTTP 201 Created
+Controller --> UI : 20. HTTP 201 Created
 deactivate Controller
+UI --> Client : 20a. Display HTTP 201 Created
+deactivate UI
 
 == UC-02 Verify OTP ==
-Client -> Controller : 21. POST /api/v1/auth/verify-otp\n{identifier, code}
+Client -> UI : 21. Submit request
+activate UI
+UI -> Controller : 21a. POST /api/v1/auth/verify-otp\n{identifier, code}
 activate Controller
 Controller -> Service : 22. verifyOtp(request)
 activate Service
@@ -258,11 +264,15 @@ Audit --> Service : 36. void
 deactivate Audit
 Service --> Controller : 37. AuthResponse{status=ACTIVE}
 deactivate Service
-Controller --> Client : 38. HTTP 200 OK
+Controller --> UI : 38. HTTP 200 OK
 deactivate Controller
+UI --> Client : 38a. Display HTTP 200 OK
+deactivate UI
 
 == UC-03 Log In ==
-Client -> Controller : 39. POST /api/v1/auth/login\n{identifier, password}
+Client -> UI : 39. Submit request
+activate UI
+UI -> Controller : 39a. POST /api/v1/auth/login\n{identifier, password}
 activate Controller
 Controller -> Service : 40. login(request)
 activate Service
@@ -290,11 +300,15 @@ Audit --> Service : 52. void
 deactivate Audit
 Service --> Controller : 53. AuthResponse{accessToken, refreshToken}
 deactivate Service
-Controller --> Client : 54. HTTP 200 OK
+Controller --> UI : 54. HTTP 200 OK
 deactivate Controller
+UI --> Client : 54a. Display HTTP 200 OK
+deactivate UI
 
 == UC-04 Log Out ==
-Client -> Controller : 55. POST /api/v1/auth/logout\nAuthorization: Bearer <token>
+Client -> UI : 55. Submit request
+activate UI
+UI -> Controller : 55a. POST /api/v1/auth/logout\nAuthorization: Bearer <token>
 activate Controller
 Controller -> Service : 56. logout(userId, refreshToken)
 activate Service
@@ -312,8 +326,10 @@ Audit --> Service : 62. void
 deactivate Audit
 Service --> Controller : 63. void
 deactivate Service
-Controller --> Client : 64. HTTP 204 No Content
+Controller --> UI : 64. HTTP 204 No Content
 deactivate Controller
+UI --> Client : 64a. Display HTTP 204 No Content
+deactivate UI
 
 @enduml
 ```
@@ -327,40 +343,8 @@ deactivate Controller
 > tại trước khi ghi mật khẩu mới (BR-SECURITY-05). Cả ba đều tái sử dụng
 > `AuthServiceImpl`/`ForgotPasswordServiceImpl` ở trên, không tạo entity mới.
 
-## 4. State Machine — `User.accountStatus`
 
-```plantuml
-@startuml MF01_01_AccountStatus_StateMachine
-skinparam backgroundColor #FAFAFA
-skinparam StateBackgroundColor #D5E8F0
-skinparam StateBorderColor #2E75B6
-
-[*] --> PENDING_ACTIVATION : POST /register (UC-01)
-
-PENDING_ACTIVATION --> ACTIVE : OTP verified (UC-02)
-PENDING_ACTIVATION --> [*] : OTP expired, không kích hoạt\n[dọn dẹp định kỳ]
-
-ACTIVE --> DEACTIVATED : User tự yêu cầu hoặc\nAdmin vô hiệu hóa (UC-14 / UC-17)
-DEACTIVATED --> ACTIVE : Admin kích hoạt lại (UC-17)
-
-note right of ACTIVE
-  Guard bổ sung khi Login (UC-03), không phải state riêng:
-  - locked = true  → chặn đăng nhập (khóa tạm do đăng nhập sai)
-  - suspendedUntil != null và còn hạn → chặn đăng nhập
-  - mustChangePassword = true → bắt buộc đổi mật khẩu trước khi vào app
-end note
-
-note right of PENDING_ACTIVATION
-  OTP hết hạn theo cấu hình OtpVerification.expiresAt;
-  attempts bị giới hạn (BR-ACCOUNT-03).
-end note
-
-@enduml
-```
-
-**Hình 3 — State Machine: `User.accountStatus` Lifecycle**
-
-## 5. Business Rules Applied
+## 4. Business Rules Applied
 
 - BR-RBAC — quyền truy cập giới hạn theo `role` hiệu lực.
 - BR-ACCOUNT-01 — định danh liên hệ (email/phone) phải duy nhất.

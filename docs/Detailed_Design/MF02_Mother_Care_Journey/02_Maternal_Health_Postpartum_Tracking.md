@@ -15,7 +15,7 @@ Hai entity `MaternalHealthMetric` và `PostpartumLog` chia sẻ cùng một khu�
 đời đơn giản (ghi nhận do người dùng nhập → ACTIVE → có thể sửa/xoá mềm), nên được gộp
 vào một spec thay vì tách UC-22/23 và UC-25/26 thành bốn spec riêng. Cả hai đều gắn với
 `journeyId` của `MotherJourney` (MF-02/01) và đều có `sourceType`/`sourceLabel` để phân
-biệt dữ liệu người dùng tự nhập với dữ liệu đồng bộ từ thiết bị (MF-13). UC-24 (xem xu
+biệt dữ liệu người dùng tự nhập với dữ liệu từ tích hợp thiết bị đang deferred. UC-24 (xem xu
 hướng) là read-model tổng hợp nhiều `MaternalHealthMetric` theo `metricType` theo thời
 gian — không phải entity riêng.
 
@@ -168,17 +168,20 @@ skinparam roundcorner 10
 skinparam backgroundColor #FAFAFA
 
 actor "Mother" as M
+participant "Web / Mobile UI" as UI
 participant "JourneyMetricController" as MetricController
-participant "HealthMetricServiceImpl" as MetricService
-participant "MaternalHealthMetricRepository" as MetricRepo
 participant "PostpartumLogController" as LogController
+participant "HealthMetricServiceImpl" as MetricService
 participant "PostpartumLogServiceImpl" as LogService
-participant "PostpartumLogRepository" as LogRepo
 participant "AuditService" as Audit
+participant "MaternalHealthMetricRepository" as MetricRepo
+participant "PostpartumLogRepository" as LogRepo
 database "PostgreSQL" as DB
 
 == UC-22 Add Maternal Health Metric ==
-M -> MetricController : 1. POST /api/v1/journeys/{journeyId}/metrics\n{metricType=BLOOD_PRESSURE_SYSTOLIC, valueNumeric=120}
+M -> UI : 1. Submit request
+activate UI
+UI -> MetricController : 1a. POST /api/v1/journeys/{journeyId}/metrics\n{metricType=BLOOD_PRESSURE_SYSTOLIC, valueNumeric=120}
 activate MetricController
 MetricController -> MetricService : 2. add(ownerId, journeyId, request)
 activate MetricService
@@ -197,11 +200,15 @@ Audit --> MetricService : 9. void
 deactivate Audit
 MetricService --> MetricController : 10. MaternalHealthMetric
 deactivate MetricService
-MetricController --> M : 11. HTTP 201 Created
+MetricController --> UI : 11. HTTP 201 Created
 deactivate MetricController
+UI --> M : 11a. Display HTTP 201 Created
+deactivate UI
 
 == UC-24 View Maternal Health Trend ==
-M -> MetricController : 12. GET /api/v1/journeys/{journeyId}/metrics?metricType=BLOOD_PRESSURE_SYSTOLIC
+M -> UI : 12. Submit request
+activate UI
+UI -> MetricController : 12a. GET /api/v1/journeys/{journeyId}/metrics?metricType=BLOOD_PRESSURE_SYSTOLIC
 activate MetricController
 MetricController -> MetricService : 13. trend(ownerId, journeyId, metricType)
 activate MetricService
@@ -215,11 +222,15 @@ MetricRepo --> MetricService : 17. rows[]
 deactivate MetricRepo
 MetricService --> MetricController : 18. MetricTrendResponse{points[], sourceLabels}
 deactivate MetricService
-MetricController --> M : 19. HTTP 200 OK {trend}
+MetricController --> UI : 19. HTTP 200 OK {trend}
 deactivate MetricController
+UI --> M : 19a. Display HTTP 200 OK {trend}
+deactivate UI
 
 == UC-25 Add Postpartum Recovery Log ==
-M -> LogController : 20. POST /api/v1/journeys/{journeyId}/postpartum-logs\n{logDate, painLevel, bleedingLevel, moodLevel, sleepHours}
+M -> UI : 20. Submit request
+activate UI
+UI -> LogController : 20a. POST /api/v1/journeys/{journeyId}/postpartum-logs\n{logDate, painLevel, bleedingLevel, moodLevel, sleepHours}
 activate LogController
 LogController -> LogService : 21. add(ownerId, journeyId, request)
 activate LogService
@@ -237,40 +248,18 @@ Audit --> LogService : 27. void
 deactivate Audit
 LogService --> LogController : 28. PostpartumLog
 deactivate LogService
-LogController --> M : 29. HTTP 201 Created
+LogController --> UI : 29. HTTP 201 Created
 deactivate LogController
+UI --> M : 29a. Display HTTP 201 Created
+deactivate UI
 
 @enduml
 ```
 
 **Hình 2 — Sequence Diagram: Add Metric → View Trend → Add Postpartum Log (Main Flow)**
 
-## 4. State Machine — `MaternalHealthMetric.status` / `PostpartumLog.status`
 
-```plantuml
-@startuml MF02_02_MetricStatus_StateMachine
-skinparam backgroundColor #FAFAFA
-skinparam StateBackgroundColor #D5E8F0
-skinparam StateBorderColor #2E75B6
-
-[*] --> ACTIVE : Mother ghi nhận chỉ số/nhật ký (UC-22 / UC-25)
-ACTIVE --> ACTIVE : Mother sửa giá trị (UC-23 / UC-26)\n[không đổi status]
-ACTIVE --> DELETED : Mother xoá bản ghi (UC-23 / UC-26)
-DELETED --> [*]
-
-note right of ACTIVE
-  MaternalHealthMetric và PostpartumLog dùng chung khuôn
-  mẫu 2 trạng thái: ACTIVE / DELETED (soft-delete). Không có
-  trạng thái duyệt/kiểm duyệt — đây là dữ liệu riêng tư do
-  chính chủ nhập, chỉ chủ sở hữu mới thấy (BR-PRIVACY).
-end note
-
-@enduml
-```
-
-**Hình 3 — State Machine: Owner-entered Record Lifecycle (`ACTIVE` → `DELETED`)**
-
-## 5. Business Rules Applied
+## 4. Business Rules Applied
 
 - BR-RBAC / BR-PRIVACY — chỉ chủ sở hữu journey mới đọc/ghi được metric và log của chính họ.
 - UC-24 — trend hiển thị kèm nhãn nguồn dữ liệu (`sourceType`) và khung diễn giải phi chẩn đoán, không được trình bày như kết luận y khoa.

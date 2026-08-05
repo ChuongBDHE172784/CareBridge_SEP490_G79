@@ -117,7 +117,7 @@ class ExerciseController {
 }
 
 class ExerciseSessionController {
-  - exerciseSessionService: ExerciseSessionService
+  - exerciseSessionService: IExerciseSessionService
   + pause(sessionId): ResponseEntity
   + resume(sessionId): ResponseEntity
   + recordPostureEvent(sessionId, event): ResponseEntity
@@ -126,17 +126,17 @@ class ExerciseSessionController {
   + history(): ResponseEntity
 }
 
-interface ExerciseSessionService <<interface>> {
+interface IExerciseSessionService <<interface>> {
   + start(userId, exerciseId, safetyCheckId): ExerciseSession
   + pause(sessionId): void
   + resume(sessionId): void
   + complete(sessionId): ExerciseSession
 }
 
-class ExerciseSessionServiceImpl implements ExerciseSessionService {
+class ExerciseSessionServiceImpl implements IExerciseSessionService {
   - exerciseSessionRepository: ExerciseSessionRepository
   - safetyCheckRepository: ExerciseSafetyCheckRepository
-  - postureAnalyzer: PostureAnalyzer
+  - postureAnalysisService: IPostureAnalysisService
   - auditService: AuditService
 }
 
@@ -147,8 +147,8 @@ ExerciseSafetyCheck "1" -- "0..1" ExerciseSession : clears
 ExerciseSession --> SessionStatus
 ExerciseSession "1" *-- "0..*" PostureFeedbackEvent : optional
 PregnancyExercise "1" -- "0..1" PostureAnalysisConfig : active config
-ExerciseController --> ExerciseSessionService : uses
-ExerciseSessionController --> ExerciseSessionService : uses
+ExerciseController --> IExerciseSessionService : uses
+ExerciseSessionController --> IExerciseSessionService : uses
 ExerciseSessionServiceImpl --> ExerciseSafetyCheckRepository : validates
 
 @enduml
@@ -165,18 +165,21 @@ skinparam roundcorner 10
 skinparam backgroundColor #FAFAFA
 
 actor "Mother" as M
+participant "Web / Mobile UI" as UI
 participant "ExerciseController" as ExController
 participant "ExerciseSessionController" as SessController
 participant "ExerciseSessionServiceImpl" as Service
+participant "PostureAnalysisServiceImpl" as Posture
 participant "ExerciseRepository" as ExRepo
 participant "ExerciseSafetyCheckRepository" as SafetyRepo
 participant "ExerciseSessionRepository" as SessRepo
 participant "PostureFeedbackEventRepository" as PostureRepo
-participant "PostureAnalyzer" as Posture
 database "PostgreSQL" as DB
 
 == UC-28 Browse Pregnancy Exercise Library ==
-M -> ExController : 1. GET /api/v1/exercises?trimester=T2&difficulty=EASY
+M -> UI : 1. Submit request
+activate UI
+UI -> ExController : 1a. GET /api/v1/exercises?trimester=T2&difficulty=EASY
 activate ExController
 ExController -> Service : 2. list(filter)
 activate Service
@@ -190,45 +193,55 @@ ExRepo --> Service : 6. exercises[]
 deactivate ExRepo
 Service --> ExController : 7. exercises[]
 deactivate Service
-ExController --> M : 8. HTTP 200 OK {exercises[]}
+ExController --> UI : 8. HTTP 200 OK {exercises[]}
 deactivate ExController
+UI --> M : 8a. Display HTTP 200 OK {exercises[]}
+deactivate UI
 
 == UC-29 Complete Pre-exercise Safety Check ==
-M -> ExController : 9. POST /api/v1/exercises/{exerciseId}/safety-check\n{answers: {...}}
+M -> UI : 9. Submit request
+activate UI
+UI -> ExController : 9a. POST /api/v1/exercises/{exerciseId}/safety-check\n{answers: {...}}
 activate ExController
 ExController -> Service : 10. submitSafetyCheck(userId, exerciseId, answers)
 activate Service
-Service -> Service : 11. evaluate answers → redFlagDetected?
-alt 11. no red flag [happy path → CLEARED]
-  Service -> SafetyRepo : 12. save(SafetyCheck{resultStatus=CLEARED})
+Service -> Service : 10a. evaluate answers → redFlagDetected?
+alt [10a. no red flag — happy path → CLEARED]
+  Service -> SafetyRepo : 11. save(SafetyCheck{resultStatus=CLEARED})
   activate SafetyRepo
-  SafetyRepo -> DB : 13. INSERT INTO exercise_safety_checks\n(resultStatus=CLEARED)
+  SafetyRepo -> DB : 12. INSERT INTO exercise_safety_checks\n(resultStatus=CLEARED)
   activate DB
-  DB --> SafetyRepo : 14. saved
+  DB --> SafetyRepo : 13. saved
   deactivate DB
-  SafetyRepo --> Service : 15. SafetyCheck{status=CLEARED}
+  SafetyRepo --> Service : 14. SafetyCheck{status=CLEARED}
   deactivate SafetyRepo
-  Service --> ExController : 16. SafetyCheck{status=CLEARED}
+  Service --> ExController : 15. SafetyCheck{status=CLEARED}
   deactivate Service
-  ExController --> M : 17. HTTP 200 OK {status=CLEARED}
+  ExController --> UI : 16. HTTP 200 OK {status=CLEARED}
   deactivate ExController
-else 11. red flag detected [block session creation → BLOCKED]
-  Service -> SafetyRepo : 11a. save(SafetyCheck{resultStatus=BLOCKED, blockedReason})
+  UI --> M : 17. Display HTTP 200 OK {status=CLEARED}
+  deactivate UI
+else [10b. red flag detected — block session creation → BLOCKED]
+  Service -> SafetyRepo : 10b-1. save(SafetyCheck{resultStatus=BLOCKED, blockedReason})
   activate SafetyRepo
-  SafetyRepo -> DB : 11b. INSERT INTO exercise_safety_checks\n(resultStatus=BLOCKED, blockedReason)
+  SafetyRepo -> DB : 10b-2. INSERT INTO exercise_safety_checks\n(resultStatus=BLOCKED, blockedReason)
   activate DB
-  DB --> SafetyRepo : 11c. saved
+  DB --> SafetyRepo : 10b-3. saved
   deactivate DB
-  SafetyRepo --> Service : 11d. SafetyCheck{status=BLOCKED}
+  SafetyRepo --> Service : 10b-4. SafetyCheck{status=BLOCKED}
   deactivate SafetyRepo
-  Service --> ExController : 11e. SafetyCheck{status=BLOCKED}
+  Service --> ExController : 10b-5. SafetyCheck{status=BLOCKED}
   deactivate Service
-  ExController --> M : 11f. HTTP 200 OK {status=BLOCKED, safetyWarning}
+  ExController --> UI : 10b-6. HTTP 200 OK {status=BLOCKED, safetyWarning}
   deactivate ExController
+  UI --> M : 10b-7. Display HTTP 200 OK {status=BLOCKED, safetyWarning}
+  deactivate UI
 end
 
 == UC-30 Conduct Session with Optional Posture Feedback ==
-M -> ExController : 18. POST /api/v1/exercises/{exerciseId}/sessions\n{safetyCheckId}
+M -> UI : 18. Submit request
+activate UI
+UI -> ExController : 18a. POST /api/v1/exercises/{exerciseId}/sessions\n{safetyCheckId}
 activate ExController
 ExController -> Service : 19. start(userId, exerciseId, safetyCheckId)
 activate Service
@@ -243,29 +256,37 @@ SessRepo --> Service : 24. ExerciseSession
 deactivate SessRepo
 Service --> ExController : 25. ExerciseSession
 deactivate Service
-ExController --> M : 26. HTTP 201 Created
+ExController --> UI : 26. HTTP 201 Created
 deactivate ExController
+UI --> M : 26a. Display HTTP 201 Created
+deactivate UI
 
-loop 27-34. each frame uploaded (if Mother enables camera consent)
-  M -> SessController : 27. POST /api/v1/exercises/sessions/{sessionId}/posture-events
+loop [each frame uploaded if Mother enables camera consent]
+  M -> UI : 27. Submit request
+  activate UI
+  UI -> SessController : 27a. POST /api/v1/exercises/sessions/{sessionId}/posture-events
   activate SessController
-  SessController -> Posture : 28. analyze(frameFeatures, postureConfig)
+  SessController -> Posture : 28. analyzePosture(sessionId, userId, request)
   activate Posture
-  Posture --> SessController : 29. PostureFeedbackEvent{severity, feedbackText}
-  deactivate Posture
-  SessController -> PostureRepo : 30. save(feedbackEvent)
+  Posture -> PostureRepo : 29. save(feedbackEvent)
   activate PostureRepo
-  PostureRepo -> DB : 31. INSERT INTO posture_feedback_events ...
+  PostureRepo -> DB : 30. INSERT INTO posture_feedback_events ...
   activate DB
-  DB --> PostureRepo : 32. saved
+  DB --> PostureRepo : 31. saved
   deactivate DB
-  PostureRepo --> SessController : 33. PostureFeedbackEvent
+  PostureRepo --> Posture : 32. PostureFeedbackEvent
   deactivate PostureRepo
-  SessController --> M : 34. HTTP 200 OK {feedback}
+  Posture --> SessController : 33. PostureFeedbackResponse{severity, feedbackText}
+  deactivate Posture
+  SessController --> UI : 34. HTTP 200 OK {feedback}
   deactivate SessController
+  UI --> M : 34a. Display HTTP 200 OK {feedback}
+  deactivate UI
 end
 
-M -> SessController : 35. PATCH /api/v1/exercises/sessions/{sessionId}/pause
+M -> UI : 35. Submit request
+activate UI
+UI -> SessController : 35a. PATCH /api/v1/exercises/sessions/{sessionId}/pause
 activate SessController
 SessController -> Service : 36. pause(sessionId)
 activate Service
@@ -279,10 +300,14 @@ SessRepo --> Service : 40. void
 deactivate SessRepo
 Service --> SessController : 41. void
 deactivate Service
-SessController --> M : 42. HTTP 200 OK
+SessController --> UI : 42. HTTP 200 OK
 deactivate SessController
+UI --> M : 42a. Display HTTP 200 OK
+deactivate UI
 
-M -> SessController : 43. PATCH /api/v1/exercises/sessions/{sessionId}/resume
+M -> UI : 43. Submit request
+activate UI
+UI -> SessController : 43a. PATCH /api/v1/exercises/sessions/{sessionId}/resume
 activate SessController
 SessController -> Service : 44. resume(sessionId)
 activate Service
@@ -296,10 +321,14 @@ SessRepo --> Service : 48. void
 deactivate SessRepo
 Service --> SessController : 49. void
 deactivate Service
-SessController --> M : 50. HTTP 200 OK
+SessController --> UI : 50. HTTP 200 OK
 deactivate SessController
+UI --> M : 50a. Display HTTP 200 OK
+deactivate UI
 
-M -> SessController : 51. PATCH /api/v1/exercises/sessions/{sessionId}/complete
+M -> UI : 51. Submit request
+activate UI
+UI -> SessController : 51a. PATCH /api/v1/exercises/sessions/{sessionId}/complete
 activate SessController
 SessController -> Service : 52. complete(sessionId)
 activate Service
@@ -314,11 +343,15 @@ SessRepo --> Service : 57. ExerciseSession{sessionStatus=COMPLETED}
 deactivate SessRepo
 Service --> SessController : 58. ExerciseSession{sessionStatus=COMPLETED}
 deactivate Service
-SessController --> M : 59. HTTP 200 OK
+SessController --> UI : 59. HTTP 200 OK
 deactivate SessController
+UI --> M : 59a. Display HTTP 200 OK
+deactivate UI
 
 == UC-31 View Exercise History and Session Result ==
-M -> SessController : 60. GET /api/v1/exercises/sessions/history
+M -> UI : 60. Submit request
+activate UI
+UI -> SessController : 60a. GET /api/v1/exercises/sessions/history
 activate SessController
 SessController -> SessRepo : 61. findByUserId(userId)
 activate SessRepo
@@ -328,48 +361,18 @@ DB --> SessRepo : 63. rows[]
 deactivate DB
 SessRepo --> SessController : 64. sessions[]
 deactivate SessRepo
-SessController --> M : 65. HTTP 200 OK {sessions[]}
+SessController --> UI : 65. HTTP 200 OK {sessions[]}
 deactivate SessController
+UI --> M : 65a. Display HTTP 200 OK {sessions[]}
+deactivate UI
 
 @enduml
 ```
 
 **Hình 2 — Sequence Diagram: Browse → Safety Check → Session (Pause/Resume/Posture) → Complete → History (Main Flow)**
 
-## 4. State Machine — `ExerciseSession.sessionStatus` (gated by `ExerciseSafetyCheck.resultStatus`)
 
-```plantuml
-@startuml MF02_03_ExerciseSession_StateMachine
-skinparam backgroundColor #FAFAFA
-skinparam StateBackgroundColor #D5E8F0
-skinparam StateBorderColor #2E75B6
-
-state "ExerciseSafetyCheck" as Safety {
-  [*] --> PENDING : Mother mở form safety check (UC-29)
-  PENDING --> CLEARED : Không phát hiện cờ đỏ
-  PENDING --> BLOCKED : Phát hiện cờ đỏ\n[chặn tạo session]
-  CLEARED --> [*]
-  BLOCKED --> [*]
-}
-
-state "ExerciseSession" as Session {
-  [*] --> IN_PROGRESS : start() chỉ khi safetyCheck = CLEARED (UC-30)
-  IN_PROGRESS --> PAUSED : pause()
-  PAUSED --> IN_PROGRESS : resume()
-  IN_PROGRESS --> COMPLETED : complete()
-  PAUSED --> ABANDONED : Mother thoát không hoàn tất\n[timeout / rời app]
-  COMPLETED --> [*]
-  ABANDONED --> [*]
-}
-
-Safety --> Session : CLEARED cho phép start()
-
-@enduml
-```
-
-**Hình 3 — State Machine: Safety Check Gate → Exercise Session Lifecycle**
-
-## 5. Business Rules Applied
+## 4. Business Rules Applied
 
 - BR-SAFETY — session chỉ được bắt đầu khi có `ExerciseSafetyCheck` với `resultStatus=CLEARED`; câu trả lời cảnh báo cấu hình sẵn sẽ chặn (`BLOCKED`) việc vào bài tập.
 - UC-28 — chỉ hiển thị bài tập đã được duyệt (`status=PUBLISHED`) với ghi chú an toàn theo từng bài (`safetyWarning`).

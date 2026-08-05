@@ -6,15 +6,17 @@
 | Use Cases Covered | UC-77 Open Emergency Map, UC-78 Find Nearby Care Facilities, UC-79 View Route, ETA and Quick Call or Navigate |
 | Primary Actor(s) | Mother |
 | Platform | Mother Mobile App |
-| Main Flow Summary | A Mother opens the emergency map (after being informed of the location-permission and non-dispatch scope), the app resolves nearby verified care facilities from her approved location, and she views route/ETA and triggers a quick call or turn-by-turn navigation to a selected facility through the device's native capability. |
+| Implementation Status | Partial — active flow exists, but the focused Mobile provider-label/route widget test currently fails for a nullable facility ID |
+| Main Flow Summary | A Mother opens the emergency map after a location-permission and non-dispatch notice, reviews nearby care-facility results with their source/status labels, views route/ETA and triggers a quick call or external navigation through the device's native capability. |
 | Grounding (source code) | `map/entity/CareFacility.java`, `FacilityStatus.java`, `map/controller/CareFacilityController.java` (`/api/v1/map/nearby-facilities`, `/facilities`, `/route`) |
 
 ## 1. Tổng quan luồng chính (Main Flow Overview)
 
 UC-77 (mở bản đồ) không tạo bản ghi backend — đó là bước xin quyền vị trí và hiển thị
 màn hình phía client (theo D-05, hành vi màn hình không tách UC riêng có backend). Luồng
-backend thực sự bắt đầu từ UC-78: hệ thống trả về `CareFacility` đã `VERIFIED` gần vị
-trí được người dùng cho phép. UC-79 dùng toạ độ facility đã chọn để tính route/ETA
+backend thực sự bắt đầu từ UC-78: hệ thống trả về cơ sở chăm sóc gần vị trí được người
+dùng cho phép và giữ nhãn nguồn/trạng thái để UI không trình bày dữ liệu ngoài như đã
+được CareBridge xác minh. UC-79 dùng toạ độ facility đã chọn để tính route/ETA
 (`POST /route`) rồi giao cho thiết bị xử lý gọi nhanh/điều hướng (native call/maps
 intent) — CareBridge chỉ tính toán route, **không tự dispatch xe cấp cứu hay đảm bảo
 chuyên gia đến** (đúng phạm vi loại trừ trong SRS 4.8).
@@ -32,7 +34,6 @@ skinparam ClassHeaderBackgroundColor #D5E8F0
 
 class CareFacility {
   + facilityId: UUID
-  + partnerId: UUID
   + name: String
   + facilityType: String
   + address: String
@@ -85,13 +86,13 @@ interface ICareFacilityService <<interface>> {
 
 class CareFacilityServiceImpl implements ICareFacilityService {
   - careFacilityRepository: CareFacilityRepository
-  - routingClient: TrackAsiaRoutingClient
+  - trackAsiaClient: TrackAsiaClient
 }
 
 CareFacility --> FacilityStatus
 CareFacilityController --> ICareFacilityService : uses
-CareFacilityServiceImpl ..> NearbyResponse : builds (chỉ facility VERIFIED)
-CareFacilityServiceImpl --> TrackAsiaRoutingClient : tính route/ETA
+CareFacilityServiceImpl ..> NearbyResponse : builds (current code may include UNVERIFIED)
+CareFacilityServiceImpl --> TrackAsiaClient : nearby search + route/ETA
 CareFacilityServiceImpl ..> RouteResponse : builds
 
 @enduml
@@ -111,68 +112,80 @@ actor "Mother" as M
 participant "Mobile App (Client)" as App
 participant "CareFacilityController" as Controller
 participant "CareFacilityServiceImpl" as Service
-participant "TrackAsiaClient" as TrackAsia
 participant "CareFacilityRepository" as FacilityRepo
 database "PostgreSQL" as DB
+participant "TrackAsiaClient" as TrackAsia
 participant "Device Capability\n(Dialer / Maps)" as Device
 
 == UC-77 Open Emergency Map ==
 M -> App : 1. Open Emergency Map
 activate App
-App -> App : 2. Request device location permission + display\ndisclaimer "not an emergency service"
-App -> App : 3. Guard — only proceed when permission granted
+App -> App : 1a. Request device location permission + display\ndisclaimer "not an emergency service"
+activate App
+App --> App : 1b. permission state
+deactivate App
+App -> App : 1c. Guard — only proceed when permission granted
+activate App
+App --> App : 1d. allowed | show permission guidance
+deactivate App
 
 == UC-78 Find Nearby Care Facilities ==
-App -> Controller : 4. GET /api/v1/map/nearby-facilities?lat=&lng=&radiusMeters=&type=
+App -> Controller : 2. GET /api/v1/map/nearby-facilities?lat=&lng=&radiusMeters=&type=
 activate Controller
-Controller -> Service : 5. searchNearby(lat, lng, radiusMeters, type)
+Controller -> Service : 3. searchNearby(lat, lng, radiusMeters, type)
 activate Service
-alt 6. TrackAsia returns valid result (preferred source)
-  Service -> TrackAsia : 6. searchNearby(lat, lng, radiusMeters, type)
+alt [TrackAsia returns valid result (preferred source)]
+  Service -> TrackAsia : 4a. searchNearby(lat, lng, radiusMeters, type)
   activate TrackAsia
-  TrackAsia --> Service : 7. GeoJSON features[] (nearby POIs)
+  TrackAsia --> Service : 4b. GeoJSON features[] (nearby POIs)
   deactivate TrackAsia
-  Service -> Service : 8. parseTrackAsiaResults() → FacilityResponse[]\n(sourceType="TRACKASIA", verificationStatus="UNVERIFIED" by default)
-else 6. TrackAsia error/timeout/empty → fallback internal data
-  Service -> FacilityRepo : 6a. findNearby(lat, lng, radiusMeters)
+  Service -> Service : 4c. parseTrackAsiaResults() → FacilityResponse[]\n(sourceType="TRACKASIA", verificationStatus="UNVERIFIED" by default)
+  activate Service
+  Service --> Service : 4d. FacilityResponse[]
+  deactivate Service
+else [TrackAsia error/timeout/empty → fallback internal data]
+  Service -> FacilityRepo : 4e. findNearby(lat, lng, radiusMeters)
   activate FacilityRepo
-  FacilityRepo -> DB : 6b. SELECT * FROM care_facilities\nWHERE lat/lng NOT NULL AND earth_distance(...) <= radiusMeters*1000
+  FacilityRepo -> DB : 4f. SELECT * FROM care_facilities\nWHERE lat/lng NOT NULL AND earth_distance(...) <= radiusMeters*1000
   activate DB
-  DB --> FacilityRepo : 6c. rows[] (do not filter by verification_status)
+  DB --> FacilityRepo : 4g. rows[] (do not filter by verification_status)
   deactivate DB
-  FacilityRepo --> Service : 6d. facilities[]
+  FacilityRepo --> Service : 4h. facilities[]
   deactivate FacilityRepo
 end
-Service --> Controller : 9. NearbyResponse{facilities[], totalCount}
+Service --> Controller : 5. NearbyResponse{facilities[], totalCount}
 deactivate Service
-Controller --> App : 10. HTTP 200 OK {facilities[]}
+Controller --> App : 6. HTTP 200 OK {facilities[]}
 deactivate Controller
-App --> M : 11. Display facilities on map
+App --> M : 7. Display facilities on map
 deactivate App
 
 == UC-79 View Route, ETA and Quick Call or Navigate ==
-M -> App : 12. Select 1 facility
+M -> App : 8. Select 1 facility
 activate App
-App -> Controller : 13. POST /api/v1/map/route\n{fromLat, fromLng, toLat, toLng, transportMode}
+App -> Controller : 9. POST /api/v1/map/route\n{fromLat, fromLng, toLat, toLng, transportMode}
 activate Controller
-Controller -> Service : 14. getRoute(request)
+Controller -> Service : 10. getRoute(request)
 activate Service
-Service -> TrackAsia : 15. route(fromLat, fromLng, toLat, toLng, transportMode)
+Service -> TrackAsia : 11. route(fromLat, fromLng, toLat, toLng, transportMode)
 activate TrackAsia
-TrackAsia --> Service : 16. GeoJSON route{routes: [{distance, duration, steps[]}]}
+TrackAsia --> Service : 12. GeoJSON route{routes: [{distance, duration, steps[]}]}
 deactivate TrackAsia
-Service -> Service : 17. parse first leg → distanceMeters, etaMinutes,\nRoutePoint list from steps[].maneuver
-Service --> Controller : 18. RouteResponse{distanceMeters, etaMinutes, points[]}
+Service -> Service : 10a. parse first leg → distanceMeters, etaMinutes,\nRoutePoint list from steps[].maneuver
+activate Service
+Service --> Service : 10b. route read-model
 deactivate Service
-Controller --> App : 19. HTTP 200 OK {route}
+Service --> Controller : 13. RouteResponse{distanceMeters, etaMinutes, points[]}
+deactivate Service
+Controller --> App : 14. HTTP 200 OK {route}
 deactivate Controller
-App --> M : 20. Display route + ETA
+App --> M : 15. Display route + ETA
 deactivate App
 
-alt 21. Mother selects Quick Call
-  M -> Device : 21. call facilityPhone (native dialer)
-else 21. Mother selects Directions
-  M -> Device : 21a. open native map app with destination coordinates (maps intent)
+alt [Mother selects Quick Call]
+  M ->> Device : 16a. call facilityPhone (native dialer)
+else [Mother selects Directions]
+  M ->> Device : 16b. open native map app with destination coordinates (maps intent)
 end
 
 @enduml
@@ -180,52 +193,25 @@ end
 
 **Hình 2 — Sequence Diagram: Open Map → Find Nearby Facilities → View Route/ETA → Quick Call or Navigate (Main Flow)**
 
-> **Ghi chú grounding (quan trọng — lệch với Business Rules mục 5):** Code thật của
+> **Ghi chú grounding:** Code thật của
 > `CareFacilityServiceImpl.searchNearby(...)` gọi **TrackAsia (nguồn ngoài) trước tiên**, và
 > kết quả TrackAsia được gắn cứng `verificationStatus="UNVERIFIED"` — nghĩa là trong đường
 > đi chính (happy path), UC-78 **có thể trả về facility chưa được admin xác minh**. Chỉ khi
 > TrackAsia lỗi/rỗng, hệ thống mới fallback sang `CareFacilityRepository.findNearby(...)`,
 > và truy vấn native đó **không lọc theo `verification_status='VERIFIED'`** — trả về mọi
 > facility có toạ độ trong bán kính bất kể trạng thái xác minh. Điều này khác với khẳng định
-> ở mục 5 ("chỉ facility VERIFIED được trả về") và với note trong State Machine ở mục 4 —
-> hành vi lọc theo VERIFIED hiện **không được enforce ở tầng service/repository** cho luồng
-> tìm kiếm gần đây; nó chỉ đúng cho các endpoint khác dùng `findByVerificationStatus(...)`.
+> Vì vậy UI phải hiển thị nhãn nguồn/trạng thái và không được suy diễn mọi kết quả là đã
+> được xác minh. Hành vi lọc theo VERIFIED hiện **không được enforce** ở tầng
+> service/repository cho nearby search.
 > Ngoài ra, `map/routeprovider/RouteProvider.java` tồn tại như một interface nhưng
 > `CareFacilityServiceImpl` phụ thuộc thẳng vào `TrackAsiaClient` cụ thể, không qua
 > interface này.
 
-## 4. State Machine — `CareFacility.verificationStatus`
 
-```plantuml
-@startuml MF07_01_FacilityStatus_StateMachine
-skinparam backgroundColor #FAFAFA
-skinparam StateBackgroundColor #D5E8F0
-skinparam StateBorderColor #2E75B6
-
-[*] --> UNVERIFIED : Facility được nạp từ nguồn dữ liệu\n(partner / hệ thống import)
-
-UNVERIFIED --> PENDING : Đưa vào hàng chờ xác minh
-PENDING --> VERIFIED : Admin xác minh thông tin đúng
-PENDING --> REJECTED : Admin từ chối (thông tin sai/không hợp lệ)
-VERIFIED --> UNVERIFIED : Thông tin cần xác minh lại theo chu kỳ
-
-VERIFIED --> [*]
-REJECTED --> [*]
-
-note right of VERIFIED
-  UC-78 (tìm cơ sở gần đây) CHỈ trả về facility ở
-  verificationStatus = VERIFIED — facility PENDING/UNVERIFIED/
-  REJECTED không hiển thị cho Mother.
-end note
-
-@enduml
-```
-
-**Hình 3 — State Machine: `CareFacility.verificationStatus` Lifecycle**
-
-## 5. Business Rules Applied
+## 4. Business Rules Applied
 
 - UC-77 — người dùng phải được thông báo rõ phạm vi "không dispatch cấp cứu" trước khi vào bản đồ (CC-01).
-- UC-78 — chỉ facility `VERIFIED` được trả về; vị trí sử dụng là vị trí người dùng đã cấp quyền hoặc khu vực tự chọn.
+- UC-78 — vị trí chỉ được dùng sau khi người dùng cấp quyền hoặc chọn khu vực; kết quả phải giữ nhãn nguồn/trạng thái và không được ngầm quảng bá là đã xác minh.
 - UC-79 — route/ETA là hỗ trợ tham khảo; gọi nhanh/điều hướng giao hoàn toàn cho năng lực thiết bị (dialer/maps app), CareBridge không tự thực hiện cuộc gọi hay điều hướng.
 - Excluded (SRS 4.8) — không dispatch xe cấp cứu, không đảm bảo lịch trình cơ sở y tế.
+- Verification gap — cần sửa và chạy lại `nearby_care_contract_test.dart` cho trường hợp provider label/route với facility ID nullable trước khi đánh dấu flow ổn định.

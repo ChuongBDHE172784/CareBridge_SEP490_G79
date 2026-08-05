@@ -160,21 +160,24 @@ skinparam roundcorner 10
 skinparam backgroundColor #FAFAFA
 
 actor "User" as U
-participant "AccountDeletionController" as DelController
-participant "AccountDeletionServiceImpl" as DelService
-participant "AccountDeletionRequestRepository" as DelRepo
 actor "System Admin" as Admin
+participant "Web / Mobile UI" as UI
+participant "AccountDeletionController" as DelController
 participant "AdminUserController" as AdminController
-participant "AdminUserServiceImpl" as AdminService
-participant "UserRepository" as UserRepo
 participant "SecurityIncidentController" as SecController
+participant "AccountDeletionServiceImpl" as DelService
+participant "AdminUserServiceImpl" as AdminService
 participant "SecurityIncidentService" as SecService
-participant "SecurityEventRepository" as SecRepo
 participant "AuditService" as Audit
+participant "AccountDeletionRequestRepository" as DelRepo
+participant "UserRepository" as UserRepo
+participant "SecurityEventRepository" as SecRepo
 database "PostgreSQL" as DB
 
 == UC-14 Deactivate or Delete Own Account ==
-U -> DelController : 1. POST /api/v1/account/deletion-request\n{reason}
+U -> UI : 1. Submit request
+activate UI
+UI -> DelController : 1a. POST /api/v1/account/deletion-request\n{reason}
 activate DelController
 DelController -> DelService : 2. requestDeletion(userId, request)
 activate DelService
@@ -192,11 +195,15 @@ Audit --> DelService : 8. void
 deactivate Audit
 DelService --> DelController : 9. AccountDeletionRequestResponse{status=PENDING}
 deactivate DelService
-DelController --> U : 10. HTTP 201 Created {status=PENDING}
+DelController --> UI : 10. HTTP 201 Created {status=PENDING}
 deactivate DelController
+UI --> U : 10a. Display HTTP 201 Created {status=PENDING}
+deactivate UI
 
 == UC-17 Administer User Accounts and Role Access ==
-Admin -> AdminController : 11. GET /api/v1/admin/users?status=PENDING_ACTIVATION
+Admin -> UI : 11. Submit request
+activate UI
+UI -> AdminController : 11a. GET /api/v1/admin/users?status=PENDING_ACTIVATION
 activate AdminController
 AdminController -> AdminService : 12. searchUsers(query, pageable)
 activate AdminService
@@ -210,10 +217,14 @@ UserRepo --> AdminService : 16. users[]
 deactivate UserRepo
 AdminService --> AdminController : 17. Page<AdminUserSummaryResponse>
 deactivate AdminService
-AdminController --> Admin : 18. HTTP 200 OK {users[]}
+AdminController --> UI : 18. HTTP 200 OK {users[]}
 deactivate AdminController
+UI --> Admin : 18a. Display HTTP 200 OK {users[]}
+deactivate UI
 
-Admin -> AdminController : 19. PATCH /api/v1/admin/users/{targetUserId}/status\n{status="DEACTIVATED"}
+Admin -> UI : 19. Submit request
+activate UI
+UI -> AdminController : 19a. PATCH /api/v1/admin/users/{targetUserId}/status\n{status="DEACTIVATED"}
 activate AdminController
 AdminController -> AdminService : 20. updateStatus(callerUserId, targetUserId, request)
 activate AdminService
@@ -232,11 +243,15 @@ Audit --> AdminService : 27. void
 deactivate Audit
 AdminService --> AdminController : 28. AdminUserSummaryResponse
 deactivate AdminService
-AdminController --> Admin : 29. HTTP 200 OK
+AdminController --> UI : 29. HTTP 200 OK
 deactivate AdminController
+UI --> Admin : 29a. Display HTTP 200 OK
+deactivate UI
 
 == UC-18 Review Sensitive Access and Security Events ==
-Admin -> SecController : 30. GET /api/v1/admin/security-events?status=OPEN
+Admin -> UI : 30. Submit request
+activate UI
+UI -> SecController : 30a. GET /api/v1/admin/security-events?status=OPEN
 activate SecController
 SecController -> SecService : 31. listEvents(filter)
 activate SecService
@@ -250,10 +265,14 @@ SecRepo --> SecService : 35. events[]
 deactivate SecRepo
 SecService --> SecController : 36. events[]
 deactivate SecService
-SecController --> Admin : 37. HTTP 200 OK {events[]}
+SecController --> UI : 37. HTTP 200 OK {events[]}
 deactivate SecController
+UI --> Admin : 37a. Display HTTP 200 OK {events[]}
+deactivate UI
 
-Admin -> SecController : 38. PUT /api/v1/admin/security-events/{eventId}/review\n{status="RESOLVED"}
+Admin -> UI : 38. Submit request
+activate UI
+UI -> SecController : 38a. PUT /api/v1/admin/security-events/{eventId}/review\n{status="RESOLVED"}
 activate SecController
 SecController -> SecService : 39. reviewEvent(adminId, eventId, "RESOLVED")
 activate SecService
@@ -279,8 +298,10 @@ Audit --> SecService : 49. void
 deactivate Audit
 SecService --> SecController : 50. void
 deactivate SecService
-SecController --> Admin : 51. HTTP 200 OK
+SecController --> UI : 51. HTTP 200 OK
 deactivate SecController
+UI --> Admin : 51a. Display HTTP 200 OK
+deactivate UI
 
 @enduml
 ```
@@ -295,39 +316,8 @@ deactivate SecController
 > Machine ở mục 4 mô tả vòng đời **dự kiến** theo đặc tả UC-17; write-path admin cho
 > `AccountDeletionRequest` cần được xác nhận/bổ sung riêng.
 
-## 4. State Machine — `AccountDeletionRequest.status` & `SecurityEvent.status`
 
-```plantuml
-@startuml MF01_03_AdminGovernance_StateMachine
-skinparam backgroundColor #FAFAFA
-skinparam StateBackgroundColor #D5E8F0
-skinparam StateBorderColor #2E75B6
-
-state "AccountDeletionRequest" as ADR {
-  [*] --> PENDING : User requests (UC-14)
-  PENDING --> SCHEDULED : Admin schedules xử lý theo retention policy (UC-17)
-  PENDING --> CANCELLED : User huỷ yêu cầu trước khi xử lý
-  SCHEDULED --> COMPLETED : Admin hoàn tất xử lý (UC-17)
-  SCHEDULED --> CANCELLED : Admin/User huỷ trong thời hạn chờ
-  COMPLETED --> [*]
-  CANCELLED --> [*]
-}
-
-state "SecurityEvent" as SE {
-  [*] --> OPEN : Hệ thống tự phát sinh sự kiện\n(login fail, permission denied, ...)
-  OPEN --> UNDER_REVIEW : Admin bắt đầu rà soát (UC-18)
-  UNDER_REVIEW --> RESOLVED : Admin xác nhận đã xử lý
-  UNDER_REVIEW --> FALSE_POSITIVE : Admin xác nhận không phải sự cố thật
-  RESOLVED --> [*]
-  FALSE_POSITIVE --> [*]
-}
-
-@enduml
-```
-
-**Hình 3 — State Machine: `AccountDeletionRequest.status` và `SecurityEvent.status`**
-
-## 5. Business Rules Applied
+## 4. Business Rules Applied
 
 - BR-RBAC — chỉ System Admin mới có quyền thay đổi role/status của tài khoản khác.
 - Separation-of-duties — admin không tự xử lý yêu cầu do chính họ tạo hoặc tự thay đổi role của chính mình qua kênh này.
