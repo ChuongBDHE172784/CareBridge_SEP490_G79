@@ -15,6 +15,8 @@ class ExerciseSessionScreen extends StatefulWidget {
   final String? safetyWarning;
   final int durationMinutes;
   final String sessionId;
+  final String initialStatus;
+  final DateTime initialStartedAt;
 
   /// Optional output from a camera/pose extractor.
   final Stream<Map<String, dynamic>>? postureLandmarkFrames;
@@ -35,6 +37,8 @@ class ExerciseSessionScreen extends StatefulWidget {
     this.safetyWarning,
     required this.durationMinutes,
     required this.sessionId,
+    this.initialStatus = 'IN_PROGRESS',
+    required this.initialStartedAt,
     this.postureLandmarkFrames,
     this.enableRealtimePostureCamera = false,
     this.postureCameraSource,
@@ -57,14 +61,15 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
   int _elapsedSeconds = 0;
   bool _isPaused = false;
   bool _isCompleting = false;
-  String _postureStatus = 'Tư thế chuẩn';
-  bool _postureGood = true;
+  String _postureStatus = 'Chưa có dữ liệu tư thế';
+  bool _postureGood = false;
   PostureEventStreamer? _postureStreamer;
   StreamSubscription<Map<String, dynamic>>? _postureFramesSubscription;
   PostureCameraSource? _cameraSource;
   StreamSubscription<String>? _cameraErrorsSubscription;
   String? _cameraError;
   bool _cameraStarted = false;
+  bool _cameraStarting = false;
 
   int get _totalSeconds => widget.durationMinutes * 60;
 
@@ -77,6 +82,12 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
   @override
   void initState() {
     super.initState();
+    _isPaused = widget.initialStatus.toUpperCase() == 'PAUSED';
+    _elapsedSeconds = DateTime.now()
+        .difference(widget.initialStartedAt)
+        .inSeconds
+        .clamp(0, _totalSeconds)
+        .toInt();
     final frames = widget.postureLandmarkFrames;
     if (frames != null) {
       _startPostureTransport(frames);
@@ -87,15 +98,34 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
   }
 
   Future<void> _startCameraSource() async {
-    final source = widget.postureCameraSource ?? createPostureCameraSource();
-    _cameraSource = source;
-    _cameraErrorsSubscription = source.errors.listen((message) {
-      if (!mounted) return;
-      setState(() {
-        _cameraError = message;
-        _cameraStarted = false;
+    if (_cameraStarting) return;
+    _cameraStarting = true;
+    final source =
+        _cameraSource ??
+        widget.postureCameraSource ??
+        createPostureCameraSource();
+    if (_cameraSource == null) {
+      _cameraSource = source;
+      _cameraErrorsSubscription = source.errors.listen((message) {
+        if (!mounted) return;
+        setState(() {
+          _cameraError = message;
+          // MediaPipe errors are non-fatal for the local camera preview.
+          _cameraStarted = source.isRunning;
+          if (!source.isRunning) {
+            _postureGood = false;
+            _postureStatus = 'Chưa có dữ liệu camera';
+          }
+        });
       });
-    });
+    }
+
+    if (mounted) {
+      setState(() {
+        _cameraError = null;
+        _cameraStarted = source.isRunning;
+      });
+    }
 
     if (!source.isSupported) {
       if (mounted) {
@@ -104,6 +134,7 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
               'Phân tích camera realtime hiện chỉ hỗ trợ trên Flutter Web.';
         });
       }
+      _cameraStarting = false;
       return;
     }
 
@@ -113,15 +144,35 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
         await source.stop();
         return;
       }
-      setState(() => _cameraStarted = true);
-      _startPostureTransport(source.frames);
+      setState(() {
+        _cameraStarted = source.isRunning;
+        _postureStatus = 'Đang nhận diện tư thế...';
+      });
+      if (_postureStreamer == null) {
+        _startPostureTransport(source.frames);
+      }
     } catch (error) {
       if (!mounted) return;
       setState(() {
         _cameraError = source.lastError ?? _postureErrorText(error);
         _cameraStarted = false;
       });
+    } finally {
+      _cameraStarting = false;
     }
+  }
+
+  Future<void> _retryCameraSource() async {
+    if (_cameraStarting) return;
+    await _cameraSource?.stop();
+    if (!mounted) return;
+    setState(() {
+      _cameraError = null;
+      _cameraStarted = false;
+      _postureGood = false;
+      _postureStatus = 'Đang kết nối camera...';
+    });
+    await _startCameraSource();
   }
 
   void _startPostureTransport(Stream<Map<String, dynamic>> frames) {
@@ -451,7 +502,12 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
   }
 
   Widget _buildMediaCard() {
-    final showCamera = _cameraSource?.isSupported == true && _cameraStarted;
+    final source = _cameraSource;
+    final showCamera =
+        source?.isSupported == true &&
+        (_cameraStarted || source!.isRunning || _cameraError == null);
+    final hasSafetyWarning =
+        widget.safetyWarning != null && widget.safetyWarning!.isNotEmpty;
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
       child: Stack(
@@ -488,7 +544,7 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
             Positioned(
               left: 16,
               right: 16,
-              bottom: 16,
+              bottom: hasSafetyWarning ? 68 : 16,
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.72),
@@ -496,13 +552,33 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(12),
-                  child: Text(
-                    _cameraError!,
-                    style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 12,
-                      color: Colors.white,
-                    ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _cameraError!,
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 12,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      TextButton(
+                        onPressed: _cameraStarting
+                            ? null
+                            : () => unawaited(_retryCameraSource()),
+                        child: Text(
+                          _cameraStarting ? 'Đang mở...' : 'Thử lại',
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -563,7 +639,7 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
           ),
 
           // Safety tip overlay at bottom
-          if (widget.safetyWarning != null && widget.safetyWarning!.isNotEmpty)
+          if (hasSafetyWarning)
             Positioned(
               bottom: 0,
               left: 0,

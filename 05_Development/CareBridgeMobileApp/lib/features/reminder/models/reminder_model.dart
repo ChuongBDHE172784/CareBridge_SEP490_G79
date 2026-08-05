@@ -51,7 +51,10 @@ extension ReminderStatusExtension on ReminderStatus {
     }
   }
 
-  bool get isTerminal => this == ReminderStatus.cancelled;
+  bool get isTerminal =>
+      this == ReminderStatus.done ||
+      this == ReminderStatus.skipped ||
+      this == ReminderStatus.cancelled;
 
   static ReminderStatus fromApi(String? value) {
     switch (value) {
@@ -142,6 +145,11 @@ class Reminder {
   final ReminderAssignee assignee;
   final List<int> notificationOffsetsMinutes;
   final String? timeZone;
+  final String? babyId;
+  final String? vaccinationRecordId;
+  final String? sourceReferenceType;
+  final String? sourceReferenceId;
+  final int? doseNumber;
 
   const Reminder({
     required this.id,
@@ -157,6 +165,11 @@ class Reminder {
     this.assignee = ReminderAssignee.mother,
     this.notificationOffsetsMinutes = const [],
     this.timeZone,
+    this.babyId,
+    this.vaccinationRecordId,
+    this.sourceReferenceType,
+    this.sourceReferenceId,
+    this.doseNumber,
   });
 
   factory Reminder.fromJson(Map<String, dynamic> json) {
@@ -182,6 +195,11 @@ class Reminder {
               .map((value) => value.toInt())
               .toList(),
       timeZone: json['timeZone'] as String?,
+      babyId: json['babyId'] as String?,
+      vaccinationRecordId: json['vaccinationRecordId'] as String?,
+      sourceReferenceType: json['sourceReferenceType'] as String?,
+      sourceReferenceId: json['sourceReferenceId'] as String?,
+      doseNumber: (json['doseNumber'] as num?)?.toInt(),
     );
   }
 }

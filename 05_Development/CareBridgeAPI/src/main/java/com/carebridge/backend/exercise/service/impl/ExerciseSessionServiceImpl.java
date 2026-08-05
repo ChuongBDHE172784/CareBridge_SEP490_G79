@@ -12,7 +12,6 @@ import com.carebridge.backend.exercise.entity.ExerciseStatus;
 import com.carebridge.backend.exercise.entity.PregnancyExercise;
 import com.carebridge.backend.exercise.entity.SafetyCheckStatus;
 import com.carebridge.backend.exercise.entity.SessionStatus;
-import com.carebridge.backend.exercise.exception.DuplicateSessionException;
 import com.carebridge.backend.exercise.exception.ExerciseNotFoundException;
 import com.carebridge.backend.exercise.exception.InvalidSessionStateException;
 import com.carebridge.backend.exercise.exception.SafetyCheckNotClearedException;
@@ -23,6 +22,7 @@ import com.carebridge.backend.exercise.repository.ExerciseSafetyCheckRepository;
 import com.carebridge.backend.exercise.repository.ExerciseSessionRepository;
 import com.carebridge.backend.exercise.repository.PostureFeedbackEventRepository;
 import com.carebridge.backend.exercise.service.ExerciseCareContextResolver;
+import com.carebridge.backend.security.repository.UserRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
@@ -33,6 +33,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -52,6 +53,7 @@ public class ExerciseSessionServiceImpl implements IExerciseSessionService {
     private final ExerciseSessionMapper sessionMapper;
     private final ObjectMapper objectMapper;
     private final ExerciseCareContextResolver careContextResolver;
+    private final UserRepository userRepository;
 
     @Override
     @Transactional
@@ -72,14 +74,21 @@ public class ExerciseSessionServiceImpl implements IExerciseSessionService {
             throw new SafetyCheckNotClearedException();
         }
 
-        // 3. No duplicate active session today.
+        // 3. Repeated starts are idempotent for the same user/exercise/day.
         OffsetDateTime dayStart = OffsetDateTime.now(ZoneOffset.UTC)
                 .truncatedTo(ChronoUnit.DAYS);
-        sessionRepository
-                .findActiveSessionToday(exerciseId, userId, ACTIVE_STATUSES, dayStart)
-                .ifPresent(s -> {
-                    throw new DuplicateSessionException();
-                });
+        OffsetDateTime dayEnd = dayStart.plusDays(1);
+        // Serialize starts for this authenticated user across application instances. The user
+        // row is an existing lock anchor, so this closes the check-then-insert race without a
+        // schema change or an in-memory-only lock.
+        userRepository.findByIdForUpdate(userId);
+        Optional<ExerciseSession> activeSession = sessionRepository
+                .findFirstByExerciseIdAndUserIdAndSessionStatusInAndStartedAtGreaterThanEqualAndStartedAtLessThanOrderByStartedAtAscExerciseSessionIdAsc(
+                        exerciseId, userId, ACTIVE_STATUSES, dayStart, dayEnd);
+        boolean supportsPosture = Boolean.TRUE.equals(exercise.getSupportsPostureAnalysis());
+        if (activeSession.isPresent()) {
+            return sessionMapper.toStartResponse(activeSession.get(), supportsPosture);
+        }
 
         ExerciseCareContextResolver.CareContext careContext = careContextResolver.resolve(
                 userId, request.getJourneyId());
@@ -101,7 +110,6 @@ public class ExerciseSessionServiceImpl implements IExerciseSessionService {
                 .build();
 
         ExerciseSession saved = sessionRepository.save(session);
-        boolean supportsPosture = Boolean.TRUE.equals(exercise.getSupportsPostureAnalysis());
         return sessionMapper.toStartResponse(saved, supportsPosture);
     }
 

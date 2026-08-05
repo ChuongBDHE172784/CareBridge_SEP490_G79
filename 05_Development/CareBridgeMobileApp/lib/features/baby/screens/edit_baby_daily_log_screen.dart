@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/baby_daily_log_model.dart';
@@ -55,22 +57,50 @@ class _EditBabyDailyLogScreenState extends State<EditBabyDailyLogScreen>
 
   bool _isSaving = false;
   bool _showSuccess = false;
+  LogType? _lockedLogType;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: LogType.values.length, vsync: this);
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
-        setState(() => _selectedType = LogType.values[_tabController.index]);
+        final selected = LogType.values[_tabController.index];
+        if (_lockedLogType != null && selected != _lockedLogType) {
+          _tabController.index = _lockedLogType!.index;
+          return;
+        }
+        if (mounted) setState(() => _selectedType = selected);
       }
     });
     _prefillFromLog();
+    if (widget.initialLog == null) unawaited(_loadInitialLog());
   }
 
   void _prefillFromLog() {
     final log = widget.initialLog;
     if (log == null) return;
+    _applyLog(log);
+  }
+
+  Future<void> _loadInitialLog() async {
+    try {
+      final log = await _service.getDailyLogDetail(widget.babyId, widget.logId);
+      if (log.babyId != widget.babyId) {
+        throw const FormatException('Baby daily-log scope mismatch');
+      }
+      if (!mounted) return;
+      setState(() => _applyLog(log));
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Không thể tải nhật ký để chỉnh sửa.')),
+      );
+    }
+  }
+
+  void _applyLog(BabyDailyLog log) {
+    _lockedLogType = log.logType;
     _selectedType = log.logType;
     _tabController.index = log.logType.index;
     _startedAt = log.startedAt ?? DateTime.now();
@@ -96,11 +126,17 @@ class _EditBabyDailyLogScreenState extends State<EditBabyDailyLogScreen>
   Future<void> _pickDateTime({required bool isStart}) async {
     final now = DateTime.now();
     final initial = isStart ? _startedAt : (_endedAt ?? now);
+    final firstDate = now.subtract(const Duration(days: 30));
+    final initialDate = initial.isBefore(firstDate)
+        ? firstDate
+        : initial.isAfter(now)
+        ? now
+        : initial;
 
     final date = await showDatePicker(
       context: context,
-      initialDate: initial,
-      firstDate: now.subtract(const Duration(days: 30)),
+      initialDate: initialDate,
+      firstDate: firstDate,
       lastDate: now,
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
@@ -129,7 +165,7 @@ class _EditBabyDailyLogScreenState extends State<EditBabyDailyLogScreen>
         child: child!,
       ),
     );
-    if (time == null) return;
+    if (time == null || !mounted) return;
 
     final dt = DateTime(
       date.year,
@@ -148,6 +184,14 @@ class _EditBabyDailyLogScreenState extends State<EditBabyDailyLogScreen>
   }
 
   Future<void> _save() async {
+    if (_endedAt != null && !_endedAt!.isAfter(_startedAt)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Thời gian kết thúc phải sau thời gian bắt đầu.'),
+        ),
+      );
+      return;
+    }
     setState(() => _isSaving = true);
     try {
       final note = _buildNoteFromFields();
@@ -294,6 +338,7 @@ class _EditBabyDailyLogScreenState extends State<EditBabyDailyLogScreen>
       color: _canvas,
       child: TabBar(
         controller: _tabController,
+        isScrollable: true,
         labelStyle: const TextStyle(
           fontFamily: 'Lexend',
           fontSize: 11,
@@ -519,6 +564,20 @@ class _EditBabyDailyLogScreenState extends State<EditBabyDailyLogScreen>
               }).toList(),
             ),
           ],
+        );
+      case LogType.fever:
+      case LogType.vomiting:
+      case LogType.medicine:
+        return const Padding(
+          padding: EdgeInsets.symmetric(vertical: 8),
+          child: Text(
+            'Chỉnh sửa nội dung trong phần ghi chú bên dưới.',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 13,
+              color: _onSurfaceVariant,
+            ),
+          ),
         );
       case LogType.symptom:
         return Column(

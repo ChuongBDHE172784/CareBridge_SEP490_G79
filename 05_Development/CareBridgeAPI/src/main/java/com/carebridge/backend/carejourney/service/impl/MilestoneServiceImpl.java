@@ -35,7 +35,8 @@ public class MilestoneServiceImpl implements IMilestoneService {
     // ADR-BABY-007-001: duplicate milestone types allowed — no uniqueness check
     private static final Set<String> VALID_MILESTONE_TYPES = Set.of(
             "ROLLING", "CRAWLING", "WALKING", "SPEAKING",
-            "TEETHING", "WEANING", "FIRST_SMILE", "SITTING", "STANDING"
+            "TEETHING", "WEANING", "FIRST_SMILE", "SITTING", "STANDING",
+            "OTHER" // generic option exposed by the mobile milestone form
     );
 
     private final DevelopmentMilestoneRepository milestoneRepository;
@@ -75,6 +76,7 @@ public class MilestoneServiceImpl implements IMilestoneService {
         // sourceType defaults to "MANUAL" when not provided
         DevelopmentMilestone milestone = DevelopmentMilestone.builder()
                 .babyId(babyId)
+                .careSubjectId(babyId)
                 .milestoneType(request.getMilestoneType())
                 .achievedDate(request.getAchievedDate())
                 .note(request.getNote())

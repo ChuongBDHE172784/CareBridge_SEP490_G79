@@ -7,6 +7,7 @@ import '../models/growth_measurement_model.dart';
 import '../services/growth_measurement_service.dart';
 import '../widgets/growth_trend_chart.dart';
 import 'growth_measurement_detail_screen.dart';
+import 'growth_measurement_form_screen.dart';
 
 class GrowthMeasurementHistoryScreen extends StatefulWidget {
   final String babyId;
@@ -39,6 +40,7 @@ class _GrowthMeasurementHistoryScreenState
   int _loadGeneration = 0;
   Future<void>? _profileLoadFuture;
   bool _isOpeningFullscreen = false;
+  bool _isOpeningAdd = false;
   final ScrollController _historyScrollController = ScrollController();
 
   @override
@@ -95,6 +97,21 @@ class _GrowthMeasurementHistoryScreenState
         _babyProfile = null;
         _profileLoadFailed = true;
       });
+    }
+  }
+
+  Future<void> _openAddForm() async {
+    if (_isOpeningAdd) return;
+    _isOpeningAdd = true;
+    try {
+      final changed = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => GrowthMeasurementFormScreen(babyId: widget.babyId),
+        ),
+      );
+      if (changed == true && mounted) await _loadData();
+    } finally {
+      _isOpeningAdd = false;
     }
   }
 
@@ -190,13 +207,10 @@ class _GrowthMeasurementHistoryScreenState
               ),
             ),
       floatingActionButton: FloatingActionButton(
+        key: const Key('growth-add-button'),
+        tooltip: 'Thêm số đo',
         backgroundColor: const Color(0xFFC98C7B),
-        onPressed: () {
-          // TODO: Navigate to Add Growth Measurement Screen (not yet created but we can use detail screen as edit, wait we need an add form)
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Tính năng đang phát triển')),
-          );
-        },
+        onPressed: _openAddForm,
         child: const Icon(Icons.add, color: Colors.white),
       ),
     );

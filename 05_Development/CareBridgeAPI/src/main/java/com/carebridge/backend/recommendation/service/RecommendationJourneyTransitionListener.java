@@ -2,12 +2,14 @@ package com.carebridge.backend.recommendation.service;
 
 import com.carebridge.backend.journey.event.MotherJourneyTransitioned;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 /** Marks an active profile for review after an event-driven maternal stage transition. */
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class RecommendationJourneyTransitionListener {
     private final RecommendationService recommendationService;
 
@@ -23,6 +25,13 @@ public class RecommendationJourneyTransitionListener {
         if (!stageChanged && !outcomeChangedStage) {
             return;
         }
-        recommendationService.markStageReview(event.ownerUserId(), event.journeyId(), event.journeyType());
+        try {
+            recommendationService.markStageReview(event.ownerUserId(), event.journeyId(), event.journeyType());
+        } catch (RuntimeException exception) {
+            log.warn(
+                    "Recommendation stage review failed after journey transition eventType={} reason={}",
+                    event.eventType(),
+                    exception.getClass().getSimpleName());
+        }
     }
 }

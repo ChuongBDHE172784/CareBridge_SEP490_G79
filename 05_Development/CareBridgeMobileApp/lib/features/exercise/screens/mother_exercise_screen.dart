@@ -137,6 +137,8 @@ class _MotherExerciseScreenState extends State<MotherExerciseScreen> {
             safetyWarning: detail.safetyWarning,
             durationMinutes: detail.durationMinutes,
             sessionId: session.id,
+            initialStatus: session.status,
+            initialStartedAt: session.startedAt,
             enableRealtimePostureCamera: enableRealtimePostureCamera,
           ),
         ),

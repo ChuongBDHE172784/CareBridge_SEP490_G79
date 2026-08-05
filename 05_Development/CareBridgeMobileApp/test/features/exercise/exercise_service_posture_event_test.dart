@@ -41,6 +41,10 @@ void main() {
         capturedPath,
         '/api/v1/exercises/sessions/session-1/posture-events',
       );
+      expect(capturedBody!.keys.toSet(), <String>{
+        'eventTimeMs',
+        'keypointSummaryJson',
+      });
       expect(capturedBody?['eventTimeMs'], 1234);
       expect(capturedBody?['keypointSummaryJson'], <String, dynamic>{
         'left_shoulder': <String, double>{

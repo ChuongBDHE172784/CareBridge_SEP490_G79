@@ -132,8 +132,13 @@ class ReminderService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> snooze(String reminderId) async {
+  Future<Reminder> snooze(String reminderId, [DateTime? snoozedUntil]) async {
+    final reminder = await snoozeReminder(
+      reminderId,
+      snoozedUntil ?? DateTime.now().add(const Duration(minutes: 15)),
+    );
     notifyListeners();
+    return reminder;
   }
 
   Future<void> skip(String reminderId) async {
@@ -243,15 +248,11 @@ class ReminderService extends ChangeNotifier {
   Future<List<Map<String, dynamic>>> getVaccinationSuggestions(
     String babyId,
   ) async {
-    try {
-      final data = await apiGet(
-        '/api/v1/reminders/vaccination/suggestions?babyId=$babyId',
-      );
-      final list = data['data'] as List? ?? [];
-      return list.cast<Map<String, dynamic>>();
-    } catch (_) {
-      return [];
-    }
+    final data = await apiGet(
+      '/api/v1/reminders/vaccination/suggestions?babyId=$babyId',
+    );
+    final list = data['data'] as List? ?? [];
+    return list.cast<Map<String, dynamic>>();
   }
 
   // UC-48: Update reminder
