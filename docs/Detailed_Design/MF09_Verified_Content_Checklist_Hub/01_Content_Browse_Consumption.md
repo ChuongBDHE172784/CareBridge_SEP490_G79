@@ -1,118 +1,142 @@
-# MF-09 / Spec 01 — Verified Content Browse & Consumption
+# MF-09 / Spec 01 — Verified Content and FAQ Consumption
 
 | Field | Value |
 | --- | --- |
-| Feature | MF-09 — Verified Content & Checklist Hub |
-| Use Cases Covered | Browse/search lifecycle content; view content detail; browse approved checklist templates |
-| Primary Actor(s) | Authenticated User |
-| Platform | Mobile App, CareBridge API |
-| Main Flow Summary | User browses approved articles/FAQ by filter or search, then opens lifecycle-aware detail. Checklist template discovery is exposed separately from assigned checklist execution. |
-| Grounding (source code) | `content/controller/ContentController.java`, `content/service/ContentServiceImpl.java`, `content/entity/ContentItem.java`, Mobile `features/community/services/content_service.dart` |
+| Status | Draft |
+| Use Cases Covered | UC-62 Browse Verified Content and FAQ |
+| Use Case Group | Mobile App |
+| Platform | Mother and Family Mobile; Backend |
+| Primary Actors | Mother / Family |
+| In Scope | Only approved visible lifecycle content is returned |
+| Explicitly Excluded | Unapproved drafts and sponsored partner content |
+| Implementation Trace | UI: ViewContentScreen, VerifiedContentDetailScreen; Controller: ContentController; Service: ContentServiceImpl; Repository: ContentRepository; Entity: ContentItem |
 
 ## 1. Tổng quan luồng chính (Main Flow Overview)
 
-`ContentController` cung cấp list, search, lifecycle list/detail và lifecycle checklist endpoints. Article/FAQ consumer flow chỉ trả nội dung đã được duyệt và không tiết lộ draft qua detail. Template checklist nhìn thấy trong Hub là nội dung nguồn; việc phân phối thành `ChecklistInstance`, Current Checklist, action và history thuộc Spec 03. Tìm kiếm là endpoint `/search`, không phải tham số keyword của endpoint list.
+Only approved visible lifecycle content is returned. The flow starts only from the reachable UI or system trigger named in the metadata. The Backend rechecks authentication, role, ownership, membership, consent and current state as applicable; client-side visibility alone never grants access. A confirmed mutation is persisted before the UI displays success. External-service failure returns a safe retry state and must not fabricate completion.
 
 ## 2. Class Diagram
 
 ```plantuml
-@startuml MF09_01_ContentBrowse_ClassDiagram
+@startuml MF09_01_VerifiedContentandFAQConsumption_ClassDiagram
 skinparam classAttributeIconSize 0
-class ContentItem { +id: UUID; +type: ContentType; +title: String; +body: String; +stage: ContentStage; +topicId: UUID; +status: ContentStatus; +versionNo: Integer; +publishedAt: Instant }
-class ContentSource { +title: String; +url: String; +publisher: String }
-class ChecklistTemplate { +id: UUID; +templateLineageId: UUID; +templateVersionId: UUID; +name: String; +stage: ContentStage; +status: ChecklistTemplateStatus; +distributionEnabled: boolean }
-enum ContentStatus { DRAFT; PENDING_REVIEW; APPROVED; ARCHIVED }
-enum ChecklistTemplateStatus { DRAFT; PENDING_REVIEW; APPROVED; ARCHIVED }
-class ContentController
-interface ContentService
-class ContentServiceImpl
-interface ContentRepository
-interface ChecklistTemplateRepository
-ContentItem "1" *-- "0..*" ContentSource
-ContentItem --> ContentStatus
-ChecklistTemplate --> ChecklistTemplateStatus
-ContentController --> ContentService
-ContentServiceImpl ..|> ContentService
-ContentServiceImpl --> ContentRepository
-ContentServiceImpl --> ChecklistTemplateRepository
+hide empty members
+
+class "ViewContentScreen" as UI1 <<UI>>
+class "VerifiedContentDetailScreen" as UI2 <<UI>>
+class "ContentController" as Controller1 <<Controller>> {
+  - contentService: ContentService
+  + getContentById(id: UUID): ResponseEntity<ApiResponse<ContentDetailResponse>>
+  - validatePage(page: int, size: int): void
+}
+class "ContentServiceImpl" as Service1 <<Service>> {
+  - contentRepository: ContentRepository
+  - checklistTemplateRepository: ChecklistTemplateRepository
+  - checklistItemRepository: ChecklistItemRepository
+  - contentMapper: ContentMapper
+  + getLifecycleContentById(ownerId: UUID, id: UUID): LifecycleContentEnvelope<ContentDetailResponse>
+  + getContentById(id: UUID): ContentDetailResponse
+  + getLifecycleChecklists(ownerId: UUID): LifecycleContentEnvelope<List<ChecklistTemplateResponse>>
+  + getLifecycleContents(ownerId: UUID, type: ContentType, topicId: UUID, ...): LifecycleContentEnvelope<Page<ContentListResponse>>
+  + searchContent(request: ContentSearchRequest, pageable: Pageable): Page<ContentSearchResponse>
+}
+interface "ContentService" as Service1Contract <<Service>>
+interface "ContentRepository" as Repository1 {
+  + findByTitleIgnoreCaseAndStageAndType(title: String, stage: ContentStage, type: ContentType): Optional<ContentItem>
+  + findByIdAndStatus(id: UUID, status: ContentStatus): Optional<ContentItem>
+  + findByIdAndStageAndStatus(id: UUID, stage: ContentStage, status: ContentStatus): Optional<ContentItem>
+  + findByStatus(status: ContentStatus, pageable: Pageable): Page<ContentItem>
+  + findByType(type: ContentType, pageable: Pageable): Page<ContentItem>
+  + countByPublishedAtIsNotNull(): long
+}
+class "ContentItem" as Entity1 <<Entity>> {
+  - id: UUID
+  - type: ContentType
+  - title: String
+  - body: String
+  - summary: String
+  - stage: ContentStage
+  - eligibleFromWeek: Short
+}
+interface "JpaRepository<ContentItem, UUID>" as Repository1Base <<Framework>>
+class "PostgreSQL" as DB <<Database>>
+
+Service1Contract <|.. Service1 : implements
+Repository1Base <|-- Repository1 : extends
+UI1 ..> Controller1 : invokes API
+UI2 ..> Controller1 : invokes API
+Controller1 --> Service1Contract : delegates
+Service1 --> Repository1 : reads / writes
+Repository1 ..> Entity1 : maps
+Repository1 ..> DB : persists
 @enduml
 ```
 
-**Hình 1 — Class Diagram: Verified content và checklist template consumer view**
+**Figure 1 — Class Diagram: Verified Content and FAQ Consumption**
 
 ## 3. Sequence Diagram — Main Flow
 
 ```plantuml
-@startuml MF09_01_ContentBrowse_SequenceDiagram
-actor "User" as U
-participant "Mobile Content UI" as UI
-participant "ContentController" as Controller
-participant "ContentServiceImpl" as Service
-participant "ContentRepository" as Repo
+@startuml MF09_01_VerifiedContentandFAQConsumption_SequenceDiagram
+skinparam shadowing false
+
+actor "Mother / Family" as Actor
+boundary ":ViewContentScreen" as UI1
+control ":ContentController" as Controller1
+participant ":ContentServiceImpl" as Service1 <<service>>
+participant ":ContentRepository" as Repository1 <<repository>>
 database "PostgreSQL" as DB
 
-U -> UI : 1. Chọn stage/topic hoặc nhập từ khóa
-activate UI
-alt [browse theo filter]
-  UI -> Controller : 2a. GET /api/v1/content?type=&stage=&topicId=&page=&size=
-  activate Controller
-else [search theo từ khóa]
-  UI -> Controller : 2b. GET /api/v1/content/search?keyword=&stage=&topicId=
-  activate Controller
+group UC-62 Browse Verified Content and FAQ
+  Actor -> UI1 : 1. startBrowseVerifiedContentAndFaq()
+  activate UI1
+  UI1 -> Controller1 : 2. searchContent(filters) / getContentById(id)
+  activate Controller1
+  Controller1 -> Service1 : 3. searchContent(filters) / getContentById(id)
+  activate Service1
+  alt [request is authorized and input is valid]
+    Service1 -> Repository1 : 4a. findApprovedTargetedArticlesForRecommendation()
+    activate Repository1
+    Repository1 -> DB : 4a-1. SELECT
+    activate DB
+    DB --> Repository1 : 4a-2. queryResult
+    deactivate DB
+    Repository1 --> Service1 : 4a-3. domainRecords
+    deactivate Repository1
+    Service1 --> Controller1 : 4a-4. resultDTO
+    deactivate Service1
+    Controller1 --> UI1 : 4a-5. 200 OK
+    deactivate Controller1
+    UI1 --> Actor : 4a-6. displayBrowseVerifiedContentAndFaqResult()
+    deactivate UI1
+  else [request is invalid, forbidden or unavailable]
+    Service1 --> Controller1 : 4b. domainError
+    deactivate Service1
+    Controller1 --> UI1 : 4b-1. 400 / 401 / 403 / 404
+    deactivate Controller1
+    UI1 --> Actor : 4b-2. displayActionableError()
+    deactivate UI1
+  end
 end
-Controller -> Service : 3. getContents(...) hoặc searchContent(...)
-activate Service
-Service -> Repo : 4. query approved content with filters
-activate Repo
-Repo -> DB : 5. SELECT content_items WHERE status='APPROVED'
-activate DB
-DB --> Repo : 6. page rows
-deactivate DB
-Repo --> Service : 7. Page<ContentItem>
-deactivate Repo
-Service --> Controller : 8. paginated content response
-deactivate Service
-Controller --> UI : 9. 200 OK
-deactivate Controller
-UI --> U : 10. Hiển thị danh sách
-deactivate UI
 
-U -> UI : 11. Chọn một nội dung
-activate UI
-UI -> Controller : 12. GET /api/v1/content/lifecycle/{id}
-activate Controller
-Controller -> Service : 13. getLifecycleContentDetail(id, actor)
-activate Service
-Service -> Repo : 14. find approved content by id
-activate Repo
-Repo -> DB : 15. SELECT content item and sources
-activate DB
-DB --> Repo : 16. item / empty
-deactivate DB
-Repo --> Service : 17. Optional<ContentItem>
-deactivate Repo
-alt [item APPROVED và visible trong lifecycle]
-  Service --> Controller : 18a. LifecycleContentEnvelope<ContentDetailResponse>
-  deactivate Service
-  Controller --> UI : 18a-1. 200 OK
-  deactivate Controller
-else [không tồn tại hoặc không visible]
-  Service --> Controller : 18b. ContentNotFoundException
-  deactivate Service
-  Controller --> UI : 18b-1. 404 Not Found
-  deactivate Controller
-end
-UI --> U : 19. Hiển thị nội dung/nguồn hoặc not found
-deactivate UI
 @enduml
 ```
 
-**Hình 2 — Sequence Diagram: Browse/search và xem chi tiết verified content**
+**Figure 2 — Sequence Diagram: Verified Content and FAQ Consumption Main Flow**
+
+**Brief Explanation:**
+
+1. The diagram separates the implemented goals covered by this specification: UC-62 Browse Verified Content and FAQ.
+2. Each actor action enters through the reachable mobile or web boundary and invokes the exact controller operation exposed by the current Backend.
+3. The controller delegates to the mapped service operation; read branches query scoped records, while mutation branches load the current state before persisting the requested transition.
+4. Repository calls and PostgreSQL responses are shown explicitly, including call-stack activation and dashed return messages.
+5. Invalid, unauthorized, missing or conflicting requests return an actionable error without displaying a false success state.
+6. External systems are invoked only for the mapped use cases; notification dispatches are asynchronous, while integrations that return data remain synchronous.
 
 ## 4. Business Rules Applied
 
-- Consumer chỉ thấy content `APPROVED`; draft/pending/archived không được lộ qua detail.
-- Search bắt buộc keyword hợp lệ và được sanitize; filter stage/topic/type phải dùng enum/identifier hợp lệ.
-- Lifecycle endpoint có thể thêm envelope ngữ cảnh nhưng không thay đổi nội dung nguồn đã duyệt.
-- Checklist template discovery không đồng nghĩa checklist đã được phân phối cho người dùng; xem Spec 03.
-- Nội dung có nguồn và cảnh báo phù hợp, không thay thế chẩn đoán hoặc tư vấn y khoa.
+- Access is enforced server-side using the current actor, role, ownership, membership and consent scope.
+- Only approved visible lifecycle content is returned.
+- The following remains outside this contract: Unapproved drafts and sponsored partner content.
+- Retries must not duplicate confirmed records, transitions, notifications or external side effects.
+- Sensitive health, identity, moderation, location and safety operations retain the minimum required audit evidence.

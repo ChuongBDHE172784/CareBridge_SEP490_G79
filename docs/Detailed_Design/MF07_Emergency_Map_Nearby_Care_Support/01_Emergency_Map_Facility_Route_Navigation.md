@@ -1,217 +1,182 @@
-# MF-07 / Spec 01 — Emergency Map, Nearby Facility Search & Route Navigation
+# MF-07 / Spec 01 — Emergency Map, Nearby Facility and Navigation
 
 | Field | Value |
 | --- | --- |
-| Feature | MF-07 — Emergency Map & Nearby Care Support |
-| Use Cases Covered | UC-77 Open Emergency Map, UC-78 Find Nearby Care Facilities, UC-79 View Route, ETA and Quick Call or Navigate |
-| Primary Actor(s) | Mother |
-| Platform | Mother Mobile App |
-| Implementation Status | Partial — active flow exists, but the focused Mobile provider-label/route widget test currently fails for a nullable facility ID |
-| Main Flow Summary | A Mother opens the emergency map after a location-permission and non-dispatch notice, reviews nearby care-facility results with their source/status labels, views route/ETA and triggers a quick call or external navigation through the device's native capability. |
-| Grounding (source code) | `map/entity/CareFacility.java`, `FacilityStatus.java`, `map/controller/CareFacilityController.java` (`/api/v1/map/nearby-facilities`, `/facilities`, `/route`) |
+| Status | Draft |
+| Use Cases Covered | UC-49 Find Nearby Care Facility; UC-50 Call or Navigate to Care Facility |
+| Use Case Group | Mobile App |
+| Platform | Mother and Family Mobile; Backend; TrackAsia |
+| Primary Actors | Mother / Family |
+| In Scope | Provider status and ETA limitations stay visible |
+| Explicitly Excluded | Nearby-expert requests |
+| Implementation Trace | UI: EmergencyMapScreen; Controller: CareFacilityController; Service: CareFacilityServiceImpl; Repository: CareFacilityRepository; Entity: CareFacility |
 
 ## 1. Tổng quan luồng chính (Main Flow Overview)
 
-UC-77 (mở bản đồ) không tạo bản ghi backend — đó là bước xin quyền vị trí và hiển thị
-màn hình phía client (theo D-05, hành vi màn hình không tách UC riêng có backend). Luồng
-backend thực sự bắt đầu từ UC-78: hệ thống trả về cơ sở chăm sóc gần vị trí được người
-dùng cho phép và giữ nhãn nguồn/trạng thái để UI không trình bày dữ liệu ngoài như đã
-được CareBridge xác minh. UC-79 dùng toạ độ facility đã chọn để tính route/ETA
-(`POST /route`) rồi giao cho thiết bị xử lý gọi nhanh/điều hướng (native call/maps
-intent) — CareBridge chỉ tính toán route, **không tự dispatch xe cấp cứu hay đảm bảo
-chuyên gia đến** (đúng phạm vi loại trừ trong SRS 4.8).
+Provider status and ETA limitations stay visible. The flow starts only from the reachable UI or system trigger named in the metadata. The Backend rechecks authentication, role, ownership, membership, consent and current state as applicable; client-side visibility alone never grants access. A confirmed mutation is persisted before the UI displays success. External-service failure returns a safe retry state and must not fabricate completion.
 
 ## 2. Class Diagram
 
 ```plantuml
-@startuml MF07_01_EmergencyMap_ClassDiagram
+@startuml MF07_01_EmergencyMapNearbyFacilityandNavigation_ClassDiagram
 skinparam classAttributeIconSize 0
-skinparam classFontStyle bold
-skinparam backgroundColor #FAFAFA
-skinparam ArrowColor #555555
-skinparam ClassBorderColor #2E75B6
-skinparam ClassHeaderBackgroundColor #D5E8F0
+hide empty members
 
-class CareFacility {
-  + facilityId: UUID
-  + name: String
-  + facilityType: String
-  + address: String
-  + latitude: BigDecimal
-  + longitude: BigDecimal
-  + phone: String
-  + openingHoursJson: String
-  + sourceType: String
-  + verificationStatus: FacilityStatus
-}
-
-enum FacilityStatus {
-  VERIFIED
-  PENDING
-  REJECTED
-  UNVERIFIED
-}
-
-class NearbyResponse <<read-model>> {
-  + facilities: List<FacilityResponse>
-  + userLatitude: BigDecimal
-  + userLongitude: BigDecimal
-}
-
-class RouteRequest {
-  + originLat: BigDecimal
-  + originLng: BigDecimal
-  + facilityId: UUID
-}
-
-class RouteResponse <<read-model>> {
-  + distanceMeters: int
-  + etaMinutes: int
-  + polyline: String
-  + facilityPhone: String
-}
-
-class CareFacilityController {
+class "EmergencyMapScreen" as UI1 <<UI>>
+class "CareFacilityController" as Controller1 <<Controller>> {
   - careFacilityService: ICareFacilityService
-  + nearbyFacilities(lat, lng, radius): ResponseEntity
-  + facilities(filter): ResponseEntity
-  + facilityDetail(id): ResponseEntity
-  + getRoute(RouteRequest): ResponseEntity
+  + getFacility(id: UUID): ResponseEntity<ApiResponse<FacilityResponse>>
+  + getAllFacilities(): ResponseEntity<ApiResponse<List<FacilityResponse>>>
+  + getRoute(request: RouteRequest): ResponseEntity<ApiResponse<RouteResponse>>
 }
-
-interface ICareFacilityService <<interface>> {
-  + findNearby(lat: BigDecimal, lng: BigDecimal, radiusKm: double): NearbyResponse
-  + getRoute(request: RouteRequest): RouteResponse
-}
-
-class CareFacilityServiceImpl implements ICareFacilityService {
-  - careFacilityRepository: CareFacilityRepository
+class "CareFacilityServiceImpl" as Service1 <<Service>> {
   - trackAsiaClient: TrackAsiaClient
+  - facilityRepository: CareFacilityRepository
+  - parseTrackAsiaResults(root: JsonNode, originLat: double, originLng: double, ...): List<FacilityResponse>
+  + getFacilityById(id: UUID): FacilityResponse
+  + searchNearby(lat: BigDecimal, lng: BigDecimal, radiusMeters: Integer, ...): NearbyResponse
+  + verifyFacility(facilityId: UUID, status: com.carebridge.backend.map.facilitystatus.FacilityStatus, adminId: UUID): void
+  - normalizeFacilityType(value: String): String
 }
+interface "ICareFacilityService" as Service1Contract <<Service>>
+interface "CareFacilityRepository" as Repository1 {
+  + findByVerificationStatus(status: FacilityStatus): List<CareFacility>
+  + findByActiveTrueOrderByNameAsc(): List<CareFacility>
+  + findByFacilityIdAndActiveTrue(facilityId: UUID): Optional<CareFacility>
+  + findByExternalSourceIdAndActiveTrue(externalSourceId: String): Optional<CareFacility>
+  + findByProvinceIdAndActiveTrueOrderByNameAsc(provinceId: String): List<CareFacility>
+  + findByProvinceIdAndDistrictIdAndActiveTrueOrderByNameAsc(provinceId: String, districtId: String): List<CareFacility>
+}
+class "CareFacility" as Entity1 <<Entity>> {
+  - facilityId: UUID
+  - partnerId: UUID
+  - name: String
+  - facilityType: String
+  - facilityLevel: String
+  - ownershipType: String
+  - address: String
+}
+interface "JpaRepository<CareFacility, UUID>" as Repository1Base <<Framework>>
+class "PostgreSQL" as DB <<Database>>
+class "TrackAsia" as External <<External Service>>
 
-CareFacility --> FacilityStatus
-CareFacilityController --> ICareFacilityService : uses
-CareFacilityServiceImpl ..> NearbyResponse : builds (current code may include UNVERIFIED)
-CareFacilityServiceImpl --> TrackAsiaClient : nearby search + route/ETA
-CareFacilityServiceImpl ..> RouteResponse : builds
-
+Service1Contract <|.. Service1 : implements
+Repository1Base <|-- Repository1 : extends
+UI1 ..> Controller1 : invokes API
+Controller1 --> Service1Contract : delegates
+Service1 --> Repository1 : reads / writes
+Repository1 ..> Entity1 : maps
+Repository1 ..> DB : persists
+Service1 ..> External : invokes when required
 @enduml
 ```
 
-**Hình 1 — Class Diagram: Care Facility & Route/ETA Read-Model**
+**Figure 1 — Class Diagram: Emergency Map, Nearby Facility and Navigation**
 
 ## 3. Sequence Diagram — Main Flow
 
 ```plantuml
-@startuml MF07_01_EmergencyMap_SequenceDiagram
-skinparam sequenceArrowThickness 2
-skinparam roundcorner 10
-skinparam backgroundColor #FAFAFA
+@startuml MF07_01_EmergencyMapNearbyFacilityandNavigation_SequenceDiagram
+skinparam shadowing false
 
-actor "Mother" as M
-participant "Mobile App (Client)" as App
-participant "CareFacilityController" as Controller
-participant "CareFacilityServiceImpl" as Service
-participant "CareFacilityRepository" as FacilityRepo
+actor "Mother / Family" as Actor
+boundary ":EmergencyMapScreen" as UI1
+control ":CareFacilityController" as Controller1
+participant ":CareFacilityServiceImpl" as Service1 <<service>>
+participant ":CareFacilityRepository" as Repository1 <<repository>>
 database "PostgreSQL" as DB
-participant "TrackAsiaClient" as TrackAsia
-participant "Device Capability\n(Dialer / Maps)" as Device
+participant ":TrackAsia" as External1 <<external system>>
 
-== UC-77 Open Emergency Map ==
-M -> App : 1. Open Emergency Map
-activate App
-App -> App : 1a. Request device location permission + display\ndisclaimer "not an emergency service"
-activate App
-App --> App : 1b. permission state
-deactivate App
-App -> App : 1c. Guard — only proceed when permission granted
-activate App
-App --> App : 1d. allowed | show permission guidance
-deactivate App
-
-== UC-78 Find Nearby Care Facilities ==
-App -> Controller : 2. GET /api/v1/map/nearby-facilities?lat=&lng=&radiusMeters=&type=
-activate Controller
-Controller -> Service : 3. searchNearby(lat, lng, radiusMeters, type)
-activate Service
-alt [TrackAsia returns valid result (preferred source)]
-  Service -> TrackAsia : 4a. searchNearby(lat, lng, radiusMeters, type)
-  activate TrackAsia
-  TrackAsia --> Service : 4b. GeoJSON features[] (nearby POIs)
-  deactivate TrackAsia
-  Service -> Service : 4c. parseTrackAsiaResults() → FacilityResponse[]\n(sourceType="TRACKASIA", verificationStatus="UNVERIFIED" by default)
-  activate Service
-  Service --> Service : 4d. FacilityResponse[]
-  deactivate Service
-else [TrackAsia error/timeout/empty → fallback internal data]
-  Service -> FacilityRepo : 4e. findNearby(lat, lng, radiusMeters)
-  activate FacilityRepo
-  FacilityRepo -> DB : 4f. SELECT * FROM care_facilities\nWHERE lat/lng NOT NULL AND earth_distance(...) <= radiusMeters*1000
-  activate DB
-  DB --> FacilityRepo : 4g. rows[] (do not filter by verification_status)
-  deactivate DB
-  FacilityRepo --> Service : 4h. facilities[]
-  deactivate FacilityRepo
+group UC-49 Find Nearby Care Facility
+  Actor -> UI1 : 1. startFindNearbyCareFacility()
+  activate UI1
+  UI1 -> Controller1 : 2. searchNearby(latitude, longitude, radius)
+  activate Controller1
+  Controller1 -> Service1 : 3. searchNearby(latitude, longitude, radius)
+  activate Service1
+  alt [request is authorized and input is valid]
+    Service1 -> Repository1 : 4a. findByActiveTrueOrderByNameAsc()
+    activate Repository1
+    Repository1 -> DB : 4a-1. SELECT
+    activate DB
+    DB --> Repository1 : 4a-2. queryResult
+    deactivate DB
+    Repository1 --> Service1 : 4a-3. domainRecords
+    deactivate Repository1
+    Service1 -> External1 : 4a-4. geocodeAndEstimateRoute()
+    activate External1
+    External1 --> Service1 : 4a-5. integrationResult
+    deactivate External1
+    Service1 --> Controller1 : 4a-6. resultDTO
+    deactivate Service1
+    Controller1 --> UI1 : 4a-7. 200 OK
+    deactivate Controller1
+    UI1 --> Actor : 4a-8. displayFindNearbyCareFacilityResult()
+    deactivate UI1
+  else [request is invalid, forbidden or unavailable]
+    Service1 --> Controller1 : 4b. domainError
+    deactivate Service1
+    Controller1 --> UI1 : 4b-1. 400 / 401 / 403 / 404
+    deactivate Controller1
+    UI1 --> Actor : 4b-2. displayActionableError()
+    deactivate UI1
+  end
 end
-Service --> Controller : 5. NearbyResponse{facilities[], totalCount}
-deactivate Service
-Controller --> App : 6. HTTP 200 OK {facilities[]}
-deactivate Controller
-App --> M : 7. Display facilities on map
-deactivate App
 
-== UC-79 View Route, ETA and Quick Call or Navigate ==
-M -> App : 8. Select 1 facility
-activate App
-App -> Controller : 9. POST /api/v1/map/route\n{fromLat, fromLng, toLat, toLng, transportMode}
-activate Controller
-Controller -> Service : 10. getRoute(request)
-activate Service
-Service -> TrackAsia : 11. route(fromLat, fromLng, toLat, toLng, transportMode)
-activate TrackAsia
-TrackAsia --> Service : 12. GeoJSON route{routes: [{distance, duration, steps[]}]}
-deactivate TrackAsia
-Service -> Service : 10a. parse first leg → distanceMeters, etaMinutes,\nRoutePoint list from steps[].maneuver
-activate Service
-Service --> Service : 10b. route read-model
-deactivate Service
-Service --> Controller : 13. RouteResponse{distanceMeters, etaMinutes, points[]}
-deactivate Service
-Controller --> App : 14. HTTP 200 OK {route}
-deactivate Controller
-App --> M : 15. Display route + ETA
-deactivate App
-
-alt [Mother selects Quick Call]
-  M ->> Device : 16a. call facilityPhone (native dialer)
-else [Mother selects Directions]
-  M ->> Device : 16b. open native map app with destination coordinates (maps intent)
+group UC-50 Call or Navigate to Care Facility
+  Actor -> UI1 : 5. startCallOrNavigateToCareFacility()
+  activate UI1
+  UI1 -> Controller1 : 6. getFacility(facilityId)
+  activate Controller1
+  Controller1 -> Service1 : 7. getFacilityById(facilityId)
+  activate Service1
+  alt [request is authorized and input is valid]
+    Service1 -> Repository1 : 8a. findByFacilityIdAndActiveTrue()
+    activate Repository1
+    Repository1 -> DB : 8a-1. SELECT
+    activate DB
+    DB --> Repository1 : 8a-2. queryResult
+    deactivate DB
+    Repository1 --> Service1 : 8a-3. domainRecords
+    deactivate Repository1
+    Service1 --> Controller1 : 8a-4. resultDTO
+    deactivate Service1
+    Controller1 --> UI1 : 8a-5. 200 OK
+    deactivate Controller1
+    UI1 -> External1 : 8a-6. openDialerOrNavigation()
+    activate External1
+    External1 --> UI1 : 8a-7. deviceActionResult
+    deactivate External1
+    UI1 --> Actor : 8a-8. displayCallOrNavigateToCareFacilityResult()
+    deactivate UI1
+  else [request is invalid, forbidden or unavailable]
+    Service1 --> Controller1 : 8b. domainError
+    deactivate Service1
+    Controller1 --> UI1 : 8b-1. 400 / 401 / 403 / 404
+    deactivate Controller1
+    UI1 --> Actor : 8b-2. displayActionableError()
+    deactivate UI1
+  end
 end
 
 @enduml
 ```
 
-**Hình 2 — Sequence Diagram: Open Map → Find Nearby Facilities → View Route/ETA → Quick Call or Navigate (Main Flow)**
+**Figure 2 — Sequence Diagram: Emergency Map, Nearby Facility and Navigation Main Flow**
 
-> **Ghi chú grounding:** Code thật của
-> `CareFacilityServiceImpl.searchNearby(...)` gọi **TrackAsia (nguồn ngoài) trước tiên**, và
-> kết quả TrackAsia được gắn cứng `verificationStatus="UNVERIFIED"` — nghĩa là trong đường
-> đi chính (happy path), UC-78 **có thể trả về facility chưa được admin xác minh**. Chỉ khi
-> TrackAsia lỗi/rỗng, hệ thống mới fallback sang `CareFacilityRepository.findNearby(...)`,
-> và truy vấn native đó **không lọc theo `verification_status='VERIFIED'`** — trả về mọi
-> facility có toạ độ trong bán kính bất kể trạng thái xác minh. Điều này khác với khẳng định
-> Vì vậy UI phải hiển thị nhãn nguồn/trạng thái và không được suy diễn mọi kết quả là đã
-> được xác minh. Hành vi lọc theo VERIFIED hiện **không được enforce** ở tầng
-> service/repository cho nearby search.
-> Ngoài ra, `map/routeprovider/RouteProvider.java` tồn tại như một interface nhưng
-> `CareFacilityServiceImpl` phụ thuộc thẳng vào `TrackAsiaClient` cụ thể, không qua
-> interface này.
+**Brief Explanation:**
 
+1. The diagram separates the implemented goals covered by this specification: UC-49 Find Nearby Care Facility; UC-50 Call or Navigate to Care Facility.
+2. Each actor action enters through the reachable mobile or web boundary and invokes the exact controller operation exposed by the current Backend.
+3. The controller delegates to the mapped service operation; read branches query scoped records, while mutation branches load the current state before persisting the requested transition.
+4. Repository calls and PostgreSQL responses are shown explicitly, including call-stack activation and dashed return messages.
+5. Invalid, unauthorized, missing or conflicting requests return an actionable error without displaying a false success state.
+6. External systems are invoked only for the mapped use cases; notification dispatches are asynchronous, while integrations that return data remain synchronous.
 
 ## 4. Business Rules Applied
 
-- UC-77 — người dùng phải được thông báo rõ phạm vi "không dispatch cấp cứu" trước khi vào bản đồ (CC-01).
-- UC-78 — vị trí chỉ được dùng sau khi người dùng cấp quyền hoặc chọn khu vực; kết quả phải giữ nhãn nguồn/trạng thái và không được ngầm quảng bá là đã xác minh.
-- UC-79 — route/ETA là hỗ trợ tham khảo; gọi nhanh/điều hướng giao hoàn toàn cho năng lực thiết bị (dialer/maps app), CareBridge không tự thực hiện cuộc gọi hay điều hướng.
-- Excluded (SRS 4.8) — không dispatch xe cấp cứu, không đảm bảo lịch trình cơ sở y tế.
-- Verification gap — cần sửa và chạy lại `nearby_care_contract_test.dart` cho trường hợp provider label/route với facility ID nullable trước khi đánh dấu flow ổn định.
+- Access is enforced server-side using the current actor, role, ownership, membership and consent scope.
+- Provider status and ETA limitations stay visible.
+- The following remains outside this contract: Nearby-expert requests.
+- Retries must not duplicate confirmed records, transitions, notifications or external side effects.
+- Sensitive health, identity, moderation, location and safety operations retain the minimum required audit evidence.

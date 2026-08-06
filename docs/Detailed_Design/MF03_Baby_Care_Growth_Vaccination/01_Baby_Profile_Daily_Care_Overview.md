@@ -1,369 +1,368 @@
-# MF-03 / Spec 01 — Baby Profile Lifecycle & Daily Care Overview
+# MF-03 / Spec 01 — Baby Profile and Daily Care Overview
 
 | Field | Value |
 | --- | --- |
-| Feature | MF-03 — Baby Care Journey, Growth & Vaccination |
-| Use Cases Covered | UC-32 Create Baby Profile, UC-33 Update or Archive Baby Profile, UC-34 Switch Active Baby Profile, UC-35 View Baby Care Overview, UC-36 Add Baby Daily Log, UC-38 View Baby Log Summary |
-| Primary Actor(s) | Mother |
-| Platform | Mother Mobile App |
-| Main Flow Summary | A Mother creates a `BabyProfile`, selects which baby is active, records daily observations, and reads the care overview/summary. Medical documents for the baby reuse the shared health-record API with `babyId` and protected `fileIds`; MF-03 does not introduce a second baby-document model. |
-| Grounding (source code) | `baby/entity/BabyProfile.java`, `BabyProfileStatus.java`, `baby/controller/BabyController.java` (`/api/v1/babies`), `carejourney/entity/BabyDailyLog.java`, `carejourney/controller/BabyDailyLogController.java`, `BabyCareOverviewController.java`, `BabyLogSummaryController.java`; shared implementation: `health/entity/HealthRecord.java` (`babyId`), `health/dto/AddHealthRecordRequest.java` (`babyId`, `fileIds`), `health/controller/HealthRecordController.java`, `health/service/impl/HealthRecordServiceImpl.java`, `file/entity/UploadedFile.java` |
+| Status | Draft |
+| Use Cases Covered | UC-34 Manage Baby Profiles; UC-35 Manage Baby Daily Logs; UC-39 Manage Baby Health Records |
+| Use Case Group | Mobile App |
+| Platform | Mother Mobile App; Backend |
+| Primary Actors | Mother |
+| In Scope | All operations are scoped to the selected authorized baby |
+| Explicitly Excluded | Pediatric diagnosis |
+| Implementation Trace | UI: Baby profile, daily-log and baby health-record screens; Controller: BabyController, BabyDailyLogController, HealthRecordController; Service: BabyServiceImpl, BabyDailyLogServiceImpl, HealthRecordServiceImpl; Repository: BabyProfileRepository, BabyDailyLogRepository, HealthRecordRepository; Entity: BabyProfile, BabyDailyLog, HealthRecord |
 
 ## 1. Tổng quan luồng chính (Main Flow Overview)
 
-`BabyProfile` là gốc của toàn bộ MF-03. Mother tạo hồ sơ bé (UC-32), có thể cập nhật
-hoặc lưu trữ (`ARCHIVED`) khi không còn theo dõi tích cực nhưng không phá huỷ lịch sử
-liên quan (UC-33), và chọn baby nào là "đang theo dõi" cho dashboard hiện tại (`active`
-flag — UC-34). Ghi nhật ký hằng ngày (`BabyDailyLog` — cho bú/ngủ/tã/triệu chứng — UC-36)
-là hành động lặp lại nhiều nhất trong MF-03, nên gộp chung với UC-38 (tổng hợp 24h/7 ngày)
-làm luồng chính; growth/milestone/vaccination được tách thành hai spec riêng (02, 03) vì
-chúng có vòng đời và nhịp độ nghiệp vụ khác (đo định kỳ / mốc phát triển / tiêm
-chủng theo lịch tham khảo).
-
-Hồ sơ khám, xét nghiệm hoặc đơn thuốc của bé không được lưu trong `BabyDailyLog`.
-Implementation hiện tại dùng chung `HealthRecord`: request mang `babyId` để liên kết
-đúng bé và `fileIds` để gắn các `UploadedFile` đã upload. Timeline có
-`TimelineFilter.babyId`; attachment chỉ trả URL có thời hạn sau kiểm tra quyền. Thiết kế
-API record/attachment được dùng chung ở tầng code, nhưng flow có `babyId` và quyền truy
-cập của child record thuộc MF-03; MF-02/spec-04 chỉ mô tả maternal record.
+All operations are scoped to the selected authorized baby. The flow starts only from the reachable UI or system trigger named in the metadata. The Backend rechecks authentication, role, ownership, membership, consent and current state as applicable; client-side visibility alone never grants access. A confirmed mutation is persisted before the UI displays success. External-service failure returns a safe retry state and must not fabricate completion.
 
 ## 2. Class Diagram
 
 ```plantuml
-@startuml MF03_01_BabyProfile_ClassDiagram
+@startuml MF03_01_BabyProfileandDailyCareOverview_ClassDiagram
 skinparam classAttributeIconSize 0
-skinparam classFontStyle bold
-skinparam backgroundColor #FAFAFA
-skinparam ArrowColor #555555
-skinparam ClassBorderColor #2E75B6
-skinparam ClassHeaderBackgroundColor #D5E8F0
+hide empty members
 
-class BabyProfile {
-  + id: UUID
-  + ownerUserId: UUID
-  + nickname: String
-  + birthDate: LocalDate
-  + gender: Gender
-  + birthWeightKg: BigDecimal
-  + birthLengthCm: BigDecimal
-  + status: BabyProfileStatus
-  + active: Boolean
-}
-
-enum BabyProfileStatus {
-  ACTIVE
-  ARCHIVED
-}
-
-enum Gender {
-  MALE
-  FEMALE
-  UNKNOWN
-}
-
-class BabyDailyLog {
-  + babyLogId: UUID
-  + babyId: UUID
-  + logType: String
-  + startedAt: Instant
-  + endedAt: Instant
-  + quantity: BigDecimal
-  + unit: String
-  + note: String
-  + recordedBy: UUID
-  + status: BabyDailyLogStatus
-}
-
-enum BabyDailyLogStatus {
-  ACTIVE
-  DELETED
-}
-
-class BabyCareOverviewResponse <<read-model>> {
-  + babyId: UUID
-  + recentLogs: List<BabyDailyLog>
-  + growthSummary: GrowthSummary
-  + milestoneSummary: MilestoneSummary
-  + vaccinationStatusSummary: VaccinationSummary
-}
-
-class BabyLogSummaryResponse <<read-model>> {
-  + babyId: UUID
-  + windowHours: int
-  + feedingCount: int
-  + sleepTotalMinutes: int
-  + diaperCount: int
-}
-
-class HealthRecord <<shared API; MF-03 child record>> {
-  + id: UUID
-  + ownerUserId: UUID
-  + babyId: UUID
-  + recordType: RecordType
-  + title: String
-  + status: HealthRecordStatus
-}
-
-class UploadedFile <<attachments table>> {
-  + id: UUID
-  + ownerUserId: UUID
-  + healthRecordId: UUID
-  + status: FileStatus
-}
-
-class BabyController {
+class "Baby profile" as UI1 <<UI>>
+class "daily-log and baby health-record screens" as UI2 <<UI>>
+class "BabyController" as Controller1 <<Controller>> {
   - babyService: IBabyService
-  + create(CreateBabyProfileRequest): ResponseEntity
-  + update(babyId, UpdateBabyProfileRequest): ResponseEntity
-  + archive(babyId): ResponseEntity
-  + switchActive(babyId): ResponseEntity
+  + archiveBabyProfile(babyId: UUID, principal: Principal): ResponseEntity<ApiResponse<ArchiveBabyProfileResponse>>
+  + createBabyProfile(request: CreateBabyProfileRequest, principal: Principal): ResponseEntity<ApiResponse<CreateBabyProfileResponse>>
+  + getBabyProfile(babyId: UUID, principal: Principal): ResponseEntity<ApiResponse<BabyProfileDetailResponse>>
+  + listBabyProfiles(principal: Principal): ResponseEntity<ApiResponse<List<BabyProfileDetailResponse>>>
+  + switchActiveBabyProfile(babyId: UUID, principal: Principal): ResponseEntity<ApiResponse<BabyProfileDetailResponse>>
+  + updateBabyProfile(babyId: UUID, request: UpdateBabyProfileRequest, principal: Principal): ResponseEntity<ApiResponse<UpdateBabyProfileResponse>>
 }
-
-class BabyDailyLogController {
-  - babyDailyLogService: BabyDailyLogService
-  + add(babyId, request): ResponseEntity
+class "BabyDailyLogController" as Controller2 <<Controller>> {
+  - babyDailyLogService: IBabyDailyLogService
+  + getDailyLogs(babyId: UUID, principal: Principal): ApiResponse<List<BabyDailyLogResponse>>
+  + addDailyLog(babyId: UUID, request: AddBabyDailyLogRequest, principal: Principal): ApiResponse<AddBabyDailyLogResponse>
+  + getDailyLogDetail(babyId: UUID, logId: UUID, principal: Principal): ApiResponse<BabyDailyLogResponse>
+  + deleteLog(babyId: UUID, logId: UUID, principal: Principal): ApiResponse<Void>
+  + updateLog(babyId: UUID, logId: UUID, request: UpdateBabyDailyLogRequest, ...): ApiResponse<BabyDailyLogResponse>
 }
-
-class BabyCareOverviewController {
-  + overview(babyId): ResponseEntity
+class "HealthRecordController" as Controller3 <<Controller>> {
+  - healthRecordService: IHealthRecordService
+  + addHealthRecord(request: AddHealthRecordRequest, principal: Principal): ResponseEntity<ApiResponse<AddHealthRecordResponse>>
+  + archiveHealthRecord(id: UUID, principal: Principal): ResponseEntity<ApiResponse<ArchiveHealthRecordResponse>>
+  + getHealthRecord(recordId: UUID, principal: Principal): ResponseEntity<ApiResponse<HealthRecordDetailResponse>>
+  + updateHealthRecord(id: UUID, request: UpdateHealthRecordRequest, principal: Principal): ResponseEntity<ApiResponse<UpdateHealthRecordResponse>>
+  + getTimeline(filter: TimelineFilter, principal: Principal): ResponseEntity<ApiResponse<TimelineResponse>>
 }
-
-class BabyLogSummaryController {
-  + summary(babyId): ResponseEntity
+class "BabyServiceImpl" as Service1 <<Service>> {
+  - babyRepository: BabyProfileRepository
+  - accessPolicy: BabyAccessPolicy
+  - auditService: AuditService
+  + archiveBabyProfile(babyId: UUID, callerId: UUID): ArchiveBabyProfileResponse
+  + createBabyProfile(request: CreateBabyProfileRequest, callerId: UUID): CreateBabyProfileResponse
+  + getBabyProfile(profileId: UUID, callerId: UUID): BabyProfileDetailResponse
+  + listBabyProfiles(callerId: UUID): List<BabyProfileDetailResponse>
+  + switchActiveBabyProfile(babyId: UUID, callerId: UUID): BabyProfileDetailResponse
 }
-
-interface IBabyService <<interface>> {
-  + create(ownerId: UUID, request): BabyProfile
-  + archive(ownerId: UUID, babyId: UUID): BabyProfile
-  + switchActive(ownerId: UUID, babyId: UUID): void
-}
-
-class BabyServiceImpl implements IBabyService {
+class "BabyDailyLogServiceImpl" as Service2 <<Service>> {
+  - babyDailyLogRepository: BabyDailyLogRepository
   - babyProfileRepository: BabyProfileRepository
   - babyAccessPolicy: BabyAccessPolicy
   - auditService: AuditService
+  + getDailyLogs(babyId: UUID, principal: Principal): List<BabyDailyLogResponse>
+  - validateLogBelongsToBaby(log: BabyDailyLog, babyId: UUID): void
+  + addDailyLog(babyId: UUID, request: AddBabyDailyLogRequest, userId: UUID): AddBabyDailyLogResponse
+  + getDailyLogDetail(babyId: UUID, logId: UUID, principal: Principal): BabyDailyLogResponse
+  - checkActiveStatus(baby: BabyProfile): void
 }
+class "HealthRecordServiceImpl" as Service3 <<Service>> {
+  - recordRepository: HealthRecordRepository
+  - recordFileRepository: HealthRecordFileRepository
+  - uploadedFileRepository: UploadedFileRepository
+  - fileService: IFileService
+  + addHealthRecord(request: AddHealthRecordRequest, callerId: UUID): AddHealthRecordResponse
+  + getHealthRecord(recordId: UUID, callerId: UUID): HealthRecordDetailResponse
+  + updateHealthRecord(id: UUID, request: UpdateHealthRecordRequest, ownerUserId: UUID): UpdateHealthRecordResponse
+  + archiveRecord(id: UUID, ownerUserId: UUID): ArchiveHealthRecordResponse
+  + getTimeline(ownerUserId: UUID, filter: TimelineFilter): TimelineResponse
+}
+interface "IBabyService" as Service1Contract <<Service>>
+interface "IBabyDailyLogService" as Service2Contract <<Service>>
+interface "IHealthRecordService" as Service3Contract <<Service>>
+interface "BabyProfileRepository" as Repository1 {
+  + countByOwnerUserId(ownerUserId: UUID): long
+  + findByOwnerUserIdAndStatusOrderByCreatedAtAsc(ownerUserId: UUID, status: BabyProfileStatus): List<BabyProfile>
+  + findByStatus(status: BabyProfileStatus): List<BabyProfile>
+  + findByIdAndOwnerUserId(id: UUID, ownerUserId: UUID): Optional<BabyProfile>
+}
+interface "BabyDailyLogRepository" as Repository2 {
+  + findByBabyId(babyId: UUID): List<BabyDailyLog>
+  + findByBabyIdAndStatusOrderByCreatedAtDesc(babyId: UUID, status: BabyDailyLogStatus): List<BabyDailyLog>
+  + findByBabyLogIdAndStatus(babyLogId: UUID, status: BabyDailyLogStatus): Optional<BabyDailyLog>
+}
+interface "HealthRecordRepository" as Repository3 {
+  + findByIdAndStatus(id: UUID, status: HealthRecordStatus): Optional<HealthRecord>
+  + countByOwnerUserIdAndStatus(ownerUserId: UUID, status: HealthRecordStatus): long
+}
+class "BabyProfile" as Entity1 <<Entity>> {
+  - id: UUID
+  - ownerUserId: UUID
+  - person: Person
+  - nickname: String
+  - birthDate: LocalDate
+  - gender: Gender
+  - birthWeightKg: BigDecimal
+}
+class "BabyDailyLog" as Entity2 <<Entity>> {
+  - babyLogId: UUID
+  - babyId: UUID
+  - logType: String
+  - startedAt: Instant
+  - endedAt: Instant
+  - quantity: BigDecimal
+  - unit: String
+}
+class "HealthRecord" as Entity3 <<Entity>> {
+  - id: UUID
+  - ownerUserId: UUID
+  - journeyId: UUID
+  - babyId: UUID
+  - recordType: RecordType
+  - title: String
+  - fileUrl: String
+}
+interface "JpaRepository<BabyProfile, UUID>" as Repository1Base <<Framework>>
+interface "JpaRepository<BabyDailyLog, UUID>" as Repository2Base <<Framework>>
+interface "JpaRepository<HealthRecord, UUID>" as Repository3Base <<Framework>>
+class "PostgreSQL" as DB <<Database>>
 
-BabyProfile --> BabyProfileStatus
-BabyProfile --> Gender
-BabyProfile "1" *-- "0..*" BabyDailyLog : has
-BabyProfile "1" <-- "0..*" HealthRecord : babyId
-HealthRecord "1" <-- "0..*" UploadedFile : healthRecordId
-BabyDailyLog --> BabyDailyLogStatus
-BabyController --> IBabyService : uses
-BabyDailyLogController --> BabyDailyLogService : uses
-BabyServiceImpl --> BabyAccessPolicy : enforces ownership
-BabyCareOverviewController ..> BabyCareOverviewResponse : builds
-BabyLogSummaryController ..> BabyLogSummaryResponse : builds
-
+Service1Contract <|.. Service1 : implements
+Service2Contract <|.. Service2 : implements
+Service3Contract <|.. Service3 : implements
+Repository1Base <|-- Repository1 : extends
+Repository2Base <|-- Repository2 : extends
+Repository3Base <|-- Repository3 : extends
+UI1 ..> Controller1 : invokes API
+UI2 ..> Controller2 : invokes API
+UI2 ..> Controller3 : invokes API
+Controller1 --> Service1Contract : delegates
+Controller2 --> Service2Contract : delegates
+Controller3 --> Service3Contract : delegates
+Service1 --> Repository1 : reads / writes
+Service2 --> Repository2 : reads / writes
+Service3 --> Repository3 : reads / writes
+Repository1 ..> Entity1 : maps
+Repository1 ..> DB : persists
+Repository2 ..> Entity2 : maps
+Repository2 ..> DB : persists
+Repository3 ..> Entity3 : maps
+Repository3 ..> DB : persists
+Entity1 "1" -- "0..*" Entity2 : daily logs
+Entity1 "1" -- "0..*" Entity3 : health records
 @enduml
 ```
 
-**Hình 1 — Class Diagram: Baby Profile, Daily Log, Care Overview & Shared Baby Health Records**
+**Figure 1 — Class Diagram: Baby Profile and Daily Care Overview**
 
 ## 3. Sequence Diagram — Main Flow
 
 ```plantuml
-@startuml MF03_01_BabyProfile_SequenceDiagram
-skinparam sequenceArrowThickness 2
-skinparam roundcorner 10
-skinparam backgroundColor #FAFAFA
+@startuml MF03_01_BabyProfileandDailyCareOverview_SequenceDiagram
+skinparam shadowing false
 
-actor "Mother" as M
-participant "Web / Mobile UI" as UI
-participant "BabyController" as BabyController
-participant "BabyDailyLogController" as LogController
-participant "BabyCareOverviewController" as OverviewController
-participant "BabyLogSummaryController" as SummaryController
-participant "HealthRecordController" as HealthController
-participant "BabyServiceImpl" as BabyService
-participant "BabyDailyLogServiceImpl" as LogService
-participant "BabyCareOverviewServiceImpl" as OverviewService
-participant "BabyLogSummaryServiceImpl" as SummaryService
-participant "HealthRecordServiceImpl" as HealthService
-participant "AuditService" as Audit
-participant "BabyProfileRepository" as BabyRepo
-participant "BabyDailyLogRepository" as LogRepo
-participant "HealthRecordRepository" as HealthRepo
-participant "UploadedFileRepository" as FileRepo
+actor "Mother" as Actor
+boundary ":Baby profile screens" as UI1
+boundary ":daily-log screens" as UI2
+boundary ":baby health-record screens" as UI3
+control ":BabyController" as Controller1
+control ":BabyDailyLogController" as Controller2
+control ":HealthRecordController" as Controller3
+participant ":BabyServiceImpl" as Service1 <<service>>
+participant ":BabyDailyLogServiceImpl" as Service2 <<service>>
+participant ":HealthRecordServiceImpl" as Service3 <<service>>
+participant ":BabyProfileRepository" as Repository1 <<repository>>
+participant ":BabyDailyLogRepository" as Repository2 <<repository>>
+participant ":HealthRecordRepository" as Repository3 <<repository>>
 database "PostgreSQL" as DB
 
-== UC-32 Create Baby Profile ==
-M -> UI : 1. Submit request
-activate UI
-UI -> BabyController : 1a. POST /api/v1/babies\n{nickname, birthDate, gender}
-activate BabyController
-BabyController -> BabyService : 2. create(ownerId, request)
-activate BabyService
-BabyService -> BabyRepo : 3. save(BabyProfile{status=ACTIVE, active=true})
-activate BabyRepo
-BabyRepo -> DB : 4. INSERT INTO baby_profiles ...
-activate DB
-DB --> BabyRepo : 5. saved
-deactivate DB
-BabyRepo --> BabyService : 6. BabyProfile
-deactivate BabyRepo
-BabyService -> Audit : 7. log(BABY_PROFILE_CREATED)
-activate Audit
-Audit --> BabyService : 8. void
-deactivate Audit
-BabyService --> BabyController : 9. BabyProfile
-deactivate BabyService
-BabyController --> UI : 10. HTTP 201 Created
-deactivate BabyController
-UI --> M : 10a. Display HTTP 201 Created
-deactivate UI
+group UC-34 Manage Baby Profiles
+  Actor -> UI1 : 1. startManageBabyProfiles()
+  activate UI1
+  UI1 -> Controller1 : 2. listBabyProfiles() / createBabyProfile() / updateBabyProfile() / archiveBabyProfile()
+  activate Controller1
+  Controller1 -> Service1 : 3. listBabyProfiles() / createBabyProfile() / updateBabyProfile() / archiveBabyProfile()
+  activate Service1
+  alt [selected action is view or list]
+    Service1 -> Repository1 : 4a. findByOwnerUserIdAndStatusOrderByCreatedAtAsc() / findByIdAndOwnerUserId()
+    activate Repository1
+    Repository1 -> DB : 4a-1. SELECT
+    activate DB
+    DB --> Repository1 : 4a-2. queryResult
+    deactivate DB
+    Repository1 --> Service1 : 4a-3. domainRecords
+    deactivate Repository1
+    Service1 --> Controller1 : 4a-4. resultDTO
+    deactivate Service1
+    Controller1 --> UI1 : 4a-5. 200 OK
+    deactivate Controller1
+    UI1 --> Actor : 4a-6. displayCurrentState()
+    deactivate UI1
+  else [selected action creates, updates, archives or deletes]
+    Service1 -> Repository1 : 4b. findByOwnerUserIdAndStatusOrderByCreatedAtAsc() / findByIdAndOwnerUserId()
+    activate Repository1
+    Repository1 -> DB : 4b-1. SELECT
+    activate DB
+    DB --> Repository1 : 4b-2. currentState
+    deactivate DB
+    Repository1 --> Service1 : 4b-3. scopedEntity
+    deactivate Repository1
+    Service1 -> Repository1 : 4b-4. save()
+    activate Repository1
+    Repository1 -> DB : 4b-5. INSERT / UPDATE
+    activate DB
+    DB --> Repository1 : 4b-6. persistedState
+    deactivate DB
+    Repository1 --> Service1 : 4b-7. persistedEntity
+    deactivate Repository1
+    Service1 --> Controller1 : 4b-8. resultDTO
+    deactivate Service1
+    Controller1 --> UI1 : 4b-9. 200 OK / 201 Created
+    deactivate Controller1
+    UI1 --> Actor : 4b-10. displayConfirmedState()
+    deactivate UI1
+  else [request is invalid, forbidden, not found or conflicting]
+    Service1 --> Controller1 : 4c. domainError
+    deactivate Service1
+    Controller1 --> UI1 : 4c-1. 400 / 401 / 403 / 404 / 409
+    deactivate Controller1
+    UI1 --> Actor : 4c-2. displayActionableError()
+    deactivate UI1
+  end
+end
 
-== UC-34 Switch Active Baby Profile ==
-M -> UI : 11. Submit request
-activate UI
-UI -> BabyController : 11a. PATCH /api/v1/babies/{babyId}/active
-activate BabyController
-BabyController -> BabyService : 12. switchActive(ownerId, babyId)
-activate BabyService
-BabyService -> BabyRepo : 13. clearActiveForOwner(ownerId)
-activate BabyRepo
-BabyRepo -> DB : 14. UPDATE baby_profiles SET active=false\nWHERE owner_user_id=? AND active=true
-activate DB
-DB --> BabyRepo : 15. updated
-deactivate DB
-BabyRepo --> BabyService : 16. void
-deactivate BabyRepo
-BabyService -> BabyRepo : 17. setActive(babyId)
-activate BabyRepo
-BabyRepo -> DB : 18. UPDATE baby_profiles SET active=true\nWHERE id=?
-activate DB
-DB --> BabyRepo : 19. updated
-deactivate DB
-BabyRepo --> BabyService : 20. void
-deactivate BabyRepo
-BabyService -> Audit : 21. log(BABY_ACTIVE_PROFILE_SWITCHED)
-activate Audit
-Audit --> BabyService : 22. void
-deactivate Audit
-BabyService --> BabyController : 23. void
-deactivate BabyService
-BabyController --> UI : 24. HTTP 200 OK
-deactivate BabyController
-UI --> M : 24a. Display HTTP 200 OK
-deactivate UI
+group UC-35 Manage Baby Daily Logs
+  Actor -> UI2 : 5. startManageBabyDailyLogs()
+  activate UI2
+  UI2 -> Controller2 : 6. getDailyLogs() / addDailyLog() / updateLog() / deleteLog()
+  activate Controller2
+  Controller2 -> Service2 : 7. getDailyLogs() / addDailyLog() / updateLog() / deleteLog()
+  activate Service2
+  alt [selected action is view or list]
+    Service2 -> Repository2 : 8a. findByBabyIdAndStatusOrderByCreatedAtDesc()
+    activate Repository2
+    Repository2 -> DB : 8a-1. SELECT
+    activate DB
+    DB --> Repository2 : 8a-2. queryResult
+    deactivate DB
+    Repository2 --> Service2 : 8a-3. domainRecords
+    deactivate Repository2
+    Service2 --> Controller2 : 8a-4. resultDTO
+    deactivate Service2
+    Controller2 --> UI2 : 8a-5. 200 OK
+    deactivate Controller2
+    UI2 --> Actor : 8a-6. displayCurrentState()
+    deactivate UI2
+  else [selected action creates, updates, archives or deletes]
+    Service2 -> Repository2 : 8b. findByBabyIdAndStatusOrderByCreatedAtDesc()
+    activate Repository2
+    Repository2 -> DB : 8b-1. SELECT
+    activate DB
+    DB --> Repository2 : 8b-2. currentState
+    deactivate DB
+    Repository2 --> Service2 : 8b-3. scopedEntity
+    deactivate Repository2
+    Service2 -> Repository2 : 8b-4. save() / delete()
+    activate Repository2
+    Repository2 -> DB : 8b-5. INSERT / UPDATE / DELETE
+    activate DB
+    DB --> Repository2 : 8b-6. persistedState
+    deactivate DB
+    Repository2 --> Service2 : 8b-7. persistedEntity
+    deactivate Repository2
+    Service2 --> Controller2 : 8b-8. resultDTO
+    deactivate Service2
+    Controller2 --> UI2 : 8b-9. 200 OK / 201 Created
+    deactivate Controller2
+    UI2 --> Actor : 8b-10. displayConfirmedState()
+    deactivate UI2
+  else [request is invalid, forbidden, not found or conflicting]
+    Service2 --> Controller2 : 8c. domainError
+    deactivate Service2
+    Controller2 --> UI2 : 8c-1. 400 / 401 / 403 / 404 / 409
+    deactivate Controller2
+    UI2 --> Actor : 8c-2. displayActionableError()
+    deactivate UI2
+  end
+end
 
-== UC-36 Add Baby Daily Log ==
-M -> UI : 25. Submit request
-activate UI
-UI -> LogController : 25a. POST /api/v1/babies/{babyId}/daily-logs\n{logType=FEEDING, startedAt, quantity, unit}
-activate LogController
-LogController -> LogService : 26. add(ownerId, babyId, request)
-activate LogService
-LogService -> LogRepo : 27. save(BabyDailyLog{status=ACTIVE})
-activate LogRepo
-LogRepo -> DB : 28. INSERT INTO baby_daily_logs ...
-activate DB
-DB --> LogRepo : 29. saved
-deactivate DB
-LogRepo --> LogService : 30. BabyDailyLog
-deactivate LogRepo
-LogService -> Audit : 31. log(BABY_LOG_ADDED)
-activate Audit
-Audit --> LogService : 32. void
-deactivate Audit
-LogService --> LogController : 33. BabyDailyLog
-deactivate LogService
-LogController --> UI : 34. HTTP 201 Created
-deactivate LogController
-UI --> M : 34a. Display HTTP 201 Created
-deactivate UI
-
-== UC-35 View Baby Care Overview ==
-M -> UI : 35. Submit request
-activate UI
-UI -> OverviewController : 35a. GET /api/v1/babies/{babyId}/care-overview
-activate OverviewController
-OverviewController -> OverviewService : 36. overview(ownerId, babyId)
-activate OverviewService
-OverviewService -> DB : 37. SELECT recent logs, growth, milestones, vaccination status\nWHERE baby_id=?
-activate DB
-DB --> OverviewService : 38. aggregated rows
-deactivate DB
-OverviewService --> OverviewController : 39. BabyCareOverviewResponse
-deactivate OverviewService
-OverviewController --> UI : 40. HTTP 200 OK {BabyCareOverviewResponse}
-deactivate OverviewController
-UI --> M : 40a. Display HTTP 200 OK {BabyCareOverviewResponse}
-deactivate UI
-
-== UC-38 View Baby Log Summary ==
-M -> UI : 41. Submit request
-activate UI
-UI -> SummaryController : 41a. GET /api/v1/babies/{babyId}/daily-logs/summary?window=24h
-activate SummaryController
-SummaryController -> SummaryService : 42. summary(ownerId, babyId, window)
-activate SummaryService
-SummaryService -> LogRepo : 43. findByBabyIdAndStartedAtAfter(babyId, since)
-activate LogRepo
-LogRepo -> DB : 44. SELECT * FROM baby_daily_logs\nWHERE baby_id=? AND started_at >= now()-interval '24h'
-activate DB
-DB --> LogRepo : 45. logs[]
-deactivate DB
-LogRepo --> SummaryService : 46. logs[]
-deactivate LogRepo
-SummaryService -> SummaryService : 47. aggregate feeding/sleep/diaper counts
-SummaryService --> SummaryController : 48. BabyLogSummaryResponse
-deactivate SummaryService
-SummaryController --> UI : 49. HTTP 200 OK {BabyLogSummaryResponse}
-deactivate SummaryController
-UI --> M : 49a. Display HTTP 200 OK {BabyLogSummaryResponse}
-deactivate UI
-
-== Baby-linked Health Record with Attachments (shared API, MF-03 flow) ==
-M -> UI : 50. Submit request
-activate UI
-UI -> HealthController : 50a. POST /api/v1/health-records\n{babyId, recordType, title, fileIds[]}
-activate HealthController
-HealthController -> HealthService : 51. addHealthRecord(request, ownerId)
-activate HealthService
-HealthService -> FileRepo : 52. findAllByIdInAndOwnerUserIdAndStatus(fileIds, ownerId, ACTIVE)
-activate FileRepo
-FileRepo -> DB : 53. SELECT owned active attachments
-activate DB
-DB --> FileRepo : 54. uploadedFiles[]
-deactivate DB
-FileRepo --> HealthService : 55. uploadedFiles[]
-deactivate FileRepo
-HealthService -> HealthRepo : 56. save(HealthRecord{ownerUserId, babyId})
-activate HealthRepo
-HealthRepo -> DB : 57. INSERT INTO health_records ...
-activate DB
-DB --> HealthRepo : 58. savedRecord
-deactivate DB
-HealthRepo --> HealthService : 59. savedRecord
-deactivate HealthRepo
-HealthService -> FileRepo : 60. link each attachment to healthRecordId
-activate FileRepo
-FileRepo -> DB : 61. UPDATE attachments SET health_record_id=?
-activate DB
-DB --> FileRepo : 62. linked
-deactivate DB
-FileRepo --> HealthService : 63. void
-deactivate FileRepo
-HealthService --> HealthController : 64. AddHealthRecordResponse{healthRecordId, fileIds}
-deactivate HealthService
-HealthController --> UI : 65. HTTP 201 Created
-deactivate HealthController
-UI --> M : 65a. Display HTTP 201 Created
-deactivate UI
+group UC-39 Manage Baby Health Records
+  Actor -> UI3 : 9. startManageBabyHealthRecords()
+  activate UI3
+  UI3 -> Controller3 : 10. getTimeline() / addHealthRecord() / updateHealthRecord() / archiveHealthRecord()
+  activate Controller3
+  Controller3 -> Service3 : 11. getTimeline() / addHealthRecord() / updateHealthRecord() / archiveRecord()
+  activate Service3
+  alt [selected action is view or list]
+    Service3 -> Repository3 : 12a. findActiveByOwnerFiltered(babyId) / findById()
+    activate Repository3
+    Repository3 -> DB : 12a-1. SELECT
+    activate DB
+    DB --> Repository3 : 12a-2. queryResult
+    deactivate DB
+    Repository3 --> Service3 : 12a-3. domainRecords
+    deactivate Repository3
+    Service3 --> Controller3 : 12a-4. resultDTO
+    deactivate Service3
+    Controller3 --> UI3 : 12a-5. 200 OK
+    deactivate Controller3
+    UI3 --> Actor : 12a-6. displayCurrentState()
+    deactivate UI3
+  else [selected action creates, updates, archives or deletes]
+    Service3 -> Repository3 : 12b. findActiveByOwnerFiltered(babyId) / findById()
+    activate Repository3
+    Repository3 -> DB : 12b-1. SELECT
+    activate DB
+    DB --> Repository3 : 12b-2. currentState
+    deactivate DB
+    Repository3 --> Service3 : 12b-3. scopedEntity
+    deactivate Repository3
+    Service3 -> Repository3 : 12b-4. save()
+    activate Repository3
+    Repository3 -> DB : 12b-5. INSERT / UPDATE
+    activate DB
+    DB --> Repository3 : 12b-6. persistedState
+    deactivate DB
+    Repository3 --> Service3 : 12b-7. persistedEntity
+    deactivate Repository3
+    Service3 --> Controller3 : 12b-8. resultDTO
+    deactivate Service3
+    Controller3 --> UI3 : 12b-9. 200 OK / 201 Created
+    deactivate Controller3
+    UI3 --> Actor : 12b-10. displayConfirmedState()
+    deactivate UI3
+  else [request is invalid, forbidden, not found or conflicting]
+    Service3 --> Controller3 : 12c. domainError
+    deactivate Service3
+    Controller3 --> UI3 : 12c-1. 400 / 401 / 403 / 404 / 409
+    deactivate Controller3
+    UI3 --> Actor : 12c-2. displayActionableError()
+    deactivate UI3
+  end
+end
 
 @enduml
 ```
 
-**Hình 2 — Sequence Diagram: Baby Profile, Daily Care & Baby-linked Health Record (Main Flow)**
+**Figure 2 — Sequence Diagram: Baby Profile and Daily Care Overview Main Flow**
 
+**Brief Explanation:**
+
+1. The diagram separates the implemented goals covered by this specification: UC-34 Manage Baby Profiles; UC-35 Manage Baby Daily Logs; UC-39 Manage Baby Health Records.
+2. Each actor action enters through the reachable mobile or web boundary and invokes the exact controller operation exposed by the current Backend.
+3. The controller delegates to the mapped service operation; read branches query scoped records, while mutation branches load the current state before persisting the requested transition.
+4. Repository calls and PostgreSQL responses are shown explicitly, including call-stack activation and dashed return messages.
+5. Invalid, unauthorized, missing or conflicting requests return an actionable error without displaying a false success state.
+6. External systems are invoked only for the mapped use cases; notification dispatches are asynchronous, while integrations that return data remain synchronous.
 
 ## 4. Business Rules Applied
 
-- BR-RBAC / ownership — chỉ `ownerUserId` (và thành viên gia đình có quyền theo MF-08) mới truy cập được hồ sơ bé.
-- UC-33 postcondition — archive không được phá huỷ lịch sử nhật ký/tăng trưởng/tiêm chủng liên kết.
-- UC-34 — dashboard/nhắc lịch hiện tại luôn theo baby đang `active`, không phải toàn bộ danh sách baby.
-- UC-38 — summary chỉ tổng hợp log ở trạng thái `ACTIVE` trong cửa sổ thời gian yêu cầu (24h hoặc 7 ngày).
-- Baby-linked record — `babyId` phải trỏ tới bé mà caller được phép truy cập; `fileIds` chỉ nhận file `ACTIVE` thuộc chính caller và chỉ hỗ trợ image/PDF theo `HealthRecordServiceImpl`.
-- Attachment access — file vật lý vẫn thuộc module `file`; `HealthRecordFile` chỉ là compatibility projection trên cột `attachments.health_record_id`, không phải bảng liên kết mới.
+- Access is enforced server-side using the current actor, role, ownership, membership and consent scope.
+- All operations are scoped to the selected authorized baby.
+- The following remains outside this contract: Pediatric diagnosis.
+- Retries must not duplicate confirmed records, transitions, notifications or external side effects.
+- Sensitive health, identity, moderation, location and safety operations retain the minimum required audit evidence.

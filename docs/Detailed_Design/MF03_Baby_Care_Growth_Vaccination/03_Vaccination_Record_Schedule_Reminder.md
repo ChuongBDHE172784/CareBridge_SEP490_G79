@@ -1,203 +1,222 @@
-# MF-03 / Spec 03 — Vaccination Record, Reference Schedule & Reminder
+# MF-03 / Spec 03 — Vaccination Records, Schedule and Reminder Linkage
 
 | Field | Value |
 | --- | --- |
-| Feature | MF-03 — Baby Care Journey, Growth & Vaccination |
-| Flows Covered | View vaccination records/reference schedule; add, update or delete a user-entered record; mark a dose completed or postponed; create a vaccination reminder from baby context |
-| Primary Actor(s) | Mother |
-| Platform | Mobile App; Baby Care summary on Web; CareBridge API |
-| Main Flow Summary | A Mother opens a baby's vaccination tab, compares user-entered records with the reference schedule, records a completed or planned dose, and may open the shared reminder flow with that baby/vaccine context. |
-| Grounding (active UI/API) | Mobile `baby_profile_detail_screen.dart`, `add_vaccination_record_screen.dart`, `vaccination_detail_screen.dart`, `edit_vaccination_record_screen.dart`, `create_vaccination_reminder_screen.dart`, `vaccination_service.dart`; API `VaccinationController`, `VaccinationServiceImpl`, `VaccinationRecord`, `VaccinationReferenceSchedule` |
+| Status | Draft |
+| Use Cases Covered | UC-38 Manage Vaccination Journey |
+| Use Case Group | Mobile App |
+| Platform | Mother Mobile App; Backend |
+| Primary Actors | Mother |
+| In Scope | Reference schedule does not replace professional vaccination advice |
+| Explicitly Excluded | Official immunization registry |
+| Implementation Trace | UI: Vaccination schedule, record and reminder screens; Controller: VaccinationController, ReminderController; Service: VaccinationServiceImpl, ReminderServiceImpl; Repository: VaccinationRecordRepository, ReminderRepository; Entity: VaccinationRecord, Reminder |
 
 ## 1. Tổng quan luồng chính (Main Flow Overview)
 
-Vaccination tab được truy cập từ Baby Profile/Care Hub đang hoạt động trên Mobile. App
-đọc danh sách `VaccinationRecord` của baby cùng lịch tham khảo để hiển thị dose đã ghi,
-đang lên lịch hoặc đã hoãn. Mother có thể thêm bản ghi, cập nhật metadata, đánh dấu hoàn
-tất, hoãn hoặc xóa bản ghi do người dùng nhập. Mọi thao tác đều kiểm tra quyền truy cập
-đúng baby ở service; việc biết `babyId` không tự tạo quyền truy cập.
-
-Từ vaccine/baby context, Mobile có thể mở màn hình tạo vaccination reminder của luồng
-Reminder chung tại MF-02/Spec 05. Reminder chỉ mang ngữ cảnh tổ chức công việc; nó không
-thay đổi `VaccinationRecord` và không thay thế lịch tiêm hoặc giấy chứng nhận chính thức.
-Web hiện chỉ hiển thị số lượng vaccination record trong Baby Care Hub, không có CRUD chi
-tiết, nên sequence CRUD dưới đây là Mobile flow.
+Reference schedule does not replace professional vaccination advice. The flow starts only from the reachable UI or system trigger named in the metadata. The Backend rechecks authentication, role, ownership, membership, consent and current state as applicable; client-side visibility alone never grants access. A confirmed mutation is persisted before the UI displays success. External-service failure returns a safe retry state and must not fabricate completion.
 
 ## 2. Class Diagram
 
 ```plantuml
-@startuml MF03_03_Vaccination_ClassDiagram
+@startuml MF03_03_VaccinationRecordsScheduleandReminderLinkage_ClassDiagram
 skinparam classAttributeIconSize 0
+hide empty members
 
-class BabyProfile {
-  + id: UUID
-  + ownerUserId: UUID
-  + nickname: String
-  + birthDate: LocalDate
+class "Vaccination schedule" as UI1 <<UI>>
+class "record and reminder screens" as UI2 <<UI>>
+class "VaccinationController" as Controller1 <<Controller>> {
+  - vaccinationService: IVaccinationService
+  + getVaccinationSchedule(babyId: UUID, principal: Principal): ResponseEntity<ApiResponse<VaccinationScheduleResponse>>
+  + listVaccinationRecords(babyId: UUID, principal: Principal): ResponseEntity<ApiResponse<List<VaccinationRecordResponse>>>
+  + addVaccinationRecord(babyId: UUID, request: AddVaccinationRecordRequest, principal: Principal): ResponseEntity<ApiResponse<AddVaccinationRecordResponse>>
+  + deleteVaccinationRecord(babyId: UUID, recordId: UUID, principal: Principal): ResponseEntity<Void>
+  + markVaccinationCompleted(babyId: UUID, request: MarkVaccinationCompletedRequest, principal: Principal): ResponseEntity<ApiResponse<VaccinationCompletionResponse>>
+  + postponeVaccination(babyId: UUID, request: PostponeVaccinationRequest, principal: Principal): ResponseEntity<ApiResponse<PostponeVaccinationResponse>>
+  + updateVaccinationRecord(babyId: UUID, recordId: UUID, request: UpdateVaccinationRecordRequest, ...): ResponseEntity<ApiResponse<VaccinationRecordResponse>>
 }
-
-class VaccinationRecord {
-  + id: UUID
-  + babyId: UUID
-  + vaccineName: String
-  + doseNumber: Short
-  + scheduledDate: LocalDate
-  + administeredDate: LocalDate
-  + status: VaccinationRecordStatus
-  + facilityName: String
-  + proofRecordId: UUID
-  + postponeReason: String
+class "ReminderController" as Controller2 <<Controller>> {
+  - reminderService: IReminderService
+  - todayTaskService: ITodayTaskService
+  - taskActionFacade: UnifiedTaskActionFacade
+  + createVaccinationReminder(request: CreateVaccinationReminderRequest, principal: Principal): ResponseEntity<ApiResponse<CreateReminderResponse>>
+  + completeReminder(reminderId: UUID, principal: Principal): ResponseEntity<ApiResponse<ReminderDetailResponse>>
+  + createMedicationReminder(request: CreateMedicationReminderRequest, principal: Principal): ResponseEntity<ApiResponse<CreateReminderResponse>>
+  + createReminder(request: CreateReminderRequest, principal: Principal): ResponseEntity<ApiResponse<CreateReminderResponse>>
+  + deleteReminder(reminderId: UUID, principal: Principal): ResponseEntity<Void>
+  + enableReminder(reminderId: UUID, principal: Principal): ResponseEntity<ApiResponse<ReminderDetailResponse>>
+  + getReminderDetail(reminderId: UUID, principal: Principal): ResponseEntity<ApiResponse<ReminderDetailResponse>>
 }
-
-enum VaccinationRecordStatus {
-  SCHEDULED
-  COMPLETED
-  POSTPONED
+class "VaccinationServiceImpl" as Service1 <<Service>> {
+  - babyRepository: BabyProfileRepository
+  - accessPolicy: BabyAccessPolicy
+  - referenceRepository: VaccinationReferenceRepository
+  - recordRepository: VaccinationRecordRepository
+  + getVaccinationSchedule(babyProfileId: UUID, callerId: UUID): VaccinationScheduleResponse
+  + listVaccinationRecords(babyId: UUID, callerId: UUID): List<VaccinationRecordResponse>
+  + addVaccinationRecord(babyId: UUID, callerId: UUID, request: AddVaccinationRecordRequest): AddVaccinationRecordResponse
+  + deleteVaccinationRecord(babyId: UUID, recordId: UUID, callerId: UUID): void
+  + markVaccinationCompleted(babyId: UUID, callerId: UUID, request: MarkVaccinationCompletedRequest): VaccinationCompletionResponse
 }
-
-class VaccinationReferenceSchedule {
-  + id: UUID
-  + vaccineName: String
-  + doseNumber: Short
-  + recommendedAge: String
+class "ReminderServiceImpl" as Service2 <<Service>> {
+  - reminderRepository: ReminderRepository
+  - notificationService: INotificationService
+  - auditService: AuditService
+  - babyProfileRepository: BabyProfileRepository
+  + createVaccinationReminder(request: CreateVaccinationReminderRequest, callerId: UUID): CreateReminderResponse
+  + completeReminder(reminderId: UUID, callerId: UUID): ReminderDetailResponse
+  + createMedicationReminder(request: CreateMedicationReminderRequest, callerId: UUID): CreateReminderResponse
+  + createReminder(request: CreateReminderRequest, callerId: UUID): CreateReminderResponse
+  + deleteReminder(reminderId: UUID, callerId: UUID): void
 }
+interface "IVaccinationService" as Service1Contract <<Service>>
+interface "IReminderService" as Service2Contract <<Service>>
+interface "VaccinationRecordRepository" as Repository1 {
+  + findAllByBabyId(babyId: UUID): List<VaccinationRecord>
+  + findByBabyIdAndVaccineNameAndDoseNumberAndStatus(babyId: UUID, vaccineName: String, doseNumber: short, ...): Optional<VaccinationRecord>
+  + findByBabyIdAndStatus(babyId: UUID, status: VaccinationRecordStatus): List<VaccinationRecord>
+  + findByIdAndBabyId(id: UUID, babyId: UUID): Optional<VaccinationRecord>
+  + findByBabyIdAndVaccineNameAndDoseNumber(babyId: UUID, vaccineName: String, doseNumber: short): Optional<VaccinationRecord>
+}
+interface "ReminderRepository" as Repository2 {
+  + findByIdAndOwnerUserId(id: UUID, ownerUserId: UUID): Optional<Reminder>
+  + findByOwnerUserIdOrderByScheduledAtDesc(ownerUserId: UUID): List<Reminder>
+  + findByOwnerUserIdAndStatusNot(ownerUserId: UUID, status: ReminderStatus): List<Reminder>
+  + findById(id: UUID): Optional<Reminder>
+  + findByOwnerUserIdAndScheduledAtBetweenAndStatusIn(ownerUserId: UUID, start: Instant, end: Instant, ...): List<Reminder>
+  + findByOwnerUserIdAndReminderTypeAndStatusIn(ownerUserId: UUID, reminderType: ReminderType, statuses: List<ReminderStatus>): List<Reminder>
+}
+class "VaccinationRecord" as Entity1 <<Entity>> {
+  - id: UUID
+  - babyId: UUID
+  - vaccineName: String
+  - doseNumber: Short
+  - scheduledDate: LocalDate
+  - administeredDate: LocalDate
+  - status: VaccinationRecordStatus
+}
+class "Reminder" as Entity2 <<Entity>> {
+  - id: UUID
+  - ownerUserId: UUID
+  - journeyId: UUID
+  - babyId: UUID
+  - careSubjectId: UUID
+  - reminderType: ReminderType
+  - title: String
+}
+interface "JpaRepository<VaccinationRecord, UUID>" as Repository1Base <<Framework>>
+interface "JpaRepository<Reminder, UUID>" as Repository2Base <<Framework>>
+class "PostgreSQL" as DB <<Database>>
+class "Firebase Cloud Messaging" as External <<External Service>>
 
-class VaccinationScheduleResponse <<read model>>
-class Reminder <<MF-02 / Spec 05>>
-class VaccinationController
-interface IVaccinationService
-class VaccinationServiceImpl
-interface VaccinationRecordRepository
-interface VaccinationReferenceRepository
-class BabyAccessPolicy
-
-BabyProfile "1" *-- "0..*" VaccinationRecord
-VaccinationRecord --> VaccinationRecordStatus
-VaccinationScheduleResponse ..> VaccinationRecord
-VaccinationScheduleResponse ..> VaccinationReferenceSchedule
-VaccinationRecord ..> Reminder : optional reminder context
-VaccinationController --> IVaccinationService
-VaccinationServiceImpl ..|> IVaccinationService
-VaccinationServiceImpl --> VaccinationRecordRepository
-VaccinationServiceImpl --> VaccinationReferenceRepository
-VaccinationServiceImpl --> BabyAccessPolicy
+Service1Contract <|.. Service1 : implements
+Service2Contract <|.. Service2 : implements
+Repository1Base <|-- Repository1 : extends
+Repository2Base <|-- Repository2 : extends
+UI1 ..> Controller1 : invokes API
+UI2 ..> Controller2 : invokes API
+Controller1 --> Service1Contract : delegates
+Controller2 --> Service2Contract : delegates
+Service1 --> Repository1 : reads / writes
+Service2 --> Repository2 : reads / writes
+Repository1 ..> Entity1 : maps
+Repository1 ..> DB : persists
+Repository2 ..> Entity2 : maps
+Repository2 ..> DB : persists
+Service1 ..> External : invokes when required
+Service2 ..> External : invokes when required
 @enduml
 ```
 
-**Hình 1 — Class Diagram: Vaccination Record, Reference Schedule & Reminder Context**
+**Figure 1 — Class Diagram: Vaccination Records, Schedule and Reminder Linkage**
 
 ## 3. Sequence Diagram — Main Flow
 
 ```plantuml
-@startuml MF03_03_Vaccination_SequenceDiagram
-actor "Mother" as Mother
-participant "Mobile Vaccination UI" as UI
-participant "VaccinationController" as Controller
-participant "VaccinationServiceImpl" as Service
-participant "BabyAccessPolicy" as Access
-participant "VaccinationRecordRepository" as RecordRepo
-participant "VaccinationReferenceRepository" as ReferenceRepo
+@startuml MF03_03_VaccinationRecordsScheduleandReminderLinkage_SequenceDiagram
+skinparam shadowing false
+
+actor "Mother" as Actor
+boundary ":vaccination screens" as UI1
+control ":VaccinationController" as Controller1
+participant ":VaccinationServiceImpl" as Service1 <<service>>
+participant ":VaccinationRecordRepository" as Repository1 <<repository>>
 database "PostgreSQL" as DB
+participant ":Firebase Cloud Messaging" as External1 <<external system>>
 
-Mother -> UI : 1. Open baby's vaccination tab
-activate UI
-UI -> Controller : 1a. GET /api/v1/vaccination/babies/{babyId}/schedule
-activate Controller
-Controller -> Service : 2. getVaccinationSchedule(babyId, callerId)
-activate Service
-Service -> Access : 3. requireBabyAccess(callerId, babyId)
-activate Access
-Access --> Service : 4. access granted
-deactivate Access
-par [load records and reference schedule]
-  Service -> RecordRepo : 5a. findByBabyId(babyId)
-  activate RecordRepo
-  RecordRepo -> DB : 5a-1. SELECT vaccination_records
-  activate DB
-  DB --> RecordRepo : 5a-2. records[]
-  deactivate DB
-  RecordRepo --> Service : 5a-3. records[]
-  deactivate RecordRepo
-and
-  Service -> ReferenceRepo : 5b. findApplicableSchedule(birthDate)
-  activate ReferenceRepo
-  ReferenceRepo -> DB : 5b-1. SELECT vaccination_reference_schedule
-  activate DB
-  DB --> ReferenceRepo : 5b-2. reference doses[]
-  deactivate DB
-  ReferenceRepo --> Service : 5b-3. reference doses[]
-  deactivate ReferenceRepo
+group UC-38 Manage Vaccination Journey
+  Actor -> UI1 : 1. startManageVaccinationJourney()
+  activate UI1
+  UI1 -> Controller1 : 2. getVaccinationSchedule() / addVaccinationRecord() / updateVaccinationRecord() / deleteVaccinationRecord()
+  activate Controller1
+  Controller1 -> Service1 : 3. getVaccinationSchedule() / addVaccinationRecord() / updateVaccinationRecord() / deleteVaccinationRecord()
+  activate Service1
+  alt [selected action is view or list]
+    Service1 -> Repository1 : 4a. findAllByBabyId()
+    activate Repository1
+    Repository1 -> DB : 4a-1. SELECT
+    activate DB
+    DB --> Repository1 : 4a-2. queryResult
+    deactivate DB
+    Repository1 --> Service1 : 4a-3. domainRecords
+    deactivate Repository1
+    Service1 --> Controller1 : 4a-4. resultDTO
+    deactivate Service1
+    Controller1 --> UI1 : 4a-5. 200 OK
+    deactivate Controller1
+    UI1 --> Actor : 4a-6. displayCurrentState()
+    deactivate UI1
+  else [selected action creates, updates, archives or deletes]
+    Service1 -> Repository1 : 4b. findAllByBabyId()
+    activate Repository1
+    Repository1 -> DB : 4b-1. SELECT
+    activate DB
+    DB --> Repository1 : 4b-2. currentState
+    deactivate DB
+    Repository1 --> Service1 : 4b-3. scopedEntity
+    deactivate Repository1
+    Service1 -> Repository1 : 4b-4. save() / delete()
+    activate Repository1
+    Repository1 -> DB : 4b-5. INSERT / UPDATE / DELETE
+    activate DB
+    DB --> Repository1 : 4b-6. persistedState
+    deactivate DB
+    Repository1 --> Service1 : 4b-7. persistedEntity
+    deactivate Repository1
+    Service1 ->> External1 : 4b-8. scheduleVaccinationReminder()
+    Service1 --> Controller1 : 4b-9. resultDTO
+    deactivate Service1
+    Controller1 --> UI1 : 4b-10. 200 OK / 201 Created
+    deactivate Controller1
+    UI1 --> Actor : 4b-11. displayConfirmedState()
+    deactivate UI1
+  else [request is invalid, forbidden, not found or conflicting]
+    Service1 --> Controller1 : 4c. domainError
+    deactivate Service1
+    Controller1 --> UI1 : 4c-1. 400 / 401 / 403 / 404 / 409
+    deactivate Controller1
+    UI1 --> Actor : 4c-2. displayActionableError()
+    deactivate UI1
+  end
 end
-Service --> Controller : 6. VaccinationScheduleResponse
-deactivate Service
-Controller --> UI : 7. 200 OK
-deactivate Controller
-UI --> Mother : 8. Display records and reference schedule
-deactivate UI
 
-Mother -> UI : 9. Submit a completed vaccination dose
-activate UI
-UI -> Controller : 9a. POST /api/v1/vaccination/babies/{babyId}/completions
-activate Controller
-Controller -> Service : 10. markVaccinationCompleted(babyId, callerId, request)
-activate Service
-Service -> Access : 11. requireBabyAccess(callerId, babyId)
-activate Access
-Access --> Service : 12. access granted
-deactivate Access
-Service -> RecordRepo : 13. findMatchingDose(babyId, vaccineName, doseNumber)
-activate RecordRepo
-RecordRepo -> DB : 14. SELECT matching vaccination record
-activate DB
-DB --> RecordRepo : 15. record / empty
-deactivate DB
-RecordRepo --> Service : 16. record / empty
-deactivate RecordRepo
-alt [matching record exists]
-  Service -> RecordRepo : 17a. save(status=COMPLETED, administeredDate, facility)
-  activate RecordRepo
-  RecordRepo -> DB : 17a-1. UPDATE vaccination_records
-  activate DB
-  DB --> RecordRepo : 17a-2. updated row
-  deactivate DB
-  RecordRepo --> Service : 17a-3. completed record
-  deactivate RecordRepo
-  Service --> Controller : 17a-4. VaccinationCompletionResponse(created=false)
-  deactivate Service
-  Controller --> UI : 17a-5. 200 OK
-  deactivate Controller
-else [no matching record]
-  Service -> RecordRepo : 17b. save(new COMPLETED record)
-  activate RecordRepo
-  RecordRepo -> DB : 17b-1. INSERT vaccination_records
-  activate DB
-  DB --> RecordRepo : 17b-2. created row
-  deactivate DB
-  RecordRepo --> Service : 17b-3. completed record
-  deactivate RecordRepo
-  Service --> Controller : 17b-4. VaccinationCompletionResponse(created=true)
-  deactivate Service
-  Controller --> UI : 17b-5. 201 Created
-  deactivate Controller
-end
-UI --> Mother : 18. Refresh vaccination detail
-deactivate UI
-
-Mother -> UI : 19. Create reminder from vaccine context
-activate UI
-ref over Mother, UI : MF-02 / Spec 05 — Reminder Lifecycle
-UI --> Mother : 20. Display reminder saved result
-deactivate UI
 @enduml
 ```
 
-**Hình 2 — Sequence Diagram: View Vaccination Schedule, Record Completion & Open Reminder Flow**
+**Figure 2 — Sequence Diagram: Vaccination Records, Schedule and Reminder Linkage Main Flow**
+
+**Brief Explanation:**
+
+1. The diagram separates the implemented goals covered by this specification: UC-38 Manage Vaccination Journey.
+2. Each actor action enters through the reachable mobile or web boundary and invokes the exact controller operation exposed by the current Backend.
+3. The controller delegates to the mapped service operation; read branches query scoped records, while mutation branches load the current state before persisting the requested transition.
+4. Repository calls and PostgreSQL responses are shown explicitly, including call-stack activation and dashed return messages.
+5. Invalid, unauthorized, missing or conflicting requests return an actionable error without displaying a false success state.
+6. External systems are invoked only for the mapped use cases; notification dispatches are asynchronous, while integrations that return data remain synchronous.
 
 ## 4. Business Rules Applied
 
-- Mỗi read/write phải kiểm tra ownership hoặc permission hiện hành đối với `babyId`.
-- Lịch tham khảo và record do người dùng nhập không phải hồ sơ tiêm chủng chính thức.
-- `proofRecordId`, nếu có, chỉ liên kết tới tệp/health record mà caller được phép truy cập.
-- Mark-completed là idempotent theo baby, vaccine và dose: cập nhật record phù hợp nếu có, tạo mới nếu chưa có.
-- Vaccination reminder là tác vụ nhắc việc độc lập; hoàn thành reminder không tự đánh dấu vaccine đã được tiêm.
-- App không chẩn đoán, không quyết định hoãn/tiêm và không thay thế hướng dẫn của cơ sở y tế.
+- Access is enforced server-side using the current actor, role, ownership, membership and consent scope.
+- Reference schedule does not replace professional vaccination advice.
+- The following remains outside this contract: Official immunization registry.
+- Retries must not duplicate confirmed records, transitions, notifications or external side effects.
+- Sensitive health, identity, moderation, location and safety operations retain the minimum required audit evidence.

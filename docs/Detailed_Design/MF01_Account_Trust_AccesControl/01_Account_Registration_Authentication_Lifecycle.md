@@ -1,359 +1,560 @@
-# MF-01 / Spec 01 — Account Registration & Authentication Lifecycle
+# MF-01 / Spec 01 — Account Registration and Authentication Lifecycle
 
 | Field | Value |
 | --- | --- |
-| Feature | MF-01 — Account, Trust & Access Control |
-| Use Cases Covered | UC-01 Register Account, UC-02 Verify OTP, UC-03 Log In, UC-04 Log Out, UC-05 Request Password Reset, UC-06 Reset Password, UC-07 Change Password |
-| Primary Actor(s) | Guest → User |
-| Secondary Actors | OTP / Email Service |
-| Platform | Mobile App / Web Portal |
-| Main Flow Summary | A Guest registers with email/phone + password, confirms ownership via OTP to activate the account, then logs in and receives a session. Forgot/Reset/Change password are the credential-recovery and credential-rotation branches of the same identity lifecycle. |
-| Grounding (source code) | `security/entity/User.java`, `OtpVerification.java`, `RefreshToken.java`, `PasswordResetToken.java`, `security/controller/AuthController.java` (`/api/v1/auth/*`), `security/service/impl/AuthServiceImpl.java`, `ForgotPasswordServiceImpl.java` |
+| Status | Draft |
+| Use Cases Covered | UC-01 Register Account; UC-02 Login; UC-03 Logout; UC-04 Reset Password; UC-05 Change Password |
+| Use Case Group | Shared / Common |
+| Platform | Mobile App; Web App; Backend |
+| Primary Actors | Guest / Authenticated User |
+| In Scope | Credential lifecycle including OTP as an embedded registration/reset step |
+| Explicitly Excluded | Linked-account management as a separate product goal; community identity |
+| Implementation Trace | UI: RegisterScreen, LoginScreen, ResetPasswordScreen, ChangePasswordScreen, Web auth pages; Controller: AuthController; Service: AuthServiceImpl; Repository: UserRepository; Entity: User |
 
 ## 1. Tổng quan luồng chính (Main Flow Overview)
 
-Đây là luồng "xương sống" của MF-01: không có tài khoản nào truy cập được dữ liệu
-riêng tư (mother/baby/health) nếu chưa đi qua chuỗi **Register → Verify OTP → Login**.
-`User.accountStatus` bắt đầu ở `PENDING_ACTIVATION`, chỉ chuyển sang `ACTIVE` sau khi
-OTP đúng (BR-ACCOUNT-02). Đăng nhập kiểm tra `accountStatus`, `enabled`, `locked` và
-`suspendedUntil` trước khi phát hành `RefreshToken` (BR-SECURITY-01). Logout thu hồi
-refresh token hiện tại (BR-SECURITY-02). Forgot/Reset Password dùng một
-`PasswordResetToken` một-lần dùng, có hạn (BR-SECURITY-03/04); Change Password yêu cầu
-xác nhận mật khẩu hiện tại (BR-SECURITY-05). Các luồng update-profile/session-list/
-notification-preferences khác của MF-01 là settings phụ, không lặp lại ở đây.
+Credential lifecycle including OTP as an embedded registration/reset step. The flow starts only from the reachable UI or system trigger named in the metadata. The Backend rechecks authentication, role, ownership, membership, consent and current state as applicable; client-side visibility alone never grants access. A confirmed mutation is persisted before the UI displays success. External-service failure returns a safe retry state and must not fabricate completion.
 
 ## 2. Class Diagram
 
 ```plantuml
-@startuml MF01_01_AccountAuth_ClassDiagram
+@startuml MF01_01_AccountRegistrationandAuthenticationLifecycle_ClassDiagram
 skinparam classAttributeIconSize 0
-skinparam classFontStyle bold
-skinparam backgroundColor #FAFAFA
-skinparam ArrowColor #555555
-skinparam ClassBorderColor #2E75B6
-skinparam ClassHeaderBackgroundColor #D5E8F0
+hide empty members
 
-' === ENTITY ===
-class User {
-  + id: UUID
-  + email: String
-  + phone: String
-  + passwordHash: String
-  + name: String
-  + role: Role
-  + accountStatus: String
-  + emailVerified: Boolean
-  + phoneVerified: Boolean
-  + enabled: boolean
-  + locked: boolean
-  + lockedAt: Instant
-  + suspendedUntil: Instant
-  + mustChangePassword: boolean
-  + lastLoginAt: Instant
-}
-
-enum Role {
-  MOTHER
-  FAMILY
-  EXPERT
-  MODERATOR
-  CONTENT_ADMIN
-  SYSTEM_ADMIN
-}
-
-class OtpVerification {
-  + id: Long
-  + user: User
-  + codeHash: String
-  + purpose: OtpPurpose
-  + expiresAt: Instant
-  + usedAt: Instant
-  + verified: boolean
-  + attempts: int
-}
-
-enum OtpPurpose {
-  REGISTER
-  LOGIN
-}
-
-class RefreshToken {
-  + id: Long
-  + user: User
-  + tokenHash: String
-  + expiresAt: Instant
-  + revoked: boolean
-}
-
-class PasswordResetToken {
-  + id: UUID
-  + user: User
-  + tokenHash: String
-  + expiresAt: Instant
-  + usedAt: Instant
-  + attemptCount: int
-}
-
-' === DTO ===
-class RegisterRequest {
-  + email: String
-  + phone: String
-  + password: String
-  + role: Role
-}
-
-class LoginRequest {
-  + identifier: String
-  + password: String
-}
-
-' === CONTROLLER / SERVICE ===
-class AuthController {
+class "RegisterScreen" as UI1 <<UI>>
+class "LoginScreen" as UI2 <<UI>>
+class "ResetPasswordScreen" as UI3 <<UI>>
+class "ChangePasswordScreen" as UI4 <<UI>>
+class "Web auth pages" as UI5 <<UI>>
+class "AuthController" as Controller1 <<Controller>> {
   - authService: AuthService
-  + register(RegisterRequest): ResponseEntity
-  + verifyOtp(VerifyOtpRequest): ResponseEntity
-  + login(LoginRequest): ResponseEntity
-  + logout(): ResponseEntity
-  + forgotPassword(ForgotPasswordRequest): ResponseEntity
-  + resetPassword(ResetPasswordRequest): ResponseEntity
-  + changePassword(ChangePasswordRequest): ResponseEntity
+  - sessionService: SessionService
+  - forgotPasswordService: ForgotPasswordService
+  - resetPasswordService: ResetPasswordService
+  + changePassword(principal: Principal, request: ChangePasswordRequest): ResponseEntity<ApiResponse<Void>>
+  + resetPassword(request: ResetPasswordRequest): ResponseEntity<ApiResponse<ResetPasswordResponse>>
+  + forgotPassword(request: ForgotPasswordRequest, httpRequest: jakarta.servlet.http.HttpServletRequest): ResponseEntity<ApiResponse<ForgotPasswordResponse>>
+  + login(request: LoginRequest): ResponseEntity<ApiResponse<AuthResponse>>
+  + register(request: RegisterRequest): ResponseEntity<ApiResponse<OtpSendResponse>>
+  + resendOtp(request: ResendOtpRequest): ResponseEntity<ApiResponse<OtpResendResponse>>
+  + verifyOtp(request: VerifyOtpRequest): ResponseEntity<ApiResponse<AuthResponse>>
 }
-
-interface AuthService <<interface>> {
-  + register(RegisterRequest): AuthResponse
-  + verifyOtp(VerifyOtpRequest): AuthResponse
-  + login(LoginRequest): AuthResponse
-  + logout(UUID userId): void
-  + changePassword(UUID userId, ChangePasswordRequest): void
-}
-
-class AuthServiceImpl implements AuthService {
+class "AuthServiceImpl" as Service1 <<Service>> {
   - userRepository: UserRepository
-  - otpService: OtpService
-  - passwordEncoder: PasswordEncoder
   - refreshTokenRepository: RefreshTokenRepository
+  - otpVerificationRepository: OtpVerificationRepository
   - auditService: AuditService
+  + changePassword(userId: UUID, request: ChangePasswordRequest): void
+  + login(request: LoginRequest): AuthResponse
+  + logout(refreshToken: String, userId: UUID): void
+  + register(request: RegisterRequest): OtpSendResponse
+  + resendOtp(request: ResendOtpRequest): OtpResendResponse
 }
-
-interface UserRepository <<interface>> {
-  + findByEmailOrPhone(id: String): Optional<User>
-  + save(user: User): User
+interface "AuthService" as Service1Contract <<Service>>
+interface "UserRepository" as Repository1 {
+  + findByPhone(phone: String): Optional<User>
+  + existsByPhone(phone: String): boolean
+  + findByEmail(email: String): Optional<User>
+  + findByEmailIgnoreCase(email: String): Optional<User>
+  + existsByEmail(email: String): boolean
+  + findByEmailOrPhone(email: String, phone: String): Optional<User>
 }
-
-class ForgotPasswordServiceImpl {
-  - passwordResetTokenRepository: PasswordResetTokenRepository
-  - userRepository: UserRepository
-  + requestReset(identifier: String): void
-  + resetPassword(token: String, newPassword: String): void
+class "User" as Entity1 <<Entity>> {
+  - id: java.util.UUID
+  - personId: java.util.UUID
+  - person: Person
+  - phone: String
+  - email: String
+  - passwordHash: String
+  - name: String
 }
+interface "JpaRepository<User, java.util.UUID>" as Repository1Base <<Framework>>
+class "PostgreSQL" as DB <<Database>>
+class "Firebase Auth, OTP and email services" as External <<External Service>>
 
-User "1" *-- "0..*" OtpVerification : has
-User "1" *-- "0..*" RefreshToken : has
-User "1" *-- "0..*" PasswordResetToken : has
-User "1" -- "1" Role
-OtpVerification --> OtpPurpose
-AuthServiceImpl --> UserRepository : uses
-AuthServiceImpl --> OtpService : uses
-AuthController --> AuthService : uses
-ForgotPasswordServiceImpl --> UserRepository : uses
-
+Service1Contract <|.. Service1 : implements
+Repository1Base <|-- Repository1 : extends
+UI1 ..> Controller1 : invokes API
+UI2 ..> Controller1 : invokes API
+UI3 ..> Controller1 : invokes API
+UI4 ..> Controller1 : invokes API
+UI5 ..> Controller1 : invokes API
+Controller1 --> Service1Contract : delegates
+Service1 --> Repository1 : reads / writes
+Repository1 ..> Entity1 : maps
+Repository1 ..> DB : persists
+Service1 ..> External : invokes when required
 @enduml
 ```
 
-**Hình 1 — Class Diagram: Account Registration & Authentication Lifecycle**
+**Figure 1 — Class Diagram: Account Registration and Authentication Lifecycle**
 
 ## 3. Sequence Diagram — Main Flow
 
 ```plantuml
-@startuml MF01_01_AccountAuth_SequenceDiagram
-skinparam sequenceArrowThickness 2
-skinparam roundcorner 10
-skinparam backgroundColor #FAFAFA
+@startuml MF01_01_AccountRegistrationandAuthenticationLifecycle_SequenceDiagram
+skinparam shadowing false
 
-actor "Guest / User" as Client
-participant "Web / Mobile UI" as UI
-participant "AuthController" as Controller
-participant "AuthServiceImpl" as Service
-participant "OtpService" as Otp
-participant "AuditService" as Audit
-participant "UserRepository" as Repo
-participant "OtpVerificationRepository" as OtpRepo
-participant "RefreshTokenRepository" as RefreshRepo
+actor "Guest / Authenticated User" as Actor
+boundary "Web / Mobile Authentication UI" as UI
+control "AuthController" as Controller
+participant ":AuthServiceImpl" as AuthService <<service>>
+participant ":FederatedAuthServiceImpl" as FederatedService <<service>>
+participant ":SessionService" as SessionService <<service>>
+participant ":ForgotPasswordServiceImpl" as ForgotService <<service>>
+participant ":ResetPasswordServiceImpl" as ResetService <<service>>
+participant ":PasswordComplexityPolicy" as PasswordPolicy <<service>>
+participant ":AuditService" as Audit <<service>>
+participant ":UserRepository" as UserRepo <<repository>>
+participant ":OtpVerificationRepository" as OtpRepo <<repository>>
+participant ":PasswordResetTokenRepository" as ResetTokenRepo <<repository>>
+participant ":RefreshTokenRepository" as RefreshRepo <<repository>>
+participant ":UserSessionRepository" as SessionRepo <<repository>>
 database "PostgreSQL" as DB
+participant ":EmailService / SmsService" as Messaging <<external system>>
+participant ":Firebase Auth" as Firebase <<external system>>
 
-== UC-01 Register Account ==
-Client -> UI : 1. Submit request
-activate UI
-UI -> Controller : 1a. POST /api/v1/auth/register\n{email|phone, password, role}
-activate Controller
-Controller -> Service : 2. register(request)
-activate Service
-Service -> Repo : 3. existsByEmailOrPhone(id)
-activate Repo
-Repo -> DB : 4. SELECT ... FROM users
-activate DB
-DB --> Repo : 5. not found
-deactivate DB
-Repo --> Service : 6. false
-deactivate Repo
-Service -> Repo : 7. save(User{accountStatus="PENDING_ACTIVATION"})
-activate Repo
-Repo -> DB : 8. INSERT INTO users ...
-activate DB
-DB --> Repo : 9. savedUser
-deactivate DB
-Repo --> Service : 10. savedUser
-deactivate Repo
-Service -> Otp : 11. generateAndSend(userId, REGISTER)
-activate Otp
-Otp -> OtpRepo : 12. save(OtpVerification{codeHash, expiresAt})
-activate OtpRepo
-OtpRepo -> DB : 13. INSERT INTO otp_verifications ...
-activate DB
-DB --> OtpRepo : 14. saved
-deactivate DB
-OtpRepo --> Otp : 15. void
-deactivate OtpRepo
-Otp --> Service : 16. void
-deactivate Otp
-Service -> Audit : 17. log(OTP_SENT)
-activate Audit
-Audit --> Service : 18. void
-deactivate Audit
-Service --> Controller : 19. AuthResponse{status=PENDING_ACTIVATION}
-deactivate Service
-Controller --> UI : 20. HTTP 201 Created
-deactivate Controller
-UI --> Client : 20a. Display HTTP 201 Created
-deactivate UI
+group UC-01 Register Account
+  Actor -> UI : 1. submitRegistration(contact, password, role)
+  activate UI
+  UI -> Controller : 2. POST /api/v1/auth/register
+  activate Controller
+  Controller -> AuthService : 3. register(request)
+  activate AuthService
+  AuthService -> PasswordPolicy : 4. isComplexEnough(password)
+  activate PasswordPolicy
+  PasswordPolicy --> AuthService : 5. passwordPolicyResult
+  deactivate PasswordPolicy
+  AuthService -> UserRepo : 6. existsByEmail(email) / existsByPhone(phone)
+  activate UserRepo
+  UserRepo -> DB : 7. SELECT account by normalized contact
+  activate DB
+  DB --> UserRepo : 8. accountLookupResult
+  deactivate DB
+  UserRepo --> AuthService : 9. duplicateExists
+  deactivate UserRepo
+  alt [contact is already registered or input is invalid]
+    AuthService --> Controller : 9a. validation or conflict error
+    deactivate AuthService
+    Controller --> UI : 9a-1. 400 Bad Request / 409 Conflict
+    deactivate Controller
+    UI --> Actor : 9a-2. displayRegistrationError()
+    deactivate UI
+  else [registration data is valid]
+    AuthService -> AuthService : 9b. encodePasswordAndBuildPendingUser()
+    activate AuthService
+    AuthService --> AuthService : 9b-1. pendingUser
+    deactivate AuthService
+    AuthService -> UserRepo : 9b-2. save(pendingUser)
+    activate UserRepo
+    UserRepo -> DB : 9b-3. INSERT user with PENDING_ACTIVATION
+    activate DB
+    DB --> UserRepo : 9b-4. savedUser
+    deactivate DB
+    UserRepo --> AuthService : 9b-5. savedUser
+    deactivate UserRepo
+    AuthService -> AuthService : 9b-6. generateAndHashOtp()
+    activate AuthService
+    AuthService --> AuthService : 9b-7. otpAndHash
+    deactivate AuthService
+    AuthService -> OtpRepo : 9b-8. save(registrationOtp)
+    activate OtpRepo
+    OtpRepo -> DB : 9b-9. INSERT otp_verification
+    activate DB
+    DB --> OtpRepo : 9b-10. savedOtp
+    deactivate DB
+    OtpRepo --> AuthService : 9b-11. savedOtp
+    deactivate OtpRepo
+    AuthService -> Messaging : 9b-12. sendOtp(contact, otp, expiresIn)
+    activate Messaging
+    Messaging --> AuthService : 9b-13. deliveryAccepted
+    deactivate Messaging
+    AuthService -> Audit : 9b-14. log(OTP_SENT)
+    activate Audit
+    Audit --> AuthService : 9b-15. auditRecorded
+    deactivate Audit
+    AuthService --> Controller : 9b-16. OtpSendResponse
+    deactivate AuthService
+    Controller --> UI : 9b-17. 201 Created
+    deactivate Controller
+    UI --> Actor : 9b-18. showOtpVerificationStep()
+    deactivate UI
+  end
 
-== UC-02 Verify OTP ==
-Client -> UI : 21. Submit request
-activate UI
-UI -> Controller : 21a. POST /api/v1/auth/verify-otp\n{identifier, code}
-activate Controller
-Controller -> Service : 22. verifyOtp(request)
-activate Service
-Service -> Otp : 23. validate(code, purpose=REGISTER)
-activate Otp
-Otp -> OtpRepo : 24. findLatestByUserAndPurpose(userId, REGISTER)
-activate OtpRepo
-OtpRepo -> DB : 25. SELECT ... FROM otp_verifications WHERE ...
-activate DB
-DB --> OtpRepo : 26. otpRecord{expiresAt, attempts}
-deactivate DB
-OtpRepo --> Otp : 27. otpRecord
-deactivate OtpRepo
-Otp --> Service : 28. verified=true
-deactivate Otp
-Service -> Repo : 29. setAccountStatus(user, "ACTIVE")
-activate Repo
-Repo -> DB : 30. UPDATE users SET account_status='ACTIVE'
-activate DB
-DB --> Repo : 31. updated
-deactivate DB
-Repo --> Service : 32. void
-deactivate Repo
-Service -> Audit : 33. log(OTP_VERIFIED)
-activate Audit
-Audit --> Service : 34. void
-deactivate Audit
-Service -> Audit : 35. log(USER_REGISTRATION_COMPLETED)
-activate Audit
-Audit --> Service : 36. void
-deactivate Audit
-Service --> Controller : 37. AuthResponse{status=ACTIVE}
-deactivate Service
-Controller --> UI : 38. HTTP 200 OK
-deactivate Controller
-UI --> Client : 38a. Display HTTP 200 OK
-deactivate UI
+  Actor -> UI : 10. submitRegistrationOtp(contact, otp)
+  activate UI
+  UI -> Controller : 11. POST /api/v1/auth/verify-otp
+  activate Controller
+  Controller -> AuthService : 12. verifyOtp(request)
+  activate AuthService
+  AuthService -> OtpRepo : 13. findLatestUnusedOtp(contact)
+  activate OtpRepo
+  OtpRepo -> DB : 14. SELECT latest unconsumed OTP
+  activate DB
+  DB --> OtpRepo : 15. otpVerification
+  deactivate DB
+  OtpRepo --> AuthService : 16. otpVerification
+  deactivate OtpRepo
+  AuthService -> AuthService : 17. validateExpiryAttemptsAndHash()
+  activate AuthService
+  AuthService --> AuthService : 18. verificationResult
+  deactivate AuthService
+  alt [OTP is invalid, expired, used or exhausted]
+    AuthService --> Controller : 18a. OTP validation error
+    deactivate AuthService
+    Controller --> UI : 18a-1. 400 Bad Request
+    deactivate Controller
+    UI --> Actor : 18a-2. displayOtpErrorOrResendAction()
+    deactivate UI
+  else [OTP is valid]
+    AuthService -> UserRepo : 18b. activateUserAndSave()
+    activate UserRepo
+    UserRepo -> DB : 18b-1. UPDATE user SET account_status = ACTIVE
+    activate DB
+    DB --> UserRepo : 18b-2. activatedUser
+    deactivate DB
+    UserRepo --> AuthService : 18b-3. activatedUser
+    deactivate UserRepo
+    AuthService -> OtpRepo : 18b-4. markVerifiedAndUsed(otpId, now)
+    activate OtpRepo
+    OtpRepo -> DB : 18b-5. UPDATE otp_verification used_at
+    activate DB
+    DB --> OtpRepo : 18b-6. otpConsumed
+    deactivate DB
+    OtpRepo --> AuthService : 18b-7. otpConsumed
+    deactivate OtpRepo
+    AuthService -> RefreshRepo : 18b-8. save(refreshToken)
+    activate RefreshRepo
+    RefreshRepo -> DB : 18b-9. INSERT refresh_token
+    activate DB
+    DB --> RefreshRepo : 18b-10. savedRefreshToken
+    deactivate DB
+    RefreshRepo --> AuthService : 18b-11. savedRefreshToken
+    deactivate RefreshRepo
+    AuthService -> SessionRepo : 18b-12. save(activatedSession)
+    activate SessionRepo
+    SessionRepo -> DB : 18b-13. INSERT user_session
+    activate DB
+    DB --> SessionRepo : 18b-14. savedSession
+    deactivate DB
+    SessionRepo --> AuthService : 18b-15. savedSession
+    deactivate SessionRepo
+    AuthService -> Audit : 18b-16. log(OTP_VERIFIED, REGISTRATION_COMPLETED)
+    activate Audit
+    Audit --> AuthService : 18b-17. auditRecorded
+    deactivate Audit
+    AuthService --> Controller : 18b-18. AuthResponse(accessToken, refreshToken)
+    deactivate AuthService
+    Controller --> UI : 18b-19. 200 OK
+    deactivate Controller
+    UI --> Actor : 18b-20. enterRoleAppropriateWorkspace()
+    deactivate UI
+  end
+end
 
-== UC-03 Log In ==
-Client -> UI : 39. Submit request
-activate UI
-UI -> Controller : 39a. POST /api/v1/auth/login\n{identifier, password}
-activate Controller
-Controller -> Service : 40. login(request)
-activate Service
-Service -> Repo : 41. findByEmailOrPhone(identifier)
-activate Repo
-Repo -> DB : 42. SELECT ... FROM users
-activate DB
-DB --> Repo : 43. user{accountStatus="ACTIVE", locked=false}
-deactivate DB
-Repo --> Service : 44. user
-deactivate Repo
-Service -> Service : 45. check accountStatus=="ACTIVE" AND !locked AND suspendedUntil==null
-Service -> Service : 46. passwordEncoder.matches(password, passwordHash)
-Service -> RefreshRepo : 47. save(RefreshToken), update lastLoginAt
-activate RefreshRepo
-RefreshRepo -> DB : 48. INSERT INTO refresh_tokens ...
-activate DB
-DB --> RefreshRepo : 49. saved
-deactivate DB
-RefreshRepo --> Service : 50. void
-deactivate RefreshRepo
-Service -> Audit : 51. log(LOGIN)
-activate Audit
-Audit --> Service : 52. void
-deactivate Audit
-Service --> Controller : 53. AuthResponse{accessToken, refreshToken}
-deactivate Service
-Controller --> UI : 54. HTTP 200 OK
-deactivate Controller
-UI --> Client : 54a. Display HTTP 200 OK
-deactivate UI
+group UC-02 Login
+  Actor -> UI : 19. submitLogin(method, credentials)
+  activate UI
+  alt [email or phone with password]
+    UI -> Controller : 19a. POST /api/v1/auth/login
+    activate Controller
+    Controller -> AuthService : 19a-1. login(request)
+    activate AuthService
+    AuthService -> UserRepo : 19a-2. findByEmailOrPhone(normalizedIdentifier)
+    activate UserRepo
+    UserRepo -> DB : 19a-3. SELECT user account
+    activate DB
+    DB --> UserRepo : 19a-4. user
+    deactivate DB
+    UserRepo --> AuthService : 19a-5. user
+    deactivate UserRepo
+    AuthService -> AuthService : 19a-6. verifyPasswordAndAccountPolicy()
+    activate AuthService
+    AuthService --> AuthService : 19a-7. authenticationAccepted
+    deactivate AuthService
+    AuthService -> UserRepo : 19a-8. save(lastLoginAt, lockState)
+    activate UserRepo
+    UserRepo -> DB : 19a-9. UPDATE user login state
+    activate DB
+    DB --> UserRepo : 19a-10. updatedUser
+    deactivate DB
+    UserRepo --> AuthService : 19a-11. updatedUser
+    deactivate UserRepo
+    AuthService -> RefreshRepo : 19a-12. save(refreshToken)
+    activate RefreshRepo
+    RefreshRepo -> DB : 19a-13. INSERT refresh_token
+    activate DB
+    DB --> RefreshRepo : 19a-14. savedRefreshToken
+    deactivate DB
+    RefreshRepo --> AuthService : 19a-15. savedRefreshToken
+    deactivate RefreshRepo
+    AuthService -> SessionRepo : 19a-16. save(currentSession)
+    activate SessionRepo
+    SessionRepo -> DB : 19a-17. INSERT user_session
+    activate DB
+    DB --> SessionRepo : 19a-18. savedSession
+    deactivate DB
+    SessionRepo --> AuthService : 19a-19. savedSession
+    deactivate SessionRepo
+    AuthService -> Audit : 19a-20. log(LOGIN)
+    activate Audit
+    Audit --> AuthService : 19a-21. auditRecorded
+    deactivate Audit
+    AuthService --> Controller : 19a-22. AuthResponse(tokens, user)
+    deactivate AuthService
+  else [Google login]
+    UI -> Firebase : 19b. authenticateWithGoogle()
+    activate Firebase
+    Firebase --> UI : 19b-1. Firebase ID token
+    deactivate Firebase
+    UI -> Controller : 19b-2. POST /api/v1/auth/federated
+    activate Controller
+    Controller -> FederatedService : 19b-3. authenticate(request)
+    activate FederatedService
+    FederatedService -> Firebase : 19b-4. verifyIdToken(idToken)
+    activate Firebase
+    Firebase --> FederatedService : 19b-5. verifiedIdentity
+    deactivate Firebase
+    FederatedService -> UserRepo : 19b-6. findOrCreateSupportedUser(identity)
+    activate UserRepo
+    UserRepo -> DB : 19b-7. SELECT / INSERT user and identity
+    activate DB
+    DB --> UserRepo : 19b-8. authenticatedUser
+    deactivate DB
+    UserRepo --> FederatedService : 19b-9. authenticatedUser
+    deactivate UserRepo
+    FederatedService -> SessionRepo : 19b-10. save(currentSession)
+    activate SessionRepo
+    SessionRepo -> DB : 19b-11. INSERT user_session
+    activate DB
+    DB --> SessionRepo : 19b-12. savedSession
+    deactivate DB
+    SessionRepo --> FederatedService : 19b-13. savedSession
+    deactivate SessionRepo
+    FederatedService --> Controller : 19b-14. FederatedAuthResponse
+    deactivate FederatedService
+  end
+  Controller --> UI : 20. 200 OK
+  deactivate Controller
+  UI --> Actor : 21. enterRoleAppropriateWorkspace()
+  deactivate UI
+end
 
-== UC-04 Log Out ==
-Client -> UI : 55. Submit request
-activate UI
-UI -> Controller : 55a. POST /api/v1/auth/logout\nAuthorization: Bearer <token>
-activate Controller
-Controller -> Service : 56. logout(userId, refreshToken)
-activate Service
-Service -> RefreshRepo : 57. revoke(refreshToken)
-activate RefreshRepo
-RefreshRepo -> DB : 58. UPDATE refresh_tokens SET revoked=true
-activate DB
-DB --> RefreshRepo : 59. updated
-deactivate DB
-RefreshRepo --> Service : 60. void
-deactivate RefreshRepo
-Service -> Audit : 61. log(LOGOUT)
-activate Audit
-Audit --> Service : 62. void
-deactivate Audit
-Service --> Controller : 63. void
-deactivate Service
-Controller --> UI : 64. HTTP 204 No Content
-deactivate Controller
-UI --> Client : 64a. Display HTTP 204 No Content
-deactivate UI
+group UC-03 Logout
+  Actor -> UI : 22. confirmLogout()
+  activate UI
+  UI -> Controller : 23. POST /api/v1/auth/logout
+  activate Controller
+  Controller -> SessionService : 24. logout(refreshToken, userId, ipAddress)
+  activate SessionService
+  SessionService -> SessionRepo : 25. revokeCurrentSession(tokenHash, userId)
+  activate SessionRepo
+  SessionRepo -> DB : 26. UPDATE user_session SET revoked = true
+  activate DB
+  DB --> SessionRepo : 27. sessionRevoked
+  deactivate DB
+  SessionRepo --> SessionService : 28. sessionRevoked
+  deactivate SessionRepo
+  SessionService -> RefreshRepo : 29. revokeCurrentRefreshToken()
+  activate RefreshRepo
+  RefreshRepo -> DB : 30. UPDATE refresh_token SET revoked = true
+  activate DB
+  DB --> RefreshRepo : 31. tokenRevoked
+  deactivate DB
+  RefreshRepo --> SessionService : 32. tokenRevoked
+  deactivate RefreshRepo
+  SessionService -> Audit : 33. log(LOGOUT)
+  activate Audit
+  Audit --> SessionService : 34. auditRecorded
+  deactivate Audit
+  SessionService --> Controller : 35. logoutCompleted
+  deactivate SessionService
+  Controller --> UI : 36. 200 OK
+  deactivate Controller
+  UI --> Actor : 37. returnToLoginScreen()
+  deactivate UI
+end
 
+group UC-04 Reset Password
+  Actor -> UI : 38. requestPasswordReset(contact)
+  activate UI
+  UI -> Controller : 39. POST /api/v1/auth/forgot-password
+  activate Controller
+  Controller -> ForgotService : 40. forgotPassword(request, ipAddress)
+  activate ForgotService
+  ForgotService -> UserRepo : 41. findByRegisteredContact(contact)
+  activate UserRepo
+  UserRepo -> DB : 42. SELECT active user by contact
+  activate DB
+  DB --> UserRepo : 43. userOrEmpty
+  deactivate DB
+  UserRepo --> ForgotService : 44. userOrEmpty
+  deactivate UserRepo
+  opt [active account exists]
+    ForgotService -> ResetTokenRepo : 44a. save(passwordResetToken)
+    activate ResetTokenRepo
+    ResetTokenRepo -> DB : 44a-1. INSERT password_reset_token
+    activate DB
+    DB --> ResetTokenRepo : 44a-2. savedToken
+    deactivate DB
+    ResetTokenRepo --> ForgotService : 44a-3. savedToken
+    deactivate ResetTokenRepo
+    ForgotService -> Messaging : 44a-4. sendResetInstruction(rawToken)
+    activate Messaging
+    Messaging --> ForgotService : 44a-5. deliveryAccepted
+    deactivate Messaging
+    ForgotService -> Audit : 44a-6. log(PASSWORD_RESET_REQUESTED)
+    activate Audit
+    Audit --> ForgotService : 44a-7. auditRecorded
+    deactivate Audit
+  end
+  ForgotService --> Controller : 45. antiEnumerationResponse
+  deactivate ForgotService
+  Controller --> UI : 46. 200 OK
+  deactivate Controller
+  UI --> Actor : 47. displayGenericResetInstruction()
+  deactivate UI
+
+  Actor -> UI : 48. submitResetTokenAndNewPassword()
+  activate UI
+  UI -> Controller : 49. POST /api/v1/auth/reset-password
+  activate Controller
+  Controller -> ResetService : 50. resetPassword(request)
+  activate ResetService
+  ResetService -> PasswordPolicy : 51. isComplexEnough(newPassword)
+  activate PasswordPolicy
+  PasswordPolicy --> ResetService : 52. passwordPolicyResult
+  deactivate PasswordPolicy
+  ResetService -> ForgotService : 53. validateToken(rawToken)
+  activate ForgotService
+  ForgotService -> ResetTokenRepo : 54. findValidUnusedToken(tokenHash, now)
+  activate ResetTokenRepo
+  ResetTokenRepo -> DB : 55. SELECT valid password_reset_token
+  activate DB
+  DB --> ResetTokenRepo : 56. resetToken
+  deactivate DB
+  ResetTokenRepo --> ForgotService : 57. resetToken
+  deactivate ResetTokenRepo
+  ForgotService --> ResetService : 58. user
+  deactivate ForgotService
+  ResetService -> UserRepo : 59. save(newPasswordHash)
+  activate UserRepo
+  UserRepo -> DB : 60. UPDATE user password_hash
+  activate DB
+  DB --> UserRepo : 61. passwordUpdated
+  deactivate DB
+  UserRepo --> ResetService : 62. passwordUpdated
+  deactivate UserRepo
+  ResetService -> RefreshRepo : 63. revokeAllByUserId(userId)
+  activate RefreshRepo
+  RefreshRepo -> DB : 64. UPDATE active refresh tokens
+  activate DB
+  DB --> RefreshRepo : 65. revokedCount
+  deactivate DB
+  RefreshRepo --> ResetService : 66. revokedCount
+  deactivate RefreshRepo
+  ResetService -> ForgotService : 67. consumeToken(rawToken)
+  activate ForgotService
+  ForgotService -> ResetTokenRepo : 68. markAsUsed(tokenHash, now)
+  activate ResetTokenRepo
+  ResetTokenRepo -> DB : 69. UPDATE password_reset_token used_at
+  activate DB
+  DB --> ResetTokenRepo : 70. tokenConsumed
+  deactivate DB
+  ResetTokenRepo --> ForgotService : 71. tokenConsumed
+  deactivate ResetTokenRepo
+  ForgotService --> ResetService : 72. tokenConsumed
+  deactivate ForgotService
+  ResetService -> Audit : 73. log(PASSWORD_RESET_COMPLETED)
+  activate Audit
+  Audit --> ResetService : 74. auditRecorded
+  deactivate Audit
+  ResetService --> Controller : 75. ResetPasswordResponse
+  deactivate ResetService
+  Controller --> UI : 76. 200 OK
+  deactivate Controller
+  UI --> Actor : 77. promptLoginWithNewPassword()
+  deactivate UI
+end
+
+group UC-05 Change Password
+  Actor -> UI : 78. submitCurrentAndNewPassword()
+  activate UI
+  UI -> Controller : 79. PUT /api/v1/auth/change-password
+  activate Controller
+  Controller -> AuthService : 80. changePassword(userId, request)
+  activate AuthService
+  AuthService -> UserRepo : 81. findById(userId)
+  activate UserRepo
+  UserRepo -> DB : 82. SELECT authenticated user
+  activate DB
+  DB --> UserRepo : 83. user
+  deactivate DB
+  UserRepo --> AuthService : 84. user
+  deactivate UserRepo
+  AuthService -> AuthService : 85. verifyCurrentPasswordAndConfirmation()
+  activate AuthService
+  AuthService --> AuthService : 86. localValidationResult
+  deactivate AuthService
+  AuthService -> PasswordPolicy : 87. isComplexEnough(newPassword)
+  activate PasswordPolicy
+  PasswordPolicy --> AuthService : 88. passwordPolicyResult
+  deactivate PasswordPolicy
+  alt [current password or policy validation fails]
+    AuthService --> Controller : 88a. AUTH-071 / AUTH-072 / AUTH-073 / AUTH-074
+    deactivate AuthService
+    Controller --> UI : 88a-1. 400 Bad Request
+    deactivate Controller
+    UI --> Actor : 88a-2. displayPasswordValidationError()
+    deactivate UI
+  else [new password is valid]
+    AuthService -> UserRepo : 88b. save(newPasswordHash)
+    activate UserRepo
+    UserRepo -> DB : 88b-1. UPDATE user password_hash
+    activate DB
+    DB --> UserRepo : 88b-2. passwordUpdated
+    deactivate DB
+    UserRepo --> AuthService : 88b-3. passwordUpdated
+    deactivate UserRepo
+    AuthService -> RefreshRepo : 88b-4. revokeAllActiveTokens(userId)
+    activate RefreshRepo
+    RefreshRepo -> DB : 88b-5. UPDATE refresh tokens SET revoked = true
+    activate DB
+    DB --> RefreshRepo : 88b-6. tokensRevoked
+    deactivate DB
+    RefreshRepo --> AuthService : 88b-7. tokensRevoked
+    deactivate RefreshRepo
+    AuthService -> Audit : 88b-8. log(PASSWORD_CHANGED)
+    activate Audit
+    Audit --> AuthService : 88b-9. auditRecorded
+    deactivate Audit
+    AuthService --> Controller : 88b-10. passwordChanged
+    deactivate AuthService
+    Controller --> UI : 88b-11. 200 OK
+    deactivate Controller
+    UI --> Actor : 88b-12. requireLoginAgain()
+    deactivate UI
+  end
+end
 @enduml
 ```
 
-**Hình 2 — Sequence Diagram: Account Registration → OTP → Login → Logout (Main Flow)**
+**Figure 2 — Sequence Diagram: Account Registration and Authentication Lifecycle Main Flow**
 
-> Ghi chú luồng phụ: `POST /forgot-password` phát hành `PasswordResetToken` một-lần
-> dùng qua kênh đã đăng ký (không tiết lộ tài khoản có tồn tại hay không — BR-ACCOUNT-05);
-> `POST /reset-password` xác thực token rồi ghi mật khẩu mới và thu hồi toàn bộ session
-> đang hoạt động (BR-SECURITY-04); `PUT /change-password` yêu cầu xác nhận mật khẩu hiện
-> tại trước khi ghi mật khẩu mới (BR-SECURITY-05). Cả ba đều tái sử dụng
-> `AuthServiceImpl`/`ForgotPasswordServiceImpl` ở trên, không tạo entity mới.
+**Brief Explanation:**
 
+1. UC-01 creates a pending account, persists and delivers an OTP, then activates the account only after the latest valid OTP is verified.
+2. UC-02 supports credential login and Google login as branches of the same use case; both create an authenticated session and return the role-aware user state.
+3. UC-03 revokes the current session and refresh token before the client returns to the login screen.
+4. UC-04 uses an anti-enumeration reset request, a single-use time-limited token, password-policy validation, token consumption and session revocation.
+5. UC-05 verifies the current password and new-password policy, persists the new hash, revokes active refresh tokens and requires the user to log in again.
+6. Validation, policy and account-state failures return explicit safe errors without recording a successful transition.
 
 ## 4. Business Rules Applied
 
-- BR-RBAC — quyền truy cập giới hạn theo `role` hiệu lực.
-- BR-ACCOUNT-01 — định danh liên hệ (email/phone) phải duy nhất.
-- BR-ACCOUNT-02 — tài khoản không active cho tới khi verify OTP thành công.
-- BR-ACCOUNT-03 — số lần thử OTP bị giới hạn và OTP có hạn dùng.
-- BR-ACCOUNT-05 — response của forgot-password trung lập, không tiết lộ tài khoản tồn tại hay không.
-- BR-RBAC-01 — routing sau login dựa trên role + trạng thái tài khoản hiệu lực.
-- BR-SECURITY-01 — tài khoản `DEACTIVATED`/`locked`/`suspended` không thể tạo session mới.
-- BR-SECURITY-02 — refresh token/session hiện tại bị thu hồi khi logout.
-- BR-SECURITY-03 — request đặt lại mật khẩu bị giới hạn tần suất (rate-limited).
-- BR-SECURITY-04 — mọi session đang hoạt động bị thu hồi sau khi reset password thành công.
-- BR-SECURITY-05 — mật khẩu hiện tại phải được xác thực trước khi đổi mật khẩu.
+- Access is enforced server-side using the current actor, role, ownership, membership and consent scope.
+- Credential lifecycle including OTP as an embedded registration/reset step.
+- The following remains outside this contract: Linked-account management as a separate product goal; community identity.
+- Retries must not duplicate confirmed records, transitions, notifications or external side effects.
+- Sensitive health, identity, moderation, location and safety operations retain the minimum required audit evidence.

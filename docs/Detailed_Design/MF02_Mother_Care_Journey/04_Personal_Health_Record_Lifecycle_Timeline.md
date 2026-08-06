@@ -1,347 +1,181 @@
-# MF-02 / Spec 04 — Personal Health Record Lifecycle & Timeline
+# MF-02 / Spec 04 — Maternal Health Record Lifecycle and Attachments
 
 | Field | Value |
 | --- | --- |
-| Feature | MF-02 — Mother Care Journey |
-| Use Cases Covered | UC-83 Add Personal Health Record and Attachment, UC-84 Update Health Record Metadata, UC-85 Archive or Delete User-entered Health Record, UC-86 View Health Record Timeline and Detail |
-| Primary Actor(s) | Mother |
-| Platform | Mother Mobile App |
-| Main Flow Summary | A Mother adds a maternal health record (for example an ultrasound, lab result, prescription copy or examination note) with an optional protected attachment and source label, may correct its metadata or archive/delete it later, and reviews maternal records as a time-ordered, filterable timeline. Baby-linked records are specified in MF-03. |
-| Grounding (source code) | `health/entity/HealthRecord.java`, `HealthRecordStatus.java`, `RecordType.java`, `DataSource.java`, `health/entity/HealthRecordFile.java`, `health/controller/HealthRecordController.java` (`/api/v1/health-records`) |
+| Status | Draft |
+| Use Cases Covered | UC-23 Manage Maternal Health Records |
+| Use Case Group | Mobile App |
+| Platform | Mother Mobile App; Backend; File Storage |
+| Primary Actors | Mother |
+| In Scope | Mother-owned protected records and files |
+| Explicitly Excluded | Generated health-summary sharing |
+| Implementation Trace | UI: Health record list, form, detail and attachment screens; Controller: HealthRecordController; Service: HealthRecordServiceImpl; Repository: HealthRecordRepository; Entity: HealthRecord, HealthRecordFile |
 
 ## 1. Tổng quan luồng chính (Main Flow Overview)
 
-`HealthRecord` là dữ liệu do người dùng tự nhập (`sourceType`/`sourceName` luôn được gắn
-nhãn — BR-PRIVACY/UC-83), có thể gắn 0..n tệp đính kèm bảo vệ. `HealthRecordFile` chỉ
-là compatibility projection; liên kết canonical nằm tại `attachments.health_record_id`
-trong module `file`, không có bảng join `health_record_files`. Mother
-có thể sửa siêu dữ liệu (tiêu đề, loại, ngày, nhãn nguồn — UC-84) mà **không đổi file gốc
-đã upload trừ khi được phép**, và có thể lưu trữ (`ARCHIVED`) khi hồ sơ không còn theo dõi
-tích cực (UC-85) — hệ thống dùng soft-status thay vì xoá cứng để giữ nghĩa vụ lưu trữ.
-UC-86 (xem timeline) là read-model tổng hợp record theo thời gian/loại/nguồn với filter
-nhúng sẵn (D-02) — không phải entity riêng.
+Mother-owned protected records and files. The flow starts only from the reachable UI or system trigger named in the metadata. The Backend rechecks authentication, role, ownership, membership, consent and current state as applicable; client-side visibility alone never grants access. A confirmed mutation is persisted before the UI displays success. External-service failure returns a safe retry state and must not fabricate completion.
 
 ## 2. Class Diagram
 
 ```plantuml
-@startuml MF02_04_HealthRecord_ClassDiagram
+@startuml MF02_04_MaternalHealthRecordLifecycleandAttachments_ClassDiagram
 skinparam classAttributeIconSize 0
-skinparam classFontStyle bold
-skinparam backgroundColor #FAFAFA
-skinparam ArrowColor #555555
-skinparam ClassBorderColor #2E75B6
-skinparam ClassHeaderBackgroundColor #D5E8F0
+hide empty members
 
-class HealthRecord {
-  + id: UUID
-  + ownerUserId: UUID
-  + journeyId: UUID
-  + recordType: RecordType
-  + title: String
-  + fileUrl: String
-  + recordDate: LocalDate
-  + sourceType: String
-  + sourceName: String
-  + status: HealthRecordStatus
-}
-
-enum RecordType {
-  ULTRASOUND
-  LAB_RESULT
-  PRESCRIPTION
-  VACCINATION_FORM
-  EXAMINATION_RESULT
-  NOTE
-}
-
-enum HealthRecordStatus {
-  ACTIVE
-  ARCHIVED
-}
-
-class HealthRecordFile <<compatibility projection>> {
-  + id: UUID
-  + healthRecordId: UUID
-  + fileId: UUID
-  + displayOrder: int
-}
-
-class HealthRecordTimelineItem <<read-model>> {
-  + recordId: UUID
-  + recordType: RecordType
-  + recordDate: LocalDate
-  + sourceLabel: String
-}
-
-class HealthRecordController {
+class "Health record list" as UI1 <<UI>>
+class "form" as UI2 <<UI>>
+class "detail and attachment screens" as UI3 <<UI>>
+class "HealthRecordController" as Controller1 <<Controller>> {
   - healthRecordService: IHealthRecordService
-  + addHealthRecord(AddHealthRecordRequest): ResponseEntity
-  + updateHealthRecord(recordId, UpdateHealthRecordRequest): ResponseEntity
-  + archiveHealthRecord(recordId): ResponseEntity
-  + getTimeline(TimelineFilter): ResponseEntity
-  + getHealthRecord(recordId): ResponseEntity
+  + addHealthRecord(request: AddHealthRecordRequest, principal: Principal): ResponseEntity<ApiResponse<AddHealthRecordResponse>>
+  + archiveHealthRecord(id: UUID, principal: Principal): ResponseEntity<ApiResponse<ArchiveHealthRecordResponse>>
+  + getHealthRecord(recordId: UUID, principal: Principal): ResponseEntity<ApiResponse<HealthRecordDetailResponse>>
+  + updateHealthRecord(id: UUID, request: UpdateHealthRecordRequest, principal: Principal): ResponseEntity<ApiResponse<UpdateHealthRecordResponse>>
+  + getTimeline(filter: TimelineFilter, principal: Principal): ResponseEntity<ApiResponse<TimelineResponse>>
 }
-
-interface IHealthRecordService <<interface>> {
-  + addHealthRecord(request, callerId: UUID): AddHealthRecordResponse
-  + updateHealthRecord(recordId: UUID, request, callerId: UUID): UpdateHealthRecordResponse
-  + archiveRecord(recordId: UUID, callerId: UUID): ArchiveHealthRecordResponse
-  + getTimeline(callerId: UUID, filter): TimelineResponse
+class "HealthRecordServiceImpl" as Service1 <<Service>> {
+  - recordRepository: HealthRecordRepository
+  - recordFileRepository: HealthRecordFileRepository
+  - uploadedFileRepository: UploadedFileRepository
+  - fileService: IFileService
+  + addHealthRecord(request: AddHealthRecordRequest, callerId: UUID): AddHealthRecordResponse
+  + getHealthRecord(recordId: UUID, callerId: UUID): HealthRecordDetailResponse
+  + updateHealthRecord(id: UUID, request: UpdateHealthRecordRequest, ownerUserId: UUID): UpdateHealthRecordResponse
+  + archiveRecord(id: UUID, ownerUserId: UUID): ArchiveHealthRecordResponse
+  + getTimeline(ownerUserId: UUID, filter: TimelineFilter): TimelineResponse
 }
-
-class HealthRecordServiceImpl implements IHealthRecordService {
-  - healthRecordRepository: HealthRecordRepository
-  - healthRecordFileRepository: HealthRecordFileRepository
-  - auditService: AuditService
+interface "IHealthRecordService" as Service1Contract <<Service>>
+interface "HealthRecordRepository" as Repository1 {
+  + findByIdAndStatus(id: UUID, status: HealthRecordStatus): Optional<HealthRecord>
+  + countByOwnerUserIdAndStatus(ownerUserId: UUID, status: HealthRecordStatus): long
 }
+class "HealthRecord" as Entity1 <<Entity>> {
+  - id: UUID
+  - ownerUserId: UUID
+  - journeyId: UUID
+  - babyId: UUID
+  - recordType: RecordType
+  - title: String
+  - fileUrl: String
+}
+class "HealthRecordFile" as Entity2 <<Entity>> {
+  - id: UUID
+  - healthRecordId: UUID
+  - fileId: UUID
+  - displayOrder: int
+  - createdAt: Instant
+}
+interface "JpaRepository<HealthRecord, UUID>" as Repository1Base <<Framework>>
+class "PostgreSQL" as DB <<Database>>
+class "Cloudinary or configured file storage" as External <<External Service>>
 
-HealthRecord --> RecordType
-HealthRecord --> HealthRecordStatus
-HealthRecord "1" *-- "0..*" HealthRecordFile : has attachments
-HealthRecordController --> IHealthRecordService : uses
-HealthRecordServiceImpl ..> HealthRecordTimelineItem : builds
-HealthRecordServiceImpl --> AuditService : emits HEALTH_RECORD_ADDED / UPDATED / ARCHIVED
-
+Service1Contract <|.. Service1 : implements
+Repository1Base <|-- Repository1 : extends
+UI1 ..> Controller1 : invokes API
+UI2 ..> Controller1 : invokes API
+UI3 ..> Controller1 : invokes API
+Controller1 --> Service1Contract : delegates
+Service1 --> Repository1 : reads / writes
+Repository1 ..> Entity1 : maps
+Repository1 ..> DB : persists
+Service1 ..> External : invokes when required
+Entity1 "1" *-- "0..*" Entity2 : attachments
 @enduml
 ```
 
-**Hình 1 — Class Diagram: Health Record, Attachment & Timeline Read-Model**
+**Figure 1 — Class Diagram: Maternal Health Record Lifecycle and Attachments**
 
 ## 3. Sequence Diagram — Main Flow
 
 ```plantuml
-@startuml MF02_04_HealthRecord_SequenceDiagram
-skinparam sequenceArrowThickness 2
-skinparam roundcorner 10
-skinparam backgroundColor #FAFAFA
+@startuml MF02_04_MaternalHealthRecordLifecycleandAttachments_SequenceDiagram
+skinparam shadowing false
 
-actor "Mother" as M
-participant "Web / Mobile UI" as UI
-participant "HealthRecordController" as Controller
-participant "HealthRecordServiceImpl" as Service
-participant "IStorageService" as Storage
-participant "AuditService" as Audit
-participant "UploadedFileRepository" as FileRepo
-participant "HealthRecordRepository" as RecordRepo
-participant "HealthRecordFileRepository" as RecordFileRepo
+actor "Mother" as Actor
+boundary ":Health record screens" as UI1
+control ":HealthRecordController" as Controller1
+participant ":HealthRecordServiceImpl" as Service1 <<service>>
+participant ":HealthRecordRepository" as Repository1 <<repository>>
 database "PostgreSQL" as DB
+participant ":Cloudinary file storage" as External1 <<external system>>
 
-== UC-83 Add Personal Health Record and Attachment ==
-M -> UI : 1. Submit request
-activate UI
-UI -> Controller : 1a. POST /api/v1/health-records\n{recordType=LAB_RESULT, title, recordDate, facilityName, fileIds[]}
-activate Controller
-Controller -> Service : 2. addHealthRecord(request, callerId)
-activate Service
-opt [3. fileIds is not empty]
-  Service -> FileRepo : 3. findAllByIdInAndOwnerUserIdAndStatus(fileIds, callerId, ACTIVE)
-  activate FileRepo
-  FileRepo -> DB : 4. SELECT * FROM uploaded_files\nWHERE id IN (...) AND owner_user_id=? AND status='ACTIVE'
-  activate DB
-  DB --> FileRepo : 5. ownedFiles[]
-  deactivate DB
-  FileRepo --> Service : 6. ownedFiles[]
-  deactivate FileRepo
-  Service -> Service : 7. if ownedFiles.size() != fileIds.size()\n→ throw 403 HEALTH-005 (file does not belong to caller)
+group UC-23 Manage Maternal Health Records
+  Actor -> UI1 : 1. startManageMaternalHealthRecords()
+  activate UI1
+  UI1 -> Controller1 : 2. getTimeline() / addHealthRecord() / updateHealthRecord() / archiveHealthRecord()
+  activate Controller1
+  Controller1 -> Service1 : 3. getTimeline() / addHealthRecord() / updateHealthRecord() / archiveRecord()
+  activate Service1
+  alt [selected action is view or list]
+    Service1 -> Repository1 : 4a. findActiveByOwnerFiltered() / findById()
+    activate Repository1
+    Repository1 -> DB : 4a-1. SELECT
+    activate DB
+    DB --> Repository1 : 4a-2. queryResult
+    deactivate DB
+    Repository1 --> Service1 : 4a-3. domainRecords
+    deactivate Repository1
+    Service1 --> Controller1 : 4a-4. resultDTO
+    deactivate Service1
+    Controller1 --> UI1 : 4a-5. 200 OK
+    deactivate Controller1
+    UI1 --> Actor : 4a-6. displayCurrentState()
+    deactivate UI1
+  else [selected action creates, updates, archives or deletes]
+    Service1 -> Repository1 : 4b. findActiveByOwnerFiltered() / findById()
+    activate Repository1
+    Repository1 -> DB : 4b-1. SELECT
+    activate DB
+    DB --> Repository1 : 4b-2. currentState
+    deactivate DB
+    Repository1 --> Service1 : 4b-3. scopedEntity
+    deactivate Repository1
+    Service1 -> Repository1 : 4b-4. save()
+    activate Repository1
+    Repository1 -> DB : 4b-5. INSERT / UPDATE
+    activate DB
+    DB --> Repository1 : 4b-6. persistedState
+    deactivate DB
+    Repository1 --> Service1 : 4b-7. persistedEntity
+    deactivate Repository1
+    Service1 -> External1 : 4b-8. uploadOrDeleteAttachment()
+    activate External1
+    External1 --> Service1 : 4b-9. integrationResult
+    deactivate External1
+    Service1 --> Controller1 : 4b-10. resultDTO
+    deactivate Service1
+    Controller1 --> UI1 : 4b-11. 200 OK / 201 Created
+    deactivate Controller1
+    UI1 --> Actor : 4b-12. displayConfirmedState()
+    deactivate UI1
+  else [request is invalid, forbidden, not found or conflicting]
+    Service1 --> Controller1 : 4c. domainError
+    deactivate Service1
+    Controller1 --> UI1 : 4c-1. 400 / 401 / 403 / 404 / 409
+    deactivate Controller1
+    UI1 --> Actor : 4c-2. displayActionableError()
+    deactivate UI1
+  end
 end
-Service -> RecordRepo : 8. save(HealthRecord{ownerUserId=callerId, status=ACTIVE by default})
-activate RecordRepo
-RecordRepo -> DB : 9. INSERT INTO health_records ...
-activate DB
-DB --> RecordRepo : 10. saved
-deactivate DB
-RecordRepo --> Service : 11. HealthRecord
-deactivate RecordRepo
-loop [12. for each fileId; displayOrder increases sequentially]
-  Service -> RecordFileRepo : 12. save(HealthRecordFile{healthRecordId, fileId, displayOrder})
-  activate RecordFileRepo
-  RecordFileRepo -> DB : 13. UPDATE attachments SET health_record_id=?\nWHERE attachment_id=?
-  activate DB
-  DB --> RecordFileRepo : 14. saved
-  deactivate DB
-  RecordFileRepo --> Service : 15. HealthRecordFile
-  deactivate RecordFileRepo
-end
-Service -> Audit : 16. log(HEALTH_RECORD_ADDED, callerId,\n"HealthRecord", recordId, "created")
-activate Audit
-Audit --> Service : 17. void
-deactivate Audit
-Service --> Controller : 18. AddHealthRecordResponse
-deactivate Service
-Controller --> UI : 19. HTTP 201 Created
-deactivate Controller
-UI --> M : 19a. Display HTTP 201 Created
-deactivate UI
-
-== UC-84 Update Health Record Metadata ==
-M -> UI : 20. Submit request
-activate UI
-UI -> Controller : 20a. PATCH /api/v1/health-records/{id}\n{title, recordType, sourceType, sourceName, ...}
-activate Controller
-Controller -> Service : 21. updateHealthRecord(id, request, ownerUserId)
-activate Service
-Service -> RecordRepo : 22. findById(id)
-activate RecordRepo
-RecordRepo -> DB : 23. SELECT * FROM health_records WHERE id=?
-activate DB
-DB --> RecordRepo : 24. record row
-deactivate DB
-RecordRepo --> Service : 25. HealthRecord
-deactivate RecordRepo
-Service -> Service : 26. check ownerUserId matches (403 if not)\n&& status != ARCHIVED (409 HEALTH-006 if already archived)
-Service -> Service : 27. apply PATCH — only override non-null fields in request
-Service -> RecordRepo : 28. save(record{...})
-activate RecordRepo
-RecordRepo -> DB : 29. UPDATE health_records\nSET title=?, record_type=?, source_type=?, updated_at=now()
-activate DB
-DB --> RecordRepo : 30. updated
-deactivate DB
-RecordRepo --> Service : 31. HealthRecord
-deactivate RecordRepo
-Service -> Audit : 32. log(HEALTH_RECORD_UPDATED, ownerUserId,\n"HealthRecord", id, "updated")
-activate Audit
-Audit --> Service : 33. void
-deactivate Audit
-Service --> Controller : 34. UpdateHealthRecordResponse
-deactivate Service
-Controller --> UI : 35. HTTP 200 OK
-deactivate Controller
-UI --> M : 35a. Display HTTP 200 OK
-deactivate UI
-
-== UC-85 Archive or Delete User-entered Health Record ==
-M -> UI : 36. Submit request
-activate UI
-UI -> Controller : 36a. PATCH /api/v1/health-records/{id}/archive
-activate Controller
-Controller -> Service : 37. archiveRecord(id, ownerUserId)
-activate Service
-Service -> RecordRepo : 38. findById(id)
-activate RecordRepo
-RecordRepo -> DB : 39. SELECT * FROM health_records WHERE id=?
-activate DB
-DB --> RecordRepo : 40. record row
-deactivate DB
-RecordRepo --> Service : 41. HealthRecord
-deactivate RecordRepo
-Service -> Service : 42. check ownerUserId matches (403 if not)
-alt [43. status already ARCHIVED — idempotent]
-  Service --> Controller : 43a. ArchiveHealthRecordResponse{status=ARCHIVED}\n(return early, DO NOT save(), DO NOT log audit)
-  deactivate Service
-  Controller --> UI : 43b. HTTP 200 OK
-  deactivate Controller
-  UI --> M : 43b-1. Display HTTP 200 OK
-  deactivate UI
-else [43. status is ACTIVE — change to ARCHIVED]
-  Service -> RecordRepo : 44. save(record{status=ARCHIVED})
-  activate RecordRepo
-  RecordRepo -> DB : 45. UPDATE health_records SET status='ARCHIVED'
-  activate DB
-  DB --> RecordRepo : 46. updated
-  deactivate DB
-  RecordRepo --> Service : 47. HealthRecord
-  deactivate RecordRepo
-  Service -> Audit : 48. log(HEALTH_RECORD_ARCHIVED, ownerUserId,\n"HealthRecord", id, "archived")
-  activate Audit
-  Audit --> Service : 49. void
-  deactivate Audit
-  Service --> Controller : 50. ArchiveHealthRecordResponse{status=ARCHIVED}
-  deactivate Service
-  Controller --> UI : 51. HTTP 200 OK
-  deactivate Controller
-  UI --> M : 51a. Display HTTP 200 OK
-  deactivate UI
-end
-
-== UC-86 View Health Record Timeline and Detail ==
-M -> UI : 52. Submit request
-activate UI
-UI -> Controller : 52a. GET /api/v1/health-records/timeline?recordType=&journeyId=&sourceType=&page=&size=
-activate Controller
-Controller -> Service : 53. getTimeline(ownerUserId, filter)
-activate Service
-Service -> RecordRepo : 54. findActiveByOwnerFiltered(ownerUserId, recordType,\njourneyId, sourceType, pageable)
-activate RecordRepo
-RecordRepo -> DB : 55. SELECT * FROM health_records\nWHERE owner_user_id=? AND status='ACTIVE' AND ... (dynamic filter)
-activate DB
-DB --> RecordRepo : 56. page (rows + totalElements)
-deactivate DB
-RecordRepo --> Service : 57. Page<HealthRecord>
-deactivate RecordRepo
-Service -> Service : 58. map → HealthRecordTimelineItem[]
-Service --> Controller : 59. TimelineResponse{items[], totalElements, totalPages}
-deactivate Service
-Controller --> UI : 60. HTTP 200 OK {timeline[]}
-deactivate Controller
-UI --> M : 60a. Display HTTP 200 OK {timeline[]}
-deactivate UI
-
-M -> UI : 61. Submit request
-activate UI
-UI -> Controller : 61a. GET /api/v1/health-records/{recordId}
-activate Controller
-Controller -> Service : 62. getHealthRecord(recordId, callerId)
-activate Service
-Service -> RecordRepo : 63. findByIdAndStatus(recordId, ACTIVE)\n[record ARCHIVED → 404, even for owner]
-activate RecordRepo
-RecordRepo -> DB : 64. SELECT * FROM health_records\nWHERE id=? AND status='ACTIVE'
-activate DB
-DB --> RecordRepo : 65. record row | none
-deactivate DB
-RecordRepo --> Service : 66. HealthRecord
-deactivate RecordRepo
-Service -> Service : 67. check ownerUserId == callerId (403 if not)
-Service -> RecordFileRepo : 68. findByHealthRecordIdOrderByDisplayOrderAsc(recordId)
-activate RecordFileRepo
-RecordFileRepo -> DB : 69. SELECT attachment_id, health_record_id, created_at\nFROM attachments WHERE health_record_id=?\nORDER BY created_at, attachment_id
-activate DB
-DB --> RecordFileRepo : 70. links[]
-deactivate DB
-RecordFileRepo --> Service : 71. links[]
-deactivate RecordFileRepo
-loop [72. for each attachment link]
-  Service -> FileRepo : 72. findByIdAndStatus(link.fileId, ACTIVE)
-  activate FileRepo
-  FileRepo -> DB : 73. SELECT * FROM uploaded_files WHERE id=? AND status='ACTIVE'
-  activate DB
-  DB --> FileRepo : 74. file row | none (skip if file was deleted)
-  deactivate DB
-  FileRepo --> Service : 75. UploadedFile
-  deactivate FileRepo
-  Service -> Storage : 76. generatePresignedUrl(storageKey, ttlMinutes=15)
-  activate Storage
-  Storage --> Service : 77. presignedUrl (expires after 15 minutes)
-  deactivate Storage
-end
-Service --> Controller : 78. HealthRecordDetailResponse{record, attachments[]}
-deactivate Service
-Controller --> UI : 79. HTTP 200 OK {record, files[]}
-deactivate Controller
-UI --> M : 79a. Display HTTP 200 OK {record, files[]}
-deactivate UI
 
 @enduml
 ```
 
-**Hình 2 — Sequence Diagram: Add Record → Update Metadata → Archive → View Timeline/Detail (Main Flow)**
+**Figure 2 — Sequence Diagram: Maternal Health Record Lifecycle and Attachments Main Flow**
 
-> **Ghi chú grounding:** Tên method thật trên `IHealthRecordService`/`HealthRecordServiceImpl`
-> là `addHealthRecord`/`updateHealthRecord`/`archiveRecord`/`getTimeline`/`getHealthRecord`
-> (không phải `add`/`updateMetadata`/`archive`/`timeline`/`detail` như vẽ ở Class Diagram
-> mục 2 — mang tính khái niệm). Hai chi tiết an toàn quan trọng không có trong bản vẽ cũ:
-> (1) `addHealthRecord` xác thực **quyền sở hữu file** (`UploadedFileRepository`, status
-> `ACTIVE`) trước khi liên kết `fileIds` vào record — từ chối 403 nếu bất kỳ file nào không
-> thuộc caller; (2) `getHealthRecord` (xem chi tiết) sinh **presigned URL có TTL 15 phút**
-> qua `IStorageService` cho từng tệp đính kèm thay vì trả `fileUrl` tĩnh, và chỉ trả về
-> record đang `ACTIVE` — record đã `ARCHIVED` trả `404` ngay cả cho chính chủ sở hữu.
-> `archiveRecord` cũng idempotent: gọi lại trên record đã `ARCHIVED` sẽ trả sớm, không
-> `save()` lại và không phát sinh audit log trùng lặp.
+**Brief Explanation:**
 
+1. The diagram separates the implemented goals covered by this specification: UC-23 Manage Maternal Health Records.
+2. Each actor action enters through the reachable mobile or web boundary and invokes the exact controller operation exposed by the current Backend.
+3. The controller delegates to the mapped service operation; read branches query scoped records, while mutation branches load the current state before persisting the requested transition.
+4. Repository calls and PostgreSQL responses are shown explicitly, including call-stack activation and dashed return messages.
+5. Invalid, unauthorized, missing or conflicting requests return an actionable error without displaying a false success state.
+6. External systems are invoked only for the mapped use cases; notification dispatches are asynchronous, while integrations that return data remain synchronous.
 
 ## 4. Business Rules Applied
 
-- BR-RBAC / BR-PRIVACY — chỉ chủ sở hữu (`ownerUserId`) truy cập được, trừ khi có `ConsentGrant`/permission hợp lệ theo MF-01 và MF-08.
-- Backend dùng chung model có thể chứa `babyId`, nhưng MF-02 chỉ mô tả maternal record; child record/attachment thuộc MF-03.
-- UC-84 — chỉ sửa siêu dữ liệu (title/category/date/source/tag/note); **không** thay đổi file gốc trừ khi được phép rõ ràng.
-- UC-85 — archive/delete phải tuân thủ nghĩa vụ retention và không phá vỡ bằng chứng đang được chia sẻ hợp lệ.
-- UC-86 — timeline chỉ hiển thị record được phép xem, filter (loại/nguồn/khoảng ngày) là điều khiển nhúng, không tách UC riêng (D-02).
+- Access is enforced server-side using the current actor, role, ownership, membership and consent scope.
+- Mother-owned protected records and files.
+- The following remains outside this contract: Generated health-summary sharing.
+- Retries must not duplicate confirmed records, transitions, notifications or external side effects.
+- Sensitive health, identity, moderation, location and safety operations retain the minimum required audit evidence.

@@ -1,181 +1,308 @@
-# MF-10 / Spec 02 — Suspected Fall Detection, Safety Check & Escalation
+# MF-10 / Spec 02 — Suspected Fall Detection, Safety Check and Escalation
 
 | Field | Value |
 | --- | --- |
-| Feature | MF-10 — Smart Activity Monitoring & Safety Support |
-| Use Cases Covered | Process phone IMU signal; safety countdown; confirm safe; report false positive; request/auto-trigger emergency; view history |
-| Primary Actor(s) | Mother, Phone IMU Sensor, Scheduled Countdown Job |
-| Platform | Mother Mobile App, CareBridge API |
-| Main Flow Summary | An active session accepts deduplicated IMU samples. A suspected fall creates an OPEN event and countdown. Mother responds safe/false-positive/help, or timeout applies configured auto-escalation into MF-07 emergency flow. |
-| Grounding (source code) | `FallDetectionController`, `FallDetectionService`, `FallDetectionAlgorithmService`, `SafetyCountdownJob`, `SafetyEvent`, `SafetyEventResponseRecord`, `IEmergencyService` |
+| Status | Draft |
+| Use Cases Covered | UC-65 Respond to Suspected Fall or Impact; UC-66 Send Safety Emergency Alert; UC-67 Review Safety Events and Report False Positive; UC-68 Open Emergency Support from Safety Alert |
+| Use Case Group | Mobile App |
+| Platform | Mother Mobile; Backend; Phone IMU |
+| Primary Actors | Mother / Phone Motion Sensors |
+| In Scope | Detection creates a suspected event; first valid response wins and alerts do not guarantee assistance |
+| Explicitly Excluded | Certified fall detection or emergency dispatch |
+| Implementation Trace | UI: Safety countdown, event history and emergency support screens; Controller: FallDetectionController; Service: FallDetectionService; Repository: ISafetyEventRepository; Entity: SafetyEvent |
 
 ## 1. Tổng quan luồng chính (Main Flow Overview)
 
-App gửi IMU sample kèm timestamp, signalId và location tùy consent. Service yêu cầu session `ACTIVE`, kiểm tra clock skew, khóa `sessionId:signalKey` để chống duplicate rồi chạy thuật toán theo sensitivity snapshot của session. Sample không nghi ngờ trả response rỗng; sample nghi ngờ tạo `SafetyEvent OPEN` với deadline. Mother có đúng một response đầu tiên: `I_AM_OK`, `FALSE_POSITIVE` hoặc `NEED_HELP`. Khi hết countdown, job chọn `TIMED_OUT` hoặc `ESCALATION_REQUESTED` theo `emergencyAutoAlert`. Escalation gọi `IEmergencyService.openFlow`; trạng thái chỉ thành `EMERGENCY_ALERT_SENT` sau khi emergency/family alert được liên kết thành công.
+Detection creates a suspected event; first valid response wins and alerts do not guarantee assistance. The flow starts only from the reachable UI or system trigger named in the metadata. The Backend rechecks authentication, role, ownership, membership, consent and current state as applicable; client-side visibility alone never grants access. A confirmed mutation is persisted before the UI displays success. External-service failure returns a safe retry state and must not fabricate completion.
 
 ## 2. Class Diagram
 
 ```plantuml
-@startuml MF10_02_FallDetection_ClassDiagram
+@startuml MF10_02_SuspectedFallDetectionSafetyCheckandEscalation_ClassDiagram
 skinparam classAttributeIconSize 0
-class ImuMonitoringSession { +id: UUID; +userId: UUID; +status: ImuSessionStatus; +sensitivityLevel: String }
-class SafetyEvent { +id: UUID; +userId: UUID; +imuSessionId: UUID; +signalKey: String; +eventType: SafetyEventType; +magnitude: BigDecimal; +detectedAt: Instant; +countdownDeadlineAt: Instant; +status: SafetyEventStatus; +responseType: String; +emergencySessionId: UUID }
-class SafetyEventResponseRecord { +safetyEventId: UUID; +responseType: String; +reason: String; +respondedAt: Instant }
-enum SafetyEventStatus { OPEN; TEST_OPEN; CONFIRMED_SAFE; FALSE_POSITIVE; TIMED_OUT; ESCALATION_REQUESTED; EMERGENCY_ALERT_SENT }
-class FallDetectionController
-class FallDetectionService
-interface IFallDetectionAlgorithmService
-interface ISafetyEventRepository
-interface IEmergencyService
-ImuMonitoringSession "1" --> "0..*" SafetyEvent
-SafetyEvent "1" --> "0..1" SafetyEventResponseRecord
-SafetyEvent --> SafetyEventStatus
-FallDetectionController --> FallDetectionService
-FallDetectionService --> IFallDetectionAlgorithmService
-FallDetectionService --> ISafetyEventRepository
-FallDetectionService --> IEmergencyService
+hide empty members
+
+class "Safety countdown" as UI1 <<UI>>
+class "event history and emergency support screens" as UI2 <<UI>>
+class "FallDetectionController" as Controller1 <<Controller>> {
+  - fallDetectionService: IFallDetectionService
+  - safetyConfigService: ISafetyConfigService
+  + reportFalsePositive(eventId: UUID, request: SafetyEventActionRequest, principal: Principal): ResponseEntity<ApiResponse<SafetyEventResponse>>
+  + sendEmergencyAlert(eventId: UUID, principal: Principal): ResponseEntity<ApiResponse<Void>>
+  + confirmSafetyCheck(eventId: UUID, request: SafetyEventActionRequest, principal: Principal): ResponseEntity<ApiResponse<SafetyEventResponse>>
+  + processImuData(request: ImuDataRequest, principal: Principal): ResponseEntity<ApiResponse<SafetyEventResponse>>
+  + disable(principal: Principal): ResponseEntity<ApiResponse<Void>>
+  + enable(principal: Principal): ResponseEntity<ApiResponse<ImuMonitoringSessionResponse>>
+}
+class "FallDetectionService" as Service1 <<Service>> {
+  - log: Logger
+  - imuSessionRepository: IImuMonitoringSessionRepository
+  - safetyEventRepository: ISafetyEventRepository
+  - algorithmService: IFallDetectionAlgorithmService
+  + reportFalsePositive(userId: UUID, eventId: UUID, note: String): SafetyEventResponse
+  + sendEmergencyAlert(userId: UUID, eventId: UUID): void
+  - toEventResponse(event: SafetyEvent): SafetyEventResponse
+  + confirmSafetyCheck(userId: UUID, eventId: UUID, note: String): SafetyEventResponse
+  + listSafetyEvents(userId: UUID, pageable: org.springframework.data.domain.Pageable): List<SafetyEventResponse>
+}
+interface "IFallDetectionService" as Service1Contract <<Service>>
+interface "ISafetyEventRepository" as Repository1 {
+  + findByUserIdOrderByDetectedAtDesc(userId: UUID, pageable: Pageable): Page<SafetyEvent>
+  + findByIdAndUserId(id: UUID, userId: UUID): Optional<SafetyEvent>
+  + findByImuSessionIdAndSignalKey(imuSessionId: UUID, signalKey: String): Optional<SafetyEvent>
+  + findTop100ByStatusAndResponseTypeIsNullAndCountdownDeadlineAtLessThanEqualOrderByCountdownDeadlineAtAsc(status: SafetyEventStatus, deadline: Instant): List<SafetyEvent>
+}
+class "SafetyEvent" as Entity1 <<Entity>> {
+  - id: UUID
+  - userId: UUID
+  - imuSessionId: UUID
+  - eventType: SafetyEventType
+  - magnitude: BigDecimal
+  - userLatitude: BigDecimal
+  - userLongitude: BigDecimal
+}
+interface "JpaRepository<SafetyEvent, UUID>" as Repository1Base <<Framework>>
+class "PostgreSQL" as DB <<Database>>
+class "Phone IMU and Firebase Cloud Messaging" as External <<External Service>>
+
+Service1Contract <|.. Service1 : implements
+Repository1Base <|-- Repository1 : extends
+UI1 ..> Controller1 : invokes API
+UI2 ..> Controller1 : invokes API
+Controller1 --> Service1Contract : delegates
+Service1 --> Repository1 : reads / writes
+Repository1 ..> Entity1 : maps
+Repository1 ..> DB : persists
+Service1 ..> External : invokes when required
 @enduml
 ```
 
-**Hình 1 — Class Diagram: Safety event, response và emergency linkage**
+**Figure 1 — Class Diagram: Suspected Fall Detection, Safety Check and Escalation**
 
 ## 3. Sequence Diagram — Main Flow
 
 ```plantuml
-@startuml MF10_02_FallDetection_SequenceDiagram
-actor "Mother" as M
-participant "Phone IMU / Safety UI" as UI
-participant "FallDetectionController" as Controller
-participant "FallDetectionService" as Service
-participant "FallDetectionAlgorithmService" as Algorithm
-participant "IEmergencyService" as EmergencyService
-participant "ISafetyEventRepository" as EventRepo
+@startuml MF10_02_SuspectedFallDetectionSafetyCheckandEscalation_SequenceDiagram
+skinparam shadowing false
+
+actor "Mother / Phone Motion Sensors" as Actor
+boundary ":Safety countdown" as UI1
+boundary ":event history screen" as UI2
+boundary ":emergency support screen" as UI3
+control ":FallDetectionController" as Controller1
+participant ":FallDetectionService" as Service1 <<service>>
+participant ":ISafetyEventRepository" as Repository1 <<repository>>
 database "PostgreSQL" as DB
+participant ":Phone IMU" as External1 <<external system>>
+participant ":Firebase Cloud Messaging" as External2 <<external system>>
+participant ":Emergency support module" as External3 <<external system>>
 
-activate UI
-UI -> Controller : 1. POST /api/v1/safety/imu-data
-activate Controller
-Controller -> Service : 2. processImuData(userId, payload)
-activate Service
-Service -> Service : 2a. verify consent, config, active session, timestamp and signal key
-activate Service
-Service --> Service : 2a-1. validation result
-deactivate Service
-Service -> EventRepo : 3. lock signal and find duplicate
-activate EventRepo
-EventRepo -> DB : 4. lock/select by sessionId + signalKey
-activate DB
-DB --> EventRepo : 5. existing event / empty
-deactivate DB
-EventRepo --> Service : 6. Optional<SafetyEvent>
-deactivate EventRepo
-alt [duplicate signal]
-  Service --> Controller : 7a. existing SafetyEventResponse
-  deactivate Service
-  Controller --> UI : 7a-1. 200 OK
-  deactivate Controller
-  deactivate UI
-else [new signal]
-  Service -> Algorithm : 7b. analyze(payload, session.sensitivityLevel)
-  activate Algorithm
-  Algorithm --> Service : 7b-1. FallAnalysisResult
-  deactivate Algorithm
-  alt [not suspected]
-    Service --> Controller : 7b-2a. null event
-    deactivate Service
-    Controller --> UI : 7b-2a-1. 200 OK
-    deactivate Controller
-    deactivate UI
-  else [suspected fall/impact]
-    Service -> EventRepo : 7b-2b. save(SafetyEvent{OPEN, deadline})
-    activate EventRepo
-    EventRepo -> DB : 7b-2b-1. INSERT safety_events
+group UC-65 Respond to Suspected Fall or Impact
+  Actor -> UI1 : 1. startRespondToSuspectedFallOrImpact()
+  activate UI1
+  UI1 -> Controller1 : 2. processImuData() / confirmSafetyCheck()
+  activate Controller1
+  Controller1 -> Service1 : 3. processImuData() / confirmSafetyCheck()
+  activate Service1
+  alt [selected action is view or list]
+    Service1 -> Repository1 : 4a. findByIdAndUserId()
+    activate Repository1
+    Repository1 -> DB : 4a-1. SELECT
     activate DB
-    DB --> EventRepo : 7b-2b-2. persisted event
+    DB --> Repository1 : 4a-2. queryResult
     deactivate DB
-    EventRepo --> Service : 7b-2b-3. SafetyEvent
-    deactivate EventRepo
-    Service --> Controller : 7b-2b-4. SafetyEventResponse
-    deactivate Service
-    Controller --> UI : 7b-2b-5. 200 OK
-    deactivate Controller
-    UI --> M : 7b-2b-6. Hiển thị countdown safety check
-    deactivate UI
-
-    M -> UI : 7b-2b-7. Chọn I am OK / false positive / need help
-    activate UI
-    alt [I am OK]
-      UI -> Controller : 7b-2b-8a. POST /api/v1/safety/events/{id}/confirm
-      activate Controller
-    else [false positive]
-      UI -> Controller : 7b-2b-8b. POST /api/v1/safety/events/{id}/false-positive
-      activate Controller
-    else [need help]
-      UI -> Controller : 7b-2b-8c. POST /api/v1/safety/events/{id}/emergency-alert
-      activate Controller
-    end
-    Controller -> Service : 7b-2b-9. record first response(userId, eventId)
-    activate Service
-    Service -> EventRepo : 7b-2b-10. find owned event for update
-    activate EventRepo
-    EventRepo -> DB : 7b-2b-11. SELECT safety_event FOR UPDATE
+    Repository1 --> Service1 : 4a-3. domainRecords
+    deactivate Repository1
+    Service1 --> Controller1 : 4a-4. resultDTO
+    deactivate Service1
+    Controller1 --> UI1 : 4a-5. 200 OK
+    deactivate Controller1
+    UI1 --> Actor : 4a-6. displayCurrentState()
+    deactivate UI1
+  else [selected action creates, updates, archives or deletes]
+    Service1 -> Repository1 : 4b. findByIdAndUserId()
+    activate Repository1
+    Repository1 -> DB : 4b-1. SELECT
     activate DB
-    DB --> EventRepo : 7b-2b-12. event / empty
+    DB --> Repository1 : 4b-2. currentState
     deactivate DB
-    EventRepo --> Service : 7b-2b-13. SafetyEvent
-    deactivate EventRepo
-    alt [chưa có response và chọn safe/false-positive]
-      Service -> EventRepo : 7b-2b-14a. save terminal response/status
-      activate EventRepo
-      EventRepo -> DB : 7b-2b-14a-1. INSERT response and UPDATE event
-      activate DB
-      DB --> EventRepo : 7b-2b-14a-2. updated event
-      deactivate DB
-      EventRepo --> Service : 7b-2b-14a-3. SafetyEvent
-      deactivate EventRepo
-      Service --> Controller : 7b-2b-14a-4. SafetyEventResponse
-      deactivate Service
-      Controller --> UI : 7b-2b-14a-5. 200 OK
-      deactivate Controller
-    else [chọn need help]
-      Service -> EmergencyService : 7b-2b-14b. openFlow(FALL_DETECTION, optional location)
-      activate EmergencyService
-      EmergencyService --> Service : 7b-2b-14b-1. EmergencySessionResponse
-      deactivate EmergencyService
-      Service -> EventRepo : 7b-2b-14b-2. link emergencySessionId and escalation status
-      activate EventRepo
-      EventRepo -> DB : 7b-2b-14b-3. UPDATE safety_events
-      activate DB
-      DB --> EventRepo : 7b-2b-14b-4. updated event
-      deactivate DB
-      EventRepo --> Service : 7b-2b-14b-5. SafetyEvent
-      deactivate EventRepo
-      Service --> Controller : 7b-2b-14b-6. accepted
-      deactivate Service
-      Controller --> UI : 7b-2b-14b-7. 202 Accepted
-      deactivate Controller
-    else [event đã có response khác]
-      Service --> Controller : 7b-2b-14c. SafetyException(SAFETY-010)
-      deactivate Service
-      Controller --> UI : 7b-2b-14c-1. 409 Conflict
-      deactivate Controller
-    end
-    UI --> M : 7b-2b-15. Hiển thị kết quả safety check
-    deactivate UI
+    Repository1 --> Service1 : 4b-3. scopedEntity
+    deactivate Repository1
+    Service1 -> Repository1 : 4b-4. save()
+    activate Repository1
+    Repository1 -> DB : 4b-5. INSERT / UPDATE
+    activate DB
+    DB --> Repository1 : 4b-6. persistedState
+    deactivate DB
+    Repository1 --> Service1 : 4b-7. persistedEntity
+    deactivate Repository1
+    Service1 --> Controller1 : 4b-8. resultDTO
+    deactivate Service1
+    Controller1 --> UI1 : 4b-9. 200 OK / 201 Created
+    deactivate Controller1
+    External1 ->> UI1 : 4b-10. streamMotionSamples()
+    UI1 --> Actor : 4b-10. displayConfirmedState()
+    deactivate UI1
+  else [request is invalid, forbidden, not found or conflicting]
+    Service1 --> Controller1 : 4c. domainError
+    deactivate Service1
+    Controller1 --> UI1 : 4c-1. 400 / 401 / 403 / 404 / 409
+    deactivate Controller1
+    UI1 --> Actor : 4c-2. displayActionableError()
+    deactivate UI1
   end
 end
+
+group UC-66 Send Safety Emergency Alert
+  Actor -> UI1 : 5. startSendSafetyEmergencyAlert()
+  activate UI1
+  UI1 -> Controller1 : 6. sendEmergencyAlert(eventId)
+  activate Controller1
+  Controller1 -> Service1 : 7. sendEmergencyAlert(eventId)
+  activate Service1
+  alt [command is valid and actor is authorized]
+    Service1 -> Repository1 : 8a. findByIdAndUserId()
+    activate Repository1
+    Repository1 -> DB : 8a-1. SELECT
+    activate DB
+    DB --> Repository1 : 8a-2. currentState
+    deactivate DB
+    Repository1 --> Service1 : 8a-3. scopedEntity
+    deactivate Repository1
+    Service1 -> Repository1 : 8a-4. save()
+    activate Repository1
+    Repository1 -> DB : 8a-5. INSERT / UPDATE
+    activate DB
+    DB --> Repository1 : 8a-6. persistedState
+    deactivate DB
+    Repository1 --> Service1 : 8a-7. savedEntity
+    deactivate Repository1
+    Service1 ->> External2 : 8a-8. notifyEmergencyContacts()
+    Service1 --> Controller1 : 8a-9. resultDTO
+    deactivate Service1
+    Controller1 --> UI1 : 8a-10. 200 OK / 201 Created
+    deactivate Controller1
+    UI1 --> Actor : 8a-11. displayConfirmedState()
+    deactivate UI1
+  else [validation, authorization or state check fails]
+    Service1 --> Controller1 : 8b. domainError
+    deactivate Service1
+    Controller1 --> UI1 : 8b-1. 400 / 401 / 403 / 404 / 409
+    deactivate Controller1
+    UI1 --> Actor : 8b-2. displayActionableError()
+    deactivate UI1
+  end
+end
+
+group UC-67 Review Safety Events and Report False Positive
+  Actor -> UI2 : 9. startReviewSafetyEventsAndReportFalsePositive()
+  activate UI2
+  UI2 -> Controller1 : 10. listEvents() / reportFalsePositive()
+  activate Controller1
+  Controller1 -> Service1 : 11. listSafetyEvents() / reportFalsePositive()
+  activate Service1
+  alt [selected action is view or list]
+    Service1 -> Repository1 : 12a. findByUserIdOrderByDetectedAtDesc()
+    activate Repository1
+    Repository1 -> DB : 12a-1. SELECT
+    activate DB
+    DB --> Repository1 : 12a-2. queryResult
+    deactivate DB
+    Repository1 --> Service1 : 12a-3. domainRecords
+    deactivate Repository1
+    Service1 --> Controller1 : 12a-4. resultDTO
+    deactivate Service1
+    Controller1 --> UI2 : 12a-5. 200 OK
+    deactivate Controller1
+    UI2 --> Actor : 12a-6. displayCurrentState()
+    deactivate UI2
+  else [selected action creates, updates, archives or deletes]
+    Service1 -> Repository1 : 12b. findByUserIdOrderByDetectedAtDesc()
+    activate Repository1
+    Repository1 -> DB : 12b-1. SELECT
+    activate DB
+    DB --> Repository1 : 12b-2. currentState
+    deactivate DB
+    Repository1 --> Service1 : 12b-3. scopedEntity
+    deactivate Repository1
+    Service1 -> Repository1 : 12b-4. save()
+    activate Repository1
+    Repository1 -> DB : 12b-5. INSERT / UPDATE
+    activate DB
+    DB --> Repository1 : 12b-6. persistedState
+    deactivate DB
+    Repository1 --> Service1 : 12b-7. persistedEntity
+    deactivate Repository1
+    Service1 --> Controller1 : 12b-8. resultDTO
+    deactivate Service1
+    Controller1 --> UI2 : 12b-9. 200 OK / 201 Created
+    deactivate Controller1
+    UI2 --> Actor : 12b-10. displayConfirmedState()
+    deactivate UI2
+  else [request is invalid, forbidden, not found or conflicting]
+    Service1 --> Controller1 : 12c. domainError
+    deactivate Service1
+    Controller1 --> UI2 : 12c-1. 400 / 401 / 403 / 404 / 409
+    deactivate Controller1
+    UI2 --> Actor : 12c-2. displayActionableError()
+    deactivate UI2
+  end
+end
+
+group UC-68 Open Emergency Support from Safety Alert
+  Actor -> UI3 : 13. startOpenEmergencySupportFromSafetyAlert()
+  activate UI3
+  UI3 -> Controller1 : 14. listEvents() / confirmSafetyCheck()
+  activate Controller1
+  Controller1 -> Service1 : 15. listSafetyEvents() / confirmSafetyCheck()
+  activate Service1
+  alt [request is authorized and input is valid]
+    Service1 -> Repository1 : 16a. findByIdAndUserId()
+    activate Repository1
+    Repository1 -> DB : 16a-1. SELECT
+    activate DB
+    DB --> Repository1 : 16a-2. queryResult
+    deactivate DB
+    Repository1 --> Service1 : 16a-3. domainRecords
+    deactivate Repository1
+    Service1 --> Controller1 : 16a-4. resultDTO
+    deactivate Service1
+    Controller1 --> UI3 : 16a-5. 200 OK
+    deactivate Controller1
+    UI3 -> External3 : 16a-6. openEmergencySupport()
+    activate External3
+    External3 --> UI3 : 16a-7. deviceActionResult
+    deactivate External3
+    UI3 --> Actor : 16a-8. displayOpenEmergencySupportFromSafetyAlertResult()
+    deactivate UI3
+  else [request is invalid, forbidden or unavailable]
+    Service1 --> Controller1 : 16b. domainError
+    deactivate Service1
+    Controller1 --> UI3 : 16b-1. 400 / 401 / 403 / 404
+    deactivate Controller1
+    UI3 --> Actor : 16b-2. displayActionableError()
+    deactivate UI3
+  end
+end
+
 @enduml
 ```
 
-**Hình 2 — Sequence Diagram: IMU detection, phản hồi và emergency escalation**
+**Figure 2 — Sequence Diagram: Suspected Fall Detection, Safety Check and Escalation Main Flow**
+
+**Brief Explanation:**
+
+1. The diagram separates the implemented goals covered by this specification: UC-65 Respond to Suspected Fall or Impact; UC-66 Send Safety Emergency Alert; UC-67 Review Safety Events and Report False Positive; UC-68 Open Emergency Support from Safety Alert.
+2. Each actor action enters through the reachable mobile or web boundary and invokes the exact controller operation exposed by the current Backend.
+3. The controller delegates to the mapped service operation; read branches query scoped records, while mutation branches load the current state before persisting the requested transition.
+4. Repository calls and PostgreSQL responses are shown explicitly, including call-stack activation and dashed return messages.
+5. Invalid, unauthorized, missing or conflicting requests return an actionable error without displaying a false success state.
+6. External systems are invoked only for the mapped use cases; notification dispatches are asynchronous, while integrations that return data remain synchronous.
 
 ## 4. Business Rules Applied
 
-- Chỉ nhận signal khi consent còn hiệu lực, sensor permission được cấp và có session `ACTIVE`.
-- Timestamp vượt quá độ lệch cho phép bị từ chối; `(sessionId, signalKey)` phải idempotent.
-- Location chỉ được persist khi payload có tọa độ và policy cho phép.
-- Một safety event chỉ nhận response đầu tiên; replay cùng response là idempotent, response khác trả `409 Conflict`.
-- Sensor self-test không được kích hoạt emergency alert.
-- Timeout tự động chỉ escalation khi `emergencyAutoAlert=true`; nếu không, event thành `TIMED_OUT`.
-- `EMERGENCY_ALERT_SENT` chỉ phản ánh emergency session đã gửi alert; phát hiện nghi ngờ không tự đồng nghĩa đã gọi người thân.
-- Không bao gồm wearable/connected-device ingestion hoặc dịch vụ giám sát trả phí thời gian thực.
+- Access is enforced server-side using the current actor, role, ownership, membership and consent scope.
+- Detection creates a suspected event; first valid response wins and alerts do not guarantee assistance.
+- The following remains outside this contract: Certified fall detection or emergency dispatch.
+- Retries must not duplicate confirmed records, transitions, notifications or external side effects.
+- Sensitive health, identity, moderation, location and safety operations retain the minimum required audit evidence.

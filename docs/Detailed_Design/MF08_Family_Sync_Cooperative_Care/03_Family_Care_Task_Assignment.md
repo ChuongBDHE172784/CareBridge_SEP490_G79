@@ -1,137 +1,176 @@
-# MF-08 / Spec 03 — Family Care Task Assignment & Status Update
+# MF-08 / Spec 03 — Cooperative Care Task Management
 
 | Field | Value |
 | --- | --- |
-| Feature | MF-08 — Family Sync & Cooperative Care |
-| Use Cases Covered | Assign/list/view/update/cancel family task; assignee updates task status |
-| Primary Actor(s) | Mother (Owner), assigned Family Member |
-| Platform | Mother Mobile App, Family Mobile App, CareBridge API |
-| Main Flow Summary | Mother assigns a task to an accepted member. The assignee updates status through server-enforced transitions; Mother may update content or cancel an incomplete task. |
-| Grounding (source code) | `CareGroupController`, `CareTaskServiceImpl`, `family/entity/CareTask.java`, `family/entity/CareTaskStatus.java`, `ICareTaskService` |
+| Status | Draft |
+| Use Cases Covered | UC-59 Manage Cooperative Care Tasks |
+| Use Case Group | Mobile App |
+| Platform | Mother and Family Mobile; Backend |
+| Primary Actors | Mother / Family |
+| In Scope | Owner and assignee actions differ and membership is rechecked |
+| Explicitly Excluded | Clinical treatment plan |
+| Implementation Trace | UI: AssignedTasksScreen, FamilyTaskDetailScreen, UpdateFamilyTaskScreen; Controller: CareGroupController; Service: CareTaskServiceImpl; Repository: CareTaskRepository; Entity: CareTask |
 
 ## 1. Tổng quan luồng chính (Main Flow Overview)
 
-`family.entity.CareTask` là công việc cộng tác trong care group, khác checklist task và reminder task. Mother tạo task cho một member `ACCEPTED`. Service kiểm tra group ownership, assignee và hạn xử lý trước khi lưu. Chỉ assignee được đổi trạng thái thực hiện; `CareTaskStatus.canTransitionTo()` bảo vệ chuyển trạng thái. Mother có thể sửa nội dung task chưa kết thúc hoặc hủy task chưa hoàn tất.
+Owner and assignee actions differ and membership is rechecked. The flow starts only from the reachable UI or system trigger named in the metadata. The Backend rechecks authentication, role, ownership, membership, consent and current state as applicable; client-side visibility alone never grants access. A confirmed mutation is persisted before the UI displays success. External-service failure returns a safe retry state and must not fabricate completion.
 
 ## 2. Class Diagram
 
 ```plantuml
-@startuml MF08_03_CareTask_ClassDiagram
+@startuml MF08_03_CooperativeCareTaskManagement_ClassDiagram
 skinparam classAttributeIconSize 0
-class CareTask { +id: UUID; +careGroupId: UUID; +assignedBy: UUID; +assignedTo: UUID; +title: String; +description: String; +dueAt: Instant; +status: CareTaskStatus; +completedAt: Instant }
-enum CareTaskStatus { OPEN; IN_PROGRESS; DONE; CANCELLED; NEEDS_SUPPORT; +canTransitionTo(target): boolean }
-class CareGroupController
-interface ICareTaskService
-class CareTaskServiceImpl
-interface CareTaskRepository
-interface CareGroupMemberRepository
-CareTask --> CareTaskStatus
-CareGroupController --> ICareTaskService
-CareTaskServiceImpl ..|> ICareTaskService
-CareTaskServiceImpl --> CareTaskRepository
-CareTaskServiceImpl --> CareGroupMemberRepository
+hide empty members
+
+class "AssignedTasksScreen" as UI1 <<UI>>
+class "FamilyTaskDetailScreen" as UI2 <<UI>>
+class "UpdateFamilyTaskScreen" as UI3 <<UI>>
+class "CareGroupController" as Controller1 <<Controller>> {
+  - careGroupService: ICareGroupService
+  - careTaskService: ICareTaskService
+  + createCareGroup(request: CreateCareGroupRequest, principal: Principal): ResponseEntity<ApiResponse<CreateCareGroupResponse>>
+  + deleteCareGroup(groupId: UUID, principal: Principal): ResponseEntity<ApiResponse<Void>>
+  + leaveCareGroup(groupId: UUID, principal: Principal): ResponseEntity<ApiResponse<LeaveCareGroupResponse>>
+  + updateTaskStatus(groupId: UUID, taskId: UUID, request: UpdateTaskStatusRequest, ...): ResponseEntity<ApiResponse<UpdateTaskStatusResponse>>
+  + assignTask(groupId: UUID, request: AssignFamilyTaskRequest, principal: Principal): ResponseEntity<ApiResponse<AssignFamilyTaskResponse>>
+  + cancelTask(groupId: UUID, taskId: UUID, principal: Principal): ResponseEntity<ApiResponse<CancelFamilyTaskResponse>>
+  + getFamilyPermission(groupId: UUID, memberId: UUID, principal: Principal): ResponseEntity<ApiResponse<FamilyPermissionResponse>>
+}
+class "CareTaskServiceImpl" as Service1 <<Service>> {
+  - groupRepository: CareGroupRepository
+  - memberRepository: CareGroupMemberRepository
+  - taskRepository: CareTaskRepository
+  - authorizationPolicy: CareGroupAuthorizationPolicy
+  - auditCareTaskStatus(task: CareTask, callerId: UUID, previousStatus: CareTaskStatus, ...): void
+  + assignFamilyTask(groupId: UUID, request: AssignFamilyTaskRequest, callerId: UUID): AssignFamilyTaskResponse
+  + cancelFamilyTask(groupId: UUID, taskId: UUID, callerId: UUID): CancelFamilyTaskResponse
+  + updateFamilyTask(groupId: UUID, taskId: UUID, request: UpdateFamilyTaskRequest, ...): UpdateFamilyTaskResponse
+  + updateTaskStatus(groupId: UUID, taskId: UUID, request: UpdateTaskStatusRequest, ...): UpdateTaskStatusResponse
+}
+interface "ICareTaskService" as Service1Contract <<Service>>
+interface "CareTaskRepository" as Repository1 {
+  + findByCareGroupId(careGroupId: UUID): List<CareTask>
+  + findByAssignedTo(assignedTo: UUID): List<CareTask>
+  + deleteByCareGroupId(careGroupId: UUID): void
+  + findByIdAndCareGroupId(id: UUID, careGroupId: UUID): Optional<CareTask>
+  + findByCareGroupIdAndDueAtBetween(careGroupId: UUID, rangeStart: Instant, rangeEnd: Instant): List<CareTask>
+}
+class "CareTask" as Entity1 <<Entity>> {
+  - id: UUID
+  - careGroupId: UUID
+  - assignedBy: UUID
+  - assignedTo: UUID
+  - title: String
+  - description: String
+  - dueAt: Instant
+}
+interface "JpaRepository<CareTask, UUID>" as Repository1Base <<Framework>>
+class "PostgreSQL" as DB <<Database>>
+class "NotificationRecord service" as External <<External Service>>
+
+Service1Contract <|.. Service1 : implements
+Repository1Base <|-- Repository1 : extends
+UI1 ..> Controller1 : invokes API
+UI2 ..> Controller1 : invokes API
+UI3 ..> Controller1 : invokes API
+Controller1 --> Service1Contract : delegates
+Service1 --> Repository1 : reads / writes
+Repository1 ..> Entity1 : maps
+Repository1 ..> DB : persists
+Service1 ..> External : invokes when required
 @enduml
 ```
 
-**Hình 1 — Class Diagram: Family Care Task và transition guard**
+**Figure 1 — Class Diagram: Cooperative Care Task Management**
 
 ## 3. Sequence Diagram — Main Flow
 
 ```plantuml
-@startuml MF08_03_CareTask_SequenceDiagram
-actor "Mother" as M
-actor "Family Member" as F
-participant "Mobile UI" as UI
-participant "CareGroupController" as Controller
-participant "CareTaskServiceImpl" as Service
-participant "CareGroupMemberRepository" as MemberRepo
-participant "CareTaskRepository" as TaskRepo
+@startuml MF08_03_CooperativeCareTaskManagement_SequenceDiagram
+skinparam shadowing false
+
+actor "Mother / Family" as Actor
+boundary ":AssignedTasksScreen" as UI1
+control ":CareGroupController" as Controller1
+participant ":CareTaskServiceImpl" as Service1 <<service>>
+participant ":CareTaskRepository" as Repository1 <<repository>>
 database "PostgreSQL" as DB
+participant ":NotificationRecord service" as External1 <<external system>>
 
-M -> UI : 1. Nhập task và chọn người phụ trách
-activate UI
-UI -> Controller : 2. POST /api/v1/care-groups/{groupId}/tasks
-activate Controller
-Controller -> Service : 3. assignFamilyTask(groupId, request, ownerId)
-activate Service
-Service -> MemberRepo : 4. find accepted assignee
-activate MemberRepo
-MemberRepo -> DB : 5. SELECT care_group_members
-activate DB
-DB --> MemberRepo : 6. membership / empty
-deactivate DB
-MemberRepo --> Service : 7. Optional<CareGroupMember>
-deactivate MemberRepo
-alt [caller là Owner và assignee hợp lệ]
-  Service -> TaskRepo : 8a. save(CareTask{OPEN})
-  activate TaskRepo
-  TaskRepo -> DB : 8a-1. INSERT care_tasks
-  activate DB
-  DB --> TaskRepo : 8a-2. task row
-  deactivate DB
-  TaskRepo --> Service : 8a-3. CareTask
-  deactivate TaskRepo
-  Service --> Controller : 8a-4. AssignFamilyTaskResponse
-  deactivate Service
-  Controller --> UI : 8a-5. 201 Created
-  deactivate Controller
-else [không phải Owner hoặc assignee chưa ACCEPTED]
-  Service --> Controller : 8b. Access/Validation exception
-  deactivate Service
-  Controller --> UI : 8b-1. 403 Forbidden hoặc 400 Bad Request
-  deactivate Controller
+group UC-59 Manage Cooperative Care Tasks
+  Actor -> UI1 : 1. startManageCooperativeCareTasks()
+  activate UI1
+  UI1 -> Controller1 : 2. listTasks() / assignTask() / updateTask() / cancelTask() / updateTaskStatus()
+  activate Controller1
+  Controller1 -> Service1 : 3. listTasks() / assignFamilyTask() / updateFamilyTask() / cancelFamilyTask() / updateTaskStatus()
+  activate Service1
+  alt [selected action is view or list]
+    Service1 -> Repository1 : 4a. findByCareGroupId() / findByAssignedTo()
+    activate Repository1
+    Repository1 -> DB : 4a-1. SELECT
+    activate DB
+    DB --> Repository1 : 4a-2. queryResult
+    deactivate DB
+    Repository1 --> Service1 : 4a-3. domainRecords
+    deactivate Repository1
+    Service1 --> Controller1 : 4a-4. resultDTO
+    deactivate Service1
+    Controller1 --> UI1 : 4a-5. 200 OK
+    deactivate Controller1
+    UI1 --> Actor : 4a-6. displayCurrentState()
+    deactivate UI1
+  else [selected action creates, updates, archives or deletes]
+    Service1 -> Repository1 : 4b. findByCareGroupId() / findByAssignedTo()
+    activate Repository1
+    Repository1 -> DB : 4b-1. SELECT
+    activate DB
+    DB --> Repository1 : 4b-2. currentState
+    deactivate DB
+    Repository1 --> Service1 : 4b-3. scopedEntity
+    deactivate Repository1
+    Service1 -> Repository1 : 4b-4. save() / delete()
+    activate Repository1
+    Repository1 -> DB : 4b-5. INSERT / UPDATE / DELETE
+    activate DB
+    DB --> Repository1 : 4b-6. persistedState
+    deactivate DB
+    Repository1 --> Service1 : 4b-7. persistedEntity
+    deactivate Repository1
+    Service1 ->> External1 : 4b-8. notifyTaskAssignmentOrCompletion()
+    Service1 --> Controller1 : 4b-9. resultDTO
+    deactivate Service1
+    Controller1 --> UI1 : 4b-10. 200 OK / 201 Created
+    deactivate Controller1
+    UI1 --> Actor : 4b-11. displayConfirmedState()
+    deactivate UI1
+  else [request is invalid, forbidden, not found or conflicting]
+    Service1 --> Controller1 : 4c. domainError
+    deactivate Service1
+    Controller1 --> UI1 : 4c-1. 400 / 401 / 403 / 404 / 409
+    deactivate Controller1
+    UI1 --> Actor : 4c-2. displayActionableError()
+    deactivate UI1
+  end
 end
-UI --> M : 9. Hiển thị kết quả giao việc
-deactivate UI
 
-F -> UI : 10. Chọn trạng thái mới
-activate UI
-UI -> Controller : 11. PATCH /api/v1/care-groups/{groupId}/tasks/{taskId}/status
-activate Controller
-Controller -> Service : 12. updateTaskStatus(groupId, taskId, request, familyId)
-activate Service
-Service -> TaskRepo : 13. find task for update
-activate TaskRepo
-TaskRepo -> DB : 14. SELECT care_tasks FOR UPDATE
-activate DB
-DB --> TaskRepo : 15. task row / empty
-deactivate DB
-TaskRepo --> Service : 16. Optional<CareTask>
-deactivate TaskRepo
-Service -> Service : 12a. verify assignee and canTransitionTo(target)
-activate Service
-Service --> Service : 12a-1. transition decision
-deactivate Service
-alt [đúng assignee và transition hợp lệ]
-  Service -> TaskRepo : 17a. save(new status)
-  activate TaskRepo
-  TaskRepo -> DB : 17a-1. UPDATE care_tasks
-  activate DB
-  DB --> TaskRepo : 17a-2. updated task
-  deactivate DB
-  TaskRepo --> Service : 17a-3. CareTask
-  deactivate TaskRepo
-  Service --> Controller : 17a-4. UpdateTaskStatusResponse
-  deactivate Service
-  Controller --> UI : 17a-5. 200 OK
-  deactivate Controller
-else [không phải assignee hoặc transition không hợp lệ]
-  Service --> Controller : 17b. Access/Conflict exception
-  deactivate Service
-  Controller --> UI : 17b-1. 403 Forbidden hoặc 409 Conflict
-  deactivate Controller
-end
-UI --> F : 18. Hiển thị trạng thái hiện tại
-deactivate UI
 @enduml
 ```
 
-**Hình 2 — Sequence Diagram: Giao việc và cập nhật trạng thái bởi assignee**
+**Figure 2 — Sequence Diagram: Cooperative Care Task Management Main Flow**
+
+**Brief Explanation:**
+
+1. The diagram separates the implemented goals covered by this specification: UC-59 Manage Cooperative Care Tasks.
+2. Each actor action enters through the reachable mobile or web boundary and invokes the exact controller operation exposed by the current Backend.
+3. The controller delegates to the mapped service operation; read branches query scoped records, while mutation branches load the current state before persisting the requested transition.
+4. Repository calls and PostgreSQL responses are shown explicitly, including call-stack activation and dashed return messages.
+5. Invalid, unauthorized, missing or conflicting requests return an actionable error without displaying a false success state.
+6. External systems are invoked only for the mapped use cases; notification dispatches are asynchronous, while integrations that return data remain synchronous.
 
 ## 4. Business Rules Applied
 
-- Chỉ Owner giao, sửa hoặc hủy task; assignee phải là member `ACCEPTED` của cùng group.
-- Chỉ `assignedTo` được cập nhật trạng thái thực hiện.
-- Transition phải qua `CareTaskStatus.canTransitionTo()`; trạng thái kết thúc không được mở lại tùy ý.
-- Task hoàn tất không được hủy; update/cancel phải khóa hoặc kiểm tra lại bản ghi hiện tại để tránh ghi đè cạnh tranh.
-- `family.entity.CareTask` không được trộn với `ChecklistTaskInstance` hoặc reminder task.
+- Access is enforced server-side using the current actor, role, ownership, membership and consent scope.
+- Owner and assignee actions differ and membership is rechecked.
+- The following remains outside this contract: Clinical treatment plan.
+- Retries must not duplicate confirmed records, transitions, notifications or external side effects.
+- Sensitive health, identity, moderation, location and safety operations retain the minimum required audit evidence.
