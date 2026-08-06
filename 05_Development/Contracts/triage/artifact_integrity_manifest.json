@@ -1,13 +1,13 @@
 {
   "$comment": "Integrity only. Proves each artifact matches its checksum. Does NOT prove clinical correctness and is NOT an approval record.",
   "manifestType": "ARTIFACT_INTEGRITY",
-  "generatedAt": "2026-08-06T10:35:52+00:00",
+  "generatedAt": "2026-08-06T10:50:25+00:00",
   "generatorVersion": "sync_triage_rule_registry.py/3.0",
   "artifacts": [
     {
       "artifactId": "canonical_answer_mapping_v1",
       "path": "05_Development/Contracts/triage/canonical_answer_mapping_v1.json",
-      "sha256": "0a2b1f3b655aa12c2f6d59d3c1832e094877cf339ba40993eea8d52d213534b6"
+      "sha256": "d98b5f3f4de40ca24253b2e30932623dcf0c8f1828e018882e49ee2eac38c211"
     },
     {
       "artifactId": "context_contract_v1",
@@ -57,7 +57,7 @@
     {
       "artifactId": "question_catalog_v1",
       "path": "05_Development/Contracts/triage/question_catalog_v1.json",
-      "sha256": "25c2ba1afb7a8442046558d080569a12e81a7b445ecbff8299fec1e3b7199560"
+      "sha256": "acac88f61bbe4f4af9a107f66fe3875a74518e15b399cdfe46db5f7ba37729a3"
     },
     {
       "artifactId": "required_rule_manifest",

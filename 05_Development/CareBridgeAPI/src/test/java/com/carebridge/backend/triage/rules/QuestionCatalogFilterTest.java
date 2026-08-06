@@ -189,9 +189,10 @@ class QuestionCatalogFilterTest {
     @Test
     @DisplayName("The Java catalogue matches the canonical contract")
     void catalogueMatchesCanonicalContract() {
-        // 15 original questions plus the deterministic global-danger, self-harm and headache
-        // screens, without which those signals were reachable only by free-text extraction.
-        assertThat(catalog.questions()).hasSize(18);
+        // 15 original questions, plus the deterministic global-danger, self-harm and headache
+        // screens, plus the three paediatric follow-ups the ported PED_ rules need. Without them
+        // those signals were reachable only by free-text extraction.
+        assertThat(catalog.questions()).hasSize(21);
         assertThat(catalog.maxQuestionsPerTurn()).isEqualTo(3);
         assertThat(catalog.maxRounds()).isEqualTo(3);
     }

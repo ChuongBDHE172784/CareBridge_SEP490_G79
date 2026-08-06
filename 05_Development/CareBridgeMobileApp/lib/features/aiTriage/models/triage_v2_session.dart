@@ -313,6 +313,21 @@ class TriageV2Question {
       'Bạn có đau đầu không, và mức độ thế nào?',
       ['HEADACHE_NONE', 'HEADACHE_MILD', 'HEADACHE_SEVERE', 'UNSURE'],
     ),
+    'Q_BABY_FEEDING': TriageV2Question(
+      'Q_BABY_FEEDING',
+      'Bé bú hoặc uống như thế nào so với bình thường?',
+      ['FEEDING_NORMAL', 'FEEDING_REDUCED', 'FEEDING_REFUSED', 'UNSURE'],
+    ),
+    'Q_BABY_HYDRATION': TriageV2Question(
+      'Q_BABY_HYDRATION',
+      'Bé có dấu hiệu mất nước không?',
+      ['HYDRATION_NORMAL', 'HYDRATION_REDUCED', 'HYDRATION_SEVERE', 'UNSURE'],
+    ),
+    'Q_BABY_TEMPERATURE': TriageV2Question(
+      'Q_BABY_TEMPERATURE',
+      'Nếu bạn đã đo nhiệt độ cho bé, kết quả trong khoảng nào?',
+      ['TEMP_LT_38', 'TEMP_38_TO_39', 'TEMP_GTE_39', 'NO_DEVICE_OR_UNAWARE'],
+    ),
   };
 
   static TriageV2Question fromId(String id) =>
