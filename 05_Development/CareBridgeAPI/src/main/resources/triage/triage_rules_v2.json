@@ -1,0 +1,1276 @@
+{
+  "$comment": "CANONICAL RULE REGISTRY — AI Reproductive Health Triage Assistant V2. Reconciled column-for-column against matrix_snapshot_v0.1.0.json (26 columns x 10 rules). The rule set was built by the CareBridge development team from publicly available medical guidance; it is NOT_CLINICALLY_VALIDATED and no external clinician signed it off. Anything not present in the source matrix lives under safetyPolicies or greenSafetyBlockers with its own provenance. Java and Python each carry a generated copy — never edit a copy, run DevTools/sync_triage_rule_registry.py.",
+  "rulesetVersion": "2.2.0",
+  "ruleMatrixVersion": "0.1.0",
+  "matrixSnapshotFile": "matrix_snapshot_v0.1.0.json",
+  "matrixColumnCount": 26,
+  "matrixRuleRowCount": 10,
+  "scope": {
+    "stages": [
+      "PRECONCEPTION",
+      "POSSIBLE_PREGNANCY",
+      "PREGNANCY",
+      "POSTPARTUM"
+    ],
+    "outcomes": [
+      "RED",
+      "YELLOW",
+      "GREEN",
+      "NEEDS_MORE_INFO",
+      "OUT_OF_SCOPE"
+    ],
+    "maximumQuestionRounds": 3
+  },
+  "releaseGates": {
+    "$comment": "GREEN is gated OFF by default. The current rule set covers only a subset of stage-specific danger signs, so 'no rule matched' does NOT mean 'low risk'. When greenEnabled is false, a would-be GREEN becomes NEEDS_MORE_INFO / ROUTE_TO_HEALTHCARE_WORKER.",
+    "greenEnabled": false,
+    "greenEnableRequires": [
+      "Stage-specific minimum dataset defined and internally reviewed",
+      "Danger-sign coverage checklist completed and recorded in internal_rule_review_manifest.json",
+      "All greenSafetyBlockers either resolved into reviewed rules or explicitly accepted as limitations",
+      "artifact_integrity_manifest.json, source_verification_manifest.json and internal_rule_review_manifest.json all consistent",
+      "Java/Python parity green across the shared vectors",
+      "End-to-end structured cases green",
+      "Feature flag triage.v2.green-enabled deliberately switched on",
+      "NOTE: none of the above constitutes clinical validation; GREEN remains an informational orientation, not a safety guarantee"
+    ]
+  },
+  "signalCatalog": [
+    {
+      "code": "ALTERED_CONSCIOUSNESS",
+      "type": "BOOLEAN",
+      "displayText": "Thay đổi ý thức, lơ mơ hoặc ngất",
+      "globalRed": true
+    },
+    {
+      "code": "SEIZURE",
+      "type": "BOOLEAN",
+      "displayText": "Co giật",
+      "globalRed": true
+    },
+    {
+      "code": "SEVERE_BREATHING_DIFFICULTY",
+      "type": "BOOLEAN",
+      "displayText": "Khó thở nghiêm trọng",
+      "globalRed": true
+    },
+    {
+      "code": "CYANOSIS",
+      "type": "BOOLEAN",
+      "displayText": "Tím tái",
+      "globalRed": true
+    },
+    {
+      "code": "SELF_HARM_IDEATION",
+      "type": "BOOLEAN",
+      "displayText": "Ý nghĩ tự làm hại bản thân",
+      "globalRed": true
+    },
+    {
+      "code": "SELF_HARM_INTENT_OR_PLAN",
+      "type": "BOOLEAN",
+      "displayText": "Ý định hoặc kế hoạch tự làm hại",
+      "globalRed": true
+    },
+    {
+      "code": "HARM_TO_BABY_IDEATION",
+      "type": "BOOLEAN",
+      "displayText": "Ý nghĩ làm hại em bé",
+      "globalRed": true
+    },
+    {
+      "code": "CANNOT_ENSURE_OWN_SAFETY",
+      "type": "BOOLEAN",
+      "displayText": "Không thể đảm bảo an toàn cho bản thân lúc này",
+      "globalRed": true
+    },
+    {
+      "code": "HEAVY_VAGINAL_BLEEDING",
+      "type": "BOOLEAN",
+      "displayText": "Ra máu âm đạo nhiều"
+    },
+    {
+      "code": "VAGINAL_BLEEDING",
+      "type": "BOOLEAN",
+      "displayText": "Ra máu âm đạo"
+    },
+    {
+      "code": "SEVERE_HEADACHE",
+      "type": "BOOLEAN",
+      "displayText": "Đau đầu dữ dội"
+    },
+    {
+      "code": "VISUAL_DISTURBANCE",
+      "type": "BOOLEAN",
+      "displayText": "Nhìn mờ hoặc rối loạn thị giác"
+    },
+    {
+      "code": "HEAVY_POSTPARTUM_BLEEDING",
+      "type": "BOOLEAN",
+      "displayText": "Ra máu nhiều sau sinh"
+    },
+    {
+      "code": "LARGE_CLOTS",
+      "type": "BOOLEAN",
+      "displayText": "Ra cục máu đông lớn"
+    },
+    {
+      "code": "CHEST_PAIN",
+      "type": "BOOLEAN",
+      "displayText": "Đau ngực"
+    },
+    {
+      "code": "DIZZINESS",
+      "type": "BOOLEAN",
+      "displayText": "Choáng váng, hoa mắt"
+    },
+    {
+      "code": "ABDOMINAL_PAIN",
+      "type": "BOOLEAN",
+      "displayText": "Đau bụng"
+    },
+    {
+      "code": "SEVERE_ABDOMINAL_PAIN",
+      "type": "BOOLEAN",
+      "displayText": "Đau bụng dữ dội"
+    },
+    {
+      "code": "HIGH_FEVER",
+      "type": "BOOLEAN",
+      "displayText": "Sốt cao"
+    },
+    {
+      "code": "REDUCED_FETAL_MOVEMENT",
+      "type": "BOOLEAN",
+      "displayText": "Giảm hoặc mất cử động thai"
+    },
+    {
+      "code": "UNILATERAL_LEG_SWELLING_PAIN",
+      "type": "BOOLEAN",
+      "displayText": "Một chân sưng, đỏ hoặc đau"
+    },
+    {
+      "code": "FOUL_SMELLING_LOCHIA",
+      "type": "BOOLEAN",
+      "displayText": "Sản dịch có mùi hôi"
+    },
+    {
+      "code": "EPIGASTRIC_PAIN",
+      "type": "BOOLEAN",
+      "displayText": "Đau vùng trên rốn hoặc đau dưới bờ sườn phải"
+    },
+    {
+      "code": "SWELLING",
+      "type": "BOOLEAN",
+      "displayText": "Sưng phù mặt, tay hoặc chân"
+    }
+  ],
+  "contextFields": [
+    {
+      "code": "stage",
+      "type": "ENUM",
+      "values": [
+        "PRECONCEPTION",
+        "POSSIBLE_PREGNANCY",
+        "PREGNANCY",
+        "POSTPARTUM"
+      ]
+    },
+    {
+      "code": "possible_pregnancy",
+      "type": "TRISTATE",
+      "values": [
+        "YES",
+        "NO",
+        "UNKNOWN"
+      ]
+    },
+    {
+      "code": "gestational_week",
+      "type": "NUMBER",
+      "min": 0,
+      "max": 45
+    },
+    {
+      "code": "postpartum_day",
+      "type": "NUMBER",
+      "min": 0,
+      "max": 365
+    },
+    {
+      "code": "delivery_method",
+      "type": "ENUM",
+      "values": [
+        "VAGINAL",
+        "CAESAREAN",
+        "UNKNOWN"
+      ]
+    },
+    {
+      "code": "bleeding_amount",
+      "type": "ENUM",
+      "values": [
+        "NONE",
+        "SPOTTING",
+        "MODERATE",
+        "HEAVY",
+        "UNKNOWN"
+      ]
+    },
+    {
+      "code": "pain_severity",
+      "type": "ENUM",
+      "values": [
+        "NONE",
+        "MILD",
+        "MODERATE",
+        "SEVERE",
+        "UNKNOWN"
+      ]
+    },
+    {
+      "code": "current_status",
+      "type": "ENUM",
+      "values": [
+        "ONGOING",
+        "RESOLVED",
+        "WORSENING",
+        "UNKNOWN"
+      ]
+    },
+    {
+      "code": "last_menstrual_period_or_test",
+      "type": "TEXT"
+    }
+  ],
+  "operationalDefinitions": {
+    "$comment": "Deterministic mapping from FIXED answer option codes (or user-supplied measurements) to signals. The LLM never decides a threshold: it may only report which option the user chose. The source matrix flags the remote-channel definition of 'nhiều' (heavy) as an unresolved item, so these thresholds are an internal working definition and are NOT clinically validated.",
+    "status": "PROVISIONAL_INTERNAL_DEFINITION",
+    "optionCodeToSignal": {
+      "BLEEDING_HEAVY": {
+        "signal": "HEAVY_VAGINAL_BLEEDING",
+        "presence": "PRESENT",
+        "stages": [
+          "PREGNANCY"
+        ],
+        "alsoSets": {
+          "VAGINAL_BLEEDING": "PRESENT",
+          "bleeding_amount": "HEAVY"
+        }
+      },
+      "BLEEDING_HEAVY_POSTPARTUM": {
+        "signal": "HEAVY_POSTPARTUM_BLEEDING",
+        "presence": "PRESENT",
+        "stages": [
+          "POSTPARTUM"
+        ],
+        "alsoSets": {
+          "bleeding_amount": "HEAVY"
+        }
+      },
+      "BLEEDING_MODERATE": {
+        "signal": "VAGINAL_BLEEDING",
+        "presence": "PRESENT",
+        "alsoSets": {
+          "bleeding_amount": "MODERATE"
+        }
+      },
+      "BLEEDING_SPOTTING": {
+        "signal": "VAGINAL_BLEEDING",
+        "presence": "PRESENT",
+        "alsoSets": {
+          "bleeding_amount": "SPOTTING"
+        }
+      },
+      "BLEEDING_NONE": {
+        "signal": "VAGINAL_BLEEDING",
+        "presence": "ABSENT",
+        "alsoSets": {
+          "bleeding_amount": "NONE"
+        }
+      },
+      "BLEEDING_UNSURE": {
+        "signal": "VAGINAL_BLEEDING",
+        "presence": "UNKNOWN",
+        "alsoSets": {
+          "bleeding_amount": "UNKNOWN"
+        }
+      },
+      "CLOTS_LARGE": {
+        "signal": "LARGE_CLOTS",
+        "presence": "PRESENT"
+      },
+      "CLOTS_NONE": {
+        "signal": "LARGE_CLOTS",
+        "presence": "ABSENT"
+      },
+      "CLOTS_UNSURE": {
+        "signal": "LARGE_CLOTS",
+        "presence": "UNKNOWN"
+      },
+      "HEADACHE_SEVERE": {
+        "signal": "SEVERE_HEADACHE",
+        "presence": "PRESENT"
+      },
+      "HEADACHE_MILD_OR_NONE": {
+        "signal": "SEVERE_HEADACHE",
+        "presence": "ABSENT"
+      },
+      "VISUAL_CHANGE_YES": {
+        "signal": "VISUAL_DISTURBANCE",
+        "presence": "PRESENT"
+      },
+      "VISUAL_CHANGE_NO": {
+        "signal": "VISUAL_DISTURBANCE",
+        "presence": "ABSENT"
+      },
+      "VISUAL_CHANGE_UNSURE": {
+        "signal": "VISUAL_DISTURBANCE",
+        "presence": "UNKNOWN"
+      },
+      "BREATHING_SEVERE": {
+        "signal": "SEVERE_BREATHING_DIFFICULTY",
+        "presence": "PRESENT"
+      },
+      "BREATHING_NORMAL": {
+        "signal": "SEVERE_BREATHING_DIFFICULTY",
+        "presence": "ABSENT"
+      },
+      "DIZZINESS_YES": {
+        "signal": "DIZZINESS",
+        "presence": "PRESENT"
+      },
+      "DIZZINESS_NO": {
+        "signal": "DIZZINESS",
+        "presence": "ABSENT"
+      }
+    },
+    "notDefinedByModel": [
+      "HEAVY bleeding threshold",
+      "LARGE_CLOTS size threshold",
+      "SEVERE_HEADACHE severity threshold",
+      "SEVERE_BREATHING_DIFFICULTY severity threshold",
+      "current vs historical symptom",
+      "worsening symptom"
+    ]
+  },
+  "rules": [
+    {
+      "ruleId": "GLOBAL_RED_001",
+      "ruleVersion": "0.1.0",
+      "ruleType": "GLOBAL_RED",
+      "title": "Mất ý thức, co giật hoặc khó thở nghiêm trọng",
+      "stages": [
+        "PRECONCEPTION",
+        "POSSIBLE_PREGNANCY",
+        "PREGNANCY",
+        "POSTPARTUM"
+      ],
+      "outcome": "RED",
+      "priority": 100,
+      "decisionOrder": 10,
+      "stopOnMatch": true,
+      "conditionType": "SIGNAL",
+      "condition": {
+        "any": [
+          {
+            "signal": "ALTERED_CONSCIOUSNESS",
+            "operator": "EQ",
+            "value": true
+          },
+          {
+            "signal": "SEIZURE",
+            "operator": "EQ",
+            "value": true
+          },
+          {
+            "signal": "SEVERE_BREATHING_DIFFICULTY",
+            "operator": "EQ",
+            "value": true
+          }
+        ]
+      },
+      "requiredFields": [],
+      "questionIds": [],
+      "exclusions": [],
+      "exclusionPredicates": [],
+      "reasonCode": "GLOBAL_IMMEDIATE_DANGER",
+      "actionCode": "IMMEDIATE_EMERGENCY_ASSESSMENT",
+      "sourceIds": [
+        "WHO_IITT_ADULT"
+      ],
+      "releaseStatus": "ACTIVE",
+      "approvedAt": "2026-08-05",
+      "effectiveFrom": "2026-08-05",
+      "effectiveTo": null,
+      "matrixProvenance": {
+        "row": 1,
+        "matchesSnapshot": true
+      },
+      "internalReviewStatus": "DEV_REVIEWED",
+      "sourceVerificationStatus": "PENDING",
+      "clinicalValidationStatus": "NOT_CLINICALLY_VALIDATED"
+    },
+    {
+      "ruleId": "PREG_RED_001",
+      "ruleVersion": "0.1.0",
+      "ruleType": "STAGE_RED",
+      "title": "Ra máu âm đạo nhiều trong thai kỳ",
+      "stages": [
+        "PREGNANCY"
+      ],
+      "outcome": "RED",
+      "priority": 95,
+      "decisionOrder": 30,
+      "stopOnMatch": true,
+      "conditionType": "SIGNAL",
+      "condition": {
+        "any": [
+          {
+            "signal": "HEAVY_VAGINAL_BLEEDING",
+            "operator": "EQ",
+            "value": true
+          }
+        ]
+      },
+      "requiredFields": [
+        "stage",
+        "bleeding_amount",
+        "current_status"
+      ],
+      "questionIds": [
+        "Q_BLEEDING_AMOUNT",
+        "Q_DIZZINESS"
+      ],
+      "exclusions": [
+        "Bác sĩ xác nhận định nghĩa \"nhiều\" cho kênh từ xa"
+      ],
+      "exclusionPredicates": [],
+      "reasonCode": "PREG_HEAVY_BLEEDING",
+      "actionCode": "IMMEDIATE_EMERGENCY_ASSESSMENT",
+      "sourceIds": [
+        "WHO_IITT_ADULT",
+        "WHO_DANGER_SIGNS_2022",
+        "BYT_1139_2026"
+      ],
+      "releaseStatus": "ACTIVE",
+      "approvedAt": "2026-08-05",
+      "effectiveFrom": "2026-08-05",
+      "effectiveTo": null,
+      "matrixProvenance": {
+        "row": 2,
+        "matchesSnapshot": true,
+        "openItem": "Operational definition of HEAVY for a remote channel is unconfirmed — see operationalDefinitions.status."
+      },
+      "internalReviewStatus": "DEV_REVIEWED",
+      "sourceVerificationStatus": "PENDING",
+      "clinicalValidationStatus": "NOT_CLINICALLY_VALIDATED"
+    },
+    {
+      "ruleId": "PREG_RED_002",
+      "ruleVersion": "0.1.0",
+      "ruleType": "STAGE_RED",
+      "title": "Đau đầu dữ dội kèm rối loạn thị giác trong thai kỳ",
+      "stages": [
+        "PREGNANCY"
+      ],
+      "outcome": "RED",
+      "priority": 90,
+      "decisionOrder": 40,
+      "stopOnMatch": true,
+      "conditionType": "SIGNAL",
+      "condition": {
+        "all": [
+          {
+            "signal": "SEVERE_HEADACHE",
+            "operator": "EQ",
+            "value": true
+          },
+          {
+            "signal": "VISUAL_DISTURBANCE",
+            "operator": "EQ",
+            "value": true
+          }
+        ]
+      },
+      "requiredFields": [
+        "stage",
+        "gestational_week",
+        "headache_severity",
+        "visual_change"
+      ],
+      "questionIds": [
+        "Q_GESTATIONAL_WEEK",
+        "Q_VISUAL_CHANGE",
+        "Q_BP_IF_KNOWN"
+      ],
+      "exclusions": [
+        "Không chẩn đoán tiền sản giật; chỉ phân tầng nguy cơ"
+      ],
+      "exclusionPredicates": [],
+      "reasonCode": "PREG_NEURO_DANGER",
+      "actionCode": "IMMEDIATE_EMERGENCY_ASSESSMENT",
+      "sourceIds": [
+        "WHO_IITT_ADULT",
+        "WHO_DANGER_SIGNS_2022",
+        "WHO_MATERNAL_2025"
+      ],
+      "releaseStatus": "ACTIVE",
+      "approvedAt": "2026-08-05",
+      "effectiveFrom": "2026-08-05",
+      "effectiveTo": null,
+      "matrixProvenance": {
+        "row": 3,
+        "matchesSnapshot": true,
+        "gestationalWeekResolution": "The Matrix trigger condition contains NO gestational-week term; gestational_week appears only under 'Dữ liệu bắt buộc'. Therefore week is SUPPORTING DATA, not a trigger condition, and the rule applies at any gestational age. Recorded rather than guessed."
+      },
+      "internalReviewStatus": "DEV_REVIEWED",
+      "sourceVerificationStatus": "PENDING",
+      "clinicalValidationStatus": "NOT_CLINICALLY_VALIDATED"
+    },
+    {
+      "ruleId": "PREG_YELLOW_001",
+      "ruleVersion": "0.1.0",
+      "ruleType": "STAGE_YELLOW",
+      "title": "Ra máu âm đạo không kèm dấu hiệu RED",
+      "stages": [
+        "PREGNANCY"
+      ],
+      "outcome": "YELLOW",
+      "priority": 60,
+      "decisionOrder": 50,
+      "stopOnMatch": false,
+      "conditionType": "SIGNAL",
+      "condition": {
+        "any": [
+          {
+            "signal": "VAGINAL_BLEEDING",
+            "operator": "EQ",
+            "value": true
+          }
+        ]
+      },
+      "requiredFields": [
+        "stage",
+        "bleeding_amount",
+        "pain_severity",
+        "dizziness",
+        "current_status"
+      ],
+      "questionIds": [
+        "Q_BLEEDING_AMOUNT",
+        "Q_PAIN_SEVERITY",
+        "Q_DIZZINESS"
+      ],
+      "exclusions": [
+        "Nếu lượng máu chưa rõ hoặc mâu thuẫn → NEEDS_MORE_INFO"
+      ],
+      "exclusionPredicates": [
+        "BLEEDING_AMOUNT_UNKNOWN_OR_CONFLICTED"
+      ],
+      "reasonCode": "PREG_BLEEDING_EARLY_REVIEW",
+      "actionCode": "EARLY_CLINICAL_ASSESSMENT",
+      "sourceIds": [
+        "WHO_DANGER_SIGNS_2022",
+        "BYT_1139_2026"
+      ],
+      "releaseStatus": "ACTIVE",
+      "approvedAt": "2026-08-05",
+      "effectiveFrom": "2026-08-05",
+      "effectiveTo": null,
+      "matrixProvenance": {
+        "row": 4,
+        "matchesSnapshot": true,
+        "note": "'AND no RED rule matched' is enforced by engine precedence, not by the condition tree."
+      },
+      "internalReviewStatus": "DEV_REVIEWED",
+      "sourceVerificationStatus": "PENDING",
+      "clinicalValidationStatus": "NOT_CLINICALLY_VALIDATED"
+    },
+    {
+      "ruleId": "POST_RED_001",
+      "ruleVersion": "0.1.0",
+      "ruleType": "STAGE_RED",
+      "title": "Ra máu nhiều hoặc cục máu đông lớn sau sinh",
+      "stages": [
+        "POSTPARTUM"
+      ],
+      "outcome": "RED",
+      "priority": 95,
+      "decisionOrder": 60,
+      "stopOnMatch": true,
+      "conditionType": "SIGNAL",
+      "condition": {
+        "any": [
+          {
+            "signal": "HEAVY_POSTPARTUM_BLEEDING",
+            "operator": "EQ",
+            "value": true
+          },
+          {
+            "signal": "LARGE_CLOTS",
+            "operator": "EQ",
+            "value": true
+          }
+        ]
+      },
+      "requiredFields": [
+        "postpartum_day",
+        "bleeding_amount",
+        "clots",
+        "dizziness"
+      ],
+      "questionIds": [
+        "Q_POSTPARTUM_DAY",
+        "Q_BLEEDING_AMOUNT",
+        "Q_CLOTS",
+        "Q_DIZZINESS"
+      ],
+      "exclusions": [
+        "Không chẩn đoán băng huyết sau sinh"
+      ],
+      "exclusionPredicates": [],
+      "reasonCode": "POSTPARTUM_HEAVY_BLEEDING",
+      "actionCode": "IMMEDIATE_EMERGENCY_ASSESSMENT",
+      "sourceIds": [
+        "WHO_DANGER_SIGNS_2022",
+        "WHO_MATERNAL_2025",
+        "WHO_PCPNC_2015"
+      ],
+      "releaseStatus": "ACTIVE",
+      "approvedAt": "2026-08-05",
+      "effectiveFrom": "2026-08-05",
+      "effectiveTo": null,
+      "matrixProvenance": {
+        "row": 5,
+        "matchesSnapshot": true
+      },
+      "internalReviewStatus": "DEV_REVIEWED",
+      "sourceVerificationStatus": "PENDING",
+      "clinicalValidationStatus": "NOT_CLINICALLY_VALIDATED"
+    },
+    {
+      "ruleId": "POST_RED_002",
+      "ruleVersion": "0.1.0",
+      "ruleType": "STAGE_RED",
+      "title": "Đau ngực, khó thở nghiêm trọng hoặc co giật sau sinh",
+      "stages": [
+        "POSTPARTUM"
+      ],
+      "outcome": "RED",
+      "priority": 100,
+      "decisionOrder": 20,
+      "stopOnMatch": true,
+      "conditionType": "SIGNAL",
+      "condition": {
+        "any": [
+          {
+            "signal": "CHEST_PAIN",
+            "operator": "EQ",
+            "value": true
+          },
+          {
+            "signal": "SEVERE_BREATHING_DIFFICULTY",
+            "operator": "EQ",
+            "value": true
+          },
+          {
+            "signal": "SEIZURE",
+            "operator": "EQ",
+            "value": true
+          }
+        ]
+      },
+      "requiredFields": [
+        "postpartum_day",
+        "current_status"
+      ],
+      "questionIds": [],
+      "exclusions": [],
+      "exclusionPredicates": [],
+      "reasonCode": "POSTPARTUM_CARDIO_NEURO_DANGER",
+      "actionCode": "IMMEDIATE_EMERGENCY_ASSESSMENT",
+      "sourceIds": [
+        "WHO_IITT_ADULT",
+        "WHO_DANGER_SIGNS_2022"
+      ],
+      "releaseStatus": "ACTIVE",
+      "approvedAt": "2026-08-05",
+      "effectiveFrom": "2026-08-05",
+      "effectiveTo": null,
+      "matrixProvenance": {
+        "row": 6,
+        "matchesSnapshot": true
+      },
+      "internalReviewStatus": "DEV_REVIEWED",
+      "sourceVerificationStatus": "PENDING",
+      "clinicalValidationStatus": "NOT_CLINICALLY_VALIDATED"
+    },
+    {
+      "ruleId": "PRE_INFO_001",
+      "ruleVersion": "0.1.0",
+      "ruleType": "INFO",
+      "title": "Chưa đủ dữ liệu khi nghi ngờ có thai",
+      "stages": [
+        "POSSIBLE_PREGNANCY"
+      ],
+      "outcome": "NEEDS_MORE_INFO",
+      "priority": 50,
+      "decisionOrder": 70,
+      "stopOnMatch": false,
+      "conditionType": "SIGNAL",
+      "condition": {
+        "all": [
+          {
+            "context": "possible_pregnancy",
+            "operator": "EQ",
+            "value": "UNKNOWN"
+          }
+        ]
+      },
+      "requiredFields": [
+        "last_menstrual_period_or_test",
+        "pain_severity",
+        "bleeding_amount"
+      ],
+      "questionIds": [
+        "Q_PREGNANCY_TEST",
+        "Q_PAIN_SEVERITY",
+        "Q_BLEEDING_AMOUNT"
+      ],
+      "exclusions": [
+        "Nếu có bất kỳ GLOBAL/PREG RED signal → RED override"
+      ],
+      "exclusionPredicates": [],
+      "reasonCode": "CONTEXT_INSUFFICIENT_POSSIBLE_PREGNANCY",
+      "actionCode": "ASK_CLARIFYING_QUESTIONS",
+      "sourceIds": [
+        "BYT_1139_2026"
+      ],
+      "releaseStatus": "ACTIVE",
+      "approvedAt": "2026-08-05",
+      "effectiveFrom": "2026-08-05",
+      "effectiveTo": null,
+      "matrixProvenance": {
+        "row": 7,
+        "matchesSnapshot": true,
+        "note": "RED override is enforced by engine precedence."
+      },
+      "internalReviewStatus": "DEV_REVIEWED",
+      "sourceVerificationStatus": "PENDING",
+      "clinicalValidationStatus": "NOT_CLINICALLY_VALIDATED"
+    },
+    {
+      "ruleId": "SYS_INFO_001",
+      "ruleVersion": "0.1.0",
+      "ruleType": "SYSTEM_INFO",
+      "title": "Thiếu trường dữ liệu bắt buộc",
+      "stages": [
+        "PRECONCEPTION",
+        "POSSIBLE_PREGNANCY",
+        "PREGNANCY",
+        "POSTPARTUM"
+      ],
+      "outcome": "NEEDS_MORE_INFO",
+      "priority": 40,
+      "decisionOrder": 80,
+      "stopOnMatch": false,
+      "conditionType": "ENGINE",
+      "condition": {
+        "predicate": "MISSING_REQUIRED_FIELDS"
+      },
+      "requiredFields": [
+        "stage",
+        "onset",
+        "severity",
+        "red_flags_checked"
+      ],
+      "questionIds": [],
+      "exclusions": [
+        "RED rule luôn kiểm tra lại sau mỗi câu trả lời"
+      ],
+      "exclusionPredicates": [],
+      "reasonCode": "INSUFFICIENT_DATA",
+      "actionCode": "ASK_CLARIFYING_QUESTIONS",
+      "sourceIds": [
+        "System safety rule"
+      ],
+      "releaseStatus": "ACTIVE",
+      "approvedAt": "2026-08-05",
+      "effectiveFrom": "2026-08-05",
+      "effectiveTo": null,
+      "matrixProvenance": {
+        "row": 8,
+        "matchesSnapshot": true,
+        "note": "Matrix 'Dừng hỏi' = FALSE and Action = ASK_CLARIFYING_QUESTIONS, so stopOnMatch is FALSE. Stopping after the round budget is exhausted is a RUNTIME policy (runtime.max_rounds_exhausted), not a property of this rule — see runtimePolicies.maxRoundsExhausted."
+      },
+      "internalReviewStatus": "DEV_REVIEWED",
+      "sourceVerificationStatus": "PENDING",
+      "clinicalValidationStatus": "NOT_CLINICALLY_VALIDATED"
+    },
+    {
+      "ruleId": "SYS_OOS_001",
+      "ruleVersion": "0.1.0",
+      "ruleType": "SYSTEM_SCOPE",
+      "title": "Ngoài phạm vi sức khỏe sinh sản",
+      "stages": [
+        "PRECONCEPTION",
+        "POSSIBLE_PREGNANCY",
+        "PREGNANCY",
+        "POSTPARTUM"
+      ],
+      "outcome": "OUT_OF_SCOPE",
+      "priority": 10,
+      "decisionOrder": 90,
+      "stopOnMatch": true,
+      "conditionType": "ENGINE",
+      "condition": {
+        "predicate": "NO_REPRODUCTIVE_RELEVANCE_AND_NO_GLOBAL_RED"
+      },
+      "requiredFields": [
+        "raw_text",
+        "global_red_check"
+      ],
+      "questionIds": [],
+      "exclusions": [
+        "Nếu có dấu hiệu cấp cứu chung vẫn xử lý RED trước"
+      ],
+      "exclusionPredicates": [],
+      "reasonCode": "OUT_OF_SCOPE_REPRODUCTIVE_TRIAGE",
+      "actionCode": "ROUTE_OUT_OF_SCOPE",
+      "sourceIds": [
+        "System scope rule"
+      ],
+      "releaseStatus": "ACTIVE",
+      "approvedAt": "2026-08-05",
+      "effectiveFrom": "2026-08-05",
+      "effectiveTo": null,
+      "matrixProvenance": {
+        "row": 9,
+        "matchesSnapshot": true
+      },
+      "internalReviewStatus": "DEV_REVIEWED",
+      "sourceVerificationStatus": "PENDING",
+      "clinicalValidationStatus": "NOT_CLINICALLY_VALIDATED"
+    },
+    {
+      "ruleId": "GREEN_DEFAULT_001",
+      "ruleVersion": "0.1.0",
+      "ruleType": "SYSTEM_DEFAULT",
+      "title": "Chưa phát hiện dấu hiệu nguy cơ cao",
+      "stages": [
+        "PRECONCEPTION",
+        "POSSIBLE_PREGNANCY",
+        "PREGNANCY",
+        "POSTPARTUM"
+      ],
+      "outcome": "GREEN",
+      "priority": 0,
+      "decisionOrder": 100,
+      "stopOnMatch": true,
+      "conditionType": "ENGINE",
+      "condition": {
+        "predicate": "MINIMUM_DATASET_COMPLETE_AND_NO_HIGHER_RULE_MATCHED"
+      },
+      "requiredFields": [
+        "stage-specific minimum dataset"
+      ],
+      "questionIds": [],
+      "exclusions": [
+        "Không diễn đạt \"hoàn toàn an toàn\""
+      ],
+      "exclusionPredicates": [],
+      "reasonCode": "NO_HIGH_RISK_SIGNAL_FOUND",
+      "actionCode": "ROUTINE_MONITORING_PATH",
+      "sourceIds": [
+        "WHO_IITT_ADULT"
+      ],
+      "releaseStatus": "ACTIVE",
+      "approvedAt": "2026-08-05",
+      "effectiveFrom": "2026-08-05",
+      "effectiveTo": null,
+      "requiresReleaseGate": "greenEnabled",
+      "matrixProvenance": {
+        "row": 10,
+        "matchesSnapshot": true
+      },
+      "internalReviewStatus": "DEV_REVIEWED",
+      "sourceVerificationStatus": "PENDING",
+      "clinicalValidationStatus": "NOT_CLINICALLY_VALIDATED"
+    }
+  ],
+  "safetyPolicies": [
+    {
+      "$comment": "NOT part of the clinical Rule Matrix. These are safety behaviours inherited from V1 production that would be a REGRESSION to drop. They are deliberately kept OUTSIDE `rules` so they can never be counted as clinically approved, and each carries a review deadline.",
+      "policyId": "SAFETY_CYANOSIS_HOLDOVER_001",
+      "policyType": "INTERNAL_CONSERVATIVE_SAFETY_POLICY",
+      "title": "Tím tái",
+      "stages": [
+        "PRECONCEPTION",
+        "POSSIBLE_PREGNANCY",
+        "PREGNANCY",
+        "POSTPARTUM"
+      ],
+      "outcome": "RED",
+      "priority": 100,
+      "decisionOrder": 15,
+      "stopConversation": true,
+      "condition": {
+        "any": [
+          {
+            "signal": "CYANOSIS",
+            "operator": "EQ",
+            "value": true
+          }
+        ]
+      },
+      "reasonCode": "CYANOSIS_EMERGENCY_SIGNAL",
+      "actionCode": "IMMEDIATE_EMERGENCY_ASSESSMENT",
+      "provenance": "V1 production behaviour: RED_*_CYANOSIS in UniversalMaternalRedRules.java and _MATERNAL_CYANOSIS_PHRASES in risk_rules.py. Rule Matrix v0.1.0 GLOBAL_RED_001 lists ALTERED_CONSCIOUSNESS | SEIZURE | SEVERE_BREATHING_DIFFICULTY only — cyanosis is NOT listed.",
+      "status": "ACTIVE_INTERNAL_CONSERVATIVE_POLICY",
+      "enabled": true,
+      "reviewedBy": null,
+      "reviewDueAt": "2026-11-05",
+      "expiresAt": "2027-02-05",
+      "expiryBehaviour": "FAIL_CLOSED_STARTUP_WARNING",
+      "promotionRequires": "Explicit clinical decision to either add CYANOSIS to GLOBAL_RED_001 in the Matrix, or to retire this policy.",
+      "internalReviewStatus": "DEV_REVIEWED",
+      "sourceVerificationStatus": "SOURCE_VERIFIED",
+      "clinicalValidationStatus": "NOT_CLINICALLY_VALIDATED",
+      "ownerTeam": "CareBridge development team",
+      "limitations": [
+        "Not clinically validated.",
+        "Conservative behaviour inherited from V1; coverage is not exhaustive."
+      ]
+    },
+    {
+      "policyId": "SAFETY_SELF_HARM_001",
+      "policyType": "GLOBAL_NON_CLINICAL_SAFETY_POLICY",
+      "title": "Nguy cơ tự làm hại bản thân hoặc làm hại em bé",
+      "stages": [
+        "PRECONCEPTION",
+        "POSSIBLE_PREGNANCY",
+        "PREGNANCY",
+        "POSTPARTUM"
+      ],
+      "outcome": "RED",
+      "priority": 100,
+      "decisionOrder": 12,
+      "stopConversation": true,
+      "condition": {
+        "any": [
+          {
+            "signal": "SELF_HARM_IDEATION",
+            "operator": "EQ",
+            "value": true
+          },
+          {
+            "signal": "SELF_HARM_INTENT_OR_PLAN",
+            "operator": "EQ",
+            "value": true
+          },
+          {
+            "signal": "HARM_TO_BABY_IDEATION",
+            "operator": "EQ",
+            "value": true
+          },
+          {
+            "signal": "CANNOT_ENSURE_OWN_SAFETY",
+            "operator": "EQ",
+            "value": true
+          }
+        ]
+      },
+      "reasonCode": "SAFETY_RISK_SELF_OR_INFANT_HARM",
+      "actionCode": "IMMEDIATE_SAFETY_SUPPORT",
+      "provenance": "V1 production behaviour: RED_*_SELF_HARM in UniversalMaternalRedRules.java and _MATERNAL_SELF_HARM_PHRASES in risk_rules.py. Deliberately classified as a NON-CLINICAL safety policy, not a clinical triage rule: it is a duty-of-care escalation, not a medical stratification. It is NOT in the Rule Matrix and must never be reported as clinically approved.",
+      "status": "ACTIVE_NON_CLINICAL_SAFETY_POLICY",
+      "enabled": true,
+      "reviewedBy": null,
+      "reviewDueAt": "2026-11-05",
+      "expiresAt": null,
+      "noExpiryReason": "A duty-of-care escalation should not silently lapse. It is reviewed, never expired.",
+      "mustNotDiagnose": [
+        "trầm cảm",
+        "trầm cảm sau sinh",
+        "loạn thần",
+        "bệnh tâm thần"
+      ],
+      "independentOf": [
+        "RAG",
+        "LLM explanation",
+        "evidence retrieval"
+      ],
+      "internalReviewStatus": "DEV_REVIEWED",
+      "sourceVerificationStatus": "SOURCE_VERIFIED",
+      "clinicalValidationStatus": "NOT_CLINICALLY_VALIDATED",
+      "ownerTeam": "CareBridge development team",
+      "limitations": [
+        "Not clinically validated.",
+        "Conservative behaviour inherited from V1; coverage is not exhaustive."
+      ]
+    }
+  ],
+  "greenSafetyBlockers": [
+    {
+      "$comment": "Signals the approved rule set does NOT yet stratify. They must NOT be auto-assigned RED or YELLOW (no approved rule exists), must NOT be named as a disease, and must BLOCK GREEN. Outcome becomes NEEDS_MORE_INFO with fixed follow-up questions where available.",
+      "blockerId": "GB_SEVERE_HEADACHE_UNPAIRED",
+      "title": "Đau đầu dữ dội chưa kèm đánh giá thị giác",
+      "stages": [
+        "PREGNANCY",
+        "POSTPARTUM"
+      ],
+      "condition": {
+        "all": [
+          {
+            "signal": "SEVERE_HEADACHE",
+            "operator": "EQ",
+            "value": true
+          }
+        ]
+      },
+      "reasonCode": "UNSTRATIFIED_SEVERE_HEADACHE",
+      "questionIds": [
+        "Q_VISUAL_CHANGE",
+        "Q_BP_IF_KNOWN"
+      ],
+      "draftRuleCandidate": true,
+      "blockerType": "CONSERVATIVE_RELEASE_BLOCKER",
+      "clinicalOutcomeAssigned": false,
+      "blocksGreen": true,
+      "internalReviewStatus": "DEV_REVIEWED",
+      "clinicalValidationStatus": "NOT_CLINICALLY_VALIDATED",
+      "sourceIds": [],
+      "limitations": [
+        "Blocks GREEN only; assigns no clinical outcome."
+      ]
+    },
+    {
+      "blockerId": "GB_BLEEDING_UNCLEAR",
+      "title": "Dữ liệu chảy máu chưa rõ hoặc mâu thuẫn",
+      "stages": [
+        "PREGNANCY",
+        "POSTPARTUM",
+        "POSSIBLE_PREGNANCY"
+      ],
+      "predicate": "BLEEDING_AMOUNT_UNKNOWN_OR_CONFLICTED",
+      "reasonCode": "BLEEDING_DATA_UNCLEAR",
+      "questionIds": [
+        "Q_BLEEDING_AMOUNT"
+      ],
+      "draftRuleCandidate": true,
+      "blockerType": "CONSERVATIVE_RELEASE_BLOCKER",
+      "clinicalOutcomeAssigned": false,
+      "blocksGreen": true,
+      "internalReviewStatus": "DEV_REVIEWED",
+      "clinicalValidationStatus": "NOT_CLINICALLY_VALIDATED",
+      "sourceIds": [],
+      "limitations": [
+        "Blocks GREEN only; assigns no clinical outcome."
+      ]
+    },
+    {
+      "blockerId": "GB_SEVERE_ABDOMINAL_PAIN",
+      "title": "Đau bụng nghiêm trọng chưa có rule được duyệt",
+      "stages": [
+        "PRECONCEPTION",
+        "POSSIBLE_PREGNANCY",
+        "PREGNANCY",
+        "POSTPARTUM"
+      ],
+      "condition": {
+        "any": [
+          {
+            "signal": "SEVERE_ABDOMINAL_PAIN",
+            "operator": "EQ",
+            "value": true
+          },
+          {
+            "context": "pain_severity",
+            "operator": "EQ",
+            "value": "SEVERE"
+          }
+        ]
+      },
+      "reasonCode": "UNSTRATIFIED_SEVERE_ABDOMINAL_PAIN",
+      "questionIds": [
+        "Q_PAIN_SEVERITY"
+      ],
+      "draftRuleCandidate": true,
+      "blockerType": "CONSERVATIVE_RELEASE_BLOCKER",
+      "clinicalOutcomeAssigned": false,
+      "blocksGreen": true,
+      "internalReviewStatus": "DEV_REVIEWED",
+      "clinicalValidationStatus": "NOT_CLINICALLY_VALIDATED",
+      "sourceIds": [],
+      "limitations": [
+        "Blocks GREEN only; assigns no clinical outcome."
+      ]
+    },
+    {
+      "blockerId": "GB_HIGH_FEVER",
+      "title": "Sốt cao hoặc dấu hiệu nhiễm trùng chưa được đánh giá",
+      "stages": [
+        "PREGNANCY",
+        "POSTPARTUM"
+      ],
+      "condition": {
+        "any": [
+          {
+            "signal": "HIGH_FEVER",
+            "operator": "EQ",
+            "value": true
+          }
+        ]
+      },
+      "reasonCode": "UNSTRATIFIED_FEVER",
+      "questionIds": [],
+      "draftRuleCandidate": true,
+      "blockerType": "CONSERVATIVE_RELEASE_BLOCKER",
+      "clinicalOutcomeAssigned": false,
+      "blocksGreen": true,
+      "internalReviewStatus": "DEV_REVIEWED",
+      "clinicalValidationStatus": "NOT_CLINICALLY_VALIDATED",
+      "sourceIds": [],
+      "limitations": [
+        "Blocks GREEN only; assigns no clinical outcome."
+      ]
+    },
+    {
+      "blockerId": "GB_REDUCED_FETAL_MOVEMENT",
+      "title": "Cử động thai giảm hoặc mất chưa được đánh giá",
+      "stages": [
+        "PREGNANCY"
+      ],
+      "condition": {
+        "any": [
+          {
+            "signal": "REDUCED_FETAL_MOVEMENT",
+            "operator": "EQ",
+            "value": true
+          }
+        ]
+      },
+      "reasonCode": "UNSTRATIFIED_REDUCED_FETAL_MOVEMENT",
+      "questionIds": [],
+      "draftRuleCandidate": true,
+      "blockerType": "CONSERVATIVE_RELEASE_BLOCKER",
+      "clinicalOutcomeAssigned": false,
+      "blocksGreen": true,
+      "internalReviewStatus": "DEV_REVIEWED",
+      "clinicalValidationStatus": "NOT_CLINICALLY_VALIDATED",
+      "sourceIds": [],
+      "limitations": [
+        "Blocks GREEN only; assigns no clinical outcome."
+      ]
+    },
+    {
+      "blockerId": "GB_UNILATERAL_LEG",
+      "title": "Một chân sưng, đỏ hoặc đau sau sinh chưa được đánh giá",
+      "stages": [
+        "POSTPARTUM"
+      ],
+      "condition": {
+        "any": [
+          {
+            "signal": "UNILATERAL_LEG_SWELLING_PAIN",
+            "operator": "EQ",
+            "value": true
+          }
+        ]
+      },
+      "reasonCode": "UNSTRATIFIED_UNILATERAL_LEG_SIGN",
+      "questionIds": [],
+      "draftRuleCandidate": true,
+      "blockerType": "CONSERVATIVE_RELEASE_BLOCKER",
+      "clinicalOutcomeAssigned": false,
+      "blocksGreen": true,
+      "internalReviewStatus": "DEV_REVIEWED",
+      "clinicalValidationStatus": "NOT_CLINICALLY_VALIDATED",
+      "sourceIds": [],
+      "limitations": [
+        "Blocks GREEN only; assigns no clinical outcome."
+      ]
+    },
+    {
+      "blockerId": "GB_FOUL_LOCHIA",
+      "title": "Sản dịch có mùi hôi chưa được đánh giá",
+      "stages": [
+        "POSTPARTUM"
+      ],
+      "condition": {
+        "any": [
+          {
+            "signal": "FOUL_SMELLING_LOCHIA",
+            "operator": "EQ",
+            "value": true
+          }
+        ]
+      },
+      "reasonCode": "UNSTRATIFIED_FOUL_LOCHIA",
+      "questionIds": [],
+      "draftRuleCandidate": true,
+      "blockerType": "CONSERVATIVE_RELEASE_BLOCKER",
+      "clinicalOutcomeAssigned": false,
+      "blocksGreen": true,
+      "internalReviewStatus": "DEV_REVIEWED",
+      "clinicalValidationStatus": "NOT_CLINICALLY_VALIDATED",
+      "sourceIds": [],
+      "limitations": [
+        "Blocks GREEN only; assigns no clinical outcome."
+      ]
+    },
+    {
+      "blockerId": "GB_CONTEXT_CONFLICT",
+      "title": "Dữ liệu stage hoặc tuần thai mâu thuẫn",
+      "stages": [
+        "PRECONCEPTION",
+        "POSSIBLE_PREGNANCY",
+        "PREGNANCY",
+        "POSTPARTUM"
+      ],
+      "predicate": "CONTEXT_RESOLUTION_CONFLICTED",
+      "reasonCode": "CONTEXT_CONFLICT",
+      "questionIds": [],
+      "draftRuleCandidate": false,
+      "blockerType": "CONSERVATIVE_RELEASE_BLOCKER",
+      "clinicalOutcomeAssigned": false,
+      "blocksGreen": true,
+      "internalReviewStatus": "DEV_REVIEWED",
+      "clinicalValidationStatus": "NOT_CLINICALLY_VALIDATED",
+      "sourceIds": [],
+      "limitations": [
+        "Blocks GREEN only; assigns no clinical outcome."
+      ]
+    }
+  ],
+  "runtimePolicies": {
+    "maxRoundsExhausted": {
+      "$comment": "Distinct from any rule's stopOnMatch. When the question budget is spent and the minimum dataset is still incomplete, the RUNTIME stops the conversation and re-routes the action, without altering the matched rule's own Matrix-declared flags.",
+      "stopConversation": true,
+      "overrideActionCode": "ROUTE_TO_HEALTHCARE_WORKER",
+      "reasonCode": "MAX_QUESTION_ROUNDS_EXHAUSTED"
+    },
+    "greenGateDisabled": {
+      "outcome": "NEEDS_MORE_INFO",
+      "stopConversation": true,
+      "overrideActionCode": "ROUTE_TO_HEALTHCARE_WORKER",
+      "reasonCode": "GREEN_RELEASE_GATE_DISABLED"
+    },
+    "greenBlocked": {
+      "outcome": "NEEDS_MORE_INFO",
+      "stopConversation": false,
+      "overrideActionCode": "ASK_CLARIFYING_QUESTIONS",
+      "reasonCode": "GREEN_BLOCKED_BY_UNSTRATIFIED_SIGNAL"
+    }
+  },
+  "governance": {
+    "projectType": "ACADEMIC_COMMUNITY_PROJECT",
+    "intendedUse": "INFORMATIONAL_RISK_ORIENTATION",
+    "clinicalValidationStatus": "NOT_CLINICALLY_VALIDATED",
+    "externalClinicalSignOff": "NONE",
+    "legacyFieldNote": "rule.status still carries the value APPROVED for loader/vector compatibility. APPROVED_LEGACY_FIELD means RELEASE-ENABLED IN THIS RULESET ONLY. It does NOT mean a clinician approved the rule. Authoritative governance lives in internalReviewStatus / sourceVerificationStatus / clinicalValidationStatus and in the three manifests.",
+    "legacyFieldRemovalPlan": "Replace rule.status with releaseStatus (DRAFT|ACTIVE|DISABLED|RETIRED) in ruleset 3.0.0, porting Java + Python loaders and parity vectors in the same change."
+  },
+  "ruleMatrixSource": "Internal rule set built by the CareBridge development team by mapping publicly available medical guidance (WHO, Vietnamese MoH and public hospital material). Not a clinically validated instrument and not endorsed by WHO."
+}

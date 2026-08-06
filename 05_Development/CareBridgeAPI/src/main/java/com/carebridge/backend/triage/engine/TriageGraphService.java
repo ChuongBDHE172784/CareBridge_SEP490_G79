@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.ArrayList;
 
 @Service
+@Deprecated
 public class TriageGraphService {
 
     public static final String DISCLAIMER = "CareBridge không chẩn đoán bệnh, không kê thuốc và không thay thế bác sĩ. "

@@ -1,0 +1,34 @@
+{
+  "$comment": "CANONICAL DATASET REQUIREMENTS — AI Reproductive Health Triage Assistant V2. Single source of truth for Zero-Trust Dataset Calculator in both Java and Python.",
+  "version": "1.0.0",
+  "globalSafety": {
+    "requiredSignalCodes": [
+      "ALTERED_CONSCIOUSNESS",
+      "SEIZURE",
+      "SEVERE_BREATHING_DIFFICULTY",
+      "CYANOSIS",
+      "SELF_HARM_IDEATION",
+      "SELF_HARM_INTENT_OR_PLAN",
+      "HARM_TO_BABY_IDEATION",
+      "CANNOT_ENSURE_OWN_SAFETY"
+    ]
+  },
+  "byStage": {
+    "PRECONCEPTION": {
+      "contextFields": ["stage"],
+      "greenEligibilityFields": ["stage", "possible_pregnancy"]
+    },
+    "POSSIBLE_PREGNANCY": {
+      "contextFields": ["stage", "possible_pregnancy"],
+      "greenEligibilityFields": ["stage", "possible_pregnancy", "last_menstrual_period_or_test"]
+    },
+    "PREGNANCY": {
+      "contextFields": ["stage", "gestational_week"],
+      "greenEligibilityFields": ["stage", "gestational_week", "pain_severity", "bleeding_amount"]
+    },
+    "POSTPARTUM": {
+      "contextFields": ["stage", "postpartum_day"],
+      "greenEligibilityFields": ["stage", "postpartum_day", "delivery_method", "bleeding_amount"]
+    }
+  }
+}

@@ -7,10 +7,39 @@ import '../../emergency/services/emergency_service.dart';
 import '../models/triage_continuation.dart';
 import '../models/triage_entry_context.dart';
 import '../models/triage_intake_flow_model.dart';
+import '../models/triage_v2_chat_adapter.dart';
+import '../models/triage_v2_session.dart';
+import '../services/triage_v2_service.dart';
 import '../models/triage_result_model.dart';
 import '../services/triage_service.dart';
 import '../services/triage_continuation_restore_coordinator.dart';
 import '../services/triage_continuation_store.dart';
+
+/// Stages that describe the mother rather than the baby.
+const maternalTriageStages = {'PRECONCEPTION', 'PREGNANCY', 'POSTPARTUM'};
+
+const _triageV2Enabled = bool.fromEnvironment(
+  'AI_TRIAGE_V2_INTERNAL_ENABLED',
+  defaultValue: false,
+);
+
+/// Whether a stage is a candidate for the eventual V2 cutover.
+///
+/// Two separate conditions have to hold, and only the first is met today:
+///
+/// 1. Coverage — the V2 ruleset declares only the four maternal stages and holds no paediatric
+///    rule at all, so a baby must never be routed there.
+/// 2. Experience — V2's current screen is an internal test harness (a target selector, a text box
+///    and a submit button), not the chat this app actually offers. Handing a user from the chat to
+///    that screen mid-journey is a downgrade, so the hand-off stays off until the chat itself can
+///    talk to the V2 engine.
+///
+/// Kept as a named predicate rather than deleted so the cutover has one place to switch on.
+bool isTriageV2CutoverCandidate(String stage) =>
+    _triageV2Enabled && maternalTriageStages.contains(stage);
+
+/// Deliberately false: see [isTriageV2CutoverCandidate] condition 2.
+bool shouldHandOffToTriageV2(String stage) => false;
 
 class SymptomIntakeScreen extends StatefulWidget {
   final TriageService? triageService;
@@ -40,7 +69,7 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
   static const _onSurface = Color(0xFF271812);
   static const _onVariant = Color(0xFF524440);
   static const _outline = Color(0xFFD6C2BD);
-  static const _maternalStages = {'PRECONCEPTION', 'PREGNANCY', 'POSTPARTUM'};
+  static const _maternalStages = maternalTriageStages;
 
   late final TriageService _service;
   late final EmergencyService _emergencyService;
@@ -54,6 +83,9 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
   final Map<String, dynamic> _answers = {};
   late String _selectedStage;
   String? _sessionId;
+  /// Non-null once this chat is being answered by the V2 engine.
+  TriageV2Session? _v2Session;
+  late final TriageV2Service _v2Service = TriageV2Service();
   int _round = 1;
   bool _loading = false;
   late bool _stageConfirmed;
@@ -228,6 +260,10 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
         'parentFreeText': text,
       };
     });
+    if (_useV2ForCurrentStage) {
+      await _startV2(text);
+      return;
+    }
     try {
       final response = await _service.startConversation(
         initialText: text,
@@ -303,6 +339,10 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
       _loading = true;
       _error = null;
     });
+    if (_v2Session != null) {
+      await _continueV2(newAnswers);
+      return;
+    }
     try {
       final response = await _service.continueConversation(
         intakeSessionId: _sessionId!,
@@ -321,6 +361,89 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
       if (mounted) setState(() => _loading = false);
     }
   }
+
+  /// True when this journey should be answered by the deterministic V2 engine.
+  ///
+  /// Only maternal stages qualify: the V2 ruleset declares no paediatric rule, so a baby journey
+  /// would be handed to an engine with nothing to say about babies. Those stay on V1 until a
+  /// paediatric engine exists.
+  bool get _useV2ForCurrentStage => isTriageV2CutoverCandidate(_selectedStage);
+
+  /// Starts a V2 conversation and renders it through the same chat as V1.
+  Future<void> _startV2(String text) async {
+    try {
+      final session = await _v2Service.start(
+        message: text,
+        selectedTarget: 'MOTHER',
+      );
+      if (!mounted) return;
+      _v2Session = session;
+      _applyResponse(_v2Response(session), userMessage: text);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error =
+            'Hiện chưa thể hoàn tất định hướng nguy cơ. Kết quả lỗi không được xem là mức an toàn.');
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  /// Sends a whole round of answers as identifiers and renders the next turn.
+  ///
+  /// The chat collects up to three answers before submitting, so they travel together: one user
+  /// action stays one request and one state version.
+  Future<void> _continueV2(Map<String, dynamic> newAnswers) async {
+    final current = _v2Session!;
+    final answers = <TriageV2Answer>[];
+    for (final entry in newAnswers.entries) {
+      final optionCode = entry.value?.toString() ?? '';
+      // Only option-coded answers are structured; free text stays in the message and is
+      // extracted server-side, never guessed at here.
+      if (optionCode.isEmpty) continue;
+      final known = TriageV2Question.fromId(entry.key).optionCodes;
+      if (!known.contains(optionCode)) continue;
+      answers.add(TriageV2Answer(questionId: entry.key, optionCode: optionCode));
+    }
+    try {
+      final session = await _v2Service.continueSession(
+        session: current,
+        message: _answersText(newAnswers),
+        answers: answers,
+      );
+      if (!mounted) return;
+      _v2Session = session;
+      _applyResponse(_v2Response(session), userMessage: _answersText(newAnswers));
+    } on TriageV2StaleVersionFailure {
+      // Another device advanced this session. Re-read rather than replay a stale version.
+      try {
+        final refreshed = await _v2Service.get(current.sessionId);
+        if (!mounted) return;
+        _v2Session = refreshed;
+        _applyResponse(_v2Response(refreshed));
+        setState(() => _error =
+            'Phiên đã được cập nhật ở nơi khác. Vui lòng kiểm tra và gửi lại.');
+      } catch (_) {
+        if (mounted) {
+          setState(() => _error = 'Không thể gửi câu trả lời. Vui lòng thử lại.');
+        }
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _error = 'Không thể gửi câu trả lời. Vui lòng thử lại.');
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  IntakeFlowResponse _v2Response(TriageV2Session session) =>
+      TriageV2ChatAdapter.toFlowResponse(
+        session,
+        fallbackStage: _selectedStage,
+        round: _round + 1,
+        mergedIntake: _currentIntake,
+      );
 
   Future<void> _returnToValidatedOrigin() async {
     if (_returningToOrigin) return;
@@ -1023,11 +1146,17 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
                 shape: const StadiumBorder(),
                 onSelected: _loading
                     ? null
-                    : (_) => setState(() {
-                        _selectedStage = entry.key;
-                        _stageConfirmed = true;
-                        _currentIntake = _newIntake(stage: entry.key);
-                      }),
+                    : (_) {
+                        if (shouldHandOffToTriageV2(entry.key)) {
+                          context.go('/internal/triage/v2');
+                          return;
+                        }
+                        setState(() {
+                          _selectedStage = entry.key;
+                          _stageConfirmed = true;
+                          _currentIntake = _newIntake(stage: entry.key);
+                        });
+                      },
               );
             }).toList(),
           ),

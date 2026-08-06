@@ -1,5 +1,6 @@
 package com.carebridge.backend.integration.gemini;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -18,6 +19,7 @@ import com.carebridge.backend.integration.gemini.exception.GeminiUnavailableExce
 import com.carebridge.backend.integration.gemini.retriever.RagContextRetriever;
 import com.carebridge.backend.integration.gemini.service.GeminiRagServiceImpl;
 import com.carebridge.backend.triage.adapter.GeminiTriageClientAdapter;
+import com.carebridge.backend.triage.exception.AiOutcomeUnavailableException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -33,8 +35,12 @@ class GeminiFallbackLogRedactionTest {
         GeminiClient client = mock(GeminiClient.class);
         when(client.generate(anyString())).thenThrow(new RuntimeException(LEAK_CANARY));
 
+        // The adapter now fails closed instead of returning GREEN, so the call throws.
+        // The redaction assertion below is unchanged — that is still what this test guards.
         List<String> messages = capture(GeminiTriageClientAdapter.class,
-                () -> new GeminiTriageClientAdapter(client).analyzeSymptoms("synthetic"));
+                () -> assertThatThrownBy(
+                        () -> new GeminiTriageClientAdapter(client).analyzeSymptoms("synthetic"))
+                        .isInstanceOf(AiOutcomeUnavailableException.class));
 
         assertThat(messages).containsExactly(
                 "Gemini triage fallback reason=GEMINI_UNAVAILABLE exceptionType=RuntimeException");

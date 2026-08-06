@@ -145,6 +145,12 @@ public class SecurityConfig {
         configuration.setMaxAge(3600L);
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/api/v1/**", configuration);
+        // The internal V2 triage endpoints live outside /api/v1, so without this they carried no
+        // Access-Control-Allow-Origin at all and every browser call failed as an opaque network
+        // error — the client could not even see that it had been given a 403. This grants no
+        // authorization: the same exact-origin allowlist applies, and @PreAuthorize still guards
+        // the endpoints.
+        source.registerCorsConfiguration("/api/internal/**", configuration);
         return source;
     }
 

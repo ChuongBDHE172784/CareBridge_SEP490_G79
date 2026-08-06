@@ -1,3 +1,10 @@
+"""LEGACY_V1_ONLY graph.
+
+V2 must use :mod:`app.triage_v2.graph`. This module retains legacy runtime-search and model-assisted
+behaviour for the still user-facing V1 route and must not be imported by V2. Removal is blocked until
+shadow/full E2E and rollback criteria in the V2 operations guide are satisfied.
+"""
+
 from __future__ import annotations
 
 import logging

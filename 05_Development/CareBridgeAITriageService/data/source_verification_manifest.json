@@ -1,0 +1,112 @@
+{
+  "$comment": "Records WHICH publicly available document each rule was mapped from, and whether that document was actually checked. Source verification proves provenance only. It does NOT mean the publisher reviewed, endorsed or validated CareBridge, and it does NOT constitute clinical approval. Full article text is deliberately not copied — title, section, a short summary and a content hash are enough to detect drift.",
+  "manifestType": "SOURCE_VERIFICATION",
+  "projectType": "ACADEMIC_COMMUNITY_PROJECT",
+  "endorsementDisclaimer": "None of the publishers listed below has reviewed, approved or endorsed CareBridge. CareBridge maps publicly available guidance into its own rule set; any mapping error is CareBridge's, not the publisher's.",
+  "verifiedByTeam": "CareBridge development team",
+  "sources": [
+    {
+      "sourceId": "WHO_IITT_ADULT",
+      "publisher": "World Health Organization",
+      "publisherType": "WHO",
+      "title": "Interagency Integrated Triage Tool (IITT) — triage and treatment in the emergency unit, >=12 years",
+      "url": "https://cdn.who.int/media/docs/default-source/integrated-health-services-(ihs)/csy/iitt/triage-and-treatment_adult.pdf",
+      "sectionOrPage": "Adult triage poster — RED (emergency) criteria",
+      "verifiedAt": null,
+      "verifiedBy": null,
+      "contentHash": null,
+      "verificationStatus": "PENDING",
+      "notes": "Canonical URL identified via WHO site search. The PDF was NOT fetched and hashed in this session, so the status stays PENDING rather than SOURCE_VERIFIED.",
+      "canonicalLandingPage": "https://www.who.int/tools/triage",
+      "intendedAudience": "Trained health workers in facility-based emergency units",
+      "limitations": [
+        "IITT is a FACILITY-BASED triage tool intended for trained health workers in emergency care settings.",
+        "CareBridge is NOT an official WHO IITT implementation.",
+        "CareBridge RED/YELLOW/GREEN are its own risk-orientation categories, not IITT triage categories.",
+        "CareBridge maps only a small subset of publicly documented danger signs."
+      ]
+    },
+    {
+      "sourceId": "WHO_DANGER_SIGNS_2022",
+      "publisher": "World Health Organization",
+      "publisherType": "WHO",
+      "title": "WHO guidance on pregnancy and postnatal danger signs (2022)",
+      "url": "https://www.who.int/",
+      "sectionOrPage": "Danger signs during pregnancy and after birth",
+      "verifiedAt": null,
+      "verifiedBy": null,
+      "contentHash": null,
+      "verificationStatus": "PENDING",
+      "notes": "Cited by the internal rule matrix; the exact document URL and section were not resolved in this session.",
+      "intendedAudience": "Health workers and public health audiences",
+      "limitations": [
+        "Exact edition/section unresolved.",
+        "CareBridge maps only a subset of publicly documented danger signs."
+      ]
+    },
+    {
+      "sourceId": "WHO_MATERNAL_2025",
+      "publisher": "World Health Organization",
+      "publisherType": "WHO",
+      "title": "WHO maternal health guidance (2025)",
+      "url": "https://www.who.int/",
+      "sectionOrPage": null,
+      "verifiedAt": null,
+      "verifiedBy": null,
+      "contentHash": null,
+      "verificationStatus": "PENDING",
+      "notes": "Cited by the internal rule matrix; the exact document URL and section were not resolved in this session.",
+      "intendedAudience": "Health workers and public health audiences",
+      "limitations": [
+        "Exact edition/section unresolved.",
+        "CareBridge maps only a subset of publicly documented danger signs."
+      ]
+    },
+    {
+      "sourceId": "WHO_PCPNC_2015",
+      "publisher": "World Health Organization",
+      "publisherType": "WHO",
+      "title": "Pregnancy, Childbirth, Postpartum and Newborn Care: a guide for essential practice (PCPNC)",
+      "url": "https://www.who.int/",
+      "sectionOrPage": null,
+      "verifiedAt": null,
+      "verifiedBy": null,
+      "contentHash": null,
+      "verificationStatus": "PENDING",
+      "notes": "Document family identified but the exact edition URL and section were not resolved and hashed in this session.",
+      "canonicalLandingPage": "https://www.who.int/",
+      "intendedAudience": "Skilled birth attendants and health-care professionals",
+      "limitations": [
+        "Written for skilled attendants and health-care professionals, not for self-assessment by the public.",
+        "CareBridge maps only a subset of publicly documented danger signs.",
+        "No claim is made that the guideline is implemented in full."
+      ]
+    },
+    {
+      "sourceId": "BYT_1139_2026",
+      "publisher": "Bộ Y tế Việt Nam (Vietnamese Ministry of Health)",
+      "publisherType": "GOVERNMENT",
+      "title": "Hướng dẫn chuyên môn số 1139 (as cited by the internal rule matrix)",
+      "url": null,
+      "sectionOrPage": null,
+      "verifiedAt": null,
+      "verifiedBy": null,
+      "contentHash": null,
+      "verificationStatus": "UNRESOLVED_SOURCE",
+      "notes": "No official Vietnamese Ministry of Health document could be located for this citation. The URL is deliberately left null; it was NOT guessed.",
+      "intendedAudience": "Unknown — document not located",
+      "limitations": [
+        "Citation cannot be resolved to a retrievable official document.",
+        "Must NOT be used to claim SOURCE_VERIFIED for any rule.",
+        "BLOCKER: rules citing this source cannot reach SOURCE_VERIFIED until the document is produced."
+      ]
+    }
+  ],
+  "corpusSources": {
+    "$comment": "The Vietnamese reading-link corpus under CareBridgeAITriageService/data/medical_sources/ carries per-document frontmatter (url, organization, sourceStatus, approvedAt). Those documents are reading material for users and are separate from the rule provenance above. They are not yet mirrored into this manifest.",
+    "status": "NOT_YET_MIRRORED"
+  },
+  "overallStatus": "PENDING",
+  "overallStatusNote": "No source has been fetched and content-hashed in this session. WHO_IITT_ADULT has a resolved canonical URL; WHO_DANGER_SIGNS_2022, WHO_MATERNAL_2025 and WHO_PCPNC_2015 remain unresolved to an exact edition/section; BYT_1139_2026 could not be located at all (UNRESOLVED_SOURCE). Therefore NO rule may derive SOURCE_VERIFIED, and the registry now reflects PENDING rather than an older team assertion.",
+  "derivationRule": "Rule-level sourceVerificationStatus is DERIVED from this manifest by DevTools/sync_triage_rule_registry.py and must never be hand-edited in the registry. All required sources SOURCE_VERIFIED -> SOURCE_VERIFIED; any PENDING/UNRESOLVED_SOURCE -> PENDING; any BROKEN -> BROKEN; any SOURCE_CHANGED -> SOURCE_CHANGED."
+}

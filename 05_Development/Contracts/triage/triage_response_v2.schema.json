@@ -1,0 +1,165 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://carebridge.app/contracts/triage/triage_response_v2.schema.json",
+  "title": "CareBridge AI Triage V2 — Response Contract",
+  "description": "The single wire contract shared by the Python AI service, the Java backend DTOs and the Flutter models. Anything not listed here must never reach the client: no similarity scores, raw prompts, chain-of-thought, raw medical documents, internal rule expressions, API keys or full evidence snippets.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "session_id", "assessment_status", "result", "context", "metadata"],
+  "properties": {
+    "schema_version": { "const": "2.0" },
+    "session_id": { "type": "string", "minLength": 1 },
+    "assessment_status": {
+      "$comment": "Transport/processing state. NEVER encode a system failure as a triage colour.",
+      "enum": ["COMPLETE", "WAITING_FOR_INPUT", "FAILED"]
+    },
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["triage_outcome", "headline", "reason_codes", "stop_conversation"],
+      "properties": {
+        "triage_outcome": {
+          "enum": ["RED", "YELLOW", "GREEN", "NEEDS_MORE_INFO", "OUT_OF_SCOPE"]
+        },
+        "headline": { "type": "string", "minLength": 1 },
+        "reason_codes": { "type": "array", "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" } },
+        "stop_conversation": { "type": "boolean" }
+      }
+    },
+    "context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stage"],
+      "properties": {
+        "stage": { "enum": ["PRECONCEPTION", "POSSIBLE_PREGNANCY", "PREGNANCY", "POSTPARTUM"] },
+        "gestational_week": { "type": ["integer", "null"], "minimum": 0, "maximum": 45 },
+        "postpartum_day": { "type": ["integer", "null"], "minimum": 0, "maximum": 365 },
+        "delivery_method": { "type": ["string", "null"], "enum": ["VAGINAL", "CAESAREAN", "UNKNOWN", null] }
+      }
+    },
+    "detected_signals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "display_text", "source"],
+        "properties": {
+          "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+          "display_text": { "type": "string", "minLength": 1 },
+          "source": { "enum": ["USER_REPORTED", "MEASURED", "DERIVED"] }
+        }
+      }
+    },
+    "missing_fields": { "type": "array", "items": { "type": "string" } },
+    "matched_rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["rule_id", "rule_version", "priority"],
+        "properties": {
+          "rule_id": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+          "rule_version": { "type": "string" },
+          "priority": { "type": "integer", "minimum": 0, "maximum": 100 }
+        }
+      }
+    },
+    "required_action": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["code", "urgency", "message"],
+      "properties": {
+        "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+        "urgency": { "enum": ["IMMEDIATE", "EARLY", "ROUTINE", "NONE"] },
+        "message": { "type": "string", "minLength": 1 },
+        "show_emergency_facilities": { "type": "boolean" },
+        "show_call_option": { "type": "boolean" }
+      }
+    },
+    "questions": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["question_id", "text", "answer_type", "required"],
+        "properties": {
+          "question_id": { "type": "string", "pattern": "^Q_[A-Z0-9_]+$" },
+          "text": { "type": "string", "minLength": 1 },
+          "answer_type": { "enum": ["SINGLE_CHOICE", "MULTIPLE_CHOICE", "NUMBER", "TEXT"] },
+          "options": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["value", "label"],
+              "properties": {
+                "value": { "type": "string" },
+                "label": { "type": "string" }
+              }
+            }
+          },
+          "required": { "type": "boolean" }
+        }
+      }
+    },
+    "reading_links": {
+      "$comment": "At most one who.int link; every Vietnamese link must carry a non-empty matched_symptoms. An empty array is always valid — never pad with off-topic URLs.",
+      "type": "array",
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["document_id", "organization", "organization_type", "title", "url", "language", "matched_symptoms", "content_match", "source_role"],
+        "properties": {
+          "document_id": { "type": "string", "minLength": 1 },
+          "organization": { "type": "string", "minLength": 1 },
+          "organization_type": {
+            "enum": ["MINISTRY_OF_HEALTH", "PUBLIC_SPECIALTY_HOSPITAL", "MEDICAL_UNIVERSITY", "PRIVATE_HOSPITAL", "INTERNATIONAL_ORGANIZATION"]
+          },
+          "title": { "type": "string", "minLength": 1 },
+          "url": { "type": "string", "pattern": "^https://" },
+          "language": { "type": "string", "enum": ["vi-VN", "en"] },
+          "matched_symptoms": { "type": "array", "items": { "type": "string" } },
+          "matched_section": { "type": ["string", "null"] },
+          "content_match": { "const": "VERIFIED" },
+          "source_role": { "const": "USER_EDUCATION" }
+        }
+      }
+    },
+    "limitations": { "type": "array", "items": { "type": "string" } },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ruleset_version", "question_round", "maximum_question_rounds", "assessed_at"],
+      "properties": {
+        "ruleset_version": { "type": "string" },
+        "evidence_registry_version": { "type": ["string", "null"] },
+        "question_round": { "type": "integer", "minimum": 0, "maximum": 3 },
+        "maximum_question_rounds": { "const": 3 },
+        "assessed_at": { "type": "string" },
+        "processing_errors": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "$comment": "BR-SAFETY: a RED outcome must always stop the conversation and must never ship questions.",
+      "if": {
+        "properties": { "result": { "properties": { "triage_outcome": { "const": "RED" } } } },
+        "required": ["result"]
+      },
+      "then": {
+        "properties": {
+          "result": { "properties": { "stop_conversation": { "const": true } } },
+          "questions": { "maxItems": 0 }
+        }
+      }
+    },
+    {
+      "$comment": "WAITING_FOR_INPUT means the planner asked something; there must be at least one question.",
+      "if": { "properties": { "assessment_status": { "const": "WAITING_FOR_INPUT" } } },
+      "then": { "properties": { "questions": { "minItems": 1 } }, "required": ["questions"] }
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "$comment": "Rules whose absence or invalidity makes V2 UNAVAILABLE rather than degraded. The loader must fail closed on these: a warning-and-continue path would let a missing emergency rule end in GREEN.",
+  "rulesetVersion": "2.1.0",
+  "criticalRuleIds": [
+    "GLOBAL_RED_001",
+    "PREG_RED_001",
+    "PREG_RED_002",
+    "POST_RED_001",
+    "POST_RED_002"
+  ],
+  "criticalPolicyIds": [
+    "SAFETY_SELF_HARM_001"
+  ],
+  "failClosedConditions": [
+    "APPROVED rule fails schema validation",
+    "critical rule missing from the registry",
+    "condition schema invalid",
+    "duplicate ruleId",
+    "ruleset digest mismatch",
+    "unknown outcome, operator or stage",
+    "no releasable rule loaded"
+  ]
+}
