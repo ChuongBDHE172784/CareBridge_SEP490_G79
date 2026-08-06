@@ -38,6 +38,8 @@ __pycache__/
 
 # Dart/Flutter local app data
 .dart_localappdata/
+.dart_tool/
+.dart-tool/
 *.py[cod]
 *$py.class
 .pytest_cache/

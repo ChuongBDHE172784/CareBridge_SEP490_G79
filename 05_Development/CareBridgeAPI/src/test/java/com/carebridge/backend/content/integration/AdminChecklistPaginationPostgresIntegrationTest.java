@@ -88,15 +88,39 @@ class AdminChecklistPaginationPostgresIntegrationTest extends AbstractPostgresIn
         }
     }
 
+    /**
+     * Inline template metadata is the sole template authority since the checklist support
+     * tables were retired, and the schema enforces its full shape on every TEMPLATE_ROOT:
+     * a lineage/version pair, a recipient scope, approval provenance when APPROVED, and
+     * eligibility bounds that match the stage.
+     *
+     * <p>The null-stage row this suite exists to cover is only legal under FAMILY scope —
+     * the validator demands a stage for every mother-facing template — so scope is derived
+     * from the stage rather than hard-coded, which keeps the legacy row the test cares
+     * about while satisfying the constraint.
+     */
     private void insert(UUID id, String name, String stage, String status, Instant updatedAt) {
+        boolean familyScoped = stage == null;
+        boolean approved = "APPROVED".equals(status);
         jdbcTemplate.update(
                 "insert into care_item_templates "
                         + "(template_id, entry_type, created_at, title, stage, content_status, "
-                        + "updated_at, version, description) values "
+                        + "updated_at, version, description, template_lineage_id, "
+                        + "template_version_id, recipient_scope, eligibility_anchor_type, "
+                        + "eligibility_range_unit, eligibility_start_inclusive, "
+                        + "eligibility_end_inclusive, approved_at, approved_by) values "
                         + "(?, 'TEMPLATE_ROOT', now(), ?, ?, ?, "
                         + "coalesce(?, timestamp with time zone '1970-01-01 00:00:00+00'), "
-                        + "1, 'R69 regression')",
+                        + "1, 'R69 regression', ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 id, name, stage, status,
-                updatedAt == null ? null : Timestamp.from(updatedAt));
+                updatedAt == null ? null : Timestamp.from(updatedAt),
+                UUID.randomUUID(), UUID.randomUUID(),
+                familyScoped ? "FAMILY" : "MOTHER",
+                familyScoped ? null : "PREGNANCY".equals(stage) ? "LMP" : "DELIVERY_DATE",
+                familyScoped ? null : "WEEK",
+                familyScoped ? null : 0,
+                familyScoped ? null : 42,
+                approved ? Timestamp.from(Instant.parse("2026-07-01T00:00:00Z")) : null,
+                approved ? UUID.randomUUID() : null);
     }
 }

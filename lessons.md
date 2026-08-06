@@ -105,3 +105,15 @@
   failing at context load and nobody saw what was inside them. Once unblocked, one class
   turned out to have a fixture years out of date with the schema. A test that errors before
   its first assertion is not a passing test — check *why* a suite is red at the base class.
+
+## 2026-08-07 — Mother Home mobile redesign
+
+- When Flutter is installed under `Program Files`, the wrapper can hang on SDK lock/cache
+  access. A workspace-local `APPDATA`/`PUB_CACHE` plus the existing Flutter snapshot is a
+  reliable fallback for formatting, analyze, and targeted widget tests.
+- Preserve interaction keys on the concrete tappable widget when replacing a
+  `GestureDetector`/`Container` with `Material`/`InkWell`; the Mother Home tests continued
+  to pass their layout and interaction assertions after the visual change.
+- The Mother Home screen and router use canonical `/appointments/calendar`, while the
+  existing widget fixture still declares `/reminders/calendar`; keep that compatibility
+  mismatch explicit instead of changing navigation during a visual-only redesign.
