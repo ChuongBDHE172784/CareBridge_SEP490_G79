@@ -107,10 +107,15 @@ _TEMPLATES: dict[str, tuple[str, str]] = {
         "Hãy tiếp tục theo dõi và khám định kỳ theo lịch hẹn. Nếu xuất hiện dấu hiệu mới "
         "hoặc dấu hiệu nặng lên, hãy đánh giá lại ngay.",
     ),
+    # Speaks about the complaint, not the person. The previous wording read as "you are outside
+    # our scope", which is wrong for a pregnant user asking about an unrelated problem: she is
+    # exactly who CareBridge is for, and only this one question falls outside it.
     "OUT_OF_SCOPE.ROUTE_OUT_OF_SCOPE": (
-        "Nội dung này nằm ngoài phạm vi hỗ trợ",
-        "Trợ lý này chỉ hỗ trợ các vấn đề sức khỏe sinh sản: chuẩn bị mang thai, nghi ngờ "
-        "mang thai, thai kỳ và sau sinh. Với vấn đề bạn mô tả, hãy liên hệ cơ sở y tế phù hợp.",
+        "Vấn đề này nằm ngoài phạm vi định hướng của CareBridge",
+        "Vấn đề bạn vừa mô tả hiện nằm ngoài phạm vi định hướng rủi ro thai kỳ và nhi khoa mà "
+        "CareBridge hỗ trợ. Kết quả này chỉ áp dụng cho vấn đề đang được hỏi và không đánh giá "
+        "toàn bộ tình trạng thai kỳ hay sức khỏe của bạn. Với vấn đề này, bạn nên liên hệ cơ sở "
+        "y tế hoặc chuyên khoa phù hợp.",
     ),
 }
 

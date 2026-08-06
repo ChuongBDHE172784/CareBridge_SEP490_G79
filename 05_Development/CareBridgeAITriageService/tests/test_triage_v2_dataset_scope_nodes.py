@@ -97,3 +97,49 @@ def test_red_is_never_overridden_by_scope():
 
     assert updates["stopConversation"] is True
     assert "triageOutcome" not in updates
+
+
+def test_a_pregnant_user_stays_in_scope_even_when_her_complaint_does_not():
+    """The invariant this two-tier model exists for.
+
+    Wrist pain after the gym can be ruled out, but ruling out the person would say a pregnant
+    woman is not who CareBridge is for — which is the opposite of true.
+    """
+
+    from app.triage_v2.dataset_scope_nodes import SubjectScope
+
+    state = _state()
+    state.update(
+        stage=CareStage.PREGNANCY,
+        gestationalWeek=24,
+        possiblePregnancy="YES",
+        latestUserMessage="Tôi mang thai 24 tuần, hôm qua tập gym bị đau cổ tay",
+        safetyScreenStatus=DatasetStatus.COMPLETE,
+    )
+
+    updates = scope_calculator(state)
+
+    assert updates["subjectScope"] is SubjectScope.IN_SCOPE
+
+
+def test_subject_scope_cannot_express_out_of_scope_at_all():
+    """Making it unrepresentable is cheaper than remembering the rule."""
+
+    from app.triage_v2.dataset_scope_nodes import SubjectScope
+
+    assert {member.value for member in SubjectScope} == {"IN_SCOPE", "UNKNOWN", "CONFLICTED"}
+
+
+def test_an_out_of_scope_verdict_says_it_covers_only_this_complaint():
+    state = _state()
+    state.update(
+        stage=CareStage.UNKNOWN,
+        possiblePregnancy="NO",
+        latestUserMessage="Tôi bị đau cổ tay sau khi chơi cầu lông",
+        safetyScreenStatus=DatasetStatus.COMPLETE,
+    )
+
+    updates = scope_calculator(state)
+
+    if updates["scopeStatus"] is ScopeStatus.CONFIRMED_OUT_OF_SCOPE:
+        assert updates["outcomeAppliesTo"] == "CURRENT_COMPLAINT_ONLY"

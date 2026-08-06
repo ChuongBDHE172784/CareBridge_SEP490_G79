@@ -370,23 +370,46 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
   bool get _useV2ForCurrentStage => isTriageV2CutoverCandidate(_selectedStage);
 
   /// Starts a V2 conversation and renders it through the same chat as V1.
+  ///
+  /// Consent is handled the same way V1 handles it. Without this the first turn for an account
+  /// that has not accepted the AI Triage terms failed into the generic "cannot complete" message,
+  /// which tells the user nothing and hides a problem they could have fixed in one tap.
   Future<void> _startV2(String text) async {
+    final triageUserId = AuthState.instance.userId;
     try {
-      final session = await _v2Service.start(
-        message: text,
-        selectedTarget: 'MOTHER',
-      );
-      if (!mounted) return;
-      _v2Session = session;
-      _applyResponse(_v2Response(session), userMessage: text);
-    } catch (_) {
-      if (mounted) {
-        setState(() => _error =
-            'Hiện chưa thể hoàn tất định hướng nguy cơ. Kết quả lỗi không được xem là mức an toàn.');
+      await _sendV2Start(text);
+    } on TriageConsentRequiredFailure {
+      bool accepted;
+      try {
+        accepted = await _requestTriageConsent(triageUserId);
+      } catch (_) {
+        if (mounted) {
+          setState(() => _error =
+              'Không thể xác nhận điều khoản AI Triage. Vui lòng thử lại.');
+        }
+        return;
       }
+      if (!accepted || !_guardConsentContext(triageUserId)) return;
+      try {
+        await _sendV2Start(text);
+      } catch (_) {
+        if (mounted) setState(() => _error = _v2UnavailableText);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _error = _v2UnavailableText);
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  static const _v2UnavailableText =
+      'Hiện chưa thể hoàn tất định hướng nguy cơ. Kết quả lỗi không được xem là mức an toàn.';
+
+  Future<void> _sendV2Start(String text) async {
+    final session = await _v2Service.start(message: text, selectedTarget: 'MOTHER');
+    if (!mounted) return;
+    _v2Session = session;
+    _applyResponse(_v2Response(session), userMessage: text);
   }
 
   /// Sends a whole round of answers as identifiers and renders the next turn.

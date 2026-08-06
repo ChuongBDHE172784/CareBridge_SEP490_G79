@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from enum import Enum
 from typing import Any, Mapping
 
 from app.context import CareStage, ContextResolutionStatus
@@ -17,6 +18,19 @@ from app.rules.evaluator import (
 )
 from app.rules.registry import load_dataset_requirements
 from app.triage_v2.signal_normalizer import normalize_signal_observation
+
+
+class SubjectScope(str, Enum):
+    """Whether the person is someone CareBridge covers.
+
+    Deliberately has no CONFIRMED_OUT_OF_SCOPE member. A mother in a maternal stage is in scope,
+    full stop; only an individual complaint can be ruled out. Making that unrepresentable is
+    cheaper than remembering the rule.
+    """
+
+    IN_SCOPE = "IN_SCOPE"
+    UNKNOWN = "UNKNOWN"
+    CONFLICTED = "CONFLICTED"
 
 
 def dataset_calculator(state: Mapping[str, object]) -> dict[str, object]:
@@ -42,7 +56,18 @@ def dataset_calculator(state: Mapping[str, object]) -> dict[str, object]:
 
 
 def scope_calculator(state: Mapping[str, object]) -> dict[str, object]:
-    """Return OOS only from positive taxonomy evidence after safety completion."""
+    """Decide scope at two levels: the person, and the complaint they just raised.
+
+    These were one value, and collapsing them had a concrete cost. Being pregnant counted as
+    reproductive evidence, out-of-scope required the absence of reproductive evidence, so a
+    pregnant user could never have any complaint ruled out — wrist pain after the gym still
+    entered obstetric questioning. Splitting them lets the wrist pain stop without ever implying
+    the pregnancy itself is outside CareBridge.
+
+    Subject scope answers "is this person someone CareBridge covers". For a mother in a maternal
+    stage that is IN_SCOPE and stays IN_SCOPE. Complaint scope answers "is the thing they just
+    described something CareBridge assesses", and only that one may be CONFIRMED_OUT_OF_SCOPE.
+    """
 
     if state.get("triageOutcome") == "RED":
         return {"stopConversation": True, "candidateQuestionIds": [], "plannedQuestionIds": []}
@@ -52,22 +77,47 @@ def scope_calculator(state: Mapping[str, object]) -> dict[str, object]:
         state.get("latestUserMessage") if type(state.get("latestUserMessage")) is str else None,
         signals,
     )
-    reproductive = _has_reproductive_evidence(state, signals)
+    subject_reproductive = _has_reproductive_evidence(state, signals)
+    # Complaint-level evidence is what the person actually reported, not the journey they are on.
+    # A reported reproductive signal keeps the complaint in scope; a known pregnancy alone does
+    # not. An UNRESOLVED pregnancy does, though: while we do not know whether she is pregnant, an
+    # unexplained complaint might be the pregnancy, and ruling it out would be guessing.
+    complaint_reproductive = (
+        bool(_reproductive_evidence(signals, _context(state)))
+        or state.get("possiblePregnancy") in {"YES", "UNKNOWN", "CONFLICTED"}
+    )
     safety_complete = _status_value(state.get("safetyScreenStatus")) == DatasetStatus.COMPLETE.value
     context_conflicted = (
         state.get("contextResolutionStatus") == ContextResolutionStatus.CONFLICTED
         or state.get("contextResolutionStatus") == ContextResolutionStatus.CONFLICTED.value
     )
 
+    subject_scope = (
+        SubjectScope.CONFLICTED if context_conflicted
+        else SubjectScope.IN_SCOPE if subject_reproductive
+        else SubjectScope.UNKNOWN
+    )
+
     if context_conflicted:
-        return {"scopeStatus": ScopeStatus.CONFLICTED}
+        return {
+            "scopeStatus": ScopeStatus.CONFLICTED,
+            "subjectScope": subject_scope,
+            "complaintScope": ScopeStatus.CONFLICTED,
+        }
     if may_return_out_of_scope(
         classification=classification,
         safety_screen_complete=safety_complete,
-        has_reproductive_evidence=reproductive,
+        has_reproductive_evidence=complaint_reproductive,
     ):
         return {
+            # scopeStatus stays the complaint-level value so existing rules and audits keep
+            # reading what they always read.
             "scopeStatus": ScopeStatus.CONFIRMED_OUT_OF_SCOPE,
+            "subjectScope": subject_scope,
+            "complaintScope": ScopeStatus.CONFIRMED_OUT_OF_SCOPE,
+            # The verdict covers this complaint only. Nothing here says the person, the pregnancy
+            # or the rest of the session is outside CareBridge.
+            "outcomeAppliesTo": "CURRENT_COMPLAINT_ONLY",
             "triageOutcome": "OUT_OF_SCOPE",
             "requiredAction": "ROUTE_OUT_OF_SCOPE",
             "reasonCodes": ["CONFIRMED_NON_REPRODUCTIVE_COMPLAINT"],
@@ -77,11 +127,24 @@ def scope_calculator(state: Mapping[str, object]) -> dict[str, object]:
             "finalResponse": None,
             "readingLinks": [],
         }
-    if reproductive:
-        return {"scopeStatus": ScopeStatus.IN_SCOPE}
+    if complaint_reproductive or subject_reproductive:
+        return {
+            "scopeStatus": ScopeStatus.IN_SCOPE,
+            "subjectScope": subject_scope,
+            "complaintScope": (ScopeStatus.IN_SCOPE if complaint_reproductive
+                               else ScopeStatus.UNKNOWN),
+        }
     if classification.is_confirmed_non_reproductive:
-        return {"scopeStatus": ScopeStatus.POSSIBLY_IN_SCOPE}
-    return {"scopeStatus": ScopeStatus.UNKNOWN}
+        return {
+            "scopeStatus": ScopeStatus.POSSIBLY_IN_SCOPE,
+            "subjectScope": subject_scope,
+            "complaintScope": ScopeStatus.POSSIBLY_IN_SCOPE,
+        }
+    return {
+        "scopeStatus": ScopeStatus.UNKNOWN,
+        "subjectScope": subject_scope,
+        "complaintScope": ScopeStatus.UNKNOWN,
+    }
 
 
 def _context(state: Mapping[str, object]) -> dict[str, object]:

@@ -25,6 +25,7 @@ from app.rules.evaluator import (
     ScopeStatus,
 )
 from app.triage_v2.coverage_resolver import CoverageStatus
+from app.triage_v2.dataset_scope_nodes import SubjectScope
 
 MAXIMUM_QUESTION_ROUNDS = 3
 
@@ -90,6 +91,14 @@ class TriageV2State(TypedDict):
     contextDatasetStatus: DatasetStatus
     greenEligibilityDatasetStatus: DatasetStatus
     scopeStatus: ScopeStatus
+    #: Whether the person is someone CareBridge covers. Never CONFIRMED_OUT_OF_SCOPE.
+    subjectScope: SubjectScope
+    #: Whether the complaint just raised is something CareBridge assesses. Only this may be ruled
+    #: out, so a pregnant user asking about wrist pain gets that complaint stopped without the
+    #: pregnancy itself being declared outside scope.
+    complaintScope: ScopeStatus
+    #: What an OUT_OF_SCOPE verdict covers. CURRENT_COMPLAINT_ONLY unless stated otherwise.
+    outcomeAppliesTo: str
     #: Whether the ruleset can assess what was reported — distinct from whether it is in scope.
     coverageStatus: CoverageStatus
     coverageReasonCodes: list[str]
@@ -176,6 +185,9 @@ def create_initial_state(
         contextDatasetStatus=DatasetStatus.INCOMPLETE,
         greenEligibilityDatasetStatus=DatasetStatus.INCOMPLETE,
         scopeStatus=ScopeStatus.UNKNOWN,
+        subjectScope=SubjectScope.UNKNOWN,
+        complaintScope=ScopeStatus.UNKNOWN,
+        outcomeAppliesTo="CURRENT_COMPLAINT_ONLY",
         coverageStatus=CoverageStatus.UNKNOWN,
         coverageReasonCodes=[],
         supportedSymptomCodes=[],

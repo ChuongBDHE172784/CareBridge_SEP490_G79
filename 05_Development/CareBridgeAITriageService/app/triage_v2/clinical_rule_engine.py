@@ -102,7 +102,14 @@ def clinical_rule_engine(
         "pendingRiskStatuses": list(result.pending_risk_statuses),
         "primaryPendingRiskStatus": result.primary_pending_risk_status,
         "completionReason": completion,
-        "missingRequiredFields": list(result.required_fields),
+        # Union, not replacement. The dataset calculator already listed what this stage needs
+        # before any rule matched; overwriting it with the matched rules' own required fields
+        # emptied the list whenever nothing matched yet, which left the planner with no field to
+        # resolve and so nothing to ask — a baby complaint arrived and was asked nothing at all.
+        "missingRequiredFields": list(dict.fromkeys([
+            *(state.get("missingRequiredFields") or []),
+            *result.required_fields,
+        ])),
         "dataConflicts": list(dict.fromkeys([*state.get("dataConflicts", []), *result.data_conflicts])),
         "rulesetVersion": result.ruleset_version,
         "rulesetHash": result.ruleset_hash,
