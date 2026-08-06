@@ -8,7 +8,6 @@ import com.carebridge.backend.community.entity.AnswerStatus;
 import com.carebridge.backend.community.entity.CommunityAnswer;
 import com.carebridge.backend.community.entity.CommunityAnswerLike;
 import com.carebridge.backend.community.entity.CommunityBookmark;
-import com.carebridge.backend.community.entity.CommunityProfile;
 import com.carebridge.backend.community.entity.CommunityQuestion;
 import com.carebridge.backend.community.entity.CommunityQuestionLike;
 import com.carebridge.backend.community.entity.CommunityTopic;
@@ -19,7 +18,6 @@ import com.carebridge.backend.community.entity.UserTopicFollow;
 import com.carebridge.backend.community.repository.CommunityAnswerLikeRepository;
 import com.carebridge.backend.community.repository.CommunityAnswerRepository;
 import com.carebridge.backend.community.repository.CommunityBookmarkRepository;
-import com.carebridge.backend.community.repository.CommunityProfileRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionLikeRepository;
 import com.carebridge.backend.community.repository.CommunityQuestionRepository;
 import com.carebridge.backend.community.repository.CommunityTopicRepository;
@@ -150,7 +148,6 @@ public class DevDataSeeder implements ApplicationRunner {
     private final CommunityTopicRepository communityTopicRepository;
     private final CommunityQuestionRepository communityQuestionRepository;
     private final CommunityAnswerRepository communityAnswerRepository;
-    private final CommunityProfileRepository communityProfileRepository;
     private final CommunityQuestionLikeRepository communityQuestionLikeRepository;
     private final CommunityAnswerLikeRepository communityAnswerLikeRepository;
     private final CommunityBookmarkRepository communityBookmarkRepository;
@@ -1107,13 +1104,7 @@ public class DevDataSeeder implements ApplicationRunner {
                 + "nên vệ sinh và giữ da bé khô thoáng thay vì dùng phấn.",
             true, false, AnswerStatus.APPROVED, 1);
 
-        // 2 public community profiles, exercising the anonymous/display-name resolver
-        seedCommunityProfile(mother3, "Mẹ Bé Sâu",
-            "Mẹ bỉm sữa đang mang thai lần 2, thích chia sẻ kinh nghiệm dinh dưỡng.",
-            "PREGNANCY", true, "TP. Hồ Chí Minh");
-        seedCommunityProfile(family2, "Dì Ba",
-            "Người thân đồng hành cùng mẹ và bé, quan tâm chăm sóc trẻ sơ sinh.",
-            "POSTPARTUM", true, "Hà Nội");
+
 
         // Likes + bookmarks, kept consistent with each item's seeded like_count above
         seedQuestionLike(family, q3.getId());
@@ -1196,23 +1187,7 @@ public class DevDataSeeder implements ApplicationRunner {
             });
     }
 
-    private void seedCommunityProfile(UUID userId, String displayName, String bio, String interestStage,
-            boolean visible, String region) {
-        if (communityProfileRepository.existsByUserId(userId)) {
-            return;
-        }
-        Instant now = Instant.now();
-        communityProfileRepository.save(CommunityProfile.builder()
-            .userId(userId)
-            .displayName(displayName)
-            .bio(bio)
-            .interestStage(interestStage)
-            .visible(visible)
-            .region(region)
-            .createdAt(now)
-            .updatedAt(now)
-            .build());
-    }
+
 
     private void seedQuestionLike(UUID userId, UUID questionId) {
         if (communityQuestionLikeRepository.existsByUserIdAndQuestionId(userId, questionId)) {
@@ -1409,16 +1384,7 @@ public class DevDataSeeder implements ApplicationRunner {
             "Người nhà mình sinh xong sản dịch kéo dài gần 1 tháng mới hết hẳn, bác sĩ nói vẫn trong giới hạn bình thường.",
             false, true, AnswerStatus.APPROVED, 0);
 
-        // 3 more public community profiles
-        seedCommunityProfile(expert2, "BS. Sản khoa - Ngọc Anh",
-            "Bác sĩ chuyên khoa Sản, đồng hành cùng các mẹ trong thai kỳ và giai đoạn hậu sản.",
-            "PREGNANCY", true, "TP. Hồ Chí Minh");
-        seedCommunityProfile(expert3, "BS. Nhi khoa - Minh Quân",
-            "Bác sĩ Nhi khoa, tư vấn chăm sóc và theo dõi phát triển trẻ sơ sinh, trẻ nhỏ.",
-            "POSTPARTUM", true, "TP. Hồ Chí Minh");
-        seedCommunityProfile(mother4, "Mẹ Bông",
-            "Mẹ bỉm sữa giai đoạn hậu sản, có bé nhỏ dưới 1 tuổi.",
-            "POSTPARTUM", true, "Đà Nẵng");
+
 
         // Likes + bookmarks, kept consistent with each item's seeded like_count above
         seedQuestionLike(expert, q9.getId());

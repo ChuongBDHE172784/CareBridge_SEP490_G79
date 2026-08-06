@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.carebridge.backend.location.entity.LocationSnapshot;
 import com.carebridge.backend.reminder.entity.CareTask;
 import com.carebridge.backend.profile.entity.UserProfile;
-import com.carebridge.backend.community.entity.CommunityProfile;
 import com.carebridge.backend.content.entity.ModerationAction;
 import jakarta.persistence.Column;
 import jakarta.persistence.Table;
@@ -33,8 +32,6 @@ class CanonicalPhysicalTableMappingTest {
     void profileProjectionsUseCanonicalUsersTable() throws Exception {
         assertThat(UserProfile.class.getAnnotation(Table.class).name()).isEqualTo("users");
         assertThat(column(UserProfile.class, "profileId")).isEqualTo("user_id");
-        assertThat(CommunityProfile.class.getAnnotation(Table.class).name()).isEqualTo("users");
-        assertThat(column(CommunityProfile.class, "communityProfileId")).isEqualTo("user_id");
     }
 
     @Test
