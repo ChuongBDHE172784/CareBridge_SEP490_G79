@@ -52,7 +52,7 @@ public class FileController {
 
     // UC167-EXT: Upload file with explicit purpose (EXPERT, ADMIN, etc.)
     @PostMapping(value = "/upload/with-purpose", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasAnyRole('EXPERT', 'ADMIN', 'SYSTEM_ADMIN', 'MODERATOR', 'CONTENT_ADMIN', 'PARTNER', 'MOTHER')")
+    @PreAuthorize("hasAnyRole('EXPERT', 'ADMIN', 'SYSTEM_ADMIN', 'MODERATOR', 'CONTENT_ADMIN', 'MOTHER')")
     public ResponseEntity<ApiResponse<UploadFileResponse>> uploadFileWithPurpose(
             @RequestPart("file") MultipartFile file,
             @RequestParam("kind") FileKind kind,

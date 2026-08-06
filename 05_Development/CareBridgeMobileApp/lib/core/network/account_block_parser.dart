@@ -10,8 +10,9 @@ const _blockedCodes = <String>{
   'ACCOUNT_SUSPENDED',
 };
 
-/// Parses a structured account-state response. The backend only returns
-/// administrative reasons and appeal authorization after password proof.
+/// Parses a structured account-state response. The backend only returns the
+/// administrative lock reason after password proof; appeal token/status metadata
+/// is gone along with the retired appeal workflow.
 BlockedAccountState? parseAccountBlockedState(http.Response response) {
   if (response.statusCode != 403) return null;
   try {
@@ -28,10 +29,6 @@ BlockedAccountState? parseAccountBlockedState(http.Response response) {
       lockType: metadata['lockType'] as String?,
       reason: metadata['reason'] as String?,
       retryAt: retryAtValue == null ? null : DateTime.tryParse(retryAtValue),
-      appealAllowed: metadata['appealAllowed'] == true,
-      appealToken: metadata['appealToken'] as String?,
-      appealPending: metadata['appealPending'] == true,
-      appealStatus: metadata['appealStatus'] as String?,
     );
   } catch (_) {
     return null;

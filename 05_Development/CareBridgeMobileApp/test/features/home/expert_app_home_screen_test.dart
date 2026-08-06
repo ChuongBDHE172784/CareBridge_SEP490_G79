@@ -60,13 +60,6 @@ class _FakeExpertHomeApi implements ExpertHomeApi {
       };
     }
     if (path.contains('assigned?')) return {'data': <dynamic>[]};
-    if (path.contains('support-requests/open')) {
-      return {
-        'data': [
-          {'description': 'Hỗ trợ tại nhà', 'supportType': 'ROUTINE'},
-        ],
-      };
-    }
     if (path.contains('/community/questions')) {
       return {
         'data': [
@@ -179,7 +172,7 @@ void main() {
 
       await tester.pumpWidget(const MaterialApp(home: ExpertAppHomeScreen()));
       await tester.pumpAndSettle();
-      expect(find.text('Hỗ trợ tại nhà'), findsOneWidget);
+      expect(find.text('7'), findsOneWidget);
       expect(find.byIcon(Icons.close_rounded), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('expert-online-toggle')));
@@ -187,14 +180,14 @@ void main() {
 
       expect(api.lastPatchBody, {'online': true});
       expect(find.byIcon(Icons.check_rounded), findsNothing);
-      expect(find.text('Hỗ trợ tại nhà'), findsOneWidget);
+      expect(find.text('7'), findsOneWidget);
 
       api.patchCompleter!.complete({'message': 'Đã bật từ máy chủ'});
       await tester.pumpAndSettle();
 
       expect(find.byIcon(Icons.check_rounded), findsOneWidget);
       expect(find.text('Đã bật từ máy chủ'), findsOneWidget);
-      expect(find.text('Hỗ trợ tại nhà'), findsOneWidget);
+      expect(find.text('7'), findsOneWidget);
     },
   );
 

@@ -40,7 +40,6 @@ class UserCreatedChecklistV2CutoverPostgresTest extends AbstractEmbeddedPostgres
     private UUID motherId;
     private UUID journeyId;
     private UUID groupId;
-    private long legacyRowsBefore;
 
     @BeforeEach
     void setUp() {
@@ -60,7 +59,6 @@ class UserCreatedChecklistV2CutoverPostgresTest extends AbstractEmbeddedPostgres
                 journeyId, subjectId);
         groupId = careGroupRepository.saveAndFlush(CareGroup.builder().ownerUserId(motherId)
                 .groupName("V2 group").status(CareGroupStatus.ACTIVE).linkedJourneyId(journeyId).build()).getId();
-        legacyRowsBefore = countLegacyRows();
     }
 
     @Test
@@ -89,8 +87,7 @@ class UserCreatedChecklistV2CutoverPostgresTest extends AbstractEmbeddedPostgres
 
         UUID taskId = UUID.fromString(com.fasterxml.jackson.databind.json.JsonMapper.builder().build()
                 .readTree(response).path("data").path("itemId").asText());
-        assertThat(jdbcTemplate.queryForObject("select count(*) from preparation_checklist_items",
-                Long.class)).isEqualTo(legacyRowsBefore);
+        assertThat(legacyChecklistTableIsGone()).isTrue();
         assertThat(jdbcTemplate.queryForObject("select count(*) from checklist_instances "
                 + "where recipient_user_id=? and origin='USER_CREATED' and care_group_id is null", Long.class,
                 motherId)).isOne();
@@ -118,8 +115,7 @@ class UserCreatedChecklistV2CutoverPostgresTest extends AbstractEmbeddedPostgres
                 .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("COMPLETED"));
         assertThat(jdbcTemplate.queryForObject("select status from checklist_task_instances where checklist_task_instance_id=?",
                 String.class, taskId)).isEqualTo("COMPLETED");
-        assertThat(jdbcTemplate.queryForObject("select count(*) from preparation_checklist_items",
-                Long.class)).isEqualTo(legacyRowsBefore);
+        assertThat(legacyChecklistTableIsGone()).isTrue();
         assertThat(jdbcTemplate.queryForObject("select count(*) from audit_events "
                 + "where actor_user_id=? and checklist_task_instance_id=? "
                 + "and event_category='CHECKLIST_COMPLETED'", Long.class, motherId, taskId)).isOne();
@@ -190,7 +186,7 @@ class UserCreatedChecklistV2CutoverPostgresTest extends AbstractEmbeddedPostgres
         mockMvc.perform(delete("/api/v1/user-checklist-items/%s".formatted(id)).with(csrf())
                         .with(user(motherId.toString()).roles("MOTHER")))
                 .andExpect(status().isNotFound());
-        assertThat(countLegacyRows()).isEqualTo(legacyRowsBefore);
+        assertThat(legacyChecklistTableIsGone()).isTrue();
     }
 
     @Test
@@ -228,12 +224,13 @@ class UserCreatedChecklistV2CutoverPostgresTest extends AbstractEmbeddedPostgres
                 .andExpect(jsonPath("$.error").value("CHECKLIST_CONTEXT_UNAVAILABLE"));
         assertThat(jdbcTemplate.queryForObject("select count(*) from checklist_instances "
                 + "where recipient_user_id=?", Long.class, otherActor)).isZero();
-        assertThat(countLegacyRows()).isEqualTo(legacyRowsBefore);
+        assertThat(legacyChecklistTableIsGone()).isTrue();
     }
 
-    private long countLegacyRows() {
-        Long count = jdbcTemplate.queryForObject("select count(*) from preparation_checklist_items", Long.class);
-        return count == null ? 0 : count;
+    /** The persistence contract dropped the table, so a legacy write is impossible. */
+    private boolean legacyChecklistTableIsGone() {
+        return Boolean.TRUE.equals(jdbcTemplate.queryForObject(
+                "SELECT to_regclass('public.preparation_checklist_items') IS NULL", Boolean.class));
     }
 
     private UUID createTask(String text, String category, UUID clientTaskId) throws Exception {

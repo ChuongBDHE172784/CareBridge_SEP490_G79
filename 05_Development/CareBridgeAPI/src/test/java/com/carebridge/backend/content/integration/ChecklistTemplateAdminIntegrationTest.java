@@ -10,12 +10,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.carebridge.backend.audit.service.AuditService;
-import com.carebridge.backend.checklist.repository.UserChecklistItemRepository;
-import com.carebridge.backend.checklist.entity.UserChecklistItem;
+import com.carebridge.backend.checklist.key.ChecklistDistributionKeyFactory;
+import com.carebridge.backend.checklist.model.ChecklistAnchorType;
+import com.carebridge.backend.checklist.model.ChecklistRangeUnit;
+import com.carebridge.backend.checklist.model.ChecklistRecipientScope;
 import com.carebridge.backend.content.entity.ChecklistItem;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
 import com.carebridge.backend.content.entity.ContentStage;
 import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
+import com.carebridge.backend.content.entity.ChecklistTemplateType;
 import com.carebridge.backend.content.repository.ChecklistItemRepository;
 import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
 import com.carebridge.backend.journey.entity.JourneyStatus;
@@ -28,6 +31,7 @@ import com.carebridge.backend.security.rbac.Role;
 import com.carebridge.backend.security.repository.UserRepository;
 import com.carebridge.backend.testsupport.AbstractPostgresIntegrationTest;
 import jakarta.persistence.EntityManager;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -47,7 +51,6 @@ class ChecklistTemplateAdminIntegrationTest extends AbstractPostgresIntegrationT
     @Autowired private MockMvc mockMvc;
     @Autowired private ChecklistTemplateRepository checklistTemplateRepository;
     @Autowired private ChecklistItemRepository checklistItemRepository;
-    @Autowired private UserChecklistItemRepository userChecklistItemRepository;
     @Autowired private EntityManager entityManager;
     @Autowired private MotherJourneyRepository motherJourneyRepository;
     @Autowired private UserRepository userRepository;
@@ -58,26 +61,24 @@ class ChecklistTemplateAdminIntegrationTest extends AbstractPostgresIntegrationT
 
     private static final String BASE_URL = "/api/v1/admin/checklist-templates";
 
+    // Inline eligibility is mandatory for every anchored stage: the admin API derives the
+    // template's window from this block and rejects the request without it.
+    private static final String PREGNANCY_SUBSTAGE = """
+            {"code":"TRIMESTER_1","anchor":"LMP","unit":"WEEK","startInclusive":0,"endInclusive":13}""";
+
     @Test
     void authenticatedListing_returnsOnlyApprovedTemplatesWithAndWithoutStage() throws Exception {
         String token = seedUser("chk.list@test.com", Role.MOTHER);
-        ChecklistTemplate approvedPregnancy = checklistTemplateRepository.saveAndFlush(
-                template("Public approved pregnancy", ContentStage.PREGNANCY, ChecklistTemplateStatus.APPROVED));
-        ChecklistTemplate approvedPostpartum = checklistTemplateRepository.saveAndFlush(
-                template("Public approved postpartum", ContentStage.POSTPARTUM, ChecklistTemplateStatus.APPROVED));
-        ChecklistTemplate draft = checklistTemplateRepository.saveAndFlush(
-                template("Hidden draft", ContentStage.PREGNANCY, ChecklistTemplateStatus.DRAFT));
-        ChecklistTemplate pending = checklistTemplateRepository.saveAndFlush(
-                template("Hidden pending", ContentStage.PREGNANCY, ChecklistTemplateStatus.PENDING_REVIEW));
-        ChecklistTemplate archived = checklistTemplateRepository.saveAndFlush(
-                template("Hidden archived", ContentStage.PREGNANCY, ChecklistTemplateStatus.ARCHIVED));
-
-        checklistItemRepository.saveAllAndFlush(List.of(
-                item(approvedPregnancy, "Visible pregnancy item", 1),
-                item(approvedPostpartum, "Visible postpartum item", 1),
-                item(draft, "Hidden draft item", 1),
-                item(pending, "Hidden pending item", 1),
-                item(archived, "Hidden archived item", 1)));
+        seedTemplateWithItem("Public approved pregnancy", ContentStage.PREGNANCY,
+                ChecklistTemplateStatus.APPROVED, "Visible pregnancy item");
+        seedTemplateWithItem("Public approved postpartum", ContentStage.POSTPARTUM,
+                ChecklistTemplateStatus.APPROVED, "Visible postpartum item");
+        seedTemplateWithItem("Hidden draft", ContentStage.PREGNANCY,
+                ChecklistTemplateStatus.DRAFT, "Hidden draft item");
+        seedTemplateWithItem("Hidden pending", ContentStage.PREGNANCY,
+                ChecklistTemplateStatus.PENDING_REVIEW, "Hidden pending item");
+        seedTemplateWithItem("Hidden archived", ContentStage.PREGNANCY,
+                ChecklistTemplateStatus.ARCHIVED, "Hidden archived item");
 
         mockMvc.perform(get("/api/v1/content/checklists")
                         .header("Authorization", "Bearer " + token))
@@ -105,10 +106,13 @@ class ChecklistTemplateAdminIntegrationTest extends AbstractPostgresIntegrationT
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name":"Checklist khám thai tháng 3","description":"Mô tả",
-                                 "stage":"PREGNANCY",
-                                 "items":[{"itemText":"Siêu âm đo độ mờ da gáy","order":1,"isRequired":true},
-                                          {"itemText":"Xét nghiệm Double test","order":2,"isRequired":true}]}
-                                """))
+                                 "stage":"PREGNANCY","recipientRoles":["MOTHER"],
+                                 "substage":%s,
+                                 "items":[{"itemText":"Siêu âm đo độ mờ da gáy","order":1,"isRequired":true,
+                                           "targetSubject":"MOTHER"},
+                                          {"itemText":"Xét nghiệm Double test","order":2,"isRequired":true,
+                                           "targetSubject":"MOTHER"}]}
+                                """.formatted(PREGNANCY_SUBSTAGE)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.status").value("DRAFT"))
                 .andExpect(jsonPath("$.data.items.length()").value(2));
@@ -136,10 +140,14 @@ class ChecklistTemplateAdminIntegrationTest extends AbstractPostgresIntegrationT
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name":"Update target","description":"Mô tả mới","stage":"PREGNANCY","status":"DRAFT",
-                                 "items":[{"itemText":"Mục mới 1","order":1,"isRequired":true},
-                                          {"itemText":"Mục mới 2","order":2,"isRequired":false},
-                                          {"itemText":"Mục mới 3","order":3,"isRequired":true}]}
-                                """))
+                                 "recipientRoles":["MOTHER"],"substage":%s,
+                                 "items":[{"itemText":"Mục mới 1","order":1,"isRequired":true,
+                                           "targetSubject":"MOTHER"},
+                                          {"itemText":"Mục mới 2","order":2,"isRequired":false,
+                                           "targetSubject":"MOTHER"},
+                                          {"itemText":"Mục mới 3","order":3,"isRequired":true,
+                                           "targetSubject":"MOTHER"}]}
+                                """.formatted(PREGNANCY_SUBSTAGE)))
                 .andExpect(status().isOk());
 
         List<ChecklistItem> items = checklistItemRepository.findByTemplate_IdOrderByOrder(template.getId());
@@ -159,14 +167,10 @@ class ChecklistTemplateAdminIntegrationTest extends AbstractPostgresIntegrationT
                 item(template, "Retained entry", 1));
         ChecklistItem omitted = checklistItemRepository.saveAndFlush(
                 item(template, "Omitted entry", 2));
-        UserChecklistItem imported = UserChecklistItem.builder()
-                        .ownerUserId(admin.getId())
-                        .templateItemId(retained.getId())
-                        .itemText(retained.getItemText())
-                        .itemOrder(retained.getOrder())
-                        .build();
-        entityManager.persist(imported);
-        entityManager.flush();
+        // The legacy imported-item assertion used preparation_checklist_items, retired at
+        // R12. Its v2 counterpart is a distributed task whose template_item_version_id
+        // points at the retained entry — the same downstream reference, one table over.
+        UUID distributedTask = distributeSystemTemplateTask(admin, template, retained);
 
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                         .put(BASE_URL + "/{id}", template.getId()).with(csrf())
@@ -174,10 +178,13 @@ class ChecklistTemplateAdminIntegrationTest extends AbstractPostgresIntegrationT
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"name":"Identity-preserving update","description":"Updated",
-                                 "stage":"PREGNANCY","status":"DRAFT",
-                                 "items":[{"id":"%s","itemText":"Retained entry updated","order":1,"isRequired":true},
-                                          {"itemText":"New entry","order":2,"isRequired":false}]}
-                                """.formatted(retained.getId())))
+                                 "stage":"PREGNANCY","status":"DRAFT","recipientRoles":["MOTHER"],
+                                 "substage":%s,
+                                 "items":[{"id":"%s","itemText":"Retained entry updated","order":1,
+                                           "isRequired":true,"targetSubject":"MOTHER"},
+                                          {"itemText":"New entry","order":2,"isRequired":false,
+                                           "targetSubject":"MOTHER"}]}
+                                """.formatted(PREGNANCY_SUBSTAGE, retained.getId())))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.items[0].id").value(retained.getId().toString()));
 
@@ -188,8 +195,11 @@ class ChecklistTemplateAdminIntegrationTest extends AbstractPostgresIntegrationT
         assertThat(omittedAfter.getIsActive()).isFalse();
         assertThat(checklistItemRepository.findByTemplate_IdOrderByOrder(template.getId())).hasSize(2);
         assertThat(checklistItemRepository.findAllByTemplateIdOrderByOrder(template.getId())).hasSize(3);
-        assertThat(userChecklistItemRepository.findById(imported.getId()).orElseThrow().getTemplateItemId())
-                .isEqualTo(retained.getId());
+        assertThat(referencedItemVersionOf(distributedTask)).isEqualTo(retained.getId());
+        // The reference is only meaningful while the entry still resolves back to the
+        // root that owns the task's version; a task can keep its column values and
+        // still be orphaned.
+        assertThat(taskTemplateLinkResolves(distributedTask)).isTrue();
     }
 
     // CHKTPL-TC-INT-003
@@ -211,37 +221,23 @@ class ChecklistTemplateAdminIntegrationTest extends AbstractPostgresIntegrationT
         assertThat(checklistItemRepository.findByTemplate_IdOrderByOrder(template.getId())).hasSize(2);
     }
 
-    // CHKTPL-TC-INT-004 — archive must not break canonical preparation checklist items.
+    // CHKTPL-TC-INT-004 — archive must not break checklist tasks already distributed
+    // from the template. Pre-R12 this was asserted against preparation_checklist_items;
+    // the canonical downstream record is now checklist_task_instances.
     @Test
-    void archive_doesNotBreakDownstreamUserChecklistItems() throws Exception {
+    void archive_doesNotBreakDownstreamDistributedTasks() throws Exception {
         String contentAdminToken = seedUser("chk.downstream.admin@test.com", Role.CONTENT_ADMIN);
-        String motherToken = seedUser("chk.downstream.mother@test.com", Role.MOTHER);
+        seedUser("chk.downstream.mother@test.com", Role.MOTHER);
         User mother = userRepository.findByEmailIgnoreCase("chk.downstream.mother@test.com").orElseThrow();
-        UUID careSubjectId = createMotherCareSubject(mother);
-        MotherJourney journey = motherJourneyRepository.saveAndFlush(MotherJourney.builder()
-                .ownerUserId(mother.getId())
-                .careSubjectId(careSubjectId)
-                .journeyType(JourneyType.PREGNANCY)
-                .status(JourneyStatus.ACTIVE)
-                .build());
 
-        ChecklistTemplate template = checklistTemplateRepository.saveAndFlush(
-                template("Import source", ContentStage.PREGNANCY, ChecklistTemplateStatus.APPROVED));
-        ChecklistItem templateItem = checklistItemRepository.saveAndFlush(item(template, "Mục nhập khẩu", 1));
+        ChecklistTemplate template = seedTemplateWithItem("Import source", ContentStage.PREGNANCY,
+                ChecklistTemplateStatus.APPROVED, "Mục nhập khẩu");
+        ChecklistItem templateItem =
+                checklistItemRepository.findByTemplate_IdOrderByOrder(template.getId()).get(0);
 
-        // MOTHER imports the template item into her personal checklist (real UC-50 endpoint)
-        mockMvc.perform(post("/api/v1/user-checklist-items/import").with(csrf())
-                        .header("Authorization", "Bearer " + motherToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"journeyId\":\"" + journey.getId()
-                                + "\",\"templateItemIds\":[\"" + templateItem.getId() + "\"]}"))
-                .andExpect(status().isCreated());
-
-        List<UserChecklistItem> imported = userChecklistItemRepository.findByOwnerFiltered(
-                userRepository.findByEmailIgnoreCase("chk.downstream.mother@test.com").orElseThrow().getId(),
-                null, null);
-        assertThat(imported).hasSize(1);
-        assertThat(imported.get(0).getTemplateItemId()).isEqualTo(templateItem.getId());
+        // The mother already holds a task distributed from this template item.
+        UUID distributedTask = distributeSystemTemplateTask(mother, template, templateItem);
+        assertThat(referencedItemVersionOf(distributedTask)).isEqualTo(templateItem.getId());
 
         // CONTENT_ADMIN archives the template afterwards
         mockMvc.perform(post(BASE_URL + "/{id}/archive", template.getId()).with(csrf())
@@ -249,27 +245,167 @@ class ChecklistTemplateAdminIntegrationTest extends AbstractPostgresIntegrationT
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"reason\":\"Nội dung lỗi thời\"}"))
                 .andExpect(status().isOk());
+        entityManager.flush();
+        entityManager.clear();
 
-        // The mother's already-imported row must remain intact, still pointing at the same item
-        List<UserChecklistItem> afterArchive = userChecklistItemRepository.findByOwnerFiltered(
-                userRepository.findByEmailIgnoreCase("chk.downstream.mother@test.com").orElseThrow().getId(),
-                null, null);
-        assertThat(afterArchive).hasSize(1);
-        assertThat(afterArchive.get(0).getTemplateItemId()).isEqualTo(templateItem.getId());
+        // Archiving withdraws the template from distribution; it must not retract or
+        // repoint work already handed to a user, nor delete the item version that work
+        // references.
+        assertThat(checklistTemplateRepository.findById(template.getId()).orElseThrow().getStatus())
+                .isEqualTo(ChecklistTemplateStatus.ARCHIVED);
+        assertThat(referencedItemVersionOf(distributedTask)).isEqualTo(templateItem.getId());
+        assertThat(taskStatusOf(distributedTask)).isEqualTo("PENDING");
         assertThat(checklistItemRepository.findById(templateItem.getId())).isPresent();
+        assertThat(taskTemplateLinkResolves(distributedTask)).isTrue();
     }
 
     private ChecklistTemplate draftTemplate(String name) {
         return template(name, ContentStage.PREGNANCY, ChecklistTemplateStatus.DRAFT);
     }
 
+    /**
+     * Seeds a template that already carries one entry.
+     *
+     * <p>Entries can only be attached while the root is still mutable —
+     * {@code checklist_guard_approved_item_mutation} freezes a template's entries the
+     * moment it reaches APPROVED or ARCHIVED — so the status is applied last, exactly
+     * as the authoring flow does it.
+     */
+    private ChecklistTemplate seedTemplateWithItem(
+            String name, ContentStage stage, ChecklistTemplateStatus status, String itemText) {
+        ChecklistTemplate template = checklistTemplateRepository.saveAndFlush(
+                template(name, stage, ChecklistTemplateStatus.DRAFT));
+        checklistItemRepository.saveAndFlush(item(template, itemText, 1));
+        if (status == ChecklistTemplateStatus.DRAFT) {
+            return template;
+        }
+        template.setStatus(status);
+        if (status == ChecklistTemplateStatus.APPROVED) {
+            // care_item_templates_approved_gate_ck: an APPROVED root must carry its
+            // approval provenance.
+            template.setApprovedAt(Instant.now());
+            template.setApprovedBy(UUID.randomUUID());
+        }
+        return checklistTemplateRepository.saveAndFlush(template);
+    }
+
+    /**
+     * Inline template metadata is the sole template authority since the support-table
+     * retirement, and the schema enforces its whole shape: a TEMPLATE_ROOT must carry a
+     * lineage/version pair ({@code care_item_templates_root_version_ck}), a recipient
+     * scope, and eligibility bounds matching its stage
+     * ({@code checklist_validate_inline_template_shape}). The admin API never supplies
+     * any of that, so fixtures must.
+     */
     private ChecklistTemplate template(String name, ContentStage stage, ChecklistTemplateStatus status) {
         return ChecklistTemplate.builder()
                 .name(name)
                 .stage(stage)
                 .status(status)
                 .description("Mô tả kiểm thử")
+                // The public /content/checklists listing only surfaces OPTIONAL
+                // templates — the self-assignable ones.
+                .templateType(ChecklistTemplateType.OPTIONAL)
+                .templateLineageId(UUID.randomUUID())
+                .templateVersionId(UUID.randomUUID())
+                .recipientScope(ChecklistRecipientScope.MOTHER)
+                // PRE_PREGNANCY is the one stage the validator pins to a zero-width
+                // NONE/DAY window; the anchored stages take a real range.
+                .eligibilityAnchorType(stage == ContentStage.PRE_PREGNANCY
+                        ? ChecklistAnchorType.NONE
+                        : stage == ContentStage.PREGNANCY
+                                ? ChecklistAnchorType.LMP
+                                : ChecklistAnchorType.DELIVERY_DATE)
+                .eligibilityRangeUnit(stage == ContentStage.PRE_PREGNANCY
+                        ? ChecklistRangeUnit.DAY : ChecklistRangeUnit.WEEK)
+                .eligibilityStartInclusive(0)
+                .eligibilityEndInclusive(stage == ContentStage.PRE_PREGNANCY ? 0 : 42)
                 .build();
+    }
+
+    /**
+     * Seeds the v2 counterpart of a legacy imported checklist row: a SYSTEM_TEMPLATE
+     * checklist instance for {@code recipient} holding one task whose
+     * {@code template_item_version_id} points at {@code item}.
+     *
+     * <p>A MOTHER-scoped instance carries no care group — the schema rejects one — but
+     * it does need a journey the recipient owns, which
+     * {@code checklist_instances_journey_owner_fk} enforces.
+     *
+     * @return the distributed task id
+     */
+    private UUID distributeSystemTemplateTask(
+            User recipient, ChecklistTemplate template, ChecklistItem item) {
+        UUID careSubjectId = createMotherCareSubject(recipient);
+        MotherJourney journey = motherJourneyRepository.saveAndFlush(MotherJourney.builder()
+                .ownerUserId(recipient.getId())
+                .careSubjectId(careSubjectId)
+                .journeyType(JourneyType.PREGNANCY)
+                .status(JourneyStatus.ACTIVE)
+                .build());
+
+        UUID instanceId = UUID.randomUUID();
+        UUID taskId = UUID.randomUUID();
+        jdbcTemplate.update("""
+                INSERT INTO checklist_instances (
+                    checklist_instance_id, distribution_key, key_version, template_lineage_id,
+                    template_version_id, recipient_user_id, recipient_role, care_group_id,
+                    care_context_type, care_context_id, context_owner_user_id, origin,
+                    status, lock_version, created_at, updated_at)
+                VALUES (?, ?, 'v1', ?, ?, ?, 'MOTHER', NULL, 'JOURNEY', ?, ?, 'SYSTEM_TEMPLATE',
+                        'PENDING', 0, now(), now())
+                """,
+                instanceId,
+                ChecklistDistributionKeyFactory.instanceKey(
+                        template.getTemplateVersionId(), recipient.getId(), "MOTHER",
+                        null, "JOURNEY", journey.getId(), null, null),
+                template.getTemplateLineageId(), template.getTemplateVersionId(),
+                recipient.getId(), journey.getId(), recipient.getId());
+        jdbcTemplate.update("""
+                INSERT INTO checklist_task_instances (
+                    checklist_task_instance_id, checklist_instance_id, template_version_id,
+                    template_item_version_id, task_key, key_version, title_snapshot,
+                    display_order, is_required, target_subject, status, lock_version,
+                    created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, 'v1', ?, 1, true, 'MOTHER', 'PENDING', 0, now(), now())
+                """,
+                taskId, instanceId, template.getTemplateVersionId(), item.getId(),
+                ChecklistDistributionKeyFactory.childKey(instanceId, item.getId()),
+                item.getItemText());
+        return taskId;
+    }
+
+    private UUID referencedItemVersionOf(UUID taskId) {
+        return jdbcTemplate.queryForObject("""
+                SELECT template_item_version_id FROM checklist_task_instances
+                 WHERE checklist_task_instance_id = ?
+                """, UUID.class, taskId);
+    }
+
+    private String taskStatusOf(UUID taskId) {
+        return jdbcTemplate.queryForObject("""
+                SELECT status FROM checklist_task_instances WHERE checklist_task_instance_id = ?
+                """, String.class, taskId);
+    }
+
+    /**
+     * Re-derives what {@code checklist_validate_task_template} demands of a system task:
+     * the referenced entry must still hang off the root that owns the referenced version.
+     * A task can keep its column values and still be orphaned if that link breaks.
+     */
+    private boolean taskTemplateLinkResolves(UUID taskId) {
+        return Boolean.TRUE.equals(jdbcTemplate.queryForObject("""
+                SELECT exists(
+                    SELECT 1 FROM checklist_task_instances task
+                      JOIN care_item_templates item
+                        ON item.template_id = task.template_item_version_id
+                       AND item.entry_type = 'CHECKLIST_ENTRY'
+                      JOIN care_item_templates root
+                        ON root.template_id = item.parent_template_id
+                       AND root.entry_type = 'TEMPLATE_ROOT'
+                       AND root.template_version_id = task.template_version_id
+                     WHERE task.checklist_task_instance_id = ?)
+                """, Boolean.class, taskId));
     }
 
     private ChecklistItem item(ChecklistTemplate template, String text, int order) {

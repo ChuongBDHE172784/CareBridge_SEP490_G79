@@ -86,8 +86,10 @@ public class HealthObservation {
     @Column(name = "source_type", nullable = false, length = 60)
     private DataSource sourceType;
 
-    @Column(name = "device_connection_id")
-    private UUID deviceConnectionId;
+    // device_connection_id is gone with the IoT integration. Provenance for
+    // historically device-sourced observations lives in raw_payload_jsonb under
+    // "deviceProvenance"; sourceType still records that the reading came from a
+    // device.
 
     @Column(name = "source_record_id")
     private UUID sourceRecordId;

@@ -10,7 +10,6 @@ public class CareFacilityMapper {
     public FacilityResponse toResponse(CareFacility entity, Integer distanceMeters) {
         return FacilityResponse.builder()
                 .facilityId(entity.getFacilityId())
-                .partnerId(entity.getPartnerId())
                 .name(entity.getName())
                 .facilityType(entity.getFacilityType())
                 .facilityLevel(entity.getFacilityLevel())

@@ -110,8 +110,6 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
                   const SizedBox(height: 18),
                 ],
                 _buildCommunityCard(),
-                const SizedBox(height: 30),
-                _buildSupportSection(snapshot),
               ],
             ],
           ),
@@ -250,60 +248,6 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildSupportSection(ExpertHomeSnapshot? snapshot) {
-    final items = snapshot?.supportRequests ?? const <ExpertSupportRequest>[];
-    return Column(
-      children: [
-        Row(
-          children: [
-            const Expanded(
-              child: Text(
-                'Yêu cầu hỗ trợ gần đây',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 25,
-                  fontWeight: FontWeight.w700,
-                  color: _onSurface,
-                ),
-              ),
-            ),
-            TextButton(
-              onPressed: () {},
-              child: const Row(
-                children: [
-                  Text(
-                    'Xem tất cả',
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      color: _primary,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  Icon(Icons.chevron_right, color: _primary, size: 18),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        if (items.isEmpty)
-          const _SupportCard(
-            item: ExpertSupportRequest(
-              title: 'Chưa có yêu cầu hỗ trợ',
-              subtitle: 'Danh sách sẽ tự cập nhật khi có yêu cầu mới',
-            ),
-          )
-        else
-          ...items.map(
-            (item) => Padding(
-              padding: const EdgeInsets.only(bottom: 14),
-              child: _SupportCard(item: item),
-            ),
-          ),
-      ],
     );
   }
 
@@ -529,89 +473,3 @@ class _MetricCard extends StatelessWidget {
   }
 }
 
-class _SupportCard extends StatelessWidget {
-  final ExpertSupportRequest item;
-
-  const _SupportCard({required this.item});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: _ExpertAppHomeScreenState._surface,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: _ExpertAppHomeScreenState._softShadow,
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 54,
-            height: 54,
-            decoration: BoxDecoration(
-              color: item.urgent
-                  ? _ExpertAppHomeScreenState._errorContainer
-                  : _ExpertAppHomeScreenState._surfaceHighest,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              item.urgent ? Icons.priority_high : Icons.help_outline,
-              color: item.urgent
-                  ? _ExpertAppHomeScreenState._error
-                  : _ExpertAppHomeScreenState._primary,
-              size: 29,
-            ),
-          ),
-          const SizedBox(width: 18),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: _ExpertAppHomeScreenState._onSurface,
-                  ),
-                ),
-                const SizedBox(height: 5),
-                Text(
-                  item.subtitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: _ExpertAppHomeScreenState._onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: _ExpertAppHomeScreenState._surfaceHighest,
-              foregroundColor: _ExpertAppHomeScreenState._primary,
-              shape: const StadiumBorder(),
-              padding: const EdgeInsets.symmetric(horizontal: 18),
-            ),
-            onPressed: () {},
-            child: const Text(
-              'Phản hồi',
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

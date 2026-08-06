@@ -232,7 +232,13 @@ public class UserCreatedChecklistTaskService {
             // callers that do not provide template metadata.
             return true;
         }
-        ChecklistTemplate template = templatesByVersion.get(instance.getTemplateVersionId());
+        UUID templateVersionId = instance.getTemplateVersionId();
+        // A user-created instance has no template version, and templatesByVersion is
+        // an immutable Map when there is nothing to look up — Map.of().get(null)
+        // throws, so the null case must not reach the map at all.
+        ChecklistTemplate template = templateVersionId == null
+                ? null
+                : templatesByVersion.get(templateVersionId);
         return ChecklistTemplateVisibilityPolicy.isVisible(instance, template);
     }
 

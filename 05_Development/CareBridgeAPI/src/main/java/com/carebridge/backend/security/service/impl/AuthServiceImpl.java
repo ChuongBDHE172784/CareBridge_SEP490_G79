@@ -626,7 +626,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         User user = existing.getUser();
-        authenticationPolicy.ensureCanAuthenticate(user, false);
+        authenticationPolicy.ensureCanAuthenticate(user);
 
         existing.setRevoked(true);
         RefreshToken rotated = createRefreshToken(user);
@@ -783,7 +783,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public void deactivate(UUID userId, String confirmPassword) {
+    public void deactivate(UUID userId, String confirmPassword, String reason) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
@@ -802,20 +802,40 @@ public class AuthServiceImpl implements AuthService {
             throw new AuthenticationException("AUTH-081: Incorrect password");
         }
 
-        // Deactivate account
+        Instant deactivatedAt = Instant.now();
+
+        // Deactivate the account. There is no 30-day deletion queue any more: the
+        // state below is the whole record of the event, so it has to be complete.
         user.setAccountStatus("DEACTIVATED");
         user.setEnabled(false);
+        user.setDeactivatedAt(deactivatedAt);
+        user.setDeactivationReason(normalizeDeactivationReason(reason));
+        // Self-service deactivation; an admin acting on someone's behalf records
+        // its own actor id through the admin path instead.
+        user.setDeactivatedBy(userId);
         userRepository.save(user);
 
-        // Revoke all refresh tokens
+        // Revoke every credential that could outlive the deactivation, in the same
+        // transaction as the user row: refresh tokens, auth sessions, push tokens.
         refreshTokenRepository.revokeAllByUserId(userId);
-
-        // Deactivate device tokens
-        deviceTokenRepository.deactivateAllForUser(userId, Instant.now());
+        sessionRepository.revokeAllByUserId(userId, deactivatedAt);
+        deviceTokenRepository.deactivateAllForUser(userId, deactivatedAt);
 
         // Audit
-        auditService.log(AuditAction.SECURITY_EVENT, userId, "User", userId.toString(),
-                Map.of("action", "ACCOUNT_DEACTIVATED"));
+        Map<String, Object> auditMetadata = new HashMap<>();
+        auditMetadata.put("action", "ACCOUNT_DEACTIVATED");
+        auditMetadata.put("deactivatedAt", deactivatedAt.toString());
+        auditMetadata.put("deactivatedBy", userId.toString());
+        auditMetadata.put("reason", user.getDeactivationReason());
+        auditService.log(AuditAction.SECURITY_EVENT, userId, "User", userId.toString(), auditMetadata);
+    }
+
+    private String normalizeDeactivationReason(String reason) {
+        if (reason == null) {
+            return null;
+        }
+        String trimmed = reason.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private RefreshToken createRefreshToken(User user) {

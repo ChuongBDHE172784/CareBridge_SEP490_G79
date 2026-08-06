@@ -53,7 +53,7 @@ class SafetyConfigControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "00000000-0000-0000-0000-000000000020", roles = "PARTNER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000020", roles = "OPERATIONS")
     void configure_wrongRole_shouldReturn403() throws Exception {
         // SCONFIG-TC-006
         mockMvc.perform(put(BASE_URL)

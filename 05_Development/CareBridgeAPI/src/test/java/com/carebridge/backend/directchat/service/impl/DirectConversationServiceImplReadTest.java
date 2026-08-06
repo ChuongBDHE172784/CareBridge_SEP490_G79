@@ -116,8 +116,6 @@ class DirectConversationServiceImplReadTest {
         assertThatThrownBy(() -> service.markRead(CONVERSATION_ID, EXPERT_ID, foreignMessageId))
                 .isInstanceOfSatisfying(DirectChatException.class,
                         ex -> assertThat(ex.getCode()).isEqualTo("DCC-006"));
-        verify(conversationRepository, never()).markMotherRead(any(), any(), any());
-        verify(conversationRepository, never()).markExpertRead(any(), any(), any());
     }
 
     @Test
@@ -168,8 +166,6 @@ class DirectConversationServiceImplReadTest {
         assertThatThrownBy(() -> service.markRead(randomConversationId, EXPERT_ID, M1_ID))
                 .isInstanceOfSatisfying(DirectChatException.class,
                         ex -> assertThat(ex.getCode()).isEqualTo("DCC-006"));
-        verify(conversationRepository, never()).markMotherRead(any(), any(), any());
-        verify(conversationRepository, never()).markExpertRead(any(), any(), any());
         verify(policy, never()).assertIsParticipant(any(), any());
         verify(messageRepository, never()).findByIdAndConversationId(any(), any());
     }

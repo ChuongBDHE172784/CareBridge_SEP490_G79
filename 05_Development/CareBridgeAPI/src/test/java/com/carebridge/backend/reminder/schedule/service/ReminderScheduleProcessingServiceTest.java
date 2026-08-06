@@ -11,8 +11,9 @@ import com.carebridge.backend.notification.dto.NotificationRecordResponse;
 import com.carebridge.backend.notification.service.IReminderNotificationService;
 import com.carebridge.backend.reminder.notification.entity.AppointmentNotificationJobStatus;
 import com.carebridge.backend.reminder.schedule.entity.ReminderSchedule;
-import com.carebridge.backend.reminder.schedule.entity.ReminderScheduleJob;
-import com.carebridge.backend.reminder.schedule.repository.ReminderScheduleJobRepository;
+import com.carebridge.backend.reminder.job.entity.NotificationJob;
+import com.carebridge.backend.reminder.job.entity.NotificationJobType;
+import com.carebridge.backend.reminder.job.repository.NotificationJobRepository;
 import com.carebridge.backend.reminder.schedule.repository.ReminderScheduleRepository;
 import java.time.Clock;
 import java.time.Instant;
@@ -34,7 +35,7 @@ class ReminderScheduleProcessingServiceTest {
     private static final UUID OWNER_ID = UUID.fromString("00000000-0000-0000-0000-000000000203");
     private static final Instant NOW = Instant.parse("2026-08-02T00:00:00Z");
 
-    @Mock private ReminderScheduleJobRepository jobRepository;
+    @Mock private NotificationJobRepository jobRepository;
     @Mock private ReminderScheduleRepository scheduleRepository;
     @Mock private IReminderNotificationService notificationService;
     private ReminderScheduleProcessingService service;
@@ -44,13 +45,13 @@ class ReminderScheduleProcessingServiceTest {
         service = new ReminderScheduleProcessingService(jobRepository, scheduleRepository,
                 notificationService, Clock.fixed(NOW, ZoneOffset.UTC), 4, 10);
         org.mockito.Mockito.lenient().when(jobRepository.transitionAfterProcessing(
-                any(), any(), eq(AppointmentNotificationJobStatus.PROCESSING), any(), any(), any(), any(), any()))
+                any(),eq(NotificationJobType.REMINDER_SCHEDULE), any(), eq(AppointmentNotificationJobStatus.PROCESSING), any(), any(), any(), any(), any()))
                 .thenReturn(1);
     }
 
     @Test
     void staleWorkerCannotSendAfterFencingTokenChanges() {
-        ReminderScheduleJob job = job("new-worker");
+        NotificationJob job = job("new-worker");
         when(jobRepository.findById(JOB_ID)).thenReturn(Optional.of(job));
 
         service.process(JOB_ID, "old-worker");
@@ -61,7 +62,7 @@ class ReminderScheduleProcessingServiceTest {
 
     @Test
     void failedDeliveryIsRequeuedForAnotherAttempt() {
-        ReminderScheduleJob job = job("worker-1");
+        NotificationJob job = job("worker-1");
         ReminderSchedule schedule = ReminderSchedule.builder()
                 .id(SCHEDULE_ID).ownerUserId(OWNER_ID).title("Cho con bu")
                 .timeZone("UTC").startDate(LocalDate.of(2026, 8, 1))
@@ -84,7 +85,7 @@ class ReminderScheduleProcessingServiceTest {
 
     @Test
     void terminalTransitionFailureIsNotRetriedInsideTheAbortedTransaction() {
-        ReminderScheduleJob job = job("worker-1");
+        NotificationJob job = job("worker-1");
         ReminderSchedule schedule = ReminderSchedule.builder()
                 .id(SCHEDULE_ID).ownerUserId(OWNER_ID).title("Cho con bu")
                 .timeZone("UTC").startDate(LocalDate.of(2026, 8, 1))
@@ -100,19 +101,20 @@ class ReminderScheduleProcessingServiceTest {
                 eq(SCHEDULE_ID), eq(JOB_ID), eq(OWNER_ID), eq("Cho con bu"),
                 any(), any(), any(), any())).thenReturn(failed);
         when(jobRepository.transitionAfterProcessing(
-                any(), any(), eq(AppointmentNotificationJobStatus.PROCESSING), any(), any(), any(), any(), any()))
+                any(),eq(NotificationJobType.REMINDER_SCHEDULE), any(), eq(AppointmentNotificationJobStatus.PROCESSING), any(), any(), any(), any(), any()))
                 .thenThrow(new IllegalStateException("transition failed"));
 
         org.assertj.core.api.Assertions.assertThatThrownBy(() -> service.process(JOB_ID, "worker-1"))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("transition failed");
         verify(jobRepository, times(1)).transitionAfterProcessing(
-                any(), any(), eq(AppointmentNotificationJobStatus.PROCESSING), any(), any(), any(), any(), any());
+                any(), any(), any(), eq(AppointmentNotificationJobStatus.PROCESSING),
+                any(), any(), any(), any(), any());
     }
 
     @Test
     void staleBacklogIsSuppressedWithoutCallingTheSender() {
-        ReminderScheduleJob job = job("worker-1");
+        NotificationJob job = job("worker-1");
         job.setDueAt(NOW.minusSeconds(2 * 60 * 60));
         when(jobRepository.findById(JOB_ID)).thenReturn(Optional.of(job));
 
@@ -126,8 +128,9 @@ class ReminderScheduleProcessingServiceTest {
                 any(), any(), any(), any(), any(), any(), any(), any());
     }
 
-    private static ReminderScheduleJob job(String worker) {
-        return ReminderScheduleJob.builder()
+    private static NotificationJob job(String worker) {
+        return NotificationJob.builder()
+                .jobType(NotificationJobType.REMINDER_SCHEDULE)
                 .id(JOB_ID).scheduleId(SCHEDULE_ID).scheduleRevision(1L)
                 .occurrenceDate(LocalDate.of(2026, 8, 2)).localTime(LocalTime.of(7, 0))
                 .timeZone("UTC").dueAt(NOW).nextAttemptAt(NOW)

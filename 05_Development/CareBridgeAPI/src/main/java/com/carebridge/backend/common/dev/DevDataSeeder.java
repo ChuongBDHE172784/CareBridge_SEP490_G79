@@ -113,7 +113,6 @@ import org.springframework.transaction.annotation.Transactional;
  *   moderator@carebridge.dev  -> MODERATOR
  *   content@carebridge.dev    -> CONTENT_ADMIN
  *   expert@carebridge.dev     -> EXPERT
- *   partner@carebridge.dev    -> PARTNER
  *   mother@carebridge.dev     -> MOTHER
  *   family@carebridge.dev     -> FAMILY
  *
@@ -177,7 +176,6 @@ public class DevDataSeeder implements ApplicationRunner {
         new SeedAccount("moderator@carebridge.dev", "Moderator Test", Role.MODERATOR),
         new SeedAccount("content@carebridge.dev", "Content Test", Role.CONTENT_ADMIN),
         new SeedAccount("expert@carebridge.dev", "Expert Test", Role.EXPERT),
-        new SeedAccount("partner@carebridge.dev", "Partner Test", Role.PARTNER),
         new SeedAccount("mother@carebridge.dev", "Mother Test", Role.MOTHER),
         new SeedAccount("family@carebridge.dev", "Family Test", Role.FAMILY),
         new SeedAccount("mebau@carebridge.dev", "Mẹ Bầu Mới", Role.MOTHER),

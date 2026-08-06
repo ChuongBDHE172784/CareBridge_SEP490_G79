@@ -31,7 +31,6 @@ class ExpertHomeService {
     var online = false;
     var requestCount = 0;
     ExpertConsultation? nextConsultation;
-    final supportRequests = <ExpertSupportRequest>[];
 
     try {
       final profileJson = await api.get('/api/v1/expert/profiles/me');
@@ -77,27 +76,11 @@ class ExpertHomeService {
       }
     } catch (_) {}
 
-    try {
-      final nearbyJson = await api.get(
-        '/api/v1/nearbycare/support-requests/open',
-      );
-      final rows = nearbyJson['data'] as List? ?? [];
-      supportRequests.addAll(
-        rows
-            .take(2)
-            .map(
-              (row) =>
-                  ExpertSupportRequest.fromJson(row as Map<String, dynamic>),
-            ),
-      );
-    } catch (_) {}
-
     return ExpertHomeSnapshot(
       profile: profile,
       online: online,
       requestCount: requestCount,
       nextConsultation: nextConsultation,
-      supportRequests: supportRequests,
     );
   }
 
@@ -150,14 +133,12 @@ class ExpertHomeSnapshot {
   final bool online;
   final int requestCount;
   final ExpertConsultation? nextConsultation;
-  final List<ExpertSupportRequest> supportRequests;
 
   const ExpertHomeSnapshot({
     required this.profile,
     required this.online,
     this.requestCount = 0,
     this.nextConsultation,
-    required this.supportRequests,
   });
 
   ExpertHomeSnapshot copyWith({
@@ -165,14 +146,12 @@ class ExpertHomeSnapshot {
     bool? online,
     int? requestCount,
     ExpertConsultation? nextConsultation,
-    List<ExpertSupportRequest>? supportRequests,
   }) {
     return ExpertHomeSnapshot(
       profile: profile ?? this.profile,
       online: online ?? this.online,
       requestCount: requestCount ?? this.requestCount,
       nextConsultation: nextConsultation ?? this.nextConsultation,
-      supportRequests: supportRequests ?? this.supportRequests,
     );
   }
 }
@@ -222,28 +201,6 @@ class ExpertConsultation {
   }
 }
 
-class ExpertSupportRequest {
-  final String title;
-  final String subtitle;
-  final bool urgent;
-
-  const ExpertSupportRequest({
-    required this.title,
-    required this.subtitle,
-    this.urgent = false,
-  });
-
-  factory ExpertSupportRequest.fromJson(Map<String, dynamic> json) {
-    final created = DateTime.tryParse(json['createdAt'] as String? ?? '');
-    return ExpertSupportRequest(
-      title: json['description'] as String? ?? 'Yêu cầu hỗ trợ gần đây',
-      subtitle: created == null ? 'Vừa cập nhật' : _timeAgo(created),
-      urgent: (json['supportType'] as String? ?? '').toUpperCase().contains(
-        'EMERGENCY',
-      ),
-    );
-  }
-}
 
 String _timeAgo(DateTime dateTime) {
   final diff = DateTime.now().difference(dateTime);

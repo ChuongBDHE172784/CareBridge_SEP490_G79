@@ -265,9 +265,9 @@ class RoleProbeController {
         return "ok";
     }
 
-    @GetMapping("/test/role/partner")
-    @PreAuthorize("hasRole('PARTNER')")
-    String partnerOnly() {
+    @GetMapping("/test/role/operations")
+    @PreAuthorize("hasRole('OPERATIONS')")
+    String operationsOnly() {
         return "ok";
     }
 }

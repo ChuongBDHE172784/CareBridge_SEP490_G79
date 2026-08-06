@@ -4,10 +4,10 @@ import type { UserRole } from './authStore';
  * Canonical role → default landing route mapping for the web portal.
  *
  * Priority order (used when SYSTEM_ADMIN is not the primary concern):
- *   SYSTEM_ADMIN > MODERATOR > CONTENT_ADMIN > PARTNER > EXPERT > MOTHER / FAMILY
+ *   SYSTEM_ADMIN > MODERATOR > CONTENT_ADMIN > EXPERT > MOTHER / FAMILY
  *
- * Stale aliases (ADMIN, PARTNER_REPRESENTATIVE) never appear in JWTs — the backend
- * always emits the 7 canonical roles defined in Role.java. No alias handling needed.
+ * Stale aliases never appear in JWTs — the backend always emits the canonical roles
+ * defined in Role.java. No alias handling needed.
  *
  * MOTHER web access is intentionally limited to Direct Consult Chat.
  * FAMILY has no web portal access.
@@ -18,7 +18,6 @@ export const ROLE_DEFAULT_ROUTES: Record<UserRole, string> = {
   // the role's default landing page so existing moderator workflows are preserved.
   MODERATOR: '/moderator/reports',
   CONTENT_ADMIN: '/content/dashboard',
-  PARTNER: '/partner/dashboard',
   // The server-owned onboarding aggregate decides whether an expert may enter the portal.
   EXPERT: '/expert/onboarding',
   MOTHER: '/direct-chats',

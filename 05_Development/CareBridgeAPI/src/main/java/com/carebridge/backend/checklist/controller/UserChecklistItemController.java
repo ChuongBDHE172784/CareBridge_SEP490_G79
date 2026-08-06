@@ -1,7 +1,6 @@
 package com.carebridge.backend.checklist.controller;
 
 import com.carebridge.backend.checklist.dto.*;
-import com.carebridge.backend.checklist.service.IUserChecklistItemService;
 import com.carebridge.backend.checklist.service.UserCreatedChecklistTaskService;
 import com.carebridge.backend.checklist.service.ChecklistV2CompatibilityMutationService;
 import com.carebridge.backend.checklist.service.OptionalChecklistTemplateImportService;
@@ -25,7 +24,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class UserChecklistItemController {
 
-    private final IUserChecklistItemService checklistService;
     private final UserCreatedChecklistTaskService userCreatedTaskService;
     private final ChecklistV2CompatibilityMutationService v2MutationService;
     private final OptionalChecklistTemplateImportService optionalTemplateImportService;
@@ -59,12 +57,12 @@ public class UserChecklistItemController {
             @RequestParam(required = false) UUID babyId,
             Principal principal) {
         var callerId = SecurityUtils.requireCurrentUserId(principal);
-        var response = new java.util.LinkedHashMap<UUID, ChecklistItemResponse>();
-        userCreatedTaskService.listAuthorized(callerId, journeyId, babyId)
-                .forEach(item -> response.put(item.itemId(), item));
-        checklistService.listItems(callerId, journeyId, babyId)
-                .forEach(item -> response.putIfAbsent(item.itemId(), item));
-        return ResponseEntity.ok(ApiResponse.success(List.copyOf(response.values())));
+        // Checklist v2 is the only source now. The legacy merge that used to fill in
+        // rows from preparation_checklist_items was removed once V20260806176000
+        // proved every legacy row has a v2 counterpart; keeping it would have hidden
+        // any future orphan instead of surfacing it.
+        return ResponseEntity.ok(ApiResponse.success(
+                userCreatedTaskService.listAuthorized(callerId, journeyId, babyId)));
     }
 
     // UC50: Toggle complete/incomplete

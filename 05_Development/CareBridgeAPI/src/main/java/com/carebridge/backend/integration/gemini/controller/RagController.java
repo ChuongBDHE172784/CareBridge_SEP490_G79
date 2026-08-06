@@ -23,7 +23,7 @@ public class RagController {
 
     private final RagPolicyService ragPolicyService;
 
-    // PARTNER is excluded: RAG health guidance is for personal-use roles only.
+    // RAG health guidance is for personal-use roles only.
     // Account locked/disabled state is enforced at token issuance (AuthenticationPolicy),
     // not per-request — token TTL is 15 min, bounding any residual window.
     @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY', 'EXPERT', 'MODERATOR', 'CONTENT_ADMIN', 'SYSTEM_ADMIN')")

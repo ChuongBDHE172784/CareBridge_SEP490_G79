@@ -11,7 +11,6 @@ import com.carebridge.backend.identity.admin.dto.response.AdminUserActivityRespo
 import com.carebridge.backend.identity.admin.dto.response.AdminUserSessionResponse;
 import com.carebridge.backend.identity.admin.dto.response.AdminUserSummaryResponse;
 import com.carebridge.backend.identity.admin.mapper.AdminUserMapper;
-import com.carebridge.backend.identity.admin.repository.AccountLockAppealRepository;
 import com.carebridge.backend.identity.admin.repository.AdminUserMonitoringRepository;
 import com.carebridge.backend.identity.admin.service.AdminUserService;
 import com.carebridge.backend.identity.repository.UserSessionRepository;
@@ -42,7 +41,6 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final AdminUserMapper adminUserMapper;
     private final AdminUserMonitoringRepository monitoringRepository;
     private final UserSessionRepository userSessionRepository;
-    private final AccountLockAppealRepository appealRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -112,6 +110,10 @@ public class AdminUserServiceImpl implements AdminUserService {
         boolean previousLocked = target.isLocked();
 
         Instant now = Instant.now();
+        // The lock episode this call opened or closed. Captured for the audit row
+        // because, with the appeal table gone, that row is the only surviving
+        // record tying an unlock back to the episode it resolved.
+        UUID auditedLockEpisodeId = target.getLockEpisodeId();
         if (request.getEnabled() != null) {
             target.setEnabled(request.getEnabled());
             if (!request.getEnabled()) userSessionRepository.revokeAllByUserId(targetUserId, now);
@@ -124,19 +126,15 @@ public class AdminUserServiceImpl implements AdminUserService {
                 target.setLockReason(request.getReason().trim());
                 target.setLockedBy(callerUserId);
                 target.setLockEpisodeId(UUID.randomUUID());
+                auditedLockEpisodeId = target.getLockEpisodeId();
                 userSessionRepository.revokeAllByUserId(targetUserId, now);
             } else {
-                UUID episodeId = target.getLockEpisodeId();
                 target.setLocked(false);
                 target.setLockedAt(null);
                 target.setLockType(null);
                 target.setLockReason(null);
                 target.setLockedBy(null);
                 target.setLockEpisodeId(null);
-                if (episodeId != null) {
-                    appealRepository.cancelPending(targetUserId, episodeId, now, callerUserId,
-                            "Closed because System Admin unlocked the account directly");
-                }
             }
         }
 
@@ -145,7 +143,8 @@ public class AdminUserServiceImpl implements AdminUserService {
         auditService.log(AuditAction.USER_ACCOUNT_STATUS_CHANGED, callerUserId, "USER", targetUserId.toString(),
                 new UserAccountStatusChangedPayload(
                         targetUserId, previousEnabled, saved.isEnabled(),
-                        previousLocked, saved.isLocked(), request.getReason()));
+                        previousLocked, saved.isLocked(), request.getReason(),
+                        auditedLockEpisodeId, request.getCskhTicketId(), now));
 
         return adminUserMapper.toSummary(saved);
     }
@@ -162,6 +161,9 @@ public class AdminUserServiceImpl implements AdminUserService {
             Boolean newEnabled,
             Boolean previousLocked,
             Boolean newLocked,
-            String reason) {
+            String reason,
+            UUID lockEpisodeId,
+            String cskhTicketId,
+            Instant changedAt) {
     }
 }

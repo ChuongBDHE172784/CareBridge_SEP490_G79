@@ -23,9 +23,6 @@ public class CareFacility {
     @Column(name = "facility_id", updatable = false, nullable = false)
     private UUID facilityId;
 
-    @Column(name = "partner_id")
-    private UUID partnerId;
-
     @Column(nullable = false, length = 255)
     private String name;
 

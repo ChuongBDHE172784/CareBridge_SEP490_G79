@@ -156,7 +156,7 @@ carebridge:
   notification:
     reminder-schedule:
       # Keep durable worker activation independent from transport readiness.
-      enabled: ${REMINDER_SCHEDULE_NOTIFICATION_ENABLED:false}
+      enabled: ${REMINDER_SCHEDULE_NOTIFICATION_ENABLED:true}
       worker-delay-ms: ${REMINDER_SCHEDULE_WORKER_DELAY_MS:15000}
       batch-size: ${REMINDER_SCHEDULE_BATCH_SIZE:25}
       max-attempts: ${REMINDER_SCHEDULE_MAX_ATTEMPTS:4}
@@ -164,7 +164,7 @@ carebridge:
       stale-backlog-grace-minutes: ${REMINDER_SCHEDULE_STALE_BACKLOG_GRACE_MINUTES:60}
       planner-cron: ${REMINDER_SCHEDULE_PLANNER_CRON:0 20 2 * * *}
     appointment:
-      enabled: ${APPOINTMENT_NOTIFICATION_ENABLED:false}
+      enabled: ${APPOINTMENT_NOTIFICATION_ENABLED:true}
       worker-delay-ms: ${APPOINTMENT_NOTIFICATION_WORKER_DELAY_MS:15000}
       batch-size: ${APPOINTMENT_NOTIFICATION_BATCH_SIZE:25}
       max-attempts: ${APPOINTMENT_NOTIFICATION_MAX_ATTEMPTS:4}

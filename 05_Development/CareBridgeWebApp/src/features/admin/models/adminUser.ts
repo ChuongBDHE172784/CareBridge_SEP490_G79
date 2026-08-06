@@ -92,23 +92,6 @@ export interface AdminUserActivity {
   details: string | null;
 }
 
-export type AccountLockAppealStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
-
-export interface AccountLockAppeal {
-  id: string;
-  userId: string;
-  userName: string | null;
-  userEmail: string | null;
-  lockEpisodeId: string;
-  lockReason: string | null;
-  reason: string;
-  status: AccountLockAppealStatus;
-  submittedAt: string;
-  reviewedBy: string | null;
-  reviewedAt: string | null;
-  reviewNote: string | null;
-}
-
 export interface PaginatedResult<T> {
   content: T[];
   totalElements: number;

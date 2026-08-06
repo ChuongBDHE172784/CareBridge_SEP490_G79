@@ -8,7 +8,6 @@ export type UserRole =
   | 'MODERATOR'
   | 'CONTENT_ADMIN'
   | 'SYSTEM_ADMIN'
-  | 'PARTNER';
 
 export interface AuthUser {
   id: string;

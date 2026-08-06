@@ -24,6 +24,10 @@ public enum AuditAction {
     CONTENT_CREATED,
     CONTENT_UPDATED,
     CONTENT_HIDDEN,
+    // Retained on purpose. The Partner programme was retired and nothing writes
+    // these any more, but audit_events rows from before the retirement still hold
+    // these values and must keep deserializing and reporting. Removing them is a
+    // separate migration, gated on the distinct audit value count reaching 0.
     PARTNER_PROFILE_CREATED,
     PARTNER_PROFILE_UPDATED,
     PARTNER_SERVICE_SUBMITTED,

@@ -188,9 +188,9 @@ class RagControllerTest {
                 .andExpect(status().isOk());
     }
 
-    // RAG-TC-AUTH-001: PARTNER role → 403 (health guidance is for personal-use roles only)
+    // RAG-TC-AUTH-001: staff-only role → 403 (health guidance is for personal-use roles only)
     @Test
-    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "PARTNER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "OPERATIONS")
     void generateAnswer_partnerRole_shouldReturn403() throws Exception {
         mockMvc.perform(post("/api/v1/rag/answer")
                         .contentType(MediaType.APPLICATION_JSON)

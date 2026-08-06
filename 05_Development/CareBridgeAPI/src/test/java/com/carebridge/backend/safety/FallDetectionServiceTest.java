@@ -9,7 +9,7 @@ import com.carebridge.backend.safety.event.FallDetectionEnabled;
 import com.carebridge.backend.safety.event.SuspectedFallDetected;
 import com.carebridge.backend.safety.repository.IImuMonitoringSessionRepository;
 import com.carebridge.backend.safety.repository.ISafetyEventRepository;
-import com.carebridge.backend.safety.repository.ISafetyConfigRepository;
+import com.carebridge.backend.safety.repository.SafetyConfigStore;
 import com.carebridge.backend.safety.repository.SafetyEventResponseRepository;
 import com.carebridge.backend.safety.entity.SafetyMonitoringConfig;
 import com.carebridge.backend.safety.policy.SafetyConsentPolicy;
@@ -54,7 +54,7 @@ class FallDetectionServiceTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
-    @Mock private ISafetyConfigRepository safetyConfigRepository;
+    @Mock private SafetyConfigStore safetyConfigStore;
     @Mock private SafetyEventResponseRepository responseRepository;
     @Mock private SafetyConsentPolicy consentPolicy;
     @Mock private IEmergencyService emergencyService;
@@ -79,7 +79,7 @@ class FallDetectionServiceTest {
                 .sensorPermissionGranted(true)
                 .sensorPermissionRecordedAt(Instant.now())
                 .build();
-        lenient().when(safetyConfigRepository.findByUserId(USER_ID)).thenReturn(Optional.of(config));
+        lenient().when(safetyConfigStore.findByUserId(USER_ID)).thenReturn(Optional.of(config));
         lenient().when(responseRepository.insert(any())).thenAnswer(invocation -> invocation.getArgument(0));
         lenient().doAnswer(invocation -> {
             invocation.<Runnable>getArgument(0).run();
