@@ -121,10 +121,16 @@ class CanonicalAnswerMapperTest {
                 .isEqualTo("ABSENT");
     }
 
+    /** The self-harm screen is scoped to the postpartum stage, so it must be answered there. */
+    private CanonicalAnswerMapper.AnswerMapping mapPostpartum(String questionId, String optionCode) {
+        return mapper.map(questionId, optionCode, "msg-000000000001", TargetEntity.MOTHER,
+                CareStage.POSTPARTUM_MOTHER, Map.of());
+    }
+
     @Test
     @DisplayName("declining the self-harm question is UNKNOWN, never a denial")
     void decliningSelfHarmQuestionIsNotADenial() {
-        CanonicalAnswerMapper.AnswerMapping declined = map("Q_SAFETY_SELF_HARM", "UNSURE");
+        CanonicalAnswerMapper.AnswerMapping declined = mapPostpartum("Q_SAFETY_SELF_HARM", "UNSURE");
 
         assertThat(presenceOf(declined, "SELF_HARM_IDEATION")).isEqualTo("UNKNOWN");
         assertThat(presenceOf(declined, "SELF_HARM_INTENT_OR_PLAN")).isEqualTo("UNKNOWN");
@@ -134,7 +140,8 @@ class CanonicalAnswerMapperTest {
     @Test
     @DisplayName("a stated self-harm plan also asserts the ideation it implies")
     void selfHarmPlanImpliesIdeation() {
-        CanonicalAnswerMapper.AnswerMapping plan = map("Q_SAFETY_SELF_HARM", "SELF_HARM_PLAN");
+        CanonicalAnswerMapper.AnswerMapping plan = mapPostpartum("Q_SAFETY_SELF_HARM",
+                "SELF_HARM_PLAN");
 
         assertThat(presenceOf(plan, "SELF_HARM_INTENT_OR_PLAN")).isEqualTo("PRESENT");
         assertThat(presenceOf(plan, "SELF_HARM_IDEATION")).isEqualTo("PRESENT");

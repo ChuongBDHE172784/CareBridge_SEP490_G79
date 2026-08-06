@@ -102,6 +102,9 @@ def _stage_value(value: object) -> str:
 
 def _context_status(stage: str, context: Mapping[str, object], requirements: Mapping[str, Any]) -> str:
     if stage in {CareStage.INFANT_0_12M.value, CareStage.TODDLER_12_24M.value}:
+        # Age alone still decides whether the paediatric context is usable: the remaining
+        # paediatric fields drive question planning, not stage resolution, and requiring them
+        # here would leave the context permanently incomplete before anything is asked.
         return (
             DatasetStatus.COMPLETE.value
             if context.get("baby_age_months") is not None
@@ -168,11 +171,10 @@ def _missing_fields(
         if signal_presence(signals, code)
         in {Presence.UNKNOWN, Presence.CONFLICTED, Presence.UNAWARE_OR_UNMEASURABLE}
     ]
-    required_context = (
-        ["baby_age_months"]
-        if stage in {CareStage.INFANT_0_12M.value, CareStage.TODDLER_12_24M.value}
-        else requirements.get("byStage", {}).get(stage, {}).get("contextFields", [])
-    )
+    # Paediatric stages used to be hardcoded to baby_age_months because the requirements file had
+    # no entry for them. It does now, so read it like every other stage — otherwise the paediatric
+    # follow-up questions never count as missing and a baby complaint is never asked anything.
+    required_context = requirements.get("byStage", {}).get(stage, {}).get("contextFields", [])
     missing.extend(
         field
         for field in required_context

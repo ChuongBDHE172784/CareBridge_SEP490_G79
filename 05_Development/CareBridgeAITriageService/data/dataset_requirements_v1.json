@@ -29,6 +29,15 @@
     "POSTPARTUM": {
       "contextFields": ["stage", "postpartum_day"],
       "greenEligibilityFields": ["stage", "postpartum_day", "delivery_method", "bleeding_amount"]
+    },
+    "INFANT_0_12M": {
+      "$comment": "The paediatric stages had no entry at all, so no paediatric field ever counted as missing and the paediatric follow-up questions were never eligible: a baby complaint reached the engine with nothing asked. feeding/hydration/temperature are listed because the ported PED_ rules read exactly those.",
+      "contextFields": ["stage", "baby_age_months", "feeding_status", "hydration_status", "temperature_band"],
+      "greenEligibilityFields": ["stage", "baby_age_months", "feeding_status", "hydration_status", "temperature_band"]
+    },
+    "TODDLER_12_24M": {
+      "contextFields": ["stage", "baby_age_months", "feeding_status", "hydration_status", "temperature_band"],
+      "greenEligibilityFields": ["stage", "baby_age_months", "feeding_status", "hydration_status", "temperature_band"]
     }
   }
 }

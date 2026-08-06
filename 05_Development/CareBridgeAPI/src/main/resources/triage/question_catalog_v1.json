@@ -67,7 +67,7 @@
       "isGlobalDangerScreen": true
     },
     {
-      "$comment": "Deterministic self-harm screen feeding SAFETY_SELF_HARM_001. Unlike Q_GLOBAL_DANGER this is maternal-only, so it is entity-specific and must wait for a resolved target rather than risk being asked about a baby.",
+      "$comment": "Deterministic self-harm screen feeding SAFETY_SELF_HARM_001. Maternal-only, so it waits for a resolved target rather than risk being asked about a baby. Scoped to the postpartum stage and given a low priority after an earlier version resolved a universally-required field at priority 2 and so became the FIRST question asked of everyone — including someone reporting wrist pain. A self-harm question has to be asked where it is clinically indicated, not as a default opener.",
       "questionId": "Q_SAFETY_SELF_HARM",
       "text": "Gần đây bạn có ý nghĩ làm hại bản thân hoặc em bé, hoặc thấy không thể tự giữ an toàn không?",
       "answerType": "SINGLE_CHOICE",
@@ -104,16 +104,18 @@
         "CANNOT_ENSURE_OWN_SAFETY"
       ],
       "resolvesFields": [
-        "red_flags_checked"
+        "self_harm_screen"
       ],
       "measurement": false,
       "pivotTo": [],
       "targetEntities": [
         "MOTHER"
       ],
-      "applicableStages": [],
+      "applicableStages": [
+        "POSTPARTUM_MOTHER"
+      ],
       "applicableIntents": [],
-      "priority": 2,
+      "priority": 30,
       "escalationSignals": [
         "SELF_HARM_INTENT_OR_PLAN",
         "HARM_TO_BABY_IDEATION",

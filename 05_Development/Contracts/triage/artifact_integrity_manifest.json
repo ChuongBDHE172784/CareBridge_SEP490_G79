@@ -1,7 +1,7 @@
 {
   "$comment": "Integrity only. Proves each artifact matches its checksum. Does NOT prove clinical correctness and is NOT an approval record.",
   "manifestType": "ARTIFACT_INTEGRITY",
-  "generatedAt": "2026-08-06T10:50:25+00:00",
+  "generatedAt": "2026-08-06T11:22:36+00:00",
   "generatorVersion": "sync_triage_rule_registry.py/3.0",
   "artifacts": [
     {
@@ -22,7 +22,7 @@
     {
       "artifactId": "dataset_requirements_v1",
       "path": "05_Development/Contracts/triage/dataset_requirements_v1.json",
-      "sha256": "039ebf19985083ed5df7908e485b87b355bad9a93278101d239600b96b62bb25"
+      "sha256": "6efd2348f49fd5301209d61f15251fc2ccd62cedeccecc020d2a1c329dd9daf6"
     },
     {
       "artifactId": "draft_safety_disposition_matrix_v1",
@@ -32,7 +32,7 @@
     {
       "artifactId": "intent_indicators_v1",
       "path": "05_Development/Contracts/triage/intent_indicators_v1.json",
-      "sha256": "e039edf3bd6043a4fb60223236294b90b86ac5b705acf5861125c823dd2a9f1a"
+      "sha256": "494fc0e7f5bc89836ad394c22432cd7556043e72fa64ff968249d7bf12dd1843"
     },
     {
       "artifactId": "internal_rule_review_manifest",
@@ -57,7 +57,7 @@
     {
       "artifactId": "question_catalog_v1",
       "path": "05_Development/Contracts/triage/question_catalog_v1.json",
-      "sha256": "acac88f61bbe4f4af9a107f66fe3875a74518e15b399cdfe46db5f7ba37729a3"
+      "sha256": "4b00f8a30669f4a280892485036d1727ac7bbba7ef0c72cbea3e03f09343deef"
     },
     {
       "artifactId": "required_rule_manifest",
