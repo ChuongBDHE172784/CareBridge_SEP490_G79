@@ -11,11 +11,17 @@ from app.triage_v2.state import matched_rule_trace_to_audit
 from app.triage_v2.signal_normalizer import normalize_signal_observation
 
 _TRIAGE_INTENTS = {IntentType.SYMPTOM_TRIAGE.value, IntentType.FOLLOW_UP_ANSWER.value}
+#: Graph stage -> registry stage. POSTPARTUM_MOTHER is renamed because the registry still stores
+#: the maternal postpartum rules under the legacy name; the paediatric stages map to themselves.
+#: A stage missing here evaluates no rule at all, which is how the paediatric rules stayed inert
+#: after being added to the registry.
 _STAGE_MAP = {
     CareStage.PRECONCEPTION.value: "PRECONCEPTION",
     CareStage.POSSIBLE_PREGNANCY.value: "POSSIBLE_PREGNANCY",
     CareStage.PREGNANCY.value: "PREGNANCY",
     CareStage.POSTPARTUM_MOTHER.value: "POSTPARTUM",
+    CareStage.INFANT_0_12M.value: "INFANT_0_12M",
+    CareStage.TODDLER_12_24M.value: "TODDLER_12_24M",
 }
 
 
@@ -108,13 +114,25 @@ def clinical_rule_engine(
 def _context(state: Mapping[str, object], stage: str) -> dict[str, object]:
     measurements = state.get("measurements") if type(state.get("measurements")) is dict else {}
     return {
-        **measurements,
+        # The normalizer wraps a bare reading as {"value": 38.5} so it can also carry a status.
+        # Rule conditions compare against the number itself, so a wrapped reading silently failed
+        # every numeric threshold — which is how the young-infant fever rule never fired.
+        **{code: _measurement_value(value) for code, value in measurements.items()},
         "stage": stage,
         "gestational_week": state.get("gestationalWeek"),
         "postpartum_day": state.get("postpartumDay"),
         "baby_age_months": state.get("babyAgeMonths"),
         "possible_pregnancy": state.get("possiblePregnancy"),
     }
+
+
+def _measurement_value(value: object) -> object:
+    """Unwrap a normalized measurement to the number a rule threshold can compare."""
+
+    if type(value) is dict:
+        inner = value.get("value")
+        return inner if type(inner) in {int, float} else value.get("status", value)
+    return value
 
 
 def _coverage_limited(state: Mapping[str, object]) -> dict[str, object]:

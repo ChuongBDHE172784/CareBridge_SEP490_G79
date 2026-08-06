@@ -33,7 +33,14 @@ DATA_DIR = Path(__file__).resolve().parents[2] / "data"
 REGISTRY_PATH = DATA_DIR / "triage_rules_v2.json"
 REQUIRED_RULE_MANIFEST_PATH = DATA_DIR / "required_rule_manifest.json"
 
-V2_STAGES = ("PRECONCEPTION", "POSSIBLE_PREGNANCY", "PREGNANCY", "POSTPARTUM")
+#: Stages a V2 rule may declare. The paediatric pair was previously excluded to stop half-ported
+#: legacy stage strings leaking in while no paediatric rule existed. They are admitted now that
+#: the paediatric rules are present and stage-scoped; entity separation is still enforced per rule,
+#: so a maternal threshold can never be evaluated against a baby.
+V2_STAGES = (
+    "PRECONCEPTION", "POSSIBLE_PREGNANCY", "PREGNANCY", "POSTPARTUM",
+    "INFANT_0_12M", "TODDLER_12_24M",
+)
 V2_OUTCOMES = ("RED", "YELLOW", "GREEN", "NEEDS_MORE_INFO", "OUT_OF_SCOPE")
 RELEASABLE_STATUSES = ("ACTIVE",)
 SKIPPABLE_STATUSES = ("DRAFT", "RETIRED", "DISABLED")

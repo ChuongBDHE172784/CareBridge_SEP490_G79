@@ -73,7 +73,17 @@ def test_registry_reports_matrix_version_and_green_gate(registry):
 
 
 def test_registry_matches_approved_matrix_row_count(registry):
-    assert len(registry.rules) == 10, "the Matrix has exactly 10 approved rule rows"
+    """10 maternal rows from the v0.1.0 matrix, plus 7 paediatric rules ported from V1.
+
+    The paediatric rules carry matchesSnapshot=false because that snapshot predates paediatric
+    coverage; they are counted separately so a maternal row going missing still fails loudly.
+    """
+
+    maternal = [rule for rule in registry.rules if not rule.rule_id.startswith("PED_")]
+    paediatric = [rule for rule in registry.rules if rule.rule_id.startswith("PED_")]
+
+    assert len(maternal) == 10, "the Matrix has exactly 10 approved maternal rule rows"
+    assert len(paediatric) == 7, "seven paediatric rules ported from V1"
 
 
 def test_safety_policies_are_outside_the_clinical_rule_set(registry):

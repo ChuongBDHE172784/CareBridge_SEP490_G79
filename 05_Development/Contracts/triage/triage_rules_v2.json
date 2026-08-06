@@ -163,6 +163,56 @@
       "code": "SWELLING",
       "type": "BOOLEAN",
       "displayText": "Sưng phù mặt, tay hoặc chân"
+    },
+    {
+      "code": "CHEST_INDRAWING",
+      "type": "BOOLEAN",
+      "displayText": "Rút lõm lồng ngực khi thở"
+    },
+    {
+      "code": "POOR_FEEDING",
+      "type": "BOOLEAN",
+      "displayText": "Bỏ bú hoặc không uống được"
+    },
+    {
+      "code": "DIARRHOEA",
+      "type": "BOOLEAN",
+      "displayText": "Đi ngoài phân lỏng nhiều lần"
+    },
+    {
+      "code": "DEHYDRATION_SIGNS",
+      "type": "BOOLEAN",
+      "displayText": "Dấu hiệu mất nước"
+    },
+    {
+      "code": "SEVERE_DEHYDRATION",
+      "type": "BOOLEAN",
+      "displayText": "Mất nước nặng, mắt trũng, da khô, tiểu rất ít"
+    },
+    {
+      "code": "VOMITING",
+      "type": "BOOLEAN",
+      "displayText": "Nôn ói"
+    },
+    {
+      "code": "PERSISTENT_VOMITING",
+      "type": "BOOLEAN",
+      "displayText": "Nôn liên tục, không giữ được thức ăn hoặc nước"
+    },
+    {
+      "code": "RASH",
+      "type": "BOOLEAN",
+      "displayText": "Phát ban trên da"
+    },
+    {
+      "code": "FEVER",
+      "type": "BOOLEAN",
+      "displayText": "Sốt"
+    },
+    {
+      "code": "COUGH_OR_RUNNY_NOSE",
+      "type": "BOOLEAN",
+      "displayText": "Ho hoặc chảy mũi"
     }
   ],
   "contextFields": [
@@ -894,6 +944,254 @@
         "row": 10,
         "matchesSnapshot": true
       },
+      "internalReviewStatus": "DEV_REVIEWED",
+      "sourceVerificationStatus": "PENDING",
+      "clinicalValidationStatus": "NOT_CLINICALLY_VALIDATED"
+    },
+    {
+      "$comment": "PAEDIATRIC RULES — ported from the V1 engine (PediatricRiskRules.java), which was DEV_REVIEWED and in production. Thresholds and boolean logic carry over unchanged; the only translation is from V1's free-text field matching to typed signals, which is recorded per rule in translationNote. These are NOT new clinical content and are NOT clinically validated. matchesSnapshot is false because the v0.1.0 rule matrix snapshot predates paediatric coverage.",
+      "ruleId": "PED_RED_001",
+      "ruleVersion": "0.1.0",
+      "ruleType": "STAGE_RED",
+      "title": "Trẻ khó thở, rút lõm lồng ngực hoặc tím tái",
+      "translationNote": "V1 RED_BREATHING_DISTRESS matched symptoms difficulty_breathing/chest_indrawing/cyanosis and the free-text breathingStatus phrases 'kho tho', 'rut lom', 'tim tai'. Those phrases map onto SEVERE_BREATHING_DIFFICULTY, CHEST_INDRAWING and CYANOSIS respectively.",
+      "stages": ["INFANT_0_12M", "TODDLER_12_24M"],
+      "outcome": "RED",
+      "priority": 100,
+      "decisionOrder": 11,
+      "stopOnMatch": true,
+      "conditionType": "SIGNAL",
+      "condition": {
+        "any": [
+          { "signal": "SEVERE_BREATHING_DIFFICULTY", "operator": "EQ", "value": true },
+          { "signal": "CHEST_INDRAWING", "operator": "EQ", "value": true },
+          { "signal": "CYANOSIS", "operator": "EQ", "value": true }
+        ]
+      },
+      "requiredFields": ["baby_age_months"],
+      "questionIds": ["Q_GLOBAL_DANGER"],
+      "exclusions": [],
+      "exclusionPredicates": [],
+      "reasonCode": "PAEDIATRIC_RESPIRATORY_DISTRESS",
+      "actionCode": "IMMEDIATE_EMERGENCY_ASSESSMENT",
+      "sourceIds": ["WHO_NEWBORN_DANGER_SIGNS_001"],
+      "releaseStatus": "ACTIVE",
+      "approvedAt": "2026-08-06",
+      "effectiveFrom": "2026-08-06",
+      "effectiveTo": null,
+      "matrixProvenance": { "row": null, "matchesSnapshot": false },
+      "internalReviewStatus": "DEV_REVIEWED",
+      "sourceVerificationStatus": "PENDING",
+      "clinicalValidationStatus": "NOT_CLINICALLY_VALIDATED"
+    },
+    {
+      "ruleId": "PED_RED_002",
+      "ruleVersion": "0.1.0",
+      "ruleType": "STAGE_RED",
+      "title": "Trẻ co giật hoặc lơ mơ, khó đánh thức",
+      "translationNote": "V1 RED_SEIZURE and RED_LETHARGY. V1's lethargy/difficult_to_wake map onto ALTERED_CONSCIOUSNESS, which is the canonical entity-agnostic signal for the same finding.",
+      "stages": ["INFANT_0_12M", "TODDLER_12_24M"],
+      "outcome": "RED",
+      "priority": 100,
+      "decisionOrder": 12,
+      "stopOnMatch": true,
+      "conditionType": "SIGNAL",
+      "condition": {
+        "any": [
+          { "signal": "SEIZURE", "operator": "EQ", "value": true },
+          { "signal": "ALTERED_CONSCIOUSNESS", "operator": "EQ", "value": true }
+        ]
+      },
+      "requiredFields": ["baby_age_months"],
+      "questionIds": ["Q_GLOBAL_DANGER"],
+      "exclusions": [],
+      "exclusionPredicates": [],
+      "reasonCode": "PAEDIATRIC_NEUROLOGICAL_DANGER",
+      "actionCode": "IMMEDIATE_EMERGENCY_ASSESSMENT",
+      "sourceIds": ["WHO_NEWBORN_DANGER_SIGNS_001"],
+      "releaseStatus": "ACTIVE",
+      "approvedAt": "2026-08-06",
+      "effectiveFrom": "2026-08-06",
+      "effectiveTo": null,
+      "matrixProvenance": { "row": null, "matchesSnapshot": false },
+      "internalReviewStatus": "DEV_REVIEWED",
+      "sourceVerificationStatus": "PENDING",
+      "clinicalValidationStatus": "NOT_CLINICALLY_VALIDATED"
+    },
+    {
+      "ruleId": "PED_RED_003",
+      "ruleVersion": "0.1.0",
+      "ruleType": "STAGE_RED",
+      "title": "Trẻ bỏ bú, không uống được hoặc nôn liên tục",
+      "translationNote": "V1 RED_POOR_FEEDING (poor_feeding OR unable_to_drink) and RED_PERSISTENT_VOMITING. V1's two feeding symptoms collapse onto POOR_FEEDING, which the question catalogue resolves as one field.",
+      "stages": ["INFANT_0_12M", "TODDLER_12_24M"],
+      "outcome": "RED",
+      "priority": 95,
+      "decisionOrder": 13,
+      "stopOnMatch": true,
+      "conditionType": "SIGNAL",
+      "condition": {
+        "any": [
+          { "signal": "POOR_FEEDING", "operator": "EQ", "value": true },
+          { "signal": "PERSISTENT_VOMITING", "operator": "EQ", "value": true }
+        ]
+      },
+      "requiredFields": ["baby_age_months"],
+      "questionIds": ["Q_BABY_FEEDING"],
+      "exclusions": [],
+      "exclusionPredicates": [],
+      "reasonCode": "PAEDIATRIC_FEEDING_FAILURE",
+      "actionCode": "IMMEDIATE_EMERGENCY_ASSESSMENT",
+      "sourceIds": ["ND1_CHILD_VOMITING_001", "WHO_NEWBORN_DANGER_SIGNS_001"],
+      "releaseStatus": "ACTIVE",
+      "approvedAt": "2026-08-06",
+      "effectiveFrom": "2026-08-06",
+      "effectiveTo": null,
+      "matrixProvenance": { "row": null, "matchesSnapshot": false },
+      "internalReviewStatus": "DEV_REVIEWED",
+      "sourceVerificationStatus": "PENDING",
+      "clinicalValidationStatus": "NOT_CLINICALLY_VALIDATED"
+    },
+    {
+      "ruleId": "PED_RED_004",
+      "ruleVersion": "0.1.0",
+      "ruleType": "STAGE_RED",
+      "title": "Trẻ có dấu hiệu mất nước",
+      "translationNote": "V1 RED_DIARRHEA_DEHYDRATION (dehydration AND diarrhea) and RED_SEVERE_DEHYDRATION (severe_dehydration without diarrhea). Both collapse to: severe dehydration alone, or any dehydration together with diarrhoea.",
+      "stages": ["INFANT_0_12M", "TODDLER_12_24M"],
+      "outcome": "RED",
+      "priority": 95,
+      "decisionOrder": 14,
+      "stopOnMatch": true,
+      "conditionType": "SIGNAL",
+      "condition": {
+        "any": [
+          { "signal": "SEVERE_DEHYDRATION", "operator": "EQ", "value": true },
+          {
+            "all": [
+              { "signal": "DEHYDRATION_SIGNS", "operator": "EQ", "value": true },
+              { "signal": "DIARRHOEA", "operator": "EQ", "value": true }
+            ]
+          }
+        ]
+      },
+      "requiredFields": ["baby_age_months"],
+      "questionIds": ["Q_BABY_HYDRATION"],
+      "exclusions": [],
+      "exclusionPredicates": [],
+      "reasonCode": "PAEDIATRIC_DEHYDRATION",
+      "actionCode": "IMMEDIATE_EMERGENCY_ASSESSMENT",
+      "sourceIds": ["NCH_DIARRHEA_DEHYDRATION_001"],
+      "releaseStatus": "ACTIVE",
+      "approvedAt": "2026-08-06",
+      "effectiveFrom": "2026-08-06",
+      "effectiveTo": null,
+      "matrixProvenance": { "row": null, "matchesSnapshot": false },
+      "internalReviewStatus": "DEV_REVIEWED",
+      "sourceVerificationStatus": "PENDING",
+      "clinicalValidationStatus": "NOT_CLINICALLY_VALIDATED"
+    },
+    {
+      "ruleId": "PED_RED_005",
+      "ruleVersion": "0.1.0",
+      "ruleType": "STAGE_RED",
+      "title": "Trẻ dưới 3 tháng tuổi có sốt",
+      "translationNote": "V1 RED_INFANT_FEVER_UNDER_3_MONTHS: childAgeMonths < 3 AND temperatureC >= 38.0. Thresholds carry over exactly.",
+      "stages": ["INFANT_0_12M"],
+      "outcome": "RED",
+      "priority": 95,
+      "decisionOrder": 15,
+      "stopOnMatch": true,
+      "conditionType": "SIGNAL",
+      "condition": {
+        "all": [
+          { "context": "baby_age_months", "operator": "LT", "value": 3 },
+          { "context": "temperatureC", "operator": "GTE", "value": 38.0 }
+        ]
+      },
+      "requiredFields": ["baby_age_months", "temperatureC"],
+      "questionIds": ["Q_BABY_AGE_MONTHS", "Q_BABY_TEMPERATURE"],
+      "exclusions": [],
+      "exclusionPredicates": [],
+      "reasonCode": "PAEDIATRIC_YOUNG_INFANT_FEVER",
+      "actionCode": "IMMEDIATE_EMERGENCY_ASSESSMENT",
+      "sourceIds": ["WHO_NEWBORN_DANGER_SIGNS_001"],
+      "releaseStatus": "ACTIVE",
+      "approvedAt": "2026-08-06",
+      "effectiveFrom": "2026-08-06",
+      "effectiveTo": null,
+      "matrixProvenance": { "row": null, "matchesSnapshot": false },
+      "internalReviewStatus": "DEV_REVIEWED",
+      "sourceVerificationStatus": "PENDING",
+      "clinicalValidationStatus": "NOT_CLINICALLY_VALIDATED"
+    },
+    {
+      "ruleId": "PED_RED_006",
+      "ruleVersion": "0.1.0",
+      "ruleType": "STAGE_RED",
+      "title": "Trẻ sốt cao, hoặc phát ban kèm sốt cao",
+      "translationNote": "V1 RED_HIGH_FEVER (high_fever OR temperatureC >= 39.0) and RED_RASH_HIGH_FEVER (rash AND temperatureC >= 39.0). The rash variant is subsumed: high fever alone already escalates, so rash adds no separate threshold.",
+      "stages": ["INFANT_0_12M", "TODDLER_12_24M"],
+      "outcome": "RED",
+      "priority": 90,
+      "decisionOrder": 16,
+      "stopOnMatch": true,
+      "conditionType": "SIGNAL",
+      "condition": {
+        "any": [
+          { "signal": "HIGH_FEVER", "operator": "EQ", "value": true },
+          { "context": "temperatureC", "operator": "GTE", "value": 39.0 }
+        ]
+      },
+      "requiredFields": ["baby_age_months"],
+      "questionIds": ["Q_BABY_TEMPERATURE"],
+      "exclusions": [],
+      "exclusionPredicates": [],
+      "reasonCode": "PAEDIATRIC_HIGH_FEVER",
+      "actionCode": "IMMEDIATE_EMERGENCY_ASSESSMENT",
+      "sourceIds": ["WHO_NEWBORN_DANGER_SIGNS_001"],
+      "releaseStatus": "ACTIVE",
+      "approvedAt": "2026-08-06",
+      "effectiveFrom": "2026-08-06",
+      "effectiveTo": null,
+      "matrixProvenance": { "row": null, "matchesSnapshot": false },
+      "internalReviewStatus": "DEV_REVIEWED",
+      "sourceVerificationStatus": "PENDING",
+      "clinicalValidationStatus": "NOT_CLINICALLY_VALIDATED"
+    },
+    {
+      "ruleId": "PED_YELLOW_001",
+      "ruleVersion": "0.1.0",
+      "ruleType": "STAGE_YELLOW",
+      "title": "Trẻ có triệu chứng cần theo dõi",
+      "translationNote": "V1 YELLOW_FEVER_MONITOR, YELLOW_PERSISTENT_FEVER, YELLOW_MILD_MODERATE_DIARRHEA, YELLOW_LIMITED_VOMITING, YELLOW_MILD_RASH and YELLOW_RESPIRATORY_NO_DISTRESS. V1 raised the same YELLOW disposition for each, so they are one rule here; the RED rules above already claim the escalating variants and run first.",
+      "stages": ["INFANT_0_12M", "TODDLER_12_24M"],
+      "outcome": "YELLOW",
+      "priority": 60,
+      "decisionOrder": 40,
+      "stopOnMatch": true,
+      "conditionType": "SIGNAL",
+      "condition": {
+        "any": [
+          { "signal": "FEVER", "operator": "EQ", "value": true },
+          { "signal": "DIARRHOEA", "operator": "EQ", "value": true },
+          { "signal": "VOMITING", "operator": "EQ", "value": true },
+          { "signal": "RASH", "operator": "EQ", "value": true },
+          { "signal": "COUGH_OR_RUNNY_NOSE", "operator": "EQ", "value": true }
+        ]
+      },
+      "requiredFields": ["baby_age_months"],
+      "questionIds": ["Q_BABY_TEMPERATURE", "Q_BABY_HYDRATION"],
+      "exclusions": [],
+      "exclusionPredicates": [],
+      "reasonCode": "PAEDIATRIC_MONITORABLE_SYMPTOM",
+      "actionCode": "EARLY_CLINICAL_ASSESSMENT",
+      "sourceIds": ["WHO_NEWBORN_DANGER_SIGNS_001", "NCH_DIARRHEA_DEHYDRATION_001"],
+      "releaseStatus": "ACTIVE",
+      "approvedAt": "2026-08-06",
+      "effectiveFrom": "2026-08-06",
+      "effectiveTo": null,
+      "matrixProvenance": { "row": null, "matchesSnapshot": false },
       "internalReviewStatus": "DEV_REVIEWED",
       "sourceVerificationStatus": "PENDING",
       "clinicalValidationStatus": "NOT_CLINICALLY_VALIDATED"

@@ -51,13 +51,25 @@ def test_nothing_reported_yet_is_unknown_not_unsupported():
 
 
 def test_a_stage_with_no_rules_is_unsupported():
-    """Paediatric stages have no rule in the current ruleset, so nothing there is assessable."""
+    """A stage the ruleset does not cover is unsupported, whatever the complaint."""
 
-    result = coverage_resolver(_state(stage=CareStage.INFANT_0_12M, targetEntity=TargetEntity.BABY))
+    result = coverage_resolver(_state(stage=CareStage.PRECONCEPTION,
+                                      signals=_present("MADE_UP_SIGNAL")))
 
     assert result["coverageStatus"] is CoverageStatus.UNSUPPORTED
     assert result["blocksClinicalQuestionPlanner"] is True
     assert result["blocksGreen"] is True
+
+
+def test_paediatric_stages_are_covered_now_that_the_rules_are_ported():
+    """Before the V1 paediatric rules were ported, every baby complaint was unsupported."""
+
+    result = coverage_resolver(_state(stage=CareStage.INFANT_0_12M,
+                                      targetEntity=TargetEntity.BABY,
+                                      signals=_present("POOR_FEEDING")))
+
+    assert result["coverageStatus"] is CoverageStatus.SUPPORTED
+    assert result["blocksClinicalQuestionPlanner"] is False
 
 
 def test_confirmed_out_of_scope_blocks_the_clinical_catalogue():
@@ -149,3 +161,22 @@ def test_supported_symptom_triage_is_allowed_through():
 
     assert allowed is True
     assert reason is None
+
+
+def test_a_maternal_signal_in_a_baby_stage_is_unsupported_not_borrowed():
+    """The whole point of stage scoping: a maternal threshold must never assess an infant."""
+
+    result = coverage_resolver(_state(stage=CareStage.INFANT_0_12M,
+                                      targetEntity=TargetEntity.BABY,
+                                      signals=_present("HEAVY_VAGINAL_BLEEDING")))
+
+    assert result["coverageStatus"] is CoverageStatus.UNSUPPORTED
+    assert result["blocksClinicalQuestionPlanner"] is True
+
+
+def test_paediatric_signals_are_covered_in_paediatric_stages():
+    for code in ("POOR_FEEDING", "DIARRHOEA", "SEVERE_DEHYDRATION", "PERSISTENT_VOMITING"):
+        result = coverage_resolver(_state(stage=CareStage.INFANT_0_12M,
+                                          targetEntity=TargetEntity.BABY,
+                                          signals=_present(code)))
+        assert result["coverageStatus"] is CoverageStatus.SUPPORTED, code

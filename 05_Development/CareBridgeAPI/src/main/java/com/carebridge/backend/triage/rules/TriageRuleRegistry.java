@@ -48,8 +48,15 @@ public class TriageRuleRegistry {
     public static final String REGISTRY_RESOURCE = "triage/triage_rules_v2.json";
     public static final String MANIFEST_RESOURCE = "triage/required_rule_manifest.json";
 
+    /**
+     * Stages a V2 rule may declare. The paediatric pair was previously excluded to stop
+     * half-ported legacy stage strings leaking in while no paediatric rule existed. They are
+     * admitted now that the paediatric rules are present and stage-scoped; entity separation is
+     * still enforced per rule, so a maternal threshold can never be evaluated against a baby.
+     */
     static final Set<String> V2_STAGES = Set.of(
-            "PRECONCEPTION", "POSSIBLE_PREGNANCY", "PREGNANCY", "POSTPARTUM");
+            "PRECONCEPTION", "POSSIBLE_PREGNANCY", "PREGNANCY", "POSTPARTUM",
+            "INFANT_0_12M", "TODDLER_12_24M");
     static final Set<String> V2_OUTCOMES = Set.of(
             "RED", "YELLOW", "GREEN", "NEEDS_MORE_INFO", "OUT_OF_SCOPE");
     static final Set<String> RELEASABLE_STATUSES = Set.of("ACTIVE");

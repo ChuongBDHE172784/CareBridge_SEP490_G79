@@ -67,14 +67,34 @@ def test_information_intents_never_receive_a_triage_color(intent):
     assert clinical_rule_engine(state)["triageOutcome"] is None
 
 
-def test_baby_stage_is_coverage_limited_not_mapped_to_maternal_rules():
+def test_baby_stage_uses_paediatric_rules_and_never_maternal_ones():
+    """A baby stage now has its own rules, and must never borrow a maternal threshold."""
+
     state = _state()
-    state.update(targetEntity=TargetEntity.BABY, stage=CareStage.INFANT_0_12M)
+    state.update(targetEntity=TargetEntity.BABY, stage=CareStage.INFANT_0_12M,
+                 babyAgeMonths=6,
+                 signals={"POOR_FEEDING": {"presence": "PRESENT", "temporalStatus": "CURRENT"}})
 
     updates = clinical_rule_engine(state)
 
-    assert updates["triageOutcome"] == "NEEDS_MORE_INFO"
-    assert updates["stopConversation"] is True
+    assert updates["triageOutcome"] == "RED"
+    assert updates["decisiveRuleIds"] == ["PED_RED_003"]
+    assert all(rule.startswith("PED_") for rule in updates["decisiveRuleIds"])
+
+
+def test_a_maternal_signal_does_not_fire_a_rule_in_a_baby_stage():
+    """Entity separation: heavy vaginal bleeding must not be evaluated against an infant."""
+
+    state = _state()
+    state.update(targetEntity=TargetEntity.BABY, stage=CareStage.INFANT_0_12M,
+                 babyAgeMonths=6,
+                 signals={"HEAVY_VAGINAL_BLEEDING": {"presence": "PRESENT",
+                                                     "temporalStatus": "CURRENT"}})
+
+    updates = clinical_rule_engine(state)
+
+    assert updates["triageOutcome"] != "RED"
+    assert not [rule for rule in updates["decisiveRuleIds"] if rule.startswith("PREG_")]
 
 
 def test_registry_failure_is_controlled_and_never_green(monkeypatch):

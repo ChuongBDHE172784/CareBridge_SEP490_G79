@@ -95,7 +95,12 @@ class TriageRuleParityV2Test {
     void registryLoadsTheInternalRuleSet() {
         assertThat(registry.rulesetVersion()).isEqualTo("2.2.0");
         assertThat(registry.ruleMatrixVersion()).isEqualTo("0.1.0");
-        assertThat(registry.rules()).hasSize(10);
+        // 10 maternal rows from the v0.1.0 matrix plus 7 paediatric rules ported from V1. Counted
+        // separately so a maternal row going missing still fails loudly.
+        assertThat(registry.rules().stream()
+                .filter(rule -> !rule.ruleId().startsWith("PED_")).toList()).hasSize(10);
+        assertThat(registry.rules().stream()
+                .filter(rule -> rule.ruleId().startsWith("PED_")).toList()).hasSize(7);
         assertThat(registry.skippedRuleIds()).isEmpty();
         assertThat(vectorsDocument.get("rulesetVersion").asText())
                 .isEqualTo(registry.rulesetVersion());
