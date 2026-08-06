@@ -111,6 +111,46 @@ class ChecklistRequestMaterializationEmbeddedPostgresTest
         assertThat(personalTaskCount(motherId, template.versionId())).isOne();
     }
 
+    @Test
+    void currentChecklistRequestMaterializesAndReturnsOnePersonalTaskIdempotently() throws Exception {
+        UUID motherId = UUID.randomUUID();
+        UUID journeyId = seedWeekFourPregnancy(motherId);
+        TemplateIds template = seedApprovedMandatoryMotherTemplate(motherId);
+
+        assertThat(personalParentCount(motherId, template.versionId())).isZero();
+        assertThat(personalTaskCount(motherId, template.versionId())).isZero();
+
+        JsonNode first = currentChecklist(motherId);
+        assertStableTopLevelDto(first);
+        List<JsonNode> firstTasks = templateTaskNodes(first, template.versionId());
+        assertThat(firstTasks).hasSize(1);
+        JsonNode materialized = firstTasks.getFirst();
+        UUID taskId = UUID.fromString(materialized.path("taskId").asText());
+        UUID instanceId = UUID.fromString(materialized.path("instanceId").asText());
+        assertThat(materialized.path("templateVersionId").asText())
+                .isEqualTo(template.versionId().toString());
+        assertThat(materialized.path("careGroupId").isNull()).isTrue();
+        assertThat(materialized.path("careContextType").asText()).isEqualTo("JOURNEY");
+        assertThat(materialized.path("careContextId").asText()).isEqualTo(journeyId.toString());
+        assertThat(materialized.path("title").asText()).isEqualTo("REQUEST week-four task");
+        assertThat(personalParentCount(motherId, template.versionId())).isOne();
+        assertThat(personalTaskCount(motherId, template.versionId())).isOne();
+
+        JsonNode second = currentChecklist(motherId);
+        assertStableTopLevelDto(second);
+        assertThat(second.path("correlationId").asText())
+                .isNotEqualTo(first.path("correlationId").asText());
+        assertThat(templateTaskNodes(second, template.versionId()))
+                .singleElement()
+                .satisfies(task -> {
+                    assertThat(task.path("taskId").asText()).isEqualTo(taskId.toString());
+                    assertThat(task.path("instanceId").asText()).isEqualTo(instanceId.toString());
+                    assertThat(task.path("careGroupId").isNull()).isTrue();
+                });
+        assertThat(personalParentCount(motherId, template.versionId())).isOne();
+        assertThat(personalTaskCount(motherId, template.versionId())).isOne();
+    }
+
     private UUID seedWeekFourPregnancy(UUID motherId) {
         CanonicalUserFixture.insertUser(
                 jdbcTemplate,
@@ -214,6 +254,16 @@ class ChecklistRequestMaterializationEmbeddedPostgresTest
                 .andReturn();
         JsonNode json = objectMapper.readTree(result.getResponse().getContentAsString());
         return new HttpTodayResponse(json, objectMapper.treeToValue(json, TodayTasksResponse.class));
+    }
+
+    private JsonNode currentChecklist(UUID motherId) throws Exception {
+        MvcResult result = mockMvc.perform(get("/api/v1/checklists/current/tasks")
+                        .param("date", EFFECTIVE_DATE.toString())
+                        .header("X-User-Timezone", ZONE)
+                        .with(user(motherId.toString()).roles("MOTHER")))
+                .andExpect(status().isOk())
+                .andReturn();
+        return objectMapper.readTree(result.getResponse().getContentAsString());
     }
 
     private static void assertStableTopLevelDto(JsonNode json) {

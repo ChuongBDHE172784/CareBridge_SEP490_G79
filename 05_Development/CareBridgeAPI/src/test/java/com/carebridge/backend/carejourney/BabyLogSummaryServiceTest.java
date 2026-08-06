@@ -11,16 +11,18 @@ import com.carebridge.backend.carejourney.service.impl.BabyLogSummaryServiceImpl
 import com.carebridge.backend.common.exception.AccessDeniedBusinessException;
 import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.common.exception.ResourceNotFoundException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.security.Principal;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -36,11 +38,19 @@ class BabyLogSummaryServiceTest {
     @Mock private BabyDailyLogRepository babyDailyLogRepository;
     @Mock private BabyProfileRepository babyProfileRepository;
     @Mock private BabyAccessPolicy babyAccessPolicy;
-    @InjectMocks private BabyLogSummaryServiceImpl service;
+    private BabyLogSummaryServiceImpl service;
 
     static final UUID USER_ID       = UUID.fromString("00000000-0000-0000-0000-000000000100");
     static final UUID BABY_ID       = UUID.fromString("00000000-0000-0000-0000-000000000001");
     static final UUID OTHER_USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000200");
+    static final Instant FIXED_NOW  = Instant.parse("2026-07-15T03:00:00Z");
+    static final Clock FIXED_CLOCK  = Clock.fixed(FIXED_NOW, ZoneOffset.UTC);
+
+    @BeforeEach
+    void setUp() {
+        service = new BabyLogSummaryServiceImpl(
+                babyDailyLogRepository, babyProfileRepository, babyAccessPolicy, FIXED_CLOCK);
+    }
 
     private BabyProfile makeActiveBaby() {
         return BabyProfile.builder()
@@ -98,9 +108,10 @@ class BabyLogSummaryServiceTest {
         assertThat(resp.getSummaries().get("FEEDING").getTotalQuantity()).isEqualByComparingTo("450");
         assertThat(resp.getSummaries()).containsKey("SLEEP");
         assertThat(resp.getAiInsight()).isNull();
-        assertThat(resp.getFromDate())
-                .isAfter(Instant.now().minus(Duration.ofHours(25)))
-                .isBefore(Instant.now().minus(Duration.ofHours(23)));
+        assertThat(resp.getFromDate()).isEqualTo(FIXED_NOW.minus(Duration.ofHours(24)));
+        assertThat(resp.getToDate()).isEqualTo(FIXED_NOW);
+        verify(babyDailyLogRepository).aggregateByLogType(
+                BABY_ID, FIXED_NOW.minus(Duration.ofHours(24)), FIXED_NOW);
     }
 
     // BABY-TC-036-002: 7d summary with wider range
@@ -115,13 +126,12 @@ class BabyLogSummaryServiceTest {
         BabyLogSummaryResponse resp = service.getSummary(BABY_ID, "7d", makePrincipal(USER_ID));
 
         assertThat(resp.getPeriod()).isEqualTo("7d");
-        assertThat(resp.getFromDate())
-                .isAfter(Instant.now().minus(Duration.ofDays(8)))
-                .isBefore(Instant.now().minus(Duration.ofDays(6)));
+        assertThat(resp.getFromDate()).isEqualTo(FIXED_NOW.minus(Duration.ofDays(7)));
+        assertThat(resp.getToDate()).isEqualTo(FIXED_NOW);
         verify(babyDailyLogRepository).aggregateByLogType(
                 eq(BABY_ID),
-                argThat(from -> from.isBefore(Instant.now().minus(Duration.ofDays(6)))),
-                argThat(to -> to.isAfter(Instant.now().minus(Duration.ofHours(1))))
+                eq(FIXED_NOW.minus(Duration.ofDays(7))),
+                eq(FIXED_NOW)
         );
     }
 

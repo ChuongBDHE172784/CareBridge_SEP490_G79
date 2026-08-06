@@ -925,12 +925,14 @@ class _JourneySetupScreenState extends State<JourneySetupScreen> {
                 child: Stack(
                   alignment: Alignment.center,
                   children: [
-                    CircularProgressIndicator(
-                      value: value,
-                      strokeWidth: 14,
-                      strokeCap: StrokeCap.round,
-                      backgroundColor: _border,
-                      color: _primary,
+                    Positioned.fill(
+                      child: CircularProgressIndicator(
+                        value: value,
+                        strokeWidth: 14,
+                        strokeCap: StrokeCap.round,
+                        backgroundColor: _border,
+                        color: _primary,
+                      ),
                     ),
                     Text(
                       '${(value * 100).round()}%',

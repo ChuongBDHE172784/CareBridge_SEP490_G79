@@ -74,6 +74,7 @@ class MilestoneServiceTest {
     private DevelopmentMilestone makeSavedMilestone(String milestoneType) {
         return DevelopmentMilestone.builder()
                 .milestoneId(MILESTONE_ID).babyId(BABY_ID)
+                .careSubjectId(BABY_ID)
                 .milestoneType(milestoneType)
                 .achievedDate(LocalDate.now().minusDays(3))
                 .note("First steps in living room")
@@ -162,6 +163,20 @@ class MilestoneServiceTest {
         verify(milestoneRepository).save(any());
     }
 
+    @Test
+    void addMilestone_otherType_succeedsForGenericMobileOption() {
+        when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(makeActiveBaby()));
+        when(milestoneRepository.save(any())).thenReturn(makeSavedMilestone("OTHER"));
+
+        AddMilestoneRequest req = makeRequest();
+        req.setMilestoneType("OTHER");
+
+        MilestoneResponse resp = service.addMilestone(MOTHER_ID, BABY_ID, req);
+
+        assertThat(resp.getMilestoneType()).isEqualTo("OTHER");
+        verify(milestoneRepository).save(any());
+    }
+
     // MILESTONE-TC-037-007: Baby not found -> ResourceNotFoundException BABY-060
     @Test
     void addMilestone_babyNotFound_throwsNotFound() {
@@ -181,6 +196,7 @@ class MilestoneServiceTest {
             assertThat(arg.getRecordedBy())
                     .as("recordedBy must be set from JWT userId — ADR-BABY-008")
                     .isEqualTo(MOTHER_ID);
+            assertThat(arg.getCareSubjectId()).isEqualTo(BABY_ID);
             return makeSavedMilestone("WALKING");
         });
 

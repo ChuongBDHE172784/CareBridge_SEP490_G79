@@ -26,6 +26,14 @@ public class DevelopmentMilestone {
     @Column(name = "baby_id", nullable = false)
     private UUID babyId;
 
+    /**
+     * Canonical care-subject identifier. The canonical table keeps both this
+     * column and the legacy baby_id column non-null; the lifecycle callback
+     * mirrors them because milestone APIs are baby-scoped.
+     */
+    @Column(name = "care_subject_id", nullable = false)
+    private UUID careSubjectId;
+
     @Column(name = "milestone_type", nullable = false, length = 80)
     private String milestoneType;
 
@@ -58,4 +66,15 @@ public class DevelopmentMilestone {
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
+
+    @PrePersist
+    @PreUpdate
+    void alignCanonicalCareSubject() {
+        if (careSubjectId == null && babyId != null) {
+            careSubjectId = babyId;
+        }
+        if (babyId == null && careSubjectId != null) {
+            babyId = careSubjectId;
+        }
+    }
 }

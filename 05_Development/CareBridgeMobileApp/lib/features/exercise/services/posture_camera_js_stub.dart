@@ -10,7 +10,7 @@ T callConstructor<T>(Object constructor, List<Object?> arguments) {
   throw UnsupportedError('JavaScript interop is only available on Web');
 }
 
-T callMethod<T>(Object object, String method, List<Object?> arguments) {
+Object? callMethod(Object object, String method, List<Object?> arguments) {
   throw UnsupportedError('JavaScript interop is only available on Web');
 }
 

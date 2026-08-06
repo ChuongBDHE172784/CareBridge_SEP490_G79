@@ -5,7 +5,11 @@ import '../models/milestone_model.dart';
 class BabyLogService {
   Future<List<BabyDailyLog>> getDailyLogs(String babyId) async {
     final data = await apiGet('/api/v1/babies/$babyId/daily-logs');
-    final rows = data['data'] as List<dynamic>? ?? const [];
+    final rawRows = data['data'];
+    if (rawRows is! List) {
+      throw const FormatException('Invalid baby daily-log list response');
+    }
+    final rows = rawRows;
     return rows
         .map((row) => BabyDailyLog.fromJson(row as Map<String, dynamic>))
         .toList();

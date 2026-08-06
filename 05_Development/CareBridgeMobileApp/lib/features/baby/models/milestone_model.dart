@@ -20,39 +20,50 @@ extension MilestoneTypeExtension on MilestoneType {
     }
   }
 
+  /// Values must match the backend's accepted milestone types.
   String toApiValue() {
     switch (this) {
       case MilestoneType.roll:
-        return 'ROLL';
+        return 'ROLLING';
       case MilestoneType.crawl:
-        return 'CRAWL';
+        return 'CRAWLING';
       case MilestoneType.walk:
-        return 'WALK';
+        return 'WALKING';
       case MilestoneType.talk:
-        return 'TALK';
+        return 'SPEAKING';
       case MilestoneType.tooth:
-        return 'TOOTH';
+        return 'TEETHING';
       case MilestoneType.solids:
-        return 'SOLIDS';
+        return 'WEANING';
       case MilestoneType.other:
         return 'OTHER';
     }
   }
 
   static MilestoneType fromApi(String? v) {
-    switch (v) {
+    switch (v?.trim().toUpperCase()) {
+      case 'ROLLING':
       case 'ROLL':
         return MilestoneType.roll;
+      case 'CRAWLING':
       case 'CRAWL':
         return MilestoneType.crawl;
+      case 'WALKING':
       case 'WALK':
         return MilestoneType.walk;
+      case 'SPEAKING':
       case 'TALK':
         return MilestoneType.talk;
+      case 'TEETHING':
       case 'TOOTH':
         return MilestoneType.tooth;
+      case 'WEANING':
       case 'SOLIDS':
         return MilestoneType.solids;
+      case 'OTHER':
+      case 'FIRST_SMILE':
+      case 'SITTING':
+      case 'STANDING':
       default:
         return MilestoneType.other;
     }

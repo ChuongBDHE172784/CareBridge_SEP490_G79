@@ -6,7 +6,14 @@ import '../models/reminder_model.dart';
 import '../services/reminder_service.dart';
 
 class CreateVaccinationReminderScreen extends StatefulWidget {
-  const CreateVaccinationReminderScreen({super.key});
+  final String? initialBabyId;
+  final Map<String, dynamic>? initialSuggestion;
+
+  const CreateVaccinationReminderScreen({
+    super.key,
+    this.initialBabyId,
+    this.initialSuggestion,
+  });
 
   @override
   State<CreateVaccinationReminderScreen> createState() =>
@@ -26,7 +33,7 @@ class _CreateVaccinationReminderScreenState
   final _reminderService = ReminderService.instance;
   final _babyService = BabyService();
   final _vaccineNameController = TextEditingController();
-  final _locationController = TextEditingController();
+  final _doseController = TextEditingController();
 
   List<BabyProfile> _babies = [];
   BabyProfile? _selectedBaby;
@@ -35,17 +42,22 @@ class _CreateVaccinationReminderScreenState
   bool _loadingBabies = true;
   bool _loadingSuggestions = false;
   bool _saving = false;
+  String? _babyLoadError;
+  int _suggestionGeneration = 0;
+  bool _invalidSuggestionDate = false;
+  String? _suggestionError;
 
   @override
   void initState() {
     super.initState();
     _loadBabies();
+    _applyInitialSuggestion(widget.initialSuggestion);
   }
 
   @override
   void dispose() {
     _vaccineNameController.dispose();
-    _locationController.dispose();
+    _doseController.dispose();
     super.dispose();
   }
 
@@ -53,41 +65,132 @@ class _CreateVaccinationReminderScreenState
     try {
       final babies = await _babyService.listBabyProfiles();
       if (!mounted) return;
+      BabyProfile? preferred;
+      for (final baby in babies) {
+        if (baby.id == widget.initialBabyId) {
+          preferred = baby;
+          break;
+        }
+      }
+      final requestedBabyMissing =
+          widget.initialBabyId != null && preferred == null;
       setState(() {
         _babies = babies;
-        _selectedBaby = babies.isEmpty ? null : babies.first;
+        _selectedBaby =
+            preferred ??
+            (widget.initialBabyId == null && babies.isNotEmpty
+                ? babies.first
+                : null);
+        _babyLoadError = requestedBabyMissing
+            ? 'Không tìm thấy hồ sơ bé được chọn.'
+            : null;
       });
-      if (babies.isNotEmpty) {
-        await _loadSuggestions(babies.first.id);
+      if (_selectedBaby != null) {
+        await _loadSuggestions(_selectedBaby!.id);
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _babies = [];
+          _selectedBaby = null;
+          _babyLoadError = 'Không thể tải danh sách bé.';
+        });
       }
     } finally {
       if (mounted) setState(() => _loadingBabies = false);
     }
   }
 
+  void _applyInitialSuggestion(Map<String, dynamic>? suggestion) {
+    if (suggestion == null) return;
+    final name = suggestion['vaccineName']?.toString();
+    final dose = (suggestion['doseNumber'] as num?)?.toInt();
+    final rawDate = (suggestion['scheduledDate'] ?? suggestion['suggestedDate'])
+        ?.toString();
+    final date = rawDate == null || rawDate.trim().isEmpty
+        ? null
+        : DateTime.tryParse(rawDate);
+    _vaccineNameController.text = name ?? '';
+    _doseController.text = dose?.toString() ?? '';
+    _invalidSuggestionDate =
+        rawDate != null && rawDate.trim().isNotEmpty && date == null;
+    if (date != null) {
+      _scheduledDate = DateTime(date.year, date.month, date.day, 9);
+    }
+  }
+
   Future<void> _loadSuggestions(String babyId) async {
+    final generation = ++_suggestionGeneration;
     setState(() => _loadingSuggestions = true);
     try {
       final suggestions = await _reminderService.getVaccinationSuggestions(
         babyId,
       );
-      if (!mounted) return;
-      setState(() => _suggestions = suggestions);
+      if (!mounted ||
+          generation != _suggestionGeneration ||
+          _selectedBaby?.id != babyId) {
+        return;
+      }
+      setState(() {
+        _suggestions = suggestions;
+        _suggestionError = null;
+      });
     } catch (_) {
-      if (mounted) setState(() => _suggestions = []);
+      if (mounted &&
+          generation == _suggestionGeneration &&
+          _selectedBaby?.id == babyId) {
+        setState(() {
+          _suggestions = [];
+          _suggestionError = 'Không thể tải gợi ý lịch tiêm.';
+        });
+      }
     } finally {
-      if (mounted) setState(() => _loadingSuggestions = false);
+      if (mounted && generation == _suggestionGeneration) {
+        setState(() => _loadingSuggestions = false);
+      }
     }
   }
 
   Future<void> _pickDate() async {
+    final today = _dateOnly(DateTime.now());
+    final lastDate = today.add(const Duration(days: 365 * 3));
     final picked = await showDatePicker(
       context: context,
-      initialDate: _scheduledDate,
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365 * 3)),
+      initialDate: _clampDate(_dateOnly(_scheduledDate), today, lastDate),
+      firstDate: today,
+      lastDate: lastDate,
     );
-    if (picked != null) setState(() => _scheduledDate = picked);
+    if (picked != null && mounted) {
+      setState(() {
+        _invalidSuggestionDate = false;
+        _scheduledDate = DateTime(
+          picked.year,
+          picked.month,
+          picked.day,
+          _scheduledDate.hour,
+          _scheduledDate.minute,
+        );
+      });
+    }
+  }
+
+  Future<void> _pickTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_scheduledDate),
+    );
+    if (picked != null && mounted) {
+      setState(() {
+        _invalidSuggestionDate = false;
+        _scheduledDate = DateTime(
+          _scheduledDate.year,
+          _scheduledDate.month,
+          _scheduledDate.day,
+          picked.hour,
+          picked.minute,
+        );
+      });
+    }
   }
 
   Future<void> _save() async {
@@ -100,9 +203,27 @@ class _CreateVaccinationReminderScreenState
       _showError('Vui lòng nhập tên vắc xin.');
       return;
     }
+    if (!_scheduledDate.isAfter(
+      DateTime.now().add(const Duration(minutes: 5)),
+    )) {
+      _showError('Giờ nhắc phải cách hiện tại ít nhất 5 phút.');
+      return;
+    }
 
-    final location = _locationController.text.trim();
-    final title = location.isEmpty ? vaccineName : '$vaccineName - $location';
+    final dose = int.tryParse(_doseController.text.trim());
+    if (dose == null || dose < 1) {
+      _showError('Vui lòng nhập số mũi tiêm hợp lệ.');
+      return;
+    }
+    if (_invalidSuggestionDate) {
+      _showError('Ngày gợi ý không hợp lệ. Vui lòng chọn lại ngày nhắc.');
+      return;
+    }
+    final title = dose > 0 ? '$vaccineName · mũi $dose' : vaccineName;
+    if (title.length > 255) {
+      _showError('Tên nhắc tiêm quá dài (tối đa 255 ký tự).');
+      return;
+    }
     setState(() => _saving = true);
     try {
       await _reminderService.createVaccinationReminder(
@@ -139,7 +260,7 @@ class _CreateVaccinationReminderScreenState
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded, color: _onSurface),
-          onPressed: () => Navigator.pop(context),
+          onPressed: _saving ? null : () => Navigator.pop(context),
         ),
         title: const Text(
           'Nhắc lịch tiêm chủng',
@@ -166,10 +287,12 @@ class _CreateVaccinationReminderScreenState
                 ),
                 const SizedBox(height: 10),
                 TextField(
-                  controller: _locationController,
-                  maxLength: 120,
-                  decoration: _inputDecoration('Địa điểm tiêm chủng'),
+                  controller: _doseController,
+                  keyboardType: TextInputType.number,
+                  maxLength: 2,
+                  decoration: _inputDecoration('Mũi tiêm *'),
                 ),
+                const SizedBox(height: 10),
               ],
             ),
           ),
@@ -184,6 +307,12 @@ class _CreateVaccinationReminderScreenState
                   onTap: _pickDate,
                 ),
                 const SizedBox(height: 12),
+                _DateButton(
+                  label: 'Giờ nhắc',
+                  value: _formatTime(_scheduledDate),
+                  onTap: _pickTime,
+                ),
+                const SizedBox(height: 12),
                 const Text(
                   'Gợi ý bên dưới được lấy từ dữ liệu/lịch tiêm đã ghi nhận trong hệ thống. Vui lòng kiểm tra lại với nhân viên y tế khi cần.',
                   style: TextStyle(
@@ -196,7 +325,9 @@ class _CreateVaccinationReminderScreenState
               ],
             ),
           ),
-          if (_loadingSuggestions || _suggestions.isNotEmpty) ...[
+          if (_loadingSuggestions ||
+              _suggestions.isNotEmpty ||
+              _suggestionError != null) ...[
             const SizedBox(height: 14),
             _buildSuggestions(),
           ],
@@ -241,11 +372,23 @@ class _CreateVaccinationReminderScreenState
       );
     }
     if (_babies.isEmpty) {
-      return const _Section(
-        child: Text(
-          'Chưa có hồ sơ bé. Vui lòng thêm hồ sơ bé trước khi tạo nhắc lịch tiêm chủng.',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant),
+      return _Section(
+        child: Column(
+          children: [
+            Text(
+              _babyLoadError ??
+                  'Chưa có hồ sơ bé. Vui lòng thêm hồ sơ bé trước khi tạo nhắc lịch tiêm chủng.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                color: _onSurfaceVariant,
+              ),
+            ),
+            if (_babyLoadError != null) ...[
+              const SizedBox(height: 8),
+              TextButton(onPressed: _loadBabies, child: const Text('Thử lại')),
+            ],
+          ],
         ),
       );
     }
@@ -259,10 +402,7 @@ class _CreateVaccinationReminderScreenState
           final baby = _babies[index];
           final selected = _selectedBaby?.id == baby.id;
           return GestureDetector(
-            onTap: () {
-              setState(() => _selectedBaby = baby);
-              _loadSuggestions(baby.id);
-            },
+            onTap: () => _selectBaby(baby),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
               width: 82,
@@ -300,6 +440,39 @@ class _CreateVaccinationReminderScreenState
     );
   }
 
+  Future<void> _selectBaby(BabyProfile baby) async {
+    final hasInput =
+        _vaccineNameController.text.trim().isNotEmpty ||
+        _doseController.text.trim().isNotEmpty;
+    if (hasInput && _selectedBaby?.id != baby.id) {
+      final discard = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Đổi hồ sơ bé?'),
+          content: const Text('Thông tin nhắc tiêm đang nhập sẽ bị xoá.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Huỷ'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Đổi bé'),
+            ),
+          ],
+        ),
+      );
+      if (discard != true || !mounted) return;
+    }
+    setState(() {
+      _selectedBaby = baby;
+      _vaccineNameController.clear();
+      _doseController.clear();
+      _scheduledDate = DateTime.now().add(const Duration(days: 3));
+    });
+    await _loadSuggestions(baby.id);
+  }
+
   Widget _buildSuggestions() {
     return _Section(
       child: Column(
@@ -317,6 +490,26 @@ class _CreateVaccinationReminderScreenState
           const SizedBox(height: 10),
           if (_loadingSuggestions)
             const Center(child: CircularProgressIndicator(color: _primary))
+          else if (_suggestionError != null)
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _suggestionError!,
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      color: _onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: _selectedBaby == null
+                      ? null
+                      : () => _loadSuggestions(_selectedBaby!.id),
+                  child: const Text('Thử lại'),
+                ),
+              ],
+            )
           else
             ..._suggestions.take(3).map(_buildSuggestionTile),
         ],
@@ -326,9 +519,23 @@ class _CreateVaccinationReminderScreenState
 
   Widget _buildSuggestionTile(Map<String, dynamic> suggestion) {
     final name = suggestion['vaccineName']?.toString() ?? 'Vắc xin';
-    final date = suggestion['suggestedDate']?.toString();
+    final dose = (suggestion['doseNumber'] as num?)?.toInt();
+    final date = (suggestion['scheduledDate'] ?? suggestion['suggestedDate'])
+        ?.toString();
+    final parsedDate = date == null ? null : DateTime.tryParse(date);
     return InkWell(
-      onTap: () => setState(() => _vaccineNameController.text = name),
+      onTap: () => setState(() {
+        _vaccineNameController.text = name;
+        _doseController.text = dose?.toString() ?? '';
+        if (parsedDate != null) {
+          _scheduledDate = DateTime(
+            parsedDate.year,
+            parsedDate.month,
+            parsedDate.day,
+            9,
+          );
+        }
+      }),
       borderRadius: BorderRadius.circular(14),
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
@@ -346,7 +553,7 @@ class _CreateVaccinationReminderScreenState
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    name,
+                    dose == null ? name : '$name · mũi $dose',
                     style: const TextStyle(
                       fontFamily: 'Lexend',
                       fontWeight: FontWeight.w800,
@@ -355,7 +562,7 @@ class _CreateVaccinationReminderScreenState
                   ),
                   if (date != null)
                     Text(
-                      date,
+                      parsedDate == null ? date : _formatDate(parsedDate),
                       style: const TextStyle(
                         fontFamily: 'Lexend',
                         fontSize: 12,
@@ -390,6 +597,25 @@ class _CreateVaccinationReminderScreenState
 
   static String _formatDate(DateTime value) {
     return '${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
+  }
+
+  static String _formatTime(DateTime value) {
+    return '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}';
+  }
+
+  static DateTime _dateOnly(DateTime value) {
+    final local = value.toLocal();
+    return DateTime(local.year, local.month, local.day);
+  }
+
+  static DateTime _clampDate(
+    DateTime value,
+    DateTime firstDate,
+    DateTime lastDate,
+  ) {
+    if (value.isBefore(firstDate)) return firstDate;
+    if (value.isAfter(lastDate)) return lastDate;
+    return value;
   }
 }
 
