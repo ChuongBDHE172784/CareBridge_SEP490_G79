@@ -64,7 +64,8 @@ class CareGroupServiceImplMembershipLifecycleTest {
         CareGroupMember owner = member(OWNER_ID, GroupMemberRole.OWNER, InviteStatus.ACCEPTED);
         CareGroupMember invitee = member(INVITEE_ID, GroupMemberRole.MEMBER, InviteStatus.PENDING);
         when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, OWNER_ID)).thenReturn(Optional.of(owner));
-        when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, INVITEE_ID)).thenReturn(Optional.of(invitee));
+        when(memberRepository.findFirstByCareGroupIdAndUserIdAndInviteStatus(
+                GROUP_ID, INVITEE_ID, InviteStatus.PENDING)).thenReturn(Optional.of(invitee));
         when(memberRepository.save(invitee)).thenReturn(invitee);
 
         RevokeInvitationResponse response = service.revokeInvitation(GROUP_ID, INVITEE_ID, OWNER_ID);
@@ -87,7 +88,8 @@ class CareGroupServiceImplMembershipLifecycleTest {
                 "FAM-050");
 
         verify(memberRepository, never()).save(any());
-        verify(memberRepository, never()).findByCareGroupIdAndUserId(GROUP_ID, INVITEE_ID);
+        verify(memberRepository, never()).findFirstByCareGroupIdAndUserIdAndInviteStatus(
+                GROUP_ID, INVITEE_ID, InviteStatus.PENDING);
         verifyNoInteractions(auditService);
     }
 
@@ -96,7 +98,8 @@ class CareGroupServiceImplMembershipLifecycleTest {
         stubGroup();
         CareGroupMember owner = member(OWNER_ID, GroupMemberRole.OWNER, InviteStatus.ACCEPTED);
         when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, OWNER_ID)).thenReturn(Optional.of(owner));
-        when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, INVITEE_ID)).thenReturn(Optional.empty());
+        when(memberRepository.findFirstByCareGroupIdAndUserIdAndInviteStatus(
+                GROUP_ID, INVITEE_ID, InviteStatus.PENDING)).thenReturn(Optional.empty());
 
         assertBusinessException(
                 () -> service.revokeInvitation(GROUP_ID, INVITEE_ID, OWNER_ID),
@@ -150,7 +153,8 @@ class CareGroupServiceImplMembershipLifecycleTest {
         CareGroupMember owner = member(OWNER_ID, GroupMemberRole.OWNER, InviteStatus.ACCEPTED);
         CareGroupMember invitee = member(INVITEE_ID, GroupMemberRole.MEMBER, InviteStatus.PENDING);
         when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, OWNER_ID)).thenReturn(Optional.of(owner));
-        when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, INVITEE_ID)).thenReturn(Optional.of(invitee));
+        when(memberRepository.findFirstByCareGroupIdAndUserIdAndInviteStatus(
+                GROUP_ID, INVITEE_ID, InviteStatus.PENDING)).thenReturn(Optional.of(invitee));
         when(memberRepository.save(invitee)).thenReturn(invitee);
 
         service.revokeInvitation(GROUP_ID, INVITEE_ID, OWNER_ID);
@@ -500,17 +504,22 @@ class CareGroupServiceImplMembershipLifecycleTest {
         when(groupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
     }
 
+    /**
+     * Revoke resolves its target with a status-scoped finder, so a membership that is no longer
+     * PENDING is simply not found: absent / already accepted / already revoked all end in the
+     * single FAM-051 404 outcome, and nothing is written.
+     */
     private void assertNonPendingTargetRejected(InviteStatus targetStatus) {
         stubGroup();
         CareGroupMember owner = member(OWNER_ID, GroupMemberRole.OWNER, InviteStatus.ACCEPTED);
-        CareGroupMember target = member(INVITEE_ID, GroupMemberRole.MEMBER, targetStatus);
         when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, OWNER_ID)).thenReturn(Optional.of(owner));
-        when(memberRepository.findByCareGroupIdAndUserId(GROUP_ID, INVITEE_ID)).thenReturn(Optional.of(target));
+        when(memberRepository.findFirstByCareGroupIdAndUserIdAndInviteStatus(
+                GROUP_ID, INVITEE_ID, InviteStatus.PENDING)).thenReturn(Optional.empty());
 
         assertBusinessException(
                 () -> service.revokeInvitation(GROUP_ID, INVITEE_ID, OWNER_ID),
-                HttpStatus.CONFLICT,
-                "FAM-052");
+                HttpStatus.NOT_FOUND,
+                "FAM-051");
 
         verify(memberRepository, never()).save(any());
         verifyNoInteractions(auditService);

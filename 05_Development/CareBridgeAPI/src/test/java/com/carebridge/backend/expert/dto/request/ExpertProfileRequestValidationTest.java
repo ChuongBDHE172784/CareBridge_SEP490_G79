@@ -45,6 +45,8 @@ class ExpertProfileRequestValidationTest {
     }
 
     @Test
+    // hospitalId carries either a canonical care-facility UUID or a free-form facility identifier
+    // coming from the map provider, so the column bound is 150 characters.
     void createAndUpdateAcceptCanonicalFacilityUuidAndRejectLongerIdentifiers() {
         String facilityId = java.util.UUID.randomUUID().toString();
         CreateExpertProfileRequest create = validCreate();
@@ -56,8 +58,13 @@ class ExpertProfileRequestValidationTest {
         assertThat(validator.validate(create)).isEmpty();
         assertThat(validator.validate(update)).isEmpty();
 
-        create.setHospitalId("x".repeat(37));
-        update.setHospitalId("x".repeat(37));
+        create.setHospitalId("x".repeat(150));
+        update.setHospitalId("x".repeat(150));
+        assertThat(validator.validate(create)).isEmpty();
+        assertThat(validator.validate(update)).isEmpty();
+
+        create.setHospitalId("x".repeat(151));
+        update.setHospitalId("x".repeat(151));
         assertViolationOn(validator.validate(create), "hospitalId");
         assertViolationOn(validator.validate(update), "hospitalId");
     }

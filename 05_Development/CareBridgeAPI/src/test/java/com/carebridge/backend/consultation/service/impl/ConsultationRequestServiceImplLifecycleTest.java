@@ -47,8 +47,10 @@ class ConsultationRequestServiceImplLifecycleTest {
 
     private static final UUID REQUEST_ID = UUID.fromString("00000000-0000-0000-0000-000000000301");
     private static final UUID MOTHER_ID = UUID.fromString("00000000-0000-0000-0000-000000000101");
-    private static final UUID EXPERT_PROFILE_ID = UUID.fromString("00000000-0000-0000-0000-000000000201");
+    // Canonical consolidation: ExpertProfile is mapped onto the users table, so the expert
+    // profile id and the expert user id are the same identifier.
     private static final UUID EXPERT_USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000202");
+    private static final UUID EXPERT_PROFILE_ID = EXPERT_USER_ID;
     private static final UUID CONVERSATION_ID = UUID.fromString("00000000-0000-0000-0000-000000000401");
     private static final Instant NOW = Instant.parse("2026-07-16T12:00:00Z");
 
@@ -308,7 +310,6 @@ class ConsultationRequestServiceImplLifecycleTest {
     private static ExpertProfile expert(
             VerificationStatus verificationStatus, TrustStatus trustStatus) {
         return ExpertProfile.builder()
-                .expertProfileId(EXPERT_PROFILE_ID)
                 .userId(EXPERT_USER_ID)
                 .verificationStatus(verificationStatus)
                 .trustStatus(trustStatus)

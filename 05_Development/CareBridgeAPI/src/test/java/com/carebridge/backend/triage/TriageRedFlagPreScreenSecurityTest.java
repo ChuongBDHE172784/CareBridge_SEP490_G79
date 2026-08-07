@@ -57,8 +57,11 @@ class TriageRedFlagPreScreenSecurityTest {
     // FX-008 — RED-matching keyword text; probes whether the new safety path leaks cross-role.
     private static final String MATCHING_ONE_SHOT_BODY =
             "{\"symptoms\":\"bé bị nga dap dau xuống sàn\"}";
+    // The body is fully valid on purpose: @Valid binding runs before method security, so an
+    // invalid body would 400 first and mask the authorization check we want to exercise.
     private static final String MATCHING_START_BODY =
-            "{\"initialText\":\"bé bị nga dap dau xuống sàn\",\"currentIntake\":{}}";
+            "{\"initialText\":\"bé bị nga dap dau xuống sàn\",\"stage\":\"INFANT\","
+                    + "\"currentIntake\":{\"stage\":\"INFANT\"}}";
 
     @Test
     @WithMockUser(username = "00000000-0000-0000-0000-0000000000e1", roles = "EXPERT")

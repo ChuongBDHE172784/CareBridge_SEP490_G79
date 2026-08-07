@@ -26,12 +26,14 @@ class ExpertAvailabilityControllerOwnershipTest {
     @Test
     void onlineStatusUsesTheProfileOwnedByTheAuthenticatedPrincipal() {
         UUID userId = UUID.randomUUID();
-        UUID ownedProfileId = UUID.randomUUID();
         Principal principal = userId::toString;
+        // Canonical consolidation: ExpertProfile is mapped onto users, so the profile id IS the
+        // user id. The contract under test is that the controller resolves the profile through the
+        // repository instead of trusting whatever identifier the caller supplies.
         ExpertProfile ownedProfile = ExpertProfile.builder()
-                .expertProfileId(ownedProfileId)
                 .userId(userId)
                 .build();
+        UUID ownedProfileId = ownedProfile.getExpertProfileId();
         LocationShareResponse expected = LocationShareResponse.builder()
                 .expertProfileId(ownedProfileId)
                 .availabilityStatus("ONLINE")

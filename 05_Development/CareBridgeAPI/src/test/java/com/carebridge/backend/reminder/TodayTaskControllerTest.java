@@ -1,5 +1,6 @@
 package com.carebridge.backend.reminder;
 
+import com.carebridge.backend.checklist.today.service.UnifiedTaskActionFacade;
 import com.carebridge.backend.common.config.JpaAuditingConfig;
 import com.carebridge.backend.config.MockMvcSecurityBuilderConfig;
 import com.carebridge.backend.reminder.controller.ReminderController;
@@ -45,6 +46,7 @@ class TodayTaskControllerTest {
 
     @MockitoBean private IReminderService reminderService;
     @MockitoBean private ITodayTaskService todayTaskService;
+    @MockitoBean private UnifiedTaskActionFacade unifiedTaskActionFacade;
     @MockitoBean private JwtTokenProvider jwtTokenProvider;
     @MockitoBean private UserRepository userRepository;
 

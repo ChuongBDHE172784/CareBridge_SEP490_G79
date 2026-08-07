@@ -74,13 +74,16 @@ void main() {
     await expectLater(service.fetchCapability(), throwsA(same(transient)));
   });
 
-  for (final token in <Object?>[null, '', '   ']) {
-    test('enabled response with token $token is terminal', () async {
+  // NB: the request callback also declares a named `token` parameter (the caller's access token).
+  // Naming the loop variable `token` too silently shadowed it, so the stub echoed a valid access
+  // token back as the custom token and the case never exercised the blank-token path.
+  for (final blankToken in <Object?>[null, '', '   ']) {
+    test('enabled response with token $blankToken is terminal', () async {
       final service = _service(
         (_, _, {token, expectedAccountId}) async => {
           'data': {
             'firestoreSignalingEnabled': true,
-            'firebaseCustomToken': token,
+            'firebaseCustomToken': blankToken,
           },
         },
       );

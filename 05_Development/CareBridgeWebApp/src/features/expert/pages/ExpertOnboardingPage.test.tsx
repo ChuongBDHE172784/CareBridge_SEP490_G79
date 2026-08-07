@@ -14,6 +14,7 @@ const harness = vi.hoisted(() => ({
   getWards: vi.fn(),
   getSpecialties: vi.fn(),
   getHospitals: vi.fn(),
+  searchTrackAsiaHospitals: vi.fn(),
   navigate: vi.fn(),
 }));
 
@@ -28,6 +29,7 @@ vi.mock('../services/expertApi', () => ({
   getWards: harness.getWards,
   getSpecialties: harness.getSpecialties,
   getHospitals: harness.getHospitals,
+  searchTrackAsiaHospitals: harness.searchTrackAsiaHospitals,
 }));
 
 vi.mock('react-router-dom', async () => {
@@ -39,15 +41,47 @@ vi.mock('react-router-dom', async () => {
 
 import ExpertOnboardingPage from './ExpertOnboardingPage';
 
-describe('expert onboarding canonical workplace selection', () => {
+const jpeg = (name: string) => new File([new Uint8Array([1, 2, 3])], name, { type: 'image/jpeg' });
+
+function attachIdentityImages(container: HTMLElement) {
+  const inputs = Array.from(container.querySelectorAll('input[type="file"]'));
+  expect(inputs).toHaveLength(3);
+  const names = ['selfie.jpg', 'cccd-front.jpg', 'cccd-back.jpg'];
+  inputs.forEach((input, index) => {
+    fireEvent.change(input, { target: { files: [jpeg(names[index])] } });
+  });
+}
+
+async function fillProfessionalSection() {
+  expect(await screen.findByRole('option', { name: 'Maternal medicine' })).toBeTruthy();
+  expect(await screen.findByRole('option', { name: 'Province 3' })).toBeTruthy();
+  fireEvent.change(screen.getByLabelText('Chuyên khoa *'), { target: { value: 'specialty-1' } });
+  fireEvent.change(screen.getByLabelText('Chức danh *'), { target: { value: 'Doctor' } });
+  fireEvent.change(screen.getByLabelText('Tỉnh/Thành phố *'), { target: { value: 'province-3' } });
+
+  expect(await screen.findByRole('option', { name: 'District 7' })).toBeTruthy();
+  fireEvent.change(screen.getByLabelText('Quận/Huyện'), { target: { value: 'district-7' } });
+
+  expect(await screen.findByRole('option', { name: 'Care Facility 99' })).toBeTruthy();
+  fireEvent.change(screen.getByLabelText('Cơ sở y tế *'), { target: { value: 'facility-99' } });
+  fireEvent.change(
+    screen.getByPlaceholderText('Mô tả các bệnh lý và chuyên môn tư vấn chính...'),
+    { target: { value: 'Maternal health' } },
+  );
+}
+
+describe('expert onboarding identity step', () => {
   beforeEach(() => {
     Object.values(harness).forEach(mock => mock.mockReset());
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:preview');
+    globalThis.URL.revokeObjectURL = vi.fn();
+
     harness.getExpertOnboarding.mockResolvedValue({
       profileExists: false,
       identityStatus: null,
       credentialStatus: null,
       verificationStatus: null,
-      nextStep: 'PROFILE',
+      nextStep: 'IDENTITY',
       latestIdentityAttempt: null,
     });
     harness.getProvinces.mockResolvedValue([{
@@ -85,114 +119,118 @@ describe('expert onboarding canonical workplace selection', () => {
       type: 'HOSPITAL',
       phone: '0900000099',
     }]);
+    harness.searchTrackAsiaHospitals.mockResolvedValue([]);
     harness.createMyProfile.mockResolvedValue({});
+    harness.submitIdentityEvidence.mockResolvedValue({});
+    harness.verifyFace.mockResolvedValue({ similar: true, similarity: 0.93, reason: 'match' });
   });
 
   afterEach(() => {
     cleanup();
   });
 
-  it('uses ward as location context but submits a real care-facility hospitalId', async () => {
+  it('renders the professional section and scopes master data by the selected province', async () => {
     render(<ExpertOnboardingPage />);
 
-    expect(await screen.findByRole('heading', { name: 'Thông tin chuyên môn' })).toBeTruthy();
-    expect(await screen.findByRole('option', { name: 'Maternal medicine' })).toBeTruthy();
-    expect(await screen.findByRole('option', { name: 'Province 3' })).toBeTruthy();
-    fireEvent.change(screen.getByLabelText('Chuyên khoa *'), {
-      target: { value: 'specialty-1' },
-    });
-    fireEvent.change(screen.getByLabelText('Chức danh *'), {
-      target: { value: 'Doctor' },
-    });
-    fireEvent.change(screen.getByLabelText('Tỉnh/Thành phố *'), {
-      target: { value: 'province-3' },
-    });
+    expect(await screen.findByRole('heading', { name: '1. Thông tin chuyên môn' })).toBeTruthy();
+    await fillProfessionalSection();
 
-    expect(await screen.findByRole('option', { name: 'District 7' })).toBeTruthy();
-    fireEvent.change(screen.getByLabelText('Quận/Huyện'), {
-      target: { value: 'district-7' },
-    });
-
-    expect(await screen.findByRole('option', { name: 'Ward 42' })).toBeTruthy();
-    expect(await screen.findByRole('option', { name: 'Care Facility 99' })).toBeTruthy();
-    fireEvent.change(screen.getByLabelText('Phường/Xã'), {
-      target: { value: 'ward-42' },
-    });
-    fireEvent.change(screen.getByLabelText('Bệnh viện/Cơ sở y tế *'), {
-      target: { value: 'facility-99' },
-    });
-    fireEvent.change(screen.getByLabelText('Phạm vi tư vấn *'), {
-      target: { value: 'Maternal health' },
-    });
-    expect((screen.getByLabelText('Chuyên khoa *') as HTMLSelectElement).value)
-      .toBe('specialty-1');
-    expect((screen.getByLabelText('Tỉnh/Thành phố *') as HTMLSelectElement).value)
-      .toBe('province-3');
-    expect((screen.getByLabelText('Quận/Huyện') as HTMLSelectElement).value)
-      .toBe('district-7');
-    expect((screen.getByLabelText('Phường/Xã') as HTMLSelectElement).value)
-      .toBe('ward-42');
-    expect((screen.getByLabelText('Bệnh viện/Cơ sở y tế *') as HTMLSelectElement).value)
-      .toBe('facility-99');
-
-    const submitButton = screen.getByRole('button', { name: 'Lưu và tiếp tục' });
-    const form = submitButton.closest('form');
-    expect(form).not.toBeNull();
-    expect(form?.checkValidity()).toBe(true);
-    fireEvent.click(submitButton);
-
-    await waitFor(() => expect(harness.createMyProfile).toHaveBeenCalledTimes(1));
-    expect(harness.getWards).toHaveBeenCalledWith('district-7');
-    expect(harness.getHospitals).toHaveBeenLastCalledWith({
-      provinceId: 'province-3',
-      districtId: 'district-7',
-    });
-    const submitted = harness.createMyProfile.mock.calls[0][0];
-    expect(submitted).toEqual({
-      specialtyId: 'specialty-1',
-      professionalTitle: 'Doctor',
-      hospitalId: 'facility-99',
-      consultationScope: 'Maternal health',
-      experienceYears: undefined,
-    });
-    expect(submitted).not.toHaveProperty('wardId');
-    expect(submitted).not.toHaveProperty('hospitalName');
+    expect(harness.getDistricts).toHaveBeenCalledWith('province-3');
+    expect(harness.getWards).toHaveBeenLastCalledWith({ provinceId: 'province-3' });
+    expect(harness.getHospitals).toHaveBeenLastCalledWith({ provinceId: 'province-3' });
+    expect((screen.getByLabelText('Cơ sở y tế *') as HTMLSelectElement).value).toBe('facility-99');
   });
 
-  it('keeps required hospitals usable when the optional ward request fails', async () => {
+  it('submits the canonical care-facility hospitalId without any ward identifier', async () => {
+    const { container } = render(<ExpertOnboardingPage />);
+
+    await fillProfessionalSection();
+    attachIdentityImages(container);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hoàn tất & Gửi hồ sơ' }));
+
+    await waitFor(() => expect(harness.createMyProfile).toHaveBeenCalledTimes(1));
+    const submitted = harness.createMyProfile.mock.calls[0][0];
+    expect(submitted.specialtyId).toBe('specialty-1');
+    expect(submitted.professionalTitle).toBe('Doctor');
+    expect(submitted.hospitalId).toBe('facility-99');
+    expect(submitted.consultationScope).toBe('Maternal health');
+    expect(submitted.experienceYears).toBeUndefined();
+    expect(submitted).not.toHaveProperty('wardId');
+    expect(submitted).not.toHaveProperty('hospitalName');
+
+    await waitFor(() => expect(harness.submitIdentityEvidence).toHaveBeenCalledTimes(1));
+  });
+
+  it('keeps the required care facilities usable when the optional ward request fails', async () => {
     harness.getWards.mockRejectedValue(new Error('ward service unavailable'));
-    render(<ExpertOnboardingPage />);
+    const { container } = render(<ExpertOnboardingPage />);
 
-    expect(await screen.findByRole('option', { name: 'Maternal medicine' })).toBeTruthy();
-    expect(await screen.findByRole('option', { name: 'Province 3' })).toBeTruthy();
-    fireEvent.change(screen.getByLabelText('Chuyên khoa *'), {
-      target: { value: 'specialty-1' },
-    });
-    fireEvent.change(screen.getByLabelText('Chức danh *'), {
-      target: { value: 'Doctor' },
-    });
-    fireEvent.change(screen.getByLabelText('Tỉnh/Thành phố *'), {
-      target: { value: 'province-3' },
-    });
-    expect(await screen.findByRole('option', { name: 'District 7' })).toBeTruthy();
-    fireEvent.change(screen.getByLabelText('Quận/Huyện'), {
-      target: { value: 'district-7' },
-    });
+    await fillProfessionalSection();
+    await waitFor(() =>
+      expect(harness.getHospitals).toHaveBeenLastCalledWith({ provinceId: 'province-3' }),
+    );
+    attachIdentityImages(container);
 
-    await waitFor(() => expect(harness.getHospitals).toHaveBeenLastCalledWith({
-      provinceId: 'province-3',
-      districtId: 'district-7',
-    }));
-    expect(await screen.findByRole('option', { name: 'Care Facility 99' })).toBeTruthy();
-    fireEvent.change(screen.getByLabelText('Bệnh viện/Cơ sở y tế *'), {
-      target: { value: 'facility-99' },
-    });
-    fireEvent.change(screen.getByLabelText('Phạm vi tư vấn *'), {
-      target: { value: 'Maternal health' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Lưu và tiếp tục' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Hoàn tất & Gửi hồ sơ' }));
 
     await waitFor(() => expect(harness.createMyProfile).toHaveBeenCalledTimes(1));
     expect(harness.createMyProfile.mock.calls[0][0].hospitalId).toBe('facility-99');
+  });
+
+  it('changing the province clears the previously picked district and facility', async () => {
+    render(<ExpertOnboardingPage />);
+    await fillProfessionalSection();
+
+    fireEvent.change(screen.getByLabelText('Tỉnh/Thành phố *'), { target: { value: '' } });
+
+    expect((screen.getByLabelText('Quận/Huyện') as HTMLSelectElement).value).toBe('');
+    expect((screen.getByLabelText('Cơ sở y tế *') as HTMLSelectElement).value).toBe('');
+  });
+
+  it('blocks submission and reports missing professional fields', async () => {
+    const { container } = render(<ExpertOnboardingPage />);
+    expect(await screen.findByRole('heading', { name: '1. Thông tin chuyên môn' })).toBeTruthy();
+    attachIdentityImages(container);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hoàn tất & Gửi hồ sơ' }));
+
+    expect(
+      await screen.findByText('Vui lòng điền đầy đủ thông tin chuyên môn bắt buộc.'),
+    ).toBeTruthy();
+    expect(harness.createMyProfile).not.toHaveBeenCalled();
+    expect(harness.submitIdentityEvidence).not.toHaveBeenCalled();
+  });
+
+  it('blocks submission when the three identity photos are incomplete', async () => {
+    render(<ExpertOnboardingPage />);
+    await fillProfessionalSection();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hoàn tất & Gửi hồ sơ' }));
+
+    expect(await screen.findByText('Vui lòng chụp đầy đủ 3 ảnh.')).toBeTruthy();
+    expect(harness.createMyProfile).not.toHaveBeenCalled();
+  });
+
+  it('rejects an identity photo whose MIME type is not JPEG or PNG', async () => {
+    const { container } = render(<ExpertOnboardingPage />);
+    expect(await screen.findByRole('heading', { name: '1. Thông tin chuyên môn' })).toBeTruthy();
+
+    const firstInput = container.querySelector('input[type="file"]')!;
+    fireEvent.change(firstInput, {
+      target: { files: [new File(['x'], 'scan.gif', { type: 'image/gif' })] },
+    });
+
+    expect(await screen.findByText('Chỉ chấp nhận ảnh JPEG hoặc PNG.')).toBeTruthy();
+  });
+
+  it('surfaces a banner when the care-facility catalogue cannot be loaded', async () => {
+    harness.getHospitals.mockRejectedValue(new Error('facility service unavailable'));
+    render(<ExpertOnboardingPage />);
+
+    expect(await screen.findByRole('option', { name: 'Province 3' })).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Tỉnh/Thành phố *'), { target: { value: 'province-3' } });
+
+    expect(await screen.findByText('Không thể tải danh sách cơ sở y tế.')).toBeTruthy();
   });
 });

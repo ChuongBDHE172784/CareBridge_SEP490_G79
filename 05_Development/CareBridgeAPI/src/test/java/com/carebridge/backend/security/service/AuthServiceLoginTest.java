@@ -177,7 +177,7 @@ class AuthServiceLoginTest {
                 .role(Role.EXPERT)
                 .build();
 
-        when(userRepository.findByEmailIgnoreCase(email)).thenReturn(Optional.of(user));
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
         doNothing().when(authenticationPolicy).ensureCanAuthenticate(user);
         when(rateLimitPolicy.canAttempt(userId.toString())).thenReturn(true);
         when(passwordEncoder.matches(password, "$2a$12$hashedpassword")).thenReturn(true);
@@ -419,7 +419,7 @@ class AuthServiceLoginTest {
                 .build();
 
         // Note: AuthServiceImpl normalizes email to lowercase before lookup
-        when(userRepository.findByEmailIgnoreCase(emailLower)).thenReturn(Optional.of(user));
+        when(userRepository.findByEmail(emailLower)).thenReturn(Optional.of(user));
         doNothing().when(authenticationPolicy).ensureCanAuthenticate(user);
         when(rateLimitPolicy.canAttempt(userId.toString())).thenReturn(true);
         when(passwordEncoder.matches("password", "$2a$12$hashedpassword")).thenReturn(true);
@@ -568,7 +568,7 @@ class AuthServiceLoginTest {
                 .role(Role.EXPERT)
                 .build();
 
-        when(userRepository.findByEmailIgnoreCase(email)).thenReturn(Optional.of(user));
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
         doNothing().when(authenticationPolicy).ensureCanAuthenticate(user);
         when(rateLimitPolicy.canAttempt(userId.toString())).thenReturn(true);
         when(passwordEncoder.matches(password, "$2a$12$hashedpassword")).thenReturn(true);
@@ -713,7 +713,7 @@ class AuthServiceLoginTest {
                 .role(Role.MOTHER)
                 .build();
 
-        when(userRepository.findByEmailIgnoreCase(email)).thenReturn(Optional.of(user));
+        when(userRepository.findByEmail(email)).thenReturn(Optional.of(user));
         doNothing().when(authenticationPolicy).ensureCanAuthenticate(user);
         when(rateLimitPolicy.canAttempt(userId.toString())).thenReturn(true);
         when(passwordEncoder.matches(password, "$2a$12$hashedpassword")).thenReturn(true);

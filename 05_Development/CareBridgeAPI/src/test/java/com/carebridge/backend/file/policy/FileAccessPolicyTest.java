@@ -72,6 +72,9 @@ class FileAccessPolicyTest {
         HealthRecordFile link = HealthRecordFile.builder()
                 .id(UUID.randomUUID()).healthRecordId(HR_ID).fileId(FILE_ID).build();
         HealthRecord hr = new HealthRecord();
+        // A persisted health record always carries its owner; the policy dereferences it before
+        // walking the care-group chain, so the fixture must reflect that.
+        hr.setOwnerUserId(OWNER_ID);
         hr.setBabyId(BABY_ID);
 
         CareGroup cg = CareGroup.builder().id(CARE_GROUP_ID).linkedBabyProfileId(BABY_ID).build();
@@ -92,6 +95,9 @@ class FileAccessPolicyTest {
         HealthRecordFile link = HealthRecordFile.builder()
                 .id(UUID.randomUUID()).healthRecordId(HR_ID).fileId(FILE_ID).build();
         HealthRecord hr = new HealthRecord();
+        // A persisted health record always carries its owner; the policy dereferences it before
+        // walking the care-group chain, so the fixture must reflect that.
+        hr.setOwnerUserId(OWNER_ID);
         hr.setBabyId(BABY_ID);
 
         CareGroup cg = CareGroup.builder().id(CARE_GROUP_ID).linkedBabyProfileId(BABY_ID).build();

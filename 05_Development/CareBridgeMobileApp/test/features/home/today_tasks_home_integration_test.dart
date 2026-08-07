@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:untitled/features/checklist/services/user_checklist_service.dart';
+import 'package:untitled/features/familySync/services/family_home_service.dart';
 import 'package:untitled/features/home/screens/family_member_home_screen.dart';
 import 'package:untitled/features/home/screens/mother_home_screen.dart';
 import 'package:untitled/features/reminder/screens/today_tasks_screen.dart';
@@ -29,6 +30,42 @@ TodayTaskService _service({void Function()? onGet}) => TodayTaskService(
   postRequest: (_, body) async => {'data': body},
 );
 
+/// A single-care-group family dashboard: the Today panel only mounts once a group is
+/// unambiguously selected, so every Family Home widget test needs this snapshot.
+FamilyHomeSnapshot familyDashboardWithOneGroup() => FamilyHomeSnapshot(
+  groups: [
+    FamilyHomeGroup(
+      id: 'group-1',
+      name: 'Nhà mình',
+      joinedAt: DateTime(2026, 1, 1),
+      lastActivityAt: DateTime(2026, 8, 1),
+      relationshipRole: 'HUSBAND',
+      customRelationshipRole: null,
+      permissionScope: const FamilyHomePermission(
+        calendar: true,
+        logs: true,
+        alerts: true,
+        checklistView: true,
+        records: true,
+      ),
+      aggregate: const FamilyHomeAggregate(
+        overdue: 0,
+        dueSoon: 0,
+        inProgress: 0,
+        alerts: 0,
+      ),
+    ),
+  ],
+  globalAggregate: const FamilyHomeAggregate(
+    overdue: 0,
+    dueSoon: 0,
+    inProgress: 0,
+    alerts: 0,
+  ),
+  selectedCareGroupId: 'group-1',
+  selectedGroupDetail: null,
+);
+
 void main() {
   testWidgets('Mother Home owns the injected Mother Today panel', (
     tester,
@@ -54,35 +91,58 @@ void main() {
     tester,
   ) async {
     final service = _service();
+    // The Family dashboard scrolls; a short viewport leaves the Today panel unbuilt.
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
-      MaterialApp(home: FamilyMemberHomeScreen(todayTaskService: service)),
+      MaterialApp(
+        home: FamilyMemberHomeScreen(
+          todayTaskService: service,
+          dashboardLoader: ({selectedCareGroupId}) async =>
+              familyDashboardWithOneGroup(),
+        ),
+      ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     final panel = tester.widget<TodayTasksPanel>(find.byType(TodayTasksPanel));
     expect(panel.service, same(service));
     expect(panel.audience, TodayTasksAudience.family);
-    expect(panel.layout, TodayTasksLayout.timeBuckets);
+    expect(panel.layout, TodayTasksLayout.sourceGroups);
+    expect(panel.careGroupId, 'group-1');
     expect(tester.getSemantics(find.byType(TodayTasksPanel)).label, isNotEmpty);
   });
 
-  testWidgets('Family task shortcut navigates to the Family Today screen', (
+  // The Family Today list is embedded in the dashboard now; there is no shortcut that pushes a
+  // standalone Today screen any more. Pin that: the panel and its heading actions live inline.
+  testWidgets('Family Home hosts Today inline instead of pushing a Today screen', (
     tester,
   ) async {
     final service = _service();
+    // The Family dashboard scrolls; a short viewport leaves the Today panel unbuilt.
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
-      MaterialApp(home: FamilyMemberHomeScreen(todayTaskService: service)),
+      MaterialApp(
+        home: FamilyMemberHomeScreen(
+          todayTaskService: service,
+          dashboardLoader: ({selectedCareGroupId}) async =>
+              familyDashboardWithOneGroup(),
+        ),
+      ),
     );
-    await tester.pump();
-
-    await tester.tap(find.byIcon(Icons.check_circle_outline).first);
     await tester.pumpAndSettle();
 
-    final screen = tester.widget<TodayTasksScreen>(
-      find.byType(TodayTasksScreen),
+    expect(find.byType(TodayTasksScreen), findsNothing);
+    expect(find.byType(TodayTasksPanel), findsOneWidget);
+    expect(
+      find.byKey(const Key('family-home-checklist-history-button')),
+      findsOneWidget,
     );
-    expect(screen.service, same(service));
-    expect(screen.audience, TodayTasksAudience.family);
   });
 
   testWidgets(

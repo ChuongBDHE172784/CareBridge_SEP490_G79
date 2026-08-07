@@ -109,6 +109,12 @@ void main() {
     tester,
   ) async {
     var calls = 0;
+    // A short viewport parks the recommendation block under the floating emergency-map button,
+    // so the tap lands on the FAB instead of the retry control.
+    tester.view.physicalSize = const Size(800, 1800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
       _host(
         loader: () async {
@@ -129,6 +135,10 @@ void main() {
       find.byKey(const Key('mother-home-recommendation-error')),
       findsOneWidget,
     );
+    await tester.ensureVisible(
+      find.byKey(const Key('mother-home-recommendation-retry')),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('mother-home-recommendation-retry')));
     await tester.pumpAndSettle();
 
@@ -175,6 +185,10 @@ void main() {
   testWidgets('opens the approved content detail from a recommendation card', (
     tester,
   ) async {
+    tester.view.physicalSize = const Size(800, 1800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(
       _host(loader: () async => _response('article-detail', 'Mở bài viết')),
     );
@@ -185,6 +199,10 @@ void main() {
       find.byType(CustomScrollView),
       const Offset(0, -300),
     );
+    await tester.ensureVisible(
+      find.byKey(const Key('mother-home-recommendation-card-article-detail')),
+    );
+    await tester.pumpAndSettle();
     await tester.tap(
       find.byKey(const Key('mother-home-recommendation-card-article-detail')),
     );

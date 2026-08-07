@@ -25,11 +25,32 @@ class ExpertAvailabilityMapperTest {
         assertThat(availability.getStatus()).isEqualTo(AvailabilityStatus.AVAILABLE);
     }
 
+    // The create request carries an optional initial status so an expert can publish a slot that
+    // is already taken; a recognised value is honoured, case-insensitively.
     @Test
-    void newAvailabilityIgnoresClientSuppliedInitialStatus() {
-        var request = requestWithStatus("BUSY");
+    void newAvailabilityHonoursAValidClientSuppliedInitialStatus() {
+        var availability = mapper.toEntity(UUID.randomUUID(), requestWithStatus("BUSY"));
 
-        var availability = mapper.toEntity(UUID.randomUUID(), request);
+        assertThat(availability.getStatus()).isEqualTo(AvailabilityStatus.BUSY);
+    }
+
+    @Test
+    void newAvailabilityAcceptsLowerCaseStatus() {
+        var availability = mapper.toEntity(UUID.randomUUID(), requestWithStatus("busy"));
+
+        assertThat(availability.getStatus()).isEqualTo(AvailabilityStatus.BUSY);
+    }
+
+    @Test
+    void newAvailabilityFallsBackToAvailableForAnUnknownStatus() {
+        var availability = mapper.toEntity(UUID.randomUUID(), requestWithStatus("NOT_A_STATUS"));
+
+        assertThat(availability.getStatus()).isEqualTo(AvailabilityStatus.AVAILABLE);
+    }
+
+    @Test
+    void newAvailabilityFallsBackToAvailableForABlankStatus() {
+        var availability = mapper.toEntity(UUID.randomUUID(), requestWithStatus("   "));
 
         assertThat(availability.getStatus()).isEqualTo(AvailabilityStatus.AVAILABLE);
     }

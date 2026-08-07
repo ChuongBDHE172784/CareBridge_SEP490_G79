@@ -61,6 +61,12 @@ Future<void> _pumpForm(
   onUpdate,
   GrowthMeasurement? measurement,
 }) async {
+  // The form is taller than the 800x600 default test surface, which pushes the save button
+  // outside the render tree and makes every tap() miss. Use a phone-sized viewport instead.
+  tester.view.physicalSize = const Size(1080, 2400);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.reset);
+
   await tester.pumpWidget(
     MaterialApp(
       home: GrowthMeasurementFormScreen(

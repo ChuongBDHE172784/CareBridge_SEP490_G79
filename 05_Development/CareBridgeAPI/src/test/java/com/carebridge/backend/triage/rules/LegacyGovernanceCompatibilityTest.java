@@ -50,9 +50,13 @@ class LegacyGovernanceCompatibilityTest {
     @DisplayName("A legacy artifact with status=APPROVED still loads, mapped to ACTIVE")
     void legacyApprovedArtifactStillLoads(@org.junit.jupiter.api.io.TempDir Path temp)
             throws Exception {
-        TriageRuleRegistry legacy = loadFrom(temp, toLegacy(readCanonical()));
+        // Sized from the registry itself: the rule catalogue grows, and pinning a literal count
+        // here only breaks the compatibility check every time a rule is added.
+        JsonNode canonical = readCanonical();
+        int ruleCount = canonical.get("rules").size();
+        TriageRuleRegistry legacy = loadFrom(temp, toLegacy(canonical));
 
-        assertThat(legacy.rules()).hasSize(10);
+        assertThat(legacy.rules()).hasSize(ruleCount);
         assertThat(legacy.rules()).allSatisfy(rule ->
                 assertThat(rule.status()).isEqualTo("ACTIVE"));
         assertThat(legacy.skippedRuleIds()).isEmpty();
@@ -115,11 +119,12 @@ class LegacyGovernanceCompatibilityTest {
     void legacyDraftAndRetiredRemainSkippable(@org.junit.jupiter.api.io.TempDir Path temp)
             throws Exception {
         ObjectNode document = (ObjectNode) toLegacy(readCanonical());
-        ((ObjectNode) document.get("rules").get(9)).put("status", "DRAFT");
+        int ruleCount = document.get("rules").size();
+        ((ObjectNode) document.get("rules").get(ruleCount - 1)).put("status", "DRAFT");
 
         TriageRuleRegistry legacy = loadFrom(temp, document);
         assertThat(legacy.skippedRuleIds()).hasSize(1);
-        assertThat(legacy.rules()).hasSize(9);
+        assertThat(legacy.rules()).hasSize(ruleCount - 1);
     }
 
     // ------------------------------------------------------------------ helpers

@@ -1,5 +1,6 @@
 package com.carebridge.backend.family.controller;
 
+import com.carebridge.backend.checklist.model.ChecklistTargetSubject;
 import com.carebridge.backend.common.config.JpaAuditingConfig;
 import com.carebridge.backend.config.MockMvcSecurityBuilderConfig;
 import com.carebridge.backend.family.dto.AssignFamilyTaskRequest;
@@ -138,6 +139,9 @@ class CareGroupControllerAssignTaskTest {
         req.setAssigneeMemberId(assigneeId);
         req.setTitle("Buy diapers");
         req.setDueAt(Instant.now().plus(1, ChronoUnit.DAYS));
+        // V2 requires an explicit MOTHER/BABY target; without it @Valid rejects with 400 before
+        // the controller is ever reached.
+        req.setTargetSubject(ChecklistTargetSubject.MOTHER);
 
         AssignFamilyTaskResponse resp = AssignFamilyTaskResponse.builder()
                 .careTaskId(UUID.randomUUID())

@@ -95,12 +95,12 @@ class ExpertProfileServiceImplSpecialtyTest {
     @Test
     void verificationStatusUsesLatestProfileDecisionReasonNotCredentialReason() {
         UUID userId = UUID.randomUUID();
-        UUID profileId = UUID.randomUUID();
+        // Canonical consolidation: ExpertProfile is mapped onto users, so profile id == user id.
         ExpertProfile profile = ExpertProfile.builder()
-            .expertProfileId(profileId)
             .userId(userId)
             .verificationStatus(com.carebridge.backend.expert.verificationstatus.VerificationStatus.REJECTED)
             .build();
+        UUID profileId = profile.getExpertProfileId();
         when(profileRepository.findByUserId(userId)).thenReturn(Optional.of(profile));
         when(profileRepository.findLatestProfileRejectionReason(profileId))
             .thenReturn(Optional.of("Ảnh hồ sơ không rõ"));

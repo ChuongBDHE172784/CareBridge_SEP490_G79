@@ -25,17 +25,20 @@ class FlywayMigrationChainTest {
                 .isEmpty();
         assertThat(manifest.malformedFiles()).isEmpty();
         assertThat(manifest.duplicateVersions()).isEmpty();
+        // The two baseline scripts are the only fixed anchors: everything after them is
+        // re-versioned whenever the canonical chain is rebuilt, so assert the append-only
+        // *shape* (versioned, unique, strictly increasing) rather than specific filenames.
         assertThat(manifest.migrations())
                 .extracting(DatabaseGate0Support.MigrationFile::script)
-                .contains(
-                        "V1__init_schema.sql",
-                        "V2__seed_reference_data.sql",
-                        "V3__add_audit_events.sql",
-                        "V4__consolidate_content_community_stages.sql",
-                        "V5__add_community_content_image_urls.sql");
+                .contains("V1__init_schema.sql", "V2__seed_reference_data.sql");
         assertThat(manifest.migrations())
                 .extracting(DatabaseGate0Support.MigrationFile::type)
                 .containsOnly("V");
+        var versions = manifest.migrations().stream()
+                .map(DatabaseGate0Support.MigrationFile::version)
+                .map(org.flywaydb.core.api.MigrationVersion::fromVersion)
+                .toList();
+        assertThat(versions).doesNotHaveDuplicates().isSorted();
     }
 
     @Test

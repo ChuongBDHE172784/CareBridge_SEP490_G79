@@ -32,6 +32,16 @@ final class DatabaseGate0Support {
     private static final Pattern MIGRATION_PATTERN =
             Pattern.compile("^([BV])(.+)__(.+)\\.sql$");
 
+    /**
+     * Privileged psql operator scripts that intentionally live beside the migrations but are never
+     * executed by Flyway: they use psql meta-commands ({@code \set}) and require operator-supplied
+     * variables, so they carry no version prefix. Flyway ignores them; Gate 0 must too, otherwise
+     * every run reports them as malformed migrations.
+     */
+    private static final java.util.Set<String> OPERATOR_SCRIPTS = java.util.Set.of(
+            "checklist_retirement_pre_finalizer.sql",
+            "checklist_retirement_post_finalizer.sql");
+
     private DatabaseGate0Support() {
     }
 
@@ -47,6 +57,7 @@ final class DatabaseGate0Support {
         try (Stream<Path> paths = Files.walk(migrationDirectory)) {
             paths.filter(Files::isRegularFile)
                     .filter(path -> path.getFileName().toString().endsWith(".sql"))
+                    .filter(path -> !OPERATOR_SCRIPTS.contains(path.getFileName().toString()))
                     .sorted(Comparator.comparing(path -> path.getFileName().toString()))
                     .forEach(path -> inspectMigration(
                             migrationDirectory, path, migrations, malformed, failures));
