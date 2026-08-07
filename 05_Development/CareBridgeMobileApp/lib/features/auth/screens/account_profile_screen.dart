@@ -7,6 +7,7 @@ import 'logout_confirmation_screen.dart';
 import 'deactivate_account_screen.dart';
 import 'linked_accounts_screen.dart';
 import '../../../core/auth/auth_state.dart';
+import '../../../shared/components/app_user_avatar.dart';
 import '../../../features/session/screens/login_sessions_screen.dart';
 import '../../../features/privacy/screens/privacy_settings_screen.dart';
 import '../../../features/familySync/screens/care_groups_screen.dart';
@@ -196,15 +197,10 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
       children: [
         Stack(
           children: [
-            CircleAvatar(
+            AppUserAvatar(
+              avatarUrl: p?.avatarUrl,
               radius: 56,
               backgroundColor: _surfaceContainerLow,
-              backgroundImage: p?.avatarUrl != null
-                  ? NetworkImage(p!.avatarUrl!)
-                  : null,
-              child: p?.avatarUrl == null
-                  ? const Icon(Icons.person, size: 48, color: _primaryContainer)
-                  : null,
             ),
             Positioned(
               bottom: 0,

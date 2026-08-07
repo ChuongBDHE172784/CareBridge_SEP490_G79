@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/auth/auth_state.dart';
+import '../../../shared/components/app_user_avatar.dart';
+import '../../auth/services/auth_service.dart';
 import '../../checklist/services/checklist_assignment_refresh_bus.dart';
 import '../../checklist/widgets/add_user_checklist_task_button.dart';
 import '../../journey/models/journey_model.dart';
@@ -89,6 +91,7 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
   RecommendationContentResponse? _recommendations;
   String? _recommendationError;
   String? _observedAccountId;
+  String? _userAvatarUrl;
 
   @override
   void initState() {
@@ -198,6 +201,12 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
       setState(() => _loading = true);
     }
     _checkUnread(generation: generation, accountId: AuthState.instance.userId);
+    try {
+      final profile = await AuthService.instance.getProfile();
+      if (mounted && generation == _loadGeneration) {
+        setState(() => _userAvatarUrl = profile.avatarUrl);
+      }
+    } catch (_) {}
     try {
       final dashboard =
           await (widget.dashboardLoader?.call() ??
@@ -436,19 +445,12 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
         padding: const EdgeInsets.fromLTRB(20, 10, 16, 0),
         child: Row(
           children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: _surfaceContainerHigh,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: _surfaceContainerHighest),
-              ),
-              child: const Icon(
-                Icons.person_outline_rounded,
-                size: 24,
-                color: _primary,
-              ),
+            AppUserAvatar(
+              avatarUrl: _userAvatarUrl,
+              radius: 22,
+              backgroundColor: _surfaceContainerHigh,
+              border: Border.all(color: _surfaceContainerHighest),
+              onTap: () => context.push('/profile'),
             ),
             const SizedBox(width: 12),
             const Expanded(

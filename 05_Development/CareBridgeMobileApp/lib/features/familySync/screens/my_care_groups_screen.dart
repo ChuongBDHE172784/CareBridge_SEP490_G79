@@ -190,10 +190,25 @@ class _MyCareGroupsScreenState extends State<MyCareGroupsScreen> {
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: _primaryContainer,
+              color: Colors.white,
               borderRadius: BorderRadius.circular(16),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x1A845143),
+                  blurRadius: 10,
+                  offset: Offset(0, 4),
+                ),
+              ],
             ),
-            child: const Icon(Icons.favorite, color: Colors.white, size: 28),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Image.asset(
+                'assets/logo.png',
+                width: 56,
+                height: 56,
+                fit: BoxFit.cover,
+              ),
+            ),
           ),
           const SizedBox(height: 8),
           const Text(

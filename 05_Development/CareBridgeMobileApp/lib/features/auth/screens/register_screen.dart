@@ -158,8 +158,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const CareBridgeMark(size: 60),
-                      const SizedBox(height: 20),
                       _buildHeading(),
                       const SizedBox(height: 22),
                       if (_errorMessage != null) ...[

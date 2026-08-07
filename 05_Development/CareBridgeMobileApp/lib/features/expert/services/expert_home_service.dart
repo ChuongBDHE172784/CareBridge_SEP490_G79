@@ -159,15 +159,18 @@ class ExpertHomeSnapshot {
 class ExpertHomeProfile {
   final String displayName;
   final String subtitle;
+  final String? avatarUrl;
 
   const ExpertHomeProfile({
     this.displayName = 'CareBridge',
     this.subtitle = 'Chuyên gia CareBridge',
+    this.avatarUrl,
   });
 
   factory ExpertHomeProfile.fromJson(Map<String, dynamic> json) {
     final title = json['professionalTitle'] as String?;
     final specialty = json['specialty'] as String?;
+    final avatar = (json['avatarUrl'] ?? json['profilePictureUrl'] ?? json['avatar']) as String?;
     return ExpertHomeProfile(
       displayName: 'CareBridge',
       subtitle: title?.isNotEmpty == true
@@ -175,6 +178,7 @@ class ExpertHomeProfile {
           : specialty?.isNotEmpty == true
           ? specialty!
           : 'Chuyên gia CareBridge',
+      avatarUrl: avatar,
     );
   }
 }

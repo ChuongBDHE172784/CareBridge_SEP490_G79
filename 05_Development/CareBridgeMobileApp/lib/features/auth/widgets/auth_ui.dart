@@ -77,7 +77,7 @@ class CareBridgeMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final radius = compact ? size * 0.28 : size * 0.32;
+    final radius = compact ? size * 0.24 : size * 0.28;
     return Semantics(
       label: 'CareBridge',
       image: true,
@@ -85,7 +85,7 @@ class CareBridgeMark extends StatelessWidget {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: AuthPalette.accentDeep,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(radius),
           boxShadow: const [
             BoxShadow(
@@ -95,32 +95,24 @@ class CareBridgeMark extends StatelessWidget {
             ),
           ],
         ),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            Icon(
-              Icons.favorite_rounded,
-              size: size * 0.52,
-              color: const Color(0xFFFFE8DF),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(radius),
+          child: Padding(
+            padding: EdgeInsets.all(size * 0.06),
+            child: Image.asset(
+              'assets/logo.png',
+              width: size,
+              height: size,
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) {
+                return Icon(
+                  Icons.health_and_safety_rounded,
+                  size: size * 0.55,
+                  color: AuthPalette.accentDeep,
+                );
+              },
             ),
-            Positioned(
-              right: size * 0.12,
-              top: size * 0.12,
-              child: Container(
-                width: size * 0.25,
-                height: size * 0.25,
-                decoration: const BoxDecoration(
-                  color: AuthPalette.accent,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.add_rounded,
-                  size: size * 0.2,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

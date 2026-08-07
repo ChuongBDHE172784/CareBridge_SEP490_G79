@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../shared/components/app_user_avatar.dart';
 import '../../community/screens/community_feed_screen.dart';
 import '../../consultation/screens/expert_requests_tab_screen.dart';
 import '../../expert/services/expert_home_service.dart';
@@ -122,15 +124,11 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
     final profile = snapshot?.profile ?? const ExpertHomeProfile();
     return Row(
       children: [
-        Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(
-            color: _surfaceHigh,
-            shape: BoxShape.circle,
-            boxShadow: _softShadow,
-          ),
-          child: const Icon(Icons.badge_outlined, color: _primary, size: 31),
+        AppUserAvatar(
+          avatarUrl: profile.avatarUrl,
+          radius: 28,
+          backgroundColor: _surfaceHigh,
+          onTap: () => context.push('/profile'),
         ),
         const SizedBox(width: 14),
         Expanded(

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/auth/auth_state.dart';
 import '../../../core/network/api_client.dart';
+import '../../../shared/components/app_user_avatar.dart';
 import '../../auth/screens/account_profile_screen.dart';
 import '../../community/screens/community_feed_screen.dart';
 import '../../community/models/content_model.dart';
@@ -313,14 +314,10 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
   Widget _buildHeader() {
     return Row(
       children: [
-        Container(
-          width: 52,
-          height: 52,
-          decoration: const BoxDecoration(
-            color: _surfaceLow,
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(Icons.family_restroom, color: _primary),
+        AppUserAvatar(
+          radius: 26,
+          backgroundColor: _surfaceLow,
+          onTap: () => context.push('/profile'),
         ),
         const SizedBox(width: 14),
         const Expanded(
@@ -961,10 +958,10 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
       key: Key('family-member-${member.memberId}'),
       child: ListTile(
         contentPadding: EdgeInsets.zero,
-        leading: const CircleAvatar(
+        leading: AppUserAvatar(
+          avatarUrl: member.avatarUrl,
+          radius: 20,
           backgroundColor: _surfaceLow,
-          foregroundColor: _primary,
-          child: Icon(Icons.person_outline),
         ),
         title: Text(member.displayName),
         subtitle: Text(

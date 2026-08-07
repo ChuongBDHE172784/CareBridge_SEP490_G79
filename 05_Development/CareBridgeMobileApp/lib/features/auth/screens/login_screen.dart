@@ -144,8 +144,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const CareBridgeMark(size: 68),
-                      const SizedBox(height: 22),
                       _buildHeading(),
                       const SizedBox(height: 24),
                       if (_errorMessage != null) ...[
