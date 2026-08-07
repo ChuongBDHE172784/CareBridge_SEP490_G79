@@ -1,0 +1,2 @@
+# gen_report.py imports usecases.py, so Python caches it here on every run.
+__pycache__/

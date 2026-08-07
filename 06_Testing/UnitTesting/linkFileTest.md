@@ -34,9 +34,25 @@ npx vitest run src/features/<area>
 
 **Nằm trong phạm vi Unit Test report:** mọi test chạy hoàn toàn trong bộ nhớ — service/policy/mapper/validator test bằng Mockito, `@WebMvcTest` controller slice, widget test Flutter, và component/service test Vitest.
 
-**Loại trừ khỏi Unit Test report** (nhưng vẫn liệt kê bên dưới để tra cứu): các class có hậu tố
+**Loại trừ 1 — integration test** (vẫn liệt kê bên dưới để tra cứu): các class có hậu tố
 `*IntegrationTest`, `*PostgresTest`, `*PostgresIntegrationTest`, `*EmbeddedPostgresTest`, `*SmokeTest`.
 Đây là **integration test** cần Docker/Testcontainers hoặc embedded PostgreSQL; khi Docker tắt chúng báo `ExceptionInInitializerError` / `NoClassDefFoundError` — lỗi môi trường, không phải lỗi code. Chúng thuộc báo cáo Integration/E2E, không thuộc Report 5 (Unit Test).
+
+**Loại trừ 2 — hạ tầng xuyên suốt, không tương ứng use case nào trên sản phẩm** (263 TC). Test vẫn
+chạy và vẫn xanh, chỉ không đứng thành sheet riêng trong workbook:
+
+| Nhóm | TC | Nội dung |
+|---|---:|---|
+| Platform & Configuration | 78 | Nạp `.env`, datasource post-processor, `GlobalExceptionHandler`, migration contract, dev seeder |
+| Audit & Security Incident | 76 | Audit trail xuyên suốt (`AuditServiceImpl`, `SecurityIncident*`) |
+| Firebase Realtime Bridge | 47 | Adapter kỹ thuật sau chat: token, signaling port, retention job |
+| Search | 38 | `SearchController` + content/question search provider |
+| Checklist Retention Ops | 24 | Job dọn dữ liệu checklist hết hạn |
+
+> Bốn test UI trong `test/` từng bị gộp nhầm vào nhóm "Platform" — `app_router_test` (18),
+> `mother_home_screen_test` (8), `home_shell_test` (5), `widget_test` (1) — đã được **tách ra
+> thành use case `Home & Navigation`** và **vẫn nằm trong report**: đây là trang chủ của mẹ và
+> thanh điều hướng 5 tab, không phải hạ tầng.
 
 **Số liệu sau khi hoàn thiện (chạy thật ngày 2026-08-08)**
 
@@ -45,7 +61,9 @@ npx vitest run src/features/<area>
 | Backend (unit) | 530 | 3.760 | 3.757 | 0 | 3 |
 | Mobile (Flutter) | 156 | 934 | 934 | 0 | 0 |
 | Web Portal (Vitest) | 31 | 137 | 137 | 0 | 0 |
-| **Tổng (Report 5)** | **717** | **4.831** | **4.828** | **0** | **3** |
+| **Tổng đã chạy** | **717** | **4.831** | **4.828** | **0** | **3** |
+| − Hạ tầng loại trừ khỏi report | | −263 | −261 | 0 | −2 |
+| **Tính vào Report 5 (78 use case)** | | **4.568** | **4.567** | **0** | **1** |
 | Backend (integration) | 140 | 271 | 62 | 142 | 67 |
 
 Lệnh xác nhận cuối: `./mvnw test` → `Tests run: 4031, Failures: 0, Errors: 142, Skipped: 70`.
@@ -53,6 +71,21 @@ Lệnh xác nhận cuối: `./mvnw test` → `Tests run: 4031, Failures: 0, Erro
 > 142 "errors" ở dòng integration là lỗi **môi trường** (Docker/Testcontainers không chạy trên máy
 > build), không phải lỗi code, và **không** được tính vào Report 5.
 > 3 test `skipped` là các ca có điều kiện môi trường (`@EnabledIf`), không phải test hỏng.
+
+**Quy ước sheet trong workbook:** mỗi use case đúng **một** sheet, không tách `(1)/(2)`. Các use case
+quá nhỏ đã được gộp vào use case cha để tab không bị vụn — ví dụ *Like & Bookmark*, *View Question
+Detail*, *Community Image Attachment* nằm trong sheet **Post Question**; *Direct Message* và
+*Chat Attachment* nằm trong **Direct Conversation**. Tổng cộng 78 sheet use case + 5 sheet hệ thống
+(`Guideline`, `Cover`, `MethodList`, `Statistics`, `Defects`).
+
+> **Mức chi tiết của 78 sheet use case.** Chúng được sinh tự động từ kết quả chạy thật (surefire XML,
+> `flutter test --machine`, `vitest --reporter=json`). Các nguồn này chỉ có **tên test case + trạng
+> thái**, không có giá trị tham số đầu vào hay giá trị trả về — nên `Input condition` / `Expected
+> result` là *ý định* của test case, diễn giải từ tên, chứ không phải dữ liệu cụ thể như hai file
+> `Report5.1_..._reference*.xlsx` (vốn được viết tay từ mã nguồn test). Việc chuyển sang giá trị
+> thật đang hoãn lại; cách làm khi cần: [guide.md](guide.md) mục 7.
+
+> **Cách chạy test và cách cập nhật báo cáo**: xem [guide.md](guide.md).
 
 ---
 
@@ -682,11 +715,14 @@ Nguyên tắc xử lý đã áp dụng:
 - test lệch so với code hiện tại (đổi route, đổi API, đổi ràng buộc) → **sửa test**;
 - code lệch so với hợp đồng an toàn/RBAC → **giữ test đỏ** cho tới khi chủ dự án xác nhận, rồi **sửa code**.
 
-| Defect | Trạng thái | Cách xử lý |
-|---|---|---|
-| `RedFlagRuleController` mở cho MODERATOR / CONTENT_ADMIN (commit `ff31c960`) | ✅ Đã sửa | `@PreAuthorize("hasRole('SYSTEM_ADMIN')")` — khớp với route `/admin/safety-rules` vốn đã là `requiredRoles={['SYSTEM_ADMIN']}` ở web. Test mở rộng thành `@ParameterizedTest` phủ 5 role bị từ chối + 1 ca SYSTEM_ADMIN 200. |
-| `AiModerationAdminController` mở cho MODERATOR / CONTENT_ADMIN (cùng commit) | ✅ Đã sửa | Class → `hasRole('SYSTEM_ADMIN')`; riêng `GET /status` giữ `hasAnyRole('SYSTEM_ADMIN','MODERATOR')` vì trang moderator `PendingContentQueuePage` đọc nó để biết AI screening đang bật. `policies` CRUD / `test` / `rescan` giờ admin-only. |
-| `GrowthMeasurementFormScreen` gửi `note: ""` đè lên `null` | ✅ Đã sửa | `existing?.note?.trim() ?? ''` — chuẩn hoá cả hai vế trước khi so sánh. Bổ sung 2 test: xoá ghi chú có sẵn *vẫn* gửi `note: ""`, và ghi chú không đổi *không* lọt vào payload. |
+Mã defect dưới đây khớp với sheet `Defects` (phần A) và ô `Defect ID` trên từng sheet use case
+trong `Report5_Unit Test_CareBridge.xlsx`.
+
+| Mã | Defect | Trạng thái | Cách xử lý |
+|---|---|---|---|
+| `DEF-RBAC-001` | `RedFlagRuleController` mở cho MODERATOR / CONTENT_ADMIN (commit `ff31c960`) | ✅ Đã sửa | `@PreAuthorize("hasRole('SYSTEM_ADMIN')")` — khớp với route `/admin/safety-rules` vốn đã là `requiredRoles={['SYSTEM_ADMIN']}` ở web. Test mở rộng thành `@ParameterizedTest` phủ 5 role bị từ chối + 1 ca SYSTEM_ADMIN 200. |
+| `DEF-RBAC-002` | `AiModerationAdminController` mở cho MODERATOR / CONTENT_ADMIN (cùng commit) | ✅ Đã sửa | Class → `hasRole('SYSTEM_ADMIN')`; riêng `GET /status` giữ `hasAnyRole('SYSTEM_ADMIN','MODERATOR')` vì trang moderator `PendingContentQueuePage` đọc nó để biết AI screening đang bật. `policies` CRUD / `test` / `rescan` giờ admin-only. |
+| `DEF-DATA-003` | `GrowthMeasurementFormScreen` gửi `note: ""` đè lên `null` | ✅ Đã sửa | `existing?.note?.trim() ?? ''` — chuẩn hoá cả hai vế trước khi so sánh. Bổ sung 2 test: xoá ghi chú có sẵn *vẫn* gửi `note: ""`, và ghi chú không đổi *không* lọt vào payload. |
 
 **Backend (integration)**: bật Docker Desktop trước khi chạy; nếu tắt sẽ báo
 `NoClassDefFoundError: AbstractPostgresIntegrationTest` — lỗi môi trường, không phải lỗi code.
