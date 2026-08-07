@@ -173,12 +173,20 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
         '${widget.careGroupId ?? ''}:${task.id}:${action.apiValue}';
     final requestId = _actionRequestIds.putIfAbsent(requestKey, _newRequestId);
     try {
-      await _service.performChecklistAction(
-        taskId: task.id,
-        action: action,
-        careGroupId: widget.careGroupId,
-        clientRequestId: requestId,
-      );
+      if (task.isChecklist) {
+        await _service.performChecklistAction(
+          taskId: task.id,
+          action: action,
+          careGroupId: widget.careGroupId,
+          clientRequestId: requestId,
+        );
+      } else {
+        await _service.performAction(
+          taskKind: task.kind,
+          taskId: task.id,
+          action: action,
+        );
+      }
       await _load();
       if (!mounted) return;
       if (_failure == null) {

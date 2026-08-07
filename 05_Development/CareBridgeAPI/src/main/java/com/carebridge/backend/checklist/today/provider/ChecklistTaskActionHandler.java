@@ -20,7 +20,6 @@ import com.carebridge.backend.checklist.today.model.TaskKind;
 import com.carebridge.backend.checklist.today.policy.UnifiedTaskAccessPolicy;
 import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.content.entity.ChecklistTemplate;
-import com.carebridge.backend.content.entity.ChecklistTemplateStatus;
 import com.carebridge.backend.content.repository.ChecklistTemplateRepository;
 import jakarta.persistence.EntityManager;
 import java.time.Clock;
@@ -297,13 +296,7 @@ public class ChecklistTaskActionHandler implements TaskActionHandler {
         ChecklistTemplate template = templateRepository
                 .findByTemplateVersionId(instance.getTemplateVersionId())
                 .orElse(null);
-        return template != null
-                && template.getStatus() == ChecklistTemplateStatus.APPROVED
-                && (template.getRecipientScope()
-                        == com.carebridge.backend.checklist.model.ChecklistRecipientScope.MOTHER
-                    || template.getRecipientScope()
-                        == com.carebridge.backend.checklist.model.ChecklistRecipientScope.BOTH)
-                && ChecklistTemplateVisibilityPolicy.isVisible(instance, template);
+        return ChecklistTemplateVisibilityPolicy.isVisible(instance, template);
     }
 
     private record LockedAggregate(
