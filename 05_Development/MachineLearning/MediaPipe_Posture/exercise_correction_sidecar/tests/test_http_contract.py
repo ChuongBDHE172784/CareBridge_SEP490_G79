@@ -53,7 +53,10 @@ class FakeRegistry:
     def predict(exercise_key: str, landmarks: dict[str, Landmark]) -> Prediction:
         assert landmarks
         predicted = "up" if exercise_key == "squat" else "C"
-        return Prediction(predicted, 0.99, True, 99.0, ())
+        # Lunges reach the error model only in the down phase, where the class is
+        # the verdict and the phase has to travel separately.
+        stage = {"squat": "up", "lunge": "D"}.get(exercise_key)
+        return Prediction(predicted, 0.99, True, 99.0, (), stage=stage)
 
 
 def _payload(exercise_key: str) -> dict[str, Any]:
@@ -82,6 +85,9 @@ def test_supported_exercises_follow_versioned_contract(exercise_key: str) -> Non
     assert body["sequenceNumber"] == 7
     assert body["inferenceStreamId"] == "demo-stream-1"
     assert body["correct"] is True
+    # The phase is always present as a field, null where the exercise has none.
+    assert "stage" in body
+    assert body["stage"] == {"squat": "up", "lunge": "D"}.get(exercise_key)
 
 
 def test_unknown_exercise_is_rejected_without_fallback() -> None:

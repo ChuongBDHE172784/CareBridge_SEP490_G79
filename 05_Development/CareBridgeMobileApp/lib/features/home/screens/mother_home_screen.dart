@@ -365,15 +365,15 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
                     _buildDashboardLoadingState()
                   else ...[
                     _buildJourneyCard(),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 28),
+                    _buildDiscoverSection(),
+                    const SizedBox(height: 28),
                     _buildAlertCard(),
                     const SizedBox(height: 28),
                     _buildQuickActions(),
                     const SizedBox(height: 28),
                   ],
                   _buildTasksSection(),
-                  const SizedBox(height: 28),
-                  _buildDiscoverSection(),
                   const SizedBox(height: 28),
                   _buildRecommendationSection(),
                   const SizedBox(height: 8),

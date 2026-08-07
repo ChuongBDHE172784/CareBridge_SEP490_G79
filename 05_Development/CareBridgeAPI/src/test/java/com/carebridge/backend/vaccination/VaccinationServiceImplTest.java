@@ -9,6 +9,7 @@ import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.health.entity.HealthRecord;
 import com.carebridge.backend.health.entity.HealthRecordStatus;
 import com.carebridge.backend.health.repository.HealthRecordRepository;
+import com.carebridge.backend.vaccination.config.VaccinationProperties;
 import com.carebridge.backend.vaccination.dto.AddVaccinationRecordRequest;
 import com.carebridge.backend.vaccination.dto.MarkVaccinationCompletedRequest;
 import com.carebridge.backend.vaccination.dto.PostponeVaccinationRequest;
@@ -27,6 +28,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 
@@ -49,6 +51,7 @@ class VaccinationServiceImplTest {
     @Mock private VaccinationRecordRepository recordRepository;
     @Mock private HealthRecordRepository healthRecordRepository;
     @Mock private AuditService auditService;
+    @Spy private VaccinationProperties properties = new VaccinationProperties();
     @InjectMocks private VaccinationServiceImpl vaccinationService;
 
     private static final UUID CALLER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
@@ -159,7 +162,7 @@ class VaccinationServiceImplTest {
         BabyProfile baby = makeBaby(LocalDate.now().minusDays(61));
         when(babyRepository.findById(BABY_ID)).thenReturn(Optional.of(baby));
         when(accessPolicy.canView(baby, CALLER_ID)).thenReturn(true);
-        when(referenceRepository.findAllByOrderByOffsetDaysAsc())
+        when(referenceRepository.findByScheduleVersionOrderByOffsetDaysAscDoseNumberAscVaccineNameAsc("vn-2026"))
                 .thenReturn(List.of(makeRef("BCG", 1, 0), makeRef("DTP-VGB-Hib", 1, 60)));
         when(recordRepository.findAllByBabyId(BABY_ID)).thenReturn(List.of());
 
@@ -175,7 +178,7 @@ class VaccinationServiceImplTest {
         BabyProfile baby = makeBaby(LocalDate.now().minusDays(70));
         when(babyRepository.findById(BABY_ID)).thenReturn(Optional.of(baby));
         when(accessPolicy.canView(baby, CALLER_ID)).thenReturn(true);
-        when(referenceRepository.findAllByOrderByOffsetDaysAsc())
+        when(referenceRepository.findByScheduleVersionOrderByOffsetDaysAscDoseNumberAscVaccineNameAsc("vn-2026"))
                 .thenReturn(List.of(makeRef("BCG", 1, 0)));
         when(recordRepository.findAllByBabyId(BABY_ID)).thenReturn(List.of());
 
@@ -191,7 +194,7 @@ class VaccinationServiceImplTest {
         when(babyRepository.findById(BABY_ID)).thenReturn(Optional.of(baby));
         when(accessPolicy.canView(baby, CALLER_ID)).thenReturn(true);
         VaccinationReferenceSchedule ref = makeRef("BCG", 1, 0);
-        when(referenceRepository.findAllByOrderByOffsetDaysAsc()).thenReturn(List.of(ref));
+        when(referenceRepository.findByScheduleVersionOrderByOffsetDaysAscDoseNumberAscVaccineNameAsc("vn-2026")).thenReturn(List.of(ref));
 
         VaccinationRecord completedRecord = VaccinationRecord.builder()
                 .id(UUID.randomUUID()).babyId(BABY_ID)
@@ -211,7 +214,7 @@ class VaccinationServiceImplTest {
         BabyProfile baby = makeBaby(LocalDate.now().minusDays(5));
         when(babyRepository.findById(BABY_ID)).thenReturn(Optional.of(baby));
         when(accessPolicy.canView(baby, CALLER_ID)).thenReturn(true);
-        when(referenceRepository.findAllByOrderByOffsetDaysAsc()).thenReturn(List.of(makeRef("BCG", 1, 0)));
+        when(referenceRepository.findByScheduleVersionOrderByOffsetDaysAscDoseNumberAscVaccineNameAsc("vn-2026")).thenReturn(List.of(makeRef("BCG", 1, 0)));
         VaccinationRecord deletedRecord = VaccinationRecord.builder()
                 .id(UUID.randomUUID())
                 .babyId(BABY_ID)
@@ -234,7 +237,7 @@ class VaccinationServiceImplTest {
         BabyProfile baby = makeBaby(LocalDate.now().minusDays(5));
         when(babyRepository.findById(BABY_ID)).thenReturn(Optional.of(baby));
         when(accessPolicy.canView(baby, CALLER_ID)).thenReturn(true);
-        when(referenceRepository.findAllByOrderByOffsetDaysAsc()).thenReturn(List.of());
+        when(referenceRepository.findByScheduleVersionOrderByOffsetDaysAscDoseNumberAscVaccineNameAsc("vn-2026")).thenReturn(List.of());
         when(recordRepository.findAllByBabyId(BABY_ID)).thenReturn(List.of());
 
         VaccinationScheduleResponse resp = vaccinationService.getVaccinationSchedule(BABY_ID, CALLER_ID);

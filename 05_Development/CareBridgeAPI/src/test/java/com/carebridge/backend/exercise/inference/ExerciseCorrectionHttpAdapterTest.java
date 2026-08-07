@@ -11,11 +11,19 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 import com.carebridge.backend.exercise.inference.PostureInferencePort.InferenceRequest;
 import com.carebridge.backend.exercise.inference.PostureInferencePort.InferenceResult;
+import com.sun.net.httpserver.HttpServer;
+import java.io.OutputStream;
 import java.math.BigDecimal;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
@@ -146,6 +154,141 @@ class ExerciseCorrectionHttpAdapterTest {
                 .extracting("reasonCode")
                 .isEqualTo("SIDECAR_INVALID_RESPONSE");
         server.verify();
+    }
+
+    @Test
+    void infer_carriesTheMovementPhaseSeparatelyFromTheClass() {
+        RestClient.Builder builder = RestClient.builder().baseUrl("http://exercise-correction:8002");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        ExerciseCorrectionHttpAdapter adapter =
+                new ExerciseCorrectionHttpAdapter(true, builder.build());
+
+        // A lunge in the down phase: predictedClass is the error verdict, not the phase.
+        server.expect(requestTo("http://exercise-correction:8002/v1/inference/landmarks"))
+                .andRespond(withSuccess(
+                        successResponse().replace(
+                                "\"predictedClass\":\"GOOD_FORM\"",
+                                "\"predictedClass\":\"L\",\"stage\":\"D\""),
+                        MediaType.APPLICATION_JSON));
+
+        InferenceResult result = adapter.infer(validRequest());
+
+        assertThat(result.predictedClass()).isEqualTo("L");
+        assertThat(result.stage()).isEqualTo("D");
+        server.verify();
+    }
+
+    @Test
+    void infer_acceptsAnOlderSidecarThatOmitsTheStage() {
+        RestClient.Builder builder = RestClient.builder().baseUrl("http://exercise-correction:8002");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        ExerciseCorrectionHttpAdapter adapter =
+                new ExerciseCorrectionHttpAdapter(true, builder.build());
+
+        server.expect(requestTo("http://exercise-correction:8002/v1/inference/landmarks"))
+                .andRespond(withSuccess(successResponse(), MediaType.APPLICATION_JSON));
+
+        assertThat(adapter.infer(validRequest()).stage()).isNull();
+        server.verify();
+    }
+
+    @Test
+    void infer_rejectsAStageThatIsNotAShortToken() {
+        RestClient.Builder builder = RestClient.builder().baseUrl("http://exercise-correction:8002");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        ExerciseCorrectionHttpAdapter adapter =
+                new ExerciseCorrectionHttpAdapter(true, builder.build());
+
+        server.expect(requestTo("http://exercise-correction:8002/v1/inference/landmarks"))
+                .andRespond(withSuccess(
+                        successResponse().replace(
+                                "\"predictedClass\":\"GOOD_FORM\"",
+                                "\"predictedClass\":\"GOOD_FORM\",\"stage\":\"<script>alert(1)</script>\""),
+                        MediaType.APPLICATION_JSON));
+
+        assertThatThrownBy(() -> adapter.infer(validRequest()))
+                .isInstanceOf(PostureInferenceUnavailableException.class)
+                .extracting("reasonCode")
+                .isEqualTo("SIDECAR_INVALID_RESPONSE");
+        server.verify();
+    }
+
+    @Test
+    void infer_mapsClientErrorToRejectedRequestCode() {
+        RestClient.Builder builder = RestClient.builder().baseUrl("http://exercise-correction:8002");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        ExerciseCorrectionHttpAdapter adapter =
+                new ExerciseCorrectionHttpAdapter(true, builder.build());
+
+        server.expect(requestTo("http://exercise-correction:8002/v1/inference/landmarks"))
+                .andRespond(withStatus(HttpStatusCode.valueOf(422))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .body("{\"code\":\"INVALID_INPUT\",\"message\":\"The inference request is invalid\"}"));
+
+        assertThatThrownBy(() -> adapter.infer(validRequest()))
+                .isInstanceOf(PostureInferenceUnavailableException.class)
+                .extracting("reasonCode")
+                .isEqualTo("SIDECAR_REJECTED_REQUEST");
+        server.verify();
+    }
+
+    @Test
+    void sidecarErrorCodeKeepsStableCodesAndSuppressesEverythingElse() {
+        assertThat(ExerciseCorrectionHttpAdapter.sidecarErrorCode(
+                        "{\"code\":\"INVALID_INPUT\",\"message\":\"ignored\"}"))
+                .isEqualTo("INVALID_INPUT");
+        assertThat(ExerciseCorrectionHttpAdapter.sidecarErrorCode(null)).isEqualTo("ABSENT");
+        assertThat(ExerciseCorrectionHttpAdapter.sidecarErrorCode("   ")).isEqualTo("ABSENT");
+        assertThat(ExerciseCorrectionHttpAdapter.sidecarErrorCode("<html>502</html>"))
+                .isEqualTo("UNPARSEABLE");
+        assertThat(ExerciseCorrectionHttpAdapter.sidecarErrorCode("{\"detail\":\"must-not-leak\"}"))
+                .isEqualTo("UNRECOGNIZED");
+        // Free-form text in `code` must never reach the log verbatim.
+        assertThat(ExerciseCorrectionHttpAdapter.sidecarErrorCode(
+                        "{\"code\":\"patient 0123456789 must-not-leak\"}"))
+                .isEqualTo("UNRECOGNIZED");
+        assertThat(ExerciseCorrectionHttpAdapter.sidecarErrorCode("{\"code\":42}"))
+                .isEqualTo("UNRECOGNIZED");
+    }
+
+    /**
+     * Regression guard: the JDK HttpClient defaults to HTTP_2, which over cleartext
+     * negotiates via `Upgrade: h2c`. The sidecar runs uvicorn/h11 (HTTP/1.1 only) and
+     * h11 withholds the request body once it sees that header, so every inference came
+     * back 422. The adapter must therefore speak plain HTTP/1.1 with no upgrade offer.
+     */
+    @Test
+    void infer_usesPlainHttp11WithoutProtocolUpgrade() throws Exception {
+        HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
+        List<String> upgradeHeaders = new CopyOnWriteArrayList<>();
+        AtomicReference<String> receivedBody = new AtomicReference<>("");
+        server.createContext("/v1/inference/landmarks", exchange -> {
+            String upgrade = exchange.getRequestHeaders().getFirst("Upgrade");
+            if (upgrade != null) {
+                upgradeHeaders.add(upgrade);
+            }
+            receivedBody.set(new String(
+                    exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8));
+            byte[] payload = successResponse().getBytes(StandardCharsets.UTF_8);
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, payload.length);
+            try (OutputStream out = exchange.getResponseBody()) {
+                out.write(payload);
+            }
+        });
+        server.start();
+        try {
+            ExerciseCorrectionHttpAdapter adapter = new ExerciseCorrectionHttpAdapter(
+                    true, "http://127.0.0.1:" + server.getAddress().getPort(), 500, 5_000);
+
+            InferenceResult result = adapter.infer(validRequest());
+
+            assertThat(upgradeHeaders).isEmpty();
+            assertThat(receivedBody.get()).contains("\"exerciseKey\":\"squat\"");
+            assertThat(result.predictedClass()).isEqualTo("GOOD_FORM");
+        } finally {
+            server.stop(0);
+        }
     }
 
     @Test

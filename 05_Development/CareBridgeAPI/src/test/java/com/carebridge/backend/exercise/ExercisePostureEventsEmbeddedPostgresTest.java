@@ -139,8 +139,9 @@ class ExercisePostureEventsEmbeddedPostgresTest extends AbstractEmbeddedPostgres
                 sessionId, ownerUserId, postureRequest());
 
         assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
-        assertThat(response.getData().getPostureCode()).isEqualTo("MODEL_UNAVAILABLE");
-        assertPersistedUnavailableEvent();
+        assertThat(response.getData().getPostureCode())
+                .isEqualTo("MODEL_UNAVAILABLE_RULE_FALLBACK_UNKNOWN");
+        assertPersistedDegradedEvent();
     }
 
     @Test
@@ -151,10 +152,11 @@ class ExercisePostureEventsEmbeddedPostgresTest extends AbstractEmbeddedPostgres
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(POSTURE_EVENT_BODY))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.postureCode").value("MODEL_UNAVAILABLE"))
+                .andExpect(jsonPath("$.data.postureCode")
+                        .value("MODEL_UNAVAILABLE_RULE_FALLBACK_UNKNOWN"))
                 .andExpect(jsonPath("$.data.severity").value("WARNING"));
 
-        assertPersistedUnavailableEvent();
+        assertPersistedDegradedEvent();
     }
 
     private PostureEventRequest postureRequest() {
@@ -165,7 +167,13 @@ class ExercisePostureEventsEmbeddedPostgresTest extends AbstractEmbeddedPostgres
         return request;
     }
 
-    private void assertPersistedUnavailableEvent() {
+    /**
+     * The seeded demo config is HYBRID, so a provider outage degrades to the
+     * rule-based path instead of dropping posture feedback. Only "nose" is posted
+     * here, so the trunk angle is underivable and the rule result stays UNKNOWN —
+     * the event must still persist, flagged DEGRADED rather than model-grade.
+     */
+    private void assertPersistedDegradedEvent() {
         assertThat(jdbcTemplate.queryForObject("""
                 select count(*)
                   from health_observations
@@ -175,11 +183,16 @@ class ExercisePostureEventsEmbeddedPostgresTest extends AbstractEmbeddedPostgres
                 select raw_payload_jsonb ->> 'postureCode'
                   from health_observations
                  where source_record_id=? and observation_type='POSTURE_FEEDBACK'
-                """, String.class, sessionId)).isEqualTo("MODEL_UNAVAILABLE");
+                """, String.class, sessionId)).isEqualTo("MODEL_UNAVAILABLE_RULE_FALLBACK_UNKNOWN");
         assertThat(jdbcTemplate.queryForObject("""
                 select raw_payload_jsonb ->> 'analysisStatus'
                   from health_observations
                  where source_record_id=? and observation_type='POSTURE_FEEDBACK'
-                """, String.class, sessionId)).isEqualTo("MODEL_UNAVAILABLE");
+                """, String.class, sessionId)).isEqualTo("DEGRADED");
+        assertThat(jdbcTemplate.queryForObject("""
+                select raw_payload_jsonb ->> 'provider'
+                  from health_observations
+                 where source_record_id=? and observation_type='POSTURE_FEEDBACK'
+                """, String.class, sessionId)).isEqualTo("RULE_BASED_FALLBACK");
     }
 }

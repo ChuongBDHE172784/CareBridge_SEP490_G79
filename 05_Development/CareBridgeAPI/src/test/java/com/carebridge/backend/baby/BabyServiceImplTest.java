@@ -12,6 +12,7 @@ import com.carebridge.backend.baby.policy.BabyAccessPolicy;
 import com.carebridge.backend.baby.repository.BabyProfileRepository;
 import com.carebridge.backend.baby.service.impl.BabyServiceImpl;
 import com.carebridge.backend.common.exception.BusinessException;
+import com.carebridge.backend.vaccination.service.IVaccinationBookService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -34,6 +35,7 @@ class BabyServiceImplTest {
     @Mock private BabyProfileRepository babyRepository;
     @Mock private BabyAccessPolicy accessPolicy;
     @Mock private AuditService auditService;
+    @Mock private IVaccinationBookService vaccinationBookService;
     @InjectMocks private BabyServiceImpl babyService;
 
     private static final UUID CALLER_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");

@@ -70,6 +70,17 @@ carebridge:
   recommendation:
     # Safe fallback remains available while personalization is disabled.
     enabled: ${CAREBRIDGE_RECOMMENDATION_ENABLED:false}
+  vaccination:
+    # MF-03 — which catalogue in vaccination_schedules is scanned when a baby is registered.
+    # The table also holds seven pre-existing rows under per-row 'legacy-*' versions; they
+    # are excluded from the active catalogue by version, not deleted.
+    schedule-version: ${CAREBRIDGE_VACCINATION_SCHEDULE_VERSION:vn-2026}
+    reminder:
+      enabled: ${CAREBRIDGE_VACCINATION_REMINDER_ENABLED:true}
+      # One reminder per lead value per dose, deduplicated on (record, leadDays).
+      lead-days: ${CAREBRIDGE_VACCINATION_REMINDER_LEAD_DAYS:7,3,1,0}
+      zone: ${CAREBRIDGE_VACCINATION_REMINDER_ZONE:Asia/Ho_Chi_Minh}
+      cron: ${CAREBRIDGE_VACCINATION_REMINDER_CRON:0 0 7 * * *}
   exercise-correction:
     # Disabled by default so RULE_BASED behavior remains available without the optional sidecar.
     enabled: ${CAREBRIDGE_EXERCISE_CORRECTION_ENABLED:true}
