@@ -12,6 +12,8 @@ import '../../../features/session/screens/login_sessions_screen.dart';
 import '../../../features/privacy/screens/privacy_settings_screen.dart';
 import '../../../features/familySync/screens/care_groups_screen.dart';
 import '../../../features/fileManager/screens/file_manager_screen.dart';
+import '../../../features/expert/screens/expert_profile_page_screen.dart';
+import '../../../features/expert/screens/verification_documents_page_screen.dart';
 
 class AccountProfileScreen extends StatefulWidget {
   const AccountProfileScreen({super.key, this.loadProfile});
@@ -114,6 +116,7 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
 
   Widget _buildContent() {
     final p = _profile;
+    final isExpert = AuthState.instance.role == 'EXPERT';
     return RefreshIndicator(
       color: _primaryContainer,
       onRefresh: _loadProfile,
@@ -139,19 +142,47 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
             }),
           ]),
           const SizedBox(height: 16),
-          _buildMenuCard([
-            _menuItem(Icons.group_outlined, 'Nhóm chăm sóc', () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const CareGroupsScreen()),
-              );
-            }),
-            _menuItem(Icons.folder_outlined, 'Quản lý tệp', () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const FileManagerScreen()),
-              );
-            }),
-          ]),
-          const SizedBox(height: 16),
+          if (isExpert) ...[
+            _buildMenuCard([
+              _menuItem(
+                Icons.medical_information_outlined,
+                'Hồ sơ chuyên môn',
+                () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const ExpertProfilePageScreen(),
+                    ),
+                  );
+                },
+              ),
+              _menuItem(
+                Icons.verified_outlined,
+                'Chứng chỉ, giấy tờ',
+                () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const VerificationDocumentsPageScreen(),
+                    ),
+                  );
+                },
+              ),
+            ]),
+            const SizedBox(height: 16),
+          ] else ...[
+            _buildMenuCard([
+              _menuItem(Icons.group_outlined, 'Nhóm chăm sóc', () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const CareGroupsScreen()),
+                );
+              }),
+              _menuItem(Icons.folder_outlined, 'Quản lý tệp', () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const FileManagerScreen()),
+                );
+              }),
+            ]),
+            const SizedBox(height: 16),
+          ],
           _buildMenuCard([
             _menuItem(
               Icons.link_rounded,

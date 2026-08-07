@@ -353,14 +353,6 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(
-              Icons.smart_toy_outlined,
-              color: _onSurfaceVariant,
-            ),
-            onPressed: () => context.push('/rag-chat'),
-            tooltip: 'Hỏi AI CareBridge (UC-132)',
-          ),
           if (_question != null && !_isMyQuestion)
             IconButton(
               icon: const Icon(Icons.flag_outlined, color: _onSurfaceVariant),

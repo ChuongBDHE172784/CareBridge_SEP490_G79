@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../shared/components/app_user_avatar.dart';
+import '../../community/models/community_model.dart';
 import '../../community/screens/community_feed_screen.dart';
+import '../../community/screens/question_detail_screen.dart';
+import '../../community/services/community_service.dart';
 import '../../consultation/screens/expert_requests_tab_screen.dart';
 import '../../expert/services/expert_home_service.dart';
 
@@ -27,9 +30,8 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
   static const _errorContainer = Color(0xFFFFDAD6);
 
   ExpertHomeSnapshot? _snapshot;
+  List<CommunityFeedItem> _unansweredQuestions = [];
   bool _loading = true;
-  bool _onlineBusy = false;
-  int _onlineMutationGeneration = 0;
 
   @override
   void initState() {
@@ -38,47 +40,29 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
   }
 
   Future<void> _load() async {
-    final onlineGeneration = _onlineMutationGeneration;
     setState(() => _loading = true);
     final snapshot = await ExpertHomeService.instance.loadSnapshot();
+    _loadUnansweredQuestions();
     if (!mounted) return;
     setState(() {
-      final current = _snapshot;
-      _snapshot =
-          current != null && onlineGeneration != _onlineMutationGeneration
-          ? snapshot.copyWith(online: current.online)
-          : snapshot;
+      _snapshot = snapshot;
       _loading = false;
     });
   }
 
-  Future<void> _toggleOnline() async {
-    final snapshot = _snapshot;
-    if (snapshot == null || _onlineBusy) return;
-    final nextOnline = !snapshot.online;
-    _onlineMutationGeneration++;
-    setState(() => _onlineBusy = true);
-    final result = await ExpertHomeService.instance.setOnline(nextOnline);
-    if (!mounted) return;
-    setState(() {
-      _onlineBusy = false;
-      if (result.success) {
-        _snapshot = (_snapshot ?? snapshot).copyWith(
-          online: result.online ?? nextOnline,
-        );
+  Future<void> _loadUnansweredQuestions() async {
+    try {
+      final list = await CommunityService.instance.searchQuestions(
+        hasExpertAnswer: false,
+        size: 5,
+      );
+      if (mounted) {
+        setState(() {
+          _unansweredQuestions = list;
+        });
       }
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          result.message,
-          style: const TextStyle(fontFamily: 'Lexend'),
-        ),
-        duration: Duration(seconds: result.success ? 2 : 4),
-      ),
-    );
-    if (!result.success) {
-      return;
+    } catch (_) {
+      // Best-effort
     }
   }
 
@@ -112,6 +96,8 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
                   const SizedBox(height: 18),
                 ],
                 _buildCommunityCard(),
+                const SizedBox(height: 24),
+                _buildUnansweredQuestionsSection(),
               ],
             ],
           ),
@@ -159,22 +145,6 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
               ),
             ],
           ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          'Trực tuyến',
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: snapshot?.online == true ? _primary : _outline,
-          ),
-        ),
-        const SizedBox(width: 8),
-        _OnlineToggle(
-          online: snapshot?.online ?? false,
-          busy: _onlineBusy,
-          onTap: _toggleOnline,
         ),
       ],
     );
@@ -298,6 +268,178 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
     );
   }
 
+  Widget _buildUnansweredQuestionsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Câu hỏi mới cần giải đáp',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+                color: _onSurface,
+              ),
+            ),
+            InkWell(
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CommunityFeedScreen()),
+              ),
+              child: const Row(
+                children: [
+                  Text(
+                    'Xem tất cả',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: _primary,
+                    ),
+                  ),
+                  Icon(Icons.chevron_right, size: 18, color: _primary),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (_unansweredQuestions.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: _surface,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: _softShadow,
+            ),
+            child: const Center(
+              child: Text(
+                'Hiện chưa có câu hỏi mới cần giải đáp.',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 14,
+                  color: _outline,
+                ),
+              ),
+            ),
+          )
+        else
+          Column(
+            children:
+                _unansweredQuestions.map((q) => _buildQuestionItem(q)).toList(),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildQuestionItem(CommunityFeedItem item) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: _surface,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: _softShadow,
+      ),
+      child: InkWell(
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => QuestionDetailScreen(questionId: item.id),
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  if (item.topicName.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _surfaceHigh,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        item.topicName,
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: _primary,
+                        ),
+                      ),
+                    ),
+                  const Spacer(),
+                  Text(
+                    item.authorDisplay,
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 12,
+                      color: _outline,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                item.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  color: _onSurface,
+                  height: 1.3,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.chat_bubble_outline,
+                    size: 16,
+                    color: _outline,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${item.answerCount} câu trả lời',
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 12,
+                      color: _outline,
+                    ),
+                  ),
+                  const Spacer(),
+                  const Text(
+                    'Trả lời ngay',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: _primary,
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right, size: 16, color: _primary),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _openRequests() {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -313,62 +455,6 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
       offset: const Offset(0, 4),
     ),
   ];
-}
-
-class _OnlineToggle extends StatelessWidget {
-  final bool online;
-  final bool busy;
-  final VoidCallback onTap;
-
-  const _OnlineToggle({
-    required this.online,
-    required this.busy,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      key: const Key('expert-online-toggle'),
-      onTap: busy ? null : onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        width: 64,
-        height: 34,
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: online
-              ? _ExpertAppHomeScreenState._primaryContainer
-              : _ExpertAppHomeScreenState._surfaceHighest,
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: AnimatedAlign(
-          duration: const Duration(milliseconds: 180),
-          alignment: online ? Alignment.centerRight : Alignment.centerLeft,
-          child: Container(
-            width: 26,
-            height: 26,
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-            ),
-            child: busy
-                ? const Padding(
-                    padding: EdgeInsets.all(7),
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Icon(
-                    online ? Icons.check_rounded : Icons.close_rounded,
-                    size: 18,
-                    color: online
-                        ? _ExpertAppHomeScreenState._primaryContainer
-                        : _ExpertAppHomeScreenState._outline,
-                  ),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class _MetricCard extends StatelessWidget {

@@ -87,7 +87,8 @@ import '../../features/emergency/screens/family_alert_detail_screen.dart';
 import '../../features/safety/screens/safety_monitoring_screen.dart';
 import '../../features/safety/screens/enable_fall_detection_screen.dart';
 import '../../features/expert/screens/expert_profile_setup_screen.dart';
-import '../../features/expert/screens/upload_verification_docs_screen.dart';
+import '../../features/expert/screens/expert_profile_page_screen.dart';
+import '../../features/expert/screens/verification_documents_page_screen.dart';
 import '../../features/expert/screens/verification_status_screen.dart';
 import '../../features/expert/screens/expert_public_profile_screen.dart';
 import '../../features/expert/screens/expert_calendar_screen.dart';
@@ -1000,10 +1001,14 @@ final GoRouter appRouter = GoRouter(
       path: '/expert/identity',
       builder: (context, state) => const ExpertIdentityCaptureScreen(),
     ),
+    GoRoute(
+      path: '/expert/profile',
+      builder: (context, state) => const ExpertProfilePageScreen(),
+    ),
     // CB-034: Upload Verification Documents (UC-89)
     GoRoute(
       path: '/expert/credentials',
-      builder: (context, state) => const UploadVerificationDocsScreen(),
+      builder: (context, state) => const VerificationDocumentsPageScreen(),
     ),
     // CB-035: Verification Status (UC-103, UC-173)
     GoRoute(

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../shared/components/app_user_avatar.dart';
 import '../models/consultation_request.dart';
 import '../services/consultation_request_refresh_bus.dart';
 import '../services/consultation_request_service.dart';
@@ -15,15 +16,26 @@ class ExpertRequestQueueScreen extends StatefulWidget {
 
 class _ExpertRequestQueueScreenState extends State<ExpertRequestQueueScreen> {
   static const _primary = Color(0xFF845143);
-  static const _canvas = Color(0xFFF6F1EC);
-  static const _filters = <String, String?>{
-    'Đang chờ': 'PENDING',
-    'Đã nhận': 'ACCEPTED',
-    'Bị từ chối': 'REJECTED',
-    'Đã hủy': 'CANCELLED',
-    'Hết hạn': 'EXPIRED',
-    'Tất cả': null,
-  };
+  static const _primaryContainer = Color(0xFFC98C7B);
+  static const _canvas = Color(0xFFFFF8F6);
+  static const _surface = Colors.white;
+  static const _surfaceLow = Color(0xFFFFF1EC);
+  static const _surfaceHigh = Color(0xFFFFE2D9);
+  static const _onSurface = Color(0xFF271812);
+  static const _onSurfaceVariant = Color(0xFF524440);
+  static const _outline = Color(0xFF84736F);
+  static const _outlineVariant = Color(0xFFD6C2BD);
+  static const _errColor = Color(0xFFBA1A1A);
+  static const _errorContainer = Color(0xFFFFDAD6);
+
+  static const _filterOptions = <_FilterItem>[
+    _FilterItem('Đang chờ', 'PENDING', Icons.hourglass_top_rounded),
+    _FilterItem('Đã nhận', 'ACCEPTED', Icons.check_circle_outline_rounded),
+    _FilterItem('Bị từ chối', 'REJECTED', Icons.highlight_off_rounded),
+    _FilterItem('Đã hủy', 'CANCELLED', Icons.cancel_outlined),
+    _FilterItem('Hết hạn', 'EXPIRED', Icons.schedule_outlined),
+    _FilterItem('Tất cả', null, Icons.grid_view_rounded),
+  ];
 
   String? _status = 'PENDING';
   List<ConsultationRequestSummary> _items = [];
@@ -109,21 +121,36 @@ class _ExpertRequestQueueScreenState extends State<ExpertRequestQueueScreen> {
     final reason = await showDialog<String?>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Từ chối yêu cầu'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text(
+          'Từ chối yêu cầu',
+          style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700),
+        ),
         content: TextField(
           controller: controller,
           maxLength: 500,
           maxLines: 4,
-          decoration: const InputDecoration(
-            labelText: 'Lý do (không bắt buộc)',
+          decoration: InputDecoration(
+            hintText: 'Nhập lý do từ chối (không bắt buộc)...',
+            hintStyle: const TextStyle(fontFamily: 'Lexend', fontSize: 13),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Đóng'),
+            child: const Text('Hủy', style: TextStyle(color: _outline)),
           ),
-          FilledButton(
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _errColor,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+            ),
             onPressed: () => Navigator.pop(context, controller.text),
             child: const Text('Từ chối'),
           ),
@@ -166,187 +193,172 @@ class _ExpertRequestQueueScreenState extends State<ExpertRequestQueueScreen> {
       color: _canvas,
       child: Column(
         children: [
+          // Filter Bar
           SizedBox(
-            height: 58,
-            child: ListView(
+            height: 56,
+            child: ListView.builder(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              children: _filters.entries
-                  .map(
-                    (entry) => Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: ChoiceChip(
-                        label: Text(entry.key),
-                        selected: _status == entry.value,
-                        selectedColor: const Color(0xFFFFE2D9),
-                        labelStyle: TextStyle(
-                          color: _status == entry.value
-                              ? _primary
-                              : const Color(0xFF524440),
-                          fontWeight: _status == entry.value
-                              ? FontWeight.w700
-                              : FontWeight.w500,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              itemCount: _filterOptions.length,
+              itemBuilder: (context, index) {
+                final opt = _filterOptions[index];
+                final isSelected = _status == opt.value;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: InkWell(
+                    onTap: () {
+                      setState(() => _status = opt.value);
+                      _load(refresh: true);
+                    },
+                    borderRadius: BorderRadius.circular(20),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isSelected ? _primary : _surface,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: isSelected ? _primary : _outlineVariant,
+                          width: 1,
                         ),
-                        onSelected: (_) {
-                          setState(() => _status = entry.value);
-                          _load(refresh: true);
-                        },
+                        boxShadow: isSelected
+                            ? [
+                                BoxShadow(
+                                  color: _primary.withValues(alpha: 0.2),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            opt.icon,
+                            size: 16,
+                            color: isSelected ? Colors.white : _outline,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            opt.label,
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 13,
+                              fontWeight: isSelected
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                              color: isSelected ? Colors.white : _onSurface,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  )
-                  .toList(),
+                  ),
+                );
+              },
             ),
           ),
+
+          // Count Subheader Bar
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+            padding: const EdgeInsets.fromLTRB(20, 6, 20, 10),
             child: Row(
               children: [
                 Container(
-                  width: 32,
-                  height: 32,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFFFE2D9),
-                    shape: BoxShape.circle,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
                   ),
-                  child: const Icon(
-                    Icons.assignment_outlined,
-                    color: _primary,
-                    size: 18,
+                  decoration: BoxDecoration(
+                    color: _surfaceHigh,
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Text(
-                  _loading
-                      ? 'Đang cập nhật danh sách...'
-                      : '${_items.length} yêu cầu hiển thị',
-                  style: const TextStyle(
-                    color: Color(0xFF524440),
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.assignment_outlined,
+                        color: _primary,
+                        size: 14,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _loading
+                            ? 'Đang tải...'
+                            : '${_items.length} yêu cầu',
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          color: _primary,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
             ),
           ),
+
+          // Content List
           Expanded(
             child: _loading && _items.isEmpty
-                ? const Center(child: CircularProgressIndicator())
+                ? const Center(
+                    child: CircularProgressIndicator(color: _primaryContainer),
+                  )
                 : _error != null && _items.isEmpty
                 ? Center(
-                    child: OutlinedButton(
-                      onPressed: () => _load(refresh: true),
-                      child: const Text('Thử lại'),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.error_outline_rounded,
+                          size: 40,
+                          color: _errColor,
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Không thể tải danh sách yêu cầu',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            color: _onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        OutlinedButton(
+                          onPressed: () => _load(refresh: true),
+                          child: const Text('Thử lại'),
+                        ),
+                      ],
                     ),
                   )
                 : _items.isEmpty
-                ? const Center(child: Text('Chưa có yêu cầu tư vấn được giao'))
+                ? _buildEmptyState()
                 : RefreshIndicator(
+                    color: _primaryContainer,
                     onRefresh: () => _load(refresh: true),
                     child: ListView.builder(
                       controller: _scrollController,
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
                       itemCount: _items.length + (_hasMore ? 1 : 0),
                       itemBuilder: (context, index) {
                         if (index == _items.length) {
                           return const Padding(
                             padding: EdgeInsets.all(16),
-                            child: Center(child: CircularProgressIndicator()),
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                color: _primaryContainer,
+                              ),
+                            ),
                           );
                         }
                         final request = _items[index];
                         final busy = _busyIds.contains(request.id);
-                        return Container(
-                          key: Key('consultation-${request.id}'),
-                          margin: const EdgeInsets.only(bottom: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.06),
-                                blurRadius: 14,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(14),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  request.counterpartDisplayName ??
-                                      'Người dùng CareBridge',
-                                  style: const TextStyle(
-                                    color: Color(0xFF271812),
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(request.topic),
-                                const SizedBox(height: 8),
-                                Wrap(
-                                  spacing: 8,
-                                  crossAxisAlignment: WrapCrossAlignment.center,
-                                  children: [
-                                    Chip(
-                                      label: Text(_statusLabel(request.status)),
-                                      backgroundColor: const Color(0xFFFFE2D9),
-                                      side: BorderSide.none,
-                                    ),
-                                    Text(
-                                      _timeAgo(request.createdAt),
-                                      style: const TextStyle(
-                                        color: Color(0xFF84736F),
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                Align(
-                                  alignment: Alignment.centerRight,
-                                  child: TextButton.icon(
-                                    key: Key('view-details-${request.id}'),
-                                    onPressed: busy
-                                        ? null
-                                        : () => context.push(
-                                            '/consultation-requests/${request.id}',
-                                          ),
-                                    icon: const Icon(Icons.visibility_outlined),
-                                    label: const Text('Xem chi tiết'),
-                                  ),
-                                ),
-                                if (request.status == 'PENDING') ...[
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: FilledButton(
-                                          key: Key('accept-${request.id}'),
-                                          onPressed: busy
-                                              ? null
-                                              : () => _accept(request),
-                                          child: const Text('Chấp nhận'),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: OutlinedButton(
-                                          key: Key('reject-${request.id}'),
-                                          onPressed: busy
-                                              ? null
-                                              : () => _reject(request),
-                                          child: const Text('Từ chối'),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        );
+                        return _buildRequestCard(request, busy);
                       },
                     ),
                   ),
@@ -355,16 +367,319 @@ class _ExpertRequestQueueScreenState extends State<ExpertRequestQueueScreen> {
       ),
     );
   }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: const BoxDecoration(
+                color: _surfaceHigh,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.inbox_outlined,
+                size: 36,
+                color: _primary,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Chưa có yêu cầu tư vấn được giao',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: _onSurface,
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Các yêu cầu tư vấn được giao cho bạn sẽ xuất hiện ở đây.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 13,
+                color: _outline,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRequestCard(ConsultationRequestSummary request, bool busy) {
+    return Container(
+      key: Key('consultation-${request.id}'),
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: _surface,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: const [
+          BoxShadow(
+            color: Color.fromRGBO(90, 70, 63, 0.06),
+            blurRadius: 20,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top Row: Avatar + Patient Name + Status Badge
+            Row(
+              children: [
+                AppUserAvatar(
+                  radius: 20,
+                  backgroundColor: _surfaceLow,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        request.counterpartDisplayName ??
+                            'Người dùng CareBridge',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          color: _onSurface,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.schedule_outlined,
+                            size: 13,
+                            color: _outline,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _timeAgo(request.createdAt),
+                            style: const TextStyle(
+                              fontFamily: 'Lexend',
+                              color: _outline,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _buildStatusBadge(request.status),
+              ],
+            ),
+            const SizedBox(height: 14),
+
+            // Topic Box
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: _surfaceLow,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(
+                    Icons.chat_bubble_outline_rounded,
+                    size: 18,
+                    color: _primary,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      request.topic,
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: _onSurface,
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            // Actions Row
+            if (request.status == 'PENDING') ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      key: Key('accept-${request.id}'),
+                      onPressed: busy ? null : () => _accept(request),
+                      icon: busy
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.check_circle_outline, size: 18),
+                      label: const Text('Chấp nhận'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      key: Key('reject-${request.id}'),
+                      onPressed: busy ? null : () => _reject(request),
+                      icon: const Icon(Icons.close_rounded, size: 18),
+                      label: const Text('Từ chối'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: _errColor,
+                        side: const BorderSide(color: _errorContainer),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
+
+            // View Details Button
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                key: Key('view-details-${request.id}'),
+                onPressed: busy
+                    ? null
+                    : () => context.push(
+                        '/consultation-requests/${request.id}',
+                      ),
+                icon: const Icon(
+                  Icons.chevron_right_rounded,
+                  size: 20,
+                  color: _primary,
+                ),
+                label: const Text(
+                  'Xem chi tiết',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                    color: _primary,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusBadge(String status) {
+    late String label;
+    late Color bg;
+    late Color fg;
+    late IconData icon;
+
+    switch (status) {
+      case 'PENDING':
+        label = 'Đang chờ';
+        bg = const Color(0xFFFFF3E0);
+        fg = const Color(0xFFE65100);
+        icon = Icons.schedule_rounded;
+        break;
+      case 'ACCEPTED':
+        label = 'Đã nhận';
+        bg = const Color(0xFFE6F4EA);
+        fg = const Color(0xFF137333);
+        icon = Icons.check_circle_rounded;
+        break;
+      case 'REJECTED':
+        label = 'Bị từ chối';
+        bg = _errorContainer;
+        fg = _errColor;
+        icon = Icons.highlight_off_rounded;
+        break;
+      case 'CANCELLED':
+        label = 'Đã hủy';
+        bg = const Color(0xFFF2EAE4);
+        fg = _outline;
+        icon = Icons.cancel_outlined;
+        break;
+      case 'EXPIRED':
+        label = 'Hết hạn';
+        bg = const Color(0xFFF2EAE4);
+        fg = _outline;
+        icon = Icons.timer_off_outlined;
+        break;
+      default:
+        label = status;
+        bg = _surfaceLow;
+        fg = _onSurface;
+        icon = Icons.info_outline;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: fg),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: fg,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-String _statusLabel(String status) => switch (status) {
-  'PENDING' => 'Đang chờ',
-  'ACCEPTED' => 'Đã nhận',
-  'REJECTED' => 'Bị từ chối',
-  'CANCELLED' => 'Đã hủy',
-  'EXPIRED' => 'Hết hạn',
-  _ => status,
-};
+class _FilterItem {
+  final String label;
+  final String? value;
+  final IconData icon;
+
+  const _FilterItem(this.label, this.value, this.icon);
+}
 
 String _timeAgo(DateTime value) {
   final diff = DateTime.now().difference(value);
@@ -372,3 +687,4 @@ String _timeAgo(DateTime value) {
   if (diff.inHours < 24) return '${diff.inHours} giờ trước';
   return '${diff.inDays} ngày trước';
 }
+
