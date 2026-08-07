@@ -20,6 +20,7 @@ import com.carebridge.backend.testsupport.CanonicalUserFixture;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -197,7 +198,13 @@ class ExerciseSessionStartIdempotencyEmbeddedPostgresTest
 
     private ExerciseSession saveActiveSession(
             UUID exerciseId, UUID safetyCheckId, SessionStatus status) {
-        OffsetDateTime startedAt = OffsetDateTime.now(ZoneOffset.UTC).minusMinutes(1);
+        // PostgreSQL timestamptz stores microseconds, but OffsetDateTime.now() carries
+        // sub-microsecond digits on this platform. Without truncating, the returned
+        // entity keeps nanosecond precision the column never persisted, and comparing
+        // it against a value read back from the database fails on those lost digits.
+        OffsetDateTime startedAt = OffsetDateTime.now(ZoneOffset.UTC)
+                .minusMinutes(1)
+                .truncatedTo(ChronoUnit.MICROS);
         return sessionRepository.saveAndFlush(ExerciseSession.builder()
                 .exerciseSessionId(UUID.randomUUID())
                 .exerciseId(exerciseId)

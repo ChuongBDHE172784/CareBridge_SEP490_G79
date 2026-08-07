@@ -19,6 +19,11 @@ public interface PostureInferencePort {
             Map<String, Object> landmarks) {
     }
 
+    /**
+     * @param stage movement phase when the provider reports one, otherwise {@code null}.
+     *              Carried separately from {@code predictedClass} because a provider may
+     *              replace the class with an error verdict and lose the phase with it.
+     */
     record InferenceResult(
             String modelVersion,
             String exerciseKey,
@@ -27,7 +32,8 @@ public interface PostureInferencePort {
             BigDecimal confidence,
             boolean correct,
             BigDecimal score,
-            List<InferenceFeedback> feedback) {
+            List<InferenceFeedback> feedback,
+            String stage) {
     }
 
     record InferenceFeedback(String code, String severity, String message) {

@@ -252,9 +252,12 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
     _cameraSource?.setFeedbackError(warning);
     setState(() {
       _postureGood = !warning;
+      // postureCode is a machine identifier (GOOD_FORM, MODEL_UNAVAILABLE, a raw
+      // model label): never show it. An empty feedbackText means the server-owned
+      // feedback level is SILENT, so only the overlay colour conveys the result.
       _postureStatus = feedback.feedbackText?.trim().isNotEmpty == true
           ? feedback.feedbackText!.trim()
-          : feedback.postureCode;
+          : 'Đang theo dõi tư thế...';
     });
   }
 

@@ -4,6 +4,9 @@ import com.carebridge.backend.exercise.inference.PostureInferencePort.InferenceF
 import com.carebridge.backend.exercise.inference.PostureInferencePort.InferenceRequest;
 import com.carebridge.backend.exercise.inference.PostureInferencePort.InferenceResult;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -11,6 +14,9 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
@@ -18,6 +24,7 @@ import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
@@ -25,6 +32,11 @@ import org.springframework.web.client.RestClientException;
 /** HTTP adapter for the private, persistent Exercise-Correction sidecar. */
 @Component
 public class ExerciseCorrectionHttpAdapter implements PostureInferencePort {
+
+    private static final Logger LOG = LoggerFactory.getLogger(ExerciseCorrectionHttpAdapter.class);
+    private static final ObjectMapper ERROR_BODY_MAPPER = new ObjectMapper();
+    private static final Pattern SIDECAR_ERROR_CODE = Pattern.compile("^[A-Z][A-Z0-9_]{0,63}$");
+    private static final Pattern STAGE_TOKEN = Pattern.compile("^[A-Za-z0-9_]{1,32}$");
 
     static final String LANDMARK_SCHEMA_VERSION = "mediapipe-pose-landmarks-v1";
     static final String RESPONSE_SCHEMA_VERSION = "exercise-correction-inference-v1";
@@ -69,7 +81,12 @@ public class ExerciseCorrectionHttpAdapter implements PostureInferencePort {
                     "Exercise-Correction timeouts must be within the configured bounds");
         }
 
+        // Pin HTTP/1.1. The JDK client defaults to HTTP_2, which over cleartext
+        // sends an `Upgrade: h2c` request; the sidecar runs uvicorn/h11 (HTTP/1.1
+        // only), and h11 pauses the connection at the Upgrade header so the ASGI
+        // app is invoked with an empty body — every inference then fails 422.
         HttpClient httpClient = HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
                 .connectTimeout(Duration.ofMillis(connectTimeoutMs))
                 .build();
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
@@ -111,13 +128,53 @@ public class ExerciseCorrectionHttpAdapter implements PostureInferencePort {
                     .body(SidecarResponse.class);
             return mapResponse(response, request);
         } catch (HttpClientErrorException exception) {
+            logSidecarStatus("rejected the inference request", exception);
             throw unavailable("SIDECAR_REJECTED_REQUEST");
         } catch (HttpServerErrorException exception) {
+            logSidecarStatus("reported a server error", exception);
             throw unavailable("SIDECAR_UNAVAILABLE");
         } catch (ResourceAccessException exception) {
+            LOG.warn(
+                    "Exercise-Correction sidecar is unreachable or timed out: {}",
+                    exception.getClass().getSimpleName());
             throw unavailable("SIDECAR_TIMEOUT_OR_UNREACHABLE");
         } catch (RestClientException exception) {
+            LOG.warn(
+                    "Exercise-Correction sidecar returned an unreadable response: {}",
+                    exception.getClass().getSimpleName());
             throw unavailable("SIDECAR_INVALID_RESPONSE");
+        }
+    }
+
+    /**
+     * Logs the sidecar HTTP status plus its stable error code so transport-level
+     * faults (a wrong protocol version, a stray proxy, a rejected contract) are
+     * diagnosable without reading the sidecar's own logs. Only the allowlisted
+     * {@code code} field is logged — never the response body, which may carry
+     * text this backend does not control.
+     */
+    private void logSidecarStatus(String what, HttpStatusCodeException exception) {
+        LOG.warn(
+                "Exercise-Correction sidecar {}: status={} sidecarCode={}",
+                what,
+                exception.getStatusCode().value(),
+                sidecarErrorCode(exception.getResponseBodyAsString()));
+    }
+
+    static String sidecarErrorCode(String responseBody) {
+        if (responseBody == null || responseBody.isBlank()) {
+            return "ABSENT";
+        }
+        try {
+            JsonNode code = ERROR_BODY_MAPPER.readTree(responseBody).get("code");
+            if (code == null || !code.isTextual()) {
+                return "UNRECOGNIZED";
+            }
+            return SIDECAR_ERROR_CODE.matcher(code.textValue()).matches()
+                    ? code.textValue()
+                    : "UNRECOGNIZED";
+        } catch (JsonProcessingException exception) {
+            return "UNPARSEABLE";
         }
     }
 
@@ -168,7 +225,8 @@ public class ExerciseCorrectionHttpAdapter implements PostureInferencePort {
                 || response.score() == null
                 || response.feedback() == null
                 || !isProbability(response.confidence())
-                || !isScore(response.score())) {
+                || !isScore(response.score())
+                || !validStage(response.stage())) {
             throw unavailable("SIDECAR_INVALID_RESPONSE");
         }
 
@@ -190,7 +248,8 @@ public class ExerciseCorrectionHttpAdapter implements PostureInferencePort {
                 response.confidence(),
                 response.correct(),
                 response.score(),
-                feedback);
+                feedback,
+                response.stage());
     }
 
     private boolean invalidFeedback(InferenceFeedback feedback) {
@@ -200,6 +259,11 @@ public class ExerciseCorrectionHttpAdapter implements PostureInferencePort {
                 || !SetHolder.SEVERITIES.contains(feedback.severity())
                 || feedback.message() == null
                 || feedback.message().isBlank();
+    }
+
+    /** Absent is valid; present must be a short opaque token, since it is persisted. */
+    private boolean validStage(String stage) {
+        return stage == null || STAGE_TOKEN.matcher(stage).matches();
     }
 
     private boolean isProbability(BigDecimal value) {
@@ -245,6 +309,7 @@ public class ExerciseCorrectionHttpAdapter implements PostureInferencePort {
         }
     }
 
+    /** {@code stage} is optional and additive; an older sidecar simply omits it. */
     private record SidecarResponse(
             String schemaVersion,
             String modelVersion,
@@ -254,7 +319,8 @@ public class ExerciseCorrectionHttpAdapter implements PostureInferencePort {
             BigDecimal confidence,
             Boolean correct,
             BigDecimal score,
-            List<SidecarFeedback> feedback) {
+            List<SidecarFeedback> feedback,
+            String stage) {
     }
 
     private record SidecarFeedback(String code, String severity, String message) {

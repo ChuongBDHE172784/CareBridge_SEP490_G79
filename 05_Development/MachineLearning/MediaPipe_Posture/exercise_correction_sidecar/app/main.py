@@ -90,6 +90,7 @@ def create_app(registry: ModelRegistry | None = None) -> FastAPI:
             sequenceNumber=payload.sequenceNumber,
             inferenceStreamId=payload.inferenceStreamId,
             predictedClass=prediction.predicted_class,
+            stage=prediction.stage,
             confidence=prediction.confidence,
             correct=prediction.correct,
             score=prediction.score,

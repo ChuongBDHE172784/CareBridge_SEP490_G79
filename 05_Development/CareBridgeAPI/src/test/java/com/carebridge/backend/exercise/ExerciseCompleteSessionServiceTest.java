@@ -18,6 +18,7 @@ import com.carebridge.backend.exercise.exception.SessionOwnershipException;
 import com.carebridge.backend.exercise.mapper.ExerciseSessionMapper;
 import com.carebridge.backend.exercise.repository.ExerciseRepository;
 import com.carebridge.backend.exercise.repository.ExerciseSafetyCheckRepository;
+import com.carebridge.backend.exercise.policy.PostureSessionTracker;
 import com.carebridge.backend.exercise.repository.ExerciseSessionRepository;
 import com.carebridge.backend.exercise.repository.PostureFeedbackEventRepository;
 import com.carebridge.backend.exercise.service.impl.ExerciseSessionServiceImpl;
@@ -60,6 +61,10 @@ class ExerciseCompleteSessionServiceTest {
 
     @Spy
     private ObjectMapper objectMapper;
+
+    /** Real: the completion summary reads the repetitions it counted. */
+    @Spy
+    private PostureSessionTracker sessionTracker = new PostureSessionTracker();
 
     @InjectMocks
     private ExerciseSessionServiceImpl service;

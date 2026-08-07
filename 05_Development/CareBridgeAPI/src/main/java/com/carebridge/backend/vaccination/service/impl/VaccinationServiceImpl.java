@@ -9,6 +9,7 @@ import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.health.entity.HealthRecord;
 import com.carebridge.backend.health.entity.HealthRecordStatus;
 import com.carebridge.backend.health.repository.HealthRecordRepository;
+import com.carebridge.backend.vaccination.config.VaccinationProperties;
 import com.carebridge.backend.vaccination.dto.AddVaccinationRecordRequest;
 import com.carebridge.backend.vaccination.dto.AddVaccinationRecordResponse;
 import com.carebridge.backend.vaccination.dto.MarkVaccinationCompletedRequest;
@@ -47,6 +48,7 @@ public class VaccinationServiceImpl implements IVaccinationService {
     private final VaccinationRecordRepository recordRepository;
     private final HealthRecordRepository healthRecordRepository;
     private final AuditService auditService;
+    private final VaccinationProperties properties;
 
     @Override
     public VaccinationScheduleResponse getVaccinationSchedule(UUID babyProfileId, UUID callerId) {
@@ -62,7 +64,12 @@ public class VaccinationServiceImpl implements IVaccinationService {
         }
 
         LocalDate birthDate = baby.getBirthDate();
-        List<VaccinationReferenceSchedule> refs = referenceRepository.findAllByOrderByOffsetDaysAsc();
+        // Only the active catalogue version is scanned. vaccination_schedules also holds the
+        // seven pre-existing rows under per-row 'legacy-*' versions; including them would
+        // show every dose twice.
+        List<VaccinationReferenceSchedule> refs = referenceRepository
+                .findByScheduleVersionOrderByOffsetDaysAscDoseNumberAscVaccineNameAsc(
+                        properties.getScheduleVersion());
         List<VaccinationRecord> records = recordRepository.findAllByBabyId(babyProfileId).stream()
                 .filter(record -> record.getStatus() != VaccinationRecordStatus.DELETED)
                 .toList();
@@ -80,12 +87,15 @@ public class VaccinationServiceImpl implements IVaccinationService {
         // C2: OVERDUE computed at query time — NOT stored
         // C3: no recommendations in response (BR-SAFETY)
         List<VaccinationDoseDto> doses = refs.stream().map(ref -> {
-            LocalDate expectedDate = birthDate != null
-                    ? birthDate.plusDays(ref.getOffsetDays())
-                    : null;
-
             String key = ref.getVaccineName() + "|" + ref.getDoseNumber();
             VaccinationRecord record = recordMap.get(key);
+
+            // The materialised book is authoritative for the expected date — it is what a
+            // postpone rewrites. The catalogue projection is the fallback for doses that
+            // have no record yet (e.g. a baby registered before the book existed).
+            LocalDate expectedDate = record != null && record.getScheduledDate() != null
+                    ? record.getScheduledDate()
+                    : (birthDate != null ? birthDate.plusDays(ref.getOffsetDays()) : null);
 
             String status;
             LocalDate administeredDate = null;

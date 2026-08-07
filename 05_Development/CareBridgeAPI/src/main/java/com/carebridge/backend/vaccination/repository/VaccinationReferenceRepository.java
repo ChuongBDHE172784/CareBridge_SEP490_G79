@@ -10,5 +10,13 @@ public interface VaccinationReferenceRepository extends JpaRepository<Vaccinatio
 
     List<VaccinationReferenceSchedule> findAllByOrderByOffsetDaysAsc();
 
+    /**
+     * The active catalogue for one schedule version, in the order a vaccination book is read:
+     * earliest expected dose first, then dose number, then vaccine name so the ordering is
+     * stable for doses that share an offset.
+     */
+    List<VaccinationReferenceSchedule> findByScheduleVersionOrderByOffsetDaysAscDoseNumberAscVaccineNameAsc(
+            String scheduleVersion);
+
     boolean existsByVaccineNameAndDoseNumber(String vaccineName, short doseNumber);
 }

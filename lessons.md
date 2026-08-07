@@ -1,5 +1,38 @@
 # Lessons learned
 
+## 2026-08-07 — MF-03 vaccination book & reminders
+
+- `vaccination_records.care_subject_id` is NOT NULL but `VaccinationRecord` never mapped it, so
+  **every** JPA insert on that table (UC229 add, UC232 complete, UC233 postpone) would have failed
+  on a real database. It went unnoticed because all vaccination tests mock the repository. A unit
+  suite that mocks persistence cannot see a not-null violation — a schema-touching feature needs at
+  least one test that actually writes the row.
+- `vaccination_schedules` held seven rows that each carried their *own* `schedule_version`
+  (`legacy-b6f69eb8`, `legacy-ace5d2d9`, …). That is not a catalogue, it is seven catalogues of one
+  row each, so "scan the catalogue" had no well-defined answer. A single active version selected by
+  configuration turns it back into a set operation, and leaves the legacy rows readable for records
+  that still point at them via `vaccination_schedule_id`.
+- `notification_records_type_check` admits exactly seven type values, so a new notification category
+  belongs in `reference_type`, not in `NotificationType`. Vaccination reminders ride `REMINDER` +
+  `reference_type = 'VACCINATION'`, matching how APPOINTMENT and REMINDER_SCHEDULE already work — no
+  migration, no constraint churn.
+- Idempotency for a recurring notification needs a *milestone* key, not a record key. Keying only on
+  the vaccination record would send one reminder ever; keying on `(record, daysBefore)` in the JSONB
+  metadata gives each lead its own once-only delivery and makes extra job runs free.
+- Count your own seed rows before asserting on them. The catalogue migration has 30 doses; the
+  contract test asserted 29 and failed on the first real run. Two other tests in the same class
+  passed and were the actual evidence — read *which* assertions failed before assuming the feature
+  is broken.
+- Baselining paid off again. A sweep of notification/reminder/audit/baby showed 9 failures + 19
+  errors, all in `ReminderSecurityTest`, `TodayTaskControllerTest`, `UpdateReminderServiceTest`,
+  `ReminderWorkerPropertyBindingTest` and two Postgres migration tests. `git stash push -u -- <path>`
+  and re-running the same six classes at HEAD produced byte-identical counts, proving none were mine.
+  Path-scoped stash works here even though `git worktree add` does not.
+- Adding a constructor dependency to a service breaks `@InjectMocks` tests silently at compile time
+  and loudly at runtime: three `BabyService*Test` classes NPE'd on a null `IVaccinationBookService`
+  because Mockito injects null for an undeclared mock. Grep for `@InjectMocks <Service>` whenever a
+  collaborator is added.
+
 ## 2026-08-07 — Auth taste-skill redesign
 
 - Shared Flutter auth primitives make Welcome, Login, and Register visually coherent while keeping screen state and auth payloads local to each flow.

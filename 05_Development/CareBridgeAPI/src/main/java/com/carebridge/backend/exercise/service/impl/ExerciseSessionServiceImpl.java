@@ -19,6 +19,7 @@ import com.carebridge.backend.exercise.exception.SessionOwnershipException;
 import com.carebridge.backend.exercise.mapper.ExerciseSessionMapper;
 import com.carebridge.backend.exercise.repository.ExerciseRepository;
 import com.carebridge.backend.exercise.repository.ExerciseSafetyCheckRepository;
+import com.carebridge.backend.exercise.policy.PostureSessionTracker;
 import com.carebridge.backend.exercise.repository.ExerciseSessionRepository;
 import com.carebridge.backend.exercise.repository.PostureFeedbackEventRepository;
 import com.carebridge.backend.exercise.service.ExerciseCareContextResolver;
@@ -54,6 +55,7 @@ public class ExerciseSessionServiceImpl implements IExerciseSessionService {
     private final ObjectMapper objectMapper;
     private final ExerciseCareContextResolver careContextResolver;
     private final UserRepository userRepository;
+    private final PostureSessionTracker sessionTracker;
 
     @Override
     @Transactional
@@ -177,6 +179,8 @@ public class ExerciseSessionServiceImpl implements IExerciseSessionService {
         session.setUpdatedAt(OffsetDateTime.now());
 
         ExerciseSession saved = sessionRepository.save(session);
+        // The summary has captured everything the in-memory posture state was for.
+        sessionTracker.clear(sessionId);
         return sessionMapper.toResultResponse(saved, exercise.getTitle());
     }
 
@@ -239,8 +243,13 @@ public class ExerciseSessionServiceImpl implements IExerciseSessionService {
             }
         }
         try {
-            return objectMapper.writeValueAsString(
-                    Map.of("issues", issues, "highlights", highlights));
+            return objectMapper.writeValueAsString(Map.of(
+                    "issues", issues,
+                    "highlights", highlights,
+                    // Counted across the session by the posture tracker; zero when the
+                    // exercise has no derivable repetition or the process restarted
+                    // mid-session, since that state is deliberately not persisted.
+                    "repetitions", sessionTracker.repetitions(sessionId)));
         } catch (JsonProcessingException ex) {
             throw new IllegalStateException("Failed to build session summary JSON", ex);
         }
