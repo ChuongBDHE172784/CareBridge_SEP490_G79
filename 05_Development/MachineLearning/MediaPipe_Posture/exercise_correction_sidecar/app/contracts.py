@@ -99,6 +99,11 @@ class InferenceResponse(BaseModel):
     sequenceNumber: int
     inferenceStreamId: str | None = None
     predictedClass: str
+    # The movement phase, reported separately because predictedClass cannot carry it:
+    # for a lunge in the down phase the error model's verdict replaces the class, so
+    # the phase would otherwise be unrecoverable by the caller. Optional and additive,
+    # so a caller built against the earlier v1 response simply ignores it.
+    stage: str | None = None
     confidence: float = Field(ge=0.0, le=1.0)
     correct: bool
     score: float = Field(ge=0.0, le=100.0)

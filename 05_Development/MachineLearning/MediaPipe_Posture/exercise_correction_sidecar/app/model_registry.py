@@ -48,6 +48,9 @@ class Prediction:
     correct: bool
     score: float
     feedback: tuple[Feedback, ...]
+    # Movement phase when the model reports one: "up"/"down" for squats, the raw
+    # stage label for lunges. None where the exercise has no phase concept.
+    stage: str | None = None
 
 
 MODEL_SPECS: dict[str, ModelSpec] = {
@@ -271,7 +274,9 @@ class ModelRegistry:
             if exercise_key == "lunge":
                 return self._predict_lunge(spec, bundle, model_frame)
             predicted_class, confidence = self._predict_class(bundle.model, model_frame)
-            return self._normalize(spec, predicted_class, confidence)
+            # For squats the class is itself the phase; other exercises have none.
+            stage = predicted_class if exercise_key == "squat" else None
+            return self._normalize(spec, predicted_class, confidence, stage=stage)
 
     def _verify_artifacts(self) -> dict[str, Path]:
         try:
@@ -318,6 +323,7 @@ class ModelRegistry:
             raise ModelRegistryError("MODEL_UNAVAILABLE", "The lunge stage model is unavailable")
         stage_class, stage_confidence = self._predict_class(bundle.stage_model, frame)
         if stage_confidence < spec.threshold:
+            # Below threshold the stage is not trustworthy, so none is reported.
             return self._unknown(stage_class, stage_confidence)
         if stage_class != "D":
             return Prediction(
@@ -332,9 +338,12 @@ class ModelRegistry:
                         message="Form is evaluated only during the down phase of the demo lunge model.",
                     ),
                 ),
+                stage=stage_class,
             )
         predicted_class, confidence = self._predict_class(bundle.model, frame)
-        return self._normalize(spec, predicted_class, confidence)
+        # predicted_class is now the error model's verdict, so the phase travels
+        # in `stage` instead — otherwise the caller cannot tell a rep completed.
+        return self._normalize(spec, predicted_class, confidence, stage=stage_class)
 
     @staticmethod
     def _predict_class(model: Any, frame: Any) -> tuple[str, float]:
@@ -347,8 +356,16 @@ class ModelRegistry:
             raise ModelRegistryError("INVALID_MODEL_OUTPUT", "The model returned invalid confidence")
         return predicted_class, round(confidence, 6)
 
-    def _normalize(self, spec: ModelSpec, predicted_class: str, confidence: float) -> Prediction:
+    def _normalize(
+        self,
+        spec: ModelSpec,
+        predicted_class: str,
+        confidence: float,
+        stage: str | None = None,
+    ) -> Prediction:
         if confidence < spec.threshold or predicted_class not in spec.labels:
+            # A prediction the model is unsure of carries an equally unsure phase, so
+            # none is reported — upstream likewise leaves the stage unchanged there.
             return self._unknown(predicted_class, confidence)
         correct, code, message = spec.labels[predicted_class]
         feedback: tuple[Feedback, ...] = ()
@@ -361,10 +378,13 @@ class ModelRegistry:
             correct=correct,
             score=round(max(0.0, min(100.0, score_basis * 100.0)), 2),
             feedback=feedback,
+            stage=stage,
         )
 
     @staticmethod
-    def _unknown(predicted_class: str, confidence: float) -> Prediction:
+    def _unknown(
+        predicted_class: str, confidence: float, stage: str | None = None
+    ) -> Prediction:
         return Prediction(
             predicted_class=predicted_class,
             confidence=confidence,
@@ -377,4 +397,5 @@ class ModelRegistry:
                     message="The demo model is not confident enough to evaluate this sample.",
                 ),
             ),
+            stage=stage,
         )

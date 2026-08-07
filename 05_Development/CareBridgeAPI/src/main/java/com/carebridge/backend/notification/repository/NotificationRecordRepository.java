@@ -150,4 +150,20 @@ public interface NotificationRecordRepository extends JpaRepository<Notification
              LIMIT 1
             """, nativeQuery = true)
     Optional<NotificationRecord> findReminderScheduleByJobId(@Param("jobId") UUID jobId);
+
+    /**
+     * Idempotency lookup for the vaccination reminder milestones (MF-03). One dose produces
+     * one notification per configured lead value, so the key is the record plus the lead.
+     */
+    @Query(value = """
+            SELECT *
+              FROM notification_records
+             WHERE type = 'REMINDER'
+               AND reference_type = 'VACCINATION'
+               AND metadata ->> 'vaccinationRecordId' = CAST(:recordId AS text)
+               AND metadata ->> 'daysBefore' = :daysBefore
+             LIMIT 1
+            """, nativeQuery = true)
+    Optional<NotificationRecord> findVaccinationReminderByRecordAndLead(
+            @Param("recordId") UUID recordId, @Param("daysBefore") String daysBefore);
 }

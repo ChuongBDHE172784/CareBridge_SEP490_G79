@@ -8,6 +8,7 @@ import com.carebridge.backend.baby.policy.BabyAccessPolicy;
 import com.carebridge.backend.baby.repository.BabyProfileRepository;
 import com.carebridge.backend.baby.service.impl.BabyServiceImpl;
 import com.carebridge.backend.common.exception.BusinessException;
+import com.carebridge.backend.vaccination.service.IVaccinationBookService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -31,6 +32,7 @@ class BabyServiceArchiveTest {
     @Mock private BabyProfileRepository babyRepository;
     @Mock private BabyAccessPolicy accessPolicy;
     @Mock private AuditService auditService;
+    @Mock private IVaccinationBookService vaccinationBookService;
     @InjectMocks private BabyServiceImpl babyService;
 
     /** BABY-TC-033-001: Happy path — status changes to ARCHIVED; audit emitted. */

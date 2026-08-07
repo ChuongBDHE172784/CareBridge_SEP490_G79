@@ -608,40 +608,61 @@ class _SourceTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeIndex = _safeIndex == 1 ? 1 : 0;
+    final active = _safeIndex;
 
     return Container(
-      height: 48,
+      height: 54,
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: const Color(0xFFF2EAE4),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: const Color(0xFFE5DDD7),
-          width: 1,
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFFFAF4EE), Color(0xFFF3EBE5)],
         ),
+        borderRadius: BorderRadius.circular(27),
+        border: Border.all(
+          color: const Color(0xFFE8DDD6).withValues(alpha: .8),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF5A463F).withValues(alpha: .06),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Stack(
         children: [
-          // 1. Sliding Active Indicator Pill
+          // Sliding active card indicator over equal 50% width
           AnimatedAlign(
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.fastOutSlowIn,
-            alignment:
-                activeIndex == 0 ? Alignment.centerLeft : Alignment.centerRight,
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeInOutCubic,
+            alignment: active == 0
+                ? Alignment.centerLeft
+                : Alignment.centerRight,
             child: FractionallySizedBox(
               widthFactor: 0.5,
               heightFactor: 1.0,
               child: Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: const [
+                  borderRadius: BorderRadius.circular(23),
+                  border: Border.all(
+                    color: const Color(0xFFF0E4DD),
+                    width: 1,
+                  ),
+                  boxShadow: [
                     BoxShadow(
-                      color: Color.fromRGBO(90, 70, 63, 0.08),
-                      blurRadius: 8,
-                      offset: Offset(0, 2),
+                      color: const Color(0xFFC98C7B).withValues(alpha: .15),
+                      blurRadius: 12,
+                      offset: const Offset(0, 3),
+                    ),
+                    BoxShadow(
+                      color: const Color(0xFF5A463F).withValues(alpha: .04),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
                     ),
                   ],
                 ),
@@ -649,7 +670,7 @@ class _SourceTabBar extends StatelessWidget {
             ),
           ),
 
-          // 2. Tab Labels Row
+          // Interactive equal 50% width tab buttons
           Row(
             children: [
               Expanded(
@@ -658,7 +679,8 @@ class _SourceTabBar extends StatelessWidget {
                   title: 'Gợi ý CareBridge',
                   count: _safeSystemCount,
                   icon: Icons.auto_awesome_rounded,
-                  isSelected: activeIndex == 0,
+                  isSelected: active == 0,
+                  isSystemTab: true,
                   onTap: () => onTabSelected(0),
                 ),
               ),
@@ -667,8 +689,9 @@ class _SourceTabBar extends StatelessWidget {
                   key: const Key('tab-user-tasks'),
                   title: 'Việc cá nhân',
                   count: _safeUserCount,
-                  icon: Icons.person_outline_rounded,
-                  isSelected: activeIndex == 1,
+                  icon: Icons.person_rounded,
+                  isSelected: active == 1,
+                  isSystemTab: false,
                   onTap: () => onTabSelected(1),
                 ),
               ),
@@ -687,6 +710,7 @@ class _TabButton extends StatelessWidget {
     required this.count,
     required this.icon,
     required this.isSelected,
+    this.isSystemTab = true,
     required this.onTap,
   });
 
@@ -694,14 +718,18 @@ class _TabButton extends StatelessWidget {
   final int count;
   final IconData icon;
   final bool isSelected;
+  final bool isSystemTab;
   final VoidCallback onTap;
 
   int get _safeCount => (count as dynamic) is int ? count : 0;
 
   @override
   Widget build(BuildContext context) {
-    const primaryColor = Color(0xFF845143);
-    const textInactive = Color(0xFF7D6E6A);
+    const primaryAccent = Color(0xFFC98C7B);
+    const systemActiveColor = Color(0xFFD97757);
+    const userActiveColor = Color(0xFF6E584F);
+    const textActive = Color(0xFF3D2E28);
+    const textInactive = Color(0xFF7A655C);
     final displayCount = _safeCount;
 
     return Semantics(
@@ -712,67 +740,94 @@ class _TabButton extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(20),
-          child: Container(
-            width: double.infinity,
-            height: double.infinity,
-            alignment: Alignment.center,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  child: Icon(
-                    icon,
-                    size: 16,
-                    color: isSelected ? primaryColor : textInactive,
-                  ),
-                ),
-                const SizedBox(width: 5),
-                Flexible(
-                  child: AnimatedDefaultTextStyle(
-                    duration: const Duration(milliseconds: 200),
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 13,
-                      fontWeight: isSelected
-                          ? FontWeight.w700
-                          : FontWeight.w500,
-                      color: isSelected ? primaryColor : textInactive,
-                    ),
-                    child: Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-                if (displayCount > 0) ...[
-                  const SizedBox(width: 5),
+          borderRadius: BorderRadius.circular(23),
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
                   AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 7,
-                      vertical: 2,
-                    ),
+                    duration: const Duration(milliseconds: 220),
+                    width: isSelected ? 26 : 22,
+                    height: isSelected ? 26 : 22,
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? const Color(0xFFFFE2D9)
-                          : const Color(0xFFE5DDD7),
-                      borderRadius: BorderRadius.circular(10),
+                          ? (isSystemTab
+                              ? const Color(0xFFFFF0EC)
+                              : const Color(0xFFF4ECE7))
+                          : Colors.transparent,
+                      shape: BoxShape.circle,
                     ),
-                    child: Text(
-                      '$displayCount',
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: isSelected ? primaryColor : textInactive,
+                    child: Center(
+                      child: Icon(
+                        icon,
+                        size: isSelected ? 15 : 16,
+                        color: isSelected
+                            ? (isSystemTab ? systemActiveColor : userActiveColor)
+                            : const Color(0xFF9E877C),
                       ),
                     ),
                   ),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: AnimatedDefaultTextStyle(
+                      duration: const Duration(milliseconds: 200),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: 'Quicksand',
+                        fontSize: isSelected ? 15.0 : 14.0,
+                        fontWeight: isSelected
+                            ? FontWeight.w800
+                            : FontWeight.w700,
+                        color: isSelected ? textActive : textInactive,
+                        letterSpacing: isSelected ? -0.1 : 0,
+                      ),
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                  if (displayCount > 0) ...[
+                    const SizedBox(width: 6),
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 220),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isSelected ? 9 : 7,
+                        vertical: isSelected ? 3 : 2.5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? (isSystemTab
+                                ? const Color(0xFFFFEBE4)
+                                : const Color(0xFFF0E8E2))
+                            : const Color(0xFFE0D5CD).withValues(alpha: .65),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '$displayCount',
+                        style: TextStyle(
+                          fontFamily: 'Quicksand',
+                          fontSize: isSelected ? 12.0 : 11.5,
+                          fontWeight: isSelected
+                              ? FontWeight.w800
+                              : FontWeight.w700,
+                          color: isSelected
+                              ? (isSystemTab
+                                  ? primaryAccent
+                                  : const Color(0xFF5A463F))
+                              : textInactive,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),
@@ -942,32 +997,33 @@ class _TodayTaskCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
               color: isCompleted
-                  ? const Color(0xFFF9F5F2).withValues(alpha: .8)
+                  ? const Color(0xFFFAF6F3)
                   : Colors.white,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: isCompleted
-                    ? const Color(0xFFE8DDD6).withValues(alpha: .5)
-                    : const Color(0xFFE5D9D2).withValues(alpha: .8),
+                    ? const Color(0xFFEFE6E0)
+                    : const Color(0xFFE5D9D2).withValues(alpha: .9),
+                width: 1.2,
               ),
               boxShadow: isCompleted
                   ? null
                   : [
                       BoxShadow(
-                        color: const Color(0xFF5A463F).withValues(alpha: .05),
+                        color: const Color(0xFF5A463F).withValues(alpha: .06),
                         blurRadius: 16,
                         offset: const Offset(0, 4),
                       ),
                     ],
             ),
             child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Semantics(
                   button: true,
                   label: isCompleted ? 'Đã hoàn tất' : 'Chưa hoàn tất',
                   child: Padding(
-                    padding: const EdgeInsets.only(top: 2),
+                    padding: const EdgeInsets.only(top: 1),
                     child: busy
                         ? const SizedBox.square(
                             dimension: 22,
@@ -983,7 +1039,7 @@ class _TodayTaskCard extends StatelessWidget {
                             size: 24,
                             color: isCompleted
                                 ? const Color(0xFFC98C7B)
-                                : const Color(0xFFB8A29A),
+                                : const Color(0xFFBFAAA0),
                           ),
                   ),
                 ),
@@ -993,17 +1049,28 @@ class _TodayTaskCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Icon(
-                            task.target == TodayTaskTarget.baby
-                                ? Icons.child_care_rounded
-                                : Icons.pregnant_woman_rounded,
-                            color: isCompleted
-                                ? const Color(0xFF9C857C)
-                                : const Color(0xFFC98C7B),
-                            size: 18,
+                          Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: isCompleted
+                                  ? const Color(0xFFF5ECE7)
+                                  : const Color(0xFFFFF1EB),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              task.target == TodayTaskTarget.baby
+                                  ? Icons.child_care_rounded
+                                  : Icons.pregnant_woman_rounded,
+                              color: isCompleted
+                                  ? const Color(0xFF9C857C)
+                                  : const Color(0xFFC98C7B),
+                              size: 16,
+                            ),
                           ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 8),
                           Expanded(
                             child: Text(
                               task.title,
@@ -1129,27 +1196,39 @@ class _ContextLabel extends StatelessWidget {
   final String text;
 
   @override
-  Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Icon(icon, size: 17, color: const Color(0xFF9C857C)),
-      const SizedBox(width: 5),
-      Flexible(
-        child: Text(
-          text,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            fontFamily: 'Quicksand',
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF735E56),
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+    decoration: BoxDecoration(
+      color: const Color(0xFFF7F2EE),
+      borderRadius: BorderRadius.circular(8),
+      border: Border.all(
+        color: const Color(0xFFEAE0D9),
+        width: 0.8,
+      ),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 14, color: const Color(0xFF9C857C)),
+        const SizedBox(width: 4),
+        Flexible(
+          child: Text(
+            text,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontFamily: 'Quicksand',
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF6E584F),
+            ),
           ),
         ),
-      ),
-    ],
+      ],
+    ),
   );
 }
+
 
 class _RoundIcon extends StatelessWidget {
   const _RoundIcon({required this.icon});

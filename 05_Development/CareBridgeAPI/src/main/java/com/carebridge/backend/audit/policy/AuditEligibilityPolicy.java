@@ -74,6 +74,11 @@ public class AuditEligibilityPolicy {
             // query", Luật 91/2025): REMINDER_CREATED must persist to audit_events; without
             // eligibility the service's auditService.log(...) call was silently dropped.
             AuditAction.REMINDER_CREATED,
+            // MF-03: the expected vaccination book is created by the system, not by the
+            // mother, so the materialisation itself is the only trace of why those dates
+            // exist. Without eligibility the service's auditService.log(...) is dropped.
+            AuditAction.VACCINATION_BOOK_INITIALIZED,
+            AuditAction.VACCINATION_BOOK_REALIGNED,
             AuditAction.REMINDER_COMPLETED,
             AuditAction.REMINDER_SKIPPED,
             AuditAction.CARE_TASK_STATUS_UPDATED,
