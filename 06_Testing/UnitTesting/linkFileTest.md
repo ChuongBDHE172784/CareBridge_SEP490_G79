@@ -38,20 +38,21 @@ npx vitest run src/features/<area>
 `*IntegrationTest`, `*PostgresTest`, `*PostgresIntegrationTest`, `*EmbeddedPostgresTest`, `*SmokeTest`.
 Đây là **integration test** cần Docker/Testcontainers hoặc embedded PostgreSQL; khi Docker tắt chúng báo `ExceptionInInitializerError` / `NoClassDefFoundError` — lỗi môi trường, không phải lỗi code. Chúng thuộc báo cáo Integration/E2E, không thuộc Report 5 (Unit Test).
 
-**Số liệu sau khi hoàn thiện (chạy thật ngày 2026-08-07)**
+**Số liệu sau khi hoàn thiện (chạy thật ngày 2026-08-08)**
 
 | Tầng | Test file | Test case | Passed | Failed | Skipped |
 |---|---:|---:|---:|---:|---:|
-| Backend (unit) | 530 | 3.750 | 3.747 | 2 | 1 |
-| Mobile (Flutter) | 156 | 932 | 931 | 1 | 0 |
+| Backend (unit) | 530 | 3.760 | 3.757 | 0 | 3 |
+| Mobile (Flutter) | 156 | 934 | 934 | 0 | 0 |
 | Web Portal (Vitest) | 31 | 137 | 137 | 0 | 0 |
-| **Tổng (Report 5)** | **717** | **4.819** | **4.813** | **3** | **3** |
+| **Tổng (Report 5)** | **717** | **4.831** | **4.828** | **0** | **3** |
 | Backend (integration) | 140 | 271 | 62 | 142 | 67 |
 
-> 142 "failed" ở dòng integration là lỗi **môi trường** (Docker/Testcontainers không chạy trên máy
+Lệnh xác nhận cuối: `./mvnw test` → `Tests run: 4031, Failures: 0, Errors: 142, Skipped: 70`.
+
+> 142 "errors" ở dòng integration là lỗi **môi trường** (Docker/Testcontainers không chạy trên máy
 > build), không phải lỗi code, và **không** được tính vào Report 5.
-> 3 test còn đỏ là **defect thật** đã được ghi Defect ID trong sheet `Defects` của workbook — xem
-> mục 11 bên dưới.
+> 3 test `skipped` là các ca có điều kiện môi trường (`@EnabledIf`), không phải test hỏng.
 
 ---
 
@@ -672,20 +673,20 @@ npx vitest run src/features/<area>
 
 ---
 
-## 11. Kết quả chạy & 3 defect còn mở (2026-08-07)
+## 11. Kết quả chạy (2026-08-08)
 
 Baseline trước khi làm: **104 test đỏ** (71 backend unit + 30 mobile + 3 web).
-Sau khi hoàn thiện: **3 test đỏ**, đều là **defect thật được giữ đỏ có chủ đích**.
+Sau khi hoàn thiện: **0 test đỏ** — 3 defect được phát hiện đã được sửa tận gốc ở tầng ứng dụng.
 
 Nguyên tắc xử lý đã áp dụng:
 - test lệch so với code hiện tại (đổi route, đổi API, đổi ràng buộc) → **sửa test**;
-- code lệch so với hợp đồng an toàn/RBAC → **giữ test đỏ**, ghi Defect ID + nguyên nhân vào sheet `Defects`.
+- code lệch so với hợp đồng an toàn/RBAC → **giữ test đỏ** cho tới khi chủ dự án xác nhận, rồi **sửa code**.
 
-| Defect ID | Test | Nhận định |
+| Defect | Trạng thái | Cách xử lý |
 |---|---|---|
-| DEF-105-01 | `RedFlagRuleControllerSecurityTest.allEndpoints_asModerator_shouldReturn403` | Commit `ff31c960` nới `@PreAuthorize` cấp class của `RedFlagRuleController` thành `hasAnyRole('SYSTEM_ADMIN','ADMIN','MODERATOR','CONTENT_ADMIN')` → MODERATOR tạo/sửa/xoá được red-flag rule, trong khi `/admin/safety-rules` là trang của SYSTEM_ADMIN. **Cần chủ dự án xác nhận** trước khi đổi test hoặc thu hẹp quyền. |
-| DEF-123-01 | `AiModerationAdminControllerSecurityTest.listPolicies_asModerator_returns403` | Cùng commit `ff31c960` nới quyền cấp class cho `AiModerationAdminController` → MODERATOR đọc được toàn bộ AI policy của admin. |
-| DEF-070-01 | `growth_measurement_form_test.dart :: edit preserves a null note when it is unchanged` | `GrowthMeasurementFormScreen` khởi tạo `_noteController = existing?.note ?? ''`; khi ghi chú gốc là `null` và người dùng không sửa, `'' != null` nên payload PATCH vẫn gửi `note: ""` (ghi đè `null` thành chuỗi rỗng). Mức độ thấp, sửa 1 dòng ở tầng ứng dụng. |
+| `RedFlagRuleController` mở cho MODERATOR / CONTENT_ADMIN (commit `ff31c960`) | ✅ Đã sửa | `@PreAuthorize("hasRole('SYSTEM_ADMIN')")` — khớp với route `/admin/safety-rules` vốn đã là `requiredRoles={['SYSTEM_ADMIN']}` ở web. Test mở rộng thành `@ParameterizedTest` phủ 5 role bị từ chối + 1 ca SYSTEM_ADMIN 200. |
+| `AiModerationAdminController` mở cho MODERATOR / CONTENT_ADMIN (cùng commit) | ✅ Đã sửa | Class → `hasRole('SYSTEM_ADMIN')`; riêng `GET /status` giữ `hasAnyRole('SYSTEM_ADMIN','MODERATOR')` vì trang moderator `PendingContentQueuePage` đọc nó để biết AI screening đang bật. `policies` CRUD / `test` / `rescan` giờ admin-only. |
+| `GrowthMeasurementFormScreen` gửi `note: ""` đè lên `null` | ✅ Đã sửa | `existing?.note?.trim() ?? ''` — chuẩn hoá cả hai vế trước khi so sánh. Bổ sung 2 test: xoá ghi chú có sẵn *vẫn* gửi `note: ""`, và ghi chú không đổi *không* lọt vào payload. |
 
 **Backend (integration)**: bật Docker Desktop trước khi chạy; nếu tắt sẽ báo
 `NoClassDefFoundError: AbstractPostgresIntegrationTest` — lỗi môi trường, không phải lỗi code.
@@ -694,6 +695,36 @@ Nguyên tắc xử lý đã áp dụng:
 
 | File | Thay đổi | Lý do |
 |---|---|---|
+| `CareBridgeAPI/.../triage/controller/RedFlagRuleController.java` | `@PreAuthorize` → `hasRole('SYSTEM_ADMIN')` | **Sửa RBAC theo yêu cầu**: `/admin/safety-rules` chỉ dành cho SYSTEM_ADMIN. Red-flag rule điều khiển luồng escalation cấp cứu nên quyền soạn thảo phải giữ hẹp. Chỉ `SafetyRuleManagementPage` (đã gate SYSTEM_ADMIN) gọi API này → không ảnh hưởng màn hình khác. |
+| `CareBridgeAPI/.../aimoderation/controller/AiModerationAdminController.java` | Class → `hasRole('SYSTEM_ADMIN')`; `GET /status` → `hasAnyRole('SYSTEM_ADMIN','MODERATOR')` | Thu hẹp về admin-only, giữ đúng một ngoại lệ read-only mà moderator thật sự cần. |
+| `CareBridgeMobileApp/lib/features/healthRecords/screens/growth_measurement_form_screen.dart` | `existing?.note?.trim() ?? ''` | Sửa lỗi ghi đè `null` thành chuỗi rỗng khi sửa phép đo mà không đụng vào ô ghi chú. |
 | `CareBridgeMobileApp/lib/integrations/firebaseRealtime/firebase_conversation_signaling_port.dart` | Thêm `_FirebaseSignInGate.reset()` và `@visibleForTesting resetFirebaseSignInGateForTest()` | `_firebaseSignInGate` là hàng đợi **toàn cục cấp process**; mỗi mắt xích gắn với zone đã tạo nó. Widget test chạy fake-async nên một test kết thúc giữa chừng làm hàng đợi kẹt vĩnh viễn → mọi test sau treo tới timeout 10 phút. Hook này **không có caller ở production**, không đổi hành vi runtime. |
 | `CareBridgeWebApp/vitest.setup.ts` (mới) + `vite.config.ts` (`setupFiles`) | Cài lại `localStorage`/`sessionStorage` cho jsdom | Node ≥ 22 có sẵn global `localStorage` thử nghiệm; nó che mất Storage của jsdom và thiếu `setItem`, làm mọi store dùng `zustand/persist` (authStore) văng lỗi. Đã chạy `npm run build` xác nhận không ảnh hưởng build. |
 | `CareBridgeMobileApp/test/features/aiTriage/goldens/*.png` (3 ảnh) | Chụp lại golden | Màn hình chọn giai đoạn đã thêm 1 lựa chọn thứ 5 (diff 32%); ảnh mới đã được kiểm tra bằng mắt: bố cục đúng, không tràn, không lỗi render. |
+| `CareBridgeMobileApp/macos/.gitignore` + gỡ 10 file sinh tự động khỏi git index | Bỏ theo dõi các artefact do Flutter sinh ra | Xem mục 13. |
+
+## 13. Dọn các file Flutter sinh tự động bị commit nhầm
+
+`flutter test` / `flutter run` **luôn sinh lại** `GeneratedPluginRegistrant` và các file `Flutter/ephemeral/`.
+Vì chúng đang được git theo dõi, mỗi lần chạy test là repo lại bẩn — kể cả sau khi commit `55159ec1`
+xoá tay `IntegrationTestPlugin`, nó vẫn quay lại ngay lần chạy kế tiếp.
+
+Điểm mấu chốt: `android/.gitignore` và `ios/.gitignore` **đã có sẵn** luật bỏ qua các file này —
+chỉ là file đã bị commit trước khi có luật, mà `.gitignore` không có tác dụng với file đã được theo dõi.
+Bản thân `macos/Flutter/ephemeral/Flutter-Generated.xcconfig` còn ghi rõ ở dòng đầu
+*"This is a generated file; do not edit or check into version control"* và đang chứa đường dẫn máy
+cá nhân của một thành viên (`D:\FU\Term 9\...`) — nguồn xung đột mỗi lần merge.
+
+Đã xử lý:
+1. Thêm `**/Flutter/GeneratedPluginRegistrant.swift` vào `macos/.gitignore` (chỗ duy nhất còn thiếu luật).
+2. `git rm --cached` 10 file sau — **file vẫn nằm trên đĩa**, chỉ thôi được git theo dõi:
+   - `android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java`
+   - `ios/Runner/GeneratedPluginRegistrant.h`, `.m`
+   - `ios/Flutter/ephemeral/` (4 file)
+   - `macos/Flutter/GeneratedPluginRegistrant.swift`
+   - `macos/Flutter/ephemeral/` (2 file)
+
+Đã kiểm chứng: chạy lại `flutter test` → file được sinh lại đầy đủ trên đĩa (có `IntegrationTestPlugin`),
+`git status` sạch, `git check-ignore` xác nhận cả 4 nhóm đều khớp luật ignore.
+`.gitlab-ci.yml` không có job nào build mobile nên thay đổi này không ảnh hưởng CI; máy dev chỉ cần
+chạy `flutter test`/`flutter run`/`flutter build` như bình thường là file tự sinh lại.

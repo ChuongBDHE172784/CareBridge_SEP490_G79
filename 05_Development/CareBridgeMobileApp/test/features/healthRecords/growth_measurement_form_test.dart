@@ -212,6 +212,35 @@ void main() {
     expect(service.updatedPayload!.containsKey('note'), isFalse);
   });
 
+  // The counterpart of the case above: skipping an untouched empty note must not also swallow a
+  // deliberate clear, otherwise the note could never be removed once written.
+  testWidgets('edit sends an empty note when the user clears an existing one', (
+    tester,
+  ) async {
+    final service = _FakeGrowthMeasurementService();
+    await _pumpForm(tester, service: service, measurement: _measurement());
+
+    await tester.enterText(find.byKey(const Key('growth-form-note')), '');
+    await tester.tap(find.byKey(const Key('growth-form-save')));
+    await tester.pumpAndSettle();
+
+    expect(service.updatedPayload, isNotNull);
+    expect(service.updatedPayload!['note'], '');
+  });
+
+  testWidgets('edit keeps an unchanged non-empty note out of the payload', (
+    tester,
+  ) async {
+    final service = _FakeGrowthMeasurementService();
+    await _pumpForm(tester, service: service, measurement: _measurement());
+
+    await tester.tap(find.byKey(const Key('growth-form-save')));
+    await tester.pumpAndSettle();
+
+    expect(service.updatedPayload, isNotNull);
+    expect(service.updatedPayload!.containsKey('note'), isFalse);
+  });
+
   testWidgets('failed save keeps the form open and preserves entered values', (
     tester,
   ) async {

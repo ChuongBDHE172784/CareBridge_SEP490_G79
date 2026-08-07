@@ -2,8 +2,11 @@ package com.carebridge.backend.aimoderation;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
@@ -24,6 +27,8 @@ import com.carebridge.backend.security.repository.UserRepository;
 import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.ComponentScan.Filter;
@@ -75,11 +80,34 @@ class AiModerationAdminControllerSecurityTest {
         mockMvc.perform(get(POLICIES_URL)).andExpect(status().isOk());
     }
 
-    // MODERATOR must NOT manage AI policies
+    // Policy authoring is SYSTEM_ADMIN-only: no other role may even read the policy catalogue.
+    @ParameterizedTest
+    @ValueSource(strings = {"MODERATOR", "CONTENT_ADMIN", "EXPERT", "MOTHER"})
+    void listPolicies_asNonSystemAdmin_returns403(String role) throws Exception {
+        mockMvc.perform(get(POLICIES_URL)
+                        .with(user("11111111-1111-1111-1111-111111111111").roles(role)))
+                .andExpect(status().isForbidden());
+
+        verify(policyService, never()).listPolicies(any(), anyInt(), anyInt());
+    }
+
+    // The one deliberate exception to the class-level rule: the moderator pending-content queue
+    // reads /status to know whether AI screening is live. It is read-only and carries no policy
+    // content, so MODERATOR is admitted here — and nowhere else on this controller.
     @Test
     @WithMockUser(username = "11111111-1111-1111-1111-111111111111", roles = "MODERATOR")
-    void listPolicies_asModerator_returns403() throws Exception {
-        mockMvc.perform(get(POLICIES_URL)).andExpect(status().isForbidden());
+    void status_asModerator_returns200() throws Exception {
+        when(statusService.status()).thenReturn(new AiModerationStatusResponse(
+                true, true, "gemini-1.5-flash", "READY", true, 3, 1, 0, Instant.now(), "hash", 11));
+
+        mockMvc.perform(get(STATUS_URL)).andExpect(status().isOk());
+    }
+
+    // CONTENT_ADMIN has no moderator queue, so it does not get the /status exception either.
+    @Test
+    @WithMockUser(username = "11111111-1111-1111-1111-111111111111", roles = "CONTENT_ADMIN")
+    void status_asContentAdmin_returns403() throws Exception {
+        mockMvc.perform(get(STATUS_URL)).andExpect(status().isForbidden());
     }
 
     // Body is fully valid on purpose: @Valid binding runs before method security, so an

@@ -28,7 +28,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/admin/red-flag-rules")
-@PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ADMIN', 'MODERATOR', 'CONTENT_ADMIN')")
+// Red-flag rules drive emergency escalation, so authoring them is reserved for SYSTEM_ADMIN —
+// the same audience the /admin/safety-rules portal route is gated to. Moderators act on the
+// results of these rules; they never edit the rules themselves.
+@PreAuthorize("hasRole('SYSTEM_ADMIN')")
 @RequiredArgsConstructor
 public class RedFlagRuleController {
 
