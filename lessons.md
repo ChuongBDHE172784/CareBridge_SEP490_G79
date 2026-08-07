@@ -117,3 +117,21 @@
 - The Mother Home screen and router use canonical `/appointments/calendar`, while the
   existing widget fixture still declares `/reminders/calendar`; keep that compatibility
   mismatch explicit instead of changing navigation during a visual-only redesign.
+- Before dropping a table, grep for **writers**, not just readers and mappings. Wave 13's
+  cutover moved the service, the repository and three consumers but missed `DevDataSeeder`,
+  which still INSERTed the source table. Check the seeder's activation condition too before
+  calling it a production risk: `@Profile("dev & !prod")` meant it could never have run there,
+  and claiming otherwise sent the user through an unnecessary deploy cycle.
+- Never run two Maven builds against the same `target/` at once. Doing so produced
+  `FileNotFoundException: class path resource [...]` across 17 unrelated test classes, which
+  looked exactly like test-order flakiness and led to a wrong "the suite is unstable" claim.
+  Measure stability with sequential runs and nothing else touching the build directory.
+- A migration's gates can pass **vacuously**. The wave-13 backfill ran green on an empty
+  `growth_measurements`, proving nothing about the transformation. Seed real source rows and
+  replay the statement *read out of the migration file* so the test cannot drift from what
+  production will execute — that is also what caught an `unnest.column_name` SQL error before
+  it reached the live database.
+- `text_value` on `health_observations` is the observation's own textual content (344
+  POSTURE_FEEDBACK rows, `115/75 mmHg`), even though the entity field is named `note`. Check
+  what a column actually holds before mapping something onto it on the strength of its Java
+  field name.

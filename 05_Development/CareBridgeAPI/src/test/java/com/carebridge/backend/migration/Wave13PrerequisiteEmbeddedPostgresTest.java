@@ -18,7 +18,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * migration could quietly drop or redefine one and no runtime test would notice.
  *
  * <p>The suite is equally a statement about what has <em>not</em> happened — growth data must
- * still live in growth_measurements, untouched, until prerequisites 4 and 5 are settled.
+ * have moved out of growth_measurements, which no longer exists.
  */
 class Wave13PrerequisiteEmbeddedPostgresTest extends AbstractEmbeddedPostgresIntegrationTest {
 
@@ -121,16 +121,19 @@ class Wave13PrerequisiteEmbeddedPostgresTest extends AbstractEmbeddedPostgresInt
     }
 
     @Test
-    void growthMeasurementsIsUntouchedBecauseTheMergeHasNotHappened() {
-        // Prerequisites only. If this fails, someone ran the merge without settling
-        // V3 §3.12 conditions 4 and 5.
+    void growthMeasurementsIsGoneBecauseTheMergeCompleted() {
+        // This assertion used to be its opposite — the table had to survive until
+        // prerequisites 4 and 5 were settled. They were, the cutover shipped, and
+        // V20260807160000 dropped the source. Keeping the check inverted rather than
+        // deleting it means a migration that recreated the table would still be caught.
         assertThat(jdbcTemplate.queryForObject(
-                "SELECT to_regclass('public.growth_measurements') IS NOT NULL", Boolean.class))
+                "SELECT to_regclass('public.growth_measurements') IS NULL", Boolean.class))
                 .isTrue();
+        // The data it held must still be reachable under its new identity.
         assertThat(jdbcTemplate.queryForObject("""
-                SELECT count(*) FROM information_schema.columns
-                 WHERE table_schema = 'public' AND table_name = 'growth_measurements'
-                   AND column_name = 'deleted_at'
+                SELECT count(*) FROM pg_constraint
+                 WHERE conrelid = 'public.health_observations'::regclass AND contype = 'u'
+                   AND pg_get_constraintdef(oid) = 'UNIQUE (legacy_source, legacy_id)'
                 """, Long.class))
                 .isEqualTo(1L);
     }

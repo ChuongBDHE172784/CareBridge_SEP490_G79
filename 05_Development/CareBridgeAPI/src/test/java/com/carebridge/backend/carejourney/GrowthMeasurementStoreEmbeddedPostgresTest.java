@@ -5,10 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.carebridge.backend.carejourney.entity.GrowthMeasurement;
 import com.carebridge.backend.carejourney.repository.GrowthMeasurementStore;
 import com.carebridge.backend.testsupport.AbstractEmbeddedPostgresIntegrationTest;
-import java.io.IOException;
 import java.math.BigDecimal;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -22,15 +19,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * Contract test for the wave-13 cutover: growth sessions now live in health_observations.
  *
  * <p>{@code GrowthServiceTest} mocks this store, so nothing there proves the projection works.
- * These tests exercise the real thing against PostgreSQL, including the case that matters most
- * in production — reading back rows the backfill migration wrote, not only rows this store
- * wrote itself.
+ * These tests exercise the real thing against PostgreSQL.
  */
 class GrowthMeasurementStoreEmbeddedPostgresTest extends AbstractEmbeddedPostgresIntegrationTest {
-
-    private static final Path BACKFILL = Path.of(
-            "src/main/resources/db/migration",
-            "V20260807140000__expand_growth_measurements_into_health_observations.sql");
 
     @Autowired private GrowthMeasurementStore store;
     @Autowired private JdbcTemplate jdbcTemplate;
@@ -193,38 +184,12 @@ class GrowthMeasurementStoreEmbeddedPostgresTest extends AbstractEmbeddedPostgre
                 .isPresent();
     }
 
-    @Test
-    void rowsWrittenByTheBackfillMigrationReadBackAsSessions() throws IOException {
-        // The production rows were written by V20260807140000, not by this store. If the two
-        // disagree about grouping, units or where the note lives, the cutover would show a
-        // user an empty growth chart — this is the test that catches that.
-        UUID baby = seedBaby();
-        UUID growthId = UUID.randomUUID();
-        jdbcTemplate.update("""
-                INSERT INTO growth_measurements (
-                    growth_measurement_id, baby_id, care_subject_id, measured_date,
-                    weight_kg, height_cm, head_circumference_cm, source_type, note,
-                    created_at, updated_at)
-                VALUES (?, ?, ?, DATE '2026-06-20', 3.65, 52.00, 35.00, 'CLINIC', 'Ghi chú cũ',
-                        now(), now())
-                """, growthId, baby, baby);
-
-        String sql = Files.readString(BACKFILL);
-        int start = sql.indexOf("INSERT INTO public.health_observations (");
-        int end = sql.indexOf("\n\n-- ---", start);
-        jdbcTemplate.execute(sql.substring(start, end).trim());
-
-        GrowthMeasurement read = store.findById(growthId).orElseThrow();
-        assertThat(read.getMeasuredDate()).isEqualTo(LocalDate.of(2026, 6, 20));
-        assertThat(read.getWeightKg()).isEqualByComparingTo("3.65");
-        assertThat(read.getHeightCm()).isEqualByComparingTo("52.00");
-        assertThat(read.getHeadCircumferenceCm()).isEqualByComparingTo("35.00");
-        assertThat(read.getSourceType()).isEqualTo("CLINIC");
-        assertThat(read.getNote()).isEqualTo("Ghi chú cũ");
-        assertThat(store.findByBabyIdAndDeletedAtIsNullOrderByMeasuredDateAsc(baby))
-                .extracting(GrowthMeasurement::getGrowthMeasurementId)
-                .contains(growthId);
-    }
+    // COVERAGE RETIRED (wave 13 contract, V20260807160000): a test here replayed the backfill
+    // migration into growth_measurements and read the result back through this store, proving
+    // the two agreed on grouping, units and where the note lives. The source table is gone, so
+    // the scenario is unreachable. What it protected was verified against the live database
+    // before the drop: 24 of 24 measurements migrated, 0 diverging, and all 8 sessions
+    // projected back identically to their source rows.
 
     private List<String> observationTypes(UUID group) {
         return jdbcTemplate.queryForList("""

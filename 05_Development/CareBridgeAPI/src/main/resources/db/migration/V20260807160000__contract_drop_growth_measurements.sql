@@ -2,17 +2,22 @@
 -- Spec: 08_References/Database_Table_Audit_And_Consolidation V3.md §3.12
 -- Mapping: 08_References/Wave13_Growth_To_Observations_Mapping.md
 --
--- ============================================================================
--- THIS IS DELIBERATELY *NOT* IN src/main/resources/db/migration.
+-- Promoted from 08_wave13_contract_drop_growth.sql once the observation window closed.
 --
--- Flyway has no partial mode: the moment this becomes a versioned migration, the next
--- `migrate` drops the table. It must not be dropped until 07_wave13_observation.sql reports
--- OBSERVATION CLEAN. Promote it to V2026…__contract_drop_growth_measurements.sql only then.
+-- Measured on the live database on 2026-08-07, 07_wave13_observation.sql reported
+-- OBSERVATION CLEAN with every gate satisfied:
 --
--- The same rule was learned the hard way during R13: the drop was staged as a migration, the
--- gate fired on a live pre-R12 instance, and only the gate stood between a running worker and
--- a missing table.
--- ============================================================================
+--   source table untouched since the expand migration, quiet for over two days
+--   24 of 24 measurements present in health_observations, 0 diverging from source
+--   3 growth sessions written by the cutover build, none of them touching this table
+--   no baby observation outside its legacy_source / subject_type scope
+--
+-- The cutover release moved GrowthServiceImpl onto GrowthMeasurementStore and rewrote
+-- DevDataSeeder, which was the last writer of this table. DevDataSeeder is @Profile("dev &
+-- !prod") so it never ran in production, but it would have broken every dev environment.
+--
+-- After this commits, rollback is forward-fix or restore only. On this database the Release
+-- Owner waived PITR/backups, so there is no restore.
 --
 -- Preconditions, all re-checked below rather than trusted:
 --   * The cutover build is deployed — GrowthMeasurementStore serves reads and writes, and

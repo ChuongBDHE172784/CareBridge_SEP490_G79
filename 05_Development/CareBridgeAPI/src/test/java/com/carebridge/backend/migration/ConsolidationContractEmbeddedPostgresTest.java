@@ -48,7 +48,10 @@ class ConsolidationContractEmbeddedPostgresTest extends AbstractEmbeddedPostgres
                 "account_lock_appeals",
                 "device_connections",
                 "archived_records",
-                "nearby_support_interactions"))
+                "nearby_support_interactions",
+                // Wave 13 (V20260807160000): growth readings live in health_observations,
+                // grouped by measurement_group_id.
+                "growth_measurements"))
                 .allSatisfy(name -> assertThat(relationExists(name))
                         .as("retired relation %s", name)
                         .isFalse());
@@ -76,7 +79,6 @@ class ConsolidationContractEmbeddedPostgresTest extends AbstractEmbeddedPostgres
                 "auth_sessions",
                 "care_facilities",
                 "health_observations",
-                "growth_measurements",
                 "safety_events"))
                 .allSatisfy(name -> assertThat(relationExists(name))
                         .as("retained relation %s", name)
