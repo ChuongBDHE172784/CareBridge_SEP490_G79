@@ -600,39 +600,71 @@ class _SourceTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final active = _safeIndex;
+    final activeIndex = _safeIndex == 1 ? 1 : 0;
+
     return Container(
-      height: 50,
+      height: 48,
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: const Color(0xFFF3EBE5),
-        borderRadius: BorderRadius.circular(25),
+        color: const Color(0xFFF2EAE4),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: const Color(0xFFE8DDD6).withValues(alpha: .5),
+          color: const Color(0xFFE5DDD7),
+          width: 1,
         ),
       ),
-      child: Row(
+      child: Stack(
         children: [
-          Expanded(
-            child: _TabButton(
-              key: const Key('tab-system-tasks'),
-              title: 'Gợi ý CareBridge',
-              count: _safeSystemCount,
-              icon: Icons.auto_awesome_rounded,
-              isSelected: active == 0,
-              onTap: () => onTabSelected(0),
+          // 1. Sliding Active Indicator Pill
+          AnimatedAlign(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.fastOutSlowIn,
+            alignment:
+                activeIndex == 0 ? Alignment.centerLeft : Alignment.centerRight,
+            child: FractionallySizedBox(
+              widthFactor: 0.5,
+              heightFactor: 1.0,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color.fromRGBO(90, 70, 63, 0.08),
+                      blurRadius: 8,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
-          Expanded(
-            child: _TabButton(
-              key: const Key('tab-user-tasks'),
-              title: 'Việc cá nhân',
-              count: _safeUserCount,
-              icon: Icons.person_outline_rounded,
-              isSelected: active == 1,
-              onTap: () => onTabSelected(1),
-            ),
+
+          // 2. Tab Labels Row
+          Row(
+            children: [
+              Expanded(
+                child: _TabButton(
+                  key: const Key('tab-system-tasks'),
+                  title: 'Gợi ý CareBridge',
+                  count: _safeSystemCount,
+                  icon: Icons.auto_awesome_rounded,
+                  isSelected: activeIndex == 0,
+                  onTap: () => onTabSelected(0),
+                ),
+              ),
+              Expanded(
+                child: _TabButton(
+                  key: const Key('tab-user-tasks'),
+                  title: 'Việc cá nhân',
+                  count: _safeUserCount,
+                  icon: Icons.person_outline_rounded,
+                  isSelected: activeIndex == 1,
+                  onTap: () => onTabSelected(1),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -660,9 +692,8 @@ class _TabButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const primaryColor = Color(0xFFC98C7B);
-    const textActive = Color(0xFF4A3831);
-    const textInactive = Color(0xFF8C746A);
+    const primaryColor = Color(0xFF845143);
+    const textInactive = Color(0xFF7D6E6A);
     final displayCount = _safeCount;
 
     return Semantics(
@@ -673,65 +704,59 @@ class _TabButton extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(21),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            curve: Curves.easeInOut,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            decoration: BoxDecoration(
-              color: isSelected ? Colors.white : Colors.transparent,
-              borderRadius: BorderRadius.circular(21),
-              boxShadow: isSelected
-                  ? [
-                      BoxShadow(
-                        color: const Color(0xFF5A463F).withValues(alpha: .1),
-                        blurRadius: 12,
-                        offset: const Offset(0, 3),
-                      ),
-                    ]
-                  : null,
-            ),
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            width: double.infinity,
+            height: double.infinity,
+            alignment: Alignment.center,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
-                  icon,
-                  size: 16,
-                  color: isSelected ? primaryColor : const Color(0xFF9E877C),
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  child: Icon(
+                    icon,
+                    size: 16,
+                    color: isSelected ? primaryColor : textInactive,
+                  ),
                 ),
                 const SizedBox(width: 5),
                 Flexible(
-                  child: Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  child: AnimatedDefaultTextStyle(
+                    duration: const Duration(milliseconds: 200),
                     style: TextStyle(
-                      fontFamily: 'Quicksand',
-                      fontSize: 13.5,
+                      fontFamily: 'Lexend',
+                      fontSize: 13,
                       fontWeight: isSelected
-                          ? FontWeight.w800
-                          : FontWeight.w600,
-                      color: isSelected ? textActive : textInactive,
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                      color: isSelected ? primaryColor : textInactive,
+                    ),
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ),
                 if (displayCount > 0) ...[
                   const SizedBox(width: 5),
-                  Container(
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 7,
                       vertical: 2,
                     ),
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? const Color(0xFFFFECE5)
-                          : const Color(0xFFE8DDD6).withValues(alpha: .6),
+                          ? const Color(0xFFFFE2D9)
+                          : const Color(0xFFE5DDD7),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
                       '$displayCount',
                       style: TextStyle(
-                        fontFamily: 'Quicksand',
+                        fontFamily: 'Lexend',
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         color: isSelected ? primaryColor : textInactive,
