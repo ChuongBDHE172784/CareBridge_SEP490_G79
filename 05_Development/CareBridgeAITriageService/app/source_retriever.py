@@ -1,3 +1,9 @@
+"""LEGACY_V1_ONLY source retrieval.
+
+Its APPROVED/PENDING and optional runtime-search semantics are not valid for V2. New code must use
+``app.triage_v2.evidence_retrieval`` and SOURCE_VERIFIED artifacts only.
+"""
+
 import json
 import re
 from typing import Optional
@@ -44,7 +50,9 @@ def load_sources(stage: str = "INFANT", child_age_months: int | None = None) -> 
                 sourceStatus=post.metadata.get("sourceStatus", "DRAFT"),
                 sourceVersion=str(post.metadata.get("sourceVersion", "1.0")),
                 approvedAt=str(post.metadata.get("approvedAt", post.metadata.get("lastReviewed", ""))) or None,
-                approvedBy=post.metadata.get("approvedBy", "CareBridge clinical review"),
+                # No clinician participated in this project, so the fallback must not imply one
+                # did. A document that fails to state its reviewer is unreviewed, not approved.
+                approvedBy=post.metadata.get("approvedBy", "CareBridge development team internal review"),
                 deprecatedAt=str(post.metadata.get("deprecatedAt", "")) or None,
                 section=post.metadata.get("section", post.metadata.get("topic")),
                 retrievedAt=str(post.metadata.get("retrievedAt", "")) or None,

@@ -55,7 +55,7 @@ class SensorSelfTestControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "00000000-0000-0000-0000-000000000030", roles = "PARTNER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000030", roles = "OPERATIONS")
     void create_wrongRoleReturnsForbidden() throws Exception {
         mockMvc.perform(post("/api/v1/safety/events/sensor-self-test")
                         .contentType("application/json")

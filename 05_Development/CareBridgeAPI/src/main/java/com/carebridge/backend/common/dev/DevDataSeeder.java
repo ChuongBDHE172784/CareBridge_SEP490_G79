@@ -77,6 +77,7 @@ import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.ArrayList;
@@ -111,7 +112,6 @@ import org.springframework.transaction.annotation.Transactional;
  *   moderator@carebridge.dev  -> MODERATOR
  *   content@carebridge.dev    -> CONTENT_ADMIN
  *   expert@carebridge.dev     -> EXPERT
- *   partner@carebridge.dev    -> PARTNER
  *   mother@carebridge.dev     -> MOTHER
  *   family@carebridge.dev     -> FAMILY
  *
@@ -174,7 +174,6 @@ public class DevDataSeeder implements ApplicationRunner {
         new SeedAccount("moderator@carebridge.dev", "Moderator Test", Role.MODERATOR),
         new SeedAccount("content@carebridge.dev", "Content Test", Role.CONTENT_ADMIN),
         new SeedAccount("expert@carebridge.dev", "Expert Test", Role.EXPERT),
-        new SeedAccount("partner@carebridge.dev", "Partner Test", Role.PARTNER),
         new SeedAccount("mother@carebridge.dev", "Mother Test", Role.MOTHER),
         new SeedAccount("family@carebridge.dev", "Family Test", Role.FAMILY),
         new SeedAccount("mebau@carebridge.dev", "Mẹ Bầu Mới", Role.MOTHER),
@@ -888,27 +887,54 @@ public class DevDataSeeder implements ApplicationRunner {
             timestamp, timestamp, baby.getId());
     }
 
+    /**
+     * Seeds one growth measuring session.
+     *
+     * <p>Wave 13 (V3 §3.12): growth lives in {@code health_observations} as three rows sharing
+     * a {@code measurement_group_id}, the shape
+     * {@link com.carebridge.backend.carejourney.repository.GrowthMeasurementStore} reads.
+     * {@code growth_measurements} is frozen and awaiting its contract migration.
+     *
+     * <p>Upserts on {@code (legacy_source, legacy_id)} — the same key that makes the wave-13
+     * backfill idempotent — so reseeding updates in place instead of duplicating.
+     */
     private void upsertGrowthMeasurement(String id, BabyProfile baby, LocalDate measuredDate,
                                          String weightKg, String heightCm, String headCm) {
+        UUID groupId = UUID.fromString(id);
         Timestamp now = Timestamp.from(Instant.now());
+        Timestamp observedAt = Timestamp.from(
+                measuredDate.atStartOfDay(ZoneId.of("Asia/Ho_Chi_Minh")).toInstant());
+
+        upsertGrowthObservation(groupId, baby, "BABY_WEIGHT", new BigDecimal(weightKg), "kg",
+                observedAt, now);
+        upsertGrowthObservation(groupId, baby, "BABY_HEIGHT", new BigDecimal(heightCm), "cm",
+                observedAt, now);
+        upsertGrowthObservation(groupId, baby, "BABY_HEAD_CIRCUMFERENCE", new BigDecimal(headCm), "cm",
+                observedAt, now);
+    }
+
+    private void upsertGrowthObservation(UUID groupId, BabyProfile baby, String observationType,
+                                         BigDecimal value, String unit,
+                                         Timestamp observedAt, Timestamp now) {
         jdbcTemplate.update("""
-            INSERT INTO growth_measurements
-                (growth_measurement_id, care_subject_id, baby_id, measured_date, weight_kg, height_cm,
-                 head_circumference_cm, source_type, note, deleted_at, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'HOME', '[DEV][MF-03] Dữ liệu tăng trưởng mẫu', NULL, ?, ?)
-            ON CONFLICT (growth_measurement_id) DO UPDATE SET
+            INSERT INTO health_observations
+                (health_observation_id, care_subject_id, observation_type, subject_type,
+                 value_numeric, unit, observed_at, source_type, context_jsonb,
+                 measurement_group_id, legacy_source, legacy_id, deleted_at, created_at, updated_at)
+            VALUES (gen_random_uuid(), ?, ?, 'BABY', ?, ?, ?, 'MANUAL',
+                    jsonb_build_object('measurementSetting', 'HOME',
+                                       'note', '[DEV][MF-03] Dữ liệu tăng trưởng mẫu'),
+                    ?, 'growth_measurements', ?, NULL, ?, ?)
+            ON CONFLICT (legacy_source, legacy_id) DO UPDATE SET
                 care_subject_id = EXCLUDED.care_subject_id,
-                baby_id = EXCLUDED.baby_id,
-                measured_date = EXCLUDED.measured_date,
-                weight_kg = EXCLUDED.weight_kg,
-                height_cm = EXCLUDED.height_cm,
-                head_circumference_cm = EXCLUDED.head_circumference_cm,
-                source_type = EXCLUDED.source_type,
-                note = EXCLUDED.note,
+                value_numeric = EXCLUDED.value_numeric,
+                unit = EXCLUDED.unit,
+                observed_at = EXCLUDED.observed_at,
+                context_jsonb = EXCLUDED.context_jsonb,
                 deleted_at = NULL,
                 updated_at = EXCLUDED.updated_at
-            """, UUID.fromString(id), baby.getId(), baby.getId(), java.sql.Date.valueOf(measuredDate),
-            new BigDecimal(weightKg), new BigDecimal(heightCm), new BigDecimal(headCm), now, now);
+            """, baby.getId(), observationType, value, unit, observedAt,
+            groupId, groupId + ":" + observationType, now, now);
     }
 
     private void seedAcceptedCareGroup(User mother, User familyMember, java.util.UUID journeyId,

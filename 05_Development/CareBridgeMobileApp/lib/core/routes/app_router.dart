@@ -77,6 +77,7 @@ import '../../features/aiTriage/models/triage_entry_context.dart';
 import '../../features/aiTriage/models/triage_continuation.dart';
 import '../../features/aiTriage/services/triage_continuation_restore_coordinator.dart';
 import '../../features/aiTriage/screens/symptom_intake_screen.dart';
+import '../../features/aiTriage/screens/triage_v2_screen.dart';
 import '../../features/aiTriage/screens/triage_history_screen.dart';
 import '../../features/aiTriage/widgets/floating_ai_triage_host.dart';
 import '../../features/aiTriage/screens/risk_triage_result_screen.dart';
@@ -90,7 +91,6 @@ import '../../features/expert/screens/upload_verification_docs_screen.dart';
 import '../../features/expert/screens/verification_status_screen.dart';
 import '../../features/expert/screens/expert_public_profile_screen.dart';
 import '../../features/expert/screens/expert_calendar_screen.dart';
-import '../../features/expert/screens/expert_nearby_support_screen.dart';
 import '../../features/expert/screens/expert_onboarding_gate_screen.dart';
 import '../../features/expert/screens/expert_identity_capture_screen.dart';
 import '../../features/expert/services/expert_onboarding_store.dart';
@@ -914,6 +914,17 @@ final GoRouter appRouter = GoRouter(
       },
     ),
     GoRoute(
+      path: '/internal/triage/v2',
+      redirect: (context, state) =>
+          const bool.fromEnvironment(
+            'AI_TRIAGE_V2_INTERNAL_ENABLED',
+            defaultValue: false,
+          )
+          ? null
+          : '/triage/intake',
+      builder: (context, state) => const TriageV2Screen(),
+    ),
+    GoRoute(
       path: '/triage/history',
       builder: (context, state) => const TriageHistoryScreen(),
     ),
@@ -1008,11 +1019,6 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/expert-calendar',
       builder: (context, state) => const ExpertCalendarScreen(),
-    ),
-    // CB-061: Nearby Support Expert (UC-82)
-    GoRoute(
-      path: '/expert/nearby-support',
-      builder: (context, state) => const ExpertNearbySupportScreen(),
     ),
     // TV4 public expert profile -- navigated to from community answers (expertProfileId)
     GoRoute(

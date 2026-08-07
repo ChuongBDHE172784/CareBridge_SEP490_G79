@@ -14,7 +14,7 @@ import com.carebridge.backend.safety.entity.SafetyMonitoringConfig;
 import com.carebridge.backend.safety.exception.SafetyException;
 import com.carebridge.backend.safety.policy.SafetyConsentPolicy;
 import com.carebridge.backend.safety.repository.IImuMonitoringSessionRepository;
-import com.carebridge.backend.safety.repository.ISafetyConfigRepository;
+import com.carebridge.backend.safety.repository.SafetyConfigStore;
 import com.carebridge.backend.safety.repository.ISafetyEventRepository;
 import com.carebridge.backend.safety.repository.SafetyEventResponseRepository;
 import java.math.BigDecimal;
@@ -37,7 +37,7 @@ public class SensorSelfTestService {
 
     private final IImuMonitoringSessionRepository imuSessionRepository;
     private final ISafetyEventRepository safetyEventRepository;
-    private final ISafetyConfigRepository safetyConfigRepository;
+    private final SafetyConfigStore safetyConfigStore;
     private final SafetyEventResponseRepository responseRepository;
     private final SafetyConsentPolicy consentPolicy;
     private final AuditService auditService;
@@ -125,7 +125,7 @@ public class SensorSelfTestService {
     }
 
     private SafetyMonitoringConfig requireActiveConfig(UUID userId) {
-        SafetyMonitoringConfig config = safetyConfigRepository.findByUserId(userId)
+        SafetyMonitoringConfig config = safetyConfigStore.findByUserId(userId)
                 .orElseThrow(() -> new SafetyException(HttpStatus.CONFLICT, "SAFETY-011",
                         "Safety monitoring is not configured"));
         if (!config.isFallDetectionEnabled()) {

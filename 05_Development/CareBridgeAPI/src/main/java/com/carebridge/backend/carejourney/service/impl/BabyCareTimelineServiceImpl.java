@@ -24,7 +24,7 @@ public class BabyCareTimelineServiceImpl implements IBabyCareTimelineService {
     private final BabyProfileRepository babyProfileRepository;
     private final BabyAccessPolicy babyAccessPolicy;
     private final BabyDailyLogRepository dailyLogs;
-    private final GrowthMeasurementRepository growth;
+    private final GrowthMeasurementStore growth;
     private final DevelopmentMilestoneRepository milestones;
     private final VaccinationRecordRepository vaccinations;
 

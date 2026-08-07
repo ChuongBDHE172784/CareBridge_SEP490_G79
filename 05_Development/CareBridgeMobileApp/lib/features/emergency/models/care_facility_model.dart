@@ -1,6 +1,5 @@
 class CareFacility {
   final String? facilityId;
-  final String? partnerId;
   final String name;
   final String? facilityType;
   final String? facilityLevel;
@@ -17,7 +16,6 @@ class CareFacility {
 
   const CareFacility({
     this.facilityId,
-    this.partnerId,
     required this.name,
     this.facilityType,
     this.facilityLevel,
@@ -54,7 +52,6 @@ class CareFacility {
       // hospitalId is a temporary read alias for older responses. New clients
       // and servers always use facilityId.
       facilityId: (json['facilityId'] ?? json['hospitalId']) as String?,
-      partnerId: json['partnerId'] as String?,
       name: name,
       facilityType: json['facilityType'] as String?,
       facilityLevel: json['facilityLevel'] as String?,

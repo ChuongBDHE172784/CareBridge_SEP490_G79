@@ -14,7 +14,7 @@ sourceType: official_hospital_guidance
 sourceStatus: APPROVED
 sourceVersion: '1.0'
 approvedAt: 2026-08-04
-approvedBy: CareBridge content review (clinical sign-off pending)
+approvedBy: CareBridge development team internal review (DEV_REVIEWED; no clinician participated)
 adminReviewed: false
 ---
 Bài viết mô tả dấu hiệu tiền sản giật trong thai kỳ: đau đầu dữ dội, đau vùng bụng trên

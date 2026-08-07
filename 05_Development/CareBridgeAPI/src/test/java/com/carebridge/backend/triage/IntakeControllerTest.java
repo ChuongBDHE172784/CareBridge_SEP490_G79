@@ -89,7 +89,7 @@ class IntakeControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "00000000-0000-0000-0000-000000000020", roles = "PARTNER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000020", roles = "OPERATIONS")
     void runIntake_wrongRole_shouldReturn403() throws Exception {
         // TRIAGE-TC-006
         mockMvc.perform(post(BASE_URL)

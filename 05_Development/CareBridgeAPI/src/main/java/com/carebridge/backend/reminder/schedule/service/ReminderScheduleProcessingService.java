@@ -2,10 +2,11 @@ package com.carebridge.backend.reminder.schedule.service;
 
 import com.carebridge.backend.notification.dto.NotificationRecordResponse;
 import com.carebridge.backend.notification.service.IReminderNotificationService;
+import com.carebridge.backend.reminder.job.entity.NotificationJob;
+import com.carebridge.backend.reminder.job.entity.NotificationJobType;
+import com.carebridge.backend.reminder.job.repository.NotificationJobRepository;
 import com.carebridge.backend.reminder.notification.entity.AppointmentNotificationJobStatus;
 import com.carebridge.backend.reminder.schedule.entity.ReminderSchedule;
-import com.carebridge.backend.reminder.schedule.entity.ReminderScheduleJob;
-import com.carebridge.backend.reminder.schedule.repository.ReminderScheduleJobRepository;
 import com.carebridge.backend.reminder.schedule.repository.ReminderScheduleRepository;
 import java.time.Clock;
 import java.time.Duration;
@@ -23,7 +24,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ReminderScheduleProcessingService {
-    private final ReminderScheduleJobRepository jobRepository;
+    /** Every query below is scoped to this type; the appointment worker shares the table. */
+    private static final NotificationJobType JOB_TYPE = NotificationJobType.REMINDER_SCHEDULE;
+
+    private final NotificationJobRepository jobRepository;
     private final ReminderScheduleRepository scheduleRepository;
     private final IReminderNotificationService notificationService;
     private final Clock clock;
@@ -33,7 +37,7 @@ public class ReminderScheduleProcessingService {
 
     @Autowired
     public ReminderScheduleProcessingService(
-            ReminderScheduleJobRepository jobRepository,
+            NotificationJobRepository jobRepository,
             ReminderScheduleRepository scheduleRepository,
             IReminderNotificationService notificationService,
             @Value("${carebridge.notification.reminder-schedule.max-attempts:4}") int maxAttempts,
@@ -46,7 +50,7 @@ public class ReminderScheduleProcessingService {
     }
 
     ReminderScheduleProcessingService(
-            ReminderScheduleJobRepository jobRepository,
+            NotificationJobRepository jobRepository,
             ReminderScheduleRepository scheduleRepository,
             IReminderNotificationService notificationService,
             Clock clock, int maxAttempts, long staleProcessingMinutes) {
@@ -55,7 +59,7 @@ public class ReminderScheduleProcessingService {
     }
 
     ReminderScheduleProcessingService(
-            ReminderScheduleJobRepository jobRepository,
+            NotificationJobRepository jobRepository,
             ReminderScheduleRepository scheduleRepository,
             IReminderNotificationService notificationService,
             Clock clock, int maxAttempts, long staleProcessingMinutes,
@@ -72,13 +76,16 @@ public class ReminderScheduleProcessingService {
     @Transactional
     public List<UUID> claimDueJobs(String workerId, int batchSize) {
         Instant now = clock.instant();
-        jobRepository.requeueStale(now.minus(Duration.ofMinutes(staleProcessingMinutes)), now,
+        jobRepository.requeueStale(JOB_TYPE,
+                now.minus(Duration.ofMinutes(staleProcessingMinutes)), now,
                 AppointmentNotificationJobStatus.PENDING,
                 AppointmentNotificationJobStatus.PROCESSING);
         List<UUID> claimed = new ArrayList<>();
-        for (UUID id : jobRepository.findClaimableIds(AppointmentNotificationJobStatus.PENDING,
+        for (UUID id : jobRepository.findClaimableIds(JOB_TYPE,
+                AppointmentNotificationJobStatus.PENDING,
                 now, PageRequest.of(0, Math.max(1, batchSize)))) {
-            if (jobRepository.claim(id, workerId, now, AppointmentNotificationJobStatus.PENDING,
+            if (jobRepository.claim(id, JOB_TYPE, workerId, now,
+                    AppointmentNotificationJobStatus.PENDING,
                     AppointmentNotificationJobStatus.PROCESSING) == 1) {
                 claimed.add(id);
             }
@@ -105,8 +112,9 @@ public class ReminderScheduleProcessingService {
 
     @Transactional
     public void process(UUID jobId, String workerId) {
-        ReminderScheduleJob job = jobRepository.findById(jobId).orElse(null);
-        if (job == null || job.getStatus() != AppointmentNotificationJobStatus.PROCESSING
+        NotificationJob job = jobRepository.findById(jobId).orElse(null);
+        if (job == null || job.getJobType() != JOB_TYPE
+                || job.getStatus() != AppointmentNotificationJobStatus.PROCESSING
                 || (workerId != null && !workerId.equals(job.getLockedBy()))) return;
         Instant now = clock.instant();
         if (isStaleBacklog(job, now)) {
@@ -143,17 +151,18 @@ public class ReminderScheduleProcessingService {
         }
     }
 
-    private boolean isStaleBacklog(ReminderScheduleJob job, Instant now) {
+    private boolean isStaleBacklog(NotificationJob job, Instant now) {
         return job.getDueAt() != null
                 && job.getDueAt().isBefore(now.minus(Duration.ofMinutes(staleBacklogGraceMinutes)));
     }
 
-    private boolean eligible(ReminderScheduleJob job, ReminderSchedule schedule) {
+    private boolean eligible(NotificationJob job, ReminderSchedule schedule) {
         return schedule != null && schedule.isActive()
-                && schedule.getRevision() == job.getScheduleRevision();
+                && job.getScheduleRevision() != null
+                && schedule.getRevision() == job.getScheduleRevision().longValue();
     }
 
-    private void retryOrFail(ReminderScheduleJob job, String code, UUID recordId, String workerId) {
+    private void retryOrFail(NotificationJob job, String code, UUID recordId, String workerId) {
         if (job.getAttemptCount() >= maxAttempts) {
             finish(job, AppointmentNotificationJobStatus.FAILED, code, recordId, workerId);
             return;
@@ -163,13 +172,13 @@ public class ReminderScheduleProcessingService {
                 clock.instant().plusSeconds(delay), workerId);
     }
 
-    private void finish(ReminderScheduleJob job, AppointmentNotificationJobStatus status,
+    private void finish(NotificationJob job, AppointmentNotificationJobStatus status,
                         String code, UUID recordId, String workerId) {
         transition(job, status, code, recordId, job.getNextAttemptAt(), workerId);
     }
 
     private void transition(
-            ReminderScheduleJob job,
+            NotificationJob job,
             AppointmentNotificationJobStatus status,
             String code,
             UUID recordId,
@@ -182,7 +191,7 @@ public class ReminderScheduleProcessingService {
             return;
         }
         int updated = jobRepository.transitionAfterProcessing(
-                job.getId(), workerId, AppointmentNotificationJobStatus.PROCESSING,
+                job.getId(), JOB_TYPE, workerId, AppointmentNotificationJobStatus.PROCESSING,
                 status, nextAttemptAt, code, recordId, updatedAt);
         if (updated == 1) {
             applyTransition(job, status, code, recordId, nextAttemptAt, updatedAt);
@@ -190,7 +199,7 @@ public class ReminderScheduleProcessingService {
     }
 
     private void applyTransition(
-            ReminderScheduleJob job,
+            NotificationJob job,
             AppointmentNotificationJobStatus status,
             String code,
             UUID recordId,

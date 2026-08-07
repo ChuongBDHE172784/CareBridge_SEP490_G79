@@ -43,8 +43,6 @@ import UserListPage from '../../features/admin/pages/UserListPage';
 import UserDetailPage from '../../features/admin/pages/UserDetailPage';
 import UpdateUserRolePage from '../../features/admin/pages/UpdateUserRolePage';
 import CreateStaffAccountPage from '../../features/admin/pages/CreateStaffAccountPage';
-import AccountLockAppealsPage from '../../features/admin/pages/AccountLockAppealsPage';
-import AccountLockAppealDetailPage from '../../features/admin/pages/AccountLockAppealDetailPage';
 import ExpertListPage from '../../features/admin/pages/ExpertListPage';
 import ExpertDetailPage from '../../features/admin/pages/ExpertDetailPage';
 
@@ -84,11 +82,6 @@ import PostureConfigDetailPage from '../../features/postureConfiguration/pages/P
 import EditPostureConfigPage from '../../features/postureConfiguration/pages/EditPostureConfigPage';
 
 // Partner Portal screens (CB-096, 097, 099)
-import PartnerLandingPage from '../../features/partnerGovernance/pages/PartnerLandingPage';
-import RegisterPartnerPage from '../../features/partnerGovernance/pages/RegisterPartnerPage';
-import CreatePartnerProfilePage from '../../features/partnerGovernance/pages/CreatePartnerProfilePage';
-import PartnerProfilePage from '../../features/partnerGovernance/pages/PartnerProfilePage';
-import PartnerVerificationQueuePage from '../../features/partnerGovernance/pages/PartnerVerificationQueuePage';
 import UnpublishContentPage from '../../features/contentManagement/pages/UnpublishContentPage';
 
 // Moderation screens (CB-068, 069, 070, 071)
@@ -133,10 +126,6 @@ export const router = createBrowserRouter([
   { path: '/mother/baby-care', element: <BabyCareHubPage /> },
   { path: '/mother/babies/:babyId/daily-logs/:logId', element: <BabyCareResourceNotFoundPage /> },
 
-  // Partner Portal — public pages (no auth required)
-  { path: '/partner', element: <PartnerLandingPage /> },
-  { path: '/partner/register', element: <RegisterPartnerPage /> },
-
   // Role-aware root redirect
   { path: '/', element: <RoleAwareRedirect /> },
 
@@ -155,7 +144,7 @@ export const router = createBrowserRouter([
   {
     element: (
       <ProtectedRoute
-        requiredRoles={['SYSTEM_ADMIN', 'EXPERT', 'CONTENT_ADMIN', 'PARTNER', 'MODERATOR']}
+        requiredRoles={['SYSTEM_ADMIN', 'EXPERT', 'CONTENT_ADMIN', 'MODERATOR']}
       />
     ),
     children: [
@@ -171,8 +160,6 @@ export const router = createBrowserRouter([
               { path: '/admin/users/:userId', element: <UserDetailPage /> },
               { path: '/admin/users/:userId/role', element: <UpdateUserRolePage /> },
               { path: '/admin/staff-accounts/create', element: <CreateStaffAccountPage /> },
-              { path: '/admin/account-lock-appeals', element: <AccountLockAppealsPage /> },
-              { path: '/admin/account-lock-appeals/:appealId', element: <AccountLockAppealDetailPage /> },
               { path: '/admin/experts', element: <ExpertListPage /> },
               { path: '/admin/experts/:expertProfileId', element: <ExpertDetailPage /> },
               { path: '/admin/expert-verification-queue', element: <ExpertVerificationQueuePage /> },
@@ -271,14 +258,6 @@ export const router = createBrowserRouter([
             ],
           },
           {
-            element: <ProtectedRoute requiredRoles={['PARTNER']} />,
-            children: [
-              { path: '/partner/dashboard', element: <AdminDashboardPage /> },
-              { path: '/partner/profile-setup', element: <CreatePartnerProfilePage /> },
-              { path: '/partner/profile', element: <PartnerProfilePage /> },
-            ],
-          },
-          {
             // ModerationController is @PreAuthorize hasRole('MODERATOR') on every endpoint
             // (queue, pending-content, reports, violations, resolve/actions) —
             // SYSTEM_ADMIN is NOT accepted by the backend here, so it must not be granted
@@ -304,7 +283,6 @@ export const router = createBrowserRouter([
             children: [
               { path: '/admin/safety-rules', element: <SafetyRuleManagementPage /> },
               { path: '/admin/system-configuration', element: <SystemConfigurationPage /> },
-              { path: '/admin/partners/verification', element: <PartnerVerificationQueuePage /> },
             ],
           },
         ],

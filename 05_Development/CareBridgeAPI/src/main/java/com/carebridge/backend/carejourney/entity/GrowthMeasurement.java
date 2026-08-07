@@ -1,17 +1,31 @@
 package com.carebridge.backend.carejourney.entity;
 
-import jakarta.persistence.*;
-import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
-@Entity
-@Table(name = "growth_measurements")
+/**
+ * One growth measuring session: the weight, height and head circumference recorded together
+ * on a single date.
+ *
+ * <p>Wave 13 cutover (V3 §3.12): this is no longer a JPA entity. Growth readings live in
+ * {@code health_observations} as up to three rows sharing a {@code measurement_group_id};
+ * {@link com.carebridge.backend.carejourney.repository.GrowthMeasurementStore} projects them
+ * back into this session shape, which is what the DTOs, the controller and the chart have
+ * always been built from. Instances handed out by the store are detached projections, not
+ * managed entities — mutating one changes nothing until it is passed back to
+ * {@code GrowthMeasurementStore#save}.
+ *
+ * <p>{@code growth_measurements} is frozen and awaiting its contract migration; nothing here
+ * reads or writes it any more.
+ */
 @Getter
 @Setter
 @Builder
@@ -19,54 +33,38 @@ import java.util.UUID;
 @AllArgsConstructor
 public class GrowthMeasurement {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Column(name = "growth_measurement_id", updatable = false, nullable = false)
+    /** Identity of the session. Stored as {@code health_observations.measurement_group_id}. */
     private UUID growthMeasurementId;
 
     /**
-     * Legacy identifier column. The canonical growth_measurements relation keeps both
-     * baby_id and care_subject_id as NOT NULL columns; {@link #alignCanonicalCareSubject()}
-     * mirrors the two fields so either write path fills both columns.
+     * Retained because the service and DTOs address a baby by this id. The canonical column
+     * is {@code care_subject_id}; the two were identical in every row at migration time, and
+     * {@link #alignCanonicalCareSubject()} keeps them mirrored for callers that set only one.
      */
-    @Column(name = "baby_id", nullable = false)
     private UUID babyId;
 
-    @Column(name = "care_subject_id", nullable = false)
     private UUID careSubjectId;
 
-    @Column(name = "measured_date", nullable = false)
     private LocalDate measuredDate;
 
-    @Column(name = "weight_kg", precision = 5, scale = 2)
     private BigDecimal weightKg;
 
-    @Column(name = "height_cm", precision = 5, scale = 2)
     private BigDecimal heightCm;
 
-    @Column(name = "head_circumference_cm", precision = 5, scale = 2)
     private BigDecimal headCircumferenceCm;
 
-    @Column(name = "source_type", length = 30)
+    /** Where the measurement was taken (HOME, CLINIC, HOME_SCALE) — not how it reached us. */
     private String sourceType;
 
-    @Column(name = "note", columnDefinition = "text")
     private String note;
 
-    @Column(name = "deleted_at")
     private Instant deletedAt;
 
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
-    @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
-    @PrePersist
-    @PreUpdate
-    void alignCanonicalCareSubject() {
+    public void alignCanonicalCareSubject() {
         if (careSubjectId == null && babyId != null) {
             careSubjectId = babyId;
         }
@@ -75,4 +73,3 @@ public class GrowthMeasurement {
         }
     }
 }
-

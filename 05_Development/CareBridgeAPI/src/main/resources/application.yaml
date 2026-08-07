@@ -72,7 +72,7 @@ carebridge:
     enabled: ${CAREBRIDGE_RECOMMENDATION_ENABLED:false}
   exercise-correction:
     # Disabled by default so RULE_BASED behavior remains available without the optional sidecar.
-    enabled: ${CAREBRIDGE_EXERCISE_CORRECTION_ENABLED:false}
+    enabled: ${CAREBRIDGE_EXERCISE_CORRECTION_ENABLED:true}
     base-url: ${EXERCISE_CORRECTION_SERVICE_URL:http://localhost:8002}
     connect-timeout-ms: ${EXERCISE_CORRECTION_CONNECT_TIMEOUT_MS:500}
     read-timeout-ms: ${EXERCISE_CORRECTION_READ_TIMEOUT_MS:1200}
@@ -156,7 +156,7 @@ carebridge:
   notification:
     reminder-schedule:
       # Keep durable worker activation independent from transport readiness.
-      enabled: ${REMINDER_SCHEDULE_NOTIFICATION_ENABLED:false}
+      enabled: ${REMINDER_SCHEDULE_NOTIFICATION_ENABLED:true}
       worker-delay-ms: ${REMINDER_SCHEDULE_WORKER_DELAY_MS:15000}
       batch-size: ${REMINDER_SCHEDULE_BATCH_SIZE:25}
       max-attempts: ${REMINDER_SCHEDULE_MAX_ATTEMPTS:4}
@@ -164,7 +164,7 @@ carebridge:
       stale-backlog-grace-minutes: ${REMINDER_SCHEDULE_STALE_BACKLOG_GRACE_MINUTES:60}
       planner-cron: ${REMINDER_SCHEDULE_PLANNER_CRON:0 20 2 * * *}
     appointment:
-      enabled: ${APPOINTMENT_NOTIFICATION_ENABLED:false}
+      enabled: ${APPOINTMENT_NOTIFICATION_ENABLED:true}
       worker-delay-ms: ${APPOINTMENT_NOTIFICATION_WORKER_DELAY_MS:15000}
       batch-size: ${APPOINTMENT_NOTIFICATION_BATCH_SIZE:25}
       max-attempts: ${APPOINTMENT_NOTIFICATION_MAX_ATTEMPTS:4}
@@ -200,6 +200,11 @@ carebridge:
     read-timeout-ms: ${COMPREFACE_READ_TIMEOUT_MS:8000}
 
   triage:
+    v2:
+      # Internal/shadow boundary only. Public enablement is a separate release decision.
+      internal-enabled: ${CAREBRIDGE_TRIAGE_V2_INTERNAL_ENABLED:false}
+      shadow-enabled: ${CAREBRIDGE_TRIAGE_V2_SHADOW_ENABLED:false}
+      retention-days: ${CAREBRIDGE_TRIAGE_V2_RETENTION_DAYS:30}
     health-memory:
       # CB-TRIAGE-THMC-IMP-001 (ADR-THMC-002/003). ttl-days default 30 is Open —
       # pending Document Owner/DPO confirmation.

@@ -13,7 +13,7 @@ import com.carebridge.backend.carejourney.dto.GrowthMeasurementHistoryItem;
 import com.carebridge.backend.carejourney.dto.GrowthMeasurementResponse;
 import com.carebridge.backend.carejourney.dto.UpdateGrowthMeasurementRequest;
 import com.carebridge.backend.carejourney.entity.GrowthMeasurement;
-import com.carebridge.backend.carejourney.repository.GrowthMeasurementRepository;
+import com.carebridge.backend.carejourney.repository.GrowthMeasurementStore;
 import com.carebridge.backend.carejourney.service.IGrowthService;
 import com.carebridge.backend.common.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
@@ -38,7 +38,7 @@ import java.util.stream.Collectors;
 public class GrowthServiceImpl implements IGrowthService {
 
     private final BabyProfileRepository babyProfileRepository;
-    private final GrowthMeasurementRepository growthMeasurementRepository;
+    private final GrowthMeasurementStore growthMeasurementStore;
     private final AuditService auditService;
     private final BabyAccessPolicy babyAccessPolicy;
 
@@ -48,7 +48,7 @@ public class GrowthServiceImpl implements IGrowthService {
         assertViewAccess(baby, userId);
 
         List<GrowthMeasurement> measurements =
-                growthMeasurementRepository.findByBabyIdAndDeletedAtIsNullOrderByMeasuredDateAsc(babyId);
+                growthMeasurementStore.findByBabyIdAndDeletedAtIsNullOrderByMeasuredDateAsc(babyId);
 
         List<GrowthDataPoint> dataPoints = measurements.stream()
                 .map(m -> GrowthDataPoint.builder()
@@ -97,7 +97,7 @@ public class GrowthServiceImpl implements IGrowthService {
                 .sourceType(request.getSourceType())
                 .note(request.getNote())
                 .build();
-        GrowthMeasurement saved = growthMeasurementRepository.save(measurement);
+        GrowthMeasurement saved = growthMeasurementStore.save(measurement);
         auditService.log(AuditAction.GROWTH_MEASUREMENT_ADDED, userId, "GROWTH_MEASUREMENT",
                 saved.getGrowthMeasurementId().toString(), "Added growth measurement for baby " + babyId);
         return toGrowthMeasurementResponse(saved);
@@ -116,7 +116,7 @@ public class GrowthServiceImpl implements IGrowthService {
         }
         validateUpdatedMeasurementMetadata(request.getMeasuredDate(), request.getSourceType());
 
-        GrowthMeasurement measurement = growthMeasurementRepository.findById(growthMeasurementId)
+        GrowthMeasurement measurement = growthMeasurementStore.findById(growthMeasurementId)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "BABY-079",
                         "Growth measurement not found"));
         if (!measurement.getBabyId().equals(babyId)) {
@@ -156,7 +156,7 @@ public class GrowthServiceImpl implements IGrowthService {
                     "At least one measurement value is required");
         }
 
-        GrowthMeasurement saved = growthMeasurementRepository.save(measurement);
+        GrowthMeasurement saved = growthMeasurementStore.save(measurement);
         auditService.log(AuditAction.GROWTH_MEASUREMENT_UPDATED, userId, "GROWTH_MEASUREMENT",
                 saved.getGrowthMeasurementId().toString(), "Updated growth measurement");
         return toGrowthMeasurementResponse(saved);
@@ -169,7 +169,7 @@ public class GrowthServiceImpl implements IGrowthService {
         assertWriteAccess(baby, userId);
         assertActive(baby);
 
-        GrowthMeasurement measurement = growthMeasurementRepository.findById(growthMeasurementId)
+        GrowthMeasurement measurement = growthMeasurementStore.findById(growthMeasurementId)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "BABY-080",
                         "Growth measurement not found"));
         if (!measurement.getBabyId().equals(babyId)) {
@@ -181,7 +181,7 @@ public class GrowthServiceImpl implements IGrowthService {
         }
 
         measurement.setDeletedAt(Instant.now());
-        growthMeasurementRepository.save(measurement);
+        growthMeasurementStore.save(measurement);
         auditService.log(AuditAction.GROWTH_MEASUREMENT_DELETED, userId, "GROWTH_MEASUREMENT",
                 measurement.getGrowthMeasurementId().toString(), "Deleted growth measurement");
     }
@@ -195,7 +195,7 @@ public class GrowthServiceImpl implements IGrowthService {
 
         BabyProfile baby = getBabyOrThrow(babyId);
         assertViewAccess(baby, userId);
-        return growthMeasurementRepository.findByBabyIdAndDeletedAtIsNullOrderByMeasuredDateDesc(babyId, pageable)
+        return growthMeasurementStore.findByBabyIdAndDeletedAtIsNullOrderByMeasuredDateDesc(babyId, pageable)
                 .map(this::toHistoryItem);
     }
 

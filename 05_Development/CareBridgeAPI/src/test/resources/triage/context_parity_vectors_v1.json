@@ -1,0 +1,195 @@
+{
+  "$comment": "SHARED CONTEXT PARITY VECTORS — Java and Python must resolve target entity, intent, stage and context status identically for every vector. These are the ten gate scenarios from the Phase 1 plan plus the accent-collision regressions found while building the resolvers. Never edit an expectation to make an implementation pass.",
+  "contractVersion": "1.0.0",
+  "vectors": [
+    {
+      "id": "CV_MOTHER_DIARRHOEA_POSTPARTUM",
+      "description": "Gate 1 — mẹ tiêu chảy trong bối cảnh hậu sản: target MOTHER, không hỏi câu của Bé",
+      "input": {
+        "message": "Tôi bị tiêu chảy",
+        "legacyStage": "POSTPARTUM"
+      },
+      "expected": {
+        "targetEntity": "MOTHER",
+        "intent": "SYMPTOM_TRIAGE",
+        "stage": "POSTPARTUM_MOTHER",
+        "contextStatus": "RESOLVED"
+      }
+    },
+    {
+      "id": "CV_BABY_DIARRHOEA_IN_MATERNAL_JOURNEY",
+      "description": "Gate 2 — bé đi ngoài trong khi journey của mẹ là hậu sản: target BABY, stage chưa rõ vì thiếu tuổi bé",
+      "input": {
+        "message": "Bé bị đi ngoài phân lỏng",
+        "legacyStage": "POSTPARTUM"
+      },
+      "expected": {
+        "targetEntity": "BABY",
+        "intent": "SYMPTOM_TRIAGE",
+        "stage": "CONFLICTED",
+        "contextStatus": "CONFLICTED"
+      }
+    },
+    {
+      "id": "CV_BABY_WITH_AGE_RESOLVES",
+      "description": "Bé có tuổi tháng -> stage nhi khoa được suy ra",
+      "input": {
+        "message": "Bé bị đi ngoài phân lỏng",
+        "babyAgeMonths": 4
+      },
+      "expected": {
+        "targetEntity": "BABY",
+        "intent": "SYMPTOM_TRIAGE",
+        "stage": "INFANT_0_12M",
+        "contextStatus": "RESOLVED"
+      }
+    },
+    {
+      "id": "CV_AMBIGUOUS_FEVER",
+      "description": "Gate 3 — sốt mơ hồ, không nêu chủ thể: chỉ được hỏi câu làm rõ đối tượng",
+      "input": {
+        "message": "Bị sốt 38.5 độ từ sáng"
+      },
+      "expected": {
+        "targetEntity": "UNKNOWN",
+        "intent": "SYMPTOM_TRIAGE",
+        "stage": "UNKNOWN",
+        "contextStatus": "NEEDS_TARGET_ENTITY",
+        "onlyClarificationQuestions": true
+      }
+    },
+    {
+      "id": "CV_WRIST_PAIN_PREGNANCY",
+      "description": "Gate 4 — đau cổ tay sau tập trong thai kỳ: target MOTHER, phân loại ngoài phạm vi",
+      "input": {
+        "message": "Tôi bị đau cổ tay sau khi tập thể thao",
+        "explicitStage": "PREGNANCY"
+      },
+      "expected": {
+        "targetEntity": "MOTHER",
+        "intent": "SYMPTOM_TRIAGE",
+        "stage": "PREGNANCY",
+        "contextStatus": "RESOLVED",
+        "complaintCategory": "MUSCULOSKELETAL_NON_REPRODUCTIVE"
+      }
+    },
+    {
+      "id": "CV_BOTH_HAVE_FEVER",
+      "description": "Gate 5 — cả mẹ và bé cùng sốt: CONFLICTED, hỏi chọn đối tượng trước",
+      "input": {
+        "message": "Tôi và bé đều bị sốt"
+      },
+      "expected": {
+        "targetEntity": "CONFLICTED",
+        "intent": "SYMPTOM_TRIAGE",
+        "stage": "UNKNOWN",
+        "contextStatus": "CONFLICTED",
+        "onlyClarificationQuestions": true
+      }
+    },
+    {
+      "id": "CV_PREGNANCY_STAGE_WITH_BABY_TARGET",
+      "description": "Gate 6 — target BABY nhưng stage PREGNANCY: xung đột, không hỏi câu tuần thai cho bé",
+      "input": {
+        "message": "Bé nhà em bỏ bú",
+        "explicitStage": "PREGNANCY"
+      },
+      "expected": {
+        "targetEntity": "BABY",
+        "intent": "SYMPTOM_TRIAGE",
+        "stage": "CONFLICTED",
+        "contextStatus": "CONFLICTED"
+      }
+    },
+    {
+      "id": "CV_GENERAL_INFORMATION_QUESTION",
+      "description": "Gate 8 — câu hỏi kiến thức chung: KHÔNG được trả màu triage. targetEntity=MOTHER là chấp nhận được vì 'thai kỳ' chỉ rõ chủ thể; điều quan trọng là mayProduceTriageOutcome=false.",
+      "input": {
+        "message": "Dấu hiệu cảnh báo thai kỳ là gì?"
+      },
+      "expected": {
+        "intent": "GENERAL_HEALTH_INFORMATION",
+        "stage": "UNKNOWN",
+        "mayProduceTriageOutcome": false
+      }
+    },
+    {
+      "id": "CV_SOURCE_LOOKUP_QUESTION",
+      "description": "Gate 9 — hỏi về nguồn: không chạy rule triệu chứng",
+      "input": {
+        "message": "Nguồn này từ đâu vậy?"
+      },
+      "expected": {
+        "targetEntity": "UNKNOWN",
+        "intent": "SOURCE_LOOKUP",
+        "stage": "UNKNOWN",
+        "mayProduceTriageOutcome": false
+      }
+    },
+    {
+      "id": "CV_FOLLOW_UP_OPTION_CODE",
+      "description": "Gate 10 — người dùng trả lời bằng option code: FOLLOW_UP_ANSWER theo cấu trúc",
+      "input": {
+        "message": "Dấu hiệu cảnh báo là gì?",
+        "optionCodes": [
+          "BLEEDING_HEAVY"
+        ]
+      },
+      "expected": {
+        "intent": "FOLLOW_UP_ANSWER",
+        "mayProduceTriageOutcome": true
+      }
+    },
+    {
+      "id": "CV_HELPING_MY_CHILD",
+      "description": "Regression — 'còn' bỏ dấu thành 'con'; câu hỏi giúp con phải ra BABY",
+      "input": {
+        "message": "Tôi hỏi giúp con tôi, bé bị sốt",
+        "babyAgeMonths": 8
+      },
+      "expected": {
+        "targetEntity": "BABY",
+        "intent": "SYMPTOM_TRIAGE",
+        "stage": "INFANT_0_12M",
+        "contextStatus": "RESOLVED"
+      }
+    },
+    {
+      "id": "CV_MOTHER_PAIN_CHILD_FEVER_CLAUSES",
+      "description": "Regression — 'Tôi đau bụng còn bé thì sốt': hai chủ thể -> CONFLICTED",
+      "input": {
+        "message": "Tôi đau bụng còn bé thì sốt"
+      },
+      "expected": {
+        "targetEntity": "CONFLICTED",
+        "contextStatus": "CONFLICTED",
+        "onlyClarificationQuestions": true
+      }
+    },
+    {
+      "id": "CV_THIRD_PARTY_SYMPTOM",
+      "description": "Regression — triệu chứng của người khác không trở thành triage của người dùng",
+      "input": {
+        "message": "Bạn tôi bị đau bụng"
+      },
+      "expected": {
+        "targetEntity": "UNKNOWN",
+        "contextStatus": "NEEDS_TARGET_ENTITY",
+        "onlyClarificationQuestions": true
+      }
+    },
+    {
+      "id": "CV_LEGACY_POSTPARTUM_WITH_BABY_TARGET",
+      "description": "Regression — legacy POSTPARTUM với target BABY là mơ hồ, không tự map",
+      "input": {
+        "message": "Bé nhà em bỏ bú",
+        "legacyStage": "POSTPARTUM"
+      },
+      "expected": {
+        "targetEntity": "BABY",
+        "stage": "CONFLICTED",
+        "contextStatus": "CONFLICTED"
+      }
+    }
+  ]
+}

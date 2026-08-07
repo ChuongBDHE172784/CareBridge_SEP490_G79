@@ -36,7 +36,7 @@ public class IntakeSessionWriter {
                 candidate.getUserId(),
                 candidate.getBabyProfileId(),
                 candidate.getMotherProfileId(),
-                candidate.getStage().name(),
+                candidate.getStage() == null ? null : candidate.getStage().name(),
                 candidate.getClientRequestId(),
                 candidate.getJourneyId(),
                 candidate.getOriginDashboard() == null ? null : candidate.getOriginDashboard().name(),

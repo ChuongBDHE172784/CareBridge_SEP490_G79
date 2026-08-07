@@ -179,6 +179,20 @@ class GeminiClient:
             return None
         return result
 
+    def extract_triage_v2(self, *, text: str):
+        """V2 fact extraction only; its schema has no outcome/action/URL fields."""
+
+        from app.triage_v2.extraction import EXTRACTION_SYSTEM, TriageV2Extraction
+
+        safe_text = sanitize_symptom_text(text)
+        if not self.enabled or not safe_text:
+            return None
+        prompt = json.dumps(
+            {"task": "extract reproductive health triage facts", "untrustedUserText": safe_text},
+            ensure_ascii=False,
+        )
+        return self._generate(prompt, TriageV2Extraction, EXTRACTION_SYSTEM, 0.0)
+
     def compose_followup_questions(
         self,
         *,
@@ -338,11 +352,15 @@ class GeminiClient:
                 self._warn("request_deadline_exhausted")
                 break
             try:
+                from app.triage_v2.extraction import gemini_transport_schema
+
                 config = types.GenerateContentConfig(
                     system_instruction=system_instruction,
                     temperature=temperature,
                     response_mime_type="application/json",
-                    response_json_schema=schema.model_json_schema(),
+                    # The raw Pydantic schema carries keywords the API rejects outright; the
+                    # response is still validated against the closed model below.
+                    response_json_schema=gemini_transport_schema(schema),
                 )
                 if self._client is not None:
                     response = self._client.models.generate_content(

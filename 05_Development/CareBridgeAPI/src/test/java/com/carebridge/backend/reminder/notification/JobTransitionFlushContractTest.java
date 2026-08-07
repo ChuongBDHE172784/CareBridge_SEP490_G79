@@ -2,8 +2,8 @@ package com.carebridge.backend.reminder.notification;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.carebridge.backend.reminder.notification.repository.AppointmentNotificationJobRepository;
-import com.carebridge.backend.reminder.schedule.repository.ReminderScheduleJobRepository;
+import com.carebridge.backend.reminder.job.repository.NotificationJobRepository;
+import com.carebridge.backend.reminder.job.repository.NotificationJobRepository;
 import java.lang.reflect.Method;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.jpa.repository.Modifying;
@@ -16,12 +16,12 @@ class JobTransitionFlushContractTest {
 
     @Test
     void reminderScheduleTransitionFlushesBeforeBulkUpdate() throws Exception {
-        assertFlushesBeforeBulkUpdate(ReminderScheduleJobRepository.class);
+        assertFlushesBeforeBulkUpdate(NotificationJobRepository.class);
     }
 
     @Test
     void appointmentTransitionFlushesBeforeBulkUpdate() throws Exception {
-        assertFlushesBeforeBulkUpdate(AppointmentNotificationJobRepository.class);
+        assertFlushesBeforeBulkUpdate(NotificationJobRepository.class);
     }
 
     private static void assertFlushesBeforeBulkUpdate(Class<?> repositoryType) throws Exception {

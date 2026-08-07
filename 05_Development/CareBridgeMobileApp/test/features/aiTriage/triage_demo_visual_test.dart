@@ -105,6 +105,10 @@ Future<void> _submit(WidgetTester tester, String text) async {
 }
 
 void main() {
+  // The content assertions and the pixel comparison are split deliberately. They fail for
+  // different reasons — a missing stage is a real defect, a pixel diff is usually a font or
+  // renderer change — and bundling them meant `--exclude-tags golden` could not skip the
+  // brittle half without also dropping the meaningful half.
   testWidgets('mobile stage selector renders all four supported stages', (
     tester,
   ) async {
@@ -114,11 +118,16 @@ void main() {
     expect(find.text('Đang mang thai'), findsOneWidget);
     expect(find.text('Bé 0-12 tháng'), findsOneWidget);
     expect(find.text('Bé 12-24 tháng'), findsOneWidget);
+  });
+
+  testWidgets('mobile stage selector matches its golden', (tester) async {
+    await _pump(tester, service: _AskMoreDemoService());
+
     await expectLater(
       find.byType(SymptomIntakeScreen),
       matchesGoldenFile('goldens/triage_stage_selector_mobile.png'),
     );
-  });
+  }, tags: 'golden');
 
   testWidgets('ASK_MORE renders deterministic option buttons', (tester) async {
     await _pump(tester, service: _AskMoreDemoService());

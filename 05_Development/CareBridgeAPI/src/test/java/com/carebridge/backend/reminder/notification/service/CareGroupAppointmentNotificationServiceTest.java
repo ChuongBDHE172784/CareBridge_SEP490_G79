@@ -32,8 +32,9 @@ import com.carebridge.backend.notification.service.FcmService;
 import com.carebridge.backend.reminder.entity.Reminder;
 import com.carebridge.backend.reminder.entity.ReminderStatus;
 import com.carebridge.backend.reminder.entity.ReminderType;
-import com.carebridge.backend.reminder.notification.entity.AppointmentNotificationJob;
-import com.carebridge.backend.reminder.notification.repository.AppointmentNotificationJobRepository;
+import com.carebridge.backend.reminder.job.entity.NotificationJob;
+import com.carebridge.backend.reminder.job.entity.NotificationJobType;
+import com.carebridge.backend.reminder.job.repository.NotificationJobRepository;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -146,7 +147,7 @@ class CareGroupAppointmentNotificationServiceTest {
         NotificationRecordRepository records = mock(NotificationRecordRepository.class);
         FcmService fcm = mock(FcmService.class);
         AuditService audit = mock(AuditService.class);
-        AppointmentNotificationJobRepository jobs = mock(AppointmentNotificationJobRepository.class);
+        NotificationJobRepository jobs = mock(NotificationJobRepository.class);
 
         UUID secondGroupId = UUID.fromString("51000000-0000-0000-0000-000000000005");
         CareGroup first = CareGroup.builder().id(GROUP).ownerUserId(MOTHER)
@@ -160,7 +161,8 @@ class CareGroupAppointmentNotificationServiceTest {
                 .careGroupId(secondGroupId).userId(FAMILY).memberRole(GroupMemberRole.MEMBER)
                 .inviteStatus(InviteStatus.ACCEPTED).build();
         Reminder appointment = appointment();
-        AppointmentNotificationJob job = AppointmentNotificationJob.builder()
+        NotificationJob job = NotificationJob.builder()
+                .jobType(NotificationJobType.APPOINTMENT)
                 .id(UUID.fromString("51000000-0000-0000-0000-000000000007"))
                 .offsetMinutes(-30)
                 .occurrenceScheduledAt(appointment.getScheduledAt())
@@ -207,7 +209,7 @@ class CareGroupAppointmentNotificationServiceTest {
         NotificationRecordRepository records = mock(NotificationRecordRepository.class);
         FcmService fcm = mock(FcmService.class);
         AuditService audit = mock(AuditService.class);
-        AppointmentNotificationJobRepository jobs = mock(AppointmentNotificationJobRepository.class);
+        NotificationJobRepository jobs = mock(NotificationJobRepository.class);
 
         CareGroup group = CareGroup.builder().id(GROUP).ownerUserId(MOTHER)
                 .linkedJourneyId(JOURNEY).status(CareGroupStatus.ACTIVE).build();
@@ -218,7 +220,8 @@ class CareGroupAppointmentNotificationServiceTest {
                 .careGroupId(GROUP).userId(FAMILY_TWO).memberRole(GroupMemberRole.MEMBER)
                 .inviteStatus(InviteStatus.ACCEPTED).build();
         Reminder appointment = appointment();
-        AppointmentNotificationJob job = AppointmentNotificationJob.builder()
+        NotificationJob job = NotificationJob.builder()
+                .jobType(NotificationJobType.APPOINTMENT)
                 .id(UUID.fromString("51000000-0000-0000-0000-000000000008"))
                 .offsetMinutes(-30)
                 .occurrenceScheduledAt(appointment.getScheduledAt())

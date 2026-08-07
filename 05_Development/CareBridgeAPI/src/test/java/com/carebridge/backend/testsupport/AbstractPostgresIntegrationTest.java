@@ -67,5 +67,16 @@ public abstract class AbstractPostgresIntegrationTest {
 
     static {
         POSTGRES.start();
+        try {
+            // The checklist migrations refuse to run unless deployment has already
+            // created the NOLOGIN owner roles they hand objects to — Flyway itself has
+            // no CREATEROLE dependency by design. Provision them before the context
+            // boots, exactly as the embedded-Postgres suites do.
+            EmbeddedPostgresRoleFixture.provision(
+                    POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
+        } catch (Exception exception) {
+            throw new IllegalStateException(
+                    "Could not provision checklist database roles on the test container", exception);
+        }
     }
 }

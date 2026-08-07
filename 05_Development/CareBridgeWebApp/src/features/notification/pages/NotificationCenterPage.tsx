@@ -29,7 +29,6 @@ const FILTERS = ['Tất cả', 'Chưa đọc'] as const;
 const TYPE_OPTIONS = [
   { label: 'Tất cả', value: '' },
   { label: 'Bảo mật', value: 'SECURITY' },
-  { label: 'Đối tác', value: 'PARTNER' },
   { label: 'Audit', value: 'AUDIT' },
   { label: 'Hệ thống', value: 'SYSTEM' },
   { label: 'Duyệt nội dung', value: 'CONTENT_REVIEW' },
@@ -318,6 +317,9 @@ function NotificationRow({ notification: n, onOpen }: { notification: Notificati
   );
 }
 
+// The Partner programme was retired, so nothing emits PARTNER notifications any
+// more; the PARTNER arms below stay so historical rows still render with a label
+// instead of falling through to the generic default.
 function getTypeLabel(type: string): string {
   switch (type?.toUpperCase()) {
     case 'SECURITY':

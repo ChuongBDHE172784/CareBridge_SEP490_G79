@@ -24,6 +24,10 @@ public enum AuditAction {
     CONTENT_CREATED,
     CONTENT_UPDATED,
     CONTENT_HIDDEN,
+    // Retained on purpose. The Partner programme was retired and nothing writes
+    // these any more, but audit_events rows from before the retirement still hold
+    // these values and must keep deserializing and reporting. Removing them is a
+    // separate migration, gated on the distinct audit value count reaching 0.
     PARTNER_PROFILE_CREATED,
     PARTNER_PROFILE_UPDATED,
     PARTNER_SERVICE_SUBMITTED,
@@ -191,5 +195,20 @@ public enum AuditAction {
     AI_RESCAN_REQUESTED,
     REPORT_CLAIMED,
     REPORT_RELEASED,
-    SYSTEM_CONFIGURATION_UPDATED
+    SYSTEM_CONFIGURATION_UPDATED,
+
+    // Categories already present in audit_events but absent from this enum, which made
+    // every JPA read covering them fail with "No enum constant". audit_events rejects all
+    // UPDATE and DELETE (carebridge_reject_mutation) apart from a narrow seven-year
+    // retention path for CHECKLIST_* rows, so the rows cannot be rewritten — an append-only
+    // log obliges this enum to remain able to read everything ever written to it.
+    // Measured on the live database: 60 rows across these eight categories.
+    AUTHENTICATION,
+    BASELINE_CONTEXT,
+    MODERATION_HIDE,
+    MODERATION_LOCK,
+    MOTHER_JOURNEY_TRANSITION,
+    PREGNANCY_OUTCOME_EVIDENCE,
+    SAFETY_OUTCOME,
+    SECURITY
 }

@@ -35,5 +35,13 @@ public interface AuthService {
 
     void changePassword(java.util.UUID userId, ChangePasswordRequest request);
 
-    void deactivate(java.util.UUID userId, String confirmPassword);
+    /**
+     * Logically deactivates the account: the user row stays and records who
+     * deactivated it, when and why, and every live credential is revoked in the
+     * same transaction. This replaces the retired 30-day deletion queue; it is
+     * not a purge, so PII removal needs its own workflow.
+     *
+     * @param reason optional free-text reason supplied by the user; may be null
+     */
+    void deactivate(java.util.UUID userId, String confirmPassword, String reason);
 }

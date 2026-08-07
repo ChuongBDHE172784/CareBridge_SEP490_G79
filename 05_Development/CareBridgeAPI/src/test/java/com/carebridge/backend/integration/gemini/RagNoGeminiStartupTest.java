@@ -43,7 +43,7 @@ import org.springframework.test.web.servlet.MockMvc;
  *
  * RAG-B2D-01  Spring context loads, fallback=true returned
  * RAG-B2D-02  Unauthenticated → 401
- * RAG-B2D-03  PARTNER role → 403
+ * RAG-B2D-03  OPERATIONS role → 403
  * RAG-B2D-04  Disabled account → 403 ACCOUNT_DISABLED
  * RAG-B2D-05  Locked account → 403 ACCOUNT_LOCKED
  */
@@ -97,9 +97,9 @@ class RagNoGeminiStartupTest {
                 .andExpect(status().isUnauthorized());
     }
 
-    // RAG-B2D-03: PARTNER role is excluded from the RAG endpoint → 403
+    // RAG-B2D-03: staff-only roles are excluded from the RAG endpoint → 403
     @Test
-    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "PARTNER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000002", roles = "OPERATIONS")
     void partnerRole_returns403() throws Exception {
         mockMvc.perform(post("/api/v1/rag/answer")
                         .contentType(MediaType.APPLICATION_JSON)

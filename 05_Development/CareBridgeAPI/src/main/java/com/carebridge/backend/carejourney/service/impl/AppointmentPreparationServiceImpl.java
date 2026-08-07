@@ -5,7 +5,7 @@ import com.carebridge.backend.baby.repository.BabyProfileRepository;
 import com.carebridge.backend.carejourney.dto.AppointmentPreparationSummaryResponse;
 import com.carebridge.backend.carejourney.repository.BabyDailyLogRepository;
 import com.carebridge.backend.carejourney.repository.DevelopmentMilestoneRepository;
-import com.carebridge.backend.carejourney.repository.GrowthMeasurementRepository;
+import com.carebridge.backend.carejourney.repository.GrowthMeasurementStore;
 import com.carebridge.backend.carejourney.service.IAppointmentPreparationService;
 import com.carebridge.backend.common.exception.AccessDeniedBusinessException;
 import com.carebridge.backend.common.exception.ResourceNotFoundException;
@@ -23,7 +23,7 @@ public class AppointmentPreparationServiceImpl implements IAppointmentPreparatio
     private final BabyProfileRepository babyProfileRepository;
     private final BabyAccessPolicy babyAccessPolicy;
     private final BabyDailyLogRepository dailyLogs;
-    private final GrowthMeasurementRepository growth;
+    private final GrowthMeasurementStore growth;
     private final DevelopmentMilestoneRepository milestones;
     private final VaccinationRecordRepository vaccinations;
 

@@ -14,7 +14,7 @@ sourceType: official_guideline
 sourceStatus: APPROVED
 sourceVersion: '1.0'
 approvedAt: 2026-07-10
-approvedBy: CareBridge clinical review
+approvedBy: CareBridge development team internal review (DEV_REVIEWED; no clinician participated)
 adminReviewed: true
 ---
 Khuyến cáo của Bệnh viện Nhi Trung ương phân loại mất nước nặng ở trẻ dựa trên

@@ -24,11 +24,15 @@ import com.carebridge.backend.security.service.impl.AuthServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import java.time.Instant;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -40,6 +44,7 @@ class AuthServiceDeactivateTest {
     private AuthService authService;
     private UserRepository userRepository;
     private RefreshTokenRepository refreshTokenRepository;
+    private UserSessionRepository sessionRepository;
     private DeviceTokenRepository deviceTokenRepository;
     private AuditService auditService;
     private PasswordEncoder passwordEncoder;
@@ -48,6 +53,7 @@ class AuthServiceDeactivateTest {
     void setUp() {
         userRepository = mock(UserRepository.class);
         refreshTokenRepository = mock(RefreshTokenRepository.class);
+        sessionRepository = mock(UserSessionRepository.class);
         deviceTokenRepository = mock(DeviceTokenRepository.class);
         auditService = mock(AuditService.class);
         passwordEncoder = mock(PasswordEncoder.class);
@@ -62,7 +68,7 @@ class AuthServiceDeactivateTest {
                 mock(AuthenticationPolicy.class),
                 mock(PasswordComplexityPolicy.class),
                 mock(RateLimitPolicy.class),
-                mock(UserSessionRepository.class),
+                sessionRepository,
                 mock(TokenBlacklistRepository.class),
                 mock(EmailService.class),
                 mock(SmsService.class),
@@ -91,7 +97,7 @@ class AuthServiceDeactivateTest {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("wrongpassword", "$2a$12$hashedpassword")).thenReturn(false);
 
-        assertThatThrownBy(() -> authService.deactivate(userId, "wrongpassword"))
+        assertThatThrownBy(() -> authService.deactivate(userId, "wrongpassword", null))
                 .isInstanceOf(AuthenticationException.class)
                 .hasMessageContaining("AUTH-081");
     }
@@ -111,7 +117,7 @@ class AuthServiceDeactivateTest {
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
-        assertThatThrownBy(() -> authService.deactivate(userId, "anypassword"))
+        assertThatThrownBy(() -> authService.deactivate(userId, "anypassword", null))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("AUTH-082");
     }
@@ -124,13 +130,13 @@ class AuthServiceDeactivateTest {
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
-        assertThatThrownBy(() -> authService.deactivate(userId, "anypassword"))
+        assertThatThrownBy(() -> authService.deactivate(userId, "anypassword", null))
                 .isInstanceOf(AuthorizationException.class)
                 .hasMessageContaining("SYSTEM_ADMIN");
     }
 
     @Test
-    @DisplayName("AUTH-084: Successful deactivation sets account status and revokes tokens")
+    @DisplayName("AUTH-084: Successful deactivation sets account status and revokes every credential")
     void deactivate_validCredentials_deactivatesAndRevokesTokens() {
         UUID userId = UUID.randomUUID();
         User user = buildActiveUser(userId, Role.MOTHER);
@@ -139,20 +145,93 @@ class AuthServiceDeactivateTest {
         when(passwordEncoder.matches("correctpassword", "$2a$12$hashedpassword")).thenReturn(true);
         when(userRepository.save(any(User.class))).thenReturn(user);
         when(refreshTokenRepository.revokeAllByUserId(userId)).thenReturn(1);
+        when(sessionRepository.revokeAllByUserId(eq(userId), any())).thenReturn(1);
         when(deviceTokenRepository.deactivateAllForUser(eq(userId), any())).thenReturn(1);
 
-        authService.deactivate(userId, "correctpassword");
+        authService.deactivate(userId, "correctpassword", null);
 
         // Verify user state
         verify(userRepository).save(argThat(u ->
                 "DEACTIVATED".equals(u.getAccountStatus()) && !u.isEnabled()));
 
-        // Verify token revocation
+        // Nothing that could authenticate the account may outlive the deactivation:
+        // refresh tokens, auth sessions and push tokens all go in the same call.
         verify(refreshTokenRepository).revokeAllByUserId(userId);
+        verify(sessionRepository).revokeAllByUserId(eq(userId), any());
         verify(deviceTokenRepository).deactivateAllForUser(eq(userId), any());
 
         // Verify audit
         verify(auditService).log(eq(AuditAction.SECURITY_EVENT), eq(userId), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("AUTH-087: Deactivation records who, when and why on the user row")
+    void deactivate_recordsDeactivationMetadata() {
+        UUID userId = UUID.randomUUID();
+        User user = buildActiveUser(userId, Role.MOTHER);
+        Instant before = Instant.now();
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("correctpassword", "$2a$12$hashedpassword")).thenReturn(true);
+        when(userRepository.save(any(User.class))).thenReturn(user);
+
+        authService.deactivate(userId, "correctpassword", "  Không dùng nữa  ");
+
+        ArgumentCaptor<User> saved = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(saved.capture());
+        User persisted = saved.getValue();
+
+        assertThat(persisted.getAccountStatus()).isEqualTo("DEACTIVATED");
+        assertThat(persisted.isEnabled()).isFalse();
+        assertThat(persisted.getDeactivatedAt()).isNotNull();
+        assertThat(persisted.getDeactivatedAt()).isAfterOrEqualTo(before);
+        assertThat(persisted.getDeactivatedBy()).isEqualTo(userId);
+        // Trimmed, because the reason is user-supplied free text.
+        assertThat(persisted.getDeactivationReason()).isEqualTo("Không dùng nữa");
+
+        ArgumentCaptor<Map<String, Object>> metadata = ArgumentCaptor.forClass(Map.class);
+        verify(auditService).log(eq(AuditAction.SECURITY_EVENT), eq(userId), eq("User"),
+                eq(userId.toString()), metadata.capture());
+        assertThat(metadata.getValue())
+                .containsEntry("action", "ACCOUNT_DEACTIVATED")
+                .containsEntry("deactivatedBy", userId.toString())
+                .containsEntry("reason", "Không dùng nữa")
+                .containsKey("deactivatedAt");
+    }
+
+    @Test
+    @DisplayName("AUTH-088: Blank or absent reason is stored as null, not an empty string")
+    void deactivate_blankReason_storedAsNull() {
+        UUID userId = UUID.randomUUID();
+        User user = buildActiveUser(userId, Role.MOTHER);
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("correctpassword", "$2a$12$hashedpassword")).thenReturn(true);
+        when(userRepository.save(any(User.class))).thenReturn(user);
+
+        authService.deactivate(userId, "correctpassword", "   ");
+
+        ArgumentCaptor<User> saved = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(saved.capture());
+        assertThat(saved.getValue().getDeactivationReason()).isNull();
+    }
+
+    @Test
+    @DisplayName("AUTH-089: A failed deactivation revokes nothing")
+    void deactivate_wrongPassword_leavesCredentialsIntact() {
+        UUID userId = UUID.randomUUID();
+        User user = buildActiveUser(userId, Role.MOTHER);
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("wrongpassword", "$2a$12$hashedpassword")).thenReturn(false);
+
+        assertThatThrownBy(() -> authService.deactivate(userId, "wrongpassword", null))
+                .isInstanceOf(AuthenticationException.class);
+
+        verify(userRepository, never()).save(any(User.class));
+        verify(refreshTokenRepository, never()).revokeAllByUserId(any());
+        verify(sessionRepository, never()).revokeAllByUserId(any(), any());
+        verify(deviceTokenRepository, never()).deactivateAllForUser(any(), any());
     }
 
     @Test
@@ -162,7 +241,7 @@ class AuthServiceDeactivateTest {
 
         when(userRepository.findById(userId)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> authService.deactivate(userId, "anypassword"))
+        assertThatThrownBy(() -> authService.deactivate(userId, "anypassword", null))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("User not found");
     }
@@ -184,7 +263,7 @@ class AuthServiceDeactivateTest {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
 
         // Should throw AuthorizationException (role check) before ValidationException (status check)
-        assertThatThrownBy(() -> authService.deactivate(userId, "anypassword"))
+        assertThatThrownBy(() -> authService.deactivate(userId, "anypassword", null))
                 .isInstanceOf(AuthorizationException.class);
     }
 }

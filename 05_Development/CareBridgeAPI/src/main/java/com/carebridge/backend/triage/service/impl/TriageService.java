@@ -36,6 +36,7 @@ import com.carebridge.backend.triage.service.ITriageService;
 import com.carebridge.backend.triage.service.TriagePreScreenMetrics;
 import com.carebridge.backend.triage.service.TriageFallbackMetrics;
 import com.carebridge.backend.triage.service.TriageStageLegacyDefaultMetrics;
+import com.carebridge.backend.triage.service.TriageV2ShadowService;
 import com.carebridge.backend.triage.service.TriageRagEnrichmentService;
 import com.carebridge.backend.common.util.SecurityUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -139,6 +140,9 @@ public class TriageService implements ITriageService {
 
     @Autowired(required = false)
     private TriagePreScreenMetrics preScreenMetrics;
+
+    @Autowired(required = false)
+    private TriageV2ShadowService triageV2ShadowService;
 
     // CB-TRIAGE-THMC-IMP-001 — health-context memory injection (US-THMC-002). Optional wiring
     // keeps every existing test constructor byte-compatible: when absent the intake flows
@@ -421,6 +425,7 @@ public class TriageService implements ITriageService {
             recordPreScreenShortCircuit("conversation_start", preScreen);
             Map<String, Object> redEnvelope = buildPreScreenRedEnvelope(
                     session, preScreen, 1, castToMap(canonicalRequest.get("currentIntake")));
+            submitV2Shadow(request.getInitialText(), redEnvelope);
             persistConversationEnvelope(session, redEnvelope, userId);
             return toConversationResponse(redEnvelope, session);
         }
@@ -464,6 +469,7 @@ public class TriageService implements ITriageService {
         }
         enrichConversationResult(envelope, sessionStage(session), userId,
                 request.getInitialText(), castToMap(canonicalRequest.get("currentIntake")), Map.of());
+        submitV2Shadow(request.getInitialText(), envelope);
         persistConversationEnvelope(session, envelope, userId);
         return toConversationResponse(envelope, session);
     }
@@ -535,6 +541,7 @@ public class TriageService implements ITriageService {
             merged.putAll(normalizedAnswers);
             Map<String, Object> redEnvelope = buildPreScreenRedEnvelope(
                     session, preScreen, number(previous.get("round"), 1), merged);
+            submitV2Shadow(String.valueOf(normalizedAnswers), redEnvelope);
             persistConversationEnvelope(session, redEnvelope, userId);
             return toConversationResponse(redEnvelope, session);
         }
@@ -560,6 +567,7 @@ public class TriageService implements ITriageService {
         }
         enrichConversationResult(envelope, stage, userId, previousRagQuery,
                 castToMap(canonical.get("currentIntake")), normalizedAnswers);
+        submitV2Shadow(String.valueOf(normalizedAnswers), envelope);
         persistConversationEnvelope(session, envelope, userId);
         return toConversationResponse(envelope, session);
     }
@@ -1906,6 +1914,13 @@ public class TriageService implements ITriageService {
 
     private int number(Object value, int fallback) {
         return value instanceof Number number ? number.intValue() : fallback;
+    }
+
+    private void submitV2Shadow(String message, Map<String, Object> envelope) {
+        if (triageV2ShadowService == null) return;
+        Object nested = envelope.get("triageResult");
+        Object outcome = nested instanceof Map<?, ?> map ? map.get("riskLevel") : envelope.get("riskLevel");
+        triageV2ShadowService.submit(message, outcome == null ? null : String.valueOf(outcome));
     }
 
     private IntakeConversationResponse toConversationResponse(

@@ -10,11 +10,12 @@ FROM eclipse-temurin:21-jre-jammy
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
-RUN groupadd --system carebridge && useradd --system --gid carebridge --home-dir /app --shell /usr/sbin/nologin carebridge
+RUN groupadd --system --gid 10001 carebridge \
+    && useradd --system --uid 10001 --gid carebridge --home-dir /app --shell /usr/sbin/nologin carebridge
 WORKDIR /app
 COPY --from=build /workspace/target/*.jar /app/app.jar
 RUN chown carebridge:carebridge /app/app.jar
-USER carebridge
+USER 10001:10001
 EXPOSE 8080
 ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75.0 -Djava.security.egd=file:/dev/./urandom"
 HEALTHCHECK --interval=30s --timeout=5s --start-period=45s --retries=3 \

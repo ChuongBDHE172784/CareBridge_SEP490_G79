@@ -1,19 +1,11 @@
-import { useMemo, useState } from 'react';
-import type { FormEvent } from 'react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Clock3, ShieldOff } from 'lucide-react';
+import { Clock3, LifeBuoy, ShieldOff } from 'lucide-react';
 import { clearBlockedAccountState, loadBlockedAccountState } from '../models/blockedAccount';
-import { submitAccountLockAppeal } from '../services/accountLockAppealApi';
+import { SUPPORT_EMAIL, SUPPORT_PHONE } from '../../../shared/config/support';
 
 export default function BlockedAccountPage() {
   const state = useMemo(loadBlockedAccountState, []);
-  const [appealReason, setAppealReason] = useState('');
-  const [appealError, setAppealError] = useState<string | null>(null);
-  const [appealSubmitted, setAppealSubmitted] = useState(
-    state?.appealPending === true || state?.appealStatus === 'PENDING',
-  );
-  const appealRejected = state?.appealStatus === 'REJECTED';
-  const [submitting, setSubmitting] = useState(false);
 
   const title = state?.code === 'ACCOUNT_ADMIN_LOCKED'
     ? 'Tài khoản bị khóa bởi quản trị viên'
@@ -35,25 +27,9 @@ export default function BlockedAccountPage() {
           ? 'Tài khoản đang bị tạm ngưng theo quyết định kiểm duyệt.'
           : 'Vui lòng quay lại đăng nhập để thử lại.';
 
-  async function submitAppeal(event: FormEvent) {
-    event.preventDefault();
-    if (!state?.appealToken || !appealReason.trim()) {
-      setAppealError('Vui lòng nhập nội dung khiếu nại.');
-      return;
-    }
-    setSubmitting(true);
-    setAppealError(null);
-    try {
-      await submitAccountLockAppeal(state.appealToken, appealReason.trim());
-      setAppealSubmitted(true);
-      clearBlockedAccountState();
-    } catch (error: unknown) {
-      const message = (error as { response?: { data?: { message?: string } } }).response?.data?.message;
-      setAppealError(message ?? 'Không thể gửi khiếu nại. Vui lòng đăng nhập lại để nhận quyền khiếu nại mới.');
-    } finally {
-      setSubmitting(false);
-    }
-  }
+  // Every blocked state now resolves through customer support; only a temporary
+  // lock clears on its own, and that case already shows a retry time.
+  const showSupportContact = state?.code !== 'ACCOUNT_TEMPORARILY_LOCKED';
 
   return (
     <div className="font-sans bg-[#F6F1EC] min-h-screen flex items-center justify-center p-6">
@@ -78,36 +54,32 @@ export default function BlockedAccountPage() {
           </div>
         )}
 
-        {state?.code === 'ACCOUNT_ADMIN_LOCKED' && (state.appealAllowed || state.appealPending || appealRejected) && (
+        {showSupportContact && (
           <div className="mt-7 border-t border-surface-container-highest pt-6">
-            {appealSubmitted ? (
-              <div className="rounded-2xl bg-emerald-50 p-4 text-sm leading-6 text-emerald-800">
-                Khiếu nại đã được gửi. Quản trị viên hệ thống sẽ xem xét và phản hồi trong quy trình quản trị tài khoản.
+            <div className="flex items-start gap-3">
+              <LifeBuoy size={20} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
+              <div>
+                <p className="m-0 text-sm font-semibold text-on-surface">Cần mở lại tài khoản?</p>
+                <p className="mb-0 mt-2 text-sm leading-6 text-on-surface-variant">
+                  Vui lòng liên hệ bộ phận chăm sóc khách hàng để được kiểm tra và xử lý. Hãy cung cấp
+                  email hoặc số điện thoại đăng ký để nhân viên tra cứu nhanh hơn.
+                </p>
+                <ul className="mb-0 mt-3 list-none space-y-1 p-0 text-sm">
+                  <li>
+                    <a href={`mailto:${SUPPORT_EMAIL}`} className="font-semibold text-primary no-underline hover:underline">
+                      {SUPPORT_EMAIL}
+                    </a>
+                  </li>
+                  {SUPPORT_PHONE && (
+                    <li>
+                      <a href={`tel:${SUPPORT_PHONE}`} className="font-semibold text-primary no-underline hover:underline">
+                        {SUPPORT_PHONE}
+                      </a>
+                    </li>
+                  )}
+                </ul>
               </div>
-            ) : appealRejected ? (
-              <div className="rounded-2xl bg-error-container/35 p-4 text-sm leading-6 text-on-surface">
-                Khiếu nại mở khóa đã bị từ chối. Tài khoản vẫn bị khóa theo quyết định của quản trị viên.
-              </div>
-            ) : (
-              <form onSubmit={submitAppeal}>
-                <label htmlFor="appeal-reason" className="mb-2 block text-sm font-semibold text-on-surface">
-                  Nội dung khiếu nại
-                </label>
-                <textarea
-                  id="appeal-reason"
-                  value={appealReason}
-                  onChange={(event) => setAppealReason(event.target.value)}
-                  rows={5}
-                  maxLength={1000}
-                  placeholder="Trình bày lý do bạn đề nghị xem xét mở khóa..."
-                  className="w-full resize-none rounded-2xl border border-outline-variant p-4 text-sm leading-6 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
-                />
-                {appealError && <p className="mt-2 text-sm text-error">{appealError}</p>}
-                <button type="submit" disabled={submitting} className="mt-4 w-full rounded-full bg-primary px-5 py-3 text-sm font-semibold text-on-primary disabled:opacity-50">
-                  {submitting ? 'Đang gửi...' : 'Gửi khiếu nại mở khóa'}
-                </button>
-              </form>
-            )}
+            </div>
           </div>
         )}
 

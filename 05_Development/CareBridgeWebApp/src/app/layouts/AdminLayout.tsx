@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../shared/auth/useAuth';
 
-type NavRole = 'SYSTEM_ADMIN' | 'EXPERT' | 'MODERATOR' | 'CONTENT_ADMIN' | 'PARTNER';
+type NavRole = 'SYSTEM_ADMIN' | 'EXPERT' | 'MODERATOR' | 'CONTENT_ADMIN';
 type NavLinkItem = {
   type?: 'link';
   to: string;
@@ -23,7 +23,6 @@ type NavItem = NavLinkItem | NavGroupItem;
 const NAV_LINKS: readonly NavItem[] = [
   { to: '/admin/dashboard', label: 'Dashboard', icon: 'dashboard', roles: ['SYSTEM_ADMIN'] },
   { to: '/admin/users', label: 'Quản lý người dùng', icon: 'manage_accounts', roles: ['SYSTEM_ADMIN'] },
-  { to: '/admin/account-lock-appeals', label: 'Khiếu nại khóa tài khoản', icon: 'gavel', roles: ['SYSTEM_ADMIN'] },
   {
     type: 'group',
     label: 'Quản lý chuyên gia',
@@ -59,8 +58,6 @@ const NAV_LINKS: readonly NavItem[] = [
     ],
   },
   { to: '/expert/dashboard', label: 'Expert', icon: 'stethoscope', roles: ['EXPERT'] },
-  // route guard is PARTNER-only (see router/index.tsx) — SYSTEM_ADMIN has no access here.
-  { to: '/partner/dashboard', label: 'Partner', icon: 'handshake', roles: ['PARTNER'] },
   { to: '/moderator/moderator-dashboard', label: 'Tổng quan', icon: 'dashboard', roles: ['MODERATOR'] },
   { to: '/moderator/pending-content', label: 'Nội dung mới', icon: 'fact_check', roles: ['MODERATOR'] },
   { to: '/moderator/community-content', label: 'Theo dõi cộng đồng', icon: 'visibility', roles: ['MODERATOR'] },

@@ -25,8 +25,8 @@ import com.carebridge.backend.notification.repository.NotificationRecordReposito
 import com.carebridge.backend.notification.service.FcmService;
 import com.carebridge.backend.reminder.entity.Reminder;
 import com.carebridge.backend.reminder.entity.ReminderType;
-import com.carebridge.backend.reminder.notification.entity.AppointmentNotificationJob;
-import com.carebridge.backend.reminder.notification.repository.AppointmentNotificationJobRepository;
+import com.carebridge.backend.reminder.job.entity.NotificationJob;
+import com.carebridge.backend.reminder.job.repository.NotificationJobRepository;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -62,7 +62,7 @@ public class CareGroupAppointmentNotificationService {
     private final NotificationRecordRepository notificationRepository;
     private final FcmService fcmService;
     private final AuditService auditService;
-    private final AppointmentNotificationJobRepository appointmentJobRepository;
+    private final NotificationJobRepository appointmentJobRepository;
 
     @Autowired
     public CareGroupAppointmentNotificationService(
@@ -76,7 +76,7 @@ public class CareGroupAppointmentNotificationService {
             NotificationRecordRepository notificationRepository,
             FcmService fcmService,
             AuditService auditService,
-            AppointmentNotificationJobRepository appointmentJobRepository) {
+            NotificationJobRepository appointmentJobRepository) {
         this.groupRepository = groupRepository;
         this.memberRepository = memberRepository;
         this.authorizationPolicy = authorizationPolicy;
@@ -133,7 +133,7 @@ public class CareGroupAppointmentNotificationService {
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void notifyMilestone(Reminder reminder, AppointmentNotificationJob job, String timeZone) {
+    public void notifyMilestone(Reminder reminder, NotificationJob job, String timeZone) {
         if (reminder == null || job == null || reminder.getReminderType() != ReminderType.APPOINTMENT) return;
         if (job.getId() == null) return;
         if (appointmentJobRepository != null
@@ -348,7 +348,7 @@ public class CareGroupAppointmentNotificationService {
         return "Sắp đến lịch hẹn";
     }
 
-    private String milestoneBody(Reminder reminder, AppointmentNotificationJob job, String timeZone) {
+    private String milestoneBody(Reminder reminder, NotificationJob job, String timeZone) {
         ZoneId zone = ZoneId.of(timeZone == null || timeZone.isBlank()
                 ? "Asia/Ho_Chi_Minh" : timeZone);
         String time = DATE_TIME.format(job.getOccurrenceScheduledAt().atZone(zone));

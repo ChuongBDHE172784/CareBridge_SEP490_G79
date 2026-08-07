@@ -2,14 +2,13 @@ import { useEffect, useState, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 
 // Admin & System Services
-import { searchUsers, getAccountLockAppeals } from '../services/adminUserApi';
+import { searchUsers } from '../services/adminUserApi';
 import { searchAuditLogs } from '../services/auditLogApi';
 import { fetchSystemConfiguration, type SystemConfiguration } from '../../aiRuleManagement/services/systemConfigurationApi';
 import { fetchStaffContentList, fetchAdminChecklistTemplates } from '../../contentManagement/services/contentApi';
 import apiClient from '../../../shared/api/apiClient';
 
 // Models
-import type { AccountLockAppeal } from '../models/adminUser';
 import type { AuditLogEntry } from '../models/auditLog';
 
 function formatNumber(n: number): string {
@@ -44,11 +43,11 @@ function getDashboardErrorMessage(error: unknown): string {
 /*  Admin Operational Task Status Panel Component                     */
 /* ------------------------------------------------------------------ */
 function AdminTaskStatusPanel({
-  lockAppeals,
+  lockedAccounts,
   pendingContent,
   securityEvents,
 }: {
-  lockAppeals: number;
+  lockedAccounts: number;
   pendingContent: number;
   securityEvents: number;
 }) {
@@ -56,15 +55,17 @@ function AdminTaskStatusPanel({
 
   const tasks = [
     {
-      title: 'Khiếu nại khóa tài khoản',
-      detail: 'Đơn khiếu nại từ tài khoản người dùng bị khóa chờ xem xét',
-      count: lockAppeals,
-      unit: 'ca',
-      icon: 'gavel',
+      // The in-app appeal queue was retired; users now reach support directly, so
+      // what the admin needs to see is the locked accounts themselves.
+      title: 'Tài khoản đang bị khóa',
+      detail: 'Tài khoản bị khóa, chờ chăm sóc khách hàng xác minh và mở lại',
+      count: lockedAccounts,
+      unit: 'tài khoản',
+      icon: 'lock_person',
       iconTone: 'bg-amber-100 text-amber-700',
-      badge: lockAppeals > 0 ? `${lockAppeals} đơn chờ` : 'Bình thường',
-      badgeTone: lockAppeals > 0 ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-slate-100 text-slate-600 border-slate-300',
-      path: '/admin/account-lock-appeals',
+      badge: lockedAccounts > 0 ? `${lockedAccounts} đang khóa` : 'Bình thường',
+      badgeTone: lockedAccounts > 0 ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-slate-100 text-slate-600 border-slate-300',
+      path: '/admin/users?locked=true',
     },
     {
       title: 'Duyệt nội dung y tế chờ xuất bản',
@@ -179,15 +180,13 @@ export default function AdminDashboardPage() {
 
   // Stats & State
   const [totalUsers, setTotalUsers] = useState<number>(0);
-  const [pendingLockAppeals, setPendingLockAppeals] = useState<AccountLockAppeal[]>([]);
-  const [pendingLockAppealsCount, setPendingLockAppealsCount] = useState<number>(0);
+  const [lockedUsersCount, setLockedUsersCount] = useState<number>(0);
   const [pendingContentCount, setPendingContentCount] = useState<number>(0);
   const [totalSecurityEvents, setTotalSecurityEvents] = useState<number>(0);
   const [recentAuditLogs, setRecentAuditLogs] = useState<AuditLogEntry[]>([]);
   const [totalAuditLogs, setTotalAuditLogs] = useState<number>(0);
   const [systemConfig, setSystemConfig] = useState<SystemConfiguration | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'APPEALS' | 'AUDIT'>('APPEALS');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -198,7 +197,7 @@ export default function AdminDashboardPage() {
     try {
       const [
         usersRes,
-        appealsRes,
+        lockedUsersRes,
         contentRes,
         checklistRes,
         securityRes,
@@ -206,7 +205,7 @@ export default function AdminDashboardPage() {
         systemConfigRes,
       ] = await Promise.allSettled([
         searchUsers({ page: 0, size: 1 }),
-        getAccountLockAppeals('PENDING', 0, 5),
+        searchUsers({ locked: true, page: 0, size: 1 }),
         fetchStaffContentList({ status: 'PENDING_REVIEW', size: 1 }),
         fetchAdminChecklistTemplates({ status: 'PENDING_REVIEW', size: 1 }),
         apiClient.get('/api/v1/admin/security-events?page=0&size=1'),
@@ -217,9 +216,8 @@ export default function AdminDashboardPage() {
       if (usersRes.status === 'fulfilled') {
         setTotalUsers(usersRes.value.totalElements);
       }
-      if (appealsRes.status === 'fulfilled') {
-        setPendingLockAppeals(appealsRes.value.content);
-        setPendingLockAppealsCount(appealsRes.value.totalElements);
+      if (lockedUsersRes.status === 'fulfilled') {
+        setLockedUsersCount(lockedUsersRes.value.totalElements);
       }
 
       let contentCount = 0;
@@ -337,7 +335,7 @@ export default function AdminDashboardPage() {
         <>
           {/* Operational KPI Grid (3 Cards) */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* KPI 1: Users & Appeals */}
+            {/* KPI 1: Users & locked accounts */}
             <div
               onClick={() => navigate('/admin/users')}
               className="bg-surface rounded-2xl p-6 shadow-sm border border-outline-variant/60 flex items-center justify-between cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all"
@@ -348,7 +346,7 @@ export default function AdminDashboardPage() {
                   {formatNumber(totalUsers)}
                 </div>
                 <div className="text-xs text-outline mt-1">
-                  Khiếu nại khóa tài khoản: <span className="font-bold text-amber-600">{formatNumber(pendingLockAppealsCount)} ca</span>
+                  Tài khoản đang bị khóa: <span className="font-bold text-amber-600">{formatNumber(lockedUsersCount)}</span>
                 </div>
               </div>
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
@@ -437,7 +435,7 @@ export default function AdminDashboardPage() {
               </div>
 
               <AdminTaskStatusPanel
-                lockAppeals={pendingLockAppealsCount}
+                lockedAccounts={lockedUsersCount}
                 pendingContent={pendingContentCount}
                 securityEvents={totalSecurityEvents}
               />
@@ -511,101 +509,19 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          {/* Pending Lock Appeals & Recent Audit Logs Table */}
+          {/* Recent Audit Logs Table */}
           <div className="bg-surface rounded-2xl p-6 shadow-sm border border-outline-variant/60">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4 pb-3 border-b border-outline-variant/40">
               <div>
-                <h2 className="text-base font-bold text-on-surface m-0">Nhật ký Thao tác & Khiếu nại Gần nhất</h2>
-                <p className="text-xs text-outline mt-0.5">Danh sách các khiếu nại tài khoản và truy vết thao tác audit log hệ thống</p>
+                <h2 className="text-base font-bold text-on-surface m-0">Nhật ký Thao tác Gần nhất</h2>
+                <p className="text-xs text-outline mt-0.5">Truy vết thao tác audit log hệ thống, bao gồm khóa và mở khóa tài khoản</p>
               </div>
-
-              {/* Tab Switcher */}
-              <div className="flex items-center gap-1 bg-surface-container-low p-1 rounded-xl border border-outline-variant/40 self-start md:self-auto">
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('APPEALS')}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    activeTab === 'APPEALS'
-                      ? 'bg-surface text-primary shadow-sm'
-                      : 'text-outline hover:text-on-surface'
-                  }`}
-                >
-                  Khiếu nại khóa ({pendingLockAppealsCount})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('AUDIT')}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    activeTab === 'AUDIT'
-                      ? 'bg-surface text-primary shadow-sm'
-                      : 'text-outline hover:text-on-surface'
-                  }`}
-                >
-                  Nhật ký Audit ({totalAuditLogs})
-                </button>
-              </div>
+              <span className="self-start md:self-auto rounded-xl border border-outline-variant/40 bg-surface-container-low px-4 py-1.5 text-xs font-bold text-outline">
+                {formatNumber(totalAuditLogs)} bản ghi
+              </span>
             </div>
 
-            {/* Tab 1: Account Lock Appeals */}
-            {activeTab === 'APPEALS' && (
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="border-b border-outline-variant/60 text-left">
-                      <th className="py-3 px-3 text-[11px] font-bold text-outline uppercase tracking-wider">Mã khiếu nại & User</th>
-                      <th className="py-3 px-3 text-[11px] font-bold text-outline uppercase tracking-wider">Lý do khiếu nại</th>
-                      <th className="py-3 px-3 text-[11px] font-bold text-outline uppercase tracking-wider">Ngày gửi đơn</th>
-                      <th className="py-3 px-3 text-[11px] font-bold text-outline uppercase tracking-wider text-center">Trạng thái</th>
-                      <th className="py-3 px-3 text-[11px] font-bold text-outline uppercase tracking-wider text-right">Thao tác</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-outline-variant/30">
-                    {pendingLockAppeals.map((appeal) => (
-                      <tr
-                        key={appeal.id}
-                        onClick={() => navigate(`/admin/account-lock-appeals/${appeal.id}`)}
-                        className="hover:bg-surface-container-low/60 transition-colors cursor-pointer"
-                      >
-                        <td className="py-3.5 px-3">
-                          <div className="font-bold text-sm text-on-surface hover:text-primary">
-                            {appeal.userEmail || 'Tài khoản người dùng'}
-                          </div>
-                          <div className="text-[11px] text-outline font-mono">ID: {appeal.userId.slice(0, 8)}...</div>
-                        </td>
-                        <td className="py-3.5 px-3 max-w-xs">
-                          <div className="text-xs text-on-surface line-clamp-2 leading-relaxed">
-                            {appeal.reason || 'Không cung cấp lý do cụ thể'}
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-3 text-xs text-outline whitespace-nowrap">
-                          {formatDate(appeal.submittedAt)}
-                        </td>
-                        <td className="py-3.5 px-3 text-center">
-                          <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 text-xs font-bold">
-                            Chờ duyệt
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-3 text-right">
-                          <span className="text-xs font-bold text-primary hover:underline inline-flex items-center gap-1">
-                            Xử lý khiếu nại <span className="material-symbols-outlined text-sm">chevron_right</span>
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                    {pendingLockAppeals.length === 0 && (
-                      <tr>
-                        <td colSpan={5} className="py-8 text-center text-outline text-xs">
-                          Hiện không có đơn khiếu nại khóa tài khoản nào đang chờ duyệt.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            {/* Tab 2: System Audit Logs */}
-            {activeTab === 'AUDIT' && (
+            {(
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
                   <thead>

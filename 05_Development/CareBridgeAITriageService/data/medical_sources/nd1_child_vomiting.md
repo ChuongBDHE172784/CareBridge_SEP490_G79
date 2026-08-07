@@ -14,7 +14,7 @@ sourceType: official_hospital_guidance
 sourceStatus: APPROVED
 sourceVersion: '1.0'
 approvedAt: 2026-07-18
-approvedBy: CareBridge content review
+approvedBy: CareBridge development team internal review (DEV_REVIEWED; no clinician participated)
 adminReviewed: true
 ---
 Bệnh viện Nhi Đồng 1 hướng dẫn đưa trẻ đi khám ngay khi nôn ói kéo dài, trẻ sơ

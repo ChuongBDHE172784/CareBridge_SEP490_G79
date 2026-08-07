@@ -1,6 +1,6 @@
 import time
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import JSONResponse
 
 from app.config import GEMINI_SETTINGS, PYTHON_SERVICE_TIMEOUT_SECONDS
@@ -28,8 +28,24 @@ from app.symptom_normalizer import (
     normalize_symptom_details_deterministic,
     normalize_symptom_details_with_metadata,
 )
+from app.triage_v2.api import (
+    TriageV2TurnRequest,
+    TriageV2TurnResponse,
+    execute_turn,
+    require_internal_key,
+)
 
 app = FastAPI(title="CareBridge AI Triage Service", version="0.1.0")
+
+
+@app.post(
+    "/internal/triage/v2/turn",
+    response_model=TriageV2TurnResponse,
+    dependencies=[Depends(require_internal_key)],
+    include_in_schema=False,
+)
+def triage_v2_turn(request: TriageV2TurnRequest) -> TriageV2TurnResponse:
+    return execute_turn(request)
 
 
 @app.get("/health")
