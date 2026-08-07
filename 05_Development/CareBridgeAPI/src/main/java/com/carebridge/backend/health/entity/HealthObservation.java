@@ -116,6 +116,23 @@ public class HealthObservation {
     @Column(name = "subject_type", nullable = false, updatable = false, length = 30)
     private String subjectType = "MOTHER";
 
+    /**
+     * Ties together the observations produced by a single measuring session — a baby growth
+     * entry records weight, height and head circumference at once and must stay one logical
+     * aggregate (V3 §3.12). Null for observations that stand alone.
+     *
+     * <p>Immutable: regrouping an observation after the fact would silently move a reading
+     * into another session.
+     */
+    @Column(name = "measurement_group_id", updatable = false)
+    private UUID measurementGroupId;
+
+    /**
+     * Soft-delete marker. Every read path must filter on this; nothing else hides the row.
+     */
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

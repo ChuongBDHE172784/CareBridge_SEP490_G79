@@ -5,7 +5,7 @@ import com.carebridge.backend.baby.repository.BabyProfileRepository;
 import com.carebridge.backend.carejourney.dto.BabyCareOverviewResponse;
 import com.carebridge.backend.carejourney.repository.BabyDailyLogRepository;
 import com.carebridge.backend.carejourney.repository.DevelopmentMilestoneRepository;
-import com.carebridge.backend.carejourney.repository.GrowthMeasurementRepository;
+import com.carebridge.backend.carejourney.repository.GrowthMeasurementStore;
 import com.carebridge.backend.carejourney.service.IBabyCareOverviewService;
 import com.carebridge.backend.common.exception.AccessDeniedBusinessException;
 import com.carebridge.backend.common.exception.ResourceNotFoundException;
@@ -23,7 +23,7 @@ public class BabyCareOverviewServiceImpl implements IBabyCareOverviewService {
     private final BabyProfileRepository babyProfileRepository;
     private final BabyAccessPolicy babyAccessPolicy;
     private final BabyDailyLogRepository dailyLogRepository;
-    private final GrowthMeasurementRepository growthRepository;
+    private final GrowthMeasurementStore growthRepository;
     private final DevelopmentMilestoneRepository milestoneRepository;
     private final VaccinationRecordRepository vaccinationRepository;
 
