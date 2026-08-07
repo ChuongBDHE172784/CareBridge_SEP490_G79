@@ -106,8 +106,10 @@ class LoginIntegrationTest extends AbstractPostgresIntegrationTest {
         assertThat(jwtTokenProvider.getAuthorities(accessToken))
                 .contains(new SimpleGrantedAuthority("ROLE_MOTHER"));
 
+        // The OTP store is auth_challenges; otp_verifications never existed in this schema,
+        // and OtpVerification maps challenge_type where this query used to say purpose.
         Integer loginOtpCount = jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM otp_verifications WHERE user_id = ? AND purpose = 'LOGIN'",
+                "SELECT COUNT(*) FROM auth_challenges WHERE user_id = ? AND challenge_type = 'LOGIN'",
                 Integer.class,
                 user.getId());
         assertThat(loginOtpCount).isZero();
