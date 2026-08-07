@@ -1,315 +1,311 @@
-# MF-06 / Spec 01 — AI Symptom Intake, Risk Triage & Emergency Handoff
+# MF-06 / Spec 01 — AI Symptom Intake, History and Escalation
 
 | Field | Value |
 | --- | --- |
-| Feature | MF-06 — AI Nurse Assistant & Risk Triage |
-| Use Cases Covered | UC-72 Run AI Symptom Intake, UC-73 View Risk Triage Result, UC-74 Open Emergency Support from a Red Risk Result |
-| Primary Actor(s) | Mother |
-| Platform | Mother Mobile App |
-| Main Flow Summary | A Mother describes symptoms through a guided AI intake conversation; the system classifies the result into a non-diagnostic GREEN/YELLOW/RED orientation using approved knowledge and red-flag rules, and — only for RED — offers a one-tap handoff into the Emergency Map flow (MF-07), never treating the AI output as a diagnosis. |
-| Grounding (source code) | `triage/entity/IntakeSession.java`, `triage/IntakeStatus.java`, `triage/RiskLevel.java`, `triage/TriageStage.java`, `triage/controller/IntakeController.java` (`/api/v1/triage/intake`), `emergency/entity/EmergencyMapHandoff.java`, `HandoffStatus.java`, `emergency/controller/EmergencyMapHandoffController.java` (`/api/v1/map/emergency/handoff`) |
+| Status | Draft |
+| Use Cases Covered | UC-45 Use AI Nurse Symptom Triage; UC-46 View AI Triage History; UC-47 Escalate AI Triage to Emergency Support; UC-48 Request Expert Support from AI Triage |
+| Use Case Group | Mobile App |
+| Platform | Mother and authorized Family Mobile; Backend; AI Service |
+| Primary Actors | Mother / Authorized Family |
+| In Scope | GREEN YELLOW RED output is non-diagnostic and red flags set a minimum risk |
+| Explicitly Excluded | Standalone RagChatScreen and autonomous diagnosis |
+| Implementation Trace | UI: AI triage intake, result and history screens; Controller: IntakeController, EmergencyMapHandoffController; Service: TriageService, EmergencyMapHandoffServiceImpl; Repository: IIntakeSessionRepository; Entity: IntakeSession |
 
 ## 1. Tổng quan luồng chính (Main Flow Overview)
 
-Đây là luồng an toàn quan trọng nhất của MF-06 (CC-01, NS-05). Mother mô tả triệu chứng
-qua hội thoại có cấu trúc (`POST /conversation/start` → `/conversation/continue`), hệ
-thống chuẩn hoá input, truy xuất tri thức đã duyệt (spec 02) và áp cờ đỏ bảo thủ để suy
-ra `riskLevel` (GREEN/YELLOW/RED — UC-72). Kết quả luôn kèm `disclaimer` phi chẩn đoán
-và hướng dẫn bước tiếp theo an toàn (UC-73). Khi `riskLevel=RED`, giao diện hiển thị lối
-tắt sang bản đồ khẩn cấp; Mother chủ động bấm để tạo `EmergencyMapHandoff` tham chiếu lại
-`IntakeSession` gốc (`triageHandoffId`), **không tự động điều hướng và không phải là một
-cuộc gọi cấp cứu** (UC-74) — quyền quyết định luôn thuộc về người dùng.
+GREEN YELLOW RED output is non-diagnostic and red flags set a minimum risk. The flow starts only from the reachable UI or system trigger named in the metadata. The Backend rechecks authentication, role, ownership, membership, consent and current state as applicable; client-side visibility alone never grants access. A confirmed mutation is persisted before the UI displays success. External-service failure returns a safe retry state and must not fabricate completion.
 
 ## 2. Class Diagram
 
 ```plantuml
-@startuml MF06_01_AITriage_ClassDiagram
+@startuml MF06_01_AISymptomIntakeHistoryandEscalation_ClassDiagram
 skinparam classAttributeIconSize 0
-skinparam classFontStyle bold
-skinparam backgroundColor #FAFAFA
-skinparam ArrowColor #555555
-skinparam ClassBorderColor #2E75B6
-skinparam ClassHeaderBackgroundColor #D5E8F0
+hide empty members
 
-class IntakeSession {
-  + id: UUID
-  + userId: UUID
-  + babyProfileId: UUID
-  + motherProfileId: UUID
-  + stage: TriageStage
-  + symptoms: String
-  + rawAiResponse: String
-  + riskLevel: RiskLevel
-  + status: IntakeStatus
-  + disclaimer: String
-  + completedAt: Instant
+class "AI triage intake" as UI1 <<UI>>
+class "result and history screens" as UI2 <<UI>>
+class "IntakeController" as Controller1 <<Controller>> {
+  - triageService: ITriageService
+  - continuationService: ITriageContinuationService
+  + runIntake(request: RunIntakeRequest, principal: Principal): ResponseEntity<ApiResponse<IntakeSessionResponse>>
+  + acknowledgeContinuation(request: ContinuationTokenRequest, principal: Principal): ResponseEntity<ApiResponse<ContinuationAcknowledgementResponse>>
+  + continueConversation(request: ContinueIntakeConversationRequest, principal: Principal): ResponseEntity<ApiResponse<IntakeConversationResponse>>
+  + getResult(sessionId: UUID, principal: Principal): ResponseEntity<ApiResponse<TriageResultResponse>>
+  + listSessions(principal: Principal): ResponseEntity<ApiResponse<List<IntakeSessionResponse>>>
+  + resolveContinuation(request: ContinuationTokenRequest, principal: Principal): ResponseEntity<ApiResponse<ContinuationDescriptor>>
+  + startConversation(request: StartIntakeConversationRequest, principal: Principal): ResponseEntity<ApiResponse<IntakeConversationResponse>>
 }
-
-enum TriageStage {
-  PRECONCEPTION
-  PREGNANCY
-  INFANT
-  TODDLER
+class "EmergencyMapHandoffController" as Controller2 <<Controller>> {
+  - emergencyMapHandoffService: IEmergencyMapHandoffService
+  + createHandoff(principal: Principal, request: CreateEmergencyHandoffRequest): ResponseEntity<ApiResponse<EmergencyHandoffResponse>>
+  + getHandoff(principal: Principal, handoffId: UUID): ResponseEntity<ApiResponse<EmergencyHandoffResponse>>
+  + getMyHandoffs(principal: Principal): ResponseEntity<ApiResponse<List<EmergencyHandoffResponse>>>
 }
-
-enum IntakeStatus {
-  PENDING
-  PROCESSING
-  NEED_MORE_INFO
-  COMPLETED
-  FAILED
+class "TriageService" as Service1 <<Service>> {
+  - log: Logger
+  - intakeSessionRepository: IIntakeSessionRepository
+  - childTriageAiClient: ChildTriageAiClient
+  - triageGraphService: TriageGraphService
+  - toRunIntakeRequest(Map<String, intake: Object>): RunIntakeRequest
+  - isBoundedValue(value: Object, depth: int): boolean
+  - isPersistableRiskLevel(riskLevel: String): boolean
+  + changeStatus(id: UUID, newStatus: String, notes: String, ...): EvidenceSource
+  + isApprovedDeepLink(uri: URI): boolean
 }
-
-enum RiskLevel {
-  GREEN
-  YELLOW
-  RED
+class "EmergencyMapHandoffServiceImpl" as Service2 <<Service>> {
+  - handoffRepository: EmergencyMapHandoffRepository
+  - handoffMapper: EmergencyMapHandoffMapper
+  - intakeSessionRepository: IIntakeSessionRepository
+  - careFacilityRepository: CareFacilityRepository
+  + createHandoff(userId: UUID, request: CreateEmergencyHandoffRequest): EmergencyHandoffResponse
+  + getHandoff(handoffId: UUID, callerId: UUID, systemAdmin: boolean): EmergencyHandoffResponse
+  + getMyHandoffs(userId: UUID): List<EmergencyHandoffResponse>
+  - validateCoordinates(latitude: BigDecimal, longitude: BigDecimal): void
 }
-
-class EmergencyMapHandoff {
-  + handoffId: UUID
-  + userId: UUID
-  + triageHandoffId: UUID
-  + riskLevel: String
-  + userLatitude: BigDecimal
-  + userLongitude: BigDecimal
-  + selectedFacilityId: UUID
-  + summary: String
-  + status: HandoffStatus
+interface "ITriageService" as Service1Contract <<Service>>
+interface "IEmergencyMapHandoffService" as Service2Contract <<Service>>
+interface "IIntakeSessionRepository" as Repository1 {
+  + findByIdAndUserId(id: UUID, userId: UUID): Optional<IntakeSession>
+  + findByUserIdAndClientRequestId(userId: UUID, clientRequestId: String): Optional<IntakeSession>
+  + findByUserIdAndContinuationToken(userId: UUID, continuationToken: UUID): Optional<IntakeSession>
+  + findByUserIdOrderByCreatedAtDesc(userId: UUID): List<IntakeSession>
 }
-
-class IntakeController {
-  - intakeService: IntakeService
-  + start(request): ResponseEntity
-  + continueConversation(sessionId, request): ResponseEntity
-  + get(sessionId): ResponseEntity
+class "IntakeSession" as Entity1 <<Entity>> {
+  - id: UUID
+  - userId: UUID
+  - babyProfileId: UUID
+  - motherProfileId: UUID
+  - stage: TriageStage
+  - clientRequestId: String
+  - journeyId: UUID
 }
+interface "JpaRepository<IntakeSession, UUID>" as Repository1Base <<Framework>>
+class "PostgreSQL" as DB <<Database>>
+class "Approved AI triage service" as External <<External Service>>
 
-interface IntakeService <<interface>> {
-  + start(userId: UUID, request): IntakeSession
-  + continueConversation(sessionId: UUID, request): IntakeSession
-}
-
-class IntakeServiceImpl implements IntakeService {
-  - intakeSessionRepository: IntakeSessionRepository
-  - redFlagRuleService: RedFlagRuleService
-  - evidenceRetrievalService: EvidenceRetrievalService
-  - auditService: AuditService
-}
-
-class EmergencyMapHandoffController {
-  + createHandoff(request): ResponseEntity
-  + myHandoffs(): ResponseEntity
-}
-
-IntakeSession --> TriageStage
-IntakeSession --> IntakeStatus
-IntakeSession --> RiskLevel
-IntakeSession "1" -- "0..1" EmergencyMapHandoff : triageHandoffId (UC-74)
-EmergencyMapHandoff --> HandoffStatus
-IntakeController --> IntakeService : uses
-IntakeServiceImpl --> RedFlagRuleService : applies conservative fallback
-EmergencyMapHandoffController ..> IntakeSession : references by triageHandoffId
-
+Service1Contract <|.. Service1 : implements
+Service2Contract <|.. Service2 : implements
+Repository1Base <|-- Repository1 : extends
+UI1 ..> Controller1 : invokes API
+UI2 ..> Controller1 : invokes API
+UI2 ..> Controller2 : emergency handoff
+Controller1 --> Service1Contract : delegates
+Controller2 --> Service2Contract : delegates
+Service1 --> Repository1 : reads / writes
+Service2 --> Repository1 : reads / writes
+Repository1 ..> Entity1 : maps
+Repository1 ..> DB : persists
+Service1 ..> External : invokes when required
+Service2 ..> External : invokes when required
 @enduml
 ```
 
-**Hình 1 — Class Diagram: AI Intake Session, Risk Level & Emergency Handoff Reference**
+**Figure 1 — Class Diagram: AI Symptom Intake, History and Escalation**
 
 ## 3. Sequence Diagram — Main Flow
 
 ```plantuml
-@startuml MF06_01_AITriage_SequenceDiagram
-skinparam sequenceArrowThickness 2
-skinparam roundcorner 10
-skinparam backgroundColor #FAFAFA
+@startuml MF06_01_AISymptomIntakeHistoryandEscalation_SequenceDiagram
+skinparam shadowing false
 
-actor "Mother" as M
-participant "IntakeController" as Controller
-participant "TriageService" as Service
-participant "IIntakeSessionRepository" as SessionRepo
-participant "HttpChildTriageAiClient" as AiClient
-participant "EvidenceSourceService" as Evidence
-participant "EmergencyMapHandoffController" as HandoffController
-participant "EmergencyMapHandoffServiceImpl" as HandoffService
-participant "EmergencyMapHandoffRepository" as HandoffRepo
+actor "Mother / Authorized Family" as Actor
+boundary ":AI triage intake" as UI1
+boundary ":result and history screens" as UI2
+boundary ":result screen" as UI3
+control ":IntakeController" as Controller1
+control ":EmergencyMapHandoffController" as Controller2
+control ":TriageExpertHandoffController" as Controller3
+participant ":TriageService" as Service1 <<service>>
+participant ":EmergencyMapHandoffServiceImpl" as Service2 <<service>>
+participant ":ConsultationRequestServiceImpl" as Service3 <<service>>
+participant ":IIntakeSessionRepository" as Repository1 <<repository>>
+participant ":ConsultationRequestRepository" as Repository2 <<repository>>
 database "PostgreSQL" as DB
+participant ":Approved AI triage service" as External1 <<external system>>
+participant ":Firebase Cloud Messaging" as External2 <<external system>>
 
-== UC-72 Run AI Symptom Intake (Start Conversation) ==
-M -> Controller : 1. POST /api/v1/triage/intake/conversation/start\n{stage=PREGNANCY, initialText, currentIntake}
-activate Controller
-Controller -> Service : 2. startConversation(request, userId)
-activate Service
-Service -> SessionRepo : 3. save(IntakeSession{status=PROCESSING,\nsymptoms="CONVERSATION_INTAKE"})
-activate SessionRepo
-SessionRepo -> DB : 4. INSERT INTO intake_sessions ...
-activate DB
-DB --> SessionRepo : 5. saved
-deactivate DB
-SessionRepo --> Service : 6. IntakeSession
-deactivate SessionRepo
-alt 7. AI triage service responds normally
-  Service -> AiClient : 7. startIntake(canonicalRequest)
-  activate AiClient
-  AiClient --> Service : 8. envelope JSON\n{status=ASK_MORE|TRIAGE_COMPLETE, questions[] | triageResult}
-  deactivate AiClient
-else 7. AI service error/timeout (network/5xx) → internal fallback
-  Service -> Service : 7a. fallbackConversation()\ngenerate questions/conservative risk locally (no external AI call)
-end
-Service -> SessionRepo : 9. save(session{rawAiResponse=envelope,\nstatus=NEED_MORE_INFO|COMPLETED})
-activate SessionRepo
-SessionRepo -> DB : 10. UPDATE intake_sessions\nSET raw_ai_response=?, status=?, risk_level=?
-activate DB
-DB --> SessionRepo : 11. updated
-deactivate DB
-SessionRepo --> Service : 12. IntakeSession
-deactivate SessionRepo
-opt 13. status just transitioned to COMPLETED && riskLevel != null
-  Service -> Service : 13a. publishEvent(IntakeSessionCompleted) [async, other module subscribers if any]
-end
-Service --> Controller : 14. IntakeConversationResponse{questions[] | riskLevel}
-deactivate Service
-Controller --> M : 15. HTTP 200 OK
-deactivate Controller
-
-loop 16-30. each subsequent conversation turn until sufficient context (status=COMPLETED)
-  M -> Controller : 16. POST /api/v1/triage/intake/conversation/continue\n{intakeSessionId, newAnswers}
-  activate Controller
-  Controller -> Service : 17. continueConversation(request, userId)
-  activate Service
-  Service -> SessionRepo : 18. findForUpdateByIdAndUserId(sessionId, userId)
-  activate SessionRepo
-  SessionRepo -> DB : 19. SELECT ... FOR UPDATE FROM intake_sessions\nWHERE id=? AND user_id=?
-  activate DB
-  DB --> SessionRepo : 20. session row
-  deactivate DB
-  SessionRepo --> Service : 21. IntakeSession
-  deactivate SessionRepo
-  alt 22. AI triage service responds normally
-    Service -> AiClient : 22. continueIntake(canonical)
-    activate AiClient
-    AiClient --> Service : 23. envelope JSON\n{status=TRIAGE_COMPLETE, triageResult{riskLevel, disclaimer, redFlags[]}}
-    deactivate AiClient
-  else 22. AI service error/timeout → internal fallback
-    Service -> Service : 22a. fallbackConversation()\ngenerate questions/conservative risk locally
+group UC-45 Use AI Nurse Symptom Triage
+  Actor -> UI1 : 1. startUseAiNurseSymptomTriage()
+  activate UI1
+  UI1 -> Controller1 : 2. startConversation() / runIntake()
+  activate Controller1
+  Controller1 -> Service1 : 3. startConversation() / runIntake()
+  activate Service1
+  alt [selected action is view or list]
+    Service1 -> Repository1 : 4a. findByUserIdAndClientRequestId()
+    activate Repository1
+    Repository1 -> DB : 4a-1. SELECT
+    activate DB
+    DB --> Repository1 : 4a-2. queryResult
+    deactivate DB
+    Repository1 --> Service1 : 4a-3. domainRecords
+    deactivate Repository1
+    Service1 --> Controller1 : 4a-4. resultDTO
+    deactivate Service1
+    Controller1 --> UI1 : 4a-5. 200 OK
+    deactivate Controller1
+    UI1 --> Actor : 4a-6. displayCurrentState()
+    deactivate UI1
+  else [selected action creates, updates, archives or deletes]
+    Service1 -> Repository1 : 4b. findByUserIdAndClientRequestId()
+    activate Repository1
+    Repository1 -> DB : 4b-1. SELECT
+    activate DB
+    DB --> Repository1 : 4b-2. currentState
+    deactivate DB
+    Repository1 --> Service1 : 4b-3. scopedEntity
+    deactivate Repository1
+    Service1 -> Repository1 : 4b-4. save()
+    activate Repository1
+    Repository1 -> DB : 4b-5. INSERT / UPDATE
+    activate DB
+    DB --> Repository1 : 4b-6. persistedState
+    deactivate DB
+    Repository1 --> Service1 : 4b-7. persistedEntity
+    deactivate Repository1
+    Service1 -> External1 : 4b-8. evaluateSymptomsAndRisk()
+    activate External1
+    External1 --> Service1 : 4b-9. integrationResult
+    deactivate External1
+    Service1 --> Controller1 : 4b-10. resultDTO
+    deactivate Service1
+    Controller1 --> UI1 : 4b-11. 200 OK / 201 Created
+    deactivate Controller1
+    UI1 --> Actor : 4b-12. displayConfirmedState()
+    deactivate UI1
+  else [request is invalid, forbidden, not found or conflicting]
+    Service1 --> Controller1 : 4c. domainError
+    deactivate Service1
+    Controller1 --> UI1 : 4c-1. 400 / 401 / 403 / 404 / 409
+    deactivate Controller1
+    UI1 --> Actor : 4c-2. displayActionableError()
+    deactivate UI1
   end
-  Service -> SessionRepo : 24. save(session{rawAiResponse=envelope, riskLevel, status})
-  activate SessionRepo
-  SessionRepo -> DB : 25. UPDATE intake_sessions\nSET raw_ai_response=?, risk_level=?, status=?
-  activate DB
-  DB --> SessionRepo : 26. updated
-  deactivate DB
-  SessionRepo --> Service : 27. IntakeSession
-  deactivate SessionRepo
-  opt 28. status just transitioned to COMPLETED && riskLevel != null
-    Service -> Service : 28a. publishEvent(IntakeSessionCompleted) [async]
+end
+
+group UC-46 View AI Triage History
+  Actor -> UI2 : 5. startViewAiTriageHistory()
+  activate UI2
+  UI2 -> Controller1 : 6. listSessions() / getResult()
+  activate Controller1
+  Controller1 -> Service1 : 7. listSessions() / getResult()
+  activate Service1
+  alt [request is authorized and input is valid]
+    Service1 -> Repository1 : 8a. findByUserIdOrderByCreatedAtDesc()
+    activate Repository1
+    Repository1 -> DB : 8a-1. SELECT
+    activate DB
+    DB --> Repository1 : 8a-2. queryResult
+    deactivate DB
+    Repository1 --> Service1 : 8a-3. domainRecords
+    deactivate Repository1
+    Service1 --> Controller1 : 8a-4. resultDTO
+    deactivate Service1
+    Controller1 --> UI2 : 8a-5. 200 OK
+    deactivate Controller1
+    UI2 --> Actor : 8a-6. displayViewAiTriageHistoryResult()
+    deactivate UI2
+  else [request is invalid, forbidden or unavailable]
+    Service1 --> Controller1 : 8b. domainError
+    deactivate Service1
+    Controller1 --> UI2 : 8b-1. 400 / 401 / 403 / 404
+    deactivate Controller1
+    UI2 --> Actor : 8b-2. displayActionableError()
+    deactivate UI2
   end
-  Service --> Controller : 29. IntakeConversationResponse{riskLevel if COMPLETED | next questions[]}
-  deactivate Service
-  Controller --> M : 30. HTTP 200 OK
-  deactivate Controller
 end
 
-== UC-73 View Risk Triage Result ==
-M -> Controller : 31. GET /api/v1/triage/intake/{sessionId}
-activate Controller
-Controller -> Service : 32. getResult(sessionId, userId)
-activate Service
-Service -> SessionRepo : 33. findByIdAndUserId(sessionId, userId)
-activate SessionRepo
-SessionRepo -> DB : 34. SELECT * FROM intake_sessions\nWHERE id=? AND user_id=?
-activate DB
-DB --> SessionRepo : 35. session row
-deactivate DB
-SessionRepo --> Service : 36. IntakeSession
-deactivate SessionRepo
-loop 37-39. for each citation read from rawAiResponse
-  Service -> Evidence : 37. isApprovedDeepLink(citationUrl)
-  activate Evidence
-  Evidence --> Service : 38. boolean approved
-  deactivate Evidence
-  Service -> Service : 39. exclude citation if domain\nis not in the approved sources (spec 02)
+group UC-47 Escalate AI Triage to Emergency Support
+  Actor -> UI3 : 9. startEscalateAiTriageToEmergencySupport()
+  activate UI3
+  UI3 -> Controller2 : 10. createHandoff(intakeSessionId)
+  activate Controller2
+  Controller2 -> Service2 : 11. createHandoff(intakeSessionId)
+  activate Service2
+  alt [command is valid and actor is authorized]
+    Service2 -> Repository1 : 12a. findByIdAndUserId()
+    activate Repository1
+    Repository1 -> DB : 12a-1. SELECT
+    activate DB
+    DB --> Repository1 : 12a-2. currentState
+    deactivate DB
+    Repository1 --> Service2 : 12a-3. scopedEntity
+    deactivate Repository1
+    Service2 -> Repository1 : 12a-4. findByIdAndUserId()
+    activate Repository1
+    Repository1 -> DB : 12a-5. SELECT
+    activate DB
+    DB --> Repository1 : 12a-6. persistedState
+    deactivate DB
+    Repository1 --> Service2 : 12a-7. savedEntity
+    deactivate Repository1
+    Service2 --> Controller2 : 12a-8. resultDTO
+    deactivate Service2
+    Controller2 --> UI3 : 12a-9. 200 OK / 201 Created
+    deactivate Controller2
+    UI3 --> Actor : 12a-10. displayConfirmedState()
+    deactivate UI3
+  else [validation, authorization or state check fails]
+    Service2 --> Controller2 : 12b. domainError
+    deactivate Service2
+    Controller2 --> UI3 : 12b-1. 400 / 401 / 403 / 404 / 409
+    deactivate Controller2
+    UI3 --> Actor : 12b-2. displayActionableError()
+    deactivate UI3
+  end
 end
-Service --> Controller : 40. TriageResultResponse{riskLevel, disclaimer,\ncitations[], recommendedAction, redFlags[]}
-deactivate Service
-Controller --> M : 41. HTTP 200 OK {riskLevel, guidance, disclaimer}
-deactivate Controller
 
-== UC-74 Open Emergency Support from a Red Risk Result ==
-M -> HandoffController : 42. POST /api/v1/map/emergency/handoff\n{triageHandoffId=sessionId, riskLevel=RED, userLatitude, userLongitude}
-activate HandoffController
-HandoffController -> HandoffService : 43. createHandoff(userId, request)
-activate HandoffService
-HandoffService -> HandoffService : 44. map request → EmergencyMapHandoff{status=OPEN}\n(handoffMapper.toEntity)
-alt 45. riskLevel == RED (auto-accept emergency)
-  HandoffService -> HandoffService : 46. set status=ACCEPTED
-else 45. riskLevel != RED (rare — UI only shows shortcut when RED)
-  HandoffService -> HandoffService : 45a. keep status=OPEN
+group UC-48 Request Expert Support from AI Triage
+  Actor -> UI3 : 13. startRequestExpertSupportFromAiTriage()
+  activate UI3
+  UI3 -> Controller3 : 14. create(request)
+  activate Controller3
+  Controller3 -> Service3 : 15. create(request)
+  activate Service3
+  alt [command is valid and actor is authorized]
+    Service3 -> Repository2 : 16a. save(consultationRequest)
+    activate Repository2
+    Repository2 -> DB : 16a-1. INSERT / UPDATE
+    activate DB
+    DB --> Repository2 : 16a-2. persistedState
+    deactivate DB
+    Repository2 --> Service3 : 16a-3. savedEntity
+    deactivate Repository2
+    Service3 ->> External2 : 16a-4. notifyExpertRequest()
+    Service3 --> Controller3 : 16a-5. resultDTO
+    deactivate Service3
+    Controller3 --> UI3 : 16a-6. 200 OK / 201 Created
+    deactivate Controller3
+    UI3 --> Actor : 16a-7. displayConfirmedState()
+    deactivate UI3
+  else [validation, authorization or state check fails]
+    Service3 --> Controller3 : 16b. domainError
+    deactivate Service3
+    Controller3 --> UI3 : 16b-1. 400 / 401 / 403 / 404 / 409
+    deactivate Controller3
+    UI3 --> Actor : 16b-2. displayActionableError()
+    deactivate UI3
+  end
 end
-HandoffService -> HandoffRepo : 47. save(handoff)
-activate HandoffRepo
-HandoffRepo -> DB : 48. INSERT INTO emergency_map_handoffs ...
-activate DB
-DB --> HandoffRepo : 49. saved
-deactivate DB
-HandoffRepo --> HandoffService : 50. EmergencyMapHandoff
-deactivate HandoffRepo
-HandoffService --> HandoffController : 51. EmergencyHandoffResponse{status}
-deactivate HandoffService
-HandoffController --> M : 52. HTTP 201 Created\n→ navigate to Emergency Map (MF-07)
-deactivate HandoffController
 
 @enduml
 ```
 
-**Hình 2 — Sequence Diagram: Start Intake → Conversation → View Result → Emergency Handoff (Main Flow)**
+**Figure 2 — Sequence Diagram: AI Symptom Intake, History and Escalation Main Flow**
 
-> **Ghi chú grounding:** Class Diagram ở mục 2 mô tả `IntakeServiceImpl` với các phụ thuộc
-> khái niệm (`RedFlagRuleService`, `EvidenceRetrievalService`, `AuditService`) theo tinh
-> thần SRS. Trong code thực tế, service duy nhất xử lý luồng này là `TriageService`
-> (implements `ITriageService`), phụ thuộc `IIntakeSessionRepository`, `ChildTriageAiClient`
-> (bean thật `HttpChildTriageAiClient`, gọi AI service ngoài qua HTTP) và
-> `EvidenceSourceService` (chỉ dùng để validate `citation` domain đã duyệt khi xem kết quả,
-> **không** chủ động "retrieve approved knowledge" trong lúc hội thoại như class diagram mô
-> tả). `RedFlagRuleService`/`RedFlagRuleServiceImpl` là service quản trị rule cờ đỏ
-> (CRUD, xem spec 02) — không được `TriageService` gọi trực tiếp trong luồng intake chính.
-> **Không có lệnh gọi `AuditService` nào** trong `TriageService` hay
-> `EmergencyMapHandoffServiceImpl` — luồng UC-72/73/74 hiện không phát sinh audit log ở
-> tầng service (khác với giả định trong class diagram).
+**Brief Explanation:**
 
-## 4. State Machine — `IntakeSession.status` gating `RiskLevel`
+1. The diagram separates the implemented goals covered by this specification: UC-45 Use AI Nurse Symptom Triage; UC-46 View AI Triage History; UC-47 Escalate AI Triage to Emergency Support; UC-48 Request Expert Support from AI Triage.
+2. Each actor action enters through the reachable mobile or web boundary and invokes the exact controller operation exposed by the current Backend.
+3. The controller delegates to the mapped service operation; read branches query scoped records, while mutation branches load the current state before persisting the requested transition.
+4. Repository calls and PostgreSQL responses are shown explicitly, including call-stack activation and dashed return messages.
+5. Invalid, unauthorized, missing or conflicting requests return an actionable error without displaying a false success state.
+6. External systems are invoked only for the mapped use cases; notification dispatches are asynchronous, while integrations that return data remain synchronous.
 
-```plantuml
-@startuml MF06_01_IntakeStatus_StateMachine
-skinparam backgroundColor #FAFAFA
-skinparam StateBackgroundColor #D5E8F0
-skinparam StateBorderColor #2E75B6
+## 4. Business Rules Applied
 
-[*] --> PENDING : POST /conversation/start (UC-72)
-
-PENDING --> PROCESSING : POST /conversation/continue
-PROCESSING --> NEED_MORE_INFO : Thông tin chưa đủ để phân loại rủi ro\n[hệ thống hỏi thêm]
-NEED_MORE_INFO --> PROCESSING : Mother cung cấp thêm
-
-PROCESSING --> COMPLETED : Đủ ngữ cảnh → gán riskLevel (GREEN/YELLOW/RED)
-PROCESSING --> FAILED : Lỗi hệ thống/AI service không khả dụng\n[fallback an toàn, không suy diễn rủi ro]
-
-COMPLETED --> [*]
-FAILED --> [*]
-
-note right of COMPLETED
-  riskLevel chỉ được gán khi status=COMPLETED.
-  RED → hiển thị lối tắt UC-74 (không tự động điều hướng).
-end note
-
-@enduml
-```
-
-**Hình 3 — State Machine: `IntakeSession.status` Lifecycle**
-
-## 5. Business Rules Applied
-
-- CC-01 / Excluded (SRS mục 4.8) — AI không chẩn đoán, không kê đơn, không tư vấn liều lượng; luôn kèm `disclaimer`.
-- NS-05 — chuẩn hoá input, chỉ truy xuất tri thức đã duyệt (spec 02), áp fallback bảo thủ khi không chắc chắn, ghi log phiên bản rule/nguồn dùng.
-- UC-74 — handoff sang Emergency Map là hành động **do người dùng chủ động chọn**, hệ thống không tự dispatch hay đảm bảo có chuyên gia/xe cấp cứu đến.
-- BR-PRIVACY — nội dung intake (`symptoms`, `rawAiResponse`) là dữ liệu sức khỏe nhạy cảm, chỉ chủ sở hữu truy cập được.
+- Access is enforced server-side using the current actor, role, ownership, membership and consent scope.
+- GREEN YELLOW RED output is non-diagnostic and red flags set a minimum risk.
+- The following remains outside this contract: Standalone RagChatScreen and autonomous diagnosis.
+- Retries must not duplicate confirmed records, transitions, notifications or external side effects.
+- Sensitive health, identity, moderation, location and safety operations retain the minimum required audit evidence.

@@ -1,377 +1,305 @@
-# MF-02 / Spec 03 — Pregnancy Exercise Session with Safety Check & Posture Feedback
+# MF-02 / Spec 03 — Pregnancy Exercise Session, Safety Check and Posture Feedback
 
 | Field | Value |
 | --- | --- |
-| Feature | MF-02 — Mother Care Journey |
-| Use Cases Covered | UC-28 Browse Pregnancy Exercise Library, UC-29 Complete Pre-exercise Safety Check, UC-30 Conduct Pregnancy Exercise Session with Optional Posture Feedback, UC-31 View Exercise History and Session Result |
-| Primary Actor(s) | Mother |
-| Platform | Mother Mobile App |
-| Main Flow Summary | A Mother browses the reviewed exercise library, must clear a pre-exercise safety check before a session can start, runs the session with start/pause/resume/complete controls and optional camera-based posture feedback, then reviews the completed session result and history. |
-| Grounding (source code) | `exercise/entity/PregnancyExercise.java`, `ExerciseStatus.java`, `TrimesterScope.java`, `DifficultyLevel.java`, `exercise/entity/ExerciseSafetyCheck.java`, `SafetyCheckStatus.java`, `exercise/entity/ExerciseSession.java`, `SessionStatus.java`, `exercise/entity/PostureFeedbackEvent.java`, `exercise/controller/ExerciseController.java` (`/api/v1/exercises`), `exercise/controller/ExerciseSessionController.java` (`/api/v1/exercises/sessions`) |
+| Status | Draft |
+| Use Cases Covered | UC-27 Browse Pregnancy Exercises; UC-28 Complete Pre-exercise Safety Check; UC-29 Perform Camera-guided Exercise Session; UC-30 View Exercise History and Results |
+| Use Case Group | Mobile App |
+| Platform | Mother Mobile App; Backend; Posture AI |
+| Primary Actors | Mother |
+| In Scope | Optional camera feedback after permission and safety clearance |
+| Explicitly Excluded | Medical fitness diagnosis |
+| Implementation Trace | UI: Pregnancy exercise screens and real-time camera session; Controller: ExerciseController, ExerciseSessionController; Service: ExerciseSessionServiceImpl; Repository: ExerciseSessionRepository, ExerciseRepository; Entity: PregnancyExercise, ExerciseSession |
 
 ## 1. Tổng quan luồng chính (Main Flow Overview)
 
-Đây là luồng an toàn nhất trong MF-02: Mother không thể vào một `ExerciseSession` nếu
-chưa có một `ExerciseSafetyCheck` với kết quả `CLEARED` (BR-SAFETY, UC-29) — nếu câu trả
-lời an toàn chứa cờ đỏ (`redFlagDetected=true`), hệ thống chặn (`BLOCKED`) và không cho
-tạo session. Khi session đang chạy, Mother có thể `pause`/`resume`/`complete`; nếu bật
-camera feedback (yêu cầu consent riêng), mỗi khung hình sinh ra `PostureFeedbackEvent`
-tuỳ theo `PostureAnalysisConfig` (rule-based hoặc ML) đang active cho bài tập đó. Kết
-quả cuối (điểm tư thế tổng hợp, thời lượng, cảnh báo) hiển thị ở UC-31. Thư viện bài tập
-(UC-28) chỉ hiển thị exercise ở trạng thái `PUBLISHED` — quản trị nội dung bài tập
-(draft/archive) không thuộc luồng chính của Mother nên không vẽ lại ở đây.
+Optional camera feedback after permission and safety clearance. The flow starts only from the reachable UI or system trigger named in the metadata. The Backend rechecks authentication, role, ownership, membership, consent and current state as applicable; client-side visibility alone never grants access. A confirmed mutation is persisted before the UI displays success. External-service failure returns a safe retry state and must not fabricate completion.
 
 ## 2. Class Diagram
 
 ```plantuml
-@startuml MF02_03_ExerciseSession_ClassDiagram
+@startuml MF02_03_PregnancyExerciseSessionSafetyCheckandPostureFeedback_ClassDiagram
 skinparam classAttributeIconSize 0
-skinparam classFontStyle bold
-skinparam backgroundColor #FAFAFA
-skinparam ArrowColor #555555
-skinparam ClassBorderColor #2E75B6
-skinparam ClassHeaderBackgroundColor #D5E8F0
+hide empty members
 
-class PregnancyExercise {
-  + exerciseId: UUID
-  + title: String
-  + trimesterScope: TrimesterScope
-  + difficultyLevel: DifficultyLevel
-  + durationMinutes: Short
-  + safetyWarning: String
-  + supportsPostureAnalysis: Boolean
-  + status: ExerciseStatus
+class "Pregnancy exercise screens and real-time camera session" as UI1 <<UI>>
+class "ExerciseController" as Controller1 <<Controller>> {
+  - exerciseQueryService: IExerciseQueryService
+  - exerciseDetailQueryService: IExerciseDetailQueryService
+  - safetyCheckService: IExerciseSafetyCheckService
+  - sessionService: IExerciseSessionService
+  + getLatestSafetyCheck(exerciseId: UUID, principal: Principal): ResponseEntity<ApiResponse<SafetyCheckResponse>>
+  + submitSafetyCheck(exerciseId: UUID, request: SubmitSafetyCheckRequest, principal: Principal): ResponseEntity<ApiResponse<SafetyCheckResponse>>
+  + getExerciseDetail(exerciseId: UUID): ResponseEntity<ApiResponse<ExerciseDetailResponse>>
+  + getPostureConfig(exerciseId: UUID): ResponseEntity<ApiResponse<PostureConfigResponse>>
+  + startSession(exerciseId: UUID, request: StartSessionRequest, principal: Principal): ResponseEntity<ApiResponse<StartSessionResponse>>
 }
-
-enum ExerciseStatus {
-  DRAFT
-  PUBLISHED
-  ARCHIVED
+class "ExerciseSessionController" as Controller2 <<Controller>> {
+  - sessionService: IExerciseSessionService
+  - sessionResultService: IExerciseSessionResultService
+  - sessionHistoryService: IExerciseSessionHistoryService
+  - postureAnalysisService: IPostureAnalysisService
+  + completeSession(sessionId: UUID, principal: Principal): ResponseEntity<ApiResponse<SessionResultResponse>>
+  + analyzePosture(sessionId: UUID, request: PostureEventRequest, principal: Principal): ResponseEntity<ApiResponse<PostureFeedbackResponse>>
+  + getSessionResult(sessionId: UUID, principal: Principal): ResponseEntity<ApiResponse<SessionResultResponse>>
+  + pauseSession(sessionId: UUID, principal: Principal): ResponseEntity<ApiResponse<SessionStateResponse>>
+  + resumeSession(sessionId: UUID, principal: Principal): ResponseEntity<ApiResponse<SessionStateResponse>>
 }
-
-class ExerciseSafetyCheck {
-  + safetyCheckId: UUID
-  + exerciseId: UUID
-  + journeyId: UUID
-  + userId: UUID
-  + answerJson: Map<String, Boolean>
-  + redFlagDetected: Boolean
-  + resultStatus: SafetyCheckStatus
-  + blockedReason: String
-  + completedAt: OffsetDateTime
-}
-
-enum SafetyCheckStatus {
-  PENDING
-  CLEARED
-  BLOCKED
-}
-
-class ExerciseSession {
-  + exerciseSessionId: UUID
-  + exerciseId: UUID
-  + journeyId: UUID
-  + userId: UUID
-  + safetyCheckId: UUID
-  + startedAt: OffsetDateTime
-  + endedAt: OffsetDateTime
-  + pausedSeconds: Integer
-  + completionPercent: BigDecimal
-  + postureScore: BigDecimal
-  + sessionStatus: SessionStatus
-  + warningCount: Integer
-  + summaryJson: String
-}
-
-enum SessionStatus {
-  IN_PROGRESS
-  PAUSED
-  COMPLETED
-  ABANDONED
-}
-
-class PostureFeedbackEvent {
-  + feedbackEventId: UUID
-  + exerciseSessionId: UUID
-  + postureConfigId: UUID
-  + eventTimeMs: Long
-  + postureCode: String
-  + confidenceScore: BigDecimal
-  + severity: String
-  + feedbackText: String
-}
-
-class PostureAnalysisConfig {
-  + postureConfigId: UUID
-  + exerciseId: UUID
-  + analysisMode: String
-  + confidenceThreshold: BigDecimal
-  + status: String
-}
-
-class ExerciseController {
-  - exerciseService: ExerciseService
-  + list(filter): ResponseEntity
-  + submitSafetyCheck(exerciseId, answers): ResponseEntity
-  + startSession(exerciseId, request): ResponseEntity
-}
-
-class ExerciseSessionController {
-  - exerciseSessionService: ExerciseSessionService
-  + pause(sessionId): ResponseEntity
-  + resume(sessionId): ResponseEntity
-  + recordPostureEvent(sessionId, event): ResponseEntity
-  + complete(sessionId): ResponseEntity
-  + result(sessionId): ResponseEntity
-  + history(): ResponseEntity
-}
-
-interface ExerciseSessionService <<interface>> {
-  + start(userId, exerciseId, safetyCheckId): ExerciseSession
-  + pause(sessionId): void
-  + resume(sessionId): void
-  + complete(sessionId): ExerciseSession
-}
-
-class ExerciseSessionServiceImpl implements ExerciseSessionService {
-  - exerciseSessionRepository: ExerciseSessionRepository
+class "ExerciseSessionServiceImpl" as Service1 <<Service>> {
+  - sessionRepository: ExerciseSessionRepository
+  - exerciseRepository: ExerciseRepository
   - safetyCheckRepository: ExerciseSafetyCheckRepository
-  - postureAnalyzer: PostureAnalyzer
-  - auditService: AuditService
+  - postureFeedbackEventRepository: PostureFeedbackEventRepository
+  + completeSession(sessionId: UUID, userId: UUID): SessionResultResponse
+  + pauseSession(sessionId: UUID, userId: UUID): SessionStateResponse
+  + resumeSession(sessionId: UUID, userId: UUID): SessionStateResponse
+  + startSession(exerciseId: UUID, request: StartSessionRequest, userId: UUID): StartSessionResponse
+  - computePostureScore(sessionId: UUID): BigDecimal
 }
+interface "IExerciseSessionService" as Service1Contract <<Service>>
+interface "ExerciseSessionRepository" as Repository1 {
+  + findFirstByExerciseIdAndUserIdAndSessionStatusInAndStartedAtGreaterThanEqualAndStartedAtLessThanOrderByStartedAtAscExerciseSessionIdAsc(exerciseId: UUID, userId: UUID, statuses: List<SessionStatus>, ...): Optional<ExerciseSession>
+  + findByUserIdAndSessionStatusOrderByStartedAtDesc(userId: UUID, status: SessionStatus, pageable: Pageable): List<ExerciseSession>
+}
+interface "ExerciseRepository" as Repository2 {
+  + findByExerciseIdAndStatus(exerciseId: UUID, status: ExerciseStatus): Optional<PregnancyExercise>
+}
+class "PregnancyExercise" as Entity1 <<Entity>> {
+  - exerciseId: UUID
+  - createdBy: UUID
+  - title: String
+  - description: String
+  - trimesterScope: TrimesterScope
+  - difficultyLevel: DifficultyLevel
+  - durationMinutes: Short
+}
+class "ExerciseSession" as Entity2 <<Entity>> {
+  - exerciseSessionId: UUID
+  - exerciseId: UUID
+  - journeyId: UUID
+  - userId: UUID
+  - safetyCheckId: UUID
+  - startedAt: OffsetDateTime
+  - endedAt: OffsetDateTime
+}
+interface "JpaRepository<ExerciseSession, UUID>" as Repository1Base <<Framework>>
+interface "JpaRepository<PregnancyExercise, UUID>" as Repository2Base <<Framework>>
+class "PostgreSQL" as DB <<Database>>
+class "MediaPipe posture sidecar" as External <<External Service>>
 
-PregnancyExercise --> ExerciseStatus
-PregnancyExercise "1" *-- "0..*" ExerciseSafetyCheck : gates
-ExerciseSafetyCheck --> SafetyCheckStatus
-ExerciseSafetyCheck "1" -- "0..1" ExerciseSession : clears
-ExerciseSession --> SessionStatus
-ExerciseSession "1" *-- "0..*" PostureFeedbackEvent : optional
-PregnancyExercise "1" -- "0..1" PostureAnalysisConfig : active config
-ExerciseController --> ExerciseSessionService : uses
-ExerciseSessionController --> ExerciseSessionService : uses
-ExerciseSessionServiceImpl --> ExerciseSafetyCheckRepository : validates
-
+Service1Contract <|.. Service1 : implements
+Repository1Base <|-- Repository1 : extends
+Repository2Base <|-- Repository2 : extends
+UI1 ..> Controller1 : invokes API
+UI1 ..> Controller2 : invokes API
+Controller1 --> Service1Contract : delegates
+Controller2 --> Service1Contract : delegates
+Service1 --> Repository1 : reads / writes
+Repository1 ..> Entity2 : maps
+Repository1 ..> DB : persists
+Repository2 ..> Entity1 : maps
+Repository2 ..> DB : persists
+Entity1 "1" -- "0..*" Entity2 : exercise sessions
+Service1 ..> External : invokes when required
 @enduml
 ```
 
-**Hình 1 — Class Diagram: Pregnancy Exercise, Safety Check & Session with Posture Feedback**
+**Figure 1 — Class Diagram: Pregnancy Exercise Session, Safety Check and Posture Feedback**
 
 ## 3. Sequence Diagram — Main Flow
 
 ```plantuml
-@startuml MF02_03_ExerciseSession_SequenceDiagram
-skinparam sequenceArrowThickness 2
-skinparam roundcorner 10
-skinparam backgroundColor #FAFAFA
+@startuml MF02_03_PregnancyExerciseSessionSafetyCheckandPostureFeedback_SequenceDiagram
+skinparam shadowing false
 
-actor "Mother" as M
-participant "ExerciseController" as ExController
-participant "ExerciseSessionController" as SessController
-participant "ExerciseSessionServiceImpl" as Service
-participant "ExerciseRepository" as ExRepo
-participant "ExerciseSafetyCheckRepository" as SafetyRepo
-participant "ExerciseSessionRepository" as SessRepo
-participant "PostureFeedbackEventRepository" as PostureRepo
-participant "PostureAnalyzer" as Posture
+actor "Mother" as Actor
+boundary ":Pregnancy exercise screens" as UI1
+boundary ":real-time camera session" as UI2
+control ":ExerciseController" as Controller1
+control ":ExerciseSessionController" as Controller2
+participant ":ExerciseQueryServiceImpl" as Service1 <<service>>
+participant ":ExerciseSafetyCheckServiceImpl" as Service2 <<service>>
+participant ":PostureAnalysisServiceImpl" as Service3 <<service>>
+participant ":ExerciseSessionHistoryServiceImpl" as Service4 <<service>>
+participant ":ExerciseRepository" as Repository1 <<repository>>
+participant ":ExerciseSafetyCheckRepository" as Repository2 <<repository>>
+participant ":ExerciseSessionRepository" as Repository3 <<repository>>
 database "PostgreSQL" as DB
+participant ":MediaPipe posture sidecar" as External1 <<external system>>
 
-== UC-28 Browse Pregnancy Exercise Library ==
-M -> ExController : 1. GET /api/v1/exercises?trimester=T2&difficulty=EASY
-activate ExController
-ExController -> Service : 2. list(filter)
-activate Service
-Service -> ExRepo : 3. findPublished(filter)
-activate ExRepo
-ExRepo -> DB : 4. SELECT * FROM pregnancy_exercises\nWHERE status='PUBLISHED' AND ...
-activate DB
-DB --> ExRepo : 5. rows[]
-deactivate DB
-ExRepo --> Service : 6. exercises[]
-deactivate ExRepo
-Service --> ExController : 7. exercises[]
-deactivate Service
-ExController --> M : 8. HTTP 200 OK {exercises[]}
-deactivate ExController
-
-== UC-29 Complete Pre-exercise Safety Check ==
-M -> ExController : 9. POST /api/v1/exercises/{exerciseId}/safety-check\n{answers: {...}}
-activate ExController
-ExController -> Service : 10. submitSafetyCheck(userId, exerciseId, answers)
-activate Service
-Service -> Service : 11. evaluate answers → redFlagDetected?
-alt 11. no red flag [happy path → CLEARED]
-  Service -> SafetyRepo : 12. save(SafetyCheck{resultStatus=CLEARED})
-  activate SafetyRepo
-  SafetyRepo -> DB : 13. INSERT INTO exercise_safety_checks\n(resultStatus=CLEARED)
-  activate DB
-  DB --> SafetyRepo : 14. saved
-  deactivate DB
-  SafetyRepo --> Service : 15. SafetyCheck{status=CLEARED}
-  deactivate SafetyRepo
-  Service --> ExController : 16. SafetyCheck{status=CLEARED}
-  deactivate Service
-  ExController --> M : 17. HTTP 200 OK {status=CLEARED}
-  deactivate ExController
-else 11. red flag detected [block session creation → BLOCKED]
-  Service -> SafetyRepo : 11a. save(SafetyCheck{resultStatus=BLOCKED, blockedReason})
-  activate SafetyRepo
-  SafetyRepo -> DB : 11b. INSERT INTO exercise_safety_checks\n(resultStatus=BLOCKED, blockedReason)
-  activate DB
-  DB --> SafetyRepo : 11c. saved
-  deactivate DB
-  SafetyRepo --> Service : 11d. SafetyCheck{status=BLOCKED}
-  deactivate SafetyRepo
-  Service --> ExController : 11e. SafetyCheck{status=BLOCKED}
-  deactivate Service
-  ExController --> M : 11f. HTTP 200 OK {status=BLOCKED, safetyWarning}
-  deactivate ExController
+group UC-27 Browse Pregnancy Exercises
+  Actor -> UI1 : 1. startBrowsePregnancyExercises()
+  activate UI1
+  UI1 -> Controller1 : 2. listExercises(filters)
+  activate Controller1
+  Controller1 -> Service1 : 3. listPublishedExercises(filters)
+  activate Service1
+  alt [request is authorized and input is valid]
+    Service1 -> Repository1 : 4a. findPublishedByFilters()
+    activate Repository1
+    Repository1 -> DB : 4a-1. SELECT
+    activate DB
+    DB --> Repository1 : 4a-2. queryResult
+    deactivate DB
+    Repository1 --> Service1 : 4a-3. domainRecords
+    deactivate Repository1
+    Service1 --> Controller1 : 4a-4. resultDTO
+    deactivate Service1
+    Controller1 --> UI1 : 4a-5. 200 OK
+    deactivate Controller1
+    UI1 --> Actor : 4a-6. displayBrowsePregnancyExercisesResult()
+    deactivate UI1
+  else [request is invalid, forbidden or unavailable]
+    Service1 --> Controller1 : 4b. domainError
+    deactivate Service1
+    Controller1 --> UI1 : 4b-1. 400 / 401 / 403 / 404
+    deactivate Controller1
+    UI1 --> Actor : 4b-2. displayActionableError()
+    deactivate UI1
+  end
 end
 
-== UC-30 Conduct Session with Optional Posture Feedback ==
-M -> ExController : 18. POST /api/v1/exercises/{exerciseId}/sessions\n{safetyCheckId}
-activate ExController
-ExController -> Service : 19. start(userId, exerciseId, safetyCheckId)
-activate Service
-Service -> Service : 20. require safetyCheck.resultStatus == CLEARED
-Service -> SessRepo : 21. save(ExerciseSession{sessionStatus=IN_PROGRESS})
-activate SessRepo
-SessRepo -> DB : 22. INSERT INTO exercise_sessions (sessionStatus=IN_PROGRESS)
-activate DB
-DB --> SessRepo : 23. saved
-deactivate DB
-SessRepo --> Service : 24. ExerciseSession
-deactivate SessRepo
-Service --> ExController : 25. ExerciseSession
-deactivate Service
-ExController --> M : 26. HTTP 201 Created
-deactivate ExController
-
-loop 27-34. each frame uploaded (if Mother enables camera consent)
-  M -> SessController : 27. POST /api/v1/exercises/sessions/{sessionId}/posture-events
-  activate SessController
-  SessController -> Posture : 28. analyze(frameFeatures, postureConfig)
-  activate Posture
-  Posture --> SessController : 29. PostureFeedbackEvent{severity, feedbackText}
-  deactivate Posture
-  SessController -> PostureRepo : 30. save(feedbackEvent)
-  activate PostureRepo
-  PostureRepo -> DB : 31. INSERT INTO posture_feedback_events ...
-  activate DB
-  DB --> PostureRepo : 32. saved
-  deactivate DB
-  PostureRepo --> SessController : 33. PostureFeedbackEvent
-  deactivate PostureRepo
-  SessController --> M : 34. HTTP 200 OK {feedback}
-  deactivate SessController
+group UC-28 Complete Pre-exercise Safety Check
+  Actor -> UI1 : 5. startCompletePreExerciseSafetyCheck()
+  activate UI1
+  UI1 -> Controller1 : 6. submitSafetyCheck(exerciseId, answers)
+  activate Controller1
+  Controller1 -> Service2 : 7. submitSafetyCheck(exerciseId, answers)
+  activate Service2
+  alt [command is valid and actor is authorized]
+    Service2 -> Repository2 : 8a. save(safetyCheck)
+    activate Repository2
+    Repository2 -> DB : 8a-1. INSERT / UPDATE
+    activate DB
+    DB --> Repository2 : 8a-2. persistedState
+    deactivate DB
+    Repository2 --> Service2 : 8a-3. savedEntity
+    deactivate Repository2
+    Service2 --> Controller1 : 8a-4. resultDTO
+    deactivate Service2
+    Controller1 --> UI1 : 8a-5. 200 OK / 201 Created
+    deactivate Controller1
+    UI1 --> Actor : 8a-6. displayConfirmedState()
+    deactivate UI1
+  else [validation, authorization or state check fails]
+    Service2 --> Controller1 : 8b. domainError
+    deactivate Service2
+    Controller1 --> UI1 : 8b-1. 400 / 401 / 403 / 404 / 409
+    deactivate Controller1
+    UI1 --> Actor : 8b-2. displayActionableError()
+    deactivate UI1
+  end
 end
 
-M -> SessController : 35. PATCH /api/v1/exercises/sessions/{sessionId}/pause
-activate SessController
-SessController -> Service : 36. pause(sessionId)
-activate Service
-Service -> SessRepo : 37. update(session{sessionStatus=PAUSED})
-activate SessRepo
-SessRepo -> DB : 38. UPDATE exercise_sessions SET session_status='PAUSED'
-activate DB
-DB --> SessRepo : 39. updated
-deactivate DB
-SessRepo --> Service : 40. void
-deactivate SessRepo
-Service --> SessController : 41. void
-deactivate Service
-SessController --> M : 42. HTTP 200 OK
-deactivate SessController
+group UC-29 Perform Camera-guided Exercise Session
+  Actor -> UI2 : 9. startPerformCameraGuidedExerciseSession()
+  activate UI2
+  UI2 -> Controller2 : 10. analyzePosture()
+  activate Controller2
+  Controller2 -> Service3 : 11. analyzePosture()
+  activate Service3
+  alt [selected action is view or list]
+    Service3 -> Repository3 : 12a. findByUserIdAndSessionStatusOrderByStartedAtDesc()
+    activate Repository3
+    Repository3 -> DB : 12a-1. SELECT
+    activate DB
+    DB --> Repository3 : 12a-2. queryResult
+    deactivate DB
+    Repository3 --> Service3 : 12a-3. domainRecords
+    deactivate Repository3
+    Service3 --> Controller2 : 12a-4. resultDTO
+    deactivate Service3
+    Controller2 --> UI2 : 12a-5. 200 OK
+    deactivate Controller2
+    UI2 --> Actor : 12a-6. displayCurrentState()
+    deactivate UI2
+  else [selected action creates, updates, archives or deletes]
+    Service3 -> Repository3 : 12b. findByUserIdAndSessionStatusOrderByStartedAtDesc()
+    activate Repository3
+    Repository3 -> DB : 12b-1. SELECT
+    activate DB
+    DB --> Repository3 : 12b-2. currentState
+    deactivate DB
+    Repository3 --> Service3 : 12b-3. scopedEntity
+    deactivate Repository3
+    Service3 -> Repository3 : 12b-4. save()
+    activate Repository3
+    Repository3 -> DB : 12b-5. INSERT / UPDATE
+    activate DB
+    DB --> Repository3 : 12b-6. persistedState
+    deactivate DB
+    Repository3 --> Service3 : 12b-7. persistedEntity
+    deactivate Repository3
+    Service3 -> External1 : 12b-8. analyzePosture(frame)
+    activate External1
+    External1 --> Service3 : 12b-9. integrationResult
+    deactivate External1
+    Service3 --> Controller2 : 12b-10. resultDTO
+    deactivate Service3
+    Controller2 --> UI2 : 12b-11. 200 OK / 201 Created
+    deactivate Controller2
+    UI2 --> Actor : 12b-12. displayConfirmedState()
+    deactivate UI2
+  else [request is invalid, forbidden, not found or conflicting]
+    Service3 --> Controller2 : 12c. domainError
+    deactivate Service3
+    Controller2 --> UI2 : 12c-1. 400 / 401 / 403 / 404 / 409
+    deactivate Controller2
+    UI2 --> Actor : 12c-2. displayActionableError()
+    deactivate UI2
+  end
+end
 
-M -> SessController : 43. PATCH /api/v1/exercises/sessions/{sessionId}/resume
-activate SessController
-SessController -> Service : 44. resume(sessionId)
-activate Service
-Service -> SessRepo : 45. update(session{sessionStatus=IN_PROGRESS})
-activate SessRepo
-SessRepo -> DB : 46. UPDATE exercise_sessions SET session_status='IN_PROGRESS'
-activate DB
-DB --> SessRepo : 47. updated
-deactivate DB
-SessRepo --> Service : 48. void
-deactivate SessRepo
-Service --> SessController : 49. void
-deactivate Service
-SessController --> M : 50. HTTP 200 OK
-deactivate SessController
-
-M -> SessController : 51. PATCH /api/v1/exercises/sessions/{sessionId}/complete
-activate SessController
-SessController -> Service : 52. complete(sessionId)
-activate Service
-Service -> Service : 53. calculate completionPercent, postureScore, summaryJson
-Service -> SessRepo : 54. update(session{sessionStatus=COMPLETED, endedAt=now()})
-activate SessRepo
-SessRepo -> DB : 55. UPDATE exercise_sessions\nSET session_status='COMPLETED', ended_at=now()
-activate DB
-DB --> SessRepo : 56. updated
-deactivate DB
-SessRepo --> Service : 57. ExerciseSession{sessionStatus=COMPLETED}
-deactivate SessRepo
-Service --> SessController : 58. ExerciseSession{sessionStatus=COMPLETED}
-deactivate Service
-SessController --> M : 59. HTTP 200 OK
-deactivate SessController
-
-== UC-31 View Exercise History and Session Result ==
-M -> SessController : 60. GET /api/v1/exercises/sessions/history
-activate SessController
-SessController -> SessRepo : 61. findByUserId(userId)
-activate SessRepo
-SessRepo -> DB : 62. SELECT * FROM exercise_sessions\nWHERE user_id=? ORDER BY started_at DESC
-activate DB
-DB --> SessRepo : 63. rows[]
-deactivate DB
-SessRepo --> SessController : 64. sessions[]
-deactivate SessRepo
-SessController --> M : 65. HTTP 200 OK {sessions[]}
-deactivate SessController
+group UC-30 View Exercise History and Results
+  Actor -> UI1 : 13. startViewExerciseHistoryAndResults()
+  activate UI1
+  UI1 -> Controller2 : 14. getSessionHistory()
+  activate Controller2
+  Controller2 -> Service4 : 15. getSessionHistory()
+  activate Service4
+  alt [request is authorized and input is valid]
+    Service4 -> Repository3 : 16a. findByUserIdAndSessionStatusOrderByStartedAtDesc()
+    activate Repository3
+    Repository3 -> DB : 16a-1. SELECT
+    activate DB
+    DB --> Repository3 : 16a-2. queryResult
+    deactivate DB
+    Repository3 --> Service4 : 16a-3. domainRecords
+    deactivate Repository3
+    Service4 --> Controller2 : 16a-4. resultDTO
+    deactivate Service4
+    Controller2 --> UI1 : 16a-5. 200 OK
+    deactivate Controller2
+    UI1 --> Actor : 16a-6. displayViewExerciseHistoryAndResultsResult()
+    deactivate UI1
+  else [request is invalid, forbidden or unavailable]
+    Service4 --> Controller2 : 16b. domainError
+    deactivate Service4
+    Controller2 --> UI1 : 16b-1. 400 / 401 / 403 / 404
+    deactivate Controller2
+    UI1 --> Actor : 16b-2. displayActionableError()
+    deactivate UI1
+  end
+end
 
 @enduml
 ```
 
-**Hình 2 — Sequence Diagram: Browse → Safety Check → Session (Pause/Resume/Posture) → Complete → History (Main Flow)**
+**Figure 2 — Sequence Diagram: Pregnancy Exercise Session, Safety Check and Posture Feedback Main Flow**
 
-## 4. State Machine — `ExerciseSession.sessionStatus` (gated by `ExerciseSafetyCheck.resultStatus`)
+**Brief Explanation:**
 
-```plantuml
-@startuml MF02_03_ExerciseSession_StateMachine
-skinparam backgroundColor #FAFAFA
-skinparam StateBackgroundColor #D5E8F0
-skinparam StateBorderColor #2E75B6
+1. The diagram separates the implemented goals covered by this specification: UC-27 Browse Pregnancy Exercises; UC-28 Complete Pre-exercise Safety Check; UC-29 Perform Camera-guided Exercise Session; UC-30 View Exercise History and Results.
+2. Each actor action enters through the reachable mobile or web boundary and invokes the exact controller operation exposed by the current Backend.
+3. The controller delegates to the mapped service operation; read branches query scoped records, while mutation branches load the current state before persisting the requested transition.
+4. Repository calls and PostgreSQL responses are shown explicitly, including call-stack activation and dashed return messages.
+5. Invalid, unauthorized, missing or conflicting requests return an actionable error without displaying a false success state.
+6. External systems are invoked only for the mapped use cases; notification dispatches are asynchronous, while integrations that return data remain synchronous.
 
-state "ExerciseSafetyCheck" as Safety {
-  [*] --> PENDING : Mother mở form safety check (UC-29)
-  PENDING --> CLEARED : Không phát hiện cờ đỏ
-  PENDING --> BLOCKED : Phát hiện cờ đỏ\n[chặn tạo session]
-  CLEARED --> [*]
-  BLOCKED --> [*]
-}
+## 4. Business Rules Applied
 
-state "ExerciseSession" as Session {
-  [*] --> IN_PROGRESS : start() chỉ khi safetyCheck = CLEARED (UC-30)
-  IN_PROGRESS --> PAUSED : pause()
-  PAUSED --> IN_PROGRESS : resume()
-  IN_PROGRESS --> COMPLETED : complete()
-  PAUSED --> ABANDONED : Mother thoát không hoàn tất\n[timeout / rời app]
-  COMPLETED --> [*]
-  ABANDONED --> [*]
-}
-
-Safety --> Session : CLEARED cho phép start()
-
-@enduml
-```
-
-**Hình 3 — State Machine: Safety Check Gate → Exercise Session Lifecycle**
-
-## 5. Business Rules Applied
-
-- BR-SAFETY — session chỉ được bắt đầu khi có `ExerciseSafetyCheck` với `resultStatus=CLEARED`; câu trả lời cảnh báo cấu hình sẵn sẽ chặn (`BLOCKED`) việc vào bài tập.
-- UC-28 — chỉ hiển thị bài tập đã được duyệt (`status=PUBLISHED`) với ghi chú an toàn theo từng bài (`safetyWarning`).
-- UC-30 — camera/posture feedback là tính năng **tuỳ chọn**, yêu cầu consent riêng biệt trước khi bật (không phải luồng bắt buộc).
-- UC-31 — lịch sử chỉ hiển thị session của chính Mother, kèm cảnh báo an toàn tổng hợp nếu có.
+- Access is enforced server-side using the current actor, role, ownership, membership and consent scope.
+- Optional camera feedback after permission and safety clearance.
+- The following remains outside this contract: Medical fitness diagnosis.
+- Retries must not duplicate confirmed records, transitions, notifications or external side effects.
+- Sensitive health, identity, moderation, location and safety operations retain the minimum required audit evidence.

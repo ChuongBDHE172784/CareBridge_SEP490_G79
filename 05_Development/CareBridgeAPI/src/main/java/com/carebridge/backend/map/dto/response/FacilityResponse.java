@@ -11,7 +11,6 @@ import java.util.UUID;
 @Builder
 public class FacilityResponse {
     private UUID facilityId;
-    private UUID partnerId;
     private String name;
     private String facilityType;
     private String facilityLevel;

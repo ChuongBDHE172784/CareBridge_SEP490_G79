@@ -13,7 +13,7 @@ import com.carebridge.backend.safety.event.SuspectedFallDetected;
 import com.carebridge.backend.safety.exception.SafetyException;
 import com.carebridge.backend.safety.repository.IImuMonitoringSessionRepository;
 import com.carebridge.backend.safety.repository.ISafetyEventRepository;
-import com.carebridge.backend.safety.repository.ISafetyConfigRepository;
+import com.carebridge.backend.safety.repository.SafetyConfigStore;
 import com.carebridge.backend.safety.repository.SafetyEventResponseRepository;
 import com.carebridge.backend.safety.entity.SafetyEventResponseRecord;
 import com.carebridge.backend.safety.entity.SafetyMonitoringConfig;
@@ -56,7 +56,7 @@ public class FallDetectionService implements IFallDetectionService {
     private final ISafetyEventRepository safetyEventRepository;
     private final IFallDetectionAlgorithmService algorithmService;
     private final ApplicationEventPublisher eventPublisher;
-    private final ISafetyConfigRepository safetyConfigRepository;
+    private final SafetyConfigStore safetyConfigStore;
     private final SafetyEventResponseRepository responseRepository;
     private final SafetyConsentPolicy consentPolicy;
     private final IEmergencyService emergencyService;
@@ -220,7 +220,7 @@ public class FallDetectionService implements IFallDetectionService {
                 || event.getCountdownDeadlineAt().isAfter(Instant.now())) {
             return;
         }
-        boolean shouldEscalate = safetyConfigRepository.findByUserId(userId)
+        boolean shouldEscalate = safetyConfigStore.findByUserId(userId)
                 .map(SafetyMonitoringConfig::isEmergencyAutoAlert).orElse(false);
         SafetyEvent saved = respondEntity(userId, eventId, "TIMEOUT",
                 shouldEscalate ? SafetyEventStatus.ESCALATION_REQUESTED : SafetyEventStatus.TIMED_OUT,
@@ -302,7 +302,7 @@ public class FallDetectionService implements IFallDetectionService {
     }
 
     private SafetyMonitoringConfig requireActiveConfig(UUID userId) {
-        SafetyMonitoringConfig config = safetyConfigRepository.findByUserId(userId)
+        SafetyMonitoringConfig config = safetyConfigStore.findByUserId(userId)
                 .orElseThrow(() -> new SafetyException(HttpStatus.CONFLICT, "SAFETY-011",
                         "Safety monitoring is not configured"));
         if (!config.isFallDetectionEnabled()) {

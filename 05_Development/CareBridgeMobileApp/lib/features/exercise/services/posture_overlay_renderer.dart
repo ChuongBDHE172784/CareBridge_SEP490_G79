@@ -19,6 +19,26 @@ class PostureOverlayPoint {
       x.isFinite && y.isFinite && visibility.isFinite && visibility >= 0.5;
 }
 
+/// Local-only colors for the skeleton.  The palette never changes the
+/// landmark payload sent to Spring; it is presentation feedback for the
+/// current frame.
+class PostureOverlayPalette {
+  const PostureOverlayPalette({required this.stroke, required this.fill});
+
+  final String stroke;
+  final String fill;
+
+  static const normal = PostureOverlayPalette(
+    stroke: 'rgba(74, 222, 128, 0.92)',
+    fill: 'rgba(56, 189, 248, 0.96)',
+  );
+
+  static const error = PostureOverlayPalette(
+    stroke: 'rgba(248, 113, 113, 0.96)',
+    fill: 'rgba(251, 146, 60, 0.98)',
+  );
+}
+
 /// Draws the standard MediaPipe Pose graph into a local canvas.
 ///
 /// The canvas and video are mirrored together by the owning platform-view
@@ -74,20 +94,25 @@ class PostureOverlayRenderer {
 
   static void draw(
     html.CanvasRenderingContext2D context,
-    List<PostureOverlayPoint?> points,
-  ) {
+    List<PostureOverlayPoint?> points, {
+    bool error = false,
+    PostureOverlayPalette? palette,
+  }) {
     clear(context);
     final width = context.canvas.width ?? 0;
     final height = context.canvas.height ?? 0;
     if (width <= 0 || height <= 0) return;
 
     final lineWidth = math.max(2.0, math.min(width, height) / 180.0);
+    final colors =
+        palette ??
+        (error ? PostureOverlayPalette.error : PostureOverlayPalette.normal);
     context
       ..lineWidth = lineWidth
       ..lineCap = 'round'
       ..lineJoin = 'round'
-      ..strokeStyle = 'rgba(74, 222, 128, 0.92)'
-      ..fillStyle = 'rgba(56, 189, 248, 0.96)';
+      ..strokeStyle = colors.stroke
+      ..fillStyle = colors.fill;
 
     for (final connection in poseConnections) {
       final start = _pointAt(points, connection[0]);

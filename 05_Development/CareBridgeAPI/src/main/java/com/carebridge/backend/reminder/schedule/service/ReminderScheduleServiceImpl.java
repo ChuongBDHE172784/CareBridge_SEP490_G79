@@ -6,12 +6,11 @@ import com.carebridge.backend.reminder.schedule.dto.CreateReminderScheduleReques
 import com.carebridge.backend.reminder.schedule.dto.ReminderScheduleResponse;
 import com.carebridge.backend.reminder.schedule.dto.UpdateReminderScheduleRequest;
 import com.carebridge.backend.reminder.schedule.entity.ReminderSchedule;
-import com.carebridge.backend.reminder.schedule.entity.ReminderScheduleJob;
 import com.carebridge.backend.reminder.schedule.entity.ReminderScheduleRecurrence;
-import com.carebridge.backend.reminder.schedule.entity.ReminderScheduleTime;
-import com.carebridge.backend.reminder.schedule.repository.ReminderScheduleJobRepository;
+import com.carebridge.backend.reminder.job.entity.NotificationJob;
+import com.carebridge.backend.reminder.job.entity.NotificationJobType;
+import com.carebridge.backend.reminder.job.repository.NotificationJobRepository;
 import com.carebridge.backend.reminder.schedule.repository.ReminderScheduleRepository;
-import com.carebridge.backend.reminder.schedule.repository.ReminderScheduleTimeRepository;
 import java.time.Clock;
 import java.time.DateTimeException;
 import java.time.Instant;
@@ -40,23 +39,21 @@ public class ReminderScheduleServiceImpl implements ReminderScheduleService {
                     AppointmentNotificationJobStatus.PROCESSING);
 
     private final ReminderScheduleRepository scheduleRepository;
-    private final ReminderScheduleTimeRepository timeRepository;
-    private final ReminderScheduleJobRepository jobRepository;
+    private static final NotificationJobType JOB_TYPE = NotificationJobType.REMINDER_SCHEDULE;
+
+    private final NotificationJobRepository jobRepository;
     private final Clock clock;
 
     @Autowired
     public ReminderScheduleServiceImpl(ReminderScheduleRepository scheduleRepository,
-                                       ReminderScheduleTimeRepository timeRepository,
-                                       ReminderScheduleJobRepository jobRepository) {
-        this(scheduleRepository, timeRepository, jobRepository, Clock.systemUTC());
+                                       NotificationJobRepository jobRepository) {
+        this(scheduleRepository, jobRepository, Clock.systemUTC());
     }
 
     public ReminderScheduleServiceImpl(ReminderScheduleRepository scheduleRepository,
-                                       ReminderScheduleTimeRepository timeRepository,
-                                       ReminderScheduleJobRepository jobRepository,
+                                       NotificationJobRepository jobRepository,
                                        Clock clock) {
         this.scheduleRepository = scheduleRepository;
-        this.timeRepository = timeRepository;
         this.jobRepository = jobRepository;
         this.clock = clock;
     }
@@ -89,8 +86,9 @@ public class ReminderScheduleServiceImpl implements ReminderScheduleService {
                 .active(request.active() == null || request.active())
                 .revision(1L)
                 .build();
+        schedule.setLocalTimes(times.toArray(LocalTime[]::new));
         ReminderSchedule saved = scheduleRepository.save(schedule);
-        replaceTimes(saved.getId(), times);
+        writeTimes(saved, times);
         materialize(saved);
         return toResponse(saved, times);
     }
@@ -115,7 +113,7 @@ public class ReminderScheduleServiceImpl implements ReminderScheduleService {
         if (request == null) throw invalid("Schedule update is required");
         ReminderSchedule schedule = requireOwned(ownerUserId, scheduleId);
         List<LocalTime> times = request.times() == null
-                ? currentTimes(schedule.getId()) : normalizeTimes(request.times());
+                ? currentTimes(schedule) : normalizeTimes(request.times());
         String zone = request.timeZone() == null
                 ? schedule.getTimeZone() : normalizeZone(request.timeZone());
         String title = request.title() == null ? schedule.getTitle() : requireTitle(request.title());
@@ -138,13 +136,14 @@ public class ReminderScheduleServiceImpl implements ReminderScheduleService {
         schedule.setEndDate(end);
         if (request.active() != null) schedule.setActive(request.active());
         schedule.setRevision(schedule.getRevision() + 1L);
+        schedule.setLocalTimes(times.toArray(LocalTime[]::new));
         ReminderSchedule saved = scheduleRepository.save(schedule);
-        replaceTimes(saved.getId(), times);
+        writeTimes(saved, times);
         if (!saved.isActive()) {
             jobRepository.cancelActiveByScheduleId(saved.getId(), ACTIVE_STATUSES,
                     AppointmentNotificationJobStatus.CANCELLED, clock.instant());
         } else {
-            jobRepository.cancelObsoleteRevisions(saved.getId(), saved.getRevision(), ACTIVE_STATUSES,
+            jobRepository.cancelObsoleteScheduleRevisions(saved.getId(), saved.getRevision(), ACTIVE_STATUSES,
                     AppointmentNotificationJobStatus.CANCELLED, clock.instant());
             materialize(saved);
         }
@@ -157,7 +156,6 @@ public class ReminderScheduleServiceImpl implements ReminderScheduleService {
         ReminderSchedule schedule = requireOwned(ownerUserId, scheduleId);
         jobRepository.cancelActiveByScheduleId(schedule.getId(), ACTIVE_STATUSES,
                 AppointmentNotificationJobStatus.CANCELLED, clock.instant());
-        timeRepository.deleteByScheduleId(schedule.getId());
         scheduleRepository.delete(schedule);
     }
 
@@ -173,21 +171,17 @@ public class ReminderScheduleServiceImpl implements ReminderScheduleService {
                         "REMINDER_SCHEDULE_NOT_FOUND", "Reminder schedule not found"));
     }
 
-    private void replaceTimes(UUID scheduleId, List<LocalTime> times) {
-        timeRepository.deleteByScheduleId(scheduleId);
-        List<ReminderScheduleTime> rows = new ArrayList<>();
-        for (int i = 0; i < times.size(); i++) {
-            rows.add(ReminderScheduleTime.builder().scheduleId(scheduleId)
-                    .localTime(times.get(i)).sortOrder(i).build());
-        }
-        timeRepository.saveAll(rows);
+    /** local_times on the schedule aggregate is the only store for reminder times. */
+    private static void writeTimes(ReminderSchedule schedule, List<LocalTime> times) {
+        schedule.setLocalTimes(times.toArray(LocalTime[]::new));
     }
 
-    private List<LocalTime> currentTimes(UUID scheduleId) {
-        List<LocalTime> values = timeRepository.findByScheduleIdOrderBySortOrderAscLocalTimeAsc(scheduleId)
-                .stream().map(ReminderScheduleTime::getLocalTime).toList();
-        if (values.isEmpty()) throw invalid("At least one reminder time is required");
-        return values;
+    private static List<LocalTime> currentTimes(ReminderSchedule schedule) {
+        LocalTime[] values = schedule.getLocalTimes();
+        if (values == null || values.length == 0) {
+            throw invalid("At least one reminder time is required");
+        }
+        return List.of(values);
     }
 
     private void materialize(ReminderSchedule schedule) {
@@ -201,15 +195,16 @@ public class ReminderScheduleServiceImpl implements ReminderScheduleService {
             last = schedule.getEndDate();
         }
         if (last.isBefore(first)) return;
-        List<LocalTime> times = currentTimes(schedule.getId());
+        List<LocalTime> times = currentTimes(schedule);
         Instant now = clock.instant();
         for (LocalDate date = first; !date.isAfter(last); date = date.plusDays(1)) {
             for (LocalTime time : times) {
                 Instant dueAt = date.atTime(time).atZone(zone).toInstant();
                 if (!dueAt.isAfter(now)) continue;
-                if (jobRepository.existsByScheduleIdAndScheduleRevisionAndOccurrenceDateAndLocalTime(
-                        schedule.getId(), schedule.getRevision(), date, time)) continue;
-                ReminderScheduleJob job = ReminderScheduleJob.builder()
+                if (jobRepository.existsByJobTypeAndScheduleIdAndScheduleRevisionAndOccurrenceDateAndLocalTime(
+                        JOB_TYPE, schedule.getId(), schedule.getRevision(), date, time)) continue;
+                NotificationJob job = NotificationJob.builder()
+                        .jobType(JOB_TYPE)
                         .scheduleId(schedule.getId()).scheduleRevision(schedule.getRevision())
                         .occurrenceDate(date).localTime(time).timeZone(zone.getId()).dueAt(dueAt)
                         .status(AppointmentNotificationJobStatus.PENDING).attemptCount(0)
@@ -220,7 +215,7 @@ public class ReminderScheduleServiceImpl implements ReminderScheduleService {
     }
 
     private ReminderScheduleResponse toResponse(ReminderSchedule schedule) {
-        return toResponse(schedule, currentTimes(schedule.getId()));
+        return toResponse(schedule, currentTimes(schedule));
     }
 
     private ReminderScheduleResponse toResponse(ReminderSchedule schedule, List<LocalTime> times) {

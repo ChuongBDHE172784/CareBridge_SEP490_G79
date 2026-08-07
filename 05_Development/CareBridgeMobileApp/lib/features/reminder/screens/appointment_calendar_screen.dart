@@ -26,14 +26,12 @@ class AppointmentCalendarScreen extends StatefulWidget {
 
 class _AppointmentCalendarScreenState extends State<AppointmentCalendarScreen>
     with WidgetsBindingObserver {
-  static const _background = Color(0xFFF6F1EC);
+  static const _background = Color(0xFFF9F4EF);
   static const _surface = Colors.white;
-  static const _nestedSurface = Color(0xFFF2EAE4);
   static const _accent = Color(0xFFC98C7B);
   static const _accentDark = Color(0xFF845143);
-  static const _text = Color(0xFF5A463F);
-  static const _mutedText = Color(0xFF9C857C);
-  static const _border = Color(0xFFE8DDD6);
+  static const _text = Color(0xFF43322B);
+  static const _mutedText = Color(0xFF8C746A);
   static const _error = Color(0xFFBA1A1A);
 
   final _service = ReminderService.instance;
@@ -230,18 +228,43 @@ class _AppointmentCalendarScreenState extends State<AppointmentCalendarScreen>
       appBar: AppBar(
         backgroundColor: _background,
         elevation: 0,
-        leading: IconButton(
-          tooltip: 'Quay lại',
-          onPressed: () => Navigator.of(context).pop(),
-          icon: const Icon(Icons.arrow_back_rounded, color: _text),
+        scrolledUnderElevation: 0,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 12),
+          child: Center(
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => Navigator.of(context).pop(),
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFAF3ED),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: const Color(0xFFE8DDD6).withValues(alpha: .8),
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.arrow_back_rounded,
+                    color: _text,
+                    size: 20,
+                  ),
+                ),
+              ),
+            ),
+          ),
         ),
         title: const Text(
           'Lịch hẹn',
           style: TextStyle(
-            fontFamily: 'Lexend',
-            fontSize: 24,
+            fontFamily: 'Quicksand',
+            fontSize: 23,
             fontWeight: FontWeight.w800,
             color: _text,
+            letterSpacing: -0.3,
           ),
         ),
       ),
@@ -279,30 +302,50 @@ class _AppointmentCalendarScreenState extends State<AppointmentCalendarScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.event_busy_rounded, color: _error, size: 48),
-            const SizedBox(height: 14),
+            Container(
+              width: 64,
+              height: 64,
+              decoration: const BoxDecoration(
+                color: Color(0xFFFFECEC),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.event_busy_rounded,
+                color: _error,
+                size: 32,
+              ),
+            ),
+            const SizedBox(height: 16),
             Text(
               _errorText!,
               key: const Key('appointment-calendar-error'),
               textAlign: TextAlign.center,
               style: const TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 16,
+                fontFamily: 'Quicksand',
+                fontSize: 15.5,
+                fontWeight: FontWeight.w700,
                 height: 1.45,
                 color: _text,
               ),
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 20),
             FilledButton.icon(
               key: const Key('appointment-calendar-retry'),
               onPressed: _load,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Thử lại'),
+              icon: const Icon(Icons.refresh_rounded, size: 18),
+              label: const Text(
+                'Thử lại',
+                style: TextStyle(
+                  fontFamily: 'Quicksand',
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
               style: FilledButton.styleFrom(
                 backgroundColor: _accent,
                 foregroundColor: Colors.white,
                 minimumSize: const Size(140, 48),
                 shape: const StadiumBorder(),
+                elevation: 2,
               ),
             ),
           ],
@@ -318,22 +361,48 @@ class _AppointmentCalendarScreenState extends State<AppointmentCalendarScreen>
           local.month == _visibleMonth.month;
     }).length;
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: _nestedSurface,
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFFFF7F2), Color(0xFFF7ECE4)],
+        ),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: _border.withAlpha(160)),
+        border: Border.all(
+          color: const Color(0xFFEAE0D7),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF5A463F).withValues(alpha: .04),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Container(
-            width: 48,
-            height: 48,
-            decoration: const BoxDecoration(
-              color: Color(0xFFFFE2D9),
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF0EC),
               shape: BoxShape.circle,
+              border: Border.all(color: const Color(0xFFFFDED4), width: 1.5),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFFC98C7B).withValues(alpha: .12),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
             ),
-            child: const Icon(Icons.calendar_month_rounded, color: _accentDark),
+            child: const Icon(
+              Icons.calendar_month_rounded,
+              color: _accentDark,
+              size: 26,
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -344,18 +413,20 @@ class _AppointmentCalendarScreenState extends State<AppointmentCalendarScreen>
                   '$count lịch hẹn trong tháng',
                   key: const Key('appointment-calendar-month-count'),
                   style: const TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 17,
+                    fontFamily: 'Quicksand',
+                    fontSize: 18,
                     fontWeight: FontWeight.w800,
                     color: _text,
+                    letterSpacing: -0.2,
                   ),
                 ),
                 const SizedBox(height: 4),
                 const Text(
-                  'Chạm vào một ngày để xem hoặc thêm lịch hẹn.',
+                  'Chạm vào một ngày để xem chi tiết hoặc lên lịch mới.',
                   style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 14,
+                    fontFamily: 'Quicksand',
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
                     height: 1.4,
                     color: _mutedText,
                   ),
@@ -371,16 +442,19 @@ class _AppointmentCalendarScreenState extends State<AppointmentCalendarScreen>
   Widget _buildCalendarCard() {
     final grouped = _appointmentsByDate;
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 18, 12, 16),
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
       decoration: BoxDecoration(
         color: _surface,
-        borderRadius: BorderRadius.circular(32),
-        border: Border.all(color: _border.withAlpha(150)),
-        boxShadow: const [
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(
+          color: const Color(0xFFE8DDD6).withValues(alpha: .8),
+          width: 1.2,
+        ),
+        boxShadow: [
           BoxShadow(
-            color: Color(0x0F5A463F),
-            blurRadius: 32,
-            offset: Offset(0, 12),
+            color: const Color(0xFF5A463F).withValues(alpha: .07),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -400,10 +474,11 @@ class _AppointmentCalendarScreenState extends State<AppointmentCalendarScreen>
                   key: const Key('appointment-calendar-month-label'),
                   textAlign: TextAlign.center,
                   style: const TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 19,
+                    fontFamily: 'Quicksand',
+                    fontSize: 19.5,
                     fontWeight: FontWeight.w800,
                     color: _text,
+                    letterSpacing: -0.3,
                   ),
                 ),
               ),
@@ -415,18 +490,41 @@ class _AppointmentCalendarScreenState extends State<AppointmentCalendarScreen>
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          TextButton.icon(
-            key: const Key('appointment-calendar-today'),
-            onPressed: _goToToday,
-            icon: const Icon(Icons.today_rounded, size: 18),
-            label: const Text('Hôm nay'),
-            style: TextButton.styleFrom(
-              foregroundColor: _accentDark,
-              shape: const StadiumBorder(),
+          const SizedBox(height: 10),
+          Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF0EC),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                key: const Key('appointment-calendar-today'),
+                onTap: _goToToday,
+                borderRadius: BorderRadius.circular(20),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.today_rounded, size: 16, color: _accentDark),
+                      SizedBox(width: 6),
+                      Text(
+                        'Hôm nay',
+                        style: TextStyle(
+                          fontFamily: 'Quicksand',
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800,
+                          color: _accentDark,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 16),
           Row(
             children: [
               for (final label in const [
@@ -442,23 +540,24 @@ class _AppointmentCalendarScreenState extends State<AppointmentCalendarScreen>
                   child: Center(
                     child: Text(
                       label,
-                      style: const TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: _mutedText,
+                      style: TextStyle(
+                        fontFamily: 'Quicksand',
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                        color:
+                            label == 'CN' ? const Color(0xFFD97757) : _mutedText,
                       ),
                     ),
                   ),
                 ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           GridView.count(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             crossAxisCount: 7,
-            childAspectRatio: 0.82,
+            childAspectRatio: 0.84,
             children: [
               for (final date in _calendarDates())
                 _CalendarDay(
@@ -488,9 +587,11 @@ class _AppointmentCalendarScreenState extends State<AppointmentCalendarScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: hasAppointments ? _nestedSurface : _surface,
+        color: hasAppointments ? const Color(0xFFFAF4EE) : _surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _border),
+        border: Border.all(
+          color: const Color(0xFFE8DDD6).withValues(alpha: .8),
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -500,16 +601,18 @@ class _AppointmentCalendarScreenState extends State<AppointmentCalendarScreen>
                 ? Icons.touch_app_rounded
                 : Icons.add_circle_outline_rounded,
             color: _accentDark,
+            size: 20,
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               hasAppointments
-                  ? 'Các ngày có nền màu đất nung là ngày có lịch hẹn. Badge cho biết số lịch trong ngày.'
-                  : 'Tháng này chưa có lịch hẹn. Chạm một ngày trong tương lai để tạo lịch mới.',
+                  ? 'Các ngày có màu nổi bật là ngày có lịch hẹn. Số góc hiển thị lượng cuộc hẹn.'
+                  : 'Tháng này chưa có lịch hẹn. Chạm vào một ngày trong tương lai để tạo mới.',
               style: const TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 14,
+                fontFamily: 'Quicksand',
+                fontSize: 13.5,
+                fontWeight: FontWeight.w600,
                 height: 1.45,
                 color: _text,
               ),
@@ -535,15 +638,24 @@ class _MonthButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IconButton(
-      tooltip: tooltip,
-      onPressed: onPressed,
-      style: IconButton.styleFrom(
-        backgroundColor: const Color(0xFFF2EAE4),
-        foregroundColor: const Color(0xFF845143),
-        minimumSize: const Size(44, 44),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: BorderRadius.circular(22),
+        child: Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: const Color(0xFFFAF3ED),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(
+              color: const Color(0xFFE8DDD6).withValues(alpha: .7),
+            ),
+          ),
+          child: Icon(icon, color: const Color(0xFF845143), size: 22),
+        ),
       ),
-      icon: Icon(icon),
     );
   }
 }
@@ -575,16 +687,6 @@ class _CalendarDay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasAppointments = appointmentCount > 0;
-    final background = isSelected
-        ? const Color(0xFF845143)
-        : hasAppointments
-        ? const Color(0xFFC98C7B)
-        : Colors.transparent;
-    final foreground = isSelected || hasAppointments
-        ? Colors.white
-        : inVisibleMonth
-        ? const Color(0xFF5A463F)
-        : const Color(0xFFB7A7A0);
 
     final semantics = StringBuffer(
       'Ngày ${date.day} tháng ${date.month} năm ${date.year}',
@@ -600,67 +702,111 @@ class _CalendarDay extends StatelessWidget {
       button: true,
       selected: isSelected,
       label: semantics.toString(),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          margin: const EdgeInsets.all(2),
-          constraints: const BoxConstraints(minWidth: 44, minHeight: 48),
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: BorderRadius.circular(16),
-            border: isToday
-                ? Border.all(
-                    color: isSelected || hasAppointments
-                        ? Colors.white
-                        : const Color(0xFFC98C7B),
-                    width: 2,
-                  )
-                : Border.all(color: Colors.transparent, width: 2),
-          ),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              Text(
-                '${date.day}',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: foreground,
-                ),
-              ),
-              if (hasAppointments)
-                Positioned(
-                  right: 2,
-                  top: 2,
-                  child: Container(
-                    key: Key('appointment-calendar-count-$_dateRoute'),
-                    constraints: const BoxConstraints(
-                      minWidth: 17,
-                      minHeight: 17,
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            margin: const EdgeInsets.all(2),
+            constraints: const BoxConstraints(minWidth: 44, minHeight: 48),
+            decoration: BoxDecoration(
+              gradient: isSelected
+                  ? const LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Color(0xFF9E5B4B), Color(0xFF845143)],
+                    )
+                  : null,
+              color: isSelected
+                  ? null
+                  : hasAppointments
+                      ? const Color(0xFFFDF1EC)
+                      : Colors.transparent,
+              borderRadius: BorderRadius.circular(18),
+              border: isToday
+                  ? Border.all(
                       color: isSelected
-                          ? const Color(0xFFC98C7B)
-                          : const Color(0xFF5A463F),
-                      borderRadius: BorderRadius.circular(99),
-                      border: Border.all(color: Colors.white, width: 1.5),
+                          ? Colors.white
+                          : const Color(0xFFD97757),
+                      width: 2,
+                    )
+                  : Border.all(
+                      color: hasAppointments && !isSelected
+                          ? const Color(0xFFF7DACD)
+                          : Colors.transparent,
+                      width: 1,
                     ),
-                    child: Text(
-                      '$appointmentCount',
-                      style: const TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
+              boxShadow: isSelected
+                  ? [
+                      BoxShadow(
+                        color: const Color(0xFF845143).withValues(alpha: .28),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Text(
+                  '${date.day}',
+                  style: TextStyle(
+                    fontFamily: 'Quicksand',
+                    fontSize: 15.5,
+                    fontWeight: isSelected || hasAppointments
+                        ? FontWeight.w800
+                        : FontWeight.w600,
+                    color: isSelected
+                        ? Colors.white
+                        : hasAppointments
+                            ? const Color(0xFFD97757)
+                            : inVisibleMonth
+                                ? const Color(0xFF43322B)
+                                : const Color(0xFFB7A7A0),
+                  ),
+                ),
+                if (hasAppointments)
+                  Positioned(
+                    right: 2,
+                    top: 2,
+                    child: Container(
+                      key: Key('appointment-calendar-count-$_dateRoute'),
+                      constraints: const BoxConstraints(
+                        minWidth: 18,
+                        minHeight: 18,
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? Colors.white
+                            : const Color(0xFFD97757),
+                        borderRadius: BorderRadius.circular(99),
+                        border: Border.all(
+                          color: isSelected
+                              ? const Color(0xFF845143)
+                              : Colors.white,
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Text(
+                        '$appointmentCount',
+                        style: TextStyle(
+                          fontFamily: 'Quicksand',
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w900,
+                          color: isSelected
+                              ? const Color(0xFF845143)
+                              : Colors.white,
+                        ),
                       ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -694,11 +840,11 @@ class _AppointmentDaySheet extends StatelessWidget {
   final bool canCreate;
 
   static const _surface = Colors.white;
-  static const _nestedSurface = Color(0xFFF2EAE4);
+  static const _nestedSurface = Color(0xFFFAF3ED);
   static const _accent = Color(0xFFC98C7B);
   static const _accentDark = Color(0xFF845143);
-  static const _text = Color(0xFF5A463F);
-  static const _mutedText = Color(0xFF9C857C);
+  static const _text = Color(0xFF43322B);
+  static const _mutedText = Color(0xFF8C746A);
   static const _border = Color(0xFFE8DDD6);
 
   String _dateLabel(DateTime value) {
@@ -767,7 +913,7 @@ class _AppointmentDaySheet extends StatelessWidget {
                           _dateLabel(date),
                           key: const Key('appointment-day-sheet-date'),
                           style: const TextStyle(
-                            fontFamily: 'Lexend',
+                            fontFamily: 'Quicksand',
                             fontSize: 20,
                             fontWeight: FontWeight.w800,
                             color: _text,
@@ -778,8 +924,9 @@ class _AppointmentDaySheet extends StatelessWidget {
                               ? 'Chưa có lịch hẹn'
                               : '${appointments.length} lịch hẹn',
                           style: const TextStyle(
-                            fontFamily: 'Lexend',
+                            fontFamily: 'Quicksand',
                             fontSize: 14,
+                            fontWeight: FontWeight.w600,
                             color: _mutedText,
                           ),
                         ),
@@ -833,7 +980,7 @@ class _AppointmentDaySheet extends StatelessWidget {
                               ? 'Thêm lịch hẹn'
                               : 'Thêm lịch hẹn khác',
                           style: const TextStyle(
-                            fontFamily: 'Lexend',
+                            fontFamily: 'Quicksand',
                             fontWeight: FontWeight.w800,
                           ),
                         ),
@@ -862,8 +1009,9 @@ class _AppointmentDaySheet extends StatelessWidget {
                               child: Text(
                                 'Không thể thêm lịch hẹn mới vào ngày đã qua.',
                                 style: TextStyle(
-                                  fontFamily: 'Lexend',
+                                  fontFamily: 'Quicksand',
                                   fontSize: 14,
+                                  fontWeight: FontWeight.w600,
                                   height: 1.4,
                                   color: _text,
                                 ),
@@ -898,7 +1046,7 @@ class _AppointmentDaySheet extends StatelessWidget {
             'Ngày này chưa có lịch hẹn.',
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontFamily: 'Lexend',
+              fontFamily: 'Quicksand',
               fontSize: 16,
               fontWeight: FontWeight.w800,
               color: _text,
@@ -909,8 +1057,9 @@ class _AppointmentDaySheet extends StatelessWidget {
             'Mày có thể tạo lịch khám, tái khám hoặc cuộc hẹn mới.',
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontFamily: 'Lexend',
+              fontFamily: 'Quicksand',
               fontSize: 14,
+              fontWeight: FontWeight.w600,
               height: 1.4,
               color: _mutedText,
             ),
@@ -932,9 +1081,9 @@ class _AppointmentSheetCard extends StatelessWidget {
   final String timeLabel;
   final VoidCallback onOpen;
 
-  static const _nestedSurface = Color(0xFFF2EAE4);
+  static const _nestedSurface = Color(0xFFFAF3ED);
   static const _accentDark = Color(0xFF845143);
-  static const _text = Color(0xFF5A463F);
+  static const _text = Color(0xFF43322B);
   static const _border = Color(0xFFE8DDD6);
 
   @override
@@ -965,7 +1114,7 @@ class _AppointmentSheetCard extends StatelessWidget {
                 child: Text(
                   timeLabel,
                   style: const TextStyle(
-                    fontFamily: 'Lexend',
+                    fontFamily: 'Quicksand',
                     fontWeight: FontWeight.w800,
                     color: _accentDark,
                   ),
@@ -976,7 +1125,7 @@ class _AppointmentSheetCard extends StatelessWidget {
                 child: Text(
                   appointment.title,
                   style: const TextStyle(
-                    fontFamily: 'Lexend',
+                    fontFamily: 'Quicksand',
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
                     height: 1.35,
@@ -1017,7 +1166,7 @@ class _AppointmentSheetCard extends StatelessWidget {
             label: const Text(
               'Xem / chỉnh sửa',
               style: TextStyle(
-                fontFamily: 'Lexend',
+                fontFamily: 'Quicksand',
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -1051,10 +1200,11 @@ class _SheetInfoLine extends StatelessWidget {
           child: Text(
             text,
             style: const TextStyle(
-              fontFamily: 'Lexend',
+              fontFamily: 'Quicksand',
               fontSize: 14,
+              fontWeight: FontWeight.w600,
               height: 1.4,
-              color: Color(0xFF5A463F),
+              color: Color(0xFF43322B),
             ),
           ),
         ),

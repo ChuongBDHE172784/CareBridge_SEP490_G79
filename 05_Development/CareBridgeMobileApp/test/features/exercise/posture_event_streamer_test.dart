@@ -14,6 +14,15 @@ PostureFeedback _feedback() => const PostureFeedback(
 );
 
 void main() {
+  test('defaults to a 100 millisecond sampling interval', () {
+    final streamer = PostureEventStreamer(
+      send: (_, _) => Future<PostureFeedback>.value(_feedback()),
+    );
+
+    expect(streamer.minimumInterval, const Duration(milliseconds: 100));
+    streamer.dispose();
+  });
+
   test(
     'keeps one request in flight and sends the latest queued frame',
     () async {

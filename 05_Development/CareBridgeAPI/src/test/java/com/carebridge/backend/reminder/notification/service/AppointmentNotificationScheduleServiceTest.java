@@ -14,11 +14,11 @@ import com.carebridge.backend.reminder.entity.Reminder;
 import com.carebridge.backend.reminder.entity.ReminderStatus;
 import com.carebridge.backend.reminder.entity.ReminderType;
 import com.carebridge.backend.reminder.notification.entity.AppointmentNotificationConfig;
-import com.carebridge.backend.reminder.notification.entity.AppointmentNotificationJob;
+import com.carebridge.backend.reminder.job.entity.NotificationJob;
+import com.carebridge.backend.reminder.job.entity.NotificationJobType;
 import com.carebridge.backend.reminder.notification.entity.AppointmentNotificationJobStatus;
 import com.carebridge.backend.reminder.notification.repository.AppointmentNotificationConfigRepository;
-import com.carebridge.backend.reminder.notification.repository.AppointmentNotificationJobRepository;
-import com.carebridge.backend.reminder.notification.repository.AppointmentNotificationRuleRepository;
+import com.carebridge.backend.reminder.job.repository.NotificationJobRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -40,8 +40,7 @@ class AppointmentNotificationScheduleServiceTest {
     private static final UUID USER_ID = UUID.fromString("00000000-0000-0000-0000-000000000102");
 
     @Mock private AppointmentNotificationConfigRepository configRepository;
-    @Mock private AppointmentNotificationRuleRepository ruleRepository;
-    @Mock private AppointmentNotificationJobRepository jobRepository;
+    @Mock private NotificationJobRepository jobRepository;
     @Mock private NotificationPreferenceRepository preferenceRepository;
 
     private AppointmentNotificationScheduleService service;
@@ -50,7 +49,6 @@ class AppointmentNotificationScheduleServiceTest {
     void setUp() {
         service = new AppointmentNotificationScheduleService(
                 configRepository,
-                ruleRepository,
                 jobRepository,
                 preferenceRepository,
                 new AppointmentNotificationRuleValidator(),
@@ -60,18 +58,18 @@ class AppointmentNotificationScheduleServiceTest {
     @Test
     void createSnapshot_materializesOnlyFutureMilestones() {
         Reminder reminder = appointment(NOW.plusSeconds(24 * 60 * 60));
-        when(jobRepository.existsByReminderIdAndOccurrenceIdAndConfigRevisionAndOffsetMinutes(
+        when(jobRepository.existsByJobTypeAndReminderIdAndOccurrenceIdAndConfigRevisionAndOffsetMinutes(eq(NotificationJobType.APPOINTMENT), 
                 eq(REMINDER_ID), any(UUID.class), eq(1L), anyInt())).thenReturn(false);
 
         List<Integer> effective = service.createSnapshot(
                 reminder, List.of(-1440, -30, 0, 15), "Asia/Ho_Chi_Minh");
 
         assertThat(effective).containsExactly(-1440, -30, 0, 15);
-        ArgumentCaptor<AppointmentNotificationJob> jobs =
-                ArgumentCaptor.forClass(AppointmentNotificationJob.class);
+        ArgumentCaptor<NotificationJob> jobs =
+                ArgumentCaptor.forClass(NotificationJob.class);
         verify(jobRepository, org.mockito.Mockito.times(3)).save(jobs.capture());
         assertThat(jobs.getAllValues())
-                .extracting(AppointmentNotificationJob::getOffsetMinutes)
+                .extracting(NotificationJob::getOffsetMinutes)
                 .containsExactly(-30, 0, 15);
         assertThat(jobs.getAllValues())
                 .allSatisfy(job -> {
@@ -88,9 +86,7 @@ class AppointmentNotificationScheduleServiceTest {
         List<Integer> effective = service.createSnapshot(reminder, List.of(), null);
 
         assertThat(effective).isEmpty();
-        verify(jobRepository, never()).save(any(AppointmentNotificationJob.class));
-        verify(ruleRepository).deleteByReminderId(REMINDER_ID);
-        verify(ruleRepository).saveAll(List.of());
+        verify(jobRepository, never()).save(any(NotificationJob.class));
     }
 
     @Test
@@ -102,7 +98,7 @@ class AppointmentNotificationScheduleServiceTest {
         List<Integer> effective = service.createSnapshot(reminder, null, null);
 
         assertThat(effective).isEmpty();
-        verify(jobRepository, never()).save(any(AppointmentNotificationJob.class));
+        verify(jobRepository, never()).save(any(NotificationJob.class));
     }
 
     @Test
@@ -116,19 +112,19 @@ class AppointmentNotificationScheduleServiceTest {
                 .updatedAt(NOW.minusSeconds(60))
                 .build();
         when(configRepository.findById(REMINDER_ID)).thenReturn(Optional.of(config));
-        when(jobRepository.existsByReminderIdAndOccurrenceIdAndConfigRevisionAndOffsetMinutes(
+        when(jobRepository.existsByJobTypeAndReminderIdAndOccurrenceIdAndConfigRevisionAndOffsetMinutes(eq(NotificationJobType.APPOINTMENT), 
                 eq(REMINDER_ID), any(UUID.class), eq(3L), eq(-30))).thenReturn(false);
 
         service.reschedule(reminder, List.of(-30), true, null);
 
         assertThat(config.getConfigRevision()).isEqualTo(3L);
-        verify(jobRepository).cancelObsoleteRevisions(
+        verify(jobRepository).cancelObsoleteConfigRevisions(
                 eq(REMINDER_ID),
                 eq(3L),
                 any(),
                 eq(AppointmentNotificationJobStatus.CANCELLED),
                 eq(NOW));
-        verify(jobRepository).save(any(AppointmentNotificationJob.class));
+        verify(jobRepository).save(any(NotificationJob.class));
     }
 
     @Test
@@ -141,21 +137,15 @@ class AppointmentNotificationScheduleServiceTest {
                 .createdAt(NOW)
                 .updatedAt(NOW)
                 .build();
+        // The offsets live on the config aggregate now, not in a child table.
+        config.replaceOffsetMinutes(List.of(-30));
         when(configRepository.findById(REMINDER_ID)).thenReturn(Optional.of(config));
-        when(ruleRepository.findByReminderIdOrderByOffsetMinutesAsc(REMINDER_ID))
-                .thenReturn(List.of(com.carebridge.backend.reminder.notification.entity.AppointmentNotificationRule.builder()
-                        .reminderId(REMINDER_ID)
-                        .offsetMinutes(-30)
-                        .sortOrder(0)
-                        .createdAt(NOW)
-                        .updatedAt(NOW)
-                        .build()));
-        when(jobRepository.existsByReminderIdAndOccurrenceIdAndConfigRevisionAndOffsetMinutes(
+        when(jobRepository.existsByJobTypeAndReminderIdAndOccurrenceIdAndConfigRevisionAndOffsetMinutes(eq(NotificationJobType.APPOINTMENT), 
                 eq(REMINDER_ID), any(UUID.class), eq(1L), eq(-30))).thenReturn(true);
 
         service.extendHorizon(reminder);
 
-        verify(jobRepository, never()).save(any(AppointmentNotificationJob.class));
+        verify(jobRepository, never()).save(any(NotificationJob.class));
     }
 
     private Reminder appointment(Instant scheduledAt) {

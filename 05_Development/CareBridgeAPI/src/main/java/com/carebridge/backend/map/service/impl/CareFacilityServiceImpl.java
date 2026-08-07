@@ -229,7 +229,6 @@ public class CareFacilityServiceImpl implements ICareFacilityService {
     private FacilityResponse toResponse(CareFacility f) {
         return FacilityResponse.builder()
                 .facilityId(f.getFacilityId())
-                .partnerId(f.getPartnerId())
                 .name(f.getName())
                 .facilityType(f.getFacilityType())
                 .facilityLevel(f.getFacilityLevel())

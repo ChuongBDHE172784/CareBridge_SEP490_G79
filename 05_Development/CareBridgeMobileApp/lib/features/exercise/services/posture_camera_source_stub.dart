@@ -17,6 +17,15 @@ class PostureCameraSource {
 
   String? get lastError => null;
 
+  bool get hasFeedbackError => false;
+
+  /// Native targets currently have no local skeleton renderer.  Keep this
+  /// method as a no-op so the session screen can share its feedback plumbing
+  /// with Flutter Web without importing web-only libraries.
+  void setFeedbackError(bool value) {}
+
+  void setFeedbackWarning(bool value) => setFeedbackError(value);
+
   Future<void> start() async {}
 
   Future<void> stop() async {}

@@ -44,15 +44,8 @@ public class DirectConversation {
     @Column(name = "last_activity_at")
     private Instant lastActivityAt;
 
-    @Column(name = "mother_last_read_at")
-    private Instant motherLastReadAt;
-
-    @Column(name = "mother_last_read_message_id")
-    private UUID motherLastReadMessageId;
-
-    @Column(name = "expert_last_read_at")
-    private Instant expertLastReadAt;
-
-    @Column(name = "expert_last_read_message_id")
-    private UUID expertLastReadMessageId;
+    // Read state lives in direct_conversation_read_cursors, keyed by
+    // (conversation_id, reader_user_id). The four per-role columns that used to sit
+    // here were dropped: they could not represent a family member reading the
+    // thread, and a second writable copy of the same state only invited drift.
 }

@@ -29,9 +29,9 @@ export default function OtpPage() {
    state.identifier.includes('@') ? { email: state.identifier, otp: code } : { phone: state.identifier, otp: code }
   )
    .then((result) => {
-    const route = result.user.role === 'PARTNER'
-     ? '/partner/profile-setup'
-     : getDefaultRouteForRole(result.user.role as Parameters<typeof getDefaultRouteForRole>[0]);
+    const route = getDefaultRouteForRole(
+     result.user.role as Parameters<typeof getDefaultRouteForRole>[0],
+    );
     navigate(route, { replace: true });
    })
    .catch((err: unknown) => {

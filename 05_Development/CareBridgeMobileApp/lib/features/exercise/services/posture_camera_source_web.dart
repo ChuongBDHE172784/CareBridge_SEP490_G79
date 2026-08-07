@@ -123,6 +123,7 @@ class PostureCameraSource {
   int _runGeneration = 0;
   int? _sendInFlightGeneration;
   String? _lastError;
+  bool _feedbackError = false;
 
   Stream<Map<String, dynamic>> get frames => _framesController.stream;
 
@@ -133,6 +134,20 @@ class PostureCameraSource {
   bool get isRunning => _running;
 
   String? get lastError => _lastError;
+
+  /// Whether the next locally rendered skeleton should use the warning
+  /// palette.  This state is intentionally local and is not part of the
+  /// posture-event request.
+  bool get hasFeedbackError => _feedbackError;
+
+  /// Applies the current model severity to the local canvas.  The next pose
+  /// result is drawn with the selected palette; no frame is discarded.
+  void setFeedbackError(bool value) {
+    _feedbackError = value;
+  }
+
+  /// Readable alias used by session callers and platform-neutral tests.
+  void setFeedbackWarning(bool value) => setFeedbackError(value);
 
   @visibleForTesting
   html.DivElement get debugPreviewElement => _previewRoot;
@@ -197,6 +212,7 @@ class PostureCameraSource {
     _frameTimer?.cancel();
     _frameTimer = null;
     _sendInFlightGeneration = null;
+    _feedbackError = false;
 
     final pose = _pose;
     _pose = null;
@@ -389,7 +405,11 @@ class PostureCameraSource {
           'visibility': _number(landmark, 'visibility'),
         };
       }
-      PostureOverlayRenderer.draw(_canvas.context2D, overlayPoints);
+      PostureOverlayRenderer.draw(
+        _canvas.context2D,
+        overlayPoints,
+        error: _feedbackError,
+      );
       if (frame.isNotEmpty && !_framesController.isClosed) {
         _framesController.add(frame);
       }

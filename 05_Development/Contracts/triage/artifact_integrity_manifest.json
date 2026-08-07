@@ -1,0 +1,98 @@
+{
+  "$comment": "Integrity only. Proves each artifact matches its checksum. Does NOT prove clinical correctness and is NOT an approval record.",
+  "manifestType": "ARTIFACT_INTEGRITY",
+  "generatedAt": "2026-08-06T11:22:36+00:00",
+  "generatorVersion": "sync_triage_rule_registry.py/3.0",
+  "artifacts": [
+    {
+      "artifactId": "canonical_answer_mapping_v1",
+      "path": "05_Development/Contracts/triage/canonical_answer_mapping_v1.json",
+      "sha256": "d98b5f3f4de40ca24253b2e30932623dcf0c8f1828e018882e49ee2eac38c211"
+    },
+    {
+      "artifactId": "context_contract_v1",
+      "path": "05_Development/Contracts/triage/context_contract_v1.json",
+      "sha256": "64b0d37f4a53198902c5fd022d7aba5a86af74cbf871db7ce3c6727244a64d56"
+    },
+    {
+      "artifactId": "context_parity_vectors_v1",
+      "path": "05_Development/Contracts/triage/context_parity_vectors_v1.json",
+      "sha256": "124dade8c70c8a337eb654629215cd864ab8b468877e77c8255d1c1852ffef3b"
+    },
+    {
+      "artifactId": "dataset_requirements_v1",
+      "path": "05_Development/Contracts/triage/dataset_requirements_v1.json",
+      "sha256": "6efd2348f49fd5301209d61f15251fc2ccd62cedeccecc020d2a1c329dd9daf6"
+    },
+    {
+      "artifactId": "draft_safety_disposition_matrix_v1",
+      "path": "05_Development/Contracts/triage/draft_safety_disposition_matrix_v1.json",
+      "sha256": "b1e03e68e756390b382c066bb6d91137b01343669337dac7955d71b2066313a1"
+    },
+    {
+      "artifactId": "intent_indicators_v1",
+      "path": "05_Development/Contracts/triage/intent_indicators_v1.json",
+      "sha256": "494fc0e7f5bc89836ad394c22432cd7556043e72fa64ff968249d7bf12dd1843"
+    },
+    {
+      "artifactId": "internal_rule_review_manifest",
+      "path": "05_Development/Contracts/triage/internal_rule_review_manifest.json",
+      "sha256": "37a1cf251aa65691b7e8372e9ef6a4820d351c4619fffa171100d7523e760f08"
+    },
+    {
+      "artifactId": "matrix_snapshot_v0.1.0",
+      "path": "05_Development/Contracts/triage/matrix_snapshot_v0.1.0.json",
+      "sha256": "295b4dac3122e1a6571e6e4f13fca35ac989568922bd9815bef351de84febed4"
+    },
+    {
+      "artifactId": "oos_complaint_taxonomy_v1",
+      "path": "05_Development/Contracts/triage/oos_complaint_taxonomy_v1.json",
+      "sha256": "9d62d860830b13cf56985a2cb825f75fae41844e6043f3d0772c4315f8a2b3eb"
+    },
+    {
+      "artifactId": "parity_result_fingerprint",
+      "path": "05_Development/Contracts/triage/parity_result_fingerprint.json",
+      "sha256": "2f2f2ea3c17e3d85e1890bd69e61a6fee057467a31eeb1719a725e6e2e45aff3"
+    },
+    {
+      "artifactId": "question_catalog_v1",
+      "path": "05_Development/Contracts/triage/question_catalog_v1.json",
+      "sha256": "4b00f8a30669f4a280892485036d1727ac7bbba7ef0c72cbea3e03f09343deef"
+    },
+    {
+      "artifactId": "required_rule_manifest",
+      "path": "05_Development/Contracts/triage/required_rule_manifest.json",
+      "sha256": "536ef8237137b3f46c630213f7712c6e04174b46376842098e850d5d498c356a"
+    },
+    {
+      "artifactId": "source_verification_manifest",
+      "path": "05_Development/Contracts/triage/source_verification_manifest.json",
+      "sha256": "f829847b028d139ace63ccfccd4b681fba4ec3329cc6b32beb144e98c03f9a07"
+    },
+    {
+      "artifactId": "target_entity_indicators_v1",
+      "path": "05_Development/Contracts/triage/target_entity_indicators_v1.json",
+      "sha256": "f629aa814bf105b2826d12097c77e88cb94fe177f594f0edde5af075280ca84f"
+    },
+    {
+      "artifactId": "triage_response_v2.schema",
+      "path": "05_Development/Contracts/triage/triage_response_v2.schema.json",
+      "sha256": "4bdf788b5eafbadd103c4cb9e2dd0b7ff2f4f0b51b2dc825442812add7b899ed"
+    },
+    {
+      "artifactId": "triage_rule_condition.schema",
+      "path": "05_Development/Contracts/triage/triage_rule_condition.schema.json",
+      "sha256": "925d0845e67fc84fc3e196dab6753e43c8073609e7407a54f2e648bd5834a7a6"
+    },
+    {
+      "artifactId": "triage_rule_parity_vectors_v2",
+      "path": "05_Development/Contracts/triage/triage_rule_parity_vectors_v2.json",
+      "sha256": "eae692d2f42c7846f2e8e242cb2b36a75aacef19ba3003b4b8a8ad81419af112"
+    },
+    {
+      "artifactId": "triage_rules_v2",
+      "path": "05_Development/Contracts/triage/triage_rules_v2.json",
+      "sha256": "f8934817b2cae9f306f4ce7408e635fb94aaa6ba923922abd7612bd4fc024578"
+    }
+  ]
+}

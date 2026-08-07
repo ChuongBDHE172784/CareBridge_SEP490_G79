@@ -1,245 +1,256 @@
-# MF-03 / Spec 02 — Growth & Development Milestone Tracking
+# MF-03 / Spec 02 — Baby Growth and Development Tracking
 
 | Field | Value |
 | --- | --- |
-| Feature | MF-03 — Baby Care Journey, Growth & Vaccination |
-| Use Cases Covered | UC-39 Record Development Milestone, UC-41 Add Growth Measurement, UC-43 View Growth Trend and Measurement History |
-| Primary Actor(s) | Mother |
-| Platform | Mother Mobile App |
-| Main Flow Summary | A Mother records an observed development milestone and periodic growth measurements (weight/height/head circumference) for a baby, then reviews the growth trend and measurement history with reference context. |
-| Grounding (source code) | `carejourney/entity/DevelopmentMilestone.java`, `MilestoneAchievementStatus.java`, `MilestoneRecordStatus.java`, `carejourney/entity/GrowthMeasurement.java`, `carejourney/controller/MilestoneController.java` (`/api/v1/babies/{babyId}/milestones`), `GrowthMeasurementController.java` (`/api/v1/babies/{babyId}/growth-measurements`), `GrowthChartController.java` (`/api/v1/babies/{babyId}/growth-chart`) |
+| Status | Draft |
+| Use Cases Covered | UC-36 Manage Development Milestones; UC-37 Manage Baby Growth |
+| Use Case Group | Mobile App |
+| Platform | Mother Mobile App; Backend |
+| Primary Actors | Mother |
+| In Scope | Caregiver observations and reference charts are non-diagnostic |
+| Explicitly Excluded | Automated developmental assessment |
+| Implementation Trace | UI: Growth chart and milestone screens; Controller: GrowthMeasurementController, MilestoneController; Service: GrowthServiceImpl, MilestoneServiceImpl; Repository: GrowthMeasurementRepository, DevelopmentMilestoneRepository; Entity: GrowthMeasurement, DevelopmentMilestone |
 
 ## 1. Tổng quan luồng chính (Main Flow Overview)
 
-`DevelopmentMilestone` và `GrowthMeasurement` đều là quan sát định kỳ do caregiver ghi
-nhận cho một `BabyProfile`, khác với `BabyDailyLog` (spec 01) ở tần suất thấp hơn và có
-ý nghĩa theo dõi phát triển dài hạn. Milestone có hai chiều trạng thái độc lập: mức độ
-đạt được thực tế (`MilestoneAchievementStatus`: đúng hạn hay chậm) và trạng thái bản ghi
-(`MilestoneRecordStatus`: còn hiệu lực hay đã xoá). `GrowthMeasurement` chỉ có soft-delete
-qua `deletedAt`. UC-43 (xem xu hướng tăng trưởng) là read-model tổng hợp các
-`GrowthMeasurement` theo thời gian kèm ngữ cảnh tham chiếu, kèm gợi ý tìm chuyên gia khi
-số đo lệch xa mốc tham chiếu — không phải chẩn đoán.
+Caregiver observations and reference charts are non-diagnostic. The flow starts only from the reachable UI or system trigger named in the metadata. The Backend rechecks authentication, role, ownership, membership, consent and current state as applicable; client-side visibility alone never grants access. A confirmed mutation is persisted before the UI displays success. External-service failure returns a safe retry state and must not fabricate completion.
 
 ## 2. Class Diagram
 
 ```plantuml
-@startuml MF03_02_GrowthMilestone_ClassDiagram
+@startuml MF03_02_BabyGrowthandDevelopmentTracking_ClassDiagram
 skinparam classAttributeIconSize 0
-skinparam classFontStyle bold
-skinparam backgroundColor #FAFAFA
-skinparam ArrowColor #555555
-skinparam ClassBorderColor #2E75B6
-skinparam ClassHeaderBackgroundColor #D5E8F0
+hide empty members
 
-class BabyProfile {
-  + id: UUID
+class "Growth chart and milestone screens" as UI1 <<UI>>
+class "GrowthMeasurementController" as Controller1 <<Controller>> {
+  - growthService: IGrowthService
+  + addGrowthMeasurement(babyId: UUID, request: AddGrowthMeasurementRequest, principal: Principal): ResponseEntity<ApiResponse<GrowthMeasurementResponse>>
+  + deleteGrowthMeasurement(babyId: UUID, growthMeasurementId: UUID, principal: Principal): ResponseEntity<Void>
+  + updateGrowthMeasurement(babyId: UUID, growthMeasurementId: UUID, request: UpdateGrowthMeasurementRequest, ...): ResponseEntity<ApiResponse<GrowthMeasurementResponse>>
 }
-
-class DevelopmentMilestone {
-  + milestoneId: UUID
-  + babyId: UUID
-  + milestoneType: String
-  + achievedDate: LocalDate
-  + note: String
-  + sourceType: String
-  + recordedBy: UUID
-  + milestoneStatus: MilestoneAchievementStatus
-  + recordStatus: MilestoneRecordStatus
+class "MilestoneController" as Controller2 <<Controller>> {
+  - milestoneService: IMilestoneService
+  + listMilestones(babyId: UUID, principal: Principal): ApiResponse<List<MilestoneResponse>>
+  + addMilestone(babyId: UUID, request: AddMilestoneRequest, principal: Principal): ApiResponse<MilestoneResponse>
+  + deleteMilestone(babyId: UUID, milestoneId: UUID, principal: Principal): ApiResponse<Void>
+  + updateMilestone(babyId: UUID, milestoneId: UUID, request: UpdateDevelopmentMilestoneRequest, ...): ApiResponse<MilestoneResponse>
 }
-
-enum MilestoneAchievementStatus {
-  PENDING
-  ACHIEVED
-  DELAYED
-}
-
-enum MilestoneRecordStatus {
-  ACTIVE
-  DELETED
-}
-
-class GrowthMeasurement {
-  + growthMeasurementId: UUID
-  + babyId: UUID
-  + measuredDate: LocalDate
-  + weightKg: BigDecimal
-  + heightCm: BigDecimal
-  + headCircumferenceCm: BigDecimal
-  + sourceType: String
-  + note: String
-  + deletedAt: Instant
-}
-
-class GrowthChartResponse <<read-model>> {
-  + babyId: UUID
-  + points: List<GrowthPoint>
-  + referenceRange: ReferenceRangeContext
-  + guidanceNote: String
-}
-
-class MilestoneController {
-  - milestoneService: MilestoneService
-  + record(babyId, request): ResponseEntity
-  + list(babyId): ResponseEntity
-}
-
-class GrowthMeasurementController {
-  - growthMeasurementService: GrowthMeasurementService
-  + add(babyId, request): ResponseEntity
-  + list(babyId): ResponseEntity
-}
-
-class GrowthChartController {
-  + chart(babyId): ResponseEntity
-}
-
-interface GrowthMeasurementService <<interface>> {
-  + add(ownerId: UUID, babyId: UUID, request): GrowthMeasurement
-  + chart(ownerId: UUID, babyId: UUID): GrowthChartResponse
-}
-
-class GrowthMeasurementServiceImpl implements GrowthMeasurementService {
+class "GrowthServiceImpl" as Service1 <<Service>> {
+  - babyProfileRepository: BabyProfileRepository
   - growthMeasurementRepository: GrowthMeasurementRepository
   - auditService: AuditService
+  - babyAccessPolicy: BabyAccessPolicy
+  + addGrowthMeasurement(userId: UUID, babyId: UUID, request: AddGrowthMeasurementRequest): GrowthMeasurementResponse
+  + deleteGrowthMeasurement(userId: UUID, babyId: UUID, growthMeasurementId: UUID): void
+  + getGrowthChart(userId: UUID, babyId: UUID): GrowthChartResponse
+  + getGrowthMeasurementHistory(userId: UUID, babyId: UUID, pageable: Pageable): Page<GrowthMeasurementHistoryItem>
+  + updateGrowthMeasurement(userId: UUID, babyId: UUID, growthMeasurementId: UUID, ...): GrowthMeasurementResponse
 }
+class "MilestoneServiceImpl" as Service2 <<Service>> {
+  - milestoneRepository: DevelopmentMilestoneRepository
+  - babyProfileRepository: BabyProfileRepository
+  - babyAccessPolicy: BabyAccessPolicy
+  - auditService: AuditService
+  + listMilestones(babyId: UUID, callerId: UUID): List<MilestoneResponse>
+  - ensurePathBabyMatches(babyId: UUID, milestone: DevelopmentMilestone): void
+  - findActualBabyForMilestone(milestone: DevelopmentMilestone): BabyProfile
+  - parseUpdateStatus(request: UpdateDevelopmentMilestoneRequest): MilestoneAchievementStatus
+  + addMilestone(userId: UUID, babyId: UUID, request: AddMilestoneRequest): MilestoneResponse
+}
+interface "IGrowthService" as Service1Contract <<Service>>
+interface "IMilestoneService" as Service2Contract <<Service>>
+interface "GrowthMeasurementRepository" as Repository1
+interface "DevelopmentMilestoneRepository" as Repository2 {
+  + findByBabyIdOrderByAchievedDateDesc(babyId: UUID): List<DevelopmentMilestone>
+  + findByMilestoneIdAndRecordStatus(milestoneId: UUID, recordStatus: MilestoneRecordStatus): Optional<DevelopmentMilestone>
+}
+class "GrowthMeasurement" as Entity1 <<Entity>> {
+  - growthMeasurementId: UUID
+  - babyId: UUID
+  - careSubjectId: UUID
+  - measuredDate: LocalDate
+  - weightKg: BigDecimal
+  - heightCm: BigDecimal
+  - headCircumferenceCm: BigDecimal
+}
+class "DevelopmentMilestone" as Entity2 <<Entity>> {
+  - milestoneId: UUID
+  - babyId: UUID
+  - careSubjectId: UUID
+  - milestoneType: String
+  - achievedDate: LocalDate
+  - note: String
+  - sourceType: String
+}
+interface "JpaRepository<GrowthMeasurement, UUID>" as Repository1Base <<Framework>>
+interface "JpaRepository<DevelopmentMilestone, UUID>" as Repository2Base <<Framework>>
+class "PostgreSQL" as DB <<Database>>
 
-BabyProfile "1" *-- "0..*" DevelopmentMilestone : has
-BabyProfile "1" *-- "0..*" GrowthMeasurement : has
-DevelopmentMilestone --> MilestoneAchievementStatus
-DevelopmentMilestone --> MilestoneRecordStatus
-MilestoneController --> MilestoneService : uses
-GrowthMeasurementController --> GrowthMeasurementService : uses
-GrowthChartController ..> GrowthChartResponse : builds
-GrowthMeasurementServiceImpl --> AuditService : emits GROWTH_MEASUREMENT_ADDED
-
+Service1Contract <|.. Service1 : implements
+Service2Contract <|.. Service2 : implements
+Repository1Base <|-- Repository1 : extends
+Repository2Base <|-- Repository2 : extends
+UI1 ..> Controller1 : invokes API
+UI1 ..> Controller2 : invokes API
+Controller1 --> Service1Contract : delegates
+Controller2 --> Service2Contract : delegates
+Service1 --> Repository1 : reads / writes
+Service2 --> Repository2 : reads / writes
+Repository1 ..> Entity1 : maps
+Repository1 ..> DB : persists
+Repository2 ..> Entity2 : maps
+Repository2 ..> DB : persists
 @enduml
 ```
 
-**Hình 1 — Class Diagram: Development Milestone & Growth Measurement**
+**Figure 1 — Class Diagram: Baby Growth and Development Tracking**
 
 ## 3. Sequence Diagram — Main Flow
 
 ```plantuml
-@startuml MF03_02_GrowthMilestone_SequenceDiagram
-skinparam sequenceArrowThickness 2
-skinparam roundcorner 10
-skinparam backgroundColor #FAFAFA
+@startuml MF03_02_BabyGrowthandDevelopmentTracking_SequenceDiagram
+skinparam shadowing false
 
-actor "Mother" as M
-participant "MilestoneController" as MilestoneController
-participant "MilestoneServiceImpl" as MilestoneService
-participant "DevelopmentMilestoneRepository" as MilestoneRepo
-participant "GrowthMeasurementController" as GrowthController
-participant "GrowthMeasurementServiceImpl" as GrowthService
-participant "GrowthMeasurementRepository" as GrowthRepo
-participant "GrowthChartController" as ChartController
-participant "AuditService" as Audit
+actor "Mother" as Actor
+boundary ":milestone screens" as UI1
+boundary ":growth chart screens" as UI2
+control ":MilestoneController" as Controller1
+control ":GrowthMeasurementController" as Controller2
+participant ":MilestoneServiceImpl" as Service1 <<service>>
+participant ":GrowthServiceImpl" as Service2 <<service>>
+participant ":DevelopmentMilestoneRepository" as Repository1 <<repository>>
+participant ":GrowthMeasurementRepository" as Repository2 <<repository>>
 database "PostgreSQL" as DB
 
-== UC-39 Record Development Milestone ==
-M -> MilestoneController : 1. POST /api/v1/babies/{babyId}/milestones\n{milestoneType="FIRST_SMILE", achievedDate}
-activate MilestoneController
-MilestoneController -> MilestoneService : 2. record(ownerId, babyId, request)
-activate MilestoneService
-MilestoneService -> MilestoneService : 3. check ownership of babyId
-MilestoneService -> MilestoneRepo : 4. save(DevelopmentMilestone{milestoneStatus=ACHIEVED, recordStatus=ACTIVE})
-activate MilestoneRepo
-MilestoneRepo -> DB : 5. INSERT INTO development_milestones ...
-activate DB
-DB --> MilestoneRepo : 6. saved
-deactivate DB
-MilestoneRepo --> MilestoneService : 7. DevelopmentMilestone
-deactivate MilestoneRepo
-MilestoneService -> Audit : 8. log(MILESTONE_RECORDED)
-activate Audit
-Audit --> MilestoneService : 9. void
-deactivate Audit
-MilestoneService --> MilestoneController : 10. DevelopmentMilestone
-deactivate MilestoneService
-MilestoneController --> M : 11. HTTP 201 Created
-deactivate MilestoneController
+group UC-36 Manage Development Milestones
+  Actor -> UI1 : 1. startManageDevelopmentMilestones()
+  activate UI1
+  UI1 -> Controller1 : 2. listMilestones() / addMilestone() / updateMilestone() / deleteMilestone()
+  activate Controller1
+  Controller1 -> Service1 : 3. listMilestones() / addMilestone() / updateMilestone() / deleteMilestone()
+  activate Service1
+  alt [selected action is view or list]
+    Service1 -> Repository1 : 4a. findByBabyIdOrderByAchievedDateDesc()
+    activate Repository1
+    Repository1 -> DB : 4a-1. SELECT
+    activate DB
+    DB --> Repository1 : 4a-2. queryResult
+    deactivate DB
+    Repository1 --> Service1 : 4a-3. domainRecords
+    deactivate Repository1
+    Service1 --> Controller1 : 4a-4. resultDTO
+    deactivate Service1
+    Controller1 --> UI1 : 4a-5. 200 OK
+    deactivate Controller1
+    UI1 --> Actor : 4a-6. displayCurrentState()
+    deactivate UI1
+  else [selected action creates, updates, archives or deletes]
+    Service1 -> Repository1 : 4b. findByBabyIdOrderByAchievedDateDesc()
+    activate Repository1
+    Repository1 -> DB : 4b-1. SELECT
+    activate DB
+    DB --> Repository1 : 4b-2. currentState
+    deactivate DB
+    Repository1 --> Service1 : 4b-3. scopedEntity
+    deactivate Repository1
+    Service1 -> Repository1 : 4b-4. save() / delete()
+    activate Repository1
+    Repository1 -> DB : 4b-5. INSERT / UPDATE / DELETE
+    activate DB
+    DB --> Repository1 : 4b-6. persistedState
+    deactivate DB
+    Repository1 --> Service1 : 4b-7. persistedEntity
+    deactivate Repository1
+    Service1 --> Controller1 : 4b-8. resultDTO
+    deactivate Service1
+    Controller1 --> UI1 : 4b-9. 200 OK / 201 Created
+    deactivate Controller1
+    UI1 --> Actor : 4b-10. displayConfirmedState()
+    deactivate UI1
+  else [request is invalid, forbidden, not found or conflicting]
+    Service1 --> Controller1 : 4c. domainError
+    deactivate Service1
+    Controller1 --> UI1 : 4c-1. 400 / 401 / 403 / 404 / 409
+    deactivate Controller1
+    UI1 --> Actor : 4c-2. displayActionableError()
+    deactivate UI1
+  end
+end
 
-== UC-41 Add Growth Measurement ==
-M -> GrowthController : 12. POST /api/v1/babies/{babyId}/growth-measurements\n{measuredDate, weightKg, heightCm, headCircumferenceCm}
-activate GrowthController
-GrowthController -> GrowthService : 13. add(ownerId, babyId, request)
-activate GrowthService
-GrowthService -> GrowthService : 14. check ownership of babyId
-GrowthService -> GrowthRepo : 15. save(GrowthMeasurement{...})
-activate GrowthRepo
-GrowthRepo -> DB : 16. INSERT INTO growth_measurements ...
-activate DB
-DB --> GrowthRepo : 17. saved
-deactivate DB
-GrowthRepo --> GrowthService : 18. GrowthMeasurement
-deactivate GrowthRepo
-GrowthService -> Audit : 19. log(GROWTH_MEASUREMENT_ADDED)
-activate Audit
-Audit --> GrowthService : 20. void
-deactivate Audit
-GrowthService --> GrowthController : 21. GrowthMeasurement
-deactivate GrowthService
-GrowthController --> M : 22. HTTP 201 Created
-deactivate GrowthController
-
-== UC-43 View Growth Trend and Measurement History ==
-M -> ChartController : 23. GET /api/v1/babies/{babyId}/growth-chart
-activate ChartController
-ChartController -> GrowthService : 24. chart(ownerId, babyId)
-activate GrowthService
-GrowthService -> GrowthRepo : 25. findByBabyIdAndDeletedAtIsNull(babyId)
-activate GrowthRepo
-GrowthRepo -> DB : 26. SELECT * FROM growth_measurements\nWHERE baby_id=? AND deleted_at IS NULL\nORDER BY measured_date
-activate DB
-DB --> GrowthRepo : 27. measurements[]
-deactivate DB
-GrowthRepo --> GrowthService : 28. measurements[]
-deactivate GrowthRepo
-GrowthService -> GrowthService : 29. plot trend + compare with reference range\n(WHO/MOH) + guidanceNote if far off
-GrowthService --> ChartController : 30. GrowthChartResponse
-deactivate GrowthService
-ChartController --> M : 31. HTTP 200 OK {GrowthChartResponse}
-deactivate ChartController
+group UC-37 Manage Baby Growth
+  Actor -> UI2 : 5. startManageBabyGrowth()
+  activate UI2
+  UI2 -> Controller2 : 6. getGrowthMeasurementHistory() / addGrowthMeasurement() / updateGrowthMeasurement() / deleteGrowthMeasurement()
+  activate Controller2
+  Controller2 -> Service2 : 7. getGrowthMeasurementHistory() / addGrowthMeasurement() / updateGrowthMeasurement() / deleteGrowthMeasurement()
+  activate Service2
+  alt [selected action is view or list]
+    Service2 -> Repository2 : 8a. findByBabyIdAndDeletedAtIsNullOrderByMeasuredDateAsc()
+    activate Repository2
+    Repository2 -> DB : 8a-1. SELECT / DELETE
+    activate DB
+    DB --> Repository2 : 8a-2. queryResult
+    deactivate DB
+    Repository2 --> Service2 : 8a-3. domainRecords
+    deactivate Repository2
+    Service2 --> Controller2 : 8a-4. resultDTO
+    deactivate Service2
+    Controller2 --> UI2 : 8a-5. 200 OK
+    deactivate Controller2
+    UI2 --> Actor : 8a-6. displayCurrentState()
+    deactivate UI2
+  else [selected action creates, updates, archives or deletes]
+    Service2 -> Repository2 : 8b. findByBabyIdAndDeletedAtIsNullOrderByMeasuredDateAsc()
+    activate Repository2
+    Repository2 -> DB : 8b-1. SELECT / DELETE
+    activate DB
+    DB --> Repository2 : 8b-2. currentState
+    deactivate DB
+    Repository2 --> Service2 : 8b-3. scopedEntity
+    deactivate Repository2
+    Service2 -> Repository2 : 8b-4. save() / delete()
+    activate Repository2
+    Repository2 -> DB : 8b-5. INSERT / UPDATE / DELETE
+    activate DB
+    DB --> Repository2 : 8b-6. persistedState
+    deactivate DB
+    Repository2 --> Service2 : 8b-7. persistedEntity
+    deactivate Repository2
+    Service2 --> Controller2 : 8b-8. resultDTO
+    deactivate Service2
+    Controller2 --> UI2 : 8b-9. 200 OK / 201 Created
+    deactivate Controller2
+    UI2 --> Actor : 8b-10. displayConfirmedState()
+    deactivate UI2
+  else [request is invalid, forbidden, not found or conflicting]
+    Service2 --> Controller2 : 8c. domainError
+    deactivate Service2
+    Controller2 --> UI2 : 8c-1. 400 / 401 / 403 / 404 / 409
+    deactivate Controller2
+    UI2 --> Actor : 8c-2. displayActionableError()
+    deactivate UI2
+  end
+end
 
 @enduml
 ```
 
-**Hình 2 — Sequence Diagram: Record Milestone → Add Growth Measurement → View Trend (Main Flow)**
+**Figure 2 — Sequence Diagram: Baby Growth and Development Tracking Main Flow**
 
-## 4. State Machine — `DevelopmentMilestone.milestoneStatus` & `recordStatus`
+**Brief Explanation:**
 
-```plantuml
-@startuml MF03_02_Milestone_StateMachine
-skinparam backgroundColor #FAFAFA
-skinparam StateBackgroundColor #D5E8F0
-skinparam StateBorderColor #2E75B6
+1. The diagram separates the implemented goals covered by this specification: UC-36 Manage Development Milestones; UC-37 Manage Baby Growth.
+2. Each actor action enters through the reachable mobile or web boundary and invokes the exact controller operation exposed by the current Backend.
+3. The controller delegates to the mapped service operation; read branches query scoped records, while mutation branches load the current state before persisting the requested transition.
+4. Repository calls and PostgreSQL responses are shown explicitly, including call-stack activation and dashed return messages.
+5. Invalid, unauthorized, missing or conflicting requests return an actionable error without displaying a false success state.
+6. External systems are invoked only for the mapped use cases; notification dispatches are asynchronous, while integrations that return data remain synchronous.
 
-state "Achievement (milestoneStatus)" as Achievement {
-  [*] --> PENDING : Mốc phát triển được kỳ vọng nhưng chưa ghi nhận
-  PENDING --> ACHIEVED : Mother ghi nhận đạt mốc (UC-39)
-  PENDING --> DELAYED : Quá thời điểm kỳ vọng mà chưa đạt
-  DELAYED --> ACHIEVED : Mother ghi nhận đạt mốc muộn hơn
-}
+## 4. Business Rules Applied
 
-state "Record (recordStatus)" as Record {
-  [*] --> ACTIVE : Bản ghi được tạo (UC-39)
-  ACTIVE --> DELETED : Mother xoá bản ghi (UC-40)
-  DELETED --> [*]
-}
-
-note bottom of Achievement
-  GrowthMeasurement chỉ có 1 trục trạng thái đơn giản:
-  ACTIVE (deletedAt = null) → DELETED (deletedAt set),
-  không có khái niệm "achievement" vì là số đo, không phải mốc.
-end note
-
-@enduml
-```
-
-**Hình 3 — State Machine: `DevelopmentMilestone` — Achievement vs. Record Status (2 trục độc lập)**
-
-## 5. Business Rules Applied
-
-- BR-RBAC / ownership — chỉ chủ sở hữu baby (và gia đình có quyền theo MF-10) mới ghi/xem được.
-- UC-39 — milestone là quan sát của caregiver, không phải đánh giá phát triển chính thức; luôn kèm `note` ngữ cảnh.
-- UC-43 — trend hiển thị kèm reference range (WHO/tham chiếu) và nhắc tìm chuyên gia khi số đo lệch xa, không tự đưa ra kết luận chẩn đoán.
+- Access is enforced server-side using the current actor, role, ownership, membership and consent scope.
+- Caregiver observations and reference charts are non-diagnostic.
+- The following remains outside this contract: Automated developmental assessment.
+- Retries must not duplicate confirmed records, transitions, notifications or external side effects.
+- Sensitive health, identity, moderation, location and safety operations retain the minimum required audit evidence.

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../../core/network/api_client.dart';
 import '../models/federated_auth_failure.dart';
 import '../services/auth_service.dart';
-import 'otp_verification_screen.dart';
+import '../widgets/auth_ui.dart';
 import 'login_screen.dart';
+import 'otp_verification_screen.dart';
 import 'role_selection_screen.dart';
 
 /// CB-002 — Register Account (UC-01)
@@ -26,16 +28,6 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
-  static const _primaryColor = Color(0xFFC98C7B);
-  static const _canvasColor = Color(0xFFF6F1EC);
-  static const _textColor = Color(0xFF5A463F);
-  static const _mutedColor = Color(0xFF524440);
-  static const _surfaceColor = Color(0xFFFFF8F6);
-  static const _surfaceContainerLowest = Colors.white;
-  static const _borderColor = Color(0xFFD6C2BD);
-  static const _accentPrimary = Color(0xFF845143);
-  static const _errorColor = Color(0xFFBA1A1A);
-
   final _nameCtrl = TextEditingController();
   final _identifierCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
@@ -69,6 +61,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       RegExp(r'[@#$%^&*!]').hasMatch(_passwordCtrl.text);
 
   Future<void> _submit() async {
+    if (_isLoading) return;
+
     final name = _nameCtrl.text.trim();
     final identifier = _identifierCtrl.text.trim();
     final password = _passwordCtrl.text;
@@ -150,210 +144,283 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _canvasColor,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildAppBar(context),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const SizedBox(height: 16),
-                    _buildHeading(),
-                    const SizedBox(height: 16),
-                    if (_errorMessage != null) ...[
-                      _buildErrorBanner(_errorMessage!),
-                      const SizedBox(height: 12),
-                    ],
-                    _buildFormCard(),
-                    if (!widget.isExpert) ...[
+      body: AuthBackground(
+        child: SafeArea(
+          child: Column(
+            children: [
+              AuthTopBar(
+                title: widget.isExpert ? 'Đăng ký Chuyên gia' : 'Tạo tài khoản',
+                onBack: () => Navigator.pop(context),
+              ),
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 28),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildHeading(),
+                      const SizedBox(height: 22),
+                      if (_errorMessage != null) ...[
+                        AuthErrorBanner(message: _errorMessage!),
+                        const SizedBox(height: 16),
+                      ],
+                      _buildFormCard(),
+                      if (!widget.isExpert) ...[
+                        const SizedBox(height: 24),
+                        _buildFederatedRegistrationActions(),
+                      ],
                       const SizedBox(height: 20),
-                      _buildFederatedRegistrationActions(),
+                      AuthInfoCard(
+                        message: widget.isExpert
+                            ? 'Hồ sơ chuyên gia sẽ được xác thực trước khi bạn bắt đầu tư vấn trên CareBridge.'
+                            : 'Bạn có thể cập nhật hồ sơ và cài đặt chăm sóc riêng tư sau khi tạo tài khoản.',
+                      ),
                     ],
-                    const SizedBox(height: 80),
-                  ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: _buildStickyFooter(context),
     );
   }
 
-  Widget _buildAppBar(BuildContext context) {
-    return Container(
-      height: 48,
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      decoration: BoxDecoration(color: _canvasColor.withValues(alpha: 0.9)),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back),
-            color: _textColor,
-          ),
-          Expanded(
-            child: Text(
-              widget.isExpert ? 'Đăng ký Chuyên gia' : 'Tạo tài khoản',
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: _textColor,
-              ),
-            ),
-          ),
-          const SizedBox(width: 48),
-        ],
-      ),
-    );
-  }
-
   Widget _buildHeading() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          widget.isExpert ? 'Đăng ký Chuyên gia Y tế 🩺' : 'Chào mừng bạn! 👋',
-          style: const TextStyle(
-            fontFamily: 'Lexend',
-            fontSize: 24,
-            fontWeight: FontWeight.w600,
-            color: _accentPrimary,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          widget.isExpert
-              ? 'Tạo tài khoản chuyên gia để bắt đầu xác thực hồ sơ chuyên môn.'
-              : 'Bắt đầu hành trình chăm sóc tuyệt vời cùng CareBridge.',
-          style: const TextStyle(
-            fontFamily: 'Lexend',
-            fontSize: 14,
-            color: _mutedColor,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildErrorBanner(String message) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFDAD6),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.error_outline, size: 18, color: Color(0xFF93000A)),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              message,
-              style: const TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 14,
-                color: Color(0xFF93000A),
-              ),
-            ),
-          ),
-        ],
-      ),
+    return AuthIntro(
+      eyebrow: widget.isExpert
+          ? 'XÁC MINH CHUYÊN MÔN'
+          : 'BẮT ĐẦU VỚI CAREBRIDGE',
+      title: widget.isExpert
+          ? 'Đăng ký Chuyên gia Y tế'
+          : 'Tạo không gian chăm sóc của bạn.',
+      subtitle: widget.isExpert
+          ? 'Tạo tài khoản chuyên gia để bắt đầu xác thực hồ sơ chuyên môn.'
+          : 'Bắt đầu hành trình chăm sóc rõ ràng hơn cùng CareBridge.',
     );
   }
 
   Widget _buildFormCard() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: _surfaceColor,
-        borderRadius: BorderRadius.circular(32),
-        boxShadow: [
-          BoxShadow(
-            color: _textColor.withValues(alpha: 0.06),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        border: Border.all(color: const Color(0xFFFFF1EC)),
-      ),
+    return AuthSurface(
+      padding: const EdgeInsets.fromLTRB(18, 20, 18, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Name field
-          _buildLabeledInput(
-            id: 'name',
-            label: 'Họ và tên',
+          Text(
+            widget.isExpert ? 'Hồ sơ chuyên gia' : 'Thông tin của bạn',
+            style: const TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: AuthPalette.ink,
+            ),
+          ),
+          const SizedBox(height: 18),
+          AuthTextField(
             controller: _nameCtrl,
+            label: 'Họ và tên',
             hint: 'Nguyễn Thùy Linh',
             keyboardType: TextInputType.name,
+            textInputAction: TextInputAction.next,
           ),
-          const SizedBox(height: 16),
-          // Identifier field
-          _buildLabeledInput(
-            id: 'contact',
-            label: widget.isExpert ? 'Email' : 'Email hoặc Số điện thoại',
+          const SizedBox(height: 18),
+          AuthTextField(
             controller: _identifierCtrl,
+            label: widget.isExpert ? 'Email' : 'Email hoặc Số điện thoại',
             hint: widget.isExpert ? 'bacsi@example.com' : '09xx xxx xxx',
             keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.next,
           ),
-          const SizedBox(height: 16),
-          // Password field
-          _buildPasswordInput(
-            label: 'Mật khẩu',
+          const SizedBox(height: 18),
+          AuthTextField(
             controller: _passwordCtrl,
-            hint: '••••••••',
-            obscure: _obscurePassword,
-            onToggle: () =>
-                setState(() => _obscurePassword = !_obscurePassword),
-          ),
-          const SizedBox(height: 16),
-          // Confirm password
-          _buildPasswordInput(
-            label: 'Xác nhận mật khẩu',
-            controller: _confirmPasswordCtrl,
-            hint: '••••••••',
-            obscure: _obscureConfirm,
-            onToggle: () => setState(() => _obscureConfirm = !_obscureConfirm),
-            hasError: _confirmPasswordError != null,
-            onChanged: (_) => setState(() => _confirmPasswordError = null),
-          ),
-          if (_confirmPasswordError != null) ...[
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(Icons.error_outline, size: 16, color: _errorColor),
-                const SizedBox(width: 4),
-                Text(
-                  _confirmPasswordError!,
-                  style: const TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 14,
-                    color: _errorColor,
-                  ),
-                ),
-              ],
+            label: 'Mật khẩu',
+            hint: 'Tạo mật khẩu bảo mật',
+            obscureText: _obscurePassword,
+            textInputAction: TextInputAction.next,
+            onChanged: (_) => setState(() {}),
+            suffixIcon: IconButton(
+              tooltip: _obscurePassword ? 'Hiện mật khẩu' : 'Ẩn mật khẩu',
+              onPressed: () =>
+                  setState(() => _obscurePassword = !_obscurePassword),
+              icon: Icon(
+                _obscurePassword
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
+                size: 20,
+                color: AuthPalette.muted,
+              ),
             ),
-          ],
-          const SizedBox(height: 16),
-          // Password checklist
+          ),
+          const SizedBox(height: 18),
+          AuthTextField(
+            controller: _confirmPasswordCtrl,
+            label: 'Xác nhận mật khẩu',
+            hint: 'Nhập lại mật khẩu',
+            obscureText: _obscureConfirm,
+            textInputAction: TextInputAction.done,
+            errorText: _confirmPasswordError,
+            onChanged: (_) {
+              if (_confirmPasswordError != null) {
+                setState(() => _confirmPasswordError = null);
+              }
+            },
+            suffixIcon: IconButton(
+              tooltip: _obscureConfirm
+                  ? 'Hiện mật khẩu xác nhận'
+                  : 'Ẩn mật khẩu xác nhận',
+              onPressed: () =>
+                  setState(() => _obscureConfirm = !_obscureConfirm),
+              icon: Icon(
+                _obscureConfirm
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
+                size: 20,
+                color: AuthPalette.muted,
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
           _buildPasswordChecklist(),
           const SizedBox(height: 16),
-          // Terms checkbox
           _buildTermsCheckbox(),
         ],
       ),
     );
   }
 
+  Widget _buildPasswordChecklist() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AuthPalette.surfaceSoft,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AuthPalette.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Mật khẩu cần có',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: AuthPalette.mutedStrong,
+            ),
+          ),
+          const SizedBox(height: 10),
+          _buildCheckItem('Ít nhất 8 ký tự', _hasMinLength),
+          const SizedBox(height: 7),
+          _buildCheckItem('Chứa chữ cái viết hoa', _hasUppercase),
+          const SizedBox(height: 7),
+          _buildCheckItem(
+            'Chứa ký tự đặc biệt (@, #, ký hiệu, ...)',
+            _hasSpecialChar,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCheckItem(String text, bool met) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 1),
+          child: Icon(
+            met ? Icons.check_circle_rounded : Icons.circle_outlined,
+            size: 16,
+            color: met ? AuthPalette.accentDeep : AuthPalette.muted,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 12,
+              height: 1.35,
+              fontWeight: met ? FontWeight.w600 : FontWeight.w400,
+              color: met ? AuthPalette.accentDeep : AuthPalette.mutedStrong,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTermsCheckbox() {
+    return Semantics(
+      container: true,
+      checked: _termsAccepted,
+      label: 'Tôi đồng ý với Điều khoản và Chính sách quyền riêng tư',
+      child: InkWell(
+        onTap: () => setState(() => _termsAccepted = !_termsAccepted),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 48,
+                height: 32,
+                child: Checkbox(
+                  value: _termsAccepted,
+                  onChanged: (value) =>
+                      setState(() => _termsAccepted = value ?? false),
+                  activeColor: AuthPalette.accentDeep,
+                  side: const BorderSide(color: AuthPalette.muted, width: 1.5),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(top: 4),
+                  child: Text.rich(
+                    TextSpan(
+                      text: 'Tôi đồng ý với ',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 12,
+                        height: 1.45,
+                        color: AuthPalette.mutedStrong,
+                      ),
+                      children: [
+                        TextSpan(
+                          text: 'Điều khoản',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: AuthPalette.accentDeep,
+                          ),
+                        ),
+                        TextSpan(text: ' và '),
+                        TextSpan(
+                          text: 'Chính sách quyền riêng tư',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: AuthPalette.accentDeep,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _federatedPhoneRegistration() async {
+    if (_isLoading) return;
     final phone = _identifierCtrl.text.trim();
     if (phone.isEmpty) {
       setState(
@@ -362,7 +429,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
       return;
     }
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
     try {
       final verificationId = await AuthService.instance.beginPhoneVerification(
         phone,
@@ -441,28 +511,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Widget _buildFederatedRegistrationActions() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Column(
       children: [
-        _buildFederatedIconButton(
-          key: const Key('federated-google-register'),
-          tooltip: 'Đăng ký với Google',
-          onPressed: _isLoading ? null : _federatedGoogleRegistration,
-          child: const Text(
-            'G',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
-              color: _accentPrimary,
+        const AuthDivider(label: 'hoặc đăng ký nhanh'),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(
+              child: _buildFederatedIconButton(
+                key: const Key('federated-google-register'),
+                tooltip: 'Đăng ký với Google',
+                onPressed: _isLoading ? null : _federatedGoogleRegistration,
+                child: const Text(
+                  'G',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: AuthPalette.accentDeep,
+                  ),
+                ),
+              ),
             ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        _buildFederatedIconButton(
-          key: const Key('federated-phone-register'),
-          tooltip: 'Đăng ký với số điện thoại',
-          onPressed: _isLoading ? null : _federatedPhoneRegistration,
-          child: const Icon(Icons.phone_rounded, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildFederatedIconButton(
+                key: const Key('federated-phone-register'),
+                tooltip: 'Đăng ký với số điện thoại',
+                onPressed: _isLoading ? null : _federatedPhoneRegistration,
+                child: const Icon(Icons.phone_rounded, size: 21),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -474,356 +554,84 @@ class _RegisterScreenState extends State<RegisterScreen> {
     required VoidCallback? onPressed,
     required Widget child,
   }) {
-    return Material(
-      color: _surfaceColor,
-      elevation: onPressed == null ? 0 : 2,
-      shadowColor: _textColor.withValues(alpha: 0.12),
-      shape: const CircleBorder(),
-      child: IconButton(
-        key: key,
-        tooltip: tooltip,
-        onPressed: onPressed,
-        style: IconButton.styleFrom(
-          fixedSize: const Size.square(48),
-          foregroundColor: _accentPrimary,
-          disabledForegroundColor: _mutedColor.withValues(alpha: 0.4),
-          side: BorderSide(color: _borderColor),
-          shape: const CircleBorder(),
+    return SizedBox(
+      height: 50,
+      child: Material(
+        color: AuthPalette.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: AuthPalette.line),
         ),
-        icon: child,
-      ),
-    );
-  }
-
-  Widget _buildLabeledInput({
-    required String id,
-    required String label,
-    required TextEditingController controller,
-    required String hint,
-    TextInputType? keyboardType,
-  }) {
-    return Container(
-      height: 64,
-      decoration: BoxDecoration(
-        color: _surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _borderColor.withValues(alpha: 0.5)),
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            left: 16,
-            top: 8,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: _mutedColor,
-                letterSpacing: 0.6,
-              ),
+        child: IconButton(
+          key: key,
+          tooltip: tooltip,
+          onPressed: onPressed,
+          style: IconButton.styleFrom(
+            foregroundColor: AuthPalette.accentDeep,
+            disabledForegroundColor: AuthPalette.muted.withValues(alpha: 0.45),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
             ),
           ),
-          Positioned.fill(
-            child: Padding(
-              padding: const EdgeInsets.only(
-                left: 16,
-                right: 16,
-                top: 28,
-                bottom: 4,
-              ),
-              child: TextField(
-                controller: controller,
-                keyboardType: keyboardType,
-                decoration: InputDecoration(
-                  hintText: hint,
-                  hintStyle: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 16,
-                    color: _borderColor,
-                  ),
-                  border: InputBorder.none,
-                  isDense: true,
-                  contentPadding: EdgeInsets.zero,
-                ),
-                style: const TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 16,
-                  color: _textColor,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPasswordInput({
-    required String label,
-    required TextEditingController controller,
-    required String hint,
-    required bool obscure,
-    required VoidCallback onToggle,
-    bool hasError = false,
-    ValueChanged<String>? onChanged,
-  }) {
-    return Container(
-      height: 64,
-      decoration: BoxDecoration(
-        color: _surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: hasError ? _errorColor : _borderColor.withValues(alpha: 0.5),
+          icon: child,
         ),
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            left: 16,
-            top: 8,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: hasError ? _errorColor : _mutedColor,
-                letterSpacing: 0.6,
-              ),
-            ),
-          ),
-          Positioned(
-            left: 16,
-            right: 48,
-            top: 28,
-            bottom: 4,
-            child: TextField(
-              controller: controller,
-              obscureText: obscure,
-              onChanged: onChanged ?? (_) => setState(() {}),
-              decoration: InputDecoration(
-                hintText: hint,
-                hintStyle: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 16,
-                  color: _borderColor,
-                ),
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
-              ),
-              style: const TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 16,
-                color: _textColor,
-              ),
-            ),
-          ),
-          Positioned(
-            right: 0,
-            top: 0,
-            bottom: 0,
-            child: IconButton(
-              onPressed: onToggle,
-              icon: Icon(
-                obscure
-                    ? Icons.visibility_off_outlined
-                    : Icons.visibility_outlined,
-                size: 20,
-                color: _mutedColor,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPasswordChecklist() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFF1EC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: const Color(0xFFFFE2D9).withValues(alpha: 0.5),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Mật khẩu cần có:',
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: _mutedColor,
-              letterSpacing: 0.6,
-            ),
-          ),
-          const SizedBox(height: 8),
-          _buildCheckItem('Ít nhất 8 ký tự', _hasMinLength),
-          const SizedBox(height: 6),
-          _buildCheckItem('Chứa chữ cái viết hoa', _hasUppercase),
-          const SizedBox(height: 6),
-          _buildCheckItem(
-            'Chứa ký tự đặc biệt (@, #, \$, ...)',
-            _hasSpecialChar,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCheckItem(String text, bool met) {
-    return Row(
-      children: [
-        Icon(
-          met ? Icons.check_circle : Icons.check_circle_outline,
-          size: 16,
-          color: met ? _primaryColor : _mutedColor,
-        ),
-        const SizedBox(width: 8),
-        Text(
-          text,
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            fontSize: 13,
-            fontWeight: met ? FontWeight.w500 : FontWeight.w400,
-            color: met ? _accentPrimary : _mutedColor,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTermsCheckbox() {
-    return GestureDetector(
-      onTap: () => setState(() => _termsAccepted = !_termsAccepted),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 20,
-            height: 20,
-            child: Checkbox(
-              value: _termsAccepted,
-              onChanged: (v) => setState(() => _termsAccepted = v ?? false),
-              activeColor: _primaryColor,
-              side: BorderSide(color: _borderColor, width: 2),
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: RichText(
-              text: TextSpan(
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 14,
-                  color: _mutedColor,
-                ),
-                children: const [
-                  TextSpan(text: 'Tôi đồng ý với '),
-                  TextSpan(
-                    text: 'Điều khoản',
-                    style: TextStyle(
-                      color: _accentPrimary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  TextSpan(text: ' và '),
-                  TextSpan(
-                    text: 'Chính sách quyền riêng tư',
-                    style: TextStyle(
-                      color: _accentPrimary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
 
   Widget _buildStickyFooter(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 34),
-      decoration: BoxDecoration(
-        color: _canvasColor,
-        border: Border(
-          top: BorderSide(color: _borderColor.withValues(alpha: 0.3)),
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(
-            height: 52,
-            child: FilledButton(
-              onPressed: _isLoading ? null : _submit,
-              style: FilledButton.styleFrom(
-                backgroundColor: _primaryColor,
-                foregroundColor: Colors.white,
-                shape: const StadiumBorder(),
-                disabledBackgroundColor: _primaryColor.withValues(alpha: 0.6),
-              ),
-              child: _isLoading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : const Text(
-                      'Tạo tài khoản',
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-            ),
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(24, 14, 24, 10),
+        decoration: BoxDecoration(
+          color: AuthPalette.canvas,
+          border: Border(
+            top: BorderSide(color: AuthPalette.line.withValues(alpha: 0.8)),
           ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'Đã có tài khoản? ',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 14,
-                  color: _mutedColor,
-                ),
-              ),
-              GestureDetector(
-                onTap: () => Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LoginScreen()),
-                ),
-                child: const Text(
-                  'Đăng nhập',
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AuthPrimaryButton(
+              onPressed: _submit,
+              label: 'Tạo tài khoản',
+              isLoading: _isLoading,
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  'Đã có tài khoản?',
                   style: TextStyle(
                     fontFamily: 'Lexend',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: _accentPrimary,
+                    fontSize: 12,
+                    color: AuthPalette.muted,
                   ),
                 ),
-              ),
-            ],
-          ),
-        ],
+                TextButton(
+                  onPressed: () => Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LoginScreen()),
+                  ),
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(44, 44),
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    foregroundColor: AuthPalette.accentDeep,
+                    textStyle: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  child: const Text('Đăng nhập'),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

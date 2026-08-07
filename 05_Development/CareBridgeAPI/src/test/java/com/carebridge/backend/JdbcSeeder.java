@@ -19,7 +19,6 @@ public class JdbcSeeder {
             {"moderator@carebridge.dev", "Moderator Test", "MODERATOR"},
             {"content@carebridge.dev", "Content Test", "CONTENT_ADMIN"},
             {"expert@carebridge.dev", "Expert Test", "EXPERT"},
-            {"partner@carebridge.dev", "Partner Test", "PARTNER"},
             {"mother@carebridge.dev", "Mother Test", "MOTHER"},
             {"family@carebridge.dev", "Family Test", "FAMILY"}
         };

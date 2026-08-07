@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/network/api_client.dart';
+import '../../../shared/components/app_user_avatar.dart';
 import '../services/auth_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -182,19 +183,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         Center(
           child: Stack(
             children: [
-              CircleAvatar(
+              AppUserAvatar(
+                avatarUrl: _avatarUrl,
                 radius: 56,
                 backgroundColor: _surfaceContainerLow,
-                backgroundImage: _avatarUrl != null
-                    ? NetworkImage(_avatarUrl!)
-                    : null,
-                child: _avatarUrl == null
-                    ? const Icon(
-                        Icons.person,
-                        size: 48,
-                        color: _primaryContainer,
-                      )
-                    : null,
               ),
               Positioned(
                 bottom: 0,

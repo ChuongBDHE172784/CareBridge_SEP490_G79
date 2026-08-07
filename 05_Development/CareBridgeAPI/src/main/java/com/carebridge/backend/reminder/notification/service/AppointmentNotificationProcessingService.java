@@ -7,10 +7,11 @@ import com.carebridge.backend.reminder.entity.RecurrenceType;
 import com.carebridge.backend.reminder.entity.Reminder;
 import com.carebridge.backend.reminder.entity.ReminderStatus;
 import com.carebridge.backend.reminder.notification.entity.AppointmentNotificationConfig;
-import com.carebridge.backend.reminder.notification.entity.AppointmentNotificationJob;
 import com.carebridge.backend.reminder.notification.entity.AppointmentNotificationJobStatus;
 import com.carebridge.backend.reminder.notification.repository.AppointmentNotificationConfigRepository;
-import com.carebridge.backend.reminder.notification.repository.AppointmentNotificationJobRepository;
+import com.carebridge.backend.reminder.job.entity.NotificationJob;
+import com.carebridge.backend.reminder.job.entity.NotificationJobType;
+import com.carebridge.backend.reminder.job.repository.NotificationJobRepository;
 import com.carebridge.backend.reminder.repository.ReminderRepository;
 import java.time.Clock;
 import java.time.Duration;
@@ -28,7 +29,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AppointmentNotificationProcessingService {
 
-    private final AppointmentNotificationJobRepository jobRepository;
+    /** Every query below is scoped to this type; the reminder worker shares the table. */
+    private static final NotificationJobType JOB_TYPE = NotificationJobType.APPOINTMENT;
+
+    private final NotificationJobRepository jobRepository;
     private final AppointmentNotificationConfigRepository configRepository;
     private final ReminderRepository reminderRepository;
     private final IReminderNotificationService notificationService;
@@ -40,7 +44,7 @@ public class AppointmentNotificationProcessingService {
 
     @Autowired
     public AppointmentNotificationProcessingService(
-            AppointmentNotificationJobRepository jobRepository,
+            NotificationJobRepository jobRepository,
             AppointmentNotificationConfigRepository configRepository,
             ReminderRepository reminderRepository,
             IReminderNotificationService notificationService,
@@ -56,7 +60,7 @@ public class AppointmentNotificationProcessingService {
 
     /** Compatibility constructor for worker tests that do not exercise FAMILY fan-out. */
     public AppointmentNotificationProcessingService(
-            AppointmentNotificationJobRepository jobRepository,
+            NotificationJobRepository jobRepository,
             AppointmentNotificationConfigRepository configRepository,
             ReminderRepository reminderRepository,
             IReminderNotificationService notificationService,
@@ -69,7 +73,7 @@ public class AppointmentNotificationProcessingService {
     }
 
     AppointmentNotificationProcessingService(
-            AppointmentNotificationJobRepository jobRepository,
+            NotificationJobRepository jobRepository,
             AppointmentNotificationConfigRepository configRepository,
             ReminderRepository reminderRepository,
             IReminderNotificationService notificationService,
@@ -83,7 +87,7 @@ public class AppointmentNotificationProcessingService {
     }
 
     AppointmentNotificationProcessingService(
-            AppointmentNotificationJobRepository jobRepository,
+            NotificationJobRepository jobRepository,
             AppointmentNotificationConfigRepository configRepository,
             ReminderRepository reminderRepository,
             IReminderNotificationService notificationService,
@@ -95,7 +99,7 @@ public class AppointmentNotificationProcessingService {
     }
 
     AppointmentNotificationProcessingService(
-            AppointmentNotificationJobRepository jobRepository,
+            NotificationJobRepository jobRepository,
             AppointmentNotificationConfigRepository configRepository,
             ReminderRepository reminderRepository,
             IReminderNotificationService notificationService,
@@ -118,15 +122,15 @@ public class AppointmentNotificationProcessingService {
     @Transactional
     public List<UUID> claimDueJobs(String workerId, int batchSize) {
         Instant now = clock.instant();
-        jobRepository.requeueStale(
+        jobRepository.requeueStale(JOB_TYPE,
                 now.minus(Duration.ofMinutes(staleProcessingMinutes)), now,
                 AppointmentNotificationJobStatus.PENDING,
                 AppointmentNotificationJobStatus.PROCESSING);
         List<UUID> claimed = new ArrayList<>();
-        for (UUID id : jobRepository.findClaimableIds(
+        for (UUID id : jobRepository.findClaimableIds(JOB_TYPE,
                 AppointmentNotificationJobStatus.PENDING, now, PageRequest.of(0, Math.max(1, batchSize)))) {
             if (jobRepository.claim(
-                    id, workerId, now,
+                    id, JOB_TYPE, workerId, now,
                     AppointmentNotificationJobStatus.PENDING,
                     AppointmentNotificationJobStatus.PROCESSING) == 1) {
                 claimed.add(id);
@@ -155,8 +159,9 @@ public class AppointmentNotificationProcessingService {
 
     @Transactional
     public void process(UUID jobId, String workerId) {
-        AppointmentNotificationJob job = jobRepository.findById(jobId).orElse(null);
-        if (job == null || job.getStatus() != AppointmentNotificationJobStatus.PROCESSING
+        NotificationJob job = jobRepository.findById(jobId).orElse(null);
+        if (job == null || job.getJobType() != JOB_TYPE
+                || job.getStatus() != AppointmentNotificationJobStatus.PROCESSING
                 || (workerId != null && !workerId.equals(job.getLockedBy()))) return;
         Instant now = clock.instant();
         if (isStaleBacklog(job, now)) {
@@ -199,18 +204,20 @@ public class AppointmentNotificationProcessingService {
         }
     }
 
-    private boolean isStaleBacklog(AppointmentNotificationJob job, Instant now) {
+    private boolean isStaleBacklog(NotificationJob job, Instant now) {
         return job.getDueAt() != null
                 && job.getDueAt().isBefore(now.minus(Duration.ofMinutes(staleBacklogGraceMinutes)));
     }
 
     private boolean eligible(
-            AppointmentNotificationJob job,
+            NotificationJob job,
             Reminder reminder,
             AppointmentNotificationConfig config) {
         if (reminder == null || config == null) return false;
-        if (config.getConfigRevision() != job.getConfigRevision()) return false;
-        if (reminder.getOccurrenceGeneration() != job.getOccurrenceGeneration()) return false;
+        if (job.getConfigRevision() == null
+                || config.getConfigRevision() != job.getConfigRevision().longValue()) return false;
+        if (job.getOccurrenceGeneration() == null
+                || reminder.getOccurrenceGeneration() != job.getOccurrenceGeneration().longValue()) return false;
         ReminderStatus status = reminder.getStatus();
         boolean recurring = reminder.getRecurrenceType() != null
                 && reminder.getRecurrenceType() != RecurrenceType.NONE;
@@ -225,7 +232,7 @@ public class AppointmentNotificationProcessingService {
     }
 
     private void retryOrFail(
-            AppointmentNotificationJob job, String errorCode, UUID recordId, String workerId) {
+            NotificationJob job, String errorCode, UUID recordId, String workerId) {
         if (job.getAttemptCount() >= maxAttempts) {
             finish(job, AppointmentNotificationJobStatus.FAILED, errorCode, recordId, workerId);
             return;
@@ -236,7 +243,7 @@ public class AppointmentNotificationProcessingService {
     }
 
     private void finish(
-            AppointmentNotificationJob job,
+            NotificationJob job,
             AppointmentNotificationJobStatus status,
             String errorCode,
             UUID notificationRecordId,
@@ -245,7 +252,7 @@ public class AppointmentNotificationProcessingService {
     }
 
     private void transition(
-            AppointmentNotificationJob job,
+            NotificationJob job,
             AppointmentNotificationJobStatus status,
             String errorCode,
             UUID notificationRecordId,
@@ -258,7 +265,7 @@ public class AppointmentNotificationProcessingService {
             return;
         }
         int updated = jobRepository.transitionAfterProcessing(
-                job.getId(), workerId, AppointmentNotificationJobStatus.PROCESSING,
+                job.getId(), JOB_TYPE, workerId, AppointmentNotificationJobStatus.PROCESSING,
                 status, nextAttemptAt, errorCode, notificationRecordId, updatedAt);
         if (updated == 1) {
             applyTransition(job, status, errorCode, notificationRecordId, nextAttemptAt, updatedAt);
@@ -266,7 +273,7 @@ public class AppointmentNotificationProcessingService {
     }
 
     private void applyTransition(
-            AppointmentNotificationJob job,
+            NotificationJob job,
             AppointmentNotificationJobStatus status,
             String errorCode,
             UUID notificationRecordId,

@@ -14,11 +14,10 @@ import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.reminder.schedule.dto.CreateReminderScheduleRequest;
 import com.carebridge.backend.reminder.schedule.dto.ReminderScheduleResponse;
 import com.carebridge.backend.reminder.schedule.entity.ReminderSchedule;
-import com.carebridge.backend.reminder.schedule.entity.ReminderScheduleJob;
-import com.carebridge.backend.reminder.schedule.entity.ReminderScheduleTime;
-import com.carebridge.backend.reminder.schedule.repository.ReminderScheduleJobRepository;
+import com.carebridge.backend.reminder.job.entity.NotificationJob;
+import com.carebridge.backend.reminder.job.entity.NotificationJobType;
+import com.carebridge.backend.reminder.job.repository.NotificationJobRepository;
 import com.carebridge.backend.reminder.schedule.repository.ReminderScheduleRepository;
-import com.carebridge.backend.reminder.schedule.repository.ReminderScheduleTimeRepository;
 import com.carebridge.backend.reminder.schedule.service.ReminderScheduleServiceImpl;
 import java.time.Clock;
 import java.time.Instant;
@@ -39,27 +38,21 @@ class ReminderScheduleServiceTest {
     private static final Instant NOW = Instant.parse("2026-08-02T00:00:00Z");
 
     @Mock private ReminderScheduleRepository scheduleRepository;
-    @Mock private ReminderScheduleTimeRepository timeRepository;
-    @Mock private ReminderScheduleJobRepository jobRepository;
+    @Mock private NotificationJobRepository jobRepository;
     private ReminderScheduleServiceImpl service;
 
     @BeforeEach
     void setUp() {
-        service = new ReminderScheduleServiceImpl(scheduleRepository, timeRepository, jobRepository,
+        service = new ReminderScheduleServiceImpl(scheduleRepository, jobRepository,
                 Clock.fixed(NOW, ZoneOffset.UTC));
         lenient().when(scheduleRepository.save(any(ReminderSchedule.class))).thenAnswer(invocation -> {
             ReminderSchedule schedule = invocation.getArgument(0);
             if (schedule.getId() == null) schedule.setId(SCHEDULE);
             return schedule;
         });
-        lenient().when(jobRepository.existsByScheduleIdAndScheduleRevisionAndOccurrenceDateAndLocalTime(
+        lenient().when(jobRepository.existsByJobTypeAndScheduleIdAndScheduleRevisionAndOccurrenceDateAndLocalTime(eq(NotificationJobType.REMINDER_SCHEDULE), 
                 any(), anyLong(), any(), any())).thenReturn(false);
-        lenient().when(timeRepository.findByScheduleIdOrderBySortOrderAscLocalTimeAsc(any()))
-                .thenReturn(List.of(
-                        ReminderScheduleTime.builder().scheduleId(SCHEDULE)
-                                .localTime(java.time.LocalTime.of(7, 0)).sortOrder(0).build(),
-                        ReminderScheduleTime.builder().scheduleId(SCHEDULE)
-                                .localTime(java.time.LocalTime.of(12, 0)).sortOrder(1).build()));
+        // Times now live on the schedule aggregate; there is no child table to stub.
     }
 
     @Test
@@ -72,7 +65,7 @@ class ReminderScheduleServiceTest {
 
         assertThat(result.times()).containsExactly("07:00", "12:00");
         assertThat(result.revision()).isEqualTo(1L);
-        ArgumentCaptor<ReminderScheduleJob> jobs = ArgumentCaptor.forClass(ReminderScheduleJob.class);
+        ArgumentCaptor<NotificationJob> jobs = ArgumentCaptor.forClass(NotificationJob.class);
         verify(jobRepository, times(72)).save(jobs.capture());
         assertThat(jobs.getAllValues()).allSatisfy(job -> {
             assertThat(job.getScheduleId()).isEqualTo(SCHEDULE);

@@ -30,7 +30,6 @@ class CommunityDashboardTestFactory {
                 new Object[] {Role.EXPERT, 40L},
                 new Object[] {Role.MODERATOR, 5L},
                 new Object[] {Role.CONTENT_ADMIN, 3L},
-                new Object[] {Role.PARTNER, 30L},
                 new Object[] {Role.SYSTEM_ADMIN, 2L});
     }
 
@@ -58,6 +57,6 @@ class CommunityDashboardTestFactory {
 
     static Map<String, Long> expectedRoleMap() {
         return Map.of("MOTHER", 900L, "FAMILY", 200L, "EXPERT", 40L,
-                "MODERATOR", 5L, "CONTENT_ADMIN", 3L, "PARTNER", 30L, "SYSTEM_ADMIN", 2L);
+                "MODERATOR", 5L, "CONTENT_ADMIN", 3L, "SYSTEM_ADMIN", 2L);
     }
 }

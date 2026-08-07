@@ -1,0 +1,834 @@
+{
+  "$comment": "CANONICAL QUESTION CATALOGUE — the fixed clinical questions, shared by the Java and Python planners. The medical content of every question is frozen here; an LLM may later rephrase for readability but can never invent a question, change what one asks, or add an option. Business logic keys off optionCode/questionId, never display text. Two runtimes with two hand-written catalogues would eventually ask different questions of the same patient, so there is exactly one.",
+  "contractVersion": "1.0.0",
+  "maxQuestionsPerTurn": 3,
+  "maxRounds": 3,
+  "questions": [
+    {
+      "$comment": "Deterministic global danger screen. Without it every emergency signal — seizure, loss of consciousness, breathing failure, cyanosis — could only be reached by free-text extraction, so an LLM outage silently blinded the whole engine to emergencies. Priority 1 and no target/stage precondition: it must be askable before anything else is resolved.",
+      "questionId": "Q_GLOBAL_DANGER",
+      "text": "Hiện tại có dấu hiệu nào sau đây không?",
+      "answerType": "SINGLE_CHOICE",
+      "options": [
+        {
+          "optionCode": "DANGER_NONE",
+          "displayText": "Không có dấu hiệu nào"
+        },
+        {
+          "optionCode": "DANGER_SEIZURE",
+          "displayText": "Co giật"
+        },
+        {
+          "optionCode": "DANGER_UNCONSCIOUS",
+          "displayText": "Lơ mơ, khó đánh thức hoặc ngất"
+        },
+        {
+          "optionCode": "DANGER_BREATHING",
+          "displayText": "Khó thở nghiêm trọng"
+        },
+        {
+          "optionCode": "DANGER_CYANOSIS",
+          "displayText": "Tím tái môi hoặc đầu ngón"
+        },
+        {
+          "optionCode": "UNSURE",
+          "displayText": "Tôi không chắc"
+        }
+      ],
+      "resolvesSignals": [
+        "SEIZURE",
+        "ALTERED_CONSCIOUSNESS",
+        "SEVERE_BREATHING_DIFFICULTY",
+        "CYANOSIS"
+      ],
+      "resolvesFields": [
+        "global_red_check"
+      ],
+      "measurement": false,
+      "pivotTo": [],
+      "targetEntities": [
+        "MOTHER",
+        "BABY"
+      ],
+      "applicableStages": [],
+      "applicableIntents": [],
+      "priority": 1,
+      "escalationSignals": [
+        "SEIZURE",
+        "ALTERED_CONSCIOUSNESS",
+        "SEVERE_BREATHING_DIFFICULTY",
+        "CYANOSIS"
+      ],
+      "requiresResolvedTarget": false,
+      "requiresResolvedStage": false,
+      "isTargetClarification": false,
+      "isStageClarification": false,
+      "isIntentClarification": false,
+      "isGlobalDangerScreen": true
+    },
+    {
+      "$comment": "Deterministic self-harm screen feeding SAFETY_SELF_HARM_001. Maternal-only, so it waits for a resolved target rather than risk being asked about a baby. Scoped to the postpartum stage and given a low priority after an earlier version resolved a universally-required field at priority 2 and so became the FIRST question asked of everyone — including someone reporting wrist pain. A self-harm question has to be asked where it is clinically indicated, not as a default opener.",
+      "questionId": "Q_SAFETY_SELF_HARM",
+      "text": "Gần đây bạn có ý nghĩ làm hại bản thân hoặc em bé, hoặc thấy không thể tự giữ an toàn không?",
+      "answerType": "SINGLE_CHOICE",
+      "options": [
+        {
+          "optionCode": "SELF_HARM_NONE",
+          "displayText": "Không có"
+        },
+        {
+          "optionCode": "SELF_HARM_THOUGHTS",
+          "displayText": "Có ý nghĩ làm hại bản thân"
+        },
+        {
+          "optionCode": "SELF_HARM_PLAN",
+          "displayText": "Có ý định hoặc kế hoạch cụ thể"
+        },
+        {
+          "optionCode": "HARM_TO_BABY_THOUGHTS",
+          "displayText": "Có ý nghĩ làm hại em bé"
+        },
+        {
+          "optionCode": "CANNOT_ENSURE_SAFETY",
+          "displayText": "Tôi không chắc mình giữ được an toàn lúc này"
+        },
+        {
+          "optionCode": "UNSURE",
+          "displayText": "Tôi không muốn trả lời"
+        }
+      ],
+      "resolvesSignals": [
+        "SELF_HARM_IDEATION",
+        "SELF_HARM_INTENT_OR_PLAN",
+        "HARM_TO_BABY_IDEATION",
+        "CANNOT_ENSURE_OWN_SAFETY"
+      ],
+      "resolvesFields": [
+        "self_harm_screen"
+      ],
+      "measurement": false,
+      "pivotTo": [],
+      "targetEntities": [
+        "MOTHER"
+      ],
+      "applicableStages": [
+        "POSTPARTUM_MOTHER"
+      ],
+      "applicableIntents": [],
+      "priority": 30,
+      "escalationSignals": [
+        "SELF_HARM_INTENT_OR_PLAN",
+        "HARM_TO_BABY_IDEATION",
+        "CANNOT_ENSURE_OWN_SAFETY"
+      ],
+      "requiresResolvedTarget": true,
+      "requiresResolvedStage": false,
+      "isTargetClarification": false,
+      "isStageClarification": false,
+      "isIntentClarification": false
+    },
+    {
+      "$comment": "Completes the preeclampsia cluster: PREG_RED_002 needs SEVERE_HEADACHE together with VISUAL_DISTURBANCE, and no question resolved the headache half, so that rule was unreachable from the deterministic path.",
+      "questionId": "Q_HEADACHE_SEVERITY",
+      "text": "Bạn có đau đầu không, và mức độ thế nào?",
+      "answerType": "SINGLE_CHOICE",
+      "options": [
+        {
+          "optionCode": "HEADACHE_NONE",
+          "displayText": "Không đau đầu"
+        },
+        {
+          "optionCode": "HEADACHE_MILD",
+          "displayText": "Đau nhẹ"
+        },
+        {
+          "optionCode": "HEADACHE_SEVERE",
+          "displayText": "Đau dữ dội hoặc không đỡ khi nghỉ"
+        },
+        {
+          "optionCode": "UNSURE",
+          "displayText": "Tôi không chắc"
+        }
+      ],
+      "resolvesSignals": [
+        "SEVERE_HEADACHE"
+      ],
+      "resolvesFields": [
+        "headache_severity"
+      ],
+      "measurement": false,
+      "pivotTo": [],
+      "targetEntities": [
+        "MOTHER"
+      ],
+      "applicableStages": [],
+      "applicableIntents": [],
+      "priority": 12,
+      "escalationSignals": [
+        "SEVERE_HEADACHE"
+      ],
+      "requiresResolvedTarget": true,
+      "requiresResolvedStage": false,
+      "isTargetClarification": false,
+      "isStageClarification": false,
+      "isIntentClarification": false
+    },
+    {
+      "$comment": "Paediatric follow-up. Without these three the paediatric rules could only ever be satisfied by free-text extraction, which is the same blind spot the global danger screen was added to close on the maternal side.",
+      "questionId": "Q_BABY_FEEDING",
+      "text": "Bé bú hoặc uống như thế nào so với bình thường?",
+      "answerType": "SINGLE_CHOICE",
+      "options": [
+        { "optionCode": "FEEDING_NORMAL", "displayText": "Bú/uống bình thường" },
+        { "optionCode": "FEEDING_REDUCED", "displayText": "Bú/uống kém hơn hẳn" },
+        { "optionCode": "FEEDING_REFUSED", "displayText": "Bỏ bú hoặc không uống được" },
+        { "optionCode": "UNSURE", "displayText": "Tôi không chắc" }
+      ],
+      "resolvesSignals": ["POOR_FEEDING"],
+      "resolvesFields": ["feeding_status"],
+      "measurement": false,
+      "pivotTo": [],
+      "targetEntities": ["BABY"],
+      "applicableStages": ["INFANT_0_12M", "TODDLER_12_24M"],
+      "applicableIntents": [],
+      "priority": 15,
+      "escalationSignals": ["POOR_FEEDING"],
+      "requiresResolvedTarget": true,
+      "requiresResolvedStage": true,
+      "isTargetClarification": false,
+      "isStageClarification": false,
+      "isIntentClarification": false
+    },
+    {
+      "questionId": "Q_BABY_HYDRATION",
+      "text": "Bé có dấu hiệu mất nước không?",
+      "answerType": "SINGLE_CHOICE",
+      "options": [
+        { "optionCode": "HYDRATION_NORMAL", "displayText": "Không, bé vẫn tiểu bình thường" },
+        { "optionCode": "HYDRATION_REDUCED", "displayText": "Tiểu ít hơn, môi khô, khát nước" },
+        { "optionCode": "HYDRATION_SEVERE", "displayText": "Mắt trũng, da khô, rất ít hoặc không tiểu" },
+        { "optionCode": "UNSURE", "displayText": "Tôi không chắc" }
+      ],
+      "resolvesSignals": ["DEHYDRATION_SIGNS", "SEVERE_DEHYDRATION"],
+      "resolvesFields": ["hydration_status"],
+      "measurement": false,
+      "pivotTo": [],
+      "targetEntities": ["BABY"],
+      "applicableStages": ["INFANT_0_12M", "TODDLER_12_24M"],
+      "applicableIntents": [],
+      "priority": 15,
+      "escalationSignals": ["SEVERE_DEHYDRATION"],
+      "requiresResolvedTarget": true,
+      "requiresResolvedStage": true,
+      "isTargetClarification": false,
+      "isStageClarification": false,
+      "isIntentClarification": false
+    },
+    {
+      "$comment": "Bands rather than a free number, so an answer is always usable. PED_RED_005 (under three months with a temperature at or above 38) still needs an actual reading, which arrives as a measurement rather than through this question.",
+      "questionId": "Q_BABY_TEMPERATURE",
+      "text": "Nếu bạn đã đo nhiệt độ cho bé, kết quả trong khoảng nào?",
+      "answerType": "SINGLE_CHOICE",
+      "options": [
+        { "optionCode": "TEMP_LT_38", "displayText": "Dưới 38 độ" },
+        { "optionCode": "TEMP_38_TO_39", "displayText": "Từ 38 đến dưới 39 độ" },
+        { "optionCode": "TEMP_GTE_39", "displayText": "Từ 39 độ trở lên" },
+        { "optionCode": "NO_DEVICE_OR_UNAWARE", "displayText": "Chưa đo được" }
+      ],
+      "resolvesSignals": ["FEVER", "HIGH_FEVER"],
+      "resolvesFields": ["temperature_band"],
+      "measurement": false,
+      "pivotTo": [],
+      "targetEntities": ["BABY"],
+      "applicableStages": ["INFANT_0_12M", "TODDLER_12_24M"],
+      "applicableIntents": [],
+      "priority": 14,
+      "escalationSignals": ["HIGH_FEVER"],
+      "requiresResolvedTarget": true,
+      "requiresResolvedStage": true,
+      "isTargetClarification": false,
+      "isStageClarification": false,
+      "isIntentClarification": false
+    },
+    {
+      "questionId": "Q_BLEEDING_AMOUNT",
+      "text": "Lượng máu ra hiện tại như thế nào?",
+      "answerType": "SINGLE_CHOICE",
+      "options": [
+        {
+          "optionCode": "BLEEDING_NONE",
+          "displayText": "Không ra máu"
+        },
+        {
+          "optionCode": "BLEEDING_SPOTTING",
+          "displayText": "Ra ít, chỉ thấm nhẹ"
+        },
+        {
+          "optionCode": "BLEEDING_MODERATE",
+          "displayText": "Ra vừa"
+        },
+        {
+          "optionCode": "BLEEDING_HEAVY",
+          "displayText": "Nhiều, thấm ướt băng trong thời gian ngắn"
+        },
+        {
+          "optionCode": "UNSURE",
+          "displayText": "Tôi không chắc"
+        }
+      ],
+      "resolvesSignals": [
+        "VAGINAL_BLEEDING",
+        "HEAVY_VAGINAL_BLEEDING"
+      ],
+      "resolvesFields": [
+        "bleeding_amount"
+      ],
+      "measurement": false,
+      "pivotTo": [],
+      "targetEntities": [
+        "MOTHER"
+      ],
+      "applicableStages": [],
+      "applicableIntents": [],
+      "priority": 10,
+      "escalationSignals": [
+        "HEAVY_VAGINAL_BLEEDING",
+        "HEAVY_POSTPARTUM_BLEEDING"
+      ],
+      "requiresResolvedTarget": true,
+      "requiresResolvedStage": false,
+      "isTargetClarification": false,
+      "isStageClarification": false,
+      "isIntentClarification": false
+    },
+    {
+      "questionId": "Q_CLOTS",
+      "text": "Bạn có thấy cục máu đông lớn không?",
+      "answerType": "SINGLE_CHOICE",
+      "options": [
+        {
+          "optionCode": "CLOTS_LARGE",
+          "displayText": "Có, cục lớn"
+        },
+        {
+          "optionCode": "CLOTS_NONE",
+          "displayText": "Không"
+        },
+        {
+          "optionCode": "UNSURE",
+          "displayText": "Tôi không chắc"
+        }
+      ],
+      "resolvesSignals": [
+        "LARGE_CLOTS"
+      ],
+      "resolvesFields": [],
+      "measurement": false,
+      "pivotTo": [],
+      "targetEntities": [
+        "MOTHER"
+      ],
+      "applicableStages": [
+        "POSTPARTUM_MOTHER"
+      ],
+      "applicableIntents": [],
+      "priority": 15,
+      "escalationSignals": [
+        "LARGE_CLOTS"
+      ],
+      "requiresResolvedTarget": true,
+      "requiresResolvedStage": false,
+      "isTargetClarification": false,
+      "isStageClarification": false,
+      "isIntentClarification": false
+    },
+    {
+      "questionId": "Q_DIZZINESS",
+      "text": "Bạn có thấy choáng váng hoặc hoa mắt không?",
+      "answerType": "SINGLE_CHOICE",
+      "options": [
+        {
+          "optionCode": "DIZZINESS_YES",
+          "displayText": "Có"
+        },
+        {
+          "optionCode": "DIZZINESS_NO",
+          "displayText": "Không"
+        },
+        {
+          "optionCode": "UNSURE",
+          "displayText": "Tôi không chắc"
+        }
+      ],
+      "resolvesSignals": [
+        "DIZZINESS"
+      ],
+      "resolvesFields": [],
+      "measurement": false,
+      "pivotTo": [],
+      "targetEntities": [
+        "MOTHER"
+      ],
+      "applicableStages": [],
+      "applicableIntents": [],
+      "priority": 50,
+      "escalationSignals": [],
+      "requiresResolvedTarget": true,
+      "requiresResolvedStage": false,
+      "isTargetClarification": false,
+      "isStageClarification": false,
+      "isIntentClarification": false
+    },
+    {
+      "questionId": "Q_VISUAL_CHANGE",
+      "text": "Bạn có bị nhìn mờ, hoa mắt hoặc thay đổi thị lực không?",
+      "answerType": "SINGLE_CHOICE",
+      "options": [
+        {
+          "optionCode": "VISUAL_CHANGE_YES",
+          "displayText": "Có"
+        },
+        {
+          "optionCode": "VISUAL_CHANGE_NO",
+          "displayText": "Không"
+        },
+        {
+          "optionCode": "UNSURE",
+          "displayText": "Tôi không chắc"
+        }
+      ],
+      "resolvesSignals": [
+        "VISUAL_DISTURBANCE"
+      ],
+      "resolvesFields": [],
+      "measurement": false,
+      "pivotTo": [],
+      "targetEntities": [
+        "MOTHER"
+      ],
+      "applicableStages": [
+        "PREGNANCY",
+        "POSTPARTUM_MOTHER"
+      ],
+      "applicableIntents": [],
+      "priority": 5,
+      "escalationSignals": [
+        "VISUAL_DISTURBANCE"
+      ],
+      "requiresResolvedTarget": true,
+      "requiresResolvedStage": false,
+      "isTargetClarification": false,
+      "isStageClarification": false,
+      "isIntentClarification": false
+    },
+    {
+      "questionId": "Q_BP_IF_KNOWN",
+      "text": "Nếu bạn có đo huyết áp gần đây, chỉ số là bao nhiêu?",
+      "answerType": "SINGLE_CHOICE",
+      "options": [
+        {
+          "optionCode": "BP_GTE_140_90",
+          "displayText": "Từ 140/90 trở lên"
+        },
+        {
+          "optionCode": "BP_LT_140_90",
+          "displayText": "Dưới 140/90"
+        },
+        {
+          "optionCode": "NO_DEVICE_OR_UNAWARE",
+          "displayText": "Tôi không có thiết bị đo / không rõ"
+        }
+      ],
+      "resolvesSignals": [],
+      "resolvesFields": [
+        "blood_pressure"
+      ],
+      "measurement": true,
+      "pivotTo": [
+        "Q_VISUAL_CHANGE",
+        "Q_EPIGASTRIC_PAIN",
+        "Q_SWELLING"
+      ],
+      "targetEntities": [
+        "MOTHER"
+      ],
+      "applicableStages": [
+        "PREGNANCY",
+        "POSTPARTUM_MOTHER"
+      ],
+      "applicableIntents": [],
+      "priority": 50,
+      "escalationSignals": [],
+      "requiresResolvedTarget": true,
+      "requiresResolvedStage": false,
+      "isTargetClarification": false,
+      "isStageClarification": false,
+      "isIntentClarification": false
+    },
+    {
+      "questionId": "Q_EPIGASTRIC_PAIN",
+      "text": "Bạn có đau vùng trên rốn (vùng thượng vị) hoặc đau dưới bờ sườn phải không?",
+      "answerType": "SINGLE_CHOICE",
+      "options": [
+        {
+          "optionCode": "EPIGASTRIC_YES",
+          "displayText": "Có"
+        },
+        {
+          "optionCode": "EPIGASTRIC_NO",
+          "displayText": "Không"
+        },
+        {
+          "optionCode": "UNSURE",
+          "displayText": "Tôi không chắc"
+        }
+      ],
+      "resolvesSignals": [
+        "EPIGASTRIC_PAIN"
+      ],
+      "resolvesFields": [],
+      "measurement": false,
+      "pivotTo": [],
+      "targetEntities": [
+        "MOTHER"
+      ],
+      "applicableStages": [],
+      "applicableIntents": [],
+      "priority": 50,
+      "escalationSignals": [],
+      "requiresResolvedTarget": true,
+      "requiresResolvedStage": false,
+      "isTargetClarification": false,
+      "isStageClarification": false,
+      "isIntentClarification": false
+    },
+    {
+      "questionId": "Q_SWELLING",
+      "text": "Bạn có bị sưng phù mặt, tay hoặc chân tăng lên gần đây không?",
+      "answerType": "SINGLE_CHOICE",
+      "options": [
+        {
+          "optionCode": "SWELLING_YES",
+          "displayText": "Có"
+        },
+        {
+          "optionCode": "SWELLING_NO",
+          "displayText": "Không"
+        },
+        {
+          "optionCode": "UNSURE",
+          "displayText": "Tôi không chắc"
+        }
+      ],
+      "resolvesSignals": [
+        "SWELLING"
+      ],
+      "resolvesFields": [],
+      "measurement": false,
+      "pivotTo": [],
+      "targetEntities": [
+        "MOTHER"
+      ],
+      "applicableStages": [],
+      "applicableIntents": [],
+      "priority": 50,
+      "escalationSignals": [],
+      "requiresResolvedTarget": true,
+      "requiresResolvedStage": false,
+      "isTargetClarification": false,
+      "isStageClarification": false,
+      "isIntentClarification": false
+    },
+    {
+      "questionId": "Q_PAIN_SEVERITY",
+      "text": "Mức độ đau của bạn hiện tại thế nào?",
+      "answerType": "SINGLE_CHOICE",
+      "options": [
+        {
+          "optionCode": "PAIN_NONE",
+          "displayText": "Không đau"
+        },
+        {
+          "optionCode": "PAIN_MILD",
+          "displayText": "Đau nhẹ"
+        },
+        {
+          "optionCode": "PAIN_MODERATE",
+          "displayText": "Đau vừa"
+        },
+        {
+          "optionCode": "PAIN_SEVERE",
+          "displayText": "Đau dữ dội"
+        },
+        {
+          "optionCode": "UNSURE",
+          "displayText": "Tôi không chắc"
+        }
+      ],
+      "resolvesSignals": [],
+      "resolvesFields": [
+        "pain_severity"
+      ],
+      "measurement": false,
+      "pivotTo": [],
+      "targetEntities": [
+        "MOTHER",
+        "BABY"
+      ],
+      "applicableStages": [],
+      "applicableIntents": [],
+      "priority": 40,
+      "escalationSignals": [],
+      "requiresResolvedTarget": true,
+      "requiresResolvedStage": false,
+      "isTargetClarification": false,
+      "isStageClarification": false,
+      "isIntentClarification": false
+    },
+    {
+      "questionId": "Q_PREGNANCY_TEST",
+      "text": "Bạn đã thử thai hoặc có kỳ kinh cuối vào khoảng thời gian nào?",
+      "answerType": "SINGLE_CHOICE",
+      "options": [
+        {
+          "optionCode": "TEST_POSITIVE",
+          "displayText": "Đã thử và dương tính"
+        },
+        {
+          "optionCode": "TEST_NEGATIVE",
+          "displayText": "Đã thử và âm tính"
+        },
+        {
+          "optionCode": "TEST_NOT_DONE",
+          "displayText": "Chưa thử"
+        },
+        {
+          "optionCode": "UNSURE",
+          "displayText": "Tôi không chắc"
+        }
+      ],
+      "resolvesSignals": [],
+      "resolvesFields": [
+        "possible_pregnancy",
+        "last_menstrual_period_or_test"
+      ],
+      "measurement": false,
+      "pivotTo": [],
+      "targetEntities": [
+        "MOTHER"
+      ],
+      "applicableStages": [
+        "POSSIBLE_PREGNANCY"
+      ],
+      "applicableIntents": [],
+      "priority": 50,
+      "escalationSignals": [],
+      "requiresResolvedTarget": true,
+      "requiresResolvedStage": false,
+      "isTargetClarification": false,
+      "isStageClarification": false,
+      "isIntentClarification": false
+    },
+    {
+      "questionId": "Q_GESTATIONAL_WEEK",
+      "text": "Bạn đang mang thai khoảng bao nhiêu tuần?",
+      "answerType": "NUMBER",
+      "options": [
+        {
+          "optionCode": "UNSURE",
+          "displayText": "Tôi không chắc"
+        }
+      ],
+      "resolvesSignals": [],
+      "resolvesFields": [
+        "gestational_week"
+      ],
+      "measurement": false,
+      "pivotTo": [],
+      "targetEntities": [
+        "MOTHER"
+      ],
+      "applicableStages": [
+        "PREGNANCY"
+      ],
+      "applicableIntents": [],
+      "priority": 50,
+      "escalationSignals": [],
+      "requiresResolvedTarget": true,
+      "requiresResolvedStage": false,
+      "isTargetClarification": false,
+      "isStageClarification": false,
+      "isIntentClarification": false
+    },
+    {
+      "questionId": "Q_POSTPARTUM_DAY",
+      "text": "Bạn sinh em bé được bao nhiêu ngày rồi?",
+      "answerType": "NUMBER",
+      "options": [
+        {
+          "optionCode": "UNSURE",
+          "displayText": "Tôi không chắc"
+        }
+      ],
+      "resolvesSignals": [],
+      "resolvesFields": [
+        "postpartum_day"
+      ],
+      "measurement": false,
+      "pivotTo": [],
+      "targetEntities": [
+        "MOTHER"
+      ],
+      "applicableStages": [
+        "POSTPARTUM_MOTHER"
+      ],
+      "applicableIntents": [],
+      "priority": 50,
+      "escalationSignals": [],
+      "requiresResolvedTarget": true,
+      "requiresResolvedStage": false,
+      "isTargetClarification": false,
+      "isStageClarification": false,
+      "isIntentClarification": false
+    },
+    {
+      "questionId": "Q_CLARIFY_TARGET_ENTITY",
+      "text": "Thông tin bạn vừa mô tả là tình trạng của ai?",
+      "answerType": "SINGLE_CHOICE",
+      "options": [
+        {
+          "optionCode": "CLARIFY_TARGET_MOTHER",
+          "displayText": "Thông tin này là tình trạng của Mẹ"
+        },
+        {
+          "optionCode": "CLARIFY_TARGET_BABY",
+          "displayText": "Thông tin này là tình trạng của Bé"
+        },
+        {
+          "optionCode": "CLARIFY_TARGET_BOTH",
+          "displayText": "Cả Mẹ và Bé đều có triệu chứng"
+        }
+      ],
+      "resolvesSignals": [],
+      "resolvesFields": [
+        "target_entity"
+      ],
+      "measurement": false,
+      "pivotTo": [],
+      "targetEntities": [
+        "MOTHER",
+        "BABY"
+      ],
+      "applicableStages": [],
+      "applicableIntents": [],
+      "priority": 0,
+      "escalationSignals": [],
+      "requiresResolvedTarget": false,
+      "requiresResolvedStage": false,
+      "isTargetClarification": true,
+      "isStageClarification": false,
+      "isIntentClarification": false
+    },
+    {
+      "questionId": "Q_CLARIFY_TARGET_FIRST",
+      "text": "Bạn muốn đánh giá cho ai trước? Mỗi lượt đánh giá chỉ dành cho một người.",
+      "answerType": "SINGLE_CHOICE",
+      "options": [
+        {
+          "optionCode": "CLARIFY_TARGET_MOTHER",
+          "displayText": "Đánh giá cho Mẹ trước"
+        },
+        {
+          "optionCode": "CLARIFY_TARGET_BABY",
+          "displayText": "Đánh giá cho Bé trước"
+        }
+      ],
+      "resolvesSignals": [],
+      "resolvesFields": [
+        "target_entity"
+      ],
+      "measurement": false,
+      "pivotTo": [],
+      "targetEntities": [
+        "MOTHER",
+        "BABY"
+      ],
+      "applicableStages": [],
+      "applicableIntents": [],
+      "priority": 0,
+      "escalationSignals": [],
+      "requiresResolvedTarget": false,
+      "requiresResolvedStage": false,
+      "isTargetClarification": true,
+      "isStageClarification": false,
+      "isIntentClarification": false
+    },
+    {
+      "questionId": "Q_CLARIFY_INTENT",
+      "text": "Bạn đang muốn CareBridge hỗ trợ điều gì?",
+      "answerType": "SINGLE_CHOICE",
+      "options": [
+        {
+          "optionCode": "INTENT_SYMPTOM_TRIAGE",
+          "displayText": "Tôi đang có triệu chứng và muốn được định hướng"
+        },
+        {
+          "optionCode": "INTENT_GENERAL_INFO",
+          "displayText": "Tôi muốn tìm hiểu thông tin chung"
+        },
+        {
+          "optionCode": "INTENT_SOURCE_LOOKUP",
+          "displayText": "Tôi muốn biết nguồn tham khảo"
+        }
+      ],
+      "resolvesSignals": [],
+      "resolvesFields": [
+        "intent"
+      ],
+      "measurement": false,
+      "pivotTo": [],
+      "targetEntities": [
+        "MOTHER",
+        "BABY"
+      ],
+      "applicableStages": [],
+      "applicableIntents": [],
+      "priority": 1,
+      "escalationSignals": [],
+      "requiresResolvedTarget": false,
+      "requiresResolvedStage": false,
+      "isTargetClarification": false,
+      "isStageClarification": false,
+      "isIntentClarification": true
+    },
+    {
+      "questionId": "Q_BABY_AGE_MONTHS",
+      "text": "Bé hiện được bao nhiêu tháng tuổi?",
+      "answerType": "NUMBER",
+      "options": [
+        {
+          "optionCode": "UNSURE",
+          "displayText": "Tôi không chắc"
+        }
+      ],
+      "resolvesSignals": [],
+      "resolvesFields": [
+        "baby_age_months"
+      ],
+      "measurement": false,
+      "pivotTo": [],
+      "targetEntities": [
+        "BABY"
+      ],
+      "applicableStages": [],
+      "applicableIntents": [],
+      "priority": 5,
+      "escalationSignals": [],
+      "requiresResolvedTarget": true,
+      "requiresResolvedStage": false,
+      "isTargetClarification": false,
+      "isStageClarification": false,
+      "isIntentClarification": false
+    }
+  ]
+}

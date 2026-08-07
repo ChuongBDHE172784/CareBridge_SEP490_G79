@@ -11,6 +11,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,7 +19,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "reminder_schedules")
@@ -46,6 +49,18 @@ public class ReminderSchedule {
     @Enumerated(EnumType.STRING)
     @Column(name = "recurrence", nullable = false, length = 20)
     private ReminderScheduleRecurrence recurrence = ReminderScheduleRecurrence.NONE;
+
+    /**
+     * Configured local times, in display and execution order.
+     *
+     * <p>Replaces the reminder_schedule_times child table. Order is meaningful and
+     * is deliberately not constrained by the database; element, duplicate and size
+     * rules live in {@code carebridge_validate_reminder_local_times}.
+     */
+    @Builder.Default
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "local_times", nullable = false, columnDefinition = "time[]")
+    private LocalTime[] localTimes = new LocalTime[0];
 
     @Column(name = "start_date", nullable = false)
     private LocalDate startDate;

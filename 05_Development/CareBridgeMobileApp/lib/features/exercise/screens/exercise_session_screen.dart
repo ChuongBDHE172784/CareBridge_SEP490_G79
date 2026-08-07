@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/network/api_client.dart';
 import '../models/posture_event_model.dart';
 import '../services/exercise_service.dart';
+import '../services/exercise_feedback_analyzer.dart';
 import '../services/posture_camera_source.dart';
 import '../services/posture_event_streamer.dart';
 import 'exercise_session_result_screen.dart';
@@ -70,6 +71,11 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
   String? _cameraError;
   bool _cameraStarted = false;
   bool _cameraStarting = false;
+  bool _pauseChanging = false;
+  late final ExerciseFeedbackAnalyzer _feedbackAnalyzer;
+  ExerciseFeedbackMetrics? _latestFeedbackMetrics;
+  DateTime? _lastMetricsUiUpdateAt;
+  bool _hasValidMetricsFrame = false;
 
   int get _totalSeconds => widget.durationMinutes * 60;
 
@@ -82,6 +88,10 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
   @override
   void initState() {
     super.initState();
+    _feedbackAnalyzer = ExerciseFeedbackAnalyzer(
+      exerciseId: widget.exerciseId,
+      exerciseTitle: widget.exerciseTitle,
+    );
     _isPaused = widget.initialStatus.toUpperCase() == 'PAUSED';
     _elapsedSeconds = DateTime.now()
         .difference(widget.initialStartedAt)
@@ -172,6 +182,7 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
       _postureGood = false;
       _postureStatus = 'Đang kết nối camera...';
     });
+    _cameraSource?.setFeedbackError(false);
     await _startCameraSource();
   }
 
@@ -194,9 +205,21 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
     )..start();
     _postureStreamer = streamer;
     _postureFramesSubscription = frames.listen((rawFrame) {
-      if (_isPaused || _isCompleting) return;
+      if (!mounted || _isPaused || _isCompleting) return;
       final landmarks = _parseLandmarks(rawFrame);
       if (landmarks.isEmpty) return;
+      final metrics = _feedbackAnalyzer.analyze(landmarks);
+      if (!mounted || _isPaused || _isCompleting) return;
+      _latestFeedbackMetrics = metrics;
+      _hasValidMetricsFrame =
+          _hasValidMetricsFrame || metrics.hasVisibleLandmarks;
+      final now = DateTime.now();
+      final lastUiUpdate = _lastMetricsUiUpdateAt;
+      if (lastUiUpdate == null ||
+          now.difference(lastUiUpdate) >= const Duration(milliseconds: 100)) {
+        _lastMetricsUiUpdateAt = now;
+        setState(() {});
+      }
       streamer.push(
         eventTimeMs: DateTime.now().millisecondsSinceEpoch,
         landmarks: landmarks,
@@ -219,17 +242,22 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
   }
 
   void _applyPostureFeedback(PostureFeedback feedback) {
-    if (!mounted) return;
+    if (!mounted || _isPaused || _isCompleting) return;
     final severity = feedback.severity.toUpperCase();
     final warning =
         severity == 'WARNING' ||
         severity == 'CRITICAL' ||
         feedback.postureCode == 'MODEL_UNAVAILABLE';
+    _feedbackAnalyzer.applyFeedback(feedback);
+    _cameraSource?.setFeedbackError(warning);
     setState(() {
       _postureGood = !warning;
+      // postureCode is a machine identifier (GOOD_FORM, MODEL_UNAVAILABLE, a raw
+      // model label): never show it. An empty feedbackText means the server-owned
+      // feedback level is SILENT, so only the overlay colour conveys the result.
       _postureStatus = feedback.feedbackText?.trim().isNotEmpty == true
           ? feedback.feedbackText!.trim()
-          : feedback.postureCode;
+          : 'Đang theo dõi tư thế...';
     });
   }
 
@@ -252,17 +280,33 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
   }
 
   Future<void> _togglePause() async {
-    setState(() => _isPaused = !_isPaused);
+    if (_pauseChanging || _isCompleting) return;
+    final pausing = !_isPaused;
+    _pauseChanging = true;
+    if (mounted) {
+      setState(() => _isPaused = pausing);
+    }
+    final streamer = _postureStreamer;
     try {
-      if (_isPaused) {
+      // Invalidate any in-flight response before a pause can be followed by a
+      // resume.  PostureEventStreamer suppresses callbacks after stop(); the
+      // same instance can be started again once the server accepts resume.
+      if (pausing) {
+        await streamer?.stop();
         await ExerciseService.instance.pauseSession(widget.sessionId);
       } else {
         await ExerciseService.instance.resumeSession(widget.sessionId);
+        if (!_isCompleting) streamer?.start();
       }
     } on ApiException {
-      if (mounted) {
-        setState(() => _isPaused = !_isPaused);
+      if (pausing && !_isCompleting) {
+        streamer?.start();
       }
+      if (mounted) {
+        setState(() => _isPaused = !pausing);
+      }
+    } finally {
+      _pauseChanging = false;
     }
   }
 
@@ -301,12 +345,14 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
 
   Future<void> _completeSession() async {
     if (_isCompleting) return;
+    if (mounted) {
+      setState(() => _isCompleting = true);
+    }
     _postureStreamer?.dispose();
     await _postureFramesSubscription?.cancel();
     _postureFramesSubscription = null;
     await _cameraSource?.stop();
     _cameraStarted = false;
-    setState(() => _isCompleting = true);
     try {
       final result = await ExerciseService.instance.completeSession(
         widget.sessionId,
@@ -314,7 +360,12 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (_) => ExerciseSessionResultScreen(result: result),
+          builder: (_) => ExerciseSessionResultScreen(
+            result: result,
+            feedbackSnapshot: _hasValidMetricsFrame
+                ? _feedbackAnalyzer.snapshot
+                : null,
+          ),
         ),
       );
     } on ApiException {
@@ -360,6 +411,8 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
                     _buildProgressCard(progress),
                     const SizedBox(height: 16),
                     _buildMediaCard(),
+                    if (_latestFeedbackMetrics != null)
+                      _buildMetricsCard(_latestFeedbackMetrics!),
                     const SizedBox(height: 24),
                   ],
                 ),
@@ -370,6 +423,144 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildMetricsCard(ExerciseFeedbackMetrics metrics) {
+    // The upstream plank detector is a hold/error classifier, not a
+    // repetition/angle detector. Keep the screen from presenting a misleading
+    // empty metric card for it.
+    if (!metrics.isSupported ||
+        metrics.exercise == ExerciseFeedbackExercise.plank) {
+      return const SizedBox.shrink();
+    }
+    final angleEntries = metrics.angles.entries.toList(growable: false);
+    final isBicep = metrics.exercise == ExerciseFeedbackExercise.bicepCurl;
+    final countLabel = isBicep ? 'SỐ LẦN (TAY)' : 'SỐ LẦN';
+    final count = metrics.repetitions;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _surfaceLowest,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _surfaceVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.insights_outlined, size: 18, color: _primary),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Chỉ số realtime',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: _onSurface,
+                  ),
+                ),
+              ),
+              if (metrics.feedbackError)
+                const Icon(
+                  Icons.warning_amber_rounded,
+                  size: 18,
+                  color: Colors.orange,
+                ),
+            ],
+          ),
+          if (!metrics.hasVisibleLandmarks) ...[
+            const SizedBox(height: 8),
+            const Text(
+              'Đưa đủ khớp vào khung hình để xem chỉ số.',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 12,
+                color: _onSurfaceVariant,
+              ),
+            ),
+          ] else ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 10,
+              runSpacing: 8,
+              children: [
+                _metricChip(label: countLabel, value: '$count'),
+                if (isBicep) ...[
+                  _metricChip(
+                    label: 'TAY TRÁI',
+                    value: '${metrics.leftBicepRepetitions}',
+                  ),
+                  _metricChip(
+                    label: 'TAY PHẢI',
+                    value: '${metrics.rightBicepRepetitions}',
+                  ),
+                ],
+                for (final entry in angleEntries)
+                  _metricChip(
+                    label: _angleLabel(entry.key),
+                    value: '${entry.value.round()}°',
+                  ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _metricChip({required String label, required String value}) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: _canvas,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 10,
+                letterSpacing: 0.4,
+                color: _onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              value,
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: _primary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _angleLabel(String key) {
+    switch (key) {
+      case 'left_elbow':
+        return 'KHUỶU TRÁI';
+      case 'right_elbow':
+        return 'KHUỶU PHẢI';
+      case 'left_knee':
+        return 'GỐI TRÁI';
+      case 'right_knee':
+        return 'GỐI PHẢI';
+      default:
+        return 'GÓC';
+    }
   }
 
   Widget _buildAppBar() {
@@ -722,7 +913,7 @@ class _ExerciseSessionScreenState extends State<ExerciseSessionScreen> {
               shape: const CircleBorder(),
               child: InkWell(
                 customBorder: const CircleBorder(),
-                onTap: _isCompleting ? null : _togglePause,
+                onTap: _isCompleting || _pauseChanging ? null : _togglePause,
                 child: _isCompleting
                     ? const Padding(
                         padding: EdgeInsets.all(20),

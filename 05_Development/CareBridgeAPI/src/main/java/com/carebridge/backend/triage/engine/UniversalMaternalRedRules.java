@@ -11,8 +11,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Clinically approved life-threatening indicators shared by all maternal stages.
- * Stage-specific pregnancy thresholds remain outside this helper until separately approved.
+ * Legacy deterministic life-threatening indicators shared by all maternal stages.
+ * They are development-reviewed but not clinically validated; stage-specific pregnancy
+ * thresholds remain outside this helper until separately reviewed.
  */
 final class UniversalMaternalRedRules {
 

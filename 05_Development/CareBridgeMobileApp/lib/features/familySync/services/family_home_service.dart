@@ -303,6 +303,7 @@ class FamilyHomeMember {
     required this.memberId,
     required this.userId,
     required this.displayName,
+    this.avatarUrl,
     required this.systemRole,
     required this.relationshipRole,
     required this.customRelationshipRole,
@@ -312,6 +313,7 @@ class FamilyHomeMember {
   final String memberId;
   final String userId;
   final String displayName;
+  final String? avatarUrl;
   final String? systemRole;
   final String? relationshipRole;
   final String? customRelationshipRole;
@@ -322,6 +324,7 @@ class FamilyHomeMember {
       memberId: _requiredString(json, 'memberId'),
       userId: _requiredString(json, 'userId'),
       displayName: _requiredString(json, 'displayName'),
+      avatarUrl: _optionalString(json, 'avatarUrl') ?? _optionalString(json, 'profilePictureUrl'),
       systemRole: _optionalString(json, 'systemRole'),
       relationshipRole: _optionalString(json, 'relationshipRole'),
       customRelationshipRole: _optionalString(json, 'customRelationshipRole'),

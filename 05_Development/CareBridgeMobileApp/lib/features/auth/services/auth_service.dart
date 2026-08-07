@@ -275,16 +275,6 @@ class AuthService {
     return auth;
   }
 
-  Future<void> submitAccountLockAppeal({
-    required String appealToken,
-    required String reason,
-  }) async {
-    await _postRequest('/api/v1/auth/lock-appeals', {
-      'appealToken': appealToken,
-      'reason': reason,
-    });
-  }
-
   // UC-02: Verify OTP — completes login/registration and persists tokens
   Future<AuthResponse> verifyOtp({
     String? email,
@@ -364,17 +354,15 @@ class AuthService {
   }
 
   // UC-15: Deactivate account — all sessions revoked, data preserved.
-  Future<void> deactivateAccount(String confirmPassword) async {
+  // This is the only account-closure path; the 30-day deletion queue (UC-156)
+  // was retired together with the account_deletion_requests table.
+  Future<void> deactivateAccount(String confirmPassword, {String? reason}) async {
     await apiDelete(
       '/api/v1/auth/deactivate',
-      body: {'confirmPassword': confirmPassword},
+      body: {
+        'confirmPassword': confirmPassword,
+        if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
+      },
     );
-  }
-
-  // UC-156: Request account deletion — 30-day grace period before permanent deletion.
-  Future<void> requestAccountDeletion(String confirmPassword) async {
-    await apiPost('/api/v1/account/deletion-request', {
-      'confirmPassword': confirmPassword,
-    });
   }
 }

@@ -2,6 +2,7 @@ package com.carebridge.backend.common.config;
 
 import com.carebridge.backend.ai.service.GeminiExtractionClient;
 import com.carebridge.backend.triage.RiskLevel;
+import com.carebridge.backend.triage.exception.AiOutcomeUnavailableException;
 import com.carebridge.backend.triage.service.GeminiTriageClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,8 +32,11 @@ public class DevPortStubConfiguration {
     @Bean
     public GeminiTriageClient geminiTriageClient() {
         return constrainedPrompt -> {
-            log.warn("[DEV-STUB] GeminiTriageClient.analyzeSymptoms called — returning GREEN stub");
-            return new GeminiTriageClient.AiTriageResult(RiskLevel.GREEN, "Dev stub — AI guidance only, not a medical diagnosis.");
+            // Used to return GREEN, which made a missing integration look like a reassuring
+            // triage result. A stub must never be able to produce a colour.
+            log.warn("[DEV-STUB] GeminiTriageClient.analyzeSymptoms called — failing closed");
+            throw new AiOutcomeUnavailableException(
+                    "Dev stub cannot produce a triage outcome; callers must degrade to NEEDS_MORE_INFO");
         };
     }
 

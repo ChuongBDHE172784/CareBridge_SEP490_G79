@@ -13,9 +13,6 @@ Desktop.ini
 .env
 .env.*
 !.env.example
-# Compose files rendered by 05_Development/Deployment/render-standalone-compose.py.
-# They carry live credentials inline so they can be hand-delivered to a server.
-*.standalone.yml
 # Firebase CLI local artifacts — .firebaserc identifies a specific project, never commit
 # the real one; 05_Development/Firebase/.firebaserc.example is the template to copy from.
 05_Development/Firebase/.firebaserc
@@ -41,6 +38,8 @@ __pycache__/
 
 # Dart/Flutter local app data
 .dart_localappdata/
+.dart_tool/
+.dart-tool/
 *.py[cod]
 *$py.class
 .pytest_cache/
@@ -161,3 +160,6 @@ outputs/maternal-health-metric-target-business-flow-2026-07-30.md
 outputs/notification-status-audit-2026-07-29.md
 
 CLAUDE.md
+
+# External cloned repositories
+Exercise-Correction/

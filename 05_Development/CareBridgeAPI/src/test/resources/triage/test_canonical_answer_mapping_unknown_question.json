@@ -1,0 +1,15 @@
+{
+  "$comment": "TEST FIXTURE ONLY. A mapping that names a question the catalogue does not contain, proving the mapper refuses to start rather than silently never firing.",
+  "contractVersion": "1.0.0",
+  "mappingRuleVersion": "TEST_MAPPING_BROKEN",
+  "reviewStatus": "TEST_FIXTURE",
+  "mappings": [
+    {
+      "questionId": "Q_THIS_QUESTION_DOES_NOT_EXIST",
+      "optionCode": "ANYTHING",
+      "signalCode": "DIZZINESS",
+      "presence": "PRESENT",
+      "current": true
+    }
+  ]
+}

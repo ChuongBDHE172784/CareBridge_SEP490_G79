@@ -14,6 +14,7 @@ import com.carebridge.backend.baby.policy.BabyAccessPolicy;
 import com.carebridge.backend.baby.repository.BabyProfileRepository;
 import com.carebridge.backend.baby.service.IBabyService;
 import com.carebridge.backend.common.exception.BusinessException;
+import com.carebridge.backend.vaccination.service.IVaccinationBookService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -30,6 +31,7 @@ public class BabyServiceImpl implements IBabyService {
     private final BabyProfileRepository babyRepository;
     private final BabyAccessPolicy accessPolicy;
     private final AuditService auditService;
+    private final IVaccinationBookService vaccinationBookService;
 
     @Override
     public CreateBabyProfileResponse createBabyProfile(CreateBabyProfileRequest request, UUID callerId) {
@@ -44,6 +46,11 @@ public class BabyServiceImpl implements IBabyService {
                 .build();
 
         BabyProfile saved = babyRepository.save(profile);
+
+        // MF-03: a newly registered baby gets the whole expected vaccination book straight
+        // away, projected from the catalogue onto the birth date. Same transaction as the
+        // profile insert so a baby never exists with a half-written book.
+        vaccinationBookService.initializeBook(saved);
 
         // C3: emit audit event
         auditService.log(AuditAction.BABY_PROFILE_CREATED, callerId,
@@ -133,6 +140,8 @@ public class BabyServiceImpl implements IBabyService {
         }
 
         // C3: apply non-null mutable fields
+        boolean birthDateChanged = request.getBirthDate() != null
+                && !request.getBirthDate().equals(profile.getBirthDate());
         if (request.getNickname() != null) profile.setNickname(request.getNickname());
         if (request.getBirthDate() != null) profile.setBirthDate(request.getBirthDate());
         if (request.getGender() != null) profile.setGender(request.getGender());
@@ -140,6 +149,13 @@ public class BabyServiceImpl implements IBabyService {
         if (request.getBirthLengthCm() != null) profile.setBirthLengthCm(request.getBirthLengthCm());
 
         BabyProfile saved = babyRepository.save(profile);
+
+        // MF-03: expected dose dates are derived from the birth date, so a corrected birth
+        // date has to re-project the still-SCHEDULED part of the book. Doses the mother has
+        // already completed, postponed or deleted keep the dates she chose.
+        if (birthDateChanged) {
+            vaccinationBookService.realignBook(saved);
+        }
 
         // C4: audit
         auditService.log(AuditAction.BABY_PROFILE_UPDATED, callerId,

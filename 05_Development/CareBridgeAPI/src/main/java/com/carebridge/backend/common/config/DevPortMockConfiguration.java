@@ -1,6 +1,7 @@
 package com.carebridge.backend.common.config;
 
 import com.carebridge.backend.ai.service.GeminiExtractionClient;
+import com.carebridge.backend.triage.exception.AiOutcomeUnavailableException;
 import com.carebridge.backend.triage.service.GeminiTriageClient;
 import com.carebridge.backend.triage.RiskLevel;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -26,9 +27,12 @@ public class DevPortMockConfiguration {
     @Bean
     @ConditionalOnMissingBean(GeminiTriageClient.class)
     public GeminiTriageClient geminiTriageClient() {
-        return prompt -> new GeminiTriageClient.AiTriageResult(
-                RiskLevel.GREEN, "Mock disclaimer: Always consult a professional."
-        );
+        // Used to return GREEN. A mock must never be able to produce a triage colour —
+        // an absent integration is "cannot determine", not "low risk".
+        return prompt -> {
+            throw new AiOutcomeUnavailableException(
+                    "Mock GeminiTriageClient cannot produce a triage outcome");
+        };
     }
 
     // Emergency LocationConsentPort, FamilyMemberPort, and

@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:untitled/core/auth/auth_state.dart';
-import 'package:untitled/core/network/api_client.dart';
 import 'package:untitled/features/directChat/models/direct_conversation.dart';
 import 'package:untitled/features/directChat/models/expert_directory_item.dart';
 import 'package:untitled/features/directChat/services/direct_chat_service.dart';
@@ -60,13 +59,6 @@ class _FakeExpertHomeApi implements ExpertHomeApi {
       };
     }
     if (path.contains('assigned?')) return {'data': <dynamic>[]};
-    if (path.contains('support-requests/open')) {
-      return {
-        'data': [
-          {'description': 'Hỗ trợ tại nhà', 'supportType': 'ROUTINE'},
-        ],
-      };
-    }
     if (path.contains('/community/questions')) {
       return {
         'data': [
@@ -172,77 +164,17 @@ void main() {
   );
 
   testWidgets(
-    'online toggle waits for server confirmation and preserves snapshot fields',
+    'online toggle is removed from the Expert dashboard header',
     (tester) async {
-      final api = _FakeExpertHomeApi()..patchCompleter = Completer<dynamic>();
+      final api = _FakeExpertHomeApi();
       ExpertHomeService.instance = ExpertHomeService(api: api);
 
       await tester.pumpWidget(const MaterialApp(home: ExpertAppHomeScreen()));
       await tester.pumpAndSettle();
-      expect(find.text('Hỗ trợ tại nhà'), findsOneWidget);
-      expect(find.byIcon(Icons.close_rounded), findsOneWidget);
 
-      await tester.tap(find.byKey(const Key('expert-online-toggle')));
-      await tester.pump();
-
-      expect(api.lastPatchBody, {'online': true});
-      expect(find.byIcon(Icons.check_rounded), findsNothing);
-      expect(find.text('Hỗ trợ tại nhà'), findsOneWidget);
-
-      api.patchCompleter!.complete({'message': 'Đã bật từ máy chủ'});
-      await tester.pumpAndSettle();
-
-      expect(find.byIcon(Icons.check_rounded), findsOneWidget);
-      expect(find.text('Đã bật từ máy chủ'), findsOneWidget);
-      expect(find.text('Hỗ trợ tại nhà'), findsOneWidget);
+      expect(find.byKey(const Key('expert-online-toggle')), findsNothing);
+      expect(find.text('Trực tuyến'), findsNothing);
+      expect(find.text('Câu hỏi mới cần giải đáp'), findsOneWidget);
     },
   );
-
-  testWidgets(
-    'failed online toggle stays unchanged and explains required location action',
-    (tester) async {
-      final api = _FakeExpertHomeApi()
-        ..patchError = ApiException(
-          409,
-          '{"message":"Active location share is required"}',
-        );
-      ExpertHomeService.instance = ExpertHomeService(api: api);
-
-      await tester.pumpWidget(const MaterialApp(home: ExpertAppHomeScreen()));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('expert-online-toggle')));
-      await tester.pumpAndSettle();
-
-      expect(find.byIcon(Icons.close_rounded), findsOneWidget);
-      expect(find.byIcon(Icons.check_rounded), findsNothing);
-      expect(
-        find.text(
-          'Hãy bật chia sẻ vị trí có thời hạn trước khi chuyển sang Trực tuyến.',
-        ),
-        findsOneWidget,
-      );
-    },
-  );
-
-  testWidgets('online toggle uses the status confirmed by the server', (
-    tester,
-  ) async {
-    final api = _FakeExpertHomeApi()..patchCompleter = Completer<dynamic>();
-    ExpertHomeService.instance = ExpertHomeService(api: api);
-
-    await tester.pumpWidget(const MaterialApp(home: ExpertAppHomeScreen()));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('expert-online-toggle')));
-    await tester.pump();
-
-    api.patchCompleter!.complete({
-      'message': 'Máy chủ giữ trạng thái Ngoại tuyến',
-      'data': {'availabilityStatus': 'OFFLINE'},
-    });
-    await tester.pumpAndSettle();
-
-    expect(find.byIcon(Icons.close_rounded), findsOneWidget);
-    expect(find.byIcon(Icons.check_rounded), findsNothing);
-    expect(find.text('Máy chủ giữ trạng thái Ngoại tuyến'), findsOneWidget);
-  });
 }

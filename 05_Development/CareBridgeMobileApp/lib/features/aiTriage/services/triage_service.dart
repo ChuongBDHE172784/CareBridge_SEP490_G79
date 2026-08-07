@@ -19,6 +19,8 @@ typedef TriagePostRequest =
 typedef TriageContinuationPersistenceFailureHandler =
     void Function(Object error, StackTrace stackTrace);
 
+/// LEGACY_V1_USER_FACING. Keep until V2 completes DB-backed shadow/E2E and rollback sign-off.
+/// New internal V2 code must use [TriageV2Service], not extend this response contract.
 class TriageService implements TriageContinuationGateway {
   TriageService({
     TriageContinuationStore? continuationStore,

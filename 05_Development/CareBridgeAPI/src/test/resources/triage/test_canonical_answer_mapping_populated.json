@@ -1,0 +1,23 @@
+{
+  "$comment": "TEST FIXTURE ONLY. Proves the mapper mechanism works once entries exist. This is not a reviewed clinical mapping and must never be loaded by production code.",
+  "contractVersion": "1.0.0",
+  "mappingRuleVersion": "TEST_MAPPING_V1",
+  "reviewStatus": "TEST_FIXTURE",
+  "unmappedAnswerBehaviour": "REJECT_AS_UNSUPPORTED_MAPPING",
+  "mappings": [
+    {
+      "questionId": "Q_DIZZINESS",
+      "optionCode": "DIZZINESS_YES",
+      "signalCode": "DIZZINESS",
+      "presence": "PRESENT",
+      "current": true
+    },
+    {
+      "questionId": "Q_DIZZINESS",
+      "optionCode": "DIZZINESS_NO",
+      "signalCode": "DIZZINESS",
+      "presence": "ABSENT",
+      "current": true
+    }
+  ]
+}

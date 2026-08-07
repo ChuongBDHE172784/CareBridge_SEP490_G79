@@ -1,7 +1,5 @@
 package com.carebridge.backend.community.service;
 
-import com.carebridge.backend.community.entity.CommunityProfile;
-import com.carebridge.backend.community.repository.CommunityProfileRepository;
 import com.carebridge.backend.security.repository.UserRepository;
 import java.util.Collection;
 import java.util.HashMap;
@@ -13,13 +11,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 // Cascade priority for the name shown next to a community post/answer:
-// CommunityProfile.displayName (public community profile) -> User.name (account full
-// name) -> null (caller applies the final "Người dùng"/"Thành viên" fallback text).
+// User.displayName -> User.name -> null (caller applies final fallback text).
 @Component
 @RequiredArgsConstructor
 public class CommunityAuthorDisplayResolver {
 
-    private final CommunityProfileRepository communityProfileRepository;
     private final UserRepository userRepository;
 
     public String resolve(UUID authorId) {
@@ -36,18 +32,15 @@ public class CommunityAuthorDisplayResolver {
         }
 
         Map<UUID, String> names = new HashMap<>();
-        communityProfileRepository.findAllByUserIdIn(ids).forEach(p -> putIfPresent(names, p.getUserId(), p.getDisplayName()));
-
-        Set<UUID> missing = missingFrom(ids, names);
-        if (!missing.isEmpty()) {
-            userRepository.findAllById(missing).forEach(u -> putIfPresent(names, u.getId(), u.getName()));
-        }
+        userRepository.findAllById(ids).forEach(u -> {
+            String name = u.getDisplayName();
+            if (name == null || name.isBlank()) {
+                name = u.getName();
+            }
+            putIfPresent(names, u.getId(), name);
+        });
 
         return names;
-    }
-
-    private static Set<UUID> missingFrom(Set<UUID> ids, Map<UUID, String> resolved) {
-        return ids.stream().filter(id -> !resolved.containsKey(id)).collect(Collectors.toSet());
     }
 
     private static void putIfPresent(Map<UUID, String> names, UUID userId, String displayName) {

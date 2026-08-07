@@ -7,7 +7,7 @@ import com.carebridge.backend.carejourney.entity.BabyDailyLog;
 import com.carebridge.backend.carejourney.entity.BabyDailyLogStatus;
 import com.carebridge.backend.carejourney.entity.GrowthMeasurement;
 import com.carebridge.backend.carejourney.repository.BabyDailyLogRepository;
-import com.carebridge.backend.carejourney.repository.GrowthMeasurementRepository;
+import com.carebridge.backend.carejourney.repository.GrowthMeasurementStore;
 import com.carebridge.backend.family.entity.CareGroup;
 import com.carebridge.backend.family.entity.CareGroupMember;
 import com.carebridge.backend.family.entity.CareGroupStatus;
@@ -48,7 +48,7 @@ class BabyCareSecurityIntegrationTest extends AbstractPostgresIntegrationTest {
     @Autowired private UserRepository userRepository;
     @Autowired private BabyProfileRepository babyProfileRepository;
     @Autowired private BabyDailyLogRepository babyDailyLogRepository;
-    @Autowired private GrowthMeasurementRepository growthMeasurementRepository;
+    @Autowired private GrowthMeasurementStore growthMeasurementStore;
     @Autowired private CareGroupRepository careGroupRepository;
     @Autowired private CareGroupMemberRepository memberRepository;
     @Autowired private JwtTokenProvider jwtTokenProvider;
@@ -141,7 +141,7 @@ class BabyCareSecurityIntegrationTest extends AbstractPostgresIntegrationTest {
 
     @Test
     void growthChildIdFromBabyB_cannotBeMutatedThroughBabyAPath() throws Exception {
-        GrowthMeasurement measurementB = growthMeasurementRepository.saveAndFlush(GrowthMeasurement.builder()
+        GrowthMeasurement measurementB = growthMeasurementStore.save(GrowthMeasurement.builder()
                 .babyId(babyB.getId())
                 .measuredDate(LocalDate.of(2026, 7, 1))
                 .weightKg(new BigDecimal("6.20"))
@@ -155,7 +155,7 @@ class BabyCareSecurityIntegrationTest extends AbstractPostgresIntegrationTest {
                         .content("{\"weightKg\":7.10}"))
                 .andExpect(status().isForbidden());
 
-        assertThat(growthMeasurementRepository.findById(measurementB.getGrowthMeasurementId()))
+        assertThat(growthMeasurementStore.findById(measurementB.getGrowthMeasurementId()))
                 .get()
                 .extracting(GrowthMeasurement::getWeightKg)
                 .isEqualTo(new BigDecimal("6.20"));
@@ -163,7 +163,7 @@ class BabyCareSecurityIntegrationTest extends AbstractPostgresIntegrationTest {
 
     @Test
     void growthFromBabyB_isNotDeletedOrExposedThroughBabyAHistory() throws Exception {
-        GrowthMeasurement measurementB = growthMeasurementRepository.saveAndFlush(GrowthMeasurement.builder()
+        GrowthMeasurement measurementB = growthMeasurementStore.save(GrowthMeasurement.builder()
                 .babyId(babyB.getId())
                 .measuredDate(LocalDate.of(2026, 7, 2))
                 .heightCm(new BigDecimal("61.50"))
@@ -182,7 +182,7 @@ class BabyCareSecurityIntegrationTest extends AbstractPostgresIntegrationTest {
                         .header("Authorization", bearer(ownerA)))
                 .andExpect(status().isForbidden());
 
-        assertThat(growthMeasurementRepository.findById(measurementB.getGrowthMeasurementId()))
+        assertThat(growthMeasurementStore.findById(measurementB.getGrowthMeasurementId()))
                 .get()
                 .extracting(GrowthMeasurement::getDeletedAt)
                 .isNull();

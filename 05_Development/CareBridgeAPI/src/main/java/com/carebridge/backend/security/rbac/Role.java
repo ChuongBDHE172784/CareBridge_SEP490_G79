@@ -7,8 +7,7 @@ public enum Role {
     MODERATOR,
     CONTENT_ADMIN,
     SYSTEM_ADMIN,
-    OPERATIONS,
-    PARTNER;
+    OPERATIONS;
 
     public String getAuthority() {
         return "ROLE_" + name();

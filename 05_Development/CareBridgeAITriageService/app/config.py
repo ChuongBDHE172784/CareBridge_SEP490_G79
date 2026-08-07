@@ -95,6 +95,7 @@ RISK_COLORS = {
 # of truth for medical evidence approval.
 EVIDENCE_REGISTRY_URL = (os.getenv("AI_TRIAGE_EVIDENCE_REGISTRY_URL") or "").rstrip("/")
 EVIDENCE_REGISTRY_INTERNAL_KEY = (os.getenv("AI_TRIAGE_INTERNAL_API_KEY") or "").strip()
+TRIAGE_V2_INTERNAL_API_KEY = (os.getenv("AI_TRIAGE_INTERNAL_API_KEY") or "").strip()
 EVIDENCE_REGISTRY_CACHE_SECONDS = _int_env("AI_TRIAGE_EVIDENCE_REGISTRY_CACHE_SECONDS", 300, 30, 3600)
 
 # Realtime official-source search backend (Google Programmable Search Engine —

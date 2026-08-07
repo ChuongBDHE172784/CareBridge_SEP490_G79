@@ -14,7 +14,7 @@ sourceType: official_guideline
 sourceStatus: APPROVED
 sourceVersion: '1.0'
 approvedAt: 2026-07-10
-approvedBy: CareBridge clinical review
+approvedBy: CareBridge development team internal review (DEV_REVIEWED; no clinician participated)
 adminReviewed: true
 ---
 Bệnh viện Nhi Trung ương lưu ý sốt cao ở trẻ nhỏ, đặc biệt trẻ dưới 3 tháng,

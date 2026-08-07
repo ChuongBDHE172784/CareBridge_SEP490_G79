@@ -1,3 +1,9 @@
+"""LEGACY_V1_ONLY runtime web search; forbidden in Triage V2.
+
+Do not add new callers. V2 uses the local hash-pinned retriever. This module remains solely because V1
+is still user-facing and Phase 8 full-stack E2E is blocked; see the V1 caller/deprecation inventory.
+"""
+
 from __future__ import annotations
 
 import hashlib

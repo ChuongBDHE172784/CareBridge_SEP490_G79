@@ -205,7 +205,7 @@ class AdminStaffServiceImplTest {
 
     // UC115-TC-007
     @ParameterizedTest
-    @EnumSource(value = Role.class, names = {"FAMILY", "EXPERT", "PARTNER"})
+    @EnumSource(value = Role.class, names = {"FAMILY", "EXPERT", "MOTHER"})
     void createStaffAccount_nonStaffRoles_allRejected(Role role) {
         AdminStaffServiceImpl service = newService();
 
