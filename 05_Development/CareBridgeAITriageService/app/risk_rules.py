@@ -6,6 +6,12 @@ from app.symptom_normalizer import strip_accents
 
 MATERNAL_STAGES = frozenset({"PRECONCEPTION", "PREGNANCY", "POSTPARTUM"})
 
+#: Fields whose answers feed the complaint-independent RED rules (RED_LETHARGY,
+#: RED_BREATHING_DISTRESS, RED_SEIZURE). Defined here rather than in the question engine so
+#: both the planner that asks them and the scorer that requires them share one list, and so
+#: risk_rules stays free of an import cycle back into the engine.
+DANGER_SIGN_KEYS = ("consciousnessStatus", "breathingStatus", "seizure")
+
 _MATERNAL_BREATHING_DISTRESS_PHRASES = (
     "kho tho",
     "khong tho duoc",
@@ -170,8 +176,26 @@ def score_risk(
     if matched_rules:
         return "YELLOW", matched_rules
 
+    # GREEN is the only reassuring outcome this engine can produce, so it may not be reached
+    # on an unscreened dataset. "No rule matched" is not "nothing is wrong" when the rules
+    # that carry the danger signs were never given an answer to read — the same reason V2
+    # gates GREEN behind its own eligibility dataset instead of treating silence as reassurance.
+    if not _danger_screen_answered(intake):
+        matched_rules.append("YELLOW_UNSCREENED_DANGER_SIGNS")
+        return "YELLOW", matched_rules
+
     matched_rules.append("GREEN_MILD_NO_RED_FLAGS")
     return "GREEN", matched_rules
+
+
+def _danger_screen_answered(intake: ChildTriageRequest) -> bool:
+    """True only when every complaint-independent danger sign has a real answer."""
+
+    for key in DANGER_SIGN_KEYS:
+        value = getattr(intake, key, None)
+        if value is None or (isinstance(value, str) and not value.strip()):
+            return False
+    return True
 
 
 def _has_fever(intake: ChildTriageRequest) -> bool:

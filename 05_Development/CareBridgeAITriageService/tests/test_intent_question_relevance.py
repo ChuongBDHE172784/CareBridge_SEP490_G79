@@ -1,9 +1,24 @@
 import pytest
 from fastapi import HTTPException
 
+from app.intake_question_engine import (
+    DANGER_SIGN_KEYS,
+    MAX_QUESTIONS_PER_ROUND,
+    _relevant_missing_keys,
+    extract_triage_intent,
+    merge_answers,
+)
 from app.main import continue_intake, start_intake
 from app.schemas import ChildTriageRequest, IntakeContinueRequest, IntakeStartRequest
+from app.graph import run_triage
+from app.risk_rules import score_risk
 from app.symptom_normalizer import normalize_symptoms
+
+
+def _ordered_keys(intake: ChildTriageRequest) -> list[str]:
+    """Full question ordering, not just the slice one round happens to fit."""
+
+    return _relevant_missing_keys(intake, extract_triage_intent(intake))
 
 
 def test_pregnancy_diarrhea_keeps_maternal_subject_and_asks_relevant_fact():
@@ -141,7 +156,76 @@ def test_mixed_families_keep_the_second_family_available_after_first_answers():
 
     assert next_response.intent is not None
     assert {"ABDOMINAL", "URINARY"} <= set(next_response.intent.symptomFamilies)
-    assert "urinarySymptoms" in [question.questionKey for question in next_response.questions]
+
+    # Round two now belongs to the universal danger-sign screen. That screen outranks a second
+    # family's own follow-up on purpose: consciousness/breathing/seizure are read by maternal
+    # RED rules and urinarySymptoms is read by none, so with a six-question budget the
+    # rule-bearing questions have to win.
+    assert [question.questionKey for question in next_response.questions] == list(DANGER_SIGN_KEYS)
+
+    # The second family is deferred, not dropped — it stays ordered behind the screen rather
+    # than being discarded once the first family has been answered.
+    merged = merge_answers(
+        ChildTriageRequest(**next_response.mergedIntake.model_dump()),
+        {"painSeverity": "Nhẹ", "duration": "1-3 ngày", "vomiting": "Không"},
+    )
+    assert "urinarySymptoms" in _ordered_keys(merged)
+
+
+@pytest.mark.parametrize(
+    ("stage", "text"),
+    [
+        ("INFANT", "Bé bị sốt"),
+        ("INFANT", "Bé tiêu chảy"),
+        ("INFANT", "Bé đau tai"),
+        ("PREGNANCY", "Tôi đau bụng"),
+        ("PREGNANCY", "Tôi đau đầu"),
+        ("POSTPARTUM", "Tôi bị sốt"),
+    ],
+)
+def test_every_complaint_reaches_the_universal_danger_sign_screen(stage, text):
+    """The rules for lethargy, breathing distress and seizure apply to every complaint.
+
+    Before this screen existed only a respiratory complaint ever asked about them, so a febrile
+    infant who was also lethargic came back YELLOW unless the parent volunteered the word.
+    """
+    ordered = _ordered_keys(ChildTriageRequest(stage=stage, parentFreeText=text, symptomList=[text]))
+    reachable = MAX_QUESTIONS_PER_ROUND * 2  # main.py stops asking after two rounds
+    assert set(DANGER_SIGN_KEYS) <= set(ordered[:reachable])
+
+
+def test_the_reported_complaint_is_still_asked_about_first():
+    """The screen must never displace the first round; leading with it is its own defect."""
+    ordered = _ordered_keys(
+        ChildTriageRequest(stage="INFANT", parentFreeText="Bé tiêu chảy", symptomList=["Bé tiêu chảy"])
+    )
+    assert ordered[:MAX_QUESTIONS_PER_ROUND] == ["duration", "dehydrationSigns", "vomiting"]
+    assert not set(DANGER_SIGN_KEYS) & set(ordered[:MAX_QUESTIONS_PER_ROUND])
+
+
+def test_a_lethargic_febrile_infant_is_red_once_the_screen_is_answered():
+    """End-to-end proof the newly asked answer actually reaches the RED rule."""
+    start = start_intake(IntakeStartRequest(
+        stage="INFANT", initialText="Bé bị sốt",
+        currentIntake=ChildTriageRequest(stage="INFANT"),
+    ))
+    first = continue_intake(IntakeContinueRequest(
+        stage="INFANT", intakeSessionId="lethargic-infant",
+        currentIntake=start.mergedIntake,
+        newAnswers={"duration": "1-3 ngày", "temperatureC": "38.5", "childAgeMonths": "8"},
+        askedQuestionKeys=start.askedQuestionKeys, round=start.round,
+    ))
+    assert "consciousnessStatus" in [question.questionKey for question in first.questions]
+
+    second = continue_intake(IntakeContinueRequest(
+        stage="INFANT", intakeSessionId="lethargic-infant",
+        currentIntake=first.mergedIntake,
+        newAnswers={"consciousnessStatus": "Li bì"},
+        askedQuestionKeys=first.askedQuestionKeys, round=first.round,
+    ))
+    assert second.triageResult is not None
+    assert second.triageResult.riskLevel == "RED"
+    assert "RED_LETHARGY" in second.triageResult.matchedRules
 
 
 def test_common_symptom_normalization_handles_uppercase_and_negation():
@@ -200,3 +284,42 @@ def test_gestational_weeks_out_of_bounds_is_rejected_by_schema():
         ChildTriageRequest(stage="PREGNANCY", gestationalWeeks=0)
     with pytest.raises(Exception):
         ChildTriageRequest(stage="PREGNANCY", gestationalWeeks=46)
+
+
+def test_green_is_refused_until_the_danger_screen_carries_an_answer():
+    """"No rule matched" is not reassurance while the danger-sign fields are still blank.
+
+    An ear-pain complaint with every complaint-relevant field filled used to return GREEN and
+    tell the parent the child was "phù hợp với mức theo dõi tại nhà" — after zero danger-sign
+    questions had been asked.
+    """
+    unscreened = ChildTriageRequest(
+        stage="INFANT", parentFreeText="Bé đau tai", symptomList=["dau tai"],
+        childAgeMonths=10, duration="1-3 ngày", temperatureC=36.9,
+        painSeverity="Nhẹ", feedingStatus="Bú/uống tốt",
+    )
+    risk, rules = score_risk(unscreened, normalize_symptoms(unscreened), [], [])
+    assert risk == "YELLOW"
+    assert "YELLOW_UNSCREENED_DANGER_SIGNS" in rules
+
+    screened = unscreened.model_copy(update={
+        "consciousnessStatus": "Tỉnh táo", "breathingStatus": "Không", "seizure": False,
+    })
+    risk, rules = score_risk(screened, normalize_symptoms(screened), [], [])
+    assert risk == "GREEN"
+    assert "GREEN_MILD_NO_RED_FLAGS" in rules
+
+
+def test_green_prose_never_authorises_staying_home():
+    screened = ChildTriageRequest(
+        stage="INFANT", parentFreeText="Bé đau tai", symptomList=["dau tai"],
+        childAgeMonths=10, duration="1-3 ngày", temperatureC=36.9, painSeverity="Nhẹ",
+        feedingStatus="Bú/uống tốt", consciousnessStatus="Tỉnh táo",
+        breathingStatus="Không", seizure=False,
+    )
+    result = run_triage(screened, deterministic_only=True)
+
+    assert result.riskLevel == "GREEN"
+    prose = f"{result.summary} {result.possibleConcern} {result.recommendedAction}".lower()
+    for reassurance in ("phù hợp với mức theo dõi tại nhà", "an toàn", "không cần đi khám"):
+        assert reassurance not in prose

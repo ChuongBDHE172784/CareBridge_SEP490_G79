@@ -97,6 +97,14 @@ EVIDENCE_REGISTRY_URL = (os.getenv("AI_TRIAGE_EVIDENCE_REGISTRY_URL") or "").rst
 EVIDENCE_REGISTRY_INTERNAL_KEY = (os.getenv("AI_TRIAGE_INTERNAL_API_KEY") or "").strip()
 TRIAGE_V2_INTERNAL_API_KEY = (os.getenv("AI_TRIAGE_INTERNAL_API_KEY") or "").strip()
 EVIDENCE_REGISTRY_CACHE_SECONDS = _int_env("AI_TRIAGE_EVIDENCE_REGISTRY_CACHE_SECONDS", 300, 30, 3600)
+# A failed lookup is remembered too, on a much shorter TTL. Without this, one unreachable
+# registry cost a full connect timeout per candidate source per turn — measured at 13 lookups
+# and 52s on a single RED turn, far past the 7s request budget. The TTL stays short because
+# the penalty for remembering a failure is only a temporarily missing citation: evidence is
+# post-outcome and never changes a risk level.
+EVIDENCE_REGISTRY_FAILURE_CACHE_SECONDS = _int_env(
+    "AI_TRIAGE_EVIDENCE_REGISTRY_FAILURE_CACHE_SECONDS", 30, 1, 300
+)
 
 # Realtime official-source search backend (Google Programmable Search Engine —
 # https://programmablesearchengine.google.com/ — free tier: 100 queries/day).

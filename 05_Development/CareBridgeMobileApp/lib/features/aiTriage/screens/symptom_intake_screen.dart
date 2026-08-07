@@ -1155,7 +1155,12 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
             spacing: 8,
             runSpacing: 8,
             children: stages.entries.map((entry) {
-              final selected = _selectedStage == entry.key;
+              // The tick must mean "you chose this", not "this is our default".
+              // _selectedStage always holds a real stage so the rest of the screen has
+              // something to render, but until the user actually picks one the send is
+              // refused — showing a chip as selected in that window told the user the
+              // opposite of what the guard in _start() would do.
+              final selected = _stageConfirmed && _selectedStage == entry.key;
               return ChoiceChip(
                 label: Text(entry.value),
                 selected: selected,
@@ -1668,6 +1673,12 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
     if (_result != null) {
       return const SizedBox(height: 12);
     }
+    // Same rule _start() enforces, moved to where the user can act on it. An unscoped entry
+    // has no trusted stage, and INFANT is only a display default — sending it would triage a
+    // mother's own symptom against paediatric rules. Refusing after the tap made that read as
+    // a broken screen: the user had already typed a whole description before being told the
+    // step they had missed. Refusing before the tap states the missing step instead.
+    final stageMissing = !_stageConfirmed && !widget.entryContext.lockStage;
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
       decoration: const BoxDecoration(
@@ -1681,65 +1692,71 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
         ],
       ),
       child: _questions.isEmpty
-          ? Row(
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Expanded(
-                  child: TextField(
-                    key: const Key('triage-chat-input'),
-                    controller: _initialController,
-                    enabled: !_loading,
-                    minLines: 1,
-                    maxLines: 4,
-                    decoration: InputDecoration(
-                      hintText: widget.entryContext.isMaternal
-                          ? 'Mô tả dấu hiệu của mẹ...'
-                          : 'Đặt câu hỏi sức khỏe...',
-                      hintStyle: const TextStyle(color: Color(0xFF9C857C)),
-                      filled: true,
-                      fillColor: _surface,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 18,
-                        vertical: 13,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(28),
-                        borderSide: BorderSide.none,
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(28),
-                        borderSide: const BorderSide(
-                          color: _primary,
-                          width: 1.5,
+                if (stageMissing) _buildStageRequiredHint(),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        key: const Key('triage-chat-input'),
+                        controller: _initialController,
+                        enabled: !_loading,
+                        minLines: 1,
+                        maxLines: 4,
+                        decoration: InputDecoration(
+                          hintText: widget.entryContext.isMaternal
+                              ? 'Mô tả dấu hiệu của mẹ...'
+                              : 'Đặt câu hỏi sức khỏe...',
+                          hintStyle: const TextStyle(color: Color(0xFF9C857C)),
+                          filled: true,
+                          fillColor: _surface,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 13,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(28),
+                            borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(28),
+                            borderSide: const BorderSide(
+                              color: _primary,
+                              width: 1.5,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                SizedBox(
-                  width: 50,
-                  height: 50,
-                  child: IconButton.filled(
-                    key: const Key('triage-chat-send'),
-                    style: IconButton.styleFrom(
-                      backgroundColor: _primaryDark,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: _primaryDark.withValues(
-                        alpha: 0.45,
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 50,
+                      height: 50,
+                      child: IconButton.filled(
+                        key: const Key('triage-chat-send'),
+                        style: IconButton.styleFrom(
+                          backgroundColor: _primaryDark,
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: _primaryDark.withValues(
+                            alpha: 0.45,
+                          ),
+                        ),
+                        onPressed: (_loading || stageMissing) ? null : _start,
+                        icon: _loading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.arrow_upward_rounded, size: 26),
                       ),
                     ),
-                    onPressed: _loading ? null : _start,
-                    icon: _loading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Icon(Icons.arrow_upward_rounded, size: 26),
-                  ),
+                  ],
                 ),
               ],
             )
@@ -1770,6 +1787,30 @@ class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
                 ),
               ),
             ),
+    );
+  }
+
+  /// States the one missing step while the send is refused, next to the control it blocks.
+  Widget _buildStageRequiredHint() {
+    return Padding(
+      key: const Key('triage-stage-required-hint'),
+      padding: const EdgeInsets.only(left: 6, right: 6, bottom: 10),
+      child: Row(
+        children: [
+          const Icon(Icons.arrow_upward_rounded, size: 17, color: _primaryDark),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text(
+              'Chọn giai đoạn ở trên để bắt đầu.',
+              style: TextStyle(
+                color: _onVariant,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
