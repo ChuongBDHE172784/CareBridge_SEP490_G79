@@ -48,6 +48,21 @@ class DevDataSeederPostgresIntegrationTest {
     static final PostgreSQLContainer POSTGRES =
             new PostgreSQLContainer("postgres:18.1-alpine");
 
+    static {
+        // This class brings its own container, so it does not inherit the role provisioning
+        // in AbstractPostgresIntegrationTest. Without these NOLOGIN owners the checklist
+        // migrations refuse to run (CHECKLIST_RETENTION_OWNER_ROLE_REQUIRED) and the context
+        // never boots.
+        POSTGRES.start();
+        try {
+            com.carebridge.backend.testsupport.EmbeddedPostgresRoleFixture.provision(
+                    POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
+        } catch (Exception exception) {
+            throw new IllegalStateException(
+                    "Could not provision checklist database roles on the dev-seed container", exception);
+        }
+    }
+
     private static final String SEEDED_MOTHER_EMAILS = """
             'mother3@carebridge.dev',
             'mother4@carebridge.dev',
@@ -142,16 +157,17 @@ class DevDataSeederPostgresIntegrationTest {
                    AND baby.mother_journey_id IS NOT NULL
                 """, Integer.class)).isZero();
         assertThat(jdbcTemplate.queryForObject("""
-                SELECT count(*)
-                  FROM growth_measurements measurement
-                  JOIN care_subjects baby ON baby.care_subject_id = measurement.baby_id
+                -- Sessions, not rows: one seeded measuring session is three observations
+                -- sharing a measurement_group_id, so the count is over groups to keep the
+                -- assertion saying what it always said.
+                SELECT count(DISTINCT measurement.measurement_group_id)
+                  FROM health_observations measurement
+                  JOIN care_subjects baby ON baby.care_subject_id = measurement.care_subject_id
                                          AND baby.subject_type = 'BABY'
-                  JOIN care_subjects subject ON subject.care_subject_id = measurement.care_subject_id
                   JOIN users owner ON owner.user_id = baby.owner_user_id
-                 WHERE measurement.note LIKE '[DEV][MF-03]%'
-                   AND measurement.care_subject_id = measurement.baby_id
-                   AND subject.subject_type = 'BABY'
-                   AND subject.owner_user_id = baby.owner_user_id
+                 WHERE measurement.legacy_source = 'growth_measurements'
+                   AND measurement.context_jsonb->>'note' LIKE '[DEV][MF-03]%'
+                   AND measurement.subject_type = 'BABY'
                    AND owner.email = 'mother4@carebridge.dev'
                 """, Integer.class)).isEqualTo(5);
     }
@@ -194,7 +210,7 @@ class DevDataSeederPostgresIntegrationTest {
                 count("SELECT count(*) FROM care_subjects"),
                 count("SELECT count(*) FROM mother_journeys"),
                 count("SELECT count(*) FROM audit_events"),
-                count("SELECT count(*) FROM growth_measurements"),
+                count("SELECT count(DISTINCT measurement_group_id) FROM health_observations WHERE legacy_source = 'growth_measurements'"),
                 count("SELECT count(*) FROM care_logs"),
                 count("SELECT count(*) FROM users WHERE verification_status IS NOT NULL"),
                 count("SELECT count(*) FROM expert_credentials"),
@@ -230,10 +246,11 @@ class DevDataSeederPostgresIntegrationTest {
 
     private List<UUID> seededGrowthMeasurementIds() {
         return jdbcTemplate.queryForList("""
-                SELECT growth_measurement_id
-                  FROM growth_measurements
-                 WHERE note LIKE '[DEV][MF-03]%'
-                ORDER BY growth_measurement_id
+                SELECT DISTINCT measurement_group_id
+                  FROM health_observations
+                 WHERE legacy_source = 'growth_measurements'
+                   AND context_jsonb->>'note' LIKE '[DEV][MF-03]%'
+                ORDER BY measurement_group_id
                 """, UUID.class);
     }
 

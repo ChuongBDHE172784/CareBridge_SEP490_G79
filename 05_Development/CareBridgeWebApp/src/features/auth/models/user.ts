@@ -14,7 +14,6 @@ export type UserRole =
   | 'MODERATOR'
   | 'CONTENT_ADMIN'
   | 'SYSTEM_ADMIN'
-  | 'PARTNER';
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -30,5 +29,4 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   MODERATOR: 'Moderator',
   CONTENT_ADMIN: 'Content Admin',
   SYSTEM_ADMIN: 'System Admin',
-  PARTNER: 'Partner',
 };

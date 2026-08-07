@@ -5,7 +5,7 @@ import com.carebridge.backend.safety.dto.request.SafetyConfigRequest;
 import com.carebridge.backend.safety.dto.response.SafetyConfigResponse;
 import com.carebridge.backend.safety.entity.SafetyMonitoringConfig;
 import com.carebridge.backend.safety.event.SafetyConfigChanged;
-import com.carebridge.backend.safety.repository.ISafetyConfigRepository;
+import com.carebridge.backend.safety.repository.SafetyConfigStore;
 import com.carebridge.backend.safety.service.ISafetyConfigService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -22,12 +22,12 @@ import org.springframework.http.HttpStatus;
 @Transactional
 public class SafetyConfigService implements ISafetyConfigService {
 
-    private final ISafetyConfigRepository configRepository;
+    private final SafetyConfigStore configStore;
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public SafetyConfigResponse configure(SafetyConfigRequest request, UUID userId) {
-        SafetyMonitoringConfig config = configRepository.findByUserId(userId)
+        SafetyMonitoringConfig config = configStore.findByUserId(userId)
                 .orElseGet(SafetyMonitoringConfig::new);
         config.setUserId(userId);
         config.setFallDetectionEnabled(request.getFallDetectionEnabled());
@@ -50,7 +50,7 @@ public class SafetyConfigService implements ISafetyConfigService {
         }
         config.setUpdatedAt(Instant.now());
         config.setUpdatedBy(userId);
-        SafetyMonitoringConfig saved = configRepository.save(config);
+        SafetyMonitoringConfig saved = configStore.save(config);
         eventPublisher.publishEvent(new SafetyConfigChanged(
                 UUID.randomUUID(),
                 "SafetyConfigChanged",
@@ -64,7 +64,7 @@ public class SafetyConfigService implements ISafetyConfigService {
     @Override
     @Transactional(readOnly = true)
     public SafetyConfigResponse getConfig(UUID userId) {
-        return configRepository.findByUserId(userId)
+        return configStore.findByUserId(userId)
                 .map(this::toResponse)
                 .orElseGet(() -> SafetyConfigResponse.builder()
                         .userId(userId)

@@ -1,11 +1,17 @@
 import 'package:flutter/material.dart';
 import '../models/exercise_model.dart';
+import '../services/exercise_feedback_analyzer.dart';
 import 'exercise_history_screen.dart';
 
 class ExerciseSessionResultScreen extends StatelessWidget {
   final SessionResult result;
+  final ExerciseFeedbackSnapshot? feedbackSnapshot;
 
-  const ExerciseSessionResultScreen({super.key, required this.result});
+  const ExerciseSessionResultScreen({
+    super.key,
+    required this.result,
+    this.feedbackSnapshot,
+  });
 
   static const _canvas = Color(0xFFFFF8F6);
   static const _primary = Color(0xFF845143);
@@ -31,6 +37,13 @@ class ExerciseSessionResultScreen extends StatelessWidget {
                     _buildSuccessCard(),
                     const SizedBox(height: 20),
                     _buildStatsGrid(),
+                    if (feedbackSnapshot != null &&
+                        feedbackSnapshot!.isSupported &&
+                        (feedbackSnapshot!.hasVisibleLandmarks ||
+                            feedbackSnapshot!.hasApplicableMetrics)) ...[
+                      const SizedBox(height: 20),
+                      _buildFeedbackSnapshot(feedbackSnapshot!),
+                    ],
                     const SizedBox(height: 32),
                     _buildActions(context),
                   ],
@@ -194,6 +207,117 @@ class ExerciseSessionResultScreen extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  Widget _buildFeedbackSnapshot(ExerciseFeedbackSnapshot snapshot) {
+    if (snapshot.exercise == ExerciseFeedbackExercise.plank) {
+      return const SizedBox.shrink();
+    }
+    final values = <String, String>{};
+    switch (snapshot.exercise) {
+      case ExerciseFeedbackExercise.bicepCurl:
+        values['Tổng số lần'] = '${snapshot.repetitions}';
+        values['Tay trái'] = '${snapshot.leftBicepRepetitions}';
+        values['Tay phải'] = '${snapshot.rightBicepRepetitions}';
+      case ExerciseFeedbackExercise.squat:
+        values['Số lần squat'] = '${snapshot.squatRepetitions}';
+      case ExerciseFeedbackExercise.lunge:
+        values['Số lần lunge'] = '${snapshot.lungeRepetitions}';
+      case ExerciseFeedbackExercise.plank:
+      case ExerciseFeedbackExercise.unsupported:
+        return const SizedBox.shrink();
+    }
+    for (final entry in snapshot.angles.entries) {
+      values[_angleLabel(entry.key)] = '${entry.value.round()}°';
+    }
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: _surfaceLowest,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _outlineVariant.withValues(alpha: 0.4)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Chỉ số trong buổi tập',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: _onSurface,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 8,
+            children: [
+              for (final entry in values.entries)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _canvas,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        entry.key,
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 10,
+                          color: _onSurfaceVariant,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        entry.value,
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: _primary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Chỉ số này chỉ có trong buổi tập hiện tại và không thay đổi kết quả máy chủ.',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 11,
+              color: _onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _angleLabel(String key) {
+    switch (key) {
+      case 'left_elbow':
+        return 'Khuỷu trái';
+      case 'right_elbow':
+        return 'Khuỷu phải';
+      case 'left_knee':
+        return 'Gối trái';
+      case 'right_knee':
+        return 'Gối phải';
+      default:
+        return 'Góc';
+    }
   }
 
   Widget _statCell({

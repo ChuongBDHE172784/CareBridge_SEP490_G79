@@ -59,8 +59,7 @@ public class SecurityConfig {
                                 "/api/v1/auth/resend-otp",
                                 "/api/v1/auth/refresh",
                                 "/api/v1/auth/forgot-password",
-                                "/api/v1/auth/reset-password",
-                                "/api/v1/auth/lock-appeals")
+                                "/api/v1/auth/reset-password")
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/auth/profile").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/v1/auth/profile").authenticated()
@@ -93,9 +92,6 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/admin/content/*/decision").hasRole("SYSTEM_ADMIN")
                         .requestMatchers(HttpMethod.POST, "/api/v1/community/topics")
                         .hasAnyRole("MODERATOR", "CONTENT_ADMIN")
-                        .requestMatchers(HttpMethod.POST, "/api/v1/partner/profile").hasRole("PARTNER")
-                        .requestMatchers(HttpMethod.PUT, "/api/v1/partner/profile").hasRole("PARTNER")
-                        .requestMatchers(HttpMethod.POST, "/api/v1/admin/partners/*/decision").hasRole("SYSTEM_ADMIN")
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/community/topics/**")
                         .hasAnyRole("MODERATOR", "CONTENT_ADMIN")
                         .requestMatchers("/api/v1/**").authenticated()

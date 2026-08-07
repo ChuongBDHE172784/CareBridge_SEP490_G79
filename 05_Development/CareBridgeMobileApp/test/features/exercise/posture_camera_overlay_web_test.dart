@@ -43,6 +43,23 @@ void main() {
     expect(_hasInk(context), isFalse);
   });
 
+  test('renderer switches to the error palette without changing geometry', () {
+    final canvas = html.CanvasElement(width: 100, height: 100);
+    final context = canvas.context2D;
+    final points = List<PostureOverlayPoint?>.filled(33, null);
+    points[11] = const PostureOverlayPoint(x: 0.25, y: 0.25, visibility: 1);
+    points[12] = const PostureOverlayPoint(x: 0.75, y: 0.25, visibility: 1);
+
+    PostureOverlayRenderer.draw(context, points);
+    final normalStroke = context.strokeStyle.toString();
+    PostureOverlayRenderer.draw(context, points, error: true);
+    final errorStroke = context.strokeStyle.toString();
+
+    expect(normalStroke, isNot(errorStroke));
+    expect(errorStroke, contains('248'));
+    expect(_hasInk(context), isTrue);
+  });
+
   test('stopping the camera clears a previously drawn overlay', () async {
     final source = PostureCameraSource();
     addTearDown(source.dispose);

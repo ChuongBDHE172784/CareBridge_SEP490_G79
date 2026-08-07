@@ -11,7 +11,7 @@ import com.carebridge.backend.carejourney.dto.GrowthMeasurementHistoryItem;
 import com.carebridge.backend.carejourney.dto.GrowthMeasurementResponse;
 import com.carebridge.backend.carejourney.dto.UpdateGrowthMeasurementRequest;
 import com.carebridge.backend.carejourney.entity.GrowthMeasurement;
-import com.carebridge.backend.carejourney.repository.GrowthMeasurementRepository;
+import com.carebridge.backend.carejourney.repository.GrowthMeasurementStore;
 import com.carebridge.backend.carejourney.service.impl.GrowthServiceImpl;
 import com.carebridge.backend.common.exception.BusinessException;
 import org.junit.jupiter.api.Test;
@@ -39,7 +39,7 @@ import static org.mockito.Mockito.*;
 class GrowthServiceTest {
 
     @Mock private BabyProfileRepository babyProfileRepository;
-    @Mock private GrowthMeasurementRepository growthMeasurementRepository;
+    @Mock private GrowthMeasurementStore growthMeasurementStore;
     @Mock private AuditService auditService;
     @Mock private BabyAccessPolicy babyAccessPolicy;
     @InjectMocks private GrowthServiceImpl growthService;
@@ -53,7 +53,7 @@ class GrowthServiceTest {
         List<GrowthMeasurement> measurements = makeMeasurements();
 
         when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(baby));
-        when(growthMeasurementRepository.findByBabyIdAndDeletedAtIsNullOrderByMeasuredDateAsc(BABY_ID))
+        when(growthMeasurementStore.findByBabyIdAndDeletedAtIsNullOrderByMeasuredDateAsc(BABY_ID))
                 .thenReturn(measurements);
 
         GrowthChartResponse response = growthService.getGrowthChart(MOTHER_ID, BABY_ID);
@@ -73,7 +73,7 @@ class GrowthServiceTest {
     @Test
     void getGrowthChart_noMeasurements_returnsEmptyList() {
         when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(makeBaby()));
-        when(growthMeasurementRepository.findByBabyIdAndDeletedAtIsNullOrderByMeasuredDateAsc(BABY_ID))
+        when(growthMeasurementStore.findByBabyIdAndDeletedAtIsNullOrderByMeasuredDateAsc(BABY_ID))
                 .thenReturn(List.of());
 
         GrowthChartResponse response = growthService.getGrowthChart(MOTHER_ID, BABY_ID);
@@ -86,7 +86,7 @@ class GrowthServiceTest {
     @Test
     void getGrowthChart_archivedBaby_returns200() {
         when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(makeArchivedBaby()));
-        when(growthMeasurementRepository.findByBabyIdAndDeletedAtIsNullOrderByMeasuredDateAsc(BABY_ID))
+        when(growthMeasurementStore.findByBabyIdAndDeletedAtIsNullOrderByMeasuredDateAsc(BABY_ID))
                 .thenReturn(makeMeasurements());
 
         assertThatNoException().isThrownBy(() ->
@@ -112,7 +112,7 @@ class GrowthServiceTest {
         BabyProfile baby = makeBabyOwnedByOther();
         when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(baby));
         when(babyAccessPolicy.canView(baby, CAREGIVER_ID)).thenReturn(true);
-        when(growthMeasurementRepository.findByBabyIdAndDeletedAtIsNullOrderByMeasuredDateAsc(BABY_ID))
+        when(growthMeasurementStore.findByBabyIdAndDeletedAtIsNullOrderByMeasuredDateAsc(BABY_ID))
                 .thenReturn(makeMeasurements());
 
         GrowthChartResponse response = growthService.getGrowthChart(CAREGIVER_ID, BABY_ID);
@@ -138,7 +138,7 @@ class GrowthServiceTest {
     @Test
     void addGrowthMeasurement_validRequest_savesMeasurement() {
         when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(makeBaby()));
-        when(growthMeasurementRepository.save(any(GrowthMeasurement.class)))
+        when(growthMeasurementStore.save(any(GrowthMeasurement.class)))
                 .thenAnswer(invocation -> {
                     GrowthMeasurement saved = invocation.getArgument(0);
                     saved.setGrowthMeasurementId(UUID.fromString("aaaa0003-0000-0000-0000-000000000003"));
@@ -154,7 +154,7 @@ class GrowthServiceTest {
 
         assertThat(response.getBabyId()).isEqualTo(BABY_ID);
         assertThat(response.getWeightKg()).isEqualByComparingTo("6.20");
-        verify(growthMeasurementRepository).save(any(GrowthMeasurement.class));
+        verify(growthMeasurementStore).save(any(GrowthMeasurement.class));
     }
 
     @Test
@@ -162,7 +162,7 @@ class GrowthServiceTest {
         BabyProfile baby = makeBabyOwnedByOther();
         when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(baby));
         when(babyAccessPolicy.canManageGrowth(baby, CAREGIVER_ID)).thenReturn(true);
-        when(growthMeasurementRepository.save(any(GrowthMeasurement.class)))
+        when(growthMeasurementStore.save(any(GrowthMeasurement.class)))
                 .thenAnswer(invocation -> {
                     GrowthMeasurement saved = invocation.getArgument(0);
                     saved.setGrowthMeasurementId(UUID.randomUUID());
@@ -192,7 +192,7 @@ class GrowthServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).getHttpStatus())
                         .isEqualTo(HttpStatus.FORBIDDEN));
-        verifyNoInteractions(growthMeasurementRepository);
+        verifyNoInteractions(growthMeasurementStore);
         verify(auditService).log(eq(com.carebridge.backend.audit.entity.AuditAction.SECURITY_EVENT),
                 eq(CAREGIVER_ID), eq("GROWTH_MEASUREMENT_ACCESS_DENIED"), eq(BABY_ID.toString()), any());
     }
@@ -212,7 +212,7 @@ class GrowthServiceTest {
                     assertThat(exception.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
                     assertThat(exception.getCode()).isEqualTo("BABY-GROWTH-400");
                 });
-        verifyNoInteractions(growthMeasurementRepository, auditService);
+        verifyNoInteractions(growthMeasurementStore, auditService);
     }
 
     @Test
@@ -226,7 +226,7 @@ class GrowthServiceTest {
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).getCode())
                         .isEqualTo("BABY-GROWTH-400"));
-        verifyNoInteractions(growthMeasurementRepository, auditService);
+        verifyNoInteractions(growthMeasurementStore, auditService);
     }
 
     @Test
@@ -240,7 +240,7 @@ class GrowthServiceTest {
         assertThatThrownBy(() -> growthService.addGrowthMeasurement(MOTHER_ID, BABY_ID, request))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("BABY-072"));
-        verify(growthMeasurementRepository, never()).save(any());
+        verify(growthMeasurementStore, never()).save(any());
     }
 
     @Test
@@ -258,7 +258,7 @@ class GrowthServiceTest {
                     assertThat(be.getHttpStatus()).isEqualTo(HttpStatus.CONFLICT);
                     assertThat(be.getCode()).isEqualTo("BABY-073");
                 });
-        verify(growthMeasurementRepository, never()).save(any());
+        verify(growthMeasurementStore, never()).save(any());
     }
 
     @Test
@@ -277,16 +277,16 @@ class GrowthServiceTest {
                     assertThat(be.getHttpStatus()).isEqualTo(HttpStatus.BAD_REQUEST);
                     assertThat(be.getCode()).isEqualTo("BABY-074");
                 });
-        verify(growthMeasurementRepository, never()).save(any());
+        verify(growthMeasurementStore, never()).save(any());
     }
 
     @Test
     void updateGrowthMeasurement_validPartialUpdate_savesAndAudits() {
         GrowthMeasurement measurement = makeMeasurements().get(0);
         when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(makeBaby()));
-        when(growthMeasurementRepository.findById(measurement.getGrowthMeasurementId()))
+        when(growthMeasurementStore.findById(measurement.getGrowthMeasurementId()))
                 .thenReturn(Optional.of(measurement));
-        when(growthMeasurementRepository.save(measurement)).thenReturn(measurement);
+        when(growthMeasurementStore.save(measurement)).thenReturn(measurement);
 
         UpdateGrowthMeasurementRequest request = new UpdateGrowthMeasurementRequest();
         request.setHeightCm(new BigDecimal("61.5"));
@@ -297,7 +297,7 @@ class GrowthServiceTest {
 
         assertThat(response.getHeightCm()).isEqualByComparingTo("61.5");
         assertThat(response.getNote()).isEqualTo("updated height");
-        verify(growthMeasurementRepository).save(measurement);
+        verify(growthMeasurementStore).save(measurement);
         verify(auditService).log(eq(com.carebridge.backend.audit.entity.AuditAction.GROWTH_MEASUREMENT_UPDATED),
                 eq(MOTHER_ID), eq("GROWTH_MEASUREMENT"), eq(measurement.getGrowthMeasurementId().toString()), anyString());
     }
@@ -312,7 +312,7 @@ class GrowthServiceTest {
                 MOTHER_ID, BABY_ID, UUID.randomUUID(), request))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(ex -> assertThat(((BusinessException) ex).getCode()).isEqualTo("BABY-076"));
-        verify(growthMeasurementRepository, never()).findById(any());
+        verify(growthMeasurementStore, never()).findById(any());
     }
 
     @Test
@@ -321,7 +321,7 @@ class GrowthServiceTest {
         UUID otherBabyId = UUID.fromString("bbbbbbbb-0000-0000-0000-000000000039");
         measurement.setBabyId(otherBabyId);
         when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(makeBaby()));
-        when(growthMeasurementRepository.findById(measurement.getGrowthMeasurementId()))
+        when(growthMeasurementStore.findById(measurement.getGrowthMeasurementId()))
                 .thenReturn(Optional.of(measurement));
 
         UpdateGrowthMeasurementRequest request = new UpdateGrowthMeasurementRequest();
@@ -335,20 +335,20 @@ class GrowthServiceTest {
                     assertThat(be.getHttpStatus()).isEqualTo(HttpStatus.FORBIDDEN);
                     assertThat(be.getCode()).isEqualTo("BABY-079");
                 });
-        verify(growthMeasurementRepository, never()).save(any());
+        verify(growthMeasurementStore, never()).save(any());
     }
 
     @Test
     void deleteGrowthMeasurement_existingMeasurement_setsDeletedAt() {
         GrowthMeasurement measurement = makeMeasurements().get(0);
         when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(makeBaby()));
-        when(growthMeasurementRepository.findById(measurement.getGrowthMeasurementId()))
+        when(growthMeasurementStore.findById(measurement.getGrowthMeasurementId()))
                 .thenReturn(Optional.of(measurement));
 
         growthService.deleteGrowthMeasurement(MOTHER_ID, BABY_ID, measurement.getGrowthMeasurementId());
 
         assertThat(measurement.getDeletedAt()).isNotNull();
-        verify(growthMeasurementRepository).save(measurement);
+        verify(growthMeasurementStore).save(measurement);
     }
 
     @Test
@@ -356,7 +356,7 @@ class GrowthServiceTest {
         GrowthMeasurement measurement = makeMeasurements().get(0);
         measurement.setBabyId(UUID.fromString("bbbbbbbb-0000-0000-0000-000000000039"));
         when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(makeBaby()));
-        when(growthMeasurementRepository.findById(measurement.getGrowthMeasurementId()))
+        when(growthMeasurementStore.findById(measurement.getGrowthMeasurementId()))
                 .thenReturn(Optional.of(measurement));
 
         assertThatThrownBy(() -> growthService.deleteGrowthMeasurement(
@@ -367,7 +367,7 @@ class GrowthServiceTest {
                     assertThat(be.getHttpStatus()).isEqualTo(HttpStatus.FORBIDDEN);
                     assertThat(be.getCode()).isEqualTo("BABY-081");
                 });
-        verify(growthMeasurementRepository, never()).save(any());
+        verify(growthMeasurementStore, never()).save(any());
     }
 
     @Test
@@ -375,12 +375,12 @@ class GrowthServiceTest {
         GrowthMeasurement measurement = makeMeasurements().get(0);
         measurement.setDeletedAt(Instant.parse("2026-04-01T00:00:00Z"));
         when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(makeBaby()));
-        when(growthMeasurementRepository.findById(measurement.getGrowthMeasurementId()))
+        when(growthMeasurementStore.findById(measurement.getGrowthMeasurementId()))
                 .thenReturn(Optional.of(measurement));
 
         growthService.deleteGrowthMeasurement(MOTHER_ID, BABY_ID, measurement.getGrowthMeasurementId());
 
-        verify(growthMeasurementRepository, never()).save(any());
+        verify(growthMeasurementStore, never()).save(any());
         verifyNoInteractions(auditService);
     }
 
@@ -388,7 +388,7 @@ class GrowthServiceTest {
     void getGrowthMeasurementHistory_validRequest_returnsPage() {
         when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(makeBaby()));
         PageRequest pageable = PageRequest.of(0, 20);
-        when(growthMeasurementRepository.findByBabyIdAndDeletedAtIsNullOrderByMeasuredDateDesc(BABY_ID, pageable))
+        when(growthMeasurementStore.findByBabyIdAndDeletedAtIsNullOrderByMeasuredDateDesc(BABY_ID, pageable))
                 .thenReturn(new PageImpl<>(makeMeasurements(), pageable, 2));
 
         Page<GrowthMeasurementHistoryItem> response =
@@ -403,7 +403,7 @@ class GrowthServiceTest {
     void getGrowthMeasurementHistory_archivedBaby_isAllowed() {
         when(babyProfileRepository.findById(BABY_ID)).thenReturn(Optional.of(makeArchivedBaby()));
         PageRequest pageable = PageRequest.of(0, 20);
-        when(growthMeasurementRepository.findByBabyIdAndDeletedAtIsNullOrderByMeasuredDateDesc(BABY_ID, pageable))
+        when(growthMeasurementStore.findByBabyIdAndDeletedAtIsNullOrderByMeasuredDateDesc(BABY_ID, pageable))
                 .thenReturn(new PageImpl<>(List.of(), pageable, 0));
 
         Page<GrowthMeasurementHistoryItem> response =
@@ -424,7 +424,7 @@ class GrowthServiceTest {
                     assertThat(be.getHttpStatus()).isEqualTo(HttpStatus.FORBIDDEN);
                     assertThat(be.getCode()).isEqualTo("BABY-071");
                 });
-        verify(growthMeasurementRepository, never())
+        verify(growthMeasurementStore, never())
                 .findByBabyIdAndDeletedAtIsNullOrderByMeasuredDateDesc(any(), any());
     }
 

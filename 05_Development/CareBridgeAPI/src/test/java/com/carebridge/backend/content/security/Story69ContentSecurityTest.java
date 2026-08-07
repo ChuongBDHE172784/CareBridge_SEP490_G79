@@ -9,7 +9,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.carebridge.backend.checklist.controller.UserChecklistItemController;
-import com.carebridge.backend.checklist.service.IUserChecklistItemService;
 import com.carebridge.backend.checklist.service.UserCreatedChecklistTaskService;
 import com.carebridge.backend.checklist.service.OptionalChecklistTemplateImportService;
 import com.carebridge.backend.checklist.service.ChecklistV2CompatibilityMutationService;
@@ -53,7 +52,6 @@ class Story69ContentSecurityTest {
     @Autowired private MockMvc mockMvc;
     @MockitoBean private ContentService contentService;
     @MockitoBean private AdminContentService adminContentService;
-    @MockitoBean private IUserChecklistItemService checklistService;
     @MockitoBean private UserCreatedChecklistTaskService userCreatedChecklistTaskService;
     @MockitoBean private OptionalChecklistTemplateImportService optionalChecklistTemplateImportService;
     @MockitoBean private ChecklistV2CompatibilityMutationService checklistV2CompatibilityMutationService;
@@ -121,7 +119,7 @@ class Story69ContentSecurityTest {
     @MethodSource("adminRoles")
     void uc82_69_sec_002_onlyContentAndSystemAdminCanListAdminChecklists(String role)
             throws Exception {
-        when(contentService.getAdminChecklists(any(), any(), any())).thenReturn(Page.empty());
+        when(contentService.getAdminChecklists(any(), any(), any(), any())).thenReturn(Page.empty());
         mockMvc.perform(get("/api/v1/admin/content/checklists")
                         .with(user(USER_ID).roles(role)))
                 .andExpect(status().isOk());
@@ -137,11 +135,11 @@ class Story69ContentSecurityTest {
     }
 
     static Stream<String> nonMotherRoles() {
-        return Stream.of("FAMILY", "EXPERT", "MODERATOR", "CONTENT_ADMIN", "SYSTEM_ADMIN", "PARTNER");
+        return Stream.of("FAMILY", "EXPERT", "MODERATOR", "CONTENT_ADMIN", "SYSTEM_ADMIN", "OPERATIONS");
     }
 
     static Stream<String> nonAdminRoles() {
-        return Stream.of("MOTHER", "FAMILY", "EXPERT", "MODERATOR", "PARTNER");
+        return Stream.of("MOTHER", "FAMILY", "EXPERT", "MODERATOR", "OPERATIONS");
     }
 
     static Stream<String> adminRoles() {

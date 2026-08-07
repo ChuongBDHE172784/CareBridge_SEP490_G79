@@ -30,7 +30,6 @@ public class ManualSeedRunner {
             new SeedAccount("moderator@carebridge.dev", "Moderator Test", Role.MODERATOR),
             new SeedAccount("content@carebridge.dev", "Content Test", Role.CONTENT_ADMIN),
             new SeedAccount("expert@carebridge.dev", "Expert Test", Role.EXPERT),
-            new SeedAccount("partner@carebridge.dev", "Partner Test", Role.PARTNER),
             new SeedAccount("mother@carebridge.dev", "Mother Test", Role.MOTHER),
             new SeedAccount("family@carebridge.dev", "Family Test", Role.FAMILY)
         );

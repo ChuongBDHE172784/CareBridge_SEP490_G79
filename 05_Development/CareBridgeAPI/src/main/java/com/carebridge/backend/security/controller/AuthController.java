@@ -331,7 +331,7 @@ public class AuthController {
             Principal principal,
             @Valid @RequestBody DeactivateRequest request) {
         UUID userId = SecurityUtils.requireCurrentUserId(principal);
-        authService.deactivate(userId, request.getConfirmPassword());
+        authService.deactivate(userId, request.getConfirmPassword(), request.getReason());
         return ResponseEntity.ok(ApiResponse.success(null, "Account deactivated successfully"));
     }
 }

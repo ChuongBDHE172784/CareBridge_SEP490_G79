@@ -52,7 +52,7 @@ class FallDetectionControllerTest {
     private UserRepository userRepository;
 
     @Test
-    @WithMockUser(username = "00000000-0000-0000-0000-000000000020", roles = "PARTNER")
+    @WithMockUser(username = "00000000-0000-0000-0000-000000000020", roles = "OPERATIONS")
     void disable_wrongRole_shouldReturn403() throws Exception {
         // DIS-TC-006
         mockMvc.perform(post("/api/v1/safety/fall-detection/disable"))

@@ -91,7 +91,6 @@ import '../../features/expert/screens/upload_verification_docs_screen.dart';
 import '../../features/expert/screens/verification_status_screen.dart';
 import '../../features/expert/screens/expert_public_profile_screen.dart';
 import '../../features/expert/screens/expert_calendar_screen.dart';
-import '../../features/expert/screens/expert_nearby_support_screen.dart';
 import '../../features/expert/screens/expert_onboarding_gate_screen.dart';
 import '../../features/expert/screens/expert_identity_capture_screen.dart';
 import '../../features/expert/services/expert_onboarding_store.dart';
@@ -1020,11 +1019,6 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/expert-calendar',
       builder: (context, state) => const ExpertCalendarScreen(),
-    ),
-    // CB-061: Nearby Support Expert (UC-82)
-    GoRoute(
-      path: '/expert/nearby-support',
-      builder: (context, state) => const ExpertNearbySupportScreen(),
     ),
     // TV4 public expert profile -- navigated to from community answers (expertProfileId)
     GoRoute(

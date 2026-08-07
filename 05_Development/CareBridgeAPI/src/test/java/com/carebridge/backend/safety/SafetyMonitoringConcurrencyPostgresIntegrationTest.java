@@ -44,14 +44,20 @@ class SafetyMonitoringConcurrencyPostgresIntegrationTest
                 VALUES (?, ?, 'Concurrent Safety Owner', 'monitoring.concurrent@test',
                         'MOTHER', 'ACTIVE', true, false, true, false, now(), now())
                 """, OWNER, OWNER);
+        // Safety configuration lives on users now (V3 §3.9). Seeding the retired
+        // safety_configs table would leave this test asserting against data the
+        // application never reads.
         jdbcTemplate.update("""
-                INSERT INTO safety_configs(
-                    safety_config_id,user_id,fall_detection_enabled,
-                    sensitivity_level,emergency_auto_alert,countdown_seconds,
-                    sensor_permission_granted,sensor_permission_recorded_at,
-                    updated_at,updated_by)
-                VALUES (gen_random_uuid(), ?, true, 'MEDIUM', true, 30,
-                        true, now(), now(), ?)
+                UPDATE users
+                   SET fall_detection_enabled = true,
+                       fall_detection_sensitivity_level = 'MEDIUM',
+                       emergency_auto_alert = true,
+                       emergency_countdown_seconds = 30,
+                       sensor_permission_granted = true,
+                       sensor_permission_recorded_at = now(),
+                       safety_config_updated_at = now(),
+                       safety_config_updated_by = ?
+                 WHERE user_id = ?
                 """, OWNER, OWNER);
     }
 
@@ -98,7 +104,6 @@ class SafetyMonitoringConcurrencyPostgresIntegrationTest
     private void cleanFixtures() {
         jdbcTemplate.update(
                 "DELETE FROM safety_monitoring_sessions WHERE user_id = ?", OWNER);
-        jdbcTemplate.update("DELETE FROM safety_configs WHERE user_id = ?", OWNER);
         jdbcTemplate.update("DELETE FROM users WHERE user_id = ?", OWNER);
     }
 }

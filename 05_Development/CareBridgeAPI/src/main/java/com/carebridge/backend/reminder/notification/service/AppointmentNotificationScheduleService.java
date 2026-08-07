@@ -6,12 +6,11 @@ import com.carebridge.backend.reminder.entity.RecurrenceType;
 import com.carebridge.backend.reminder.entity.Reminder;
 import com.carebridge.backend.reminder.entity.ReminderType;
 import com.carebridge.backend.reminder.notification.entity.AppointmentNotificationConfig;
-import com.carebridge.backend.reminder.notification.entity.AppointmentNotificationJob;
 import com.carebridge.backend.reminder.notification.entity.AppointmentNotificationJobStatus;
-import com.carebridge.backend.reminder.notification.entity.AppointmentNotificationRule;
 import com.carebridge.backend.reminder.notification.repository.AppointmentNotificationConfigRepository;
-import com.carebridge.backend.reminder.notification.repository.AppointmentNotificationJobRepository;
-import com.carebridge.backend.reminder.notification.repository.AppointmentNotificationRuleRepository;
+import com.carebridge.backend.reminder.job.entity.NotificationJob;
+import com.carebridge.backend.reminder.job.entity.NotificationJobType;
+import com.carebridge.backend.reminder.job.repository.NotificationJobRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -35,8 +34,9 @@ public class AppointmentNotificationScheduleService {
             EnumSet.of(AppointmentNotificationJobStatus.PENDING, AppointmentNotificationJobStatus.PROCESSING);
 
     private final AppointmentNotificationConfigRepository configRepository;
-    private final AppointmentNotificationRuleRepository ruleRepository;
-    private final AppointmentNotificationJobRepository jobRepository;
+    private static final NotificationJobType JOB_TYPE = NotificationJobType.APPOINTMENT;
+
+    private final NotificationJobRepository jobRepository;
     private final NotificationPreferenceRepository preferenceRepository;
     private final AppointmentNotificationRuleValidator validator;
     private final Clock clock;
@@ -44,22 +44,19 @@ public class AppointmentNotificationScheduleService {
     @Autowired
     public AppointmentNotificationScheduleService(
             AppointmentNotificationConfigRepository configRepository,
-            AppointmentNotificationRuleRepository ruleRepository,
-            AppointmentNotificationJobRepository jobRepository,
+            NotificationJobRepository jobRepository,
             NotificationPreferenceRepository preferenceRepository,
             AppointmentNotificationRuleValidator validator) {
-        this(configRepository, ruleRepository, jobRepository, preferenceRepository, validator, Clock.systemUTC());
+        this(configRepository, jobRepository, preferenceRepository, validator, Clock.systemUTC());
     }
 
     AppointmentNotificationScheduleService(
             AppointmentNotificationConfigRepository configRepository,
-            AppointmentNotificationRuleRepository ruleRepository,
-            AppointmentNotificationJobRepository jobRepository,
+            NotificationJobRepository jobRepository,
             NotificationPreferenceRepository preferenceRepository,
             AppointmentNotificationRuleValidator validator,
             Clock clock) {
         this.configRepository = configRepository;
-        this.ruleRepository = ruleRepository;
         this.jobRepository = jobRepository;
         this.preferenceRepository = preferenceRepository;
         this.validator = validator;
@@ -82,8 +79,8 @@ public class AppointmentNotificationScheduleService {
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
+        config.replaceOffsetMinutes(effective);
         configRepository.save(config);
-        replaceRules(reminder.getId(), effective, now);
         materialize(reminder, config, effective, now);
         return effective;
     }
@@ -106,7 +103,7 @@ public class AppointmentNotificationScheduleService {
                         .build());
         List<Integer> effective = replaceOffsets
                 ? validator.normalize(requestedOffsets == null ? List.of() : requestedOffsets)
-                : currentOffsets(reminder.getId());
+                : config.offsetMinutes();
         if (!replaceOffsets && effective.isEmpty() && config.getConfigRevision() == 0L) {
             effective = globalDefaults(reminder.getOwnerUserId());
         }
@@ -115,11 +112,16 @@ public class AppointmentNotificationScheduleService {
                 ? validator.normalizeTimeZone(config.getTimeZone())
                 : validator.normalizeTimeZone(requestedTimeZone));
         config.setUpdatedAt(now);
-        configRepository.save(config);
-        if (replaceOffsets || ruleRepository.findByReminderIdOrderByOffsetMinutesAsc(reminder.getId()).isEmpty()) {
-            replaceRules(reminder.getId(), effective, now);
+        // The offsets and the revision they belong to are written in one save, in
+        // one transaction: a job materialised below snapshots this exact revision.
+        boolean rewriteOffsets = replaceOffsets || config.offsetMinutes().isEmpty();
+        if (rewriteOffsets) {
+            config.replaceOffsetMinutes(effective);
         }
-        jobRepository.cancelObsoleteRevisions(
+        configRepository.save(config);
+        if (rewriteOffsets) {
+        }
+        jobRepository.cancelObsoleteConfigRevisions(
                 reminder.getId(), config.getConfigRevision(), ACTIVE_STATUSES,
                 AppointmentNotificationJobStatus.CANCELLED, now);
         materialize(reminder, config, effective, now);
@@ -128,9 +130,9 @@ public class AppointmentNotificationScheduleService {
 
     @Transactional(readOnly = true)
     public List<Integer> currentOffsets(UUID reminderId) {
-        return ruleRepository.findByReminderIdOrderByOffsetMinutesAsc(reminderId).stream()
-                .map(AppointmentNotificationRule::getOffsetMinutes)
-                .toList();
+        return configRepository.findById(reminderId)
+                .map(AppointmentNotificationConfig::offsetMinutes)
+                .orElseGet(List::of);
     }
 
     @Transactional(readOnly = true)
@@ -157,7 +159,7 @@ public class AppointmentNotificationScheduleService {
     public void extendHorizon(Reminder reminder) {
         if (reminder.getReminderType() != ReminderType.APPOINTMENT) return;
         configRepository.findById(reminder.getId()).ifPresent(config ->
-                materialize(reminder, config, currentOffsets(reminder.getId()), clock.instant()));
+                materialize(reminder, config, config.offsetMinutes(), clock.instant()));
     }
 
     private List<Integer> globalDefaults(UUID userId) {
@@ -165,21 +167,6 @@ public class AppointmentNotificationScheduleService {
         return preferenceRepository.hasAppointmentReminderDefaults(userId)
                 ? validator.normalize(stored)
                 : AppointmentNotificationRuleValidator.SYSTEM_DEFAULTS;
-    }
-
-    private void replaceRules(UUID reminderId, List<Integer> offsets, Instant now) {
-        ruleRepository.deleteByReminderId(reminderId);
-        List<AppointmentNotificationRule> rules = new ArrayList<>();
-        for (int index = 0; index < offsets.size(); index++) {
-            rules.add(AppointmentNotificationRule.builder()
-                    .reminderId(reminderId)
-                    .offsetMinutes(offsets.get(index))
-                    .sortOrder(index)
-                    .createdAt(now)
-                    .updatedAt(now)
-                    .build());
-        }
-        ruleRepository.saveAll(rules);
     }
 
     private void materialize(
@@ -195,10 +182,12 @@ public class AppointmentNotificationScheduleService {
                 Instant dueAt = occurrence.plus(offset, ChronoUnit.MINUTES);
                 if (!dueAt.isAfter(now)) continue;
                 boolean exists = jobRepository
-                        .existsByReminderIdAndOccurrenceIdAndConfigRevisionAndOffsetMinutes(
-                                reminder.getId(), occurrenceId, config.getConfigRevision(), offset);
+                        .existsByJobTypeAndReminderIdAndOccurrenceIdAndConfigRevisionAndOffsetMinutes(
+                                JOB_TYPE, reminder.getId(), occurrenceId,
+                                config.getConfigRevision(), offset);
                 if (exists) continue;
-                AppointmentNotificationJob job = AppointmentNotificationJob.builder()
+                NotificationJob job = NotificationJob.builder()
+                        .jobType(JOB_TYPE)
                         .reminderId(reminder.getId())
                         .occurrenceId(occurrenceId)
                         .occurrenceGeneration(reminder.getOccurrenceGeneration())

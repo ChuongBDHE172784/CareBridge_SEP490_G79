@@ -76,6 +76,51 @@ public class User {
     @Column(name = "account_status", length = 30)
     private String accountStatus;
 
+    // Deactivation is logical, not a delete: the row stays and carries who did it,
+    // when, and why. There is no deletion queue behind this any more.
+    @Column(name = "deactivated_at")
+    private Instant deactivatedAt;
+
+    @Column(name = "deactivation_reason", columnDefinition = "text")
+    private String deactivationReason;
+
+    @Column(name = "deactivated_by")
+    private UUID deactivatedBy;
+
+    // Safety monitoring configuration, moved off the safety_configs table (V3 §3.9).
+    // Typed columns rather than settings_jsonb keys: a fall-detection hot path reads
+    // these, and they carry real CHECK constraints. Sensitivity stays a String here
+    // so the security entity does not depend on the safety domain's enum.
+    @Builder.Default
+    @Column(name = "fall_detection_enabled", nullable = false)
+    private boolean fallDetectionEnabled = false;
+
+    @Builder.Default
+    @Column(name = "fall_detection_sensitivity_level", nullable = false, length = 10)
+    private String fallDetectionSensitivityLevel = "MEDIUM";
+
+    @Builder.Default
+    @Column(name = "emergency_auto_alert", nullable = false)
+    private boolean emergencyAutoAlert = true;
+
+    @Builder.Default
+    @Column(name = "emergency_countdown_seconds", nullable = false)
+    private int emergencyCountdownSeconds = 30;
+
+    @Builder.Default
+    @Column(name = "sensor_permission_granted", nullable = false)
+    private boolean sensorPermissionGranted = false;
+
+    @Column(name = "sensor_permission_recorded_at")
+    private Instant sensorPermissionRecordedAt;
+
+    @Builder.Default
+    @Column(name = "safety_config_updated_at", nullable = false)
+    private Instant safetyConfigUpdatedAt = Instant.now();
+
+    @Column(name = "safety_config_updated_by")
+    private UUID safetyConfigUpdatedBy;
+
     @Column(name = "email_verified")
     private Boolean emailVerified;
 

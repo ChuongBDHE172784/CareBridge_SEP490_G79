@@ -21,7 +21,6 @@ import com.carebridge.backend.identity.admin.dto.response.AdminUserActivityRespo
 import com.carebridge.backend.identity.admin.dto.response.AdminUserSessionResponse;
 import com.carebridge.backend.identity.admin.dto.response.AdminUserSummaryResponse;
 import com.carebridge.backend.identity.admin.mapper.AdminUserMapper;
-import com.carebridge.backend.identity.admin.repository.AccountLockAppealRepository;
 import com.carebridge.backend.identity.admin.repository.AdminUserMonitoringRepository;
 import com.carebridge.backend.identity.admin.service.impl.AdminUserServiceImpl;
 import com.carebridge.backend.identity.admin.testsupport.AdminGovernanceTestFactory;
@@ -56,7 +55,6 @@ class AdminUserServiceImplTest {
     @Mock private AuditService auditService;
     @Mock private AdminUserMonitoringRepository monitoringRepository;
     @Mock private UserSessionRepository userSessionRepository;
-    @Mock private AccountLockAppealRepository appealRepository;
 
     private AdminUserServiceImpl newService() {
         return new AdminUserServiceImpl(
@@ -64,8 +62,7 @@ class AdminUserServiceImplTest {
                 auditService,
                 new AdminUserMapper(),
                 monitoringRepository,
-                userSessionRepository,
-                appealRepository);
+                userSessionRepository);
     }
 
     // UC114-TC-001
@@ -264,6 +261,8 @@ class AdminUserServiceImplTest {
                 AdminGovernanceTestFactory.makeStatusRequest(r -> {
                     r.setEnabled(true);
                     r.setLocked(false);
+                    r.setReason("Verified by customer support");
+                    r.setCskhTicketId("CSKH-2026-0042");
                 }));
 
         ArgumentCaptor<User> savedCaptor = ArgumentCaptor.forClass(User.class);
@@ -275,8 +274,18 @@ class AdminUserServiceImplTest {
         assertThat(savedCaptor.getValue().getLockReason()).isNull();
         assertThat(savedCaptor.getValue().getLockedBy()).isNull();
         assertThat(savedCaptor.getValue().getLockEpisodeId()).isNull();
-        verify(appealRepository).cancelPending(
-                eq(target.getId()), eq(lockEpisodeId), any(Instant.class), eq(admin.getId()), any(String.class));
+
+        // The appeal table is gone, so this audit row is the only lasting record of
+        // the unlock: it must still name the episode, the reason and the support
+        // ticket that authorised it.
+        ArgumentCaptor<Object> payloadCaptor = ArgumentCaptor.forClass(Object.class);
+        verify(auditService).log(
+                eq(AuditAction.USER_ACCOUNT_STATUS_CHANGED), eq(admin.getId()), eq("USER"),
+                eq(target.getId().toString()), payloadCaptor.capture());
+        assertThat(payloadCaptor.getValue().toString())
+                .contains(lockEpisodeId.toString())
+                .contains("CSKH-2026-0042")
+                .contains("Verified by customer support");
     }
 
     @Test

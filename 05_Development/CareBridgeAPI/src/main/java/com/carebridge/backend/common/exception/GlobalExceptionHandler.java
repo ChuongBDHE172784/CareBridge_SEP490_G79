@@ -24,7 +24,6 @@ import com.carebridge.backend.content.exception.ContentException;
 import com.carebridge.backend.content.exception.ModerationException;
 import com.carebridge.backend.recommendation.exception.RecommendationException;
 import com.carebridge.backend.integration.gemini.exception.RagException;
-import com.carebridge.backend.partner.exception.PartnerException;
 import com.carebridge.backend.emergency.exception.EmergencyException;
 import com.carebridge.backend.safety.exception.SafetyException;
 import com.carebridge.backend.triage.exception.RedFlagRuleException;
@@ -301,11 +300,6 @@ public class GlobalExceptionHandler {
         return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
     }
 
-    @ExceptionHandler(PartnerException.class)
-    public ResponseEntity<ErrorResponse> handlePartner(PartnerException ex, HttpServletRequest request) {
-        return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
-    }
-
     @ExceptionHandler(RagException.class)
     public ResponseEntity<ErrorResponse> handleRag(RagException ex, HttpServletRequest request) {
         return error(ex.getHttpStatus(), ex.getCode(), ex.getMessage(), request);
@@ -420,10 +414,6 @@ public class GlobalExceptionHandler {
         metadata.put("lockType", ex.getLockType().name());
         if (ex.getReason() != null) metadata.put("reason", ex.getReason());
         if (ex.getRetryAt() != null) metadata.put("retryAt", ex.getRetryAt());
-        metadata.put("appealAllowed", ex.isAppealAllowed());
-        metadata.put("appealPending", ex.isAppealPending());
-        if (ex.getAppealStatus() != null) metadata.put("appealStatus", ex.getAppealStatus().name());
-        if (ex.getAppealToken() != null) metadata.put("appealToken", ex.getAppealToken());
         String code = ex.getLockType() == com.carebridge.backend.security.entity.AccountLockType.ADMIN
                 ? "ACCOUNT_ADMIN_LOCKED" : "ACCOUNT_TEMPORARILY_LOCKED";
         ErrorResponse response = ErrorResponse.builder()

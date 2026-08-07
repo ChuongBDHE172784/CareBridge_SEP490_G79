@@ -4,7 +4,7 @@ import com.carebridge.backend.safety.dto.request.SafetyConfigRequest;
 import com.carebridge.backend.safety.dto.response.SafetyConfigResponse;
 import com.carebridge.backend.safety.entity.SafetyMonitoringConfig;
 import com.carebridge.backend.safety.event.SafetyConfigChanged;
-import com.carebridge.backend.safety.repository.ISafetyConfigRepository;
+import com.carebridge.backend.safety.repository.SafetyConfigStore;
 import com.carebridge.backend.safety.service.impl.SafetyConfigService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,7 +23,7 @@ import static org.mockito.Mockito.*;
 class SafetyConfigServiceTest {
 
     @Mock
-    private ISafetyConfigRepository configRepository;
+    private SafetyConfigStore configStore;
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
@@ -36,20 +36,20 @@ class SafetyConfigServiceTest {
     @Test
     void configure_firstTime_shouldInsertNewConfig() {
         // SCONFIG-TC-001
-        when(configRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
-        when(configRepository.save(any())).thenReturn(SafetyConfigTestFactory.makeConfig());
+        when(configStore.findByUserId(USER_ID)).thenReturn(Optional.empty());
+        when(configStore.save(any())).thenReturn(SafetyConfigTestFactory.makeConfig());
 
         SafetyConfigResponse result = safetyConfigService.configure(SafetyConfigTestFactory.makeRequest(), USER_ID);
 
-        verify(configRepository).save(any(SafetyMonitoringConfig.class));
+        verify(configStore).save(any(SafetyMonitoringConfig.class));
         assertThat(result).isNotNull();
     }
 
     @Test
     void configure_shouldPublishSafetyConfigChangedEvent() {
         // SCONFIG-TC-003
-        when(configRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
-        when(configRepository.save(any())).thenReturn(SafetyConfigTestFactory.makeConfig());
+        when(configStore.findByUserId(USER_ID)).thenReturn(Optional.empty());
+        when(configStore.save(any())).thenReturn(SafetyConfigTestFactory.makeConfig());
 
         safetyConfigService.configure(SafetyConfigTestFactory.makeRequest(), USER_ID);
 
@@ -61,7 +61,7 @@ class SafetyConfigServiceTest {
     @Test
     void getConfig_whenNoRecord_shouldReturnDefault() {
         // SCONFIG-TC-004
-        when(configRepository.findByUserId(USER_ID)).thenReturn(Optional.empty());
+        when(configStore.findByUserId(USER_ID)).thenReturn(Optional.empty());
 
         SafetyConfigResponse result = safetyConfigService.getConfig(USER_ID);
 

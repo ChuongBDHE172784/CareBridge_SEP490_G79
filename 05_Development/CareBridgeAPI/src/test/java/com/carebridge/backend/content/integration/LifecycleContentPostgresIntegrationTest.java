@@ -33,6 +33,9 @@ import com.carebridge.backend.testsupport.CanonicalUserFixture;
 import jakarta.persistence.EntityManager;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import com.carebridge.backend.checklist.model.ChecklistAnchorType;
+import com.carebridge.backend.checklist.model.ChecklistRangeUnit;
+import com.carebridge.backend.checklist.model.ChecklistRecipientScope;
 import java.time.Instant;
 import java.sql.Timestamp;
 import java.time.LocalDate;
@@ -144,13 +147,10 @@ class LifecycleContentPostgresIntegrationTest extends AbstractPostgresIntegratio
     // R69-027 retained PostgreSQL evidence start
     void uc82_69_int_005_realPostgresPersistsFiveStatusesAndDeterministicCardinality() {
         for (ChecklistTemplateStatus status : ChecklistTemplateStatus.values()) {
-            templateRepository.saveAndFlush(ChecklistTemplate.builder()
-                    .name("Story 69 " + status)
-                    .stage(status == ChecklistTemplateStatus.APPROVED
-                            ? ContentStage.PREGNANCY : ContentStage.PRE_PREGNANCY)
-                    .status(status)
-                    .versionNo(1)
-                    .build());
+            seedTemplate("Story 69 " + status,
+                    status == ChecklistTemplateStatus.APPROVED
+                            ? ContentStage.PREGNANCY : ContentStage.PRE_PREGNANCY,
+                    status);
         }
 
         Set<String> persistedStatuses = jdbcTemplate.queryForList(
@@ -169,9 +169,15 @@ class LifecycleContentPostgresIntegrationTest extends AbstractPostgresIntegratio
                         + "and column_name='content_status'");
         assertThat(statusColumn.get("data_type")).isEqualTo("character varying");
         assertThat(((Number) statusColumn.get("character_maximum_length")).intValue()).isEqualTo(20);
+        // R69 kept content_status an open varchar so a sixth status needs no migration.
+        // The original proxy for that — "no CHECK mentions content_status at all" — stopped
+        // holding when V20260731070000 added three approval/distribution gates that
+        // reference the column without restricting which statuses may be stored. The
+        // guarantee itself is still asserted above (all five statuses persisted); what is
+        // re-checked here is the narrower, still-true property it stood for.
         assertThat(jdbcTemplate.queryForObject(
                         "select count(*) from pg_constraint where conrelid='public.care_item_templates'::regclass "
-                                + "and contype='c' and pg_get_constraintdef(oid) ilike '%content_status%'",
+                                + "and contype='c' and pg_get_constraintdef(oid) ilike '%content_status in (%'",
                         Long.class))
                 .isZero();
 
@@ -221,21 +227,22 @@ class LifecycleContentPostgresIntegrationTest extends AbstractPostgresIntegratio
     @Test
     void uc82_69_tc_002_genericChecklistHttpUsesExactlyTwoBoundedPostgresQueries()
             throws Exception {
-        ChecklistTemplate approvedA = seedTemplate(
-                "Approved A", ContentStage.PREGNANCY, ChecklistTemplateStatus.APPROVED);
-        ChecklistTemplate approvedB = seedTemplate(
-                "Approved B", ContentStage.PREGNANCY, ChecklistTemplateStatus.APPROVED);
+        ChecklistTemplate approvedA = seedDraft("Approved A", ContentStage.PREGNANCY);
+        ChecklistTemplate approvedB = seedDraft("Approved B", ContentStage.PREGNANCY);
         for (ChecklistTemplateStatus status : ChecklistTemplateStatus.values()) {
             if (status != ChecklistTemplateStatus.APPROVED) {
                 seedTemplate("Denied " + status, ContentStage.PREGNANCY, status);
             }
         }
-        ChecklistTemplate approvedOtherStage = seedTemplate(
-                "Approved POST", ContentStage.POSTPARTUM, ChecklistTemplateStatus.APPROVED);
+        ChecklistTemplate approvedOtherStage = seedDraft("Approved POST", ContentStage.POSTPARTUM);
         seedChecklistItem(approvedA, "A first", 1);
         seedChecklistItem(approvedA, "A highest-order", Integer.MAX_VALUE);
         seedChecklistItem(approvedB, "B only", 3);
         seedChecklistItem(approvedOtherStage, "Wrong stage", 1);
+        // Approval comes last: entries cannot be attached to an approved root.
+        promote(approvedA, ChecklistTemplateStatus.APPROVED);
+        promote(approvedB, ChecklistTemplateStatus.APPROVED);
+        promote(approvedOtherStage, ChecklistTemplateStatus.APPROVED);
         entityManager.clear();
 
         Logger sqlLogger = (Logger) LoggerFactory.getLogger("org.hibernate.SQL");
@@ -294,19 +301,18 @@ class LifecycleContentPostgresIntegrationTest extends AbstractPostgresIntegratio
     @Test
     void uc82_69_tc_003_genericChecklistWithoutStageReturnsApprovedAcrossStagesOnly()
             throws Exception {
-        ChecklistTemplate approvedPre = seedTemplate(
-                "Approved PRE generic", ContentStage.PRE_PREGNANCY,
-                ChecklistTemplateStatus.APPROVED);
-        ChecklistTemplate approvedPost = seedTemplate(
-                "Approved POST generic", ContentStage.POSTPARTUM,
-                ChecklistTemplateStatus.APPROVED);
+        ChecklistTemplate approvedPre = seedDraft("Approved PRE generic", ContentStage.PRE_PREGNANCY);
+        ChecklistTemplate approvedPost = seedDraft("Approved POST generic", ContentStage.POSTPARTUM);
         seedChecklistItem(approvedPre, "PRE approved item", 1);
         seedChecklistItem(approvedPost, "POST approved item", 2);
+        // Approval comes last: entries cannot be attached to an approved root.
+        promote(approvedPre, ChecklistTemplateStatus.APPROVED);
+        promote(approvedPost, ChecklistTemplateStatus.APPROVED);
         for (ChecklistTemplateStatus status : ChecklistTemplateStatus.values()) {
             if (status != ChecklistTemplateStatus.APPROVED) {
-                ChecklistTemplate denied = seedTemplate(
-                        "Denied generic " + status, ContentStage.PREGNANCY, status);
+                ChecklistTemplate denied = seedDraft("Denied generic " + status, ContentStage.PREGNANCY);
                 seedChecklistItem(denied, "Denied item " + status, 1);
+                promote(denied, status);
             }
         }
         entityManager.clear();
@@ -554,13 +560,52 @@ class LifecycleContentPostgresIntegrationTest extends AbstractPostgresIntegratio
 
     private ChecklistTemplate seedTemplate(
             String name, ContentStage stage, ChecklistTemplateStatus status) {
+        return promote(seedDraft(name, stage), status);
+    }
+
+    /**
+     * Inline template metadata is the sole template authority since the checklist support
+     * tables were retired: a TEMPLATE_ROOT must carry a lineage/version pair, a recipient
+     * scope and eligibility bounds that match its stage, or the schema rejects the row.
+     *
+     * <p>Always created as a draft, because the schema freezes a template's entries the
+     * moment it reaches APPROVED or ARCHIVED — and refuses to demote it again. Anything
+     * that needs items must seed them here and call {@link #promote} afterwards.
+     */
+    private ChecklistTemplate seedDraft(String name, ContentStage stage) {
+        boolean prePregnancy = stage == ContentStage.PRE_PREGNANCY;
         return templateRepository.saveAndFlush(ChecklistTemplate.builder()
                 .name(name)
                 .stage(stage)
                 .templateType(ChecklistTemplateType.OPTIONAL)
-                .status(status)
+                .status(ChecklistTemplateStatus.DRAFT)
                 .versionNo(1)
+                .templateLineageId(UUID.randomUUID())
+                .templateVersionId(UUID.randomUUID())
+                .recipientScope(ChecklistRecipientScope.MOTHER)
+                .eligibilityAnchorType(prePregnancy
+                        ? ChecklistAnchorType.NONE
+                        : stage == ContentStage.PREGNANCY
+                                ? ChecklistAnchorType.LMP
+                                : ChecklistAnchorType.DELIVERY_DATE)
+                .eligibilityRangeUnit(prePregnancy
+                        ? ChecklistRangeUnit.DAY : ChecklistRangeUnit.WEEK)
+                .eligibilityStartInclusive(0)
+                .eligibilityEndInclusive(prePregnancy ? 0 : 42)
                 .build());
+    }
+
+    private ChecklistTemplate promote(ChecklistTemplate template, ChecklistTemplateStatus status) {
+        if (status == ChecklistTemplateStatus.DRAFT) {
+            return template;
+        }
+        template.setStatus(status);
+        if (status == ChecklistTemplateStatus.APPROVED) {
+            // care_item_templates_approved_gate_ck: an APPROVED root must carry provenance.
+            template.setApprovedAt(Instant.parse("2026-07-01T00:00:00Z"));
+            template.setApprovedBy(UUID.randomUUID());
+        }
+        return templateRepository.saveAndFlush(template);
     }
 
     private void seedChecklistItem(ChecklistTemplate template, String text, Integer order) {
@@ -612,8 +657,11 @@ class LifecycleContentPostgresIntegrationTest extends AbstractPostgresIntegratio
     }
 
     private void wipeStoryFixtures() {
+        // preparation_checklist_items was dropped with the consolidation contract; its v2
+        // successor checklist_task_instances hangs off checklist_instances, which
+        // references users, so the cascade below already clears it.
         jdbcTemplate.execute(
-                "truncate table preparation_checklist_items, care_item_templates, "
+                "truncate table care_item_templates, "
                         + "content_item_sources, content_items, "
                         + "care_subjects, mother_journeys, audit_events, users cascade");
     }

@@ -56,15 +56,21 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
     with WidgetsBindingObserver {
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
-  static const _canvas = Color(0xFFFFF8F6);
-  static const _surface = Color(0xFFFFF8F6);
-  static const _surfaceContainerHigh = Color(0xFFFFE2D9);
-  static const _surfaceContainerLow = Color(0xFFFFF1EC);
-  static const _surfaceContainerHighest = Color(0xFFFADCD3);
-  static const _secondaryContainer = Color(0xFFF6DACF);
-  static const _onSurface = Color(0xFF271812);
-  static const _onSurfaceVariant = Color(0xFF524440);
+  static const _canvas = Color(0xFFF8F5F1);
+  static const _surface = Color(0xFFFFFCF9);
+  static const _surfaceContainerHigh = Color(0xFFF1E6E0);
+  static const _surfaceContainerLow = Color(0xFFF8EEE9);
+  static const _surfaceContainerHighest = Color(0xFFE5D3CA);
+  static const _onSurface = Color(0xFF2A211D);
+  static const _onSurfaceVariant = Color(0xFF655650);
   static const _error = Color(0xFFBA1A1A);
+  static const _sectionTitleStyle = TextStyle(
+    fontFamily: 'Lexend',
+    fontSize: 18,
+    fontWeight: FontWeight.w700,
+    color: _onSurface,
+    letterSpacing: -0.2,
+  );
 
   final _journeyService = JourneyService();
   late final TodayTaskService _todayTaskService;
@@ -342,39 +348,35 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
         color: _primaryContainer,
         onRefresh: _load,
         child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             SliverToBoxAdapter(child: _buildTopBar()),
             SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   if (widget.recoveryNotice != null) ...[
                     _buildContinuationRecoveryNotice(),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
                   ],
                   _buildGreeting(),
-                  const SizedBox(height: 24),
-                  _buildDiscoverSection(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 20),
                   if (_loading)
-                    const Center(
-                      child: CircularProgressIndicator(
-                        key: Key('mother-home-dashboard-loading'),
-                        color: _primaryContainer,
-                      ),
-                    )
+                    _buildDashboardLoadingState()
                   else ...[
                     _buildJourneyCard(),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
                     _buildAlertCard(),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 28),
                     _buildQuickActions(),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 28),
                   ],
                   _buildTasksSection(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 28),
+                  _buildDiscoverSection(),
+                  const SizedBox(height: 28),
                   _buildRecommendationSection(),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 8),
                 ]),
               ),
             ),
@@ -428,61 +430,82 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
   }
 
   Widget _buildTopBar() {
-    return SizedBox(
-      height: 56,
+    return SafeArea(
+      bottom: false,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
+        padding: const EdgeInsets.fromLTRB(20, 10, 16, 0),
         child: Row(
           children: [
-            // Avatar circle
             Container(
-              width: 40,
-              height: 40,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
-                shape: BoxShape.circle,
                 color: _surfaceContainerHigh,
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: _surfaceContainerHighest),
               ),
               child: const Icon(
-                Icons.person,
-                size: 22,
-                color: _onSurfaceVariant,
+                Icons.person_outline_rounded,
+                size: 24,
+                color: _primary,
               ),
             ),
+            const SizedBox(width: 12),
             const Expanded(
-              child: Text(
-                'CareBridge',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 32,
-                  fontWeight: FontWeight.w700,
-                  color: _primary,
-                  letterSpacing: -0.5,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'CareBridge',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: _primary,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Không gian của mẹ',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: _onSurface,
+                    ),
+                  ),
+                ],
               ),
             ),
-            // Notification bell + red dot
             Stack(
               clipBehavior: Clip.none,
               children: [
-                IconButton(
-                  onPressed: () => Navigator.of(context)
-                      .push(
-                        MaterialPageRoute(
-                          builder: (_) => const NotificationCenterScreen(),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: _surface,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: _surfaceContainerHighest),
+                  ),
+                  child: IconButton(
+                    tooltip: 'Thông báo',
+                    onPressed: () => Navigator.of(context)
+                        .push(
+                          MaterialPageRoute(
+                            builder: (_) => const NotificationCenterScreen(),
+                          ),
+                        )
+                        .then(
+                          (_) => _checkUnread(
+                            generation: _loadGeneration,
+                            accountId: AuthState.instance.userId,
+                          ),
                         ),
-                      )
-                      .then(
-                        (_) => _checkUnread(
-                          generation: _loadGeneration,
-                          accountId: AuthState.instance.userId,
-                        ),
-                      ),
-                  icon: const Icon(
-                    Icons.notifications,
-                    size: 28,
-                    color: _primary,
+                    icon: const Icon(
+                      Icons.notifications_none_rounded,
+                      size: 23,
+                      color: _primary,
+                    ),
                   ),
                 ),
                 if (_hasUnread)
@@ -490,12 +513,12 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
                     top: 8,
                     right: 8,
                     child: Container(
-                      width: 10,
-                      height: 10,
+                      width: 9,
+                      height: 9,
                       decoration: BoxDecoration(
                         color: _error,
                         shape: BoxShape.circle,
-                        border: Border.all(color: _canvas, width: 1.5),
+                        border: Border.all(color: _surface, width: 1.5),
                       ),
                     ),
                   ),
@@ -511,25 +534,44 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Chào Mẹ,',
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            fontSize: 24,
-            fontWeight: FontWeight.w600,
-            color: _onSurface,
-          ),
-        ),
-        const SizedBox(height: 4),
+        const Text('Chào Mẹ,', style: _sectionTitleStyle),
+        const SizedBox(height: 6),
         const Text(
           'Hôm nay mẹ và bé cảm thấy thế nào?',
           style: TextStyle(
             fontFamily: 'Lexend',
-            fontSize: 16,
+            fontSize: 15,
             color: _onSurfaceVariant,
+            height: 1.4,
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildDashboardLoadingState() {
+    return Container(
+      key: const Key('mother-home-dashboard-loading'),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _surface,
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: _surfaceContainerHighest),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SkeletonLine(width: 118, height: 14),
+          SizedBox(height: 16),
+          _SkeletonLine(width: 152, height: 30),
+          SizedBox(height: 12),
+          _SkeletonLine(width: double.infinity, height: 14),
+          SizedBox(height: 8),
+          _SkeletonLine(width: 210, height: 14),
+          SizedBox(height: 22),
+          _SkeletonLine(width: double.infinity, height: 8),
+        ],
+      ),
     );
   }
 
@@ -567,31 +609,51 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
   /// TDS MotherExpertDiscoveryInbox §13.1 — Cộng đồng/Bài tập lost their bottom-nav slots to
   /// Chuyên gia/Trò chuyện, so they need a discovery entry point here instead.
   Widget _buildDiscoverSection() {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _QuickAction(
-          icon: Icons.group_outlined,
-          label: 'Cộng đồng',
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const CommunityFeedScreen()),
-          ),
-        ),
-        _QuickAction(
-          icon: Icons.self_improvement,
-          label: 'Bài tập',
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const MotherExerciseScreen()),
-          ),
-        ),
-        _QuickAction(
-          icon: Icons.menu_book_outlined,
-          label: 'Nội dung & FAQ',
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) =>
-                  const ViewContentScreen(mode: ContentBrowseMode.lifecycle),
+        const Text('Khám phá thêm', style: _sectionTitleStyle),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _DiscoveryAction(
+                icon: Icons.group_outlined,
+                label: 'Cộng đồng',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const CommunityFeedScreen(),
+                  ),
+                ),
+              ),
             ),
-          ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _DiscoveryAction(
+                icon: Icons.self_improvement,
+                label: 'Bài tập',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const MotherExerciseScreen(),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: _DiscoveryAction(
+                icon: Icons.menu_book_outlined,
+                label: 'Nội dung & FAQ',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const ViewContentScreen(
+                      mode: ContentBrowseMode.lifecycle,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -609,119 +671,131 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
     final description = week != null
         ? 'Bé đang lớn bằng ${d.fruitName}, ${d.fruitSizeNote}.'
         : 'CareBridge đang theo dõi hành trình từ dữ liệu mẹ đã thiết lập.';
+    final progressValue = progress.clamp(0.0, 1.0).toDouble();
 
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
       decoration: BoxDecoration(
         color: _surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: _surfaceContainerHighest),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [_surface, _surfaceContainerLow],
+        ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF5A463F).withAlpha(15),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
+            color: const Color(0xFF845143).withAlpha(18),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
-      child: Stack(
-        clipBehavior: Clip.none,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Week badge
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 4,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Hành trình thai kỳ',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: _primary,
+                  ),
                 ),
-                decoration: BoxDecoration(
-                  color: _surfaceContainerLow,
-                  borderRadius: BorderRadius.circular(99),
+                const SizedBox(height: 12),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 30,
+                    fontWeight: FontWeight.w700,
+                    color: _onSurface,
+                    letterSpacing: -0.5,
+                  ),
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(Icons.favorite, size: 16, color: _primary),
-                    SizedBox(width: 4),
-                    Text(
-                      'Hành trình thai kỳ',
-                      style: TextStyle(
-                        fontFamily: 'Lexend',
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                        color: _primary,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              // Week number
-              Text(
-                title,
-                style: const TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 32,
-                  fontWeight: FontWeight.w700,
-                  color: _onSurface,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 8),
-              // Description (2/3 width to avoid fruit image)
-              SizedBox(
-                width: MediaQuery.of(context).size.width * 0.5,
-                child: Text(
+                const SizedBox(height: 6),
+                Text(
                   description,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 14,
                     color: _onSurfaceVariant,
-                    height: 1.4,
+                    height: 1.45,
                   ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              // Progress bar
-              ClipRRect(
-                borderRadius: BorderRadius.circular(99),
-                child: LinearProgressIndicator(
-                  value: progress,
-                  minHeight: 8,
-                  backgroundColor: _surfaceContainerLow,
-                  valueColor: const AlwaysStoppedAnimation<Color>(
-                    _primaryContainer,
-                  ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    const Icon(Icons.spa_outlined, size: 17, color: _primary),
+                    const SizedBox(width: 6),
+                    Text(
+                      week != null
+                          ? 'Tiếp tục theo dõi mỗi ngày'
+                          : 'Đang đồng hành cùng mẹ',
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: _primary,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
-          // Fruit icon (top-right decorative)
-          Positioned(
-            top: 0,
-            right: 0,
-            child: Container(
-              width: 88,
-              height: 88,
-              decoration: BoxDecoration(
-                color: _surfaceContainerHighest.withAlpha(128),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.eco, size: 48, color: _primaryContainer),
+              ],
             ),
           ),
-          // Decorative blur circle bottom-right
-          Positioned(
-            bottom: -32,
-            right: -32,
-            child: Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: _secondaryContainer.withAlpha(102),
-                shape: BoxShape.circle,
+          const SizedBox(width: 16),
+          Semantics(
+            label:
+                'Tiến độ hành trình ${(progressValue * 100).round()} phần trăm',
+            child: SizedBox(
+              width: 96,
+              height: 96,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  SizedBox.square(
+                    dimension: 92,
+                    child: CircularProgressIndicator(
+                      value: progressValue,
+                      strokeWidth: 9,
+                      backgroundColor: _surfaceContainerHighest,
+                      valueColor: const AlwaysStoppedAnimation<Color>(
+                        _primaryContainer,
+                      ),
+                    ),
+                  ),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '${(progressValue * 100).round()}%',
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 19,
+                          fontWeight: FontWeight.w700,
+                          color: _onSurface,
+                        ),
+                      ),
+                      const Text(
+                        'tiến độ',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 11,
+                          color: _onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ),
@@ -732,36 +806,30 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
 
   Widget _buildNoJourneyCard() {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: _surface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF5A463F).withAlpha(15),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: _surfaceContainerHighest),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 48,
-            height: 48,
-            decoration: const BoxDecoration(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
               color: _surfaceContainerHigh,
-              shape: BoxShape.circle,
+              borderRadius: BorderRadius.circular(16),
             ),
-            child: const Icon(Icons.route_rounded, color: _primary),
+            child: const Icon(Icons.route_outlined, color: _primary),
           ),
           const SizedBox(height: 16),
           const Text(
             'Thiết lập hành trình của mẹ',
             style: TextStyle(
               fontFamily: 'Lexend',
-              fontSize: 20,
+              fontSize: 19,
               fontWeight: FontWeight.w700,
               color: _onSurface,
             ),
@@ -784,103 +852,117 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
   Widget _buildAlertCard() {
     final appointment = _nearestAppointment();
 
-    return GestureDetector(
-      key: const Key('mother-home-next-appointment-card'),
-      onTap: () async {
-        await context.push('/appointments/calendar');
-        if (mounted) await _load();
-      },
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF2EAE4),
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x0F5A463F),
-              blurRadius: 24,
-              offset: Offset(0, 8),
+    return Semantics(
+      button: true,
+      label: 'Lịch hẹn tiếp theo',
+      child: Material(
+        color: _surface,
+        borderRadius: BorderRadius.circular(22),
+        child: InkWell(
+          key: const Key('mother-home-next-appointment-card'),
+          borderRadius: BorderRadius.circular(22),
+          onTap: () async {
+            await context.push('/appointments/calendar');
+            if (mounted) await _load();
+          },
+          child: Ink(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: _surface,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: _surfaceContainerHighest),
             ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+            child: Column(
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Lịch hẹn tiếp theo',
-                        style: TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: _onSurface,
-                        ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: _surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(15),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        appointment?.title ??
-                            'Chưa có lịch khám sắp tới (Chạm để xem hoặc tạo mới)',
+                      child: const Icon(
+                        Icons.calendar_month_outlined,
+                        color: _primary,
+                        size: 23,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Lịch hẹn tiếp theo',
+                            style: _sectionTitleStyle,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            appointment?.title ??
+                                'Chưa có lịch khám sắp tới (Chạm để xem hoặc tạo mới)',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 13,
+                              color: _onSurfaceVariant,
+                              height: 1.35,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(
+                      Icons.arrow_outward_rounded,
+                      color: _onSurfaceVariant,
+                      size: 19,
+                    ),
+                  ],
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 14),
+                  child: Divider(
+                    height: 1,
+                    thickness: 1,
+                    color: _surfaceContainerHighest,
+                  ),
+                ),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.schedule_outlined,
+                      size: 17,
+                      color: _primary,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        appointment != null
+                            ? [
+                                _formatDateTime(appointment.scheduledAt),
+                                if (appointment.location != null)
+                                  appointment.location!,
+                              ].join(' • ')
+                            : 'Quản lý danh sách lịch hẹn',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           fontFamily: 'Lexend',
-                          fontSize: 14,
+                          fontSize: 13,
                           color: _onSurfaceVariant,
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: const BoxDecoration(
-                    color: _surface,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.calendar_today,
-                    color: _primary,
-                    size: 20,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            const Divider(color: Color(0xFFD6C2BD), thickness: 1),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                const Icon(Icons.schedule, size: 16, color: _onSurfaceVariant),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    appointment != null
-                        ? [
-                            _formatDateTime(appointment.scheduledAt),
-                            if (appointment.location != null)
-                              appointment.location!,
-                          ].join(' • ')
-                        : 'Quản lý danh sách lịch hẹn',
-                    style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 14,
-                      color: _onSurfaceVariant,
                     ),
-                  ),
-                ),
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  color: _onSurfaceVariant,
-                  size: 20,
+                  ],
                 ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -890,42 +972,59 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const Text('Ghi chú nhanh', style: _sectionTitleStyle),
+        const SizedBox(height: 5),
         const Text(
-          'Ghi chú nhanh',
+          'Ghi lại những điều quan trọng trong ngày',
           style: TextStyle(
             fontFamily: 'Lexend',
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: _onSurface,
+            fontSize: 13,
+            color: _onSurfaceVariant,
           ),
         ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            _QuickAction(
-              icon: Icons.calculate_outlined,
-              label: 'Chỉ số BMI',
-              onTap: () => _openQuickMetric('BMI'),
-            ),
-            const SizedBox(width: 12),
-            _QuickAction(
-              icon: Icons.water_drop_rounded,
-              label: 'Nước',
-              onTap: () => _openQuickMetric('HYDRATION'),
-            ),
-            const SizedBox(width: 12),
-            _QuickAction(
-              icon: Icons.sentiment_satisfied_alt_rounded,
-              label: 'Tâm trạng',
-              onTap: () => _openQuickMetric('MOOD'),
-            ),
-            const SizedBox(width: 12),
-            _QuickAction(
-              icon: Icons.favorite_rounded,
-              label: 'Cử động',
-              onTap: () => _openQuickMetric('FETAL_MOVEMENT_COUNT'),
-            ),
-          ],
+        const SizedBox(height: 14),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final tileWidth = (constraints.maxWidth - 12) / 2;
+            return Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                SizedBox(
+                  width: tileWidth,
+                  child: _QuickAction(
+                    icon: Icons.calculate_outlined,
+                    label: 'Chỉ số BMI',
+                    onTap: () => _openQuickMetric('BMI'),
+                  ),
+                ),
+                SizedBox(
+                  width: tileWidth,
+                  child: _QuickAction(
+                    icon: Icons.water_drop_outlined,
+                    label: 'Nước uống',
+                    onTap: () => _openQuickMetric('HYDRATION'),
+                  ),
+                ),
+                SizedBox(
+                  width: tileWidth,
+                  child: _QuickAction(
+                    icon: Icons.sentiment_satisfied_alt_outlined,
+                    label: 'Tâm trạng',
+                    onTap: () => _openQuickMetric('MOOD'),
+                  ),
+                ),
+                SizedBox(
+                  width: tileWidth,
+                  child: _QuickAction(
+                    icon: Icons.favorite_border_rounded,
+                    label: 'Cử động',
+                    onTap: () => _openQuickMetric('FETAL_MOVEMENT_COUNT'),
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ],
     );
@@ -1051,55 +1150,137 @@ class _QuickAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Semantics(
-        button: true,
-        label: 'Ghi chú $label',
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(16),
-            child: Ink(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF8F6),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF5A463F).withAlpha(15),
-                    blurRadius: 20,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+    return Semantics(
+      button: true,
+      label: 'Ghi chú $label',
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Ink(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: _MotherHomeScreenState._surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: _MotherHomeScreenState._surfaceContainerHighest,
               ),
-              child: Column(
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFF6DACF),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(icon, color: const Color(0xFF735E56)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: _MotherHomeScreenState._surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
+                  child: Icon(
+                    icon,
+                    size: 22,
+                    color: _MotherHomeScreenState._primary,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
                     label,
-                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontFamily: 'Lexend',
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF524440),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: _MotherHomeScreenState._onSurface,
+                      height: 1.25,
                     ),
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 4),
+                const Icon(
+                  Icons.add_rounded,
+                  size: 19,
+                  color: _MotherHomeScreenState._primary,
+                ),
+              ],
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _DiscoveryAction extends StatelessWidget {
+  const _DiscoveryAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: label,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: Ink(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+            decoration: BoxDecoration(
+              color: _MotherHomeScreenState._surfaceContainerLow,
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Column(
+              children: [
+                Icon(icon, color: _MotherHomeScreenState._primary, size: 23),
+                const SizedBox(height: 8),
+                Text(
+                  label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: _MotherHomeScreenState._onSurfaceVariant,
+                    height: 1.25,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SkeletonLine extends StatelessWidget {
+  const _SkeletonLine({required this.width, required this.height});
+
+  final double width;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: _MotherHomeScreenState._surfaceContainerLow,
+        borderRadius: BorderRadius.circular(8),
       ),
     );
   }
@@ -1109,18 +1290,12 @@ extension _MotherHomeRecommendationView on _MotherHomeScreenState {
   Widget _buildRecommendationSection() {
     final response = _recommendations;
     if (response == null && _recommendationLoading) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 24),
-        child: _RecommendationLoadingState(),
-      );
+      return const _RecommendationLoadingState();
     }
     if (response == null && _recommendationError != null) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: _RecommendationErrorState(
-          message: _recommendationError!,
-          onRetry: _loadRecommendations,
-        ),
+      return _RecommendationErrorState(
+        message: _recommendationError!,
+        onRetry: _loadRecommendations,
       );
     }
     if (response == null) return const SizedBox.shrink();
@@ -1134,75 +1309,74 @@ extension _MotherHomeRecommendationView on _MotherHomeScreenState {
       'BABY_CARE' => 'Gợi ý chăm sóc bé',
       _ => 'Gợi ý dành cho bạn',
     };
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 20,
-              fontWeight: FontWeight.w600,
-              color: _MotherHomeScreenState._onSurface,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: _MotherHomeScreenState._sectionTitleStyle),
+        const SizedBox(height: 5),
+        const Text(
+          'Nội dung được chọn theo giai đoạn hiện tại của mẹ',
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 13,
+            color: _MotherHomeScreenState._onSurfaceVariant,
+          ),
+        ),
+        if (response.profileStatus ==
+                RecommendationProfileStatus.reviewRequired ||
+            response.profileStatus ==
+                RecommendationProfileStatus.reconsentRequired) ...[
+          const SizedBox(height: 4),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              key: const Key('mother-home-recommendation-review-profile'),
+              onPressed: () => context.push(
+                '/recommendation-profile',
+                extra: response.stage,
+              ),
+              child: const Text('Xem lại hồ sơ cá nhân hóa'),
             ),
           ),
-          if (response.profileStatus ==
-                  RecommendationProfileStatus.reviewRequired ||
-              response.profileStatus ==
-                  RecommendationProfileStatus.reconsentRequired) ...[
-            const SizedBox(height: 4),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton(
-                key: const Key('mother-home-recommendation-review-profile'),
-                onPressed: () => context.push(
-                  '/recommendation-profile',
-                  extra: response.stage,
-                ),
-                child: const Text('Xem lại hồ sơ cá nhân hóa'),
-              ),
-            ),
-          ],
-          if (_recommendationLoading) ...[
-            const SizedBox(height: 8),
-            const LinearProgressIndicator(
-              key: Key('mother-home-recommendation-refreshing'),
-              color: _MotherHomeScreenState._primaryContainer,
-              backgroundColor: _MotherHomeScreenState._surfaceContainerLow,
-            ),
-          ],
-          if (_recommendationError != null) ...[
-            const SizedBox(height: 8),
-            _RecommendationErrorState(
-              message: _recommendationError!,
-              onRetry: _loadRecommendations,
-            ),
-          ],
-          if (response.selectionMode == 'FALLBACK_ONLY')
-            const _RecommendationCoverageNotice(
-              key: Key('mother-home-recommendation-fallback-only'),
-              message: 'Đây là nội dung nền an toàn cho giai đoạn hiện tại.',
-            ),
-          if (response.coverageStatus == 'PARTIAL')
-            _RecommendationCoverageNotice(
-              key: const Key('mother-home-recommendation-partial'),
-              message:
-                  'Hiện có một số nội dung phù hợp. Bạn có thể xem thêm trong thư viện.',
-              onBrowse: () => context.push('/content'),
-            ),
-          if (response.coverageStatus == 'EMPTY')
-            _RecommendationCoverageNotice(
-              key: const Key('mother-home-recommendation-empty-coverage'),
-              message:
-                  'Chưa có bài viết phù hợp; hãy xem toàn bộ thư viện nội dung.',
-              onBrowse: () => context.push('/content'),
-            ),
-          const SizedBox(height: 12),
-          if (items.isNotEmpty) ...items.map(_buildRecommendationCard),
         ],
-      ),
+        if (_recommendationLoading) ...[
+          const SizedBox(height: 8),
+          const LinearProgressIndicator(
+            key: Key('mother-home-recommendation-refreshing'),
+            minHeight: 4,
+            color: _MotherHomeScreenState._primaryContainer,
+            backgroundColor: _MotherHomeScreenState._surfaceContainerLow,
+          ),
+        ],
+        if (_recommendationError != null) ...[
+          const SizedBox(height: 8),
+          _RecommendationErrorState(
+            message: _recommendationError!,
+            onRetry: _loadRecommendations,
+          ),
+        ],
+        if (response.selectionMode == 'FALLBACK_ONLY')
+          const _RecommendationCoverageNotice(
+            key: Key('mother-home-recommendation-fallback-only'),
+            message: 'Đây là nội dung nền an toàn cho giai đoạn hiện tại.',
+          ),
+        if (response.coverageStatus == 'PARTIAL')
+          _RecommendationCoverageNotice(
+            key: const Key('mother-home-recommendation-partial'),
+            message:
+                'Hiện có một số nội dung phù hợp. Bạn có thể xem thêm trong thư viện.',
+            onBrowse: () => context.push('/content'),
+          ),
+        if (response.coverageStatus == 'EMPTY')
+          _RecommendationCoverageNotice(
+            key: const Key('mother-home-recommendation-empty-coverage'),
+            message:
+                'Chưa có bài viết phù hợp; hãy xem toàn bộ thư viện nội dung.',
+            onBrowse: () => context.push('/content'),
+          ),
+        const SizedBox(height: 14),
+        if (items.isNotEmpty) ...items.map(_buildRecommendationCard),
+      ],
     );
   }
 
@@ -1308,14 +1482,25 @@ class _RecommendationLoadingState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Container(
       key: const Key('mother-home-recommendation-loading'),
-      margin: EdgeInsets.zero,
-      child: const Padding(
-        padding: EdgeInsets.all(24),
-        child: Center(
-          child: CircularProgressIndicator(color: Color(0xFFC98C7B)),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: _MotherHomeScreenState._surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: _MotherHomeScreenState._surfaceContainerHighest,
         ),
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SkeletonLine(width: 156, height: 16),
+          SizedBox(height: 12),
+          _SkeletonLine(width: double.infinity, height: 13),
+          SizedBox(height: 8),
+          _SkeletonLine(width: 210, height: 13),
+        ],
       ),
     );
   }
@@ -1332,24 +1517,41 @@ class _RecommendationErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Container(
       key: const Key('mother-home-recommendation-error'),
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            const Icon(Icons.info_outline, color: Color(0xFF845143)),
-            const SizedBox(width: 10),
-            Expanded(child: Text(message)),
-            IconButton(
-              key: const Key('mother-home-recommendation-retry'),
-              tooltip: 'Thử lại',
-              onPressed: () => unawaited(onRetry()),
-              icon: const Icon(Icons.refresh),
-            ),
-          ],
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _MotherHomeScreenState._surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: _MotherHomeScreenState._surfaceContainerHighest,
         ),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.info_outline_rounded,
+            color: _MotherHomeScreenState._primary,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 13,
+                color: _MotherHomeScreenState._onSurfaceVariant,
+              ),
+            ),
+          ),
+          IconButton(
+            key: const Key('mother-home-recommendation-retry'),
+            tooltip: 'Thử lại',
+            onPressed: () => unawaited(onRetry()),
+            icon: const Icon(Icons.refresh_rounded),
+            color: _MotherHomeScreenState._primary,
+          ),
+        ],
       ),
     );
   }
@@ -1367,20 +1569,34 @@ class _RecommendationCoverageNotice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(top: 8),
-      color: const Color(0xFFFFF1EC),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
-        child: Row(
-          children: [
-            const Icon(Icons.menu_book_outlined, color: Color(0xFF845143)),
-            const SizedBox(width: 10),
-            Expanded(child: Text(message)),
-            if (onBrowse != null)
-              TextButton(onPressed: onBrowse, child: const Text('Xem thêm')),
-          ],
-        ),
+    return Container(
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
+      decoration: BoxDecoration(
+        color: _MotherHomeScreenState._surfaceContainerLow,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.menu_book_outlined,
+            color: _MotherHomeScreenState._primary,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 13,
+                color: _MotherHomeScreenState._onSurfaceVariant,
+                height: 1.35,
+              ),
+            ),
+          ),
+          if (onBrowse != null)
+            TextButton(onPressed: onBrowse, child: const Text('Xem thêm')),
+        ],
       ),
     );
   }

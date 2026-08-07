@@ -38,6 +38,8 @@ __pycache__/
 
 # Dart/Flutter local app data
 .dart_localappdata/
+.dart_tool/
+.dart-tool/
 *.py[cod]
 *$py.class
 .pytest_cache/
@@ -158,3 +160,6 @@ outputs/maternal-health-metric-target-business-flow-2026-07-30.md
 outputs/notification-status-audit-2026-07-29.md
 
 CLAUDE.md
+
+# External cloned repositories
+Exercise-Correction/

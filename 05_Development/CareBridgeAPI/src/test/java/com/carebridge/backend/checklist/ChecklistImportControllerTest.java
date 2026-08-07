@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.doThrow;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -15,7 +16,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.carebridge.backend.checklist.controller.UserChecklistItemController;
 import com.carebridge.backend.checklist.dto.ChecklistItemResponse;
-import com.carebridge.backend.checklist.service.IUserChecklistItemService;
 import com.carebridge.backend.checklist.service.UserCreatedChecklistTaskService;
 import com.carebridge.backend.checklist.service.ChecklistV2CompatibilityMutationService;
 import com.carebridge.backend.checklist.service.OptionalChecklistTemplateImportService;
@@ -47,7 +47,6 @@ class ChecklistImportControllerTest {
     private static final UUID USER_ID = UUID.fromString("69000000-0000-0000-0000-000000000001");
 
     @Autowired private MockMvc mockMvc;
-    @MockitoBean private IUserChecklistItemService checklistService;
     @MockitoBean private UserCreatedChecklistTaskService userCreatedTaskService;
     @MockitoBean private ChecklistV2CompatibilityMutationService v2MutationService;
     @MockitoBean private OptionalChecklistTemplateImportService optionalTemplateImportService;
@@ -63,7 +62,20 @@ class ChecklistImportControllerTest {
                                 .formatted(UUID.randomUUID(), UUID.randomUUID())))
                 .andExpect(status().isGone())
                 .andExpect(jsonPath("$.error").value("CHECKLIST_LEGACY_ROUTE_RETIRED"));
-        verifyNoInteractions(checklistService, userCreatedTaskService);
+        verifyNoInteractions(userCreatedTaskService);
+    }
+
+    @Test
+    void legacyToggleReturnsGoneWithoutTouchingAnyService() throws Exception {
+        // The retired-mutation contract used to be asserted against the legacy
+        // service impl, which R12 removed. It lives here now, at the only surface
+        // a client can still reach.
+        mockMvc.perform(patch("/api/v1/user-checklist-items/{id}/toggle", UUID.randomUUID())
+                        .with(csrf())
+                        .with(user(USER_ID.toString()).roles("MOTHER")))
+                .andExpect(status().isGone())
+                .andExpect(jsonPath("$.error").value("CHECKLIST_LEGACY_ROUTE_RETIRED"));
+        verifyNoInteractions(userCreatedTaskService);
     }
 
     @Test
@@ -87,7 +99,6 @@ class ChecklistImportControllerTest {
                 .andExpect(jsonPath("$.data.itemId").value(taskId.toString()))
                 .andExpect(jsonPath("$.data.origin").value("USER_CREATED"));
         verify(userCreatedTaskService).create(any(), eq(USER_ID));
-        verifyNoInteractions(checklistService);
     }
 
     @Test
@@ -137,7 +148,7 @@ class ChecklistImportControllerTest {
         BusinessException immutable = new BusinessException(
                 HttpStatus.CONFLICT, "SYSTEM_TASK_IMMUTABLE", "System tasks cannot be edited or deleted");
         doThrow(immutable).when(v2MutationService).rejectUpdate(taskId, USER_ID);
-        doThrow(immutable).when(v2MutationService).rejectDelete(taskId, USER_ID);
+        doThrow(immutable).when(v2MutationService).delete(taskId, USER_ID);
 
         mockMvc.perform(put("/api/v1/user-checklist-items/{id}", taskId).with(csrf())
                         .with(user(USER_ID.toString()).roles("MOTHER"))
@@ -148,6 +159,5 @@ class ChecklistImportControllerTest {
                         .with(user(USER_ID.toString()).roles("MOTHER")))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error").value("SYSTEM_TASK_IMMUTABLE"));
-        verifyNoInteractions(checklistService);
     }
 }

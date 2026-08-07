@@ -39,7 +39,7 @@ apiClient.interceptors.request.use((config) => {
 // password, locked account trying to log in, etc.), not "your session expired".
 // The calling page shows its own inline error — the interceptor must not
 // force-logout or redirect over it.
-const PUBLIC_AUTH_PATHS = ['/auth/register', '/auth/login', '/auth/login-direct', '/auth/verify-otp', '/auth/resend-otp', '/auth/forgot-password', '/auth/lock-appeals'];
+const PUBLIC_AUTH_PATHS = ['/auth/register', '/auth/login', '/auth/login-direct', '/auth/verify-otp', '/auth/resend-otp', '/auth/forgot-password'];
 
 function requestPath(url: string) {
   try {

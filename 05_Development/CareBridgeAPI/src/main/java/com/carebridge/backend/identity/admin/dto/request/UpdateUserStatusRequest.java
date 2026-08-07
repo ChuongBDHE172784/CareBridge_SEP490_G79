@@ -19,4 +19,12 @@ public class UpdateUserStatusRequest {
 
     @Size(max = 500)
     private String reason;
+
+    /**
+     * Optional customer-support ticket reference. Since the in-app lock-appeal
+     * workflow was retired, the audit row written here is the only lasting record
+     * of why an account was unlocked, so it carries the support ticket instead.
+     */
+    @Size(max = 100)
+    private String cskhTicketId;
 }

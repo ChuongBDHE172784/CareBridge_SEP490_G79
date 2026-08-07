@@ -105,9 +105,15 @@ class DirectConversationServiceImplReadRaceIntegrationTest extends AbstractPostg
         Instant m1CreatedAt = jdbcTemplate.queryForObject(
                 "SELECT created_at FROM direct_messages WHERE message_id = ?",
                 Instant.class, m1Id);
+        // Read state lives only in the cursor table now — the legacy
+        // direct_conversations.expert_last_read_at column no longer exists.
         Instant expertLastReadAt = jdbcTemplate.queryForObject(
-                "SELECT expert_last_read_at FROM direct_conversations WHERE conversation_id = ?",
-                Instant.class, conversationId);
+                """
+                SELECT last_read_at
+                  FROM direct_conversation_read_cursors
+                 WHERE conversation_id = ? AND reader_user_id = ?
+                """,
+                Instant.class, conversationId, EXPERT_USER_ID);
         assertThat(expertLastReadAt).isEqualTo(m1CreatedAt); // cursor == M1.createdAt, never "now" at t3
 
         List<DirectConversationSummaryResponse> summaries = conversationService.listMyConversations(EXPERT_USER_ID);

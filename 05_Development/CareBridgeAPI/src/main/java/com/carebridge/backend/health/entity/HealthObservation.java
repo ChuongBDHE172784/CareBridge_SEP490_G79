@@ -86,8 +86,10 @@ public class HealthObservation {
     @Column(name = "source_type", nullable = false, length = 60)
     private DataSource sourceType;
 
-    @Column(name = "device_connection_id")
-    private UUID deviceConnectionId;
+    // device_connection_id is gone with the IoT integration. Provenance for
+    // historically device-sourced observations lives in raw_payload_jsonb under
+    // "deviceProvenance"; sourceType still records that the reading came from a
+    // device.
 
     @Column(name = "source_record_id")
     private UUID sourceRecordId;
@@ -113,6 +115,23 @@ public class HealthObservation {
     @Builder.Default
     @Column(name = "subject_type", nullable = false, updatable = false, length = 30)
     private String subjectType = "MOTHER";
+
+    /**
+     * Ties together the observations produced by a single measuring session — a baby growth
+     * entry records weight, height and head circumference at once and must stay one logical
+     * aggregate (V3 §3.12). Null for observations that stand alone.
+     *
+     * <p>Immutable: regrouping an observation after the fact would silently move a reading
+     * into another session.
+     */
+    @Column(name = "measurement_group_id", updatable = false)
+    private UUID measurementGroupId;
+
+    /**
+     * Soft-delete marker. Every read path must filter on this; nothing else hides the row.
+     */
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

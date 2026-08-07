@@ -130,48 +130,6 @@ public class JwtTokenProvider {
         return sign(payload.toString());
     }
 
-    public String generateAppealToken(User user) {
-        if (user.getLockEpisodeId() == null) {
-            throw new AuthenticationException("Lock episode is missing");
-        }
-        Instant now = Instant.now();
-        String payload = "{"
-                + "\"sub\":\"" + escape(user.getId().toString()) + "\","
-                + "\"" + SecurityConstants.CLAIM_TOKEN_TYPE + "\":\""
-                + SecurityConstants.APPEAL_TOKEN_TYPE + "\","
-                + "\"" + SecurityConstants.CLAIM_LOCK_EPISODE_ID + "\":\""
-                + escape(user.getLockEpisodeId().toString()) + "\","
-                + "\"iat\":" + now.getEpochSecond() + ","
-                + "\"exp\":" + now.plusSeconds(10 * 60).getEpochSecond()
-                + "}";
-        return sign(payload);
-    }
-
-    public AppealTokenClaims validateAppealToken(String token) {
-        try {
-            String[] parts = splitToken(token);
-            String header = decode(parts[0]);
-            if (!"RS256".equals(getJsonValue(header, "alg"))) return null;
-            PublicKey verificationKey = publicKeys.get(getJsonValue(header, "kid"));
-            if (verificationKey == null) return null;
-            String signatureInput = parts[0] + "." + parts[1];
-            if (!verifyRsa(verificationKey, signatureInput.getBytes(StandardCharsets.UTF_8),
-                    Base64.getUrlDecoder().decode(parts[2]))) return null;
-            String claims = decode(parts[1]);
-            if (!SecurityConstants.APPEAL_TOKEN_TYPE.equals(
-                    getJsonValue(claims, SecurityConstants.CLAIM_TOKEN_TYPE))) return null;
-            String expiresAt = getJsonValue(claims, "exp");
-            if (expiresAt == null || Long.parseLong(expiresAt) <= Instant.now().getEpochSecond()) return null;
-            return new AppealTokenClaims(
-                    UUID.fromString(getJsonValue(claims, "sub")),
-                    UUID.fromString(getJsonValue(claims, SecurityConstants.CLAIM_LOCK_EPISODE_ID)));
-        } catch (RuntimeException ex) {
-            return null;
-        }
-    }
-
-    public record AppealTokenClaims(UUID userId, UUID lockEpisodeId) {}
-
     public boolean validateToken(String token) {
         try {
             String[] parts = splitToken(token);

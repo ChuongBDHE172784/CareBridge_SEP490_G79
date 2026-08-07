@@ -94,4 +94,27 @@ public interface HealthObservationRepository extends JpaRepository<HealthObserva
                AND legacy_source = 'maternal_health_observations'
             """, nativeQuery = true)
     int updateStatus(@Param("id") UUID id, @Param("status") MetricStatus status);
+
+    // --- Baby growth sessions (wave 13). Scoped by legacy_source so these rows can never
+    // --- surface in the maternal queries above, which are all filtered the same way.
+
+    @Query(value = """
+            SELECT * FROM health_observations
+             WHERE legacy_source = :legacySource
+               AND care_subject_id = :careSubjectId
+             ORDER BY observed_at ASC, observation_type ASC
+            """, nativeQuery = true)
+    List<HealthObservation> findGrowthByCareSubject(
+            @Param("legacySource") String legacySource,
+            @Param("careSubjectId") UUID careSubjectId);
+
+    @Query(value = """
+            SELECT * FROM health_observations
+             WHERE legacy_source = :legacySource
+               AND measurement_group_id = :measurementGroupId
+             ORDER BY observation_type ASC
+            """, nativeQuery = true)
+    List<HealthObservation> findGrowthByMeasurementGroup(
+            @Param("legacySource") String legacySource,
+            @Param("measurementGroupId") UUID measurementGroupId);
 }

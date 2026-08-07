@@ -23,7 +23,6 @@ const ROLE_LABELS: Record<UserRole, string> = {
   MODERATOR: 'Kiểm duyệt viên',
   CONTENT_ADMIN: 'Quản trị nội dung',
   SYSTEM_ADMIN: 'Quản trị hệ thống',
-  PARTNER: 'Đối tác',
 };
 
 const ACTIVITY_LABELS: Record<AdminUserActivity['action'], string> = {

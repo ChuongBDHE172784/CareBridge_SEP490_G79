@@ -9,7 +9,7 @@ import com.carebridge.backend.safety.entity.SafetyEvent;
 import com.carebridge.backend.safety.entity.SafetyMonitoringConfig;
 import com.carebridge.backend.safety.policy.SafetyConsentPolicy;
 import com.carebridge.backend.safety.repository.IImuMonitoringSessionRepository;
-import com.carebridge.backend.safety.repository.ISafetyConfigRepository;
+import com.carebridge.backend.safety.repository.SafetyConfigStore;
 import com.carebridge.backend.safety.repository.ISafetyEventRepository;
 import com.carebridge.backend.safety.repository.SafetyEventResponseRepository;
 import com.carebridge.backend.safety.service.impl.SensorSelfTestService;
@@ -41,7 +41,7 @@ class SensorSelfTestServiceTest {
 
     @Mock private IImuMonitoringSessionRepository imuSessionRepository;
     @Mock private ISafetyEventRepository safetyEventRepository;
-    @Mock private ISafetyConfigRepository safetyConfigRepository;
+    @Mock private SafetyConfigStore safetyConfigStore;
     @Mock private SafetyEventResponseRepository responseRepository;
     @Mock private SafetyConsentPolicy consentPolicy;
     @Mock private AuditService auditService;
@@ -65,7 +65,7 @@ class SensorSelfTestServiceTest {
                 .sensitivityLevel("MEDIUM")
                 .startedAt(Instant.now())
                 .build();
-        lenient().when(safetyConfigRepository.findByUserId(USER_ID)).thenReturn(Optional.of(config));
+        lenient().when(safetyConfigStore.findByUserId(USER_ID)).thenReturn(Optional.of(config));
         lenient().when(imuSessionRepository.findActiveForUpdateByUserId(USER_ID)).thenReturn(Optional.of(session));
     }
 
