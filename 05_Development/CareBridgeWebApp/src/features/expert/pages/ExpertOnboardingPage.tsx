@@ -714,6 +714,30 @@ function ImageCapture({
   );
 }
 
+// getUserMedia fails for reasons the person in front of the camera can usually
+// fix, but only if we say which one. Collapsing every rejection into one line
+// leaves them with nothing to act on.
+function describeCameraError(name: string): string {
+  switch (name) {
+    case 'NotAllowedError':
+    case 'SecurityError':
+      return 'Bạn đã chặn quyền camera cho trang này. Bấm biểu tượng ổ khóa 🔒 cạnh thanh địa chỉ → Camera → Cho phép, rồi tải lại trang.';
+    case 'NotFoundError':
+    case 'DevicesNotFoundError':
+      return 'Không tìm thấy camera nào trên thiết bị. Hãy dùng nút "Chọn tệp" để tải ảnh có sẵn lên.';
+    case 'NotReadableError':
+    case 'TrackStartError':
+      return 'Camera đang bị ứng dụng khác chiếm (Zoom, Teams, Meet, hoặc một tab khác). Hãy đóng ứng dụng đó rồi thử lại.';
+    case 'OverconstrainedError':
+    case 'ConstraintNotSatisfiedError':
+      return 'Camera không đáp ứng được độ phân giải yêu cầu. Hãy dùng nút "Chọn tệp" để tải ảnh lên.';
+    case 'AbortError':
+      return 'Camera bị ngắt giữa chừng. Thử lại lần nữa.';
+    default:
+      return `Không thể mở camera${name ? ` (${name})` : ''}. Thử đóng các ứng dụng đang dùng camera, hoặc dùng nút "Chọn tệp".`;
+  }
+}
+
 function CameraDialog({
   facing,
   onCapture,
@@ -729,31 +753,52 @@ function CameraDialog({
 
   useEffect(() => {
     let active = true;
+    setError(null);
+
     const request = navigator.mediaDevices?.getUserMedia({
       video: { facingMode: { ideal: facing }, width: { ideal: 1280 } },
       audio: false,
     });
     if (!request) {
-      setError('Trình duyệt không hỗ trợ camera.');
+      setError('Trình duyệt không hỗ trợ camera. Hãy dùng Chrome, Edge hoặc Safari bản mới.');
       return () => {
         active = false;
       };
     }
+
     request
-      .then(stream => {
+      .then(async stream => {
+        // The dialog can close while this is still pending. Without the guard the
+        // stream is acquired after cleanup has already run, nothing ever stops it,
+        // and the camera light stays on until the tab is closed — the next attempt
+        // then fails with NotReadableError because the device is still held.
         if (!active) {
           stream.getTracks().forEach(track => track.stop());
           return;
         }
         streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          void videoRef.current.play();
+        if (!videoRef.current) return;
+        videoRef.current.srcObject = stream;
+        try {
+          await videoRef.current.play();
+        } catch {
+          // Autoplay refusals leave a black frame with no hint of why.
+          setError('Không phát được hình từ camera. Thử tải lại trang.');
         }
       })
-      .catch(() => setError('Không thể mở camera.'));
+      .catch((err: unknown) => {
+        const name = err instanceof Error ? err.name : '';
+        setError(describeCameraError(name));
+      });
+
     return () => {
-      if (streamRef.current) streamRef.current.getTracks().forEach(track => track.stop());
+      // Both of these matter: the flag stops a late-resolving request from
+      // leaking a stream, and the stop() releases one already in hand.
+      active = false;
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
     };
   }, [facing]);
 
