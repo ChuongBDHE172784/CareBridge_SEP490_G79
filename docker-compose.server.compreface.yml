@@ -104,10 +104,21 @@ services:
       CLIENT_MAX_BODY_SIZE: 10M
       PROXY_READ_TIMEOUT: ${COMPREFACE_INTERNAL_READ_TIMEOUT_MS:-60000}ms
       PROXY_CONNECT_TIMEOUT: ${COMPREFACE_INTERNAL_CONNECT_TIMEOUT_MS:-10000}ms
-    # Loopback only. Reach the admin UI with an SSH tunnel, never from the
-    # internet: ssh -L 8000:127.0.0.1:8000 <user>@<vm>
-    ports:
-      - "127.0.0.1:${COMPREFACE_ADMIN_PORT:-8000}:80"
+    # No `ports:` here, deliberately. Both networks below are internal, and
+    # Docker cannot publish a host port for a container that has no non-internal
+    # network: the binding is recorded but nothing ever listens, so
+    # `ssh -L 8000:127.0.0.1:8000` fails with nothing in any log to explain it.
+    # Giving this service a routable network to fix that would also hand
+    # CompreFace egress to the internet, which is exactly what the isolation
+    # here is for.
+    #
+    # The host can still reach the container directly, so tunnel to its address:
+    #   IP=$(docker inspect carebridge-compreface-compreface-fe-1 \
+    #        --format '{{(index .NetworkSettings.Networks "carebridge-face-origin").IPAddress}}')
+    #   ssh -L 8000:$IP:80 <user>@<vm>
+    # Then open http://localhost:8000 in a PRIVATE window — a local CompreFace
+    # on the same port leaves cookies behind that this instance rejects, and the
+    # UI answers with an endless /login redirect instead of an error.
     networks:
       - compreface
       - face-origin

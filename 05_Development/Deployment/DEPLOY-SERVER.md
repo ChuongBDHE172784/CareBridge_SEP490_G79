@@ -181,11 +181,24 @@ docker compose --env-file 05_Development/Deployment/.env.server \
 
 Setup lần đầu — mở UI qua SSH tunnel, **không** mở cổng ra internet:
 
+Không tunnel tới `127.0.0.1:8000` — cả hai network của `compreface-fe` đều
+`internal: true`, mà Docker không publish được cổng host cho container không có
+network routable nào. Binding được ghi nhận nhưng không có gì listen, và không
+log lỗi ở đâu. Tunnel thẳng tới IP container:
+
 ```bash
-# chạy trên máy của bạn
-ssh -L 8000:127.0.0.1:8000 <user>@<vm-ip>
-# rồi mở http://localhost:8000 trên trình duyệt
+# trên VM: lấy IP
+docker inspect carebridge-compreface-compreface-fe-1 \
+  --format '{{(index .NetworkSettings.Networks "carebridge-face-origin").IPAddress}}'
 ```
+```bash
+# trên máy của bạn, thay <IP> bằng kết quả trên
+ssh -L 8000:<IP>:80 <user>@<vm-ip>
+```
+
+Rồi mở `http://localhost:8000` trong **cửa sổ ẩn danh** — CompreFace local nếu
+từng chạy cùng cổng sẽ để lại cookie mà instance này từ chối, và UI kẹt ở
+*"CompreFace is starting…"* thay vì báo lỗi.
 
 1. Tạo tài khoản admin, tạo một application.
 2. Tạo service **Face detection** và **Face verification**, copy 2 API key.

@@ -202,12 +202,21 @@ docker compose -f docker-compose.server.compreface.yml down -v
 Tắt Container B thì đặt `CAREBRIDGE_COMPREFACE_ENABLED=false` rồi
 `up -d --force-recreate backend`, nếu không backend sẽ gọi vào hư không.
 
-Cổng duy nhất được publish trong toàn hệ thống là `127.0.0.1:8000` của
-`compreface-fe`, dành cho lần setup đầu qua SSH tunnel:
+`compreface-fe` **không publish được cổng nào**, dù file compose từng khai báo
+`127.0.0.1:8000:80`. Cả hai network của nó đều `internal: true`, và Docker không
+publish cổng host cho container không có network routable — binding được ghi vào
+`HostConfig.PortBindings` nhưng không có gì listen, không lỗi ở log nào. Vào UI
+admin bằng cách tunnel thẳng tới IP container:
 
 ```bash
-ssh -L 8000:127.0.0.1:8000 <user>@<ec2-ip>   # rồi mở http://localhost:8000
+# trên EC2
+docker inspect carebridge-compreface-compreface-fe-1 \
+  --format '{{(index .NetworkSettings.Networks "carebridge-face-origin").IPAddress}}'
+# trên máy bạn, mở bằng cửa sổ ẩn danh
+ssh -L 8000:<IP>:80 <user>@<ec2-ip>
 ```
+
+Nghĩa là toàn hệ thống chỉ mở đúng **một** cổng ra ngoài: `443` của `nginx-edge`.
 
 ---
 

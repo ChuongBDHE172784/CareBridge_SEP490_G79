@@ -238,9 +238,22 @@ docker compose --env-file 05_Development/Deployment/.env.server \
 
 Setup lần đầu qua SSH tunnel, **không** mở cổng ra Internet:
 
+Không dùng `127.0.0.1:8000` — `compreface-fe` chỉ nằm trên network `internal`,
+nên Docker không publish được cổng host cho nó và sẽ không có gì listen. Tunnel
+tới IP container:
+
 ```bash
-ssh -L 8000:127.0.0.1:8000 <user>@<ec2-ip>   # rồi mở http://localhost:8000
+# trên EC2
+docker inspect carebridge-compreface-compreface-fe-1 \
+  --format '{{(index .NetworkSettings.Networks "carebridge-face-origin").IPAddress}}'
 ```
+```bash
+# trên máy bạn
+ssh -L 8000:<IP>:80 <user>@<ec2-ip>
+```
+
+Mở `http://localhost:8000` bằng **cửa sổ ẩn danh** để tránh cookie của
+CompreFace local.
 
 Tạo tài khoản admin → tạo application → tạo service **Face detection** và
 **Face verification** → copy 2 API key vào `.env.server`:

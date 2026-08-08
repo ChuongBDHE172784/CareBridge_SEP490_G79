@@ -504,6 +504,11 @@ CompreFace để mặc định cần ~4520 MiB (`compreface-api` `-Xmx1500m` →
 `compreface-admin` `-Xmx1g` → ~1300, `compreface-core` uWSGI 2 process với model
 ML ~1000, postgres ~200, fe ~20). **Vượt trần.** Nên siết xuống:
 
+> **Đo thực tế sau khi siết** (chạy trên chính EC2 này): `compreface-core`
+> 1.52 GiB, `api` 425 MiB, `admin` 357 MiB, `postgres` 51 MiB, `fe` 7 MiB —
+> **tổng ~2.36 GiB**, thấp hơn ước tính 3.42 GiB khá nhiều. Với cả hai stack
+> chạy cùng lúc, RAM dùng là **4.4 GiB / 7.6 GiB**, còn dư 3.2 GiB.
+
 ```bash
 nano 05_Development/Deployment/.env.server
 ```
@@ -536,22 +541,52 @@ docker compose $EF -f docker-compose.aws.yml up -d
 docker compose $EF -f docker-compose.server.compreface.yml up -d
 ```
 
-Lần đầu tải ~3 GB image, mất 5–10 phút.
+Lần đầu tải **~7.9 GB** image, mất 5–10 phút. Riêng `compreface-core` đã 6.03 GB
+vì chứa model nhận diện. Dọn chỗ trước nếu đĩa chật:
+
+```bash
+docker builder prune -f
+```
 
 **Bước 3 — setup CompreFace (chỉ làm một lần)**
 
-Mở UI qua SSH tunnel. Cổng 8000 bind vào loopback của EC2, **không** mở ra
-Internet. Trên máy bạn:
+Mở UI qua SSH tunnel. **Không** tunnel tới `127.0.0.1:8000` — sẽ không bao giờ
+kết nối được. Cả hai network của `compreface-fe` đều `internal: true`, mà Docker
+không publish được cổng host cho container không có network routable nào: nó ghi
+nhận binding nhưng **không có gì listen**, và không log lỗi ở đâu cả.
 
-```powershell
-ssh -i "$env:USERPROFILE\.ssh\carebridge-key.pem" -L 8000:127.0.0.1:8000 ubuntu@<ELASTIC-IP>
+Host vẫn gọi thẳng IP container được, nên tunnel tới đó. Trên **EC2** lấy IP:
+
+```bash
+docker inspect carebridge-compreface-compreface-fe-1 \
+  --format '{{(index .NetworkSettings.Networks "carebridge-face-origin").IPAddress}}'
 ```
 
-Giữ cửa sổ đó mở, mở browser vào `http://localhost:8000`:
-1. Tạo tài khoản admin
+Rồi trên **máy bạn** (thay `<IP>` bằng kết quả trên):
+
+```powershell
+ssh -i "$env:USERPROFILE\.ssh\carebridge-key.pem" -L 8000:<IP>:80 ubuntu@<ELASTIC-IP>
+```
+
+Giữ cửa sổ đó mở và **đừng gõ gì vào nó** — nó đang giữ đường hầm. Mở
+`http://localhost:8000` trong **cửa sổ ẩn danh** (`Ctrl+Shift+N`).
+
+> Phải là cửa sổ ẩn danh nếu bạn từng chạy CompreFace local cũng ở
+> `localhost:8000`. Trình duyệt coi đó là cùng một origin và gửi cookie cũ lên;
+> instance mới có DB trống nên từ chối token đó, admin log ghi
+> `JdbcTokenStore: Failed to find access token`, và UI kẹt ở màn hình
+> *"CompreFace is starting..."* với `Admin node: loading` vĩnh viễn — trông
+> giống hệt lỗi hạ tầng nhưng thật ra chỉ là cookie.
+
+1. Tạo tài khoản admin — tài khoản này của riêng CompreFace, không liên quan
+   Supabase hay user CareBridge
 2. Tạo một application
-3. Trong application tạo 2 service: **Face detection** và **Face verification**
+3. Trong application tạo 2 service: một type **Detection**, một type **Verify**.
+   Tên tuỳ ý, **type mới là thứ quyết định**
 4. Copy 2 API key
+
+Key do CompreFace sinh ra khi bạn tạo service, gắn với DB của chính instance
+này. Key của instance khác **không dùng được** — không thể chuẩn bị trước.
 
 **Bước 4 — nối CompreFace vào backend**
 
@@ -572,6 +607,8 @@ docker stats --no-stream    # kiểm tra tổng RAM còn dư
 **Bước 5 — sau khi bảo vệ xong, tắt CompreFace đi**
 
 ```bash
+# $EF là bắt buộc kể cả khi down: file compose có ${COMPREFACE_POSTGRES_PASSWORD:?}
+# nên thiếu --env-file là Compose từ chối, không tắt được gì cả.
 # giữ DB khuôn mặt lại cho lần sau, KHÔNG dùng -v
 docker compose $EF -f docker-compose.server.compreface.yml down
 
