@@ -1,24 +1,28 @@
 # CareBridge — deploy lên server (AWS EC2 / VM)
 
-Tài liệu này triển khai đúng Runtime Architecture đã thiết kế: frontend và API
-đi qua Cloudflare, cloudflared quay ra ngoài từ EC2 nên **không mở cổng inbound
-nào**, CompreFace là Container B nằm trong private network.
+Tài liệu này triển khai API lên EC2. **Portal không nằm ở đây** — nó là bundle
+tĩnh trên GitLab Pages sau `carebridgevn.site`. EC2 chỉ phục vụ
+`api.carebridgevn.site`, và cloudflared quay ra ngoài nên **không mở cổng inbound
+nào**. CompreFace là Container B nằm trong private network.
 
 ```
-Internet ─▶ Cloudflare ─▶ cloudflared ─▶ nginx-edge ─┬─▶ web:8080      (SPA assets)
-                                                     └─▶ backend:8080  (/api)
+Browser ─┬─▶ carebridgevn.site     ─▶ Cloudflare ─▶ GitLab Pages (SPA tĩnh)
+         └─▶ api.carebridgevn.site ─▶ Cloudflare ─▶ cloudflared ─▶ nginx-edge ─▶ backend:8080
 
-backend ─▶ ai-triage:8001            FastAPI + LangGraph, AI triage & RAG
+backend ─▶ ai-triage:8001            FastAPI, AI triage & RAG
 backend ─▶ exercise-correction:8002  MediaPipe posture analysis
 backend ─▶ compreface-fe:80          Face enrollment & verification (Container B)
 backend ─▶ Supabase / Gemini / Firebase / Cloudinary / R2 / SMTP
 ```
 
+Toàn cảnh hệ thống, phiên bản từng service và danh sách việc còn tồn: xem
+[SYSTEM-AUDIT.md](SYSTEM-AUDIT.md).
+
 ## 1. Hai file compose
 
 | File | Nội dung |
 | --- | --- |
-| `docker-compose.server.yml` | cloudflared, nginx-edge, backend, ai-triage, exercise-correction, web |
+| `docker-compose.server.yml` | Container A: cloudflared, nginx-edge, backend, ai-triage, exercise-correction |
 | `docker-compose.server.compreface.yml` | Container B: CompreFace + PostgreSQL riêng |
 
 Kèm theo: `05_Development/Deployment/nginx/edge-server.conf` (nginx-edge cần để
@@ -55,18 +59,18 @@ admin, bind vào `127.0.0.1` của VM để vào bằng SSH tunnel.
 1. Dashboard → **Networking → Tunnels → Create a tunnel**, chọn **Docker**.
 2. Copy phần token `eyJ...` phía sau `--token`. **Không** chạy lệnh Docker mà
    Cloudflare hiển thị — file compose sẽ chạy connector.
-3. Trong tunnel vừa tạo, thêm 2 **Public hostname**, cả hai trỏ về cùng service:
+3. Trong tunnel vừa tạo, thêm **đúng một** Public hostname:
 
    | Hostname | Service |
    | --- | --- |
-   | `carebridgevn.site` | `HTTP` → `nginx-edge:8080` |
    | `api.carebridgevn.site` | `HTTP` → `nginx-edge:8080` |
 
-   nginx-edge phân biệt hai hostname bằng `server_name`, nên cùng một origin.
+   Cloudflare tự tạo CNAME proxied trỏ về `<tunnel-id>.cfargotunnel.com`.
 
-4. Nếu vẫn giữ frontend trên GitLab Pages theo sơ đồ CI/CD: **bỏ** hostname
-   `carebridgevn.site` ở bước 3 và để DNS trỏ về Pages như cũ. Service `web`
-   trong compose vẫn chạy nhưng không ai vào được — hoặc xóa hẳn service đó.
+4. **Không thêm `carebridgevn.site` vào tunnel.** Hostname đó phải giữ nguyên
+   bản ghi `A 35.185.44.232` trỏ về GitLab Pages. Thêm vào tunnel là cướp mất
+   traffic của Pages, và nginx-edge sẽ trả `444` vì không còn server block cho
+   hostname đó.
 
 ## 3. Chuẩn bị server
 
@@ -112,8 +116,8 @@ docker compose --env-file 05_Development/Deployment/.env.server \
 ```
 
 **Cách B — pull image từ GitLab Container Registry** (theo sơ đồ CI/CD):
-bỏ comment `BACKEND_IMAGE` / `WEB_IMAGE` / `AI_IMAGE` trong `.env.server`, trỏ
-tới digest `@sha256:...`, rồi:
+bỏ comment `BACKEND_IMAGE` / `AI_IMAGE` / `EXERCISE_IMAGE` trong `.env.server`,
+trỏ tới digest `@sha256:...`, rồi:
 
 ```bash
 docker login registry.gitlab.com
@@ -134,8 +138,8 @@ docker compose --env-file 05_Development/Deployment/.env.server \
   -f docker-compose.server.yml ps
 ```
 
-Mong đợi `backend`, `web`, `ai-triage`, `nginx-edge` đều `healthy` và
-`cloudflared` đang chạy. Chưa healthy thì đừng đụng vào Cloudflare, đọc log
+Mong đợi `backend`, `ai-triage`, `exercise-correction`, `nginx-edge` đều
+`healthy` và `cloudflared` đang chạy. Chưa healthy thì đừng đụng vào Cloudflare, đọc log
 service đó trước:
 
 ```bash
@@ -160,8 +164,10 @@ docker compose --env-file 05_Development/Deployment/.env.server \
 docker image prune -f
 ```
 
-Đổi hostname hoặc Firebase project thì **phải build lại `web`** — Vite nhúng
-cứng các giá trị `VITE_*` vào bundle lúc build, không đọc lúc chạy.
+Đổi hostname hoặc Firebase project thì **phải chạy lại pipeline GitLab Pages**,
+không phải deploy lại EC2 — Vite nhúng cứng các giá trị `VITE_*` vào bundle lúc
+build, không đọc lúc chạy. Các biến đó nằm ở job `pages` trong `.gitlab-ci.yml`
+và ở Settings → CI/CD → Variables.
 
 ## 6. CompreFace (Container B)
 
@@ -204,7 +210,6 @@ Tắt: `docker compose -f docker-compose.server.compreface.yml down`
 | Network | `internal` | Ai ở trong | Lý do |
 | --- | --- | --- | --- |
 | `tunnel` | không | cloudflared, nginx-edge | cloudflared cần ra Internet để dựng tunnel |
-| `portal-origin` | có | nginx-edge, web | web chỉ phục vụ file tĩnh, không cần ra ngoài |
 | `backend-origin` | có | nginx-edge, backend | tunnel chỉ chạm được nginx-edge |
 | `ai-origin` | có | backend, ai-triage | ai-triage không nhận request từ ngoài |
 | `exercise-origin` | có | backend, exercise-correction | sidecar chỉ suy luận trên model đóng sẵn, không cần mạng |
@@ -230,6 +235,9 @@ cloudflared và cloudflared không khởi động được.
 | cloudflared báo `Address already in use` | `CAREBRIDGE_NGINX_EDGE_IP` và `CAREBRIDGE_CLOUDFLARED_IP` trùng nhau |
 | Cloudflare báo 502 | nginx-edge chưa healthy, hoặc public hostname trỏ sai `nginx-edge:8080` |
 | Portal mở được nhưng gọi API bị CORS | `CAREBRIDGE_PORTAL_HOSTNAME` khác origin thật của trình duyệt |
-| Portal trắng trang, console lỗi Firebase | Build `web` thiếu build arg `VITE_FIREBASE_*` — sửa `.env.server` rồi build lại |
+| Portal gọi API vào `localhost:8080` | Bundle Pages build thiếu `VITE_API_URL` — chạy lại pipeline |
+| Portal trắng trang, console lỗi Firebase | Thiếu `VITE_FIREBASE_*` ở Settings → CI/CD → Variables |
+| `api.carebridgevn.site` không phân giải | Chưa thêm public hostname vào tunnel (mục 2) |
+| `carebridgevn.site` lỗi sau khi dựng tunnel | Đã lỡ thêm hostname đó vào tunnel — gỡ ra, giữ A record về Pages |
 | `network carebridge-face-origin declared as external, but could not be found` | Chưa `up` stack chính trước khi chạy CompreFace |
 | Build backend bị OOM trên VM | VM dưới 4 GB RAM — thêm swap hoặc chuyển sang Cách B (pull image) |

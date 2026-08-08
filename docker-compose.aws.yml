@@ -1,41 +1,32 @@
-# CareBridge — Container A: application stack (AWS EC2 / VM).
+# CareBridge — Container A: API stack cho AWS EC2, đi thẳng qua Cloudflare proxy.
 #
-# Implements the runtime architecture: Cloudflare Tunnel terminates public
-# traffic, cloudflared dials out from the VM so no inbound port is opened, and
-# nginx-edge is the only thing the tunnel can reach. Nothing here publishes a
-# port on the host.
+# Khác docker-compose.server.yml ở chỗ KHÔNG dùng Cloudflare Tunnel. Cloudflare
+# proxy request tới thẳng public IP của EC2, nên nginx-edge phải publish cổng và
+# tự cầm chứng chỉ TLS:
 #
-# The portal is NOT served from here. It is a static bundle on GitLab Pages
-# behind carebridgevn.site, so this VM answers api.carebridgevn.site only and
-# the browser reaches it cross-origin:
+#   Browser -+-> carebridgevn.site     -> Cloudflare -> GitLab Pages (SPA tĩnh)
+#            +-> api.carebridgevn.site -> Cloudflare -> EC2:443 -> nginx-edge
+#                                                                    -> backend:8080
 #
-#   Browser -+-> carebridgevn.site     -> Cloudflare -> GitLab Pages (SPA)
-#            +-> api.carebridgevn.site -> Cloudflare -> cloudflared
-#                                                        -> nginx-edge -> backend:8080
+# Chỉ 443 được publish. Spring Boot 8080, ai-triage 8001 và exercise-correction
+# 8002 chỉ tồn tại trong network nội bộ Docker, không ra Internet.
 #
-# CAREBRIDGE_PORTAL_HOSTNAME is still required: it is the CORS allow-list entry
-# for the Pages origin, not a hostname this stack serves.
-#
-# CompreFace is Container B in docker-compose.server.compreface.yml; it attaches
-# to the internal carebridge-face-origin network created here and is never
-# published. Supabase, Gemini, Firebase, R2 and Cloudinary stay managed and
-# external; only the two egress-capable services can reach them.
+# TLS ở origin dùng Cloudflare Origin Certificate (miễn phí, hạn 15 năm, chỉ
+# Cloudflare tin). Bắt buộc phải có thì SSL/TLS mode Full (strict) mới chạy.
 #
 #   docker compose --env-file 05_Development/Deployment/.env.server \
-#     -f docker-compose.server.yml up -d --build
+#     -f docker-compose.aws.yml up -d --build
 #
-# See 05_Development/Deployment/DEPLOY-SERVER.md.
-name: carebridge-server
+# Xem 05_Development/Deployment/DEPLOY-AWS.md.
+name: carebridge-aws
 
 services:
   ai-triage:
-    # Set AI_IMAGE to a registry digest to deploy a CI-built image instead of
-    # building on the VM. The build block is ignored by `docker compose pull`.
-    image: ${AI_IMAGE:-carebridge-ai-triage:server}
+    image: ${AI_IMAGE:-carebridge-ai-triage:aws}
     build:
       context: ./05_Development/CareBridgeAITriageService
-    # Least privilege: this container never receives the backend env file, only
-    # the values it actually needs.
+    # Least privilege: container này không nhận env file của backend, chỉ nhận
+    # đúng những giá trị nó cần.
     environment:
       AI_TRIAGE_EVIDENCE_REGISTRY_URL: "http://backend:8080"
       AI_TRIAGE_INTERNAL_API_KEY: ${AI_TRIAGE_INTERNAL_API_KEY:?Set the shared evidence-registry key}
@@ -70,7 +61,7 @@ services:
     restart: unless-stopped
 
   exercise-correction:
-    image: ${EXERCISE_IMAGE:-carebridge-exercise-correction:server}
+    image: ${EXERCISE_IMAGE:-carebridge-exercise-correction:aws}
     build:
       context: ./05_Development/MachineLearning/MediaPipe_Posture/exercise_correction_sidecar
     environment:
@@ -78,7 +69,7 @@ services:
       EXERCISE_MODEL_MANIFEST: /app/models/SHA256SUMS
     expose:
       - "8002"
-    # Pure inference over bundled models: no credentials, no egress.
+    # Suy luận thuần trên model đóng sẵn: không credential, không cần ra ngoài.
     networks:
       - exercise-origin
     read_only: true
@@ -100,26 +91,27 @@ services:
     restart: unless-stopped
 
   backend:
-    image: ${BACKEND_IMAGE:-carebridge-backend:server}
+    image: ${BACKEND_IMAGE:-carebridge-backend:aws}
     build:
       context: ./05_Development/CareBridgeAPI
     env_file:
       - ${BACKEND_ENV_FILE:-./05_Development/Deployment/.env.server}
     environment:
-      # Container DNS. "localhost" inside this container is the backend itself.
+      # DNS của Docker. "localhost" trong container này là chính backend.
       AI_TRIAGE_SERVICE_URL: "http://ai-triage:8001"
-      # Posture analysis sidecar. Disabled in application.yaml by default, so the
-      # flag has to be set here or the backend silently falls back to RULE_BASED.
+      # Sidecar phân tích tư thế. application.yaml mặc định tắt, nên phải bật ở
+      # đây, không thì backend im lặng rơi về RULE_BASED.
       CAREBRIDGE_EXERCISE_CORRECTION_ENABLED: ${CAREBRIDGE_EXERCISE_CORRECTION_ENABLED:-true}
       EXERCISE_CORRECTION_SERVICE_URL: "http://exercise-correction:8002"
-      # Exactly the browser origin of the portal, nothing wider.
+      # Đúng origin của portal trên GitLab Pages, không rộng hơn. SecurityConfig
+      # ném lỗi nếu giá trị chứa dấu *.
       CAREBRIDGE_CORS_ALLOWED_ORIGINS: "https://${CAREBRIDGE_PORTAL_HOSTNAME:?Set CAREBRIDGE_PORTAL_HOSTNAME}"
-      # application.yaml hard-codes carebridge.compreface.*; only these
-      # relaxed-binding env vars can override those literals.
+      # application.yaml hard-code carebridge.compreface.*; chỉ các biến
+      # CAREBRIDGE_COMPREFACE_* mới override được literal đó.
       CAREBRIDGE_COMPREFACE_ENABLED: ${CAREBRIDGE_COMPREFACE_ENABLED:-false}
       CAREBRIDGE_COMPREFACE_BASE_URL: ${CAREBRIDGE_COMPREFACE_BASE_URL:-http://compreface-fe}
-      # Seeding test accounts on a public deployment is never correct, so it is
-      # forced off here rather than left to the env file.
+      # Seed tài khoản test trên deployment công khai không bao giờ đúng, nên ép
+      # tắt ở đây thay vì để env file quyết định.
       CAREBRIDGE_DEV_SEED_ENABLED: "false"
     expose:
       - "8080"
@@ -141,26 +133,25 @@ services:
       start_period: 60s
     restart: unless-stopped
 
-  # No `web` service: the portal image would be a second, always-stale copy of
-  # what GitLab Pages already serves. The Pages job in .gitlab-ci.yml owns the
-  # VITE_* build args now.
-
   nginx-edge:
     image: ${EDGE_NGINX_IMAGE:-nginxinc/nginx-unprivileged:1.29.0-alpine}
     environment:
-      CAREBRIDGE_PORTAL_HOSTNAME: ${CAREBRIDGE_PORTAL_HOSTNAME:?Set CAREBRIDGE_PORTAL_HOSTNAME}
       CAREBRIDGE_API_HOSTNAME: ${CAREBRIDGE_API_HOSTNAME:?Set CAREBRIDGE_API_HOSTNAME}
-      CAREBRIDGE_CLOUDFLARED_IP: ${CAREBRIDGE_CLOUDFLARED_IP:-172.31.0.2}
     volumes:
-      - ./05_Development/Deployment/nginx/edge-server.conf:/etc/nginx/templates/default.conf.template:ro
-    expose:
-      - "8080"
+      - ./05_Development/Deployment/nginx/edge-aws.conf:/etc/nginx/templates/default.conf.template:ro
+      # Cloudflare Origin Certificate. Xem DEPLOY-AWS.md mục 3. Phải chown sang
+      # UID 101 vì image này chạy non-root và sẽ không đọc được key của root.
+      - ${CAREBRIDGE_TLS_CERT_FILE:?Set path to the Cloudflare origin certificate}:/etc/nginx/tls/origin.pem:ro
+      - ${CAREBRIDGE_TLS_KEY_FILE:?Set path to the Cloudflare origin private key}:/etc/nginx/tls/origin.key:ro
+    # Cổng DUY NHẤT ra Internet trong toàn hệ thống. Container listen 8443 vì
+    # image unprivileged không bind được cổng <1024; Docker daemon lo phần map
+    # 443 ở phía host.
+    ports:
+      - "${CAREBRIDGE_HTTPS_PORT:-443}:8443"
     networks:
-      # Pinned: this container is created before cloudflared, and dynamic IPAM
-      # hands out .2 first, which would collide with cloudflared's static IP.
-      tunnel:
-        ipv4_address: ${CAREBRIDGE_NGINX_EDGE_IP:-172.31.0.3}
-      backend-origin:
+      # Network không internal để nhận được traffic từ cổng đã publish.
+      - edge
+      - backend-origin
     depends_on:
       backend:
         condition: service_healthy
@@ -171,40 +162,17 @@ services:
       retries: 3
     restart: unless-stopped
 
-  cloudflared:
-    image: ${CLOUDFLARED_IMAGE:-cloudflare/cloudflared:2026.7.2}
-    command: ["tunnel", "--no-autoupdate", "run"]
-    environment:
-      TUNNEL_TOKEN_FILE: /run/secrets/cloudflare_tunnel_token
-    secrets:
-      - cloudflare_tunnel_token
-    # Only network it joins, so the tunnel can reach nginx-edge and nothing else.
-    networks:
-      tunnel:
-        ipv4_address: ${CAREBRIDGE_CLOUDFLARED_IP:-172.31.0.2}
-    depends_on:
-      nginx-edge:
-        condition: service_healthy
-    restart: unless-stopped
-
 networks:
-  tunnel:
-    ipam:
-      config:
-        - subnet: ${CAREBRIDGE_TUNNEL_SUBNET:-172.31.0.0/29}
+  edge:
   backend-origin:
     internal: true
   ai-origin:
     internal: true
   exercise-origin:
     internal: true
-  # Fixed name so the CompreFace stack can join it as an external network.
+  # Tên cố định để stack CompreFace join vào như external network.
   face-origin:
     name: carebridge-face-origin
     internal: true
-  # The only network with a route out: Supabase, Gemini, Firebase, R2, Cloudinary.
+  # Network duy nhất có đường ra: Supabase, Gemini, Firebase, R2, Cloudinary.
   service-egress:
-
-secrets:
-  cloudflare_tunnel_token:
-    file: ${CLOUDFLARE_TUNNEL_TOKEN_FILE:?Set path to the Cloudflare tunnel token file}

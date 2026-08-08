@@ -14,10 +14,18 @@ services:
     networks:
       - ai-origin
       - service-egress
+    # The backend IS the evidence registry this service reads, so it has to come
+    # up first. /health runs a triage probe that looks up approved sources, and
+    # evidence_registry_client caches successes only — with the registry down,
+    # every lookup pays the full 2s timeout again and the probe takes ~52s
+    # instead of ~0.4s, which no sane healthcheck timeout survives.
+    depends_on:
+      backend:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=3).read()"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=8).read()"]
       interval: 30s
-      timeout: 5s
+      timeout: 10s
       retries: 3
       start_period: 20s
     restart: unless-stopped
@@ -35,9 +43,10 @@ services:
       - backend-origin
       - ai-origin
       - service-egress
-    depends_on:
-      ai-service:
-        condition: service_healthy
+    # No depends_on: the only thing this needs to boot is Supabase, which is
+    # external. ai-service is called per-request and the backend degrades
+    # gracefully when it is missing, so waiting on it here would only create the
+    # startup cycle described on that service.
     healthcheck:
       test: ["CMD", "curl", "--fail", "--silent", "--show-error", "http://127.0.0.1:8080/actuator/health/readiness"]
       interval: 30s
