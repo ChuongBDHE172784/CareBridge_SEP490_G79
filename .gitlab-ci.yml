@@ -319,14 +319,12 @@ deploy_staging:
 pages:
   stage: deploy
   image: node:22-alpine
+  # A project has exactly one Pages site, so when several branches ran this job
+  # the last pipeline to finish silently overwrote carebridgevn.site — whoever
+  # pushed most recently decided what the public portal served. Publishing is now
+  # an explicit act: merge into page-web.
   rules:
-    - if: '$CI_COMMIT_BRANCH == "HuyND"'
-    - if: '$CI_COMMIT_BRANCH == "ChuongBD"'
-    - if: '$CI_COMMIT_BRANCH == "PhuongNT"'
-    - if: '$CI_COMMIT_BRANCH == "LamVH1"'
-    - if: '$CI_COMMIT_BRANCH == "BachNQ1"'
-    - if: '$CI_COMMIT_BRANCH == "dev"'
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_BRANCH == "page-web"'
   variables:
     # The portal is served by GitLab Pages, so the browser calls the API on a
     # separate origin. Vite inlines this at build time and the runner has no
