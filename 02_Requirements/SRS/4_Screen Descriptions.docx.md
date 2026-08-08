@@ -10,7 +10,7 @@ This catalogue follows the ten Release 1 MFs and the UC-01 through UC-91 baselin
 | 4 | Common Mobile App | MF-01 Account, Trust & Access Control — UC-02 | Login Screen | Authenticates by a supported credential or Google branch and routes the account to its role workspace. |
 | 5 | Common Mobile App | MF-01 Account, Trust & Access Control — UC-04 | Forgot and Reset Password Screens | Starts password recovery and accepts a valid recovery proof before setting a new password. |
 | 6 | Common Mobile App | MF-01 Account, Trust & Access Control — UC-02 | Role-Aware Landing Screen | Checks account state, assigned role and onboarding state before opening the Mother, Family or Expert workspace. |
-| 7 | Common Mobile App | MF-01 Account, Trust & Access Control — UC-02 | Blocked Account Support Screen | Explains the current blocked state, any available retry time and the CareBridge support contact. |
+| 7 | Common Mobile App | MF-01 Account, Trust & Access Control — UC-02/UC-10 | Blocked Account and Appeal Screen | Explains the current blocked state and allows one appeal for an active administrative lock episode when the Backend issues a short-lived appeal token; other non-temporary blocked states retain the support-contact fallback. |
 | 8 | Common Mobile App | MF-01 Account, Trust & Access Control — UC-03/UC-06/UC-09 | Account Profile and Settings Screen | Shows the authenticated account profile and entry points for editing, account lifecycle actions and logout. |
 | 9 | Common Mobile App | MF-01 Account, Trust & Access Control — UC-05/UC-06 | Edit Profile and Change Password Screens | Updates permitted profile fields or changes the password after validating the current credential. |
 | 10 | Common Mobile App | MF-01 Account, Trust & Access Control — UC-07 | Notification Center and Notification Detail Screens | Lists the current user's in-app notifications and opens the authorized deep-linked detail. |
@@ -71,7 +71,7 @@ This catalogue follows the ten Release 1 MFs and the UC-01 through UC-91 baselin
 | 65 | Expert Mobile App | MF-04/MF-05 — UC-12 | Expert Question Queue, Question Detail and Answer Screens | Lists questions available for verified contribution and posts or edits an answer carrying the verified-expert label. |
 | 66 | Expert Mobile App | MF-05 Verified Expert Network & Contribution — UC-16 | Expert Conversation Request Queue and Detail Screens | Lets the assigned expert accept or reject a request before a direct conversation becomes available. |
 | 67 | Common Web App | MF-01 Account, Trust & Access Control — UC-01/UC-02 | Web Registration, Login and OTP Screens | Provides the currently routed web authentication entry for Expert and staff roles and routes unsupported roles away from portal workspaces. |
-| 68 | Common Web App | MF-01 Account, Trust & Access Control — UC-02 | Forbidden, Blocked, No-Web-Access and Maintenance Screens | Explains authorization, account-state or environment restrictions without exposing protected portal content. |
+| 68 | Common Web App | MF-01 Account, Trust & Access Control — UC-02/UC-10 | Forbidden, Blocked, Appeal, No-Web-Access and Maintenance Screens | Explains authorization, account-state or environment restrictions and allows a token-authorized administrative-lock appeal without exposing protected portal content. |
 | 69 | Common Web App | MF-01 Account, Trust & Access Control — UC-05/UC-06/UC-19 | Web Account Profile and Session Settings Screens | Shows and updates the authenticated portal account, password and supported session controls. |
 | 70 | Verified Expert Web Portal | MF-05 Verified Expert Network & Contribution — UC-13 | Expert Portal Onboarding Screen | Captures the initial professional application and gates the remaining expert portal until the onboarding state allows access. |
 | 71 | Verified Expert Web Portal | MF-05 Verified Expert Network & Contribution — UC-14/UC-15/UC-16 | Expert Portal Dashboard | Summarizes consultation requests, question queue, availability, conversations and profile status. |
@@ -95,15 +95,16 @@ This catalogue follows the ten Release 1 MFs and the UC-01 through UC-91 baselin
 | 89 | Content Admin Web Portal | MF-09 Verified Content & Checklist Hub — UC-84/UC-85/UC-86 | Content Workflow Notification Screen | Shows content review and system notifications relevant to the Content Admin. |
 | 90 | System Admin Web Portal | MF-01 Account, Trust & Access Control — UC-69 | System Administration Dashboard | Shows account, expert, content, safety and security administration summaries and links. |
 | 91 | System Admin Web Portal | MF-01 Account, Trust & Access Control — UC-70 | User List, User Detail and Role Update Screens | Searches accounts and applies supported status or role governance actions. |
-| 92 | System Admin Web Portal | MF-01 Account, Trust & Access Control — UC-71 | Create Staff Account Screen | Creates a supported Moderator or Content Admin staff account under admin governance. |
-| 93 | System Admin Web Portal | MF-05 Verified Expert Network & Contribution — UC-82 | Expert List, Verification Queue and Expert Detail Screens | Reviews expert applications and records approve, reject or supported trust decisions. |
-| 94 | System Admin Web Portal | MF-09 Verified Content & Checklist Hub — UC-88 | Content Approval Queue and Read-Only Review Screens | Reviews submitted article, FAQ or checklist content and records the approval decision without exposing Content Admin editing actions. |
-| 95 | System Admin Web Portal | MF-01 Account, Trust & Access Control — UC-73 | Security Events and Event Detail Screens | Searches security and audit events and opens their correlation and evidence detail. |
-| 96 | System Admin Web Portal | MF-01 Account, Trust & Access Control — UC-73 | Security Incident Investigation and Resolution Screens | Groups related security events, records investigation work and appends the final resolution. |
-| 97 | System Admin Web Portal | MF-06 AI Nurse Assistant & Risk Triage — UC-83 | AI Red-Flag Rule Management Screen | Lists and manages authorized red-flag rules while preserving protected defaults and audit evidence. |
-| 98 | System Admin Web Portal | MF-01 Account, Trust & Access Control — UC-74 | System Configuration Screen | Reviews and updates the supported runtime configuration values through the audited admin path. |
-| 99 | System Admin Web Portal | MF-09 Verified Content & Checklist Hub — UC-91 | Posture Analysis Configuration List, Detail and Editor Screens | Creates and activates versioned posture-analysis configuration for a published exercise. |
-| 100 | System Admin Web Portal | MF-01 Account, Trust & Access Control — UC-07 | Admin Notification and Privacy Settings Screens | Shows administration notifications and supported privacy configuration for the authenticated System Admin. |
+| 92 | System Admin Web Portal | MF-01 Account, Trust & Access Control — UC-72 | Account Lock Appeal Queue and Review Detail Screens | Filters pending or completed appeals, opens the lock episode and submitted reason, and records an audited approve or reject decision; approval clears the matching active administrative lock. |
+| 93 | System Admin Web Portal | MF-01 Account, Trust & Access Control — UC-71 | Create Staff Account Screen | Creates a supported Moderator or Content Admin staff account under admin governance. |
+| 94 | System Admin Web Portal | MF-05 Verified Expert Network & Contribution — UC-82 | Expert List, Verification Queue and Expert Detail Screens | Reviews expert applications and records approve, reject or supported trust decisions. |
+| 95 | System Admin Web Portal | MF-09 Verified Content & Checklist Hub — UC-88 | Content Approval Queue and Read-Only Review Screens | Reviews submitted article, FAQ or checklist content and records the approval decision without exposing Content Admin editing actions. |
+| 96 | System Admin Web Portal | MF-01 Account, Trust & Access Control — UC-73 | Security Events and Event Detail Screens | Searches security and audit events and opens their correlation and evidence detail. |
+| 97 | System Admin Web Portal | MF-01 Account, Trust & Access Control — UC-73 | Security Incident Investigation and Resolution Screens | Groups related security events, records investigation work and appends the final resolution. |
+| 98 | System Admin Web Portal | MF-06 AI Nurse Assistant & Risk Triage — UC-83 | AI Red-Flag Rule Management Screen | Lists and manages authorized red-flag rules while preserving protected defaults and audit evidence. |
+| 99 | System Admin Web Portal | MF-01 Account, Trust & Access Control — UC-74 | System Configuration Screen | Reviews and updates the supported runtime configuration values through the audited admin path. |
+| 100 | System Admin Web Portal | MF-09 Verified Content & Checklist Hub — UC-91 | Posture Analysis Configuration List, Detail and Editor Screens | Creates and activates versioned posture-analysis configuration for a published exercise. |
+| 101 | System Admin Web Portal | MF-01 Account, Trust & Access Control — UC-07 | Admin Notification and Privacy Settings Screens | Shows administration notifications and supported privacy configuration for the authenticated System Admin. |
 
 **Table 254: Screen Descriptions**
 
@@ -119,7 +120,7 @@ An `X` identifies a role that may enter the screen group through its supported p
 | Login Screen | X | X | X | X |  |  |  |
 | Forgot and Reset Password Screens | X | X | X | X |  |  |  |
 | Role-Aware Landing Screen |  | X | X | X |  |  |  |
-| Blocked Account Support Screen | X | X | X | X |  |  |  |
+| Blocked Account and Appeal Screen | X | X | X | X |  |  |  |
 | Account Profile and Settings Screen |  | X | X | X |  |  |  |
 | Edit Profile and Change Password Screens |  | X | X | X |  |  |  |
 | Notification Center and Notification Detail Screens |  | X | X | X |  |  |  |
@@ -180,7 +181,7 @@ An `X` identifies a role that may enter the screen group through its supported p
 | Expert Question Queue, Question Detail and Answer Screens |  |  |  | X |  |  |  |
 | Expert Conversation Request Queue and Detail Screens |  |  |  | X |  |  |  |
 | Web Registration, Login and OTP Screens | X |  |  | X | X | X | X |
-| Forbidden, Blocked, No-Web-Access and Maintenance Screens | X |  |  | X | X | X | X |
+| Forbidden, Blocked, Appeal, No-Web-Access and Maintenance Screens | X |  |  | X | X | X | X |
 | Web Account Profile and Session Settings Screens |  |  |  | X | X | X | X |
 | Expert Portal Onboarding Screen |  |  |  | X |  |  |  |
 | Expert Portal Dashboard |  |  |  | X |  |  |  |
@@ -204,6 +205,7 @@ An `X` identifies a role that may enter the screen group through its supported p
 | Content Workflow Notification Screen |  |  |  |  |  | X |  |
 | System Administration Dashboard |  |  |  |  |  |  | X |
 | User List, User Detail and Role Update Screens |  |  |  |  |  |  | X |
+| Account Lock Appeal Queue and Review Detail Screens |  |  |  |  |  |  | X |
 | Create Staff Account Screen |  |  |  |  |  |  | X |
 | Expert List, Verification Queue and Expert Detail Screens |  |  |  |  |  |  | X |
 | Content Approval Queue and Read-Only Review Screens |  |  |  |  |  |  | X |
@@ -228,7 +230,7 @@ Non-screen functions are background, policy, integration, persistence or coordin
 | 4 | MF-01 Account, Trust & Access Control | Password Recovery and Credential Revocation | Creates single-use password-reset proof, applies rate limits, changes the password and revokes affected active credentials. |
 | 5 | MF-01 Account, Trust & Access Control | RBAC and Account-State Enforcement | Rechecks role, ownership, membership, account status and request context before protected Backend operations. |
 | 6 | MF-01 Account, Trust & Access Control | Consent Grant Validation | Stores and rechecks supported purpose, scope, recipient and expiry conditions and blocks revoked or expired access. |
-| 7 | MF-01 Account, Trust & Access Control | Account Lock and Administrative Governance | Records lock state, presents the supported contact path and applies audited account or staff governance decisions. |
+| 7 | MF-01 Account, Trust & Access Control | Account Lock Appeal and Administrative Governance | Creates a short-lived appeal capability only after credential verification, accepts at most one appeal for the active administrative lock episode, exposes the System Admin review queue and applies an audited approve or reject decision. |
 | 8 | MF-02 Mother Care Journey | Mother Journey Lifecycle Processing | Creates the canonical Mother journey, validates stage transitions and preserves journey and pregnancy-outcome history. |
 | 9 | MF-02 Mother Care Journey | Journey Dashboard and Recommendation Assembly | Combines current stage, due care items and approved content recommendations without creating clinical advice. |
 | 10 | MF-02 Mother Care Journey | Maternal Metric and Trend Processing | Validates supported metric values and times, persists changes and calculates scoped trend series. |

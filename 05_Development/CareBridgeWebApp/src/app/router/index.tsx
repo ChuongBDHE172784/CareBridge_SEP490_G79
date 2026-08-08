@@ -43,6 +43,8 @@ import UserListPage from '../../features/admin/pages/UserListPage';
 import UserDetailPage from '../../features/admin/pages/UserDetailPage';
 import UpdateUserRolePage from '../../features/admin/pages/UpdateUserRolePage';
 import CreateStaffAccountPage from '../../features/admin/pages/CreateStaffAccountPage';
+import AccountLockAppealsPage from '../../features/admin/pages/AccountLockAppealsPage';
+import AccountLockAppealDetailPage from '../../features/admin/pages/AccountLockAppealDetailPage';
 import ExpertListPage from '../../features/admin/pages/ExpertListPage';
 import ExpertDetailPage from '../../features/admin/pages/ExpertDetailPage';
 
@@ -160,6 +162,8 @@ export const router = createBrowserRouter([
               { path: '/admin/users/:userId', element: <UserDetailPage /> },
               { path: '/admin/users/:userId/role', element: <UpdateUserRolePage /> },
               { path: '/admin/staff-accounts/create', element: <CreateStaffAccountPage /> },
+              { path: '/admin/account-lock-appeals', element: <AccountLockAppealsPage /> },
+              { path: '/admin/account-lock-appeals/:appealId', element: <AccountLockAppealDetailPage /> },
               { path: '/admin/experts', element: <ExpertListPage /> },
               { path: '/admin/experts/:expertProfileId', element: <ExpertDetailPage /> },
               { path: '/admin/expert-verification-queue', element: <ExpertVerificationQueuePage /> },

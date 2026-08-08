@@ -3,7 +3,6 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:untitled/core/auth/auth_state.dart';
 import 'package:untitled/core/auth/blocked_account_state.dart';
-import 'package:untitled/core/constants/support_contact.dart';
 import 'package:untitled/features/auth/screens/blocked_account_screen.dart';
 
 Widget _wrap(Widget child) => MaterialApp(home: child);
@@ -41,13 +40,15 @@ void main() {
     );
 
     testWidgets(
-      'shows administrative reason and the customer-support contact',
+      'shows administrative reason and appeal form for an appealable lock',
       (tester) async {
         await AuthState.instance.clearWithBlockedAccount(
           const BlockedAccountState(
             code: 'ACCOUNT_ADMIN_LOCKED',
             lockType: 'ADMIN',
             reason: 'Vi phạm quy định cộng đồng',
+            appealAllowed: true,
+            appealToken: 'appeal-token',
           ),
         );
 
@@ -59,10 +60,13 @@ void main() {
           findsOneWidget,
         );
         expect(find.text('Vi phạm quy định cộng đồng'), findsOneWidget);
-        // The appeal form is gone; support contact is the only route back.
-        expect(find.text('CẦN MỞ LẠI TÀI KHOẢN?'), findsOneWidget);
-        expect(find.text(supportEmail), findsOneWidget);
-        expect(find.text('Nội dung khiếu nại'), findsNothing);
+        expect(find.text('Nội dung khiếu nại'), findsOneWidget);
+        final submitButton = find.widgetWithText(
+          FilledButton,
+          'Gửi khiếu nại mở khóa',
+          skipOffstage: false,
+        );
+        expect(submitButton, findsOneWidget);
       },
     );
 
@@ -84,21 +88,25 @@ void main() {
       expect(find.text('Quay lại màn hình đăng nhập'), findsOneWidget);
     });
 
-    testWidgets('does not offer support contact for a temporary lock', (
+    testWidgets('shows a rejected appeal status without the appeal form', (
       tester,
     ) async {
       await AuthState.instance.clearWithBlockedAccount(
         const BlockedAccountState(
-          code: 'ACCOUNT_TEMPORARILY_LOCKED',
-          lockType: 'TEMPORARY',
+          code: 'ACCOUNT_ADMIN_LOCKED',
+          appealAllowed: false,
+          appealStatus: 'REJECTED',
         ),
       );
 
       await tester.pumpWidget(_wrap(const BlockedAccountScreen()));
       await tester.pump();
 
-      // It clears by itself, so sending the user to support would be wrong.
-      expect(find.text('CẦN MỞ LẠI TÀI KHOẢN?'), findsNothing);
+      expect(
+        find.textContaining('Khiếu nại mở khóa đã bị từ chối'),
+        findsOneWidget,
+      );
+      expect(find.text('Nội dung khiếu nại'), findsNothing);
     });
 
     testWidgets('clearBlockedReason clears the blocked state', (tester) async {
