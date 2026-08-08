@@ -327,7 +327,18 @@ pages:
     - if: '$CI_COMMIT_BRANCH == "BachNQ1"'
     - if: '$CI_COMMIT_BRANCH == "dev"'
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  variables:
+    # The portal is served by GitLab Pages, so the browser calls the API on a
+    # separate origin. Vite inlines this at build time and the runner has no
+    # .env (it is gitignored), so without it apiClient.ts falls back to
+    # http://localhost:8080 and every request from the deployed site fails.
+    VITE_API_URL: "https://api.carebridgevn.site"
   script:
+    - test -n "$VITE_API_URL" || { echo 'VITE_API_URL is required to prevent a localhost API bundle'; exit 1; }
+    # Public Firebase client config, not secrets, but project-specific: set them in
+    # Settings -> CI/CD -> Variables. Missing values only break chat/calls/push, so
+    # this warns instead of failing the whole Pages deploy.
+    - test -n "$VITE_FIREBASE_API_KEY" || echo 'WARNING - VITE_FIREBASE_* unset, so direct consult chat, calls and push will fail at runtime'
     - cd 05_Development/CareBridgeWebApp
     - npm ci
     - npm run build
