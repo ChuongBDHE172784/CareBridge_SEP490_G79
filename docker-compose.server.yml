@@ -150,7 +150,7 @@ services:
     environment:
       CAREBRIDGE_PORTAL_HOSTNAME: ${CAREBRIDGE_PORTAL_HOSTNAME:?Set CAREBRIDGE_PORTAL_HOSTNAME}
       CAREBRIDGE_API_HOSTNAME: ${CAREBRIDGE_API_HOSTNAME:?Set CAREBRIDGE_API_HOSTNAME}
-      CAREBRIDGE_CLOUDFLARED_IP: ${CAREBRIDGE_CLOUDFLARED_IP:-172.31.0.2}
+      CAREBRIDGE_CLOUDFLARED_IP: ${CAREBRIDGE_CLOUDFLARED_IP:-192.168.250.2}
     volumes:
       - ./05_Development/Deployment/nginx/edge-server.conf:/etc/nginx/templates/default.conf.template:ro
     expose:
@@ -159,7 +159,7 @@ services:
       # Pinned: this container is created before cloudflared, and dynamic IPAM
       # hands out .2 first, which would collide with cloudflared's static IP.
       tunnel:
-        ipv4_address: ${CAREBRIDGE_NGINX_EDGE_IP:-172.31.0.3}
+        ipv4_address: ${CAREBRIDGE_NGINX_EDGE_IP:-192.168.250.3}
       backend-origin:
     depends_on:
       backend:
@@ -181,7 +181,7 @@ services:
     # Only network it joins, so the tunnel can reach nginx-edge and nothing else.
     networks:
       tunnel:
-        ipv4_address: ${CAREBRIDGE_CLOUDFLARED_IP:-172.31.0.2}
+        ipv4_address: ${CAREBRIDGE_CLOUDFLARED_IP:-192.168.250.2}
     depends_on:
       nginx-edge:
         condition: service_healthy
@@ -189,9 +189,13 @@ services:
 
 networks:
   tunnel:
+    # NOT 172.31.x: that is the CIDR of an AWS default VPC, and 172.31.0.2 is the
+    # VPC DNS resolver inside a 172.31.0.0/20 subnet. Pinning cloudflared there
+    # shadows DNS for the whole host. 192.168.250.x sits outside both the default
+    # VPC range and Docker's own 172.17-172.31 auto-allocation pool.
     ipam:
       config:
-        - subnet: ${CAREBRIDGE_TUNNEL_SUBNET:-172.31.0.0/29}
+        - subnet: ${CAREBRIDGE_TUNNEL_SUBNET:-192.168.250.0/29}
   backend-origin:
     internal: true
   ai-origin:

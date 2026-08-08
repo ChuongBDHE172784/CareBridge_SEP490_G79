@@ -44,6 +44,9 @@ services:
     networks:
       - ai-origin
       - service-egress
+    # Measured ~110 MiB idle; the ceiling is here so a runaway Gemini response or
+    # graph run cannot starve the backend on a 4 GB instance.
+    mem_limit: ${AI_MEM_LIMIT:-1g}
     # The backend IS the evidence registry this service reads, so it has to come
     # up first. /health runs a triage probe that looks up approved sources, and
     # evidence_registry_client caches successes only — with the registry down,
@@ -97,6 +100,19 @@ services:
     env_file:
       - ${BACKEND_ENV_FILE:-./05_Development/Deployment/.env.server}
     environment:
+      # Ghim cứng heap. Image mặc định dùng -XX:MaxRAMPercentage=75.0, tức là một
+      # tỉ lệ tương đối — đo được: không giới hạn thì JVM tự cho MaxHeapSize
+      # 5816 MiB, đủ để bóp chết mọi container khác. -Xmx là con số tuyệt đối nên
+      # không phụ thuộc máy chạy ở đâu. -Xms nhỏ để lúc rảnh không giữ RAM vô ích,
+      # heap chỉ nở dần tới trần khi thật cần.
+      # MaxMetaspaceSize cũng phải chặn: metaspace nằm NGOÀI heap, và Spring Boot
+      # nạp rất nhiều class, nên để tự do thì RSS vượt mem_limit và container bị
+      # OOMKilled dù heap vẫn còn chỗ.
+      JAVA_TOOL_OPTIONS: >-
+        -Xms256m
+        -Xmx${BACKEND_HEAP:-1536m}
+        -XX:MaxMetaspaceSize=${BACKEND_METASPACE:-256m}
+        -Djava.security.egd=file:/dev/./urandom
       # DNS của Docker. "localhost" trong container này là chính backend.
       AI_TRIAGE_SERVICE_URL: "http://ai-triage:8001"
       # Sidecar phân tích tư thế. application.yaml mặc định tắt, nên phải bật ở
@@ -121,6 +137,14 @@ services:
       - face-origin
       - exercise-origin
       - service-egress
+    # Chặn cứng lần hai, ở tầng cgroup. -Xmx trên kia đã giới hạn heap, nhưng RSS
+    # của một JVM còn gồm metaspace, code cache, stack của ~200 thread và direct
+    # buffer. Trần này bao trọn tổng đó:
+    #   heap 1536 + metaspace 256 + code cache ~128 + stack ~200 + direct ~150
+    #   + overhead ~150  =  ~2420 MiB, còn dư ~140 MiB trong 2560.
+    # Dùng đơn vị MiB nguyên thay vì "2.5g" để Compose parse chắc chắn.
+    # Nâng BACKEND_HEAP thì nâng cả cái này, giữ khoảng cách ~1 GiB.
+    mem_limit: ${BACKEND_MEM_LIMIT:-2560m}
     # No depends_on: the only thing this needs to boot is Supabase, which is
     # external. Both sidecars are called per-request and the backend degrades
     # gracefully when they are missing, so waiting on them here would only

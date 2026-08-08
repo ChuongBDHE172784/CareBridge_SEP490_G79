@@ -59,7 +59,7 @@ services:
     image: ${EDGE_NGINX_IMAGE:?Set EDGE_NGINX_IMAGE to an immutable nginx-unprivileged image@sha256 digest}
     environment:
       CAREBRIDGE_API_HOSTNAME: ${CAREBRIDGE_API_HOSTNAME:?Set the exact production API hostname}
-      CAREBRIDGE_CLOUDFLARED_IP: ${CAREBRIDGE_CLOUDFLARED_IP:-172.31.0.2}
+      CAREBRIDGE_CLOUDFLARED_IP: ${CAREBRIDGE_CLOUDFLARED_IP:-192.168.250.2}
     volumes:
       - ./nginx/edge-api.conf:/etc/nginx/templates/default.conf.template:ro
     expose:
@@ -86,7 +86,7 @@ services:
       - cloudflare_tunnel_token
     networks:
       tunnel:
-        ipv4_address: ${CAREBRIDGE_CLOUDFLARED_IP:-172.31.0.2}
+        ipv4_address: ${CAREBRIDGE_CLOUDFLARED_IP:-192.168.250.2}
     depends_on:
       nginx-edge:
         condition: service_healthy
@@ -96,7 +96,7 @@ networks:
   tunnel:
     ipam:
       config:
-        - subnet: ${CAREBRIDGE_TUNNEL_SUBNET:-172.31.0.0/29}
+        - subnet: ${CAREBRIDGE_TUNNEL_SUBNET:-192.168.250.0/29}
   backend-origin:
     internal: true
   ai-origin:
