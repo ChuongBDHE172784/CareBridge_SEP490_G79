@@ -309,7 +309,16 @@ transport remains an internal Java-to-Python boundary, not a public client contr
 rollout remains blocked on the reviewed server-derived text/answer-to-signal contract.
 
 ## D-027 — The V2 danger floor conflicts with D-025/D-026 and needs a ruling
-**Date** 2026-08-08 · **Decider** PENDING — rule/source owner. Claude implemented, then found the conflict.
+**Date** 2026-08-08 · **Decider** PROJECT OWNER (ChuongBD), ruled 2026-08-08. Claude implemented, then
+found the conflict and disclosed it.
+**RULING — option (a), narrowly.** The floor stays. This supersedes D-025/D-026 **only** for the five
+global signals it emits, **only** inside V2, and **only** while V2 is default-off. It grants nothing else:
+- Public rollout stays blocked. D-026's condition — a reviewed server-derived text/answer-to-signal
+  contract — is unchanged and unmet.
+- No new phrase may be added to the lexicon under this ruling. Adding one is a fresh decision.
+- D-025's block on free-text→global-signal inference stays in force everywhere else, including V1's
+  public path and any future cutover.
+- If V2 is ever cut over to real users, this ruling expires and the reviewed contract is required first.
 **Problem** `app/triage_v2/deterministic_signals.py` (commit 6f9d30e5) infers global danger signals from
 free text using a phrase lexicon. D-025 decided to "explicitly block free-text→global-signal inference
 without a source/rule-reviewed deterministic contract" and rejected "inventing a clinical phrase lexicon";
@@ -332,7 +341,10 @@ reviewed text→signal contract exists; (c) keep it but gate it behind an explic
 free-text E2E danger detection is established — D-025 is precisely about not making that claim.
 
 ## D-028 — V2 is frozen; V1 ships
-**Date** 2026-08-08 · **Decider** PENDING — project owner. Recommended by Claude.
+**Date** 2026-08-08 · **Decider** PROJECT OWNER (ChuongBD), ruled 2026-08-08. Recommended by Claude.
+**ACCEPTED.** V2 is frozen at commit 6f9d30e5. In practice: no new V2 features, no cutover work, flags
+stay off, and the suites stay green so it does not rot. Effort goes to V1 and to evidence — the corpus —
+not to architecture.
 **Problem** V2 is ~6.2k lines of code and ~8.7k of tests that have never served a request, while V1
 serves every user. Most of the machinery that makes this area feel heavy — parity vectors, shadow
 service, cutover gate, readiness blockers, two mobile screens — exists only because two engines run side
