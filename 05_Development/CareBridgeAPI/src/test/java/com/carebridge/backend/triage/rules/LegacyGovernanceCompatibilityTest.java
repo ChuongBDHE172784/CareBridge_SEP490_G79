@@ -50,9 +50,12 @@ class LegacyGovernanceCompatibilityTest {
     @DisplayName("A legacy artifact with status=APPROVED still loads, mapped to ACTIVE")
     void legacyApprovedArtifactStillLoads(@org.junit.jupiter.api.io.TempDir Path temp)
             throws Exception {
+        int canonicalRuleCount = ruleCount(readCanonical());
         TriageRuleRegistry legacy = loadFrom(temp, toLegacy(readCanonical()));
 
-        assertThat(legacy.rules()).hasSize(10);
+        // Counted from the artifact rather than pinned: this test is about the legacy status
+        // mapping, so growing the rule set must not read as a governance regression.
+        assertThat(legacy.rules()).hasSize(canonicalRuleCount);
         assertThat(legacy.rules()).allSatisfy(rule ->
                 assertThat(rule.status()).isEqualTo("ACTIVE"));
         assertThat(legacy.skippedRuleIds()).isEmpty();
@@ -115,14 +118,19 @@ class LegacyGovernanceCompatibilityTest {
     void legacyDraftAndRetiredRemainSkippable(@org.junit.jupiter.api.io.TempDir Path temp)
             throws Exception {
         ObjectNode document = (ObjectNode) toLegacy(readCanonical());
-        ((ObjectNode) document.get("rules").get(9)).put("status", "DRAFT");
+        int canonicalRuleCount = ruleCount(document);
+        ((ObjectNode) document.get("rules").get(canonicalRuleCount - 1)).put("status", "DRAFT");
 
         TriageRuleRegistry legacy = loadFrom(temp, document);
         assertThat(legacy.skippedRuleIds()).hasSize(1);
-        assertThat(legacy.rules()).hasSize(9);
+        assertThat(legacy.rules()).hasSize(canonicalRuleCount - 1);
     }
 
     // ------------------------------------------------------------------ helpers
+
+    private static int ruleCount(JsonNode document) {
+        return document.get("rules").size();
+    }
 
     private static JsonNode readCanonical() throws Exception {
         try (InputStream stream =

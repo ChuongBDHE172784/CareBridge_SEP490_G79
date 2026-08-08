@@ -57,8 +57,14 @@ class TriageRedFlagPreScreenSecurityTest {
     // FX-008 — RED-matching keyword text; probes whether the new safety path leaks cross-role.
     private static final String MATCHING_ONE_SHOT_BODY =
             "{\"symptoms\":\"bé bị nga dap dau xuống sàn\"}";
+    // The stage pair is supplied deliberately. StartIntakeConversationRequest requires a stage
+    // that matches currentIntake.stage, and Spring resolves and validates the body before the
+    // @PreAuthorize interceptor runs — so a stage-less body returns 400 and the request never
+    // reaches the authorization check this test exists to pin. A body that would otherwise be
+    // accepted is what proves the 403 comes from the role, not from a malformed payload.
     private static final String MATCHING_START_BODY =
-            "{\"initialText\":\"bé bị nga dap dau xuống sàn\",\"currentIntake\":{}}";
+            "{\"initialText\":\"bé bị nga dap dau xuống sàn\",\"stage\":\"INFANT\","
+                    + "\"currentIntake\":{\"stage\":\"INFANT\"}}";
 
     @Test
     @WithMockUser(username = "00000000-0000-0000-0000-0000000000e1", roles = "EXPERT")
