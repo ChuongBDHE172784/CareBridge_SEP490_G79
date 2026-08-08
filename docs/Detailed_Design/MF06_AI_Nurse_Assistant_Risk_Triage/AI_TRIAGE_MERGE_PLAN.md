@@ -140,9 +140,14 @@ its self-harm path only through extraction, so with Gemini down a person disclos
 ideation is asked to clarify what they meant — a clinical step backwards, occurring exactly
 when the system is already degraded.
 
-**Step V-2 — DONE 2026-08-08.** V2 has a deterministic danger floor, and this was the first
-real merge: the phrase matcher moved out of `risk_rules` into `app/danger_phrases.py`, which
-both engines now import. One implementation, so they cannot drift on the question that matters
+**Step V-2 — DONE 2026-08-08, but see D-027 before relying on it.** It infers global signals
+from free text with an unreviewed phrase lexicon, which D-025 and D-026 decided to block until
+a source/rule-reviewed contract exists. Nothing here establishes that free-text end-to-end
+danger detection works — D-025 exists precisely to stop that claim being made — and public
+rollout stays blocked either way. The ruling is pending.
+
+V2 has a deterministic danger floor, and this was the first real merge: the phrase matcher
+moved out of `risk_rules` into `app/danger_phrases.py`, which both engines now import. One implementation, so they cannot drift on the question that matters
 most. `risk_rules.py` went from 446 to 242 lines and its behaviour is unchanged.
 
 `app/triage_v2/deterministic_signals.py` turns a message into global danger signals and

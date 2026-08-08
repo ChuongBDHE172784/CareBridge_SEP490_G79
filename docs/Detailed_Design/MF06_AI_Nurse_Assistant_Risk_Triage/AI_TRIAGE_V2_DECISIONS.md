@@ -307,3 +307,43 @@ transport remains an internal Java-to-Python boundary, not a public client contr
 (ambiguous contract); inventing a text lexicon without rule/source review (unsafe clinical logic).
 **Impact** Existing component fallback RED tests do not establish free-text public E2E safety. Public
 rollout remains blocked on the reviewed server-derived text/answer-to-signal contract.
+
+## D-027 — The V2 danger floor conflicts with D-025/D-026 and needs a ruling
+**Date** 2026-08-08 · **Decider** PENDING — rule/source owner. Claude implemented, then found the conflict.
+**Problem** `app/triage_v2/deterministic_signals.py` (commit 6f9d30e5) infers global danger signals from
+free text using a phrase lexicon. D-025 decided to "explicitly block free-text→global-signal inference
+without a source/rule-reviewed deterministic contract" and rejected "inventing a clinical phrase lexicon";
+D-026 rejected "inventing a text lexicon without rule/source review". The floor was built without checking
+this log — a process failure, disclosed here rather than left for someone to find.
+**What it actually does** Emits SELF_HARM_IDEATION, SEIZURE, SEVERE_BREATHING_DIFFICULTY,
+ALTERED_CONSCIOUSNESS and CYANOSIS as signals only; `global_safety_gate` remains the sole decider. A
+question answer outranks it, so an explicit ABSENT is never overwritten. It runs in V2, which is
+default-off, so nothing public changed.
+**Why it was built** Measured 2026-08-08: with Gemini unavailable, "Tôi không muốn sống nữa" produced
+only `Q_CLARIFY_INTENT` — a suicidal disclosure answered with a categorisation question, exactly when the
+system was already degraded. The other four danger sentences degraded safely to the danger screen.
+**Mitigating, but not sufficient** The lexicon is not invented: it is V1's existing production phrase set,
+reached by every V1 user today, now corpus-tested in both directions (`test_vietnamese_intake_corpus.py`).
+"Already shipping" is nonetheless not "reviewed", which is what D-025 requires.
+**Options** (a) Supersede D-025/D-026 for this narrow scope, on the record, and keep the floor —
+public rollout stays blocked regardless; (b) revert 6f9d30e5 and leave the self-harm gap open until a
+reviewed text→signal contract exists; (c) keep it but gate it behind an explicit off-by-default flag.
+**Impact until ruled** No public behaviour. AI_TRIAGE_MERGE_PLAN.md §5 must not be read as evidence that
+free-text E2E danger detection is established — D-025 is precisely about not making that claim.
+
+## D-028 — V2 is frozen; V1 ships
+**Date** 2026-08-08 · **Decider** PENDING — project owner. Recommended by Claude.
+**Problem** V2 is ~6.2k lines of code and ~8.7k of tests that have never served a request, while V1
+serves every user. Most of the machinery that makes this area feel heavy — parity vectors, shadow
+service, cutover gate, readiness blockers, two mobile screens — exists only because two engines run side
+by side. Left undecided, V2 keeps growing and the coexistence cost keeps compounding.
+**Decision** Freeze V2 at commit 6f9d30e5: no new features, flags stay off, but it stays building and
+green so it does not rot. Ship V1, whose real defect was the phrase matching (fixed in da3556b6), not the
+architecture. Do not delete V2 — it is designed, tested and shadow-validated work, and it is the fix for
+the fragility V1 has by construction.
+**Alternatives rejected** Cutting over one stage now — V2 has no chat experience (`triage_v2_screen` is
+an internal harness), so this is weeks of work for one person and lands two engines in production;
+half-finished at a deadline is the worst of the three outcomes. Deleting V2 — destroys the better
+architecture and the evidence of it.
+**Unfreezes when** someone decides to cut over AND V2 has a chat entry AND D-027 is ruled on.
+**Impact** No code change. It is a commitment about where effort goes.
