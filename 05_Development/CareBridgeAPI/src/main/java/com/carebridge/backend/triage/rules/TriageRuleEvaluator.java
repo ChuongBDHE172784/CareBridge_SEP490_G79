@@ -436,10 +436,10 @@ public class TriageRuleEvaluator {
         if ("PREGNANCY".equals(stage) && context.get("postpartum_day") != null) {
             return DatasetStatus.CONFLICTED.name();
         }
-        if ("POSTPARTUM".equals(stage) && context.get("gestational_week") != null) {
+        if ("POSTPARTUM_MOTHER".equals(stage) && context.get("gestational_week") != null) {
             return DatasetStatus.CONFLICTED.name();
         }
-        if ("POSTPARTUM".equals(stage) && "YES".equals(Objects.toString(context.get("possible_pregnancy"), ""))) {
+        if ("POSTPARTUM_MOTHER".equals(stage) && "YES".equals(Objects.toString(context.get("possible_pregnancy"), ""))) {
             return DatasetStatus.CONFLICTED.name();
         }
 
@@ -447,7 +447,7 @@ public class TriageRuleEvaluator {
             case "PRECONCEPTION" -> List.of("stage");
             case "POSSIBLE_PREGNANCY" -> List.of("stage", "possible_pregnancy");
             case "PREGNANCY" -> List.of("stage", "gestational_week");
-            case "POSTPARTUM" -> List.of("stage", "postpartum_day");
+            case "POSTPARTUM_MOTHER" -> List.of("stage", "postpartum_day");
             default -> List.of();
         };
         for (String field : reqFields) {
@@ -472,7 +472,7 @@ public class TriageRuleEvaluator {
             case "PRECONCEPTION" -> List.of("stage", "possible_pregnancy");
             case "POSSIBLE_PREGNANCY" -> List.of("stage", "possible_pregnancy", "last_menstrual_period_or_test");
             case "PREGNANCY" -> List.of("stage", "gestational_week", "pain_severity", "bleeding_amount");
-            case "POSTPARTUM" -> List.of("stage", "postpartum_day", "delivery_method", "bleeding_amount");
+            case "POSTPARTUM_MOTHER" -> List.of("stage", "postpartum_day", "delivery_method", "bleeding_amount");
             default -> List.of();
         };
         for (String fName : reqGreen) {
@@ -503,7 +503,7 @@ public class TriageRuleEvaluator {
         if (canBeOos) {
             return ScopeStatus.CONFIRMED_OUT_OF_SCOPE.name();
         }
-        if (Set.of("POSSIBLE_PREGNANCY", "PREGNANCY", "POSTPARTUM").contains(stage) || hasReproductiveContext) {
+        if (Set.of("POSSIBLE_PREGNANCY", "PREGNANCY", "POSTPARTUM_MOTHER").contains(stage) || hasReproductiveContext) {
             return ScopeStatus.POSSIBLY_IN_SCOPE.name();
         }
         return ScopeStatus.IN_SCOPE.name();
