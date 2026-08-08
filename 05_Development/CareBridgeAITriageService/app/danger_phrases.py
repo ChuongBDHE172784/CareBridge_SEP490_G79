@@ -102,6 +102,25 @@ MATERNAL_HEAVY_BLEEDING_PHRASES = (
     "haemorrhage",
     "soaking pad",
 )
+#: The two halves of PREG_RED_002, ported from the registry under D-030. Neither escalates
+#: alone — the registry states the rule as a conjunction, so a lone headache or a lone
+#: "hoa mắt" stays silent, which is what keeps this from becoming a broad new trigger.
+MATERNAL_SEVERE_HEADACHE_PHRASES = (
+    "đau đầu dữ dội",
+    "đau đầu nhiều",
+    "nhức đầu dữ dội",
+    "nhức đầu nhiều",
+    "severe headache",
+)
+MATERNAL_VISUAL_DISTURBANCE_PHRASES = (
+    "mờ mắt",
+    "mắt mờ",
+    "nhìn mờ",
+    "hoa mắt",
+    "nhìn không rõ",
+    "blurred vision",
+    "visual disturbance",
+)
 MATERNAL_SELF_HARM_PHRASES = (
     "tự làm hại",
     "làm hại bản thân",
@@ -113,6 +132,10 @@ MATERNAL_SELF_HARM_PHRASES = (
     # Indirect phrasings are the common ones; "muốn chết" alone missed both of these.
     "không muốn sống",
     "không thiết sống",
+    # Bệnh viện Bạch Mai lists this euphemism among the postpartum-depression warning signs
+    # (bachmai.gov.vn): "muốn 'giải thoát' cho cả mẹ và con". Kept as the whole phrase — bare
+    # "giải thoát" is an ordinary word ("giải thoát khỏi cơn đau"). Added under D-029.
+    "giải thoát cho cả mẹ và con",
     "self harm",
     "self-harm",
     "kill myself",

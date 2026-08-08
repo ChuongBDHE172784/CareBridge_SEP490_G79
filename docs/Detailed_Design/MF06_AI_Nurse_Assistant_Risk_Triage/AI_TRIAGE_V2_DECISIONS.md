@@ -359,3 +359,40 @@ half-finished at a deadline is the worst of the three outcomes. Deleting V2 — 
 architecture and the evidence of it.
 **Unfreezes when** someone decides to cut over AND V2 has a chat entry AND D-027 is ruled on.
 **Impact** No code change. It is a commitment about where effort goes.
+
+## D-029 — Official .gov.vn wording may be added to the lexicon; it adds spellings, not signs
+**Date** 2026-08-08 · **Decider** PROJECT OWNER (ChuongBD), ruled 2026-08-08.
+**Problem** D-027 froze the lexicon: "no new phrase may be added under this ruling". Probing the engine
+with wording quoted verbatim from state health pages then showed it missing the easiest possible case —
+a reader repeating the authorities' own words. 10 of 23 official phrasings were not recognised.
+**Decision** Phrases quoted from a `.gov.vn` source may be added **when they are another spelling of a
+danger sign the catalogue already carries**. Added: `tím môi` (the catalogue held only `môi tím` — a word
+order away), `bú kém`, `xanh tái`, `ngừng thở`, `cánh mũi phập phồng`, `thở rên`, `hôn mê`, and
+`giải thoát cho cả mẹ và con`. Each cites its source in a comment.
+**Boundary** This does not permit a phrase that introduces a sign the rules do not already act on. Adding
+one of those is a rule decision (see D-030), not a spelling decision, and quoting a source does not make
+it reviewed: choosing that `cánh mũi phập phồng` means SEVERE_BREATHING_DIFFICULTY is a mapping judgement
+the publisher never made.
+**Impact** V1 and, through the shared `app/danger_phrases.py`, V2's floor. 20 of 23 official phrasings now
+land correctly; the remaining three are D-030's scope.
+**Sources** benhviennhitrunguong.gov.vn (paediatric danger signs); bachmai.gov.vn (postpartum depression).
+
+## D-030 — PREG_RED_002 is ported to V1; three other gaps are refused
+**Date** 2026-08-08 · **Decider** PROJECT OWNER (ChuongBD), ruled 2026-08-08.
+**Problem** Four danger presentations published by state health services reached no V1 rule: severe
+headache with visual disturbance, dizziness/faintness, shock signs after blood loss, and foul-smelling
+lochia. The owner approved activating them.
+**Decision** Only the first is activated. `PREG_RED_002` already exists in the registry as
+`SEVERE_HEADACHE AND VISUAL_DISTURBANCE -> RED`, PREGNANCY only, so porting it moves a stated rule rather
+than authoring one. V1 gains `RED_PREGNANCY_NEURO_DANGER` with the registry's conjunction and stage scope
+intact. `test_unsigned_pregnancy_specific_signs_remain_inactive` is updated, not deleted: it still pins
+the two signs that remain unruled.
+**Refused, with reasons** Dizziness and foul-smelling lochia exist in the registry's signal vocabulary but
+**no rule uses them**; shock signs have neither signal nor rule. Activating any of the three means picking
+a threshold and an outcome that no artifact states — inventing clinical logic, which D-025 blocks and
+which no `.gov.vn` citation substitutes for. They stay open pending a rule/source owner.
+**Why the conjunction matters** Headache and "hoa mắt" are each ordinary in pregnancy. Firing on either
+alone would turn a common complaint into an emergency; the registry's AND is what makes this safe to port,
+and tests pin both halves, the stage scope and negation.
+**Impact** V1 PREGNANCY only. First rule activation in V1 since the paediatric set — treat any further one
+as needing the same standard: an existing registry rule to port, or a clinical decision.

@@ -8,6 +8,8 @@ from app.danger_phrases import (
     MATERNAL_HEAVY_BLEEDING_PHRASES,
     MATERNAL_SEIZURE_PHRASES,
     MATERNAL_SELF_HARM_PHRASES,
+    MATERNAL_SEVERE_HEADACHE_PHRASES,
+    MATERNAL_VISUAL_DISTURBANCE_PHRASES,
     canonical_sign_is_unnegated,
     normalized_text,
     text_contains_any,
@@ -230,6 +232,15 @@ def _apply_maternal_universal_red_flag_rules(
         reported_signs, *MATERNAL_SELF_HARM_PHRASES
     ):
         add(f"{rule_prefix}_SELF_HARM", "Có ý nghĩ tự làm hại bản thân")
+    # PREG_RED_002, ported from the registry under D-030 — pregnancy only, and only when both
+    # halves are present. The stage restriction is the registry's, not a simplification: this
+    # is a pregnancy rule, and the same two signs outside pregnancy are not this rule.
+    if (
+        intake.stage == "PREGNANCY"
+        and text_contains_any(reported_signs, *MATERNAL_SEVERE_HEADACHE_PHRASES)
+        and text_contains_any(reported_signs, *MATERNAL_VISUAL_DISTURBANCE_PHRASES)
+    ):
+        add(f"{rule_prefix}_NEURO_DANGER", "Đau đầu dữ dội kèm rối loạn thị giác")
     if not red_flags:
         matched_rules.append(_maternal_review_rule(intake.stage))
     return red_flags, matched_rules

@@ -18,14 +18,26 @@ ONTOLOGY: dict[str, tuple[str, ...]] = {
     # "có giặt"/"co giật", "mới tìm"/"môi tím", "ngủ gà"/"ngu ga". They are written with
     # diacritics so a writer who uses them is taken at their word; accent-free input is still
     # matched (see _ontology_match).
-    "difficulty_breathing": ("khó thở", "thở gấp", "wheeze", "difficulty breathing", "khò khè", "thở rít"),
+    # Wording marked BYT below is quoted from Bệnh viện Nhi Trung ương's public danger-sign
+    # page (benhviennhitrunguong.gov.vn), added under D-029. Each is a spelling of a danger
+    # sign this catalogue already carries — no new sign, and no new threshold.
+    "difficulty_breathing": (
+        "khó thở", "thở gấp", "wheeze", "difficulty breathing", "khò khè", "thở rít",
+        "ngừng thở",  # BYT: "có cơn ngừng thở hoặc ngừng thở"
+        "cánh mũi phập phồng",  # BYT
+        "thở rên",  # BYT
+    ),
     "chest_indrawing": ("rút lõm", "chest indrawing"),
-    "cyanosis": ("tím tái", "môi tím", "da tím", "cyanosis"),
+    # "tím môi" is the same sign as "môi tím"; the catalogue held only one word order, so the
+    # phrasing the hospital itself publishes went unrecognised.
+    "cyanosis": ("tím tái", "môi tím", "tím môi", "da tím", "xanh tái", "cyanosis"),
     "seizure": ("co giật", "seizure", "seizures", "convulsion", "convulsions"),
-    "lethargy": ("li bì", "lơ mơ", "ngủ gà", "lethargy", "lừ đừ"),
+    "lethargy": ("li bì", "lơ mơ", "ngủ gà", "lethargy", "lừ đừ", "hôn mê"),
     "difficult_to_wake": ("kho danh thuc", "difficult to wake"),
     "unable_to_drink": ("khong uong", "khong bu", "unable to drink"),
-    "poor_feeding": ("bo bu", "uong kem", "an kem", "poor feeding", "bieng an"),
+    # "bú kém" is BYT's wording and pairs with fever in their under-28-day list; the catalogue
+    # held only "bỏ bú", which is the more severe end of the same sign.
+    "poor_feeding": ("bo bu", "bú kém", "uong kem", "an kem", "poor feeding", "bieng an"),
     "vomiting": ("non", "oi", "vomit", "vomiting", "tro sua", "oc sua"),
     "persistent_vomiting": ("non lien tuc", "non nhieu", "vomiting everything", "persistent vomiting"),
     "diarrhea": ("tieu chay", "diarrhea", "di ngoai", "đi ngoai", "ia chay"),

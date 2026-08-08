@@ -403,10 +403,17 @@ def test_incomplete_non_danger_maternal_input_terminalizes_yellow_at_limit(
     [
         "Thai giảm cử động",
         "Tôi đau bụng dữ dội",
-        "Tôi đau đầu dữ dội và hoa mắt",
     ],
 )
 def test_unsigned_pregnancy_specific_signs_remain_inactive(parent_free_text):
+    """These two still have no rule in either engine, so neither may escalate.
+
+    "Đau đầu dữ dội + rối loạn thị giác" used to be pinned here too. It was activated under
+    D-030 by porting PREG_RED_002 from the registry — see the test below. The other two are
+    not merely unported: the registry declares no rule for them at all, so activating them
+    would mean inventing a threshold rather than moving one.
+    """
+
     response = run_triage(
         maternal_request("PREGNANCY", parentFreeText=parent_free_text),
         deterministic_only=True,
@@ -415,6 +422,51 @@ def test_unsigned_pregnancy_specific_signs_remain_inactive(parent_free_text):
     assert response.riskLevel == "NEED_MORE_INFO"
     assert response.emergencyActionRequired is False
     assert response.matchedRules == ["PREGNANCY_RULES_NEED_CLINICAL_REVIEW"]
+
+
+@pytest.mark.parametrize(
+    "parent_free_text",
+    [
+        "Tôi đau đầu dữ dội và hoa mắt",
+        "Tôi bị phù nề, đau đầu nhiều, mờ mắt",
+        "Em nhức đầu dữ dội, nhìn mờ",
+    ],
+)
+def test_pregnancy_headache_with_visual_disturbance_is_red(parent_free_text):
+    """PREG_RED_002 ported to V1 under D-030. Registry wording, registry conjunction."""
+
+    response = run_triage(
+        maternal_request("PREGNANCY", parentFreeText=parent_free_text),
+        deterministic_only=True,
+    )
+
+    assert response.riskLevel == "RED"
+    assert response.emergencyActionRequired is True
+    assert "RED_PREGNANCY_NEURO_DANGER" in response.matchedRules
+
+
+@pytest.mark.parametrize(
+    ("stage", "parent_free_text"),
+    [
+        # One half alone is not the rule. This is what keeps a common complaint from becoming
+        # an emergency: headaches and "hoa mắt" are each ordinary in pregnancy.
+        ("PREGNANCY", "Tôi bị đau đầu nhiều"),
+        ("PREGNANCY", "Tôi bị hoa mắt"),
+        ("PREGNANCY", "Tôi hơi mờ mắt khi đứng dậy"),
+        ("PREGNANCY", "Tôi không đau đầu và không mờ mắt"),
+        # The registry scopes it to pregnancy; the same two signs elsewhere are a different
+        # question this rule does not answer.
+        ("POSTPARTUM", "Tôi đau đầu dữ dội và mờ mắt"),
+        ("PRECONCEPTION", "Tôi đau đầu dữ dội và mờ mắt"),
+    ],
+)
+def test_neuro_danger_needs_both_halves_and_the_right_stage(stage, parent_free_text):
+    response = run_triage(
+        maternal_request(stage, parentFreeText=parent_free_text),
+        deterministic_only=True,
+    )
+
+    assert "RED_PREGNANCY_NEURO_DANGER" not in response.matchedRules
 
 
 @pytest.mark.parametrize("stage", MATERNAL_STAGES)

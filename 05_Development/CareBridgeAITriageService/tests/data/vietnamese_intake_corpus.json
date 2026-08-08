@@ -45,6 +45,21 @@
     {"group": "negation — leading", "stage": "PREGNANCY", "text": "Tôi không bị co giật", "expect": "NOT_RED"},
     {"group": "negation — denial", "stage": "POSTPARTUM", "text": "Tôi chưa bị ngất lần nào", "expect": "NOT_RED"},
 
+    {"group": "official wording — BYT paediatric", "stage": "INFANT", "text": "Bé có dấu hiệu tím môi, đầu ngón chân, ngón tay", "expect": "RED"},
+    {"group": "official wording — BYT paediatric", "stage": "INFANT", "text": "Bé có cơn ngừng thở", "expect": "RED"},
+    {"group": "official wording — BYT paediatric", "stage": "INFANT", "text": "Bé có cánh mũi phập phồng", "expect": "RED"},
+    {"group": "official wording — BYT paediatric", "stage": "INFANT", "text": "Bé bú kém và sốt", "expect": "RED"},
+    {"group": "official wording — BYT paediatric", "stage": "INFANT", "text": "Da bé xanh tái", "expect": "RED"},
+    {"group": "official wording — BYT paediatric", "stage": "INFANT", "text": "Trẻ li bì, hôn mê, gọi hỏi không khóc", "expect": "RED"},
+    {"group": "official wording — Bạch Mai postpartum depression", "stage": "POSTPARTUM", "text": "Xuất hiện ý nghĩ tự làm hại bản thân", "expect": "RED"},
+    {"group": "official wording — Bạch Mai postpartum depression", "stage": "POSTPARTUM", "text": "Tôi muốn giải thoát cho cả mẹ và con", "expect": "RED"},
+    {"group": "official wording — preeclampsia (PREG_RED_002)", "stage": "PREGNANCY", "text": "Tôi bị phù nề, đau đầu nhiều, mờ mắt", "expect": "RED"},
+    {"group": "official wording — preeclampsia (PREG_RED_002)", "stage": "PREGNANCY", "text": "Tôi đau đầu dữ dội và hoa mắt", "expect": "RED"},
+    {"group": "one half is not the rule", "stage": "PREGNANCY", "text": "Tôi bị đau đầu nhiều", "expect": "NOT_RED"},
+    {"group": "one half is not the rule", "stage": "PREGNANCY", "text": "Tôi bị hoa mắt khi đứng dậy nhanh", "expect": "NOT_RED"},
+    {"group": "depression sign, not an emergency", "stage": "POSTPARTUM", "text": "Tôi liên tục tự trách bản thân, thấy mình là người mẹ tồi", "expect": "NOT_RED"},
+    {"group": "depression sign, not an emergency", "stage": "POSTPARTUM", "text": "Tôi cảm thấy vô cảm, mất kết nối với con", "expect": "NOT_RED"},
+
     {"group": "benign complaint", "stage": "PREGNANCY", "text": "Tôi hơi mệt và buồn nôn buổi sáng", "expect": "NOT_RED"},
     {"group": "benign complaint", "stage": "POSTPARTUM", "text": "Tôi bị đau lưng khi bế bé", "expect": "NOT_RED"},
     {"group": "benign question", "stage": "PRECONCEPTION", "text": "Tôi nên bổ sung vitamin gì trước khi mang thai", "expect": "NOT_RED"}
