@@ -50,13 +50,12 @@ class LegacyGovernanceCompatibilityTest {
     @DisplayName("A legacy artifact with status=APPROVED still loads, mapped to ACTIVE")
     void legacyApprovedArtifactStillLoads(@org.junit.jupiter.api.io.TempDir Path temp)
             throws Exception {
-        // Sized from the registry itself: the rule catalogue grows, and pinning a literal count
-        // here only breaks the compatibility check every time a rule is added.
-        JsonNode canonical = readCanonical();
-        int ruleCount = canonical.get("rules").size();
-        TriageRuleRegistry legacy = loadFrom(temp, toLegacy(canonical));
+        int canonicalRuleCount = ruleCount(readCanonical());
+        TriageRuleRegistry legacy = loadFrom(temp, toLegacy(readCanonical()));
 
-        assertThat(legacy.rules()).hasSize(ruleCount);
+        // Counted from the artifact rather than pinned: this test is about the legacy status
+        // mapping, so growing the rule set must not read as a governance regression.
+        assertThat(legacy.rules()).hasSize(canonicalRuleCount);
         assertThat(legacy.rules()).allSatisfy(rule ->
                 assertThat(rule.status()).isEqualTo("ACTIVE"));
         assertThat(legacy.skippedRuleIds()).isEmpty();
@@ -119,15 +118,19 @@ class LegacyGovernanceCompatibilityTest {
     void legacyDraftAndRetiredRemainSkippable(@org.junit.jupiter.api.io.TempDir Path temp)
             throws Exception {
         ObjectNode document = (ObjectNode) toLegacy(readCanonical());
-        int ruleCount = document.get("rules").size();
-        ((ObjectNode) document.get("rules").get(ruleCount - 1)).put("status", "DRAFT");
+        int canonicalRuleCount = ruleCount(document);
+        ((ObjectNode) document.get("rules").get(canonicalRuleCount - 1)).put("status", "DRAFT");
 
         TriageRuleRegistry legacy = loadFrom(temp, document);
         assertThat(legacy.skippedRuleIds()).hasSize(1);
-        assertThat(legacy.rules()).hasSize(ruleCount - 1);
+        assertThat(legacy.rules()).hasSize(canonicalRuleCount - 1);
     }
 
     // ------------------------------------------------------------------ helpers
+
+    private static int ruleCount(JsonNode document) {
+        return document.get("rules").size();
+    }
 
     private static JsonNode readCanonical() throws Exception {
         try (InputStream stream =

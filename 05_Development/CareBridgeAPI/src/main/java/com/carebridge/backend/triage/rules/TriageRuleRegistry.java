@@ -55,7 +55,7 @@ public class TriageRuleRegistry {
      * still enforced per rule, so a maternal threshold can never be evaluated against a baby.
      */
     static final Set<String> V2_STAGES = Set.of(
-            "PRECONCEPTION", "POSSIBLE_PREGNANCY", "PREGNANCY", "POSTPARTUM",
+            "PRECONCEPTION", "POSSIBLE_PREGNANCY", "PREGNANCY", "POSTPARTUM_MOTHER",
             "INFANT_0_12M", "TODDLER_12_24M");
     static final Set<String> V2_OUTCOMES = Set.of(
             "RED", "YELLOW", "GREEN", "NEEDS_MORE_INFO", "OUT_OF_SCOPE");

@@ -102,7 +102,7 @@ class TriageConversationStartIntegrationTest extends AbstractPostgresIntegration
         String body = mockMvc.perform(post("/api/v1/triage/intake/conversation/start")
                         .header("Authorization", "Bearer " + motherJwt)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"initialText\":\"Bé sốt nhẹ — SYNTHETIC\"}"))
+                        .content("{\"initialText\":\"Bé sốt nhẹ — SYNTHETIC\",\"stage\":\"INFANT\",\"currentIntake\":{\"stage\":\"INFANT\"}}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.status").value("ASK_MORE"))
@@ -130,6 +130,7 @@ class TriageConversationStartIntegrationTest extends AbstractPostgresIntegration
     void tfbfTcInt02_startWithClientRequestId_replayReturnsSameSessionSingleRow() throws Exception {
         String clientRequestId = UUID.randomUUID().toString(); // FX-TFBF-004
         String request = "{\"initialText\":\"Bé sốt nhẹ — SYNTHETIC\","
+                + "\"stage\":\"INFANT\",\"currentIntake\":{\"stage\":\"INFANT\"},"
                 + "\"clientRequestId\":\"" + clientRequestId + "\"}";
 
         String first = mockMvc.perform(post("/api/v1/triage/intake/conversation/start")

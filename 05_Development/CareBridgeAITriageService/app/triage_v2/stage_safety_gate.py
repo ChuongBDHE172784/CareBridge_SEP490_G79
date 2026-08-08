@@ -11,12 +11,15 @@ from app.triage_v2.state import matched_rule_trace_to_audit
 from app.triage_v2.signal_normalizer import normalize_signal_observation
 from app.rules.evaluator import MatchedRuleTrace
 
-_STAGE_MAP = {
-    CareStage.PRECONCEPTION.value: "PRECONCEPTION",
-    CareStage.POSSIBLE_PREGNANCY.value: "POSSIBLE_PREGNANCY",
-    CareStage.PREGNANCY.value: "PREGNANCY",
-    CareStage.POSTPARTUM_MOTHER.value: "POSTPARTUM",
-}
+#: Maternal stages only — the gate carries maternal thresholds, so a paediatric stage must not
+#: reach it. It doubled as a rename of POSTPARTUM_MOTHER while the registry used the legacy
+#: name; the registry now agrees, leaving only the restriction, which is the part that matters.
+_MATERNAL_STAGES = frozenset({
+    CareStage.PRECONCEPTION.value,
+    CareStage.POSSIBLE_PREGNANCY.value,
+    CareStage.PREGNANCY.value,
+    CareStage.POSTPARTUM_MOTHER.value,
+})
 
 
 def stage_safety_gate(
@@ -26,8 +29,8 @@ def stage_safety_gate(
         return {"stopConversation": True, "candidateQuestionIds": [], "plannedQuestionIds": []}
     stage_value = state.get("stage")
     raw_stage = stage_value.value if hasattr(stage_value, "value") else stage_value
-    stage = _STAGE_MAP.get(raw_stage)
-    if stage is None:
+    stage = raw_stage
+    if stage not in _MATERNAL_STAGES:
         return {}
     try:
         active = registry or get_registry()

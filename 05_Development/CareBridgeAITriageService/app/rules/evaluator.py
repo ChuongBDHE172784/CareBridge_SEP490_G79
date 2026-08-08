@@ -460,15 +460,15 @@ def _calc_safety_screen_status(signals: Mapping[str, Any], dataset_reqs: Mapping
 
 
 def _calc_context_dataset_status(stage: str, context: Mapping[str, Any], dataset_reqs: Mapping[str, Any]) -> str:
-    if stage not in ("PRECONCEPTION", "POSSIBLE_PREGNANCY", "PREGNANCY", "POSTPARTUM"):
+    if stage not in ("PRECONCEPTION", "POSSIBLE_PREGNANCY", "PREGNANCY", "POSTPARTUM_MOTHER"):
         return DatasetStatus.INCOMPLETE.value
 
     # Contradiction check
     if stage == "PREGNANCY" and context.get("postpartum_day") not in (None, "UNKNOWN"):
         return DatasetStatus.CONFLICTED.value
-    if stage == "POSTPARTUM" and context.get("gestational_week") not in (None, "UNKNOWN"):
+    if stage == "POSTPARTUM_MOTHER" and context.get("gestational_week") not in (None, "UNKNOWN"):
         return DatasetStatus.CONFLICTED.value
-    if stage == "POSTPARTUM" and context.get("possible_pregnancy") == "YES":
+    if stage == "POSTPARTUM_MOTHER" and context.get("possible_pregnancy") == "YES":
         return DatasetStatus.CONFLICTED.value
 
     req_fields = dataset_reqs.get("byStage", {}).get(stage, {}).get("contextFields", [])
@@ -541,7 +541,7 @@ def _calc_scope_status(
     if can_be_oos:
         return ScopeStatus.CONFIRMED_OUT_OF_SCOPE.value
 
-    if stage in ("POSSIBLE_PREGNANCY", "PREGNANCY", "POSTPARTUM") or has_reproductive_context:
+    if stage in ("POSSIBLE_PREGNANCY", "PREGNANCY", "POSTPARTUM_MOTHER") or has_reproductive_context:
         return ScopeStatus.POSSIBLY_IN_SCOPE.value
 
     return ScopeStatus.IN_SCOPE.value

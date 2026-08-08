@@ -207,7 +207,7 @@ class TriageConsentIntegrationTest extends AbstractPostgresIntegrationTest {
         mockMvc.perform(post("/api/v1/triage/intake/conversation/start")
                         .header("Authorization", "Bearer " + motherJwt)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"initialText\":\"Sốt nhẹ — SYNTHETIC\"}"))
+                        .content("{\"initialText\":\"Sốt nhẹ — SYNTHETIC\",\"stage\":\"INFANT\",\"currentIntake\":{\"stage\":\"INFANT\"}}"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error").value("TRIAGE_CONSENT_REQUIRED"));
 

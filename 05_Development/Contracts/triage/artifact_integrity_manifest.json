@@ -1,7 +1,7 @@
 {
   "$comment": "Integrity only. Proves each artifact matches its checksum. Does NOT prove clinical correctness and is NOT an approval record.",
   "manifestType": "ARTIFACT_INTEGRITY",
-  "generatedAt": "2026-08-06T11:22:36+00:00",
+  "generatedAt": "2026-08-08T12:39:16+00:00",
   "generatorVersion": "sync_triage_rule_registry.py/3.0",
   "artifacts": [
     {
@@ -22,7 +22,7 @@
     {
       "artifactId": "dataset_requirements_v1",
       "path": "05_Development/Contracts/triage/dataset_requirements_v1.json",
-      "sha256": "6efd2348f49fd5301209d61f15251fc2ccd62cedeccecc020d2a1c329dd9daf6"
+      "sha256": "682ecbae7194a2cfafb606ac33cfe654899db30d38e6f1721801638beda638fe"
     },
     {
       "artifactId": "draft_safety_disposition_matrix_v1",
@@ -77,22 +77,22 @@
     {
       "artifactId": "triage_response_v2.schema",
       "path": "05_Development/Contracts/triage/triage_response_v2.schema.json",
-      "sha256": "4bdf788b5eafbadd103c4cb9e2dd0b7ff2f4f0b51b2dc825442812add7b899ed"
+      "sha256": "ca072868b07414f7364c70e17ce1fca63060dd751d4fd5c65355216872b563e8"
     },
     {
       "artifactId": "triage_rule_condition.schema",
       "path": "05_Development/Contracts/triage/triage_rule_condition.schema.json",
-      "sha256": "925d0845e67fc84fc3e196dab6753e43c8073609e7407a54f2e648bd5834a7a6"
+      "sha256": "a7afdf50b7e01b86a17a84e37fef8d24951fe4554740e912aabd0916f405061f"
     },
     {
       "artifactId": "triage_rule_parity_vectors_v2",
       "path": "05_Development/Contracts/triage/triage_rule_parity_vectors_v2.json",
-      "sha256": "eae692d2f42c7846f2e8e242cb2b36a75aacef19ba3003b4b8a8ad81419af112"
+      "sha256": "e208bc8701673f27cf759851dd6071d5180923ccbcfd36599dec04ff6621f82f"
     },
     {
       "artifactId": "triage_rules_v2",
       "path": "05_Development/Contracts/triage/triage_rules_v2.json",
-      "sha256": "f8934817b2cae9f306f4ce7408e635fb94aaa6ba923922abd7612bd4fc024578"
+      "sha256": "7cb7ae3b1efd7e39f8a24da3919d08b74f3910820391b589a4c031a12234baa1"
     }
   ]
 }

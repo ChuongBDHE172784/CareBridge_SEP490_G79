@@ -44,3 +44,7 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 android/local.properties
+
+# Golden-test comparison output. Regenerated on every failing run, so committing it means
+# the diff churns whenever a golden fails and the stale copy outlives the failure it recorded.
+test/**/failures/

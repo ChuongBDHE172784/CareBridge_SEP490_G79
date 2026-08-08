@@ -114,15 +114,13 @@ def coverage_resolver(state: Mapping[str, object]) -> dict[str, object]:
     reported = _present_signal_codes(signals)
     stage = state.get("stage")
     stage_value = stage.value if hasattr(stage, "value") else stage
-    # The registry stores the maternal postpartum stage under its legacy name.
-    lookup_stage = "POSTPARTUM" if stage_value == "POSTPARTUM_MOTHER" else stage_value
-    readable = _rule_readable_codes(str(lookup_stage))
+    readable = _rule_readable_codes(str(stage_value))
 
     if not readable:
-        # No releasable rule targets this stage at all — today that is every paediatric stage.
+        # No releasable rule targets this stage at all.
         return _result(CoverageStatus.UNSUPPORTED, [CoverageReason.STAGE_HAS_NO_RULES],
                        blocks_planner=True,
-                       limitations=[f"NO_RULES_FOR_STAGE:{lookup_stage}"])
+                       limitations=[f"NO_RULES_FOR_STAGE:{stage_value}"])
 
     if not reported:
         # Nothing affirmed yet. That is not "unsupported" — we simply do not know, and the

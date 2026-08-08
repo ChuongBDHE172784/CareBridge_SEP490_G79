@@ -38,7 +38,7 @@ REQUIRED_RULE_MANIFEST_PATH = DATA_DIR / "required_rule_manifest.json"
 #: the paediatric rules are present and stage-scoped; entity separation is still enforced per rule,
 #: so a maternal threshold can never be evaluated against a baby.
 V2_STAGES = (
-    "PRECONCEPTION", "POSSIBLE_PREGNANCY", "PREGNANCY", "POSTPARTUM",
+    "PRECONCEPTION", "POSSIBLE_PREGNANCY", "PREGNANCY", "POSTPARTUM_MOTHER",
     "INFANT_0_12M", "TODDLER_12_24M",
 )
 V2_OUTCOMES = ("RED", "YELLOW", "GREEN", "NEEDS_MORE_INFO", "OUT_OF_SCOPE")
@@ -429,7 +429,7 @@ def load_dataset_requirements(path: Path | None = None) -> dict[str, Any]:
             "PRECONCEPTION": {"contextFields": ["stage"], "greenEligibilityFields": ["stage", "possible_pregnancy"]},
             "POSSIBLE_PREGNANCY": {"contextFields": ["stage", "possible_pregnancy"], "greenEligibilityFields": ["stage", "possible_pregnancy", "last_menstrual_period_or_test"]},
             "PREGNANCY": {"contextFields": ["stage", "gestational_week"], "greenEligibilityFields": ["stage", "gestational_week", "pain_severity", "bleeding_amount"]},
-            "POSTPARTUM": {"contextFields": ["stage", "postpartum_day"], "greenEligibilityFields": ["stage", "postpartum_day", "delivery_method", "bleeding_amount"]},
+            "POSTPARTUM_MOTHER": {"contextFields": ["stage", "postpartum_day"], "greenEligibilityFields": ["stage", "postpartum_day", "delivery_method", "bleeding_amount"]},
         }
     }
 
