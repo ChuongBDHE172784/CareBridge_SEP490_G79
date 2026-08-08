@@ -170,6 +170,57 @@ class TriageRedFlagPreScreenPolicyTest {
     }
 
     @Test
+    void screen_accentedKeywordDoesNotMatchADifferentlyAccentedWord_returnsNoMatch() {
+        // Stripping diacritics from both sides merged unrelated words onto one ASCII form, and
+        // this screen short-circuits the intake into an emergency. "có giặt" (does the washing)
+        // is not "co giật" (a seizure); the seeded rule is written with diacritics, so the
+        // writer's own spelling decides.
+        when(redFlagRuleRepository.findByActiveTrue()).thenReturn(
+                List.of(makeRule(r -> r.setKeyword("co giật"))));
+
+        PreScreenResult result = policy().screen("tôi có giặt quần áo cho bé mỗi ngày");
+
+        assertThat(result.outcome()).isEqualTo(PreScreenOutcome.NO_MATCH);
+        assertThat(result.matchedKeywords()).isEmpty();
+    }
+
+    @Test
+    void screen_accentedKeywordStillMatchesItsOwnSpelling_returnsEscalateRed() {
+        when(redFlagRuleRepository.findByActiveTrue()).thenReturn(
+                List.of(makeRule(r -> r.setKeyword("co giật"))));
+
+        PreScreenResult result = policy().screen("bé đang bị co giật");
+
+        assertThat(result.outcome()).isEqualTo(PreScreenOutcome.ESCALATE_RED);
+        assertThat(result.matchedKeywords()).contains("co giật");
+    }
+
+    @Test
+    void screen_accentedKeywordStillMatchesAccentFreeTyping_returnsEscalateRed() {
+        // Phones default to accent-free input. There "co giat" cannot be told apart from
+        // "co giật", so it must still escalate — the strict path only applies where the
+        // writer supplied diacritics of their own.
+        when(redFlagRuleRepository.findByActiveTrue()).thenReturn(
+                List.of(makeRule(r -> r.setKeyword("co giật"))));
+
+        PreScreenResult result = policy().screen("be dang bi co giat");
+
+        assertThat(result.outcome()).isEqualTo(PreScreenOutcome.ESCALATE_RED);
+    }
+
+    @Test
+    void screen_accentFreeKeywordStaysPermissive_returnsEscalateRed() {
+        // An admin who stores the rule without diacritics gets the old permissive behaviour;
+        // nothing here can recover an intent they did not spell. Pins TRFP-TC-003's direction.
+        when(redFlagRuleRepository.findByActiveTrue()).thenReturn(
+                List.of(makeRule(r -> r.setKeyword("co giat"))));
+
+        PreScreenResult result = policy().screen("BÉ ĐANG BỊ CO GIẬT");
+
+        assertThat(result.outcome()).isEqualTo(PreScreenOutcome.ESCALATE_RED);
+    }
+
+    @Test
     void screen_ruleSetChangeVisibleOnNextCall_noMemoization() {
         // TRFP-TC-019 — ADR-004 read-through freshness (no cache / C7)
         when(redFlagRuleRepository.findByActiveTrue())

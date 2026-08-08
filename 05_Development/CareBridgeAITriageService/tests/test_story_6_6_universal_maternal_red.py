@@ -415,3 +415,103 @@ def test_unsigned_pregnancy_specific_signs_remain_inactive(parent_free_text):
     assert response.riskLevel == "NEED_MORE_INFO"
     assert response.emergencyActionRequired is False
     assert response.matchedRules == ["PREGNANCY_RULES_NEED_CLINICAL_REVIEW"]
+
+
+@pytest.mark.parametrize("stage", MATERNAL_STAGES)
+@pytest.mark.parametrize(
+    ("parent_free_text", "rule_suffix"),
+    [
+        # Saying the bleeding is worse used to stop the rule firing: the phrase was matched as
+        # a literal substring, so any degree word between "máu" and "nhiều" broke it.
+        ("Tôi ra máu nhiều", "HEAVY_BLEEDING"),
+        ("Tôi ra máu rất nhiều", "HEAVY_BLEEDING"),
+        ("Tôi ra máu quá nhiều", "HEAVY_BLEEDING"),
+        ("Tôi chảy máu rất nhiều", "HEAVY_BLEEDING"),
+        ("Tôi chảy máu cực kỳ nhiều", "HEAVY_BLEEDING"),
+        ("Máu ra nhiều lắm", "HEAVY_BLEEDING"),
+        ("Tôi bị ra máu ồ ạt", "HEAVY_BLEEDING"),
+        ("Tôi ướt đẫm băng vệ sinh trong một giờ", "HEAVY_BLEEDING"),
+        ("Tôi rất khó thở", "BREATHING_DISTRESS"),
+        # Indirect self-harm wording; only the literal "muốn chết" was recognised before.
+        ("Tôi không muốn sống nữa", "SELF_HARM"),
+        ("Tôi nghĩ đến chuyện kết liễu đời mình", "SELF_HARM"),
+    ],
+)
+def test_degree_words_inside_a_danger_phrase_stay_red(stage, parent_free_text, rule_suffix):
+    response = run_triage(
+        maternal_request(stage, parentFreeText=parent_free_text),
+        deterministic_only=True,
+    )
+
+    assert response.riskLevel == "RED"
+    assert response.emergencyActionRequired is True
+    assert f"RED_{stage}_{rule_suffix}" in response.matchedRules
+
+
+@pytest.mark.parametrize("stage", MATERNAL_STAGES)
+@pytest.mark.parametrize(
+    "parent_free_text",
+    [
+        # Accent-stripped matching merged these onto the danger phrases and fired RED on
+        # ordinary sentences. Written WITH diacritics they are the writer's own words:
+        "Tôi có giặt quần áo cho bé mỗi ngày",  # "có giặt"  vs "co giật"
+        "Tôi đang ngắt sữa cho bé",  # "ngắt"     vs "ngất"
+        "Tôi mới tìm hiểu về cách cho bú",  # "mới tìm"  vs "môi tím"
+        "Bé bú từ từ, mẹ yên tâm",  # "từ từ"    vs "tự tử"
+        "Quần áo của bé ra màu nhiều khi giặt",  # "ra màu"   vs "ra máu"
+        "Tôi kê cái tủ sát tường",  # "tủ sát"   vs "tự sát"
+        "Phòng thơm ngát mùi sả",  # "ngát"     vs "ngất"
+        # A degree word may bridge a phrase, but an arbitrary word may not.
+        "Mọi người xung quanh tự nhiên tử tế hẳn lên",  # must not read as "tự tử"
+    ],
+)
+def test_diacritics_keep_ordinary_words_out_of_the_red_rules(stage, parent_free_text):
+    response = run_triage(
+        maternal_request(stage, parentFreeText=parent_free_text),
+        deterministic_only=True,
+    )
+
+    assert response.riskLevel == "NEED_MORE_INFO"
+    assert response.emergencyActionRequired is False
+    assert not [rule for rule in response.matchedRules if rule.startswith("RED_")]
+
+
+@pytest.mark.parametrize("stage", MATERNAL_STAGES)
+@pytest.mark.parametrize(
+    ("parent_free_text", "rule_suffix"),
+    [
+        ("toi ra mau rat nhieu", "HEAVY_BLEEDING"),
+        ("toi bi co giat", "SEIZURE"),
+        ("toi kho tho", "BREATHING_DISTRESS"),
+    ],
+)
+def test_accent_free_typing_is_still_matched(stage, parent_free_text, rule_suffix):
+    """Phones default to accent-free input; that spelling cannot be told apart, so it escalates."""
+
+    response = run_triage(
+        maternal_request(stage, parentFreeText=parent_free_text),
+        deterministic_only=True,
+    )
+
+    assert response.riskLevel == "RED"
+    assert f"RED_{stage}_{rule_suffix}" in response.matchedRules
+
+
+@pytest.mark.parametrize("stage", MATERNAL_STAGES)
+@pytest.mark.parametrize(
+    "parent_free_text",
+    [
+        "Tôi không ra máu nhiều",
+        # The negation sits inside the phrase's own gap, where the preceding-clause scan
+        # cannot see it, so the gap must refuse to bridge it.
+        "Tôi ra máu không nhiều",
+        "Tôi không bị co giật",
+    ],
+)
+def test_negation_still_suppresses_red_after_the_gap_change(stage, parent_free_text):
+    response = run_triage(
+        maternal_request(stage, parentFreeText=parent_free_text),
+        deterministic_only=True,
+    )
+
+    assert not [rule for rule in response.matchedRules if rule.startswith("RED_")]

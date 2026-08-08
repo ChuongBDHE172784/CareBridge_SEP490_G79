@@ -78,7 +78,7 @@ public class TriageRedFlagPreScreenPolicy {
             metrics.recordDegraded("screen");
             return PreScreenResult.degradedNoMatch();
         }
-        String normalizedText = normalize(aggregatedText);
+        NormalizedText normalizedText = normalizeText(aggregatedText);
         List<String> escalateKeywords = new ArrayList<>();
         List<UUID> escalateRuleIds = new ArrayList<>();
         List<String> annotateKeywords = new ArrayList<>();
@@ -91,8 +91,7 @@ public class TriageRedFlagPreScreenPolicy {
             if (classification == PreScreenOutcome.NO_MATCH) {
                 continue; // GREEN rules stay inert (ADR-002 / UC-110 ADR-003)
             }
-            String normalizedKeyword = rule.getKeyword() == null ? "" : normalize(rule.getKeyword());
-            if (normalizedKeyword.isBlank() || !normalizedText.contains(normalizedKeyword)) {
+            if (!matches(normalizedText, rule.getKeyword())) {
                 continue;
             }
             if (classification == PreScreenOutcome.ESCALATE_RED) {
@@ -161,16 +160,86 @@ public class TriageRedFlagPreScreenPolicy {
         return PreScreenOutcome.NO_MATCH; // GREEN — configuration-only
     }
 
+    /** One input in both spellings, character-aligned. See {@link #stripAligned}. */
+    private record NormalizedText(String accented, String stripped) {
+    }
+
     /**
-     * ADR-005/C6: lowercase(Locale.ROOT) → NFD → strip {@code \p{M}+} → collapse whitespace →
-     * trim, applied to BOTH keyword and text. Additionally maps 'đ'→'d' (NFD does not decompose
-     * U+0111) — same handling as the existing normalizeAnswerToken precedent in TriageService,
-     * required for BR-SAFETY-TRFP-004 ("ngã đập đầu" ↔ "nga dap dau").
+     * ADR-005/C6: lowercase(Locale.ROOT) → collapse whitespace → trim, kept in both the
+     * accented and the diacritic-free spelling. Both are derived from the same lowercased,
+     * whitespace-collapsed string, so their character offsets agree — which is what
+     * {@link #matches} relies on.
      */
-    private static String normalize(String value) {
-        String decomposed = Normalizer.normalize(value.toLowerCase(Locale.ROOT), Normalizer.Form.NFD);
-        String stripped = DIACRITICS.matcher(decomposed).replaceAll("").replace('đ', 'd');
-        return WHITESPACE.matcher(stripped).replaceAll(" ").trim();
+    private static NormalizedText normalizeText(String value) {
+        String accented = WHITESPACE
+                .matcher(Normalizer.normalize(value.toLowerCase(Locale.ROOT), Normalizer.Form.NFC))
+                .replaceAll(" ")
+                .trim();
+        return new NormalizedText(accented, stripAligned(accented));
+    }
+
+    /**
+     * Strips diacritics one character at a time so the result keeps the input's length.
+     * Also maps 'đ'→'d' (NFD does not decompose U+0111) — same handling as the existing
+     * normalizeAnswerToken precedent in TriageService, required for BR-SAFETY-TRFP-004
+     * ("ngã đập đầu" ↔ "nga dap dau").
+     */
+    private static String stripAligned(String value) {
+        StringBuilder result = new StringBuilder(value.length());
+        for (int index = 0; index < value.length(); index++) {
+            char character = value.charAt(index);
+            if (character == 'đ') {
+                result.append('d');
+                continue;
+            }
+            String base = DIACRITICS
+                    .matcher(Normalizer.normalize(String.valueOf(character), Normalizer.Form.NFD))
+                    .replaceAll("");
+            // Anything that does not reduce to exactly one character is left alone rather than
+            // silently shifting every offset after it.
+            result.append(base.length() == 1 ? base : character);
+        }
+        return result.toString();
+    }
+
+    /**
+     * Whether {@code rawKeyword} occurs in {@code text}, with diacritics respected.
+     *
+     * <p>Stripping diacritics from both sides merges unrelated Vietnamese words onto one ASCII
+     * form, and this screen escalates rather than annotates: the seeded keyword "co giật"
+     * (seizure) matched "có giặt" ("does the washing"), which short-circuits the whole intake
+     * into an emergency. So a keyword written WITH diacritics only matches accented text, or a
+     * span the writer left accent-free — where the two genuinely cannot be told apart and the
+     * clinical reading is the safe one.
+     *
+     * <p>A keyword stored WITHOUT diacritics stays permissive and matches either spelling.
+     * That direction is required by BR-SAFETY-TRFP-004 (TRFP-TC-003) and is the admin's own
+     * choice of how to write the rule; nothing here can recover an intent they did not spell.
+     */
+    private static boolean matches(NormalizedText text, String rawKeyword) {
+        if (rawKeyword == null || rawKeyword.isBlank()) {
+            return false;
+        }
+        NormalizedText keyword = normalizeText(rawKeyword);
+        if (keyword.accented().isBlank()) {
+            return false;
+        }
+        boolean keywordCarriesDiacritics = !keyword.accented().equals(keyword.stripped());
+        if (!keywordCarriesDiacritics) {
+            return text.stripped().contains(keyword.stripped());
+        }
+        if (text.accented().contains(keyword.accented())) {
+            return true;
+        }
+        for (int index = text.stripped().indexOf(keyword.stripped());
+                index >= 0;
+                index = text.stripped().indexOf(keyword.stripped(), index + 1)) {
+            int end = index + keyword.stripped().length();
+            if (text.accented().substring(index, end).equals(text.stripped().substring(index, end))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static void addIfPresent(List<String> parts, String value) {
