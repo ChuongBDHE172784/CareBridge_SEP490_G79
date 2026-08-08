@@ -364,25 +364,23 @@ Future<void> _submitInitial(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets(
-    'unscoped floating entry requires an explicit stage before sending',
-    (tester) async {
-      await _pumpScreen(
-        tester,
-        triage: _ThrowingTriageService(),
-        entryContext: const TriageEntryContext(requiresStageSelection: true),
-      );
+  testWidgets('unscoped floating entry requires an explicit stage before sending', (
+    tester,
+  ) async {
+    await _pumpScreen(
+      tester,
+      triage: _ThrowingTriageService(),
+      entryContext: const TriageEntryContext(requiresStageSelection: true),
+    );
 
-      await _submitInitial(tester);
-      await tester.pumpAndSettle();
+    await _submitInitial(tester);
+    await tester.pumpAndSettle();
 
-      expect(
-        find.textContaining('Vui lòng chọn giai đoạn sức khỏe'),
-        findsOneWidget,
-      );
-      expect(find.textContaining('Không thể gửi triệu chứng'), findsNothing);
-    },
-  );
+    // The send is inert until a stage is chosen, so the refusal is a stated missing step
+    // rather than an error raised after the fact. The service must still never be reached.
+    expect(find.byKey(const Key('triage-stage-required-hint')), findsOneWidget);
+    expect(find.textContaining('Không thể gửi triệu chứng'), findsNothing);
+  });
 
   testWidgets(
     'typed postpartum entry is neutral and sends POSTPARTUM without infant defaults',

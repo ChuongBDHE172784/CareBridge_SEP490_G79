@@ -71,6 +71,78 @@ def test_registry_network_error_fails_closed(monkeypatch):
     assert approved_sources_for_stage("INFANT") == ()
 
 
+def test_unreachable_registry_is_attempted_once_per_failure_ttl(monkeypatch):
+    """One outage must not cost one connect timeout per candidate source.
+
+    Callers ask per source and twice per source, so an uncached failure multiplied a single
+    unreachable registry into 13 lookups and 52s on one RED turn.
+    """
+    monkeypatch.setattr(registry, "EVIDENCE_REGISTRY_URL", "http://localhost:8080")
+    monkeypatch.setattr(registry, "EVIDENCE_REGISTRY_INTERNAL_KEY", "test-only-key")
+    attempts = []
+
+    def unavailable(request, timeout):
+        attempts.append(timeout)
+        raise URLError("offline")
+
+    monkeypatch.setattr(registry, "urlopen", unavailable)
+
+    for _ in range(13):
+        assert approved_sources_for_stage("INFANT") == ()
+
+    assert len(attempts) == 1
+
+
+def test_failure_is_retried_once_the_short_ttl_expires(monkeypatch):
+    """A remembered failure must expire quickly — a recovered registry cannot stay unseen."""
+    monkeypatch.setattr(registry, "EVIDENCE_REGISTRY_URL", "http://localhost:8080")
+    monkeypatch.setattr(registry, "EVIDENCE_REGISTRY_INTERNAL_KEY", "test-only-key")
+    monkeypatch.setattr(registry, "EVIDENCE_REGISTRY_FAILURE_CACHE_SECONDS", 30)
+    clock = [1_000.0]
+    monkeypatch.setattr(registry.time, "monotonic", lambda: clock[0])
+    attempts = []
+
+    def unavailable(request, timeout):
+        attempts.append(timeout)
+        raise URLError("offline")
+
+    monkeypatch.setattr(registry, "urlopen", unavailable)
+
+    assert approved_sources_for_stage("INFANT") == ()
+    clock[0] += 29
+    assert approved_sources_for_stage("INFANT") == ()
+    assert len(attempts) == 1
+
+    clock[0] += 2
+    assert approved_sources_for_stage("INFANT") == ()
+    assert len(attempts) == 2
+
+
+def test_a_successful_answer_is_not_dropped_after_the_failure_ttl(monkeypatch):
+    """The short TTL belongs to failures only; a real answer keeps the long one."""
+    monkeypatch.setattr(registry, "EVIDENCE_REGISTRY_URL", "http://localhost:8080")
+    monkeypatch.setattr(registry, "EVIDENCE_REGISTRY_INTERNAL_KEY", "test-only-key")
+    monkeypatch.setattr(registry, "EVIDENCE_REGISTRY_FAILURE_CACHE_SECONDS", 30)
+    monkeypatch.setattr(registry, "EVIDENCE_REGISTRY_CACHE_SECONDS", 300)
+    clock = [1_000.0]
+    monkeypatch.setattr(registry.time, "monotonic", lambda: clock[0])
+    calls = []
+
+    def responder(request, timeout):
+        calls.append(timeout)
+        return FakeResponse(200, {"success": True, "data": [{
+            "id": "who-1", "domain": "who.int", "baseUrl": "https://who.int/x",
+            "organization": "WHO", "applicableStages": ["INFANT"],
+        }]})
+
+    monkeypatch.setattr(registry, "urlopen", responder)
+
+    assert len(approved_sources_for_stage("INFANT")) == 1
+    clock[0] += 60  # past the failure TTL, well inside the success TTL
+    assert len(approved_sources_for_stage("INFANT")) == 1
+    assert len(calls) == 1
+
+
 def test_registry_returns_only_valid_https_sources_for_requested_stage(monkeypatch):
     monkeypatch.setattr(registry, "EVIDENCE_REGISTRY_URL", "http://localhost:8080")
     monkeypatch.setattr(registry, "EVIDENCE_REGISTRY_INTERNAL_KEY", "test-only-key")

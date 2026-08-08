@@ -4,13 +4,24 @@ import unicodedata
 from uuid import uuid4
 
 from app.gemini_client import GeminiClient
-from app.risk_rules import apply_red_flag_rules
+from app.risk_rules import DANGER_SIGN_KEYS, apply_red_flag_rules
 from app.schemas import ChildTriageRequest, IntakeQuestion, TriageIntent
 from app.symptom_normalizer import normalize_symptoms, remove_instruction_like_text, strip_accents
 
 
 MAX_QUESTIONS_PER_ROUND = 3
 MAX_FOLLOWUP_ROUNDS = 3
+#: `DANGER_SIGN_KEYS` (from risk_rules) is screened for whatever the user reported, because the
+#: rules that read it apply to every complaint — a febrile infant who is also lethargic was
+#: previously classified YELLOW unless the parent happened to type "li bì" unprompted, since no
+#: fever pathway ever asked. This is the V1 counterpart of V2's stage-independent safety gate,
+#: and `score_risk` now refuses GREEN until the same fields carry an answer.
+#:
+#: They are folded in after the first round of complaint-relevant questions, never before it:
+#: leading with seizures instead of the problem the user actually reported is the same failure
+#: `test_infant_diarrhea_asks_diarrhea_facts_before_unrelated_screening` pins against. Index
+#: MAX_QUESTIONS_PER_ROUND puts them in round two, which is the last round the budget reaches
+#: (main.py stops asking once round_number >= MAX_FOLLOWUP_ROUNDS).
 MATERNAL_STAGES = frozenset({"PRECONCEPTION", "PREGNANCY", "POSTPARTUM"})
 PEDIATRIC_KEYS = frozenset({
     "childAgeMonths", "feedingStatus", "vomiting", "diarrhea", "rash", "dehydrationSigns",
@@ -127,17 +138,36 @@ def ask_followup_questions(
     return [bank[key] for key in determine_missing_information(intake, asked_keys=asked_keys)]
 
 
+def _with_danger_sign_screen(keys: list[str]) -> list[str]:
+    """Fold the universal danger-sign screen in behind the first round of relevant questions."""
+
+    return list(dict.fromkeys([
+        *keys[:MAX_QUESTIONS_PER_ROUND],
+        *DANGER_SIGN_KEYS,
+        *keys[MAX_QUESTIONS_PER_ROUND:],
+    ]))
+
+
 def _relevant_missing_keys(intake: ChildTriageRequest, intent: TriageIntent) -> list[str]:
-    families = set(intent.symptomFamilies)
     if intent.careGoal == "CLARIFY_SYMPTOM":
         # An unrecognised description needs a clarification, not a guessed
         # symptom pathway.  Postpartum is the narrow exception: screen for
         # altered consciousness before routine clarification.
+        #
+        # No danger-sign screen here on purpose: there is no complaint to screen around yet,
+        # and one clarification is the most that can safely be asked for unknown text.
         return (
             ["consciousnessStatus", "parentFreeText"]
             if intake.stage == "POSTPARTUM"
             else ["parentFreeText"]
         )
+    return _with_danger_sign_screen(_family_missing_keys(intake, intent))
+
+
+def _family_missing_keys(intake: ChildTriageRequest, intent: TriageIntent) -> list[str]:
+    """Facts the reported complaint itself calls for, ahead of any universal screen."""
+
+    families = set(intent.symptomFamilies)
     if len(families) > 1:
         policies = (
             {
