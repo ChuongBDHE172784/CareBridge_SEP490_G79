@@ -128,9 +128,10 @@ class RagNoGeminiStartupTest {
                 .andExpect(jsonPath("$.error").value("ACCOUNT_DISABLED"));
     }
 
-    // RAG-B2D-05: valid JWT but account is locked → 403 ACCOUNT_LOCKED
+    // RAG-B2D-05: valid JWT but account is locked → 403. The filter distinguishes an admin lock
+    // from a rate-limit lock, and the clients switch on those two codes.
     @Test
-    void lockedAccount_returns403AccountLocked() throws Exception {
+    void lockedAccount_returns403AccountTemporarilyLocked() throws Exception {
         UUID userId = UUID.fromString("00000000-0000-0000-0000-000000000004");
         User lockedUser = User.builder()
                 .enabled(true).locked(true).role(Role.MOTHER).phone("0900000004").build();
@@ -146,6 +147,30 @@ class RagNoGeminiStartupTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(VALID_QUERY))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.error").value("ACCOUNT_LOCKED"));
+                .andExpect(jsonPath("$.error").value("ACCOUNT_TEMPORARILY_LOCKED"));
+    }
+
+    // RAG-B2D-05b: an admin lock is reported with its own code so the client can hide the
+    // "try again later" wording and surface the support contact instead.
+    @Test
+    void adminLockedAccount_returns403AccountAdminLocked() throws Exception {
+        UUID userId = UUID.fromString("00000000-0000-0000-0000-000000000005");
+        User lockedUser = User.builder()
+                .enabled(true).locked(true).role(Role.MOTHER).phone("0900000005")
+                .lockType(com.carebridge.backend.security.entity.AccountLockType.ADMIN)
+                .build();
+
+        when(jwtTokenProvider.validateToken(anyString())).thenReturn(true);
+        when(jwtTokenProvider.getSubject(anyString())).thenReturn(userId.toString());
+        when(jwtTokenProvider.getAuthorities(anyString()))
+                .thenReturn(List.of(new SimpleGrantedAuthority("ROLE_MOTHER")));
+        when(userRepository.findById(userId)).thenReturn(Optional.of(lockedUser));
+
+        mockMvc.perform(post("/api/v1/rag/answer")
+                        .header("Authorization", "Bearer fake.jwt.token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(VALID_QUERY))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error").value("ACCOUNT_ADMIN_LOCKED"));
     }
 }

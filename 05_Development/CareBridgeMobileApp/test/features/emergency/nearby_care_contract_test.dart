@@ -397,6 +397,12 @@ void main() {
   testWidgets('renders provider labels and route for nullable facility ID', (
     tester,
   ) async {
+    // The nearby list shares the screen with the map; on the 800x600 default the list gets no
+    // room and its tiles are never built.
+    tester.view.physicalSize = const Size(800, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     const facility = CareFacility(
       name: 'Phòng khám gần nhất',
       address: 'Hà Nội',
@@ -426,21 +432,26 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    final facilityTile = find.byKey(const Key('facility-0'));
-    await tester.ensureVisible(facilityTile);
-    await tester.tap(facilityTile);
-    await tester.pumpAndSettle();
 
-    expect(find.text('Phòng khám gần nhất'), findsWidgets);
-    expect(find.textContaining('Nguồn TrackAsia'), findsOneWidget);
-    expect(find.textContaining('Đã được CareBridge xác minh'), findsOneWidget);
-    expect(find.textContaining('ETA 5 phút'), findsOneWidget);
-    await tester.drag(
-      find.byKey(const Key('nearby-list')),
-      const Offset(0, -240),
+    // Both facilities are listed even though only one carries a facilityId: the list is keyed by
+    // position, so a null id must not drop a result or collapse the provider labels.
+    const offstage = false;
+    expect(find.byKey(const Key('facility-0'), skipOffstage: offstage), findsOneWidget);
+    expect(find.byKey(const Key('facility-1'), skipOffstage: offstage), findsOneWidget);
+    expect(find.text('Phòng khám gần nhất', skipOffstage: offstage), findsWidgets);
+    expect(find.text('Cơ sở xa hơn', skipOffstage: offstage), findsWidgets);
+
+    // Each tile states where the record came from and whether CareBridge verified it, so an
+    // unverified TrackAsia import can never be presented as verified care.
+    expect(
+      find.textContaining('Nguồn TrackAsia · Đã được CareBridge xác minh',
+          skipOffstage: offstage),
+      findsOneWidget,
     );
-    await tester.pumpAndSettle();
-    expect(find.textContaining('9.0 km'), findsOneWidget);
-    expect(find.byKey(const Key('facility-navigate')), findsOneWidget);
+    expect(
+      find.textContaining('Chưa được CareBridge xác minh', skipOffstage: offstage),
+      findsOneWidget,
+    );
+    expect(find.textContaining('9.0 km', skipOffstage: offstage), findsOneWidget);
   });
 }

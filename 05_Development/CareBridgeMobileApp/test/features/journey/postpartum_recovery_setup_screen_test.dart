@@ -95,6 +95,14 @@ void main() {
               key: const Key('mother-home-probe'),
             ),
           ),
+          // A completed postpartum setup now continues into the personalisation questionnaire.
+          GoRoute(
+            path: '/recommendation-profile',
+            builder: (_, state) => Text(
+              'recommendation-profile:${state.extra}',
+              key: const Key('recommendation-profile-probe'),
+            ),
+          ),
         ],
       );
       addTearDown(router.dispose);
@@ -113,8 +121,11 @@ void main() {
       expect(submitted!.dateSource, 'SELF_REPORTED');
       expect(submitted!.dateConfidence, 'ESTIMATED');
       expect(submitted!.changeReason, 'INITIAL_SETUP');
-      expect(find.byKey(const Key('mother-home-probe')), findsOneWidget);
-      expect(find.text('tab:1'), findsOneWidget);
+      expect(
+        find.byKey(const Key('recommendation-profile-probe')),
+        findsOneWidget,
+      );
+      expect(find.text('recommendation-profile:POSTPARTUM'), findsOneWidget);
     },
   );
 
@@ -183,6 +194,8 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(dashboardLoads, 1);
+      // The conflict branch reconciles the already-active journey and lands on the journey tab;
+      // only a fresh setup continues into the personalisation questionnaire.
       expect(find.byKey(const Key('mother-home-probe')), findsOneWidget);
       expect(find.text('tab:1'), findsOneWidget);
     },

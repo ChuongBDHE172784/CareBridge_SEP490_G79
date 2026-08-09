@@ -135,6 +135,17 @@ Future<GoRouter> _pumpScreen(
         builder: (_, _) =>
             const Scaffold(body: Text('home-route', key: Key('home-route'))),
       ),
+      // Creating a journey now hands the user to the personalisation questionnaire, carrying
+      // the stage in `extra`, instead of dropping them back on Home.
+      GoRoute(
+        path: '/recommendation-profile',
+        builder: (_, state) => Scaffold(
+          body: Text(
+            'recommendation-profile:${state.extra}',
+            key: const Key('recommendation-profile-route'),
+          ),
+        ),
+      ),
     ],
   );
   await tester.pumpWidget(MaterialApp.router(routerConfig: router));
@@ -413,7 +424,8 @@ void main() {
     expect(journey.submissions, hasLength(1));
     expect(journey.submissions.single.journeyType, JourneyType.prePregnancy);
     expect(refreshCalls, 1);
-    expect(find.byKey(const Key('home-route')), findsOneWidget);
+    expect(find.byKey(const Key('recommendation-profile-route')), findsOneWidget);
+    expect(find.text('recommendation-profile:PRE_PREGNANCY'), findsOneWidget);
   });
 
   testWidgets('fresh planning submits mapped onboarding before journey', (

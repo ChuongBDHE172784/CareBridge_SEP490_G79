@@ -19,6 +19,7 @@ from app.questions.catalog import CATALOG
 from app.rules.registry import get_registry
 from app.triage_v2.graph import build_triage_v2_graph, graph_config
 from app.triage_v2.extraction import extract_and_validate
+from app.triage_v2.deterministic_signals import detect_danger_signals, merge_as_floor
 from app.triage_v2.global_safety_gate import global_safety_gate
 from app.triage_v2.evidence_retrieval import retrieve_verified_evidence
 from app.evidence_registry_client import approved_sources_for_stage
@@ -128,6 +129,12 @@ def execute_turn(request: TriageV2TurnRequest) -> TriageV2TurnResponse:
         raise HTTPException(status_code=409, detail="Triage V2 ruleset hash mismatch")
 
     state = _turn_state(request)
+    # A danger phrase in the message becomes a signal before anything else runs, so the gate
+    # below sees it whether or not Gemini is reachable. Placed under the caller's signals, not
+    # over them: see merge_as_floor.
+    state["signals"] = merge_as_floor(
+        _mapping(state.get("signals")), detect_danger_signals(request.latestUserMessage)
+    )
     # RED must not wait for Gemini. This is a pre-check only; the graph runs the same gate
     # again at its entry and remains the workflow authority.
     state.update(global_safety_gate(state))

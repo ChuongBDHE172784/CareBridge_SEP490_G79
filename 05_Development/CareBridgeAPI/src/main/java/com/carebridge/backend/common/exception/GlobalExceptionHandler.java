@@ -414,6 +414,10 @@ public class GlobalExceptionHandler {
         metadata.put("lockType", ex.getLockType().name());
         if (ex.getReason() != null) metadata.put("reason", ex.getReason());
         if (ex.getRetryAt() != null) metadata.put("retryAt", ex.getRetryAt());
+        metadata.put("appealAllowed", ex.isAppealAllowed());
+        metadata.put("appealPending", ex.isAppealPending());
+        if (ex.getAppealStatus() != null) metadata.put("appealStatus", ex.getAppealStatus().name());
+        if (ex.getAppealToken() != null) metadata.put("appealToken", ex.getAppealToken());
         String code = ex.getLockType() == com.carebridge.backend.security.entity.AccountLockType.ADMIN
                 ? "ACCOUNT_ADMIN_LOCKED" : "ACCOUNT_TEMPORARILY_LOCKED";
         ErrorResponse response = ErrorResponse.builder()

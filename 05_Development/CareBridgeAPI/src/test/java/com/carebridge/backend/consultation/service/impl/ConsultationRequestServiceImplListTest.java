@@ -63,10 +63,11 @@ class ConsultationRequestServiceImplListTest {
     @Test
     void motherListBatchLoadsExpertProfilesAndCounterpartUsersWithoutNPlusOne() {
         UUID motherId = UUID.randomUUID();
-        UUID profileA = UUID.randomUUID();
-        UUID profileB = UUID.randomUUID();
+        // Canonical consolidation: ExpertProfile is mapped onto users, so profile id == user id.
         UUID expertA = UUID.randomUUID();
         UUID expertB = UUID.randomUUID();
+        UUID profileA = expertA;
+        UUID profileB = expertB;
         var pageable = PageRequest.of(0, 20);
         when(repository.findByRequesterUserId(motherId, pageable))
                 .thenReturn(new PageImpl<>(
@@ -77,14 +78,8 @@ class ConsultationRequestServiceImplListTest {
                         2));
         when(expertProfileRepository.findAllById(any()))
                 .thenReturn(List.of(
-                        ExpertProfile.builder()
-                                .expertProfileId(profileA)
-                                .userId(expertA)
-                                .build(),
-                        ExpertProfile.builder()
-                                .expertProfileId(profileB)
-                                .userId(expertB)
-                                .build()));
+                        ExpertProfile.builder().userId(expertA).build(),
+                        ExpertProfile.builder().userId(expertB).build()));
         when(userRepository.findAllById(any())).thenReturn(List.of(
                 User.builder().id(expertA).name("Expert A").build(),
                 User.builder().id(expertB).name("Expert B").build()));
@@ -102,13 +97,12 @@ class ConsultationRequestServiceImplListTest {
     @Test
     void assignedListBatchLoadsMotherCounterpartsWithoutNPlusOne() {
         UUID expertUserId = UUID.randomUUID();
-        UUID expertProfileId = UUID.randomUUID();
+        UUID expertProfileId = expertUserId;
         UUID motherA = UUID.randomUUID();
         UUID motherB = UUID.randomUUID();
         var pageable = PageRequest.of(0, 20);
         when(expertProfileRepository.findByUserId(expertUserId))
                 .thenReturn(java.util.Optional.of(ExpertProfile.builder()
-                        .expertProfileId(expertProfileId)
                         .userId(expertUserId)
                         .build()));
         when(repository.findByExpertProfileId(expertProfileId, pageable))

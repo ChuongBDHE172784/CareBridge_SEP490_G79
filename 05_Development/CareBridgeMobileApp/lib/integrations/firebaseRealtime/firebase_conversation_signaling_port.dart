@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../features/directChat/services/firebase_token_service.dart';
@@ -20,6 +22,15 @@ typedef FirebaseListenerStarter =
 class _FirebaseSignInGate {
   Future<void> _tail = Future<void>.value();
 
+  /// Drops the queued tail so a new caller starts from a clean chain.
+  ///
+  /// The replacement must be a [SynchronousFuture]: a plain `Future.value()` resolves through the
+  /// microtask queue of whichever zone created it, and a widget test's fake-async zone would never
+  /// run that continuation.
+  void reset() {
+    _tail = SynchronousFuture<void>(null);
+  }
+
   Future<T> run<T>(Future<T> Function() operation) {
     final result = Completer<T>();
     _tail = _tail.then((_) async {
@@ -34,6 +45,15 @@ class _FirebaseSignInGate {
 }
 
 final _firebaseSignInGate = _FirebaseSignInGate();
+
+/// Clears the process-wide Firebase sign-in queue.
+///
+/// The gate is a single serial chain shared by every port in the isolate, and each link's
+/// continuation belongs to the zone that scheduled it. Widget tests run in fake async, so a link
+/// scheduled by one test can never complete once that test ends — which blocks every later test in
+/// the isolate on the gate. Tests call this between cases; production never does.
+@visibleForTesting
+void resetFirebaseSignInGateForTest() => _firebaseSignInGate.reset();
 
 /// ADR-DCC-004: signs in to Firebase with the backend-issued custom token (uid ==
 /// CareBridge user id), then listens to the caller's owner-only Firestore inbox.

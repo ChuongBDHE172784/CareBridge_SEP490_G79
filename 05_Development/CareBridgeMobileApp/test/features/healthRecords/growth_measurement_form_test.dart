@@ -61,6 +61,12 @@ Future<void> _pumpForm(
   onUpdate,
   GrowthMeasurement? measurement,
 }) async {
+  // The form is taller than the 800x600 default test surface, which pushes the save button
+  // outside the render tree and makes every tap() miss. Use a phone-sized viewport instead.
+  tester.view.physicalSize = const Size(1080, 2400);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(tester.view.reset);
+
   await tester.pumpWidget(
     MaterialApp(
       home: GrowthMeasurementFormScreen(
@@ -198,6 +204,35 @@ void main() {
       service: service,
       measurement: _measurementWithoutNote(),
     );
+
+    await tester.tap(find.byKey(const Key('growth-form-save')));
+    await tester.pumpAndSettle();
+
+    expect(service.updatedPayload, isNotNull);
+    expect(service.updatedPayload!.containsKey('note'), isFalse);
+  });
+
+  // The counterpart of the case above: skipping an untouched empty note must not also swallow a
+  // deliberate clear, otherwise the note could never be removed once written.
+  testWidgets('edit sends an empty note when the user clears an existing one', (
+    tester,
+  ) async {
+    final service = _FakeGrowthMeasurementService();
+    await _pumpForm(tester, service: service, measurement: _measurement());
+
+    await tester.enterText(find.byKey(const Key('growth-form-note')), '');
+    await tester.tap(find.byKey(const Key('growth-form-save')));
+    await tester.pumpAndSettle();
+
+    expect(service.updatedPayload, isNotNull);
+    expect(service.updatedPayload!['note'], '');
+  });
+
+  testWidgets('edit keeps an unchanged non-empty note out of the payload', (
+    tester,
+  ) async {
+    final service = _FakeGrowthMeasurementService();
+    await _pumpForm(tester, service: service, measurement: _measurement());
 
     await tester.tap(find.byKey(const Key('growth-form-save')));
     await tester.pumpAndSettle();

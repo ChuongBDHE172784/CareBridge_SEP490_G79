@@ -47,7 +47,14 @@ class _FakeSigner {
   }
 }
 
+
+
 void main() {
+  // The Firebase sign-in gate is a process-wide serial queue whose links are bound to the zone
+  // that scheduled them. A widget test that ends while a link is in flight would otherwise block
+  // every later case in this isolate on that queue.
+  setUp(resetFirebaseSignInGateForTest);
+
   testWidgets('disabled capability is terminal and never starts Firebase', (
     tester,
   ) async {
@@ -199,6 +206,13 @@ void main() {
     'replacement port waits for stale sign-in and never attaches its listener',
     (tester) async {
       final oldSignIn = Completer<String>();
+      // The Firebase sign-in gate is a process-wide serial queue. If this completer is still
+      // pending when the test ends (e.g. an assertion above fails), the queue never drains and
+      // every later test in the isolate blocks until the 10-minute suite timeout. Always release
+      // it, so a failure stays a failure instead of hanging the run.
+      addTearDown(() {
+        if (!oldSignIn.isCompleted) oldSignIn.complete('user-1');
+      });
       final oldSigner = _FakeSigner()..pendingSignIn = oldSignIn;
       final oldFirebase = _FakeListenerStarter();
       final cleanedUids = <String>[];

@@ -11,6 +11,8 @@ import type {
   AdminUserSession,
   AdminUserActivity,
   PaginatedResult,
+  AccountLockAppeal,
+  AccountLockAppealStatus,
 } from '../models/adminUser';
 
 type PageEnvelope<T> = ApiResponse<T[]> & {
@@ -109,6 +111,40 @@ export async function updateUserRole(
   const res = await apiClient.patch<ApiResponse<UserRoleResult>>(
     `/api/v1/admin/users/${userId}/role`,
     request,
+  );
+  return res.data.data;
+}
+
+export async function getAccountLockAppeals(
+  status: AccountLockAppealStatus = 'PENDING', page = 0, size = 20,
+): Promise<PaginatedResult<AccountLockAppeal>> {
+  const res = await apiClient.get<PageEnvelope<AccountLockAppeal>>(
+    `/api/v1/admin/account-lock-appeals?status=${status}&page=${page}&size=${size}`,
+  );
+  return {
+    content: res.data.data ?? [],
+    totalElements: res.data.totalElements ?? 0,
+    totalPages: res.data.totalPages ?? 0,
+    page: res.data.page ?? page,
+    size: res.data.size ?? size,
+  };
+}
+
+export async function getAccountLockAppeal(id: string): Promise<AccountLockAppeal> {
+  const res = await apiClient.get<ApiResponse<AccountLockAppeal>>(
+    `/api/v1/admin/account-lock-appeals/${id}`,
+  );
+  return res.data.data;
+}
+
+export async function reviewAccountLockAppeal(
+  id: string,
+  decision: 'APPROVE' | 'REJECT',
+  reviewNote?: string,
+): Promise<AccountLockAppeal> {
+  const res = await apiClient.patch<ApiResponse<AccountLockAppeal>>(
+    `/api/v1/admin/account-lock-appeals/${id}/review`,
+    { decision, reviewNote },
   );
   return res.data.data;
 }

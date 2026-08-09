@@ -235,7 +235,7 @@ void main() {
           ),
         ),
         GoRoute(
-          path: '/reminders/calendar',
+          path: '/appointments/calendar',
           builder: (_, state) {
             openedRoute = state.uri.path;
             return const Scaffold(body: Text('Lịch hẹn theo tháng'));
@@ -255,7 +255,7 @@ void main() {
     await tester.tap(finder);
     await tester.pumpAndSettle();
 
-    expect(openedRoute, '/reminders/calendar');
+    expect(openedRoute, '/appointments/calendar');
     expect(find.text('Lịch hẹn theo tháng'), findsOneWidget);
   });
 
@@ -286,7 +286,7 @@ void main() {
           ),
         ),
         GoRoute(
-          path: '/reminders/calendar',
+          path: '/appointments/calendar',
           builder: (_, state) {
             openedRoute = state.uri.path;
             return const Scaffold(body: Text('Lịch hẹn theo tháng'));
@@ -309,7 +309,7 @@ void main() {
     await tester.tap(emptyCardFinder);
     await tester.pumpAndSettle();
 
-    expect(openedRoute, '/reminders/calendar');
+    expect(openedRoute, '/appointments/calendar');
     expect(find.text('Lịch hẹn theo tháng'), findsOneWidget);
   });
 

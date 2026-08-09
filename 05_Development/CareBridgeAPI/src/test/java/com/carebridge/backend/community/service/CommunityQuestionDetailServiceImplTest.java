@@ -120,7 +120,7 @@ class CommunityQuestionDetailServiceImplTest {
 
         when(questionRepository.findById(QUESTION_ID)).thenReturn(Optional.of(question));
         when(topicRepository.findById(TOPIC_ID)).thenReturn(Optional.of(topic));
-        when(answerRepository.findAllByQuestionIdAndStatusOrderByCreatedAtDesc(QUESTION_ID, AnswerStatus.APPROVED))
+        when(answerRepository.findVisibleAnswersForDetail(QUESTION_ID, CURRENT_USER_ID))
                 .thenReturn(List.of(answer));
         when(answerLikeRepository.findLikedAnswerIds(eq(CURRENT_USER_ID), any())).thenReturn(Set.of());
         when(bookmarkRepository.existsByUserIdAndQuestionId(CURRENT_USER_ID, QUESTION_ID)).thenReturn(false);
@@ -177,7 +177,7 @@ class CommunityQuestionDetailServiceImplTest {
 
         when(questionRepository.findById(QUESTION_ID)).thenReturn(Optional.of(question));
         when(topicRepository.findById(TOPIC_ID)).thenReturn(Optional.of(topic));
-        when(answerRepository.findAllByQuestionIdAndStatusOrderByCreatedAtDesc(QUESTION_ID, AnswerStatus.APPROVED))
+        when(answerRepository.findVisibleAnswersForDetail(QUESTION_ID, CURRENT_USER_ID))
                 .thenReturn(List.of());
         when(answerLikeRepository.findLikedAnswerIds(eq(CURRENT_USER_ID), any())).thenReturn(Set.of());
         when(bookmarkRepository.existsByUserIdAndQuestionId(CURRENT_USER_ID, QUESTION_ID)).thenReturn(false);
@@ -199,7 +199,7 @@ class CommunityQuestionDetailServiceImplTest {
 
         when(questionRepository.findById(QUESTION_ID)).thenReturn(Optional.of(question));
         when(topicRepository.findById(TOPIC_ID)).thenReturn(Optional.of(topic));
-        when(answerRepository.findAllByQuestionIdAndStatusOrderByCreatedAtDesc(QUESTION_ID, AnswerStatus.APPROVED))
+        when(answerRepository.findVisibleAnswersForDetail(QUESTION_ID, CURRENT_USER_ID))
                 .thenReturn(List.of());
         when(answerLikeRepository.findLikedAnswerIds(eq(CURRENT_USER_ID), any())).thenReturn(Set.of());
         when(bookmarkRepository.existsByUserIdAndQuestionId(CURRENT_USER_ID, QUESTION_ID)).thenReturn(false);
@@ -219,7 +219,7 @@ class CommunityQuestionDetailServiceImplTest {
 
         when(questionRepository.findById(QUESTION_ID)).thenReturn(Optional.of(question));
         when(topicRepository.findById(TOPIC_ID)).thenReturn(Optional.empty());
-        when(answerRepository.findAllByQuestionIdAndStatusOrderByCreatedAtDesc(QUESTION_ID, AnswerStatus.APPROVED))
+        when(answerRepository.findVisibleAnswersForDetail(QUESTION_ID, CURRENT_USER_ID))
                 .thenReturn(List.of());
         when(answerLikeRepository.findLikedAnswerIds(eq(CURRENT_USER_ID), any())).thenReturn(Set.of());
         when(bookmarkRepository.existsByUserIdAndQuestionId(CURRENT_USER_ID, QUESTION_ID)).thenReturn(false);
@@ -242,7 +242,7 @@ class CommunityQuestionDetailServiceImplTest {
 
         when(questionRepository.findById(QUESTION_ID)).thenReturn(Optional.of(question));
         when(topicRepository.findById(TOPIC_ID)).thenReturn(Optional.of(topic));
-        when(answerRepository.findAllByQuestionIdAndStatusOrderByCreatedAtDesc(QUESTION_ID, AnswerStatus.APPROVED))
+        when(answerRepository.findVisibleAnswersForDetail(QUESTION_ID, CURRENT_USER_ID))
                 .thenReturn(List.of());
         when(answerLikeRepository.findLikedAnswerIds(eq(CURRENT_USER_ID), any())).thenReturn(Set.of());
         when(bookmarkRepository.existsByUserIdAndQuestionId(CURRENT_USER_ID, QUESTION_ID)).thenReturn(true);
@@ -265,7 +265,7 @@ class CommunityQuestionDetailServiceImplTest {
 
         when(questionRepository.findById(QUESTION_ID)).thenReturn(Optional.of(question));
         when(topicRepository.findById(TOPIC_ID)).thenReturn(Optional.of(topic));
-        when(answerRepository.findAllByQuestionIdAndStatusOrderByCreatedAtDesc(QUESTION_ID, AnswerStatus.APPROVED))
+        when(answerRepository.findVisibleAnswersForDetail(QUESTION_ID, CURRENT_USER_ID))
                 .thenReturn(List.of());
         when(answerLikeRepository.findLikedAnswerIds(eq(CURRENT_USER_ID), any())).thenReturn(Set.of());
         when(bookmarkRepository.existsByUserIdAndQuestionId(CURRENT_USER_ID, QUESTION_ID)).thenReturn(false);

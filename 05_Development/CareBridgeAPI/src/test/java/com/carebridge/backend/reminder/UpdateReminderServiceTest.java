@@ -2,6 +2,7 @@ package com.carebridge.backend.reminder;
 
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
+import com.carebridge.backend.audit.service.RequiredAuditEvent;
 import com.carebridge.backend.common.exception.BusinessException;
 import com.carebridge.backend.reminder.dto.ReminderDetailResponse;
 import com.carebridge.backend.reminder.entity.RecurrenceType;
@@ -15,6 +16,7 @@ import com.carebridge.backend.reminder.service.ReminderActionAuditContext;
 import com.carebridge.backend.reminder.service.impl.ReminderServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -41,6 +43,22 @@ class UpdateReminderServiceTest {
     @Mock private AuditService auditService;
     @Mock private AppointmentNotificationScheduleService appointmentNotificationScheduleService;
     @InjectMocks private ReminderServiceImpl reminderService;
+
+    /**
+     * Reminder status mutations audit through the transactional {@code logRequired} contract
+     * (RequiredAuditEvent), not the fire-and-forget {@code log} overload.
+     */
+    private void verifyRequiredAudit(AuditAction action, ReminderStatus before, ReminderStatus after) {
+        ArgumentCaptor<RequiredAuditEvent> captor = ArgumentCaptor.forClass(RequiredAuditEvent.class);
+        verify(auditService).logRequired(captor.capture());
+        RequiredAuditEvent event = captor.getValue();
+        assertThat(event.action()).isEqualTo(action);
+        assertThat(event.actorUserId()).isEqualTo(ReminderTestFactory.OWNER_ID);
+        assertThat(event.subjectUserId()).isEqualTo(ReminderTestFactory.OWNER_ID);
+        assertThat(event.resourceType()).isEqualTo("ReminderOccurrence");
+        assertThat(event.beforePayload()).containsEntry("status", before.name());
+        assertThat(event.afterPayload()).containsEntry("status", after.name());
+    }
 
     // UPD-TC-001: Happy path — update title and scheduledAt
     @Test
@@ -293,8 +311,7 @@ class UpdateReminderServiceTest {
 
         assertThat(resp.getStatus()).isEqualTo(ReminderStatus.COMPLETED.name());
         verify(notificationService).cancelFcmJob("job-complete");
-        verify(auditService).log(AuditAction.REMINDER_COMPLETED, ReminderTestFactory.OWNER_ID,
-                "Reminder", ReminderTestFactory.REMINDER_ID.toString(), "completed");
+        verifyRequiredAudit(AuditAction.REMINDER_COMPLETED, ReminderStatus.PENDING, ReminderStatus.COMPLETED);
     }
 
     @Test
@@ -349,8 +366,7 @@ class UpdateReminderServiceTest {
 
         assertThat(resp.getStatus()).isEqualTo(ReminderStatus.COMPLETED.name());
         verify(notificationService).cancelFcmJob("job-snoozed-complete");
-        verify(auditService).log(AuditAction.REMINDER_COMPLETED, ReminderTestFactory.OWNER_ID,
-                "Reminder", ReminderTestFactory.REMINDER_ID.toString(), "completed");
+        verifyRequiredAudit(AuditAction.REMINDER_COMPLETED, ReminderStatus.SNOOZED, ReminderStatus.COMPLETED);
     }
 
     @Test
@@ -366,8 +382,7 @@ class UpdateReminderServiceTest {
 
         assertThat(resp.getStatus()).isEqualTo(ReminderStatus.SKIPPED.name());
         verify(notificationService).cancelFcmJob("job-skip");
-        verify(auditService).log(AuditAction.REMINDER_SKIPPED, ReminderTestFactory.OWNER_ID,
-                "Reminder", ReminderTestFactory.REMINDER_ID.toString(), "skipped");
+        verifyRequiredAudit(AuditAction.REMINDER_SKIPPED, ReminderStatus.PENDING, ReminderStatus.SKIPPED);
     }
 
     // UPD-TC-012: Skip snoozed reminder happy path → status = SKIPPED
@@ -385,8 +400,7 @@ class UpdateReminderServiceTest {
 
         assertThat(resp.getStatus()).isEqualTo(ReminderStatus.SKIPPED.name());
         verify(notificationService).cancelFcmJob("job-snoozed-skip");
-        verify(auditService).log(AuditAction.REMINDER_SKIPPED, ReminderTestFactory.OWNER_ID,
-                "Reminder", ReminderTestFactory.REMINDER_ID.toString(), "skipped");
+        verifyRequiredAudit(AuditAction.REMINDER_SKIPPED, ReminderStatus.SNOOZED, ReminderStatus.SKIPPED);
     }
 
     @Test
@@ -408,9 +422,8 @@ class UpdateReminderServiceTest {
         verify(reminderRepository, times(1)).save(any(Reminder.class));
         verify(notificationService).cancelFcmJob("job-recurring-skip");
         verify(notificationService, never()).scheduleFcmPush(any(), anyString(), anyString(), any());
-        verify(auditService).log(AuditAction.REMINDER_SKIPPED, ReminderTestFactory.OWNER_ID,
-                "Reminder", ReminderTestFactory.REMINDER_ID.toString(), "skipped");
-        verify(auditService, never()).log(eq(AuditAction.REMINDER_CREATED), any(), anyString(), anyString(), anyString());
+        verifyRequiredAudit(AuditAction.REMINDER_SKIPPED, ReminderStatus.PENDING, ReminderStatus.SKIPPED);
+        verify(auditService, never()).logRequired(argThat(e -> e.action() == AuditAction.REMINDER_CREATED));
     }
 
     @Test
@@ -432,9 +445,8 @@ class UpdateReminderServiceTest {
         verify(reminderRepository, times(1)).save(any(Reminder.class));
         verify(notificationService).cancelFcmJob("job-recurring-ended");
         verify(notificationService, never()).scheduleFcmPush(any(), anyString(), anyString(), any());
-        verify(auditService).log(AuditAction.REMINDER_SKIPPED, ReminderTestFactory.OWNER_ID,
-                "Reminder", ReminderTestFactory.REMINDER_ID.toString(), "skipped");
-        verify(auditService, never()).log(eq(AuditAction.REMINDER_CREATED), any(), anyString(), anyString(), anyString());
+        verifyRequiredAudit(AuditAction.REMINDER_SKIPPED, ReminderStatus.PENDING, ReminderStatus.SKIPPED);
+        verify(auditService, never()).logRequired(argThat(e -> e.action() == AuditAction.REMINDER_CREATED));
     }
 
     @Test
@@ -450,8 +462,7 @@ class UpdateReminderServiceTest {
                 ReminderTestFactory.REMINDER_ID, ReminderTestFactory.OWNER_ID);
 
         assertThat(resp.getStatus()).isEqualTo(ReminderStatus.COMPLETED.name());
-        verify(auditService).log(AuditAction.REMINDER_COMPLETED, ReminderTestFactory.OWNER_ID,
-                "Reminder", ReminderTestFactory.REMINDER_ID.toString(), "completed");
+        verifyRequiredAudit(AuditAction.REMINDER_COMPLETED, ReminderStatus.SKIPPED, ReminderStatus.COMPLETED);
     }
 
     @Test
@@ -467,8 +478,7 @@ class UpdateReminderServiceTest {
                 ReminderTestFactory.REMINDER_ID, ReminderTestFactory.OWNER_ID);
 
         assertThat(resp.getStatus()).isEqualTo(ReminderStatus.SKIPPED.name());
-        verify(auditService).log(AuditAction.REMINDER_SKIPPED, ReminderTestFactory.OWNER_ID,
-                "Reminder", ReminderTestFactory.REMINDER_ID.toString(), "skipped");
+        verifyRequiredAudit(AuditAction.REMINDER_SKIPPED, ReminderStatus.COMPLETED, ReminderStatus.SKIPPED);
     }
 
     @Test

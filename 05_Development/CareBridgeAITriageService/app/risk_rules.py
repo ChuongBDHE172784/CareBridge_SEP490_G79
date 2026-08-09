@@ -1,73 +1,28 @@
 import re
 
 from app.schemas import ChildTriageRequest
-from app.symptom_normalizer import strip_accents
+from app.danger_phrases import (
+    MATERNAL_ALTERED_CONSCIOUSNESS_PHRASES,
+    MATERNAL_BREATHING_DISTRESS_PHRASES,
+    MATERNAL_CYANOSIS_PHRASES,
+    MATERNAL_HEAVY_BLEEDING_PHRASES,
+    MATERNAL_SEIZURE_PHRASES,
+    MATERNAL_SELF_HARM_PHRASES,
+    MATERNAL_SEVERE_HEADACHE_PHRASES,
+    MATERNAL_VISUAL_DISTURBANCE_PHRASES,
+    canonical_sign_is_unnegated,
+    normalized_text,
+    text_contains_any,
+)
 
 
 MATERNAL_STAGES = frozenset({"PRECONCEPTION", "PREGNANCY", "POSTPARTUM"})
 
-_MATERNAL_BREATHING_DISTRESS_PHRASES = (
-    "kho tho",
-    "khong tho duoc",
-    "thieu hoi",
-    "nghet tho",
-    "difficulty breathing",
-    "breathing difficulty",
-    "shortness of breath",
-    "cannot breathe",
-    "unable to breathe",
-)
-_MATERNAL_CYANOSIS_PHRASES = (
-    "tim tai",
-    "tim moi",
-    "moi tim",
-    "blue lips",
-    "cyanosis",
-    "cyanotic",
-)
-_MATERNAL_SEIZURE_PHRASES = ("co giat", "seizure", "convulsion")
-_MATERNAL_ALTERED_CONSCIOUSNESS_PHRASES = (
-    "lo mo",
-    "li bi",
-    "kho danh thuc",
-    "kho giu tinh tao",
-    "bat tinh",
-    "ngat",
-    "ngat xiu",
-    "faint",
-    "fainted",
-    "fainting",
-    "unconscious",
-    "altered consciousness",
-    "difficult to wake",
-    "loss of consciousness",
-)
-_MATERNAL_HEAVY_BLEEDING_PHRASES = (
-    "bang huyet",
-    "chay mau nhieu",
-    "ra mau nhieu",
-    "mat mau nhieu",
-    "tham uot bang",
-    "heavy bleeding",
-    "bleeding heavily",
-    "hemorrhage",
-    "haemorrhage",
-    "soaking pad",
-)
-_MATERNAL_SELF_HARM_PHRASES = (
-    "tu lam hai",
-    "lam hai ban than",
-    "tu hai",
-    "tu sat",
-    "tu tu",
-    "muon chet",
-    "self harm",
-    "self-harm",
-    "kill myself",
-    "suicide",
-    "suicidal",
-    "want to die",
-)
+#: Fields whose answers feed the complaint-independent RED rules (RED_LETHARGY,
+#: RED_BREATHING_DISTRESS, RED_SEIZURE). Defined here rather than in the question engine so
+#: both the planner that asks them and the scorer that requires them share one list, and so
+#: risk_rules stays free of an import cycle back into the engine.
+DANGER_SIGN_KEYS = ("consciousnessStatus", "breathingStatus", "seizure")
 
 
 def missing_info_questions(intake: ChildTriageRequest) -> list[str]:
@@ -170,8 +125,26 @@ def score_risk(
     if matched_rules:
         return "YELLOW", matched_rules
 
+    # GREEN is the only reassuring outcome this engine can produce, so it may not be reached
+    # on an unscreened dataset. "No rule matched" is not "nothing is wrong" when the rules
+    # that carry the danger signs were never given an answer to read — the same reason V2
+    # gates GREEN behind its own eligibility dataset instead of treating silence as reassurance.
+    if not _danger_screen_answered(intake):
+        matched_rules.append("YELLOW_UNSCREENED_DANGER_SIGNS")
+        return "YELLOW", matched_rules
+
     matched_rules.append("GREEN_MILD_NO_RED_FLAGS")
     return "GREEN", matched_rules
+
+
+def _danger_screen_answered(intake: ChildTriageRequest) -> bool:
+    """True only when every complaint-independent danger sign has a real answer."""
+
+    for key in DANGER_SIGN_KEYS:
+        value = getattr(intake, key, None)
+        if value is None or (isinstance(value, str) and not value.strip()):
+            return False
+    return True
 
 
 def _has_fever(intake: ChildTriageRequest) -> bool:
@@ -182,21 +155,14 @@ def _has_high_fever(intake: ChildTriageRequest) -> bool:
     return intake.temperatureC is not None and intake.temperatureC >= 39.0
 
 
-def _contains_any(value: str | None, keywords: list[str]) -> bool:
-    if not value:
-        return False
-    text = strip_accents(value)
-    return any(keyword in text for keyword in keywords)
-
-
 def _apply_maternal_universal_red_flag_rules(
     intake: ChildTriageRequest,
     normalized_symptoms: list[str],
 ) -> tuple[list[str], list[str]]:
-    breathing = _normalized_text(intake.breathingStatus)
-    consciousness = _normalized_text(intake.consciousnessStatus)
+    breathing = normalized_text(intake.breathingStatus)
+    consciousness = normalized_text(intake.consciousnessStatus)
     canonical_signs = set(normalized_symptoms)
-    reported_signs = _normalized_text(" ".join([
+    reported_signs = normalized_text(" ".join([
         intake.parentFreeText or "",
         " ".join(intake.symptomList),
         " ".join(normalized_symptoms),
@@ -211,61 +177,70 @@ def _apply_maternal_universal_red_flag_rules(
         if flag not in red_flags:
             red_flags.append(flag)
 
-    if _canonical_sign_is_unnegated(
+    if canonical_sign_is_unnegated(
         canonical_signs,
         "difficulty_breathing",
         reported_signs,
-        *_MATERNAL_BREATHING_DISTRESS_PHRASES,
-    ) or _text_contains_any(
-        breathing, *_MATERNAL_BREATHING_DISTRESS_PHRASES
-    ) or _text_contains_any(
-        reported_signs, *_MATERNAL_BREATHING_DISTRESS_PHRASES
+        *MATERNAL_BREATHING_DISTRESS_PHRASES,
+    ) or text_contains_any(
+        breathing, *MATERNAL_BREATHING_DISTRESS_PHRASES
+    ) or text_contains_any(
+        reported_signs, *MATERNAL_BREATHING_DISTRESS_PHRASES
     ):
         add(f"{rule_prefix}_BREATHING_DISTRESS", "Khó thở")
-    if _canonical_sign_is_unnegated(
+    if canonical_sign_is_unnegated(
         canonical_signs,
         "cyanosis",
         reported_signs,
-        *_MATERNAL_CYANOSIS_PHRASES,
-    ) or _text_contains_any(
-        breathing, *_MATERNAL_CYANOSIS_PHRASES
-    ) or _text_contains_any(
-        reported_signs, *_MATERNAL_CYANOSIS_PHRASES
+        *MATERNAL_CYANOSIS_PHRASES,
+    ) or text_contains_any(
+        breathing, *MATERNAL_CYANOSIS_PHRASES
+    ) or text_contains_any(
+        reported_signs, *MATERNAL_CYANOSIS_PHRASES
     ):
         add(f"{rule_prefix}_CYANOSIS", "Tím tái")
     if (
         intake.seizure is True
-        or _canonical_sign_is_unnegated(
+        or canonical_sign_is_unnegated(
             canonical_signs,
             "seizure",
             reported_signs,
-            *_MATERNAL_SEIZURE_PHRASES,
+            *MATERNAL_SEIZURE_PHRASES,
         )
-        or _text_contains_any(reported_signs, *_MATERNAL_SEIZURE_PHRASES)
+        or text_contains_any(reported_signs, *MATERNAL_SEIZURE_PHRASES)
     ):
         add(f"{rule_prefix}_SEIZURE", "Co giật")
     if any(
-        _canonical_sign_is_unnegated(
+        canonical_sign_is_unnegated(
             canonical_signs,
             sign,
             reported_signs,
-            *_MATERNAL_ALTERED_CONSCIOUSNESS_PHRASES,
+            *MATERNAL_ALTERED_CONSCIOUSNESS_PHRASES,
         )
         for sign in ("lethargy", "difficult_to_wake")
-    ) or _text_contains_any(
-        consciousness, *_MATERNAL_ALTERED_CONSCIOUSNESS_PHRASES
-    ) or _text_contains_any(
-        reported_signs, *_MATERNAL_ALTERED_CONSCIOUSNESS_PHRASES
+    ) or text_contains_any(
+        consciousness, *MATERNAL_ALTERED_CONSCIOUSNESS_PHRASES
+    ) or text_contains_any(
+        reported_signs, *MATERNAL_ALTERED_CONSCIOUSNESS_PHRASES
     ):
         add(f"{rule_prefix}_ALTERED_CONSCIOUSNESS", "Thay đổi ý thức")
-    if _text_contains_any(
-        reported_signs, *_MATERNAL_HEAVY_BLEEDING_PHRASES
+    if text_contains_any(
+        reported_signs, *MATERNAL_HEAVY_BLEEDING_PHRASES
     ):
         add(f"{rule_prefix}_HEAVY_BLEEDING", "Chảy máu nhiều")
-    if _text_contains_any(
-        reported_signs, *_MATERNAL_SELF_HARM_PHRASES
+    if text_contains_any(
+        reported_signs, *MATERNAL_SELF_HARM_PHRASES
     ):
         add(f"{rule_prefix}_SELF_HARM", "Có ý nghĩ tự làm hại bản thân")
+    # PREG_RED_002, ported from the registry under D-030 — pregnancy only, and only when both
+    # halves are present. The stage restriction is the registry's, not a simplification: this
+    # is a pregnancy rule, and the same two signs outside pregnancy are not this rule.
+    if (
+        intake.stage == "PREGNANCY"
+        and text_contains_any(reported_signs, *MATERNAL_SEVERE_HEADACHE_PHRASES)
+        and text_contains_any(reported_signs, *MATERNAL_VISUAL_DISTURBANCE_PHRASES)
+    ):
+        add(f"{rule_prefix}_NEURO_DANGER", "Đau đầu dữ dội kèm rối loạn thị giác")
     if not red_flags:
         matched_rules.append(_maternal_review_rule(intake.stage))
     return red_flags, matched_rules
@@ -276,68 +251,3 @@ def _maternal_review_rule(stage: str) -> str:
         return "POSTPARTUM_RULES_REQUIRE_CLINICAL_REVIEW"
     return f"{stage}_RULES_NEED_CLINICAL_REVIEW"
 
-
-def _normalized_text(value: str | None) -> str:
-    normalized = strip_accents(value or "").replace("đ", "d")
-    return _expand_english_negative_contractions(normalized)
-
-
-def _expand_english_negative_contractions(value: str) -> str:
-    normalized = value.replace("’", "'").replace("`", "'")
-    special_cases = {
-        r"\bcan't\b": "cannot",
-        r"\bwon't\b": "will not",
-        r"\bshan't\b": "shall not",
-        r"\bain't\b": "is not",
-    }
-    for pattern, replacement in special_cases.items():
-        normalized = re.sub(pattern, replacement, normalized)
-    normalized = re.sub(r"\b([a-z]+)n't\b", r"\1 not", normalized)
-    return re.sub(r"\s+", " ", normalized).strip()
-
-
-def _canonical_sign_is_unnegated(
-    canonical_signs: set[str],
-    sign: str,
-    reported_signs: str,
-    *phrases: str,
-) -> bool:
-    if sign not in canonical_signs:
-        return False
-    mentioned_phrases = [
-        phrase
-        for phrase in phrases
-        if re.search(rf"(?<!\w){re.escape(phrase)}(?!\w)", reported_signs)
-    ]
-    return not mentioned_phrases or any(
-        _contains_unnegated_phrase(reported_signs, phrase)
-        for phrase in mentioned_phrases
-    )
-
-
-def _text_contains_any(value: str, *tokens: str) -> bool:
-    return any(_contains_unnegated_phrase(value, token) for token in tokens)
-
-
-def _contains_unnegated_phrase(value: str, phrase: str) -> bool:
-    pattern = re.compile(rf"(?<!\w){re.escape(phrase)}(?!\w)")
-    for match in pattern.finditer(value):
-        clause_prefix = re.split(
-            r"[,.!?;:]|\b(?:nhung|ma|song|tuy nhien|however|but|va|and)\b",
-            value[:match.start()],
-        )[-1]
-        preceding_tokens = re.findall(r"[a-z]+", clause_prefix)[-6:]
-        if not {
-            "khong",
-            "chua",
-            "chang",
-            "cha",
-            "not",
-            "no",
-            "never",
-            "without",
-            "denies",
-            "denied",
-        } & set(preceding_tokens):
-            return True
-    return False

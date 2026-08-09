@@ -1,0 +1,67 @@
+{
+  "$comment": "Sentences the way a Vietnamese parent or mother actually types them, held against the risk level the deterministic engine must reach. Built after ~1600 passing tests failed to notice that 'Tôi có giặt quần áo cho bé mỗi ngày' escalated to a RED seizure: the suite tested the engine's structure exhaustively and its input almost not at all. Every row is a sentence, not a field assignment, because free text is what the intake screen actually sends.",
+  "expectation": {
+    "RED": "A deterministic red flag must fire. Under-calling here is the dangerous direction.",
+    "NOT_RED": "No red flag may fire. Over-calling trains people to ignore the emergency route, and it is how a laundry sentence reached a 115 prompt."
+  },
+  "cases": [
+    {"group": "haemorrhage — plain", "stage": "POSTPARTUM", "text": "Tôi ra máu nhiều", "expect": "RED"},
+    {"group": "haemorrhage — degree word", "stage": "POSTPARTUM", "text": "Tôi ra máu rất nhiều", "expect": "RED"},
+    {"group": "haemorrhage — degree word", "stage": "POSTPARTUM", "text": "Em ra máu quá nhiều từ sáng", "expect": "RED"},
+    {"group": "haemorrhage — degree word", "stage": "POSTPARTUM", "text": "Tôi chảy máu cực kỳ nhiều", "expect": "RED"},
+    {"group": "haemorrhage — word order", "stage": "POSTPARTUM", "text": "Máu ra nhiều lắm chị ơi", "expect": "RED"},
+    {"group": "haemorrhage — volume idiom", "stage": "POSTPARTUM", "text": "Tôi bị ra máu ồ ạt sau sinh", "expect": "RED"},
+    {"group": "haemorrhage — clinical term", "stage": "POSTPARTUM", "text": "Bác sĩ nói tôi bị băng huyết", "expect": "RED"},
+    {"group": "haemorrhage — pad soaking", "stage": "POSTPARTUM", "text": "Tôi ướt đẫm băng vệ sinh trong một giờ", "expect": "RED"},
+    {"group": "haemorrhage — pregnancy", "stage": "PREGNANCY", "text": "Em chảy máu rất nhiều, sợ quá", "expect": "RED"},
+
+    {"group": "breathing", "stage": "POSTPARTUM", "text": "Tôi khó thở", "expect": "RED"},
+    {"group": "breathing — degree word", "stage": "POSTPARTUM", "text": "Tôi rất khó thở khi nằm xuống", "expect": "RED"},
+    {"group": "breathing — hedged", "stage": "POSTPARTUM", "text": "Tôi thấy hơi khó thở", "expect": "RED"},
+    {"group": "consciousness", "stage": "POSTPARTUM", "text": "Tôi bị ngất lúc nãy", "expect": "RED"},
+    {"group": "seizure", "stage": "PREGNANCY", "text": "Tôi bị co giật", "expect": "RED"},
+
+    {"group": "self-harm — direct", "stage": "POSTPARTUM", "text": "Tôi muốn chết", "expect": "RED"},
+    {"group": "self-harm — indirect", "stage": "POSTPARTUM", "text": "Tôi không muốn sống nữa", "expect": "RED"},
+    {"group": "self-harm — indirect", "stage": "POSTPARTUM", "text": "Tôi nghĩ đến chuyện kết liễu đời mình", "expect": "RED"},
+
+    {"group": "accent-free typing", "stage": "POSTPARTUM", "text": "toi ra mau rat nhieu", "expect": "RED"},
+    {"group": "accent-free typing", "stage": "PREGNANCY", "text": "toi bi co giat", "expect": "RED"},
+    {"group": "accent-free typing", "stage": "POSTPARTUM", "text": "em kho tho qua", "expect": "RED"},
+
+    {"group": "everyday life — laundry", "stage": "POSTPARTUM", "text": "Tôi có giặt quần áo cho bé mỗi ngày", "expect": "NOT_RED"},
+    {"group": "everyday life — laundry", "stage": "POSTPARTUM", "text": "Quần áo của bé ra màu nhiều khi giặt", "expect": "NOT_RED"},
+    {"group": "everyday life — weaning", "stage": "POSTPARTUM", "text": "Tôi đang ngắt sữa cho bé", "expect": "NOT_RED"},
+    {"group": "everyday life — feeding pace", "stage": "POSTPARTUM", "text": "Bé bú từ từ, mẹ yên tâm", "expect": "NOT_RED"},
+    {"group": "everyday life — feeding pace", "stage": "POSTPARTUM", "text": "Sữa của tôi về từ từ", "expect": "NOT_RED"},
+    {"group": "everyday life — reading up", "stage": "PREGNANCY", "text": "Tôi mới tìm hiểu về cách cho con bú", "expect": "NOT_RED"},
+    {"group": "everyday life — furniture", "stage": "POSTPARTUM", "text": "Tôi kê cái tủ sát tường cho rộng phòng", "expect": "NOT_RED"},
+    {"group": "everyday life — smell", "stage": "POSTPARTUM", "text": "Phòng thơm ngát mùi sả", "expect": "NOT_RED"},
+    {"group": "everyday life — vague worry", "stage": "PREGNANCY", "text": "Tôi lo mơ hồ về việc nuôi con", "expect": "NOT_RED"},
+    {"group": "everyday life — kindness", "stage": "POSTPARTUM", "text": "Mọi người xung quanh tự nhiên tử tế hẳn lên", "expect": "NOT_RED"},
+
+    {"group": "negation — leading", "stage": "POSTPARTUM", "text": "Tôi không ra máu nhiều", "expect": "NOT_RED"},
+    {"group": "negation — inside the phrase", "stage": "POSTPARTUM", "text": "Tôi ra máu không nhiều", "expect": "NOT_RED"},
+    {"group": "negation — leading", "stage": "PREGNANCY", "text": "Tôi không bị co giật", "expect": "NOT_RED"},
+    {"group": "negation — denial", "stage": "POSTPARTUM", "text": "Tôi chưa bị ngất lần nào", "expect": "NOT_RED"},
+
+    {"group": "official wording — BYT paediatric", "stage": "INFANT", "text": "Bé có dấu hiệu tím môi, đầu ngón chân, ngón tay", "expect": "RED"},
+    {"group": "official wording — BYT paediatric", "stage": "INFANT", "text": "Bé có cơn ngừng thở", "expect": "RED"},
+    {"group": "official wording — BYT paediatric", "stage": "INFANT", "text": "Bé có cánh mũi phập phồng", "expect": "RED"},
+    {"group": "official wording — BYT paediatric", "stage": "INFANT", "text": "Bé bú kém và sốt", "expect": "RED"},
+    {"group": "official wording — BYT paediatric", "stage": "INFANT", "text": "Da bé xanh tái", "expect": "RED"},
+    {"group": "official wording — BYT paediatric", "stage": "INFANT", "text": "Trẻ li bì, hôn mê, gọi hỏi không khóc", "expect": "RED"},
+    {"group": "official wording — Bạch Mai postpartum depression", "stage": "POSTPARTUM", "text": "Xuất hiện ý nghĩ tự làm hại bản thân", "expect": "RED"},
+    {"group": "official wording — Bạch Mai postpartum depression", "stage": "POSTPARTUM", "text": "Tôi muốn giải thoát cho cả mẹ và con", "expect": "RED"},
+    {"group": "official wording — preeclampsia (PREG_RED_002)", "stage": "PREGNANCY", "text": "Tôi bị phù nề, đau đầu nhiều, mờ mắt", "expect": "RED"},
+    {"group": "official wording — preeclampsia (PREG_RED_002)", "stage": "PREGNANCY", "text": "Tôi đau đầu dữ dội và hoa mắt", "expect": "RED"},
+    {"group": "one half is not the rule", "stage": "PREGNANCY", "text": "Tôi bị đau đầu nhiều", "expect": "NOT_RED"},
+    {"group": "one half is not the rule", "stage": "PREGNANCY", "text": "Tôi bị hoa mắt khi đứng dậy nhanh", "expect": "NOT_RED"},
+    {"group": "depression sign, not an emergency", "stage": "POSTPARTUM", "text": "Tôi liên tục tự trách bản thân, thấy mình là người mẹ tồi", "expect": "NOT_RED"},
+    {"group": "depression sign, not an emergency", "stage": "POSTPARTUM", "text": "Tôi cảm thấy vô cảm, mất kết nối với con", "expect": "NOT_RED"},
+
+    {"group": "benign complaint", "stage": "PREGNANCY", "text": "Tôi hơi mệt và buồn nôn buổi sáng", "expect": "NOT_RED"},
+    {"group": "benign complaint", "stage": "POSTPARTUM", "text": "Tôi bị đau lưng khi bế bé", "expect": "NOT_RED"},
+    {"group": "benign question", "stage": "PRECONCEPTION", "text": "Tôi nên bổ sung vitamin gì trước khi mang thai", "expect": "NOT_RED"}
+  ]
+}

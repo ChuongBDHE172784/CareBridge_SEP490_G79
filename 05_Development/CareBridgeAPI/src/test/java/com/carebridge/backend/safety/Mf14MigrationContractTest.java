@@ -3,13 +3,16 @@ package com.carebridge.backend.safety;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Files;
+import com.carebridge.backend.testsupport.MigrationLocator;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 
 class Mf14MigrationContractTest {
 
-    private static final Path MIGRATION = Path.of(
-            "src/main/resources/db/migration/V3__align_safety_action_persistence.sql");
+    // Resolved by script name: the migration keeps its description across re-versioning of the
+    // Flyway chain, so pinning the version prefix here only produces false failures.
+    private static final Path MIGRATION =
+            MigrationLocator.byDescription("align_safety_action_persistence");
 
     @Test
     void migrationAlignsExistingCanonicalSafetyTableWithoutCreatingSchemaObjects() throws Exception {

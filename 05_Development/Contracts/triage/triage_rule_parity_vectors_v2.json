@@ -73,7 +73,7 @@
       "id": "PV_SELF_HARM_SAFETY_POLICY",
       "description": "Ý nghĩ tự làm hại -> RED qua non-clinical safety policy",
       "input": {
-        "stage": "POSTPARTUM",
+        "stage": "POSTPARTUM_MOTHER",
         "signals": {
           "SELF_HARM_IDEATION": "PRESENT"
         },
@@ -292,7 +292,7 @@
       "id": "PV_POST_RED_001_HEAVY_BLEEDING",
       "description": "Case C — sau sinh 5 ngày ra máu nhiều + choáng -> RED",
       "input": {
-        "stage": "POSTPARTUM",
+        "stage": "POSTPARTUM_MOTHER",
         "signals": {
           "HEAVY_POSTPARTUM_BLEEDING": "PRESENT",
           "DIZZINESS": "PRESENT"
@@ -318,7 +318,7 @@
       "id": "PV_POST_RED_002_BEATS_POST_RED_001",
       "description": "Tie-break tường minh — co giật + ra máu nhiều: GLOBAL_RED_001 dẫn đầu",
       "input": {
-        "stage": "POSTPARTUM",
+        "stage": "POSTPARTUM_MOTHER",
         "signals": {
           "SEIZURE": "PRESENT",
           "HEAVY_POSTPARTUM_BLEEDING": "PRESENT"
@@ -492,7 +492,7 @@
       "id": "PV_GREEN_LOCKED_ROUTES_TO_WORKER",
       "description": "Green release gate TẮT — đủ dữ liệu, không rule nguy cơ -> NEEDS_MORE_INFO / ROUTE_TO_HEALTHCARE_WORKER",
       "input": {
-        "stage": "POSTPARTUM",
+        "stage": "POSTPARTUM_MOTHER",
         "signals": {
           "ALTERED_CONSCIOUSNESS": "ABSENT",
           "SEIZURE": "ABSENT",
@@ -554,7 +554,7 @@
       "id": "PV_STAGE_ISOLATION_PREG_RULE_NOT_IN_POSTPARTUM",
       "description": "Rule PREGNANCY không khớp ở POSTPARTUM; green gate tắt nên route worker",
       "input": {
-        "stage": "POSTPARTUM",
+        "stage": "POSTPARTUM_MOTHER",
         "signals": {
           "ALTERED_CONSCIOUSNESS": "ABSENT",
           "SEIZURE": "ABSENT",

@@ -259,26 +259,12 @@ class HealthMetricServiceImplTest {
     }
 
     @Test
-    void familyTrend_requiresLinkedGroupRecordsPermission() {
+    void familyTrend_isOwnerOnlyAndNeverFallsBackToGroupRecordsPermission() {
+        // The generic trend API is deliberately owner-only: family members must go through the
+        // group-scoped projection, which enforces both the parent and the per-metric child
+        // permission. Honouring RECORDS here would leak every journey metric of the mother.
         MotherJourney journey = makeJourney(CALLER_ID);
-        CareGroupMember membership = CareGroupMember.builder()
-                .careGroupId(GROUP_ID)
-                .userId(FAMILY_ID)
-                .inviteStatus(InviteStatus.ACCEPTED)
-                .build();
-        CareGroup group = CareGroup.builder()
-                .id(GROUP_ID)
-                .ownerUserId(CALLER_ID)
-                .linkedJourneyId(JOURNEY_ID)
-                .status(CareGroupStatus.ACTIVE)
-                .build();
-
         when(journeyRepository.findById(JOURNEY_ID)).thenReturn(Optional.of(journey));
-        when(careGroupMemberRepository.findByUserIdAndInviteStatus(FAMILY_ID, InviteStatus.ACCEPTED))
-                .thenReturn(java.util.List.of(membership));
-        when(careGroupRepository.findById(GROUP_ID)).thenReturn(Optional.of(group));
-        when(careGroupAuthorizationPolicy.hasPermission(GROUP_ID, FAMILY_ID, PermissionFlag.RECORDS))
-                .thenReturn(false);
 
         assertThatThrownBy(() -> metricService.getMetricTrend(
                 FAMILY_ID,
@@ -288,9 +274,12 @@ class HealthMetricServiceImplTest {
                 Instant.now()))
                 .isInstanceOf(BusinessException.class)
                 .satisfies(error -> assertThat(((BusinessException) error).getHttpStatus())
-                        .isEqualTo(HttpStatus.FORBIDDEN));
+                        .isEqualTo(HttpStatus.FORBIDDEN))
+                .satisfies(error -> assertThat(((BusinessException) error).getCode())
+                        .isEqualTo("METRIC-021"));
 
         verify(observationRepository, never()).findTrend(any(), any(), any(), any(), any());
+        verifyNoInteractions(careGroupMemberRepository, careGroupRepository, careGroupAuthorizationPolicy);
     }
 
     @Test

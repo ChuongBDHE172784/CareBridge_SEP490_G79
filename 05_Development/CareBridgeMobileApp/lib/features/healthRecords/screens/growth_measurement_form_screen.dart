@@ -173,7 +173,10 @@ class _GrowthMeasurementFormScreenState
 
     final payload = <String, dynamic>{'measuredDate': _isoDate(_measuredDate)};
     final note = _noteController.text.trim();
-    final existingNote = existing?.note?.trim();
+    // The field is initialised with `existing?.note ?? ''`, so an absent note reads back as an
+    // empty string. Comparing that against a raw `null` made every untouched edit send
+    // `note: ""` and overwrite the stored null; normalise both sides before deciding.
+    final existingNote = existing?.note?.trim() ?? '';
     if (existing == null || note != existingNote) {
       payload['note'] = note;
     }

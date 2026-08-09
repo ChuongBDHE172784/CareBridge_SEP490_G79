@@ -316,7 +316,11 @@ def compose_deterministic_response(state: TriageState) -> TriageState:
     risk = state["riskLevel"]
     if state["intake"].stage in MATERNAL_STAGES:
         return _compose_maternal_response(state, risk)
-    symptoms = ", ".join(state.get("normalizedSymptoms", [])) or "các dấu hiệu đã nhập"
+    # The YELLOW template already opens with "Các dấu hiệu", so the no-symptom fallback has to
+    # complete that sentence rather than repeat it — the old fallback rendered as
+    # "Các dấu hiệu các dấu hiệu đã nhập cần được theo dõi sát", which reached the screen
+    # whenever nothing could be normalized.
+    symptoms = ", ".join(state.get("normalizedSymptoms", [])) or "bạn đã mô tả"
     if risk == "NEED_MORE_INFO":
         state["summary"] = "CareBridge cần thêm thông tin trước khi phân loại rủi ro."
         state["possibleConcern"] = "Thông tin hiện tại chưa đủ để phân loại an toàn."
@@ -340,10 +344,20 @@ def compose_deterministic_response(state: TriageState) -> TriageState:
             "nếu triệu chứng kéo dài, nặng hơn hoặc xuất hiện dấu hiệu cảnh báo."
         )
     else:
-        state["summary"] = "Chưa ghi nhận dấu hiệu nguy hiểm từ thông tin hiện có."
-        state["possibleConcern"] = "Các dấu hiệu hiện tại phù hợp với mức theo dõi tại nhà."
+        # GREEN describes what the rule set matched, not the child's safety. The previous
+        # wording ("phù hợp với mức theo dõi tại nhà") authorised staying home — a reassurance
+        # this rule set cannot support, since it covers only a subset of danger signs. Same
+        # position V2 takes when it refuses to release a GREEN at all.
+        state["summary"] = (
+            "Các dấu hiệu bạn cung cấp không khớp quy tắc nguy cơ cao nào của CareBridge."
+        )
+        state["possibleConcern"] = (
+            "Đây không phải kết luận rằng tình trạng của trẻ đã được loại trừ nguy cơ; "
+            "bộ quy tắc hiện tại chỉ phủ một phần dấu hiệu cảnh báo."
+        )
         state["recommendedAction"] = (
-            "Tiếp tục theo dõi, cho trẻ bú/uống đủ và đánh giá lại ngay nếu tình trạng thay đổi."
+            "Tiếp tục theo dõi, cho trẻ bú/uống đủ và đánh giá lại ngay nếu tình trạng thay đổi. "
+            "Liên hệ nhân viên y tế nếu bạn còn lo lắng."
         )
     state["disclaimer"] = DISCLAIMER
     return state

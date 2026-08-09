@@ -12,6 +12,8 @@ import com.carebridge.backend.config.MockMvcSecurityBuilderConfig;
 import com.carebridge.backend.masterdata.controller.MasterDataController;
 import com.carebridge.backend.masterdata.dto.response.WardResponse;
 import com.carebridge.backend.masterdata.service.IMasterDataService;
+import com.carebridge.backend.integration.trackasia.TrackAsiaService;
+import com.carebridge.backend.masterdata.service.ProvinceCacheService;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
 import com.carebridge.backend.security.repository.UserRepository;
@@ -37,6 +39,8 @@ class MasterDataControllerTest {
     @Autowired private MockMvc mockMvc;
 
     @MockitoBean private IMasterDataService service;
+    @MockitoBean private ProvinceCacheService provinceCacheService;
+    @MockitoBean private TrackAsiaService trackAsiaService;
     @MockitoBean private JwtTokenProvider jwtTokenProvider;
     @MockitoBean private UserRepository userRepository;
 

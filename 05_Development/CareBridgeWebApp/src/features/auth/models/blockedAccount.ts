@@ -4,16 +4,17 @@ export type BlockedAccountCode =
   | 'ACCOUNT_DISABLED'
   | 'ACCOUNT_SUSPENDED';
 
-// The in-app appeal workflow was retired: the server no longer sends appeal
-// token/status metadata, and locked users are directed to customer support.
 export interface BlockedAccountState {
   code: BlockedAccountCode;
   message?: string;
   lockType?: 'TEMPORARY' | 'ADMIN';
   reason?: string;
   retryAt?: string;
+  appealAllowed?: boolean;
+  appealToken?: string;
+  appealPending?: boolean;
+  appealStatus?: 'PENDING' | 'APPROVED' | 'REJECTED';
 }
-
 const STORAGE_KEY = 'carebridge.blocked-account';
 
 export function saveBlockedAccountState(state: BlockedAccountState) {

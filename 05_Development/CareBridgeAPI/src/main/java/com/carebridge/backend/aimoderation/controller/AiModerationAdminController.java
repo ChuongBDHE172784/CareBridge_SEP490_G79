@@ -41,7 +41,10 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/v1/admin/ai-moderation")
-@PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'ADMIN', 'MODERATOR', 'CONTENT_ADMIN')")
+// Authoring AI moderation policy is a SYSTEM_ADMIN responsibility. The single exception is the
+// read-only /status probe, which the moderator queue uses to tell whether AI screening is live —
+// see the method-level override below.
+@PreAuthorize("hasRole('SYSTEM_ADMIN')")
 @RequiredArgsConstructor
 public class AiModerationAdminController {
 
@@ -86,7 +89,13 @@ public class AiModerationAdminController {
                 ApiResponse.success(policyService.updatePolicyStatus(id, request.active(), actorUserId)));
     }
 
+    /**
+     * Read-only health probe: reports whether AI screening is enabled. The moderator pending-content
+     * queue reads it to decide whether to show the "AI đang quét" badge, so MODERATOR is admitted
+     * here — and only here. It exposes no policy content and mutates nothing.
+     */
     @GetMapping("/status")
+    @PreAuthorize("hasAnyRole('SYSTEM_ADMIN', 'MODERATOR')")
     public ResponseEntity<ApiResponse<AiModerationStatusResponse>> status() {
         return ResponseEntity.ok(ApiResponse.success(statusService.status()));
     }

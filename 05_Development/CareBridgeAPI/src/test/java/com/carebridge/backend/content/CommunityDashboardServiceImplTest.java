@@ -73,7 +73,10 @@ class CommunityDashboardServiceImplTest {
 
         CommunityDashboardResponse response = service.getDashboard(CommunityDashboardTestFactory.makeFilter());
 
-        assertEquals(1180L, response.userMetrics().total()); // sum of factory role counts
+        // Derived from the factory so the expectation cannot drift when a role is added.
+        long expectedUserTotal = CommunityDashboardTestFactory.expectedRoleMap()
+                .values().stream().mapToLong(Long::longValue).sum();
+        assertEquals(expectedUserTotal, response.userMetrics().total());
         assertEquals(1240L, response.userMetrics().active());
         assertEquals(3300L + 12L + 80L + 8L, response.questionMetrics().total());
         assertEquals(210L, response.questionMetrics().newInPeriod());
