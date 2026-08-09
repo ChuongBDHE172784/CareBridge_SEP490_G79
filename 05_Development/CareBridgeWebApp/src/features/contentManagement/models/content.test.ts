@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { STAGE_LABELS, STAGE_OPTIONS } from './content';
+import { CHECKLIST_SUPPORT_FUNCTION_OPTIONS, STAGE_LABELS, STAGE_OPTIONS } from './content';
 
 describe('content stage metadata', () => {
   it('exposes exactly the three canonical stages in lifecycle order', () => {
@@ -16,5 +16,18 @@ describe('content stage metadata', () => {
     );
     expect(Object.values(STAGE_LABELS)).not.toContain('Chăm bé');
     expect(Object.values(STAGE_LABELS)).not.toContain('Sau sinh');
+  });
+
+  it('keeps the checklist support-function catalog stable and localized', () => {
+    expect(CHECKLIST_SUPPORT_FUNCTION_OPTIONS).toEqual([
+      { value: 'HEALTH_RECORDS', label: 'Hồ sơ sức khỏe' },
+      { value: 'APPOINTMENTS', label: 'Lịch hẹn' },
+      { value: 'REMINDERS', label: 'Nhắc nhở' },
+      { value: 'JOURNEY', label: 'Hành trình' },
+      { value: 'BABY_CARE', label: 'Chăm sóc em bé' },
+      { value: 'EXPERT_CONSULTATION', label: 'Tư vấn chuyên gia' },
+      { value: 'CONTENT_LIBRARY', label: 'Thư viện nội dung' },
+      { value: 'AI_TRIAGE', label: 'Sàng lọc AI' },
+    ]);
   });
 });

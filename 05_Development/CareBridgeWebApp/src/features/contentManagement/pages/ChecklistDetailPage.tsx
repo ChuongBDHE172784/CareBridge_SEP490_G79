@@ -8,8 +8,8 @@ import {
   reviewMigratedChecklistVersion,
   updateChecklistTemplate,
 } from '../services/contentApi';
-import type { AdminChecklistTemplateDetail } from '../models/content';
-import { CHECKLIST_STATUS_LABELS, STAGE_LABELS } from '../models/content';
+import type { AdminChecklistTemplateDetail, ChecklistSupportFunction } from '../models/content';
+import { CHECKLIST_STATUS_LABELS, CHECKLIST_SUPPORT_FUNCTION_OPTIONS, STAGE_LABELS } from '../models/content';
 import { checklistCoexistenceGuidance, checklistRecipientLabel, checklistSequenceLabel } from './checklistApprovalPresentation';
 import { useAuth } from '../../../shared/auth/useAuth';
 import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
@@ -23,6 +23,11 @@ function statusDotClass(status: string): string {
 
 const recipientLabel = (role: 'MOTHER' | 'FAMILY') => (role === 'MOTHER' ? 'Mẹ' : 'Gia đình');
 const targetLabel = (target: 'MOTHER' | 'BABY') => (target === 'MOTHER' ? 'Mẹ' : 'Em bé');
+const supportFunctionLabel = (value?: ChecklistSupportFunction | null) => (
+  CHECKLIST_SUPPORT_FUNCTION_OPTIONS.find((option) => option.value === value)?.label
+  ?? value
+  ?? 'Không liên kết'
+);
 function getChecklistTargetIcon(checklist: {
   name?: string;
   stage?: string | null;
@@ -290,12 +295,24 @@ export default function ChecklistDetailPage() {
                       <div className="mt-0.5 text-xs text-outline">
                         Thứ tự: {item.order} · {item.isRequired ? 'Bắt buộc' : 'Không bắt buộc'}
                       </div>
-                      <div className="mt-2">
+                      {item.description && (
+                        <div className="mt-3 rounded-xl border border-surface-container-highest bg-background/70 p-3">
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.05em] text-outline">NỘI DUNG CHI TIẾT</div>
+                          <p className="mt-1 whitespace-pre-wrap text-sm leading-6 text-on-surface-variant">{item.description}</p>
+                        </div>
+                      )}
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
                         <span
                           aria-label={`Đối tượng mục ${item.order}: ${targetLabel(item.targetSubject)}`}
                           className="inline-flex items-center rounded-full bg-surface-container-low px-2.5 py-0.5 text-xs font-medium text-primary"
                         >
                           {targetLabel(item.targetSubject)}
+                        </span>
+                        <span
+                          aria-label={`Chức năng hỗ trợ mục ${item.order}: ${supportFunctionLabel(item.supportFunction)}`}
+                          className="inline-flex items-center rounded-full border border-outline-variant bg-surface px-2.5 py-0.5 text-xs font-medium text-on-surface-variant"
+                        >
+                          Chức năng hỗ trợ: {supportFunctionLabel(item.supportFunction)}
                         </span>
                       </div>
                     </div>

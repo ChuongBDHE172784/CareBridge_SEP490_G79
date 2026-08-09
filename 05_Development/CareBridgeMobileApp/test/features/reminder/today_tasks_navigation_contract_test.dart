@@ -57,6 +57,15 @@ void main() {
     expect(family, contains('careGroupId: _selectedCareGroupId'));
   });
 
+  test('checklist task detail route requires TodayTask in state.extra', () {
+    final router = File('lib/core/routes/app_router.dart').readAsStringSync();
+
+    expect(router, contains("path: '/checklists/task-detail'"));
+    expect(router, contains('final task = state.extra;'));
+    expect(router, contains('if (task is! TodayTask)'));
+    expect(router, contains('ChecklistTaskDetailScreen(task: task)'));
+  });
+
   test('only the canonical Family Home implementation remains', () {
     final legacyFamilyHome = File(
       'lib/features/familySync/screens/family_member_home_screen.dart',

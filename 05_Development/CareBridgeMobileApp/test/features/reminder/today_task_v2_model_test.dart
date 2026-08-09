@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:untitled/features/reminder/models/today_task_model.dart';
+import 'package:untitled/features/reminder/models/today_task_support_function.dart';
 
 void main() {
   test(
@@ -84,6 +85,80 @@ void main() {
     expect(task.isCompleted, isTrue);
     expect(task.allowedActions, {TodayTaskAction.reopen});
     expect(TodayTaskAction.reopen.apiValue, 'REOPEN');
+  });
+
+  test('parses checklist description and controlled support function', () {
+    final task = TodayTask.fromJson({
+      'taskKind': 'CHECKLIST',
+      'taskId': 'detail-1',
+      'title': 'Chuẩn bị hồ sơ khám',
+      'description': 'Kiểm tra và bổ sung các kết quả khám gần nhất.',
+      'supportFunction': 'HEALTH_RECORDS',
+      'origin': 'SYSTEM_TEMPLATE',
+      'targetSubject': 'MOTHER',
+      'status': 'PENDING',
+      'timeBucket': 'TODAY',
+      'allowedActions': ['COMPLETE'],
+    });
+
+    expect(task.description, 'Kiểm tra và bổ sung các kết quả khám gần nhất.');
+    expect(
+      task.supportFunction?.code,
+      TodayTaskSupportFunctionCode.healthRecords,
+    );
+    expect(task.supportFunction?.route, '/health-records');
+  });
+
+  test('maps every support function code to its safe native route', () {
+    const expectedRoutes = <String, String>{
+      'HEALTH_RECORDS': '/health-records',
+      'APPOINTMENTS': '/appointments/calendar',
+      'REMINDERS': '/reminder-schedules',
+      'JOURNEY': '/mother-home?tab=1',
+      'BABY_CARE': '/baby-care-hub',
+      'EXPERT_CONSULTATION': '/experts',
+      'CONTENT_LIBRARY': '/content',
+      'AI_TRIAGE': '/triage/intake',
+    };
+
+    for (final entry in expectedRoutes.entries) {
+      final task = TodayTask.fromJson({
+        'taskKind': 'CHECKLIST',
+        'taskId': 'support-${entry.key}',
+        'title': entry.key,
+        'supportFunction': entry.key,
+        'origin': 'SYSTEM_TEMPLATE',
+        'targetSubject': 'MOTHER',
+        'status': 'PENDING',
+        'timeBucket': 'TODAY',
+        'allowedActions': ['COMPLETE'],
+      });
+
+      expect(task.supportFunction?.apiValue, entry.key, reason: entry.key);
+      expect(task.supportFunction?.route, entry.value, reason: entry.key);
+    }
+  });
+
+  test('keeps absent or unknown support functions non-navigable', () {
+    Map<String, dynamic> payload([String? supportFunction]) => {
+      'taskKind': 'CHECKLIST',
+      'taskId': 'support-optional',
+      'title': 'Việc không có hỗ trợ',
+      'supportFunction': ?supportFunction,
+      'origin': 'USER_CREATED',
+      'targetSubject': 'MOTHER',
+      'status': 'PENDING',
+      'timeBucket': 'UNSCHEDULED',
+      'allowedActions': ['COMPLETE'],
+    };
+
+    expect(TodayTask.fromJson(payload()).supportFunction, isNull);
+    expect(
+      TodayTask.fromJson(
+        payload('https://example.invalid/unsafe'),
+      ).supportFunction,
+      isNull,
+    );
   });
 
   test('parses ready sequence projection and next-set metadata', () {

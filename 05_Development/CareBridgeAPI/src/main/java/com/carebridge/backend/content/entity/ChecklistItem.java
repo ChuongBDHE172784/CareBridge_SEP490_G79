@@ -3,6 +3,7 @@ package com.carebridge.backend.content.entity;
 import com.carebridge.backend.checklist.model.ChecklistTargetSubject;
 import com.carebridge.backend.checklist.model.ChecklistAnchorType;
 import com.carebridge.backend.checklist.model.ChecklistRangeUnit;
+import com.carebridge.backend.checklist.model.ChecklistSupportFunction;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -47,6 +48,13 @@ public class ChecklistItem {
     @Column(name = "title", length = 500)
     private String itemText;
 
+    @Column(name = "description", columnDefinition = "TEXT")
+    private String description;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "support_function_code", length = 40)
+    private ChecklistSupportFunction supportFunction;
+
     @Column(name = "display_order")
     private Integer order;
 
@@ -87,4 +95,25 @@ public class ChecklistItem {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private Instant updatedAt;
+
+    /** Compatibility constructor for the pre-detail entity shape. */
+    public ChecklistItem(
+            UUID id,
+            ChecklistTemplate template,
+            String itemText,
+            Integer order,
+            Boolean isRequired,
+            ChecklistTargetSubject targetSubject,
+            ChecklistAnchorType dueAnchorType,
+            Integer dueOffsetStart,
+            Integer dueOffsetEnd,
+            ChecklistRangeUnit dueOffsetUnit,
+            Boolean isActive,
+            String entryType,
+            Instant createdAt,
+            Instant updatedAt) {
+        this(id, template, itemText, null, null, order, isRequired, targetSubject,
+                dueAnchorType, dueOffsetStart, dueOffsetEnd, dueOffsetUnit,
+                isActive, entryType, createdAt, updatedAt);
+    }
 }

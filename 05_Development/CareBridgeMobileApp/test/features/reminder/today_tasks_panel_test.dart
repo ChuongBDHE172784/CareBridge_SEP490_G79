@@ -3,8 +3,10 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:untitled/core/network/api_client.dart';
 import 'package:untitled/features/checklist/services/user_checklist_service.dart';
+import 'package:untitled/features/reminder/models/today_task_model.dart';
 import 'package:untitled/features/reminder/services/today_task_service.dart';
 import 'package:untitled/features/reminder/widgets/today_tasks_panel.dart';
 
@@ -65,6 +67,22 @@ Map<String, dynamic> _task(
   'timeBucket': bucket,
   'allowedActions': completed ? <String>['REOPEN'] : ['COMPLETE'],
   'dueAt': due ? '2026-08-03T08:00:00Z' : null,
+};
+
+Map<String, dynamic> _singleTaskEnvelope({bool completed = false}) => {
+  'asOf': '2026-08-03T01:00:00Z',
+  'zoneId': 'Asia/Ho_Chi_Minh',
+  'horizonDays': 7,
+  'sections': {
+    'overdue': <Map<String, dynamic>>[],
+    'today': [
+      _task('navigation-task', 'TODAY', 'MOTHER', completed: completed),
+    ],
+    'upcoming': <Map<String, dynamic>>[],
+    'unscheduled': <Map<String, dynamic>>[],
+  },
+  'counts': {'overdue': 0, 'today': 1, 'upcoming': 0, 'unscheduled': 0},
+  'correlationId': 'navigation-contract',
 };
 
 TodayTaskService _service(Future<dynamic> Function() response) =>
@@ -132,8 +150,7 @@ void main() {
         postPath = path;
         return {'data': body};
       },
-      clientRequestIdFactory: () =>
-          '00000000-0000-0000-0000-000000000001',
+      clientRequestIdFactory: () => '00000000-0000-0000-0000-000000000001',
     );
 
     await tester.pumpWidget(_wrap(TodayTasksPanel(service: service)));
@@ -557,6 +574,151 @@ void main() {
     expect(calls.last['action'], 'REOPEN');
     expect(calls.last['reason'], isNull);
   });
+
+  testWidgets(
+    'tapping a task card opens detail with TodayTask in state.extra',
+    (tester) async {
+      var getCount = 0;
+      var postCount = 0;
+      TodayTask? receivedTask;
+      final service = TodayTaskService(
+        getRequest: (_, {queryParams}) async {
+          getCount++;
+          return {'data': _singleTaskEnvelope()};
+        },
+        postRequest: (_, body) async {
+          postCount++;
+          return {'data': body};
+        },
+      );
+      final router = GoRouter(
+        initialLocation: '/',
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, _) => Scaffold(
+              body: SingleChildScrollView(
+                child: TodayTasksPanel(service: service),
+              ),
+            ),
+          ),
+          GoRoute(
+            path: '/checklists/task-detail',
+            builder: (_, state) {
+              final extra = state.extra;
+              if (extra is TodayTask) receivedTask = extra;
+              return const Scaffold(body: Text('Chi tiết đã mở'));
+            },
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('task-item-navigation-task')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Chi tiết đã mở'), findsOneWidget);
+      expect(receivedTask, isA<TodayTask>());
+      expect(receivedTask?.id, 'navigation-task');
+      expect(postCount, 0);
+
+      router.pop(true);
+      await tester.pumpAndSettle();
+      expect(getCount, 2);
+    },
+  );
+
+  testWidgets(
+    'the separate 48dp status control acts without opening task detail',
+    (tester) async {
+      var getCount = 0;
+      Map<String, dynamic>? postBody;
+      final service = TodayTaskService(
+        getRequest: (_, {queryParams}) async {
+          getCount++;
+          return {'data': _singleTaskEnvelope()};
+        },
+        postRequest: (_, body) async {
+          postBody = Map<String, dynamic>.from(body);
+          return {
+            'data': {...body, 'status': 'COMPLETED'},
+          };
+        },
+      );
+      final router = GoRouter(
+        initialLocation: '/',
+        routes: [
+          GoRoute(
+            path: '/',
+            builder: (_, _) => Scaffold(
+              body: SingleChildScrollView(
+                child: TodayTasksPanel(service: service),
+              ),
+            ),
+          ),
+          GoRoute(
+            path: '/checklists/task-detail',
+            builder: (_, _) => const Scaffold(body: Text('Chi tiết đã mở')),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+      await tester.pumpAndSettle();
+
+      final statusControl = find.byKey(
+        const Key('task-status-navigation-task'),
+      );
+      final size = tester.getSize(statusControl);
+      expect(size.width, greaterThanOrEqualTo(48));
+      expect(size.height, greaterThanOrEqualTo(48));
+
+      await tester.tap(statusControl);
+      await tester.pumpAndSettle();
+
+      expect(postBody?['action'], 'COMPLETE');
+      expect(postBody?['clientRequestId'], allOf(isA<String>(), isNotEmpty));
+      expect(getCount, 2);
+      expect(router.routeInformationProvider.value.uri.toString(), '/');
+      expect(find.text('Chi tiết đã mở'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'skip-only reminder does not expose a misleading completion control',
+    (tester) async {
+      final envelope = _singleTaskEnvelope();
+      final sections = Map<String, dynamic>.from(
+        envelope['sections'] as Map<String, dynamic>,
+      );
+      final skipOnlyTask = _task('skip-only-task', 'TODAY', 'MOTHER')
+        ..['taskKind'] = 'REMINDER'
+        ..['allowedActions'] = ['SKIP'];
+      sections['today'] = [skipOnlyTask];
+      envelope['sections'] = sections;
+      var postCount = 0;
+      final service = TodayTaskService(
+        getRequest: (_, {queryParams}) async => {'data': envelope},
+        postRequest: (_, body) async {
+          postCount++;
+          return {'data': body};
+        },
+      );
+
+      await tester.pumpWidget(_wrap(TodayTasksPanel(service: service)));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Việc skip-only-task'), findsOneWidget);
+      expect(find.byKey(const Key('task-status-skip-only-task')), findsNothing);
+      expect(find.byTooltip('Đánh dấu hoàn tất'), findsNothing);
+      expect(find.byTooltip('Bỏ qua việc'), findsNothing);
+      expect(postCount, 0);
+    },
+  );
 
   testWidgets('offers deletion only for user-created checklist tasks', (
     tester,

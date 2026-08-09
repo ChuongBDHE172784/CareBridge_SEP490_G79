@@ -297,7 +297,9 @@ public class JpaChecklistReconciliationSource implements ChecklistReconciliation
                 item.getTargetSubject(),
                 item.getDueAnchorType(),
                 item.getDueOffsetStart(),
-                item.getDueOffsetUnit());
+                item.getDueOffsetUnit(),
+                item.getDescription(),
+                item.getSupportFunction());
     }
 
     private boolean isSequenceTemplate(ChecklistTemplate template) {
