@@ -1,10 +1,10 @@
 <mxfile host="Electron" agent="Codex" version="30.3.11" pages="7">
-  <diagram id="uc-guest-and-authenticated-user" name="D-01. Use Case Diagram for Guest &amp; Authenticated User">
+  <diagram id="uc-user" name="D-01. Use Case Diagram for User">
     <mxGraphModel dx="1550" dy="1430" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1550" pageHeight="1430" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="d01_title" value="Use Case Diagram for Guest &amp;amp; Authenticated User" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=24;fontStyle=1;fontColor=#111827;" parent="1" vertex="1">
+        <mxCell id="d01_title" value="Use Case Diagram for User" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=24;fontStyle=1;fontColor=#111827;" parent="1" vertex="1">
           <mxGeometry x="60" y="24" width="1430" height="42" as="geometry" />
         </mxCell>
         <mxCell id="d01_subtitle" value="CareBridge Release 1 • Source: Report3 Functional Specifications • Shared use cases may appear on multiple actor pages" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#64748B;" parent="1" vertex="1">
@@ -554,12 +554,12 @@
       </root>
     </mxGraphModel>
   </diagram>
-  <diagram id="uc-family-and-authorized-family" name="D-03. Use Case Diagram for Family &amp; Authorized Family">
+  <diagram id="uc-family" name="D-03. Use Case Diagram for Family">
     <mxGraphModel dx="1550" dy="1500" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1550" pageHeight="2340" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="d03_title" value="Use Case Diagram for Family &amp;amp; Authorized Family" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=24;fontStyle=1;fontColor=#111827;" parent="1" vertex="1">
+        <mxCell id="d03_title" value="Use Case Diagram for Family" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=24;fontStyle=1;fontColor=#111827;" parent="1" vertex="1">
           <mxGeometry x="60" y="24" width="1430" height="42" as="geometry" />
         </mxCell>
         <mxCell id="d03_subtitle" value="CareBridge Release 1 • Source: Report3 Functional Specifications • Shared use cases may appear on multiple actor pages" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontFamily=Arial;fontSize=11;fontColor=#64748B;" parent="1" vertex="1">

@@ -105,9 +105,9 @@ RELATIONSHIPS: tuple[tuple[str, str, str], ...] = (
 )
 
 EXPECTED_PAGE_NAMES = (
-    "D-01. Use Case Diagram for Guest & Authenticated User",
+    "D-01. Use Case Diagram for User",
     "D-02. Use Case Diagram for Mother",
-    "D-03. Use Case Diagram for Family & Authorized Family",
+    "D-03. Use Case Diagram for Family",
     "D-04. Use Case Diagram for Expert & Verified Expert",
     "D-05. Use Case Diagram for CareBridge System Admin",
     "D-06. Use Case Diagram for Moderator",
@@ -180,8 +180,8 @@ def parse_spec(source: Path) -> dict[str, dict[str, object]]:
 def page_definitions() -> list[dict[str, object]]:
     return [
         {
-            "key": "guest-and-authenticated-user",
-            "title": "Use Case Diagram for Guest & Authenticated User",
+            "key": "user",
+            "title": "Use Case Diagram for User",
             "layout": "masonry",
             "columns": 2,
             "generalizations": [
@@ -248,8 +248,8 @@ def page_definitions() -> list[dict[str, object]]:
             ],
         },
         {
-            "key": "family-and-authorized-family",
-            "title": "Use Case Diagram for Family & Authorized Family",
+            "key": "family",
+            "title": "Use Case Diagram for Family",
             "layout": "grid",
             "columns": 2,
             "generalizations": [
