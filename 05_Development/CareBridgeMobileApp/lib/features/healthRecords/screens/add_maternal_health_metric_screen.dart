@@ -118,6 +118,10 @@ class _AddMaternalHealthMetricScreenState
         return 'count';
       case 'HYDRATION':
         return 'ml';
+      case 'MATERNAL_HEART_RATE':
+        return 'bpm';
+      case 'STRESS':
+        return 'điểm';
       default:
         return _capability?.canonicalUnit.isNotEmpty == true
             ? _capability!.canonicalUnit
@@ -139,6 +143,10 @@ class _AddMaternalHealthMetricScreenState
         return 'cử động thai';
       case 'HYDRATION':
         return 'lượng nước uống';
+      case 'MATERNAL_HEART_RATE':
+        return 'nhịp tim';
+      case 'STRESS':
+        return 'stress';
       default:
         return 'chỉ số sức khỏe';
     }
@@ -154,6 +162,11 @@ class _AddMaternalHealthMetricScreenState
       case 'FETAL_MOVEMENT_COUNT':
       case 'FETAL_MOVEMENT_SESSION':
         return 'FETAL_MOVEMENT_SESSION';
+      case 'HEART_RATE':
+      case 'MATERNAL_HEART_RATE':
+        return 'MATERNAL_HEART_RATE';
+      case 'STRESS':
+        return 'STRESS';
       default:
         return value;
     }

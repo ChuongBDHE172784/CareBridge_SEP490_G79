@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -5,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../models/health_metric_model.dart';
 import '../services/health_metric_service.dart';
+import '../services/watch_metric_import_service.dart';
 
 class HealthMetricTrendScreen extends StatefulWidget {
   final String journeyId;
@@ -21,7 +23,8 @@ class HealthMetricTrendScreen extends StatefulWidget {
       _HealthMetricTrendScreenState();
 }
 
-class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
+class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
+    with WidgetsBindingObserver {
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _canvas = Color(0xFFFFF8F6);
@@ -52,6 +55,18 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
       icon: Icons.water_drop_outlined,
     ),
     _MetricOption(
+      apiValue: 'MATERNAL_HEART_RATE',
+      label: 'Nhịp tim',
+      unit: 'bpm',
+      icon: Icons.monitor_heart_outlined,
+    ),
+    _MetricOption(
+      apiValue: 'STRESS',
+      label: 'Stress',
+      unit: 'điểm',
+      icon: Icons.psychology_alt_outlined,
+    ),
+    _MetricOption(
       apiValue: 'FETAL_MOVEMENT_SESSION',
       label: 'Cử động thai',
       unit: 'count',
@@ -60,6 +75,7 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
   ];
 
   final _service = HealthMetricService();
+  final _watchImportService = WatchMetricImportService();
   final _historyScrollController = ScrollController();
 
   late _MetricOption _selectedMetric;
@@ -78,7 +94,14 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _selectedMetric = _fallbackMetricOptions.first;
+    _watchImportService.start(
+      journeyId: widget.journeyId,
+      onImported: _handleWatchMetricImported,
+      onError: _showWatchMetricError,
+    );
+    unawaited(_watchImportService.drainQueuedEvents());
     _loadCapabilities();
   }
 
@@ -149,6 +172,11 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
       case 'FETAL_MOVEMENT_COUNT':
       case 'FETAL_MOVEMENT_SESSION':
         return 'FETAL_MOVEMENT_SESSION';
+      case 'HEART_RATE':
+      case 'MATERNAL_HEART_RATE':
+        return 'MATERNAL_HEART_RATE';
+      case 'STRESS':
+        return 'STRESS';
       default:
         return value ?? 'BMI';
     }
@@ -156,8 +184,17 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _watchImportService.dispose();
     _historyScrollController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_watchImportService.drainQueuedEvents());
+    }
   }
 
   Future<void> _loadTrend() async {
@@ -197,6 +234,9 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
   bool get _isGlucose => _selectedMetric.apiValue == 'BLOOD_GLUCOSE';
   bool get _isFetalMovement =>
       _selectedMetric.apiValue == 'FETAL_MOVEMENT_SESSION';
+  bool get _isWatchMetric =>
+      _selectedMetric.apiValue == 'MATERNAL_HEART_RATE' ||
+      _selectedMetric.apiValue == 'STRESS';
 
   void _onMetricChanged(_MetricOption? opt) {
     if (opt == null || opt == _selectedMetric) return;
@@ -212,6 +252,44 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
     if (changed == true && mounted) {
       await _loadTrend();
     }
+  }
+
+  Future<void> _openWatchMeasurement() async {
+    final opened = await _watchImportService.openGadgetbridge();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          opened
+              ? 'Đã mở Gadgetbridge. Hãy đồng bộ đồng hồ để gửi dữ liệu về CareBridge.'
+              : 'Không tìm thấy Gadgetbridge trên thiết bị.',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleWatchMetricImported(
+    WatchMetricImportResult result,
+  ) async {
+    if (!mounted) return;
+    if (result.metricType == _selectedMetric.apiValue) {
+      await _loadTrend();
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Đã lưu ${result.metricType == 'STRESS' ? 'Stress' : 'Nhịp tim'} từ đồng hồ.',
+        ),
+      ),
+    );
+  }
+
+  void _showWatchMetricError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   Future<void> _openMetricDetail(MetricDataPoint point) async {
@@ -315,7 +393,7 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
                 const SizedBox(height: 16),
                 _buildHistoryCard(),
                 const SizedBox(height: 20),
-                _buildAddButton(),
+                _buildActionButtons(),
               ],
             ],
           ),
@@ -705,6 +783,17 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
     );
   }
 
+  Widget _buildActionButtons() {
+    if (!_isWatchMetric) return _buildAddButton();
+    return Row(
+      children: [
+        Expanded(child: _buildAddButton()),
+        const SizedBox(width: 12),
+        Expanded(child: _buildWatchButton()),
+      ],
+    );
+  }
+
   Widget _buildAddButton() {
     return ElevatedButton.icon(
       onPressed: _openAddMetric,
@@ -719,6 +808,23 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
         padding: const EdgeInsets.symmetric(vertical: 14),
         shape: const StadiumBorder(),
         elevation: 0,
+      ),
+    );
+  }
+
+  Widget _buildWatchButton() {
+    return OutlinedButton.icon(
+      onPressed: _openWatchMeasurement,
+      icon: const Icon(Icons.watch_outlined, size: 18),
+      label: const Text(
+        'Đo từ đồng hồ',
+        style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700),
+      ),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: _primary,
+        side: const BorderSide(color: _primary, width: 1.4),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        shape: const StadiumBorder(),
       ),
     );
   }
