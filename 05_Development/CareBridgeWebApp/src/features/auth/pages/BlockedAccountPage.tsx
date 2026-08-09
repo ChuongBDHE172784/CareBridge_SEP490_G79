@@ -7,7 +7,7 @@ import { submitAccountLockAppeal } from '../services/accountLockAppealApi';
 import { SUPPORT_EMAIL, SUPPORT_PHONE } from '../../../shared/config/support';
 
 export default function BlockedAccountPage() {
-  const state = useMemo(() => loadBlockedAccountState(), []);
+  const state = useMemo(loadBlockedAccountState, []);
   const [appealReason, setAppealReason] = useState('');
   const [appealError, setAppealError] = useState<string | null>(null);
   const [appealSubmitted, setAppealSubmitted] = useState(

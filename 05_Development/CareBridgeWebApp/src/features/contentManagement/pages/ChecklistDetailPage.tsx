@@ -11,7 +11,6 @@ import {
 import type { AdminChecklistTemplateDetail } from '../models/content';
 import { CHECKLIST_STATUS_LABELS, STAGE_LABELS } from '../models/content';
 import { checklistCoexistenceGuidance, checklistRecipientLabel, checklistSequenceLabel } from './checklistApprovalPresentation';
-import { getChecklistTargetIcon } from '../utils/checklistTargetIcon';
 import { useAuth } from '../../../shared/auth/useAuth';
 import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
 
@@ -24,6 +23,22 @@ function statusDotClass(status: string): string {
 
 const recipientLabel = (role: 'MOTHER' | 'FAMILY') => (role === 'MOTHER' ? 'Mẹ' : 'Gia đình');
 const targetLabel = (target: 'MOTHER' | 'BABY') => (target === 'MOTHER' ? 'Mẹ' : 'Em bé');
+function getChecklistTargetIcon(checklist: {
+  name?: string;
+  stage?: string | null;
+  items?: Array<{ targetSubject?: 'MOTHER' | 'BABY' }>;
+}): 'child_care' | 'pregnant_woman' {
+  const hasBabyItem = checklist.items?.some((i) => i.targetSubject === 'BABY');
+  const isBabyStage = checklist.stage === 'BABY_CARE';
+  const nameLower = (checklist.name || '').toLowerCase();
+  const isBabyName = nameLower.includes('bé') || nameLower.includes('trẻ') || nameLower.includes('sơ sinh');
+
+  if (hasBabyItem || isBabyStage || isBabyName) {
+    return 'child_care';
+  }
+  return 'pregnant_woman';
+}
+
 const warmBadge = 'inline-flex shrink-0 items-center rounded-full bg-surface-container-low px-3 py-1 text-xs font-semibold text-primary';
 
 export default function ChecklistDetailPage() {

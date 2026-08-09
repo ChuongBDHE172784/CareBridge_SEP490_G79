@@ -4,11 +4,4 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
-
-    <!-- Debug builds talk to a local backend over http://10.0.2.2:8080, which
-         Android blocks by default. This override lives here rather than in the
-         main manifest so release builds stay HTTPS-only: the production API is
-         https://api.carebridgevn.site, and a release APK has no reason to be
-         able to send maternal health data in the clear. -->
-    <application android:usesCleartextTraffic="true" />
 </manifest>
