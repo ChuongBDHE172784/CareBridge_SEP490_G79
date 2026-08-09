@@ -19,7 +19,8 @@ const ROLE_LABELS: Record<UserRole, string> = {
 
 type UserSortKey = 'name' | 'role' | 'status' | 'createdAt';
 
-function maskName(name: string): string {
+function maskName(name?: string | null): string {
+  if (!name || !name.trim()) return 'Chưa cập nhật tên';
   const parts = name.trim().split(/\s+/);
   if (parts.length <= 1) return name;
   return parts
@@ -139,7 +140,7 @@ export default function UserListPage() {
     return sortRows(users, sortDirection, (item) => {
       switch (sortKey) {
         case 'name':
-          return item.name;
+          return item.name || item.email || '';
         case 'role':
           return ROLE_LABELS[item.role] || item.role;
         case 'status':
@@ -324,10 +325,10 @@ export default function UserListPage() {
                       <td className="py-3.5 px-3">
                         <div className="flex items-center gap-3">
                           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-container text-on-primary-container font-bold text-sm">
-                            {item.name.charAt(0).toUpperCase()}
+                            {(item.name || item.email || 'U').charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <div className="font-semibold text-sm text-on-surface">{maskName(item.name)}</div>
+                            <div className="font-semibold text-sm text-on-surface">{maskName(item.name || item.email)}</div>
                             <div className="text-xs text-on-surface-variant mt-0.5">{item.email}</div>
                           </div>
                         </div>
@@ -468,7 +469,7 @@ export default function UserListPage() {
       <ConfirmDialog
         key={lockTarget?.id ?? 'lock-user'}
         open={lockTarget !== null}
-        title={`Khóa tài khoản ${lockTarget?.name ?? ''}?`}
+        title={`Khóa tài khoản ${lockTarget?.name || lockTarget?.email || ''}?`}
         description="Người dùng sẽ bị đăng xuất khỏi tất cả phiên, nhìn thấy lý do này sau khi nhập đúng mật khẩu và có thể gửi khiếu nại."
         icon="lock"
         tone="danger"
@@ -487,7 +488,7 @@ export default function UserListPage() {
       <ConfirmDialog
         key={unlockTarget?.id ?? 'unlock-user'}
         open={unlockTarget !== null}
-        title={`Mở khóa tài khoản ${unlockTarget?.name ?? ''}?`}
+        title={`Mở khóa tài khoản ${unlockTarget?.name || unlockTarget?.email || ''}?`}
         description="Người dùng sẽ có thể đăng nhập và sử dụng lại hệ thống ngay sau khi mở khóa."
         icon="lock_open"
         confirmLabel="Xác nhận mở khóa"

@@ -105,16 +105,16 @@ export default function UpdateUserRolePage() {
       <div className="mx-auto max-w-2xl">
         <h1 className="text-[26px] font-bold text-on-surface m-0">Cập nhật vai trò & Phân quyền</h1>
         <p className="text-on-surface-variant text-sm mt-1">
-          Thay đổi vai trò nhân viên và thiết lập quyền truy cập cho {target.name} ({target.email}).
+          Thay đổi vai trò nhân viên và thiết lập quyền truy cập cho {target.name || target.email} ({target.email}).
         </p>
 
         {/* User Summary Strip */}
         <div className="mt-4 rounded-2xl border border-surface-container-highest bg-surface-bright p-4 flex items-center gap-4">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary-container text-on-primary-container font-bold text-lg">
-            {target.name.charAt(0).toUpperCase()}
+            {(target.name || target.email || 'U').charAt(0).toUpperCase()}
           </div>
           <div>
-            <div className="font-bold text-sm text-on-surface">{target.name}</div>
+            <div className="font-bold text-sm text-on-surface">{target.name || target.email || 'Chưa cập nhật tên'}</div>
             <div className="text-xs text-on-surface-variant">{target.email}</div>
           </div>
         </div>
