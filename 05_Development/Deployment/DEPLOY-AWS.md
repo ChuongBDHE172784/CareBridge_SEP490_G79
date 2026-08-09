@@ -189,6 +189,70 @@ docker compose --env-file 05_Development/Deployment/.env.server \
   -f docker-compose.aws.yml logs --tail=100 backend
 ```
 
+## 6b. Cập nhật ảnh third-party (vá CVE)
+
+Làm khi job `scan_edge_nginx_image` trên GitLab báo đỏ, hoặc khi
+`EDGE_NGINX_IMAGE` trong repo đổi. Đây là bước mà quy trình cũ không có, và hậu
+quả là ảnh nginx đứng yên ở `1.29.0-alpine` cho tới lúc nó ôm ba CVE CRITICAL đã
+có bản vá từ lâu (openssl `CVE-2026-31789`, pcre2 `CVE-2025-58050`).
+
+> **Repo trên EC2 phải bám nhánh `page-web`, không phải `dev`.**
+> Các file `docker-compose.aws.yml`, `nginx/edge-aws.conf`, `server.env.example`
+> chỉ tồn tại trên `page-web`. Nếu checkout trên server đang bám `dev` thì
+> `git pull` sẽ **xoá mất** chúng.
+
+```bash
+# 0. Bật EC2 trong console trước, chờ state = Running, rồi mới SSH.
+ssh -i ~/.ssh/carebridge-key.pem ubuntu@13.193.133.87
+
+cd ~/carebridge   # thư mục repo trên server
+git fetch origin && git checkout page-web && git pull
+```
+
+`.env.server` nằm ngoài git nên `git pull` không đụng tới nó. Đây là chỗ dễ
+quên nhất: giá trị trong đó **đè lên** mặc định của compose, nên sửa repo thôi
+là chưa đủ.
+
+```bash
+grep EDGE_NGINX_IMAGE 05_Development/Deployment/.env.server
+# Còn 1.29.0-alpine thì sửa thành 1.29-alpine (hoặc xoá hẳn dòng đó để
+# dùng mặc định trong docker-compose.aws.yml).
+```
+
+Kéo ảnh mới và dựng lại **đúng một service**. Backend, ai-triage và
+exercise-correction không bị đụng, nên API không gián đoạn quá vài giây:
+
+```bash
+docker compose --env-file 05_Development/Deployment/.env.server \
+  -f docker-compose.aws.yml pull nginx-edge
+
+docker compose --env-file 05_Development/Deployment/.env.server \
+  -f docker-compose.aws.yml up -d nginx-edge
+```
+
+Kiểm lại:
+
+```bash
+# 1. Đúng ảnh mới, và container healthy
+docker inspect --format '{{.Config.Image}}' carebridge-aws-nginx-edge-1
+docker compose --env-file 05_Development/Deployment/.env.server \
+  -f docker-compose.aws.yml ps nginx-edge
+
+# 2. TLS còn phục vụ được (--insecure vì cert Origin CA chỉ Cloudflare tin)
+curl -sS --insecure -o /dev/null -w '%{http_code}\n' \
+  https://api.carebridgevn.site/api/v1/reference/provinces --resolve \
+  api.carebridgevn.site:443:127.0.0.1
+
+# 3. Từ Internet, qua Cloudflare
+curl -sS -o /dev/null -w '%{http_code}\n' \
+  https://api.carebridgevn.site/api/v1/reference/provinces
+```
+
+Cả hai phải trả `200`. Nếu nginx không lên, ảnh cũ vẫn còn trong máy nên lùi
+lại được ngay: đặt `EDGE_NGINX_IMAGE` về tag cũ rồi chạy lại `up -d nginx-edge`.
+
+Cùng cách này áp dụng cho mọi ảnh third-party khác trong stack.
+
 ## 7. Kiểm tra, từ trong ra ngoài
 
 Kiểm theo thứ tự này. Hỏng ở bước nào thì dừng ở đó, đừng nhảy cóc.
