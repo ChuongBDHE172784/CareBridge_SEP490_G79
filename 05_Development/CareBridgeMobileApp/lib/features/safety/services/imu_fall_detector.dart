@@ -97,7 +97,10 @@ class ImuFallDetector {
   );
   static const Duration immobilityWindow = Duration(seconds: 1);
   static const Duration maximumGyroscopeAge = Duration(milliseconds: 200);
-  static const Duration cooldown = Duration(seconds: 30);
+  // The three-phase detector already rejects a continuing impact pulse. Keep
+  // only a brief debounce so a user who has dismissed an alert can perform
+  // another controlled sensor check after the alert has settled.
+  static const Duration cooldown = Duration(seconds: 3);
 
   FallDetectionPhase _phase = FallDetectionPhase.idle;
   ImuSample? _previousSample;

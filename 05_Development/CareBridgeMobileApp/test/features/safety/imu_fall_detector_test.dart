@@ -262,7 +262,7 @@ void main() {
     );
   });
 
-  test('suppresses duplicate candidates during the 30-second cooldown', () {
+  test('suppresses duplicate candidates during the three-second cooldown', () {
     final detector = ImuFallDetector();
     detector.addSample(sample(at: Duration.zero, acceleration: 2));
     detector.addSample(
@@ -271,10 +271,10 @@ void main() {
     expect(completeImmobility(detector), isNotNull);
 
     detector.addSample(
-      sample(at: const Duration(seconds: 10), acceleration: 2),
+      sample(at: const Duration(milliseconds: 3500), acceleration: 2),
     );
     detector.addSample(
-      sample(at: const Duration(milliseconds: 10100), acceleration: 30),
+      sample(at: const Duration(milliseconds: 3600), acceleration: 30),
     );
 
     expect(detector.phase, FallDetectionPhase.idle);
