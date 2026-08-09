@@ -333,8 +333,9 @@ class _EpdsScreenState extends State<EpdsScreen> {
         from: DateTime.now().subtract(const Duration(days: 365)),
         to: DateTime.now().add(const Duration(days: 1)),
       );
-      if (mounted)
+      if (mounted) {
         setState(() => _history = trend.dataPoints.reversed.toList());
+      }
     } catch (_) {}
   }
 
@@ -508,23 +509,25 @@ class _EpdsScreenState extends State<EpdsScreen> {
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: ListView(
-              children: List.generate(question.options.length, (index) {
-                final option = question.options[index];
-                return Card(
-                  color: _surface,
-                  child: RadioListTile<int>(
-                    value: option.score,
-                    groupValue: _answers[_questionIndex],
-                    onChanged: (value) =>
-                        setState(() => _answers[_questionIndex] = value),
-                    title: Text(
-                      option.label,
-                      style: const TextStyle(fontFamily: 'Lexend'),
+            child: RadioGroup<int>(
+              groupValue: _answers[_questionIndex],
+              onChanged: (value) =>
+                  setState(() => _answers[_questionIndex] = value),
+              child: ListView(
+                children: List.generate(question.options.length, (index) {
+                  final option = question.options[index];
+                  return Card(
+                    color: _surface,
+                    child: RadioListTile<int>(
+                      value: option.score,
+                      title: Text(
+                        option.label,
+                        style: const TextStyle(fontFamily: 'Lexend'),
+                      ),
                     ),
-                  ),
-                );
-              }),
+                  );
+                }),
+              ),
             ),
           ),
           Row(

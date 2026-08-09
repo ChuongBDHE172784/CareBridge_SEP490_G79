@@ -18,11 +18,36 @@ function. The principals must remain separate:
 Never grant an owner role to Flyway, the application, operations, or a human
 login to make a migration pass.
 
+## Step 0 — provision the four roles (once per database, before any Flyway run)
+
+`V20260731070000__canonical_post_20260719180000_schema.sql` asserts all four
+principals exist with exact attributes and aborts with `42501` otherwise
+(`CHECKLIST_RETENTION_OWNER_ROLE_REQUIRED` and its three siblings). Flyway holds
+no `CREATEROLE` privilege by design, so a database that has never been
+provisioned cannot complete its first migration.
+
+Run `00_provision_checklist_roles.sql` as a principal holding `CREATEROLE` —
+on Supabase that is `postgres`, not the Flyway login:
+
+```
+psql "$SUPABASE_DB_URL" -v ON_ERROR_STOP=1 -f 00_provision_checklist_roles.sql
+```
+
+It is idempotent and normalises an existing role whose attributes drifted; note
+that every role requires `NOINHERIT`, which is not PostgreSQL's default, so a
+hand-created role usually fails the migration until this script repairs it. The
+script finishes with `CHECKLIST_ROLE_PROVISIONING_VERIFIED` and refuses to run
+as one of the four principals.
+
+Passwords for the two `LOGIN` roles (`carebridge_application`,
+`checklist_operations`) are deliberately absent from the script. Set them from
+the deployment secret store afterwards; never place them in source control.
+
 ## Apply finalizer V20260729150001
 
 1. Stop application startup and background workers for the target database.
 2. Confirm backup/PITR readiness and apply all Flyway migrations for the
-   release.
+   release. On a fresh database, Step 0 must already have run.
 3. Review the finalizer and the SHA-256 pinned by
    `Invoke-ChecklistRetentionFinalizer.ps1`. Do not edit an applied version.
 4. Supply the `psql` executable and database URL through

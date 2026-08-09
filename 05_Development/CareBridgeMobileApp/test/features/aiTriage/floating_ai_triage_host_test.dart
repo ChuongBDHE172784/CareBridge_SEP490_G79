@@ -153,7 +153,7 @@ void main() {
               if (notifyDuringBuild) {
                 observer.didPush(
                   PageRouteBuilder<void>(
-                    pageBuilder: (_, __, ___) => const SizedBox.shrink(),
+                    pageBuilder: (_, _, _) => const SizedBox.shrink(),
                   ),
                   null,
                 );

@@ -315,8 +315,9 @@ class _DirectChatScreenState extends State<DirectChatScreen>
         ],
       );
       final fileId = uploaded?['data']?['fileId'] as String?;
-      if (fileId == null)
+      if (fileId == null) {
         throw const FormatException('Không thể tải tài liệu lên');
+      }
       await DirectChatService.instance.sendMessage(
         widget.conversationId,
         clientMessageId: _uuid.v4(),
@@ -703,7 +704,6 @@ class _DirectChatScreenState extends State<DirectChatScreen>
 
 class _TimelineTile extends StatelessWidget {
   static const _primary = Color(0xFFC98C7B);
-  static const _surfaceLow = Color(0xFFF2EAE4);
   static const _onSurface = Color(0xFF271812);
   static const _onVariant = Color(0xFF524440);
   static const _outline = Color(0xFFD6C2BD);
@@ -885,8 +885,9 @@ class _TimelineTile extends StatelessWidget {
       final url = data?['presignedUrl'] as String?;
       final name = data?['originalName'] as String? ?? 'carebridge_document';
       final mime = data?['mimeType'] as String? ?? 'application/octet-stream';
-      if (url == null || url.isEmpty)
+      if (url == null || url.isEmpty) {
         throw const FormatException('Missing file URL');
+      }
       if (!context.mounted) return;
       showModalBottomSheet<void>(
         context: context,
@@ -1007,8 +1008,9 @@ class _InlineChatImageState extends State<_InlineChatImage> {
       '/api/v1/direct-conversations/${widget.conversationId}/messages/${widget.messageId}/attachment',
     );
     final url = json['data']?['presignedUrl'] as String?;
-    if (url == null || url.isEmpty)
+    if (url == null || url.isEmpty) {
       throw const FormatException('Missing image URL');
+    }
     return url;
   }
 
@@ -1041,7 +1043,7 @@ class _InlineChatImageState extends State<_InlineChatImage> {
             width: 220,
             height: 168,
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => const SizedBox(
+            errorBuilder: (_, _, _) => const SizedBox(
               width: 220,
               height: 96,
               child: Center(child: Icon(Icons.broken_image_outlined)),

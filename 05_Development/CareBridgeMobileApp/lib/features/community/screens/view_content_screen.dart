@@ -878,8 +878,9 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
   }
 
   Widget _buildTopicRow() {
-    if (widget.mode == ContentBrowseMode.lifecycle)
+    if (widget.mode == ContentBrowseMode.lifecycle) {
       return const SizedBox.shrink();
+    }
     final topics = _topics.where((item) => !item.isHidden).toList();
     final tags = _tags.where((item) => !item.isHidden).toList();
     if (topics.isEmpty && tags.isEmpty) return const SizedBox.shrink();

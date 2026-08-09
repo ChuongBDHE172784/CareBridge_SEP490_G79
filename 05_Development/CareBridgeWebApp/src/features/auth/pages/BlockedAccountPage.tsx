@@ -5,7 +5,7 @@ import { clearBlockedAccountState, loadBlockedAccountState } from '../models/blo
 import { SUPPORT_EMAIL, SUPPORT_PHONE } from '../../../shared/config/support';
 
 export default function BlockedAccountPage() {
-  const state = useMemo(loadBlockedAccountState, []);
+  const state = useMemo(() => loadBlockedAccountState(), []);
 
   const title = state?.code === 'ACCOUNT_ADMIN_LOCKED'
     ? 'Tài khoản bị khóa bởi quản trị viên'

@@ -54,6 +54,16 @@ class HermeticDatasourceTestcontainersSmokeTest {
 
     static {
         POSTGRES.start();
+        try {
+            // The checklist migrations refuse to run unless deployment has already created
+            // the NOLOGIN owner roles they hand objects to — Flyway itself has no CREATEROLE
+            // dependency by design. Provision them exactly as AbstractPostgresIntegrationTest does.
+            EmbeddedPostgresRoleFixture.provision(
+                    POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword());
+        } catch (Exception exception) {
+            throw new IllegalStateException(
+                    "Could not provision checklist database roles on the test container", exception);
+        }
         System.setProperty("spring.profiles.active", "hermetic");
         System.setProperty("carebridge.hermetic.datasource.url", POSTGRES.getJdbcUrl());
         System.setProperty("carebridge.hermetic.datasource.username", POSTGRES.getUsername());
