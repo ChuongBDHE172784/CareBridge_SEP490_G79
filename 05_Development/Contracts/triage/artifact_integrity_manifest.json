@@ -1,98 +1,98 @@
 {
   "$comment": "Integrity only. Proves each artifact matches its checksum. Does NOT prove clinical correctness and is NOT an approval record.",
   "manifestType": "ARTIFACT_INTEGRITY",
-  "generatedAt": "2026-08-08T12:39:16+00:00",
+  "generatedAt": "2026-08-09T11:35:31+00:00",
   "generatorVersion": "sync_triage_rule_registry.py/3.0",
   "artifacts": [
     {
       "artifactId": "canonical_answer_mapping_v1",
       "path": "05_Development/Contracts/triage/canonical_answer_mapping_v1.json",
-      "sha256": "d98b5f3f4de40ca24253b2e30932623dcf0c8f1828e018882e49ee2eac38c211"
+      "sha256": "58be297e202b2f35d78799d3a15300a1bdd48e02fe1cce96eea9e160719ff744"
     },
     {
       "artifactId": "context_contract_v1",
       "path": "05_Development/Contracts/triage/context_contract_v1.json",
-      "sha256": "64b0d37f4a53198902c5fd022d7aba5a86af74cbf871db7ce3c6727244a64d56"
+      "sha256": "ddd490efd2f776d360208521348fef0230b045e7b99936cbf33d6733c496b2cf"
     },
     {
       "artifactId": "context_parity_vectors_v1",
       "path": "05_Development/Contracts/triage/context_parity_vectors_v1.json",
-      "sha256": "124dade8c70c8a337eb654629215cd864ab8b468877e77c8255d1c1852ffef3b"
+      "sha256": "8d421dca3b1338770178daf0adebf6509110a0186ad352e79376be73caa5e0bf"
     },
     {
       "artifactId": "dataset_requirements_v1",
       "path": "05_Development/Contracts/triage/dataset_requirements_v1.json",
-      "sha256": "682ecbae7194a2cfafb606ac33cfe654899db30d38e6f1721801638beda638fe"
+      "sha256": "c68ddd1a692d9358c42ee9f28e1f964d233fc8ae7a7cd4498e874d216e976f6c"
     },
     {
       "artifactId": "draft_safety_disposition_matrix_v1",
       "path": "05_Development/Contracts/triage/draft_safety_disposition_matrix_v1.json",
-      "sha256": "b1e03e68e756390b382c066bb6d91137b01343669337dac7955d71b2066313a1"
+      "sha256": "5696f94ba58c7cf7e2f904f85ba80088cd10ad2452782739d0b7a75b5cc34bc9"
     },
     {
       "artifactId": "intent_indicators_v1",
       "path": "05_Development/Contracts/triage/intent_indicators_v1.json",
-      "sha256": "494fc0e7f5bc89836ad394c22432cd7556043e72fa64ff968249d7bf12dd1843"
+      "sha256": "f4cf607943d8eb39e6e83bdc9d6961367ce5f31f324c1b488852903d240cc085"
     },
     {
       "artifactId": "internal_rule_review_manifest",
       "path": "05_Development/Contracts/triage/internal_rule_review_manifest.json",
-      "sha256": "37a1cf251aa65691b7e8372e9ef6a4820d351c4619fffa171100d7523e760f08"
+      "sha256": "a79b8390704abd02da5f81fc83e4069622d2f755fc4dfc0470985e687b85fd53"
     },
     {
       "artifactId": "matrix_snapshot_v0.1.0",
       "path": "05_Development/Contracts/triage/matrix_snapshot_v0.1.0.json",
-      "sha256": "295b4dac3122e1a6571e6e4f13fca35ac989568922bd9815bef351de84febed4"
+      "sha256": "b31c9e95b234bc66aa21fe7f1c8080dc959a60cd0cdce0b14e1dd853afafd217"
     },
     {
       "artifactId": "oos_complaint_taxonomy_v1",
       "path": "05_Development/Contracts/triage/oos_complaint_taxonomy_v1.json",
-      "sha256": "9d62d860830b13cf56985a2cb825f75fae41844e6043f3d0772c4315f8a2b3eb"
+      "sha256": "3f5715ca20f8c83990f879a2d9cd2d9bf9378d057a7161cffd791bb23090252b"
     },
     {
       "artifactId": "parity_result_fingerprint",
       "path": "05_Development/Contracts/triage/parity_result_fingerprint.json",
-      "sha256": "2f2f2ea3c17e3d85e1890bd69e61a6fee057467a31eeb1719a725e6e2e45aff3"
+      "sha256": "06b4ca4fbfd522c51e88c5d00b403ec190814e60c18d70354117bd11b1a4eb8b"
     },
     {
       "artifactId": "question_catalog_v1",
       "path": "05_Development/Contracts/triage/question_catalog_v1.json",
-      "sha256": "4b00f8a30669f4a280892485036d1727ac7bbba7ef0c72cbea3e03f09343deef"
+      "sha256": "c7af8b6024ed05dcb1a57ddf5bd5e3698529734937f8f2e582f0bf9418ed6554"
     },
     {
       "artifactId": "required_rule_manifest",
       "path": "05_Development/Contracts/triage/required_rule_manifest.json",
-      "sha256": "536ef8237137b3f46c630213f7712c6e04174b46376842098e850d5d498c356a"
+      "sha256": "d6f401a1da968115292d64dc1a3db1d257743b9cf5ba28873d0a398ee0857c15"
     },
     {
       "artifactId": "source_verification_manifest",
       "path": "05_Development/Contracts/triage/source_verification_manifest.json",
-      "sha256": "f829847b028d139ace63ccfccd4b681fba4ec3329cc6b32beb144e98c03f9a07"
+      "sha256": "1a5a21c7f2d5db3d0570717e5e62badc10f02c47e9bb2a396328dff5c4adc7e3"
     },
     {
       "artifactId": "target_entity_indicators_v1",
       "path": "05_Development/Contracts/triage/target_entity_indicators_v1.json",
-      "sha256": "f629aa814bf105b2826d12097c77e88cb94fe177f594f0edde5af075280ca84f"
+      "sha256": "2d2d57d549001f2fd68379516570347cb6d2eeddd9c84e574d06431c6a564cfc"
     },
     {
       "artifactId": "triage_response_v2.schema",
       "path": "05_Development/Contracts/triage/triage_response_v2.schema.json",
-      "sha256": "ca072868b07414f7364c70e17ce1fca63060dd751d4fd5c65355216872b563e8"
+      "sha256": "80aa20ba57cd94ffc8343cbc2195999e43fe4845c4099e079dd898e14755325b"
     },
     {
       "artifactId": "triage_rule_condition.schema",
       "path": "05_Development/Contracts/triage/triage_rule_condition.schema.json",
-      "sha256": "a7afdf50b7e01b86a17a84e37fef8d24951fe4554740e912aabd0916f405061f"
+      "sha256": "0a0f0ad0a7fbb1e7da122d6dabe17eab0eaf3c63ceb065c5ddb9bf6d1b7afac6"
     },
     {
       "artifactId": "triage_rule_parity_vectors_v2",
       "path": "05_Development/Contracts/triage/triage_rule_parity_vectors_v2.json",
-      "sha256": "e208bc8701673f27cf759851dd6071d5180923ccbcfd36599dec04ff6621f82f"
+      "sha256": "1dd3bba6df1235df506f1511e6596705c9fbc0c1353e33abc2c9d89b12b49d39"
     },
     {
       "artifactId": "triage_rules_v2",
       "path": "05_Development/Contracts/triage/triage_rules_v2.json",
-      "sha256": "7cb7ae3b1efd7e39f8a24da3919d08b74f3910820391b589a4c031a12234baa1"
+      "sha256": "dd230a924fb51149c5053ade5f1eba1d0837737d572150e396a875dd025adfb3"
     }
   ]
 }
