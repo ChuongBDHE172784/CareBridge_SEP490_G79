@@ -2,6 +2,8 @@ package com.carebridge.backend.emergency;
 
 import com.carebridge.backend.emergency.entity.EmergencySession;
 import com.carebridge.backend.emergency.event.EmergencySessionOpened;
+import com.carebridge.backend.emergency.event.EmergencySessionRealertRequested;
+import com.carebridge.backend.emergency.dto.request.OpenEmergencyRequest;
 import com.carebridge.backend.emergency.repository.IEmergencySessionRepository;
 import com.carebridge.backend.emergency.repository.IFamilyAlertLogRepository;
 import com.carebridge.backend.emergency.repository.TriageEmergencyEscalationLinkRepository;
@@ -57,6 +59,21 @@ class EmergencyServiceTest {
         verify(emergencySessionRepository, never()).save(any());
         verify(emergencySessionRepository, never()).saveAndFlush(any());
         verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
+    void existingActiveEmergencyPublishesThrottledRealertTrigger() {
+        EmergencySession active = emergencySession(null);
+        when(emergencySessionRepository.findActiveByUserId(USER_ID)).thenReturn(Optional.of(active));
+
+        var response = service.openFlow(OpenEmergencyRequest.builder()
+                .triggerSource("FALL_DETECTION")
+                .build(), USER_ID);
+
+        assertThat(response.getSessionId()).isEqualTo(active.getId());
+        verify(emergencySessionRepository, never()).save(any());
+        verify(eventPublisher).publishEvent(argThat((Object event) -> event instanceof EmergencySessionRealertRequested
+                && ((EmergencySessionRealertRequested) event).sessionId().equals(active.getId())));
     }
 
     @Test

@@ -131,7 +131,7 @@ class Mf14CanonicalPersistencePostgresTest extends AbstractPostgresIntegrationTe
                 userId, emergencySessionId, SafetyEventStatus.ESCALATION_REQUESTED);
 
         var claim = alertAttemptRepository.claim(
-                emergencySessionId, Instant.now().plus(Duration.ofMinutes(2)))
+                emergencySessionId, Instant.now().plus(Duration.ofMinutes(2)), false)
                 .orElseThrow();
 
         UUID deviceTokenId = UUID.randomUUID();

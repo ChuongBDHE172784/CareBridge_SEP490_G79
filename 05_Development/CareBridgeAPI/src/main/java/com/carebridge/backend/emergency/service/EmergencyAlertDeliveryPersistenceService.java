@@ -1,6 +1,7 @@
 package com.carebridge.backend.emergency.service;
 
 import com.carebridge.backend.emergency.event.EmergencySessionOpened;
+import com.carebridge.backend.emergency.event.EmergencySessionRealertRequested;
 import com.carebridge.backend.emergency.repository.EmergencyAlertDeliveryRepository;
 import com.carebridge.backend.notification.dto.FcmDeliveryResult;
 import com.carebridge.backend.notification.entity.NotificationRecord;
@@ -27,6 +28,27 @@ public class EmergencyAlertDeliveryPersistenceService {
             AlertRecipientEndpoint recipient,
             UUID sharedNotificationId,
             EmergencyAlertClaim claim) {
+        return prepare(event, recipient, sharedNotificationId, claim, false);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public PreparedAlertDelivery prepareRealert(
+            EmergencySessionRealertRequested event,
+            AlertRecipientEndpoint recipient,
+            UUID sharedNotificationId,
+            EmergencyAlertClaim claim) {
+        return prepare(
+                new EmergencySessionOpened(event.eventId(), event.sessionId(), event.userId(),
+                        event.triggerSource(), event.latitude(), event.longitude(), event.occurredAt()),
+                recipient, sharedNotificationId, claim, true);
+    }
+
+    private PreparedAlertDelivery prepare(
+            EmergencySessionOpened event,
+            AlertRecipientEndpoint recipient,
+            UUID sharedNotificationId,
+            EmergencyAlertClaim claim,
+            boolean resendSuccessfulDelivery) {
         NotificationRecord notification = sharedNotificationId == null
                 ? notificationRepository.findByUserIdAndReferenceIdAndTypeAndReferenceTypeAndCareGroupId(
                         recipient.userId(), event.sessionId(), NotificationType.EMERGENCY,
@@ -46,7 +68,9 @@ public class EmergencyAlertDeliveryPersistenceService {
                             .build()))
                 : notificationRepository.findById(sharedNotificationId).orElseThrow();
 
-        var existing = deliveryRepository.findSuccessful(event.sessionId(), recipient.deviceTokenId());
+        var existing = resendSuccessfulDelivery
+                ? java.util.Optional.<EmergencyAlertDeliveryRepository.DeliveryAction>empty()
+                : deliveryRepository.findSuccessful(event.sessionId(), recipient.deviceTokenId());
         if (existing.isPresent()) {
             var delivery = existing.get();
             if (notification.getStatus() != NotificationRecordStatus.SENT) {

@@ -7,6 +7,7 @@ import com.carebridge.backend.emergency.dto.response.FamilyAlertDetailResponse;
 import com.carebridge.backend.emergency.entity.EmergencySession;
 import com.carebridge.backend.emergency.entity.FamilyAlertLog;
 import com.carebridge.backend.emergency.event.EmergencySessionOpened;
+import com.carebridge.backend.emergency.event.EmergencySessionRealertRequested;
 import com.carebridge.backend.emergency.exception.EmergencyException;
 import com.carebridge.backend.emergency.repository.IEmergencySessionRepository;
 import com.carebridge.backend.emergency.repository.IFamilyAlertLogRepository;
@@ -51,7 +52,12 @@ public class EmergencyService implements IEmergencyService {
 
         // UC62 C3: idempotent — return existing ACTIVE session if one exists
         return emergencySessionRepository.findActiveByUserId(userId)
-                .map(this::toResponse)
+                .map(session -> {
+                    eventPublisher.publishEvent(new EmergencySessionRealertRequested(
+                            UUID.randomUUID(), session.getId(), userId, request.getTriggerSource(),
+                            request.getUserLatitude(), request.getUserLongitude(), Instant.now()));
+                    return toResponse(session);
+                })
                 .orElseGet(() -> {
                     EmergencySession session = EmergencySession.builder()
                             .userId(userId)

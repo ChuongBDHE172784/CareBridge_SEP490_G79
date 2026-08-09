@@ -16,7 +16,7 @@ public class EmergencyAlertAttemptRepository {
 
     private final JdbcTemplate jdbcTemplate;
 
-    public Optional<EmergencyAlertClaim> claim(UUID sessionId, Instant leaseUntil) {
+    public Optional<EmergencyAlertClaim> claim(UUID sessionId, Instant leaseUntil, boolean realert) {
         return jdbcTemplate.query("""
                 WITH claimed AS (
                     UPDATE safety_events event
@@ -38,6 +38,10 @@ public class EmergencyAlertAttemptRepository {
                             OR event.alert_status IN ('FAILED','PARTIAL','NO_RECIPIENTS')
                             OR (event.alert_status = 'PROCESSING'
                                 AND event.alert_lease_expires_at <= now())
+                            OR (? = true
+                                AND event.alert_status = 'SENT'
+                                AND coalesce(event.alert_updated_at, event.created_at)
+                                    <= now() - interval '10 seconds')
                        )
                     RETURNING event.safety_event_id, event.user_id,
                               event.alert_generation, event.alert_claim_token,
@@ -84,7 +88,7 @@ public class EmergencyAlertAttemptRepository {
                             resultSet.getLong("alert_generation"),
                             resultSet.getObject("alert_claim_token", UUID.class),
                             resultSet.getTimestamp("alert_lease_expires_at").toInstant()));
-                }, Timestamp.from(leaseUntil), sessionId);
+                }, Timestamp.from(leaseUntil), sessionId, realert);
     }
 
     public boolean renew(EmergencyAlertClaim claim, Instant leaseUntil) {

@@ -19,7 +19,12 @@ public class EmergencyAlertAttemptService {
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public Optional<EmergencyAlertClaim> claim(UUID sessionId) {
-        return repository.claim(sessionId, Instant.now().plus(LEASE_DURATION));
+        return repository.claim(sessionId, Instant.now().plus(LEASE_DURATION), false);
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public Optional<EmergencyAlertClaim> claimForRealert(UUID sessionId) {
+        return repository.claim(sessionId, Instant.now().plus(LEASE_DURATION), true);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -38,4 +43,3 @@ public class EmergencyAlertAttemptService {
                 failedRecipients, locationIncluded);
     }
 }
-
