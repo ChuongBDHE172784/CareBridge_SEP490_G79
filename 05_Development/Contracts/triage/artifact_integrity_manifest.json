@@ -1,23 +1,23 @@
 {
   "$comment": "Integrity only. Proves each artifact matches its checksum. Does NOT prove clinical correctness and is NOT an approval record.",
   "manifestType": "ARTIFACT_INTEGRITY",
-  "generatedAt": "2026-08-09T11:35:31+00:00",
+  "generatedAt": "2026-08-09T11:55:22+00:00",
   "generatorVersion": "sync_triage_rule_registry.py/3.0",
   "artifacts": [
     {
       "artifactId": "canonical_answer_mapping_v1",
       "path": "05_Development/Contracts/triage/canonical_answer_mapping_v1.json",
-      "sha256": "58be297e202b2f35d78799d3a15300a1bdd48e02fe1cce96eea9e160719ff744"
+      "sha256": "d98b5f3f4de40ca24253b2e30932623dcf0c8f1828e018882e49ee2eac38c211"
     },
     {
       "artifactId": "context_contract_v1",
       "path": "05_Development/Contracts/triage/context_contract_v1.json",
-      "sha256": "ddd490efd2f776d360208521348fef0230b045e7b99936cbf33d6733c496b2cf"
+      "sha256": "64b0d37f4a53198902c5fd022d7aba5a86af74cbf871db7ce3c6727244a64d56"
     },
     {
       "artifactId": "context_parity_vectors_v1",
       "path": "05_Development/Contracts/triage/context_parity_vectors_v1.json",
-      "sha256": "8d421dca3b1338770178daf0adebf6509110a0186ad352e79376be73caa5e0bf"
+      "sha256": "124dade8c70c8a337eb654629215cd864ab8b468877e77c8255d1c1852ffef3b"
     },
     {
       "artifactId": "dataset_requirements_v1",
@@ -27,52 +27,52 @@
     {
       "artifactId": "draft_safety_disposition_matrix_v1",
       "path": "05_Development/Contracts/triage/draft_safety_disposition_matrix_v1.json",
-      "sha256": "5696f94ba58c7cf7e2f904f85ba80088cd10ad2452782739d0b7a75b5cc34bc9"
+      "sha256": "b1e03e68e756390b382c066bb6d91137b01343669337dac7955d71b2066313a1"
     },
     {
       "artifactId": "intent_indicators_v1",
       "path": "05_Development/Contracts/triage/intent_indicators_v1.json",
-      "sha256": "f4cf607943d8eb39e6e83bdc9d6961367ce5f31f324c1b488852903d240cc085"
+      "sha256": "494fc0e7f5bc89836ad394c22432cd7556043e72fa64ff968249d7bf12dd1843"
     },
     {
       "artifactId": "internal_rule_review_manifest",
       "path": "05_Development/Contracts/triage/internal_rule_review_manifest.json",
-      "sha256": "a79b8390704abd02da5f81fc83e4069622d2f755fc4dfc0470985e687b85fd53"
+      "sha256": "37a1cf251aa65691b7e8372e9ef6a4820d351c4619fffa171100d7523e760f08"
     },
     {
       "artifactId": "matrix_snapshot_v0.1.0",
       "path": "05_Development/Contracts/triage/matrix_snapshot_v0.1.0.json",
-      "sha256": "b31c9e95b234bc66aa21fe7f1c8080dc959a60cd0cdce0b14e1dd853afafd217"
+      "sha256": "295b4dac3122e1a6571e6e4f13fca35ac989568922bd9815bef351de84febed4"
     },
     {
       "artifactId": "oos_complaint_taxonomy_v1",
       "path": "05_Development/Contracts/triage/oos_complaint_taxonomy_v1.json",
-      "sha256": "3f5715ca20f8c83990f879a2d9cd2d9bf9378d057a7161cffd791bb23090252b"
+      "sha256": "9d62d860830b13cf56985a2cb825f75fae41844e6043f3d0772c4315f8a2b3eb"
     },
     {
       "artifactId": "parity_result_fingerprint",
       "path": "05_Development/Contracts/triage/parity_result_fingerprint.json",
-      "sha256": "06b4ca4fbfd522c51e88c5d00b403ec190814e60c18d70354117bd11b1a4eb8b"
+      "sha256": "2f2f2ea3c17e3d85e1890bd69e61a6fee057467a31eeb1719a725e6e2e45aff3"
     },
     {
       "artifactId": "question_catalog_v1",
       "path": "05_Development/Contracts/triage/question_catalog_v1.json",
-      "sha256": "c7af8b6024ed05dcb1a57ddf5bd5e3698529734937f8f2e582f0bf9418ed6554"
+      "sha256": "4b00f8a30669f4a280892485036d1727ac7bbba7ef0c72cbea3e03f09343deef"
     },
     {
       "artifactId": "required_rule_manifest",
       "path": "05_Development/Contracts/triage/required_rule_manifest.json",
-      "sha256": "d6f401a1da968115292d64dc1a3db1d257743b9cf5ba28873d0a398ee0857c15"
+      "sha256": "536ef8237137b3f46c630213f7712c6e04174b46376842098e850d5d498c356a"
     },
     {
       "artifactId": "source_verification_manifest",
       "path": "05_Development/Contracts/triage/source_verification_manifest.json",
-      "sha256": "1a5a21c7f2d5db3d0570717e5e62badc10f02c47e9bb2a396328dff5c4adc7e3"
+      "sha256": "f829847b028d139ace63ccfccd4b681fba4ec3329cc6b32beb144e98c03f9a07"
     },
     {
       "artifactId": "target_entity_indicators_v1",
       "path": "05_Development/Contracts/triage/target_entity_indicators_v1.json",
-      "sha256": "2d2d57d549001f2fd68379516570347cb6d2eeddd9c84e574d06431c6a564cfc"
+      "sha256": "f629aa814bf105b2826d12097c77e88cb94fe177f594f0edde5af075280ca84f"
     },
     {
       "artifactId": "triage_response_v2.schema",
