@@ -99,7 +99,7 @@ cáo thì nên đánh dấu rõ là *planned*, tránh bị hỏi "chỗ này ch�
 | `backend` | Java **21** (`eclipse-temurin:21-jre-jammy`) | Spring Boot **4.1.0** | 8080 | build tại chỗ |
 | `ai-triage` | Python **3.12-slim** | FastAPI + uvicorn, `google-genai` | 8001 | build tại chỗ |
 | `exercise-correction` | Python **3.10.16-slim-bookworm** (ghim theo digest) | FastAPI 0.115.6, scikit-learn 1.1.2, numpy 1.23.3, pandas 1.4.3, scipy 1.9.1 | 8002 | build tại chỗ |
-| `nginx-edge` | — | `nginx-unprivileged:1.29.0-alpine` | 8080 | pull |
+| `nginx-edge` | — | `nginx-unprivileged:1.29-alpine` | 8080 | pull |
 | `cloudflared` | — | `cloudflare/cloudflared:2026.7.2` | — (outbound) | pull |
 | CompreFace ×5 | — | `exadel/compreface-*:1.2.0` | 80 nội bộ, 8000 admin (loopback) | pull |
 | Portal | Node 22 lúc build | React 19.2.6, TypeScript 6.0.2, Vite 8.0.12 | — | **GitLab Pages** |

@@ -428,6 +428,18 @@ scan_exercise_correction_image:
 # nginx-edge is the only process on the VM listening on a published port, and it
 # is a third-party image nobody here rebuilds — so nothing in this pipeline would
 # ever notice a CVE in it. Trivy pulls the tag directly; no Docker daemon needed.
+#
+# The tag is the minor line, not a patch pin. 1.29.0-alpine was pinned and then sat
+# still while the Alpine 3.22.1 inside it aged: by the time this job first ran it
+# carried three fixed CRITICALs (openssl CVE-2026-31789, pcre2 CVE-2025-58050).
+# A patch pin only helps if somebody bumps it, and nobody was. 1.29-alpine keeps the
+# nginx minor version fixed while still receiving the distro's security updates.
+#
+# --ignore-unfixed on the blocking line is what keeps this gate honest. Without it,
+# a CRITICAL upstream has not yet patched would block every deploy to the site
+# indefinitely, with nothing anyone here could do about it — and a gate you cannot
+# clear is a gate that gets deleted. Findings with a fix available still fail, which
+# is exactly the case above. The advisory line below still prints everything.
 scan_edge_nginx_image:
   stage: security
   image:
@@ -435,8 +447,8 @@ scan_edge_nginx_image:
     entrypoint: [""]
   rules: *all_rules
   script:
-    - trivy image --timeout 10m --ignorefile .trivyignore --severity HIGH,CRITICAL nginxinc/nginx-unprivileged:1.29.0-alpine
-    - trivy image --timeout 10m --ignorefile .trivyignore --severity CRITICAL --exit-code 1 nginxinc/nginx-unprivileged:1.29.0-alpine
+    - trivy image --timeout 10m --ignorefile .trivyignore --severity HIGH,CRITICAL nginxinc/nginx-unprivileged:1.29-alpine
+    - trivy image --timeout 10m --ignorefile .trivyignore --severity CRITICAL --ignore-unfixed --exit-code 1 nginxinc/nginx-unprivileged:1.29-alpine
 
 # CompreFace is only started for demos and its five images total roughly 7.9 GB,
 # so this stays manual rather than burning pipeline minutes on every push. Run it
