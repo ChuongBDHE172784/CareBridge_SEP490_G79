@@ -445,6 +445,7 @@ class FallDetectionSensorService {
             gyroscopeY: impact.gyroscopeY,
             gyroscopeZ: impact.gyroscopeZ,
             timestamp: impact.timestamp,
+            onDeviceFallConfirmed: true,
             signalId: '${impact.timestamp.microsecondsSinceEpoch}',
             latitude: position?.latitude,
             longitude: position?.longitude,
