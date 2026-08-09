@@ -172,11 +172,11 @@ export default function UserDetailPage() {
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex min-w-0 items-center gap-5">
             <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-primary-container text-on-primary-container font-bold text-2xl shadow-inner">
-              {user.name.charAt(0).toUpperCase()}
+              {(user.name || user.email || 'U').charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-3">
-                <h1 className="m-0 truncate text-2xl font-bold text-on-surface">{user.name}</h1>
+                <h1 className="m-0 truncate text-2xl font-bold text-on-surface">{user.name || user.email || 'Chưa cập nhật tên'}</h1>
                 <span className="inline-flex items-center gap-1 py-1 px-3 rounded-full bg-surface-container-low text-primary text-xs font-semibold">
                   {ROLE_LABELS[user.role]}
                 </span>
