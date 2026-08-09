@@ -206,5 +206,38 @@
 
 - Treat edited domain tabs as the authoritative ordered `(key, name, meta)` projection and verify the Complete tab against all of them before editing.
 - For a large draw.io XML file, line-preserving cell-span edits avoid unrelated entity/whitespace churn from DOM serialization; guard the final copy with source and preview hashes.
+- For use-case ellipses, `autosize=1` plus `spacing=8` lets Draw.io resize labels during editing; keep content-based initial geometry and verify containment/overlap after resizing.
 - In PowerShell array literals, parenthesize concatenations such as `($rowId + '_key')`; otherwise the comma operator can emit a stray suffix (`_key`) and hide the real lookup error.
 - Re-baseline the current ERD before every follow-up edit: this file gained three legitimate edges between turns, so relying on the previous `150` count would have deleted or misreported user work; the correct guarded transition was `153 -> 147`.
+
+## 2026-08-09 — Use-case diagram style synchronization
+
+- Treat an already-dirty Draw.io file as authoritative and preserve the existing reference pages before changing the remaining pages.
+- For large Draw.io XML, line-scoped patches avoid unrelated serialization churn; validate XML parsing, edge source/target references, `targetUc/ucId` metadata, and geometry containment after visual-style changes.
+- If an uncommitted Draw.io version disappears, inspect backups, stashes and unreachable Git objects first; if no exact copy exists, reconstruct from the session's verified use-case/edge definitions and report that limitation explicitly.
+
+## 2026-08-09 — Checklist task detail and support routing
+
+- New template fields that become distributed-task snapshots need both write-path propagation and a live-upgrade backfill; otherwise pre-existing rows lose content and idempotency comparisons can turn into false key conflicts.
+- Treat support destinations as client-owned enum-to-route mappings rather than API-provided URLs, so unknown values remain non-navigable and every supported destination is testable.
+- On this Windows setup, Flutter verification needs workspace-local `APPDATA`, `LOCALAPPDATA`, and `PUB_CACHE`; the SDK lockfile under `Program Files` may still require an elevated no-pub test/analyze run.
+
+## 2026-08-09 — Exercise history contract diagnosis
+
+- `PaginatedResponse<T>` serializes `data` as a top-level list and keeps page metadata beside it; a mobile parser that assumes `data.content` will fail at runtime even when the list is empty. Cover the actual JSON envelope in a cross-stack contract test.
+- Filter labels and request parameters are one contract: exercise-type values such as `YOGA` cannot be sent as `trimesterScope`, and a label such as “Tháng này” must send real `from`/`to` bounds.
+- Forward seed reconciliation needs gates for every JPA enum-backed column. The legacy exercise template retained `stage = 'PREGNANCY'` and `template_status = 'ACTIVE'`, values that `TrimesterScope` and `ExerciseStatus` cannot hydrate, so a history title lookup can turn otherwise valid completed-session data into HTTP 500.
+- Navigation-only widget tests do not cover a data flow. Exercise history needs both a mobile service/widget test for the canonical paginated envelope and a backend embedded-Postgres endpoint test that reads the seeded completed session.
+
+## 2026-08-09 — End-day artifact and index recovery
+
+- Draw.io Desktop's `--page-index` is 1-based. Treat the generator's canonical page order as the contract, then require validator counts, unique export hashes, and OCR role mapping before publishing; otherwise a duplicated first page can shift every later PNG while still producing valid images.
+- A tracked file under an ignored generated directory can appear modified even when its filtered and raw hashes match `HEAD`. Refresh it with `git add -u -- <tracked-path>` and confirm `git diff --cached --quiet` before deciding it is a real change; do not commit generated noise.
+- A strict end-day preflight should stop on the wrong branch or any dirty entry. Preserve verified work through explicit commits and ancestry-proven fast-forwards rather than hiding state with stash, reset, clean, or force operations.
+
+## 2026-08-09 - Account lock appeal ERD restoration
+
+- A 5 MB Draw.io XML can exceed both the patch helper's 64 KB transport limit and selective text editors' artifact-size limit. Use a temporary, hash-guarded transformation script with exact-once anchors, candidate XML validation, and an atomic replace that keeps a backup until the final hash matches.
+- Rectangle non-overlap is not enough after reflow: an existing auto-routed FK can cross a newly inserted table. Export and inspect the affected modules, then place the new entity in a clear routing corridor and separate relationship labels with explicit waypoints.
+- Exporting the full Complete ERD can hang Draw.io Desktop. Build a temporary preview by importing only the relevant table-ID prefixes and edges into a one-page document; constructing a new XML tree is much faster than repeatedly removing thousands of cells.
+- Derive summary counters from the final XML, not from the existing subtitle. Restoring one table and two FK edges changed the authoritative Complete projection from 62/147 to 63/149, while the old displayed 150-FK counter was already stale.
