@@ -1,0 +1,137 @@
+# CareBridge — Container B: CompreFace 1.2.0 face verification, server side.
+#
+# Separate Compose project on purpose: optional, ~2 GB RAM, ~3 GB of images, its
+# own PostgreSQL, and a lifecycle independent of the application stack.
+#
+# It is not public. Only compreface-fe joins carebridge-face-origin — the
+# internal network created by docker-compose.server.yml — so the backend reaches
+# it at http://compreface-fe while Cloudflare and nginx-edge cannot. The single
+# published port is bound to the VM loopback for first-run admin setup over SSH.
+#
+#   # start the application stack first: it creates carebridge-face-origin
+#   docker compose --env-file 05_Development/Deployment/.env.server \
+#     -f docker-compose.server.compreface.yml up -d
+#
+# See 05_Development/Deployment/DEPLOY-SERVER.md section 6.
+name: carebridge-compreface
+
+services:
+  compreface-postgres-db:
+    image: exadel/compreface-postgres-db:1.2.0
+    environment:
+      POSTGRES_USER: ${COMPREFACE_POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${COMPREFACE_POSTGRES_PASSWORD:?Set COMPREFACE_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${COMPREFACE_POSTGRES_DB:-frs}
+    volumes:
+      - compreface_postgres_data:/var/lib/postgresql/data
+    networks:
+      - compreface
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${COMPREFACE_POSTGRES_USER:-postgres} -d ${COMPREFACE_POSTGRES_DB:-frs}"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  compreface-core:
+    image: exadel/compreface-core:1.2.0
+    environment:
+      ML_PORT: 3000
+      IMG_LENGTH_LIMIT: ${COMPREFACE_MAX_DETECT_SIZE:-640}
+      UWSGI_PROCESSES: ${COMPREFACE_UWSGI_PROCESSES:-2}
+      UWSGI_THREADS: ${COMPREFACE_UWSGI_THREADS:-1}
+    networks:
+      - compreface
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://127.0.0.1:3000/healthcheck || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 90s
+    restart: unless-stopped
+
+  compreface-api:
+    image: exadel/compreface-api:1.2.0
+    depends_on:
+      compreface-postgres-db:
+        condition: service_healthy
+      compreface-core:
+        condition: service_healthy
+    environment:
+      POSTGRES_USER: ${COMPREFACE_POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${COMPREFACE_POSTGRES_PASSWORD:?Set COMPREFACE_POSTGRES_PASSWORD}
+      POSTGRES_URL: jdbc:postgresql://compreface-postgres-db:5432/${COMPREFACE_POSTGRES_DB:-frs}
+      SPRING_PROFILES_ACTIVE: dev
+      API_JAVA_OPTS: ${COMPREFACE_API_JAVA_OPTS:--Xmx1500m}
+      PYTHON_URL: http://compreface-core:3000
+      SAVE_IMAGES_TO_DB: "false"
+      MAX_FILE_SIZE: 5MB
+      MAX_REQUEST_SIZE: 10MB
+      CONNECTION_TIMEOUT: ${COMPREFACE_INTERNAL_CONNECT_TIMEOUT_MS:-10000}
+      READ_TIMEOUT: ${COMPREFACE_INTERNAL_READ_TIMEOUT_MS:-60000}
+    networks:
+      - compreface
+    restart: unless-stopped
+
+  compreface-admin:
+    image: exadel/compreface-admin:1.2.0
+    depends_on:
+      compreface-postgres-db:
+        condition: service_healthy
+      compreface-api:
+        condition: service_started
+    environment:
+      POSTGRES_USER: ${COMPREFACE_POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${COMPREFACE_POSTGRES_PASSWORD:?Set COMPREFACE_POSTGRES_PASSWORD}
+      POSTGRES_URL: jdbc:postgresql://compreface-postgres-db:5432/${COMPREFACE_POSTGRES_DB:-frs}
+      SPRING_PROFILES_ACTIVE: dev
+      ENABLE_EMAIL_SERVER: "false"
+      ADMIN_JAVA_OPTS: ${COMPREFACE_ADMIN_JAVA_OPTS:--Xmx1g}
+      MAX_FILE_SIZE: 5MB
+      MAX_REQUEST_SIZE: 10MB
+    networks:
+      - compreface
+    restart: unless-stopped
+
+  compreface-fe:
+    image: exadel/compreface-fe:1.2.0
+    depends_on:
+      compreface-api:
+        condition: service_started
+      compreface-admin:
+        condition: service_started
+    environment:
+      CLIENT_MAX_BODY_SIZE: 10M
+      PROXY_READ_TIMEOUT: ${COMPREFACE_INTERNAL_READ_TIMEOUT_MS:-60000}ms
+      PROXY_CONNECT_TIMEOUT: ${COMPREFACE_INTERNAL_CONNECT_TIMEOUT_MS:-10000}ms
+    # No `ports:` here, deliberately. Both networks below are internal, and
+    # Docker cannot publish a host port for a container that has no non-internal
+    # network: the binding is recorded but nothing ever listens, so
+    # `ssh -L 8000:127.0.0.1:8000` fails with nothing in any log to explain it.
+    # Giving this service a routable network to fix that would also hand
+    # CompreFace egress to the internet, which is exactly what the isolation
+    # here is for.
+    #
+    # The host can still reach the container directly, so tunnel to its address:
+    #   IP=$(docker inspect carebridge-compreface-compreface-fe-1 \
+    #        --format '{{(index .NetworkSettings.Networks "carebridge-face-origin").IPAddress}}')
+    #   ssh -L 8000:$IP:80 <user>@<vm>
+    # Then open http://localhost:8000 in a PRIVATE window — a local CompreFace
+    # on the same port leaves cookies behind that this instance rejects, and the
+    # UI answers with an endless /login redirect instead of an error.
+    networks:
+      - compreface
+      - face-origin
+    restart: unless-stopped
+
+networks:
+  # No route out: the models ship inside the images.
+  compreface:
+    internal: true
+  # Created by docker-compose.server.yml; that stack must be up first.
+  face-origin:
+    name: carebridge-face-origin
+    external: true
+
+volumes:
+  compreface_postgres_data:

@@ -12,6 +12,7 @@ import {
   STAGE_OPTIONS,
 } from '../models/content';
 import { archiveChecklistTemplate, fetchAdminChecklistTemplates } from '../services/contentApi';
+import { getChecklistTargetIcon } from '../utils/checklistTargetIcon';
 import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
 import { SortableTableHeader, type SortDirection } from '../components/SortableTableHeader';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
@@ -44,22 +45,6 @@ type ChecklistListRow = AdminChecklistTemplateDetail & Pick<Partial<AdminCheckli
 const recipientLabel = (role: 'MOTHER' | 'FAMILY') => (role === 'MOTHER' ? 'Mẹ' : 'Gia đình');
 const targetLabel = (target: 'MOTHER' | 'BABY') => (target === 'MOTHER' ? 'Mẹ' : 'Em bé');
 const warmBadge = 'inline-flex shrink-0 items-center rounded-full bg-surface-container-low px-3 py-1 text-xs font-semibold text-primary';
-
-function getChecklistTargetIcon(checklist: {
-  name?: string;
-  stage?: string | null;
-  items?: Array<{ targetSubject?: 'MOTHER' | 'BABY' }>;
-}): 'child_care' | 'pregnant_woman' {
-  const hasBabyItem = checklist.items?.some((i) => i.targetSubject === 'BABY');
-  const isBabyStage = checklist.stage === 'BABY_CARE';
-  const nameLower = (checklist.name || '').toLowerCase();
-  const isBabyName = nameLower.includes('bé') || nameLower.includes('trẻ') || nameLower.includes('sơ sinh');
-
-  if (hasBabyItem || isBabyStage || isBabyName) {
-    return 'child_care';
-  }
-  return 'pregnant_woman';
-}
 
 const STATUS_TABS: { key: string; label: string; status?: ChecklistTemplateStatus }[] = [
   { key: 'all', label: 'Tất cả' },

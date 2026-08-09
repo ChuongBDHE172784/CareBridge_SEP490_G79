@@ -29,6 +29,19 @@ docker compose \
 Use the individual service commands below only when intentionally debugging
 without the edge topology.
 
+## 0b. Localhost Docker stack
+
+To run Backend, Web and the AI Triage service in containers on plain
+`localhost` — no Cloudflare account, no tunnel, every port published:
+
+```bash
+docker compose -f docker-compose.dev.yml up -d --build
+```
+
+CompreFace is an optional separate stack in `docker-compose.compreface.yml`.
+Environment requirements, `.env` layout and troubleshooting are in
+`05_Development/Deployment/DOCKER-LOCAL.md`.
+
 ---
 
 ## 1. Backend (Spring Boot)

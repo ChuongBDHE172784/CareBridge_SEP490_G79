@@ -20,27 +20,126 @@ variables:
   MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
   EVALUATION_IMAGE: "$CI_REGISTRY_IMAGE/ai-evaluator:$CI_COMMIT_SHORT_SHA"
 
+# $CI_DEFAULT_BRANCH is "main" on both remotes, and main has not moved in weeks.
+# The branch the team actually pushes to every day is "dev", which matched none of
+# these anchors — so every push to dev ran zero validate, zero test and zero
+# security jobs, while the pages job below happily published it. The integration
+# branch was the least-inspected branch in the project. Naming dev explicitly (it
+# cannot be inferred from CI_DEFAULT_BRANCH) is what closes that hole.
+#
+# page-web is named for the same reason: it is the only branch pages publishes
+# from, so a push there goes straight to carebridgevn.site.
 .all_rules: &all_rules
   - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  - if: '$CI_COMMIT_BRANCH == "dev"'
+  - if: '$CI_COMMIT_BRANCH == "page-web"'
   - if: '$CI_COMMIT_TAG'
   - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     changes: ["05_Development/CareBridgeAPI/**/*", "05_Development/CareBridgeWebApp/**/*", ".gitlab-ci.yml", ".semgrep.yml", ".trivyignore", "05_Development/Deployment/**/*"]
+# The two Python sidecars ship to EC2 in the same stack as the backend, so they
+# need the same gate. exercise-correction is pinned to numpy 1.23.3 / scipy 1.9.1
+# / scikit-learn 1.1.2 because its models are pickles of those versions, which
+# means its dependency surface cannot simply be bumped when a CVE lands — all the
+# more reason to know about one.
+#
+# The dev entries below carry a changes: filter while the .all_rules one does not.
+# That split is deliberate. Security scans are cheap and a secret or an injection
+# can arrive in any file, so those run on every dev push. Compiling the backend and
+# running its test suite costs ~30 minutes of a 400-minute monthly allowance, and
+# dev takes ~10 pushes a day — running that when only a .drawio or an .md changed
+# would exhaust the budget in under a week and the team would end up switching the
+# gate off. A gate nobody can afford to keep on is not a gate.
+.sidecar_rules: &sidecar_rules
+  - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  - if: '$CI_COMMIT_BRANCH == "dev"'
+    changes: ["05_Development/CareBridgeAITriageService/**/*", "05_Development/MachineLearning/MediaPipe_Posture/exercise_correction_sidecar/**/*", ".gitlab-ci.yml", ".trivyignore"]
+  - if: '$CI_COMMIT_TAG'
+  - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    changes: ["05_Development/CareBridgeAITriageService/**/*", "05_Development/MachineLearning/MediaPipe_Posture/exercise_correction_sidecar/**/*", ".gitlab-ci.yml", ".trivyignore"]
 .backend_rules: &backend_rules
   - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  - if: '$CI_COMMIT_BRANCH == "dev"'
+    changes: ["05_Development/CareBridgeAPI/**/*", ".gitlab-ci.yml", ".semgrep.yml", ".trivyignore"]
   - if: '$CI_COMMIT_TAG'
   - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     changes: ["05_Development/CareBridgeAPI/**/*", ".gitlab-ci.yml", ".semgrep.yml", ".trivyignore"]
+# page-web has no changes: filter — it is the branch that reaches real users, and
+# pushes to it are deliberate and rare, so lint and build always run there.
 .web_rules: &web_rules
+  - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  - if: '$CI_COMMIT_BRANCH == "page-web"'
+  - if: '$CI_COMMIT_BRANCH == "dev"'
+    changes: ["05_Development/CareBridgeWebApp/**/*", ".gitlab-ci.yml", ".semgrep.yml", ".trivyignore"]
+  - if: '$CI_COMMIT_TAG'
+  - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    changes: ["05_Development/CareBridgeWebApp/**/*", ".gitlab-ci.yml", ".semgrep.yml", ".trivyignore"]
+# build_web_image and scan_web_image must fire on exactly the same pipelines and
+# nothing else, which is why they get their own anchor instead of .web_rules.
+# scan_web_image consumes the build's artifact through needs:, and GitLab refuses to
+# create a pipeline at all when a needs: target is absent — so widening only the
+# scan side would not merely skip a scan, it would make every push to that branch
+# fail before a single job started. The pair also cannot simply follow .web_rules
+# because building the web image requires VITE_API_URL, which is supplied per rule.
+# The image these two handle is the containerised SPA used by the compose stack;
+# carebridgevn.site is served by the pages job from static files, so leaving this
+# pair off dev and page-web costs nothing there — lint, build, semgrep, gitleaks and
+# the trivy filesystem scan already cover the web sources on both.
+.web_image_rules: &web_image_rules
   - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
   - if: '$CI_COMMIT_TAG'
   - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     changes: ["05_Development/CareBridgeWebApp/**/*", ".gitlab-ci.yml", ".semgrep.yml", ".trivyignore"]
+    variables: {VITE_API_URL: "https://api.example.invalid"}
 .evaluation_rules: &evaluation_rules
   - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  - if: '$CI_COMMIT_BRANCH == "dev"'
+    changes: ["06_Testing/CareBridgeAIEvaluation/**/*", "05_Development/CareBridgeAITriageService/**/*", ".gitlab-ci.yml"]
   - if: '$CI_COMMIT_TAG'
   - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     changes: ["06_Testing/CareBridgeAIEvaluation/**/*", "05_Development/CareBridgeAITriageService/**/*", ".gitlab-ci.yml"]
 
+# Runs on every branch, including personal ones, because it validates this file and
+# this file is what decides whether anything else runs at all. It takes seconds.
+# A wrong rules: anchor does not fail loudly — GitLab either skips the job or refuses
+# to create the pipeline, and both look like a push that did nothing.
+check_ci_rules:
+  stage: validate
+  image: python:3.12-slim
+  rules:
+    - if: '$CI_COMMIT_BRANCH'
+    - if: '$CI_COMMIT_TAG'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  script:
+    - python -m pip install --disable-pip-version-check --quiet pyyaml
+    - python 05_Development/DevTools/check_ci_rules.py
+# The registry under 05_Development/Contracts/triage is copied into the Java and
+# Python runtimes with a .sha256 sidecar beside each copy. A copy edited by hand, or
+# synced from a working tree holding CRLF while git ships LF, produces digests that
+# disagree with what the build actually contains — which already happened here and
+# was invisible in git status, because the text attribute normalises before diffing.
+check_triage_registry:
+  stage: validate
+  image: python:3.12-slim
+  # Not *sidecar_rules: that anchor watches the service directories, and the
+  # canonical files live in Contracts/triage while the copies land in the Java
+  # resource trees. A drift is introduced by editing any of the three.
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_BRANCH == "dev"'
+      changes: &registry_paths
+        - "05_Development/Contracts/triage/**/*"
+        - "05_Development/CareBridgeAPI/src/main/resources/triage/**/*"
+        - "05_Development/CareBridgeAPI/src/test/resources/triage/**/*"
+        - "05_Development/CareBridgeAITriageService/data/**/*"
+        - "05_Development/CareBridgeAITriageService/tests/data/**/*"
+        - "05_Development/DevTools/sync_triage_rule_registry.py"
+    - if: '$CI_COMMIT_BRANCH == "page-web"'
+      changes: *registry_paths
+    - if: '$CI_COMMIT_TAG'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes: *registry_paths
+  script:
+    - python 05_Development/DevTools/sync_triage_rule_registry.py --check
 validate_backend:
   stage: validate
   image: eclipse-temurin:21-jdk
@@ -224,6 +323,29 @@ ai_evaluation_gitleaks:
   script:
     - gitleaks detect --source 06_Testing/CareBridgeAIEvaluation --no-git --redact --exit-code 1
 
+# The job above reads one directory. The credentials this project actually leaked
+# were in 05_Development/Deployment, which it never opened, so this one covers the
+# whole tree using the reviewed allowlist in .gitleaks.toml.
+#
+# --no-git is deliberate: it scans the working tree, not history. The leaked values
+# are still reachable in past commits, and rewriting shared history is a separate
+# decision nobody has taken yet, so a history scan would fail every pipeline forever
+# and teach the team to click past a red security stage. This gate answers the
+# narrower question it can actually enforce — is there a secret in the code we are
+# about to ship — and rotation remains the fix for what is already out.
+gitleaks_repo:
+  stage: security
+  image:
+    name: zricethezav/gitleaks:v8.24.2
+    entrypoint: [""]
+  dependencies: []
+  rules: *all_rules
+  script:
+    - gitleaks detect --source . --config .gitleaks.toml --no-git --redact --exit-code 1 --report-format json --report-path gitleaks-report.json
+  artifacts:
+    when: always
+    paths: [gitleaks-report.json]
+
 .docker_build:
   stage: build
   image: docker:27.5.1-cli
@@ -236,12 +358,7 @@ build_backend_image:
   variables: {IMAGE: "$BACKEND_IMAGE", CONTEXT: 05_Development/CareBridgeAPI, ARCHIVE: backend-image.tar}
 build_web_image:
   extends: .docker_build
-  rules:
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
-    - if: '$CI_COMMIT_TAG'
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
-      changes: ["05_Development/CareBridgeWebApp/**/*", ".gitlab-ci.yml", ".semgrep.yml", ".trivyignore"]
-      variables: {VITE_API_URL: "https://api.example.invalid"}
+  rules: *web_image_rules
   variables: {IMAGE: "$WEB_IMAGE", CONTEXT: 05_Development/CareBridgeWebApp, ARCHIVE: web-image.tar}
   before_script: ["test -n \"$VITE_API_URL\" || { echo 'VITE_API_URL is required to prevent a localhost API bundle'; exit 1; }"]
 build_ai_evaluation_image:
@@ -274,9 +391,74 @@ scan_backend_image:
   variables: {ARCHIVE: backend-image.tar}
 scan_web_image:
   extends: .image_scan
-  rules: *web_rules
+  rules: *web_image_rules
   needs: [{job: build_web_image, artifacts: true}]
   variables: {ARCHIVE: web-image.tar}
+
+# The AWS stack runs four images and only the backend was covered here. These two
+# sidecars answer requests carrying maternal symptom text and posture video
+# frames, so a vulnerable base layer in either is as reachable as one in the
+# backend.
+build_ai_triage_image:
+  extends: .docker_build
+  rules: *sidecar_rules
+  variables:
+    IMAGE: "$CI_REGISTRY_IMAGE/ai-triage:$CI_COMMIT_SHORT_SHA"
+    CONTEXT: 05_Development/CareBridgeAITriageService
+    ARCHIVE: ai-triage-image.tar
+scan_ai_triage_image:
+  extends: .image_scan
+  rules: *sidecar_rules
+  needs: [{job: build_ai_triage_image, artifacts: true}]
+  variables: {ARCHIVE: ai-triage-image.tar}
+
+build_exercise_correction_image:
+  extends: .docker_build
+  rules: *sidecar_rules
+  variables:
+    IMAGE: "$CI_REGISTRY_IMAGE/exercise-correction:$CI_COMMIT_SHORT_SHA"
+    CONTEXT: 05_Development/MachineLearning/MediaPipe_Posture/exercise_correction_sidecar
+    ARCHIVE: exercise-correction-image.tar
+scan_exercise_correction_image:
+  extends: .image_scan
+  rules: *sidecar_rules
+  needs: [{job: build_exercise_correction_image, artifacts: true}]
+  variables: {ARCHIVE: exercise-correction-image.tar}
+
+# nginx-edge is the only process on the VM listening on a published port, and it
+# is a third-party image nobody here rebuilds — so nothing in this pipeline would
+# ever notice a CVE in it. Trivy pulls the tag directly; no Docker daemon needed.
+scan_edge_nginx_image:
+  stage: security
+  image:
+    name: aquasec/trivy:0.59.1
+    entrypoint: [""]
+  rules: *all_rules
+  script:
+    - trivy image --timeout 10m --ignorefile .trivyignore --severity HIGH,CRITICAL nginxinc/nginx-unprivileged:1.29.0-alpine
+    - trivy image --timeout 10m --ignorefile .trivyignore --severity CRITICAL --exit-code 1 nginxinc/nginx-unprivileged:1.29.0-alpine
+
+# CompreFace is only started for demos and its five images total roughly 7.9 GB,
+# so this stays manual rather than burning pipeline minutes on every push. Run it
+# before a session where face verification will be shown: the tags are pinned to
+# 1.2.0 and receive no upstream patches.
+scan_compreface_images:
+  stage: security
+  image:
+    name: aquasec/trivy:0.59.1
+    entrypoint: [""]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual
+      allow_failure: true
+    - when: never
+  script:
+    - |
+      for img in exadel/compreface-fe:1.2.0 exadel/compreface-admin:1.2.0 \
+                 exadel/compreface-api:1.2.0 exadel/compreface-postgres-db:1.2.0; do
+        echo "=== $img"
+        trivy image --timeout 15m --ignorefile .trivyignore --severity HIGH,CRITICAL "$img" || true
+      done
 
 .publish:
   stage: publish
@@ -319,15 +501,25 @@ deploy_staging:
 pages:
   stage: deploy
   image: node:22-alpine
+  # GitLab Pages keeps exactly one published site per project, so every branch
+  # listed here could overwrite carebridgevn.site — whoever pushed last won, and
+  # five of the seven were personal work-in-progress branches. Publishing is now
+  # a deliberate act: merge into page-web when the site should change. Pushing to
+  # dev still runs the full gate above, it just no longer reaches users directly.
   rules:
-    - if: '$CI_COMMIT_BRANCH == "HuyND"'
-    - if: '$CI_COMMIT_BRANCH == "ChuongBD"'
-    - if: '$CI_COMMIT_BRANCH == "PhuongNT"'
-    - if: '$CI_COMMIT_BRANCH == "LamVH1"'
-    - if: '$CI_COMMIT_BRANCH == "BachNQ1"'
-    - if: '$CI_COMMIT_BRANCH == "dev"'
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_BRANCH == "page-web"'
+  variables:
+    # The portal is served by GitLab Pages, so the browser calls the API on a
+    # separate origin. Vite inlines this at build time and the runner has no
+    # .env (it is gitignored), so without it apiClient.ts falls back to
+    # http://localhost:8080 and every request from the deployed site fails.
+    VITE_API_URL: "https://api.carebridgevn.site"
   script:
+    - test -n "$VITE_API_URL" || { echo 'VITE_API_URL is required to prevent a localhost API bundle'; exit 1; }
+    # Public Firebase client config, not secrets, but project-specific: set them in
+    # Settings -> CI/CD -> Variables. Missing values only break chat/calls/push, so
+    # this warns instead of failing the whole Pages deploy.
+    - test -n "$VITE_FIREBASE_API_KEY" || echo 'WARNING - VITE_FIREBASE_* unset, so direct consult chat, calls and push will fail at runtime'
     - cd 05_Development/CareBridgeWebApp
     - npm ci
     - npm run build

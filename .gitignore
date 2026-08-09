@@ -23,6 +23,9 @@ database-debug.log
 *.local
 *.secret
 carebridge-*.json
+# Rendered by 05_Development/Deployment/render-standalone-compose.py with the real
+# values from .env.server inlined — DB password, JWT private key, service-account keys.
+*.standalone.yml
 
 # Logs and temporary files
 *.log
@@ -164,3 +167,4 @@ CLAUDE.md
 # External cloned repositories
 Exercise-Correction/
 .env.emulator
+
