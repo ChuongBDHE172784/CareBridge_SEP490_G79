@@ -86,17 +86,23 @@ def fires(rules, branch: str) -> bool:
             return True
         if rule.get("when") == "never":
             continue
-        condition = rule.get("if", "").replace("$CI_DEFAULT_BRANCH", '"%s"' % DEFAULT_BRANCH)
+        condition = rule.get("if", "").replace("$CI_DEFAULT_BRANCH", '"%s"' % DEFAULT_BRANCH).strip()
+        # A bare '$CI_COMMIT_BRANCH' is a truthiness test: it matches any branch push.
+        if condition in ("", "$CI_COMMIT_BRANCH"):
+            return True
         if "CI_COMMIT_BRANCH ==" in condition:
             wanted = condition.split("==")[1].strip().strip("\"' ")
             if wanted == branch:
                 return True
             continue
+        if "CI_COMMIT_BRANCH !=" in condition:
+            excluded = condition.split("!=")[1].strip().strip("\"' ")
+            if excluded != branch:
+                return True
+            continue
         # Tag, merge-request and protected-ref rules say nothing about a branch push.
         if any(token in condition for token in ("CI_COMMIT_TAG", "merge_request_event", "REF_PROTECTED")):
             continue
-        if condition == "":
-            return True
     return False
 
 
