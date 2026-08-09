@@ -5,3 +5,61 @@ rules:
     severity: ERROR
     languages: [generic]
     patterns: [{pattern-regex: '-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----'}]
+
+  # CompreFaceDetectionAdapter printed its injected API key on every startup, so
+  # the key sat in the container log of a public server until it was found by
+  # reading the code. println is also how the mock SMS service leaks password
+  # reset tokens today.
+  - id: carebridge-no-secret-in-console-output
+    message: >-
+      Secret material printed to stdout/stderr ends up in container logs. Use a
+      logger and log the outcome, not the credential.
+    severity: ERROR
+    languages: [java]
+    patterns:
+      - pattern-either:
+          - pattern: System.out.println(<... $SECRET ...>)
+          - pattern: System.err.println(<... $SECRET ...>)
+      - metavariable-regex:
+          metavariable: $SECRET
+          regex: '(?i).*(apikey|api_key|secret|password|token|credential|privatekey).*'
+
+  # application.yaml carried enabled: true plus two live CompreFace API keys as
+  # literals. Nothing failed, so it shipped: the keys reached the repository and
+  # the feature defaulted to on against localhost:8000, which inside a container
+  # is the backend itself.
+  - id: carebridge-no-literal-credential-in-spring-config
+    message: >-
+      Credential written as a literal in Spring configuration. Use
+      ${ENV_VAR:} so the value comes from the environment and the default is blank.
+    severity: ERROR
+    languages: [generic]
+    paths:
+      include: ['*/src/main/resources/application*.y*ml']
+    patterns:
+      - pattern-regex: '(?i)^\s*[a-z0-9-]*(api-key|api_key|secret|password|token)\s*:\s*(?!\$\{)(?!\s*$)(?!["'']?\s*$)\S+'
+
+  # A release build that permits cleartext can put maternal health data on the
+  # wire in plain text. Debug builds need it for http://10.0.2.2:8080, so the
+  # override belongs in src/debug, never in the main manifest.
+  - id: carebridge-no-cleartext-in-release-manifest
+    message: >-
+      usesCleartextTraffic in the main manifest applies to release builds. Move
+      it to android/app/src/debug/AndroidManifest.xml.
+    severity: ERROR
+    languages: [generic]
+    paths:
+      include: ['*/src/main/AndroidManifest.xml']
+    patterns:
+      - pattern-regex: 'android:usesCleartextTraffic\s*=\s*"true"'
+
+  - id: carebridge-no-blanket-ats-exception
+    message: >-
+      NSAllowsArbitraryLoads disables App Transport Security for every host,
+      production included. Use NSAllowsLocalNetworking for local development.
+    severity: ERROR
+    languages: [generic]
+    paths:
+      include: ['*Info.plist']
+    patterns:
+      - pattern-regex: '<key>NSAllowsArbitraryLoads</key>\s*<true\s*/>'
