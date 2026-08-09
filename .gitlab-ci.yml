@@ -319,14 +319,16 @@ deploy_staging:
 pages:
   stage: deploy
   image: node:22-alpine
+  # A project has exactly one GitLab Pages site, so every branch listed here could
+  # overwrite carebridgevn.site and the last pipeline to finish decided what the
+  # public portal served. Five of the seven were personal work-in-progress branches.
+  # Publishing is a deliberate act now: merge into page-web when the site should
+  # change. Pushing to dev no longer touches what users see.
+  #
+  # GitLab reads this file from the branch being pushed, so the personal branches
+  # keep their own seven-entry copy and can still publish until each one merges dev.
   rules:
-    - if: '$CI_COMMIT_BRANCH == "HuyND"'
-    - if: '$CI_COMMIT_BRANCH == "ChuongBD"'
-    - if: '$CI_COMMIT_BRANCH == "PhuongNT"'
-    - if: '$CI_COMMIT_BRANCH == "LamVH1"'
-    - if: '$CI_COMMIT_BRANCH == "BachNQ1"'
-    - if: '$CI_COMMIT_BRANCH == "dev"'
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_BRANCH == "page-web"'
   script:
     - cd 05_Development/CareBridgeWebApp
     - npm ci
