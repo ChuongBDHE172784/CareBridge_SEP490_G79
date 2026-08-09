@@ -71,12 +71,22 @@ public class MetricObservationValidator {
             }
         } else if (definition.getObservationShape() == ObservationShape.SESSION) {
             validateFetalMovement(request, primary);
+        } else if ("STRESS".equals(metricCode)) {
+            requirePositiveOrZero(primary, "Stress value is required");
         } else {
             requirePositive(primary, "Metric value must be positive");
         }
 
         if ("BLOOD_GLUCOSE".equals(metricCode)) {
             requireGlucoseContext(context);
+        }
+        if ("MATERNAL_HEART_RATE".equals(metricCode)) {
+            requireRange(primary, new BigDecimal("30"), new BigDecimal("250"),
+                    "Heart rate must be between 30 and 250 bpm");
+        }
+        if ("STRESS".equals(metricCode)) {
+            requireRange(primary, BigDecimal.ZERO, new BigDecimal("100"),
+                    "Stress value must be between 0 and 100");
         }
 
         Instant periodStart = request.getPeriodStart();
@@ -139,6 +149,8 @@ public class MetricObservationValidator {
             case FETAL_MOVEMENT_SESSION, FETAL_MOVEMENT_COUNT -> "FETAL_MOVEMENT_SESSION";
             case HYDRATION -> "HYDRATION";
             case EPDS_SCORE -> "EPDS_SCORE";
+            case MATERNAL_HEART_RATE -> "MATERNAL_HEART_RATE";
+            case STRESS -> "STRESS";
             default -> null;
         };
     }

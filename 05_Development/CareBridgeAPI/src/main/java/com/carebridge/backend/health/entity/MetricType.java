@@ -15,6 +15,8 @@ public enum MetricType {
     FETAL_MOVEMENT_COUNT,
     SLEEP_DURATION,
     STEPS_COUNT,
+    MATERNAL_HEART_RATE,
+    STRESS,
     SPO2,
     TEMPERATURE,
     OTHER

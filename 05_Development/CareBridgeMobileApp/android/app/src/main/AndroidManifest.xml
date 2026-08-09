@@ -32,6 +32,14 @@
             android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
             android:foregroundServiceType="health"
             android:exported="false" />
+        <receiver
+            android:name=".WatchMetricBroadcastReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.carebridge.health.HEART_RATE" />
+                <action android:name="com.carebridge.health.STRESS" />
+            </intent-filter>
+        </receiver>
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -66,6 +74,7 @@
 
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
+        <package android:name="nodomain.freeyourgadget.gadgetbridge" />
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE"/>
         </intent>
