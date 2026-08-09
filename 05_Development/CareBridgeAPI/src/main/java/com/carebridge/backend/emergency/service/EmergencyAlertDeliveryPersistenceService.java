@@ -27,16 +27,10 @@ public class EmergencyAlertDeliveryPersistenceService {
             AlertRecipientEndpoint recipient,
             UUID sharedNotificationId,
             EmergencyAlertClaim claim) {
-        var existing = deliveryRepository.findSuccessful(event.sessionId(), recipient.deviceTokenId());
-        if (existing.isPresent()) {
-            var delivery = existing.get();
-            return new PreparedAlertDelivery(delivery.actionId(), delivery.notificationRecordId(),
-                    true, delivery.attempts());
-        }
-
         NotificationRecord notification = sharedNotificationId == null
-                ? notificationRepository.findByUserIdAndReferenceIdAndTypeAndReferenceType(
-                        recipient.userId(), event.sessionId(), NotificationType.EMERGENCY, "EMERGENCY_SESSION")
+                ? notificationRepository.findByUserIdAndReferenceIdAndTypeAndReferenceTypeAndCareGroupId(
+                        recipient.userId(), event.sessionId(), NotificationType.EMERGENCY,
+                        "EMERGENCY_SESSION", recipient.careGroupId())
                     .orElseGet(() -> notificationRepository.saveAndFlush(NotificationRecord.builder()
                             .userId(recipient.userId())
                             .type(NotificationType.EMERGENCY)
@@ -44,12 +38,26 @@ public class EmergencyAlertDeliveryPersistenceService {
                             .body("Vui lòng kiểm tra tình trạng người thân ngay.")
                             .referenceId(event.sessionId())
                             .referenceType("EMERGENCY_SESSION")
+                            .careGroupId(recipient.careGroupId())
                             .status(NotificationRecordStatus.PENDING)
                             .attemptCount(0)
                             .createdAt(Instant.now())
                             .metadata(Map.of("triggerSource", event.triggerSource()))
                             .build()))
                 : notificationRepository.findById(sharedNotificationId).orElseThrow();
+
+        var existing = deliveryRepository.findSuccessful(event.sessionId(), recipient.deviceTokenId());
+        if (existing.isPresent()) {
+            var delivery = existing.get();
+            if (notification.getStatus() != NotificationRecordStatus.SENT) {
+                notification.setStatus(NotificationRecordStatus.SENT);
+                notification.setSentAt(Instant.now());
+                notification.setFailedAt(null);
+                notificationRepository.save(notification);
+            }
+            return new PreparedAlertDelivery(delivery.actionId(), notification.getId(),
+                    true, delivery.attempts());
+        }
 
         var delivery = deliveryRepository.insertIntent(
                 claim, recipient.userId(), recipient.deviceTokenId(), notification.getId());

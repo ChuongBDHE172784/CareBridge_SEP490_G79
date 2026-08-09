@@ -323,7 +323,8 @@ class FamilyAlertServiceTest {
         return java.util.stream.IntStream.range(0, tokens.length)
                 .mapToObj(index -> new AlertRecipientEndpoint(
                         UUID.nameUUIDFromBytes(("recipient-" + index).getBytes()),
-                        UUID.nameUUIDFromBytes(("device-" + index).getBytes()), tokens[index]))
+                        UUID.nameUUIDFromBytes(("device-" + index).getBytes()),
+                        UUID.nameUUIDFromBytes(("group-" + index).getBytes()), tokens[index]))
                 .toList();
     }
 }

@@ -61,7 +61,7 @@ public class FamilyAlertService implements IFamilyAlertService {
         boolean locationIncluded = locationConsentPort.hasLocationConsent(event.userId())
                 && event.latitude() != null && event.longitude() != null;
         Map<String, String> payload = payload(event, locationIncluded);
-        Map<UUID, UUID> notificationByRecipient = new HashMap<>();
+        Map<RecipientScope, UUID> notificationByRecipient = new HashMap<>();
         Map<UUID, Boolean> recipientSucceeded = new HashMap<>();
 
         for (AlertRecipientEndpoint recipient : recipients) {
@@ -70,9 +70,11 @@ public class FamilyAlertService implements IFamilyAlertService {
                         event.sessionId());
                 return;
             }
+            RecipientScope recipientScope = new RecipientScope(
+                    recipient.userId(), recipient.careGroupId());
             PreparedAlertDelivery prepared = deliveryPersistenceService.prepare(
-                    event, recipient, notificationByRecipient.get(recipient.userId()), claim);
-            notificationByRecipient.putIfAbsent(recipient.userId(), prepared.notificationRecordId());
+                    event, recipient, notificationByRecipient.get(recipientScope), claim);
+            notificationByRecipient.putIfAbsent(recipientScope, prepared.notificationRecordId());
             if (prepared.alreadySuccessful()) {
                 recipientSucceeded.merge(recipient.userId(), true, Boolean::logicalOr);
                 continue;
@@ -154,5 +156,8 @@ public class FamilyAlertService implements IFamilyAlertService {
                 Map.of("recipientUserId", recipient.userId().toString(),
                         "emergencySessionId", event.sessionId().toString(),
                         "status", "PENDING"));
+    }
+
+    private record RecipientScope(UUID userId, UUID careGroupId) {
     }
 }
