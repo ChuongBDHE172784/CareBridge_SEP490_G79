@@ -20,11 +20,25 @@ variables:
   MAVEN_OPTS: "-Dmaven.repo.local=$CI_PROJECT_DIR/.m2/repository"
   EVALUATION_IMAGE: "$CI_REGISTRY_IMAGE/ai-evaluator:$CI_COMMIT_SHORT_SHA"
 
+# page-web is the only branch the pages job publishes from, so a push there goes
+# straight to carebridgevn.site. Without it here the branch that actually reaches
+# users is the one branch the security stage never inspects.
 .all_rules: &all_rules
   - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  - if: '$CI_COMMIT_BRANCH == "page-web"'
   - if: '$CI_COMMIT_TAG'
   - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
     changes: ["05_Development/CareBridgeAPI/**/*", "05_Development/CareBridgeWebApp/**/*", ".gitlab-ci.yml", ".semgrep.yml", ".trivyignore", "05_Development/Deployment/**/*"]
+# The two Python sidecars ship to EC2 in the same stack as the backend, so they
+# need the same gate. exercise-correction is pinned to numpy 1.23.3 / scipy 1.9.1
+# / scikit-learn 1.1.2 because its models are pickles of those versions, which
+# means its dependency surface cannot simply be bumped when a CVE lands — all the
+# more reason to know about one.
+.sidecar_rules: &sidecar_rules
+  - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+  - if: '$CI_COMMIT_TAG'
+  - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    changes: ["05_Development/CareBridgeAITriageService/**/*", "05_Development/MachineLearning/MediaPipe_Posture/exercise_correction_sidecar/**/*", ".gitlab-ci.yml", ".trivyignore"]
 .backend_rules: &backend_rules
   - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
   - if: '$CI_COMMIT_TAG'
@@ -277,6 +291,71 @@ scan_web_image:
   rules: *web_rules
   needs: [{job: build_web_image, artifacts: true}]
   variables: {ARCHIVE: web-image.tar}
+
+# The AWS stack runs four images and only the backend was covered here. These two
+# sidecars answer requests carrying maternal symptom text and posture video
+# frames, so a vulnerable base layer in either is as reachable as one in the
+# backend.
+build_ai_triage_image:
+  extends: .docker_build
+  rules: *sidecar_rules
+  variables:
+    IMAGE: "$CI_REGISTRY_IMAGE/ai-triage:$CI_COMMIT_SHORT_SHA"
+    CONTEXT: 05_Development/CareBridgeAITriageService
+    ARCHIVE: ai-triage-image.tar
+scan_ai_triage_image:
+  extends: .image_scan
+  rules: *sidecar_rules
+  needs: [{job: build_ai_triage_image, artifacts: true}]
+  variables: {ARCHIVE: ai-triage-image.tar}
+
+build_exercise_correction_image:
+  extends: .docker_build
+  rules: *sidecar_rules
+  variables:
+    IMAGE: "$CI_REGISTRY_IMAGE/exercise-correction:$CI_COMMIT_SHORT_SHA"
+    CONTEXT: 05_Development/MachineLearning/MediaPipe_Posture/exercise_correction_sidecar
+    ARCHIVE: exercise-correction-image.tar
+scan_exercise_correction_image:
+  extends: .image_scan
+  rules: *sidecar_rules
+  needs: [{job: build_exercise_correction_image, artifacts: true}]
+  variables: {ARCHIVE: exercise-correction-image.tar}
+
+# nginx-edge is the only process on the VM listening on a published port, and it
+# is a third-party image nobody here rebuilds — so nothing in this pipeline would
+# ever notice a CVE in it. Trivy pulls the tag directly; no Docker daemon needed.
+scan_edge_nginx_image:
+  stage: security
+  image:
+    name: aquasec/trivy:0.59.1
+    entrypoint: [""]
+  rules: *all_rules
+  script:
+    - trivy image --timeout 10m --ignorefile .trivyignore --severity HIGH,CRITICAL nginxinc/nginx-unprivileged:1.29.0-alpine
+    - trivy image --timeout 10m --ignorefile .trivyignore --severity CRITICAL --exit-code 1 nginxinc/nginx-unprivileged:1.29.0-alpine
+
+# CompreFace is only started for demos and its five images total roughly 7.9 GB,
+# so this stays manual rather than burning pipeline minutes on every push. Run it
+# before a session where face verification will be shown: the tags are pinned to
+# 1.2.0 and receive no upstream patches.
+scan_compreface_images:
+  stage: security
+  image:
+    name: aquasec/trivy:0.59.1
+    entrypoint: [""]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+      when: manual
+      allow_failure: true
+    - when: never
+  script:
+    - |
+      for img in exadel/compreface-fe:1.2.0 exadel/compreface-admin:1.2.0 \
+                 exadel/compreface-api:1.2.0 exadel/compreface-postgres-db:1.2.0; do
+        echo "=== $img"
+        trivy image --timeout 15m --ignorefile .trivyignore --severity HIGH,CRITICAL "$img" || true
+      done
 
 .publish:
   stage: publish
