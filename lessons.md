@@ -168,3 +168,43 @@
   POSTURE_FEEDBACK rows, `115/75 mmHg`), even though the entity field is named `note`. Check
   what a column actually holds before mapping something onto it on the strength of its Java
   field name.
+
+## 2026-08-08 — Live Supabase metadata audit
+
+- Never run `PrintSupabaseTablesTest` for a read-only audit: it drops and recreates `public`. Query `information_schema` through Supabase's read-only endpoint, or use JDBC with both `Connection#setReadOnly(true)` and `SET default_transaction_read_only = on`.
+- Count current catalog columns by fully qualified `schema.table`, and report application tables in `public` separately from Supabase-managed schemas such as `auth`, `storage`, `realtime`, and `vault`.
+- JShell can fail in the Windows sandbox because Registry-backed preferences are unavailable. Java source-file mode from `D:\tmp` is a reliable one-off JDBC fallback that keeps credential values inside the existing local `.env`.
+
+## 2026-08-08 — Column-level Supabase cleanup audit
+
+- An all-null or constant column is only a candidate, not deletion evidence. Subtype entities, native writers, indexes, constraints, RLS, external consumers, and legal/clinical meaning can keep a currently empty column essential.
+- Wide polymorphic tables should usually be split by lifecycle and retention boundary instead of having isolated columns dropped. PostgreSQL's null bitmap makes empty nullable columns cheap; operational complexity and oversized indexes are the larger costs.
+- Profile data growth before schema cleanup. `safety_events` contained 9,054 alert-attempt rows for 4,527 logical attempts across only three sessions because `NO_RECIPIENTS` was retried every minute without a cap; deleting rows before fixing that writer would only hide the root cause.
+- A contract-drop shortlist must survive separate verification. Security counters, consent/audit fields, temporal interval fields, and compatibility identifiers stay in review until canonical ownership and external-reference gates are explicit.
+
+## 2026-08-08 — `public.users` feature-to-column audit
+
+- An unused physical column can coexist with an active same-named feature stored in JSON. Trace exact ORM annotations, native SQL, and compiled classes before deciding whether to drop the column, migrate the feature into it, or remove the feature.
+- Five JPA entities mapped onto one wide row create ownership hazards beyond null-column count: lifecycle callbacks can overwrite another aggregate's fields, defaults become meaningless for unrelated roles, and one shared `updated_at` loses domain-specific meaning.
+- Similar-looking profile fields must be judged by exposure boundary, not name alone. Private/public avatar and area/region pairs can be intentional, while `phone`/`phone_number` is a real dual-source problem unless product semantics explicitly distinguish them.
+- For security state currently mirrored in `settings_jsonb`, prefer a typed canonical column plus a gated cutover of every reader and writer; do not infer redundancy from all-null physical data while the application still stores the live value elsewhere.
+
+## 2026-08-08 - Duplicate user phone column cleanup
+
+- When removing `public.users.phone_number`, keep `users.phone` as the canonical storage and remap `UserProfile` before applying the contract migration; otherwise Hibernate validation or profile writes will still target the dropped column.
+- Native integration fixtures must be migrated with the schema. The embedded PostgreSQL suite applied the full Flyway chain and passed without Docker, while container-based profile tests remained unavailable when Docker was not installed.
+
+## 2026-08-08 — Semantic duplicate-column audit
+
+- Same-name heuristics must be classified by boundary: private/public fields, surrogate ID/business code, identifier/human snapshot, generated JSON projection, provenance snapshot, and polymorphic subtype fields are not interchangeable even when names look similar.
+- Live equality does not establish canonical ownership. `users.must_change_password` matched its JSON key on every populated row, but the JPA property is `@Transient` and the application writes the JSON representation; source ownership has to be checked before choosing the cutover direction.
+- Default-shaped values can create vacuous equality in wide tables. `safety_events.alert_*_recipient_count` matched generic recipient counts on thousands of action rows largely because the alert columns are NOT NULL with zero defaults, not because both field families represent one writable source.
+- A deterministic mirror is lower risk than two independent writers but still has a contract. Exercise configuration JSON is regenerated from typed fields and hashed, so removing duplicate keys requires versioning the hash/projection rather than simply dropping JSON data.
+- Identity aliases and their indexes are separate cleanup decisions: all live `users.user_id/person_id` pairs matched, but active entity callbacks still require the alias; one duplicate UNIQUE constraint can be removed safely before the broader identity-adapter cutover.
+
+## 2026-08-08 — Presentation ERD synchronization
+
+- Treat edited domain tabs as the authoritative ordered `(key, name, meta)` projection and verify the Complete tab against all of them before editing.
+- For a large draw.io XML file, line-preserving cell-span edits avoid unrelated entity/whitespace churn from DOM serialization; guard the final copy with source and preview hashes.
+- In PowerShell array literals, parenthesize concatenations such as `($rowId + '_key')`; otherwise the comma operator can emit a stray suffix (`_key`) and hide the real lookup error.
+- Re-baseline the current ERD before every follow-up edit: this file gained three legitimate edges between turns, so relying on the previous `150` count would have deleted or misreported user work; the correct guarded transition was `153 -> 147`.

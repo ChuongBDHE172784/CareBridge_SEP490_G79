@@ -83,11 +83,11 @@ class ExpertDirectoryEligibilityIntegrationTest extends AbstractPostgresIntegrat
         String phone = uniquePhone();
         jdbcTemplate.update("""
                 INSERT INTO users
-                    (user_id, person_id, full_name, display_name, phone, phone_number, role,
+                    (user_id, person_id, full_name, display_name, phone, role,
                      specialty, verification_status, trust_status, rating_avg,
                      enabled, locked, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, 'EXPERT', ?, ?, ?, ?, true, false, now(), now())
-                """, userId, userId, name, name, phone, phone,
+                VALUES (?, ?, ?, ?, ?, 'EXPERT', ?, ?, ?, ?, true, false, now(), now())
+                """, userId, userId, name, name, phone,
                 specialty, verificationStatus, trustStatus, rating);
         UUID specialtyId = UUID.nameUUIDFromBytes(
                 ("expert-directory:" + specialty).getBytes(java.nio.charset.StandardCharsets.UTF_8));
