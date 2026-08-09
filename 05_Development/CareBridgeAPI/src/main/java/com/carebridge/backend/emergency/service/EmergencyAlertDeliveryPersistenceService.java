@@ -28,7 +28,7 @@ public class EmergencyAlertDeliveryPersistenceService {
             AlertRecipientEndpoint recipient,
             UUID sharedNotificationId,
             EmergencyAlertClaim claim) {
-        return prepare(event, recipient, sharedNotificationId, claim, false);
+        return prepare(event, recipient, sharedNotificationId, claim, false, false);
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -40,7 +40,7 @@ public class EmergencyAlertDeliveryPersistenceService {
         return prepare(
                 new EmergencySessionOpened(event.eventId(), event.sessionId(), event.userId(),
                         event.triggerSource(), event.latitude(), event.longitude(), event.occurredAt()),
-                recipient, sharedNotificationId, claim, true);
+                recipient, sharedNotificationId, claim, true, true);
     }
 
     private PreparedAlertDelivery prepare(
@@ -48,24 +48,15 @@ public class EmergencyAlertDeliveryPersistenceService {
             AlertRecipientEndpoint recipient,
             UUID sharedNotificationId,
             EmergencyAlertClaim claim,
-            boolean resendSuccessfulDelivery) {
+            boolean resendSuccessfulDelivery,
+            boolean createNewNotification) {
         NotificationRecord notification = sharedNotificationId == null
-                ? notificationRepository.findByUserIdAndReferenceIdAndTypeAndReferenceTypeAndCareGroupId(
+                ? createNewNotification
+                ? createNotification(event, recipient)
+                : notificationRepository.findByUserIdAndReferenceIdAndTypeAndReferenceTypeAndCareGroupId(
                         recipient.userId(), event.sessionId(), NotificationType.EMERGENCY,
                         "EMERGENCY_SESSION", recipient.careGroupId())
-                    .orElseGet(() -> notificationRepository.saveAndFlush(NotificationRecord.builder()
-                            .userId(recipient.userId())
-                            .type(NotificationType.EMERGENCY)
-                            .title("Cảnh báo khẩn cấp từ CareBridge")
-                            .body("Vui lòng kiểm tra tình trạng người thân ngay.")
-                            .referenceId(event.sessionId())
-                            .referenceType("EMERGENCY_SESSION")
-                            .careGroupId(recipient.careGroupId())
-                            .status(NotificationRecordStatus.PENDING)
-                            .attemptCount(0)
-                            .createdAt(Instant.now())
-                            .metadata(Map.of("triggerSource", event.triggerSource()))
-                            .build()))
+                    .orElseGet(() -> createNotification(event, recipient))
                 : notificationRepository.findById(sharedNotificationId).orElseThrow();
 
         var existing = resendSuccessfulDelivery
@@ -114,6 +105,23 @@ public class EmergencyAlertDeliveryPersistenceService {
         }
         notificationRepository.save(notification);
         return true;
+    }
+
+    private NotificationRecord createNotification(
+            EmergencySessionOpened event, AlertRecipientEndpoint recipient) {
+        return notificationRepository.saveAndFlush(NotificationRecord.builder()
+                .userId(recipient.userId())
+                .type(NotificationType.EMERGENCY)
+                .title("Cảnh báo khẩn cấp từ CareBridge")
+                .body("Vui lòng kiểm tra tình trạng người thân ngay.")
+                .referenceId(event.sessionId())
+                .referenceType("EMERGENCY_SESSION")
+                .careGroupId(recipient.careGroupId())
+                .status(NotificationRecordStatus.PENDING)
+                .attemptCount(0)
+                .createdAt(Instant.now())
+                .metadata(Map.of("triggerSource", event.triggerSource()))
+                .build());
     }
 
     private String truncate(String value) {
