@@ -1,0 +1,47 @@
+title = "CareBridge secret gate"
+
+# Project-owned gitleaks entry point, paired with .semgrep.yml. Add only reviewed,
+# narrow exclusions here.
+#
+# ai_evaluation_gitleaks only reads 06_Testing/CareBridgeAIEvaluation. The
+# credentials this project actually leaked sat in 05_Development/Deployment, which
+# that job never opened. The gitleaks_repo job in .gitlab-ci.yml scans the whole
+# tree instead, and this file is its allowlist.
+#
+# A first run against the current tree reported 36 findings, every one of them a
+# false positive. Without these exclusions the gate would be red on day one, and a
+# gate that is always red is one the team learns to ignore within a week. Each
+# entry below was opened and checked by hand.
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Hand-checked cases confirmed not to be live credentials"
+
+paths = [
+  # Every flagged value here is EMPTY. gitleaks matched the string "API_KEY" in the
+  # variable name, not any value.
+  '''.*\.env\.example$''',
+
+  # CocoaPods SHA checksums, not keys.
+  '''.*/Podfile\.lock$''',
+
+  # Firebase client keys. Google publishes these on purpose: they identify the app,
+  # they are not secrets, and anyone who downloads the app can read them. What
+  # protects the data is Firebase Security Rules plus API key restrictions in the
+  # Google Cloud console — not keeping this string out of the repository.
+  '''05_Development/CareBridgeMobileApp/lib/firebase_options\.dart$''',
+  '''05_Development/CareBridgeMobileApp/web/firebase-messaging-sw\.js$''',
+  '''05_Development/CareBridgeMobileApp/android/app/google-services\.json$''',
+
+  # Fixture values in tests and in a stored test report. These are the widest
+  # entries here, so they lean on a second net: trivy_fs runs --scanners secret over
+  # the entire tree with no path exclusions at all.
+  '''05_Development/CareBridgeAPI/src/test/java/.*''',
+  '''05_Development/CareBridgeAITriageService/tests/.*''',
+  '''06_Testing/UnitTesting/report-tools/mobile-test\.json$''',
+
+  # Authorization header examples inside design documents.
+  '''04_Implement/.*_TDS\.md$''',
+]
