@@ -27,7 +27,6 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
   static const _onSurfaceVariant = Color(0xFF524440);
   static const _outline = Color(0xFF84736F);
   static const _error = Color(0xFFBA1A1A);
-  static const _errorContainer = Color(0xFFFFDAD6);
 
   ExpertHomeSnapshot? _snapshot;
   List<CommunityFeedItem> _unansweredQuestions = [];

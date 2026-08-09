@@ -76,21 +76,6 @@ class _SentPendingInvitationsScreenState
     }
   }
 
-  Future<void> _resend(CareGroupMember member) async {
-    try {
-      // Assuming inviteMember is used to resend.
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Đã gửi lại lời mời')));
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
-      }
-    }
-  }
-
   Future<void> _handleJoinResponse(String memberId, bool approve) async {
     try {
       await _service.respondJoinRequest(widget.groupId, memberId, approve);

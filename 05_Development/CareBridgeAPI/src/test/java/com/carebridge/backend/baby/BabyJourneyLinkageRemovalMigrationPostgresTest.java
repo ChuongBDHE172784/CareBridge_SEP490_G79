@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.carebridge.backend.audit.entity.AuditAction;
+import com.carebridge.backend.testsupport.EmbeddedPostgresRoleFixture;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -11,6 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import org.flywaydb.core.Flyway;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -58,6 +60,15 @@ class BabyJourneyLinkageRemovalMigrationPostgresTest {
 
     @Container
     final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:16-alpine");
+
+    // The checklist migrations refuse to run unless deployment has already created the
+    // NOLOGIN owner roles they hand objects to — Flyway itself has no CREATEROLE
+    // dependency by design. Provision them exactly as AbstractPostgresIntegrationTest does.
+    @BeforeEach
+    void provisionDeploymentRoles() throws Exception {
+        EmbeddedPostgresRoleFixture.provision(
+                postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+    }
 
     @Test
     void upgradeDetachesBabyLinkageAndPreservesMaternalAndAuditHistory() throws Exception {

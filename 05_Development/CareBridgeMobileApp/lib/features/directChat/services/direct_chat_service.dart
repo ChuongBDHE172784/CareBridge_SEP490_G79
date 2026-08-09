@@ -59,9 +59,9 @@ class DirectChatService {
     final response =
         await apiPost('/api/v1/direct-conversations/$conversationId/messages', {
           'clientMessageId': clientMessageId,
-          if (messageBody != null) 'messageBody': messageBody,
+          'messageBody': ?messageBody,
           'messageType': messageType,
-          if (attachmentId != null) 'attachmentId': attachmentId,
+          'attachmentId': ?attachmentId,
         });
     return TimelineItem.fromJson(response['data'] as Map<String, dynamic>);
   }

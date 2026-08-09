@@ -49,13 +49,14 @@ class _FetalMovementTrackerScreenState
         from: start,
         to: start.add(const Duration(days: 1)),
       );
-      if (mounted)
+      if (mounted) {
         setState(() {
           _today
             ..clear()
             ..addAll(trend.dataPoints);
           _loading = false;
         });
+      }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }

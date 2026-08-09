@@ -37,7 +37,7 @@ function parseToIso(dateStr: string, timeStr: string): string {
   if (parts.length < 2) throw new Error('Giờ không hợp lệ');
 
   let hours = parseInt(parts[0], 10);
-  let minutes = parseInt(parts[1], 10);
+  const minutes = parseInt(parts[1], 10);
 
   const isPM = timeStr.toUpperCase().includes('PM');
   const isAM = timeStr.toUpperCase().includes('AM');

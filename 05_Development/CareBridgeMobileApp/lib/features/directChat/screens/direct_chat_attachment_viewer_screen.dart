@@ -42,8 +42,9 @@ class _DirectChatAttachmentViewerScreenState
         _mimeType = json['data']?['mimeType'] as String?;
       });
     } catch (_) {
-      if (mounted)
+      if (mounted) {
         setState(() => _error = 'Không thể mở tệp. Vui lòng thử lại.');
+      }
     }
   }
 
