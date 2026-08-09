@@ -14,14 +14,30 @@ ONTOLOGY: dict[str, tuple[str, ...]] = {
     "high_fever": ("sot cao", "high fever"),
     "cough": ("ho", "cough"),
     "runny_nose": ("so mui", "chay mui", "runny nose", "sut sit"),
-    "difficulty_breathing": ("kho tho", "tho gap", "wheeze", "difficulty breathing", "kho khe", "tho rit"),
-    "chest_indrawing": ("rut lom", "chest indrawing"),
-    "cyanosis": ("tim tai", "moi tim", "da tim", "cyanosis"),
-    "seizure": ("co giat", "seizure", "seizures", "convulsion", "convulsions"),
-    "lethargy": ("li bi", "lo mo", "ngu ga", "lethargy", "lu du", "lu đu"),
+    # These five carry the danger signs, and each had an ASCII twin among ordinary words:
+    # "có giặt"/"co giật", "mới tìm"/"môi tím", "ngủ gà"/"ngu ga". They are written with
+    # diacritics so a writer who uses them is taken at their word; accent-free input is still
+    # matched (see _ontology_match).
+    # Wording marked BYT below is quoted from Bệnh viện Nhi Trung ương's public danger-sign
+    # page (benhviennhitrunguong.gov.vn), added under D-029. Each is a spelling of a danger
+    # sign this catalogue already carries — no new sign, and no new threshold.
+    "difficulty_breathing": (
+        "khó thở", "thở gấp", "wheeze", "difficulty breathing", "khò khè", "thở rít",
+        "ngừng thở",  # BYT: "có cơn ngừng thở hoặc ngừng thở"
+        "cánh mũi phập phồng",  # BYT
+        "thở rên",  # BYT
+    ),
+    "chest_indrawing": ("rút lõm", "chest indrawing"),
+    # "tím môi" is the same sign as "môi tím"; the catalogue held only one word order, so the
+    # phrasing the hospital itself publishes went unrecognised.
+    "cyanosis": ("tím tái", "môi tím", "tím môi", "da tím", "xanh tái", "cyanosis"),
+    "seizure": ("co giật", "seizure", "seizures", "convulsion", "convulsions"),
+    "lethargy": ("li bì", "lơ mơ", "ngủ gà", "lethargy", "lừ đừ", "hôn mê"),
     "difficult_to_wake": ("kho danh thuc", "difficult to wake"),
     "unable_to_drink": ("khong uong", "khong bu", "unable to drink"),
-    "poor_feeding": ("bo bu", "uong kem", "an kem", "poor feeding", "bieng an"),
+    # "bú kém" is BYT's wording and pairs with fever in their under-28-day list; the catalogue
+    # held only "bỏ bú", which is the more severe end of the same sign.
+    "poor_feeding": ("bo bu", "bú kém", "uong kem", "an kem", "poor feeding", "bieng an"),
     "vomiting": ("non", "oi", "vomit", "vomiting", "tro sua", "oc sua"),
     "persistent_vomiting": ("non lien tuc", "non nhieu", "vomiting everything", "persistent vomiting"),
     "diarrhea": ("tieu chay", "diarrhea", "di ngoai", "đi ngoai", "ia chay"),
@@ -56,6 +72,36 @@ def strip_accents(value: str) -> str:
     return re.sub(r"\s+", " ", normalized.replace("đ", "d")).strip()
 
 
+def collapse_case_and_space(value: str) -> str:
+    """Lowercase and collapse whitespace, keeping diacritics."""
+
+    return re.sub(r"\s+", " ", unicodedata.normalize("NFC", value.lower())).strip()
+
+
+def strip_accents_aligned(value: str) -> str:
+    """Strip diacritics one character at a time, so the result keeps the input's length.
+
+    ``strip_accents`` also collapses whitespace, which moves every offset after the change.
+    Callers that need to look up what the writer originally typed at a matched offset need
+    the two spellings to line up exactly, and that is what this gives them.
+    """
+
+    characters = []
+    for character in unicodedata.normalize("NFC", value):
+        if character == "đ":
+            characters.append("d")
+            continue
+        base = "".join(
+            part
+            for part in unicodedata.normalize("NFD", character)
+            if unicodedata.category(part) != "Mn"
+        )
+        # Anything that does not reduce to exactly one character is left alone rather than
+        # silently shifting every offset after it.
+        characters.append(base if len(base) == 1 else character)
+    return "".join(characters)
+
+
 def remove_instruction_like_text(value: str) -> str:
     safe = strip_accents(value)
     for pattern in INSTRUCTION_PATTERNS:
@@ -66,6 +112,61 @@ def remove_instruction_like_text(value: str) -> str:
 CANONICAL_SYMPTOM_CODES = frozenset(ONTOLOGY)
 
 
+def _ontology_match(safe_text: str, accented_text: str | None, keyword: str) -> str | None:
+    """The spelling of ``keyword`` that occurs unnegated, or None.
+
+    A keyword written with diacritics matches the accented text directly. It also matches the
+    stripped text, but only across a span the writer left accent-free — otherwise "có giặt"
+    (does the washing) is read as "co giật" (a seizure), which is how ordinary sentences ended
+    up escalating. The spelling that matched is returned rather than the catalogue's, so the
+    recorded provenance stays the writer's own text.
+    """
+
+    stripped_keyword = strip_accents_aligned(keyword)
+    # Negation is detected on the stripped spelling (its token list is ASCII, so "không" only
+    # registers there) and blanked out of both spellings at the same offsets.
+    stripped, accented = _blank_negated(safe_text, accented_text, stripped_keyword)
+    if accented is not None and keyword != stripped_keyword:
+        if re.search(rf"(?<!\w){re.escape(keyword)}(?!\w)", accented):
+            return keyword
+    pattern = rf"(?<!\w){re.escape(stripped_keyword)}(?!\w)"
+    for match in re.finditer(pattern, stripped):
+        if accented is None or keyword == stripped_keyword:
+            return stripped_keyword
+        if accented[match.start():match.end()] == stripped[match.start():match.end()]:
+            return stripped_keyword
+    return None
+
+
+def _blank_negated(
+    stripped: str, accented: str | None, candidate: str
+) -> tuple[str, str | None]:
+    """Blank each negated occurrence of ``candidate``, keeping both spellings aligned.
+
+    The span is overwritten with spaces rather than removed: collapsing it would shift every
+    offset after it, and the two spellings are only comparable while their offsets agree.
+    """
+
+    if candidate.startswith(("khong ", "chua ")):
+        return stripped, accented
+    pattern = (
+        rf"(?<!\w)(?:khong|chua|not|no|never|without)\s+"
+        rf"(?:(?:co|bi|con|he|have|has|had|feel|feeling|any|signs?|symptoms?|of|currently)\s+){{0,4}}"
+        rf"{re.escape(candidate)}(?!\w)"
+    )
+    spans = [match.span() for match in re.finditer(pattern, stripped)]
+    if not spans:
+        return stripped, accented
+
+    def blanked(text: str) -> str:
+        characters = list(text)
+        for start, end in spans:
+            characters[start:end] = " " * (end - start)
+        return "".join(characters)
+
+    return blanked(stripped), None if accented is None else blanked(accented)
+
+
 def normalize_symptom_details_deterministic(intake: ChildTriageRequest) -> list[NormalizedSymptom]:
     fragments = list(intake.symptomList)
     fragments.extend(filter(None, [
@@ -74,24 +175,38 @@ def normalize_symptom_details_deterministic(intake: ChildTriageRequest) -> list[
         intake.urinarySymptoms, *intake.dehydrationSigns,
         intake.parentFreeText,
     ]))
-    safe_text = f" {remove_instruction_like_text(' '.join(fragments))} "
+    raw_text = " ".join(fragments)
+    safe_text = f" {remove_instruction_like_text(raw_text)} "
+    # The accented spelling is only usable while it still lines up with the stripped one. The
+    # injection scrubber rewrites spans, so on the rare input it fires against the two drift
+    # apart and matching falls back to the stripped text alone — an injection attempt is not
+    # the place to start trusting diacritics.
+    accented_text = f" {collapse_case_and_space(raw_text)} "
+    if strip_accents_aligned(accented_text) != safe_text:
+        accented_text = None
     found: dict[str, NormalizedSymptom] = {}
     for code, keywords in ONTOLOGY.items():
         candidates = (code, code.replace("_", " "), *keywords)
-        match = next((
-            keyword for keyword in candidates
-            if re.search(
-                rf"(?<!\w){re.escape(keyword)}(?!\w)",
-                _without_negated_candidate(safe_text, keyword),
-            )
-        ), None)
+        match = next(
+            filter(
+                None,
+                (
+                    _ontology_match(safe_text, accented_text, keyword)
+                    for keyword in candidates
+                ),
+            ),
+            None,
+        )
         if match:
+            # Compared stripped on both sides: whether the writer used diacritics does not
+            # change whether their message was only this one symptom.
+            exact = safe_text.strip() == strip_accents_aligned(match)
             found[code] = NormalizedSymptom(
                 originalTextMasked=_mask(match),
                 normalizedCode=code,
-                normalizationMethod="EXACT" if safe_text.strip() == match else "KEYWORD",
-                normalizationConfidence=1.0 if safe_text.strip() == match else 0.94,
-                exactMatch=safe_text.strip() == match,
+                normalizationMethod="EXACT" if exact else "KEYWORD",
+                normalizationConfidence=1.0 if exact else 0.94,
+                exactMatch=exact,
             )
 
     def structured(code: str, present: bool) -> None:
@@ -175,9 +290,12 @@ def _without_negated_candidate(text: str, candidate: str) -> str:
 
 def _needs_gemini(text: str) -> bool:
     remainder = f" {remove_instruction_like_text(text)} "
+    # `remainder` is accent-stripped, so the ontology's terms have to be compared in that
+    # spelling too — otherwise every accented term would survive here as "unrecognised" and
+    # send otherwise-understood text to Gemini.
     known_terms = sorted(
         {code.replace("_", " ") for code in ONTOLOGY} |
-        {term for terms in ONTOLOGY.values() for term in terms},
+        {strip_accents_aligned(term) for terms in ONTOLOGY.values() for term in terms},
         key=len,
         reverse=True,
     )

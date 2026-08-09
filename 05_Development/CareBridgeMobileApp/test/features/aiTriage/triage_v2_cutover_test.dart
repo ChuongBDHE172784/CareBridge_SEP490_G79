@@ -13,8 +13,11 @@ void main() {
     });
 
     test('paediatric stages are never even cutover candidates', () {
-      // Separate from the experience gate: V2 declares no paediatric rule at all, so a baby must
-      // not be routed there even once the chat can talk to V2.
+      // Separate from the experience gate. The original reason was that V2 declared no
+      // paediatric rule at all — that stopped being true once PED_RED_001..006 and
+      // PED_YELLOW_001 were ported, so V2 now carries 13 paediatric rules. The gate stays
+      // maternal-only as a scoping decision about what to cut over first, not because a
+      // baby has nowhere to land. Widening it is therefore a product call, not a blocked one.
       for (final stage in ['INFANT', 'TODDLER']) {
         expect(isTriageV2CutoverCandidate(stage), isFalse, reason: stage);
       }

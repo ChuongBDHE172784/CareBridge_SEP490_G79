@@ -109,15 +109,26 @@ void main() {
   // different reasons — a missing stage is a real defect, a pixel diff is usually a font or
   // renderer change — and bundling them meant `--exclude-tags golden` could not skip the
   // brittle half without also dropping the meaningful half.
-  testWidgets('mobile stage selector renders all four supported stages', (
+  testWidgets('mobile stage selector renders every supported stage', (
     tester,
   ) async {
     await _pump(tester, service: _AskMoreDemoService());
 
-    expect(find.text('Chuẩn bị mang thai'), findsOneWidget);
-    expect(find.text('Đang mang thai'), findsOneWidget);
-    expect(find.text('Bé 0-12 tháng'), findsOneWidget);
-    expect(find.text('Bé 12-24 tháng'), findsOneWidget);
+    // 'Sau sinh' was added to the selector without this list growing with it, so the half of
+    // the split that is supposed to catch a missing stage could not see the one stage that
+    // actually went missing — only the pixel half failed, and it reads as a font diff. The
+    // chip count is asserted too: a label list alone cannot notice a sixth stage arriving.
+    const supportedStages = [
+      'Chuẩn bị mang thai',
+      'Đang mang thai',
+      'Sau sinh',
+      'Bé 0-12 tháng',
+      'Bé 12-24 tháng',
+    ];
+    for (final stage in supportedStages) {
+      expect(find.text(stage), findsOneWidget, reason: stage);
+    }
+    expect(find.byType(ChoiceChip), findsNWidgets(supportedStages.length));
   });
 
   testWidgets('mobile stage selector matches its golden', (tester) async {

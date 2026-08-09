@@ -160,7 +160,7 @@ def _context(state: Mapping[str, object]) -> dict[str, object]:
 
 def _stage_value(value: object) -> str:
     raw = value.value if isinstance(value, CareStage) else value
-    return "POSTPARTUM" if raw == CareStage.POSTPARTUM_MOTHER.value else raw if type(raw) is str else "UNKNOWN"
+    return raw if type(raw) is str else "UNKNOWN"
 
 
 def _context_status(stage: str, context: Mapping[str, object], requirements: Mapping[str, Any]) -> str:
@@ -250,7 +250,7 @@ def _has_reproductive_evidence(state: Mapping[str, object], signals: Mapping[str
     if state.get("possiblePregnancy") in {"YES", "UNKNOWN", "CONFLICTED"}:
         return True
     stage = _stage_value(state.get("stage"))
-    if stage in {"POSSIBLE_PREGNANCY", "PREGNANCY", "POSTPARTUM"}:
+    if stage in {"POSSIBLE_PREGNANCY", "PREGNANCY", "POSTPARTUM_MOTHER"}:
         return True
     return bool(_reproductive_evidence(signals, _context(state)))
 

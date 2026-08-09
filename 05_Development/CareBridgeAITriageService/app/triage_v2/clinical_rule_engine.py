@@ -11,18 +11,19 @@ from app.triage_v2.state import matched_rule_trace_to_audit
 from app.triage_v2.signal_normalizer import normalize_signal_observation
 
 _TRIAGE_INTENTS = {IntentType.SYMPTOM_TRIAGE.value, IntentType.FOLLOW_UP_ANSWER.value}
-#: Graph stage -> registry stage. POSTPARTUM_MOTHER is renamed because the registry still stores
-#: the maternal postpartum rules under the legacy name; the paediatric stages map to themselves.
-#: A stage missing here evaluates no rule at all, which is how the paediatric rules stayed inert
-#: after being added to the registry.
-_STAGE_MAP = {
-    CareStage.PRECONCEPTION.value: "PRECONCEPTION",
-    CareStage.POSSIBLE_PREGNANCY.value: "POSSIBLE_PREGNANCY",
-    CareStage.PREGNANCY.value: "PREGNANCY",
-    CareStage.POSTPARTUM_MOTHER.value: "POSTPARTUM",
-    CareStage.INFANT_0_12M.value: "INFANT_0_12M",
-    CareStage.TODDLER_12_24M.value: "TODDLER_12_24M",
-}
+#: Stages the registry can be asked about. This was a translation table while the registry
+#: stored the maternal postpartum rules under the legacy name `POSTPARTUM`; the registry now
+#: uses `POSTPARTUM_MOTHER` like the rest of the system, so only the membership check remains.
+#: A stage absent here evaluates no rule at all, which is how the paediatric rules stayed inert
+#: after being added to the registry — keep it in step with the registry's own stage set.
+_RULE_STAGES = frozenset({
+    CareStage.PRECONCEPTION.value,
+    CareStage.POSSIBLE_PREGNANCY.value,
+    CareStage.PREGNANCY.value,
+    CareStage.POSTPARTUM_MOTHER.value,
+    CareStage.INFANT_0_12M.value,
+    CareStage.TODDLER_12_24M.value,
+})
 
 
 def clinical_rule_engine(
@@ -50,8 +51,8 @@ def clinical_rule_engine(
             "plannedQuestionIds": [],
         }
 
-    stage = _STAGE_MAP.get(_value(state.get("stage")))
-    if stage is None:
+    stage = _value(state.get("stage"))
+    if stage not in _RULE_STAGES:
         if _value(state.get("contextResolutionStatus")) != "RESOLVED":
             return {
                 "triageOutcome": None,
