@@ -269,6 +269,24 @@ class FallDetectionServiceTest {
     }
 
     @Test
+    void sendEmergencyAlert_timeoutResponseContinuesEmergencyEscalation() {
+        SafetyEvent event = makeSafetyEvent();
+        event.setResponseType("TIMEOUT");
+        event.setStatus(SafetyEventStatus.TIMED_OUT);
+        event.setResolvedAt(Instant.now());
+        when(safetyEventRepository.findLockedByIdAndUserId(event.getId(), USER_ID))
+                .thenReturn(Optional.of(event));
+        when(safetyEventRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        fallDetectionService.sendEmergencyAlert(USER_ID, event.getId());
+
+        assertThat(event.getStatus()).isEqualTo(SafetyEventStatus.ESCALATION_REQUESTED);
+        assertThat(event.getResolvedAt()).isNull();
+        verify(emergencyService).openFlow(any(), eq(USER_ID));
+        verify(responseRepository, never()).insert(any());
+    }
+
+    @Test
     void sendEmergencyAlert_reusedSentSessionSynchronizesLinkedImuEventWithoutRepublishing() {
         SafetyEvent event = makeSafetyEvent();
         UUID emergencySessionId = UUID.randomUUID();

@@ -199,6 +199,17 @@ public class FallDetectionService implements IFallDetectionService {
             throw new SafetyException(HttpStatus.CONFLICT, "SAFETY-013",
                     "Sensor self-test events cannot trigger emergency alerts");
         }
+        // The expiry job can persist TIMEOUT milliseconds before the mobile
+        // countdown sheet posts its timeout action. Both outcomes mean the
+        // same thing: no safety acknowledgement arrived, so emergency alerting
+        // must continue instead of rejecting the mobile request as a conflict.
+        if ("TIMEOUT".equals(requestedEvent.getResponseType())) {
+            requestedEvent.setStatus(SafetyEventStatus.ESCALATION_REQUESTED);
+            requestedEvent.setResolvedAt(null);
+            SafetyEvent saved = safetyEventRepository.save(requestedEvent);
+            openEmergency(saved);
+            return;
+        }
         SafetyEvent saved = respondEntity(userId, eventId, "NEED_HELP", SafetyEventStatus.ESCALATION_REQUESTED, null, true);
         openEmergency(saved);
     }
