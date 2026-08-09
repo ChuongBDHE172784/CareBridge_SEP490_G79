@@ -123,55 +123,48 @@ void main() {
     expect(detector.sequence, 1);
   });
 
-  test(
-    'controlled one-metre soft-surface drop triggers the sensor self-test',
-    () {
-      final detector = SafetySensorSelfTestDetector();
-      final startedAt = DateTime.utc(2026, 8, 4);
+  test('controlled 50 cm soft-surface drop triggers the sensor self-test', () {
+    final detector = SafetySensorSelfTestDetector();
+    final startedAt = DateTime.utc(2026, 8, 4);
 
-      ImuSample sample(
-        Duration offset,
-        double acceleration, {
-        double gyro = 0,
-      }) {
-        final timestamp = startedAt.add(offset);
-        return ImuSample(
-          accelerometerX: acceleration,
-          accelerometerY: 0,
-          accelerometerZ: 0,
-          gyroscopeX: gyro,
-          gyroscopeY: 0,
-          gyroscopeZ: 0,
-          timestamp: timestamp,
-          gyroscopeTimestamp: timestamp,
-        );
-      }
+    ImuSample sample(Duration offset, double acceleration, {double gyro = 0}) {
+      final timestamp = startedAt.add(offset);
+      return ImuSample(
+        accelerometerX: acceleration,
+        accelerometerY: 0,
+        accelerometerZ: 0,
+        gyroscopeX: gyro,
+        gyroscopeY: 0,
+        gyroscopeZ: 0,
+        timestamp: timestamp,
+        gyroscopeTimestamp: timestamp,
+      );
+    }
 
-      for (var index = 0; index <= 20; index++) {
-        expect(
-          detector.addSample(
-            sample(Duration(milliseconds: index * 20), 9.81, gyro: 0.05),
-          ),
-          isFalse,
-        );
-      }
-
-      for (var index = 0; index < 8; index++) {
-        expect(
-          detector.addSample(
-            sample(Duration(milliseconds: 420 + index * 20), 0.8),
-          ),
-          isFalse,
-        );
-      }
-
+    for (var index = 0; index <= 20; index++) {
       expect(
         detector.addSample(
-          sample(const Duration(milliseconds: 580), 13.0, gyro: 0.4),
+          sample(Duration(milliseconds: index * 20), 9.81, gyro: 0.05),
         ),
-        isTrue,
+        isFalse,
       );
-      expect(detector.sequence, 1);
-    },
-  );
+    }
+
+    for (var index = 0; index < 3; index++) {
+      expect(
+        detector.addSample(
+          sample(Duration(milliseconds: 420 + index * 20), 5.5),
+        ),
+        isFalse,
+      );
+    }
+
+    expect(
+      detector.addSample(
+        sample(const Duration(milliseconds: 480), 9.6, gyro: 0.4),
+      ),
+      isTrue,
+    );
+    expect(detector.sequence, 1);
+  });
 }

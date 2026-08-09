@@ -31,13 +31,13 @@ class SafetyDemoGestureDetector {
   static const double requiredPeakAccelerationDeviation = 5.0;
   static const double requiredPeakRotationMagnitude = 2.0;
   static const double minimumEstimatedTravelMetres = 0.45;
-  // A one-metre controlled drop has a distinct near-weightless phase even
-  // when the final contact is softened by a pillow or mattress. Requiring
-  // both phases makes the self-test forgiving on soft surfaces without
-  // turning an ordinary lift or hand shake into an alert.
-  static const double freeFallAccelerationMagnitude = 4.5;
-  static const double softImpactAccelerationMagnitude = 12.0;
-  static const Duration minimumFreeFallDuration = Duration(milliseconds: 80);
+  // A controlled 50 cm drop has a short near-weightless phase, while a pillow
+  // or mattress may dissipate most of the impact. Requiring both phases keeps
+  // the self-test distinct from an ordinary lift or hand shake without
+  // requiring a hard-floor collision.
+  static const double freeFallAccelerationMagnitude = 6.5;
+  static const double softImpactAccelerationMagnitude = 9.5;
+  static const Duration minimumFreeFallDuration = Duration(milliseconds: 40);
   static const Duration maximumSoftDropSequence = Duration(seconds: 2);
   static const int minimumStrongSamples = 8;
   static const Duration stationaryPreparation = Duration(milliseconds: 300);
