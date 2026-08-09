@@ -1,0 +1,202 @@
+# CareBridge — Container A: API stack cho AWS EC2, đi thẳng qua Cloudflare proxy.
+#
+# Khác docker-compose.server.yml ở chỗ KHÔNG dùng Cloudflare Tunnel. Cloudflare
+# proxy request tới thẳng public IP của EC2, nên nginx-edge phải publish cổng và
+# tự cầm chứng chỉ TLS:
+#
+#   Browser -+-> carebridgevn.site     -> Cloudflare -> GitLab Pages (SPA tĩnh)
+#            +-> api.carebridgevn.site -> Cloudflare -> EC2:443 -> nginx-edge
+#                                                                    -> backend:8080
+#
+# Chỉ 443 được publish. Spring Boot 8080, ai-triage 8001 và exercise-correction
+# 8002 chỉ tồn tại trong network nội bộ Docker, không ra Internet.
+#
+# TLS ở origin dùng Cloudflare Origin Certificate (miễn phí, hạn 15 năm, chỉ
+# Cloudflare tin). Bắt buộc phải có thì SSL/TLS mode Full (strict) mới chạy.
+#
+#   docker compose --env-file 05_Development/Deployment/.env.server \
+#     -f docker-compose.aws.yml up -d --build
+#
+# Xem 05_Development/Deployment/DEPLOY-AWS.md.
+name: carebridge-aws
+
+services:
+  ai-triage:
+    image: ${AI_IMAGE:-carebridge-ai-triage:aws}
+    build:
+      context: ./05_Development/CareBridgeAITriageService
+    # Least privilege: container này không nhận env file của backend, chỉ nhận
+    # đúng những giá trị nó cần.
+    environment:
+      AI_TRIAGE_EVIDENCE_REGISTRY_URL: "http://backend:8080"
+      AI_TRIAGE_INTERNAL_API_KEY: ${AI_TRIAGE_INTERNAL_API_KEY:?Set the shared evidence-registry key}
+      AI_TRIAGE_EVIDENCE_REGISTRY_CACHE_SECONDS: ${AI_TRIAGE_EVIDENCE_REGISTRY_CACHE_SECONDS:-300}
+      AI_TRIAGE_SERVICE_TIMEOUT_SECONDS: ${AI_TRIAGE_SERVICE_TIMEOUT_SECONDS:-7}
+      AI_TRIAGE_REALTIME_TIMEOUT_SECONDS: ${AI_TRIAGE_REALTIME_TIMEOUT_SECONDS:-3.5}
+      GEMINI_ENABLED: ${AI_GEMINI_ENABLED:-false}
+      GEMINI_API_KEY: ${AI_GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${AI_GEMINI_MODEL:-gemini-2.5-flash}
+      GEMINI_TIMEOUT_SECONDS: ${AI_GEMINI_TIMEOUT_SECONDS:-6}
+      GEMINI_MAX_RETRIES: ${AI_GEMINI_MAX_RETRIES:-1}
+      GEMINI_TEMPERATURE: ${AI_GEMINI_TEMPERATURE:-0.2}
+    expose:
+      - "8001"
+    networks:
+      - ai-origin
+      - service-egress
+    # Measured ~110 MiB idle; the ceiling is here so a runaway Gemini response or
+    # graph run cannot starve the backend on a 4 GB instance.
+    mem_limit: ${AI_MEM_LIMIT:-1g}
+    # The backend IS the evidence registry this service reads, so it has to come
+    # up first. /health runs a triage probe that looks up approved sources, and
+    # evidence_registry_client caches successes only — with the registry down,
+    # every lookup pays the full 2s timeout again and the probe takes ~52s
+    # instead of ~0.4s, which no sane healthcheck timeout survives.
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=8).read()"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  exercise-correction:
+    image: ${EXERCISE_IMAGE:-carebridge-exercise-correction:aws}
+    build:
+      context: ./05_Development/MachineLearning/MediaPipe_Posture/exercise_correction_sidecar
+    environment:
+      EXERCISE_MODEL_DIR: /app/models
+      EXERCISE_MODEL_MANIFEST: /app/models/SHA256SUMS
+    expose:
+      - "8002"
+    # Suy luận thuần trên model đóng sẵn: không credential, không cần ra ngoài.
+    networks:
+      - exercise-origin
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: ${EXERCISE_MEM_LIMIT:-512m}
+    cpus: ${EXERCISE_CPUS:-1.0}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/health', timeout=2).read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  backend:
+    image: ${BACKEND_IMAGE:-carebridge-backend:aws}
+    build:
+      context: ./05_Development/CareBridgeAPI
+    env_file:
+      - ${BACKEND_ENV_FILE:-./05_Development/Deployment/.env.server}
+    environment:
+      # Ghim cứng heap. Image mặc định dùng -XX:MaxRAMPercentage=75.0, tức là một
+      # tỉ lệ tương đối — đo được: không giới hạn thì JVM tự cho MaxHeapSize
+      # 5816 MiB, đủ để bóp chết mọi container khác. -Xmx là con số tuyệt đối nên
+      # không phụ thuộc máy chạy ở đâu. -Xms nhỏ để lúc rảnh không giữ RAM vô ích,
+      # heap chỉ nở dần tới trần khi thật cần.
+      # MaxMetaspaceSize cũng phải chặn: metaspace nằm NGOÀI heap, và Spring Boot
+      # nạp rất nhiều class, nên để tự do thì RSS vượt mem_limit và container bị
+      # OOMKilled dù heap vẫn còn chỗ.
+      JAVA_TOOL_OPTIONS: >-
+        -Xms256m
+        -Xmx${BACKEND_HEAP:-1536m}
+        -XX:MaxMetaspaceSize=${BACKEND_METASPACE:-256m}
+        -Djava.security.egd=file:/dev/./urandom
+      # DNS của Docker. "localhost" trong container này là chính backend.
+      AI_TRIAGE_SERVICE_URL: "http://ai-triage:8001"
+      # Sidecar phân tích tư thế. application.yaml mặc định tắt, nên phải bật ở
+      # đây, không thì backend im lặng rơi về RULE_BASED.
+      CAREBRIDGE_EXERCISE_CORRECTION_ENABLED: ${CAREBRIDGE_EXERCISE_CORRECTION_ENABLED:-true}
+      EXERCISE_CORRECTION_SERVICE_URL: "http://exercise-correction:8002"
+      # Đúng origin của portal trên GitLab Pages, không rộng hơn. SecurityConfig
+      # ném lỗi nếu giá trị chứa dấu *.
+      CAREBRIDGE_CORS_ALLOWED_ORIGINS: "https://${CAREBRIDGE_PORTAL_HOSTNAME:?Set CAREBRIDGE_PORTAL_HOSTNAME}"
+      # application.yaml hard-code carebridge.compreface.*; chỉ các biến
+      # CAREBRIDGE_COMPREFACE_* mới override được literal đó.
+      CAREBRIDGE_COMPREFACE_ENABLED: ${CAREBRIDGE_COMPREFACE_ENABLED:-false}
+      CAREBRIDGE_COMPREFACE_BASE_URL: ${CAREBRIDGE_COMPREFACE_BASE_URL:-http://compreface-fe}
+      # Seed tài khoản test trên deployment công khai không bao giờ đúng, nên ép
+      # tắt ở đây thay vì để env file quyết định.
+      CAREBRIDGE_DEV_SEED_ENABLED: "false"
+    expose:
+      - "8080"
+    networks:
+      - backend-origin
+      - ai-origin
+      - face-origin
+      - exercise-origin
+      - service-egress
+    # Chặn cứng lần hai, ở tầng cgroup. -Xmx trên kia đã giới hạn heap, nhưng RSS
+    # của một JVM còn gồm metaspace, code cache, stack của ~200 thread và direct
+    # buffer. Trần này bao trọn tổng đó:
+    #   heap 1536 + metaspace 256 + code cache ~128 + stack ~200 + direct ~150
+    #   + overhead ~150  =  ~2420 MiB, còn dư ~140 MiB trong 2560.
+    # Dùng đơn vị MiB nguyên thay vì "2.5g" để Compose parse chắc chắn.
+    # Nâng BACKEND_HEAP thì nâng cả cái này, giữ khoảng cách ~1 GiB.
+    mem_limit: ${BACKEND_MEM_LIMIT:-2560m}
+    # No depends_on: the only thing this needs to boot is Supabase, which is
+    # external. Both sidecars are called per-request and the backend degrades
+    # gracefully when they are missing, so waiting on them here would only
+    # create the startup cycle described on ai-triage.
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "http://127.0.0.1:8080/actuator/health/readiness"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+  nginx-edge:
+    image: ${EDGE_NGINX_IMAGE:-nginxinc/nginx-unprivileged:1.29.0-alpine}
+    environment:
+      CAREBRIDGE_API_HOSTNAME: ${CAREBRIDGE_API_HOSTNAME:?Set CAREBRIDGE_API_HOSTNAME}
+    volumes:
+      - ./05_Development/Deployment/nginx/edge-aws.conf:/etc/nginx/templates/default.conf.template:ro
+      # Cloudflare Origin Certificate. Xem DEPLOY-AWS.md mục 3. Phải chown sang
+      # UID 101 vì image này chạy non-root và sẽ không đọc được key của root.
+      - ${CAREBRIDGE_TLS_CERT_FILE:?Set path to the Cloudflare origin certificate}:/etc/nginx/tls/origin.pem:ro
+      - ${CAREBRIDGE_TLS_KEY_FILE:?Set path to the Cloudflare origin private key}:/etc/nginx/tls/origin.key:ro
+    # Cổng DUY NHẤT ra Internet trong toàn hệ thống. Container listen 8443 vì
+    # image unprivileged không bind được cổng <1024; Docker daemon lo phần map
+    # 443 ở phía host.
+    ports:
+      - "${CAREBRIDGE_HTTPS_PORT:-443}:8443"
+    networks:
+      # Network không internal để nhận được traffic từ cổng đã publish.
+      - edge
+      - backend-origin
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://backend:8080/actuator/health/readiness"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+networks:
+  edge:
+  backend-origin:
+    internal: true
+  ai-origin:
+    internal: true
+  exercise-origin:
+    internal: true
+  # Tên cố định để stack CompreFace join vào như external network.
+  face-origin:
+    name: carebridge-face-origin
+    internal: true
+  # Network duy nhất có đường ra: Supabase, Gemini, Firebase, R2, Cloudinary.
+  service-egress:
