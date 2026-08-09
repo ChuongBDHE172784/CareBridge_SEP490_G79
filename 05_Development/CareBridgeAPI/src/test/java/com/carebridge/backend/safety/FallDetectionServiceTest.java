@@ -395,6 +395,26 @@ class FallDetectionServiceTest {
     }
 
     @Test
+    void processImuData_onDeviceConfirmedSoftFallBypassesLegacyHardImpactThreshold() {
+        ImuMonitoringSession session = SafetyConfigTestFactory.makeActiveSession();
+        when(imuSessionRepository.findActiveForUpdateByUserId(USER_ID)).thenReturn(Optional.of(session));
+        when(safetyEventRepository.findByImuSessionIdAndSignalKey(any(), anyString())).thenReturn(Optional.empty());
+        when(safetyEventRepository.save(any())).thenAnswer(invocation -> {
+            SafetyEvent event = invocation.getArgument(0);
+            event.setId(UUID.randomUUID());
+            return event;
+        });
+
+        SafetyEventResponse response = fallDetectionService.processImuData(USER_ID,
+                new ImuDataPayload(9.6, 0, 0, 0.2, 0, 0, Instant.now(),
+                        "soft-surface-candidate", null, null, true));
+
+        assertThat(response).isNotNull();
+        assertThat(response.getEventType()).isEqualTo("SUSPECTED_FALL");
+        verify(algorithmService, never()).analyze(any(), anyString());
+    }
+
+    @Test
     void expiredCountdownPersistsTimeoutAndOpensEmergencyOnce() {
         SafetyEvent event = makeSafetyEvent();
         event.setCountdownDeadlineAt(Instant.now().minusSeconds(1));
@@ -462,7 +482,7 @@ class FallDetectionServiceTest {
         ImuMonitoringSession session = SafetyConfigTestFactory.makeActiveSession();
         when(imuSessionRepository.findActiveForUpdateByUserId(USER_ID)).thenReturn(Optional.of(session));
         ImuDataPayload stale = new ImuDataPayload(1, 2, 3, 4, 5, 6,
-                Instant.now().minusSeconds(25 * 60 * 60), "stale", null, null);
+                Instant.now().minusSeconds(25 * 60 * 60), "stale", null, null, false);
 
         assertThatThrownBy(() -> fallDetectionService.processImuData(USER_ID, stale))
                 .isInstanceOf(SafetyException.class)
@@ -485,7 +505,7 @@ class FallDetectionServiceTest {
         });
 
         SafetyEventResponse response = fallDetectionService.processImuData(USER_ID,
-                new ImuDataPayload(1, 2, 3, 4, 5, 6, clientTime, "ordered", null, null));
+                new ImuDataPayload(1, 2, 3, 4, 5, 6, clientTime, "ordered", null, null, false));
 
         assertThat(response.getClientDetectedAt()).isEqualTo(clientTime);
         assertThat(response.getDetectedAt()).isAfter(clientTime);
@@ -493,7 +513,7 @@ class FallDetectionServiceTest {
 
     private ImuDataPayload payload(String signalId) {
         return new ImuDataPayload(1, 2, 3, 4, 5, 6, Instant.now(), signalId,
-                new BigDecimal("10.123"), new BigDecimal("106.456"));
+                new BigDecimal("10.123"), new BigDecimal("106.456"), false);
     }
 
     private SafetyEvent makeSafetyEvent() {

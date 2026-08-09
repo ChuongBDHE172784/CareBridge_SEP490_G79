@@ -128,7 +128,13 @@ public class FallDetectionService implements IFallDetectionService {
             return toEventResponse(duplicate.get());
         }
 
-        FallAnalysisResult analysis = algorithmService.analyze(payload, activeSession.getSensitivityLevel());
+        // A recent CareBridge mobile client only sets this after its local IMU
+        // detector has verified free-fall, a rebound, and post-impact
+        // immobility. This prevents the legacy single-sample, hard-impact
+        // heuristic from discarding an otherwise verified soft-surface fall.
+        FallAnalysisResult analysis = payload.onDeviceFallConfirmed()
+                ? onDeviceConfirmedAnalysis(payload)
+                : algorithmService.analyze(payload, activeSession.getSensitivityLevel());
 
         if (!analysis.suspected()) {
             return null;
@@ -246,6 +252,17 @@ public class FallDetectionService implements IFallDetectionService {
         synchronizeLinkedSentSession(saved);
         auditService.log(AuditAction.SAFETY_EVENT_ESCALATED, saved.getUserId(), "SafetyEvent",
                 saved.getId().toString(), Map.of("emergencySessionId", emergency.getSessionId().toString()));
+    }
+
+    private FallAnalysisResult onDeviceConfirmedAnalysis(ImuDataPayload payload) {
+        double accelerationMagnitude = Math.sqrt(
+                payload.accelerometerX() * payload.accelerometerX()
+                        + payload.accelerometerY() * payload.accelerometerY()
+                        + payload.accelerometerZ() * payload.accelerometerZ());
+        return new FallAnalysisResult(
+                true,
+                SafetyEventType.SUSPECTED_FALL,
+                Math.abs(accelerationMagnitude - 9.81));
     }
 
     private void synchronizeLinkedSentSession(SafetyEvent saved) {
