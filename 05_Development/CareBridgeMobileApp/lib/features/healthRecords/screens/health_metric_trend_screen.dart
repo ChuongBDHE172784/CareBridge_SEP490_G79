@@ -254,6 +254,18 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
   }
 
   Future<void> _openAddMetric() async {
+    if (_selectedMetric.apiValue == 'EPDS_SCORE') {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => EpdsScreen(journeyId: widget.journeyId),
+        ),
+      );
+      if (mounted) {
+        await _loadTrend();
+      }
+      return;
+    }
+
     final changed = await context.push<bool>(
       '/journeys/${Uri.encodeComponent(widget.journeyId)}/metrics/add'
       '?metricType=${Uri.encodeQueryComponent(_selectedMetric.apiValue)}',
