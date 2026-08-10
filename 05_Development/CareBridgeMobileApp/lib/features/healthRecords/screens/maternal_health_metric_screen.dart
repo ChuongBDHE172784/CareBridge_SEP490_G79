@@ -269,28 +269,34 @@ class _MaternalHealthMetricScreenState
                   _confirmDelete();
                 }
               },
-              itemBuilder: (context) => [
-                const PopupMenuItem(
-                  value: 'edit',
-                  child: Row(
-                    children: [
-                      Icon(Icons.edit_outlined, color: _primary, size: 18),
-                      SizedBox(width: 8),
-                      Text('Chỉnh sửa', style: TextStyle(fontFamily: 'Lexend')),
-                    ],
+              itemBuilder: (context) {
+                final isFetalMovement = m.metricCode == 'FETAL_MOVEMENT_SESSION' ||
+                    m.metricCode == 'FETAL_MOVEMENT_COUNT' ||
+                    m.metricCode == 'FETAL_MOVEMENT';
+                return [
+                  if (!isFetalMovement)
+                    const PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit_outlined, color: _primary, size: 18),
+                          SizedBox(width: 8),
+                          Text('Chỉnh sửa', style: TextStyle(fontFamily: 'Lexend')),
+                        ],
+                      ),
+                    ),
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete_outline, color: Color(0xFFBA1A1A), size: 18),
+                        SizedBox(width: 8),
+                        Text('Xóa chỉ số', style: TextStyle(fontFamily: 'Lexend', color: Color(0xFFBA1A1A))),
+                      ],
+                    ),
                   ),
-                ),
-                const PopupMenuItem(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      Icon(Icons.delete_outline, color: Color(0xFFBA1A1A), size: 18),
-                      SizedBox(width: 8),
-                      Text('Xóa chỉ số', style: TextStyle(fontFamily: 'Lexend', color: Color(0xFFBA1A1A))),
-                    ],
-                  ),
-                ),
-              ],
+                ];
+              },
             )
           else
             const SizedBox(width: 48),
