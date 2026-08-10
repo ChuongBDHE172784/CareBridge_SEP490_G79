@@ -760,24 +760,20 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
           else
             SizedBox(
               height: height,
-              child: Scrollbar(
+              child: ListView.separated(
                 controller: _historyScrollController,
-                thumbVisibility: points.length > 5,
-                child: ListView.separated(
-                  controller: _historyScrollController,
-                  padding: EdgeInsets.zero,
-                  itemCount: points.length,
-                  itemBuilder: (context, index) {
-                    return _HistoryTile(
-                      point: points[index],
-                      metric: _selectedMetric,
-                      unit: _trend?.unit ?? _selectedMetric.unit,
-                      onTap: () => _openMetricDetail(points[index]),
-                    );
-                  },
-                  separatorBuilder: (_, _) =>
-                      const Divider(height: 1, color: _surfaceContainer),
-                ),
+                padding: EdgeInsets.zero,
+                itemCount: points.length,
+                itemBuilder: (context, index) {
+                  return _HistoryTile(
+                    point: points[index],
+                    metric: _selectedMetric,
+                    unit: _trend?.unit ?? _selectedMetric.unit,
+                    onTap: () => _openMetricDetail(points[index]),
+                  );
+                },
+                separatorBuilder: (_, _) =>
+                    const Divider(height: 1, color: _surfaceContainer),
               ),
             ),
         ],

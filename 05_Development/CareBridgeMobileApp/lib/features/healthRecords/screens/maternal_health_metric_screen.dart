@@ -31,8 +31,6 @@ class _MaternalHealthMetricScreenState
   static const _surface = Color(0xFFFFFCF9);
   static const _onSurface = Color(0xFF2A211D);
   static const _onSurfaceVariant = Color(0xFF655650);
-  static const _errorContainer = Color(0xFFFFDAD6);
-  static const _onErrorContainer = Color(0xFF93000A);
 
   final _service = HealthMetricService();
   HealthMetricDetail? _metric;
@@ -196,7 +194,6 @@ class _MaternalHealthMetricScreenState
   }
 
   Widget _buildContent(HealthMetricDetail m) {
-    final readOnly = widget.initialMetric != null;
     return Column(
       children: [
         _buildAppBar(),
@@ -206,13 +203,8 @@ class _MaternalHealthMetricScreenState
             child: Column(
               children: [
                 _buildMetricCard(m),
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
                 _buildDetailsCard(m),
-
-                if (!readOnly) ...[
-                  const SizedBox(height: 24),
-                  _buildActionButtons(m),
-                ],
               ],
             ),
           ),
@@ -413,57 +405,6 @@ class _MaternalHealthMetricScreenState
     );
   }
 
-  Widget _buildActionButtons(HealthMetricDetail metric) {
-    return Row(
-      children: [
-        Expanded(
-          child: SizedBox(
-            height: 48,
-            child: OutlinedButton.icon(
-              onPressed: () => _openEdit(metric),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: _primary,
-                side: const BorderSide(color: _primary, width: 2),
-                shape: const StadiumBorder(),
-              ),
-              icon: const Icon(Icons.edit_outlined, size: 20),
-              label: const Text(
-                'Sửa',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: SizedBox(
-            height: 48,
-            child: FilledButton.icon(
-              onPressed: _confirmDelete,
-              style: FilledButton.styleFrom(
-                backgroundColor: _errorContainer,
-                foregroundColor: _onErrorContainer,
-                shape: const StadiumBorder(),
-              ),
-              icon: const Icon(Icons.delete_outline, size: 20),
-              label: const Text(
-                'Xóa',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 }
 
 double? _metricContextNumber(Object? value) {
@@ -508,11 +449,12 @@ class _Card extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFFFF8F6),
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5D3CA), width: 1),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF5A463F).withAlpha(20),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
+            color: const Color(0xFF5A463F).withAlpha(18),
+            blurRadius: 16,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
