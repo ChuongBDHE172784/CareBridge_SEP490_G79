@@ -107,8 +107,11 @@ class ContextParityVectorTest {
                     Set.of("bleeding_amount", "gestational_week"), Set.of("VAGINAL_BLEEDING"));
             var questions = filter.eligibleQuestions(context, null);
             assertThat(questions).as(label).isNotEmpty();
+            assertThat(questions).as(label)
+                    .anyMatch(QuestionCatalog.Question::isClarification)
+                    .anyMatch(QuestionCatalog.Question::isGlobalDangerScreen);
             for (var question : questions) {
-                assertThat(question.isClarification())
+                assertThat(question.isClarification() || question.isGlobalDangerScreen())
                         .as("%s -> %s", label, question.questionId()).isTrue();
             }
         }

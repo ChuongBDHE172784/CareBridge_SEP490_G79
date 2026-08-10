@@ -44,6 +44,7 @@ def idempotency_guard(state: Mapping[str, object]) -> dict[str, object]:
         return conflict
     if _is_duplicate(state):
         return {
+            "triageOutcome": "NEEDS_MORE_INFO",
             "requiredAction": "DUPLICATE_REQUEST",
             "candidateQuestionIds": [],
             "plannedQuestionIds": [],
@@ -131,6 +132,7 @@ def question_planner(state: Mapping[str, object]) -> dict[str, object]:
     current_round = state.get("questionRound") if type(state.get("questionRound")) is int else 0
     if current_round >= MAXIMUM_QUESTION_ROUNDS:
         return {
+            "triageOutcome": "NEEDS_MORE_INFO",
             "plannedQuestionIds": [],
             "candidateQuestionIds": [],
             "requiredAction": "ROUTE_TO_HEALTHCARE_WORKER",
@@ -150,12 +152,17 @@ def question_planner(state: Mapping[str, object]) -> dict[str, object]:
     # reach is how a wrist-pain complaint ended up being asked about vaginal bleeding.
     allowed, refusal = clinical_questions_allowed(state)
     if not allowed:
-        clarification_ids = [
-            question.question_id for question in filtered if question.is_clarification
+        safety_or_clarification_ids = [
+            question.question_id
+            for question in filtered
+            if question.is_clarification or question.is_global_danger_screen
         ]
-        if clarification_ids:
-            filtered_ids = clarification_ids
-            filtered = [question for question in filtered if question.is_clarification]
+        if safety_or_clarification_ids:
+            filtered_ids = safety_or_clarification_ids
+            filtered = [
+                question for question in filtered
+                if question.is_clarification or question.is_global_danger_screen
+            ]
         else:
             return _refuse_clinical_questions(state, refusal, filtered_ids)
     planned = plan_questions(
@@ -168,6 +175,7 @@ def question_planner(state: Mapping[str, object]) -> dict[str, object]:
         return {"candidateQuestionIds": filtered_ids, "plannedQuestionIds": []}
 
     return {
+        "triageOutcome": "NEEDS_MORE_INFO",
         "candidateQuestionIds": filtered_ids,
         "plannedQuestionIds": question_ids,
         "questionRound": current_round + 1,
@@ -193,6 +201,7 @@ def _refuse_clinical_questions(
         for question_id in rejected_ids
     ]
     return {
+        "triageOutcome": "NEEDS_MORE_INFO",
         "candidateQuestionIds": [],
         "plannedQuestionIds": [],
         "selectedCatalogType": "NONE",
@@ -214,7 +223,7 @@ def _concurrency_guard(state: Mapping[str, object]) -> dict[str, object] | None:
         {"code": "STALE_STATE_VERSION", "node": "question_planner", "message": "conflict"}
     )
     return {
-        "triageOutcome": None,
+        "triageOutcome": "NEEDS_MORE_INFO",
         "requiredAction": "STATE_VERSION_CONFLICT",
         "stopConversation": True,
         "candidateQuestionIds": [],
@@ -245,6 +254,7 @@ def _filter_context(state: Mapping[str, object]) -> FilterContext:
         missing_signals=missing,
         answered_question_ids=frozenset(state.get("answeredQuestionIds", [])),
         signals=state.get("signals") if type(state.get("signals")) is dict else {},
+        safety_screen_status=state.get("safetyScreenStatus", "INCOMPLETE"),
     )
 
 

@@ -88,7 +88,9 @@ def test_context_parity_vector(vectors, index):
             missing_signals=frozenset({"VAGINAL_BLEEDING"}),
         ))
         assert questions, label
+        assert any(question.is_clarification for question in questions), label
+        assert any(question.is_global_danger_screen for question in questions), label
         for question in questions:
-            assert (question.is_target_clarification
-                    or question.is_intent_clarification
-                    or question.is_stage_clarification), f"{label} -> {question.question_id}"
+            assert (question.is_clarification or question.is_global_danger_screen), (
+                f"{label} -> {question.question_id}"
+            )
