@@ -16,7 +16,13 @@ class FetalMovementTrackerScreen extends StatefulWidget {
 class _FetalMovementTrackerScreenState
     extends State<FetalMovementTrackerScreen> {
   static const _primary = Color(0xFF845143);
-  static const _canvas = Color(0xFFFFF8F6);
+  static const _primaryContainer = Color(0xFFC98C7B);
+  static const _canvas = Color(0xFFF8F5F1);
+  static const _surface = Color(0xFFFFFCF9);
+  static const _surfaceContainerHigh = Color(0xFFF1E6E0);
+  static const _surfaceContainerLow = Color(0xFFF8EEE9);
+  static const _onSurface = Color(0xFF2A211D);
+  static const _onSurfaceVariant = Color(0xFF655650);
   final _service = HealthMetricService();
   final List<MetricDataPoint> _today = [];
   DateTime _historyDate = DateTime.now();
@@ -152,6 +158,7 @@ class _FetalMovementTrackerScreenState
       ),
     ),
     body: RefreshIndicator(
+      color: _primaryContainer,
       onRefresh: _loadToday,
       child: ListView(
         padding: const EdgeInsets.all(20),
@@ -160,32 +167,44 @@ class _FetalMovementTrackerScreenState
             '${DateUtils.isSameDay(_historyDate, DateTime.now()) ? 'Hôm nay' : 'Ngày đã chọn'}: ${_today.length} cử động đã ghi nhận',
             style: const TextStyle(
               fontFamily: 'Lexend',
-              fontSize: 25,
+              fontSize: 22,
               fontWeight: FontWeight.w700,
-              color: _primary,
+              color: _onSurface,
+              letterSpacing: -0.3,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           const Text(
             'Ghi nhận khi bạn cảm nhận bé cử động. Điều quan trọng nhất là nhận biết thay đổi so với nhịp cử động quen thuộc của bé.',
-            style: TextStyle(fontFamily: 'Lexend', height: 1.45),
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 13,
+              height: 1.45,
+              color: _onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 20),
           Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFFFFE2D9),
-              borderRadius: BorderRadius.circular(16),
+              color: _surfaceContainerLow,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: _surfaceContainerHigh),
             ),
             child: const Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Icon(Icons.info_outline_rounded, color: _primary),
-                SizedBox(width: 10),
+                SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     'Nếu bé cử động ít hơn thường ngày, thay đổi rõ rệt hoặc bạn không cảm nhận được cử động, hãy liên hệ cơ sở sản khoa ngay — không chờ đến ngày mai.',
-                    style: TextStyle(fontFamily: 'Lexend', height: 1.45),
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 13,
+                      height: 1.45,
+                      color: _onSurface,
+                    ),
                   ),
                 ),
               ],
@@ -221,7 +240,12 @@ class _FetalMovementTrackerScreenState
                       ),
                     ),
                     style: FilledButton.styleFrom(
+                      backgroundColor: _surface,
                       foregroundColor: _primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        side: const BorderSide(color: _surfaceContainerHigh),
+                      ),
                       padding: const EdgeInsets.all(12),
                     ),
                   ),
@@ -238,43 +262,75 @@ class _FetalMovementTrackerScreenState
                     fontFamily: 'Lexend',
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
+                    color: _onSurface,
+                    letterSpacing: -0.2,
                   ),
                 ),
               ),
               TextButton.icon(
                 onPressed: _pickHistoryDate,
-                icon: const Icon(Icons.calendar_month_rounded),
+                icon: const Icon(Icons.calendar_month_rounded, color: _primary),
                 label: Text(
                   '${_historyDate.day.toString().padLeft(2, '0')}/${_historyDate.month.toString().padLeft(2, '0')}',
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontWeight: FontWeight.w600,
+                    color: _primary,
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 8),
           if (_loading)
-            const Center(child: CircularProgressIndicator())
+            const Center(
+              child: CircularProgressIndicator(color: _primaryContainer),
+            )
           else if (_today.isEmpty)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 20),
               child: Text(
                 'Chưa có cử động nào trong ngày đã chọn.',
-                style: TextStyle(fontFamily: 'Lexend'),
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  color: _onSurfaceVariant,
+                ),
               ),
             )
           else
             ..._today.map(
-              (point) => ListTile(
-                leading: const Icon(Icons.schedule_rounded, color: _primary),
-                title: Text(
-                  _labelFor(point.note),
-                  style: const TextStyle(
-                    fontFamily: 'Lexend',
-                    fontWeight: FontWeight.w600,
-                  ),
+              (point) => Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                decoration: BoxDecoration(
+                  color: _surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: _surfaceContainerHigh),
                 ),
-                trailing: Text(
-                  TimeOfDay.fromDateTime(point.measuredAt).format(context),
-                  style: const TextStyle(fontFamily: 'Lexend'),
+                child: ListTile(
+                  leading: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: const BoxDecoration(
+                      color: _surfaceContainerLow,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.schedule_rounded, color: _primary, size: 18),
+                  ),
+                  title: Text(
+                    _labelFor(point.note),
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontWeight: FontWeight.w600,
+                      color: _onSurface,
+                    ),
+                  ),
+                  trailing: Text(
+                    TimeOfDay.fromDateTime(point.measuredAt).format(context),
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      color: _onSurfaceVariant,
+                    ),
+                  ),
                 ),
               ),
             ),

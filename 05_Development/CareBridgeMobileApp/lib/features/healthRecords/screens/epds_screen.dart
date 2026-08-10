@@ -29,8 +29,8 @@ class EpdsHistoryDetailScreen extends StatelessWidget {
   final List<int> answers;
 
   static const _primary = Color(0xFF845143);
-  static const _canvas = Color(0xFFFFF8F6);
-  static const _selected = Color(0xFFF2EAE4);
+  static const _canvas = Color(0xFFF8F5F1);
+  static const _selected = Color(0xFFF8EEE9);
   static const _danger = Color(0xFFBA1A1A);
 
   @override
@@ -309,8 +309,13 @@ class EpdsScreen extends StatefulWidget {
 
 class _EpdsScreenState extends State<EpdsScreen> {
   static const _primary = Color(0xFF845143);
-  static const _canvas = Color(0xFFFFF8F6);
-  static const _surface = Color(0xFFFFFFFF);
+  static const _primaryContainer = Color(0xFFC98C7B);
+  static const _canvas = Color(0xFFF8F5F1);
+  static const _surface = Color(0xFFFFFCF9);
+  static const _surfaceContainerHigh = Color(0xFFF1E6E0);
+  static const _surfaceContainerLow = Color(0xFFF8EEE9);
+  static const _onSurface = Color(0xFF2A211D);
+  static const _onSurfaceVariant = Color(0xFF655650);
   final _service = HealthMetricService();
   final _answers = List<int?>.filled(10, null);
   List<MetricDataPoint> _history = [];
@@ -467,10 +472,16 @@ class _EpdsScreenState extends State<EpdsScreen> {
     appBar: AppBar(
       backgroundColor: _canvas,
       elevation: 0,
-      foregroundColor: _primary,
+      foregroundColor: _onSurface,
       title: const Text(
         'Sàng lọc tâm trạng EPDS',
-        style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700),
+        style: TextStyle(
+          fontFamily: 'Lexend',
+          fontSize: 22,
+          fontWeight: FontWeight.w700,
+          color: _onSurface,
+          letterSpacing: -0.3,
+        ),
       ),
     ),
     body: SafeArea(child: _started ? _buildQuestion() : _buildOverview()),
@@ -485,8 +496,8 @@ class _EpdsScreenState extends State<EpdsScreen> {
         children: [
           LinearProgressIndicator(
             value: (_questionIndex + 1) / 10,
-            color: _primary,
-            backgroundColor: const Color(0xFFF2EAE4),
+            color: _primaryContainer,
+            backgroundColor: _surfaceContainerHigh,
           ),
           const SizedBox(height: 14),
           Text(
@@ -502,9 +513,10 @@ class _EpdsScreenState extends State<EpdsScreen> {
             question.text,
             style: const TextStyle(
               fontFamily: 'Lexend',
-              fontSize: 21,
+              fontSize: 20,
               height: 1.35,
               fontWeight: FontWeight.w700,
+              color: _onSurface,
             ),
           ),
           const SizedBox(height: 16),
@@ -516,13 +528,27 @@ class _EpdsScreenState extends State<EpdsScreen> {
               child: ListView(
                 children: List.generate(question.options.length, (index) {
                   final option = question.options[index];
-                  return Card(
-                    color: _surface,
+                  final isSelected = _answers[_questionIndex] == option.score;
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    decoration: BoxDecoration(
+                      color: isSelected ? _surfaceContainerLow : _surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isSelected ? _primaryContainer : _surfaceContainerHigh,
+                        width: isSelected ? 2 : 1,
+                      ),
+                    ),
                     child: RadioListTile<int>(
                       value: option.score,
+                      activeColor: _primaryContainer,
                       title: Text(
                         option.label,
-                        style: const TextStyle(fontFamily: 'Lexend'),
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                          color: _onSurface,
+                        ),
                       ),
                     ),
                   );
@@ -536,6 +562,14 @@ class _EpdsScreenState extends State<EpdsScreen> {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: () => setState(() => _questionIndex--),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: _primary,
+                      side: const BorderSide(color: _surfaceContainerHigh),
+                      minimumSize: const Size.fromHeight(50),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
                     child: const Text('Quay lại'),
                   ),
                 ),
@@ -548,8 +582,12 @@ class _EpdsScreenState extends State<EpdsScreen> {
                             ? _submit
                             : () => setState(() => _questionIndex++)),
                   style: FilledButton.styleFrom(
-                    backgroundColor: _primary,
+                    backgroundColor: _primaryContainer,
+                    foregroundColor: Colors.white,
                     minimumSize: const Size.fromHeight(50),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                   ),
                   child: _saving
                       ? const SizedBox(
@@ -576,8 +614,16 @@ class _EpdsScreenState extends State<EpdsScreen> {
       Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: const Color(0xFFF2EAE4),
-          borderRadius: BorderRadius.circular(20),
+          color: _surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: _surfaceContainerHigh),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x08000000),
+              blurRadius: 16,
+              offset: Offset(0, 4),
+            ),
+          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -586,15 +632,21 @@ class _EpdsScreenState extends State<EpdsScreen> {
               'Tâm trạng trong 7 ngày qua',
               style: TextStyle(
                 fontFamily: 'Lexend',
-                fontSize: 22,
+                fontSize: 20,
                 fontWeight: FontWeight.w700,
-                color: _primary,
+                color: _onSurface,
+                letterSpacing: -0.3,
               ),
             ),
             const SizedBox(height: 8),
             const Text(
               'EPDS gồm 10 câu hỏi ngắn dành cho giai đoạn mang thai và sau sinh. Đây là công cụ sàng lọc, không phải chẩn đoán.',
-              style: TextStyle(fontFamily: 'Lexend', height: 1.5),
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 13,
+                height: 1.45,
+                color: _onSurfaceVariant,
+              ),
             ),
             if (_result != null) ...[
               const SizedBox(height: 14),
@@ -603,20 +655,34 @@ class _EpdsScreenState extends State<EpdsScreen> {
                 style: const TextStyle(
                   fontFamily: 'Lexend',
                   fontWeight: FontWeight.w700,
+                  color: _onSurface,
                 ),
               ),
               const SizedBox(height: 6),
               Text(
                 _guidance(_result!),
-                style: const TextStyle(fontFamily: 'Lexend', height: 1.4),
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  height: 1.4,
+                  color: _onSurfaceVariant,
+                ),
               ),
             ],
             const SizedBox(height: 18),
             FilledButton(
               onPressed: _restart,
-              style: FilledButton.styleFrom(backgroundColor: _primary),
+              style: FilledButton.styleFrom(
+                backgroundColor: _primaryContainer,
+                foregroundColor: Colors.white,
+                shape: const StadiumBorder(),
+                minimumSize: const Size.fromHeight(48),
+              ),
               child: Text(
                 _history.isEmpty ? 'Bắt đầu sàng lọc' : 'Làm lại EPDS',
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ],
@@ -629,21 +695,32 @@ class _EpdsScreenState extends State<EpdsScreen> {
           fontFamily: 'Lexend',
           fontSize: 18,
           fontWeight: FontWeight.w700,
+          color: _onSurface,
+          letterSpacing: -0.2,
         ),
       ),
-      const SizedBox(height: 8),
+      const SizedBox(height: 10),
       if (_history.isEmpty)
         const Text(
           'Chưa có lần sàng lọc nào.',
-          style: TextStyle(fontFamily: 'Lexend'),
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            color: _onSurfaceVariant,
+          ),
         )
       else
         ..._history.map(
-          (item) => Card(
+          (item) => Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            decoration: BoxDecoration(
+              color: _surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _surfaceContainerHigh),
+            ),
             child: ListTile(
               onTap: () => _openHistoryDetail(item),
               leading: CircleAvatar(
-                backgroundColor: const Color(0xFFF2EAE4),
+                backgroundColor: _surfaceContainerLow,
                 child: Text(
                   item.valueNumeric.toStringAsFixed(0),
                   style: const TextStyle(
@@ -657,11 +734,15 @@ class _EpdsScreenState extends State<EpdsScreen> {
                 style: const TextStyle(
                   fontFamily: 'Lexend',
                   fontWeight: FontWeight.w600,
+                  color: _onSurface,
                 ),
               ),
               subtitle: Text(
                 '${item.measuredAt.day.toString().padLeft(2, '0')}/${item.measuredAt.month.toString().padLeft(2, '0')}/${item.measuredAt.year}',
-                style: const TextStyle(fontFamily: 'Lexend'),
+                style: const TextStyle(
+                  fontFamily: 'Lexend',
+                  color: _onSurfaceVariant,
+                ),
               ),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -674,7 +755,7 @@ class _EpdsScreenState extends State<EpdsScreen> {
                         color: Color(0xFFBA1A1A),
                       ),
                     ),
-                  const Icon(Icons.chevron_right_rounded),
+                  const Icon(Icons.chevron_right_rounded, color: _onSurfaceVariant),
                 ],
               ),
             ),

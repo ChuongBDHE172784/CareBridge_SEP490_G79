@@ -16,15 +16,15 @@ class MotherExerciseScreen extends StatefulWidget {
 }
 
 class _MotherExerciseScreenState extends State<MotherExerciseScreen> {
-  static const _canvas = Color(0xFFFFF8F6);
-  static const _surface = Color(0xFFFFFFFF);
-  static const _surfaceLow = Color(0xFFFFF1EC);
+  static const _canvas = Color(0xFFF8F5F1);
+  static const _surface = Color(0xFFFFFCF9);
+  static const _surfaceLow = Color(0xFFF8EEE9);
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
-  static const _secondaryContainer = Color(0xFFF6DACF);
-  static const _onSurface = Color(0xFF271812);
-  static const _onSurfaceVariant = Color(0xFF524440);
-  static const _outline = Color(0xFFD6C2BD);
+  static const _secondaryContainer = Color(0xFFF1E6E0);
+  static const _onSurface = Color(0xFF2A211D);
+  static const _onSurfaceVariant = Color(0xFF655650);
+  static const _outline = Color(0xFFE5D3CA);
 
   static const _trimesterFilters = [
     _FilterOption('Tất cả', null),
