@@ -43,25 +43,39 @@ class SystemSafetyCountdownFeedback implements SafetyCountdownFeedback {
   var _active = false;
   FlutterTts? _tts;
   bool _ttsInitialized = false;
-  bool _isSpeaking = false;
+  Timer? _speechTimer;
 
   Future<void> _initTts() async {
     if (_ttsInitialized) return;
     try {
       _tts = FlutterTts();
-      await _tts?.setLanguage('vi-VN');
-      await _tts?.setSpeechRate(0.48);
-      await _tts?.setVolume(1.0);
-      await _tts?.setAudioAttributesForNavigation();
-      _tts?.setCompletionHandler(() {
-        _isSpeaking = false;
-        if (_active) {
-          unawaited(_speakPhrase());
-        }
-      });
-      _tts?.setErrorHandler((_) {
-        _isSpeaking = false;
-      });
+      try {
+        await _tts?.setLanguage('vi-VN');
+      } catch (_) {}
+      try {
+        await _tts?.setSpeechRate(0.48);
+      } catch (_) {}
+      try {
+        await _tts?.setVolume(1.0);
+      } catch (_) {}
+
+      // Android specific attributes (ignored on iOS)
+      try {
+        await _tts?.setAudioAttributesForNavigation();
+      } catch (_) {}
+
+      // iOS specific audio category to ensure loud speaker output even in silent mode
+      try {
+        await _tts?.setIosAudioCategory(
+          IosTextToSpeechAudioCategory.playback,
+          [
+            IosTextToSpeechAudioCategoryOptions.defaultToSpeaker,
+            IosTextToSpeechAudioCategoryOptions.duckOthers,
+          ],
+          IosTextToSpeechAudioMode.defaultMode,
+        );
+      } catch (_) {}
+
       _ttsInitialized = true;
     } catch (_) {
       _ttsInitialized = false;
@@ -69,47 +83,55 @@ class SystemSafetyCountdownFeedback implements SafetyCountdownFeedback {
   }
 
   Future<void> _speakPhrase() async {
-    if (!_active || _isSpeaking) return;
+    if (!_active) return;
     try {
       if (!_ttsInitialized) {
         await _initTts();
       }
-      if (_active && _ttsInitialized) {
-        _isSpeaking = true;
+      if (_active) {
         await _tts?.speak('Bạn có ổn không');
       }
+    } catch (_) {}
+  }
+
+  void _triggerStrongVibration() {
+    try {
+      unawaited(HapticFeedback.vibrate());
+      unawaited(HapticFeedback.heavyImpact());
+      Future.delayed(const Duration(milliseconds: 150), () {
+        if (_active) {
+          unawaited(HapticFeedback.vibrate());
+          unawaited(HapticFeedback.heavyImpact());
+        }
+      });
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (_active) {
+          unawaited(HapticFeedback.vibrate());
+          unawaited(HapticFeedback.heavyImpact());
+        }
+      });
     } catch (_) {
-      _isSpeaking = false;
+      unawaited(HapticFeedback.vibrate());
     }
   }
 
   @override
   void start() {
     _active = true;
-    _isSpeaking = false;
+    _speechTimer?.cancel();
     unawaited(_speakPhrase());
+    _speechTimer = Timer.periodic(const Duration(milliseconds: 2500), (_) {
+      if (_active) {
+        unawaited(_speakPhrase());
+      }
+    });
   }
 
   @override
   void pulse(int remainingSeconds) {
     if (!_active || !_shouldPulse(remainingSeconds)) return;
-    unawaited(_triggerStrongVibration());
+    _triggerStrongVibration();
     unawaited(SystemSound.play(SystemSoundType.alert));
-    if (!_isSpeaking) {
-      unawaited(_speakPhrase());
-    }
-  }
-
-  Future<void> _triggerStrongVibration() async {
-    try {
-      await HapticFeedback.heavyImpact();
-      await Future<void>.delayed(const Duration(milliseconds: 100));
-      await HapticFeedback.vibrate();
-      await Future<void>.delayed(const Duration(milliseconds: 100));
-      await HapticFeedback.heavyImpact();
-    } catch (_) {
-      await HapticFeedback.vibrate();
-    }
   }
 
   bool _shouldPulse(int remainingSeconds) {
@@ -121,7 +143,8 @@ class SystemSafetyCountdownFeedback implements SafetyCountdownFeedback {
   @override
   void stop() {
     _active = false;
-    _isSpeaking = false;
+    _speechTimer?.cancel();
+    _speechTimer = null;
     try {
       unawaited(_tts?.stop());
     } catch (_) {}
