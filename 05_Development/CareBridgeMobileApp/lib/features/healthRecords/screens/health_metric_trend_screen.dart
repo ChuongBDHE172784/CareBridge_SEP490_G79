@@ -357,6 +357,7 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
       ),
       child: Scaffold(
         backgroundColor: _canvas,
+        extendBodyBehindAppBar: true,
         appBar: AppBar(
           backgroundColor: _canvas,
           elevation: 0,

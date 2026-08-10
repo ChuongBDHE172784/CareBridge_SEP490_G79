@@ -159,6 +159,7 @@ class _MaternalHealthMetricScreenState
 
   @override
   Widget build(BuildContext context) {
+    final topInset = MediaQuery.of(context).padding.top;
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -167,51 +168,55 @@ class _MaternalHealthMetricScreenState
       ),
       child: Scaffold(
         backgroundColor: _canvas,
-        body: SafeArea(
-          child: _loading
-              ? const Center(
-                  child: CircularProgressIndicator(color: _primaryContainer),
-                )
-              : _error != null
-              ? _buildErrorState()
-              : _buildContent(_metric!),
+        body: _loading
+            ? Center(
+                child: Padding(
+                  padding: EdgeInsets.only(top: topInset),
+                  child: const CircularProgressIndicator(color: _primaryContainer),
+                ),
+              )
+            : _error != null
+            ? _buildErrorState(topInset)
+            : _buildContent(_metric!, topInset),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(double topInset) {
+    return Padding(
+      padding: EdgeInsets.only(top: topInset),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: Color(0xFFBA1A1A)),
+            const SizedBox(height: 12),
+            Text(
+              _error!,
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 14,
+                color: _onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: _load,
+              child: const Text(
+                'Thử lại',
+                style: TextStyle(fontFamily: 'Lexend', color: _primary),
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildErrorState() {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.error_outline, size: 48, color: Color(0xFFBA1A1A)),
-          const SizedBox(height: 12),
-          Text(
-            _error!,
-            style: const TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 14,
-              color: _onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 16),
-          TextButton(
-            onPressed: _load,
-            child: const Text(
-              'Thử lại',
-              style: TextStyle(fontFamily: 'Lexend', color: _primary),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildContent(HealthMetricDetail m) {
+  Widget _buildContent(HealthMetricDetail m, double topInset) {
     return Column(
       children: [
-        _buildAppBar(),
+        _buildAppBar(topInset),
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
@@ -228,11 +233,13 @@ class _MaternalHealthMetricScreenState
     );
   }
 
-  Widget _buildAppBar() {
+  Widget _buildAppBar(double topInset) {
     final m = _metric;
     return Container(
       color: _surface,
-      height: 56,
+      // height = standard 56 + status bar so AppBar fills behind Dynamic Island
+      height: 56 + topInset,
+      padding: EdgeInsets.only(top: topInset),
       child: Row(
         children: [
           IconButton(

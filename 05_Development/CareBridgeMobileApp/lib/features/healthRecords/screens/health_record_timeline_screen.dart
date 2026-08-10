@@ -168,6 +168,7 @@ class _HealthRecordTimelineScreenState
 
   @override
   Widget build(BuildContext context) {
+    final topInset = MediaQuery.of(context).padding.top;
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
@@ -176,24 +177,22 @@ class _HealthRecordTimelineScreenState
       ),
       child: Scaffold(
         backgroundColor: _canvas,
-        body: SafeArea(
-          child: Column(
-            children: [
-              _buildAppBar(),
-              _buildSearchControls(),
-              Expanded(
-                child: _loading
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                          color: _primaryContainer,
-                        ),
-                      )
-                    : _error != null
-                    ? _buildError()
-                    : _buildTimeline(),
-              ),
-            ],
-          ),
+        body: Column(
+          children: [
+            _buildAppBar(topInset),
+            _buildSearchControls(),
+            Expanded(
+              child: _loading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: _primaryContainer,
+                      ),
+                    )
+                  : _error != null
+                  ? _buildError()
+                  : _buildTimeline(),
+            ),
+          ],
         ),
         floatingActionButton: FloatingActionButton.extended(
           backgroundColor: _primary,
@@ -219,11 +218,12 @@ class _HealthRecordTimelineScreenState
     );
   }
 
-  Widget _buildAppBar() {
+  Widget _buildAppBar(double topInset) {
     return SizedBox(
-      height: 56,
+      // 56 standard + topInset to fill behind Dynamic Island
+      height: 56 + topInset,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
+        padding: EdgeInsets.fromLTRB(8, topInset, 8, 0),
         child: Row(
           children: [
             IconButton(
