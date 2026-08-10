@@ -2,6 +2,7 @@ package com.carebridge.backend.checklist.entity;
 
 import com.carebridge.backend.checklist.model.ChecklistTargetSubject;
 import com.carebridge.backend.checklist.model.ChecklistTaskStatus;
+import com.carebridge.backend.checklist.model.ChecklistSupportFunction;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -56,6 +57,13 @@ public class ChecklistTaskInstance {
 
     @Column(name = "title_snapshot", nullable = false, length = 500)
     private String titleSnapshot;
+
+    @Column(name = "description_snapshot", columnDefinition = "TEXT")
+    private String descriptionSnapshot;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "support_function_code", length = 40)
+    private ChecklistSupportFunction supportFunction;
 
     @Builder.Default
     @Column(name = "display_order", nullable = false)

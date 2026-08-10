@@ -1,4 +1,5 @@
 import 'reminder_model.dart';
+import 'today_task_support_function.dart';
 
 enum TodayTaskKind { checklist, reminder, careTask, unknown }
 
@@ -159,6 +160,8 @@ class TodayTask {
   final TodayTaskSourceType sourceType;
   final ReminderType type;
   final String title;
+  final String? description;
+  final TodayTaskSupportFunction? supportFunction;
   final DateTime? scheduledAt;
   final DateTime? dueAt;
   final DateTime? snoozedUntil;
@@ -183,6 +186,8 @@ class TodayTask {
     required this.sourceType,
     required this.type,
     required this.title,
+    this.description,
+    this.supportFunction,
     this.scheduledAt,
     this.dueAt,
     this.snoozedUntil,
@@ -254,6 +259,10 @@ class TodayTask {
         (json['type'] ?? json['reminderType']) as String?,
       ),
       title: json['title'] as String? ?? '',
+      description: json['description'] as String?,
+      supportFunction: TodayTaskSupportFunction.fromJson(
+        json['supportFunction'],
+      ),
       scheduledAt: scheduledAt ?? dueAt,
       dueAt: dueAt ?? scheduledAt,
       snoozedUntil: _date(json['snoozedUntil']),

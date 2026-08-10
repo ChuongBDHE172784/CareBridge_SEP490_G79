@@ -96,6 +96,8 @@ QODER.md
 .serena/
 .venv-headroom/
 .codex/
+.omc/
+.omc
 .workbuddy-ai/
 outputs/
 
@@ -162,5 +164,4 @@ outputs/notification-status-audit-2026-07-29.md
 CLAUDE.md
 
 # External cloned repositories
-Exercise-Correction/
-.env.emulator
+Exercise-Correction/

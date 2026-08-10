@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.carebridge.backend.checklist.model.ChecklistCareContextType;
+import com.carebridge.backend.checklist.model.ChecklistSupportFunction;
 import com.carebridge.backend.checklist.today.dto.TodayTaskItemResponse;
 import com.carebridge.backend.checklist.today.dto.TodayTasksResponse;
 import com.carebridge.backend.checklist.today.model.TaskKind;
@@ -46,6 +47,8 @@ class ChecklistRequestMaterializationEmbeddedPostgresTest
 
     private static final LocalDate EFFECTIVE_DATE = LocalDate.of(2026, 7, 31);
     private static final String ZONE = "Asia/Ho_Chi_Minh";
+    private static final String TASK_DESCRIPTION =
+            "Kiểm tra và bổ sung các kết quả khám gần nhất.";
 
     @Autowired private JdbcTemplate jdbcTemplate;
     @Autowired private TransactionTemplate transactionTemplate;
@@ -80,9 +83,16 @@ class ChecklistRequestMaterializationEmbeddedPostgresTest
         assertThat(materialized.careContextType()).isEqualTo(ChecklistCareContextType.JOURNEY);
         assertThat(materialized.careContextId()).isEqualTo(journeyId);
         assertThat(materialized.title()).isEqualTo("REQUEST week-four task");
+        assertThat(materialized.description()).isEqualTo(TASK_DESCRIPTION);
+        assertThat(materialized.supportFunction())
+                .isEqualTo(ChecklistSupportFunction.HEALTH_RECORDS);
         assertThat(templateTaskNodes(firstHttp.json(), template.versionId()))
                 .singleElement()
-                .satisfies(task -> assertThat(task.path("careGroupId").isNull()).isTrue());
+                .satisfies(task -> {
+                    assertThat(task.path("careGroupId").isNull()).isTrue();
+                    assertThat(task.path("description").asText()).isEqualTo(TASK_DESCRIPTION);
+                    assertThat(task.path("supportFunction").asText()).isEqualTo("HEALTH_RECORDS");
+                });
         assertThat(personalParentCount(motherId, template.versionId())).isOne();
         assertThat(personalTaskCount(motherId, template.versionId())).isOne();
         assertThat(materialized.taskId()).isEqualTo(jdbcTemplate.queryForObject("""
@@ -106,6 +116,9 @@ class ChecklistRequestMaterializationEmbeddedPostgresTest
                     assertThat(task.taskId()).isEqualTo(materialized.taskId());
                     assertThat(task.instanceId()).isEqualTo(materialized.instanceId());
                     assertThat(task.careGroupId()).isNull();
+                    assertThat(task.description()).isEqualTo(TASK_DESCRIPTION);
+                    assertThat(task.supportFunction())
+                            .isEqualTo(ChecklistSupportFunction.HEALTH_RECORDS);
                 });
         assertThat(personalParentCount(motherId, template.versionId())).isOne();
         assertThat(personalTaskCount(motherId, template.versionId())).isOne();
@@ -133,6 +146,8 @@ class ChecklistRequestMaterializationEmbeddedPostgresTest
         assertThat(materialized.path("careContextType").asText()).isEqualTo("JOURNEY");
         assertThat(materialized.path("careContextId").asText()).isEqualTo(journeyId.toString());
         assertThat(materialized.path("title").asText()).isEqualTo("REQUEST week-four task");
+        assertThat(materialized.path("description").asText()).isEqualTo(TASK_DESCRIPTION);
+        assertThat(materialized.path("supportFunction").asText()).isEqualTo("HEALTH_RECORDS");
         assertThat(personalParentCount(motherId, template.versionId())).isOne();
         assertThat(personalTaskCount(motherId, template.versionId())).isOne();
 
@@ -146,6 +161,9 @@ class ChecklistRequestMaterializationEmbeddedPostgresTest
                     assertThat(task.path("taskId").asText()).isEqualTo(taskId.toString());
                     assertThat(task.path("instanceId").asText()).isEqualTo(instanceId.toString());
                     assertThat(task.path("careGroupId").isNull()).isTrue();
+                    assertThat(task.path("description").asText()).isEqualTo(TASK_DESCRIPTION);
+                    assertThat(task.path("supportFunction").asText())
+                            .isEqualTo("HEALTH_RECORDS");
                 });
         assertThat(personalParentCount(motherId, template.versionId())).isOne();
         assertThat(personalTaskCount(motherId, template.versionId())).isOne();
@@ -205,14 +223,15 @@ class ChecklistRequestMaterializationEmbeddedPostgresTest
                     """, templateId, templateId, versionId);
             jdbcTemplate.update("""
                     insert into care_item_templates (
-                        template_id, parent_template_id, entry_type, title, display_order,
-                        stage, is_active, version, template_status, content_status,
+                        template_id, parent_template_id, entry_type, title, description,
+                        support_function_code, display_order, stage, is_active, version,
+                        template_status, content_status,
                         target_subject, is_required, due_anchor_type, due_offset_start,
                         due_offset_end, due_offset_unit, created_at, updated_at)
-                    values (?, ?, 'CHECKLIST_ENTRY', 'REQUEST week-four task', 1,
-                        'PREGNANCY', true, 1, 'ACTIVE', 'APPROVED',
+                    values (?, ?, 'CHECKLIST_ENTRY', 'REQUEST week-four task', ?,
+                        'HEALTH_RECORDS', 1, 'PREGNANCY', true, 1, 'ACTIVE', 'APPROVED',
                         'MOTHER', true, 'LMP', 28, 28, 'DAY', now(), now())
-                    """, itemId, templateId);
+                    """, itemId, templateId, TASK_DESCRIPTION);
             jdbcTemplate.update("""
                     update care_item_templates
                        set content_status='APPROVED', distribution_enabled=true,

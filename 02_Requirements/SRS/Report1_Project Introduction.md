@@ -64,15 +64,15 @@ CareBridge: A Maternal and Early Childhood Healthcare Platform
 
 [2.2.3 Access to Health Information and Misinformation	20](#2.2.3-access-to-health-information-and-misinformation)
 
-[2.2.4. Regulatory Response and Implementation Challenges	21](#2.2.4.-regulatory-response-and-implementation-challenges)
+[2.2.4. Legal Framework and Basis for Application Development	21](#2.2.4.-legal-framework-and-basis-for-application-development)
 
 [2.2.5. Market Demand & User Pain Points	22](#2.2.5.-market-demand-&-user-pain-points)
 
-[2.2.3.1. Context and Overview	22](#2.2.3.1.-context-and-overview)
+[2.2.3.1. Context and Overview	23](#2.2.3.1.-context-and-overview)
 
 [2.2.3.2. User Pain Points	23](#2.2.3.2.-user-pain-points)
 
-[2.3. Conclusion – Why CareBridge is needed	24](#2.3.-conclusion-–-why-carebridge-is-needed)
+[2.3. Conclusion – Why CareBridge is needed	25](#2.3.-conclusion-–-why-carebridge-is-needed)
 
 [3\. Existing Systems	26](#3.-existing-systems)
 
@@ -150,7 +150,9 @@ CareBridge: A Maternal and Early Childhood Healthcare Platform
 
 ## **1\. Overview** {#1.-overview}
 
-**CareBridge – A Maternal and Early Childhood Healthcare Platform** is developed to support women's healthcare throughout three major stages: **preconception, pregnancy, and postpartum with early childcare**.
+**CareBridge – A Maternal and Early Childhood Healthcare Platform** is developed to support wome
+
+n's healthcare throughout three major stages: **preconception, pregnancy, and postpartum with early childcare**.
 
 The platform enables users to access verified medical information, receive guidance from verified healthcare professionals, follow personalized care plans, and monitor maternal and infant health indicators. CareBridge also supports family connectivity, allowing family members to monitor the mother's health status and provide timely support whenever needed.
 
@@ -568,10 +570,6 @@ Source: WHO – Viet Nam Country Health Data
 
 [https://data.who.int/countries/70](https://data.who.int/countries/704)4
 
-Source: Ministry of Health – Child Nutrition Situation in Viet Nam
-
-[https://moh.gov.vn/home?\_101\_struts\_action=%2Fasset\_publisher%2Fview\_content&\_101\_type=content&\_101\_urlTitle=thay-oi-che-o-dinh-duong-e-phat-trien-suc-voc-cua-nguoi-vi-1\&p\_p\_id=101\&p\_p\_lifecycle=0\&p\_p\_mode=view\&p\_p\_state=maximize](https://moh.gov.vn/home?_101_struts_action=%2Fasset_publisher%2Fview_content&_101_type=content&_101_urlTitle=thay-oi-che-o-dinh-duong-e-phat-trien-suc-voc-cua-nguoi-vi-1&p_p_id=101&p_p_lifecycle=0&p_p_mode=view&p_p_state=maximized)d
-
 Micronutrient deficiencies also remain an important concern. The 2019–2020 National Nutrition Survey found that 63.5% of pregnant women had zinc deficiency. The median urinary iodine concentration among pregnant women was also below the level recommended by WHO. These findings indicate that women need access to reliable guidance on nutrition and appropriate micronutrient supplementation.
 
 Source: Ministry of Health – Results of the 2019–2020 National Nutrition Survey
@@ -585,8 +583,6 @@ Nationally representative data on the use of preconception care services in Viet
 Source: Le et al. – Awareness of Nutrition and Supplements Among Pregnant and Preconception Women: A Real-World Study in Vietnam, 2023
 
 PubMed: [https://pubmed.ncbi.nlm.nih.gov/37908636](https://pubmed.ncbi.nlm.nih.gov/37908636/)/
-
-DOI: 10.1089/whr.2023.0014
 
 Postnatal mental health also requires greater attention. A review of 18 studies conducted in Viet Nam reported postpartum depression rates ranging from 8.2% to 48.1%. This wide range resulted from differences in study locations, assessment periods, participant characteristics, and screening instruments. Therefore, it should not be interpreted as a single national prevalence rate. However, the findings demonstrate a genuine need for postnatal mental-health screening and psychological support.
 
@@ -632,36 +628,59 @@ Source: UNICEF Viet Nam – Immunisation and Vaccine Misinformation
 
 [https://www.unicef.org/vietnam/immunizatio](https://www.unicef.org/vietnam/immunization)n
 
-#### ***2.2.4. Regulatory Response and Implementation Challenges*** {#2.2.4.-regulatory-response-and-implementation-challenges}
+#### ***2.2.4. Legal Framework and Basis for Application Development*** {#2.2.4.-legal-framework-and-basis-for-application-development}
 
-To ensure the safety of mothers and children during home-based care, Vietnam has established a legal framework covering medical practice, personal data protection, and cybersecurity. These regulations define the responsibilities of healthcare providers, digital platforms, and medical professionals in delivering maternal and child healthcare services.
+**Legal Framework**
 
-**Regulatory Foundation**
+– Professional Practice License Requirements
 
-Under the **Law on Medical Examination and Treatment**, digital health platforms must clearly distinguish between providing health information, personal health tracking, and regulated medical activities such as diagnosis, treatment, or prescription. In addition, **Decree No. 356/2025/NĐ-CP** classifies maternal and child health records as **sensitive personal data**, requiring platforms to obtain user consent, apply data encryption, implement strict access control, and comply with national data protection regulations.
+Health consultations provided through CareBridge must be conducted by healthcare professionals holding valid practice licenses. The application must verify their professional qualifications and licenses before allowing them to provide consultations to users.
 
-**Medical and Community Requirements**
+Source: Law on Medical Examination and Treatment No. 15/2023/QH15, Article 2, Clauses 4–5, PDF page 2, content lines 1–7.
 
-Healthcare professionals providing consultations through the platform must hold valid medical practice licenses. Platforms are also required to establish content moderation mechanisms to prevent medical misinformation and ensure that users receive reliable, evidence-based health information.
+[https://datafiles.chinhphu.vn/cpp/files/vbpq/2023/02/15luat.signed.pdf](https://datafiles.chinhphu.vn/cpp/files/vbpq/2023/02/15luat.signed.pdf)
 
-**Implementation Challenges**
+– Users’ Rights Regarding Personal Data Processing
 
-Despite the existing legal framework, several practical challenges remain:
+CareBridge users must be clearly informed about the purposes for which their personal data is collected and processed. Users have the right to consent to, refuse, or withdraw their consent to the processing of their personal data.
 
-* There is no standardized platform for continuous home-based monitoring of maternal and child health.  
-* Caregivers still rely heavily on memory to manage medical appointments, medications, and vaccination schedules.  
-* Health records are fragmented across hospitals, paper documents, and multiple digital applications.  
-* Unverified medical information on social media makes it difficult for users to distinguish reliable medical guidance from personal opinions.
+Source: Law on Personal Data Protection No. 91/2025/QH15, Article 4, Clause 1, Points a–d, PDF page 3, content lines 1–13.
 
-These challenges highlight the need for an integrated digital platform such as **CareBridge**, which centralizes health records, supports continuous monitoring, provides smart reminders, verifies healthcare professionals, and delivers trusted medical information to improve the quality and continuity of maternal and child healthcare.
+[https://datafiles.chinhphu.vn/cpp/files/vbpq/2025/7/91qh.signed.pdf](https://datafiles.chinhphu.vn/cpp/files/vbpq/2025/7/91qh.signed.pdf)
 
-References:
+– Storage of Evidence of User Consent
 
-* Law on Medical Examination and Treatment (Law No. 15/2023/QH15)  
-* Law on Cyber Security (Law No. 24/2018/QH14)  
-* Law on Personal Data Protection (2025)  
-* Decree No. 356/2025/NĐ-CP detailing the implementation of the Law on Personal Data Protection  
-* Decree No. 96/2023/NĐ-CP detailing a number of articles of the Law on Medical Examination and Treatment
+CareBridge must retain evidence of user consent, including the identity of the consenting user, the time of consent, and the approved content. The application must not preselect consent options or present information in a manner that may mislead users.
+
+[Decree No. 356/2025/NĐ-CP, Article 6, Clauses 1–3, PDF pages 5–6. Methods of providing consent through an application are specified on page 5, content lines 18–27, while requirements for storing evidence of consent are specified on page 6, content lines 3–11.](https://datafiles.chinhphu.vn/cpp/files/vbpq/2026/01/356-nd.signed.pdf)
+
+Basis for Application Development
+
+– Guidelines of the Vietnamese Ministry of Health
+
+This document provides the basis for developing preconception care content, including risk assessment, BMI, nutrition, folic acid supplementation, vaccination, health examinations, and pregnancy planning.
+
+[Decision No. 1139/QĐ-BYT – Guidelines on Reproductive Healthcare, section on preconception care.](https://vnpa.moh.gov.vn/wp-content/uploads/2026/05/QD-1139-Tai-lieu-huong-dan-cham-soc-SKSS.pdf)
+
+– WHO Antenatal Care Guidelines
+
+This document provides the basis for developing the antenatal care schedule, health-monitoring activities for each stage of pregnancy, and appointment reminder functions. WHO recommends an antenatal care model involving a minimum of eight contacts.
+
+ [WHO Recommendations on Antenatal Care for a Positive Pregnancy Experience, PDF page 1, lines 17–33 and 40–50.](https://www.who.int/docs/default-source/reproductive-health/maternal-health/anc.pdf?sfvrsn=5e2c740e_2)
+
+– WHO Maternal Health Interventions
+
+This source provides the basis for identifying health information and indicators that should be monitored during pregnancy, including blood pressure, weight, BMI, nutrition, iron and folic acid supplementation, medical tests, vaccination, and warning signs.
+
+[WHO – Recommendations on Interventions Along the Maternal Life Course, Maternal Health Interventions section.](https://www.who.int/teams/maternal-newborn-child-adolescent-health-and-ageing/handbooks/programme-manager-s-handbook-mncah/recommendations-on-interventions-along-life-course/maternal)
+
+– Reference Information from Tu Du Hospital
+
+The Tu Du Hospital resource provides the basis for developing consultation content related to BMI, body weight, and important health considerations before and during pregnancy.
+
+Source: Tu Du Hospital – Health consultation information related to BMI and pregnancy.
+
+[https://www.tudu.com.vn/en/article41000/article41405/article20254/](https://www.tudu.com.vn/en/article41000/article41405/article20254/)
 
 #### ***2.2.5. Market Demand & User Pain Points*** {#2.2.5.-market-demand-&-user-pain-points}
 
@@ -966,7 +985,7 @@ In the long term, CareBridge aims to become a trusted digital support ecosystem 
 | MF-06 | AI Nurse Assistant & Risk Triage | Collects structured symptom context and returns non-diagnostic green/yellow/red risk orientation with safe next-step guidance using approved knowledge and red-flag rules. It must not diagnose disease, prescribe medication or make clinical decisions. |
 | MF-07 | Emergency Map & Nearby Care Support | Provides emergency-map entry, nearby care facilities, route/ETA and quick call/navigation. It supports faster action but does not dispatch ambulances or guarantee expert arrival. |
 | MF-08 | Family Sync & Cooperative Care | Supports care groups, family invitations, scoped permissions and shared calendar/data/alerts. Family members only access information within the granted permission scope. |
-| MF-9 | Verified Content & Checklist Hub | Provides reviewed stage-based articles, FAQs and actionable checklists with source labels, review status, versioning and content governance so outdated or unsafe material can be corrected or removed. |
+| MF-09 | Verified Content & Checklist Hub | Provides reviewed stage-based articles, FAQs and actionable checklists with source labels, review status, versioning and content governance so outdated or unsafe material can be corrected or removed. |
 | MF-10 | Smart Activity Monitoring & Safety Support | Uses phone accelerometer and gyroscope data only after consent to detect suspected falls/impacts, request safety confirmation, alert selected contacts and record false-positive feedback. It is not a certified fall detector or emergency dispatch system. |
 | MF-11 | Connected Device & Health Data Integration | Version 2 \- Deferred. Future scope for opt-in device/platform connection or controlled manual import, source and quality labels, trend viewing, disconnection and imported-data deletion. No active Release 1 use case, screen or integration is retained. |
 | MF-12 | Paid Direct Consultation & Commission | Version 2 \- Deferred. Future scope for booking, payment, realtime text/voice/video sessions, temporary record sharing, commission, disputes and refunds. No active Release 1 use case, screen or integration is retained. |

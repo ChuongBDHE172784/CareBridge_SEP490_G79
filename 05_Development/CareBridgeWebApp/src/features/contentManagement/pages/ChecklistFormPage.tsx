@@ -6,12 +6,13 @@ import type {
   ChecklistRecipientRole,
   ChecklistSubstage,
   ChecklistTargetSubject,
+  ChecklistSupportFunction,
   ChecklistTemplateStatus,
   ChecklistTemplateType,
   ContentStage,
   ReviewFeedback,
 } from '../models/content';
-import { STAGE_LABELS, STAGE_OPTIONS } from '../models/content';
+import { CHECKLIST_SUPPORT_FUNCTION_OPTIONS, STAGE_LABELS, STAGE_OPTIONS } from '../models/content';
 import { checklistSequenceLabel } from './checklistApprovalPresentation';
 import {
   createChecklistTemplate,
@@ -23,8 +24,10 @@ interface ItemRow {
   key: string;
   id?: string;
   itemText: string;
+  description: string;
   isRequired: boolean;
   targetSubject: ChecklistTargetSubject;
+  supportFunction: ChecklistSupportFunction | '';
 }
 
 const ROLE_ORDER: ChecklistRecipientRole[] = ['MOTHER', 'FAMILY'];
@@ -43,7 +46,14 @@ const SUBSTAGE_OPTIONS: Partial<Record<ContentStage, ChecklistSubstage[]>> = {
 const AUTHORABLE_STAGES: readonly ContentStage[] = STAGE_OPTIONS.map(({ value }) => value);
 
 function newRow(): ItemRow {
-  return { key: crypto.randomUUID(), itemText: '', isRequired: true, targetSubject: 'MOTHER' };
+  return {
+    key: crypto.randomUUID(),
+    itemText: '',
+    description: '',
+    isRequired: true,
+    targetSubject: 'MOTHER',
+    supportFunction: '',
+  };
 }
 
 export default function ChecklistFormPage() {
@@ -92,8 +102,10 @@ export default function ChecklistFormPage() {
             key: item.id,
             id: item.id,
             itemText: item.itemText,
+            description: item.description ?? '',
             isRequired: item.isRequired,
             targetSubject: item.targetSubject ?? 'MOTHER',
+            supportFunction: item.supportFunction ?? '',
           }))
         : [newRow()]);
     } catch {
@@ -153,13 +165,18 @@ export default function ChecklistFormPage() {
 
   const buildItemsPayload = () => items
     .filter((row) => row.itemText.trim())
-    .map((row, index) => ({
-      ...(row.id ? { id: row.id } : {}),
-      itemText: row.itemText.trim(),
-      order: index + 1,
-      isRequired: row.isRequired,
-      targetSubject: row.targetSubject,
-    }));
+    .map((row, index) => {
+      const description = row.description.trim();
+      return {
+        ...(row.id ? { id: row.id } : {}),
+        itemText: row.itemText.trim(),
+        order: index + 1,
+        isRequired: row.isRequired,
+        targetSubject: row.targetSubject,
+        ...(description ? { description } : {}),
+        ...(row.supportFunction ? { supportFunction: row.supportFunction } : {}),
+      };
+    });
 
   const submit = async (targetStatus: 'DRAFT' | 'PENDING_REVIEW') => {
     if (!isValid || isImmutable) return;
@@ -343,6 +360,15 @@ export default function ChecklistFormPage() {
                   <label className="grid gap-2 text-sm font-semibold text-on-surface">Mục {index + 1}<input aria-label={`Item ${index + 1} text`} disabled={isImmutable} value={row.itemText} onChange={(event) => updateItem(row.key, { itemText: event.target.value })} className={field} /></label>
                   <label className="grid gap-2 text-sm font-semibold text-on-surface">Đối tượng<select aria-label={`Item ${index + 1} target`} disabled={isImmutable} value={row.targetSubject} onChange={(event) => updateItem(row.key, { targetSubject: event.target.value as ChecklistTargetSubject })} className={field}><option value="MOTHER">Mẹ</option><option value="BABY">Em bé</option></select></label>
                   <button aria-label={`Delete item ${index + 1}`} type="button" disabled={isImmutable || items.length === 1} onClick={() => setItems((previous) => previous.filter((item) => item.key !== row.key))} className="flex h-10 w-10 items-center justify-center rounded-xl border border-error-container text-error hover:bg-error-container/20 cursor-pointer disabled:opacity-30 self-end mb-0.5"><Trash2 size={18} /></button>
+                  <label className="grid gap-2 text-sm font-semibold text-on-surface md:col-span-3">Nội dung chi tiết
+                    <textarea aria-label={`Nội dung chi tiết mục ${index + 1}`} disabled={isImmutable} value={row.description} onChange={(event) => updateItem(row.key, { description: event.target.value })} rows={3} className={`${field} py-3`} />
+                  </label>
+                  <label className="grid gap-2 text-sm font-semibold text-on-surface md:col-span-2">Chức năng hỗ trợ
+                    <select aria-label={`Chức năng hỗ trợ mục ${index + 1}`} disabled={isImmutable} value={row.supportFunction} onChange={(event) => updateItem(row.key, { supportFunction: event.target.value as ChecklistSupportFunction | '' })} className={field}>
+                      <option value="">Không liên kết</option>
+                      {CHECKLIST_SUPPORT_FUNCTION_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                    </select>
+                  </label>
                   <label className="flex items-center gap-2 text-sm font-semibold text-on-surface-variant md:col-span-3"><input type="checkbox" disabled={isImmutable} checked={row.isRequired} onChange={(event) => updateItem(row.key, { isRequired: event.target.checked })} className="h-4 w-4 accent-primary" /> Bắt buộc</label>
                 </div>
               ))}

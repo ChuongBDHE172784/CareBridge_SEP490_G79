@@ -170,7 +170,8 @@ public class OptionalChecklistTemplateImportService {
         return new ChecklistDistributionItem(
                 item.getId(), item.getItemText(), item.getOrder() == null ? 0 : item.getOrder(),
                 Boolean.TRUE.equals(item.getIsRequired()), item.getTargetSubject(), item.getDueAnchorType(),
-                item.getDueOffsetStart(), item.getDueOffsetUnit());
+                item.getDueOffsetStart(), item.getDueOffsetUnit(), item.getDescription(),
+                item.getSupportFunction());
     }
 
     private static BusinessException invalid(String code, String message) {

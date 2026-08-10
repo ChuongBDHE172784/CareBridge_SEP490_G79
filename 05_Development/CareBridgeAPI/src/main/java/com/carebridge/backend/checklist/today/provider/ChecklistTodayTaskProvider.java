@@ -148,7 +148,8 @@ public class ChecklistTodayTaskProvider implements TodayTaskProvider {
                         instance.getTemplateVersionId(), presentedCareGroupId,
                         instance.getCareContextType(), instance.getCareContextId(),
                         task.getTitleSnapshot(), task.getTargetSubject(), instance.getOrigin(),
-                        task.getStatus().name(), actions, task.getDueAt(), terminalAt(task)));
+                        task.getStatus().name(), actions, task.getDueAt(), terminalAt(task), null,
+                        task.getDescriptionSnapshot(), task.getSupportFunction()));
             }
         }
         return List.copyOf(result);

@@ -136,7 +136,15 @@ describe('ChecklistDetailPage version', () => {
         unit: 'WEEK',
       },
       items: [
-        { id: 'mother-item', itemText: 'Uống vitamin', order: 1, isRequired: true, targetSubject: 'MOTHER' },
+        {
+          id: 'mother-item',
+          itemText: 'Uống vitamin',
+          order: 1,
+          isRequired: true,
+          targetSubject: 'MOTHER',
+          description: 'Uống sau bữa sáng theo hướng dẫn.',
+          supportFunction: 'REMINDERS',
+        },
         { id: 'baby-item', itemText: 'Chuẩn bị đồ cho bé', order: 2, isRequired: false, targetSubject: 'BABY' },
       ],
     });
@@ -148,6 +156,10 @@ describe('ChecklistDetailPage version', () => {
     expect(screen.getByText('PREGNANCY_LMP_WEEK_0_12')).toBeTruthy();
     expect(screen.getByLabelText('Đối tượng mục 1: Mẹ')).toBeTruthy();
     expect(screen.getByLabelText('Đối tượng mục 2: Em bé')).toBeTruthy();
+    expect(screen.getByText('NỘI DUNG CHI TIẾT')).toBeTruthy();
+    expect(screen.getByText('Uống sau bữa sáng theo hướng dẫn.')).toBeTruthy();
+    expect(screen.getByLabelText('Chức năng hỗ trợ mục 1: Nhắc nhở')).toBeTruthy();
+    expect(screen.getByLabelText('Chức năng hỗ trợ mục 2: Không liên kết')).toBeTruthy();
   });
 
   it('offers clone instead of direct edit for an approved immutable version', async () => {

@@ -41,7 +41,7 @@ public class UserProfile {
     @Column(name = "avatar_url", length = 500)
     private String avatarUrl;
 
-    @Column(name = "phone_number", length = 20)
+    @Column(name = "phone", length = 20)
     private String phoneNumber;
 
     @Column(name = "date_of_birth")
