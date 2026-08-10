@@ -347,22 +347,24 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
         backgroundColor: _canvas,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: _onSurface),
+          icon: const Icon(Icons.arrow_back_rounded, color: _primary),
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: const Text(
           'Chỉ số sức khỏe',
           style: TextStyle(
             fontFamily: 'Lexend',
-            fontSize: 18,
+            fontSize: 20,
             fontWeight: FontWeight.w700,
             color: _primary,
+            letterSpacing: -0.3,
           ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.close_rounded, color: _onSurfaceVariant),
-            onPressed: () => Navigator.of(context).pop(),
+            tooltip: 'Nhập chỉ số',
+            icon: const Icon(Icons.add_circle_outline, color: _primary, size: 26),
+            onPressed: _openAddMetric,
           ),
         ],
       ),

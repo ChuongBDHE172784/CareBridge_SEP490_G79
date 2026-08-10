@@ -129,7 +129,6 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _surface = Color(0xFFFFF8F6);
   static const _surfaceContainerLowest = Color(0xFFFFFFFF);
-  static const _surfaceContainerHighest = Color(0xFFFADCD3);
   static const _surfaceContainer = Color(0xFFFFE9E3);
   static const _surfaceVariant = Color(0xFFFADCD3);
   static const _onSurface = Color(0xFF271812);
@@ -525,23 +524,6 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
                     children: [
                       _buildTopBar(),
                       const SizedBox(height: 16),
-                      const Text(
-                        'Giám sát an toàn',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w600,
-                          color: _onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        'Theo dõi hoạt động và phát hiện sự cố theo thời gian thực.',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: _onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
                       _buildStatusCard(fallDetectionEnabled),
                       const SizedBox(height: 16),
                       _buildSensorSelfTestCard(),
@@ -566,49 +548,36 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
       height: 56,
       child: Row(
         children: [
-          SizedBox(
-            width: 40,
-            height: 40,
-            child: IconButton(
-              padding: EdgeInsets.zero,
-              icon: const Icon(Icons.arrow_back, color: _primary, size: 20),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            width: 40,
-            height: 40,
-            decoration: const BoxDecoration(
-              color: _surfaceContainerHighest,
-              shape: BoxShape.circle,
-            ),
-            child: const Center(
-              child: Text(
-                'N',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: _primary,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'CareBridge',
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.w700,
-                color: _primary,
-                letterSpacing: -0.5,
-              ),
-            ),
-          ),
           IconButton(
-            icon: const Icon(Icons.notifications_outlined, color: _primary),
-            onPressed: () {},
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(Icons.arrow_back_rounded, color: _primary),
+          ),
+          const SizedBox(width: 4),
+          const Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Giám sát an toàn',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: _primary,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                Text(
+                  'Tự động phát hiện té ngã & hỗ trợ khẩn cấp',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 12,
+                    color: _onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

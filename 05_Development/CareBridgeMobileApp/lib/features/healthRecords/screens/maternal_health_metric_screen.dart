@@ -222,34 +222,64 @@ class _MaternalHealthMetricScreenState
   }
 
   Widget _buildAppBar() {
+    final m = _metric;
     return Container(
       color: _surface,
-      height: 64,
+      height: 56,
       child: Row(
         children: [
           IconButton(
             onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back, color: _onSurfaceVariant),
+            icon: const Icon(Icons.arrow_back_rounded, color: _primary),
           ),
-          const Expanded(
+          Expanded(
             child: Text(
-              'Chi tiết chỉ số',
+              m != null ? 'Chi tiết ${m.metricType.displayLabel}' : 'Chi tiết chỉ số',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontFamily: 'Lexend',
-                fontSize: 24,
+                fontSize: 20,
                 fontWeight: FontWeight.w700,
                 color: _primary,
                 letterSpacing: -0.24,
               ),
             ),
           ),
-          IconButton(
-            onPressed: () {
-              // TODO: more options (history, share) UC-187
-            },
-            icon: const Icon(Icons.more_vert, color: _onSurfaceVariant),
-          ),
+          if (m != null && widget.initialMetric == null)
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, color: _primary),
+              onSelected: (value) {
+                if (value == 'edit') {
+                  _openEdit(m);
+                } else if (value == 'delete') {
+                  _confirmDelete();
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'edit',
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit_outlined, color: _primary, size: 18),
+                      SizedBox(width: 8),
+                      Text('Chỉnh sửa', style: TextStyle(fontFamily: 'Lexend')),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete_outline, color: Color(0xFFBA1A1A), size: 18),
+                      SizedBox(width: 8),
+                      Text('Xóa chỉ số', style: TextStyle(fontFamily: 'Lexend', color: Color(0xFFBA1A1A))),
+                    ],
+                  ),
+                ),
+              ],
+            )
+          else
+            const SizedBox(width: 48),
         ],
       ),
     );

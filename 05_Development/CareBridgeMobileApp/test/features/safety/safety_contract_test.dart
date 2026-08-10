@@ -146,8 +146,15 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('safety-countdown-safe')), findsOneWidget);
-    expect(find.byKey(const Key('safety-countdown-help')), findsOneWidget);
+    expect(
+      find.byKey(const Key('safety-countdown-false-positive')),
+      findsOneWidget,
+    );
     await tester.tap(find.byKey(const Key('safety-countdown-safe')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('safety-countdown-confirm-safe-button')),
+    );
     await tester.pumpAndSettle();
     expect(result?.action, SafetyCountdownAction.safe);
   });

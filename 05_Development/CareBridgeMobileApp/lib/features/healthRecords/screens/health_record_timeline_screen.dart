@@ -181,44 +181,78 @@ class _HealthRecordTimelineScreenState
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: _primaryContainer,
+      floatingActionButton: FloatingActionButton.extended(
+        backgroundColor: _primary,
         foregroundColor: Colors.white,
-        shape: const CircleBorder(),
+        elevation: 3,
+        icon: const Icon(Icons.add, size: 20),
+        label: const Text(
+          'Thêm hồ sơ',
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         onPressed: () async {
           final created = await context.push<bool>('/health-records/add');
           if (created == true && mounted) {
             _load();
           }
         },
-        child: const Icon(Icons.add),
       ),
     );
   }
 
   Widget _buildAppBar() {
     return SizedBox(
-      height: 48,
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back, color: _onSurfaceVariant),
-          ),
-          const Expanded(
-            child: Text(
-              'Lịch sử sức khỏe',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-                color: _primary,
+      height: 56,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Row(
+          children: [
+            IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.arrow_back_rounded, color: _primary),
+            ),
+            const Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Hồ sơ sức khỏe',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: _primary,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  Text(
+                    'Sổ khám, kết quả xét nghiệm & siêu âm',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 12,
+                      color: _onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-          const SizedBox(width: 48),
-        ],
+            IconButton(
+              tooltip: 'Thêm hồ sơ',
+              onPressed: () async {
+                final created = await context.push<bool>('/health-records/add');
+                if (created == true && mounted) {
+                  _load();
+                }
+              },
+              icon: const Icon(Icons.add_circle_outline, color: _primary, size: 26),
+            ),
+          ],
+        ),
       ),
     );
   }
