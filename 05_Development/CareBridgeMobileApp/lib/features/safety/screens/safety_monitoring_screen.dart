@@ -854,7 +854,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
               ),
             ),
             TextButton(
-              onPressed: _load,
+              onPressed: _showAllEventsHistorySheet,
               child: const Text(
                 'Xem tất cả',
                 style: TextStyle(color: _primary, fontWeight: FontWeight.w500),
@@ -884,76 +884,162 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
             ),
           )
         else
-          ...eventDisplays.map(
-            (e) => InkWell(
-              onTap: e.event == null ? null : () => _showEventActions(e.event!),
-              borderRadius: BorderRadius.circular(28),
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: _surfaceContainerLowest,
-                  borderRadius: BorderRadius.circular(28),
-                  border: Border(left: BorderSide(color: e.color, width: 4)),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x0F5A463F),
-                      blurRadius: 20,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Icon(e.icon, color: e.color, size: 20),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  e.title,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: _onSurface,
-                                  ),
-                                ),
-                              ),
-                              Text(
-                                e.time,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: _onSurfaceVariant,
-                                ),
-                              ),
-                            ],
+          ...eventDisplays.map(_buildEventCard),
+      ],
+    );
+  }
+
+  Widget _buildEventCard(_SafetyEventDisplay e) {
+    return InkWell(
+      onTap: e.event == null ? null : () => _showEventActions(e.event!),
+      borderRadius: BorderRadius.circular(28),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: _surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(28),
+          border: Border(left: BorderSide(color: e.color, width: 4)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x0F5A463F),
+              blurRadius: 20,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Icon(e.icon, color: e.color, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          e.title,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: _onSurface,
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            e.description,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: _onSurfaceVariant,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
+                      Text(
+                        e.time,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: _onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    e.description,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: _onSurfaceVariant,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-          ),
-      ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showAllEventsHistorySheet() async {
+    List<SafetyEvent> allEvents = _events;
+    try {
+      final fetched = await _safetyService.getSafetyEvents(size: 50);
+      if (fetched.isNotEmpty) {
+        allEvents = fetched;
+      }
+    } catch (_) {
+      // Fallback to currently loaded _events on error
+    }
+
+    if (!mounted) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: _surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      builder: (bottomSheetContext) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.75,
+          minChildSize: 0.4,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (context, scrollController) {
+            final displays = allEvents.map(_toEventDisplay).toList();
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+              child: Column(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: _onSurfaceVariant.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Lịch sử sự kiện an toàn',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: _onSurface,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.of(bottomSheetContext).pop(),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: displays.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'Chưa có sự kiện an toàn nào được ghi nhận.',
+                              style: TextStyle(fontSize: 14, color: _onSurfaceVariant),
+                            ),
+                          )
+                        : ListView.builder(
+                            controller: scrollController,
+                            itemCount: displays.length,
+                            itemBuilder: (context, index) {
+                              return _buildEventCard(displays[index]);
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
