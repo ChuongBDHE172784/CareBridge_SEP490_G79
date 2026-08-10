@@ -19,14 +19,12 @@ class ExpertAppHomeScreen extends StatefulWidget {
 class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
-  static const _canvas = Color(0xFFFFF8F6);
-  static const _surface = Colors.white;
-  static const _surfaceHigh = Color(0xFFFFE2D9);
-  static const _surfaceHighest = Color(0xFFFADCD3);
-  static const _onSurface = Color(0xFF271812);
-  static const _onSurfaceVariant = Color(0xFF524440);
-  static const _outline = Color(0xFF84736F);
-  static const _error = Color(0xFFBA1A1A);
+  static const _canvas = Color(0xFFF8F5F1);
+  static const _surface = Color(0xFFFFFCF9);
+  static const _surfaceContainerLow = Color(0xFFF8EEE9);
+  static const _onSurface = Color(0xFF2A211D);
+  static const _onSurfaceVariant = Color(0xFF655650);
+  static const _outlineVariant = Color(0xFFE5D3CA);
 
   ExpertHomeSnapshot? _snapshot;
   List<CommunityFeedItem> _unansweredQuestions = [];
@@ -65,6 +63,13 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
     }
   }
 
+  String _getTimeBasedGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Buổi sáng tốt lành,';
+    if (hour < 18) return 'Buổi chiều tốt lành,';
+    return 'Buổi tối tốt lành,';
+  }
+
   @override
   Widget build(BuildContext context) {
     final snapshot = _snapshot;
@@ -73,20 +78,15 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
       body: SafeArea(
         bottom: false,
         child: RefreshIndicator(
-          color: _primaryContainer,
+          color: _primary,
           onRefresh: _load,
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
             children: [
               _buildHeader(snapshot),
-              const SizedBox(height: 28),
+              const SizedBox(height: 20),
               if (_loading)
-                const Padding(
-                  padding: EdgeInsets.only(top: 110),
-                  child: Center(
-                    child: CircularProgressIndicator(color: _primary),
-                  ),
-                )
+                _buildSkeletonLoader()
               else ...[
                 _buildMetricGrid(snapshot),
                 const SizedBox(height: 18),
@@ -95,7 +95,7 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
                   const SizedBox(height: 18),
                 ],
                 _buildCommunityCard(),
-                const SizedBox(height: 24),
+                const SizedBox(height: 22),
                 _buildUnansweredQuestionsSection(),
               ],
             ],
@@ -107,45 +107,93 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
 
   Widget _buildHeader(ExpertHomeSnapshot? snapshot) {
     final profile = snapshot?.profile ?? const ExpertHomeProfile();
-    return Row(
-      children: [
-        AppUserAvatar(
-          avatarUrl: profile.avatarUrl,
-          radius: 28,
-          backgroundColor: _surfaceHigh,
-          onTap: () => context.push('/profile'),
-        ),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                profile.displayName,
-                style: const TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 31,
-                  fontWeight: FontWeight.w700,
-                  color: _primary,
-                  height: 1.05,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                profile.subtitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: _outline,
-                ),
-              ),
-            ],
+    final greeting = _getTimeBasedGreeting();
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: _surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _outlineVariant, width: 1),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A845143),
+            blurRadius: 16,
+            offset: Offset(0, 4),
           ),
-        ),
-      ],
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: _primaryContainer, width: 2),
+            ),
+            child: AppUserAvatar(
+              avatarUrl: profile.avatarUrl,
+              radius: 28,
+              backgroundColor: _surfaceContainerLow,
+              onTap: () => context.push('/profile'),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  greeting,
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: _onSurfaceVariant.withValues(alpha: 0.8),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        profile.displayName.isNotEmpty ? profile.displayName : 'Bác sĩ',
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: _onSurface,
+                          letterSpacing: -0.2,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(
+                      Icons.verified_rounded,
+                      size: 16,
+                      color: Color(0xFF10B981),
+                    ),
+                  ],
+                ),
+                if (profile.subtitle.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    profile.subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: _primary,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -154,11 +202,23 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
       children: [
         Expanded(
           child: _MetricCard(
-            icon: Icons.assignment_outlined,
+            icon: Icons.assignment_rounded,
             count: snapshot?.requestCount ?? 0,
-            title: 'Yêu cầu',
-            subtitle: 'Đang chờ',
+            title: 'Yêu cầu tư vấn',
+            subtitle: 'Đang chờ xử lý',
             onTap: _openRequests,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _MetricCard(
+            icon: Icons.question_answer_rounded,
+            count: _unansweredQuestions.length,
+            title: 'Câu hỏi mới',
+            subtitle: 'Cần giải đáp',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const CommunityFeedScreen()),
+            ),
           ),
         ),
       ],
@@ -166,102 +226,158 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
   }
 
   Widget _buildNextConsultation(ExpertConsultation consultation) {
-    return InkWell(
-      onTap: _openRequests,
-      borderRadius: BorderRadius.circular(24),
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: _surfaceHigh,
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Row(
-          children: [
-            const CircleAvatar(
-              backgroundColor: _primary,
-              child: Icon(Icons.schedule_outlined, color: Colors.white),
+    return Container(
+      decoration: BoxDecoration(
+        color: _surfaceContainerLow,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _primaryContainer.withValues(alpha: 0.4), width: 1),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A845143),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          onTap: _openRequests,
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: const BoxDecoration(
+                    color: _primary,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.notification_important_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'ƯU TIÊN XỬ LÝ',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          color: _primary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        consultation.topic,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: _onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${consultation.motherName} · ${consultation.timeLabel}',
+                        style: const TextStyle(
+                          fontFamily: 'Lexend',
+                          color: _onSurfaceVariant,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded, color: _primary, size: 22),
+              ],
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Yêu cầu cần xem trước',
-                    style: TextStyle(color: _onSurfaceVariant, fontSize: 12),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    consultation.topic,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      fontWeight: FontWeight.w800,
-                      color: _onSurface,
-                    ),
-                  ),
-                  Text(
-                    '${consultation.motherName} · ${consultation.timeLabel}',
-                    style: const TextStyle(
-                      color: _onSurfaceVariant,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.chevron_right, color: _primary),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  // ADR-MEDI-005 — Community bumped off the EXPERT bottom nav (no "find/message Mother" CTA
-  // anywhere in the EXPERT shell, BR-MEDI-005); this card is its replacement entry point.
   Widget _buildCommunityCard() {
-    return InkWell(
-      onTap: () => Navigator.of(
-        context,
-      ).push(MaterialPageRoute(builder: (_) => const CommunityFeedScreen())),
-      borderRadius: BorderRadius.circular(28),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-        decoration: BoxDecoration(
-          color: _surface,
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: _softShadow,
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: const BoxDecoration(
-                color: _surfaceHighest,
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.group_outlined,
-                color: _primary,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 16),
-            const Expanded(
-              child: Text(
-                'Cộng đồng',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: _onSurface,
+    return Container(
+      decoration: BoxDecoration(
+        color: _surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _outlineVariant, width: 1),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A845143),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const CommunityFeedScreen()),
+          ),
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: const BoxDecoration(
+                    color: _surfaceContainerLow,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.groups_rounded,
+                    color: _primary,
+                    size: 22,
+                  ),
                 ),
-              ),
+                const SizedBox(width: 14),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Cộng đồng Mẹ & Chuyên gia',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: _onSurface,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Giải đáp thắc mắc sức khỏe cộng đồng',
+                        style: TextStyle(
+                          fontFamily: 'Lexend',
+                          fontSize: 12,
+                          color: _onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded, color: _onSurfaceVariant, size: 22),
+              ],
             ),
-            const Icon(Icons.chevron_right, color: _outline),
-          ],
+          ),
         ),
       ),
     );
@@ -275,10 +391,10 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text(
-              'Câu hỏi mới cần giải đáp',
+              'Câu hỏi mới từ các Mẹ',
               style: TextStyle(
                 fontFamily: 'Lexend',
-                fontSize: 18,
+                fontSize: 16,
                 fontWeight: FontWeight.w700,
                 color: _onSurface,
               ),
@@ -298,7 +414,7 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
                       color: _primary,
                     ),
                   ),
-                  Icon(Icons.chevron_right, size: 18, color: _primary),
+                  Icon(Icons.chevron_right_rounded, size: 18, color: _primary),
                 ],
               ),
             ),
@@ -312,15 +428,15 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
             decoration: BoxDecoration(
               color: _surface,
               borderRadius: BorderRadius.circular(20),
-              boxShadow: _softShadow,
+              border: Border.all(color: _outlineVariant),
             ),
             child: const Center(
               child: Text(
                 'Hiện chưa có câu hỏi mới cần giải đáp.',
                 style: TextStyle(
                   fontFamily: 'Lexend',
-                  fontSize: 14,
-                  color: _outline,
+                  fontSize: 13,
+                  color: _onSurfaceVariant,
                 ),
               ),
             ),
@@ -340,102 +456,154 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
       decoration: BoxDecoration(
         color: _surface,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: _softShadow,
+        border: Border.all(color: _outlineVariant, width: 1),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A845143),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
-      child: InkWell(
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => QuestionDetailScreen(questionId: item.id),
-            ),
-          );
-        },
+      child: Material(
+        color: Colors.transparent,
         borderRadius: BorderRadius.circular(20),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  if (item.topicName.isNotEmpty)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _surfaceHigh,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        item.topicName,
-                        style: const TextStyle(
-                          fontFamily: 'Lexend',
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: _primary,
+        child: InkWell(
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => QuestionDetailScreen(questionId: item.id),
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    if (item.topicName.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          item.topicName,
+                          style: const TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: _primary,
+                          ),
                         ),
                       ),
+                    const Spacer(),
+                    Text(
+                      item.authorDisplay,
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 12,
+                        color: _onSurfaceVariant,
+                      ),
                     ),
-                  const Spacer(),
-                  Text(
-                    item.authorDisplay,
-                    style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 12,
-                      color: _outline,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                item.title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: _onSurface,
-                  height: 1.3,
+                  ],
                 ),
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  const Icon(
-                    Icons.chat_bubble_outline,
-                    size: 16,
-                    color: _outline,
+                const SizedBox(height: 10),
+                Text(
+                  item.title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: _onSurface,
+                    height: 1.3,
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '${item.answerCount} câu trả lời',
-                    style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 12,
-                      color: _outline,
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.chat_bubble_outline_rounded,
+                      size: 15,
+                      color: _onSurfaceVariant,
                     ),
-                  ),
-                  const Spacer(),
-                  const Text(
-                    'Trả lời ngay',
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: _primary,
+                    const SizedBox(width: 4),
+                    Text(
+                      '${item.answerCount} câu trả lời',
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 12,
+                        color: _onSurfaceVariant,
+                      ),
                     ),
-                  ),
-                  const Icon(Icons.chevron_right, size: 16, color: _primary),
-                ],
-              ),
-            ],
+                    const Spacer(),
+                    const Text(
+                      'Trả lời ngay',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: _primary,
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right_rounded, size: 16, color: _primary),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildSkeletonLoader() {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Container(
+                height: 110,
+                decoration: BoxDecoration(
+                  color: _surface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: _outlineVariant),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Container(
+                height: 110,
+                decoration: BoxDecoration(
+                  color: _surface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: _outlineVariant),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        Container(
+          height: 80,
+          decoration: BoxDecoration(
+            color: _surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: _outlineVariant),
+          ),
+        ),
+      ],
     );
   }
 
@@ -446,14 +614,6 @@ class _ExpertAppHomeScreenState extends State<ExpertAppHomeScreen> {
       ),
     );
   }
-
-  static List<BoxShadow> get _softShadow => [
-    BoxShadow(
-      color: const Color(0xFF5A463F).withValues(alpha: 0.06),
-      blurRadius: 22,
-      offset: const Offset(0, 4),
-    ),
-  ];
 }
 
 class _MetricCard extends StatelessWidget {
@@ -473,48 +633,55 @@ class _MetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(28),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(18, 24, 18, 22),
-        decoration: BoxDecoration(
-          color: _ExpertAppHomeScreenState._surface,
-          borderRadius: BorderRadius.circular(28),
-          boxShadow: _ExpertAppHomeScreenState._softShadow,
-        ),
-        child: Column(
-          children: [
-            Stack(
-              clipBehavior: Clip.none,
+    return Container(
+      decoration: BoxDecoration(
+        color: _ExpertAppHomeScreenState._surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _ExpertAppHomeScreenState._outlineVariant, width: 1),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A845143),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 58,
-                  height: 58,
-                  decoration: const BoxDecoration(
-                    color: _ExpertAppHomeScreenState._surfaceHighest,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    icon,
-                    color: _ExpertAppHomeScreenState._primary,
-                    size: 30,
-                  ),
-                ),
-                if (count > 0)
-                  Positioned(
-                    top: -5,
-                    right: -5,
-                    child: Container(
-                      width: 24,
-                      height: 24,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
                       decoration: const BoxDecoration(
-                        color: _ExpertAppHomeScreenState._error,
+                        color: _ExpertAppHomeScreenState._surfaceContainerLow,
                         shape: BoxShape.circle,
                       ),
-                      child: Center(
+                      child: Icon(
+                        icon,
+                        color: _ExpertAppHomeScreenState._primary,
+                        size: 22,
+                      ),
+                    ),
+                    if (count > 0)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _ExpertAppHomeScreenState._primary,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         child: Text(
-                          count > 99 ? '99' : '$count',
+                          count > 99 ? '99+' : '$count',
                           style: const TextStyle(
                             fontFamily: 'Lexend',
                             fontSize: 11,
@@ -523,36 +690,34 @@ class _MetricCard extends StatelessWidget {
                           ),
                         ),
                       ),
-                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: _ExpertAppHomeScreenState._onSurface,
                   ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 12,
+                    color: _ExpertAppHomeScreenState._onSurfaceVariant,
+                  ),
+                ),
               ],
             ),
-            const SizedBox(height: 18),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: _ExpertAppHomeScreenState._onSurface,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              subtitle,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-                color: _ExpertAppHomeScreenState._onSurfaceVariant,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
+
 

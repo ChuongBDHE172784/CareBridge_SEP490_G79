@@ -17,10 +17,15 @@ class ConversationListScreen extends StatefulWidget {
 
 class _ConversationListScreenState extends State<ConversationListScreen>
     with WidgetsBindingObserver {
-  static const _primary = Color(0xFFC98C7B);
-  static const _primaryDark = Color(0xFF845143);
-  static const _surface = Color(0xFFF6F1EC);
-  static const _onVariant = Color(0xFF524440);
+  static const _primary = Color(0xFF845143);
+  static const _primaryContainer = Color(0xFFC98C7B);
+  static const _canvas = Color(0xFFF8F5F1);
+  static const _surface = Color(0xFFFFFCF9);
+  static const _surfaceContainerHigh = Color(0xFFF1E6E0);
+  static const _surfaceContainerLow = Color(0xFFF8EEE9);
+  static const _onSurface = Color(0xFF2A211D);
+  static const _onSurfaceVariant = Color(0xFF655650);
+  static const _outlineVariant = Color(0xFFE5D3CA);
 
   List<DirectConversationSummary> _conversations = [];
   bool _loading = true;
@@ -84,39 +89,90 @@ class _ConversationListScreenState extends State<ConversationListScreen>
 
   @override
   Widget build(BuildContext context) {
+    final topInset = MediaQuery.of(context).padding.top;
     return Scaffold(
-      backgroundColor: _surface,
-      appBar: AppBar(
-        backgroundColor: _primaryDark,
-        elevation: 0,
-        foregroundColor: Colors.white,
-        centerTitle: true,
-        title: Column(
-          mainAxisSize: MainAxisSize.min,
+      backgroundColor: _canvas,
+      body: SafeArea(
+        top: false,
+        child: Column(
           children: [
-            const Text(
-              'Trò chuyện Trực tiếp',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+            Container(
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                color: _surface,
+                borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0x0A845143),
+                    blurRadius: 16,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              padding: EdgeInsets.fromLTRB(20, topInset + 16, 20, 20),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: _surfaceContainerLow,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: _outlineVariant, width: 1),
+                    ),
+                    child: const Icon(
+                      Icons.forum_rounded,
+                      color: _primary,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Trò chuyện Trực tiếp',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: _onSurface,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _isExpert ? 'Kênh tư vấn & hỗ trợ sức khỏe' : 'Tư vấn trực tiếp cùng Bác sĩ & Chuyên gia',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: _onSurfaceVariant.withValues(alpha: 0.9),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
-            Text(
-              _isExpert ? 'Kênh tư vấn & hỗ trợ' : 'Tư vấn Chuyên gia Y tế',
-              style: const TextStyle(fontSize: 11, color: Colors.white70),
+            Expanded(
+              child: RefreshIndicator(
+                color: _primary,
+                backgroundColor: Colors.white,
+                onRefresh: _load,
+                child: _buildBody(),
+              ),
             ),
           ],
         ),
-      ),
-      body: RefreshIndicator(
-        color: _primary,
-        backgroundColor: Colors.white,
-        onRefresh: _load,
-        child: _buildBody(),
       ),
     );
   }
 
   Widget _buildBody() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: _primary));
+      return _buildSkeletonLoader();
     }
     if (_error != null) {
       return ListView(
@@ -126,19 +182,35 @@ class _ConversationListScreenState extends State<ConversationListScreen>
           Center(
             child: Column(
               children: [
-                const Icon(Icons.error_outline, size: 48, color: _primaryDark),
-                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: const BoxDecoration(
+                    color: _surfaceContainerLow,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.cloud_off_rounded, size: 40, color: _primary),
+                ),
+                const SizedBox(height: 16),
                 Text(
                   _error!,
-                  style: const TextStyle(color: _onVariant, fontSize: 14),
+                  style: const TextStyle(
+                    fontFamily: 'Lexend',
+                    color: _onSurface,
+                    fontSize: 14,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
-                FilledButton.icon(
+                ElevatedButton.icon(
                   onPressed: _load,
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Thử lại'),
-                  style: FilledButton.styleFrom(backgroundColor: _primaryDark),
+                  icon: const Icon(Icons.refresh_rounded, size: 18),
+                  label: const Text('Thử lại', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _primary,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  ),
                 ),
               ],
             ),
@@ -160,14 +232,14 @@ class _ConversationListScreenState extends State<ConversationListScreen>
                   Container(
                     width: 76,
                     height: 76,
-                    decoration: BoxDecoration(
-                      color: _primary.withValues(alpha: 0.12),
+                    decoration: const BoxDecoration(
+                      color: _surfaceContainerLow,
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
                       Icons.chat_bubble_outline_rounded,
                       size: 38,
-                      color: _primary,
+                      color: _primaryContainer,
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -176,9 +248,10 @@ class _ConversationListScreenState extends State<ConversationListScreen>
                         ? 'Chưa có mẹ nào nhắn cho bạn'
                         : 'Bạn chưa có cuộc trò chuyện nào',
                     style: const TextStyle(
+                      fontFamily: 'Lexend',
                       fontSize: 17,
                       fontWeight: FontWeight.w700,
-                      color: _primaryDark,
+                      color: _onSurface,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -187,8 +260,9 @@ class _ConversationListScreenState extends State<ConversationListScreen>
                     _isExpert
                         ? 'Danh sách cuộc trò chuyện sẽ xuất hiện ngay khi có mẹ hoặc gia đình liên hệ tư vấn.'
                         : 'Hãy kết nối ngay với bác sĩ và chuyên gia y tế đã xác thực để nhận lời khuyên an toàn.',
-                    style: const TextStyle(
-                      color: _onVariant,
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      color: _onSurfaceVariant.withValues(alpha: 0.8),
                       fontSize: 13,
                       height: 1.4,
                     ),
@@ -196,12 +270,14 @@ class _ConversationListScreenState extends State<ConversationListScreen>
                   ),
                   if (!_isExpert) ...[
                     const SizedBox(height: 24),
-                    FilledButton.icon(
+                    ElevatedButton.icon(
                       onPressed: () => context.push('/experts'),
-                      icon: const Icon(Icons.search_rounded),
-                      label: const Text('Tìm chuyên gia'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: _primaryDark,
+                      icon: const Icon(Icons.search_rounded, size: 18),
+                      label: const Text('Tìm chuyên gia ngay', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _primary,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 24,
                           vertical: 12,
@@ -236,15 +312,71 @@ class _ConversationListScreenState extends State<ConversationListScreen>
       },
     );
   }
+
+  Widget _buildSkeletonLoader() {
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      itemCount: 5,
+      itemBuilder: (context, index) {
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: _surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: _outlineVariant),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: const BoxDecoration(
+                  color: _surfaceContainerHigh,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 120,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        color: _surfaceContainerHigh,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: 180,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: _surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }
 
 class _ConversationTile extends StatelessWidget {
-  static const _primary = Color(0xFFC98C7B);
-  static const _primaryDark = Color(0xFF845143);
-  static const _surfaceLow = Color(0xFFF2EAE4);
-  static const _onSurface = Color(0xFF271812);
-  static const _onVariant = Color(0xFF524440);
-  static const _outline = Color(0xFFD6C2BD);
+  static const _primary = Color(0xFF845143);
+  static const _primaryContainer = Color(0xFFC98C7B);
+  static const _surface = Color(0xFFFFFCF9);
+  static const _surfaceLow = Color(0xFFF8EEE9);
+  static const _onSurface = Color(0xFF2A211D);
+  static const _onSurfaceVariant = Color(0xFF655650);
+  static const _outlineVariant = Color(0xFFE5D3CA);
 
   final DirectConversationSummary conversation;
   final bool isExpertViewer;
@@ -280,158 +412,169 @@ class _ConversationTile extends StatelessWidget {
         conversation.lastMessageAt ?? conversation.lastActivityAt;
     final hasUnread = conversation.unreadCount > 0;
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(
-            color: hasUnread
-                ? _primary.withValues(alpha: 0.5)
-                : _outline.withValues(alpha: 0.5),
-            width: hasUnread ? 1.5 : 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0x0C5A463F),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
+    return Container(
+      decoration: BoxDecoration(
+        color: _surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: hasUnread ? _primary : _outlineVariant,
+          width: hasUnread ? 1.5 : 1,
         ),
-        child: Row(
-          children: [
-            Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: _primary.withValues(alpha: 0.4),
-                  width: 2,
-                ),
-              ),
-              child: CircleAvatar(
-                radius: 26,
-                backgroundColor: _surfaceLow,
-                backgroundImage: conversation.counterpartAvatarUrl != null
-                    ? NetworkImage(conversation.counterpartAvatarUrl!)
-                    : null,
-                child: conversation.counterpartAvatarUrl == null
-                    ? Text(
-                        (conversation.counterpartDisplayName?.isNotEmpty == true
-                                ? conversation.counterpartDisplayName![0]
-                                : (conversation.counterpartRole == 'EXPERT'
-                                      ? 'B'
-                                      : 'M'))
-                            .toUpperCase(),
-                        style: const TextStyle(
-                          color: _primaryDark,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 18,
-                        ),
-                      )
-                    : null,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          conversation.counterpartDisplayName ??
-                              (conversation.counterpartRole == 'EXPERT'
-                                  ? 'Chuyên gia'
-                                  : 'Mẹ'),
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: hasUnread
-                                ? FontWeight.w700
-                                : FontWeight.w600,
-                            color: _onSurface,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        _relativeTime(displayTime),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: hasUnread
-                              ? _primary
-                              : _onVariant.withValues(alpha: 0.7),
-                          fontWeight: hasUnread
-                              ? FontWeight.w600
-                              : FontWeight.normal,
-                        ),
-                      ),
-                    ],
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A845143),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: _primaryContainer.withValues(alpha: 0.5),
+                      width: 2,
+                    ),
                   ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: !isExpertViewer && !conversation.expertAvailable
-                            ? const Text(
-                                'Chuyên gia hiện không khả dụng',
-                                style: TextStyle(
-                                  color: Color(0xFFD97706),
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              )
-                            : Text(
-                                _subtitle,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: hasUnread ? _onSurface : _onVariant,
-                                  fontWeight: hasUnread
-                                      ? FontWeight.w500
-                                      : FontWeight.normal,
-                                ),
-                              ),
-                      ),
-                      if (hasUnread) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 3,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _primary,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            conversation.unreadCount > 9
-                                ? '9+'
-                                : '${conversation.unreadCount}',
+                  child: CircleAvatar(
+                    radius: 26,
+                    backgroundColor: _surfaceLow,
+                    backgroundImage: conversation.counterpartAvatarUrl != null
+                        ? NetworkImage(conversation.counterpartAvatarUrl!)
+                        : null,
+                    child: conversation.counterpartAvatarUrl == null
+                        ? Text(
+                            (conversation.counterpartDisplayName?.isNotEmpty == true
+                                    ? conversation.counterpartDisplayName![0]
+                                    : (conversation.counterpartRole == 'EXPERT'
+                                          ? 'B'
+                                          : 'M'))
+                                .toUpperCase(),
                             style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+                              fontFamily: 'Lexend',
+                              color: _primary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 18,
+                            ),
+                          )
+                        : null,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              conversation.counterpartDisplayName ??
+                                  (conversation.counterpartRole == 'EXPERT'
+                                      ? 'Chuyên gia'
+                                      : 'Mẹ'),
+                              style: TextStyle(
+                                fontFamily: 'Lexend',
+                                fontSize: 15,
+                                fontWeight: hasUnread
+                                    ? FontWeight.w700
+                                    : FontWeight.w600,
+                                color: _onSurface,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 8),
+                          Text(
+                            _relativeTime(displayTime),
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 12,
+                              color: hasUnread
+                                  ? _primary
+                                  : _onSurfaceVariant.withValues(alpha: 0.7),
+                              fontWeight: hasUnread
+                                  ? FontWeight.w600
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: !isExpertViewer && !conversation.expertAvailable
+                                ? const Text(
+                                    'Chuyên gia hiện không khả dụng',
+                                    style: TextStyle(
+                                      fontFamily: 'Lexend',
+                                      color: Color(0xFFD97706),
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  )
+                                : Text(
+                                    _subtitle,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontFamily: 'Lexend',
+                                      fontSize: 13,
+                                      color: hasUnread ? _onSurface : _onSurfaceVariant,
+                                      fontWeight: hasUnread
+                                          ? FontWeight.w500
+                                          : FontWeight.normal,
+                                    ),
+                                  ),
+                          ),
+                          if (hasUnread) ...[
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _primary,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                conversation.unreadCount > 9
+                                    ? '9+'
+                                    : '${conversation.unreadCount}',
+                                style: const TextStyle(
+                                  fontFamily: 'Lexend',
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                     ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
+

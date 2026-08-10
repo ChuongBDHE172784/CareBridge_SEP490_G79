@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mime/mime.dart';
 
 import '../services/health_record_service.dart';
@@ -29,6 +30,7 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
   ];
 
   final _service = HealthRecordService();
+  final _picker = ImagePicker();
   final _titleCtrl = TextEditingController();
   final _facilityCtrl = TextEditingController();
 
@@ -64,28 +66,210 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
     if (picked != null) setState(() => _recordDate = picked);
   }
 
-  Future<void> _pickFile() async {
+  void _showAttachmentSourceSelector() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE5D3CA),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Thêm tệp hoặc chụp ảnh',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: _onSurface,
+                ),
+              ),
+              const SizedBox(height: 20),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: _surface,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.camera_alt_rounded, color: _primary),
+                ),
+                title: const Text(
+                  'Chụp ảnh trực tiếp',
+                  style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
+                ),
+                subtitle: const Text(
+                  'Chụp ảnh kết quả hoặc tài liệu',
+                  style: TextStyle(fontFamily: 'Lexend', fontSize: 12),
+                ),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _takePhoto();
+                },
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: _surface,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.photo_library_rounded, color: _primary),
+                ),
+                title: const Text(
+                  'Chọn từ thư viện ảnh',
+                  style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
+                ),
+                subtitle: const Text(
+                  'Chọn một hoặc nhiều ảnh cùng lúc',
+                  style: TextStyle(fontFamily: 'Lexend', fontSize: 12),
+                ),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _pickMultipleImages();
+                },
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: _surface,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.description_rounded, color: _primary),
+                ),
+                title: const Text(
+                  'Chọn từ Tệp trên máy',
+                  style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
+                ),
+                subtitle: const Text(
+                  'PDF, DOCX, XLSX, CSV, TXT, v.v.',
+                  style: TextStyle(fontFamily: 'Lexend', fontSize: 12),
+                ),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _pickFilesFromStorage();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  static const _maxFileSizeBytes = 15 * 1024 * 1024; // 15MB
+
+  Future<void> _takePhoto() async {
+    try {
+      final photo = await _picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 85,
+      );
+      if (photo == null) return;
+      final bytes = await photo.readAsBytes();
+      if (bytes.length > _maxFileSizeBytes) {
+        _showSnack('Ảnh vượt quá dung lượng tối đa 15MB.');
+        return;
+      }
+      final name = 'photo_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      setState(() {
+        _selectedFiles.add(PlatformFile(
+          name: name,
+          size: bytes.length,
+          bytes: bytes,
+          path: photo.path,
+        ));
+      });
+    } catch (e) {
+      _showSnack('Không thể mở máy ảnh. Vui lòng kiểm tra quyền camera.');
+    }
+  }
+
+  Future<void> _pickMultipleImages() async {
+    try {
+      final images = await _picker.pickMultiImage(imageQuality: 85);
+      if (images.isEmpty) return;
+      bool sizeExceeded = false;
+      for (final img in images) {
+        final bytes = await img.readAsBytes();
+        if (bytes.length > _maxFileSizeBytes) {
+          sizeExceeded = true;
+          continue;
+        }
+        final name = img.name.isNotEmpty ? img.name : 'image_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        if (!_selectedFiles.any((existing) => existing.name == name)) {
+          _selectedFiles.add(PlatformFile(
+            name: name,
+            size: bytes.length,
+            bytes: bytes,
+            path: img.path,
+          ));
+        }
+      }
+      if (sizeExceeded) {
+        _showSnack('Một số tệp bị bỏ qua do vượt quá 15MB.');
+      }
+      setState(() {});
+    } catch (e) {
+      _showSnack('Không thể mở thư viện ảnh.');
+    }
+  }
+
+  Future<void> _pickFilesFromStorage() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['jpg', 'jpeg', 'png', 'webp', 'heic', 'gif', 'pdf'],
+      allowedExtensions: [
+        'jpg', 'jpeg', 'png', 'webp', 'heic', 'gif',
+        'pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt',
+      ],
       allowMultiple: true,
       withData: true,
     );
     if (result == null || result.files.isEmpty) return;
+    bool sizeExceeded = false;
     setState(() {
       for (final f in result.files) {
+        if (f.size > _maxFileSizeBytes) {
+          sizeExceeded = true;
+          continue;
+        }
         if (!_selectedFiles.any((existing) => existing.name == f.name)) {
           _selectedFiles.add(f);
         }
       }
     });
+    if (sizeExceeded) {
+      _showSnack('Một số tệp bị bỏ qua do vượt quá dung lượng 15MB.');
+    }
   }
 
   String _mimeTypeFor(PlatformFile file) {
-    return lookupMimeType(file.name, headerBytes: file.bytes) ??
-        (file.extension?.toLowerCase() == 'pdf'
-            ? 'application/pdf'
-            : 'application/octet-stream');
+    final ext = file.extension?.toLowerCase();
+    if (ext == 'pdf') return 'application/pdf';
+    if (ext == 'docx') return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    if (ext == 'doc') return 'application/msword';
+    if (ext == 'xlsx') return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    if (ext == 'xls') return 'application/vnd.ms-excel';
+    if (ext == 'csv') return 'text/csv';
+    if (ext == 'txt') return 'text/plain';
+
+    return lookupMimeType(file.name, headerBytes: file.bytes) ?? 'application/octet-stream';
   }
 
   Future<void> _save() async {
@@ -95,7 +279,7 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
       return;
     }
     if (_selectedFiles.isEmpty) {
-      _showSnack('Vui lòng chọn ít nhất một ảnh hoặc PDF.');
+      _showSnack('Vui lòng chọn ít nhất một ảnh hoặc tệp.');
       return;
     }
 
@@ -209,13 +393,13 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
               ),
               if (_selectedFiles.isNotEmpty)
                 GestureDetector(
-                  onTap: _saving ? null : _pickFile,
+                  onTap: _saving ? null : _showAttachmentSourceSelector,
                   child: const Row(
                     children: [
                       Icon(Icons.add_circle_outline_rounded, size: 18, color: _primary),
                       SizedBox(width: 4),
                       Text(
-                        'Thêm tệp',
+                        'Thêm tệp/ảnh',
                         style: TextStyle(
                           fontFamily: 'Lexend',
                           fontSize: 13,
@@ -231,7 +415,7 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
           const SizedBox(height: 12),
           if (_selectedFiles.isEmpty)
             InkWell(
-              onTap: _saving ? null : _pickFile,
+              onTap: _saving ? null : _showAttachmentSourceSelector,
               borderRadius: BorderRadius.circular(18),
               child: Container(
                 padding: const EdgeInsets.all(16),
@@ -250,7 +434,7 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Icon(
-                        Icons.upload_file_rounded,
+                        Icons.add_a_photo_rounded,
                         color: _primaryContainer,
                       ),
                     ),
@@ -260,7 +444,7 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Chọn ảnh hoặc PDF',
+                            'Chụp ảnh hoặc Thêm tệp',
                             style: TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 14,
@@ -270,7 +454,7 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
                           ),
                           SizedBox(height: 4),
                           Text(
-                            'JPG, PNG, WebP, HEIC, GIF, PDF (chọn nhiều tệp)',
+                            'Chụp trực tiếp, chọn nhiều ảnh hoặc PDF',
                             style: TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 11,
@@ -366,7 +550,7 @@ class _AddHealthRecordScreenState extends State<AddHealthRecordScreen> {
                 }),
                 const SizedBox(height: 4),
                 InkWell(
-                  onTap: _saving ? null : _pickFile,
+                  onTap: _saving ? null : _showAttachmentSourceSelector,
                   borderRadius: BorderRadius.circular(14),
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 12),

@@ -36,12 +36,14 @@ class ExpertCalendarScreen extends StatefulWidget {
 }
 
 class _ExpertCalendarScreenState extends State<ExpertCalendarScreen> {
-  static const _canvas = Color(0xFFFFF8F6);
-  static const _surface = Colors.white;
+  static const _canvas = Color(0xFFF8F5F1);
+  static const _surface = Color(0xFFFFFCF9);
+  static const _surfaceContainerLow = Color(0xFFF8EEE9);
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
-  static const _onSurface = Color(0xFF271812);
-  static const _outline = Color(0xFF84736F);
+  static const _onSurface = Color(0xFF2A211D);
+  static const _onSurfaceVariant = Color(0xFF655650);
+  static const _outlineVariant = Color(0xFFE5D3CA);
 
   ExpertCalendarApi get _api => widget.api ?? const _DefaultExpertCalendarApi();
 
@@ -95,17 +97,30 @@ class _ExpertCalendarScreenState extends State<ExpertCalendarScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Xóa khung giờ'),
-        content: const Text('Bạn có chắc muốn xóa khung giờ rảnh này?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        backgroundColor: _surface,
+        title: const Text(
+          'Xóa khung giờ',
+          style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700, color: _onSurface),
+        ),
+        content: const Text(
+          'Bạn có chắc muốn xóa khung giờ rảnh này?',
+          style: TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Hủy'),
+            child: const Text('Hủy', style: TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant)),
           ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFBA1A1A),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Xóa'),
+            child: const Text('Xóa', style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -272,7 +287,7 @@ class _ExpertCalendarScreenState extends State<ExpertCalendarScreen> {
                           onPressed: submitting
                               ? null
                               : () => Navigator.pop(context, false),
-                          icon: const Icon(Icons.close),
+                          icon: const Icon(Icons.close, color: _onSurface),
                         ),
                       ],
                     ),
@@ -280,6 +295,7 @@ class _ExpertCalendarScreenState extends State<ExpertCalendarScreen> {
                     const Text(
                       'Chọn ngày nhanh',
                       style: TextStyle(
+                        fontFamily: 'Lexend',
                         fontWeight: FontWeight.w700,
                         color: _primary,
                       ),
@@ -320,9 +336,10 @@ class _ExpertCalendarScreenState extends State<ExpertCalendarScreen> {
                         ),
                         ActionChip(
                           key: const Key('availability-date-custom'),
-                          avatar: const Icon(Icons.calendar_month, size: 18),
+                          avatar: const Icon(Icons.calendar_month_rounded, size: 18, color: _primary),
                           label: Text(
                             DateFormat('dd/MM/yyyy').format(selectedDate),
+                            style: const TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
                           ),
                           onPressed: submitting ? null : chooseDate,
                         ),
@@ -332,6 +349,7 @@ class _ExpertCalendarScreenState extends State<ExpertCalendarScreen> {
                     const Text(
                       'Ca gợi ý',
                       style: TextStyle(
+                        fontFamily: 'Lexend',
                         fontWeight: FontWeight.w700,
                         color: _primary,
                       ),
@@ -347,6 +365,7 @@ class _ExpertCalendarScreenState extends State<ExpertCalendarScreen> {
                               label: Text(
                                 '${preset.label} '
                                 '(${_formatTime(preset.start)}–${_formatTime(preset.end)})',
+                                style: const TextStyle(fontFamily: 'Lexend'),
                               ),
                               selected: selectedPreset == preset.id,
                               onSelected: submitting
@@ -360,6 +379,7 @@ class _ExpertCalendarScreenState extends State<ExpertCalendarScreen> {
                     const Text(
                       'Giờ tùy chỉnh',
                       style: TextStyle(
+                        fontFamily: 'Lexend',
                         fontWeight: FontWeight.w700,
                         color: _primary,
                       ),
@@ -370,22 +390,32 @@ class _ExpertCalendarScreenState extends State<ExpertCalendarScreen> {
                         Expanded(
                           child: OutlinedButton.icon(
                             key: const Key('availability-start-time'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: _primary,
+                              side: const BorderSide(color: _outlineVariant),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            ),
                             onPressed: submitting
                                 ? null
                                 : () => chooseTime(isStart: true),
-                            icon: const Icon(Icons.schedule),
-                            label: Text('Từ ${_formatTime(startTime)}'),
+                            icon: const Icon(Icons.schedule_rounded, size: 18),
+                            label: Text('Từ ${_formatTime(startTime)}', style: const TextStyle(fontFamily: 'Lexend')),
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: OutlinedButton.icon(
                             key: const Key('availability-end-time'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: _primary,
+                              side: const BorderSide(color: _outlineVariant),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                            ),
                             onPressed: submitting
                                 ? null
                                 : () => chooseTime(isStart: false),
-                            icon: const Icon(Icons.schedule),
-                            label: Text('Đến ${_formatTime(endTime)}'),
+                            icon: const Icon(Icons.schedule_rounded, size: 18),
+                            label: Text('Đến ${_formatTime(endTime)}', style: const TextStyle(fontFamily: 'Lexend')),
                           ),
                         ),
                       ],
@@ -396,7 +426,8 @@ class _ExpertCalendarScreenState extends State<ExpertCalendarScreen> {
                         validationError!,
                         key: const Key('availability-validation-error'),
                         style: const TextStyle(
-                          color: Colors.red,
+                          fontFamily: 'Lexend',
+                          color: Color(0xFFBA1A1A),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -405,11 +436,14 @@ class _ExpertCalendarScreenState extends State<ExpertCalendarScreen> {
                     SizedBox(
                       width: double.infinity,
                       height: 50,
-                      child: FilledButton(
+                      child: ElevatedButton(
                         key: const Key('availability-save'),
                         onPressed: submitting ? null : submit,
-                        style: FilledButton.styleFrom(
+                        style: ElevatedButton.styleFrom(
                           backgroundColor: _primary,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                         ),
                         child: submitting
                             ? const SizedBox.square(
@@ -421,7 +455,7 @@ class _ExpertCalendarScreenState extends State<ExpertCalendarScreen> {
                               )
                             : const Text(
                                 'Lưu khung giờ',
-                                style: TextStyle(fontWeight: FontWeight.w700),
+                                style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700, fontSize: 16),
                               ),
                       ),
                     ),
@@ -444,40 +478,78 @@ class _ExpertCalendarScreenState extends State<ExpertCalendarScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final topInset = MediaQuery.of(context).padding.top;
+    final canPop = ModalRoute.of(context)?.canPop ?? false;
+
     return Scaffold(
       backgroundColor: _canvas,
-      appBar: AppBar(
-        title: const Text(
-          'Lịch rảnh của tôi',
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            fontWeight: FontWeight.bold,
-            color: _primary,
-          ),
-        ),
-        backgroundColor: _surface,
-        elevation: 0.5,
-        centerTitle: true,
-        actions: [
-          IconButton(
-            key: const Key('calendar-refresh'),
-            tooltip: 'Làm mới lịch rảnh',
-            onPressed: _loading ? null : _fetchAvailability,
-            icon: const Icon(Icons.refresh, color: _primary),
-          ),
-        ],
-      ),
       floatingActionButton: FloatingActionButton.extended(
         key: const Key('calendar-add-slot'),
         backgroundColor: _primary,
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         onPressed: _showAddSlotDialog,
-        icon: const Icon(Icons.add, color: Colors.white),
+        icon: const Icon(Icons.add_rounded, color: Colors.white),
         label: const Text(
           'Thêm khung giờ',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(fontFamily: 'Lexend', color: Colors.white, fontWeight: FontWeight.w700),
         ),
       ),
-      body: _buildBody(),
+      body: SafeArea(
+        top: false,
+        child: Column(
+          children: [
+            Container(
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                color: _surface,
+                borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0x0A845143),
+                    blurRadius: 16,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              padding: EdgeInsets.fromLTRB(16, topInset + 12, 16, 16),
+              child: Row(
+                children: [
+                  if (canPop) ...[
+                    IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      icon: const Icon(Icons.arrow_back_ios_new_rounded, color: _primary, size: 20),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                    const SizedBox(width: 12),
+                  ] else
+                    const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Lịch rảnh của tôi',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: _onSurface,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    key: const Key('calendar-refresh'),
+                    tooltip: 'Làm mới lịch rảnh',
+                    onPressed: _loading ? null : _fetchAvailability,
+                    icon: const Icon(Icons.refresh_rounded, color: _primary),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(child: _buildBody()),
+          ],
+        ),
+      ),
     );
   }
 
@@ -492,17 +564,22 @@ class _ExpertCalendarScreenState extends State<ExpertCalendarScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.cloud_off_outlined, size: 48, color: _outline),
+              const Icon(Icons.cloud_off_rounded, size: 48, color: _onSurfaceVariant),
               const SizedBox(height: 12),
               Text(
                 _error!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: _outline),
+                style: const TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant),
               ),
               const SizedBox(height: 12),
               OutlinedButton(
                 onPressed: _fetchAvailability,
-                child: const Text('Thử lại'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _primary,
+                  side: const BorderSide(color: _outlineVariant),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                child: const Text('Thử lại', style: TextStyle(fontFamily: 'Lexend')),
               ),
             ],
           ),
@@ -516,21 +593,21 @@ class _ExpertCalendarScreenState extends State<ExpertCalendarScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.event_available, size: 64, color: _primaryContainer),
+              Icon(Icons.event_available_rounded, size: 64, color: _primaryContainer),
               SizedBox(height: 16),
               Text(
                 'Chưa có khung giờ rảnh nào',
                 style: TextStyle(
                   fontFamily: 'Lexend',
                   fontSize: 18,
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
                   color: _onSurface,
                 ),
               ),
               SizedBox(height: 8),
               Text(
                 'Thêm thời gian bạn có thể nhận tư vấn.',
-                style: TextStyle(color: _outline),
+                style: TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -540,6 +617,7 @@ class _ExpertCalendarScreenState extends State<ExpertCalendarScreen> {
     }
 
     return RefreshIndicator(
+      color: _primary,
       onRefresh: _fetchAvailability,
       child: ListView.builder(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
@@ -553,12 +631,20 @@ class _ExpertCalendarScreenState extends State<ExpertCalendarScreen> {
             return const SizedBox.shrink();
           }
           final expired = end.isBefore(DateTime.now());
-          return Card(
+          return Container(
             margin: const EdgeInsets.only(bottom: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18),
+            decoration: BoxDecoration(
+              color: _surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: _outlineVariant, width: 1),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x0A845143),
+                  blurRadius: 12,
+                  offset: Offset(0, 4),
+                ),
+              ],
             ),
-            elevation: 1,
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
@@ -568,13 +654,13 @@ class _ExpertCalendarScreenState extends State<ExpertCalendarScreen> {
                     height: 48,
                     decoration: BoxDecoration(
                       color: expired
-                          ? Colors.grey.shade200
-                          : _primaryContainer.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(12),
+                          ? _surfaceContainerLow
+                          : _surfaceContainerLow,
+                      shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      expired ? Icons.history : Icons.access_time_filled,
-                      color: expired ? Colors.grey : _primary,
+                      expired ? Icons.history_rounded : Icons.access_time_filled_rounded,
+                      color: expired ? _onSurfaceVariant : _primary,
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -603,7 +689,8 @@ class _ExpertCalendarScreenState extends State<ExpertCalendarScreen> {
                         Text(
                           expired ? 'Đã kết thúc' : 'Sẵn sàng đặt lịch',
                           style: TextStyle(
-                            color: expired ? Colors.grey : _outline,
+                            fontFamily: 'Lexend',
+                            color: expired ? _onSurfaceVariant.withValues(alpha: 0.6) : _onSurfaceVariant,
                             fontSize: 12,
                           ),
                         ),

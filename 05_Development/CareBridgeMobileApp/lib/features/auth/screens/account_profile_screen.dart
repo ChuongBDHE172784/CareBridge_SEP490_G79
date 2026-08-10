@@ -82,16 +82,17 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
   }
 
   Widget _buildAppBar() {
+    final canPop = ModalRoute.of(context)?.canPop ?? false;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: SizedBox(
         height: 48,
         child: Row(
           children: [
-            if (Navigator.of(context).canPop())
+            if (canPop)
               IconButton(
                 onPressed: () => Navigator.of(context).pop(),
-                icon: const Icon(Icons.arrow_back, color: _primaryColor),
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: _primaryColor, size: 20),
               )
             else
               const SizedBox(width: 48),
@@ -101,13 +102,16 @@ class _AccountProfileScreenState extends State<AccountProfileScreen> {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontFamily: 'Lexend',
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
                   color: _primaryColor,
                 ),
               ),
             ),
-            const SizedBox(width: 48),
+            if (canPop)
+              const SizedBox(width: 48)
+            else
+              const SizedBox(width: 48),
           ],
         ),
       ),
