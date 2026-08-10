@@ -12,7 +12,7 @@ from fastapi import Header, HTTPException
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
 from typing_extensions import Annotated
 
-from app.config import TRIAGE_V2_INTERNAL_API_KEY
+from app.config import PYTHON_SERVICE_TIMEOUT_SECONDS, TRIAGE_V2_INTERNAL_API_KEY
 from app.context import CareStage, ResolutionSource, TargetEntity
 from app.gemini_client import get_gemini_client
 from app.questions.catalog import CATALOG
@@ -123,6 +123,8 @@ def require_internal_key(x_carebridge_internal_key: str | None = Header(default=
 
 def execute_turn(request: TriageV2TurnRequest) -> TriageV2TurnResponse:
     started = monotonic()
+    turn_deadline = started + PYTHON_SERVICE_TIMEOUT_SECONDS
+    extraction_deadline = turn_deadline - 1.0
     registry = get_registry()
     if request.expectedRulesetHash != registry.ruleset_sha256:
         metrics.record_error("HASH_MISMATCH")
@@ -139,14 +141,13 @@ def execute_turn(request: TriageV2TurnRequest) -> TriageV2TurnResponse:
     # again at its entry and remains the workflow authority.
     state.update(global_safety_gate(state))
     gemini = None if state.get("triageOutcome") == "RED" else get_gemini_client()
-    extraction = extract_and_validate(request.latestUserMessage, gemini) if gemini else None
+    extraction = extract_and_validate(
+        request.latestUserMessage, gemini, deadline=extraction_deadline
+    ) if gemini else None
     if gemini is not None and extraction is None:
         metrics.record_error("EXTRACTION_REJECTED")
     if extraction is not None:
-        # New grounded observations must never be hidden by an older value for the
-        # same signal. The extractor describes the latest message, so its current
-        # observation supersedes the prior current value before global safety runs.
-        state["signals"] = {**_mapping(state.get("signals")), **extraction.signals}
+        state["signals"] = _merge_observations(state.get("signals"), extraction.signals)
     try:
         # A fresh graph instance makes Java's persisted state authoritative and avoids making
         # process-local LangGraph checkpoints a recovery dependency.
@@ -155,17 +156,24 @@ def execute_turn(request: TriageV2TurnRequest) -> TriageV2TurnResponse:
         metrics.record_error("INVALID_STATE")
         raise HTTPException(status_code=422, detail="Invalid Triage V2 state") from failure
     completed_state = dict(result)
+    # LangGraph's interrupt marker is process-local control metadata, not workflow state. Java
+    # persists the explicit plannedQuestionIds ledger and must never receive this private key.
+    completed_state.pop("__interrupt__", None)
     # Retrieval is strictly post-outcome. RED never waits on the registry/RAG path; its action
     # is already rendered and citations remain optional.
     try:
-        evidence_domains = set() if completed_state.get("triageOutcome") == "RED" else (
-            approved_domains(str(getattr(completed_state.get("stage"), "value",
-                                         completed_state.get("stage", "UNKNOWN"))))
-            if completed_state.get("triageOutcome") == "YELLOW" else set()
-        )
-        completed_state["citations"] = retrieve_verified_evidence(
-            completed_state, allowed_domains=evidence_domains, on_reject=metrics.record_error
-        )
+        outcome = completed_state.get("triageOutcome")
+        if outcome == "RED" or monotonic() >= extraction_deadline:
+            completed_state["citations"] = []
+        else:
+            evidence_domains = (
+                approved_domains(str(getattr(completed_state.get("stage"), "value",
+                                             completed_state.get("stage", "UNKNOWN"))))
+                if outcome == "YELLOW" else set()
+            )
+            completed_state["citations"] = retrieve_verified_evidence(
+                completed_state, allowed_domains=evidence_domains, on_reject=metrics.record_error
+            )
     except Exception:  # Evidence is optional and must not change a completed disposition.
         metrics.record_error("CITATION_REJECTED")
         completed_state["citations"] = []
@@ -236,6 +244,14 @@ def _mapping(value: object) -> dict[str, Any]:
 
 
 def _merge_observations(current: object, delta: dict[str, Any]) -> dict[str, Any]:
+    """Accumulate evidence so contradictions become ``CONFLICTED`` downstream.
+
+    No provenance wins merely because it arrived last. In particular, an
+    ``LLM_EXTRACTED_VALIDATED`` observation never overwrites a canonical ``QUESTION_ANSWER``;
+    PRESENT versus ABSENT remains visible to the normalizer and follows the explicit
+    ``CONFLICTED`` policy.
+    """
+
     merged = _mapping(current)
     for code, observation in delta.items():
         if code not in merged:
@@ -243,7 +259,17 @@ def _merge_observations(current: object, delta: dict[str, Any]) -> dict[str, Any
             continue
         prior = merged[code] if type(merged[code]) is list else [merged[code]]
         incoming = observation if type(observation) is list else [observation]
-        merged[code] = [*prior, *incoming][-4:]
+        combined = [*prior, *incoming]
+        question_answers = [
+            item for item in combined
+            if type(item) is dict and item.get("provenance") == "QUESTION_ANSWER"
+        ]
+        other_observations = [item for item in combined if item not in question_answers]
+        # The transport schema caps one signal at four observations. Pin canonical question
+        # answers first so repeated LLM extractions can only evict older non-canonical evidence.
+        pinned = question_answers[-4:]
+        remaining = 4 - len(pinned)
+        merged[code] = [*pinned, *other_observations[-remaining:]] if remaining else pinned
     return merged
 
 

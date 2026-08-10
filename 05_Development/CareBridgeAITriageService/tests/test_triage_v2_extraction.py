@@ -11,7 +11,7 @@ class Extractor:
     def __init__(self, payload):
         self.payload = payload
 
-    def extract_triage_v2(self, *, text: str):
+    def extract_triage_v2(self, *, text: str, deadline: float | None = None):
         return None if self.payload is None else TriageV2Extraction.model_validate(self.payload)
 
 

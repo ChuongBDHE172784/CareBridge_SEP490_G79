@@ -44,6 +44,7 @@ def entity_stage_validator(state: Mapping[str, object]) -> dict[str, object]:
         missing_signals=missing,
         answered_question_ids=frozenset(state.get("answeredQuestionIds", [])),
         signals=state.get("signals") if type(state.get("signals")) is dict else {},
+        safety_screen_status=state.get("safetyScreenStatus", "INCOMPLETE"),
     )
     if status is ContextResolutionStatus.NEEDS_STAGE:
         stage_question_ids = (
@@ -58,6 +59,11 @@ def entity_stage_validator(state: Mapping[str, object]) -> dict[str, object]:
             for question_id in stage_question_ids
             if question_id not in state.get("answeredQuestionIds", [])
         ]
+        safety_status = getattr(state.get("safetyScreenStatus"), "value",
+                                state.get("safetyScreenStatus"))
+        if (safety_status != "COMPLETE"
+                and "Q_GLOBAL_DANGER" not in state.get("answeredQuestionIds", [])):
+            eligible_ids.append("Q_GLOBAL_DANGER")
     else:
         eligible = eligible_questions(context, state.get("candidateQuestionIds", []))
         eligible_ids = [question.question_id for question in eligible]
