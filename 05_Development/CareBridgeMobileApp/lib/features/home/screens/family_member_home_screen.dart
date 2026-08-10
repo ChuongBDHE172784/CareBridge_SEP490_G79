@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/auth/auth_state.dart';
@@ -46,12 +47,12 @@ class FamilyMemberHomeScreen extends StatefulWidget {
 
 class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
   static const _primary = Color(0xFF845143);
-  static const _canvas = Color(0xFFFFF8F6);
-  static const _surface = Colors.white;
-  static const _surfaceLow = Color(0xFFFFF1EC);
-  static const _onSurface = Color(0xFF271812);
-  static const _onSurfaceVariant = Color(0xFF524440);
-  static const _outline = Color(0xFF84736F);
+  static const _canvas = Color(0xFFF8F5F1);
+  static const _surface = Color(0xFFFFFCF9);
+  static const _surfaceLow = Color(0xFFF8EEE9);
+  static const _onSurface = Color(0xFF2A211D);
+  static const _onSurfaceVariant = Color(0xFF655650);
+  static const _outline = Color(0xFFE5D3CA);
   static const _error = Color(0xFFBA1A1A);
 
   FamilyHomeSnapshot? _snapshot;
@@ -205,19 +206,24 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
   @override
   Widget build(BuildContext context) {
     final initialLoading = _loading && _snapshot == null;
-    return Scaffold(
-      backgroundColor: _canvas,
-      body: SafeArea(
-        bottom: false,
-        child: Stack(
+    final topInset = MediaQuery.of(context).padding.top;
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: _canvas,
+        body: Stack(
           children: [
             RefreshIndicator(
               color: _primary,
               onRefresh: _load,
               child: ListView(
-                // Leave enough scrollable space above the persistent bottom nav
-                // so the group selector and its menu remain fully tappable.
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 220),
+                // Leave top inset space for header but allow content to scroll behind status bar
+                padding: EdgeInsets.fromLTRB(20, topInset + 16, 20, 220),
                 children: [
                   _buildHeader(),
                   const SizedBox(height: 20),
@@ -328,14 +334,19 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
                 'Đồng hành cùng mẹ',
                 style: TextStyle(
                   fontFamily: 'Lexend',
-                  fontSize: 27,
+                  fontSize: 24,
                   fontWeight: FontWeight.w700,
-                  color: _primary,
+                  color: _onSurface,
+                  letterSpacing: -0.3,
                 ),
               ),
               Text(
                 'Cùng theo dõi việc chăm sóc gia đình',
-                style: TextStyle(color: _onSurfaceVariant),
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 13,
+                  color: _onSurfaceVariant,
+                ),
               ),
             ],
           ),
@@ -1022,54 +1033,57 @@ class _FamilyMemberHomeScreenState extends State<FamilyMemberHomeScreen> {
   }
 
   Widget _buildBottomNav() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 8, 14, 18),
-      decoration: const BoxDecoration(
-        color: _surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x14000000),
-            blurRadius: 20,
-            offset: Offset(0, -3),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          const _BottomNavItem(
-            icon: Icons.home,
-            label: 'Tổng quan',
-            active: true,
-          ),
-          _BottomNavItem(
-            icon: Icons.group_outlined,
-            label: 'Nhóm',
-            onTap: _openGroups,
-          ),
-          _BottomNavItem(
-            icon: Icons.medical_services_outlined,
-            label: 'Chuyên gia',
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const ExpertDirectoryScreen()),
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(14, 8, 14, 18),
+        decoration: const BoxDecoration(
+          color: _surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x14000000),
+              blurRadius: 20,
+              offset: Offset(0, -3),
             ),
-          ),
-          _BottomNavItem(
-            icon: Icons.chat_bubble_outline,
-            label: 'Trò chuyện',
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const ConversationListScreen()),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            const _BottomNavItem(
+              icon: Icons.home,
+              label: 'Tổng quan',
+              active: true,
             ),
-          ),
-          _BottomNavItem(
-            icon: Icons.person_outline,
-            label: 'Hồ sơ',
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const AccountProfileScreen()),
+            _BottomNavItem(
+              icon: Icons.group_outlined,
+              label: 'Nhóm',
+              onTap: _openGroups,
             ),
-          ),
-        ],
+            _BottomNavItem(
+              icon: Icons.medical_services_outlined,
+              label: 'Chuyên gia',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ExpertDirectoryScreen()),
+              ),
+            ),
+            _BottomNavItem(
+              icon: Icons.chat_bubble_outline,
+              label: 'Trò chuyện',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ConversationListScreen()),
+              ),
+            ),
+            _BottomNavItem(
+              icon: Icons.person_outline,
+              label: 'Hồ sơ',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AccountProfileScreen()),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
