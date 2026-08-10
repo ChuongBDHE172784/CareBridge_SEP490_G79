@@ -16,6 +16,8 @@ void main() {
         '/triage/expert-handoff',
         '/consultation-requests',
         '/consultation-requests/:requestId',
+        '/profile',
+        '/profile/edit',
       }),
     );
   });

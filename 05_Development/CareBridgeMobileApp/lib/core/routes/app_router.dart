@@ -7,6 +7,8 @@ import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/blocked_account_screen.dart';
 import '../../features/auth/screens/auth_landing_screen.dart';
 import '../../features/auth/screens/role_selection_screen.dart';
+import '../../features/auth/screens/account_profile_screen.dart';
+import '../../features/auth/screens/edit_profile_screen.dart';
 import '../../features/checklist/screens/checklist_history_screen.dart';
 import '../../features/checklist/screens/checklist_detail_screen.dart';
 import '../../features/home/screens/home_shell.dart';
@@ -330,6 +332,14 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/auth-landing',
       builder: (context, state) => const AuthLandingScreen(),
+    ),
+    GoRoute(
+      path: '/profile',
+      builder: (context, state) => const AccountProfileScreen(),
+    ),
+    GoRoute(
+      path: '/profile/edit',
+      builder: (context, state) => const EditProfileScreen(),
     ),
     GoRoute(
       path: '/checklists/history',
