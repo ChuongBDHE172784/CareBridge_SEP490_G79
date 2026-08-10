@@ -253,3 +253,9 @@
 - For shared-table root/item entities, “add columns” is incomplete design evidence. State physical nullability, entry-type row-shape checks, JPA ownership, clone propagation, and effective-timestamp boundary semantics together.
 - Recurrence safety needs budgets at every layer: per-context candidates, whole invocation, and projected child rows, serialized by one existing lock/coordination primitive with deterministic continuation.
 - A source count is not traceability. Pin source hashes and import batches, exclude structural checkboxes, assign hierarchical leaf locators/text hashes, and require a bijection before clinical approval.
+
+## 2026-08-10 — Recovery branch integration
+
+- A branch-specific `.gitignore` can make a worktree look clean on the recovery branch and expose many existing generated artifacts after switching to an older target. Group the untracked paths and compare them against the incoming tree before proceeding; a collision-free fast-forward can preserve the artifacts while applying the incoming ignore rule.
+- A timed-out `git commit` may still have completed successfully. Check `HEAD`, the index/worktree status, `index.lock`, and live Git processes before retrying so the same content is not committed twice.
+- Publishing a locally merged branch is a separate external action from merging and deleting a local recovery branch. If push is not explicitly authorized, leave remote refs untouched and report their exact lag.
