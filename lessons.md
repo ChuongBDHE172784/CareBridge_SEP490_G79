@@ -241,3 +241,15 @@
 - Rectangle non-overlap is not enough after reflow: an existing auto-routed FK can cross a newly inserted table. Export and inspect the affected modules, then place the new entity in a clear routing corridor and separate relationship labels with explicit waypoints.
 - Exporting the full Complete ERD can hang Draw.io Desktop. Build a temporary preview by importing only the relevant table-ID prefixes and edges into a one-page document; constructing a new XML tree is much faster than repeatedly removing thousands of cells.
 - Derive summary counters from the final XML, not from the existing subtitle. Restoring one table and two FK edges changed the authoritative Complete projection from 62/147 to 63/149, while the old displayed 150-FK counter was already stale.
+
+## 2026-08-10 — Checklist cadence design discovery
+
+- `ChecklistRangeUnit.DAY|WEEK|MONTH` measures an eligibility or due-date offset; it is not a recurrence discriminator. A daily recurring checklist needs explicit cadence metadata so existing one-day milestones are not silently reinterpreted.
+- The canonical checklist aggregate can represent daily or weekly occurrences without a new table: keep template policy on `care_item_templates` and use the existing `checklist_instances.window_start/window_end` plus the centralized distribution-key factory for occurrence identity.
+- `stage = null` already means lifecycle-neutral compatibility, especially for FAMILY-only authoring. Do not repurpose every null-stage template as cross-stage DAILY; either require an explicit discriminator with guarded semantics or publish separate stage-specific templates.
+- The Spreadsheets skill treats a missing `load_workspace_dependencies`/artifact-tool runtime as a hard read blocker. Do not fall back to alternate XLSX libraries or ZIP/XML parsing; report the limitation and keep the source workbook unchanged.
+- Architecture reviewer gates should attack both the target design and the current runtime: the checklist GET path accepted a caller date and rollover historized/cancelled old windows, so those are explicit cutover tests rather than assumed invariants.
+- Additive cadence fields do not protect old clients by themselves. A server capability/contract gate must control both projections and actions, with a documented status/envelope and cache variation.
+- For shared-table root/item entities, “add columns” is incomplete design evidence. State physical nullability, entry-type row-shape checks, JPA ownership, clone propagation, and effective-timestamp boundary semantics together.
+- Recurrence safety needs budgets at every layer: per-context candidates, whole invocation, and projected child rows, serialized by one existing lock/coordination primitive with deterministic continuation.
+- A source count is not traceability. Pin source hashes and import batches, exclude structural checkboxes, assign hierarchical leaf locators/text hashes, and require a bijection before clinical approval.
