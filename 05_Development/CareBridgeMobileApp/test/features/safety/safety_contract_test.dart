@@ -13,12 +13,14 @@ void main() {
       'fallDetectionEnabled': true,
       'sensitivityLevel': 'HIGH',
       'emergencyAutoAlert': true,
+      'locationSharingEnabled': true,
       'countdownSeconds': 15,
       'sensorPermissionGranted': true,
       'sensorPermissionRecordedAt': '2026-07-22T00:00:00Z',
     });
 
     expect(config.countdownSeconds, 15);
+    expect(config.locationSharingEnabled, isTrue);
     expect(config.sensorPermissionGranted, isTrue);
     expect(config.sensorPermissionRecordedAt, isNotNull);
   });
@@ -31,6 +33,7 @@ void main() {
     });
 
     expect(config.countdownSeconds, 30);
+    expect(config.locationSharingEnabled, isFalse);
     expect(config.sensorPermissionGranted, isFalse);
   });
 
@@ -41,12 +44,14 @@ void main() {
         fallDetectionEnabled: false,
         sensitivityLevel: 'MEDIUM',
         emergencyAutoAlert: true,
+        locationSharingEnabled: true,
         countdownSeconds: 60,
         sensorPermissionGranted: true,
       );
 
       expect(request['fallDetectionEnabled'], isFalse);
       expect(request['countdownSeconds'], 60);
+      expect(request['locationSharingEnabled'], isTrue);
       expect(request['sensorPermissionGranted'], isTrue);
     },
   );

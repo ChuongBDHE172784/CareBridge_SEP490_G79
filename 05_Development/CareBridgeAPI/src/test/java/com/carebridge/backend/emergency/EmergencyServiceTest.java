@@ -6,11 +6,13 @@ import com.carebridge.backend.emergency.event.EmergencySessionRealertRequested;
 import com.carebridge.backend.emergency.dto.request.OpenEmergencyRequest;
 import com.carebridge.backend.emergency.repository.IEmergencySessionRepository;
 import com.carebridge.backend.emergency.repository.IFamilyAlertLogRepository;
+import com.carebridge.backend.emergency.repository.EmergencyAlertAcknowledgementRepository;
 import com.carebridge.backend.emergency.repository.TriageEmergencyEscalationLinkRepository;
 import com.carebridge.backend.emergency.service.FamilyMemberPort;
 import com.carebridge.backend.emergency.service.LocationConsentPort;
 import com.carebridge.backend.emergency.service.impl.EmergencyService;
 import com.carebridge.backend.security.repository.UserRepository;
+import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.triage.IntakeStatus;
 import com.carebridge.backend.triage.RiskLevel;
 import com.carebridge.backend.triage.entity.IntakeSession;
@@ -38,11 +40,44 @@ class EmergencyServiceTest {
     @Mock private FamilyMemberPort familyMemberPort;
     @Mock private LocationConsentPort locationConsentPort;
     @Mock private UserRepository userRepository;
+    @Mock private EmergencyAlertAcknowledgementRepository acknowledgementRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
     @InjectMocks private EmergencyService service;
 
     private static final UUID USER_ID = UUID.randomUUID();
     private static final UUID INTAKE_ID = UUID.randomUUID();
+
+    @Test
+    void familyAlertDetailUsesRealMotherPhoneLocationAndAcknowledgement() {
+        UUID callerId = UUID.randomUUID();
+        EmergencySession session = emergencySession(null);
+        session.setTriggerSource("FALL_DETECTION");
+        session.setUserLatitude(new java.math.BigDecimal("10.762622"));
+        session.setUserLongitude(new java.math.BigDecimal("106.660172"));
+        User mother = User.builder()
+                .id(USER_ID)
+                .name("Mother Test")
+                .phone("0901234567")
+                .build();
+        Instant acknowledgedAt = Instant.parse("2026-08-10T11:00:00Z");
+        when(emergencySessionRepository.findById(session.getId())).thenReturn(Optional.of(session));
+        when(familyMemberPort.isFamilyMember(USER_ID, callerId)).thenReturn(true);
+        when(locationConsentPort.hasLocationConsent(USER_ID)).thenReturn(true);
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(mother));
+        when(familyAlertLogRepository.findBySessionId(session.getId())).thenReturn(Optional.empty());
+        when(acknowledgementRepository.find(session.getId(), callerId))
+                .thenReturn(new EmergencyAlertAcknowledgementRepository.AcknowledgementState(
+                        true, true, acknowledgedAt));
+
+        var response = service.getAlertDetail(session.getId(), callerId);
+
+        assertThat(response.getMotherName()).isEqualTo("Mother Test");
+        assertThat(response.getMotherPhone()).isEqualTo("0901234567");
+        assertThat(response.getLatitude()).isEqualByComparingTo("10.762622");
+        assertThat(response.getLongitude()).isEqualByComparingTo("106.660172");
+        assertThat(response.isAcknowledged()).isTrue();
+        assertThat(response.getAcknowledgedAt()).isEqualTo(acknowledgedAt);
+    }
 
     @Test
     void triageReplayUsesCanonicalSafetyEventSourceIdentity() {

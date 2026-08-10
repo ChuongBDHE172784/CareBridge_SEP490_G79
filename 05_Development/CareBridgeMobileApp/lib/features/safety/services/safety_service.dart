@@ -14,6 +14,7 @@ class SafetyService {
     required bool fallDetectionEnabled,
     required String sensitivityLevel,
     required bool emergencyAutoAlert,
+    bool? locationSharingEnabled,
     int? countdownSeconds,
     bool? sensorPermissionGranted,
   }) async {
@@ -21,6 +22,7 @@ class SafetyService {
       fallDetectionEnabled: fallDetectionEnabled,
       sensitivityLevel: sensitivityLevel,
       emergencyAutoAlert: emergencyAutoAlert,
+      locationSharingEnabled: locationSharingEnabled,
       countdownSeconds: countdownSeconds,
       sensorPermissionGranted: sensorPermissionGranted,
     );
@@ -33,12 +35,14 @@ class SafetyService {
     required bool fallDetectionEnabled,
     required String sensitivityLevel,
     required bool emergencyAutoAlert,
+    bool? locationSharingEnabled,
     int? countdownSeconds,
     bool? sensorPermissionGranted,
   }) => <String, dynamic>{
     'fallDetectionEnabled': fallDetectionEnabled,
     'sensitivityLevel': sensitivityLevel,
     'emergencyAutoAlert': emergencyAutoAlert,
+    'locationSharingEnabled': ?locationSharingEnabled,
     'countdownSeconds': ?countdownSeconds,
     'sensorPermissionGranted': ?sensorPermissionGranted,
   };

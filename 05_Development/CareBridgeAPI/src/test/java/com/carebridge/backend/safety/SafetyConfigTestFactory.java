@@ -16,6 +16,7 @@ class SafetyConfigTestFactory {
                 .fallDetectionEnabled(false)
                 .sensitivityLevel(SensitivityLevel.MEDIUM)
                 .emergencyAutoAlert(true)
+                .locationSharingEnabled(true)
                 .updatedAt(Instant.parse("2026-06-27T08:00:00Z"))
                 .build();
     }
@@ -25,6 +26,7 @@ class SafetyConfigTestFactory {
                 .fallDetectionEnabled(true)
                 .sensitivityLevel("MEDIUM")
                 .emergencyAutoAlert(true)
+                .locationSharingEnabled(true)
                 .build();
     }
 

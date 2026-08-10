@@ -6,7 +6,6 @@ import '../models/safety_config_model.dart';
 import '../services/safety_demo_mode.dart';
 import '../services/safety_foreground_service.dart';
 import '../services/safety_service.dart';
-import '../widgets/disable_fall_detection_sheet.dart';
 import '../widgets/safety_countdown_sheet.dart';
 import 'enable_fall_detection_screen.dart';
 import '../../emergency/services/emergency_service.dart';
@@ -464,19 +463,11 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
     await _emergencyService.resolve(sessionId);
   }
 
-  Future<void> _onFallDetectionToggle(bool enable) async {
-    if (enable) {
-      final activated = await Navigator.of(context).push<bool>(
-        MaterialPageRoute(builder: (_) => const EnableFallDetectionScreen()),
-      );
-      if (activated == true) await _load();
-    } else {
-      final disabled = await showDisableFallDetectionSheet(context);
-      if (disabled == true) {
-        await _foregroundCoordinator.stop();
-        await _load();
-      }
-    }
+  Future<void> _onFallDetectionToggle([bool? _]) async {
+    final activated = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const EnableFallDetectionScreen()),
+    );
+    if (activated == true) await _load();
   }
 
   Future<void> _onImuSensorToggle(bool enable) async {
@@ -690,26 +681,33 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
             ],
           ),
           const Divider(height: 24, color: _surfaceVariant),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
+          InkWell(
+            onTap: () => _onFallDetectionToggle(),
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Icon(Icons.personal_injury_outlined, color: _tertiary),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Phát hiện ngã (Fall Detection)',
-                    style: TextStyle(fontSize: 14, color: _onSurface),
+                  Row(
+                    children: const [
+                      Icon(Icons.personal_injury_outlined, color: _tertiary),
+                      SizedBox(width: 8),
+                      Text(
+                        'Phát hiện ngã (Fall Detection)',
+                        style: TextStyle(fontSize: 14, color: _onSurface),
+                      ),
+                    ],
+                  ),
+                  Switch(
+                    value: fallDetectionEnabled,
+                    activeThumbColor: Colors.white,
+                    activeTrackColor: _primaryContainer,
+                    onChanged: _onFallDetectionToggle,
                   ),
                 ],
               ),
-              Switch(
-                value: fallDetectionEnabled,
-                activeThumbColor: Colors.white,
-                activeTrackColor: _primaryContainer,
-                onChanged: _onFallDetectionToggle,
-              ),
-            ],
+            ),
           ),
         ],
       ),

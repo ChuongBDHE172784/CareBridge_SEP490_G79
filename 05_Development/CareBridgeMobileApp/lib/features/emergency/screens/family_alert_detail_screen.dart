@@ -1,17 +1,18 @@
-// ignore_for_file: curly_braces_in_flow_control_structures
-
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../models/emergency_alert_model.dart';
 import '../services/emergency_service.dart';
 
-/// CB-032 - Family Alert Detail (UC-86, UC-161)
-/// Family-facing emergency alert detail reached from FCM notification payload.
 class FamilyAlertDetailScreen extends StatefulWidget {
   final String sessionId;
+  final EmergencyAlert? initialAlert;
 
-  const FamilyAlertDetailScreen({super.key, required this.sessionId});
+  const FamilyAlertDetailScreen({
+    super.key,
+    required this.sessionId,
+    this.initialAlert,
+  });
 
   @override
   State<FamilyAlertDetailScreen> createState() =>
@@ -19,29 +20,37 @@ class FamilyAlertDetailScreen extends StatefulWidget {
 }
 
 class _FamilyAlertDetailScreenState extends State<FamilyAlertDetailScreen> {
-  static const _background = Color(0xFFFFF8F6);
+  static const _background = Color(0xFFF6F1EC);
   static const _surface = Color(0xFFFFFFFF);
-  static const _surfaceContainer = Color(0xFFFFE9E3);
-  static const _surfaceContainerLow = Color(0xFFFFF1EC);
-  static const _primary = Color(0xFF845143);
-  static const _primaryContainer = Color(0xFFC98C7B);
-  static const _onPrimaryContainer = Color(0xFF51271B);
-  static const _onSurface = Color(0xFF271812);
-  static const _onSurfaceVariant = Color(0xFF524440);
-  static const _outlineVariant = Color(0xFFD6C2BD);
-  static const _error = Color(0xFFBA1A1A);
-  static const _errorContainer = Color(0xFFFFDAD6);
+  static const _surfaceMuted = Color(0xFFF2EAE4);
+  static const _accent = Color(0xFFC98C7B);
+  static const _accentDark = Color(0xFF845143);
+  static const _text = Color(0xFF5A463F);
+  static const _textMuted = Color(0xFF9C857C);
+  static const _outline = Color(0xFFE8DDD6);
+  static const _danger = Color(0xFFC63C49);
+  static const _dangerSoft = Color(0xFFFFE2E0);
 
   final _service = EmergencyService();
   EmergencyAlert? _alert;
   bool _loading = true;
-  bool _acknowledged = false;
+  bool _acknowledging = false;
   String? _errorText;
+
+  bool get _hasLocation =>
+      _alert?.latitude != null && _alert?.longitude != null;
+  bool get _hasPhone => _alert?.phoneNumber?.trim().isNotEmpty == true;
 
   @override
   void initState() {
     super.initState();
-    _load();
+    final initialAlert = widget.initialAlert;
+    if (initialAlert != null) {
+      _alert = initialAlert;
+      _loading = false;
+    } else {
+      _load();
+    }
   }
 
   Future<void> _load() async {
@@ -52,10 +61,7 @@ class _FamilyAlertDetailScreenState extends State<FamilyAlertDetailScreen> {
     try {
       final alert = await _service.getAlertDetail(widget.sessionId);
       if (!mounted) return;
-      setState(() {
-        _alert = alert;
-        _acknowledged = alert.acknowledged;
-      });
+      setState(() => _alert = alert);
     } catch (error) {
       if (!mounted) return;
       setState(() => _errorText = 'Không thể tải chi tiết cảnh báo: $error');
@@ -64,95 +70,130 @@ class _FamilyAlertDetailScreenState extends State<FamilyAlertDetailScreen> {
     }
   }
 
-  String _formatTime(DateTime value) {
-    final now = DateTime.now();
-    final difference = now.difference(value);
-    if (difference.inMinutes < 1) return 'Vừa xong';
-    if (difference.inMinutes < 60) return '${difference.inMinutes} phút trước';
-    if (difference.inHours < 24) return '${difference.inHours} giờ trước';
-    return '${value.hour.toString().padLeft(2, '0')}:${value.minute.toString().padLeft(2, '0')}, ${value.day.toString().padLeft(2, '0')}/${value.month.toString().padLeft(2, '0')}/${value.year}';
+  Future<void> _acknowledge() async {
+    if (_acknowledging || _alert?.acknowledged == true) return;
+    setState(() => _acknowledging = true);
+    try {
+      final alert = await _service.acknowledgeAlert(widget.sessionId);
+      if (!mounted) return;
+      setState(() => _alert = alert);
+      _showMessage('Đã ghi nhận bạn tiếp nhận cảnh báo.');
+    } catch (error) {
+      if (mounted) _showMessage('Chưa thể tiếp nhận cảnh báo: $error');
+    } finally {
+      if (mounted) setState(() => _acknowledging = false);
+    }
   }
 
-  String get _headline {
-    final alert = _alert;
-    if (alert == null) return 'Cảnh báo khẩn cấp';
-    if (alert.alertType == 'FALL_DETECTED')
-      return '${alert.personName} di chuyển bất thường';
-    if (alert.alertType == 'SOS')
-      return '${alert.personName} cần hỗ trợ khẩn cấp';
-    return 'Bé Mỡ di chuyển bất thường';
-  }
-
-  Future<void> _callContact() async {
-    final phone = _alert?.phoneNumber;
-    if (phone == null || phone.isEmpty) return;
-    final uri = Uri.parse('tel:$phone');
-    if (await canLaunchUrl(uri)) await launchUrl(uri);
+  Future<void> _callMother() async {
+    final phone = _alert?.phoneNumber?.trim();
+    if (phone == null || phone.isEmpty) {
+      _showMessage('Mother chưa đăng ký số điện thoại.');
+      return;
+    }
+    try {
+      final launched = await launchUrl(
+        Uri(scheme: 'tel', path: phone),
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched && mounted) {
+        _showMessage('Không thể mở ứng dụng gọi. Hãy tự nhập số $phone.');
+      }
+    } catch (_) {
+      if (mounted) {
+        _showMessage('Không thể mở ứng dụng gọi. Hãy tự nhập số $phone.');
+      }
+    }
   }
 
   Future<void> _openDirections() async {
     final alert = _alert;
-    if (alert?.latitude == null || alert?.longitude == null) return;
+    if (alert?.latitude == null || alert?.longitude == null) {
+      _showMessage('Cảnh báo này không có dữ liệu vị trí.');
+      return;
+    }
     final uri = Uri.parse(
-      'https://www.google.com/maps/dir/?api=1&destination=${alert!.latitude},${alert.longitude}',
+      'https://www.google.com/maps/dir/?api=1&destination='
+      '${alert!.latitude},${alert.longitude}',
     );
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    try {
+      final launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched && mounted) {
+        _showMessage('Không thể mở ứng dụng bản đồ trên thiết bị.');
+      }
+    } catch (_) {
+      if (mounted) {
+        _showMessage('Không thể mở ứng dụng bản đồ trên thiết bị.');
+      }
     }
   }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: _text,
+          behavior: SnackBarBehavior.floating,
+          shape: const StadiumBorder(),
+        ),
+      );
+  }
+
+  String _formatTime(DateTime value) {
+    final local = value.toLocal();
+    final difference = DateTime.now().difference(local);
+    if (difference.inMinutes < 1) return 'Vừa xong';
+    if (difference.inMinutes < 60) return '${difference.inMinutes} phút trước';
+    if (difference.inHours < 24) return '${difference.inHours} giờ trước';
+    return '${local.hour.toString().padLeft(2, '0')}:'
+        '${local.minute.toString().padLeft(2, '0')} · '
+        '${local.day.toString().padLeft(2, '0')}/'
+        '${local.month.toString().padLeft(2, '0')}/${local.year}';
+  }
+
+  String get _alertTitle => switch (_alert?.alertType) {
+    'FALL_DETECTED' => 'Phát hiện ngã',
+    'SOS' => 'Yêu cầu trợ giúp khẩn cấp',
+    _ => 'Cảnh báo khẩn cấp',
+  };
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: _background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildAppBar(context),
-            Expanded(child: _buildBody()),
-          ],
+      appBar: AppBar(
+        backgroundColor: _background,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: true,
+        leading: IconButton(
+          onPressed: () => Navigator.of(context).pop(_alert?.acknowledged),
+          icon: const Icon(Icons.arrow_back, color: _accentDark),
+        ),
+        title: const Text(
+          'Chi tiết cảnh báo',
+          style: TextStyle(
+            color: _text,
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
-    );
-  }
-
-  Widget _buildAppBar(BuildContext context) {
-    return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      color: _background,
-      child: Row(
-        children: [
-          SizedBox(
-            width: 48,
-            height: 48,
-            child: IconButton(
-              onPressed: () => Navigator.of(context).pop(),
-              icon: const Icon(Icons.arrow_back, color: _onSurfaceVariant),
-              padding: EdgeInsets.zero,
-            ),
-          ),
-          const Expanded(
-            child: Text(
-              'Chi tiết cảnh báo',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                color: _onSurface,
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          const SizedBox(width: 48),
-        ],
-      ),
+      body: _buildBody(),
+      bottomNavigationBar: _alert == null || _loading || _errorText != null
+          ? null
+          : _buildBottomActions(),
     );
   }
 
   Widget _buildBody() {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator(color: _primary));
+      return const Center(child: CircularProgressIndicator(color: _accent));
     }
     if (_errorText != null) {
       return Center(
@@ -161,191 +202,298 @@ class _FamilyAlertDetailScreenState extends State<FamilyAlertDetailScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              const Icon(Icons.cloud_off_rounded, color: _textMuted, size: 48),
+              const SizedBox(height: 16),
               Text(
                 _errorText!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: _error, fontFamily: 'Lexend'),
+                style: const TextStyle(color: _text, fontSize: 16),
               ),
-              const SizedBox(height: 16),
-              FilledButton(onPressed: _load, child: const Text('Thử lại')),
+              const SizedBox(height: 20),
+              FilledButton.icon(
+                onPressed: _load,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Thử lại'),
+              ),
             ],
           ),
         ),
       );
     }
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-      children: [
-        _buildAlertHeader(),
-        const SizedBox(height: 24),
-        _buildLocationCard(),
-        const SizedBox(height: 24),
-        _buildActions(),
-        const SizedBox(height: 32),
-        _buildPrivacyNote(),
-      ],
+    return RefreshIndicator(
+      color: _accent,
+      onRefresh: _load,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 180),
+        children: [
+          _buildEmergencyHeader(),
+          const SizedBox(height: 16),
+          _buildContactCard(),
+          const SizedBox(height: 16),
+          _buildLocationCard(),
+          if (_hasLocation) ...[
+            const SizedBox(height: 14),
+            const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.lock_outline, size: 16, color: _textMuted),
+                SizedBox(width: 7),
+                Flexible(
+                  child: Text(
+                    'Vị trí chỉ hiển thị cho thành viên nhóm gia đình.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: _textMuted, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
     );
   }
 
-  Widget _buildAlertHeader() {
+  Widget _buildEmergencyHeader() {
+    final acknowledged = _alert!.acknowledged;
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: _errorContainer,
-        borderRadius: BorderRadius.circular(28),
+        color: _dangerSoft,
+        borderRadius: BorderRadius.circular(32),
+        border: Border.all(color: _danger.withValues(alpha: 0.14)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color.fromRGBO(90, 70, 63, 0.06),
+            blurRadius: 28,
+            offset: Offset(0, 10),
+          ),
+        ],
       ),
-      child: Column(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 64,
-            height: 64,
+            width: 58,
+            height: 58,
             decoration: const BoxDecoration(
-              color: _error,
+              color: _danger,
               shape: BoxShape.circle,
             ),
             child: const Icon(
               Icons.warning_rounded,
               color: Colors.white,
-              size: 36,
+              size: 32,
             ),
           ),
-          const SizedBox(height: 16),
-          Text(
-            _headline,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontFamily: 'Lexend',
-              color: Color(0xFF93000A),
-              fontSize: 24,
-              height: 1.25,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            alignment: WrapAlignment.center,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: _error.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: const Text(
-                  'KHẨN CẤP',
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  acknowledged ? 'ĐÃ TIẾP NHẬN' : 'CẦN KIỂM TRA NGAY',
                   style: TextStyle(
-                    fontFamily: 'Lexend',
-                    color: _error,
+                    color: acknowledged ? _accentDark : _danger,
                     fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.6,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.7,
                   ),
                 ),
-              ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.schedule,
-                    color: _onSurfaceVariant,
-                    size: 16,
+                const SizedBox(height: 6),
+                Text(
+                  _alertTitle,
+                  style: const TextStyle(
+                    color: _text,
+                    fontSize: 25,
+                    fontWeight: FontWeight.w800,
+                    height: 1.15,
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    _formatTime(_alert!.createdAt),
-                    style: const TextStyle(
-                      fontFamily: 'Lexend',
-                      color: _onSurfaceVariant,
-                      fontSize: 13,
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    const Icon(Icons.schedule, size: 16, color: _textMuted),
+                    const SizedBox(width: 6),
+                    Text(
+                      _formatTime(_alert!.createdAt),
+                      style: const TextStyle(
+                        color: _textMuted,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContactCard() {
+    final phone = _alert!.phoneNumber?.trim();
+    return _card(
+      child: Row(
+        children: [
+          _iconBubble(Icons.person_rounded),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _alert!.personName,
+                  style: const TextStyle(
+                    color: _text,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  phone?.isNotEmpty == true ? phone! : 'Chưa có số điện thoại',
+                  style: const TextStyle(
+                    color: _textMuted,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (_hasPhone)
+            IconButton.filled(
+              onPressed: _callMother,
+              style: IconButton.styleFrom(
+                backgroundColor: _accent,
+                foregroundColor: Colors.white,
+              ),
+              icon: const Icon(Icons.call_rounded),
+              tooltip: 'Gọi cho mother',
+            ),
         ],
       ),
     );
   }
 
   Widget _buildLocationCard() {
-    final alert = _alert!;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: _surface,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: const [
-          BoxShadow(
-            color: Color.fromRGBO(90, 70, 63, 0.06),
-            blurRadius: 20,
-            offset: Offset(0, 4),
-          ),
-        ],
-      ),
+    if (!_hasLocation) {
+      return _card(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _iconBubble(Icons.location_off_rounded),
+            const SizedBox(width: 14),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Không có vị trí',
+                    style: TextStyle(
+                      color: _text,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  SizedBox(height: 6),
+                  Text(
+                    'Cảnh báo này không thu được tọa độ. Mother cần bật chia sẻ vị trí và cấp quyền cho các cảnh báo mới.',
+                    style: TextStyle(
+                      color: _textMuted,
+                      fontSize: 14,
+                      height: 1.45,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final latitude = _alert!.latitude!;
+    final longitude = _alert!.longitude!;
+    return _card(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.location_on, color: _primary),
-              SizedBox(width: 8),
-              Text(
-                'Vị trí gần nhất',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 20,
-                  color: _onSurface,
-                  fontWeight: FontWeight.w600,
+              _iconBubble(Icons.location_on_rounded),
+              const SizedBox(width: 14),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Vị trí khi cảnh báo',
+                      style: TextStyle(
+                        color: _text,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    SizedBox(height: 3),
+                    Text(
+                      'Tọa độ do điện thoại mother gửi',
+                      style: TextStyle(color: _textMuted, fontSize: 13),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           Container(
-            height: 190,
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: _surfaceContainer,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: _outlineVariant),
+              color: _surfaceMuted,
+              borderRadius: BorderRadius.circular(22),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color.fromRGBO(90, 70, 63, 0.05),
+                  blurRadius: 8,
+                  offset: Offset(0, 4),
+                  blurStyle: BlurStyle.inner,
+                ),
+              ],
             ),
-            child: Stack(
+            child: Row(
               children: [
-                Positioned.fill(child: CustomPaint(painter: _SoftMapPainter())),
-                Center(
-                  child: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: const BoxDecoration(
-                      color: _primary,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.location_pin,
-                      color: Colors.white,
-                      size: 28,
-                    ),
-                  ),
+                Expanded(
+                  child: _coordinate('VĨ ĐỘ', latitude.toStringAsFixed(6)),
+                ),
+                Container(width: 1, height: 38, color: _outline),
+                Expanded(
+                  child: _coordinate('KINH ĐỘ', longitude.toStringAsFixed(6)),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 14),
-          Text(
-            alert.address?.isNotEmpty == true
-                ? 'Hệ thống ghi nhận vị trí cuối cùng tại ${alert.address}.'
-                : "Hệ thống ghi nhận người thân đã rời khỏi khu vực 'Nhà'. Vị trí cuối cùng được cập nhật cách đây vài phút.",
-            style: const TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 14,
-              height: 1.45,
-              color: _onSurfaceVariant,
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: FilledButton.icon(
+              onPressed: _openDirections,
+              icon: const Icon(Icons.directions_rounded),
+              label: const Text('Mở chỉ đường'),
+              style: FilledButton.styleFrom(
+                backgroundColor: _surfaceMuted,
+                foregroundColor: _accentDark,
+                elevation: 0,
+                shape: const StadiumBorder(),
+                textStyle: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
           ),
         ],
@@ -353,150 +501,146 @@ class _FamilyAlertDetailScreenState extends State<FamilyAlertDetailScreen> {
     );
   }
 
-  Widget _buildActions() {
+  Widget _buildBottomActions() {
+    final acknowledged = _alert!.acknowledged;
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        20,
+        14,
+        20,
+        14 + MediaQuery.paddingOf(context).bottom,
+      ),
+      decoration: const BoxDecoration(
+        color: _surface,
+        border: Border(top: BorderSide(color: _outline)),
+        boxShadow: [
+          BoxShadow(
+            color: Color.fromRGBO(90, 70, 63, 0.08),
+            blurRadius: 26,
+            offset: Offset(0, -8),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: FilledButton.icon(
+              onPressed: _hasPhone ? _callMother : null,
+              icon: const Icon(Icons.call_rounded),
+              label: Text(
+                _hasPhone
+                    ? 'Gọi ngay cho ${_alert!.personName}'
+                    : 'Không có số để gọi',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              style: FilledButton.styleFrom(
+                backgroundColor: _danger,
+                foregroundColor: Colors.white,
+                disabledBackgroundColor: _surfaceMuted,
+                disabledForegroundColor: _textMuted,
+                shape: const StadiumBorder(),
+                elevation: 2,
+                textStyle: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: OutlinedButton.icon(
+              onPressed: acknowledged || _acknowledging ? null : _acknowledge,
+              icon: _acknowledging
+                  ? const SizedBox(
+                      width: 19,
+                      height: 19,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Icon(
+                      acknowledged
+                          ? Icons.check_circle
+                          : Icons.check_circle_outline,
+                    ),
+              label: Text(
+                acknowledged ? 'Đã tiếp nhận cảnh báo' : 'Tiếp nhận cảnh báo',
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _accentDark,
+                disabledForegroundColor: _accentDark,
+                side: const BorderSide(color: _outline),
+                shape: const StadiumBorder(),
+                textStyle: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _card({required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: _surface,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: _outline.withValues(alpha: 0.7)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color.fromRGBO(90, 70, 63, 0.06),
+            blurRadius: 28,
+            offset: Offset(0, 10),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  Widget _iconBubble(IconData icon) {
+    return Container(
+      width: 46,
+      height: 46,
+      decoration: BoxDecoration(
+        color: _accent.withValues(alpha: 0.16),
+        shape: BoxShape.circle,
+      ),
+      child: Icon(icon, color: _accentDark, size: 24),
+    );
+  }
+
+  Widget _coordinate(String label, String value) {
     return Column(
       children: [
-        SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: FilledButton.icon(
-            onPressed: _callContact,
-            icon: const Icon(Icons.phone_in_talk),
-            label: const Text('Gọi cho Mẹ Linh'),
-            style: FilledButton.styleFrom(
-              backgroundColor: _primaryContainer,
-              foregroundColor: _onPrimaryContainer,
-              shape: const StadiumBorder(),
-              textStyle: const TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+        Text(
+          label,
+          style: const TextStyle(
+            color: _textMuted,
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.7,
           ),
         ),
-        const SizedBox(height: 14),
-        SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: FilledButton.icon(
-            onPressed: _openDirections,
-            icon: const Icon(Icons.directions),
-            label: const Text('Chỉ đường đến vị trí'),
-            style: FilledButton.styleFrom(
-              backgroundColor: _surfaceContainer,
-              foregroundColor: _onSurface,
-              shape: const StadiumBorder(),
-              elevation: 0,
-              textStyle: const TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 14),
-        SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: OutlinedButton.icon(
-            onPressed: _acknowledged
-                ? null
-                : () => setState(() => _acknowledged = true),
-            icon: Icon(
-              _acknowledged ? Icons.check_circle : Icons.check_circle_outline,
-            ),
-            label: Text(_acknowledged ? 'Đã xác nhận' : 'Xác nhận đã xem'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: _onSurfaceVariant,
-              side: const BorderSide(color: _outlineVariant),
-              shape: const StadiumBorder(),
-              textStyle: const TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+        const SizedBox(height: 5),
+        Text(
+          value,
+          style: const TextStyle(
+            color: _text,
+            fontSize: 15,
+            fontWeight: FontWeight.w800,
           ),
         ),
       ],
     );
   }
-
-  Widget _buildPrivacyNote() {
-    return const Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(Icons.lock, color: _onSurfaceVariant, size: 16),
-        SizedBox(width: 8),
-        Flexible(
-          child: Text(
-            'Vị trí được mã hóa và chỉ chia sẻ trong nhóm gia đình.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              color: _onSurfaceVariant,
-              fontSize: 12,
-              height: 1.35,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SoftMapPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final roadPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.8)
-      ..strokeWidth = 5
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-    final thinRoadPaint = Paint()
-      ..color = const Color(0xFFD6C2BD).withValues(alpha: 0.65)
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawColor(
-      _FamilyAlertDetailScreenState._surfaceContainerLow,
-      BlendMode.src,
-    );
-
-    for (var index = 0; index < 4; index++) {
-      final y = size.height * (0.2 + index * 0.2);
-      final path = Path()
-        ..moveTo(0, y)
-        ..cubicTo(
-          size.width * 0.25,
-          y - 32,
-          size.width * 0.65,
-          y + 28,
-          size.width,
-          y - 8,
-        );
-      canvas.drawPath(path, index.isEven ? roadPaint : thinRoadPaint);
-    }
-
-    for (var index = 0; index < 3; index++) {
-      final x = size.width * (0.25 + index * 0.25);
-      final path = Path()
-        ..moveTo(x, 0)
-        ..cubicTo(
-          x + 24,
-          size.height * 0.25,
-          x - 28,
-          size.height * 0.7,
-          x + 12,
-          size.height,
-        );
-      canvas.drawPath(path, thinRoadPaint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

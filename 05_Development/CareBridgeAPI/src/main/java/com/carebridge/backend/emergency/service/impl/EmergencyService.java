@@ -11,6 +11,7 @@ import com.carebridge.backend.emergency.event.EmergencySessionRealertRequested;
 import com.carebridge.backend.emergency.exception.EmergencyException;
 import com.carebridge.backend.emergency.repository.IEmergencySessionRepository;
 import com.carebridge.backend.emergency.repository.IFamilyAlertLogRepository;
+import com.carebridge.backend.emergency.repository.EmergencyAlertAcknowledgementRepository;
 import com.carebridge.backend.emergency.repository.TriageEmergencyEscalationLinkRepository;
 import com.carebridge.backend.emergency.service.FamilyMemberPort;
 import com.carebridge.backend.emergency.service.IEmergencyService;
@@ -44,6 +45,7 @@ public class EmergencyService implements IEmergencyService {
     private final FamilyMemberPort familyMemberPort;
     private final LocationConsentPort locationConsentPort;
     private final UserRepository userRepository;
+    private final EmergencyAlertAcknowledgementRepository acknowledgementRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
@@ -182,20 +184,25 @@ public class EmergencyService implements IEmergencyService {
         }
 
         boolean hasConsent = locationConsentPort.hasLocationConsent(session.getUserId());
-        String motherName = userRepository.findById(session.getUserId())
-                .map(User::getName)
-                .orElse("Người thân");
+        User mother = userRepository.findById(session.getUserId()).orElse(null);
+        String motherName = mother == null || mother.getName() == null || mother.getName().isBlank()
+                ? "Người thân"
+                : mother.getName();
         FamilyAlertLog alertLog = familyAlertLogRepository.findBySessionId(sessionId).orElse(null);
+        var acknowledgement = acknowledgementRepository.find(sessionId, callerId);
 
         return FamilyAlertDetailResponse.builder()
                 .sessionId(session.getId())
                 .motherName(motherName)
+                .motherPhone(mother == null ? null : mother.getPhone())
                 .status(session.getStatus().name())
                 .triggerSource(session.getTriggerSource())
                 .latitude(hasConsent ? session.getUserLatitude() : null)
                 .longitude(hasConsent ? session.getUserLongitude() : null)
                 .locationIncluded(hasConsent && session.getUserLatitude() != null)
                 .recipientCount(alertLog != null ? alertLog.getRecipientCount() : 0)
+                .acknowledged(acknowledgement.acknowledged())
+                .acknowledgedAt(acknowledgement.acknowledgedAt())
                 .createdAt(session.getCreatedAt())
                 .resolvedAt(session.getResolvedAt())
                 .build();
