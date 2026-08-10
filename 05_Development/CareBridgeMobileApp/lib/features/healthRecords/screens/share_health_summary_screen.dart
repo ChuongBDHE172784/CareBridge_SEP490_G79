@@ -73,13 +73,6 @@ class _ShareHealthSummaryScreenState extends State<ShareHealthSummaryScreen> {
             fontFamily: 'Lexend',
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.close, color: Color(0xFF845143)),
-            onPressed: () =>
-                Navigator.popUntil(context, (route) => route.isFirst),
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),

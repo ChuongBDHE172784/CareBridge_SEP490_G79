@@ -305,12 +305,6 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
             ),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.close_rounded, color: _onSurfaceVariant),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
