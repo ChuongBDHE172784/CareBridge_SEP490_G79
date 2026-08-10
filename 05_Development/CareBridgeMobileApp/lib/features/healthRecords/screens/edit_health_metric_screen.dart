@@ -44,11 +44,12 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
 
   String _glucoseContext = 'FASTING';
   static const _glucoseContexts = [
-    DropdownMenuItem(value: 'FASTING', child: Text('Lúc đói (nhịn ăn >= 8h)')),
-    DropdownMenuItem(value: 'POST_PRANDIAL_1H', child: Text('1 giờ sau ăn')),
-    DropdownMenuItem(value: 'POST_PRANDIAL_2H', child: Text('2 giờ sau ăn')),
-    DropdownMenuItem(value: 'RANDOM', child: Text('Bất kỳ trong ngày')),
-    DropdownMenuItem(value: 'BEDTIME', child: Text('Trước khi đi ngủ')),
+    DropdownMenuItem(value: 'FASTING', child: Text('Lúc đói')),
+    DropdownMenuItem(value: 'PRE_MEAL', child: Text('Trước ăn')),
+    DropdownMenuItem(value: 'POST_MEAL_1H', child: Text('Sau ăn 1 giờ')),
+    DropdownMenuItem(value: 'POST_MEAL_2H', child: Text('Sau ăn 2 giờ')),
+    DropdownMenuItem(value: 'RANDOM', child: Text('Ngẫu nhiên')),
+    DropdownMenuItem(value: 'OTHER_APPROVED', child: Text('Khác (đã được duyệt)')),
   ];
 
   final _service = HealthMetricService();

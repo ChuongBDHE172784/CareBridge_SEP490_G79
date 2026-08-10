@@ -160,13 +160,17 @@ class _MaternalHealthMetricScreenState
   String _formatGlucoseContext(String code) {
     switch (code) {
       case 'FASTING':
-        return 'Lúc đói (nhịn ăn >= 8h)';
-      case 'POST_PRANDIAL_1H':
-        return '1 giờ sau ăn';
-      case 'POST_PRANDIAL_2H':
-        return '2 giờ sau ăn';
+        return 'Lúc đói';
+      case 'PRE_MEAL':
+        return 'Trước ăn';
+      case 'POST_MEAL_1H':
+        return 'Sau ăn 1 giờ';
+      case 'POST_MEAL_2H':
+        return 'Sau ăn 2 giờ';
       case 'RANDOM':
-        return 'Bất kỳ trong ngày';
+        return 'Ngẫu nhiên';
+      case 'OTHER_APPROVED':
+        return 'Khác (đã được duyệt)';
       case 'BEDTIME':
         return 'Trước khi đi ngủ';
       default:
