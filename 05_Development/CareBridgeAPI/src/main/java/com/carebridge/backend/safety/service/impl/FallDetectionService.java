@@ -298,7 +298,9 @@ public class FallDetectionService implements IFallDetectionService {
             if (event.getResponseType().equals(responseType)) {
                 return event;
             }
-            throw new SafetyException(HttpStatus.CONFLICT, "SAFETY-010", "Safety event already has a response");
+            if (!"TIMEOUT".equals(event.getResponseType()) || (!"I_AM_OK".equals(responseType) && !"FALSE_POSITIVE".equals(responseType))) {
+                throw new SafetyException(HttpStatus.CONFLICT, "SAFETY-010", "Safety event already has a response");
+            }
         }
         Instant now = Instant.now();
         event.setStatus(status);

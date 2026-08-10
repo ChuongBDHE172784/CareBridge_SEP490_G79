@@ -210,6 +210,20 @@ class FallDetectionServiceTest {
     }
 
     @Test
+    void reportFalsePositive_shouldAllowOverridingTimedOutEvent() {
+        SafetyEvent event = makeSafetyEvent();
+        event.setResponseType("TIMEOUT");
+        event.setStatus(SafetyEventStatus.TIMED_OUT);
+        when(safetyEventRepository.findLockedByIdAndUserId(event.getId(), USER_ID)).thenReturn(Optional.of(event));
+        when(safetyEventRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        SafetyEventResponse result = fallDetectionService.reportFalsePositive(USER_ID, event.getId(), "User reacted late");
+
+        assertThat(result.getStatus()).isEqualTo("FALSE_POSITIVE");
+        assertThat(event.getResponseType()).isEqualTo("FALSE_POSITIVE");
+    }
+
+    @Test
     void reportFalsePositive_preservesResponseReasonAndCapsCanonicalNote() {
         SafetyEvent event = makeSafetyEvent();
         String reason = "x".repeat(500);
