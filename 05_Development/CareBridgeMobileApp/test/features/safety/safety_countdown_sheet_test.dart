@@ -204,6 +204,48 @@ void main() {
     );
   });
 
+  testWidgets('can tap safe button after timeout to close popup sheet', (
+    tester,
+  ) async {
+    SafetyCountdownResult? result;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Builder(
+          builder: (context) => ElevatedButton(
+            onPressed: () async {
+              result = await showModalBottomSheet<SafetyCountdownResult>(
+                context: context,
+                isScrollControlled: true,
+                builder: (_) => SafetyCountdownSheet(
+                  event: event,
+                  feedback: feedback,
+                  now: () => now,
+                ),
+              );
+            },
+            child: const Text('open'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    now = now.add(const Duration(seconds: 30));
+    await tester.pump(const Duration(seconds: 30));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('safety-countdown-call-115-button')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const Key('safety-countdown-safe')));
+    await tester.pumpAndSettle();
+
+    expect(result?.action, SafetyCountdownAction.safe);
+  });
+
   testWidgets('simulation is unmistakable and does not start alert feedback', (
     tester,
   ) async {

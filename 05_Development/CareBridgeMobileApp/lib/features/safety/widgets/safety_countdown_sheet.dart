@@ -199,7 +199,9 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
 
   Timer? _timer;
   int _remainingSeconds = 0;
-  bool _completed = false;
+  bool _timedOut = false;
+  bool _dismissed = false;
+  bool _feedbackStopped = false;
   BuildContext? _reasonDialogContext;
 
   @override
@@ -210,8 +212,14 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
   }
 
+  void _stopFeedback() {
+    if (_feedbackStopped) return;
+    _feedbackStopped = true;
+    if (_usesProductionPresentation) widget.feedback.stop();
+  }
+
   void _tick() {
-    if (_completed) return;
+    if (_dismissed) return;
     final deadline = widget.event.countdownDeadlineAt;
     final remaining = deadline == null
         ? Duration.zero
@@ -222,22 +230,25 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
     }
     final remainingSeconds =
         (remaining.inMicroseconds / Duration.microsecondsPerSecond).ceil();
-    if (_usesProductionPresentation) widget.feedback.pulse(remainingSeconds);
+    if (_usesProductionPresentation && !_timedOut) {
+      widget.feedback.pulse(remainingSeconds);
+    }
     if (mounted) setState(() => _remainingSeconds = remainingSeconds);
   }
 
-  void _complete(SafetyCountdownResult result) {
-    if (_completed) return;
-    _completed = true;
+  void _dismiss(SafetyCountdownResult result) {
+    if (_dismissed) return;
+    _dismissed = true;
     _timer?.cancel();
+    _stopFeedback();
     if (mounted) Navigator.of(context).pop(result);
   }
 
   void _completeTimeout() {
-    if (_completed) return;
-    _completed = true;
+    if (_timedOut || _dismissed) return;
+    _timedOut = true;
     _timer?.cancel();
-    if (_usesProductionPresentation) widget.feedback.stop();
+    _stopFeedback();
     widget.onTimeout?.call();
     final dialogContext = _reasonDialogContext;
     if (dialogContext != null && dialogContext.mounted) {
@@ -271,8 +282,8 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
       },
     );
     _reasonDialogContext = null;
-    if (_completed || reason == null || !mounted) return;
-    _complete(
+    if (_dismissed || reason == null || !mounted) return;
+    _dismiss(
       SafetyCountdownResult.falsePositive(
         reasonCode: reason.code,
         reason: reason.label,
@@ -283,7 +294,7 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
   @override
   void dispose() {
     _timer?.cancel();
-    if (_usesProductionPresentation) widget.feedback.stop();
+    _stopFeedback();
     super.dispose();
   }
 
@@ -470,7 +481,7 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
             const SizedBox(height: 20),
             FilledButton.icon(
               key: const Key('safety-countdown-safe'),
-              onPressed: () => _complete(const SafetyCountdownResult.safe()),
+              onPressed: () => _dismiss(const SafetyCountdownResult.safe()),
               icon: const Icon(Icons.check_circle_outline),
               label: const Text('Tôi vẫn ổn — tắt cảnh báo'),
               style: FilledButton.styleFrom(
