@@ -27,10 +27,10 @@ class _MaternalHealthMetricScreenState
     extends State<MaternalHealthMetricScreen> {
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
-  static const _canvas = Color(0xFFF6F1EC);
-  static const _surface = Color(0xFFFFF8F6);
-  static const _onSurface = Color(0xFF271812);
-  static const _onSurfaceVariant = Color(0xFF524440);
+  static const _canvas = Color(0xFFF8F5F1);
+  static const _surface = Color(0xFFFFFCF9);
+  static const _onSurface = Color(0xFF2A211D);
+  static const _onSurfaceVariant = Color(0xFF655650);
   static const _errorContainer = Color(0xFFFFDAD6);
   static const _onErrorContainer = Color(0xFF93000A);
 
