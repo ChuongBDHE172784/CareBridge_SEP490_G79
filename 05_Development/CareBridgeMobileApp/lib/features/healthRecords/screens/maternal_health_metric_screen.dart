@@ -157,6 +157,23 @@ class _MaternalHealthMetricScreenState
     return '${hour12.toString().padLeft(2, '0')}:$mi $ampm';
   }
 
+  String _formatGlucoseContext(String code) {
+    switch (code) {
+      case 'FASTING':
+        return 'Lúc đói (nhịn ăn >= 8h)';
+      case 'POST_PRANDIAL_1H':
+        return '1 giờ sau ăn';
+      case 'POST_PRANDIAL_2H':
+        return '2 giờ sau ăn';
+      case 'RANDOM':
+        return 'Bất kỳ trong ngày';
+      case 'BEDTIME':
+        return 'Trước khi đi ngủ';
+      default:
+        return code;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final topInset = MediaQuery.of(context).padding.top;
@@ -418,6 +435,15 @@ class _MaternalHealthMetricScreenState
               icon: Icons.height_rounded,
               label: 'Chiều cao',
               value: '${bmiHeight.toStringAsFixed(1)} cm',
+              showDivider: true,
+            ),
+          if (m.metricCode == 'BLOOD_GLUCOSE' &&
+              m.context['measurementContext'] != null &&
+              m.context['measurementContext'].toString().isNotEmpty)
+            _DetailRow(
+              icon: Icons.restaurant_outlined,
+              label: 'Bối cảnh đo',
+              value: _formatGlucoseContext(m.context['measurementContext'].toString()),
               showDivider: true,
             ),
           _DetailRow(

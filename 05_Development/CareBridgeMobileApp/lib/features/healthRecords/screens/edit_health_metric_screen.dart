@@ -40,6 +40,16 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
 
   late bool _isDualValue;
   bool get _isBmi => widget.metric.metricCode == 'BMI' || widget.metric.metricType == MetricType.bmi;
+  bool get _isGlucose => widget.metric.metricCode == 'BLOOD_GLUCOSE';
+
+  String _glucoseContext = 'FASTING';
+  static const _glucoseContexts = [
+    DropdownMenuItem(value: 'FASTING', child: Text('Lúc đói (nhịn ăn >= 8h)')),
+    DropdownMenuItem(value: 'POST_PRANDIAL_1H', child: Text('1 giờ sau ăn')),
+    DropdownMenuItem(value: 'POST_PRANDIAL_2H', child: Text('2 giờ sau ăn')),
+    DropdownMenuItem(value: 'RANDOM', child: Text('Bất kỳ trong ngày')),
+    DropdownMenuItem(value: 'BEDTIME', child: Text('Trước khi đi ngủ')),
+  ];
 
   final _service = HealthMetricService();
 
@@ -67,6 +77,9 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
             ? m.valueSecondary!.toStringAsFixed(0)
             : m.valueSecondary!.toStringAsFixed(1);
       }
+    }
+    if (_isGlucose && m.context['measurementContext'] != null) {
+      _glucoseContext = m.context['measurementContext'].toString();
     }
     _noteCtrl.text = m.note ?? '';
     _measuredDate = m.measuredAt;
@@ -177,6 +190,9 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
         contextPayload['weightKg'] = double.tryParse(_valuePrimaryCtrl.text.trim());
         contextPayload['heightCm'] = double.tryParse(_valueSecondaryCtrl.text.trim());
         contextPayload['pregnancyBasis'] = 'CURRENT_MEASUREMENT';
+      }
+      if (_isGlucose) {
+        contextPayload['measurementContext'] = _glucoseContext;
       }
 
       await _service.updateMetric(
@@ -520,6 +536,43 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
+                ),
+              ],
+              if (_isGlucose) ...[
+                const SizedBox(height: 14),
+                DropdownButtonFormField<String>(
+                  value: _glucoseContexts.any((item) => item.value == _glucoseContext)
+                      ? _glucoseContext
+                      : 'FASTING',
+                  decoration: InputDecoration(
+                    labelText: 'Bối cảnh đo',
+                    labelStyle: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 13,
+                      color: _onSurfaceVariant,
+                    ),
+                    filled: true,
+                    fillColor: enabled ? Colors.white : _surfaceContainer.withAlpha(60),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: const BorderSide(color: _surfaceContainer, width: 2),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: const BorderSide(color: _surfaceContainer, width: 2),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: const BorderSide(color: _primaryContainer, width: 2),
+                    ),
+                  ),
+                  items: _glucoseContexts,
+                  onChanged: enabled
+                      ? (val) {
+                          if (val != null) setState(() => _glucoseContext = val);
+                        }
+                      : null,
                 ),
               ],
               const SizedBox(height: 14),
