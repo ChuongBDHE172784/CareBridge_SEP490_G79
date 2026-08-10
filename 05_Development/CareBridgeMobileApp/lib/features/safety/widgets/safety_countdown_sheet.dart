@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 
 import '../models/safety_config_model.dart';
 
@@ -40,15 +41,75 @@ abstract class SafetyCountdownFeedback {
 
 class SystemSafetyCountdownFeedback implements SafetyCountdownFeedback {
   var _active = false;
+  FlutterTts? _tts;
+  bool _ttsInitialized = false;
+  bool _isSpeaking = false;
+
+  Future<void> _initTts() async {
+    if (_ttsInitialized) return;
+    try {
+      _tts = FlutterTts();
+      await _tts?.setLanguage('vi-VN');
+      await _tts?.setSpeechRate(0.48);
+      await _tts?.setVolume(1.0);
+      await _tts?.setAudioAttributesForNavigation();
+      _tts?.setCompletionHandler(() {
+        _isSpeaking = false;
+        if (_active) {
+          unawaited(_speakPhrase());
+        }
+      });
+      _tts?.setErrorHandler((_) {
+        _isSpeaking = false;
+      });
+      _ttsInitialized = true;
+    } catch (_) {
+      _ttsInitialized = false;
+    }
+  }
+
+  Future<void> _speakPhrase() async {
+    if (!_active || _isSpeaking) return;
+    try {
+      if (!_ttsInitialized) {
+        await _initTts();
+      }
+      if (_active && _ttsInitialized) {
+        _isSpeaking = true;
+        await _tts?.speak('Bạn có ổn không');
+      }
+    } catch (_) {
+      _isSpeaking = false;
+    }
+  }
 
   @override
-  void start() => _active = true;
+  void start() {
+    _active = true;
+    _isSpeaking = false;
+    unawaited(_speakPhrase());
+  }
 
   @override
   void pulse(int remainingSeconds) {
     if (!_active || !_shouldPulse(remainingSeconds)) return;
-    unawaited(HapticFeedback.vibrate());
+    unawaited(_triggerStrongVibration());
     unawaited(SystemSound.play(SystemSoundType.alert));
+    if (!_isSpeaking) {
+      unawaited(_speakPhrase());
+    }
+  }
+
+  Future<void> _triggerStrongVibration() async {
+    try {
+      await HapticFeedback.heavyImpact();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await HapticFeedback.vibrate();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      await HapticFeedback.heavyImpact();
+    } catch (_) {
+      await HapticFeedback.vibrate();
+    }
   }
 
   bool _shouldPulse(int remainingSeconds) {
@@ -58,7 +119,13 @@ class SystemSafetyCountdownFeedback implements SafetyCountdownFeedback {
   }
 
   @override
-  void stop() => _active = false;
+  void stop() {
+    _active = false;
+    _isSpeaking = false;
+    try {
+      unawaited(_tts?.stop());
+    } catch (_) {}
+  }
 }
 
 class SafetyCountdownSheet extends StatefulWidget {

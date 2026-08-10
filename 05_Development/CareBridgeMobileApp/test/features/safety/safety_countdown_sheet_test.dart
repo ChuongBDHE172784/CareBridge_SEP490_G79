@@ -304,4 +304,12 @@ void main() {
       expect(feedback.stops, 1);
     },
   );
+
+  test('SystemSafetyCountdownFeedback lifecycle start, pulse, and stop complete safely', () {
+    final systemFeedback = SystemSafetyCountdownFeedback();
+    expect(() => systemFeedback.start(), returnsNormally);
+    expect(() => systemFeedback.pulse(10), returnsNormally);
+    expect(() => systemFeedback.pulse(5), returnsNormally);
+    expect(() => systemFeedback.stop(), returnsNormally);
+  });
 }
