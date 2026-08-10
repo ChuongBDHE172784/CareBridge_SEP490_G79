@@ -335,7 +335,9 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
           ),
           onFalsePositive: (reasonCode, reason) => _reportEventFalsePositive(
             event,
-            note: 'Diễn tập IMU · $reasonCode: $reason',
+            note: reason == null || reason.isEmpty
+                ? 'Diễn tập IMU: báo phát hiện nhầm'
+                : 'Diễn tập IMU: $reason',
           ),
           onComplete: (outcome) =>
               _safetyService.completeSensorSelfTest(event.id, outcome: outcome),
@@ -348,8 +350,10 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
             event,
             note: 'Người dùng xác nhận an toàn trong thời gian đếm ngược.',
           ),
-          onFalsePositive: (reasonCode, reason) =>
-              _reportEventFalsePositive(event, note: '$reasonCode: $reason'),
+          onFalsePositive: (reasonCode, reason) => _reportEventFalsePositive(
+            event,
+            note: reason ?? 'Báo phát hiện nhầm',
+          ),
           onEmergency: () =>
               _safetyService.sendEmergencyAlertForEvent(event.id),
         );
