@@ -12,6 +12,7 @@ import com.carebridge.backend.emergency.exception.EmergencyException;
 import com.carebridge.backend.emergency.repository.IEmergencySessionRepository;
 import com.carebridge.backend.emergency.repository.IFamilyAlertLogRepository;
 import com.carebridge.backend.emergency.repository.EmergencyAlertAcknowledgementRepository;
+import com.carebridge.backend.emergency.repository.EmergencyAlertDetailRepository;
 import com.carebridge.backend.emergency.repository.TriageEmergencyEscalationLinkRepository;
 import com.carebridge.backend.emergency.service.FamilyMemberPort;
 import com.carebridge.backend.emergency.service.IEmergencyService;
@@ -46,6 +47,7 @@ public class EmergencyService implements IEmergencyService {
     private final LocationConsentPort locationConsentPort;
     private final UserRepository userRepository;
     private final EmergencyAlertAcknowledgementRepository acknowledgementRepository;
+    private final EmergencyAlertDetailRepository alertDetailRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
@@ -55,6 +57,10 @@ public class EmergencyService implements IEmergencyService {
         // UC62 C3: idempotent — return existing ACTIVE session if one exists
         return emergencySessionRepository.findActiveByUserId(userId)
                 .map(session -> {
+                    session.setTriggerSource(request.getTriggerSource());
+                    session.setUserLatitude(request.getUserLatitude());
+                    session.setUserLongitude(request.getUserLongitude());
+                    emergencySessionRepository.save(session);
                     eventPublisher.publishEvent(new EmergencySessionRealertRequested(
                             UUID.randomUUID(), session.getId(), userId, request.getTriggerSource(),
                             request.getUserLatitude(), request.getUserLongitude(), Instant.now()));
@@ -190,6 +196,15 @@ public class EmergencyService implements IEmergencyService {
                 : mother.getName();
         FamilyAlertLog alertLog = familyAlertLogRepository.findBySessionId(sessionId).orElse(null);
         var acknowledgement = acknowledgementRepository.find(sessionId, callerId);
+        var linkedFall = alertDetailRepository.findLatestLinkedFall(sessionId, session.getUserId())
+                .orElse(null);
+        var latitude = linkedFall == null ? session.getUserLatitude() : linkedFall.latitude();
+        var longitude = linkedFall == null ? session.getUserLongitude() : linkedFall.longitude();
+        Instant occurredAt = linkedFall != null && linkedFall.detectedAt() != null
+                ? linkedFall.detectedAt()
+                : acknowledgement.notifiedAt() != null
+                        ? acknowledgement.notifiedAt()
+                        : session.getCreatedAt();
 
         return FamilyAlertDetailResponse.builder()
                 .sessionId(session.getId())
@@ -197,13 +212,13 @@ public class EmergencyService implements IEmergencyService {
                 .motherPhone(mother == null ? null : mother.getPhone())
                 .status(session.getStatus().name())
                 .triggerSource(session.getTriggerSource())
-                .latitude(hasConsent ? session.getUserLatitude() : null)
-                .longitude(hasConsent ? session.getUserLongitude() : null)
-                .locationIncluded(hasConsent && session.getUserLatitude() != null)
+                .latitude(hasConsent ? latitude : null)
+                .longitude(hasConsent ? longitude : null)
+                .locationIncluded(hasConsent && latitude != null && longitude != null)
                 .recipientCount(alertLog != null ? alertLog.getRecipientCount() : 0)
                 .acknowledged(acknowledgement.acknowledged())
                 .acknowledgedAt(acknowledgement.acknowledgedAt())
-                .createdAt(session.getCreatedAt())
+                .createdAt(occurredAt)
                 .resolvedAt(session.getResolvedAt())
                 .build();
     }

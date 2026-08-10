@@ -42,7 +42,7 @@ class EmergencyAlertAcknowledgementServiceTest {
         when(familyMemberPort.isFamilyMember(motherId, familyId)).thenReturn(true);
         when(acknowledgementRepository.find(sessionId, familyId))
                 .thenReturn(new EmergencyAlertAcknowledgementRepository.AcknowledgementState(
-                        true, false, null));
+                        true, false, null, Instant.now()));
         when(acknowledgementRepository.acknowledge(eq(sessionId), eq(familyId), any(Instant.class)))
                 .thenReturn(1);
 

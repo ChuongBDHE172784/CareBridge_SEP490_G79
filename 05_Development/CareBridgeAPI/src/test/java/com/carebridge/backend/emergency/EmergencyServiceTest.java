@@ -7,6 +7,7 @@ import com.carebridge.backend.emergency.dto.request.OpenEmergencyRequest;
 import com.carebridge.backend.emergency.repository.IEmergencySessionRepository;
 import com.carebridge.backend.emergency.repository.IFamilyAlertLogRepository;
 import com.carebridge.backend.emergency.repository.EmergencyAlertAcknowledgementRepository;
+import com.carebridge.backend.emergency.repository.EmergencyAlertDetailRepository;
 import com.carebridge.backend.emergency.repository.TriageEmergencyEscalationLinkRepository;
 import com.carebridge.backend.emergency.service.FamilyMemberPort;
 import com.carebridge.backend.emergency.service.LocationConsentPort;
@@ -41,6 +42,7 @@ class EmergencyServiceTest {
     @Mock private LocationConsentPort locationConsentPort;
     @Mock private UserRepository userRepository;
     @Mock private EmergencyAlertAcknowledgementRepository acknowledgementRepository;
+    @Mock private EmergencyAlertDetailRepository alertDetailRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
     @InjectMocks private EmergencyService service;
 
@@ -52,14 +54,14 @@ class EmergencyServiceTest {
         UUID callerId = UUID.randomUUID();
         EmergencySession session = emergencySession(null);
         session.setTriggerSource("FALL_DETECTION");
-        session.setUserLatitude(new java.math.BigDecimal("10.762622"));
-        session.setUserLongitude(new java.math.BigDecimal("106.660172"));
         User mother = User.builder()
                 .id(USER_ID)
                 .name("Mother Test")
                 .phone("0901234567")
                 .build();
         Instant acknowledgedAt = Instant.parse("2026-08-10T11:00:00Z");
+        Instant notifiedAt = acknowledgedAt.minusSeconds(5);
+        Instant detectedAt = notifiedAt.minusSeconds(30);
         when(emergencySessionRepository.findById(session.getId())).thenReturn(Optional.of(session));
         when(familyMemberPort.isFamilyMember(USER_ID, callerId)).thenReturn(true);
         when(locationConsentPort.hasLocationConsent(USER_ID)).thenReturn(true);
@@ -67,7 +69,12 @@ class EmergencyServiceTest {
         when(familyAlertLogRepository.findBySessionId(session.getId())).thenReturn(Optional.empty());
         when(acknowledgementRepository.find(session.getId(), callerId))
                 .thenReturn(new EmergencyAlertAcknowledgementRepository.AcknowledgementState(
-                        true, true, acknowledgedAt));
+                        true, true, acknowledgedAt, notifiedAt));
+        when(alertDetailRepository.findLatestLinkedFall(session.getId(), USER_ID))
+                .thenReturn(Optional.of(new EmergencyAlertDetailRepository.LinkedFallSnapshot(
+                        new java.math.BigDecimal("10.762622"),
+                        new java.math.BigDecimal("106.660172"),
+                        detectedAt)));
 
         var response = service.getAlertDetail(session.getId(), callerId);
 
@@ -77,6 +84,7 @@ class EmergencyServiceTest {
         assertThat(response.getLongitude()).isEqualByComparingTo("106.660172");
         assertThat(response.isAcknowledged()).isTrue();
         assertThat(response.getAcknowledgedAt()).isEqualTo(acknowledgedAt);
+        assertThat(response.getCreatedAt()).isEqualTo(detectedAt);
     }
 
     @Test
@@ -100,13 +108,18 @@ class EmergencyServiceTest {
     void existingActiveEmergencyPublishesThrottledRealertTrigger() {
         EmergencySession active = emergencySession(null);
         when(emergencySessionRepository.findActiveByUserId(USER_ID)).thenReturn(Optional.of(active));
+        when(emergencySessionRepository.save(active)).thenReturn(active);
 
         var response = service.openFlow(OpenEmergencyRequest.builder()
                 .triggerSource("FALL_DETECTION")
+                .userLatitude(new java.math.BigDecimal("10.762622"))
+                .userLongitude(new java.math.BigDecimal("106.660172"))
                 .build(), USER_ID);
 
         assertThat(response.getSessionId()).isEqualTo(active.getId());
-        verify(emergencySessionRepository, never()).save(any());
+        assertThat(active.getUserLatitude()).isEqualByComparingTo("10.762622");
+        assertThat(active.getUserLongitude()).isEqualByComparingTo("106.660172");
+        verify(emergencySessionRepository).save(active);
         verify(eventPublisher).publishEvent(argThat((Object event) -> event instanceof EmergencySessionRealertRequested
                 && ((EmergencySessionRealertRequested) event).sessionId().equals(active.getId())));
     }
