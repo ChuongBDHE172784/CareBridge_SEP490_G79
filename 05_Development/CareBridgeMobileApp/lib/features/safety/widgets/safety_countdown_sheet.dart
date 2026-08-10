@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/safety_config_model.dart';
 
@@ -159,6 +160,8 @@ class SafetyCountdownSheet extends StatefulWidget {
     DateTime Function()? now,
     this.simulated = false,
     this.presentAsRealAlert = false,
+    this.onTimeout,
+    this.uriLauncher,
   }) : feedback = feedback ?? SystemSafetyCountdownFeedback(),
        now = now ?? DateTime.now;
 
@@ -167,6 +170,8 @@ class SafetyCountdownSheet extends StatefulWidget {
   final DateTime Function() now;
   final bool simulated;
   final bool presentAsRealAlert;
+  final VoidCallback? onTimeout;
+  final Future<bool> Function(Uri uri)? uriLauncher;
 
   @override
   State<SafetyCountdownSheet> createState() => _SafetyCountdownSheetState();
@@ -230,21 +235,17 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
 
   void _completeTimeout() {
     if (_completed) return;
-    final dialogContext = _reasonDialogContext;
-    if (dialogContext == null) {
-      _complete(const SafetyCountdownResult.timeout());
-      return;
-    }
     _completed = true;
     _timer?.cancel();
-    if (dialogContext.mounted) {
+    if (_usesProductionPresentation) widget.feedback.stop();
+    widget.onTimeout?.call();
+    final dialogContext = _reasonDialogContext;
+    if (dialogContext != null && dialogContext.mounted) {
       Navigator.of(dialogContext).pop();
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        Navigator.of(context).pop(const SafetyCountdownResult.timeout());
-      }
-    });
+    if (mounted) {
+      setState(() => _remainingSeconds = 0);
+    }
   }
 
   Future<void> _selectFalsePositiveReason() async {
@@ -351,10 +352,12 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
             const SizedBox(height: 12),
             Text(
               _usesProductionPresentation
-                  ? 'CareBridge phát hiện dấu hiệu nghi ngờ ngã'
+                  ? (_remainingSeconds > 0
+                      ? 'CareBridge phát hiện dấu hiệu nghi ngờ ngã'
+                      : 'Đã chuyển sang hỗ trợ khẩn cấp!')
                   : 'Kiểm thử luồng phát hiện ngã bằng dữ liệu mô phỏng',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
             if (widget.simulated && !widget.presentAsRealAlert) ...[
@@ -368,58 +371,100 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
             ],
             Text(
               _usesProductionPresentation
-                  ? 'Bạn có ổn không? Hãy phản hồi trước khi hết thời gian.'
+                  ? (_remainingSeconds > 0
+                      ? 'Bạn có ổn không? Hãy phản hồi trước khi hết thời gian.'
+                      : 'Hệ thống đã gửi thông báo đến người thân. Hãy gọi cấp cứu 115 nếu cần trợ giúp ngay.')
                   : 'Mô phỏng sẽ tự kết thúc sau $_remainingSeconds giây.',
               textAlign: TextAlign.center,
             ),
             if (_usesProductionPresentation) ...[
               const SizedBox(height: 16),
-              Container(
-                key: const Key('safety-countdown-large-timer'),
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 18),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFDAD6),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: const Color(0xFFFFB4AB)),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      '$_remainingSeconds',
-                      style: const TextStyle(
-                        fontSize: 64,
-                        height: 1,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF93000A),
+              if (_remainingSeconds > 0) ...[
+                Container(
+                  key: const Key('safety-countdown-large-timer'),
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFDAD6),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: const Color(0xFFFFB4AB)),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        '$_remainingSeconds',
+                        style: const TextStyle(
+                          fontSize: 64,
+                          height: 1,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF93000A),
+                        ),
                       ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'GIÂY TRƯỚC KHI CHUYỂN SANG HỖ TRỢ KHẨN CẤP',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF93000A),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ] else ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    key: const Key('safety-countdown-call-115-button'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFFBA1A1A),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 20,
+                        horizontal: 16,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      elevation: 4,
                     ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      'GIÂY TRƯỚC KHI CHUYỂN SANG HỖ TRỢ KHẨN CẤP',
-                      textAlign: TextAlign.center,
+                    onPressed: () async {
+                      final uri = Uri.parse('tel:115');
+                      if (widget.uriLauncher != null) {
+                        await widget.uriLauncher!(uri);
+                      } else if (await canLaunchUrl(uri)) {
+                        await launchUrl(uri);
+                      }
+                    },
+                    icon: const Icon(Icons.phone_in_talk, size: 32),
+                    label: const Text(
+                      'GỌI 115 NGAY',
                       style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF93000A),
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.1,
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
               const SizedBox(height: 14),
               _EmergencyStep(
                 number: '1',
                 text: _isSensorSelfTest
                     ? 'Khi ngã thật: CareBridge gửi cảnh báo cho người thân.'
-                    : 'Không phản hồi: CareBridge gửi cảnh báo cho người thân.',
+                    : (_remainingSeconds > 0
+                        ? 'Không phản hồi: CareBridge gửi cảnh báo cho người thân.'
+                        : 'CareBridge đã gửi cảnh báo khẩn cấp tới người thân của bạn.'),
               ),
               const SizedBox(height: 8),
               _EmergencyStep(
                 number: '2',
                 text: _isSensorSelfTest
                     ? 'Diễn tập dừng an toàn; luồng thật mới chuyển sang bước gọi 115.'
-                    : 'Nếu người thân chưa thể hỗ trợ, chuyển sang bước gọi 115.',
+                    : 'Bấm nút GỌI 115 NGAY ở trên để trực tiếp kết nối cấp cứu 115.',
               ),
             ],
             const SizedBox(height: 20),
@@ -441,17 +486,6 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size.fromHeight(48),
               ),
-            ),
-            const SizedBox(height: 10),
-            FilledButton.icon(
-              key: const Key('safety-countdown-help'),
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFFBA1A1A),
-                minimumSize: const Size.fromHeight(48),
-              ),
-              onPressed: () => _complete(const SafetyCountdownResult.help()),
-              icon: const Icon(Icons.emergency),
-              label: const Text('Cần trợ giúp ngay'),
             ),
           ],
         ),

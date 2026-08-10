@@ -317,6 +317,11 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
         event: event,
         simulated: simulated,
         presentAsRealAlert: presentAsRealAlert,
+        onTimeout: () {
+          if (!simulated && event.eventType != 'SENSOR_SELF_TEST') {
+            unawaited(_safetyService.sendEmergencyAlertForEvent(event.id));
+          }
+        },
       ),
     );
     try {
