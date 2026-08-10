@@ -242,6 +242,10 @@ void main() {
 
     await tester.tap(find.byKey(const Key('safety-countdown-safe')));
     await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const Key('safety-countdown-confirm-safe-button')),
+    );
+    await tester.pumpAndSettle();
 
     expect(result?.action, SafetyCountdownAction.safe);
   });

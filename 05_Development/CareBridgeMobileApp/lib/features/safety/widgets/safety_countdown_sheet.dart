@@ -203,6 +203,7 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
   bool _dismissed = false;
   bool _feedbackStopped = false;
   BuildContext? _reasonDialogContext;
+  BuildContext? _safeDialogContext;
 
   @override
   void initState() {
@@ -254,9 +255,44 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
     if (dialogContext != null && dialogContext.mounted) {
       Navigator.of(dialogContext).pop();
     }
+    final safeDialogContext = _safeDialogContext;
+    if (safeDialogContext != null && safeDialogContext.mounted) {
+      Navigator.of(safeDialogContext).pop(false);
+    }
     if (mounted) {
       setState(() => _remainingSeconds = 0);
     }
+  }
+
+  Future<void> _confirmSafe() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        _safeDialogContext = dialogContext;
+        return AlertDialog(
+          title: const Text('Xác nhận an toàn'),
+          content: const Text(
+            'Bạn xác nhận bản thân vẫn an toàn và muốn tắt cảnh báo ngã này?',
+          ),
+          actions: [
+            TextButton(
+              key: const Key('safety-countdown-cancel-safe-button'),
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Hủy'),
+            ),
+            FilledButton(
+              key: const Key('safety-countdown-confirm-safe-button'),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Xác nhận an toàn'),
+            ),
+          ],
+        );
+      },
+    );
+    _safeDialogContext = null;
+    if (_dismissed || confirmed != true || !mounted) return;
+    _dismiss(const SafetyCountdownResult.safe());
   }
 
   Future<void> _selectFalsePositiveReason() async {
@@ -481,7 +517,7 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
             const SizedBox(height: 20),
             FilledButton.icon(
               key: const Key('safety-countdown-safe'),
-              onPressed: () => _dismiss(const SafetyCountdownResult.safe()),
+              onPressed: _confirmSafe,
               icon: const Icon(Icons.check_circle_outline),
               label: const Text('Tôi vẫn ổn — tắt cảnh báo'),
               style: FilledButton.styleFrom(
