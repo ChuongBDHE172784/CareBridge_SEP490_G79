@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../models/health_metric_model.dart';
 import '../services/health_metric_service.dart';
 import '../services/watch_metric_import_service.dart';
+import 'epds_screen.dart';
 
 class HealthMetricTrendScreen extends StatefulWidget {
   final String journeyId;
@@ -301,6 +302,23 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
   }
 
   Future<void> _openMetricDetail(MetricDataPoint point) async {
+    if (_selectedMetric.apiValue == 'EPDS_SCORE') {
+      final answers = parseEpdsAnswers(point.note);
+      if (answers != null) {
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => EpdsHistoryDetailScreen(
+              completedAt: point.measuredAt,
+              totalScore: point.valueNumeric.round(),
+              question10Score: point.valueSecondary?.round() ?? answers[9],
+              answers: answers,
+            ),
+          ),
+        );
+        return;
+      }
+    }
+
     final metricId = point.metricId;
     if (metricId != null && metricId.isNotEmpty) {
       final changed = await context.push<bool>(
@@ -865,6 +883,9 @@ String _formatHistoryDateTime(DateTime dt) {
 }
 
 String _displayValue(MetricDataPoint point, _MetricOption metric) {
+  if (metric.apiValue == 'EPDS_SCORE') {
+    return '${point.valueNumeric.toStringAsFixed(0)}/30';
+  }
   if (metric.apiValue == 'FETAL_MOVEMENT_SESSION') {
     final count = point.valueNumeric.toStringAsFixed(0);
     return '$count cử động';
