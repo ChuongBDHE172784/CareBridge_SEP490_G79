@@ -41,6 +41,13 @@ class _MaternalHealthMetricScreenState
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ));
+    });
     if (widget.initialMetric != null) {
       _metric = widget.initialMetric;
       _loading = false;

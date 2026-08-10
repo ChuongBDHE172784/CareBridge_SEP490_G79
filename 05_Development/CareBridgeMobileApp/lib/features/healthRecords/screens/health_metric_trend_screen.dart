@@ -104,6 +104,13 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
     );
     unawaited(_watchImportService.drainQueuedEvents());
     _loadCapabilities();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ));
+    });
   }
 
   Future<void> _loadCapabilities() async {
@@ -353,6 +360,11 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
         appBar: AppBar(
           backgroundColor: _canvas,
           elevation: 0,
+          systemOverlayStyle: const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.dark,
+            statusBarBrightness: Brightness.light,
+          ),
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_rounded, color: _primary),
             onPressed: () => Navigator.of(context).pop(),
