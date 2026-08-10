@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../models/health_metric_model.dart';
@@ -341,63 +342,70 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _canvas,
-      appBar: AppBar(
-        backgroundColor: _canvas,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: _primary),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: const Text(
-          'Chỉ số sức khỏe',
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: _primary,
-            letterSpacing: -0.3,
-          ),
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Nhập chỉ số',
-            icon: const Icon(Icons.add_circle_outline, color: _primary, size: 26),
-            onPressed: _openAddMetric,
-          ),
-        ],
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
       ),
-      body: RefreshIndicator(
-        color: _primary,
-        onRefresh: _loadTrend,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildMetricSelector(),
-              const SizedBox(height: 16),
-              if (_isLoadingCapabilities || _isLoading)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(48),
-                    child: CircularProgressIndicator(color: _primaryContainer),
-                  ),
-                )
-              else if (!_isSupportedMetric)
-                _buildUnsupportedMetricCard()
-              else if (_errorMsg != null)
-                _buildErrorCard()
-              else ...[
-                _buildChartCard(),
+      child: Scaffold(
+        backgroundColor: _canvas,
+        appBar: AppBar(
+          backgroundColor: _canvas,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: _primary),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          title: const Text(
+            'Chỉ số sức khỏe',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: _primary,
+              letterSpacing: -0.3,
+            ),
+          ),
+          actions: [
+            IconButton(
+              tooltip: 'Nhập chỉ số',
+              icon: const Icon(Icons.add_circle_outline, color: _primary, size: 26),
+              onPressed: _openAddMetric,
+            ),
+          ],
+        ),
+        body: RefreshIndicator(
+          color: _primary,
+          onRefresh: _loadTrend,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildMetricSelector(),
                 const SizedBox(height: 16),
-                _buildHistoryCard(),
-                const SizedBox(height: 20),
-                _buildActionButtons(),
+                if (_isLoadingCapabilities || _isLoading)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(48),
+                      child: CircularProgressIndicator(color: _primaryContainer),
+                    ),
+                  )
+                else if (!_isSupportedMetric)
+                  _buildUnsupportedMetricCard()
+                else if (_errorMsg != null)
+                  _buildErrorCard()
+                else ...[
+                  _buildChartCard(),
+                  const SizedBox(height: 16),
+                  _buildHistoryCard(),
+                  const SizedBox(height: 20),
+                  _buildActionButtons(),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

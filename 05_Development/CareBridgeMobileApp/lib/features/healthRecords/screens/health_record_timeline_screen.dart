@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../models/health_record_model.dart';
@@ -160,46 +161,53 @@ class _HealthRecordTimelineScreenState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _canvas,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildAppBar(),
-            _buildSearchControls(),
-            Expanded(
-              child: _loading
-                  ? const Center(
-                      child: CircularProgressIndicator(
-                        color: _primaryContainer,
-                      ),
-                    )
-                  : _error != null
-                  ? _buildError()
-                  : _buildTimeline(),
-            ),
-          ],
-        ),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: _primary,
-        foregroundColor: Colors.white,
-        elevation: 3,
-        icon: const Icon(Icons.add, size: 20),
-        label: const Text(
-          'Thêm hồ sơ',
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
+      child: Scaffold(
+        backgroundColor: _canvas,
+        body: SafeArea(
+          child: Column(
+            children: [
+              _buildAppBar(),
+              _buildSearchControls(),
+              Expanded(
+                child: _loading
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: _primaryContainer,
+                        ),
+                      )
+                    : _error != null
+                    ? _buildError()
+                    : _buildTimeline(),
+              ),
+            ],
           ),
         ),
-        onPressed: () async {
-          final created = await context.push<bool>('/health-records/add');
-          if (created == true && mounted) {
-            _load();
-          }
-        },
+        floatingActionButton: FloatingActionButton.extended(
+          backgroundColor: _primary,
+          foregroundColor: Colors.white,
+          elevation: 3,
+          icon: const Icon(Icons.add, size: 20),
+          label: const Text(
+            'Thêm hồ sơ',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          onPressed: () async {
+            final created = await context.push<bool>('/health-records/add');
+            if (created == true && mounted) {
+              _load();
+            }
+          },
+        ),
       ),
     );
   }

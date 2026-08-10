@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../models/health_metric_model.dart';
 import '../services/health_metric_service.dart';
@@ -151,16 +152,23 @@ class _MaternalHealthMetricScreenState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _canvas,
-      body: SafeArea(
-        child: _loading
-            ? const Center(
-                child: CircularProgressIndicator(color: _primaryContainer),
-              )
-            : _error != null
-            ? _buildErrorState()
-            : _buildContent(_metric!),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: _canvas,
+        body: SafeArea(
+          child: _loading
+              ? const Center(
+                  child: CircularProgressIndicator(color: _primaryContainer),
+                )
+              : _error != null
+              ? _buildErrorState()
+              : _buildContent(_metric!),
+        ),
       ),
     );
   }
