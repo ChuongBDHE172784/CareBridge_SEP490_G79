@@ -49,6 +49,11 @@ SafetyEvent? selectNextOpenSafetyEvent(
 bool isPendingSafetyCountdown(SafetyEvent event) =>
     event.status == 'OPEN' || event.status == 'TEST_OPEN';
 
+bool shouldReleaseSafetyCountdownOwnership({
+  required String? activeEventId,
+  required String completedEventId,
+}) => activeEventId == completedEventId;
+
 bool isLikelyDuplicateFallEvent(SafetyEvent first, SafetyEvent second) {
   if (first.id == second.id ||
       first.eventType == 'SENSOR_SELF_TEST' ||
@@ -429,6 +434,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
         },
       ),
     );
+    _releaseCountdownOwnership(event.id);
     try {
       final isSensorSelfTest = event.eventType == 'SENSOR_SELF_TEST';
       if (isSensorSelfTest) {
@@ -496,8 +502,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
       }
     } finally {
       if (!simulated && mounted) await _load();
-      _countdownEventId = null;
-      _countdownEvent = null;
+      _releaseCountdownOwnership(event.id);
       if (mounted) {
         final next =
             _pendingRealEvents.takeNext(excludingId: event.id) ??
@@ -509,6 +514,17 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
         if (next != null) unawaited(_showCountdown(next));
       }
     }
+  }
+
+  void _releaseCountdownOwnership(String eventId) {
+    if (!shouldReleaseSafetyCountdownOwnership(
+      activeEventId: _countdownEventId,
+      completedEventId: eventId,
+    )) {
+      return;
+    }
+    _countdownEventId = null;
+    _countdownEvent = null;
   }
 
   Future<void> _showDemoEmergencyEscalation() async {
@@ -574,11 +590,11 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
   }
 
   Future<void> _confirmEventSafe(SafetyEvent event, {String? note}) async {
+    _foregroundCoordinator.rearmFallDetectorAfterResponse();
     final updated = await _safetyService.confirmSafetyCheck(
       event.id,
       note: note,
     );
-    _foregroundCoordinator.rearmFallDetectorAfterResponse();
     await _resolveEventEmergency(updated);
   }
 
@@ -586,11 +602,11 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
     SafetyEvent event, {
     String? note,
   }) async {
+    _foregroundCoordinator.rearmFallDetectorAfterResponse();
     final updated = await _safetyService.reportFalsePositive(
       event.id,
       note: note,
     );
-    _foregroundCoordinator.rearmFallDetectorAfterResponse();
     await _resolveEventEmergency(updated);
   }
 

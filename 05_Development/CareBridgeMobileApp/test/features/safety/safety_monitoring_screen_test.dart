@@ -123,6 +123,23 @@ void main() {
     expect(next, same(realEvent));
   });
 
+  test('a completed countdown cannot release a newer countdown owner', () {
+    expect(
+      shouldReleaseSafetyCountdownOwnership(
+        activeEventId: 'fall-2',
+        completedEventId: 'fall-1',
+      ),
+      isFalse,
+    );
+    expect(
+      shouldReleaseSafetyCountdownOwnership(
+        activeEventId: 'fall-1',
+        completedEventId: 'fall-1',
+      ),
+      isTrue,
+    );
+  });
+
   test('suppresses a second event produced by the same physical fall', () {
     final first = SafetyEvent(
       id: 'fall-1',
