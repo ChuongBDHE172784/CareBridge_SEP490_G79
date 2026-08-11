@@ -1,7 +1,7 @@
 {
   "$comment": "Integrity only. Proves each artifact matches its checksum. Does NOT prove clinical correctness and is NOT an approval record.",
   "manifestType": "ARTIFACT_INTEGRITY",
-  "generatedAt": "2026-08-11T07:03:15+00:00",
+  "generatedAt": "2026-08-11T08:43:40+00:00",
   "generatorVersion": "sync_triage_rule_registry.py/3.0",
   "artifacts": [
     {
@@ -12,12 +12,12 @@
     {
       "artifactId": "context_contract_v1",
       "path": "05_Development/Contracts/triage/context_contract_v1.json",
-      "sha256": "64b0d37f4a53198902c5fd022d7aba5a86af74cbf871db7ce3c6727244a64d56"
+      "sha256": "10823f48e88ea7699d12b9955c7a6d890ecf188715e7651097849f389fea12e9"
     },
     {
       "artifactId": "context_parity_vectors_v1",
       "path": "05_Development/Contracts/triage/context_parity_vectors_v1.json",
-      "sha256": "198cb47734ba19a2f9d997d9b8f236c67932756b69937b3be5b283d74f3ac57d"
+      "sha256": "c871e0d2c26cc7b6186424e28bb9ed0d2af5801d83af4275afd7da0014b27fe2"
     },
     {
       "artifactId": "dataset_requirements_v1",
@@ -57,7 +57,7 @@
     {
       "artifactId": "question_catalog_v1",
       "path": "05_Development/Contracts/triage/question_catalog_v1.json",
-      "sha256": "402a0cc53b1ff516c84266435d674214e702221a58d0ce59eb6a0203845a866e"
+      "sha256": "4ea470b381f1567e845febfc429e096cd5c44ae740ec8a81c687dba15a9cfc3a"
     },
     {
       "artifactId": "required_rule_manifest",

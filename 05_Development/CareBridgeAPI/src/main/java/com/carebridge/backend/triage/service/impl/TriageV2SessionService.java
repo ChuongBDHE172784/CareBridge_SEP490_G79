@@ -87,10 +87,12 @@ public class TriageV2SessionService implements ITriageV2SessionService {
     private static final Set<String> WORKFLOW_STATE_FIELDS = Set.of(
             "sessionId", "stateVersion", "expectedStateVersion", "requestId", "messageId",
             "processedRequestIds", "processedMessageIds", "rawMessages", "latestUserMessage",
-            "targetEntity", "targetEntitySource", "intent", "intentSource", "stage",
+            "targetEntity", "targetEntitySource", "intent", "intentSource",
+            "confirmedConversationIntent", "stage",
             "contextResolutionStatus", "contextConflicts", "activeProfileId", "possiblePregnancy",
             "gestationalWeek", "postpartumDay", "babyAgeMonths", "signals", "measurements",
-            "dataConflicts", "answeredQuestionIds", "unknownFields", "safetyScreenStatus",
+            "dataConflicts", "answeredQuestionIds", "askedQuestionIds",
+            "unknownFields", "safetyScreenStatus",
             "contextDatasetStatus", "greenEligibilityDatasetStatus", "scopeStatus",
             "subjectScope", "complaintScope", "outcomeAppliesTo", "coverageStatus",
             "coverageReasonCodes", "supportedSymptomCodes", "unsupportedSymptomCodes",
@@ -191,7 +193,7 @@ public class TriageV2SessionService implements ITriageV2SessionService {
 
         return executeAndPersist(session, 0, request.requestId(), request.messageId(), request.message(),
                 request.profileId(), request.selectedTarget(), journeyContext, null,
-                request.signals(), request.measurements(), List.of(), userId);
+                request.signals(), request.measurements(), List.of(), List.of(), userId);
     }
 
     @Override
@@ -219,11 +221,15 @@ public class TriageV2SessionService implements ITriageV2SessionService {
         return executeAndPersist(session, currentVersion, request.requestId(), request.messageId(),
                 request.message(), session.getBabyProfileId() != null ? session.getBabyProfileId()
                         : session.getMotherProfileId(), null, Map.of(), previousState,
-                derived.signals(), request.measurements(), derived.answeredQuestionIds(), userId);
+                derived.signals(), request.measurements(), derived.answeredQuestionIds(),
+                derived.optionCodes(), userId);
     }
 
     /** Signals and answered questions derived from one batch of answers. */
-    private record DerivedAnswers(Map<String, Object> signals, List<String> answeredQuestionIds) {
+    private record DerivedAnswers(
+            Map<String, Object> signals,
+            List<String> answeredQuestionIds,
+            List<String> optionCodes) {
     }
 
     /**
@@ -238,7 +244,7 @@ public class TriageV2SessionService implements ITriageV2SessionService {
     private DerivedAnswers mapCanonicalAnswers(
             TriageV2ContinueRequest request, Map<String, Object> previousState) {
         if (request.answers().isEmpty()) {
-            return new DerivedAnswers(Map.of(), List.of());
+            return new DerivedAnswers(Map.of(), List.of(), List.of());
         }
         // A session can reach here with no stored workflow state — a first follow-up, or a turn
         // that previously fell back. Treat that as "nothing known yet" rather than dereferencing
@@ -252,6 +258,7 @@ public class TriageV2SessionService implements ITriageV2SessionService {
         Map<String, Object> accumulated = new LinkedHashMap<>(objectMap(priorState.get("signals")));
         Map<String, Object> derived = new LinkedHashMap<>();
         List<String> answered = new ArrayList<>();
+        List<String> optionCodes = new ArrayList<>();
         Set<String> seenQuestions = new LinkedHashSet<>();
 
         for (TriageV2AnswerSelection answer : request.answers()) {
@@ -264,11 +271,13 @@ public class TriageV2SessionService implements ITriageV2SessionService {
                     answer.questionId(), answer.optionCode(), request.messageId(),
                     target, stage, accumulated);
             answered.add(mapping.answeredQuestionId());
+            optionCodes.add(answer.optionCode());
             Map<String, Object> mapped = mapping.toSignals();
             derived.putAll(mapped);
             accumulated.putAll(mapped);
         }
-        return new DerivedAnswers(Map.copyOf(derived), List.copyOf(answered));
+        return new DerivedAnswers(
+                Map.copyOf(derived), List.copyOf(answered), List.copyOf(optionCodes));
     }
 
     private static <E extends Enum<E>> E enumValue(String value, Class<E> type, E fallback) {
@@ -315,7 +324,7 @@ public class TriageV2SessionService implements ITriageV2SessionService {
             String message, UUID profileId, String selectedTarget, Map<String, Object> journeyContext,
             Map<String, Object> previousState,
             Map<String, Object> signals, Map<String, Object> measurements,
-            List<String> answeredQuestionIds, UUID userId) {
+            List<String> answeredQuestionIds, List<String> submittedOptionCodes, UUID userId) {
         long started = System.nanoTime();
         String expectedHash = readinessService.registry().map(TriageRuleRegistry::rulesetSha256).orElse(null);
         if (!readinessService.isReady() || expectedHash == null) {
@@ -336,6 +345,8 @@ public class TriageV2SessionService implements ITriageV2SessionService {
         payload.put("measurements", structuredMeasurements(measurements));
         payload.put("answeredQuestionIds",
                 answeredQuestionIds == null ? List.of() : answeredQuestionIds);
+        payload.put("submittedOptionCodes",
+                submittedOptionCodes == null ? List.of() : submittedOptionCodes);
         payload.put("expectedRulesetHash", expectedHash);
         try {
             TriageV2WorkflowClient.WorkflowResult result = workflowClient.executeTurn(payload);

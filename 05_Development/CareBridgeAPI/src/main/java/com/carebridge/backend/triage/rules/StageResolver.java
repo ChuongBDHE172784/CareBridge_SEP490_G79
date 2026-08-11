@@ -3,7 +3,12 @@ package com.carebridge.backend.triage.rules;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Stage resolution and entity–stage validation.
@@ -20,6 +25,29 @@ import java.util.List;
  */
 @Component
 public class StageResolver {
+
+    private static final String NUMBER_WORD =
+            "(?:khong|mot|hai|ba|bon|tu|nam|sau|bay|tam|chin|muoi|linh|le|lam)";
+    private static final String NUMBER =
+            "(?:\\d{1,2}|" + NUMBER_WORD + "(?:\\s+" + NUMBER_WORD + "){0,3})";
+    private static final Pattern GESTATIONAL_WEEK = Pattern.compile(
+            "\\b(?:bau|mang thai)(?:\\s+(?:duoc|khoang|gan|hon))?\\s+"
+                    + "(?<number>" + NUMBER + ")\\s+tuan\\b");
+    private static final Pattern BABY_AGE_MONTHS = Pattern.compile(
+            "(?:\\b(?:be|con)(?:\\s+(?:nha\\s+em|cua\\s+(?:toi|em)))?"
+                    + "(?:\\s+(?:duoc|moi|da|hien))?\\s+(?<subjectNumber>" + NUMBER + ")"
+                    + "\\s+thang(?:\\s+tuoi)?\\b|"
+                    + "\\b(?<ageNumber>" + NUMBER + ")\\s+thang\\s+tuoi\\b)");
+    private static final Pattern POSTPARTUM = Pattern.compile(
+            "\\b(?:sau sinh|hau san|moi sinh|sinh em be duoc)\\b");
+    private static final Pattern NEGATED_STAGE_PREFIX = Pattern.compile(
+            "(?:^|\\s)(?:khong|chua)(?:\\s+phai)?(?:\\s+o)?"
+                    + "(?:\\s+giai\\s+doan)?\\s*$");
+    private static final Map<String, Integer> ONES = Map.ofEntries(
+            Map.entry("khong", 0), Map.entry("mot", 1), Map.entry("hai", 2),
+            Map.entry("ba", 3), Map.entry("bon", 4), Map.entry("tu", 4),
+            Map.entry("nam", 5), Map.entry("lam", 5), Map.entry("sau", 6),
+            Map.entry("bay", 7), Map.entry("tam", 8), Map.entry("chin", 9));
 
     public record StageResolution(CareStage stage, ResolutionSource source, List<String> conflicts) {
         public boolean isResolved() {
@@ -38,10 +66,64 @@ public class StageResolver {
             Integer babyAgeMonths,
             Integer gestationalWeek,
             Integer postpartumDay) {
+        return resolve(entity, explicitStage, legacyStageName, journeyStage, babyAgeMonths,
+                gestationalWeek, postpartumDay, null);
+    }
+
+    public StageResolution resolve(
+            TargetEntity entity,
+            CareStage explicitStage,
+            String legacyStageName,
+            CareStage journeyStage,
+            Integer babyAgeMonths,
+            Integer gestationalWeek,
+            Integer postpartumDay,
+            String latestUserMessage) {
+        return resolve(entity, explicitStage, legacyStageName, journeyStage, babyAgeMonths,
+                gestationalWeek, postpartumDay, latestUserMessage, null);
+    }
+
+    public StageResolution resolve(
+            TargetEntity entity,
+            CareStage explicitStage,
+            String legacyStageName,
+            CareStage journeyStage,
+            Integer babyAgeMonths,
+            Integer gestationalWeek,
+            Integer postpartumDay,
+            String latestUserMessage,
+            List<String> submittedOptionCodes) {
 
         if (!entity.isResolved()) {
             // Without a subject a stage is meaningless — PREGNANCY for whom?
             return new StageResolution(CareStage.UNKNOWN, ResolutionSource.NONE, List.of());
+        }
+
+        Set<CareStage> clarified = new LinkedHashSet<>();
+        if (submittedOptionCodes != null) {
+            for (String code : submittedOptionCodes) {
+                CareStage stage = switch (code) {
+                    case "STAGE_PRECONCEPTION" -> CareStage.PRECONCEPTION;
+                    case "STAGE_POSSIBLE_PREGNANCY" -> CareStage.POSSIBLE_PREGNANCY;
+                    case "STAGE_PREGNANCY" -> CareStage.PREGNANCY;
+                    case "STAGE_POSTPARTUM_MOTHER" -> CareStage.POSTPARTUM_MOTHER;
+                    default -> null;
+                };
+                if (stage != null) clarified.add(stage);
+            }
+        }
+        if (clarified.size() > 1) {
+            return conflicted(ResolutionSource.EXPLICIT_CLARIFICATION_ANSWER,
+                    "STAGE_CLARIFICATION_ANSWERS_CONFLICT");
+        }
+        if (!clarified.isEmpty()) {
+            CareStage stage = clarified.iterator().next();
+            if (!CareStage.isValidFor(entity, stage)) {
+                return conflicted(ResolutionSource.EXPLICIT_CLARIFICATION_ANSWER,
+                        "STAGE_NOT_VALID_FOR_ENTITY:" + entity + "/" + stage);
+            }
+            return new StageResolution(stage, ResolutionSource.EXPLICIT_CLARIFICATION_ANSWER,
+                    List.of());
         }
 
         if (explicitStage != null && explicitStage.isResolved()) {
@@ -51,6 +133,11 @@ public class StageResolver {
             }
             return new StageResolution(explicitStage, ResolutionSource.EXPLICIT_IN_LATEST_MESSAGE,
                     List.of());
+        }
+
+        StageResolution latest = stageFromLatestMessage(entity, latestUserMessage);
+        if (latest != null) {
+            return latest;
         }
 
         if (legacyStageName != null && !legacyStageName.isBlank()) {
@@ -100,6 +187,93 @@ public class StageResolver {
         }
 
         return new StageResolution(CareStage.UNKNOWN, ResolutionSource.NONE, List.of());
+    }
+
+    private static StageResolution stageFromLatestMessage(
+            TargetEntity entity, String latestUserMessage) {
+        String folded = TargetEntityResolver.fold(latestUserMessage);
+        if (folded.isEmpty()) {
+            return null;
+        }
+
+        Set<CareStage> stages = new LinkedHashSet<>();
+        List<String> conflicts = new ArrayList<>();
+        if (entity == TargetEntity.MOTHER) {
+            Matcher weeks = GESTATIONAL_WEEK.matcher(folded);
+            while (weeks.find()) {
+                if (!isNegated(folded, weeks.start())
+                        && parseVietnameseNumber(weeks.group("number")) != null) {
+                    stages.add(CareStage.PREGNANCY);
+                }
+            }
+            Matcher postpartum = POSTPARTUM.matcher(folded);
+            while (postpartum.find()) {
+                if (!isNegated(folded, postpartum.start())) {
+                    stages.add(CareStage.POSTPARTUM_MOTHER);
+                }
+            }
+        } else if (entity == TargetEntity.BABY) {
+            Matcher ages = BABY_AGE_MONTHS.matcher(folded);
+            while (ages.find()) {
+                String number = ages.group("subjectNumber") != null
+                        ? ages.group("subjectNumber") : ages.group("ageNumber");
+                Integer months = parseVietnameseNumber(number);
+                if (months == null) {
+                    continue;
+                }
+                if (months >= 24) {
+                    conflicts.add("BABY_AGE_OUT_OF_SUPPORTED_RANGE:" + months);
+                } else {
+                    stages.add(months < 12 ? CareStage.INFANT_0_12M : CareStage.TODDLER_12_24M);
+                }
+            }
+        }
+
+        if (!conflicts.isEmpty() || stages.size() > 1) {
+            List<String> codes = new ArrayList<>();
+            codes.add("LATEST_MESSAGE_STAGE_CONFLICT");
+            codes.addAll(conflicts);
+            return new StageResolution(CareStage.CONFLICTED,
+                    ResolutionSource.EXPLICIT_IN_LATEST_MESSAGE, List.copyOf(codes));
+        }
+        if (!stages.isEmpty()) {
+            return new StageResolution(stages.iterator().next(),
+                    ResolutionSource.EXPLICIT_IN_LATEST_MESSAGE, List.of());
+        }
+        return null;
+    }
+
+    private static boolean isNegated(String message, int matchStart) {
+        return NEGATED_STAGE_PREFIX.matcher(message.substring(0, matchStart)).find();
+    }
+
+    private static Integer parseVietnameseNumber(String value) {
+        if (value.matches("\\d{1,2}")) {
+            return Integer.parseInt(value);
+        }
+        String[] tokens = value.split("\\s+");
+        if (tokens.length == 1) {
+            return "muoi".equals(tokens[0]) ? 10 : ONES.get(tokens[0]);
+        }
+        if ("muoi".equals(tokens[0])) {
+            Integer tail = tailValue(tokens, 1);
+            return tail == null ? null : 10 + tail;
+        }
+        if (tokens.length >= 2 && "muoi".equals(tokens[1]) && ONES.containsKey(tokens[0])) {
+            int number = ONES.get(tokens[0]) * 10;
+            Integer tail = tailValue(tokens, 2);
+            return tail == null && tokens.length > 2 ? null : number + (tail == null ? 0 : tail);
+        }
+        return null;
+    }
+
+    private static Integer tailValue(String[] tokens, int start) {
+        for (int index = start; index < tokens.length; index++) {
+            if (!Set.of("linh", "le").contains(tokens[index])) {
+                return ONES.get(tokens[index]);
+            }
+        }
+        return null;
     }
 
     /** Conflict codes for an entity–stage pair; empty when the pair is coherent. */

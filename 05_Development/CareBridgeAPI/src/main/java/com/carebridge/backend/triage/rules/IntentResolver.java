@@ -53,6 +53,14 @@ public class IntentResolver {
             String latestUserMessage,
             List<String> submittedOptionCodes,
             List<String> submittedQuestionIds) {
+        return resolve(latestUserMessage, submittedOptionCodes, submittedQuestionIds, null);
+    }
+
+    public IntentResolution resolve(
+            String latestUserMessage,
+            List<String> submittedOptionCodes,
+            List<String> submittedQuestionIds,
+            IntentType confirmedConversationIntent) {
 
         // Structural, not textual: if the client answered a question we asked, this is a
         // follow-up regardless of how the free text reads.
@@ -68,7 +76,7 @@ public class IntentResolver {
 
         String folded = TargetEntityResolver.fold(latestUserMessage);
         if (folded.isEmpty()) {
-            return new IntentResolution(IntentType.UNKNOWN, ResolutionSource.NONE, List.of());
+            return confirmedOrUnknown(confirmedConversationIntent);
         }
 
         List<String> symptomHits = new ArrayList<>(
@@ -101,6 +109,16 @@ public class IntentResolver {
 
         if (!symptomHits.isEmpty()) {
             return explicit(IntentType.SYMPTOM_TRIAGE, symptomHits);
+        }
+        return confirmedOrUnknown(confirmedConversationIntent);
+    }
+
+    private static IntentResolution confirmedOrUnknown(IntentType confirmed) {
+        if (confirmed != null && confirmed.isResolved()) {
+            return new IntentResolution(
+                    confirmed,
+                    ResolutionSource.CONFIRMED_CONVERSATION_INTENT,
+                    List.of(confirmed.name()));
         }
         return new IntentResolution(IntentType.UNKNOWN, ResolutionSource.NONE, List.of());
     }

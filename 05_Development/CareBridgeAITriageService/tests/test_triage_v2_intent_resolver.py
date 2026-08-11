@@ -35,7 +35,10 @@ def test_intent_families_are_resolved_without_a_clinical_result(message, expecte
     updates = intent_resolver(_state(message))
 
     assert updates["intent"] is expected
-    assert set(updates) == {"intent", "intentSource"}
+    expected_keys = {"intent", "intentSource"}
+    if expected not in {IntentType.UNKNOWN, IntentType.FOLLOW_UP_ANSWER}:
+        expected_keys.add("confirmedConversationIntent")
+    assert set(updates) == expected_keys
 
 
 def test_fixed_catalog_option_is_structural_follow_up():
@@ -43,6 +46,43 @@ def test_fixed_catalog_option_is_structural_follow_up():
 
     assert updates["intent"] is IntentType.FOLLOW_UP_ANSWER
     assert updates["intentSource"] is ResolutionSource.EXPLICIT_CLARIFICATION_ANSWER
+
+
+def test_ambiguous_follow_up_keeps_confirmed_triage_intent():
+    state = _state("không biết")
+    state["intent"] = IntentType.SYMPTOM_TRIAGE
+
+    updates = intent_resolver(state)
+
+    assert updates["intent"] is IntentType.SYMPTOM_TRIAGE
+    assert updates["intentSource"] is ResolutionSource.CONFIRMED_CONVERSATION_INTENT
+
+
+def test_explicit_latest_intent_still_replaces_confirmed_intent():
+    state = _state("Nguồn này từ đâu vậy?")
+    state["intent"] = IntentType.SYMPTOM_TRIAGE
+
+    updates = intent_resolver(state)
+
+    assert updates["intent"] is IntentType.SOURCE_LOOKUP
+    assert updates["intentSource"] is ResolutionSource.EXPLICIT_IN_LATEST_MESSAGE
+
+
+def test_structural_answer_does_not_replace_the_confirmed_conversation_intent():
+    state = _state("UNSURE")
+    state["intent"] = IntentType.SYMPTOM_TRIAGE
+    state["confirmedConversationIntent"] = IntentType.SYMPTOM_TRIAGE
+    state["submittedOptionCodes"] = ["UNSURE"]
+
+    answered = {**state, **intent_resolver(state)}
+    assert answered["intent"] is IntentType.FOLLOW_UP_ANSWER
+
+    answered["latestUserMessage"] = "khong biet"
+    answered["submittedOptionCodes"] = []
+    follow_up = intent_resolver(answered)
+
+    assert follow_up["intent"] is IntentType.SYMPTOM_TRIAGE
+    assert follow_up["intentSource"] is ResolutionSource.CONFIRMED_CONVERSATION_INTENT
 
 
 @pytest.mark.parametrize(

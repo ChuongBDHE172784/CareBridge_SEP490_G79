@@ -12,7 +12,13 @@ from pathlib import Path
 import pytest
 
 from app.context.complaint_taxonomy import classify_complaint
-from app.context.enums import CareStage, ContextResolutionStatus, IntentType, TargetEntity
+from app.context.enums import (
+    CareStage,
+    ContextResolutionStatus,
+    IntentType,
+    ResolutionSource,
+    TargetEntity,
+)
 from app.context.intent_resolver import resolve_intent
 from app.context.stage_resolver import resolve_context_status, resolve_stage
 from app.context.target_entity_resolver import resolve_target_entity
@@ -34,6 +40,17 @@ PHASE_2B_IDS = {
     "CV_PHASE2B_BREAST_MILK_LEXICAL_TRAP",
     "CV_PHASE2B_HELPING_CHILD",
 }
+PHASE_2CD_IDS = {
+    "CV_PHASE2CD_PREGNANCY_DIGITS_OVERRIDE_JOURNEY",
+    "CV_PHASE2CD_PREGNANCY_WORDS_OVERRIDE_JOURNEY",
+    "CV_PHASE2CD_INFANT_WORDS_OVERRIDE_JOURNEY",
+    "CV_PHASE2CD_TWO_MONTH_INFANT_WORDS",
+    "CV_PHASE2CD_CONFIRMED_INTENT_AMBIGUOUS_FOLLOW_UP",
+    "CV_PHASE2CD_EXPLICIT_INTENT_OVERRIDES_CONFIRMED",
+    "CV_PHASE2CD_STAGE_CLARIFICATION_OPTION",
+    "CV_PHASE2CD_NEGATED_POSTPARTUM_KEEPS_JOURNEY",
+    "CV_PHASE2CD_INCOMPLETE_BABY_AGE_WORDS_KEEP_JOURNEY",
+}
 
 
 @pytest.fixture(scope="module")
@@ -47,6 +64,9 @@ def _evaluate(payload: dict) -> dict:
     intent = resolve_intent(
         latest_user_message=message,
         submitted_option_codes=payload.get("optionCodes"),
+        confirmed_conversation_intent=(
+            IntentType(payload["confirmedIntent"]) if payload.get("confirmedIntent") else None
+        ),
     )
     explicit = payload.get("explicitStage")
     stage = resolve_stage(
@@ -54,6 +74,11 @@ def _evaluate(payload: dict) -> dict:
         explicit_stage=CareStage(explicit) if explicit else None,
         legacy_stage_name=payload.get("legacyStage"),
         baby_age_months=payload.get("babyAgeMonths"),
+        journey_stage=(
+            CareStage(payload["journeyStage"]) if payload.get("journeyStage") else None
+        ),
+        latest_user_message=message,
+        submitted_option_codes=payload.get("optionCodes"),
     )
     status, _ = resolve_context_status(
         entity=target.entity, stage=stage.stage, intent=intent.intent,
@@ -62,7 +87,9 @@ def _evaluate(payload: dict) -> dict:
     return {
         "targetEntity": target.entity,
         "intent": intent.intent,
+        "intentSource": intent.source,
         "stage": stage.stage,
+        "stageSource": stage.source,
         "contextStatus": status,
         "mayProduceTriageOutcome": intent.may_produce_triage_outcome,
         "complaintCategory": classify_complaint(message).category_id,
@@ -70,8 +97,9 @@ def _evaluate(payload: dict) -> dict:
 
 
 def test_every_vector_is_asserted(vectors):
-    assert len(vectors) == 26
+    assert len(vectors) == 35
     assert {vector["id"] for vector in vectors if vector["id"].startswith("CV_PHASE2B_")} == PHASE_2B_IDS
+    assert {vector["id"] for vector in vectors if vector["id"].startswith("CV_PHASE2CD_")} == PHASE_2CD_IDS
 
 
 @pytest.mark.parametrize("partition", range(PARITY_PARTITIONS))
@@ -91,8 +119,12 @@ def _assert_vector(vector):
         assert actual["targetEntity"] is TargetEntity(expected["targetEntity"]), label
     if "intent" in expected:
         assert actual["intent"] is IntentType(expected["intent"]), label
+    if "intentSource" in expected:
+        assert actual["intentSource"] is ResolutionSource(expected["intentSource"]), label
     if "stage" in expected:
         assert actual["stage"] is CareStage(expected["stage"]), label
+    if "stageSource" in expected:
+        assert actual["stageSource"] is ResolutionSource(expected["stageSource"]), label
     if "contextStatus" in expected:
         assert actual["contextStatus"] is ContextResolutionStatus(expected["contextStatus"]), label
     if "mayProduceTriageOutcome" in expected:

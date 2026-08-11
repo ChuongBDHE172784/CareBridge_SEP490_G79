@@ -9,11 +9,18 @@ from time import monotonic
 from typing import Any, Literal
 
 from fastapi import Header, HTTPException
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    field_validator,
+    model_validator,
+)
 from typing_extensions import Annotated
 
 from app.config import PYTHON_SERVICE_TIMEOUT_SECONDS, TRIAGE_V2_INTERNAL_API_KEY
-from app.context import CareStage, ResolutionSource, TargetEntity
+from app.context import CareStage, IntentType, ResolutionSource, TargetEntity
 from app.gemini_client import get_gemini_client
 from app.questions.catalog import CATALOG
 from app.rules.registry import get_registry
@@ -77,6 +84,7 @@ class TriageV2TurnRequest(BaseModel):
     #: Questions the Java boundary resolved through the canonical answer mapper this turn. Only
     #: identifiers travel here; the signals they imply were already derived server-side.
     answeredQuestionIds: list[str] = Field(default_factory=list, max_length=8)
+    submittedOptionCodes: list[str] = Field(default_factory=list, max_length=8)
     expectedRulesetHash: str = Field(min_length=64, max_length=64)
 
     @field_validator("answeredQuestionIds")
@@ -86,6 +94,26 @@ class TriageV2TurnRequest(BaseModel):
         if unknown:
             raise ValueError("invalid answered question id")
         return value
+
+    @field_validator("submittedOptionCodes")
+    @classmethod
+    def validate_submitted_option_codes(cls, value: list[str]) -> list[str]:
+        fixed = {option.option_code for question in CATALOG.values() for option in question.options}
+        if any(item not in fixed for item in value):
+            raise ValueError("invalid submitted option code")
+        return value
+
+    @model_validator(mode="after")
+    def validate_answer_option_pairs(self) -> "TriageV2TurnRequest":
+        if len(self.answeredQuestionIds) != len(self.submittedOptionCodes):
+            raise ValueError("answered questions and submitted options must be paired")
+        for question_id, option_code in zip(
+            self.answeredQuestionIds, self.submittedOptionCodes
+        ):
+            allowed = {option.option_code for option in CATALOG[question_id].options}
+            if option_code not in allowed:
+                raise ValueError("submitted option does not belong to answered question")
+        return self
 
     @field_validator("signals")
     @classmethod
@@ -134,8 +162,17 @@ def execute_turn(request: TriageV2TurnRequest) -> TriageV2TurnResponse:
     # A danger phrase in the message becomes a signal before anything else runs, so the gate
     # below sees it whether or not Gemini is reachable. Placed under the caller's signals, not
     # over them: see merge_as_floor.
+    # The stage-scoped groups (D-032) may only read a stage the server already holds. At this
+    # point that is the only kind there is: `stage` comes from Java's journeyContext or from the
+    # persisted previous state, both server-side, and extraction — the one path that could infer
+    # a stage — runs below this line and is barred from writing stage at all.
     state["signals"] = merge_as_floor(
-        _mapping(state.get("signals")), detect_danger_signals(request.latestUserMessage)
+        _mapping(state.get("signals")),
+        detect_danger_signals(
+            request.latestUserMessage,
+            stage=state.get("stage"),
+            stage_source="EXPLICIT_SELECTED_PROFILE",
+        ),
     )
     # RED must not wait for Gemini. This is a pre-check only; the graph runs the same gate
     # again at its entry and remains the workflow authority.
@@ -159,6 +196,10 @@ def execute_turn(request: TriageV2TurnRequest) -> TriageV2TurnResponse:
     # LangGraph's interrupt marker is process-local control metadata, not workflow state. Java
     # persists the explicit plannedQuestionIds ledger and must never receive this private key.
     completed_state.pop("__interrupt__", None)
+    # Submitted option codes are trusted request metadata for resolving this turn only. They are
+    # deliberately excluded from the workflow response so Java cannot persist and replay a stale
+    # clarification answer on a later turn.
+    completed_state.pop("submittedOptionCodes", None)
     # Retrieval is strictly post-outcome. RED never waits on the registry/RAG path; its action
     # is already rendered and citations remain optional.
     try:
@@ -210,6 +251,8 @@ def _turn_state(request: TriageV2TurnRequest) -> TriageV2State:
                 state[field] = journey[field]
     else:
         state = deepcopy(request.previousState)
+        state.setdefault("askedQuestionIds", [])
+        state.setdefault("confirmedConversationIntent", IntentType.UNKNOWN)
         if state.get("sessionId") != request.sessionId or state.get("stateVersion") != request.stateVersion:
             raise HTTPException(status_code=409, detail="Persisted Triage V2 state conflict")
         state.update(
@@ -228,6 +271,7 @@ def _turn_state(request: TriageV2TurnRequest) -> TriageV2State:
     # global safety still evaluates them independently before routing.
     state["signals"] = _merge_observations(state.get("signals"), request.signals)
     state["measurements"] = {**_mapping(state.get("measurements")), **request.measurements}
+    state["submittedOptionCodes"] = list(request.submittedOptionCodes)
     # Record what the user has already answered so the planner stops re-asking it. This holds
     # even when the mapping contract could not yet interpret the chosen option: the question was
     # genuinely answered, and re-asking it forever is its own failure mode.

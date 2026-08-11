@@ -1,6 +1,6 @@
 {
   "$comment": "SHARED CONTEXT PARITY VECTORS — Java and Python must resolve target entity, intent, stage and context status identically for every vector. These are the ten gate scenarios from the Phase 1 plan, the accent-collision regressions found while building the resolvers, and the Phase 2B narrator-versus-patient disambiguation cases. Never edit an expectation to make an implementation pass.",
-  "contractVersion": "1.1.0",
+  "contractVersion": "1.2.0",
   "vectors": [
     {
       "id": "CV_MOTHER_DIARRHOEA_POSTPARTUM",
@@ -309,6 +309,122 @@
       },
       "expected": {
         "targetEntity": "BABY"
+      }
+    },
+    {
+      "id": "CV_PHASE2CD_PREGNANCY_DIGITS_OVERRIDE_JOURNEY",
+      "description": "Phase 2C — latest pregnancy week stated with digits overrides stale postpartum journey stage",
+      "input": {
+        "message": "Em bầu 31 tuần, đầu đau dữ dội",
+        "journeyStage": "POSTPARTUM_MOTHER"
+      },
+      "expected": {
+        "targetEntity": "MOTHER",
+        "stage": "PREGNANCY",
+        "stageSource": "EXPLICIT_IN_LATEST_MESSAGE"
+      }
+    },
+    {
+      "id": "CV_PHASE2CD_PREGNANCY_WORDS_OVERRIDE_JOURNEY",
+      "description": "Phase 2C — Vietnamese number words attached to pregnancy weeks resolve deterministically",
+      "input": {
+        "message": "Em bầu ba mươi mốt tuần, đầu đau dữ dội",
+        "journeyStage": "POSTPARTUM_MOTHER"
+      },
+      "expected": {
+        "targetEntity": "MOTHER",
+        "stage": "PREGNANCY",
+        "stageSource": "EXPLICIT_IN_LATEST_MESSAGE"
+      }
+    },
+    {
+      "id": "CV_PHASE2CD_INFANT_WORDS_OVERRIDE_JOURNEY",
+      "description": "Phase 2C — ten months written in Vietnamese words resolves to infant, not toddler",
+      "input": {
+        "message": "Con mười tháng sốt 39,3 độ",
+        "journeyStage": "TODDLER_12_24M"
+      },
+      "expected": {
+        "targetEntity": "BABY",
+        "stage": "INFANT_0_12M",
+        "stageSource": "EXPLICIT_IN_LATEST_MESSAGE"
+      }
+    },
+    {
+      "id": "CV_PHASE2CD_TWO_MONTH_INFANT_WORDS",
+      "description": "Phase 2C — two months written in Vietnamese words resolves to infant",
+      "input": {
+        "message": "Bé hai tháng đo được 38,2 độ"
+      },
+      "expected": {
+        "targetEntity": "BABY",
+        "stage": "INFANT_0_12M",
+        "stageSource": "EXPLICIT_IN_LATEST_MESSAGE"
+      }
+    },
+    {
+      "id": "CV_PHASE2CD_CONFIRMED_INTENT_AMBIGUOUS_FOLLOW_UP",
+      "description": "Phase 2D — an ambiguous follow-up keeps the confirmed symptom-triage topic",
+      "input": {
+        "message": "không biết",
+        "confirmedIntent": "SYMPTOM_TRIAGE"
+      },
+      "expected": {
+        "intent": "SYMPTOM_TRIAGE",
+        "intentSource": "CONFIRMED_CONVERSATION_INTENT"
+      }
+    },
+    {
+      "id": "CV_PHASE2CD_EXPLICIT_INTENT_OVERRIDES_CONFIRMED",
+      "description": "Phase 2D — explicit latest source lookup still overrides confirmed triage intent",
+      "input": {
+        "message": "Nguồn này từ đâu vậy?",
+        "confirmedIntent": "SYMPTOM_TRIAGE"
+      },
+      "expected": {
+        "intent": "SOURCE_LOOKUP",
+        "intentSource": "EXPLICIT_IN_LATEST_MESSAGE"
+      }
+    },
+    {
+      "id": "CV_PHASE2CD_STAGE_CLARIFICATION_OPTION",
+      "description": "Phase 2C — fixed stage clarification option is consumed by both resolvers",
+      "input": {
+        "message": "Em bị đau đầu",
+        "optionCodes": ["STAGE_PREGNANCY"],
+        "journeyStage": "POSTPARTUM_MOTHER"
+      },
+      "expected": {
+        "targetEntity": "MOTHER",
+        "intent": "FOLLOW_UP_ANSWER",
+        "stage": "PREGNANCY",
+        "stageSource": "EXPLICIT_CLARIFICATION_ANSWER"
+      }
+    },
+    {
+      "id": "CV_PHASE2CD_NEGATED_POSTPARTUM_KEEPS_JOURNEY",
+      "description": "Phase 2C review - a negated postpartum phrase must not override trusted pregnancy journey stage",
+      "input": {
+        "message": "Em khong o giai doan hau san",
+        "journeyStage": "PREGNANCY"
+      },
+      "expected": {
+        "targetEntity": "MOTHER",
+        "stage": "PREGNANCY",
+        "stageSource": "CONFIRMED_CONVERSATION_TARGET"
+      }
+    },
+    {
+      "id": "CV_PHASE2CD_INCOMPLETE_BABY_AGE_WORDS_KEEP_JOURNEY",
+      "description": "Phase 2C review - incomplete number words are not accepted as a baby age",
+      "input": {
+        "message": "Be ba muoi linh thang",
+        "journeyStage": "INFANT_0_12M"
+      },
+      "expected": {
+        "targetEntity": "BABY",
+        "stage": "INFANT_0_12M",
+        "stageSource": "CONFIRMED_CONVERSATION_TARGET"
       }
     }
   ]
