@@ -383,8 +383,27 @@ export default function ImportContentModal({
               </div>
               {previewRow.sourceLabel && (
                 <div>
-                  <span className="text-outline">Nguồn: </span>
+                  <span className="text-outline">Tên nguồn / Tác giả: </span>
                   <strong className="text-on-surface">{previewRow.sourceLabel}</strong>
+                </div>
+              )}
+              {previewRow.sourceUrl && (
+                <div>
+                  <span className="text-outline">Liên kết nguồn: </span>
+                  <a
+                    href={previewRow.sourceUrl.startsWith('http') ? previewRow.sourceUrl : `https://${previewRow.sourceUrl}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary underline font-medium"
+                  >
+                    {previewRow.sourceUrl}
+                  </a>
+                </div>
+              )}
+              {previewRow.sourcePublisher && (
+                <div>
+                  <span className="text-outline">Đơn vị xuất bản: </span>
+                  <strong className="text-on-surface">{previewRow.sourcePublisher}</strong>
                 </div>
               )}
             </div>

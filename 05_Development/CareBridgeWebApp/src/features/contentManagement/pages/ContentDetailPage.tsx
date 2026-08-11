@@ -184,6 +184,59 @@ export default function ContentDetailPage() {
               dangerouslySetInnerHTML={{ __html: detail.body }}
             />
           </div>
+
+          {/* Sources & References Block */}
+          {((detail.sources && detail.sources.length > 0) || detail.sourceLabel) && (
+            <div className="bg-surface rounded-2xl p-6 shadow-md mt-6 border border-outline-variant">
+              <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-[0.05em] mb-4 pb-2 border-b border-surface-container-highest">
+                <span className="material-symbols-outlined text-lg">verified</span>
+                <span>NGUỒN THAM KHẢO / KIỂM DUYỆT</span>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                {detail.sources && detail.sources.length > 0 ? (
+                  detail.sources.map((src, idx) => (
+                    <div key={idx} className="p-4 rounded-xl bg-surface-container-low flex flex-col gap-2">
+                      {src.title && (
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-outline text-base">person</span>
+                          <span className="text-xs text-outline font-medium">Tác giả / Tên nguồn:</span>
+                          <strong className="text-sm text-on-surface font-semibold">{src.title}</strong>
+                        </div>
+                      )}
+                      {src.url && (
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-primary text-base">link</span>
+                          <span className="text-xs text-outline font-medium">Liên kết nguồn:</span>
+                          <a
+                            href={src.url.startsWith('http') ? src.url : `https://${src.url}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-primary font-semibold underline hover:text-primary-container break-all"
+                          >
+                            {src.url}
+                          </a>
+                        </div>
+                      )}
+                      {src.publisher && (
+                        <div className="flex items-center gap-2">
+                          <span className="material-symbols-outlined text-outline text-base">domain</span>
+                          <span className="text-xs text-outline font-medium">Đơn vị xuất bản:</span>
+                          <span className="text-xs text-on-surface font-semibold">{src.publisher}</span>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-4 rounded-xl bg-surface-container-low flex items-center gap-2">
+                    <span className="material-symbols-outlined text-outline text-base">menu_book</span>
+                    <span className="text-xs text-outline font-medium">Nguồn:</span>
+                    <strong className="text-sm text-on-surface">{detail.sourceLabel}</strong>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right sidebar */}
