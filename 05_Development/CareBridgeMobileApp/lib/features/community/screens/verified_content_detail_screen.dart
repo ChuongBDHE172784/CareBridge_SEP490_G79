@@ -401,13 +401,27 @@ class _VerifiedContentDetailScreenState
                                       const Icon(Icons.link_outlined, size: 16, color: _primary),
                                       const SizedBox(width: 4),
                                       Expanded(
-                                        child: Text(
-                                          'Bài viết gốc tại: ${src.url}',
-                                          style: const TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            color: _primary,
-                                            decoration: TextDecoration.underline,
+                                        child: Text.rich(
+                                          TextSpan(
+                                            children: [
+                                              const TextSpan(
+                                                text: 'Bài viết gốc tại: ',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: _onSurfaceVariant,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                              TextSpan(
+                                                text: src.url,
+                                                style: const TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: _primary,
+                                                  decoration: TextDecoration.underline,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                         ),
                                       ),
