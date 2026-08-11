@@ -1,5 +1,6 @@
 package com.carebridge.backend.triage.rules;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -76,6 +77,36 @@ class TargetEntityResolverTest {
     @DisplayName("Both entities across separate clauses is CONFLICTED")
     void bothEntitiesAcrossClausesIsConflicted() {
         assertThat(of("Tôi bị sốt, bé cũng bị sốt")).isEqualTo(TargetEntity.CONFLICTED);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "Em lo quá, bé bỏ bú",
+            "Bé nóng người nhưng nhà em không có nhiệt kế để đo.",
+            "Em thấy bé bú kém hơn hôm qua."
+    })
+    @DisplayName("A narrator pronoun outside a maternal symptom clause is not a second patient")
+    void narratorPronounDoesNotBecomeSecondPatient(String message) {
+        assertThat(of(message)).isEqualTo(TargetEntity.BABY);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "Em bị sốt và bé cũng bị sốt",
+            "Tôi và bé đều bị sốt",
+            "Em đang đau đầu còn bé nhà em lại nóng người",
+            "Mẹ sau sinh đau đầu, con bú kém hơn hôm qua."
+    })
+    @DisplayName("A real maternal symptom beside a baby symptom remains CONFLICTED")
+    void realMaternalAndBabySymptomsRemainConflicted(String message) {
+        assertThat(of(message)).isEqualTo(TargetEntity.CONFLICTED);
+    }
+
+    @Test
+    @DisplayName("A legacy indicator contract without symptom markers keeps conservative behavior")
+    void missingSymptomMarkersKeepConservativeBehavior() {
+        assertThat(TargetEntityResolver.clauseReportsSymptom(
+                "em lo qua", new ObjectMapper().createObjectNode())).isTrue();
     }
 
     @ParameterizedTest

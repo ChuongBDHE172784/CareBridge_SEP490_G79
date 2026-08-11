@@ -41,6 +41,29 @@ def test_planner_returns_at_most_three_fixed_catalog_questions_and_advances_once
     assert 0 < len(updates["plannedQuestionIds"]) <= 3
     assert set(updates["plannedQuestionIds"]) <= set(CATALOG)
     assert updates["questionRound"] == 1
+    assert updates["askedQuestionIds"] == updates["plannedQuestionIds"]
+    assert state["answeredQuestionIds"] == []
+
+
+def test_planner_never_repeats_a_question_in_a_later_round_without_answer_change():
+    state = _state()
+    state["candidateQuestionIds"] = list(CATALOG)
+    state["missingRequiredFields"] = [
+        field
+        for question in CATALOG.values()
+        for field in (*question.resolves_fields, *question.resolves_signals)
+    ]
+
+    first = question_planner(state)
+    carried = {**state, **first, "requestId": "request-456", "messageId": "message-456"}
+    second = question_planner(carried)
+
+    assert set(first["plannedQuestionIds"]).isdisjoint(second["plannedQuestionIds"])
+    assert carried["answeredQuestionIds"] == []
+    assert second["askedQuestionIds"] == [
+        *first["plannedQuestionIds"],
+        *second["plannedQuestionIds"],
+    ]
 
 
 def test_target_clarification_and_global_danger_run_when_target_unknown():
@@ -52,6 +75,33 @@ def test_target_clarification_and_global_danger_run_when_target_unknown():
     updates = question_planner(state)
     assert updates["plannedQuestionIds"] == ["Q_CLARIFY_TARGET_ENTITY", "Q_GLOBAL_DANGER"]
     assert updates["triageOutcome"] == "NEEDS_MORE_INFO"
+
+
+def test_mother_needing_stage_plans_stage_clarification_instead_of_ending_silently():
+    state = _state()
+    state["stage"] = CareStage.UNKNOWN
+    state["contextResolutionStatus"] = ContextResolutionStatus.NEEDS_STAGE
+    state["candidateQuestionIds"] = list(CATALOG)
+
+    updates = question_planner(state)
+
+    assert "Q_CLARIFY_STAGE" in updates["plannedQuestionIds"]
+    assert updates["stopConversation"] is False
+
+
+def test_unsure_stage_answer_routes_safely_when_no_clarification_remains():
+    state = _state()
+    state["stage"] = CareStage.UNKNOWN
+    state["contextResolutionStatus"] = ContextResolutionStatus.NEEDS_STAGE
+    state["candidateQuestionIds"] = list(CATALOG)
+    state["answeredQuestionIds"] = ["Q_CLARIFY_STAGE", "Q_GLOBAL_DANGER"]
+    state["askedQuestionIds"] = ["Q_CLARIFY_STAGE", "Q_GLOBAL_DANGER"]
+
+    updates = question_planner(state)
+
+    assert updates["plannedQuestionIds"] == []
+    assert updates["requiredAction"] == "ROUTE_TO_HEALTHCARE_WORKER"
+    assert updates["stopConversation"] is True
 
 
 def test_unmeasurable_measurement_pivots_and_is_not_reasked():

@@ -297,6 +297,8 @@ class TriageV2SessionServiceTest {
 
         assertThat(strings(payload.get().get("answeredQuestionIds")))
                 .containsExactly("Q_GLOBAL_DANGER", "Q_DIZZINESS");
+        assertThat(strings(payload.get().get("submittedOptionCodes")))
+                .containsExactly("DANGER_SEIZURE", "DIZZINESS_NO");
         assertThat(objectMap(payload.get().get("signals"))).containsKeys("SEIZURE", "DIZZINESS");
     }
 
@@ -445,6 +447,69 @@ class TriageV2SessionServiceTest {
         assertThat(response.outcome()).isEqualTo("NEEDS_MORE_INFO");
         assertThat(response.readiness().get("technicalStatus")).isEqualTo("FALLBACK_ONLY");
         assertThat(metrics.failureCount(TriageV2Metrics.Failure.FALLBACK)).isEqualTo(1);
+    }
+
+    @Test
+    void phase2dConversationFieldsAreAllowedInPersistedWorkflowState() {
+        AtomicReference<IntakeSession> inserted = new AtomicReference<>();
+        when(repository.findByUserIdAndClientRequestId(USER, "request_1234567890"))
+                .thenAnswer(invocation -> Optional.ofNullable(inserted.get()));
+        when(writer.insertConversationIfAbsent(any())).thenAnswer(invocation -> {
+            inserted.set(invocation.getArgument(0));
+            return new IntakeSessionWriter.InsertResult(true);
+        });
+        when(workflow.executeTurn(any())).thenAnswer(invocation -> {
+            Map<String, Object> state = graphState(inserted, "NEEDS_MORE_INFO", false);
+            state.put("plannedQuestionIds", List.of("Q_BABY_TEMPERATURE"));
+            state.put("askedQuestionIds", List.of("Q_BABY_TEMPERATURE"));
+            state.put("confirmedConversationIntent", "SYMPTOM_TRIAGE");
+            state.put("targetEntity", "BABY");
+            state.put("stage", "INFANT_0_12M");
+            return new TriageV2WorkflowClient.WorkflowResult(state, "READY", "2.2.0", HASH);
+        });
+
+        var response = service.start(startRequest("bé hai tháng bị sốt"), USER);
+
+        assertThat(response.outcome()).isEqualTo("NEEDS_MORE_INFO");
+        assertThat(response.questions()).containsExactly("Q_BABY_TEMPERATURE");
+        assertThat(response.readiness().get("technicalStatus")).isEqualTo("READY");
+        assertThat(inserted.get().getResultJson())
+                .contains("askedQuestionIds", "confirmedConversationIntent", "SYMPTOM_TRIAGE");
+        assertThat(metrics.failureCount(TriageV2Metrics.Failure.FALLBACK)).isZero();
+    }
+
+    @Test
+    void pythonTextReportedNumericStateIsAcceptedWithoutFallback() {
+        AtomicReference<IntakeSession> inserted = new AtomicReference<>();
+        when(repository.findByUserIdAndClientRequestId(USER, "request_1234567890"))
+                .thenAnswer(invocation -> Optional.ofNullable(inserted.get()));
+        when(writer.insertConversationIfAbsent(any())).thenAnswer(invocation -> {
+            inserted.set(invocation.getArgument(0));
+            return new IntakeSessionWriter.InsertResult(true);
+        });
+        when(workflow.executeTurn(any())).thenAnswer(invocation -> {
+            Map<String, Object> state = graphState(inserted, "RED", true);
+            state.put("requiredAction", "IMMEDIATE_EMERGENCY_ASSESSMENT");
+            state.put("targetEntity", "BABY");
+            state.put("stage", "INFANT_0_12M");
+            state.put("babyAgeMonths", 2);
+            state.put("measurements", Map.of(
+                    "babyAgeMonths", Map.of(
+                            "value", 2, "unit", "MONTHS", "temporalStatus", "CURRENT",
+                            "provenance", "USER_REPORTED_TEXT"),
+                    "temperatureC", Map.of(
+                            "value", 38.2, "unit", "C", "temporalStatus", "CURRENT",
+                            "provenance", "USER_REPORTED_TEXT")));
+            return new TriageV2WorkflowClient.WorkflowResult(state, "READY", "2.2.0", HASH);
+        });
+
+        var response = service.start(startRequest("Be hai thang do duoc 38,2 do"), USER);
+
+        assertThat(response.outcome()).isEqualTo("RED");
+        assertThat(response.readiness().get("technicalStatus")).isEqualTo("READY");
+        assertThat(inserted.get().getResultJson())
+                .contains("babyAgeMonths", "temperatureC", "USER_REPORTED_TEXT");
+        assertThat(metrics.failureCount(TriageV2Metrics.Failure.FALLBACK)).isZero();
     }
 
     @Test

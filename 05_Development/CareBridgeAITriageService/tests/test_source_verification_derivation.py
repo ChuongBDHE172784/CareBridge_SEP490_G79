@@ -18,7 +18,8 @@ CONTRACTS = Path(__file__).resolve().parents[2] / "Contracts" / "triage"
 SYNC_TOOL = Path(__file__).resolve().parents[2] / "DevTools" / "sync_triage_rule_registry.py"
 
 VALID_STATUSES = {"PENDING", "SOURCE_VERIFIED", "SOURCE_CHANGED", "BROKEN",
-                  "UNRESOLVED_SOURCE", "NOT_APPLICABLE"}
+                  "UNRESOLVED_SOURCE", "IDENTIFIED_PRIMARY_UNVERIFIED",
+                  "DOES_NOT_EXIST", "NOT_APPLICABLE"}
 
 
 def _load_sync_module():
@@ -79,10 +80,57 @@ def test_current_state_is_honest_about_unverified_sources(registry_document, sou
                for rule in registry_document["rules"])
 
 
-def test_unresolvable_source_keeps_a_null_url_rather_than_a_guess(source_manifest):
+def test_identified_byt_source_keeps_primary_url_and_hash_unset(source_manifest):
     byt = next(s for s in source_manifest["sources"] if s["sourceId"] == "BYT_1139_2026")
-    assert byt["verificationStatus"] == "UNRESOLVED_SOURCE"
-    assert byt["url"] is None, "an unlocatable citation must not be given an invented URL"
+    assert byt["verificationStatus"] == "IDENTIFIED_PRIMARY_UNVERIFIED"
+    assert byt["title"] == (
+        'Quyết định số 1139/QĐ-BYT ngày 23/4/2026 — "Hướng dẫn Quốc gia các dịch vụ '
+        'chăm sóc sức khỏe sinh sản"'
+    )
+    assert byt["url"] is None, "an inaccessible primary must not be given an invented URL"
+    assert byt["contentHash"] is None
+    assert "hai site bệnh viện .gov.vn" in byt["notes"]
+    assert "moh.gov.vn" in byt["notes"]
+
+
+def test_nonexistent_sources_are_retained_as_tombstones_but_cited_by_no_rule(source_manifest):
+    review = json.loads(
+        (CONTRACTS / "internal_rule_review_manifest.json").read_text(encoding="utf-8")
+    )
+    dead_ids = {"WHO_DANGER_SIGNS_2022", "WHO_MATERNAL_2025"}
+    by_id = {source["sourceId"]: source for source in source_manifest["sources"]}
+
+    for source_id in dead_ids:
+        source = by_id[source_id]
+        assert source["verificationStatus"] == "DOES_NOT_EXIST"
+        assert source["url"] is None
+        assert source["contentHash"] is None
+        assert "tên gọi này không tương ứng tài liệu WHO nào; xác minh 2026-08-11" in source["notes"]
+
+    reviewed_items = [*review["rules"], *review["safetyPolicies"]]
+    assert all(dead_ids.isdisjoint(item.get("sourceIds", [])) for item in reviewed_items)
+
+
+def test_identified_who_primaries_record_exact_limits_without_claiming_verification(
+    source_manifest,
+):
+    by_id = {source["sourceId"]: source for source in source_manifest["sources"]}
+
+    pcpnc = by_id["WHO_PCPNC_2015"]
+    assert pcpnc["verificationStatus"] == "IDENTIFIED_PRIMARY_UNVERIFIED"
+    assert pcpnc["url"] is None
+    assert pcpnc["sectionOrPage"] == "Danger signs chapter J8"
+    assert "who.int" in pcpnc["notes"]
+    assert "page" not in pcpnc["sectionOrPage"].lower()
+
+    iitt = by_id["WHO_IITT_ADULT"]
+    assert iitt["verificationStatus"] == "IDENTIFIED_PRIMARY_UNVERIFIED"
+    assert iitt["contentHash"] is None
+    assert "HTTP 200" in iitt["notes"]
+    assert "application/pdf" in iitt["notes"]
+    assert "RED/YELLOW" in iitt["notes"]
+    assert "page 1" in iitt["notes"]
+    assert "no separate obstetric chapter" in iitt["notes"]
 
 
 def test_every_source_status_is_from_the_closed_set(source_manifest):
