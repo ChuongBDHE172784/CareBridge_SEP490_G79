@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+import 'package:go_router/go_router.dart';
 import 'core/auth/auth_state.dart';
 import 'core/firebase/firebase_bootstrap.dart';
 import 'core/notifications/fcm_service.dart';
@@ -19,6 +20,10 @@ bool shouldOpenSafetyMonitoringForDetectedEvent({
   required String eventStatus,
   required String currentPath,
 }) => eventStatus == 'OPEN' && currentPath != '/safety';
+
+@visibleForTesting
+Future<T?> pushSafetyMonitoringRoute<T extends Object?>(GoRouter router) =>
+    router.push<T>('/safety');
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -106,7 +111,9 @@ class _CareBridgeAppState extends State<CareBridgeApp> {
     )) {
       return;
     }
-    appRouter.go('/safety');
+    // Preserve the screen that was active before the fall alert. Using go()
+    // replaces the entire stack and leaves a black screen when Safety pops.
+    unawaited(pushSafetyMonitoringRoute(appRouter));
   }
 
   @override

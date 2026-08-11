@@ -522,9 +522,13 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
           'Không thể lấy vị trí hiện tại. Hãy bật định vị và thử lại.',
         );
       }
+      // Seven decimal places retain centimetre-level precision and remain
+      // compatible with older API deployments that reject raw Dart doubles.
+      final latitude = double.parse(position.latitude.toStringAsFixed(7));
+      final longitude = double.parse(position.longitude.toStringAsFixed(7));
       final result = await _emergency.shareCurrentLocation(
-        latitude: position.latitude,
-        longitude: position.longitude,
+        latitude: latitude,
+        longitude: longitude,
       );
       if (!mounted ||
           generation != _locationShareGeneration ||

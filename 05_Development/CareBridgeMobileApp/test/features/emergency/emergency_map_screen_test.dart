@@ -328,7 +328,10 @@ void main() {
               locationReads++;
               return locationReads == 1
                   ? _position(latitude: 10.70, longitude: 106.60)
-                  : _position(latitude: 10.76, longitude: 106.66);
+                  : _position(
+                      latitude: 10.762622123456,
+                      longitude: 106.660172123456,
+                    );
             },
           ),
         ),
@@ -343,8 +346,8 @@ void main() {
 
     expect(locationReads, 2);
     expect(service.shareCalls, 1);
-    expect(service.sharedLatitude, 10.76);
-    expect(service.sharedLongitude, 106.66);
+    expect(service.sharedLatitude, 10.7626221);
+    expect(service.sharedLongitude, 106.6601721);
     expect(find.text('Đã gửi vị trí'), findsOneWidget);
     expect(
       find.text('Đã gửi vị trí hiện tại cho 2 người thân.'),

@@ -73,6 +73,22 @@ class FamilyLocationShareControllerTest {
 
     @Test
     @WithMockUser(username = "00000000-0000-4000-8000-000000000010", roles = "MOTHER")
+    void highPrecisionGpsCoordinatesAreAccepted() throws Exception {
+        UUID motherId = UUID.fromString("00000000-0000-4000-8000-000000000010");
+        org.mockito.Mockito.when(locationShareService.share(eq(motherId), any()))
+                .thenReturn(new LocationShareResponse(UUID.randomUUID(), 1, 1, Instant.now()));
+
+        mockMvc.perform(post("/api/v1/emergency/location-shares")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"latitude\":0.02410812345678901,"
+                                + "\"longitude\":105.51990012345678901}"))
+                .andExpect(status().isOk());
+
+        verify(locationShareService).share(eq(motherId), any());
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-4000-8000-000000000010", roles = "MOTHER")
     void invalidCoordinatesReturn400() throws Exception {
         mockMvc.perform(post("/api/v1/emergency/location-shares")
                         .contentType(MediaType.APPLICATION_JSON)
