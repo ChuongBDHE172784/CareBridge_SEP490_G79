@@ -1,6 +1,6 @@
 {
-  "$comment": "SHARED CONTEXT PARITY VECTORS — Java and Python must resolve target entity, intent, stage and context status identically for every vector. These are the ten gate scenarios from the Phase 1 plan plus the accent-collision regressions found while building the resolvers. Never edit an expectation to make an implementation pass.",
-  "contractVersion": "1.0.0",
+  "$comment": "SHARED CONTEXT PARITY VECTORS — Java and Python must resolve target entity, intent, stage and context status identically for every vector. These are the ten gate scenarios from the Phase 1 plan, the accent-collision regressions found while building the resolvers, and the Phase 2B narrator-versus-patient disambiguation cases. Never edit an expectation to make an implementation pass.",
+  "contractVersion": "1.1.0",
   "vectors": [
     {
       "id": "CV_MOTHER_DIARRHOEA_POSTPARTUM",
@@ -189,6 +189,126 @@
         "targetEntity": "BABY",
         "stage": "CONFLICTED",
         "contextStatus": "CONFLICTED"
+      }
+    },
+    {
+      "id": "CV_PHASE2B_NARRATOR_WORRIED_BABY_REFUSES_FEED",
+      "description": "Phase 2B — người kể lo lắng ở clause riêng không phải bệnh nhân thứ hai",
+      "input": {
+        "message": "Em lo quá, bé bỏ bú"
+      },
+      "expected": {
+        "targetEntity": "BABY"
+      }
+    },
+    {
+      "id": "CV_PHASE2B_NO_THERMOMETER_IS_CONTEXT",
+      "description": "Phase 2B — nhà em không có nhiệt kế là hoàn cảnh, không phải triệu chứng của mẹ",
+      "input": {
+        "message": "Bé nóng người nhưng nhà em không có nhiệt kế để đo."
+      },
+      "expected": {
+        "targetEntity": "BABY"
+      }
+    },
+    {
+      "id": "CV_PHASE2B_SAME_CLAUSE_NARRATOR_BABY",
+      "description": "Phase 2B — đại từ giới thiệu và bé trong cùng clause vẫn chọn BABY",
+      "input": {
+        "message": "Em thấy bé bú kém hơn hôm qua."
+      },
+      "expected": {
+        "targetEntity": "BABY"
+      }
+    },
+    {
+      "id": "CV_PHASE2B_EM_AND_BABY_HAVE_FEVER",
+      "description": "Phase 2B — cả mẹ và bé có triệu chứng thật phải giữ CONFLICTED",
+      "input": {
+        "message": "Em bị sốt và bé cũng bị sốt"
+      },
+      "expected": {
+        "targetEntity": "CONFLICTED"
+      }
+    },
+    {
+      "id": "CV_PHASE2B_TOI_AND_BABY_HAVE_FEVER",
+      "description": "Phase 2B — cấu trúc hai bệnh nhân tường minh phải giữ CONFLICTED",
+      "input": {
+        "message": "Tôi và bé đều bị sốt"
+      },
+      "expected": {
+        "targetEntity": "CONFLICTED"
+      }
+    },
+    {
+      "id": "CV_PHASE2B_MOTHER_HEADACHE_BABY_HOT",
+      "description": "Phase 2B — triệu chứng mẹ ở clause riêng không được bỏ khi bé cũng có triệu chứng",
+      "input": {
+        "message": "Em đang đau đầu còn bé nhà em lại nóng người"
+      },
+      "expected": {
+        "targetEntity": "CONFLICTED"
+      }
+    },
+    {
+      "id": "CV_PHASE2B_POSTPARTUM_MOTHER_AND_BABY",
+      "description": "Phase 2B — chỉ dấu mẹ sau sinh mạnh và triệu chứng bé phải giữ CONFLICTED",
+      "input": {
+        "message": "Mẹ sau sinh đau đầu, con bú kém hơn hôm qua."
+      },
+      "expected": {
+        "targetEntity": "CONFLICTED"
+      }
+    },
+    {
+      "id": "CV_PHASE2B_MOTHER_ABDOMINAL_PAIN",
+      "description": "Phase 2B — ca chỉ có mẹ giữ MOTHER",
+      "input": {
+        "message": "Em bị đau bụng"
+      },
+      "expected": {
+        "targetEntity": "MOTHER"
+      }
+    },
+    {
+      "id": "CV_PHASE2B_BABY_FEVER",
+      "description": "Phase 2B — ca chỉ có bé giữ BABY",
+      "input": {
+        "message": "Bé bị sốt"
+      },
+      "expected": {
+        "targetEntity": "BABY"
+      }
+    },
+    {
+      "id": "CV_PHASE2B_MOTHER_DISCOMFORT",
+      "description": "Phase 2B — triệu chứng chung chung của mẹ giữ MOTHER",
+      "input": {
+        "message": "Em thấy khó chịu"
+      },
+      "expected": {
+        "targetEntity": "MOTHER"
+      }
+    },
+    {
+      "id": "CV_PHASE2B_BREAST_MILK_LEXICAL_TRAP",
+      "description": "Phase 2B — từ mẹ trong sữa mẹ không được tạo mother patient",
+      "input": {
+        "message": "Bé bú sữa mẹ kém, quấy khóc"
+      },
+      "expected": {
+        "targetEntity": "BABY"
+      }
+    },
+    {
+      "id": "CV_PHASE2B_HELPING_CHILD",
+      "description": "Phase 2B — người kể hỏi giúp con phải chọn BABY",
+      "input": {
+        "message": "Tôi hỏi giúp con tôi, bé bị sốt"
+      },
+      "expected": {
+        "targetEntity": "BABY"
       }
     }
   ]

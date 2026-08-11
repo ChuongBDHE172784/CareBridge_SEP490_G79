@@ -27,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class ContextParityVectorTest {
 
     private static final String VECTORS_RESOURCE = "triage/context_parity_vectors_v1.json";
+    private static final String PHASE_2B_PREFIX = "CV_PHASE2B_";
 
     private static TargetEntityResolver targetResolver;
     private static IntentResolver intentResolver;
@@ -120,6 +121,23 @@ class ContextParityVectorTest {
     @Test
     @DisplayName("Every shared context vector is executed")
     void everyVectorIsExecuted() throws IOException {
-        assertThat(vectors().count()).isEqualTo(14);
+        List<JsonNode> allVectors = vectors().toList();
+        assertThat(allVectors).hasSize(26);
+        assertThat(allVectors.stream()
+                .map(vector -> vector.path("id").asText())
+                .filter(id -> id.startsWith(PHASE_2B_PREFIX)))
+                .containsExactlyInAnyOrder(
+                        "CV_PHASE2B_NARRATOR_WORRIED_BABY_REFUSES_FEED",
+                        "CV_PHASE2B_NO_THERMOMETER_IS_CONTEXT",
+                        "CV_PHASE2B_SAME_CLAUSE_NARRATOR_BABY",
+                        "CV_PHASE2B_EM_AND_BABY_HAVE_FEVER",
+                        "CV_PHASE2B_TOI_AND_BABY_HAVE_FEVER",
+                        "CV_PHASE2B_MOTHER_HEADACHE_BABY_HOT",
+                        "CV_PHASE2B_POSTPARTUM_MOTHER_AND_BABY",
+                        "CV_PHASE2B_MOTHER_ABDOMINAL_PAIN",
+                        "CV_PHASE2B_BABY_FEVER",
+                        "CV_PHASE2B_MOTHER_DISCOMFORT",
+                        "CV_PHASE2B_BREAST_MILK_LEXICAL_TRAP",
+                        "CV_PHASE2B_HELPING_CHILD");
     }
 }

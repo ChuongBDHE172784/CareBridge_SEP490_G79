@@ -19,6 +19,21 @@ from app.context.target_entity_resolver import resolve_target_entity
 from app.questions.catalog_filter import FilterContext, eligible_questions
 
 VECTORS_PATH = Path(__file__).parent / "data" / "context_parity_vectors_v1.json"
+PARITY_PARTITIONS = 14
+PHASE_2B_IDS = {
+    "CV_PHASE2B_NARRATOR_WORRIED_BABY_REFUSES_FEED",
+    "CV_PHASE2B_NO_THERMOMETER_IS_CONTEXT",
+    "CV_PHASE2B_SAME_CLAUSE_NARRATOR_BABY",
+    "CV_PHASE2B_EM_AND_BABY_HAVE_FEVER",
+    "CV_PHASE2B_TOI_AND_BABY_HAVE_FEVER",
+    "CV_PHASE2B_MOTHER_HEADACHE_BABY_HOT",
+    "CV_PHASE2B_POSTPARTUM_MOTHER_AND_BABY",
+    "CV_PHASE2B_MOTHER_ABDOMINAL_PAIN",
+    "CV_PHASE2B_BABY_FEVER",
+    "CV_PHASE2B_MOTHER_DISCOMFORT",
+    "CV_PHASE2B_BREAST_MILK_LEXICAL_TRAP",
+    "CV_PHASE2B_HELPING_CHILD",
+}
 
 
 @pytest.fixture(scope="module")
@@ -55,12 +70,19 @@ def _evaluate(payload: dict) -> dict:
 
 
 def test_every_vector_is_asserted(vectors):
-    assert len(vectors) == 14
+    assert len(vectors) == 26
+    assert {vector["id"] for vector in vectors if vector["id"].startswith("CV_PHASE2B_")} == PHASE_2B_IDS
 
 
-@pytest.mark.parametrize("index", range(14))
-def test_context_parity_vector(vectors, index):
-    vector = vectors[index]
+@pytest.mark.parametrize("partition", range(PARITY_PARTITIONS))
+def test_context_parity_vector(vectors, partition):
+    partition_vectors = vectors[partition::PARITY_PARTITIONS]
+    assert partition_vectors
+    for vector in partition_vectors:
+        _assert_vector(vector)
+
+
+def _assert_vector(vector):
     actual = _evaluate(vector["input"])
     expected = vector["expected"]
     label = f"{vector['id']}: {vector['description']}"
