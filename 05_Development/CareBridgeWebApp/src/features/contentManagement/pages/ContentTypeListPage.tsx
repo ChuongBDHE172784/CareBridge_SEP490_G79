@@ -72,6 +72,8 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
   const [isSubmittingAll, setIsSubmittingAll] = useState(false);
   const [submitAllError, setSubmitAllError] = useState('');
   const [draftItemsToSubmit, setDraftItemsToSubmit] = useState<ContentDetail[]>([]);
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set());
+  const [isListExpanded, setIsListExpanded] = useState(false);
 
   const latestRequestId = useRef(0);
   const debouncedKeyword = useDebouncedValue(searchInput.trim());
@@ -158,6 +160,7 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
   const handleOpenSubmitAllModal = async () => {
     setIsFetchingDrafts(true);
     setSubmitAllError('');
+    setIsListExpanded(false);
     try {
       let allDrafts: ContentDetail[] = [];
       let pageNum = 0;
@@ -176,6 +179,7 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
       } while (pageNum < totalP && pageNum < 10);
 
       setDraftItemsToSubmit(allDrafts);
+      setSelectedItemIds(new Set(allDrafts.map((item) => item.id)));
       setIsSubmitAllConfirmOpen(true);
     } catch {
       setSubmitAllError('Không thể lấy danh sách bản nháp. Vui lòng thử lại.');
@@ -185,9 +189,29 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
     }
   };
 
+  const toggleSelectItem = (id: string) => {
+    setSelectedItemIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedItemIds.size === draftItemsToSubmit.length) {
+      setSelectedItemIds(new Set());
+    } else {
+      setSelectedItemIds(new Set(draftItemsToSubmit.map((item) => item.id)));
+    }
+  };
 
   const handleConfirmSubmitAll = async () => {
-    if (draftItemsToSubmit.length === 0) {
+    const itemsToSubmit = draftItemsToSubmit.filter((item) => selectedItemIds.has(item.id));
+    if (itemsToSubmit.length === 0) {
       setIsSubmitAllConfirmOpen(false);
       return;
     }
@@ -197,7 +221,7 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
 
     try {
       const results = await Promise.allSettled(
-        draftItemsToSubmit.map((item) =>
+        itemsToSubmit.map((item) =>
           updateContent(item.id, {
             title: item.title,
             body: item.body,
@@ -470,17 +494,81 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
         description={
           draftItemsToSubmit.length === 0
             ? `Không có ${type === 'ARTICLE' ? 'bài viết' : 'FAQ'} bản nháp nào cần gửi phê duyệt.`
-            : `Bạn có chắc chắn muốn gửi phê duyệt tất cả ${draftItemsToSubmit.length} ${type === 'ARTICLE' ? 'bài viết' : 'FAQ'} bản nháp không? Các mục này sẽ được chuyển sang trạng thái Chờ duyệt.`
+            : `Bạn có chắc chắn muốn gửi phê duyệt ${selectedItemIds.size}/${draftItemsToSubmit.length} ${type === 'ARTICLE' ? 'bài viết' : 'FAQ'} bản nháp đã chọn không? Các mục này sẽ được chuyển sang trạng thái Chờ duyệt.`
         }
         icon="send"
         tone="default"
-        confirmLabel={draftItemsToSubmit.length > 0 ? `Gửi phê duyệt (${draftItemsToSubmit.length} mục)` : 'Đóng'}
+        confirmLabel={
+          draftItemsToSubmit.length === 0
+            ? 'Đóng'
+            : selectedItemIds.size > 0
+              ? `Gửi phê duyệt (${selectedItemIds.size} mục)`
+              : 'Chọn ít nhất 1 mục'
+        }
         submitting={isSubmittingAll}
         errorText={submitAllError}
-        onConfirm={draftItemsToSubmit.length > 0 ? handleConfirmSubmitAll : () => setIsSubmitAllConfirmOpen(false)}
+        onConfirm={selectedItemIds.size > 0 ? handleConfirmSubmitAll : () => setIsSubmitAllConfirmOpen(false)}
         onCancel={() => setIsSubmitAllConfirmOpen(false)}
-      />
+      >
+        {draftItemsToSubmit.length > 0 && (
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={() => setIsListExpanded((prev) => !prev)}
+              className="w-full py-2.5 px-3.5 rounded-xl border border-outline-variant bg-surface-container-low hover:bg-surface-container flex items-center justify-between text-xs font-semibold text-on-surface cursor-pointer font-sans transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-base text-primary">list_alt</span>
+                <span>
+                  Danh sách {type === 'ARTICLE' ? 'bài viết' : 'FAQ'} bản nháp ({selectedItemIds.size}/{draftItemsToSubmit.length} đã chọn)
+                </span>
+              </span>
+              <span className="material-symbols-outlined text-base text-outline">
+                {isListExpanded ? 'expand_less' : 'expand_more'}
+              </span>
+            </button>
+
+            {isListExpanded && (
+              <div className="mt-2.5 max-h-56 overflow-y-auto rounded-xl border border-outline-variant bg-surface p-2 space-y-1">
+                <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-surface-container-highest text-xs font-semibold text-outline">
+                  <button
+                    type="button"
+                    onClick={toggleSelectAll}
+                    className="text-primary cursor-pointer hover:underline bg-transparent border-0 p-0 text-xs font-semibold font-sans"
+                  >
+                    {selectedItemIds.size === draftItemsToSubmit.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                  </button>
+                  <span>
+                    Đã chọn {selectedItemIds.size} / {draftItemsToSubmit.length}
+                  </span>
+                </div>
+
+                {draftItemsToSubmit.map((item) => {
+                  const isChecked = selectedItemIds.has(item.id);
+                  return (
+                    <label
+                      key={item.id}
+                      className="flex items-center justify-between p-2.5 rounded-lg hover:bg-surface-container-low cursor-pointer transition-colors"
+                    >
+                      <span className="text-xs font-medium text-on-surface line-clamp-1 flex-1 pr-3">
+                        {item.title}
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleSelectItem(item.id)}
+                        className="w-4 h-4 text-primary rounded border-outline-variant focus:ring-primary/20 cursor-pointer accent-primary"
+                      />
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </ConfirmDialog>
     </div>
   );
 }
+
 

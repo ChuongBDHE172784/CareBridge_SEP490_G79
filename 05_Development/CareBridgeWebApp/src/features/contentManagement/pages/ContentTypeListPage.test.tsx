@@ -86,7 +86,7 @@ describe('ContentTypeListPage submit all for approval', () => {
     fireEvent.click(submitAllBtn);
 
     expect(await screen.findByText('Gửi phê duyệt tất cả bài viết?')).toBeTruthy();
-    expect(screen.getByText(/Bạn có chắc chắn muốn gửi phê duyệt tất cả 2 bài viết bản nháp/)).toBeTruthy();
+    expect(screen.getByText(/Bạn có chắc chắn muốn gửi phê duyệt 2\/2 bài viết/)).toBeTruthy();
 
     const confirmBtn = screen.getByRole('button', { name: /Gửi phê duyệt \(2 mục\)/i });
     fireEvent.click(confirmBtn);
@@ -97,4 +97,72 @@ describe('ContentTypeListPage submit all for approval', () => {
       expect(harness.updateContent).toHaveBeenNthCalledWith(2, 'art-2', expect.objectContaining({ status: 'PENDING_REVIEW' }));
     });
   });
+
+  it('allows unchecking items in collapsible dropdown list before submitting', async () => {
+    harness.fetchStaffContentList.mockResolvedValueOnce({
+      content: [
+        {
+          id: 'art-1', title: 'Bài viết 1', type: 'ARTICLE', stage: 'PREGNANCY',
+          status: 'DRAFT', createdAt: '2026-01-01T00:00:00Z', tagIds: [], sources: [],
+        },
+      ],
+      totalElements: 1, totalPages: 1, page: 0, size: 10,
+    });
+
+    render(
+      <ContentTypeListPage
+        type="ARTICLE"
+        title="Quản lý Bài viết"
+        subtitle="Quản lý các bài viết nội dung"
+        createLabel="Tạo Bài viết Mới"
+        emptyLabel="Không có bài viết nào."
+      />
+    );
+
+    expect(await screen.findByText('Bài viết 1')).toBeTruthy();
+
+    const submitAllBtn = screen.getByRole('button', { name: /Gửi phê duyệt tất cả/i });
+
+    harness.fetchStaffContentList.mockResolvedValueOnce({
+      content: [
+        {
+          id: 'art-1', title: 'Bài viết 1', type: 'ARTICLE', stage: 'PREGNANCY',
+          status: 'DRAFT', createdAt: '2026-01-01T00:00:00Z', tagIds: [], sources: [],
+        },
+        {
+          id: 'art-2', title: 'Bài viết 2', type: 'ARTICLE', stage: 'POSTPARTUM',
+          status: 'DRAFT', createdAt: '2026-01-01T00:00:00Z', tagIds: [], sources: [],
+        },
+      ],
+      totalElements: 2, totalPages: 1, page: 0, size: 50,
+    });
+
+    harness.updateContent.mockResolvedValue({ id: 'art-1', status: 'PENDING_REVIEW', versionNo: 1 });
+
+    fireEvent.click(submitAllBtn);
+
+    expect(await screen.findByText('Gửi phê duyệt tất cả bài viết?')).toBeTruthy();
+
+    const expandListBtn = screen.getByRole('button', { name: /Danh sách bài viết bản nháp/i });
+    fireEvent.click(expandListBtn);
+
+    expect(screen.getByText('Đã chọn 2 / 2')).toBeTruthy();
+
+    const checkboxes = screen.getAllByRole('checkbox');
+    expect(checkboxes.length).toBe(2);
+
+    // Uncheck item 2
+    fireEvent.click(checkboxes[1]);
+
+    expect(screen.getByRole('button', { name: /Gửi phê duyệt \(1 mục\)/i })).toBeTruthy();
+
+    const confirmBtn = screen.getByRole('button', { name: /Gửi phê duyệt \(1 mục\)/i });
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(harness.updateContent).toHaveBeenCalledTimes(1);
+      expect(harness.updateContent).toHaveBeenCalledWith('art-1', expect.objectContaining({ status: 'PENDING_REVIEW' }));
+    });
+  });
 });
+
