@@ -133,19 +133,103 @@ void main() {
     expect(completeImmobility(detector), isNull);
   });
 
-  test('rejects an impact whose jerk is below 40 m/s3', () {
+  test(
+    'rejects an impact whose jerk is below the applicable soft-fall floor',
+    () {
+      final detector = ImuFallDetector();
+      detector.addSample(sample(at: Duration.zero, acceleration: 6.4));
+
+      detector.addSample(
+        sample(at: const Duration(milliseconds: 500), acceleration: 9.6),
+      );
+
+      expect(detector.phase, FallDetectionPhase.freeFall);
+      expect(
+        detector.latestDecision.reason,
+        ImuDetectorDecisionReason.jerkTooLow,
+      );
+    },
+  );
+
+  test('allows a long soft landing with jerk between 20 and 40 m/s3', () {
     final detector = ImuFallDetector();
-    detector.addSample(sample(at: Duration.zero, acceleration: 6.4));
+    detector.addSample(sample(at: Duration.zero, acceleration: 2));
+    final impact = sample(
+      at: const Duration(milliseconds: 250),
+      acceleration: 9.6,
+      gyro: 0.2,
+    );
 
+    expect(detector.addSample(impact), isNull);
+    expect(detector.phase, FallDetectionPhase.impact);
+    FallCandidate? candidate;
+    for (var index = 1; index <= 6; index++) {
+      candidate ??= detector.addSample(
+        sample(
+          at: Duration(milliseconds: 500 + index * 200),
+          acceleration: 9.81,
+          gyro: 0.1,
+        ),
+      );
+    }
+    expect(candidate, isNotNull);
+  });
+
+  test(
+    'accepts a long soft landing whose peak stays below hard-impact threshold',
+    () {
+      final detector = ImuFallDetector();
+      detector.addSample(sample(at: Duration.zero, acceleration: 2));
+      final impact = sample(
+        at: const Duration(milliseconds: 250),
+        acceleration: 8.6,
+        gyro: 0.2,
+      );
+
+      expect(detector.addSample(impact), isNull);
+      expect(detector.phase, FallDetectionPhase.impact);
+      expect(
+        completeImmobility(
+          detector,
+          impactAt: const Duration(milliseconds: 250),
+        ),
+        isNotNull,
+      );
+    },
+  );
+
+  test('allows brief pillow rebound after a long fall', () {
+    final detector = ImuFallDetector();
+    detector.addSample(sample(at: Duration.zero, acceleration: 2));
     detector.addSample(
-      sample(at: const Duration(milliseconds: 500), acceleration: 9.6),
+      sample(
+        at: const Duration(milliseconds: 250),
+        acceleration: 9.6,
+        gyro: 0.2,
+      ),
     );
 
-    expect(detector.phase, FallDetectionPhase.freeFall);
     expect(
-      detector.latestDecision.reason,
-      ImuDetectorDecisionReason.jerkTooLow,
+      detector.addSample(
+        sample(
+          at: const Duration(milliseconds: 500),
+          acceleration: 9.81,
+          gyro: 2.0,
+        ),
+      ),
+      isNull,
     );
+    FallCandidate? candidate;
+    for (var index = 1; index <= 6; index++) {
+      candidate ??= detector.addSample(
+        sample(
+          at: Duration(milliseconds: 500 + index * 200),
+          acceleration: 9.81,
+          gyro: 0.1,
+        ),
+      );
+    }
+    expect(candidate, isNotNull);
   });
 
   test('cancels a candidate on post-impact strong rotation', () {

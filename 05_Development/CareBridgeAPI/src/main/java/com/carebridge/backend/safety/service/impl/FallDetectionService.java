@@ -36,6 +36,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.Map;
 import com.carebridge.backend.audit.entity.AuditAction;
@@ -51,6 +52,7 @@ public class FallDetectionService implements IFallDetectionService {
     private static final Logger log = LoggerFactory.getLogger(FallDetectionService.class);
     private static final Duration MAX_CLIENT_PAST_SKEW = Duration.ofHours(24);
     private static final Duration MAX_CLIENT_FUTURE_SKEW = Duration.ofMinutes(5);
+    private static final Duration DUPLICATE_FALL_WINDOW = Duration.ofSeconds(10);
 
     private final IImuMonitoringSessionRepository imuSessionRepository;
     private final ISafetyEventRepository safetyEventRepository;
@@ -138,6 +140,16 @@ public class FallDetectionService implements IFallDetectionService {
 
         if (!analysis.suspected()) {
             return null;
+        }
+
+        // A single physical drop can produce two verified peaks while the
+        // phone is settling on a pillow. Reuse the recent event for this IMU
+        // session so the mobile app cannot open two countdowns for one fall.
+        Optional<SafetyEvent> recentEvent = safetyEventRepository
+                .findFirstByImuSessionIdAndDetectedAtAfterOrderByDetectedAtDesc(
+                        activeSession.getId(), receivedAt.minus(DUPLICATE_FALL_WINDOW));
+        if (recentEvent.isPresent()) {
+            return toEventResponse(recentEvent.get());
         }
 
         boolean includeLocation = payload.latitude() != null && payload.longitude() != null

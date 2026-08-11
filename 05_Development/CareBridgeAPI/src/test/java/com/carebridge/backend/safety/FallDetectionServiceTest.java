@@ -489,6 +489,27 @@ class FallDetectionServiceTest {
     }
 
     @Test
+    void processImuData_recentVerifiedFallReusesEventInsteadOfOpeningDuplicateCountdown() {
+        ImuMonitoringSession session = SafetyConfigTestFactory.makeActiveSession();
+        SafetyEvent recent = makeSafetyEvent();
+        recent.setImuSessionId(session.getId());
+        recent.setDetectedAt(Instant.now().minusSeconds(3));
+        when(imuSessionRepository.findActiveForUpdateByUserId(USER_ID)).thenReturn(Optional.of(session));
+        when(safetyEventRepository.findByImuSessionIdAndSignalKey(any(), anyString()))
+                .thenReturn(Optional.empty());
+        when(safetyEventRepository.findFirstByImuSessionIdAndDetectedAtAfterOrderByDetectedAtDesc(
+                eq(session.getId()), any())).thenReturn(Optional.of(recent));
+
+        SafetyEventResponse result = fallDetectionService.processImuData(USER_ID,
+                new ImuDataPayload(9.6, 0, 0, 0.2, 0, 0, Instant.now(),
+                        "second-peak", null, null, true));
+
+        assertThat(result.getId()).isEqualTo(recent.getId());
+        verify(safetyEventRepository, never()).save(any());
+        verify(eventPublisher, never()).publishEvent(any(SuspectedFallDetected.class));
+    }
+
+    @Test
     void expiredCountdownPersistsTimeoutAndOpensEmergencyOnce() {
         SafetyEvent event = makeSafetyEvent();
         event.setCountdownDeadlineAt(Instant.now().minusSeconds(1));

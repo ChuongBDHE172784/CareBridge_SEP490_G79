@@ -84,12 +84,19 @@ class ImuFallDetector {
   // while its free-fall, rebound and jerk limits are deliberately softer.
   static const double freeFallThreshold = 6.5;
   static const double impactThreshold = 9.5;
+  static const double softLandingImpactThreshold = 8.5;
   static const double minimumJerk = 40.0;
+  // A soft landing can spread the acceleration change over several samples.
+  // Only a genuinely long free-fall may use this softer jerk floor; short
+  // taps still need the stricter threshold above.
+  static const double minimumSoftFallJerk = 20.0;
   static const double gravity = 9.81;
   static const double stationaryAccelerationTolerance = 2.0;
   static const double stationaryGyroscopeThreshold = 0.5;
   static const double cancellationGyroscopeThreshold = 1.5;
   static const double strongMovementAccelerationDeviation = 6.0;
+  static const double softLandingCancellationGyroscopeThreshold = 2.5;
+  static const double softLandingStrongMovementAccelerationDeviation = 8.0;
   static const double minimumStationaryRatio = 0.8;
   // A 1 cm lift produces only about 45 ms of free-fall. Requiring four
   // samples at the 50 Hz sensor cadence filters that tap while preserving a
@@ -209,7 +216,12 @@ class ImuFallDetector {
       return null;
     }
 
-    if (sample.accelerationMagnitude <= impactThreshold || previous == null) {
+    final impactThresholdForSequence =
+        freeFallDuration >= const Duration(milliseconds: 200)
+        ? softLandingImpactThreshold
+        : impactThreshold;
+    if (sample.accelerationMagnitude <= impactThresholdForSequence ||
+        previous == null) {
       _setDecision(ImuDetectorDecisionReason.awaitingImpact);
       return null;
     }
@@ -226,7 +238,10 @@ class ImuFallDetector {
     final jerk =
         (sample.accelerationMagnitude - previous.accelerationMagnitude).abs() /
         elapsedSeconds;
-    if (jerk < minimumJerk) {
+    final requiredJerk = freeFallDuration >= const Duration(milliseconds: 200)
+        ? minimumSoftFallJerk
+        : minimumJerk;
+    if (jerk < requiredJerk) {
       _setDecision(ImuDetectorDecisionReason.jerkTooLow);
       return null;
     }
@@ -283,8 +298,20 @@ class ImuFallDetector {
 
     final accelerationDeviation = (sample.accelerationMagnitude - gravity)
         .abs();
-    if (sample.gyroscopeMagnitude > cancellationGyroscopeThreshold ||
-        accelerationDeviation > strongMovementAccelerationDeviation) {
+    final freeFallAt = _freeFallAt;
+    final freeFallDuration = freeFallAt == null
+        ? Duration.zero
+        : impactStartedAt.difference(freeFallAt);
+    final isLongSoftFall =
+        freeFallDuration >= const Duration(milliseconds: 200);
+    final movementGyroscopeThreshold = isLongSoftFall
+        ? softLandingCancellationGyroscopeThreshold
+        : cancellationGyroscopeThreshold;
+    final movementAccelerationDeviation = isLongSoftFall
+        ? softLandingStrongMovementAccelerationDeviation
+        : strongMovementAccelerationDeviation;
+    if (sample.gyroscopeMagnitude > movementGyroscopeThreshold ||
+        accelerationDeviation > movementAccelerationDeviation) {
       _resetCandidate();
       _setDecision(ImuDetectorDecisionReason.excessiveMovement);
       return null;
