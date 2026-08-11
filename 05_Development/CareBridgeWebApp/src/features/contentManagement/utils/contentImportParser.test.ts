@@ -24,7 +24,7 @@ describe('contentImportParser', () => {
     const template = generateContentTemplate('ARTICLE');
     expect(template.startsWith('\uFEFF')).toBe(true);
     expect(template).toContain('tiêu_đề (*Bắt buộc)');
-    expect(template).toContain('giai_đoạn (*Bắt buộc: PRE_PREGNANCY / PREGNANCY / POSTPARTUM)');
+    expect(template).toContain('giai_đoạn (*Bắt buộc: Chuẩn bị mang thai [PRE_PREGNANCY]');
     expect(template).toContain('nội_dung (*Bắt buộc)');
   });
 

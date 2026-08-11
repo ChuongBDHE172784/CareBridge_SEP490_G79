@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { CommunityTopic, ContentType } from '../models/content';
-import { TYPE_LABELS } from '../models/content';
+import { STAGE_LABELS, TYPE_LABELS } from '../models/content';
 import { fetchTopics, importContentBatch } from '../services/contentApi';
 import {
   generateContentTemplate,
@@ -172,7 +172,7 @@ export default function ImportContentModal({
                 </div>
                 <p className="text-xs text-on-surface-variant m-0">
                   File mẫu bao gồm các cột: <strong className="text-primary">tiêu_đề (*)</strong>,{' '}
-                  <strong className="text-primary">giai_đoạn (*)</strong> (PRE_PREGNANCY / PREGNANCY / POSTPARTUM),{' '}
+                  <strong className="text-primary">giai_đoạn (*)</strong> (Chuẩn bị mang thai: PRE_PREGNANCY / Thai kỳ: PREGNANCY / Hậu sản: POSTPARTUM),{' '}
                   <strong className="text-primary">nội_dung (*)</strong> (Hỗ trợ Rich HTML: h1-h4, bold, italic, danh sách, bảng, trích dẫn, link), tóm_tắt, danh_mục, tên_nguồn, link_nguồn, nhà_xuất_bản.
                 </p>
               </div>
@@ -259,7 +259,7 @@ export default function ImportContentModal({
                         <td className="p-2.5 max-w-[240px] truncate font-semibold text-on-surface" title={row.title}>
                           {row.title || <span className="text-error italic">(Trống)</span>}
                         </td>
-                        <td className="p-2.5 font-mono text-[11px]">{row.stage || <span className="text-error italic">(Trống)</span>}</td>
+                        <td className="p-2.5 font-medium text-[12px]">{row.stage ? (STAGE_LABELS[row.stage] || row.stage) : <span className="text-error italic">(Trống)</span>}</td>
                         <td className="p-2.5 text-on-surface-variant">{row.topicName || '—'}</td>
                         <td className="p-2.5">
                           {row.isValid ? (
@@ -375,7 +375,7 @@ export default function ImportContentModal({
             <div className="flex gap-4 py-2.5 px-3 my-3 bg-surface-container-low rounded-xl text-xs flex-wrap">
               <div>
                 <span className="text-outline">Giai đoạn: </span>
-                <strong className="font-mono text-on-surface">{previewRow.stage || '—'}</strong>
+                <strong className="text-on-surface">{previewRow.stage ? (STAGE_LABELS[previewRow.stage] || previewRow.stage) : '—'}</strong>
               </div>
               <div>
                 <span className="text-outline">Danh mục: </span>

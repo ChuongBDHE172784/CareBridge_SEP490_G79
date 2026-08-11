@@ -37,7 +37,7 @@ export function generateContentTemplate(type: ContentType): string {
 
   const headers = [
     'tiêu_đề (*Bắt buộc)',
-    'giai_đoạn (*Bắt buộc: PRE_PREGNANCY / PREGNANCY / POSTPARTUM)',
+    'giai_đoạn (*Bắt buộc: Chuẩn bị mang thai [PRE_PREGNANCY] / Thai kỳ [PREGNANCY] / Hậu sản [POSTPARTUM])',
     'nội_dung (*Bắt buộc)',
     'tóm_tắt (Không bắt buộc)',
     'danh_mục (Không bắt buộc - Tên danh mục)',
@@ -229,7 +229,7 @@ function processImportMatrix(
       if (STAGE_MAP[normalizedStageKey]) {
         parsedStage = STAGE_MAP[normalizedStageKey];
       } else {
-        errors.push(`Giai đoạn "${rawStage}" không hợp lệ. Phải là: PRE_PREGNANCY, PREGNANCY, hoặc POSTPARTUM.`);
+        errors.push(`Giai đoạn "${rawStage}" không hợp lệ. Phải là: Chuẩn bị mang thai (PRE_PREGNANCY), Thai kỳ (PREGNANCY), hoặc Hậu sản (POSTPARTUM).`);
       }
     }
 
