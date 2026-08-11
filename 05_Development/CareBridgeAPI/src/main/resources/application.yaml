@@ -198,17 +198,27 @@ carebridge:
       region: ${R2_REGION:auto}
 
   compreface:
-    enabled: true
-    base-url: http://localhost:8000
-    detection-api-key: 6988a154-3dbf-417d-ae72-8b634ca37fb6
-    verification-api-key: f75cf2ae-240a-4fe6-90cc-55dafd285db5
-    # Deprecated: kept for backwards compatibility if needed
-    # api-key: ${COMPREFACE_API_KEY:}
-    similarity-threshold: ${COMPREFACE_SIMILARITY_THRESHOLD:0.75}
-    det-prob-threshold: ${COMPREFACE_DET_PROB_THRESHOLD:0.7}
-    detection-limit: ${COMPREFACE_DETECTION_LIMIT:2}
-    connect-timeout-ms: ${COMPREFACE_CONNECT_TIMEOUT_MS:3000}
-    read-timeout-ms: ${COMPREFACE_READ_TIMEOUT_MS:8000}
+    # CompreFace generates its API keys when an application is created in its
+    # admin UI, so they belong to one specific instance and its database. They
+    # cannot be decided in advance here: a fresh CompreFace comes up with an
+    # empty database, and any key written ahead of time points at an application
+    # that does not exist. Bring CompreFace up, create the two services, then
+    # copy the keys it issues into the environment.
+    #
+    # Defaults are off and blank on purpose. Previously these three were
+    # hard-coded literals, which put real keys in the repository and made the
+    # feature default to on against http://localhost:8000 — inside the backend
+    # container that address is the backend itself, so every verification hung
+    # until it timed out.
+    enabled: ${CAREBRIDGE_COMPREFACE_ENABLED:false}
+    base-url: ${CAREBRIDGE_COMPREFACE_BASE_URL:http://localhost:8000}
+    detection-api-key: ${CAREBRIDGE_COMPREFACE_DETECTION_API_KEY:}
+    verification-api-key: ${CAREBRIDGE_COMPREFACE_VERIFICATION_API_KEY:}
+    similarity-threshold: ${CAREBRIDGE_COMPREFACE_SIMILARITY_THRESHOLD:0.75}
+    det-prob-threshold: ${CAREBRIDGE_COMPREFACE_DET_PROB_THRESHOLD:0.7}
+    detection-limit: ${CAREBRIDGE_COMPREFACE_DETECTION_LIMIT:2}
+    connect-timeout-ms: ${CAREBRIDGE_COMPREFACE_CONNECT_TIMEOUT_MS:3000}
+    read-timeout-ms: ${CAREBRIDGE_COMPREFACE_READ_TIMEOUT_MS:8000}
 
   triage:
     v2:
