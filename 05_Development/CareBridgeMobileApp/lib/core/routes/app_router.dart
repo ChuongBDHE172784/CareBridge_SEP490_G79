@@ -13,7 +13,7 @@ import '../../features/checklist/screens/checklist_history_screen.dart';
 import '../../features/checklist/screens/checklist_detail_screen.dart';
 import '../../features/home/screens/home_shell.dart';
 import '../../features/home/screens/expert_home_shell.dart';
-import '../../features/home/screens/family_member_home_screen.dart';
+import '../../features/home/screens/family_home_shell.dart';
 import '../../features/notification/screens/notification_center_screen.dart';
 import '../../features/journey/screens/mother_stage_selection_screen.dart';
 import '../../features/journey/screens/journey_setup_screen.dart';
@@ -110,7 +110,7 @@ import '../../features/consultation/screens/triage_expert_handoff_screen.dart';
 Widget _buildHomeForRole(String? role, {required int initialIndex}) {
   switch ((role ?? '').trim().toUpperCase()) {
     case 'FAMILY':
-      return const FamilyMemberHomeScreen();
+      return FamilyHomeShell(initialIndex: initialIndex);
     case 'EXPERT':
       return const ExpertHomeShell();
     case 'MOTHER':
