@@ -82,7 +82,10 @@ class ImuFallDetector {
   // mattress. Such a landing can have only a small rebound above gravity,
   // unlike a hard-floor impact, so the three-phase sequence remains required
   // while its free-fall, rebound and jerk limits are deliberately softer.
-  static const double freeFallThreshold = 6.5;
+  // iOS motion filtering can keep a genuine 50 cm low-g segment slightly
+  // above the ideal free-fall value. The 60 ms duration gate below still
+  // rejects the short low-g pulse produced by a 1 cm desk tap.
+  static const double freeFallThreshold = 7.2;
   static const double impactThreshold = 9.5;
   static const double softLandingImpactThreshold = 8.5;
   static const double minimumJerk = 40.0;
@@ -94,11 +97,14 @@ class ImuFallDetector {
   static const double gravity = 9.81;
   static const double stationaryAccelerationTolerance = 2.0;
   static const double stationaryGyroscopeThreshold = 0.5;
+  static const double softLandingStationaryAccelerationTolerance = 2.8;
+  static const double softLandingStationaryGyroscopeThreshold = 0.9;
   static const double cancellationGyroscopeThreshold = 1.5;
   static const double strongMovementAccelerationDeviation = 6.0;
   static const double softLandingCancellationGyroscopeThreshold = 2.5;
   static const double softLandingStrongMovementAccelerationDeviation = 8.0;
   static const double minimumStationaryRatio = 0.8;
+  static const double minimumSoftLandingStationaryRatio = 0.6;
   // A 1 cm lift produces only about 45 ms of free-fall. Three 50 Hz sample
   // intervals filter that tap while tolerating iOS sensor filtering on a
   // controlled 50 cm fall.
@@ -112,6 +118,9 @@ class ImuFallDetector {
     milliseconds: 500,
   );
   static const Duration immobilityWindow = Duration(seconds: 1);
+  static const Duration softLandingImmobilityWindow = Duration(
+    milliseconds: 600,
+  );
   static const Duration maximumGyroscopeAge = Duration(milliseconds: 200);
   // The three-phase detector already rejects a continuing impact pulse. Keep
   // only a brief debounce so a user who has dismissed an alert can perform
@@ -321,12 +330,21 @@ class ImuFallDetector {
     }
 
     _postImpactSamples++;
-    if (accelerationDeviation <= stationaryAccelerationTolerance &&
-        sample.gyroscopeMagnitude <= stationaryGyroscopeThreshold) {
+    final stationaryAccelerationLimit = isLongSoftFall
+        ? softLandingStationaryAccelerationTolerance
+        : stationaryAccelerationTolerance;
+    final stationaryGyroscopeLimit = isLongSoftFall
+        ? softLandingStationaryGyroscopeThreshold
+        : stationaryGyroscopeThreshold;
+    if (accelerationDeviation <= stationaryAccelerationLimit &&
+        sample.gyroscopeMagnitude <= stationaryGyroscopeLimit) {
       _stationaryPostImpactSamples++;
     }
 
-    if (sinceFirstImpact < immobilityWindow) {
+    final requiredImmobilityWindow = isLongSoftFall
+        ? softLandingImmobilityWindow
+        : immobilityWindow;
+    if (sinceFirstImpact < requiredImmobilityWindow) {
       _setDecision(ImuDetectorDecisionReason.awaitingImmobility);
       return null;
     }
@@ -335,7 +353,10 @@ class ImuFallDetector {
         ? 0.0
         : _stationaryPostImpactSamples / _postImpactSamples;
     _resetCandidate();
-    if (ratio < minimumStationaryRatio) {
+    final requiredStationaryRatio = isLongSoftFall
+        ? minimumSoftLandingStationaryRatio
+        : minimumStationaryRatio;
+    if (ratio < requiredStationaryRatio) {
       _setDecision(ImuDetectorDecisionReason.insufficientStationarySamples);
       return null;
     }
