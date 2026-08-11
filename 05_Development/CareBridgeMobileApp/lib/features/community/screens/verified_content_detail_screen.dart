@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/auth/auth_state.dart';
 import '../../../core/constants/content_stages.dart';
 import '../models/content_model.dart';
@@ -310,6 +311,135 @@ class _VerifiedContentDetailScreenState
             const SizedBox(height: 16),
             // Rich text is sanitized by the backend before this renderer receives it.
             VerifiedContentBody(html: content.body, color: _onSurface),
+            if ((content.sources != null && content.sources!.isNotEmpty) ||
+                (content.sourceLabel != null && content.sourceLabel!.isNotEmpty)) ...[
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: _surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFEADBCE)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.verified_outlined, size: 18, color: _primary),
+                        SizedBox(width: 6),
+                        Text(
+                          'NGUỒN THAM KHẢO / KIỂM DUYỆT',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: _primary,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    if (content.sources != null && content.sources!.isNotEmpty)
+                      ...content.sources!.map((src) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (src.title.isNotEmpty)
+                                Row(
+                                  children: [
+                                    const Icon(Icons.person_outline, size: 16, color: _outline),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        src.title,
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: _onSurface,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              if (src.publisher != null && src.publisher!.isNotEmpty) ...[
+                                const SizedBox(height: 2),
+                                Row(
+                                  children: [
+                                    const Icon(Icons.domain_outlined, size: 16, color: _outline),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        'Đơn vị xuất bản: ${src.publisher}',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: _onSurfaceVariant,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                              if (src.url != null && src.url!.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                InkWell(
+                                  onTap: () async {
+                                    final rawUrl = src.url!;
+                                    final urlString = rawUrl.startsWith('http')
+                                        ? rawUrl
+                                        : 'https://$rawUrl';
+                                    final uri = Uri.tryParse(urlString);
+                                    if (uri != null) {
+                                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                    }
+                                  },
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Icon(Icons.link_outlined, size: 16, color: _primary),
+                                      const SizedBox(width: 4),
+                                      Expanded(
+                                        child: Text(
+                                          'Bài viết gốc tại: ${src.url}',
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: _primary,
+                                            decoration: TextDecoration.underline,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        );
+                      })
+                    else if (content.sourceLabel != null && content.sourceLabel!.isNotEmpty)
+                      Row(
+                        children: [
+                          const Icon(Icons.menu_book_outlined, size: 16, color: _outline),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              'Nguồn: ${content.sourceLabel}',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: _onSurface,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 20),
             // Disclaimer
             Container(

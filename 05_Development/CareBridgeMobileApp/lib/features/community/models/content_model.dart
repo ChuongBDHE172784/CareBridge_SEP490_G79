@@ -120,6 +120,24 @@ int contentStageIndexForJourneyType(String? journeyType) {
   }
 }
 
+class ContentSource {
+  final String title;
+  final String? url;
+  final String? publisher;
+
+  const ContentSource({
+    required this.title,
+    this.url,
+    this.publisher,
+  });
+
+  factory ContentSource.fromJson(Map<String, dynamic> json) => ContentSource(
+        title: json['title'] as String? ?? '',
+        url: json['url'] as String?,
+        publisher: json['publisher'] as String?,
+      );
+}
+
 class ContentDetail {
   final String id;
   final String type;
@@ -129,6 +147,8 @@ class ContentDetail {
   final String topicId;
   final int version;
   final String? publishedAt;
+  final String? sourceLabel;
+  final List<ContentSource>? sources;
 
   ContentDetail({
     required this.id,
@@ -139,6 +159,8 @@ class ContentDetail {
     required this.topicId,
     required this.version,
     this.publishedAt,
+    this.sourceLabel,
+    this.sources,
   });
 
   factory ContentDetail.fromJson(Map<String, dynamic> json) => ContentDetail(
@@ -150,6 +172,13 @@ class ContentDetail {
     topicId: json['topicId'] as String? ?? '',
     version: json['version'] as int? ?? 1,
     publishedAt: json['publishedAt'] as String?,
+    sourceLabel: json['sourceLabel'] as String?,
+    sources: json['sources'] is List
+        ? (json['sources'] as List)
+            .whereType<Map>()
+            .map((e) => ContentSource.fromJson(Map<String, dynamic>.from(e)))
+            .toList(growable: false)
+        : null,
   );
 
   /// Image sources are intentionally derived from the server-sanitized body.

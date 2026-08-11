@@ -50,4 +50,26 @@ void main() {
 
     expect(content.imageUrls, ['/api/v1/files/cover.png']);
   });
+
+  test('parses sourceLabel and sources list from ContentDetail payload', () {
+    final content = ContentDetail.fromJson({
+      'id': 'content-src',
+      'title': 'Bài viết y tế',
+      'body': '<p>Nội dung</p>',
+      'sourceLabel': 'Bộ Y Tế',
+      'sources': [
+        {
+          'title': 'WHO Guidelines',
+          'url': 'https://who.int/article',
+          'publisher': 'WHO',
+        }
+      ],
+    });
+
+    expect(content.sourceLabel, 'Bộ Y Tế');
+    expect(content.sources?.length, 1);
+    expect(content.sources?.first.title, 'WHO Guidelines');
+    expect(content.sources?.first.url, 'https://who.int/article');
+    expect(content.sources?.first.publisher, 'WHO');
+  });
 }
