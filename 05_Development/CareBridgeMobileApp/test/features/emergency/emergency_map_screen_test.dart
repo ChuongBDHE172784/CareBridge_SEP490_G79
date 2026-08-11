@@ -5,6 +5,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
+import 'package:trackasia_gl/trackasia_gl.dart';
 import 'package:untitled/core/auth/auth_state.dart';
 import 'package:untitled/features/aiTriage/models/triage_continuation.dart';
 import 'package:untitled/features/aiTriage/services/triage_continuation_restore_coordinator.dart';
@@ -18,6 +19,9 @@ import 'package:untitled/features/emergency/services/emergency_service.dart';
 import 'package:untitled/features/safety/services/safety_permission_service.dart';
 
 class _RecordingFacilityService extends CareFacilityService {
+  _RecordingFacilityService([this.results = const []]);
+
+  final List<CareFacility> results;
   int searchCalls = 0;
 
   @override
@@ -28,7 +32,7 @@ class _RecordingFacilityService extends CareFacilityService {
     String type = 'hospital',
   }) async {
     searchCalls++;
-    return const [];
+    return results;
   }
 }
 
@@ -112,6 +116,38 @@ class _StubContinuationCoordinator
     if (error != null) throw error!;
     final index = calls <= decisions.length ? calls - 1 : decisions.length - 1;
     return decisions[index];
+  }
+}
+
+class _FakeMapRenderer {
+  _FakeMapRenderer({this.emitMapCreated = true});
+
+  final bool emitMapCreated;
+  final List<Key> rendererKeys = [];
+  final List<VoidCallback> styleLoadedCallbacks = [];
+  final List<void Function(TrackAsiaMapController?)> mapCreatedCallbacks = [];
+  final List<bool> myLocationEnabledValues = [];
+
+  int get builds => rendererKeys.length;
+
+  Widget build({
+    required Key key,
+    required String styleString,
+    required CameraPosition initialCameraPosition,
+    required bool myLocationEnabled,
+    required void Function(TrackAsiaMapController? controller) onMapCreated,
+    required VoidCallback onStyleLoaded,
+  }) {
+    if (!rendererKeys.contains(key)) {
+      rendererKeys.add(key);
+      styleLoadedCallbacks.add(onStyleLoaded);
+      mapCreatedCallbacks.add(onMapCreated);
+      myLocationEnabledValues.add(myLocationEnabled);
+      if (emitMapCreated) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => onMapCreated(null));
+      }
+    }
+    return ColoredBox(key: key, color: Colors.blueGrey);
   }
 }
 
@@ -905,5 +941,139 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('radius-5000')), findsOneWidget);
+  });
+
+  testWidgets('TrackAsia style success clears renderer loading state', (
+    tester,
+  ) async {
+    final renderer = _FakeMapRenderer();
+    final syncedFacilities = <CareFacility>[];
+    const facility = CareFacility(
+      facilityId: 'hospital-1',
+      name: 'Bệnh viện Test',
+      latitude: 10.77,
+      longitude: 106.67,
+      sourceType: 'TRACKASIA',
+    );
+    await tester.pumpWidget(
+      MaterialApp(
+        home: EmergencyMapScreen(
+          emergencyService: _RecordingEmergencyService(),
+          facilityService: _RecordingFacilityService(const [facility]),
+          locationConsentProbe: () async => true,
+          permissionService: SafetyPermissionService(
+            locationReader: () async => _position(),
+          ),
+          trackAsiaMapKey: 'test-map-key',
+          mapRenderer: renderer.build,
+          mapStyleLoadTimeout: const Duration(minutes: 1),
+          annotationSynchronizer:
+              ({required position, required facilities, route}) async {
+                syncedFacilities.addAll(facilities);
+              },
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+
+    expect(renderer.builds, 1);
+    expect(renderer.myLocationEnabledValues, everyElement(isFalse));
+    expect(find.text('Đang mở bản đồ TrackAsia...'), findsOneWidget);
+
+    renderer.styleLoadedCallbacks.single();
+    await tester.pump();
+
+    expect(syncedFacilities, const [facility]);
+    expect(find.text('Đang mở bản đồ TrackAsia...'), findsNothing);
+    expect(find.byKey(const Key('trackasia-map-load-error')), findsNothing);
+  });
+
+  testWidgets(
+    'TrackAsia timeout retries only the renderer and ignores stale callbacks',
+    (tester) async {
+      final renderer = _FakeMapRenderer(emitMapCreated: false);
+      final facilities = _RecordingFacilityService();
+      final emergency = _RecordingEmergencyService();
+      var locationReads = 0;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: EmergencyMapScreen(
+            emergencyService: emergency,
+            facilityService: facilities,
+            locationConsentProbe: () async => true,
+            permissionService: SafetyPermissionService(
+              locationReader: () async {
+                locationReads++;
+                return _position();
+              },
+            ),
+            trackAsiaMapKey: 'test-map-key',
+            mapRenderer: renderer.build,
+            mapStyleLoadTimeout: const Duration(milliseconds: 50),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 60));
+
+      expect(find.byKey(const Key('trackasia-map-load-error')), findsOneWidget);
+      expect(renderer.builds, 1);
+      expect(locationReads, 1);
+      expect(facilities.searchCalls, 1);
+      expect(emergency.openCalls, 1);
+
+      await tester.tap(find.byKey(const Key('trackasia-map-retry')));
+      await tester.pump();
+
+      expect(renderer.builds, 2);
+      expect(renderer.myLocationEnabledValues, everyElement(isFalse));
+      expect(locationReads, 1);
+      expect(facilities.searchCalls, 1);
+      expect(emergency.openCalls, 1);
+
+      renderer.styleLoadedCallbacks.first();
+      await tester.pump();
+      expect(find.text('Đang mở bản đồ TrackAsia...'), findsOneWidget);
+
+      renderer.styleLoadedCallbacks.last();
+      await tester.pump();
+      expect(find.text('Đang mở bản đồ TrackAsia...'), findsNothing);
+      expect(find.byKey(const Key('trackasia-map-load-error')), findsNothing);
+    },
+  );
+
+  testWidgets('TrackAsia watchdog is cancelled when screen is disposed', (
+    tester,
+  ) async {
+    final renderer = _FakeMapRenderer();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: EmergencyMapScreen(
+          emergencyService: _RecordingEmergencyService(),
+          facilityService: _RecordingFacilityService(),
+          locationConsentProbe: () async => true,
+          permissionService: SafetyPermissionService(
+            locationReader: () async => _position(),
+          ),
+          trackAsiaMapKey: 'test-map-key',
+          mapRenderer: renderer.build,
+          mapStyleLoadTimeout: const Duration(milliseconds: 50),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 60));
+    renderer.mapCreatedCallbacks.single(null);
+    renderer.styleLoadedCallbacks.single();
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
   });
 }
