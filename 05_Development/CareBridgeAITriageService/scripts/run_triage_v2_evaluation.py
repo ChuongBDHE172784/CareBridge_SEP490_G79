@@ -24,7 +24,13 @@ from app.config import GeminiSettings
 from app.gemini_client import GeminiClient
 from app.questions.catalog import CATALOG
 from app.rules.registry import get_registry, load_dataset_requirements
-from app.triage_v2.api import TriageV2TurnRequest, _merge_observations, _turn_state
+from app.triage_v2.api import (
+    TriageV2TurnRequest,
+    _merge_observations,
+    _merge_reported_measurements,
+    _turn_state,
+)
+from app.triage_v2.deterministic_measurements import extract_reported_measurements
 from app.triage_v2.deterministic_signals import detect_danger_signals, merge_as_floor
 from app.triage_v2.extraction import extract_and_validate
 from app.triage_v2.graph import build_triage_v2_graph, graph_config
@@ -286,6 +292,70 @@ class CorpusValidationError(ValueError):
         super().__init__("invalid vague baseline corpus:\n- " + "\n- ".join(errors))
 
 
+def _derive_submitted_option_codes(turn: object, *, label: str) -> list[str]:
+    """Recover answer options solely from canonical question-answer provenance.
+
+    The Phase 1 corpus predates the explicit ``submittedOptionCodes`` transport field, but its
+    structured signals already preserve the canonical Java mapper's provenance. Each answered
+    question must therefore resolve to exactly one ``sourceOptionCode`` among observations whose
+    provenance is ``QUESTION_ANSWER`` and whose ``sourceQuestionId`` matches that question.
+    Iterating the authored question IDs (rather than the signal mapping) preserves pair order.
+    """
+
+    if type(turn) is not dict:
+        raise CorpusValidationError([f"{label} must be an object"])
+    answered_ids = turn.get("answeredQuestionIds", [])
+    signals = turn.get("signals", {})
+    if type(answered_ids) is not list or any(type(item) is not str for item in answered_ids):
+        raise CorpusValidationError([f"{label}.answeredQuestionIds must be a string array"])
+    if type(signals) is not dict:
+        raise CorpusValidationError([f"{label}.signals must be an object"])
+
+    submitted: list[str] = []
+    errors: list[str] = []
+    for answer_index, question_id in enumerate(answered_ids):
+        options: set[str] = set()
+        for signal_value in signals.values():
+            observations = signal_value if type(signal_value) is list else [signal_value]
+            for observation in observations:
+                if type(observation) is not dict:
+                    continue
+                if (
+                    observation.get("provenance") == "QUESTION_ANSWER"
+                    and observation.get("sourceQuestionId") == question_id
+                ):
+                    option_code = observation.get("sourceOptionCode")
+                    if type(option_code) is str and option_code:
+                        options.add(option_code)
+        provenance_path = f"{label}.answeredQuestionIds[{answer_index}] ({question_id})"
+        if not options:
+            errors.append(
+                f"{provenance_path} has no QUESTION_ANSWER sourceOptionCode "
+                "in matching canonical signal provenance"
+            )
+        elif len(options) > 1:
+            errors.append(
+                f"{provenance_path} has conflicting QUESTION_ANSWER sourceOptionCodes: "
+                f"{sorted(options)}"
+            )
+        else:
+            option_code = next(iter(options))
+            question = CATALOG.get(question_id)
+            valid_options = {
+                option.option_code for option in question.options
+            } if question is not None else set()
+            if option_code not in valid_options:
+                errors.append(
+                    f"{provenance_path} sourceOptionCode {option_code} does not belong to "
+                    f"{question_id}"
+                )
+            else:
+                submitted.append(option_code)
+    if errors:
+        raise CorpusValidationError(errors)
+    return submitted
+
+
 class LocalGeminiFaultFixture:
     """Exercise GeminiClient's real fail-closed transport handling with an injected local SDK."""
 
@@ -475,15 +545,25 @@ def validate_vague_cases(cases: list[object]) -> None:
             if type(turn.get("message")) is not str or not turn.get("message", "").strip():
                 errors.append(f"{turn_label}.message must be non-empty")
             answered_ids = turn.get("answeredQuestionIds", [])
-            if type(answered_ids) is not list or any(type(item) is not str for item in answered_ids):
+            answered_ids_valid = (
+                type(answered_ids) is list
+                and not any(type(item) is not str for item in answered_ids)
+            )
+            if not answered_ids_valid:
                 errors.append(f"{turn_label}.answeredQuestionIds must be a string array")
             else:
                 for question_id in answered_ids:
                     if question_id not in catalog_ids:
                         errors.append(f"{turn_label} has unknown answered question ID {question_id}")
             signals = turn.get("signals", {})
-            if type(signals) is not dict or not set(signals) <= signal_ids:
+            signals_valid = type(signals) is dict and set(signals) <= signal_ids
+            if not signals_valid:
                 errors.append(f"{turn_label}.signals contains unknown canonical signals")
+            if answered_ids_valid and signals_valid:
+                try:
+                    _derive_submitted_option_codes(turn, label=turn_label)
+                except CorpusValidationError as failure:
+                    errors.extend(failure.errors)
             if type(turn.get("measurements", {})) is not dict:
                 errors.append(f"{turn_label}.measurements must be an object")
 
@@ -603,6 +683,11 @@ def _evaluate_vague_case(case: dict[str, object], index: int) -> dict[str, objec
     trajectory: list[dict[str, object]] = []
     started = perf_counter()
     for turn_index, turn in enumerate(authored_turns):
+        turn_label = (
+            f"{case['id']}.initial"
+            if turn_index == 0
+            else f"{case['id']}.turns[{turn_index - 1}]"
+        )
         request = TriageV2TurnRequest(
             sessionId=session_id,
             stateVersion=int(prior_state.get("stateVersion", 1)) if prior_state else 1,
@@ -617,11 +702,23 @@ def _evaluate_vague_case(case: dict[str, object], index: int) -> dict[str, objec
             signals=turn.get("signals", {}),
             measurements=turn.get("measurements", {}),
             answeredQuestionIds=turn.get("answeredQuestionIds", []),
+            submittedOptionCodes=_derive_submitted_option_codes(turn, label=turn_label),
             expectedRulesetHash=get_registry().ruleset_sha256,
         )
         state = _turn_state(request)
+        _merge_reported_measurements(
+            state,
+            extract_reported_measurements(
+                request.latestUserMessage, target_entity=state.get("targetEntity")
+            ),
+        )
         state["signals"] = merge_as_floor(
-            dict(state.get("signals", {})), detect_danger_signals(request.latestUserMessage)
+            dict(state.get("signals", {})),
+            detect_danger_signals(
+                request.latestUserMessage,
+                stage=state.get("stage"),
+                stage_source="EXPLICIT_SELECTED_PROFILE",
+            ),
         )
         state.update(global_safety_gate(state))
         if state.get("triageOutcome") != "RED" and fixture.mode != "OFF":
@@ -1042,7 +1139,7 @@ def render_vague_markdown(report: dict[str, object]) -> str:
         return f"{value:.2%}" if percent else str(value)
 
     lines = [
-        "# Phase 1 AI Triage V2 vague-corpus baseline",
+        "# AI Triage V2 vague-corpus baseline",
         "",
         "> Synthetic offline engineering evaluation. Clinical review status: **PENDING**.",
         "",

@@ -37,6 +37,7 @@ class FilterContext:
     missing_fields: frozenset[str] = frozenset()
     missing_signals: frozenset[str] = frozenset()
     answered_question_ids: frozenset[str] = frozenset()
+    asked_question_ids: frozenset[str] = frozenset()
     signals: dict[str, object] | None = None
     safety_screen_status: object = "INCOMPLETE"
 
@@ -51,6 +52,12 @@ def _clarification_for(context: FilterContext) -> tuple[str, ...]:
         selected = ["Q_CLARIFY_TARGET_ENTITY"]
     elif context.context_status is ContextResolutionStatus.NEEDS_INTENT:
         selected = ["Q_CLARIFY_INTENT"]
+    elif context.context_status is ContextResolutionStatus.NEEDS_STAGE:
+        selected = [
+            "Q_CLARIFY_STAGE"
+            if context.target_entity is TargetEntity.MOTHER
+            else "Q_BABY_AGE_MONTHS"
+        ]
     elif context.context_status is ContextResolutionStatus.CONFLICTED:
         selected = ["Q_CLARIFY_TARGET_FIRST"]
     else:
@@ -61,6 +68,7 @@ def _clarification_for(context: FilterContext) -> tuple[str, ...]:
     if (
         safety_status != "COMPLETE"
         and "Q_GLOBAL_DANGER" not in context.answered_question_ids
+        and "Q_GLOBAL_DANGER" not in context.asked_question_ids
         and danger is not None
         and danger.may_run_without_resolved_target
     ):
@@ -80,7 +88,10 @@ def _is_unmeasurable(question: Question, signals: dict[str, object] | None) -> b
 def is_eligible(question: Question, context: FilterContext) -> bool:
     """Whether a single question may be asked in this context."""
 
-    if question.question_id in context.answered_question_ids:
+    if (
+        question.question_id in context.answered_question_ids
+        or question.question_id in context.asked_question_ids
+    ):
         return False
 
     if question.requires_resolved_target and not context.target_entity.is_resolved:
@@ -132,6 +143,7 @@ def eligible_questions(
             CATALOG[question_id] for question_id in clarifications
             if question_id in CATALOG
             and CATALOG[question_id].question_id not in context.answered_question_ids
+            and CATALOG[question_id].question_id not in context.asked_question_ids
         )
 
     candidates: Iterable[str] = candidate_question_ids or CATALOG.keys()

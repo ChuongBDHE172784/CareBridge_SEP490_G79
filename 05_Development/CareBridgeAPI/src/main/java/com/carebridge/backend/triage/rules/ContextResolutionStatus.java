@@ -19,6 +19,7 @@ public enum ContextResolutionStatus {
      */
     public boolean blocksSymptomQuestions() {
         return this == NEEDS_TARGET_ENTITY
+                || this == NEEDS_STAGE
                 || this == NEEDS_INTENT
                 || this == CONFLICTED
                 || this == INSUFFICIENT_CONTEXT;

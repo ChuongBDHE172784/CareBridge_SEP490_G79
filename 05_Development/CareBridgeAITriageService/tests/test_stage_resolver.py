@@ -116,6 +116,87 @@ def test_explicit_stage_outranks_a_journey_stage():
     assert resolution.stage is CareStage.PREGNANCY
 
 
+@pytest.mark.parametrize(
+    ("message", "entity", "journey", "expected"),
+    [
+        ("Em bầu 31 tuần", TargetEntity.MOTHER,
+         CareStage.POSTPARTUM_MOTHER, CareStage.PREGNANCY),
+        ("Em bầu ba mươi mốt tuần", TargetEntity.MOTHER,
+         CareStage.POSTPARTUM_MOTHER, CareStage.PREGNANCY),
+        ("Con mười tháng sốt 39,3 độ", TargetEntity.BABY,
+         CareStage.TODDLER_12_24M, CareStage.INFANT_0_12M),
+        ("Bé hai tháng đo được 38,2 độ", TargetEntity.BABY,
+         CareStage.TODDLER_12_24M, CareStage.INFANT_0_12M),
+    ],
+)
+def test_latest_message_stage_with_digits_or_vietnamese_words_outranks_journey(
+    message, entity, journey, expected
+):
+    resolution = resolve_stage(
+        entity=entity,
+        latest_user_message=message,
+        journey_stage=journey,
+    )
+
+    assert resolution.stage is expected
+    assert resolution.source is ResolutionSource.EXPLICIT_IN_LATEST_MESSAGE
+
+
+def test_two_incompatible_stages_in_latest_message_are_conflicted():
+    resolution = resolve_stage(
+        entity=TargetEntity.MOTHER,
+        latest_user_message="Em bầu 31 tuần nhưng cũng sau sinh 5 ngày",
+        journey_stage=CareStage.PREGNANCY,
+    )
+
+    assert resolution.stage is CareStage.CONFLICTED
+    assert resolution.source is ResolutionSource.EXPLICIT_IN_LATEST_MESSAGE
+    assert "LATEST_MESSAGE_STAGE_CONFLICT" in resolution.conflicts
+
+
+def test_duration_in_baby_message_is_not_misread_as_baby_age():
+    resolution = resolve_stage(
+        entity=TargetEntity.BABY,
+        latest_user_message="Be ho muoi thang nay",
+        journey_stage=CareStage.TODDLER_12_24M,
+    )
+
+    assert resolution.stage is CareStage.TODDLER_12_24M
+    assert resolution.source is ResolutionSource.CONFIRMED_CONVERSATION_TARGET
+
+
+def test_negated_postpartum_phrase_does_not_override_journey_stage():
+    resolution = resolve_stage(
+        entity=TargetEntity.MOTHER,
+        latest_user_message="Em khong o giai doan hau san",
+        journey_stage=CareStage.PREGNANCY,
+    )
+
+    assert resolution.stage is CareStage.PREGNANCY
+    assert resolution.source is ResolutionSource.CONFIRMED_CONVERSATION_TARGET
+
+
+def test_incomplete_number_words_do_not_become_a_baby_age():
+    resolution = resolve_stage(
+        entity=TargetEntity.BABY,
+        latest_user_message="Be ba muoi linh thang",
+        journey_stage=CareStage.INFANT_0_12M,
+    )
+
+    assert resolution.stage is CareStage.INFANT_0_12M
+
+
+def test_stage_clarification_option_is_consumed_as_explicit_stage():
+    resolution = resolve_stage(
+        entity=TargetEntity.MOTHER,
+        submitted_option_codes=["STAGE_PREGNANCY"],
+        journey_stage=CareStage.POSTPARTUM_MOTHER,
+    )
+
+    assert resolution.stage is CareStage.PREGNANCY
+    assert resolution.source is ResolutionSource.EXPLICIT_CLARIFICATION_ANSWER
+
+
 def test_nothing_to_go_on_stays_unknown():
     assert resolve_stage(entity=TargetEntity.MOTHER).stage is CareStage.UNKNOWN
 

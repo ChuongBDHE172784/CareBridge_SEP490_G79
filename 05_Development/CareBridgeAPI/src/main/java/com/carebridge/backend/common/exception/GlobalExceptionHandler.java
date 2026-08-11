@@ -36,6 +36,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -65,11 +66,16 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(
             MethodArgumentNotValidException ex,
             HttpServletRequest request) {
-        logger.error("Validation error: {}", ex.getMessage(), ex);
+        // Only the field names: getMessage() on this exception renders every rejected value,
+        // so logging it wrote the submitted password into the application log whenever the
+        // password failed its @Size check.
+        logger.warn("Validation error: path={}, fields={}", request.getRequestURI(),
+                ex.getBindingResult().getFieldErrors().stream()
+                        .map(FieldError::getField).toList());
         List<ErrorDetail> details = ex.getBindingResult().getFieldErrors().stream()
                 .map(error -> ErrorDetail.builder()
                         .field(error.getField())
-                        .rejectedValue(error.getRejectedValue())
+                        .rejectedValue(maskIfSensitive(error.getField(), error.getRejectedValue()))
                         .message(error.getDefaultMessage())
                         .build())
                 .toList();
@@ -100,11 +106,14 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleConstraintViolation(
             ConstraintViolationException ex,
             HttpServletRequest request) {
-        logger.error("Constraint violation: {}", ex.getMessage(), ex);
+        logger.warn("Constraint violation: path={}, fields={}", request.getRequestURI(),
+                ex.getConstraintViolations().stream()
+                        .map(v -> v.getPropertyPath().toString()).toList());
         List<ErrorDetail> details = ex.getConstraintViolations().stream()
                 .map(violation -> ErrorDetail.builder()
                         .field(violation.getPropertyPath().toString())
-                        .rejectedValue(violation.getInvalidValue())
+                        .rejectedValue(maskIfSensitive(
+                                violation.getPropertyPath().toString(), violation.getInvalidValue()))
                         .message(violation.getMessage())
                         .build())
                 .toList();
@@ -497,6 +506,20 @@ public class GlobalExceptionHandler {
             String message,
             HttpServletRequest request) {
         return error(status, code, message, request, java.util.Map.of());
+    }
+
+    // Bean Validation hands back whatever the caller submitted, so a password that fails its
+    // @Size check came back to the client verbatim inside rejectedValue and travelled through
+    // every proxy log and error tracker on the way. The field still has to be named so the form
+    // can highlight it; the value never does.
+    private static final java.util.regex.Pattern SENSITIVE_FIELD = java.util.regex.Pattern.compile(
+            "(?i).*(password|otp|code|token|secret|pin|credential).*");
+
+    private static Object maskIfSensitive(String field, Object rejectedValue) {
+        if (rejectedValue == null || field == null) {
+            return rejectedValue;
+        }
+        return SENSITIVE_FIELD.matcher(field).matches() ? "[REDACTED]" : rejectedValue;
     }
 
     private ResponseEntity<ErrorResponse> error(

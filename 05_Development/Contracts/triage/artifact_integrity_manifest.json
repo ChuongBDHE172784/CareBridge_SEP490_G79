@@ -1,7 +1,7 @@
 {
   "$comment": "Integrity only. Proves each artifact matches its checksum. Does NOT prove clinical correctness and is NOT an approval record.",
   "manifestType": "ARTIFACT_INTEGRITY",
-  "generatedAt": "2026-08-10T16:08:26+00:00",
+  "generatedAt": "2026-08-11T09:16:28+00:00",
   "generatorVersion": "sync_triage_rule_registry.py/3.0",
   "artifacts": [
     {
@@ -12,12 +12,12 @@
     {
       "artifactId": "context_contract_v1",
       "path": "05_Development/Contracts/triage/context_contract_v1.json",
-      "sha256": "64b0d37f4a53198902c5fd022d7aba5a86af74cbf871db7ce3c6727244a64d56"
+      "sha256": "10823f48e88ea7699d12b9955c7a6d890ecf188715e7651097849f389fea12e9"
     },
     {
       "artifactId": "context_parity_vectors_v1",
       "path": "05_Development/Contracts/triage/context_parity_vectors_v1.json",
-      "sha256": "124dade8c70c8a337eb654629215cd864ab8b468877e77c8255d1c1852ffef3b"
+      "sha256": "c871e0d2c26cc7b6186424e28bb9ed0d2af5801d83af4275afd7da0014b27fe2"
     },
     {
       "artifactId": "dataset_requirements_v1",
@@ -37,7 +37,7 @@
     {
       "artifactId": "internal_rule_review_manifest",
       "path": "05_Development/Contracts/triage/internal_rule_review_manifest.json",
-      "sha256": "37a1cf251aa65691b7e8372e9ef6a4820d351c4619fffa171100d7523e760f08"
+      "sha256": "27fc2c86b210711cf48a9482be867c379ed309014853671f2632c0a22ea379fb"
     },
     {
       "artifactId": "matrix_snapshot_v0.1.0",
@@ -57,7 +57,7 @@
     {
       "artifactId": "question_catalog_v1",
       "path": "05_Development/Contracts/triage/question_catalog_v1.json",
-      "sha256": "402a0cc53b1ff516c84266435d674214e702221a58d0ce59eb6a0203845a866e"
+      "sha256": "4ea470b381f1567e845febfc429e096cd5c44ae740ec8a81c687dba15a9cfc3a"
     },
     {
       "artifactId": "required_rule_manifest",
@@ -67,7 +67,7 @@
     {
       "artifactId": "source_verification_manifest",
       "path": "05_Development/Contracts/triage/source_verification_manifest.json",
-      "sha256": "f829847b028d139ace63ccfccd4b681fba4ec3329cc6b32beb144e98c03f9a07"
+      "sha256": "8e3b2b4aeb6162c7da1bf09ee0c5467c54e1f87842bc772033ba8c49f1e2464a"
     },
     {
       "artifactId": "target_entity_indicators_v1",

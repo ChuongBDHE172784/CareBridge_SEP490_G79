@@ -82,6 +82,7 @@ class ContextResolutionStatus(str, Enum):
 
         return self in (
             ContextResolutionStatus.NEEDS_TARGET_ENTITY,
+            ContextResolutionStatus.NEEDS_STAGE,
             ContextResolutionStatus.NEEDS_INTENT,
             ContextResolutionStatus.CONFLICTED,
             ContextResolutionStatus.INSUFFICIENT_CONTEXT,
@@ -95,6 +96,7 @@ class ResolutionSource(str, Enum):
     EXPLICIT_IN_LATEST_MESSAGE = "EXPLICIT_IN_LATEST_MESSAGE"
     EXPLICIT_SELECTED_PROFILE = "EXPLICIT_SELECTED_PROFILE"
     CONFIRMED_CONVERSATION_TARGET = "CONFIRMED_CONVERSATION_TARGET"
+    CONFIRMED_CONVERSATION_INTENT = "CONFIRMED_CONVERSATION_INTENT"
     STAGE_SPECIFIC_CONTEXT = "STAGE_SPECIFIC_CONTEXT"
     EXTRACTOR_INFERENCE = "EXTRACTOR_INFERENCE"
     NONE = "NONE"

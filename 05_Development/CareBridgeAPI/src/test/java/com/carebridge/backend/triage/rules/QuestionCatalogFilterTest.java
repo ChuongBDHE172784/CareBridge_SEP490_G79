@@ -95,7 +95,7 @@ class QuestionCatalogFilterTest {
         var context = new QuestionCatalogFilter.FilterContext(
                 TargetEntity.UNKNOWN, CareStage.UNKNOWN, IntentType.SYMPTOM_TRIAGE,
                 ContextResolutionStatus.NEEDS_TARGET_ENTITY, Set.of("bleeding_amount"), Set.of(),
-                Set.of(), Map.of(), "COMPLETE");
+                Set.of(), Set.of(), Map.of(), "COMPLETE");
 
         assertThat(ids(filter.eligibleQuestions(context, null)))
                 .containsExactly("Q_CLARIFY_TARGET_ENTITY");
@@ -119,6 +119,17 @@ class QuestionCatalogFilterTest {
                 ContextResolutionStatus.NEEDS_INTENT, Set.of(), Set.of());
         assertThat(ids(filter.eligibleQuestions(context, null)))
                 .containsExactly("Q_CLARIFY_INTENT", "Q_GLOBAL_DANGER");
+    }
+
+    @Test
+    @DisplayName("An unknown maternal stage asks for stage and global danger")
+    void unknownMaternalStageAsksForStage() {
+        var context = QuestionCatalogFilter.FilterContext.of(
+                TargetEntity.MOTHER, CareStage.UNKNOWN, IntentType.SYMPTOM_TRIAGE,
+                ContextResolutionStatus.NEEDS_STAGE, Set.of(), Set.of());
+
+        assertThat(ids(filter.eligibleQuestions(context, null)))
+                .containsExactly("Q_CLARIFY_STAGE", "Q_GLOBAL_DANGER");
     }
 
     @Test
@@ -166,9 +177,23 @@ class QuestionCatalogFilterTest {
         var context = new QuestionCatalogFilter.FilterContext(
                 base.targetEntity(), base.stage(), base.intent(), base.contextStatus(),
                 base.missingFields(), base.missingSignals(),
-                Set.of("Q_BLEEDING_AMOUNT"), Map.of(), "INCOMPLETE");
+                Set.of("Q_BLEEDING_AMOUNT"), Set.of(), Map.of(), "INCOMPLETE");
         assertThat(ids(filter.eligibleQuestions(context, null)))
                 .doesNotContain("Q_BLEEDING_AMOUNT");
+    }
+
+    @Test
+    @DisplayName("An asked but unanswered question is not repeated")
+    void askedQuestionNotRepeated() {
+        var base = resolved();
+        var context = new QuestionCatalogFilter.FilterContext(
+                base.targetEntity(), base.stage(), base.intent(), base.contextStatus(),
+                base.missingFields(), base.missingSignals(), Set.of(),
+                Set.of("Q_BLEEDING_AMOUNT"), Map.of(), "INCOMPLETE");
+
+        assertThat(ids(filter.eligibleQuestions(context, null)))
+                .doesNotContain("Q_BLEEDING_AMOUNT");
+        assertThat(context.answeredQuestionIds()).isEmpty();
     }
 
     @Test
@@ -177,7 +202,8 @@ class QuestionCatalogFilterTest {
         var unmeasurable = new QuestionCatalogFilter.FilterContext(
                 TargetEntity.MOTHER, CareStage.PREGNANCY, IntentType.SYMPTOM_TRIAGE,
                 ContextResolutionStatus.RESOLVED, Set.of("blood_pressure"), Set.of(),
-                Set.of(), Map.of("blood_pressure", "UNAWARE_OR_UNMEASURABLE"), "INCOMPLETE");
+                Set.of(), Set.of(), Map.of("blood_pressure", "UNAWARE_OR_UNMEASURABLE"),
+                "INCOMPLETE");
         assertThat(filter.isEligible(q("Q_BP_IF_KNOWN"), unmeasurable)).isFalse();
 
         var answerable = QuestionCatalogFilter.FilterContext.of(
@@ -204,7 +230,7 @@ class QuestionCatalogFilterTest {
         // 15 original questions, plus the deterministic global-danger, self-harm and headache
         // screens, plus the three paediatric follow-ups the ported PED_ rules need. Without them
         // those signals were reachable only by free-text extraction.
-        assertThat(catalog.questions()).hasSize(21);
+        assertThat(catalog.questions()).hasSize(22);
         assertThat(catalog.maxQuestionsPerTurn()).isEqualTo(3);
         assertThat(catalog.maxRounds()).isEqualTo(3);
     }

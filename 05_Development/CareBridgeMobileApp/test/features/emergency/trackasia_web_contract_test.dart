@@ -28,6 +28,11 @@ void main() {
         emergencyMap,
         contains("import 'package:trackasia_gl/trackasia_gl.dart';"),
       );
+      expect(
+        emergencyMap,
+        contains('https://maps.track-asia.com/styles/v2/streets.json?key='),
+      );
+      expect(emergencyMap, contains("Key('trackasia-map-retry')"));
       expect(emergencyMap, isNot(contains('không hỗ trợ Flutter Web')));
     },
   );

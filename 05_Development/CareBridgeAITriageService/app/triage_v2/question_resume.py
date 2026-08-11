@@ -172,12 +172,26 @@ def question_planner(state: Mapping[str, object]) -> dict[str, object]:
     )
     question_ids = list(planned.question_ids)
     if not question_ids:
-        return {"candidateQuestionIds": filtered_ids, "plannedQuestionIds": []}
+        return {
+            "triageOutcome": "NEEDS_MORE_INFO",
+            "candidateQuestionIds": filtered_ids,
+            "plannedQuestionIds": [],
+            "requiredAction": "ROUTE_TO_HEALTHCARE_WORKER",
+            "stopConversation": True,
+            "completionReason": CompletionReason.DATA_REQUIRED,
+            "reasonCodes": ["NO_ELIGIBLE_CLARIFICATION_REMAINS"],
+        }
+
+    asked = list(state.get("askedQuestionIds", []))
+    for question_id in question_ids:
+        if question_id not in asked:
+            asked.append(question_id)
 
     return {
         "triageOutcome": "NEEDS_MORE_INFO",
         "candidateQuestionIds": filtered_ids,
         "plannedQuestionIds": question_ids,
+        "askedQuestionIds": asked,
         "questionRound": current_round + 1,
         "processedRequestIds": [*state.get("processedRequestIds", []), state["requestId"]],
         "processedMessageIds": [*state.get("processedMessageIds", []), state["messageId"]],
@@ -253,6 +267,7 @@ def _filter_context(state: Mapping[str, object]) -> FilterContext:
         missing_fields=missing,
         missing_signals=missing,
         answered_question_ids=frozenset(state.get("answeredQuestionIds", [])),
+        asked_question_ids=frozenset(state.get("askedQuestionIds", [])),
         signals=state.get("signals") if type(state.get("signals")) is dict else {},
         safety_screen_status=state.get("safetyScreenStatus", "INCOMPLETE"),
     )

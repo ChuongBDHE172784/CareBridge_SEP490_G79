@@ -159,6 +159,7 @@ def test_bug_5_inv_5_llm_observation_conflicts_instead_of_overwriting_answer(mon
         "signals": {"VISUAL_DISTURBANCE": answer},
         "measurements": {},
         "answeredQuestionIds": ["Q_VISUAL_CHANGE"],
+        "submittedOptionCodes": ["VISUAL_CHANGE_NO"],
         "expectedRulesetHash": get_registry().ruleset_sha256,
     })
 
@@ -245,7 +246,6 @@ def test_inv_3_every_rule_question_resolves_its_rule_or_is_explained():
 # Values supplied outside the question catalog. This is keyed by distinct field so repeated rule
 # occurrences cannot hide or inflate the review surface.
 _INV4_EXTERNAL_FIELD_SOURCES = {
-    "stage": "derived from trusted journey/context resolution",
     "temperatureC": "numeric measurement supplied by the trusted boundary",
     # Registry temporal enum required by maternal rules; no V2 producer/question was identified.
     "current_status": "declared temporal context field with an unresolved producer gap",
