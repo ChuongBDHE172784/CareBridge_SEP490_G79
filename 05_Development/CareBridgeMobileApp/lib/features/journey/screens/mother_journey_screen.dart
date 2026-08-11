@@ -36,6 +36,7 @@ class MotherJourneyScreen extends StatefulWidget {
     this.initialDashboard,
     this.initialJourneyHistory = const [],
     this.initialTimeline = const [],
+    this.initialBmiTrend,
     this.journeyService,
     this.babyService,
     this.loadSupportingData = true,
@@ -47,6 +48,7 @@ class MotherJourneyScreen extends StatefulWidget {
   final JourneyDashboard? initialDashboard;
   final List<JourneyTransition> initialJourneyHistory;
   final List<JourneyTimelineItem> initialTimeline;
+  final MetricTrend? initialBmiTrend;
   final JourneyService? journeyService;
   final BabyService? babyService;
   final bool loadSupportingData;
@@ -98,6 +100,7 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
     _dashboard = widget.initialDashboard;
     _journeyHistory = widget.initialJourneyHistory;
     _journeyTimeline = widget.initialTimeline;
+    _bmiTrend = widget.initialBmiTrend;
     _babyProfiles = widget.initialBabyProfiles;
     if (widget.loadData) {
       JourneyService.dashboardRevision.addListener(_onJourneyDashboardChanged);

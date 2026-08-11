@@ -64,6 +64,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import com.carebridge.backend.family.repository.CareGroupMemberRepository;
 import com.carebridge.backend.family.repository.CareGroupRepository;
+import com.carebridge.backend.health.service.RecommendationBmiObservationSynchronizer;
 
 @Service
 @Slf4j
@@ -83,6 +84,7 @@ public class RecommendationService implements RecommendationConsentCleanup {
     private final RecommendationContextResolver contextResolver;
     private final RecommendationEligibilityPolicy eligibilityPolicy;
     private final RecommendationRanker ranker;
+    private final RecommendationBmiObservationSynchronizer bmiObservationSynchronizer;
     private final Clock clock;
     private final boolean enabled;
     @Autowired(required = false)
@@ -105,10 +107,11 @@ public class RecommendationService implements RecommendationConsentCleanup {
             RecommendationContextResolver contextResolver,
             RecommendationEligibilityPolicy eligibilityPolicy,
             RecommendationRanker ranker,
+            RecommendationBmiObservationSynchronizer bmiObservationSynchronizer,
             @Value("${carebridge.recommendation.enabled:true}") boolean enabled) {
         this(journeyRepository, outcomeEvidenceRepository, transitionRepository, userRepository, contentRepository, topicRepository,
                 consentGrantRepository, auditService, objectMapper, validator, contextResolver,
-                eligibilityPolicy, ranker, Clock.systemUTC(), enabled);
+                eligibilityPolicy, ranker, bmiObservationSynchronizer, Clock.systemUTC(), enabled);
     }
 
     /** Compatibility constructor for focused unit tests that do not exercise epoch lookup. */
@@ -128,7 +131,7 @@ public class RecommendationService implements RecommendationConsentCleanup {
             Clock clock) {
         this(journeyRepository, outcomeEvidenceRepository, null, userRepository, contentRepository, topicRepository,
                 consentGrantRepository, auditService, objectMapper, validator, contextResolver,
-                eligibilityPolicy, ranker, clock, true);
+                eligibilityPolicy, ranker, null, clock, true);
     }
 
     public RecommendationService(
@@ -146,7 +149,7 @@ public class RecommendationService implements RecommendationConsentCleanup {
             RecommendationRanker ranker) {
         this(journeyRepository, outcomeEvidenceRepository, null, userRepository, contentRepository, topicRepository,
                 consentGrantRepository, auditService, objectMapper, validator, contextResolver,
-                eligibilityPolicy, ranker, Clock.systemUTC(), true);
+                eligibilityPolicy, ranker, null, Clock.systemUTC(), true);
     }
 
     public RecommendationService(
@@ -166,7 +169,7 @@ public class RecommendationService implements RecommendationConsentCleanup {
             Clock clock) {
         this(journeyRepository, outcomeEvidenceRepository, transitionRepository, userRepository, contentRepository,
                 topicRepository, consentGrantRepository, auditService, objectMapper, validator, contextResolver,
-                eligibilityPolicy, ranker, clock, true);
+                eligibilityPolicy, ranker, null, clock, true);
     }
 
     public RecommendationService(
@@ -185,6 +188,29 @@ public class RecommendationService implements RecommendationConsentCleanup {
             RecommendationRanker ranker,
             Clock clock,
             boolean enabled) {
+        this(journeyRepository, outcomeEvidenceRepository, transitionRepository, userRepository, contentRepository,
+                topicRepository, consentGrantRepository, auditService, objectMapper, validator, contextResolver,
+                eligibilityPolicy, ranker, null, clock, enabled);
+    }
+
+    /** Explicit collaborator constructor for focused tests that exercise profile mutation. */
+    public RecommendationService(
+            MotherJourneyRepository journeyRepository,
+            PregnancyOutcomeEvidenceRepository outcomeEvidenceRepository,
+            MotherJourneyTransitionRepository transitionRepository,
+            UserRepository userRepository,
+            ContentRepository contentRepository,
+            CommunityTopicRepository topicRepository,
+            ConsentGrantRepository consentGrantRepository,
+            AuditService auditService,
+            ObjectMapper objectMapper,
+            RecommendationProfileValidator validator,
+            RecommendationContextResolver contextResolver,
+            RecommendationEligibilityPolicy eligibilityPolicy,
+            RecommendationRanker ranker,
+            RecommendationBmiObservationSynchronizer bmiObservationSynchronizer,
+            Clock clock,
+            boolean enabled) {
         this.journeyRepository = journeyRepository;
         this.outcomeEvidenceRepository = outcomeEvidenceRepository;
         this.transitionRepository = transitionRepository;
@@ -198,6 +224,7 @@ public class RecommendationService implements RecommendationConsentCleanup {
         this.contextResolver = contextResolver;
         this.eligibilityPolicy = eligibilityPolicy;
         this.ranker = ranker;
+        this.bmiObservationSynchronizer = bmiObservationSynchronizer;
         this.clock = clock;
         this.enabled = enabled;
     }
@@ -235,6 +262,7 @@ public class RecommendationService implements RecommendationConsentCleanup {
                 throw RecommendationException.conflict("RECOMMENDATION_SUBMISSION_CONFLICT",
                         "Submission identity was already used with different profile data");
             }
+            synchronizeBmi(journey, validated);
             return toProfileResponse(journey, assessConsent(journey, ownerUserId, Instant.now(clock)));
         }
         Optional<ConsentGrant> oldSubmission = consentGrantRepository.findRecommendationGrantByEvidence(
@@ -275,6 +303,7 @@ public class RecommendationService implements RecommendationConsentCleanup {
         journey.setRecommendationProfileVersion((short) RecommendationConstants.SCHEMA_VERSION);
         journey.setRecommendationProfileCompletedAt(now);
         journey.setRecommendationProfileStatus(RecommendationProfileStatus.ACTIVE);
+        synchronizeBmi(journey, validated);
         journeyRepository.saveAndFlush(journey);
         auditProfile("UPDATED", journey, revision, grant.getId());
         auditConsent("GRANTED", journey, revision, grant.getId());
@@ -634,6 +663,14 @@ public class RecommendationService implements RecommendationConsentCleanup {
         journey.setRecommendationProfileVersion((short) 0);
         journey.setRecommendationProfileCompletedAt(null);
         journey.setRecommendationProfileStatus(status);
+    }
+
+    private void synchronizeBmi(MotherJourney journey, ValidatedRecommendationProfile validated) {
+        if (bmiObservationSynchronizer == null) {
+            throw new IllegalStateException("Recommendation BMI observation synchronizer is required");
+        }
+        bmiObservationSynchronizer.synchronize(
+                journey, validated.submissionId(), validated.profile());
     }
 
     private void revokeActiveRecommendationGrants(UUID ownerUserId) {

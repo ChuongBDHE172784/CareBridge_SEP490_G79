@@ -15,6 +15,7 @@ import com.carebridge.backend.consent.entity.ConsentGrant;
 import com.carebridge.backend.consent.entity.ConsentPurpose;
 import com.carebridge.backend.consent.repository.ConsentGrantRepository;
 import com.carebridge.backend.content.repository.ContentRepository;
+import com.carebridge.backend.health.service.RecommendationBmiObservationSynchronizer;
 import com.carebridge.backend.journey.entity.JourneyStatus;
 import com.carebridge.backend.journey.entity.JourneyType;
 import com.carebridge.backend.journey.entity.MotherJourney;
@@ -62,6 +63,7 @@ class RecommendationPrivacyBoundaryTest {
     private ConsentGrantRepository consentGrantRepository;
     private AuditService auditService;
     private RecommendationProfileValidator validator;
+    private RecommendationBmiObservationSynchronizer bmiObservationSynchronizer;
     private RecommendationService service;
 
     @BeforeEach
@@ -74,10 +76,12 @@ class RecommendationPrivacyBoundaryTest {
         consentGrantRepository = mock(ConsentGrantRepository.class);
         auditService = mock(AuditService.class);
         validator = mock(RecommendationProfileValidator.class);
+        bmiObservationSynchronizer = mock(RecommendationBmiObservationSynchronizer.class);
 
         service = new RecommendationService(
                 journeyRepository,
                 outcomeEvidenceRepository,
+                null,
                 userRepository,
                 contentRepository,
                 topicRepository,
@@ -88,7 +92,9 @@ class RecommendationPrivacyBoundaryTest {
                 new RecommendationContextResolver(Clock.fixed(NOW, ZoneOffset.UTC)),
                 new RecommendationEligibilityPolicy(),
                 new RecommendationRanker(),
-                Clock.fixed(NOW, ZoneOffset.UTC));
+                bmiObservationSynchronizer,
+                Clock.fixed(NOW, ZoneOffset.UTC),
+                true);
     }
 
     @Test

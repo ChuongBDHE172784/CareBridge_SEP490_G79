@@ -357,6 +357,10 @@ class _RecommendationProfileScreenState
       ),
       const SizedBox(height: 12),
       const Text(
+        'Nếu mẹ cung cấp cân nặng và chiều cao, CareBridge cũng lưu một chỉ số BMI trong tab Hành trình. Bản ghi sức khỏe này được quản lý độc lập và vẫn được giữ lại khi mẹ ngừng cá nhân hóa; mẹ có thể xem hoặc xóa trong Hành trình.',
+      ),
+      const SizedBox(height: 12),
+      const Text(
         'Đây là nội dung giáo dục, không thay thế chẩn đoán hoặc điều trị. Nhu cầu khẩn cấp luôn đi qua luồng an toàn hiện có.',
       ),
       const SizedBox(height: 28),

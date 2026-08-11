@@ -8,11 +8,13 @@ import '../services/health_metric_service.dart';
 class AddMaternalHealthMetricScreen extends StatefulWidget {
   final String journeyId;
   final String initialMetricType;
+  final HealthMetricService? service;
 
   const AddMaternalHealthMetricScreen({
     super.key,
     required this.journeyId,
     required this.initialMetricType,
+    this.service,
   });
 
   @override
@@ -37,7 +39,18 @@ class _AddMaternalHealthMetricScreenState
   final _noteCtrl = TextEditingController();
   final _protocolCtrl = TextEditingController(text: 'COUNT_10_MINUTES');
   final _gestationalAgeCtrl = TextEditingController();
-  final _service = HealthMetricService();
+  late final HealthMetricService _service;
+
+  static final _bmiDecimalFormatter = TextInputFormatter.withFunction((
+    oldValue,
+    newValue,
+  ) {
+    if (newValue.text.isEmpty ||
+        RegExp(r'^\d{0,3}(?:\.\d?)?$').hasMatch(newValue.text)) {
+      return newValue;
+    }
+    return oldValue;
+  });
 
   DateTime _measuredDate = DateTime.now();
   TimeOfDay _measuredTime = TimeOfDay.now();
@@ -71,6 +84,7 @@ class _AddMaternalHealthMetricScreenState
   @override
   void initState() {
     super.initState();
+    _service = widget.service ?? HealthMetricService();
     _loadCapabilities();
   }
 
@@ -331,18 +345,22 @@ class _AddMaternalHealthMetricScreenState
       }
     }
 
-    final weightKg = _isBmi ? double.tryParse(_primaryCtrl.text.trim()) : null;
-    final heightCm = _isBmi
-        ? double.tryParse(_secondaryCtrl.text.trim())
-        : null;
+    final rawWeight = _primaryCtrl.text.trim();
+    final rawHeight = _secondaryCtrl.text.trim();
+    final weightKg = _isBmi ? double.tryParse(rawWeight) : null;
+    final heightCm = _isBmi ? double.tryParse(rawHeight) : null;
     if (_isBmi &&
         (weightKg == null ||
             weightKg < 20 ||
             weightKg > 300 ||
             heightCm == null ||
             heightCm < 100 ||
-            heightCm > 230)) {
-      _showError('Nhập cân nặng 20–300 kg và chiều cao 100–230 cm.');
+            heightCm > 250 ||
+            !_hasAtMostOneFractionalDigit(rawWeight) ||
+            !_hasAtMostOneFractionalDigit(rawHeight))) {
+      _showError(
+        'Nhập cân nặng 20–300 kg và chiều cao 100–250 cm, tối đa 1 chữ số thập phân.',
+      );
       return;
     }
 
@@ -400,6 +418,9 @@ class _AddMaternalHealthMetricScreenState
     }
   }
 
+  bool _hasAtMostOneFractionalDigit(String value) =>
+      RegExp(r'^\d+(?:\.\d)?$').hasMatch(value);
+
   void _showError(String message) {
     ScaffoldMessenger.of(
       context,
@@ -448,12 +469,14 @@ class _AddMaternalHealthMetricScreenState
                       _buildMetricDescription(),
                       const SizedBox(height: 14),
                       TextFormField(
+                        key: const Key('maternal-metric-primary'),
                         controller: _primaryCtrl,
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                         ),
                         inputFormatters: [
                           FilteringTextInputFormatter.allow(RegExp(r'[0-9.]')),
+                          if (_isBmi) _bmiDecimalFormatter,
                         ],
                         validator: _isFetalMovement
                             ? _requiredNonNegative
@@ -464,6 +487,7 @@ class _AddMaternalHealthMetricScreenState
                       if (_isBloodPressure || _isBmi) ...[
                         const SizedBox(height: 14),
                         TextFormField(
+                          key: const Key('maternal-metric-secondary'),
                           controller: _secondaryCtrl,
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
@@ -472,6 +496,7 @@ class _AddMaternalHealthMetricScreenState
                             FilteringTextInputFormatter.allow(
                               RegExp(r'[0-9.]'),
                             ),
+                            if (_isBmi) _bmiDecimalFormatter,
                           ],
                           validator: _requiredPositive,
                           onChanged: _isBmi ? (_) => setState(() {}) : null,
@@ -529,6 +554,7 @@ class _AddMaternalHealthMetricScreenState
                       ),
                       const SizedBox(height: 24),
                       ElevatedButton(
+                        key: const Key('maternal-metric-save'),
                         onPressed: _isSaving ? null : _save,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _primary,

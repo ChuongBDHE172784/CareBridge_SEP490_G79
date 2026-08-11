@@ -95,6 +95,41 @@ class MetricObservationValidatorTest {
                 .satisfies(error -> assertThat(((BusinessException) error).getCode()).isEqualTo("METRIC-039"));
     }
 
+    @Test
+    void bmiAcceptsTheSharedTwoHundredFiftyCentimeterBoundary() {
+        AddMetricRequest request = base(MetricType.BMI, "1", "kg/m²");
+        request.setContext(new LinkedHashMap<>());
+        request.getContext().put("weightKg", "70.0");
+        request.getContext().put("heightCm", "250.0");
+
+        var result = validator.normalize(request,
+                definition("BMI", ObservationShape.POINT, "kg/m²", List.of("kg/m²")));
+
+        assertThat(result.valueNumeric()).isEqualByComparingTo("11.20");
+        assertThat(result.context()).containsEntry("heightCm", new BigDecimal("250.0"));
+    }
+
+    @Test
+    void bmiRejectsHeightAboveSharedBoundaryOrMoreThanOneInputDecimal() {
+        AddMetricRequest tooTall = base(MetricType.BMI, "1", "kg/m²");
+        tooTall.setContext(new LinkedHashMap<>());
+        tooTall.getContext().put("weightKg", "70.0");
+        tooTall.getContext().put("heightCm", "250.1");
+        AddMetricRequest tooPrecise = base(MetricType.BMI, "1", "kg/m²");
+        tooPrecise.setContext(new LinkedHashMap<>());
+        tooPrecise.getContext().put("weightKg", "70.00");
+        tooPrecise.getContext().put("heightCm", "160.0");
+
+        assertThatThrownBy(() -> validator.normalize(tooTall,
+                definition("BMI", ObservationShape.POINT, "kg/m²", List.of("kg/m²"))))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(error -> assertThat(((BusinessException) error).getCode()).isEqualTo("METRIC-039"));
+        assertThatThrownBy(() -> validator.normalize(tooPrecise,
+                definition("BMI", ObservationShape.POINT, "kg/m²", List.of("kg/m²"))))
+                .isInstanceOf(BusinessException.class)
+                .satisfies(error -> assertThat(((BusinessException) error).getCode()).isEqualTo("METRIC-039"));
+    }
+
     private AddMetricRequest base(MetricType type, String value, String unit) {
         AddMetricRequest request = new AddMetricRequest();
         request.setMetricType(type);
