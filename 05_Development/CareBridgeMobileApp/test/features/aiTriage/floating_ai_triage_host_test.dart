@@ -210,6 +210,59 @@ void main() {
     expect(rect.bottom, lessThanOrEqualTo(viewport.height));
   });
 
+  testWidgets('only the floating robot intercepts taps', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final authChanges = ValueNotifier(0);
+    final navigationChanges = ValueNotifier(0);
+    var opens = 0;
+    var contentTaps = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: FloatingAiTriageHost(
+          authListenable: authChanges,
+          navigationListenable: navigationChanges,
+          isAuthenticated: () => true,
+          currentRole: () => 'MOTHER',
+          currentPath: () => '/',
+          hasModal: () => false,
+          onOpen: () async => opens++,
+          child: Scaffold(
+            body: GestureDetector(
+              key: const Key('underlying-content'),
+              behavior: HitTestBehavior.opaque,
+              onTap: () => contentTaps++,
+              child: const SizedBox.expand(
+                child: Center(child: Text('Nội dung ứng dụng')),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final robot = find.byKey(const Key('floating-ai-triage-robot'));
+    expect(tester.getSize(robot), const Size(62, 62));
+    final robotRect = tester.getRect(robot);
+
+    await tester.tapAt(Offset(robotRect.left - 1, robotRect.center.dy));
+    await tester.pump();
+    expect(contentTaps, 1);
+    expect(opens, 0);
+
+    await tester.tapAt(Offset(robotRect.center.dx, robotRect.top - 1));
+    await tester.pump();
+    expect(contentTaps, 2);
+    expect(opens, 0);
+
+    await tester.tap(robot);
+    await tester.pump();
+    expect(opens, 1);
+    expect(contentTaps, 2);
+  });
+
   testWidgets(
     'hides while AI navigation is pending, restores, and ignores duplicate taps',
     (tester) async {
