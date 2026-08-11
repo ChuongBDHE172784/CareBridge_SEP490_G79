@@ -401,6 +401,10 @@ public class DevDataSeeder implements ApplicationRunner {
         // keeping approved mandatory fixtures eligible for checklist distribution.
         ChecklistTemplateStatus requestedStatus = ChecklistTemplateStatus.valueOf(status.name());
         if (template.getStatus() != requestedStatus) {
+            if (template.getMigrationReviewedAt() != null) {
+                // Template is an immutable migration root — DB guard prevents modifying it directly.
+                return;
+            }
             template.setStatus(requestedStatus);
             if (requestedStatus == ChecklistTemplateStatus.APPROVED) {
                 template.setDistributionEnabled(true);
