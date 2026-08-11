@@ -107,6 +107,22 @@ def _contains_any(haystack: str, phrases: Sequence[str]) -> list[str]:
     return found
 
 
+def _clause_reports_symptom(clause: str, indicators: Mapping[str, object]) -> bool:
+    """Whether this clause describes a bodily state rather than narrator voice.
+
+    Used for exactly one decision: whether a first-person pronoun standing beside a baby clause
+    is a second patient. It never creates a target on its own. The marker list is deliberately
+    generous — a missed marker keeps the message CONFLICTED and costs a clarification round,
+    while a false negative would silently drop a mother's symptom.
+    """
+
+    markers = indicators.get("symptomOrConditionMarkers")
+    if not isinstance(markers, Mapping):
+        # Older contract copy without the group: keep the previous, more conservative reading.
+        return True
+    return bool(_contains_any(clause, markers.get("phrases", ())))
+
+
 def score_message(message: str | None) -> tuple[TargetEntity, tuple[str, ...], tuple[str, ...]]:
     """Score a raw message. Returns ``(entity, evidence, conflict_evidence)``."""
 
@@ -125,6 +141,9 @@ def score_message(message: str | None) -> tuple[TargetEntity, tuple[str, ...], t
 
     mother_hits: list[str] = []
     baby_hits: list[str] = []
+    #: Mother evidence strong enough to mean "a second patient", not just narrator voice: a
+    #: pregnancy/postpartum phrase, or a pronoun in a clause that also reports a symptom.
+    mother_patient_evidence: list[str] = []
 
     for clause in clauses:
         baby_possessive = _contains_any(clause, indicators["baby"]["possessiveOrSubject"])
@@ -139,11 +158,22 @@ def score_message(message: str | None) -> tuple[TargetEntity, tuple[str, ...], t
             continue
         if mother_strong:
             mother_hits.extend(mother_strong)
+            mother_patient_evidence.extend(mother_strong)
             continue
         if mother_subject and not third_party:
             mother_hits.extend(mother_subject)
+            if _clause_reports_symptom(clause, indicators):
+                mother_patient_evidence.extend(mother_subject)
 
     if mother_hits and baby_hits:
+        if not mother_patient_evidence:
+            # The mother appears only as the person telling the story — "em lo quá, bé bỏ bú",
+            # "bé nóng người nhưng nhà em không có nhiệt kế". Treating the narrator's own
+            # pronoun as a second patient sent every such message into a clarification round
+            # while nobody had reported a maternal symptom at all. The asymmetry is deliberate:
+            # any symptom word in the mother's clause keeps the message CONFLICTED, because
+            # silently assessing only the baby would drop a real maternal complaint.
+            return TargetEntity.BABY, tuple(dict.fromkeys(baby_hits)), ()
         return TargetEntity.CONFLICTED, (), tuple(dict.fromkeys(mother_hits + baby_hits))
     if baby_hits:
         return TargetEntity.BABY, tuple(dict.fromkeys(baby_hits)), ()
