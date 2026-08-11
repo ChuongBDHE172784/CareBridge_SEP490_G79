@@ -1,7 +1,7 @@
 {
   "$comment": "Integrity only. Proves each artifact matches its checksum. Does NOT prove clinical correctness and is NOT an approval record.",
   "manifestType": "ARTIFACT_INTEGRITY",
-  "generatedAt": "2026-08-11T08:43:40+00:00",
+  "generatedAt": "2026-08-11T09:16:28+00:00",
   "generatorVersion": "sync_triage_rule_registry.py/3.0",
   "artifacts": [
     {
@@ -37,7 +37,7 @@
     {
       "artifactId": "internal_rule_review_manifest",
       "path": "05_Development/Contracts/triage/internal_rule_review_manifest.json",
-      "sha256": "37a1cf251aa65691b7e8372e9ef6a4820d351c4619fffa171100d7523e760f08"
+      "sha256": "27fc2c86b210711cf48a9482be867c379ed309014853671f2632c0a22ea379fb"
     },
     {
       "artifactId": "matrix_snapshot_v0.1.0",
@@ -67,7 +67,7 @@
     {
       "artifactId": "source_verification_manifest",
       "path": "05_Development/Contracts/triage/source_verification_manifest.json",
-      "sha256": "f829847b028d139ace63ccfccd4b681fba4ec3329cc6b32beb144e98c03f9a07"
+      "sha256": "8e3b2b4aeb6162c7da1bf09ee0c5467c54e1f87842bc772033ba8c49f1e2464a"
     },
     {
       "artifactId": "target_entity_indicators_v1",

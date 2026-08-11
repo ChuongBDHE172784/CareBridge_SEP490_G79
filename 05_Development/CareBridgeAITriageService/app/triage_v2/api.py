@@ -27,6 +27,10 @@ from app.rules.registry import get_registry
 from app.triage_v2.graph import build_triage_v2_graph, graph_config
 from app.triage_v2.extraction import extract_and_validate
 from app.triage_v2.deterministic_signals import detect_danger_signals, merge_as_floor
+from app.triage_v2.deterministic_measurements import (
+    ReportedMeasurements,
+    extract_reported_measurements,
+)
 from app.triage_v2.global_safety_gate import global_safety_gate
 from app.triage_v2.evidence_retrieval import retrieve_verified_evidence
 from app.evidence_registry_client import approved_sources_for_stage
@@ -40,7 +44,7 @@ _TEMPORAL = {"CURRENT", "HISTORICAL"}
 #: Where a belief came from. Kept in lockstep with CanonicalAnswerMapper.Provenance in Java.
 _PROVENANCE = {
     "USER_REPORTED", "QUESTION_ANSWER", "MEASURED", "LLM_EXTRACTED_VALIDATED",
-    "PROFILE_CONTEXT", "HEALTH_MEMORY_CONTEXT",
+    "PROFILE_CONTEXT", "HEALTH_MEMORY_CONTEXT", "USER_REPORTED_TEXT",
 }
 _CONFLICT_STATUS = {"NONE", "CONFLICTED"}
 _OBSERVATION_FIELDS = {
@@ -50,7 +54,7 @@ _OBSERVATION_FIELDS = {
 }
 _SAFE_CODE = re.compile(r"^[A-Za-z0-9_.-]{1,64}$")
 _UNITS = {"C", "F", "MMHG", "BPM", "PERCENT", "WEEKS", "DAYS", "MONTHS", "KG", "CM"}
-_MEASUREMENT_CODES = frozenset(
+_MEASUREMENT_CODES = frozenset({"temperatureC", "babyAgeMonths"}) | frozenset(
     field
     for question in CATALOG.values()
     if question.measurement
@@ -159,6 +163,12 @@ def execute_turn(request: TriageV2TurnRequest) -> TriageV2TurnResponse:
         raise HTTPException(status_code=409, detail="Triage V2 ruleset hash mismatch")
 
     state = _turn_state(request)
+    _merge_reported_measurements(
+        state,
+        extract_reported_measurements(
+            request.latestUserMessage, target_entity=state.get("targetEntity")
+        ),
+    )
     # A danger phrase in the message becomes a signal before anything else runs, so the gate
     # below sees it whether or not Gemini is reachable. Placed under the caller's signals, not
     # over them: see merge_as_floor.
@@ -287,6 +297,49 @@ def _mapping(value: object) -> dict[str, Any]:
     return dict(value) if type(value) is dict else {}
 
 
+def _merge_reported_measurements(
+    state: dict[str, Any], reported: ReportedMeasurements
+) -> None:
+    """Merge latest text below trusted structured measurements, never above them."""
+
+    measurements = _mapping(state.get("measurements"))
+    for code in reported.conflicted_codes:
+        if not _is_structured_measurement(measurements.get(code)):
+            # Ambiguous latest text must not silently retain an older text-derived value.
+            measurements.pop(code, None)
+    for code, observation in reported.measurements.items():
+        if _is_structured_measurement(measurements.get(code)):
+            continue
+        measurements[code] = dict(observation)
+    state["measurements"] = measurements
+
+    structured_age = measurements.get("babyAgeMonths")
+    if _is_structured_measurement(structured_age):
+        value = (
+            structured_age.get("value")
+            if type(structured_age) is dict
+            else structured_age
+        )
+        if type(value) is int or (type(value) is float and value.is_integer()):
+            state["babyAgeMonths"] = int(value)
+    elif reported.baby_age_months is not None:
+        # Latest explicit text outranks stale journey context, matching stage resolution.
+        state["babyAgeMonths"] = reported.baby_age_months
+
+
+def _is_structured_measurement(value: object) -> bool:
+    if type(value) in {int, float}:
+        return True
+    if type(value) is not dict or value.get("provenance") != "MEASURED":
+        return False
+    numeric_value = value.get("value")
+    return (
+        type(numeric_value) in {int, float}
+        and value.get("temporalStatus") in {None, "CURRENT"}
+        and value.get("status") in {None, "PRESENT"}
+    )
+
+
 def _merge_observations(current: object, delta: dict[str, Any]) -> dict[str, Any]:
     """Accumulate evidence so contradictions become ``CONFLICTED`` downstream.
 
@@ -370,7 +423,7 @@ def _safe_measurements(value: dict[str, Any]) -> dict[str, Any]:
             result[code] = measurement
             continue
         if type(measurement) is not dict or set(measurement) - {
-            "value", "unit", "status", "temporalStatus"
+            "value", "unit", "status", "temporalStatus", "provenance"
         }:
             raise ValueError("invalid measurement shape")
         number = measurement.get("value")
@@ -385,6 +438,8 @@ def _safe_measurements(value: dict[str, Any]) -> dict[str, Any]:
             raise ValueError("invalid measurement status")
         if "temporalStatus" in measurement and measurement["temporalStatus"] not in _TEMPORAL:
             raise ValueError("invalid measurement temporal status")
+        if "provenance" in measurement and measurement["provenance"] not in _PROVENANCE:
+            raise ValueError("invalid measurement provenance")
         result[code] = dict(measurement)
     return result
 

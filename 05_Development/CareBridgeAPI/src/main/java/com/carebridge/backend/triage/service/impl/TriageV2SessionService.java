@@ -63,7 +63,7 @@ public class TriageV2SessionService implements ITriageV2SessionService {
     /** Kept in lockstep with {@code _PROVENANCE} in the Python transport boundary. */
     private static final Set<String> PROVENANCE = Set.of(
             "USER_REPORTED", "QUESTION_ANSWER", "MEASURED", "LLM_EXTRACTED_VALIDATED",
-            "PROFILE_CONTEXT", "HEALTH_MEMORY_CONTEXT");
+            "PROFILE_CONTEXT", "HEALTH_MEMORY_CONTEXT", "USER_REPORTED_TEXT");
     private static final Set<String> CONFLICT_STATUS = Set.of("NONE", "CONFLICTED");
     private static final Set<String> OBSERVATION_FIELDS = Set.of(
             "presence", "temporalStatus", "currentVsHistorical", "explicitNegation", "current",
@@ -743,9 +743,11 @@ public class TriageV2SessionService implements ITriageV2SessionService {
     private Map<String, Object> structuredMeasurements(Map<String, Object> value) {
         if (value == null) return Map.of();
         requireStructuredSize(value);
-        Set<String> allowedCodes = questionCatalog.questions().values().stream()
-                .filter(QuestionCatalog.Question::measurement)
-                .flatMap(question -> question.resolvesFields().stream())
+        Set<String> allowedCodes = java.util.stream.Stream.concat(
+                questionCatalog.questions().values().stream()
+                        .filter(QuestionCatalog.Question::measurement)
+                        .flatMap(question -> question.resolvesFields().stream()),
+                java.util.stream.Stream.of("temperatureC", "babyAgeMonths"))
                 .collect(java.util.stream.Collectors.toUnmodifiableSet());
         Map<String, Object> safe = new LinkedHashMap<>();
         value.forEach((code, measurement) -> {
@@ -757,7 +759,7 @@ public class TriageV2SessionService implements ITriageV2SessionService {
             }
             if (!(measurement instanceof Map<?, ?> map) || map.keySet().stream().anyMatch(key ->
                     !(key instanceof String name) || !Set.of("value", "unit", "status",
-                            "temporalStatus").contains(name))) {
+                            "temporalStatus", "provenance").contains(name))) {
                 throw invalidStructuredPayload();
             }
             if (map.get("value") != null) {
@@ -768,6 +770,9 @@ public class TriageV2SessionService implements ITriageV2SessionService {
             if (map.containsKey("status") && !Set.of("UNKNOWN", "UNAWARE_OR_UNMEASURABLE")
                     .contains(map.get("status"))) throw invalidStructuredPayload();
             if (map.containsKey("temporalStatus") && !TEMPORAL.contains(map.get("temporalStatus"))) {
+                throw invalidStructuredPayload();
+            }
+            if (map.containsKey("provenance") && !PROVENANCE.contains(map.get("provenance"))) {
                 throw invalidStructuredPayload();
             }
             Map<String, Object> copy = new LinkedHashMap<>();

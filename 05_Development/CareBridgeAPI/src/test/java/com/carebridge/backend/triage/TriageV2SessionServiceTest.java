@@ -479,6 +479,40 @@ class TriageV2SessionServiceTest {
     }
 
     @Test
+    void pythonTextReportedNumericStateIsAcceptedWithoutFallback() {
+        AtomicReference<IntakeSession> inserted = new AtomicReference<>();
+        when(repository.findByUserIdAndClientRequestId(USER, "request_1234567890"))
+                .thenAnswer(invocation -> Optional.ofNullable(inserted.get()));
+        when(writer.insertConversationIfAbsent(any())).thenAnswer(invocation -> {
+            inserted.set(invocation.getArgument(0));
+            return new IntakeSessionWriter.InsertResult(true);
+        });
+        when(workflow.executeTurn(any())).thenAnswer(invocation -> {
+            Map<String, Object> state = graphState(inserted, "RED", true);
+            state.put("requiredAction", "IMMEDIATE_EMERGENCY_ASSESSMENT");
+            state.put("targetEntity", "BABY");
+            state.put("stage", "INFANT_0_12M");
+            state.put("babyAgeMonths", 2);
+            state.put("measurements", Map.of(
+                    "babyAgeMonths", Map.of(
+                            "value", 2, "unit", "MONTHS", "temporalStatus", "CURRENT",
+                            "provenance", "USER_REPORTED_TEXT"),
+                    "temperatureC", Map.of(
+                            "value", 38.2, "unit", "C", "temporalStatus", "CURRENT",
+                            "provenance", "USER_REPORTED_TEXT")));
+            return new TriageV2WorkflowClient.WorkflowResult(state, "READY", "2.2.0", HASH);
+        });
+
+        var response = service.start(startRequest("Be hai thang do duoc 38,2 do"), USER);
+
+        assertThat(response.outcome()).isEqualTo("RED");
+        assertThat(response.readiness().get("technicalStatus")).isEqualTo("READY");
+        assertThat(inserted.get().getResultJson())
+                .contains("babyAgeMonths", "temperatureC", "USER_REPORTED_TEXT");
+        assertThat(metrics.failureCount(TriageV2Metrics.Failure.FALLBACK)).isZero();
+    }
+
+    @Test
     void moreThanOneWhoCitationIsRejectedWithoutDowngradingOutcome() {
         AtomicReference<IntakeSession> inserted = new AtomicReference<>();
         when(repository.findByUserIdAndClientRequestId(USER, "request_1234567890"))

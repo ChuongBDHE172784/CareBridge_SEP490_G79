@@ -5,9 +5,10 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import Mapping
 
-from app.context.intent_resolver import resolve_intent
-from app.context.enums import IntentType
+from app.context.intent_resolver import IntentResolution, resolve_intent
+from app.context.enums import IntentType, ResolutionSource
 from app.questions.catalog import CATALOG
+from app.triage_v2.deterministic_measurements import extract_reported_measurements
 
 
 @lru_cache(maxsize=1)
@@ -41,6 +42,18 @@ def intent_resolver(state: Mapping[str, object]) -> dict[str, object]:
         submitted_option_codes=submitted or None,
         confirmed_conversation_intent=confirmed_intent,
     )
+    if (
+        resolution.intent is IntentType.UNKNOWN
+        or resolution.source is ResolutionSource.CONFIRMED_CONVERSATION_INTENT
+    ) and _has_current_reported_temperature(state):
+        # A valid Celsius reading with a local clinical anchor is itself an explicit current
+        # health report. This lets an utterance such as "Bé hai tháng đo được 38,2 độ" reach the
+        # existing paediatric rule without adding a symptom phrase or bypassing intent routing.
+        resolution = IntentResolution(
+            IntentType.SYMPTOM_TRIAGE,
+            ResolutionSource.EXPLICIT_IN_LATEST_MESSAGE,
+            ("temperatureC:USER_REPORTED_TEXT",),
+        )
     updates = {"intent": resolution.intent, "intentSource": resolution.source}
     if (
         resolution.intent.is_resolved
@@ -49,3 +62,29 @@ def intent_resolver(state: Mapping[str, object]) -> dict[str, object]:
     ):
         updates["confirmedConversationIntent"] = resolution.intent
     return updates
+
+
+def _has_current_reported_temperature(state: Mapping[str, object]) -> bool:
+    latest = state.get("latestUserMessage")
+    reported = extract_reported_measurements(
+        latest,
+        target_entity=state.get("targetEntity"),
+    )
+    latest_temperature = reported.measurements.get("temperatureC")
+    if type(latest_temperature) is not dict:
+        return False
+    measurements = state.get("measurements")
+    if type(measurements) is not dict:
+        return False
+    temperature = measurements.get("temperatureC")
+    if type(temperature) is not dict:
+        return False
+    value = temperature.get("value")
+    return (
+        type(value) in {int, float}
+        and 30.0 <= value <= 45.0
+        and temperature.get("unit") == "C"
+        and temperature.get("temporalStatus") == "CURRENT"
+        and temperature.get("provenance") == "USER_REPORTED_TEXT"
+        and temperature.get("value") == latest_temperature.get("value")
+    )
