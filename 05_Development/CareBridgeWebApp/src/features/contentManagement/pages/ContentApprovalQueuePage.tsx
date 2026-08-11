@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ConfirmDialog from '../../../shared/components/ConfirmDialog';
 import {
@@ -21,6 +21,7 @@ import { nextSortDirection, sortRows } from '../utils/tableSorting';
 type QueueKind = 'CONTENT' | 'CHECKLIST';
 type QueueSortKey = 'title' | 'type' | 'stage' | 'detail' | 'submittedAt';
 type TypeFilter = 'ALL' | ContentType;
+type BatchTarget = 'ALL' | 'ARTICLE' | 'FAQ' | 'CHECKLIST';
 
 type QueueEntry = {
   kind: QueueKind;
@@ -115,6 +116,25 @@ export default function ContentApprovalQueuePage() {
   const [sortKey, setSortKey] = useState<QueueSortKey>('submittedAt');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
+  // Dropdown & Batch publish state
+  const [isBatchMenuOpen, setIsBatchMenuOpen] = useState(false);
+  const [batchTarget, setBatchTarget] = useState<BatchTarget | null>(null);
+  const [isBatchPublishing, setIsBatchPublishing] = useState(false);
+  const [batchError, setBatchError] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsBatchMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const load = useCallback(async () => {
     setIsLoading(true);
     setError('');
@@ -145,6 +165,18 @@ export default function ContentApprovalQueuePage() {
     const pregnancy = items.filter((item) => item.stage === 'PREGNANCY').length;
     const postpartum = items.filter((item) => item.stage === 'POSTPARTUM').length;
     return { total: items.length, content, checklist, pregnancy, postpartum };
+  }, [items]);
+
+  const batchCounts = useMemo(() => {
+    const article = items.filter((item) => item.type === 'ARTICLE').length;
+    const faq = items.filter((item) => item.type === 'FAQ').length;
+    const checklist = items.filter((item) => item.type === 'CHECKLIST').length;
+    return {
+      ALL: items.length,
+      ARTICLE: article,
+      FAQ: faq,
+      CHECKLIST: checklist,
+    };
   }, [items]);
 
   const filteredItems = useMemo(() => {
@@ -212,6 +244,53 @@ export default function ContentApprovalQueuePage() {
     }
   };
 
+  const openBatchConfirmation = (target: BatchTarget) => {
+    setIsBatchMenuOpen(false);
+    setBatchError('');
+    setBatchTarget(target);
+  };
+
+  const confirmBatchPublish = async () => {
+    if (!batchTarget) return;
+
+    const targetItems = items.filter((item) => {
+      if (batchTarget === 'ALL') return true;
+      return item.type === batchTarget;
+    });
+
+    if (targetItems.length === 0) {
+      setBatchTarget(null);
+      return;
+    }
+
+    setIsBatchPublishing(true);
+    setBatchError('');
+
+    try {
+      const results = await Promise.allSettled(
+        targetItems.map((entry) =>
+          entry.kind === 'CONTENT'
+            ? decideContent(entry.id, 'APPROVE')
+            : decideChecklistTemplate(entry.id, 'APPROVE'),
+        ),
+      );
+
+      const failedCount = results.filter((r) => r.status === 'rejected').length;
+      if (failedCount > 0) {
+        const successCount = results.length - failedCount;
+        setBatchError(`Đã xuất bản ${successCount}/${results.length} mục. ${failedCount} mục bị lỗi, vui lòng thử lại.`);
+        await load();
+      } else {
+        setBatchTarget(null);
+        await load();
+      }
+    } catch {
+      setBatchError('Không thể xuất bản các mục đã chọn. Vui lòng thử lại.');
+    } finally {
+      setIsBatchPublishing(false);
+    }
+  };
+
   const resetFilters = () => {
     setSearch('');
     setTypeFilter('ALL');
@@ -229,6 +308,28 @@ export default function ContentApprovalQueuePage() {
     ? checklistCoexistenceGuidance(pendingDecision.entry.displayOrder, pendingDecision.entry.stage)
     : null;
 
+  const batchTargetCount = batchTarget ? batchCounts[batchTarget] : 0;
+  const batchDialogTitle = batchTarget === 'ALL'
+    ? 'Xuất bản tất cả nội dung?'
+    : batchTarget === 'ARTICLE'
+      ? 'Xuất bản tất cả bài viết?'
+      : batchTarget === 'FAQ'
+        ? 'Xuất bản tất cả FAQ?'
+        : batchTarget === 'CHECKLIST'
+          ? 'Xuất bản tất cả Checklist?'
+          : '';
+
+  const batchTargetLabelMap: Record<BatchTarget, string> = {
+    ALL: 'nội dung (bài viết, FAQ, checklist)',
+    ARTICLE: 'bài viết',
+    FAQ: 'câu hỏi FAQ',
+    CHECKLIST: 'mẫu checklist',
+  };
+
+  const batchDialogDescription = batchTargetCount === 0
+    ? 'Không có mục nào thuộc phân loại này đang chờ phê duyệt.'
+    : `Bạn có chắc chắn muốn xuất bản tất cả ${batchTargetCount} ${batchTarget ? batchTargetLabelMap[batchTarget] : ''} đang chờ phê duyệt không?`;
+
   return (
     <div className="p-8 font-sans">
       <div>
@@ -240,15 +341,91 @@ export default function ContentApprovalQueuePage() {
               Bảng này gom bài viết, FAQ và checklist đang chờ System Admin quyết định. Dùng bộ lọc để tách theo loại nội dung, giai đoạn chăm sóc và tìm nhanh theo tiêu đề.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => void load()}
-            disabled={isLoading}
-            className="inline-flex items-center gap-2 py-2.5 px-5 rounded-full bg-surface border border-outline-variant text-on-surface-variant text-sm font-semibold cursor-pointer hover:bg-surface-container-low disabled:opacity-50 self-start md:self-auto"
-          >
-            <span className="material-symbols-outlined text-lg">refresh</span>
-            Làm mới
-          </button>
+          <div className="flex items-center gap-3 self-start md:self-auto">
+            {/* Batch Publish Dropdown */}
+            <div className="relative inline-block text-left" ref={dropdownRef}>
+              <button
+                type="button"
+                onClick={() => setIsBatchMenuOpen((prev) => !prev)}
+                disabled={isLoading || isBatchPublishing || items.length === 0}
+                className="inline-flex items-center gap-2 py-2.5 px-5 rounded-full bg-primary text-on-primary text-sm font-semibold cursor-pointer hover:bg-primary/90 disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-lg">publish</span>
+                Xuất bản tất cả
+                <span className="material-symbols-outlined text-lg">arrow_drop_down</span>
+              </button>
+
+              {isBatchMenuOpen && (
+                <div className="absolute right-0 mt-2 w-64 rounded-2xl bg-surface border border-surface-container-highest shadow-xl py-2 z-30">
+                  <button
+                    type="button"
+                    onClick={() => openBatchConfirmation('ALL')}
+                    className="w-full text-left px-4 py-2.5 text-sm font-semibold text-on-surface hover:bg-surface-container-low flex items-center justify-between cursor-pointer"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-primary text-lg">select_all</span>
+                      Xuất bản tất cả
+                    </span>
+                    <span className="py-0.5 px-2.5 rounded-full bg-surface-container-high text-xs font-bold text-outline">
+                      {batchCounts.ALL}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => openBatchConfirmation('ARTICLE')}
+                    className="w-full text-left px-4 py-2.5 text-sm font-semibold text-on-surface hover:bg-surface-container-low flex items-center justify-between cursor-pointer"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-primary text-lg">article</span>
+                      Xuất bản tất cả bài viết
+                    </span>
+                    <span className="py-0.5 px-2.5 rounded-full bg-surface-container-high text-xs font-bold text-outline">
+                      {batchCounts.ARTICLE}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => openBatchConfirmation('FAQ')}
+                    className="w-full text-left px-4 py-2.5 text-sm font-semibold text-on-surface hover:bg-surface-container-low flex items-center justify-between cursor-pointer"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-primary text-lg">quiz</span>
+                      Xuất bản tất cả FAQ
+                    </span>
+                    <span className="py-0.5 px-2.5 rounded-full bg-surface-container-high text-xs font-bold text-outline">
+                      {batchCounts.FAQ}
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => openBatchConfirmation('CHECKLIST')}
+                    className="w-full text-left px-4 py-2.5 text-sm font-semibold text-on-surface hover:bg-surface-container-low flex items-center justify-between cursor-pointer"
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-primary text-lg">checklist</span>
+                      Xuất bản tất cả Checklist
+                    </span>
+                    <span className="py-0.5 px-2.5 rounded-full bg-surface-container-high text-xs font-bold text-outline">
+                      {batchCounts.CHECKLIST}
+                    </span>
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => void load()}
+              disabled={isLoading || isBatchPublishing}
+              className="inline-flex items-center gap-2 py-2.5 px-5 rounded-full bg-surface border border-outline-variant text-on-surface-variant text-sm font-semibold cursor-pointer hover:bg-surface-container-low disabled:opacity-50"
+            >
+              <span className="material-symbols-outlined text-lg">refresh</span>
+              Làm mới
+            </button>
+          </div>
         </div>
 
         {/* Stats Bar */}
@@ -396,7 +573,7 @@ export default function ContentApprovalQueuePage() {
                               </button>
                               <button
                                 type="button"
-                                disabled={working === workingKey}
+                                disabled={working === workingKey || isBatchPublishing}
                                 onClick={() => openDecision(entry, 'APPROVE')}
                                 className="h-8 py-1 px-4 rounded-full bg-primary text-on-primary border-0 text-xs font-semibold cursor-pointer flex items-center gap-1 hover:bg-primary/90 disabled:opacity-50"
                               >
@@ -405,7 +582,7 @@ export default function ContentApprovalQueuePage() {
                               </button>
                               <button
                                 type="button"
-                                disabled={working === workingKey}
+                                disabled={working === workingKey || isBatchPublishing}
                                 onClick={() => openDecision(entry, 'REJECT')}
                                 className="h-8 py-1 px-3 rounded-lg border border-outline-variant bg-surface text-on-surface-variant text-xs font-semibold cursor-pointer flex items-center gap-1 hover:bg-surface-container-low disabled:opacity-50"
                               >
@@ -465,8 +642,9 @@ export default function ContentApprovalQueuePage() {
         </div>
       </div>
 
+      {/* Single Item Confirm Dialog */}
       <ConfirmDialog
-        key={pendingDecision ? `${pendingDecision.entry.kind}-${pendingDecision.entry.id}-${pendingDecision.decision}` : 'none'}
+        key={pendingDecision ? `${pendingDecision.entry.kind}-${pendingDecision.entry.id}-${pendingDecision.decision}` : 'single-none'}
         open={pendingDecision !== null}
         title={dialogTitle}
         description={pendingDecision
@@ -482,6 +660,22 @@ export default function ContentApprovalQueuePage() {
         onConfirm={confirmDecision}
         onCancel={() => setPendingDecision(null)}
       />
+
+      {/* Batch Publish Confirm Dialog */}
+      <ConfirmDialog
+        key={batchTarget ? `batch-${batchTarget}` : 'batch-none'}
+        open={batchTarget !== null}
+        title={batchDialogTitle}
+        description={batchDialogDescription}
+        icon="publish"
+        tone="default"
+        confirmLabel={batchTargetCount > 0 ? `Xuất bản ${batchTargetCount} mục` : 'Đóng'}
+        submitting={isBatchPublishing}
+        errorText={batchError}
+        onConfirm={batchTargetCount > 0 ? confirmBatchPublish : () => setBatchTarget(null)}
+        onCancel={() => setBatchTarget(null)}
+      />
     </div>
   );
 }
+
