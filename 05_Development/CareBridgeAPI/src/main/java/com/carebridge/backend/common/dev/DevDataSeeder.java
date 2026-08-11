@@ -80,7 +80,6 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.LocalDateTime;
 import java.util.HashMap;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.Map;
@@ -241,7 +240,6 @@ public class DevDataSeeder implements ApplicationRunner {
             seedCommunitySampleData(savedUsers);
             seedCommunitySampleDataBatch2(savedUsers);
             seedVerifiedContent(savedUsers);
-            seedRecommendationFixtures(savedUsers.get("content@carebridge.dev"));
         } else {
             log.info("Skipped extended dev community/content fixtures by explicit configuration");
         }
@@ -258,8 +256,6 @@ public class DevDataSeeder implements ApplicationRunner {
     private void seedVerifiedContent(Map<String, User> users) {
         User author = users.get("content@carebridge.dev");
         seedApprovalUserId = users.get("admin@carebridge.dev").getId();
-        seedContent(author, "[DEV] Dinh dưỡng thai kỳ an toàn", ContentType.ARTICLE, ContentStage.PREGNANCY, ContentStatus.APPROVED);
-        seedContent(author, "[DEV] Câu hỏi thường gặp sau sinh", ContentType.FAQ, ContentStage.POSTPARTUM, ContentStatus.PENDING_REVIEW);
         seedContent(author, "[DEV] Checklist chuẩn bị sinh", ContentType.CHECKLIST, ContentStage.PREGNANCY, ContentStatus.DRAFT);
         seedChecklistTemplate();
         seedContentLibraryBatch(author);
@@ -276,91 +272,25 @@ public class DevDataSeeder implements ApplicationRunner {
     }
 
     /**
-     * 20 additional content items spanning every (type, stage) combination, mostly APPROVED so
-     * GET /api/v1/content (BR-RBAC: always filters status=APPROVED) has real results for the
-     * public /content/list screen, plus a few PENDING_REVIEW/DRAFT/ARCHIVED rows to keep the
-     * content-admin review queue populated. Idempotent via findByTitleIgnoreCaseAndStageAndType.
+     * Additional content items for CHECKLIST stage coverage.
+     * Idempotent via findByTitleIgnoreCaseAndStageAndType.
      */
     private void seedContentLibraryBatch(User author) {
-        seedContentItem(author, "Chuẩn bị mang thai: Khám sức khỏe tiền hôn nhân",
-                "Các mốc khám sức khỏe và xét nghiệm nên thực hiện trước khi mang thai để đảm bảo an toàn cho mẹ và bé.",
-                ContentType.ARTICLE, ContentStage.PRE_PREGNANCY, ContentStatus.APPROVED,
-                "Bộ Y tế", "Hướng dẫn khám sức khỏe tiền hôn nhân", "https://moh.gov.vn", "Bộ Y tế");
-        seedContentItem(author, "Bổ sung acid folic trước khi mang thai",
-                "Vai trò của acid folic trong việc phòng ngừa dị tật ống thần kinh và liều dùng khuyến nghị.",
-                ContentType.ARTICLE, ContentStage.PRE_PREGNANCY, ContentStatus.APPROVED,
-                "WHO", "Folic acid supplementation", "https://www.who.int/health-topics/maternal-health", "WHO");
-        seedContentItem(author, "Tiêm phòng trước khi mang thai",
-                "Danh sách các mũi tiêm khuyến nghị trước khi mang thai và thời điểm phù hợp.",
-                ContentType.ARTICLE, ContentStage.PRE_PREGNANCY, ContentStatus.ARCHIVED,
-                "Bộ Y tế", "Lịch tiêm chủng trước mang thai", "https://moh.gov.vn", "Bộ Y tế");
-        seedContentItem(author, "Câu hỏi thường gặp khi lên kế hoạch mang thai",
-                "Giải đáp các thắc mắc phổ biến về thời điểm và cách chuẩn bị mang thai.",
-                ContentType.FAQ, ContentStage.PRE_PREGNANCY, ContentStatus.APPROVED,
-                "WHO", "Preconception health FAQ", "https://www.who.int/health-topics/maternal-health", "WHO");
         seedContentItem(author, "Checklist khám sức khỏe tiền sản",
                 "Danh mục các xét nghiệm và mũi tiêm cần hoàn thành trước khi mang thai.",
                 ContentType.CHECKLIST, ContentStage.PRE_PREGNANCY, ContentStatus.APPROVED,
                 "Bộ Y tế", "Checklist tiền sản", "https://moh.gov.vn", "Bộ Y tế");
 
-        seedContentItem(author, "Dinh dưỡng thai kỳ theo từng tam cá nguyệt",
-                "Nhu cầu dinh dưỡng thay đổi theo từng giai đoạn thai kỳ và gợi ý thực đơn tham khảo.",
-                ContentType.ARTICLE, ContentStage.PREGNANCY, ContentStatus.APPROVED,
-                "WHO", "Nutrition during pregnancy", "https://www.who.int/health-topics/maternal-health", "WHO");
-        seedContentItem(author, "Dấu hiệu chuyển dạ cần biết",
-                "Các dấu hiệu chuyển dạ thật và chuyển dạ giả, khi nào cần đến cơ sở y tế ngay.",
-                ContentType.ARTICLE, ContentStage.PREGNANCY, ContentStatus.APPROVED,
-                "Bộ Y tế", "Dấu hiệu chuyển dạ", "https://moh.gov.vn", "Bộ Y tế");
-        seedContentItem(author, "Tập thể dục an toàn khi mang thai",
-                "Các bài tập được khuyến nghị và những lưu ý an toàn cho từng tam cá nguyệt.",
-                ContentType.ARTICLE, ContentStage.PREGNANCY, ContentStatus.PENDING_REVIEW,
-                "WHO", "Exercise during pregnancy", "https://www.who.int/health-topics/maternal-health", "WHO");
-        seedContentItem(author, "Câu hỏi thường gặp về ốm nghén",
-                "Nguyên nhân, thời điểm và cách giảm triệu chứng ốm nghén thường gặp.",
-                ContentType.FAQ, ContentStage.PREGNANCY, ContentStatus.APPROVED,
-                "WHO", "Morning sickness FAQ", "https://www.who.int/health-topics/maternal-health", "WHO");
         seedContentItem(author, "Checklist đồ dùng cho mẹ và bé khi đi sinh",
                 "Danh sách vật dụng cần chuẩn bị trước ngày dự sinh cho cả mẹ và bé.",
                 ContentType.CHECKLIST, ContentStage.PREGNANCY, ContentStatus.APPROVED,
                 "Bộ Y tế", "Checklist đồ đi sinh", "https://moh.gov.vn", "Bộ Y tế");
 
-        seedContentItem(author, "Chăm sóc vết mổ sau sinh",
-                "Hướng dẫn vệ sinh và theo dõi vết mổ lấy thai để tránh nhiễm trùng.",
-                ContentType.ARTICLE, ContentStage.POSTPARTUM, ContentStatus.APPROVED,
-                "Bộ Y tế", "Chăm sóc sau sinh mổ", "https://moh.gov.vn", "Bộ Y tế");
-        seedContentItem(author, "Trầm cảm sau sinh: Nhận biết và hỗ trợ",
-                "Dấu hiệu cảnh báo trầm cảm sau sinh và các nguồn hỗ trợ tâm lý cho mẹ.",
-                ContentType.ARTICLE, ContentStage.POSTPARTUM, ContentStatus.APPROVED,
-                "WHO", "Postpartum depression", "https://www.who.int/health-topics/maternal-health", "WHO");
-        seedContentItem(author, "Dinh dưỡng cho mẹ cho con bú",
-                "Nhu cầu năng lượng và vi chất dinh dưỡng cần thiết trong giai đoạn cho con bú.",
-                ContentType.ARTICLE, ContentStage.POSTPARTUM, ContentStatus.PENDING_REVIEW,
-                "WHO", "Nutrition for breastfeeding mothers", "https://www.who.int/health-topics/maternal-health", "WHO");
-        seedContentItem(author, "Câu hỏi thường gặp về sữa mẹ",
-                "Giải đáp các thắc mắc phổ biến về cách cho con bú và duy trì nguồn sữa.",
-                ContentType.FAQ, ContentStage.POSTPARTUM, ContentStatus.APPROVED,
-                "UNICEF", "Breastfeeding FAQ", "https://www.unicef.org/nutrition/breastfeeding", "UNICEF");
         seedContentItem(author, "Checklist chăm sóc mẹ sau sinh 6 tuần đầu",
                 "Các mốc theo dõi sức khỏe mẹ trong 6 tuần đầu sau sinh.",
                 ContentType.CHECKLIST, ContentStage.POSTPARTUM, ContentStatus.APPROVED,
                 "Bộ Y tế", "Checklist hậu sản", "https://moh.gov.vn", "Bộ Y tế");
 
-        seedContentItem(author, "Lịch tiêm chủng cho trẻ sơ sinh",
-                "Lịch tiêm chủng mở rộng theo độ tuổi cho trẻ từ sơ sinh đến 12 tháng.",
-                ContentType.ARTICLE, ContentStage.POSTPARTUM, ContentStatus.APPROVED,
-                "Bộ Y tế", "Lịch tiêm chủng mở rộng", "https://moh.gov.vn", "Bộ Y tế");
-        seedContentItem(author, "Chăm sóc rốn cho trẻ sơ sinh",
-                "Hướng dẫn vệ sinh rốn đúng cách và dấu hiệu nhiễm trùng cần lưu ý.",
-                ContentType.ARTICLE, ContentStage.POSTPARTUM, ContentStatus.APPROVED,
-                "UNICEF", "Newborn cord care", "https://www.unicef.org/nutrition", "UNICEF");
-        seedContentItem(author, "Các mốc phát triển của trẻ trong năm đầu",
-                "Các cột mốc vận động, ngôn ngữ và nhận thức theo từng tháng tuổi.",
-                ContentType.ARTICLE, ContentStage.POSTPARTUM, ContentStatus.DRAFT,
-                "WHO", "Child development milestones", "https://www.who.int/health-topics/maternal-health", "WHO");
-        seedContentItem(author, "Câu hỏi thường gặp về giấc ngủ của trẻ",
-                "Giải đáp thắc mắc về thói quen ngủ và cách thiết lập lịch ngủ cho trẻ sơ sinh.",
-                ContentType.FAQ, ContentStage.POSTPARTUM, ContentStatus.APPROVED,
-                "WHO", "Infant sleep FAQ", "https://www.who.int/health-topics/maternal-health", "WHO");
         seedContentItem(author, "Checklist an toàn cho bé tại nhà",
                 "Danh mục kiểm tra an toàn không gian sống để phòng ngừa tai nạn cho trẻ nhỏ.",
                 ContentType.CHECKLIST, ContentStage.POSTPARTUM, ContentStatus.APPROVED,
@@ -377,66 +307,7 @@ public class DevDataSeeder implements ApplicationRunner {
                 .publishedAt(status == ContentStatus.APPROVED ? now : null).build());
     }
 
-    /**
-     * Recommendation-specific demo inventory.  These rows are synthetic, idempotent, and only
-     * created when the explicit dev seed is enabled; they provide enough approved coverage to
-     * exercise fallback and targeted branches without making production content assumptions.
-     */
-    private void seedRecommendationFixtures(User author) {
-        for (ContentStage stage : List.of(ContentStage.PRE_PREGNANCY, ContentStage.PREGNANCY, ContentStage.POSTPARTUM)) {
-            for (int ordinal = 1; ordinal <= 3; ordinal++) {
-                seedRecommendationArticle(author,
-                        "[DEV][REC] " + stage.name() + " fallback " + ordinal,
-                        stage, List.of(), null, null, (short) ordinal);
-            }
-        }
 
-        List<String> targetedSlugs = List.of(
-                "rec-nutrition-vegetarian",
-                "rec-vaccination-tdap-due",
-                "rec-sexual-health-intimacy-during-lifecycle");
-        Map<String, UUID> catalogIds = communityTopicRepository.findAllBySlugIn(targetedSlugs).stream()
-                .collect(java.util.stream.Collectors.toMap(CommunityTopic::getSlug, CommunityTopic::getId));
-        if (catalogIds.size() != targetedSlugs.size()) {
-            log.warn("Recommendation demo targeted fixtures skipped because the V1 catalog is incomplete");
-            return;
-        }
-
-        seedRecommendationArticle(author, "[DEV][REC] PRE_PREGNANCY targeted nutrition",
-                ContentStage.PRE_PREGNANCY,
-                List.of(catalogIds.get("rec-nutrition-vegetarian")), null, null, (short) 80);
-        seedRecommendationArticle(author, "[DEV][REC] PREGNANCY targeted Tdap",
-                ContentStage.PREGNANCY,
-                List.of(catalogIds.get("rec-vaccination-tdap-due")), (short) 10, (short) 20, (short) 80);
-        seedRecommendationArticle(author, "[DEV][REC] POSTPARTUM targeted intimacy",
-                ContentStage.POSTPARTUM,
-                List.of(catalogIds.get("rec-sexual-health-intimacy-during-lifecycle")), null, null, (short) 80);
-    }
-
-    private void seedRecommendationArticle(User author, String title, ContentStage stage,
-            List<UUID> tagIds, Short eligibleFromWeek, Short eligibleToWeek, short priority) {
-        ContentItem item = contentRepository.findByTitleIgnoreCaseAndStageAndType(
-                        title, stage, ContentType.ARTICLE)
-                .orElseGet(() -> ContentItem.builder()
-                        .type(ContentType.ARTICLE)
-                        .title(title)
-                        .body("Approved synthetic recommendation fixture for deterministic dev smoke tests.")
-                        .stage(stage)
-                        .status(ContentStatus.APPROVED)
-                        .versionNo(1)
-                        .authorUserId(author.getId())
-                        .sourceLabel("CareBridge dev fixture")
-                        .sources(List.of(new ContentSource("CareBridge dev fixture", null, "CareBridge")))
-                        .publishedAt(Instant.now())
-                        .build());
-        item.setTagIds(new ArrayList<>(tagIds));
-        item.setEligibleFromWeek(eligibleFromWeek);
-        item.setEligibleToWeek(eligibleToWeek);
-        item.setRecommendationPriority(priority);
-        item.setStatus(ContentStatus.APPROVED);
-        if (item.getPublishedAt() == null) item.setPublishedAt(Instant.now());
-        contentRepository.save(item);
-    }
 
     private void seedChecklistTemplate() {
         ChecklistTemplate template = checklistTemplateRepository.findAll().stream()

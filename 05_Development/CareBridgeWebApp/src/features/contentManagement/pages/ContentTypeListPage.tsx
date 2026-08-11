@@ -1,12 +1,13 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchStaffContentList, archiveContent } from '../services/contentApi';
+import { fetchStaffContentList, archiveContent, updateContent } from '../services/contentApi';
 import type { ContentDetail, ContentStage, ContentStatus, ContentType } from '../models/content';
 import { STAGE_LABELS, STAGE_OPTIONS, STATUS_LABELS } from '../models/content';
 import ReviewFeedbackNotice from '../components/ReviewFeedbackNotice';
 import { SortableTableHeader, type SortDirection } from '../components/SortableTableHeader';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { nextSortDirection, sortRows } from '../utils/tableSorting';
+import ImportContentModal from '../components/ImportContentModal';
 
 /* ------------------------------------------------------------------ */
 /*  Helpers                                                            */
@@ -51,6 +52,7 @@ interface ContentTypeListPageProps {
 export default function ContentTypeListPage({ type, title, subtitle, createLabel, emptyLabel }: ContentTypeListPageProps) {
   const navigate = useNavigate();
   const createPath = type === 'ARTICLE' ? '/content/articles/create' : '/content/faq/create';
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [items, setItems] = useState<ContentDetail[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
@@ -58,6 +60,7 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
   const [searchInput, setSearchInput] = useState('');
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
+  const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState('');
   const [sortKey, setSortKey] = useState<'title' | 'stage' | 'status' | 'updatedAt'>('updatedAt');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
@@ -116,6 +119,33 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
     setSortKey(key);
   };
 
+  const handleQuickSubmit = async (item: ContentDetail) => {
+    if (submittingId) return;
+    setSubmittingId(item.id);
+    setActionError('');
+    try {
+      await updateContent(item.id, {
+        title: item.title,
+        body: item.body,
+        summary: item.summary ?? undefined,
+        stage: item.stage,
+        topicId: item.topicId ?? undefined,
+        tagIds: item.tagIds,
+        eligibleFromWeek: item.eligibleFromWeek ?? null,
+        eligibleToWeek: item.eligibleToWeek ?? null,
+        recommendationPriority: item.recommendationPriority ?? 0,
+        status: 'PENDING_REVIEW',
+        sourceLabel: item.sourceLabel ?? undefined,
+        sources: item.sources,
+      });
+      await loadData();
+    } catch {
+      setActionError('Không thể gửi duyệt bài viết. Vui lòng thử lại.');
+    } finally {
+      setSubmittingId(null);
+    }
+  };
+
   const handleDelete = async (item: ContentDetail) => {
     const reason = window.prompt(`Nhập lý do xóa (lưu trữ) "${item.title}":`);
     if (reason === null) return;
@@ -140,13 +170,24 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
           <h1 className="text-[26px] font-bold text-on-surface m-0">{title}</h1>
           <p className="text-on-surface-variant text-sm mt-1">{subtitle}</p>
         </div>
-        <button
-          onClick={() => navigate(createPath)}
-          className="flex items-center gap-2 py-3 px-6 rounded-full bg-primary text-on-primary border-0 text-sm font-semibold cursor-pointer whitespace-nowrap"
-        >
-          <span className="material-symbols-outlined text-lg">add</span>
-          {createLabel}
-        </button>
+        <div className="flex gap-2.5">
+          <button
+            type="button"
+            onClick={() => setIsImportModalOpen(true)}
+            className="flex items-center gap-2 py-3 px-5 rounded-full border border-primary/40 bg-surface text-primary text-sm font-semibold cursor-pointer whitespace-nowrap hover:bg-primary-container/20 transition-colors"
+          >
+            <span className="material-symbols-outlined text-lg">upload_file</span>
+            Import từ file
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate(createPath)}
+            className="flex items-center gap-2 py-3 px-6 rounded-full bg-primary text-on-primary border-0 text-sm font-semibold cursor-pointer whitespace-nowrap"
+          >
+            <span className="material-symbols-outlined text-lg">add</span>
+            {createLabel}
+          </button>
+        </div>
       </div>
 
       {actionError && <div className="bg-error-container rounded-2xl p-4 mb-4 text-error text-sm">{actionError}</div>}
@@ -249,6 +290,18 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
                           <span className="material-symbols-outlined text-primary text-base">edit</span>
                         </button>
                         <button
+                          onClick={() => handleQuickSubmit(item)}
+                          disabled={item.status !== 'DRAFT' || submittingId === item.id}
+                          className="w-8 h-8 rounded-lg border border-outline-variant bg-transparent cursor-pointer flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed"
+                          title={item.status !== 'DRAFT' ? 'Chỉ bài viết/FAQ dạng Bản nháp mới có thể gửi duyệt' : 'Gửi duyệt nhanh'}
+                        >
+                          {submittingId === item.id ? (
+                            <span className="material-symbols-outlined text-primary text-base animate-spin">sync</span>
+                          ) : (
+                            <span className="material-symbols-outlined text-primary text-base">send</span>
+                          )}
+                        </button>
+                        <button
                           onClick={() => handleDelete(item)}
                           className="w-8 h-8 rounded-lg border border-outline-variant bg-transparent cursor-pointer flex items-center justify-center"
                           title="Xóa"
@@ -304,6 +357,13 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
           </>
         )}
       </div>
+
+      <ImportContentModal
+        type={type}
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onSuccess={loadData}
+      />
     </div>
   );
 }

@@ -58,6 +58,20 @@ class FamilyMemberPortAdapterTest {
     }
 
     @Test
+    void acceptedFamilyAccountWithoutDeviceTokenStillReceivesInAppAlert() {
+        when(careGroupMemberRepository.findAcceptedFamilyMembersForEmergencyAlerts(OWNER_ID))
+                .thenReturn(List.of(member(FIRST_CONTACT_ID)));
+        when(deviceTokenRepository.findByUserIdAndActiveTrue(FIRST_CONTACT_ID))
+                .thenReturn(List.of());
+
+        List<AlertRecipientEndpoint> recipients = adapter.getFamilyAlertRecipients(OWNER_ID);
+
+        assertThat(recipients).containsExactly(
+                AlertRecipientEndpoint.inAppOnly(FIRST_CONTACT_ID, CARE_GROUP_ID));
+        assertThat(recipients.get(0).hasPushEndpoint()).isFalse();
+    }
+
+    @Test
     void isFamilyMemberKeepsAcceptedMembershipBehavior() {
         UUID groupId = UUID.fromString("00000000-0000-0000-0000-000000000010");
         CareGroup activeGroup = CareGroup.builder()

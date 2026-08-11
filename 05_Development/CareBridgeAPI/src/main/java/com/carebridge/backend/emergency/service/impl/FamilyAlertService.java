@@ -85,6 +85,13 @@ public class FamilyAlertService implements IFamilyAlertService {
             }
             RecipientScope recipientScope = new RecipientScope(
                     recipient.userId(), recipient.careGroupId());
+            if (!recipient.hasPushEndpoint()) {
+                UUID notificationId = deliveryPersistenceService.persistInAppNotification(
+                        event, recipient, realert);
+                notificationByRecipient.putIfAbsent(recipientScope, notificationId);
+                recipientSucceeded.merge(recipient.userId(), true, Boolean::logicalOr);
+                continue;
+            }
             PreparedAlertDelivery prepared = realert
                     ? deliveryPersistenceService.prepareRealert(
                             new EmergencySessionRealertRequested(event.eventId(), event.sessionId(), event.userId(),
