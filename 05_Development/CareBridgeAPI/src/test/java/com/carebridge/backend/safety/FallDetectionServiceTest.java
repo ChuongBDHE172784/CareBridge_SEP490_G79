@@ -497,7 +497,7 @@ class FallDetectionServiceTest {
         when(imuSessionRepository.findActiveForUpdateByUserId(USER_ID)).thenReturn(Optional.of(session));
         when(safetyEventRepository.findByImuSessionIdAndSignalKey(any(), anyString()))
                 .thenReturn(Optional.empty());
-        when(safetyEventRepository.findFirstByImuSessionIdAndDetectedAtAfterOrderByDetectedAtDesc(
+        when(safetyEventRepository.findFirstByImuSessionIdAndResponseTypeIsNullAndDetectedAtAfterOrderByDetectedAtDesc(
                 eq(session.getId()), any())).thenReturn(Optional.of(recent));
 
         SafetyEventResponse result = fallDetectionService.processImuData(USER_ID,

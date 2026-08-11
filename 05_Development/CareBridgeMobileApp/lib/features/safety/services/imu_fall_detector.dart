@@ -87,8 +87,9 @@ class ImuFallDetector {
   static const double softLandingImpactThreshold = 8.5;
   static const double minimumJerk = 40.0;
   // A soft landing can spread the acceleration change over several samples.
-  // Only a genuinely long free-fall may use this softer jerk floor; short
-  // taps still need the stricter threshold above.
+  // Once the measured low-g phase is long enough to reject a 1 cm tap, use
+  // this softer jerk floor because iOS filtering may shorten the visible
+  // free-fall segment even when the physical fall is about 50 cm.
   static const double minimumSoftFallJerk = 20.0;
   static const double gravity = 9.81;
   static const double stationaryAccelerationTolerance = 2.0;
@@ -98,10 +99,13 @@ class ImuFallDetector {
   static const double softLandingCancellationGyroscopeThreshold = 2.5;
   static const double softLandingStrongMovementAccelerationDeviation = 8.0;
   static const double minimumStationaryRatio = 0.8;
-  // A 1 cm lift produces only about 45 ms of free-fall. Requiring four
-  // samples at the 50 Hz sensor cadence filters that tap while preserving a
-  // controlled fall from roughly 50 cm (about 320 ms of free-fall).
-  static const Duration minimumFreeFallDuration = Duration(milliseconds: 80);
+  // A 1 cm lift produces only about 45 ms of free-fall. Three 50 Hz sample
+  // intervals filter that tap while tolerating iOS sensor filtering on a
+  // controlled 50 cm fall.
+  static const Duration minimumFreeFallDuration = Duration(milliseconds: 60);
+  static const Duration softFallQualificationDuration = Duration(
+    milliseconds: 60,
+  );
   static const Duration impactWindow = Duration(milliseconds: 1500);
   static const Duration impactSettlingGrace = Duration(milliseconds: 250);
   static const Duration maximumPostImpactSampleGap = Duration(
@@ -217,7 +221,7 @@ class ImuFallDetector {
     }
 
     final impactThresholdForSequence =
-        freeFallDuration >= const Duration(milliseconds: 200)
+        freeFallDuration >= softFallQualificationDuration
         ? softLandingImpactThreshold
         : impactThreshold;
     if (sample.accelerationMagnitude <= impactThresholdForSequence ||
@@ -238,7 +242,7 @@ class ImuFallDetector {
     final jerk =
         (sample.accelerationMagnitude - previous.accelerationMagnitude).abs() /
         elapsedSeconds;
-    final requiredJerk = freeFallDuration >= const Duration(milliseconds: 200)
+    final requiredJerk = freeFallDuration >= softFallQualificationDuration
         ? minimumSoftFallJerk
         : minimumJerk;
     if (jerk < requiredJerk) {
@@ -302,8 +306,7 @@ class ImuFallDetector {
     final freeFallDuration = freeFallAt == null
         ? Duration.zero
         : impactStartedAt.difference(freeFallAt);
-    final isLongSoftFall =
-        freeFallDuration >= const Duration(milliseconds: 200);
+    final isLongSoftFall = freeFallDuration >= softFallQualificationDuration;
     final movementGyroscopeThreshold = isLongSoftFall
         ? softLandingCancellationGyroscopeThreshold
         : cancellationGyroscopeThreshold;

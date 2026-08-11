@@ -123,6 +123,33 @@ void main() {
     expect(next, same(realEvent));
   });
 
+  test('suppresses a second event produced by the same physical fall', () {
+    final first = SafetyEvent(
+      id: 'fall-1',
+      eventType: 'SUSPECTED_FALL',
+      magnitude: 9,
+      status: 'OPEN',
+      detectedAt: DateTime.utc(2026, 8, 11, 10),
+    );
+    final duplicate = SafetyEvent(
+      id: 'fall-2',
+      eventType: 'SUSPECTED_FALL',
+      magnitude: 10,
+      status: 'OPEN',
+      detectedAt: DateTime.utc(2026, 8, 11, 10, 0, 7),
+    );
+
+    expect(isLikelyDuplicateFallEvent(first, duplicate), isTrue);
+    expect(
+      selectNextOpenSafetyEvent(
+        [duplicate],
+        excludingId: first.id,
+        suppressedIds: {duplicate.id},
+      ),
+      isNull,
+    );
+  });
+
   test(
     'dedicated queue preserves a real event across API list replacement',
     () {

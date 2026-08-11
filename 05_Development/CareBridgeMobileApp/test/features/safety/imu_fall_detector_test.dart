@@ -102,12 +102,12 @@ void main() {
     expect(detector.phase, FallDetectionPhase.idle);
   });
 
-  test('rejects a short tap that looks like free fall for less than 80ms', () {
+  test('rejects a 1 cm tap whose low-g phase is less than 60ms', () {
     final detector = ImuFallDetector();
     detector.addSample(sample(at: Duration.zero, acceleration: 2));
 
     detector.addSample(
-      sample(at: const Duration(milliseconds: 60), acceleration: 12),
+      sample(at: const Duration(milliseconds: 40), acceleration: 12),
     );
 
     expect(detector.phase, FallDetectionPhase.idle);
@@ -181,7 +181,7 @@ void main() {
       final detector = ImuFallDetector();
       detector.addSample(sample(at: Duration.zero, acceleration: 2));
       final impact = sample(
-        at: const Duration(milliseconds: 250),
+        at: const Duration(milliseconds: 80),
         acceleration: 8.6,
         gyro: 0.2,
       );
@@ -191,7 +191,7 @@ void main() {
       expect(
         completeImmobility(
           detector,
-          impactAt: const Duration(milliseconds: 250),
+          impactAt: const Duration(milliseconds: 80),
         ),
         isNotNull,
       );
@@ -232,7 +232,7 @@ void main() {
     expect(candidate, isNotNull);
   });
 
-  test('cancels a candidate on post-impact strong rotation', () {
+  test('cancels a soft-fall candidate on post-impact strong rotation', () {
     final detector = ImuFallDetector();
     detector.addSample(sample(at: Duration.zero, acceleration: 2));
     detector.addSample(
@@ -243,7 +243,7 @@ void main() {
       sample(
         at: const Duration(milliseconds: 400),
         acceleration: 9.81,
-        gyro: 1.6,
+        gyro: 2.6,
       ),
     );
 
@@ -321,7 +321,7 @@ void main() {
       sample(at: const Duration(milliseconds: 100), acceleration: 6.4),
     );
     detector.addSample(
-      sample(at: const Duration(milliseconds: 200), acceleration: 9.5),
+      sample(at: const Duration(milliseconds: 200), acceleration: 8.5),
     );
     expect(detector.phase, FallDetectionPhase.freeFall);
 

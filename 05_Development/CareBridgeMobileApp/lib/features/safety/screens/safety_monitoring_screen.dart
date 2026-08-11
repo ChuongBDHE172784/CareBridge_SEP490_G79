@@ -34,9 +34,12 @@ Future<void> dispatchSafetyCountdownResult({
 SafetyEvent? selectNextOpenSafetyEvent(
   Iterable<SafetyEvent> events, {
   required String excludingId,
+  Set<String> suppressedIds = const {},
 }) {
   for (final event in events) {
-    if (isPendingSafetyCountdown(event) && event.id != excludingId) {
+    if (isPendingSafetyCountdown(event) &&
+        event.id != excludingId &&
+        !suppressedIds.contains(event.id)) {
       return event;
     }
   }
@@ -45,6 +48,18 @@ SafetyEvent? selectNextOpenSafetyEvent(
 
 bool isPendingSafetyCountdown(SafetyEvent event) =>
     event.status == 'OPEN' || event.status == 'TEST_OPEN';
+
+bool isLikelyDuplicateFallEvent(SafetyEvent first, SafetyEvent second) {
+  if (first.id == second.id ||
+      first.eventType == 'SENSOR_SELF_TEST' ||
+      second.eventType == 'SENSOR_SELF_TEST') {
+    return false;
+  }
+  final firstAt = first.detectedAt;
+  final secondAt = second.detectedAt;
+  if (firstAt == null || secondAt == null) return false;
+  return firstAt.difference(secondAt).abs() <= const Duration(seconds: 10);
+}
 
 Future<void> dispatchSensorSelfTestCountdownResult({
   required SafetyCountdownResult? result,
@@ -150,7 +165,9 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
   Timer? _demoGestureArmTimer;
   DateTime? _sensorSelfTestArmedAt;
   final SafetyRealEventQueue _pendingRealEvents = SafetyRealEventQueue();
+  final Set<String> _suppressedDuplicateEventIds = {};
   String? _countdownEventId;
+  SafetyEvent? _countdownEvent;
   bool _loading = true;
   // Local sensor-stream toggle backed by sensors_plus accelerometer/gyroscope
   // streams; backend fall detection remains controlled by SafetyConfig.
@@ -259,14 +276,37 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
           _events = events;
           _imuSensorActive = _foregroundCoordinator.isRunning;
         });
-        SafetyEvent? pending;
-        for (final event in events) {
-          if (isPendingSafetyCountdown(event)) {
-            pending = event;
-            break;
+        final active = _countdownEvent;
+        if (active != null) {
+          for (final event in events) {
+            if (event.id != active.id &&
+                isPendingSafetyCountdown(event) &&
+                isLikelyDuplicateFallEvent(active, event)) {
+              _suppressedDuplicateEventIds.add(event.id);
+              _pendingRealEvents.remove(event.id);
+            }
+          }
+        } else {
+          SafetyEvent? pending;
+          for (final event in events) {
+            if (isPendingSafetyCountdown(event) &&
+                !_suppressedDuplicateEventIds.contains(event.id)) {
+              pending = event;
+              break;
+            }
+          }
+          if (pending != null) {
+            for (final event in events) {
+              if (event.id != pending.id &&
+                  isPendingSafetyCountdown(event) &&
+                  isLikelyDuplicateFallEvent(pending, event)) {
+                _suppressedDuplicateEventIds.add(event.id);
+                _pendingRealEvents.remove(event.id);
+              }
+            }
+            unawaited(_showCountdown(pending));
           }
         }
-        if (pending != null) unawaited(_showCountdown(pending));
       }
     } catch (_) {
       if (mounted) {
@@ -287,6 +327,14 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
 
   void _onDetectedEvent(SafetyEvent event) {
     if (!mounted) return;
+    final active = _countdownEvent;
+    if (active != null && isLikelyDuplicateFallEvent(active, event)) {
+      _suppressedDuplicateEventIds.add(event.id);
+      setState(() {
+        _events = [event, ..._events.where((item) => item.id != event.id)];
+      });
+      return;
+    }
     _pendingRealEvents.enqueue(event);
     setState(() {
       _events = [event, ..._events.where((item) => item.id != event.id)];
@@ -307,6 +355,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
       return;
     }
     _countdownEventId = event.id;
+    _countdownEvent = event;
     if (!simulated) _pendingRealEvents.remove(event.id);
     final result = await showModalBottomSheet<SafetyCountdownResult>(
       context: context,
@@ -392,10 +441,15 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
     } finally {
       if (!simulated && mounted) await _load();
       _countdownEventId = null;
+      _countdownEvent = null;
       if (mounted) {
         final next =
             _pendingRealEvents.takeNext(excludingId: event.id) ??
-            selectNextOpenSafetyEvent(_events, excludingId: event.id);
+            selectNextOpenSafetyEvent(
+              _events,
+              excludingId: event.id,
+              suppressedIds: _suppressedDuplicateEventIds,
+            );
         if (next != null) unawaited(_showCountdown(next));
       }
     }

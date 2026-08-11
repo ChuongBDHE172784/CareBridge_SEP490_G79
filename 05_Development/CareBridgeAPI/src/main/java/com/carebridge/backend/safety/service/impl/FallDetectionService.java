@@ -144,9 +144,10 @@ public class FallDetectionService implements IFallDetectionService {
 
         // A single physical drop can produce two verified peaks while the
         // phone is settling on a pillow. Reuse the recent event for this IMU
-        // session so the mobile app cannot open two countdowns for one fall.
+        // session only while it is unanswered, so a new fall can be recorded
+        // immediately after the user closes the previous alert as safe.
         Optional<SafetyEvent> recentEvent = safetyEventRepository
-                .findFirstByImuSessionIdAndDetectedAtAfterOrderByDetectedAtDesc(
+                .findFirstByImuSessionIdAndResponseTypeIsNullAndDetectedAtAfterOrderByDetectedAtDesc(
                         activeSession.getId(), receivedAt.minus(DUPLICATE_FALL_WINDOW));
         if (recentEvent.isPresent()) {
             return toEventResponse(recentEvent.get());
