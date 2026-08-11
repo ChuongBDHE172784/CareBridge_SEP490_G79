@@ -164,4 +164,8 @@ outputs/notification-status-audit-2026-07-29.md
 CLAUDE.md
 
 # External cloned repositories
-Exercise-Correction/
+Exercise-Correction/
+# System-test screenshots. Kept on the tester's machine on purpose: they are
+# evidence attached to the Report5.3 sheet, not source, and some frames show
+# real account data from production.
+06_Testing/SystemTesting/evidence/
