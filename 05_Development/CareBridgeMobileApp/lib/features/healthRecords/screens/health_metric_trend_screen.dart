@@ -2,11 +2,13 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../models/health_metric_model.dart';
 import '../services/health_metric_service.dart';
 import '../services/watch_metric_import_service.dart';
+import 'epds_screen.dart';
 
 class HealthMetricTrendScreen extends StatefulWidget {
   final String journeyId;
@@ -103,6 +105,13 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
     );
     unawaited(_watchImportService.drainQueuedEvents());
     _loadCapabilities();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ));
+    });
   }
 
   Future<void> _loadCapabilities() async {
@@ -245,6 +254,18 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
   }
 
   Future<void> _openAddMetric() async {
+    if (_selectedMetric.apiValue == 'EPDS_SCORE') {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => EpdsScreen(journeyId: widget.journeyId),
+        ),
+      );
+      if (mounted) {
+        await _loadTrend();
+      }
+      return;
+    }
+
     final changed = await context.push<bool>(
       '/journeys/${Uri.encodeComponent(widget.journeyId)}/metrics/add'
       '?metricType=${Uri.encodeQueryComponent(_selectedMetric.apiValue)}',
@@ -293,6 +314,23 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
   }
 
   Future<void> _openMetricDetail(MetricDataPoint point) async {
+    if (_selectedMetric.apiValue == 'EPDS_SCORE') {
+      final answers = parseEpdsAnswers(point.note);
+      if (answers != null) {
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => EpdsHistoryDetailScreen(
+              completedAt: point.measuredAt,
+              totalScore: point.valueNumeric.round(),
+              question10Score: point.valueSecondary?.round() ?? answers[9],
+              answers: answers,
+            ),
+          ),
+        );
+        return;
+      }
+    }
+
     final metricId = point.metricId;
     if (metricId != null && metricId.isNotEmpty) {
       final changed = await context.push<bool>(
@@ -341,61 +379,75 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _canvas,
-      appBar: AppBar(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
+      child: Scaffold(
         backgroundColor: _canvas,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: _onSurface),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: const Text(
-          'Chỉ số sức khỏe',
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: _primary,
+        appBar: AppBar(
+          backgroundColor: _canvas,
+          elevation: 0,
+          systemOverlayStyle: const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.dark,
+            statusBarBrightness: Brightness.light,
           ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.close_rounded, color: _onSurfaceVariant),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: _primary),
             onPressed: () => Navigator.of(context).pop(),
           ),
-        ],
-      ),
-      body: RefreshIndicator(
-        color: _primary,
-        onRefresh: _loadTrend,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildMetricSelector(),
-              const SizedBox(height: 16),
-              if (_isLoadingCapabilities || _isLoading)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(48),
-                    child: CircularProgressIndicator(color: _primaryContainer),
-                  ),
-                )
-              else if (!_isSupportedMetric)
-                _buildUnsupportedMetricCard()
-              else if (_errorMsg != null)
-                _buildErrorCard()
-              else ...[
-                _buildChartCard(),
+          title: const Text(
+            'Chỉ số sức khỏe',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: _primary,
+              letterSpacing: -0.3,
+            ),
+          ),
+          actions: [
+            IconButton(
+              tooltip: 'Nhập chỉ số',
+              icon: const Icon(Icons.add_circle_outline, color: _primary, size: 26),
+              onPressed: _openAddMetric,
+            ),
+          ],
+        ),
+        body: RefreshIndicator(
+          color: _primary,
+          onRefresh: _loadTrend,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildMetricSelector(),
                 const SizedBox(height: 16),
-                _buildHistoryCard(),
-                const SizedBox(height: 20),
-                _buildActionButtons(),
+                if (_isLoadingCapabilities || _isLoading)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(48),
+                      child: CircularProgressIndicator(color: _primaryContainer),
+                    ),
+                  )
+                else if (!_isSupportedMetric)
+                  _buildUnsupportedMetricCard()
+                else if (_errorMsg != null)
+                  _buildErrorCard()
+                else ...[
+                  _buildChartCard(),
+                  const SizedBox(height: 16),
+                  _buildHistoryCard(),
+                  const SizedBox(height: 20),
+                  _buildActionButtons(),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -758,24 +810,20 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
           else
             SizedBox(
               height: height,
-              child: Scrollbar(
+              child: ListView.separated(
                 controller: _historyScrollController,
-                thumbVisibility: points.length > 5,
-                child: ListView.separated(
-                  controller: _historyScrollController,
-                  padding: EdgeInsets.zero,
-                  itemCount: points.length,
-                  itemBuilder: (context, index) {
-                    return _HistoryTile(
-                      point: points[index],
-                      metric: _selectedMetric,
-                      unit: _trend?.unit ?? _selectedMetric.unit,
-                      onTap: () => _openMetricDetail(points[index]),
-                    );
-                  },
-                  separatorBuilder: (_, _) =>
-                      const Divider(height: 1, color: _surfaceContainer),
-                ),
+                padding: EdgeInsets.zero,
+                itemCount: points.length,
+                itemBuilder: (context, index) {
+                  return _HistoryTile(
+                    point: points[index],
+                    metric: _selectedMetric,
+                    unit: _trend?.unit ?? _selectedMetric.unit,
+                    onTap: () => _openMetricDetail(points[index]),
+                  );
+                },
+                separatorBuilder: (_, _) =>
+                    const Divider(height: 1, color: _surfaceContainer),
               ),
             ),
         ],
@@ -847,6 +895,9 @@ String _formatHistoryDateTime(DateTime dt) {
 }
 
 String _displayValue(MetricDataPoint point, _MetricOption metric) {
+  if (metric.apiValue == 'EPDS_SCORE') {
+    return '${point.valueNumeric.toStringAsFixed(0)}/30';
+  }
   if (metric.apiValue == 'FETAL_MOVEMENT_SESSION') {
     final count = point.valueNumeric.toStringAsFixed(0);
     return '$count cử động';

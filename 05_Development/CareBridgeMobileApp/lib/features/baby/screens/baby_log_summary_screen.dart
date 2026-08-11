@@ -954,7 +954,7 @@ class _AddBabyLogSheetState extends State<_AddBabyLogSheet> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<LogType>(
-                value: _selectedType,
+                initialValue: _selectedType,
                 decoration: const InputDecoration(labelText: 'Loại nhật ký'),
                 items: LogType.values
                     .map(

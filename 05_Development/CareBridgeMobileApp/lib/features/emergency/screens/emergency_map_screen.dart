@@ -29,6 +29,21 @@ typedef LocationConsentGrant =
       required String recipient,
       required String scope,
     });
+typedef TrackAsiaMapRenderer =
+    Widget Function({
+      required Key key,
+      required String styleString,
+      required CameraPosition initialCameraPosition,
+      required bool myLocationEnabled,
+      required void Function(TrackAsiaMapController? controller) onMapCreated,
+      required VoidCallback onStyleLoaded,
+    });
+typedef MapAnnotationSynchronizer =
+    Future<void> Function({
+      required Position position,
+      required List<CareFacility> facilities,
+      CareRoute? route,
+    });
 
 /// Emergency help remains available when location or the route provider is
 /// unavailable. Nearby results are informational and never delay emergency
@@ -47,6 +62,10 @@ class EmergencyMapScreen extends StatefulWidget {
     this.stage = 'INFANT',
     this.emergencyDialer,
     this.continuationCoordinator,
+    this.mapRenderer,
+    this.mapStyleLoadTimeout = const Duration(seconds: 12),
+    this.trackAsiaMapKey,
+    this.annotationSynchronizer,
   });
 
   final CareFacilityService? facilityService;
@@ -60,6 +79,10 @@ class EmergencyMapScreen extends StatefulWidget {
   final String stage;
   final Future<bool> Function()? emergencyDialer;
   final TriageContinuationRestoreCoordinator? continuationCoordinator;
+  final TrackAsiaMapRenderer? mapRenderer;
+  final Duration mapStyleLoadTimeout;
+  final String? trackAsiaMapKey;
+  final MapAnnotationSynchronizer? annotationSynchronizer;
 
   @override
   State<EmergencyMapScreen> createState() => _EmergencyMapScreenState();
@@ -74,6 +97,8 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
   );
 
   String get _effectiveTrackAsiaKey {
+    final overrideKey = widget.trackAsiaMapKey;
+    if (overrideKey != null) return overrideKey;
     if (_configuredTrackAsiaKey.isNotEmpty) {
       return _configuredTrackAsiaKey;
     }
@@ -82,6 +107,7 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
     }
     return 'd3e34fdc69a0d31780225041ffc88f4d4f';
   }
+
   static const _supportedStages = {
     'PRECONCEPTION',
     'PREGNANCY',
@@ -136,6 +162,9 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
   final String _transportMode = 'DRIVING';
   TrackAsiaMapController? _mapController;
   bool _mapStyleReady = false;
+  bool _mapStyleFailed = false;
+  int _mapGeneration = 0;
+  Timer? _mapStyleTimer;
   bool _navigationActive = false;
   int _currentStepIndex = 0;
   StreamSubscription<Position>? _navigationSubscription;
@@ -169,6 +198,7 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
   @override
   void dispose() {
     AuthState.instance.removeListener(_handleAuthChanged);
+    _mapStyleTimer?.cancel();
     unawaited(_navigationSubscription?.cancel());
     unawaited(_tts.stop());
     super.dispose();
@@ -193,6 +223,7 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
     ++_loadGeneration;
     ++_selectionGeneration;
     ++_sessionGeneration;
+    _resetMapRendererState();
     if (!mounted) return;
     setState(() {
       _accountChanged = true;
@@ -233,6 +264,7 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
     try {
       if (!await _hasLocationConsent()) {
         if (mounted && generation == _loadGeneration) {
+          _resetMapRendererState();
           setState(() {
             _position = null;
             _results = const [];
@@ -251,6 +283,7 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
       final position = await _permissions.readConsentedLocation();
       if (!mounted || generation != _loadGeneration) return;
       if (position == null) {
+        _resetMapRendererState();
         setState(() {
           _position = null;
           _results = const [];
@@ -282,6 +315,7 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
                   : 'Không có ${_facilityTypeLabel().toLowerCase()} trong 15 km. Hãy gọi 115 khi cần hỗ trợ khẩn cấp.'
             : null;
       });
+      _armMapStyleWatchdog(_mapGeneration);
       await _syncMapAnnotations();
     } catch (_) {
       if (mounted && generation == _loadGeneration) {
@@ -655,6 +689,7 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
       if (!await _navigationHasActiveConsent()) {
         await _stopNavigation();
         if (mounted) {
+          _resetMapRendererState();
           setState(() {
             _position = null;
             _results = const [];
@@ -668,6 +703,18 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
       }
       if (!_navigationActive || !mounted) return;
       setState(() => _position = position);
+      final mapController = _mapController;
+      if (mapController != null) {
+        try {
+          await mapController.animateCamera(
+            CameraUpdate.newLatLng(
+              LatLng(position.latitude, position.longitude),
+            ),
+          );
+        } catch (_) {
+          // Text directions continue if the map camera cannot follow location.
+        }
+      }
       final route = _route;
       if (route == null || route.steps.isEmpty) return;
 
@@ -883,9 +930,12 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
         : '${meters.round()} m';
   }
 
-  void _onMapCreated(TrackAsiaMapController controller) {
+  void _onMapCreated(TrackAsiaMapController? controller, int generation) {
+    if (!mounted || generation != _mapGeneration) return;
     _mapController = controller;
+    if (controller == null) return;
     controller.onCircleTapped.add((circle) {
+      if (!mounted || generation != _mapGeneration) return;
       final index = circle.data?['facilityIndex'];
       if (index is int && index >= 0 && index < _results.length) {
         unawaited(_select(_results[index]));
@@ -893,24 +943,65 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
     });
   }
 
+  void _onMapStyleLoaded(int generation) {
+    if (!mounted || generation != _mapGeneration) return;
+    _mapStyleTimer?.cancel();
+    setState(() {
+      _mapStyleReady = true;
+      _mapStyleFailed = false;
+    });
+    unawaited(_syncMapAnnotations());
+  }
+
+  void _retryMapRenderer() {
+    setState(_resetMapRendererState);
+    _armMapStyleWatchdog(_mapGeneration);
+  }
+
+  void _resetMapRendererState() {
+    _mapStyleTimer?.cancel();
+    _mapStyleTimer = null;
+    _mapController = null;
+    ++_mapGeneration;
+    _mapStyleReady = false;
+    _mapStyleFailed = false;
+  }
+
+  void _armMapStyleWatchdog(int generation) {
+    _mapStyleTimer?.cancel();
+    _mapStyleTimer = Timer(widget.mapStyleLoadTimeout, () {
+      if (!mounted || generation != _mapGeneration || _mapStyleReady) return;
+      setState(() => _mapStyleFailed = true);
+    });
+  }
+
   Future<void> _syncMapAnnotations({bool fitCamera = true}) async {
+    if (!_mapStyleReady) return;
+    final position = _position;
+    if (position == null) return;
+    final customSynchronizer = widget.annotationSynchronizer;
+    if (customSynchronizer != null) {
+      await customSynchronizer(
+        position: position,
+        facilities: _results,
+        route: _route,
+      );
+      return;
+    }
     final controller = _mapController;
-    if (!_mapStyleReady || controller == null) return;
+    if (controller == null) return;
     try {
       await controller.clearCircles();
       await controller.clearLines();
-      final position = _position;
-      if (position != null) {
-        await controller.addCircle(
-          CircleOptions(
-            geometry: LatLng(position.latitude, position.longitude),
-            circleRadius: 8,
-            circleColor: '#2563EB',
-            circleStrokeColor: '#FFFFFF',
-            circleStrokeWidth: 3,
-          ),
-        );
-      }
+      await controller.addCircle(
+        CircleOptions(
+          geometry: LatLng(position.latitude, position.longitude),
+          circleRadius: 8,
+          circleColor: '#2563EB',
+          circleStrokeColor: '#FFFFFF',
+          circleStrokeWidth: 3,
+        ),
+      );
       for (var index = 0; index < _results.length; index++) {
         final facility = _results[index];
         if (!facility.hasCoordinates) continue;
@@ -1010,27 +1101,35 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
         ),
       );
     }
-    return TrackAsiaMap(
-      key: const Key('trackasia-map'),
-      styleString:
-          'https://maps.track-asia.com/styles/v2/streets.json?key=${Uri.encodeQueryComponent(mapKey)}',
-      initialCameraPosition: CameraPosition(
-        target: LatLng(position.latitude, position.longitude),
-        zoom: 13,
-      ),
-      myLocationEnabled: true,
-      myLocationTrackingMode: _navigationActive
-          ? MyLocationTrackingMode.trackingGps
-          : MyLocationTrackingMode.none,
-      myLocationRenderMode: _navigationActive
-          ? MyLocationRenderMode.gps
-          : MyLocationRenderMode.normal,
-      onMapCreated: _onMapCreated,
-      onStyleLoadedCallback: () {
-        if (mounted) setState(() => _mapStyleReady = true);
-        unawaited(_syncMapAnnotations());
-      },
+    final generation = _mapGeneration;
+    final rendererKey = ValueKey('trackasia-map-$generation');
+    final styleString =
+        'https://maps.track-asia.com/styles/v2/streets.json?key=${Uri.encodeQueryComponent(mapKey)}';
+    final initialCameraPosition = CameraPosition(
+      target: LatLng(position.latitude, position.longitude),
+      zoom: 13,
     );
+    final customRenderer = widget.mapRenderer;
+    final map = customRenderer != null
+        ? customRenderer(
+            key: rendererKey,
+            styleString: styleString,
+            initialCameraPosition: initialCameraPosition,
+            myLocationEnabled: false,
+            onMapCreated: (controller) => _onMapCreated(controller, generation),
+            onStyleLoaded: () => _onMapStyleLoaded(generation),
+          )
+        : TrackAsiaMap(
+            key: rendererKey,
+            styleString: styleString,
+            initialCameraPosition: initialCameraPosition,
+            myLocationEnabled: false,
+            myLocationTrackingMode: MyLocationTrackingMode.none,
+            myLocationRenderMode: MyLocationRenderMode.normal,
+            onMapCreated: (controller) => _onMapCreated(controller, generation),
+            onStyleLoadedCallback: () => _onMapStyleLoaded(generation),
+          );
+    return KeyedSubtree(key: const Key('trackasia-map'), child: map);
   }
 
   @override
@@ -1075,11 +1174,15 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
                   child: _panelCollapsed
                       ? _buildFacilityPanel(compact: true)
                       : SizedBox(
-                          height: (constraints.maxHeight * 0.72).clamp(380.0, 520.0),
+                          height: (constraints.maxHeight * 0.72).clamp(
+                            380.0,
+                            520.0,
+                          ),
                           child: _buildFacilityPanel(compact: true),
                         ),
                 ),
               _buildStatusOverlay(desktop: desktop),
+              _buildMapRuntimeOverlay(),
             ],
           );
         },
@@ -1093,27 +1196,6 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
       child: Stack(
         children: [
           Positioned.fill(child: _buildTrackAsiaMap()),
-          if (_position != null &&
-              _effectiveTrackAsiaKey.isNotEmpty &&
-              !_mapStyleReady)
-            const Center(
-              child: Card(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                      SizedBox(width: 10),
-                      Text('Đang mở bản đồ TrackAsia...'),
-                    ],
-                  ),
-                ),
-              ),
-            ),
           Positioned(
             right: 16,
             bottom: 16,
@@ -1138,6 +1220,67 @@ class _EmergencyMapScreenState extends State<EmergencyMapScreen> {
       ),
     );
   }
+
+  Widget _buildMapRuntimeOverlay() {
+    if (_position == null || _effectiveTrackAsiaKey.isEmpty || _mapStyleReady) {
+      return const Positioned.fill(
+        child: IgnorePointer(child: SizedBox.shrink()),
+      );
+    }
+    return Positioned(
+      top: _hasStatusBanner ? 180 : 16,
+      left: 16,
+      right: 16,
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: _mapStyleFailed
+            ? Card(
+                key: const Key('trackasia-map-load-error'),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        'Không thể mở bản đồ TrackAsia. Danh sách cơ sở và gọi 115 vẫn dùng được.',
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      FilledButton.tonal(
+                        key: const Key('trackasia-map-retry'),
+                        onPressed: _retryMapRenderer,
+                        child: const Text('Thử lại bản đồ'),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            : const IgnorePointer(
+                child: Card(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                        SizedBox(width: 10),
+                        Text('Đang mở bản đồ TrackAsia...'),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+      ),
+    );
+  }
+
+  bool get _hasStatusBanner =>
+      (_familyAlertFailed && _isTriageHandoff) ||
+      _continuationExitError != null ||
+      _notice != null;
 
   Widget _buildStatusOverlay({required bool desktop}) {
     final banners = <Widget>[

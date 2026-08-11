@@ -68,12 +68,14 @@ def test_baby_only_question_is_removed_from_mother_session():
     assert entity_stage_validator(state)["candidateQuestionIds"] == []
 
 
-def test_unknown_target_allows_only_target_clarification():
+def test_unknown_target_allows_target_clarification_and_global_danger():
     state = _state()
     state["contextResolutionStatus"] = ContextResolutionStatus.NEEDS_TARGET_ENTITY
     state["candidateQuestionIds"] = list(CATALOG)
 
-    assert entity_stage_validator(state)["candidateQuestionIds"] == ["Q_CLARIFY_TARGET_ENTITY"]
+    assert entity_stage_validator(state)["candidateQuestionIds"] == [
+        "Q_CLARIFY_TARGET_ENTITY", "Q_GLOBAL_DANGER"
+    ]
 
 
 @pytest.mark.parametrize(
@@ -92,7 +94,9 @@ def test_missing_stage_uses_only_fixed_entity_specific_context_questions(entity,
     state["stage"] = CareStage.UNKNOWN
     state["contextResolutionStatus"] = ContextResolutionStatus.NEEDS_STAGE
 
-    assert entity_stage_validator(state)["candidateQuestionIds"] == expected
+    assert entity_stage_validator(state)["candidateQuestionIds"] == [
+        *expected, "Q_GLOBAL_DANGER"
+    ]
 
 
 def test_stopped_red_clears_all_questions():

@@ -33,13 +33,98 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
 
   // Persisted by SafetyConfigRequest.countdownSeconds.
   static const int _countdownSeconds = 30;
-  // Mapped to SafetyConfigRequest.emergencyAutoAlert.
+  bool _currentlyEnabled = false;
+  bool _loadingConfig = true;
   bool _autoFamilyAlert = true;
   bool _shareLocation = false;
   bool? _sensorPermissionGranted;
   bool? _locationPermissionGranted;
   bool _consentChecked = false;
   bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadConfig();
+  }
+
+  Future<void> _loadConfig() async {
+    try {
+      final config = await _safetyService.getConfig();
+      if (mounted) {
+        setState(() {
+          _currentlyEnabled = config.fallDetectionEnabled;
+          _autoFamilyAlert = config.emergencyAutoAlert;
+          _shareLocation = config.locationSharingEnabled;
+          if (_currentlyEnabled) {
+            _consentChecked = true;
+          }
+          _loadingConfig = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _loadingConfig = false);
+      }
+    }
+  }
+
+  Future<void> _onLocationSharingChanged(bool value) async {
+    if (!value) {
+      setState(() {
+        _shareLocation = false;
+        _locationPermissionGranted = false;
+      });
+      return;
+    }
+
+    setState(() => _shareLocation = true);
+    final position = await _permissionService.readConsentedLocation();
+    if (!mounted) return;
+    final granted = position != null;
+    setState(() {
+      _shareLocation = granted;
+      _locationPermissionGranted = granted;
+    });
+    if (!granted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Không thể truy cập vị trí. Hãy bật dịch vụ định vị và cấp quyền vị trí cho CareBridge trong Cài đặt.',
+          ),
+          backgroundColor: _error,
+        ),
+      );
+    }
+  }
+
+  Future<void> _disable() async {
+    setState(() => _submitting = true);
+    try {
+      await _safetyService.updateConfig(
+        fallDetectionEnabled: false,
+        sensitivityLevel: 'MEDIUM',
+        emergencyAutoAlert: _autoFamilyAlert,
+        locationSharingEnabled: _shareLocation,
+        countdownSeconds: _countdownSeconds,
+        sensorPermissionGranted: true,
+      );
+      await _safetyService.disableFallDetection();
+      await _foregroundCoordinator.stop();
+      if (mounted) Navigator.of(context).pop(true);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Không thể tắt phát hiện ngã: $e'),
+            backgroundColor: _error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
 
   Future<void> _enable() async {
     if (!_foregroundCoordinator.isSupported) {
@@ -83,20 +168,26 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
         );
       }
       if (_shareLocation) {
+        final position = await _permissionService.readConsentedLocation();
+        if (mounted) {
+          setState(() => _locationPermissionGranted = position != null);
+        }
+        if (position == null) {
+          throw StateError(
+            'Cần bật dịch vụ định vị và cấp quyền vị trí để chia sẻ khi cảnh báo.',
+          );
+        }
         await _ensureConsent(
           dataType: 'LOCATION',
           purpose: 'SHARE',
           scope: 'SAFETY_EMERGENCY_ALERT',
         );
-        final position = await _permissionService.readConsentedLocation();
-        if (mounted) {
-          setState(() => _locationPermissionGranted = position != null);
-        }
       }
       await _safetyService.updateConfig(
         fallDetectionEnabled: true,
         sensitivityLevel: 'MEDIUM',
         emergencyAutoAlert: _autoFamilyAlert,
+        locationSharingEnabled: _shareLocation,
         countdownSeconds: _countdownSeconds,
         sensorPermissionGranted: true,
       );
@@ -116,6 +207,7 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
             fallDetectionEnabled: false,
             sensitivityLevel: 'MEDIUM',
             emergencyAutoAlert: _autoFamilyAlert,
+            locationSharingEnabled: _shareLocation,
             countdownSeconds: _countdownSeconds,
             sensorPermissionGranted: true,
           );
@@ -169,10 +261,14 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
           children: [
             _buildTopBar(),
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-                child: _buildContent(),
-              ),
+              child: _loadingConfig
+                  ? const Center(
+                      child: CircularProgressIndicator(color: _primaryContainer),
+                    )
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+                      child: _buildContent(),
+                    ),
             ),
           ],
         ),
@@ -407,7 +503,9 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
                   'Chỉ gửi khi bạn bật tùy chọn này, cấp quyền hệ điều hành và consent LOCATION/SHARE còn hiệu lực.',
                 ),
                 value: _shareLocation,
-                onChanged: (value) => setState(() => _shareLocation = value),
+                onChanged: _submitting
+                    ? null
+                    : (value) => _onLocationSharingChanged(value),
               ),
             ],
           ),
@@ -493,9 +591,11 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
           width: double.infinity,
           height: 52,
           child: ElevatedButton.icon(
-            onPressed: _submitting ? null : _enable,
+            onPressed: _submitting
+                ? null
+                : (_currentlyEnabled ? _disable : _enable),
             style: ElevatedButton.styleFrom(
-              backgroundColor: _primary,
+              backgroundColor: _currentlyEnabled ? _error : _primary,
               foregroundColor: Colors.white,
               shape: const StadiumBorder(),
               elevation: 4,
@@ -510,23 +610,9 @@ class _EnableFallDetectionScreenState extends State<EnableFallDetectionScreen> {
                     ),
                   )
                 : const Icon(Icons.power_settings_new),
-            label: const Text(
-              'Bật phát hiện ngã',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        SizedBox(
-          width: double.infinity,
-          height: 52,
-          child: TextButton(
-            onPressed: _submitting
-                ? null
-                : () => Navigator.of(context).pop(false),
-            child: const Text(
-              'Để sau',
-              style: TextStyle(color: _onSurfaceVariant, fontSize: 16),
+            label: Text(
+              _currentlyEnabled ? 'Tắt phát hiện ngã' : 'Bật phát hiện ngã',
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
           ),
         ),

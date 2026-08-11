@@ -54,7 +54,8 @@ public class FallDetectionController {
         ImuDataPayload payload = new ImuDataPayload(
                 request.getAccelerometerX(), request.getAccelerometerY(), request.getAccelerometerZ(),
                 request.getGyroscopeX(), request.getGyroscopeY(), request.getGyroscopeZ(),
-                request.getTimestamp(), request.getSignalId(), request.getLatitude(), request.getLongitude());
+                request.getTimestamp(), request.getSignalId(), request.getLatitude(), request.getLongitude(),
+                request.isOnDeviceFallConfirmed());
         return ResponseEntity.ok(ApiResponse.success(fallDetectionService.processImuData(userId, payload)));
     }
 

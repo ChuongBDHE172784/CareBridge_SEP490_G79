@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../checklist/services/user_checklist_service.dart';
@@ -214,6 +215,15 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
     }
   }
 
+  Future<void> _openDetail(TodayTask task) async {
+    final changed = await context.push<bool>(
+      '/checklists/task-detail',
+      extra: task,
+    );
+    if (!mounted || changed != true) return;
+    await _load();
+  }
+
   Future<void> _delete(TodayTask task) async {
     if (_acting.contains(task.id) ||
         !task.isChecklist ||
@@ -399,6 +409,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
                     icon: Icons.auto_awesome_rounded,
                     tasks: systemTasks,
                     acting: _acting,
+                    onOpen: _openDetail,
                     onAction: _act,
                     onDelete: _delete,
                     allowDelete: widget.audience == TodayTasksAudience.mother,
@@ -418,6 +429,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
                     icon: Icons.person_outline_rounded,
                     tasks: userTasks,
                     acting: _acting,
+                    onOpen: _openDetail,
                     onAction: _act,
                     onDelete: _delete,
                     allowDelete: widget.audience == TodayTasksAudience.mother,
@@ -435,6 +447,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
                 icon: Icons.error_outline_rounded,
                 tasks: _checklistOnly(_snapshot!.sections.overdue),
                 acting: _acting,
+                onOpen: _openDetail,
                 onAction: _act,
                 onDelete: _delete,
                 allowDelete: widget.audience == TodayTasksAudience.mother,
@@ -444,6 +457,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
                 icon: Icons.wb_sunny_outlined,
                 tasks: _checklistOnly(_snapshot!.sections.today),
                 acting: _acting,
+                onOpen: _openDetail,
                 onAction: _act,
                 onDelete: _delete,
                 allowDelete: widget.audience == TodayTasksAudience.mother,
@@ -453,6 +467,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
                 icon: Icons.date_range_rounded,
                 tasks: _checklistOnly(_snapshot!.sections.upcoming),
                 acting: _acting,
+                onOpen: _openDetail,
                 onAction: _act,
                 onDelete: _delete,
                 allowDelete: widget.audience == TodayTasksAudience.mother,
@@ -462,6 +477,7 @@ class _TodayTasksPanelState extends State<TodayTasksPanel> {
                 icon: Icons.event_busy_rounded,
                 tasks: _checklistOnly(_snapshot!.sections.unscheduled),
                 acting: _acting,
+                onOpen: _openDetail,
                 onAction: _act,
                 onDelete: _delete,
                 allowDelete: widget.audience == TodayTasksAudience.mother,
@@ -649,10 +665,7 @@ class _SourceTabBar extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(23),
-                  border: Border.all(
-                    color: const Color(0xFFF0E4DD),
-                    width: 1,
-                  ),
+                  border: Border.all(color: const Color(0xFFF0E4DD), width: 1),
                   boxShadow: [
                     BoxShadow(
                       color: const Color(0xFFC98C7B).withValues(alpha: .15),
@@ -756,8 +769,8 @@ class _TabButton extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: isSelected
                           ? (isSystemTab
-                              ? const Color(0xFFFFF0EC)
-                              : const Color(0xFFF4ECE7))
+                                ? const Color(0xFFFFF0EC)
+                                : const Color(0xFFF4ECE7))
                           : Colors.transparent,
                       shape: BoxShape.circle,
                     ),
@@ -766,7 +779,9 @@ class _TabButton extends StatelessWidget {
                         icon,
                         size: isSelected ? 15 : 16,
                         color: isSelected
-                            ? (isSystemTab ? systemActiveColor : userActiveColor)
+                            ? (isSystemTab
+                                  ? systemActiveColor
+                                  : userActiveColor)
                             : const Color(0xFF9E877C),
                       ),
                     ),
@@ -804,8 +819,8 @@ class _TabButton extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: isSelected
                             ? (isSystemTab
-                                ? const Color(0xFFFFEBE4)
-                                : const Color(0xFFF0E8E2))
+                                  ? const Color(0xFFFFEBE4)
+                                  : const Color(0xFFF0E8E2))
                             : const Color(0xFFE0D5CD).withValues(alpha: .65),
                         borderRadius: BorderRadius.circular(10),
                       ),
@@ -819,8 +834,8 @@ class _TabButton extends StatelessWidget {
                               : FontWeight.w700,
                           color: isSelected
                               ? (isSystemTab
-                                  ? primaryAccent
-                                  : const Color(0xFF5A463F))
+                                    ? primaryAccent
+                                    : const Color(0xFF5A463F))
                               : textInactive,
                         ),
                       ),
@@ -898,6 +913,7 @@ class _Section extends StatelessWidget {
     required this.icon,
     required this.tasks,
     required this.acting,
+    required this.onOpen,
     required this.onAction,
     required this.onDelete,
     required this.allowDelete,
@@ -908,6 +924,7 @@ class _Section extends StatelessWidget {
   final IconData icon;
   final List<TodayTask> tasks;
   final Set<String> acting;
+  final ValueChanged<TodayTask> onOpen;
   final Future<void> Function(TodayTask, TodayTaskAction) onAction;
   final Future<void> Function(TodayTask) onDelete;
   final bool allowDelete;
@@ -945,6 +962,7 @@ class _Section extends StatelessWidget {
               child: _TodayTaskCard(
                 task: task,
                 busy: acting.contains(task.id),
+                onOpen: () => onOpen(task),
                 onAction: (action) => onAction(task, action),
                 onDelete: () => onDelete(task),
                 allowDelete: allowDelete,
@@ -961,6 +979,7 @@ class _TodayTaskCard extends StatelessWidget {
   const _TodayTaskCard({
     required this.task,
     required this.busy,
+    required this.onOpen,
     required this.onAction,
     required this.onDelete,
     required this.allowDelete,
@@ -968,6 +987,7 @@ class _TodayTaskCard extends StatelessWidget {
 
   final TodayTask task;
   final bool busy;
+  final VoidCallback onOpen;
   final ValueChanged<TodayTaskAction> onAction;
   final VoidCallback onDelete;
   final bool allowDelete;
@@ -983,22 +1003,21 @@ class _TodayTaskCard extends StatelessWidget {
 
     return Semantics(
       container: true,
+      explicitChildNodes: true,
       selected: isCompleted,
       label:
-          '${task.title}, ${task.originLabel}, ${task.targetLabel}, ${task.statusLabel}',
+          'Xem chi tiết ${task.title}, ${task.originLabel}, ${task.targetLabel}, ${task.statusLabel}',
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           key: Key('task-item-${task.id}'),
-          onTap: busy || tapAction == null ? null : () => onAction(tapAction),
+          onTap: busy ? null : onOpen,
           borderRadius: BorderRadius.circular(20),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: isCompleted
-                  ? const Color(0xFFFAF6F3)
-                  : Colors.white,
+              color: isCompleted ? const Color(0xFFFAF6F3) : Colors.white,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: isCompleted
@@ -1019,31 +1038,13 @@ class _TodayTaskCard extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                Semantics(
-                  button: true,
-                  label: isCompleted ? 'Đã hoàn tất' : 'Chưa hoàn tất',
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 1),
-                    child: busy
-                        ? const SizedBox.square(
-                            dimension: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Color(0xFFC98C7B),
-                            ),
-                          )
-                        : Icon(
-                            isCompleted
-                                ? Icons.check_circle_rounded
-                                : Icons.radio_button_unchecked_rounded,
-                            size: 24,
-                            color: isCompleted
-                                ? const Color(0xFFC98C7B)
-                                : const Color(0xFFBFAAA0),
-                          ),
-                  ),
+                _TaskStatusControl(
+                  task: task,
+                  busy: busy,
+                  action: tapAction,
+                  onAction: onAction,
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1116,14 +1117,26 @@ class _TodayTaskCard extends StatelessWidget {
                     ],
                   ),
                 ),
-                if (canDelete)
-                  IconButton(
-                    key: Key('delete-task-${task.id}'),
-                    onPressed: busy ? null : onDelete,
-                    tooltip: 'Xoá việc',
-                    icon: const Icon(Icons.delete_outline_rounded),
-                    color: const Color(0xFFB06E62),
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (canDelete)
+                      IconButton(
+                        key: Key('delete-task-${task.id}'),
+                        onPressed: busy ? null : onDelete,
+                        tooltip: 'Xoá việc',
+                        icon: const Icon(Icons.delete_outline_rounded),
+                        color: const Color(0xFFB06E62),
+                      ),
+                    const ExcludeSemantics(
+                      child: Icon(
+                        Icons.chevron_right_rounded,
+                        size: 24,
+                        color: Color(0xFFB7A49B),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -1148,10 +1161,76 @@ class _TodayTaskCard extends StatelessWidget {
     if (task.allowedActions.contains(TodayTaskAction.complete)) {
       return TodayTaskAction.complete;
     }
-    if (task.allowedActions.contains(TodayTaskAction.skip)) {
-      return TodayTaskAction.skip;
-    }
     return null;
+  }
+}
+
+class _TaskStatusControl extends StatelessWidget {
+  const _TaskStatusControl({
+    required this.task,
+    required this.busy,
+    required this.action,
+    required this.onAction,
+  });
+
+  final TodayTask task;
+  final bool busy;
+  final TodayTaskAction? action;
+  final ValueChanged<TodayTaskAction> onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    if (busy) {
+      return const SizedBox.square(
+        dimension: 48,
+        child: Center(
+          child: SizedBox.square(
+            dimension: 22,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Color(0xFFC98C7B),
+            ),
+          ),
+        ),
+      );
+    }
+
+    final isCompleted = task.isCompleted;
+    final statusIcon = Icon(
+      isCompleted
+          ? Icons.check_circle_rounded
+          : Icons.radio_button_unchecked_rounded,
+      size: 25,
+      color: isCompleted ? const Color(0xFFC98C7B) : const Color(0xFFBFAAA0),
+    );
+    if (action == null) {
+      return Semantics(
+        label: task.statusLabel,
+        child: SizedBox.square(dimension: 48, child: Center(child: statusIcon)),
+      );
+    }
+
+    final resolvedAction = action!;
+    final tooltip = switch (resolvedAction) {
+      TodayTaskAction.complete => 'Đánh dấu hoàn tất',
+      TodayTaskAction.reopen => 'Mở lại việc',
+      TodayTaskAction.skip => 'Bỏ qua việc',
+    };
+    final actionIcon = resolvedAction == TodayTaskAction.skip
+        ? const Icon(
+            Icons.skip_next_rounded,
+            size: 25,
+            color: Color(0xFFB06E62),
+          )
+        : statusIcon;
+    return IconButton(
+      key: Key('task-status-${task.id}'),
+      onPressed: () => onAction(resolvedAction),
+      tooltip: tooltip,
+      constraints: const BoxConstraints.tightFor(width: 48, height: 48),
+      padding: EdgeInsets.zero,
+      icon: actionIcon,
+    );
   }
 }
 
@@ -1201,10 +1280,7 @@ class _ContextLabel extends StatelessWidget {
     decoration: BoxDecoration(
       color: const Color(0xFFF7F2EE),
       borderRadius: BorderRadius.circular(8),
-      border: Border.all(
-        color: const Color(0xFFEAE0D9),
-        width: 0.8,
-      ),
+      border: Border.all(color: const Color(0xFFEAE0D9), width: 0.8),
     ),
     child: Row(
       mainAxisSize: MainAxisSize.min,
@@ -1228,7 +1304,6 @@ class _ContextLabel extends StatelessWidget {
     ),
   );
 }
-
 
 class _RoundIcon extends StatelessWidget {
   const _RoundIcon({required this.icon});

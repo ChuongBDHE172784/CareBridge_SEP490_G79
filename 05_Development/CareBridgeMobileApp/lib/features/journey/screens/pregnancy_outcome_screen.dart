@@ -37,14 +37,14 @@ class PregnancyOutcomeScreen extends StatefulWidget {
 }
 
 class _PregnancyOutcomeScreenState extends State<PregnancyOutcomeScreen> {
-  static const _background = Color(0xFFF6F1EC);
-  static const _surface = Colors.white;
-  static const _nestedSurface = Color(0xFFF2EAE4);
-  static const _accent = Color(0xFFC98C7B);
-  static const _accentPressed = Color(0xFFB67868);
-  static const _text = Color(0xFF5A463F);
-  static const _secondaryText = Color(0xFF9C857C);
-  static const _border = Color(0xFFE8DDD6);
+  static const _background = Color(0xFFF8F5F1);
+  static const _surface = Color(0xFFFFFCF9);
+  static const _nestedSurface = Color(0xFFF8EEE9);
+  static const _accent = Color(0xFF845143);
+  static const _accentPressed = Color(0xFFC98C7B);
+  static const _text = Color(0xFF2A211D);
+  static const _secondaryText = Color(0xFF655650);
+  static const _border = Color(0xFFF1E6E0);
 
   PregnancyOutcome? _selected;
   DateTime? _outcomeDate;

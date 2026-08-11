@@ -123,8 +123,14 @@ void main() {
       );
       expect(finder, findsOneWidget);
 
+      // The action bar uses ElevatedButton.icon, whose factory returns the private
+      // _ElevatedButtonWithIcon subclass. find.byType matches the exact runtime type,
+      // so it never sees that button — match on the supertype instead.
       final buttonWidget = tester.widget<ElevatedButton>(
-        find.widgetWithText(ElevatedButton, 'Thêm vào danh sách việc cần làm'),
+        find.ancestor(
+          of: find.text('Thêm vào danh sách việc cần làm'),
+          matching: find.byWidgetPredicate((widget) => widget is ElevatedButton),
+        ),
       );
       expect(buttonWidget.onPressed, isNull);
     },

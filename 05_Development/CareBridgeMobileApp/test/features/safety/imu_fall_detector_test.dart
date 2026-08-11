@@ -40,7 +40,7 @@ void main() {
   }) {
     FallCandidate? result;
     for (var index = 1; index <= 20; index++) {
-      result = detector.addSample(
+      result ??= detector.addSample(
         sample(
           at: impactAt + Duration(milliseconds: index * 200),
           acceleration: 9.81,
@@ -118,12 +118,12 @@ void main() {
     expect(completeImmobility(detector), isNull);
   });
 
-  test('rejects an impact whose jerk is below 80 m/s3', () {
+  test('rejects an impact whose jerk is below 40 m/s3', () {
     final detector = ImuFallDetector();
-    detector.addSample(sample(at: Duration.zero, acceleration: 2.9));
+    detector.addSample(sample(at: Duration.zero, acceleration: 6.4));
 
     detector.addSample(
-      sample(at: const Duration(milliseconds: 500), acceleration: 26),
+      sample(at: const Duration(milliseconds: 500), acceleration: 9.6),
     );
 
     expect(detector.phase, FallDetectionPhase.freeFall);
@@ -215,14 +215,14 @@ void main() {
 
   test('rejects out-of-order samples and exact exclusive thresholds', () {
     final detector = ImuFallDetector();
-    detector.addSample(sample(at: Duration.zero, acceleration: 3));
+    detector.addSample(sample(at: Duration.zero, acceleration: 6.5));
     expect(detector.phase, FallDetectionPhase.idle);
 
     detector.addSample(
-      sample(at: const Duration(milliseconds: 100), acceleration: 2),
+      sample(at: const Duration(milliseconds: 100), acceleration: 6.4),
     );
     detector.addSample(
-      sample(at: const Duration(milliseconds: 200), acceleration: 25),
+      sample(at: const Duration(milliseconds: 200), acceleration: 9.5),
     );
     expect(detector.phase, FallDetectionPhase.freeFall);
 
@@ -244,12 +244,12 @@ void main() {
     );
 
     FallCandidate? result;
-    for (var index = 1; index <= 20; index++) {
-      result = detector.addSample(
+    for (var index = 1; index <= 5; index++) {
+      result ??= detector.addSample(
         sample(
           at: Duration(milliseconds: 100 + index * 200),
-          acceleration: index <= 15 ? 9.81 : 13,
-          gyro: index <= 15 ? 0.1 : 0.8,
+          acceleration: index <= 2 ? 9.81 : 11.9,
+          gyro: index <= 2 ? 0.1 : 0.6,
         ),
       );
     }
@@ -262,7 +262,7 @@ void main() {
     );
   });
 
-  test('suppresses duplicate candidates during the 30-second cooldown', () {
+  test('suppresses duplicate candidates during the three-second cooldown', () {
     final detector = ImuFallDetector();
     detector.addSample(sample(at: Duration.zero, acceleration: 2));
     detector.addSample(
@@ -271,10 +271,10 @@ void main() {
     expect(completeImmobility(detector), isNotNull);
 
     detector.addSample(
-      sample(at: const Duration(seconds: 10), acceleration: 2),
+      sample(at: const Duration(milliseconds: 3500), acceleration: 2),
     );
     detector.addSample(
-      sample(at: const Duration(milliseconds: 10100), acceleration: 30),
+      sample(at: const Duration(milliseconds: 3600), acceleration: 30),
     );
 
     expect(detector.phase, FallDetectionPhase.idle);
@@ -318,5 +318,33 @@ void main() {
     expect(candidate, isNotNull);
     expect(detector.latestDecision.reason, ImuDetectorDecisionReason.accepted);
     expect(candidate!.stationarySampleRatio, 1);
+  });
+
+  test('accepts a controlled 50 cm fall onto a soft surface', () {
+    final detector = ImuFallDetector();
+    FallCandidate? candidate;
+
+    final samples = <ImuSample>[
+      sample(at: Duration.zero, acceleration: 5.5),
+      sample(
+        at: const Duration(milliseconds: 60),
+        acceleration: 9.6,
+        gyro: 0.2,
+      ),
+      for (var index = 1; index <= 6; index++)
+        sample(
+          at: Duration(milliseconds: 60 + index * 200),
+          acceleration: 9.81,
+          gyro: 0.1,
+        ),
+    ];
+
+    for (final value in samples) {
+      candidate = detector.addSample(value) ?? candidate;
+    }
+
+    expect(candidate, isNotNull);
+    expect(candidate!.impactSample.accelerationMagnitude, 9.6);
+    expect(detector.phase, FallDetectionPhase.idle);
   });
 }

@@ -188,8 +188,8 @@ class EmergencyTriageLinkPostgresIntegrationTest
         ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
         AuditService audit = mock(AuditService.class);
         when(familyMembers.getFamilyAlertRecipients(ownerId)).thenReturn(List.of(
-                new AlertRecipientEndpoint(recipientOne, deviceOne, "restart-token-1"),
-                new AlertRecipientEndpoint(recipientTwo, deviceTwo, "restart-token-2")));
+                new AlertRecipientEndpoint(recipientOne, deviceOne, UUID.randomUUID(), "restart-token-1"),
+                new AlertRecipientEndpoint(recipientTwo, deviceTwo, UUID.randomUUID(), "restart-token-2")));
         when(fcm.send(eq("restart-token-1"), any()))
                 .thenReturn(FcmDeliveryResult.success("fcm-one", 1));
         when(fcm.send(eq("restart-token-2"), any()))

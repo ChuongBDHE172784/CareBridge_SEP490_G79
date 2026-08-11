@@ -128,7 +128,13 @@ public class FallDetectionService implements IFallDetectionService {
             return toEventResponse(duplicate.get());
         }
 
-        FallAnalysisResult analysis = algorithmService.analyze(payload, activeSession.getSensitivityLevel());
+        // A recent CareBridge mobile client only sets this after its local IMU
+        // detector has verified free-fall, a rebound, and post-impact
+        // immobility. This prevents the legacy single-sample, hard-impact
+        // heuristic from discarding an otherwise verified soft-surface fall.
+        FallAnalysisResult analysis = payload.onDeviceFallConfirmed()
+                ? onDeviceConfirmedAnalysis(payload)
+                : algorithmService.analyze(payload, activeSession.getSensitivityLevel());
 
         if (!analysis.suspected()) {
             return null;
@@ -193,6 +199,17 @@ public class FallDetectionService implements IFallDetectionService {
             throw new SafetyException(HttpStatus.CONFLICT, "SAFETY-013",
                     "Sensor self-test events cannot trigger emergency alerts");
         }
+        // The expiry job can persist TIMEOUT milliseconds before the mobile
+        // countdown sheet posts its timeout action. Both outcomes mean the
+        // same thing: no safety acknowledgement arrived, so emergency alerting
+        // must continue instead of rejecting the mobile request as a conflict.
+        if ("TIMEOUT".equals(requestedEvent.getResponseType())) {
+            requestedEvent.setStatus(SafetyEventStatus.ESCALATION_REQUESTED);
+            requestedEvent.setResolvedAt(null);
+            SafetyEvent saved = safetyEventRepository.save(requestedEvent);
+            openEmergency(saved);
+            return;
+        }
         SafetyEvent saved = respondEntity(userId, eventId, "NEED_HELP", SafetyEventStatus.ESCALATION_REQUESTED, null, true);
         openEmergency(saved);
     }
@@ -248,6 +265,17 @@ public class FallDetectionService implements IFallDetectionService {
                 saved.getId().toString(), Map.of("emergencySessionId", emergency.getSessionId().toString()));
     }
 
+    private FallAnalysisResult onDeviceConfirmedAnalysis(ImuDataPayload payload) {
+        double accelerationMagnitude = Math.sqrt(
+                payload.accelerometerX() * payload.accelerometerX()
+                        + payload.accelerometerY() * payload.accelerometerY()
+                        + payload.accelerometerZ() * payload.accelerometerZ());
+        return new FallAnalysisResult(
+                true,
+                SafetyEventType.SUSPECTED_FALL,
+                Math.abs(accelerationMagnitude - 9.81));
+    }
+
     private void synchronizeLinkedSentSession(SafetyEvent saved) {
         int synchronizedEvents = safetyEventRepository.transitionLinkedEventForSentEmergencySession(
                 saved.getId(),
@@ -270,7 +298,9 @@ public class FallDetectionService implements IFallDetectionService {
             if (event.getResponseType().equals(responseType)) {
                 return event;
             }
-            throw new SafetyException(HttpStatus.CONFLICT, "SAFETY-010", "Safety event already has a response");
+            if (!"TIMEOUT".equals(event.getResponseType()) || (!"I_AM_OK".equals(responseType) && !"FALSE_POSITIVE".equals(responseType))) {
+                throw new SafetyException(HttpStatus.CONFLICT, "SAFETY-010", "Safety event already has a response");
+            }
         }
         Instant now = Instant.now();
         event.setStatus(status);

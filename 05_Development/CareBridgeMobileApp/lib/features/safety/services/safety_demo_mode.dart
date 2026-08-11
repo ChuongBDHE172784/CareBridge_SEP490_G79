@@ -18,7 +18,8 @@ const String safetyDiagnosticsModeLabel = safetyDemoMode
     : 'DEBUG';
 
 /// Recognizes an intentionally exaggerated hand swing for the user-initiated
-/// sensor self-test. These thresholds never participate in fall detection.
+/// sensor self-test, or a controlled soft-surface drop. These thresholds never
+/// participate in production fall detection.
 class SafetyDemoGestureDetector {
   static const double gravity = 9.81;
   static const double stationaryAccelerationTolerance = 0.8;
@@ -30,6 +31,14 @@ class SafetyDemoGestureDetector {
   static const double requiredPeakAccelerationDeviation = 5.0;
   static const double requiredPeakRotationMagnitude = 2.0;
   static const double minimumEstimatedTravelMetres = 0.45;
+  // A controlled 50 cm drop has a short near-weightless phase, while a pillow
+  // or mattress may dissipate most of the impact. Requiring both phases keeps
+  // the self-test distinct from an ordinary lift or hand shake without
+  // requiring a hard-floor collision.
+  static const double freeFallAccelerationMagnitude = 6.5;
+  static const double softImpactAccelerationMagnitude = 9.5;
+  static const Duration minimumFreeFallDuration = Duration(milliseconds: 40);
+  static const Duration maximumSoftDropSequence = Duration(seconds: 2);
   static const int minimumStrongSamples = 8;
   static const Duration stationaryPreparation = Duration(milliseconds: 300);
   static const Duration preparationValidity = Duration(seconds: 3);
@@ -43,6 +52,7 @@ class SafetyDemoGestureDetector {
   DateTime? _stationarySince;
   DateTime? _preparedAt;
   DateTime? _motionStartedAt;
+  DateTime? _freeFallStartedAt;
   double _estimatedSpeed = 0;
   double _estimatedTravel = 0;
   double _peakAccelerationDeviation = 0;
@@ -91,6 +101,7 @@ class SafetyDemoGestureDetector {
       final startsDeliberateMotion =
           accelerationDeviation >= motionStartAccelerationDeviation &&
           rotationMagnitude >= motionStartRotationMagnitude;
+      if (_acceptsSoftSurfaceDrop(sample)) return true;
       if (!prepared || !startsDeliberateMotion) return false;
 
       _motionStartedAt = sample.timestamp;
@@ -149,6 +160,37 @@ class SafetyDemoGestureDetector {
     return true;
   }
 
+  bool _acceptsSoftSurfaceDrop(ImuSample sample) {
+    final preparedAt = _preparedAt;
+    if (preparedAt == null ||
+        sample.timestamp.difference(preparedAt) > preparationValidity) {
+      _freeFallStartedAt = null;
+      return false;
+    }
+
+    final freeFallStartedAt = _freeFallStartedAt;
+    if (sample.accelerationMagnitude <= freeFallAccelerationMagnitude) {
+      _freeFallStartedAt ??= sample.timestamp;
+      return false;
+    }
+    if (freeFallStartedAt == null) return false;
+
+    final freeFallDuration = sample.timestamp.difference(freeFallStartedAt);
+    if (freeFallDuration > maximumSoftDropSequence) {
+      _freeFallStartedAt = null;
+      return false;
+    }
+    if (freeFallDuration < minimumFreeFallDuration ||
+        sample.accelerationMagnitude < softImpactAccelerationMagnitude) {
+      return false;
+    }
+
+    _lastDetectedAt = sample.timestamp;
+    _sequence++;
+    _resetMotionPreparation();
+    return true;
+  }
+
   void _updatePreparation(DateTime timestamp, bool stationary) {
     if (stationary) {
       _stationarySince ??= timestamp;
@@ -169,6 +211,7 @@ class SafetyDemoGestureDetector {
     _stationarySince = null;
     _preparedAt = null;
     _motionStartedAt = null;
+    _freeFallStartedAt = null;
     _estimatedSpeed = 0;
     _estimatedTravel = 0;
     _peakAccelerationDeviation = 0;

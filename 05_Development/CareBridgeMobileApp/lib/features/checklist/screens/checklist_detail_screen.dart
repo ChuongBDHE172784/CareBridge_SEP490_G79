@@ -30,14 +30,14 @@ class ChecklistDetailScreen extends StatefulWidget {
 }
 
 class _ChecklistDetailScreenState extends State<ChecklistDetailScreen> {
-  static const _background = Color(0xFFF6F1EC);
-  static const _surface = Colors.white;
+  static const _background = Color(0xFFF8F5F1);
+  static const _surface = Color(0xFFFFFCF9);
   static const _primary = Color(0xFF845143);
   static const _onPrimary = Colors.white;
-  static const _muted = Color(0xFF5A463F);
-  static const _subtle = Color(0xFF9C857C);
+  static const _muted = Color(0xFF2A211D);
+  static const _subtle = Color(0xFF655650);
   static const _error = Color(0xFFBA1A1A);
-  static const _accentBadge = Color(0xFFF2EAE4);
+  static const _accentBadge = Color(0xFFF8EEE9);
 
   late UserChecklistService _userChecklistService;
   late Set<String> _importedIds;

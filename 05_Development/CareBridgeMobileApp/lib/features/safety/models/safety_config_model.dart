@@ -4,6 +4,7 @@ class SafetyConfig {
   final bool fallDetectionEnabled;
   final String sensitivityLevel; // LOW | MEDIUM | HIGH
   final bool emergencyAutoAlert;
+  final bool locationSharingEnabled;
   final int countdownSeconds;
   final bool sensorPermissionGranted;
   final DateTime? sensorPermissionRecordedAt;
@@ -13,6 +14,7 @@ class SafetyConfig {
     required this.fallDetectionEnabled,
     required this.sensitivityLevel,
     required this.emergencyAutoAlert,
+    this.locationSharingEnabled = false,
     this.countdownSeconds = 30,
     this.sensorPermissionGranted = false,
     this.sensorPermissionRecordedAt,
@@ -24,6 +26,7 @@ class SafetyConfig {
       fallDetectionEnabled: json['fallDetectionEnabled'] as bool? ?? false,
       sensitivityLevel: json['sensitivityLevel'] as String? ?? 'MEDIUM',
       emergencyAutoAlert: json['emergencyAutoAlert'] as bool? ?? true,
+      locationSharingEnabled: json['locationSharingEnabled'] as bool? ?? false,
       countdownSeconds: json['countdownSeconds'] as int? ?? 30,
       sensorPermissionGranted:
           json['sensorPermissionGranted'] as bool? ?? false,

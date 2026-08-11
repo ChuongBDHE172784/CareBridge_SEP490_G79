@@ -13,5 +13,6 @@ public record ImuDataPayload(
         Instant timestamp,
         String signalId,
         BigDecimal latitude,
-        BigDecimal longitude
+        BigDecimal longitude,
+        boolean onDeviceFallConfirmed
 ) {}

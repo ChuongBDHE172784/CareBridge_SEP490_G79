@@ -278,7 +278,8 @@
       ],
       "resolvesSignals": [
         "VAGINAL_BLEEDING",
-        "HEAVY_VAGINAL_BLEEDING"
+        "HEAVY_VAGINAL_BLEEDING",
+        "HEAVY_POSTPARTUM_BLEEDING"
       ],
       "resolvesFields": [
         "bleeding_amount"
@@ -322,7 +323,9 @@
       "resolvesSignals": [
         "LARGE_CLOTS"
       ],
-      "resolvesFields": [],
+      "resolvesFields": [
+        "clots"
+      ],
       "measurement": false,
       "pivotTo": [],
       "targetEntities": [
@@ -363,7 +366,9 @@
       "resolvesSignals": [
         "DIZZINESS"
       ],
-      "resolvesFields": [],
+      "resolvesFields": [
+        "dizziness"
+      ],
       "measurement": false,
       "pivotTo": [],
       "targetEntities": [
@@ -400,7 +405,9 @@
       "resolvesSignals": [
         "VISUAL_DISTURBANCE"
       ],
-      "resolvesFields": [],
+      "resolvesFields": [
+        "visual_change"
+      ],
       "measurement": false,
       "pivotTo": [],
       "targetEntities": [

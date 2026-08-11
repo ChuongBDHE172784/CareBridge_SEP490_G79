@@ -7,6 +7,8 @@ import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/blocked_account_screen.dart';
 import '../../features/auth/screens/auth_landing_screen.dart';
 import '../../features/auth/screens/role_selection_screen.dart';
+import '../../features/auth/screens/account_profile_screen.dart';
+import '../../features/auth/screens/edit_profile_screen.dart';
 import '../../features/checklist/screens/checklist_history_screen.dart';
 import '../../features/checklist/screens/checklist_detail_screen.dart';
 import '../../features/home/screens/home_shell.dart';
@@ -52,6 +54,8 @@ import '../../features/reminder/screens/update_snooze_reminder_screen.dart';
 import '../../features/reminder/screens/appointment_calendar_screen.dart';
 import '../../features/reminder/screens/reminder_schedules_screen.dart';
 import '../../features/reminder/models/reminder_model.dart';
+import '../../features/reminder/models/today_task_model.dart';
+import '../../features/reminder/screens/checklist_task_detail_screen.dart';
 
 import '../../features/fileManager/screens/file_viewer_screen.dart';
 import '../../features/fileManager/screens/shared_file_viewer_screen.dart';
@@ -176,7 +180,10 @@ String? resolveAppRedirect({
     '/postpartum-recovery-setup',
     '/recommendation-profile',
   };
-  const motherOrFamilyChecklistRoutes = {'/checklists/history'};
+  const motherOrFamilyChecklistRoutes = {
+    '/checklists/history',
+    '/checklists/task-detail',
+  };
 
   if (isRestoring) return null;
 
@@ -327,10 +334,26 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const AuthLandingScreen(),
     ),
     GoRoute(
+      path: '/profile',
+      builder: (context, state) => const AccountProfileScreen(),
+    ),
+    GoRoute(
+      path: '/profile/edit',
+      builder: (context, state) => const EditProfileScreen(),
+    ),
+    GoRoute(
       path: '/checklists/history',
       builder: (context, state) => ChecklistHistoryScreen(
         careGroupId: state.uri.queryParameters['careGroupId'],
       ),
+    ),
+    GoRoute(
+      path: '/checklists/task-detail',
+      builder: (context, state) {
+        final task = state.extra;
+        if (task is! TodayTask) return const _InvalidRouteScreen();
+        return ChecklistTaskDetailScreen(task: task);
+      },
     ),
     GoRoute(
       path: '/checklists/detail',

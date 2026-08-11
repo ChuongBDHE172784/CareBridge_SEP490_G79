@@ -182,7 +182,7 @@ class CommunityService {
       {
         'body': body,
         'isPersonalExperience': isPersonalExperience,
-        if (imageUrls != null) 'imageUrls': imageUrls,
+        'imageUrls': ?imageUrls,
       },
     );
   }

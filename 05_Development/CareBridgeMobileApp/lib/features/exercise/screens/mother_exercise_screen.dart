@@ -16,15 +16,15 @@ class MotherExerciseScreen extends StatefulWidget {
 }
 
 class _MotherExerciseScreenState extends State<MotherExerciseScreen> {
-  static const _canvas = Color(0xFFFFF8F6);
-  static const _surface = Color(0xFFFFFFFF);
-  static const _surfaceLow = Color(0xFFFFF1EC);
+  static const _canvas = Color(0xFFF8F5F1);
+  static const _surface = Color(0xFFFFFCF9);
+  static const _surfaceLow = Color(0xFFF8EEE9);
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
-  static const _secondaryContainer = Color(0xFFF6DACF);
-  static const _onSurface = Color(0xFF271812);
-  static const _onSurfaceVariant = Color(0xFF524440);
-  static const _outline = Color(0xFFD6C2BD);
+  static const _secondaryContainer = Color(0xFFF1E6E0);
+  static const _onSurface = Color(0xFF2A211D);
+  static const _onSurfaceVariant = Color(0xFF655650);
+  static const _outline = Color(0xFFE5D3CA);
 
   static const _trimesterFilters = [
     _FilterOption('Tất cả', null),
@@ -166,102 +166,135 @@ class _MotherExerciseScreenState extends State<MotherExerciseScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final topInset = MediaQuery.of(context).padding.top;
+    final canPop = ModalRoute.of(context)?.canPop ?? false;
+
     return Scaffold(
       backgroundColor: _canvas,
-      body: RefreshIndicator(
-        color: _primaryContainer,
-        onRefresh: _load,
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 96),
+      body: SafeArea(
+        top: false,
+        child: Column(
           children: [
-            _buildHeader(),
-            const SizedBox(height: 20),
-            _buildTodayCard(),
-            const SizedBox(height: 20),
-            _buildFilters(),
-            const SizedBox(height: 20),
-            if (_isLoading)
-              const Padding(
-                padding: EdgeInsets.only(top: 72),
-                child: Center(
-                  child: CircularProgressIndicator(color: _primaryContainer),
+            Container(
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                color: _surface,
+                borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0x0A845143),
+                    blurRadius: 16,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              padding: EdgeInsets.fromLTRB(16, topInset + 12, 16, 16),
+              child: Row(
+                children: [
+                  if (canPop) ...[
+                    IconButton(
+                      key: const Key('mother-exercise-back-button'),
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      icon: const Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        color: _primary,
+                        size: 20,
+                      ),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                    const SizedBox(width: 12),
+                  ] else
+                    const SizedBox(width: 8),
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: _surfaceLow,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.self_improvement_rounded,
+                      color: _primary,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Bài tập cho mẹ',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                            color: _onSurface,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Vận động nhẹ nhàng theo thai kỳ',
+                          style: TextStyle(
+                            fontFamily: 'Lexend',
+                            fontSize: 12,
+                            color: _onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Lịch sử',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const ExerciseHistoryScreen(),
+                      ),
+                    ),
+                    icon: const Icon(
+                      Icons.history_rounded,
+                      color: _primary,
+                      size: 22,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: RefreshIndicator(
+                color: _primaryContainer,
+                onRefresh: _load,
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                  children: [
+                    _buildTodayCard(),
+                    const SizedBox(height: 16),
+                    _buildFilters(),
+                    const SizedBox(height: 16),
+                    if (_isLoading)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 72),
+                        child: Center(
+                          child: CircularProgressIndicator(color: _primaryContainer),
+                        ),
+                      )
+                    else if (_error != null)
+                      _buildError()
+                    else if (_exercises.isEmpty)
+                      _buildEmpty()
+                    else
+                      ..._exercises.map(_buildExerciseCard),
+                  ],
                 ),
-              )
-            else if (_error != null)
-              _buildError()
-            else if (_exercises.isEmpty)
-              _buildEmpty()
-            else
-              ..._exercises.map(_buildExerciseCard),
+              ),
+            ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Row(
-      children: [
-        IconButton(
-          key: const Key('mother-exercise-back-button'),
-          tooltip: 'Quay lại',
-          onPressed: () => Navigator.of(context).maybePop(),
-          style: IconButton.styleFrom(
-            backgroundColor: _surface,
-            foregroundColor: _primary,
-            minimumSize: const Size(44, 44),
-            shape: const CircleBorder(),
-          ),
-          icon: const Icon(Icons.arrow_back_rounded),
-        ),
-        const SizedBox(width: 10),
-        Container(
-          width: 52,
-          height: 52,
-          decoration: BoxDecoration(
-            color: _primaryContainer.withValues(alpha: 0.16),
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(
-            Icons.self_improvement_rounded,
-            color: _primary,
-            size: 28,
-          ),
-        ),
-        const SizedBox(width: 14),
-        const Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Bài tập cho mẹ',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  color: _primary,
-                ),
-              ),
-              SizedBox(height: 4),
-              Text(
-                'Vận động nhẹ nhàng theo thai kỳ',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 14,
-                  color: _onSurfaceVariant,
-                ),
-              ),
-            ],
-          ),
-        ),
-        IconButton(
-          tooltip: 'Lịch sử',
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => const ExerciseHistoryScreen()),
-          ),
-          icon: const Icon(Icons.history_rounded, color: _primary),
-        ),
-      ],
     );
   }
 
@@ -365,39 +398,61 @@ class _MotherExerciseScreenState extends State<MotherExerciseScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          padding: const EdgeInsets.only(left: 4, bottom: 6),
           child: Text(
             label,
             style: const TextStyle(
               fontFamily: 'Lexend',
-              fontSize: 13,
+              fontSize: 12,
               fontWeight: FontWeight.w700,
               color: _onSurfaceVariant,
             ),
           ),
         ),
         SizedBox(
-          height: 42,
+          height: 38,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             itemCount: options.length,
             separatorBuilder: (_, _) => const SizedBox(width: 8),
             itemBuilder: (_, index) {
               final active = index == activeIndex;
-              return ChoiceChip(
-                selected: active,
-                label: Text(options[index].label),
-                onSelected: (_) => onChanged(index),
-                showCheckmark: false,
-                selectedColor: _primaryContainer,
-                backgroundColor: _surfaceLow,
-                side: BorderSide(color: active ? Colors.transparent : _outline),
-                labelStyle: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontWeight: FontWeight.w700,
-                  color: active ? Colors.white : _onSurface,
+              return InkWell(
+                onTap: () => onChanged(index),
+                borderRadius: BorderRadius.circular(20),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: active ? _primary : _surface,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: active ? _primary : _outline,
+                      width: 1,
+                    ),
+                    boxShadow: active
+                        ? [
+                            BoxShadow(
+                              color: _primary.withValues(alpha: 0.2),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Text(
+                    options[index].label,
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 13,
+                      fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                      color: active ? Colors.white : _onSurface,
+                    ),
+                  ),
                 ),
-                shape: const StadiumBorder(),
               );
             },
           ),

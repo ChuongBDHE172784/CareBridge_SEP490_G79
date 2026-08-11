@@ -77,8 +77,9 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
         final existing = conversations.where(
           (item) => item.counterpartUserId == expertUserId,
         );
-        if (existing.isNotEmpty)
+        if (existing.isNotEmpty) {
           profile['_conversationId'] = existing.first.conversationId;
+        }
       } catch (_) {
         // Consultation stays available if the optional conversation lookup fails.
       }
@@ -252,9 +253,7 @@ class _ExpertPublicProfileScreenState extends State<ExpertPublicProfileScreen> {
                               children: [
                                 _buildStatColumn(
                                   icon: Icons.star_rounded,
-                                  value: ratingAvg != null
-                                      ? '$ratingAvg'
-                                      : 'Chưa có',
+                                  value: ratingAvg ?? 'Chưa có',
                                   label: 'Đánh giá',
                                   iconColor: Colors.amber,
                                 ),

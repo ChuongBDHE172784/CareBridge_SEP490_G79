@@ -92,6 +92,10 @@ public class TriageV2SessionService implements ITriageV2SessionService {
             "gestationalWeek", "postpartumDay", "babyAgeMonths", "signals", "measurements",
             "dataConflicts", "answeredQuestionIds", "unknownFields", "safetyScreenStatus",
             "contextDatasetStatus", "greenEligibilityDatasetStatus", "scopeStatus",
+            "subjectScope", "complaintScope", "outcomeAppliesTo", "coverageStatus",
+            "coverageReasonCodes", "supportedSymptomCodes", "unsupportedSymptomCodes",
+            "coverageLimitations", "blocksClinicalQuestionPlanner", "blocksGreen",
+            "selectedCatalogType", "rejectedQuestionIds",
             "pendingRiskStatuses", "primaryPendingRiskStatus", "completionReason",
             "missingRequiredFields", "candidateQuestionIds", "plannedQuestionIds", "questionRound",
             "maximumQuestionRounds", "decisiveRuleIds", "allMatchedRules", "triageOutcome",
@@ -576,11 +580,12 @@ public class TriageV2SessionService implements ITriageV2SessionService {
         if (!session.getId().toString().equals(state.get("sessionId"))
                 || integer(state.get("stateVersion"), -1) != currentVersion
                 || !expectedHash.equals(state.get("rulesetHash"))
-                || !OUTCOMES.contains(state.get("triageOutcome"))
+                || !isAllowedOutcome(state.get("triageOutcome"))
                 || !TARGETS.contains(state.get("targetEntity"))
                 || !CARE_STAGES.contains(state.get("stage"))
                 || !INTENTS.contains(state.get("intent"))
                 || state.keySet().stream().anyMatch(key -> !WORKFLOW_STATE_FIELDS.contains(key))
+                || !isValidCoverageState(state)
                 || !(state.get("requiredAction") instanceof String action) || action.isBlank()
                 || !(state.get("stopConversation") instanceof Boolean)
                 || strings(state.get("plannedQuestionIds")).size() > questionCatalog.maxQuestionsPerTurn()
@@ -597,6 +602,50 @@ public class TriageV2SessionService implements ITriageV2SessionService {
         } catch (JsonProcessingException failure) {
             throw new IllegalStateException("Invalid Triage V2 workflow state", failure);
         }
+    }
+
+    private static boolean isAllowedOutcome(Object value) {
+        return value instanceof String outcome && OUTCOMES.contains(outcome);
+    }
+
+    private static boolean isValidCoverageState(Map<String, Object> state) {
+        for (String field : List.of("subjectScope", "complaintScope", "outcomeAppliesTo",
+                "coverageStatus", "selectedCatalogType")) {
+            Object value = state.get(field);
+            if (value != null && (!(value instanceof String text) || text.isBlank()
+                    || text.length() > 64)) return false;
+        }
+        for (String field : List.of("coverageReasonCodes", "supportedSymptomCodes",
+                "unsupportedSymptomCodes", "coverageLimitations")) {
+            if (!isBoundedStringList(state.get(field), 50, 128)) return false;
+        }
+        for (String field : List.of("blocksClinicalQuestionPlanner", "blocksGreen")) {
+            Object value = state.get(field);
+            if (value != null && !(value instanceof Boolean)) return false;
+        }
+        return isRejectedQuestionList(state.get("rejectedQuestionIds"));
+    }
+
+    private static boolean isBoundedStringList(Object value, int maxItems, int maxLength) {
+        if (value == null) return true;
+        if (!(value instanceof List<?> list) || list.size() > maxItems) return false;
+        return list.stream().allMatch(item -> item instanceof String text
+                && !text.isBlank() && text.length() <= maxLength);
+    }
+
+    private static boolean isRejectedQuestionList(Object value) {
+        if (value == null) return true;
+        if (!(value instanceof List<?> list) || list.size() > 50) return false;
+        return list.stream().allMatch(item -> {
+            if (!(item instanceof Map<?, ?> map)
+                    || !map.keySet().stream().allMatch(key -> Set.of("questionId", "reason").contains(key))) {
+                return false;
+            }
+            return map.get("questionId") instanceof String questionId && !questionId.isBlank()
+                    && questionId.length() <= 128
+                    && map.get("reason") instanceof String reason && !reason.isBlank()
+                    && reason.length() <= 128;
+        });
     }
 
     private static void rejectCallerAuthoredClinicalState(Map<String, Object> signals,

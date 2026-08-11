@@ -7,9 +7,12 @@ import com.carebridge.backend.emergency.dto.response.FamilyAlertDetailResponse;
 import com.carebridge.backend.emergency.entity.EmergencySession;
 import com.carebridge.backend.emergency.entity.FamilyAlertLog;
 import com.carebridge.backend.emergency.event.EmergencySessionOpened;
+import com.carebridge.backend.emergency.event.EmergencySessionRealertRequested;
 import com.carebridge.backend.emergency.exception.EmergencyException;
 import com.carebridge.backend.emergency.repository.IEmergencySessionRepository;
 import com.carebridge.backend.emergency.repository.IFamilyAlertLogRepository;
+import com.carebridge.backend.emergency.repository.EmergencyAlertAcknowledgementRepository;
+import com.carebridge.backend.emergency.repository.EmergencyAlertDetailRepository;
 import com.carebridge.backend.emergency.repository.TriageEmergencyEscalationLinkRepository;
 import com.carebridge.backend.emergency.service.FamilyMemberPort;
 import com.carebridge.backend.emergency.service.IEmergencyService;
@@ -43,6 +46,8 @@ public class EmergencyService implements IEmergencyService {
     private final FamilyMemberPort familyMemberPort;
     private final LocationConsentPort locationConsentPort;
     private final UserRepository userRepository;
+    private final EmergencyAlertAcknowledgementRepository acknowledgementRepository;
+    private final EmergencyAlertDetailRepository alertDetailRepository;
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
@@ -51,7 +56,16 @@ public class EmergencyService implements IEmergencyService {
 
         // UC62 C3: idempotent — return existing ACTIVE session if one exists
         return emergencySessionRepository.findActiveByUserId(userId)
-                .map(this::toResponse)
+                .map(session -> {
+                    session.setTriggerSource(request.getTriggerSource());
+                    session.setUserLatitude(request.getUserLatitude());
+                    session.setUserLongitude(request.getUserLongitude());
+                    emergencySessionRepository.save(session);
+                    eventPublisher.publishEvent(new EmergencySessionRealertRequested(
+                            UUID.randomUUID(), session.getId(), userId, request.getTriggerSource(),
+                            request.getUserLatitude(), request.getUserLongitude(), Instant.now()));
+                    return toResponse(session);
+                })
                 .orElseGet(() -> {
                     EmergencySession session = EmergencySession.builder()
                             .userId(userId)
@@ -176,21 +190,35 @@ public class EmergencyService implements IEmergencyService {
         }
 
         boolean hasConsent = locationConsentPort.hasLocationConsent(session.getUserId());
-        String motherName = userRepository.findById(session.getUserId())
-                .map(User::getName)
-                .orElse("Người thân");
+        User mother = userRepository.findById(session.getUserId()).orElse(null);
+        String motherName = mother == null || mother.getName() == null || mother.getName().isBlank()
+                ? "Người thân"
+                : mother.getName();
         FamilyAlertLog alertLog = familyAlertLogRepository.findBySessionId(sessionId).orElse(null);
+        var acknowledgement = acknowledgementRepository.find(sessionId, callerId);
+        var linkedFall = alertDetailRepository.findLatestLinkedFall(sessionId, session.getUserId())
+                .orElse(null);
+        var latitude = linkedFall == null ? session.getUserLatitude() : linkedFall.latitude();
+        var longitude = linkedFall == null ? session.getUserLongitude() : linkedFall.longitude();
+        Instant occurredAt = linkedFall != null && linkedFall.detectedAt() != null
+                ? linkedFall.detectedAt()
+                : acknowledgement.notifiedAt() != null
+                        ? acknowledgement.notifiedAt()
+                        : session.getCreatedAt();
 
         return FamilyAlertDetailResponse.builder()
                 .sessionId(session.getId())
                 .motherName(motherName)
+                .motherPhone(mother == null ? null : mother.getPhone())
                 .status(session.getStatus().name())
                 .triggerSource(session.getTriggerSource())
-                .latitude(hasConsent ? session.getUserLatitude() : null)
-                .longitude(hasConsent ? session.getUserLongitude() : null)
-                .locationIncluded(hasConsent && session.getUserLatitude() != null)
+                .latitude(hasConsent ? latitude : null)
+                .longitude(hasConsent ? longitude : null)
+                .locationIncluded(hasConsent && latitude != null && longitude != null)
                 .recipientCount(alertLog != null ? alertLog.getRecipientCount() : 0)
-                .createdAt(session.getCreatedAt())
+                .acknowledged(acknowledgement.acknowledged())
+                .acknowledgedAt(acknowledgement.acknowledgedAt())
+                .createdAt(occurredAt)
                 .resolvedAt(session.getResolvedAt())
                 .build();
     }

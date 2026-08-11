@@ -432,8 +432,20 @@ class FallDetectionSensorService {
     int runGeneration,
   ) async {
     final impact = candidate.impactSample;
-    final position = _locationSharingAllowed ? _latestPosition : null;
     try {
+      if (_locationSharingAllowed &&
+          (_latestPosition == null ||
+              _locationReadAt == null ||
+              _now().difference(_locationReadAt!) >
+                  const Duration(seconds: 30))) {
+        final refresh = _locationRefreshInFlight;
+        if (refresh != null) {
+          await refresh;
+        } else {
+          await _refreshLocation();
+        }
+      }
+      final position = _locationSharingAllowed ? _latestPosition : null;
       for (var attempt = 1; attempt <= 3; attempt++) {
         if (!_running || _runGeneration != runGeneration) return;
         try {
@@ -445,6 +457,7 @@ class FallDetectionSensorService {
             gyroscopeY: impact.gyroscopeY,
             gyroscopeZ: impact.gyroscopeZ,
             timestamp: impact.timestamp,
+            onDeviceFallConfirmed: true,
             signalId: '${impact.timestamp.microsecondsSinceEpoch}',
             latitude: position?.latitude,
             longitude: position?.longitude,

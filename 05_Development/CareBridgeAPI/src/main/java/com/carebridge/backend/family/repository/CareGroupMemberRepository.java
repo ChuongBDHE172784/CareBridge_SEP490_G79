@@ -53,6 +53,29 @@ public interface CareGroupMemberRepository extends JpaRepository<CareGroupMember
             """, nativeQuery = true)
     List<UUID> findAcceptedFamilyUserIds(@Param("ownerUserId") UUID ownerUserId);
 
+    /**
+     * Keeps the active care-group scope alongside each eligible Family member
+     * so emergency notification records can be displayed in that group's
+     * dashboard rather than remaining globally unscoped.
+     */
+    @Query(value = """
+            SELECT cgm.*
+              FROM care_groups cg
+              JOIN care_group_members cgm
+                ON cgm.care_group_id = cg.care_group_id
+              JOIN users u
+                ON u.user_id = cgm.user_id
+             WHERE cg.owner_user_id = :ownerUserId
+               AND cg.status = 'ACTIVE'
+               AND cgm.invitation_status = 'ACCEPTED'
+               AND u.role = 'FAMILY'
+               AND u.enabled = TRUE
+               AND u.locked = FALSE
+             ORDER BY cgm.care_group_id ASC, cgm.user_id ASC
+            """, nativeQuery = true)
+    List<CareGroupMember> findAcceptedFamilyMembersForEmergencyAlerts(
+            @Param("ownerUserId") UUID ownerUserId);
+
     boolean existsByCareGroupIdAndUserIdAndInviteStatus(UUID careGroupId, UUID userId, InviteStatus status);
 
     /** A delegated Family account may act in the Mother's direct conversation only while its

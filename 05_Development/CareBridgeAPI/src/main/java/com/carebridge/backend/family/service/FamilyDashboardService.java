@@ -142,9 +142,10 @@ public class FamilyDashboardService {
 
         List<CareTask> tasks = loadRequesterTasks(group.getId(), userId);
         FamilyDashboardResponse.Permission permissionScope = permissionScope(group.getId(), userId);
-        List<FamilyDashboardResponse.Alert> alerts = permissionScope.alerts()
-                ? loadScopedAlerts(group.getId(), userId)
-                : List.of();
+        // Emergency alerts are safety-critical and must remain visible to an
+        // accepted Family member even when optional shared ALERTS access is
+        // disabled for other, non-emergency information.
+        List<FamilyDashboardResponse.Alert> alerts = loadScopedAlerts(group.getId(), userId);
         Instant lastActivityAt = tasks.stream()
                 .map(CareTask::getUpdatedAt)
                 .filter(Objects::nonNull)
@@ -214,7 +215,7 @@ public class FamilyDashboardService {
                 context.permissionScope().logs()));
         sharedCategories.add(new FamilyDashboardResponse.SharedDataCategory(
                 SharedDataCategory.ALERTS.name(),
-                context.permissionScope().alerts(),
+                context.permissionScope().alerts() || !context.alerts().isEmpty(),
                 context.alerts().size()));
         int sharedItemCount = sharedCategories.stream()
                 .mapToInt(FamilyDashboardResponse.SharedDataCategory::itemCount)

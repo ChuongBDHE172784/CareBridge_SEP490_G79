@@ -3,6 +3,7 @@ package com.carebridge.backend.emergency.service.impl;
 import com.carebridge.backend.audit.entity.AuditAction;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.emergency.event.EmergencySessionOpened;
+import com.carebridge.backend.emergency.event.EmergencySessionRealertRequested;
 import com.carebridge.backend.emergency.event.FamilyAlertSent;
 import com.carebridge.backend.emergency.service.AlertRecipientEndpoint;
 import com.carebridge.backend.emergency.service.EmergencyAlertAttemptService;
@@ -45,7 +46,19 @@ public class FamilyAlertService implements IFamilyAlertService {
 
     @Override
     public void sendAlert(EmergencySessionOpened event) {
-        var claimed = alertAttemptService.claim(event.sessionId());
+        send(event, false);
+    }
+
+    @Override
+    public void sendRealert(EmergencySessionRealertRequested event) {
+        send(new EmergencySessionOpened(event.eventId(), event.sessionId(), event.userId(),
+                event.triggerSource(), event.latitude(), event.longitude(), event.occurredAt()), true);
+    }
+
+    private void send(EmergencySessionOpened event, boolean realert) {
+        var claimed = realert
+                ? alertAttemptService.claimForRealert(event.sessionId())
+                : alertAttemptService.claim(event.sessionId());
         if (claimed.isEmpty()) {
             log.info("Alert attempt is complete or leased for session [{}] — skipping replay", event.sessionId());
             return;
@@ -61,7 +74,7 @@ public class FamilyAlertService implements IFamilyAlertService {
         boolean locationIncluded = locationConsentPort.hasLocationConsent(event.userId())
                 && event.latitude() != null && event.longitude() != null;
         Map<String, String> payload = payload(event, locationIncluded);
-        Map<UUID, UUID> notificationByRecipient = new HashMap<>();
+        Map<RecipientScope, UUID> notificationByRecipient = new HashMap<>();
         Map<UUID, Boolean> recipientSucceeded = new HashMap<>();
 
         for (AlertRecipientEndpoint recipient : recipients) {
@@ -70,9 +83,16 @@ public class FamilyAlertService implements IFamilyAlertService {
                         event.sessionId());
                 return;
             }
-            PreparedAlertDelivery prepared = deliveryPersistenceService.prepare(
-                    event, recipient, notificationByRecipient.get(recipient.userId()), claim);
-            notificationByRecipient.putIfAbsent(recipient.userId(), prepared.notificationRecordId());
+            RecipientScope recipientScope = new RecipientScope(
+                    recipient.userId(), recipient.careGroupId());
+            PreparedAlertDelivery prepared = realert
+                    ? deliveryPersistenceService.prepareRealert(
+                            new EmergencySessionRealertRequested(event.eventId(), event.sessionId(), event.userId(),
+                                    event.triggerSource(), event.latitude(), event.longitude(), event.openedAt()),
+                            recipient, notificationByRecipient.get(recipientScope), claim)
+                    : deliveryPersistenceService.prepare(
+                            event, recipient, notificationByRecipient.get(recipientScope), claim);
+            notificationByRecipient.putIfAbsent(recipientScope, prepared.notificationRecordId());
             if (prepared.alreadySuccessful()) {
                 recipientSucceeded.merge(recipient.userId(), true, Boolean::logicalOr);
                 continue;
@@ -154,5 +174,8 @@ public class FamilyAlertService implements IFamilyAlertService {
                 Map.of("recipientUserId", recipient.userId().toString(),
                         "emergencySessionId", event.sessionId().toString(),
                         "status", "PENDING"));
+    }
+
+    private record RecipientScope(UUID userId, UUID careGroupId) {
     }
 }

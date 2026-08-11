@@ -104,6 +104,10 @@ public class User {
     private boolean emergencyAutoAlert = true;
 
     @Builder.Default
+    @Column(name = "safety_location_sharing_enabled", nullable = false)
+    private boolean safetyLocationSharingEnabled = false;
+
+    @Builder.Default
     @Column(name = "emergency_countdown_seconds", nullable = false)
     private int emergencyCountdownSeconds = 30;
 

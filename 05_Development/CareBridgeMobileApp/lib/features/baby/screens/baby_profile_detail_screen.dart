@@ -887,7 +887,7 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
                   key: const Key('baby-care-journal'),
                   onPressed: _openLogSummary,
                   icon: const Icon(Icons.list_alt_outlined, size: 18),
-                  label: const Text('Log'),
+                  label: const Text('Nhật ký'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: _primary,
                     side: const BorderSide(color: _outlineVariant),
@@ -902,7 +902,7 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
                     _openAddMilestone();
                   },
                   icon: const Icon(Icons.flag_outlined, size: 18),
-                  label: const Text('Milestone'),
+                  label: const Text('Cột mốc'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: _primary,
                     side: const BorderSide(color: _outlineVariant),
@@ -916,7 +916,7 @@ class _BabyProfileDetailScreenState extends State<BabyProfileDetailScreen> {
                     _openEditProfile();
                   },
                   icon: const Icon(Icons.edit_outlined, size: 18),
-                  label: const Text('Edit'),
+                  label: const Text('Hồ sơ'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: _primary,
                     side: const BorderSide(color: _outlineVariant),

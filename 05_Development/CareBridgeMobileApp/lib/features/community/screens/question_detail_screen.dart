@@ -27,15 +27,15 @@ class QuestionDetailScreen extends StatefulWidget {
 class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
-  static const _canvas = Color(0xFFF6F1EC);
-  static const _surface = Colors.white;
-  static const _surfaceContainerHigh = Color(0xFFFFE2D9);
-  static const _surfaceContainerLow = Color(0xFFFFF1EC);
-  static const _secondaryContainer = Color(0xFFF6DACF);
-  static const _onSurface = Color(0xFF271812);
-  static const _onSurfaceVariant = Color(0xFF524440);
+  static const _canvas = Color(0xFFF8F5F1);
+  static const _surface = Color(0xFFFFFCF9);
+  static const _surfaceContainerHigh = Color(0xFFF1E6E0);
+  static const _surfaceContainerLow = Color(0xFFF8EEE9);
+  static const _secondaryContainer = Color(0xFFF1E6E0);
+  static const _onSurface = Color(0xFF2A211D);
+  static const _onSurfaceVariant = Color(0xFF655650);
   static const _outline = Color(0xFF84736F);
-  static const _outlineVariant = Color(0xFFD6C2BD);
+  static const _outlineVariant = Color(0xFFE5D3CA);
 
   final _service = CommunityService.instance;
   QuestionDetail? _question;
@@ -334,93 +334,18 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final topInset = MediaQuery.of(context).padding.top;
+    final canPop = ModalRoute.of(context)?.canPop ?? false;
+
     return Scaffold(
       backgroundColor: _canvas,
-      appBar: AppBar(
-        backgroundColor: _canvas,
-        elevation: 0,
-        shadowColor: Colors.black12,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: _primary),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: const Text(
-          'Chi tiết câu hỏi',
-          style: TextStyle(
-            color: _primary,
-            fontWeight: FontWeight.bold,
-            fontSize: 17,
-          ),
-        ),
-        actions: [
-          if (_question != null && !_isMyQuestion)
-            IconButton(
-              icon: const Icon(Icons.flag_outlined, color: _onSurfaceVariant),
-              onPressed: () => _reportTarget(
-                targetType: 'QUESTION',
-                targetId: widget.questionId,
-              ),
-              tooltip: 'Báo cáo câu hỏi',
-            ),
-          if (_question?.authorId != null && !_isMyQuestion)
-            IconButton(
-              icon: const Icon(
-                Icons.person_off_outlined,
-                color: _onSurfaceVariant,
-              ),
-              onPressed: () => _reportTarget(
-                targetType: 'USER',
-                targetId: _question!.authorId!,
-              ),
-              tooltip: 'Báo cáo tài khoản',
-            ),
-          IconButton(
-            icon: Icon(
-              _bookmarked ? Icons.bookmark : Icons.bookmark_border,
-              color: _bookmarked ? _primary : _onSurfaceVariant,
-            ),
-            onPressed: _toggleBookmark,
-            tooltip: 'Lưu câu hỏi',
-          ),
-          if (_isMyQuestion)
-            IconButton(
-              icon: const Icon(Icons.edit_outlined, color: _onSurfaceVariant),
-              onPressed: () async {
-                if (_question == null) return;
-                final updated = await Navigator.of(context).push<bool>(
-                  MaterialPageRoute(
-                    builder: (_) => EditQuestionScreen(
-                      questionId: widget.questionId,
-                      initialTitle: _question!.title,
-                      initialBody: _question!.body,
-                      initialTopicId: _question!.topicId,
-                      initialTopicName: _question!.topicName,
-                      initialStage: _question!.stage,
-                      initialImageUrls: _question!.imageUrls,
-                      initialPregnancyWeek: _question!.pregnancyWeek,
-                      initialBabyAgeMonths: _question!.babyAgeMonths,
-                      initialIsAnonymous: _question!.anonymous,
-                      initialUrgency: _question!.urgency,
-                    ),
-                  ),
-                );
-                if (updated == true) _loadDetail();
-              },
-              tooltip: 'Chỉnh sửa',
-            ),
-          if (_isMyQuestion)
-            IconButton(
-              icon: const Icon(Icons.delete_outline, color: Colors.red),
-              onPressed: _deleteQuestion,
-              tooltip: 'Xóa câu hỏi',
-            ),
-        ],
-      ),
       floatingActionButton: !_canAnswerQuestion
           ? null
           : FloatingActionButton.extended(
+              key: const Key('fab-answer-question'),
               backgroundColor: _primary,
-              foregroundColor: Colors.white,
+              elevation: 4,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               onPressed: () async {
                 final answered = await Navigator.of(context).push<bool>(
                   MaterialPageRoute(
@@ -435,16 +360,120 @@ class _QuestionDetailScreenState extends State<QuestionDetailScreen> {
                 if (answered == true) _loadDetail();
               },
               label: const Text(
-                'Trả lời',
-                style: TextStyle(fontWeight: FontWeight.w600),
+                'Trả lời ngay',
+                style: TextStyle(fontFamily: 'Lexend', color: Colors.white, fontWeight: FontWeight.w700),
               ),
-              icon: const Icon(Icons.edit_note),
+              icon: const Icon(Icons.edit_note_rounded, color: Colors.white),
             ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator(color: _primary))
-          : _question == null
-          ? _buildError()
-          : _buildContent(),
+      body: SafeArea(
+        top: false,
+        child: Column(
+          children: [
+            Container(
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                color: _surface,
+                borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0x0A845143),
+                    blurRadius: 16,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              padding: EdgeInsets.fromLTRB(16, topInset + 12, 16, 16),
+              child: Row(
+                children: [
+                  if (canPop) ...[
+                    IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      icon: const Icon(Icons.arrow_back_ios_new_rounded, color: _primary, size: 20),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                    const SizedBox(width: 12),
+                  ] else
+                    const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Chi tiết câu hỏi',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: _onSurface,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                  ),
+                  if (_question != null && !_isMyQuestion)
+                    IconButton(
+                      icon: const Icon(Icons.flag_outlined, color: _onSurfaceVariant, size: 20),
+                      onPressed: () => _reportTarget(
+                        targetType: 'QUESTION',
+                        targetId: widget.questionId,
+                      ),
+                      tooltip: 'Báo cáo câu hỏi',
+                    ),
+                  if (_isMyQuestion)
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, color: _onSurfaceVariant, size: 20),
+                      onPressed: () async {
+                        if (_question == null) return;
+                        final updated = await Navigator.of(context).push<bool>(
+                          MaterialPageRoute(
+                            builder: (_) => EditQuestionScreen(
+                              questionId: widget.questionId,
+                              initialTitle: _question!.title,
+                              initialBody: _question!.body,
+                              initialTopicId: _question!.topicId,
+                              initialTopicName: _question!.topicName,
+                              initialStage: _question!.stage,
+                              initialImageUrls: _question!.imageUrls,
+                              initialPregnancyWeek: _question!.pregnancyWeek,
+                              initialBabyAgeMonths: _question!.babyAgeMonths,
+                              initialIsAnonymous: _question!.anonymous,
+                              initialUrgency: _question!.urgency,
+                            ),
+                          ),
+                        );
+                        if (updated == true) _loadDetail();
+                      },
+                      tooltip: 'Chỉnh sửa',
+                    ),
+                  if (_isMyQuestion)
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFBA1A1A), size: 20),
+                      onPressed: _deleteQuestion,
+                      tooltip: 'Xóa câu hỏi',
+                    ),
+                  IconButton(
+                    icon: Icon(
+                      _bookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                      color: _bookmarked ? _primary : _onSurfaceVariant,
+                      size: 22,
+                    ),
+                    onPressed: _toggleBookmark,
+                    tooltip: 'Lưu câu hỏi',
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator(color: _primary))
+                  : _question == null
+                  ? _buildError()
+                  : RefreshIndicator(
+                      color: _primary,
+                      onRefresh: _loadDetail,
+                      child: _buildContent(),
+                    ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

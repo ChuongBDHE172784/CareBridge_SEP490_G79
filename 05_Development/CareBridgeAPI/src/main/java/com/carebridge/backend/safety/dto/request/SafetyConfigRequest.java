@@ -21,6 +21,9 @@ public class SafetyConfigRequest {
     @NotNull
     private Boolean emergencyAutoAlert;
 
+    /** Explicit opt-in for attaching location to fall emergency alerts. */
+    private Boolean locationSharingEnabled;
+
     /** Additive for old clients; omitted values retain the stored/default countdown. */
     private Integer countdownSeconds;
 

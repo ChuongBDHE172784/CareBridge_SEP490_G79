@@ -37,14 +37,14 @@ class RiskTriageResultScreen extends StatefulWidget {
 class _RiskTriageResultScreenState extends State<RiskTriageResultScreen> {
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
-  static const _surface = Color(0xFFFFF8F6);
-  static const _surfaceContainerLow = Color(0xFFFFF1EC);
-  static const _surfaceContainerLowest = Color(0xFFFFFFFF);
-  static const _onSurface = Color(0xFF271812);
-  static const _onSurfaceVariant = Color(0xFF524440);
-  static const _outlineVariant = Color(0xFFD6C2BD);
+  static const _surface = Color(0xFFF8F5F1);
+  static const _surfaceContainerLow = Color(0xFFF8EEE9);
+  static const _surfaceContainerLowest = Color(0xFFFFFCF9);
+  static const _onSurface = Color(0xFF2A211D);
+  static const _onSurfaceVariant = Color(0xFF655650);
+  static const _outlineVariant = Color(0xFFF1E6E0);
   static const _tertiary = Color(0xFF625D59);
-  static const _secondaryContainerAlt = Color(0xFFF2EAE4);
+  static const _secondaryContainerAlt = Color(0xFFF8EEE9);
   static const _secondary = Color(0xFF6E5A52);
 
   late final TriageService _triageService;

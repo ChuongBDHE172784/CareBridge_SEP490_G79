@@ -4,6 +4,7 @@ import com.carebridge.backend.common.config.JpaAuditingConfig;
 import com.carebridge.backend.config.MockMvcSecurityBuilderConfig;
 import com.carebridge.backend.emergency.controller.EmergencyController;
 import com.carebridge.backend.emergency.service.IEmergencyService;
+import com.carebridge.backend.emergency.service.EmergencyAlertAcknowledgementService;
 import com.carebridge.backend.security.config.SecurityConfig;
 import com.carebridge.backend.security.jwt.JwtTokenProvider;
 import com.carebridge.backend.security.repository.UserRepository;
@@ -17,11 +18,14 @@ import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.mockito.Mockito.verify;
 
 @WebMvcTest(
         value = EmergencyController.class,
@@ -35,6 +39,9 @@ class EmergencyControllerTest {
 
     @MockitoBean
     private IEmergencyService emergencyService;
+
+    @MockitoBean
+    private EmergencyAlertAcknowledgementService acknowledgementService;
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
@@ -85,5 +92,20 @@ class EmergencyControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(username = "00000000-0000-4000-8000-000000000030", roles = "FAMILY")
+    void family_canAcknowledgeEmergencyAlert() throws Exception {
+        String sessionId = "00000000-0000-4000-8000-000000000031";
+
+        mockMvc.perform(put(BASE_URL + "/" + sessionId + "/alert/acknowledge")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isOk());
+
+        verify(acknowledgementService).acknowledge(
+                UUID.fromString(sessionId),
+                UUID.fromString("00000000-0000-4000-8000-000000000030"));
     }
 }

@@ -30,6 +30,8 @@ public class SafetyMonitoringConfig {
 
     private boolean emergencyAutoAlert;
 
+    private boolean locationSharingEnabled;
+
     @Builder.Default    private int countdownSeconds = 30;
 
     private boolean sensorPermissionGranted;

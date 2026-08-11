@@ -45,7 +45,7 @@ const recipientLabel = (role: 'MOTHER' | 'FAMILY') => (role === 'MOTHER' ? 'Mẹ
 const targetLabel = (target: 'MOTHER' | 'BABY') => (target === 'MOTHER' ? 'Mẹ' : 'Em bé');
 const warmBadge = 'inline-flex shrink-0 items-center rounded-full bg-surface-container-low px-3 py-1 text-xs font-semibold text-primary';
 
-export function getChecklistTargetIcon(checklist: {
+function getChecklistTargetIcon(checklist: {
   name?: string;
   stage?: string | null;
   items?: Array<{ targetSubject?: 'MOTHER' | 'BABY' }>;

@@ -307,6 +307,8 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
                     return ChecklistItem.builder()
                             .template(saved)
                             .itemText(item.getItemText())
+                            .description(item.getDescription())
+                            .supportFunction(item.getSupportFunction())
                             .order(item.getOrder())
                             .isRequired(item.getIsRequired())
                             .targetSubject(item.getTargetSubject())
@@ -352,6 +354,8 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
             entities.add(ChecklistItem.builder()
                     .template(template)
                     .itemText(item.itemText())
+                    .description(item.description())
+                    .supportFunction(item.supportFunction())
                     .order(item.order())
                     .isRequired(item.isRequired())
                     .targetSubject(resolveTargetSubject(item, template))
@@ -390,6 +394,8 @@ public class AdminChecklistTemplateServiceImpl implements AdminChecklistTemplate
                 item = existingById.get(requested.id());
             }
             item.setItemText(requested.itemText());
+            item.setDescription(requested.description());
+            item.setSupportFunction(requested.supportFunction());
             item.setOrder(requested.order());
             item.setIsRequired(requested.isRequired());
             item.setTargetSubject(resolveTargetSubject(requested, template));

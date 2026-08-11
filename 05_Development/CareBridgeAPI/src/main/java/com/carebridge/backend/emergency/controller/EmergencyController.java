@@ -6,6 +6,7 @@ import com.carebridge.backend.emergency.dto.request.OpenEmergencyRequest;
 import com.carebridge.backend.emergency.dto.response.EmergencySessionResponse;
 import com.carebridge.backend.emergency.dto.response.FamilyAlertDetailResponse;
 import com.carebridge.backend.emergency.service.IEmergencyService;
+import com.carebridge.backend.emergency.service.EmergencyAlertAcknowledgementService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -21,6 +22,7 @@ import java.util.UUID;
 public class EmergencyController {
 
     private final IEmergencyService emergencyService;
+    private final EmergencyAlertAcknowledgementService acknowledgementService;
 
     @PostMapping
     @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
@@ -56,6 +58,16 @@ public class EmergencyController {
             @PathVariable UUID id,
             Principal principal) {
         UUID userId = SecurityUtils.requireCurrentUserId(principal);
+        return ResponseEntity.ok(ApiResponse.success(emergencyService.getAlertDetail(id, userId)));
+    }
+
+    @PutMapping("/{id}/alert/acknowledge")
+    @PreAuthorize("hasAnyRole('MOTHER', 'FAMILY')")
+    public ResponseEntity<ApiResponse<FamilyAlertDetailResponse>> acknowledgeAlert(
+            @PathVariable UUID id,
+            Principal principal) {
+        UUID userId = SecurityUtils.requireCurrentUserId(principal);
+        acknowledgementService.acknowledge(id, userId);
         return ResponseEntity.ok(ApiResponse.success(emergencyService.getAlertDetail(id, userId)));
     }
 }

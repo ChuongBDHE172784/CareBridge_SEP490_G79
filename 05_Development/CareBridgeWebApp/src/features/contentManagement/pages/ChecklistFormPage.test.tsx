@@ -79,6 +79,28 @@ describe('ChecklistFormPage version', () => {
     expect(harness.navigate).toHaveBeenCalledWith('/content/checklists/checklist-123/versions');
   });
 
+  it('loads item description and support function into the editable row', async () => {
+    routeId = 'checklist-123';
+    harness.fetchChecklistTemplateDetail.mockResolvedValue({
+      ...checklistDetail(),
+      items: [{
+        id: 'item-1',
+        itemText: 'Ghi lại chỉ số sức khỏe',
+        order: 1,
+        isRequired: true,
+        targetSubject: 'MOTHER',
+        description: 'Theo dõi và cập nhật chỉ số mỗi ngày.',
+        supportFunction: 'HEALTH_RECORDS',
+      }],
+    });
+
+    render(<ChecklistFormPage />);
+
+    expect(await screen.findByDisplayValue('Ghi lại chỉ số sức khỏe')).toBeTruthy();
+    expect(screen.getByDisplayValue('Theo dõi và cập nhật chỉ số mỗi ngày.')).toBeTruthy();
+    expect(screen.getByLabelText('Chức năng hỗ trợ mục 1')).toHaveProperty('value', 'HEALTH_RECORDS');
+  });
+
   it('does not show a current version while creating', () => {
     render(<ChecklistFormPage />);
 
@@ -264,6 +286,8 @@ describe('ChecklistFormPage version', () => {
     await user.selectOptions(screen.getByLabelText('Lifecycle substage'), 'PREGNANCY_LMP_WEEK_0_12');
     await user.type(screen.getByLabelText('Item 1 text'), 'Prepare documents');
     await user.selectOptions(screen.getByLabelText('Item 1 target'), 'BABY');
+    await user.type(screen.getByLabelText('Nội dung chi tiết mục 1'), 'Chuẩn bị giấy tờ cần thiết.');
+    await user.selectOptions(screen.getByLabelText('Chức năng hỗ trợ mục 1'), 'CONTENT_LIBRARY');
     await user.click(screen.getByRole('button', { name: 'Save draft' }));
 
     await waitFor(() => expect(harness.createChecklistTemplate).toHaveBeenCalledWith(expect.objectContaining({
@@ -272,7 +296,11 @@ describe('ChecklistFormPage version', () => {
       substage: expect.objectContaining({
         code: 'PREGNANCY_LMP_WEEK_0_12', anchor: 'LMP', unit: 'WEEK',
       }),
-      items: [expect.objectContaining({ targetSubject: 'BABY' })],
+      items: [expect.objectContaining({
+        targetSubject: 'BABY',
+        description: 'Chuẩn bị giấy tờ cần thiết.',
+        supportFunction: 'CONTENT_LIBRARY',
+      })],
     })));
   });
 

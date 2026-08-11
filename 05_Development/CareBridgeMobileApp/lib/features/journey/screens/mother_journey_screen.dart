@@ -62,11 +62,13 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
     with WidgetsBindingObserver {
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
-  static const _surfaceContainerHigh = Color(0xFFFFE2D9);
-  static const _surfaceContainerLowest = Color(0xFFFFF8F6);
-  static const _onSurface = Color(0xFF271812);
-  static const _onSurfaceVariant = Color(0xFF524440);
-  static const _outlineVariant = Color(0xFFD6C2BD);
+  static const _canvas = Color(0xFFF8F5F1);
+  static const _surface = Color(0xFFFFFCF9);
+  static const _surfaceContainerHigh = Color(0xFFF1E6E0);
+  static const _surfaceContainerLow = Color(0xFFF8EEE9);
+  static const _onSurface = Color(0xFF2A211D);
+  static const _onSurfaceVariant = Color(0xFF655650);
+  static const _outlineVariant = Color(0xFFE5D3CA);
 
   late final JourneyService _journeyService;
   late final BabyService _babyService;
@@ -489,68 +491,75 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
 
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
-      color: _primaryContainer,
-      onRefresh: widget.loadData ? _load : () async {},
-      child: CustomScrollView(
-        slivers: [
-          SliverPadding(
-            padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                if (_loading)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 80),
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        key: Key('mother-journey-initial-loading'),
-                        color: _primaryContainer,
+    final topInset = MediaQuery.of(context).padding.top;
+    return Scaffold(
+      backgroundColor: _canvas,
+      body: RefreshIndicator(
+        color: _primaryContainer,
+        onRefresh: widget.loadData ? _load : () async {},
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(20, topInset + 12, 20, 0),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  if (_loading)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 80),
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          key: Key('mother-journey-initial-loading'),
+                          color: _primaryContainer,
+                        ),
+                      ),
+                    )
+                  else ...[
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Hành trình',
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 24,
+                              fontWeight: FontWeight.w700,
+                              color: _onSurface,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Theo dõi sức khỏe của mẹ và bé theo từng giai đoạn.',
+                            style: TextStyle(
+                              fontFamily: 'Lexend',
+                              fontSize: 13,
+                              color: _onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  )
-                else ...[
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Hành trình',
-                          style: TextStyle(
-                            fontFamily: 'Lexend',
-                            fontSize: 26,
-                            fontWeight: FontWeight.w700,
-                            color: _onSurface,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'Theo dõi sức khỏe của mẹ và bé theo từng giai đoạn.',
-                          style: TextStyle(
-                            fontFamily: 'Lexend',
-                            fontSize: 13,
-                            color: _onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  _buildSectionTabs(),
-                  if (_showContinuationConfirmation) ...[
-                    const SizedBox(height: 16),
-                    _buildContinuationConfirmation(),
+                    _buildSectionTabs(),
+                    if (_showContinuationConfirmation) ...[
+                      const SizedBox(height: 16),
+                      _buildContinuationConfirmation(),
+                    ],
+                    const SizedBox(height: 20),
+                    if (_selectedSection == _JourneySection.pregnancy)
+                      ..._buildPregnancySection()
+                    else
+                      ..._buildBabyCareSection(),
+                    const SizedBox(height: 28),
                   ],
-                  const SizedBox(height: 20),
-                  if (_selectedSection == _JourneySection.pregnancy)
-                    ..._buildPregnancySection()
-                  else
-                    ..._buildBabyCareSection(),
-                  const SizedBox(height: 24),
-                ],
-              ]),
+                ]),
+              ),
             ),
-          ),
-        ],
+            const SliverToBoxAdapter(child: SizedBox(height: 80)),
+          ],
+        ),
       ),
     );
   }
@@ -1533,9 +1542,9 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: const Color(0xFFF2EAE4),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _outlineVariant),
+        color: _surfaceContainerLow,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _surfaceContainerHigh),
       ),
       child: Row(
         children: [
@@ -1567,20 +1576,20 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
     return Tooltip(
       message: label,
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         onTap: () => setState(() => _selectedSection = section),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           decoration: BoxDecoration(
-            color: selected ? _surfaceContainerLowest : Colors.transparent,
-            borderRadius: BorderRadius.circular(14),
+            color: selected ? _surface : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
             boxShadow: selected
-                ? [
+                ? const [
                     BoxShadow(
-                      color: _primary.withAlpha(16),
+                      color: Color(0x08000000),
                       blurRadius: 12,
-                      offset: const Offset(0, 4),
+                      offset: Offset(0, 3),
                     ),
                   ]
                 : null,
@@ -1692,15 +1701,15 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFFFFF1EC), Color(0xFFFFE2D9)],
+          colors: [_surface, _surfaceContainerLow],
         ),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withAlpha(128)),
-        boxShadow: [
+        border: Border.all(color: _surfaceContainerHigh),
+        boxShadow: const [
           BoxShadow(
-            color: const Color(0xFF845143).withAlpha(20),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
+            color: Color(0x08000000),
+            blurRadius: 16,
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -1716,7 +1725,7 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white.withAlpha(178),
+                    color: _surfaceContainerHigh,
                     borderRadius: BorderRadius.circular(99),
                   ),
                   child: Row(
@@ -1741,7 +1750,7 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
                   weekTitle,
                   style: const TextStyle(
                     fontFamily: 'Lexend',
-                    fontSize: 36,
+                    fontSize: 34,
                     fontWeight: FontWeight.w700,
                     color: _onSurface,
                     letterSpacing: -0.5,
@@ -1754,15 +1763,15 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
                       : 'CareBridge đang theo dõi hành trình từ dữ liệu mẹ đã thiết lập.',
                   style: const TextStyle(
                     fontFamily: 'Lexend',
-                    fontSize: 14,
+                    fontSize: 13,
                     color: _onSurfaceVariant,
-                    height: 1.5,
+                    height: 1.45,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 24),
+          const SizedBox(width: 16),
           _CircularProgressWidget(
             progress: dashboard.pregnancyProgress,
             week: week,
@@ -1932,18 +1941,7 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
                       vertical: 16,
                       horizontal: 6,
                     ),
-                    decoration: BoxDecoration(
-                      color: _surfaceContainerLowest,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: _outlineVariant),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x0F5A463F),
-                          blurRadius: 12,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
+                    decoration: _cardDecoration(radius: 20),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -2044,18 +2042,7 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF6F1EC),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white, width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: _primary.withAlpha(12),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+      decoration: _cardDecoration(radius: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -2111,15 +2098,16 @@ class _MotherJourneyScreenState extends State<MotherJourneyScreen>
     );
   }
 
-  BoxDecoration _cardDecoration() {
+  BoxDecoration _cardDecoration({Color? color, double radius = 24}) {
     return BoxDecoration(
-      color: _surfaceContainerLowest,
-      borderRadius: BorderRadius.circular(24),
-      boxShadow: [
+      color: color ?? _surface,
+      borderRadius: BorderRadius.circular(radius),
+      border: Border.all(color: _surfaceContainerHigh),
+      boxShadow: const [
         BoxShadow(
-          color: const Color(0xFF5A463F).withAlpha(15),
-          blurRadius: 20,
-          offset: const Offset(0, 4),
+          color: Color(0x08000000),
+          blurRadius: 16,
+          offset: Offset(0, 4),
         ),
       ],
     );
@@ -2149,9 +2137,9 @@ class _BabyProfilePickerSheet extends StatelessWidget {
   final String? selectedBabyId;
 
   static const _primary = Color(0xFF845143);
-  static const _surfaceContainerHigh = Color(0xFFFFE2D9);
-  static const _onSurface = Color(0xFF271812);
-  static const _outlineVariant = Color(0xFFD6C2BD);
+  static const _surfaceContainerHigh = Color(0xFFF1E6E0);
+  static const _onSurface = Color(0xFF2A211D);
+  static const _outlineVariant = Color(0xFFE5D3CA);
 
   @override
   Widget build(BuildContext context) {
@@ -2162,7 +2150,7 @@ class _BabyProfilePickerSheet extends StatelessWidget {
         ),
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
         decoration: const BoxDecoration(
-          color: Colors.white,
+          color: Color(0xFFFFFCF9),
           borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
         ),
         child: Column(
@@ -2258,11 +2246,10 @@ class _BabyPickerTile extends StatelessWidget {
 
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
-  static const _surfaceContainerHigh = Color(0xFFFFE2D9);
-  static const _surfaceContainerLowest = Color(0xFFFFF8F6);
-  static const _onSurface = Color(0xFF271812);
-  static const _onSurfaceVariant = Color(0xFF524440);
-  static const _outlineVariant = Color(0xFFD6C2BD);
+  static const _surfaceContainerHigh = Color(0xFFF1E6E0);
+  static const _surfaceContainerLow = Color(0xFFF8EEE9);
+  static const _onSurface = Color(0xFF2A211D);
+  static const _onSurfaceVariant = Color(0xFF655650);
 
   @override
   Widget build(BuildContext context) {
@@ -2273,10 +2260,10 @@ class _BabyPickerTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: selected ? _surfaceContainerHigh : _surfaceContainerLowest,
+          color: selected ? _surfaceContainerLow : const Color(0xFFFFFCF9),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: selected ? _primaryContainer : _outlineVariant,
+            color: selected ? _primaryContainer : _surfaceContainerHigh,
             width: selected ? 2 : 1,
           ),
         ),
@@ -2357,7 +2344,7 @@ class _InfoRow extends StatelessWidget {
           width: 36,
           height: 36,
           decoration: const BoxDecoration(
-            color: Color(0xFFFFF8F6),
+            color: Color(0xFFF1E6E0),
             shape: BoxShape.circle,
           ),
           child: Icon(icon, size: 18, color: const Color(0xFF845143)),
@@ -2369,7 +2356,7 @@ class _InfoRow extends StatelessWidget {
             style: const TextStyle(
               fontFamily: 'Lexend',
               fontSize: 13,
-              color: Color(0xFF524440),
+              color: Color(0xFF655650),
             ),
           ),
         ),
@@ -2379,7 +2366,7 @@ class _InfoRow extends StatelessWidget {
             fontFamily: 'Lexend',
             fontSize: 13,
             fontWeight: FontWeight.w700,
-            color: Color(0xFF271812),
+            color: Color(0xFF2A211D),
           ),
         ),
       ],

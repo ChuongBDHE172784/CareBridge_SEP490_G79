@@ -5,6 +5,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.carebridge.backend.audit.service.AuditService;
 import com.carebridge.backend.emergency.event.EmergencySessionOpened;
+import com.carebridge.backend.emergency.event.EmergencySessionRealertRequested;
 import com.carebridge.backend.emergency.service.AlertRecipientEndpoint;
 import com.carebridge.backend.emergency.service.EmergencyAlertAttemptService;
 import com.carebridge.backend.emergency.service.EmergencyAlertClaim;
@@ -59,10 +60,15 @@ class FamilyAlertServiceTest {
     @BeforeEach
     void defaults() {
         lenient().when(alertAttemptService.claim(SESSION_ID)).thenReturn(Optional.of(CLAIM));
+        lenient().when(alertAttemptService.claimForRealert(SESSION_ID)).thenReturn(Optional.of(CLAIM));
         lenient().when(alertAttemptService.renew(CLAIM)).thenReturn(true);
         lenient().when(alertAttemptService.complete(
                 eq(CLAIM), anyString(), anyInt(), anyInt(), anyBoolean())).thenReturn(true);
         lenient().when(deliveryPersistenceService.prepare(
+                        any(), any(), nullable(UUID.class), eq(CLAIM)))
+                .thenAnswer(invocation -> new PreparedAlertDelivery(
+                        UUID.randomUUID(), UUID.randomUUID(), false, 0));
+        lenient().when(deliveryPersistenceService.prepareRealert(
                         any(), any(), nullable(UUID.class), eq(CLAIM)))
                 .thenAnswer(invocation -> new PreparedAlertDelivery(
                         UUID.randomUUID(), UUID.randomUUID(), false, 0));
@@ -138,6 +144,19 @@ class FamilyAlertServiceTest {
 
         verify(fcmNotificationPort).send(eq("token-1"), argThat(payload ->
                 deliveryId.toString().equals(payload.get("deliveryActionId"))));
+    }
+
+    @Test
+    void realertDeliversAgainUsingANewDeliveryGeneration() {
+        when(familyMemberPort.getFamilyAlertRecipients(USER_ID)).thenReturn(recipients("token-1"));
+
+        familyAlertService.sendRealert(new EmergencySessionRealertRequested(
+                UUID.randomUUID(), SESSION_ID, USER_ID, "FALL_DETECTION", null, null, Instant.now()));
+
+        verify(alertAttemptService).claimForRealert(SESSION_ID);
+        verify(deliveryPersistenceService).prepareRealert(
+                any(EmergencySessionRealertRequested.class), any(), nullable(UUID.class), eq(CLAIM));
+        verify(fcmNotificationPort).send(eq("token-1"), any());
     }
 
     @Test
@@ -323,7 +342,8 @@ class FamilyAlertServiceTest {
         return java.util.stream.IntStream.range(0, tokens.length)
                 .mapToObj(index -> new AlertRecipientEndpoint(
                         UUID.nameUUIDFromBytes(("recipient-" + index).getBytes()),
-                        UUID.nameUUIDFromBytes(("device-" + index).getBytes()), tokens[index]))
+                        UUID.nameUUIDFromBytes(("device-" + index).getBytes()),
+                        UUID.nameUUIDFromBytes(("group-" + index).getBytes()), tokens[index]))
                 .toList();
     }
 }

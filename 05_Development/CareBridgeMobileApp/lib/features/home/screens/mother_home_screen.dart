@@ -368,8 +368,6 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
                     _buildContinuationRecoveryNotice(),
                     const SizedBox(height: 20),
                   ],
-                  _buildGreeting(),
-                  const SizedBox(height: 20),
                   if (_loading)
                     _buildDashboardLoadingState()
                   else ...[
@@ -457,24 +455,15 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'CareBridge',
-                    style: TextStyle(
-                      fontFamily: 'Lexend',
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      color: _primary,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
+                  Text('Chào Mẹ,', style: _sectionTitleStyle),
                   SizedBox(height: 2),
                   Text(
-                    'Không gian của mẹ',
+                    'Hôm nay mẹ và bé cảm thấy thế nào?',
                     style: TextStyle(
                       fontFamily: 'Lexend',
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: _onSurface,
+                      fontSize: 15,
+                      color: _onSurfaceVariant,
+                      height: 1.4,
                     ),
                   ),
                 ],
@@ -529,25 +518,6 @@ class _MotherHomeScreenState extends State<MotherHomeScreen>
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildGreeting() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Chào Mẹ,', style: _sectionTitleStyle),
-        const SizedBox(height: 6),
-        const Text(
-          'Hôm nay mẹ và bé cảm thấy thế nào?',
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            fontSize: 15,
-            color: _onSurfaceVariant,
-            height: 1.4,
-          ),
-        ),
-      ],
     );
   }
 

@@ -80,11 +80,23 @@ class QuestionCatalogFilterTest {
     // ------------------------------------------------ unresolved context lockdown
 
     @Test
-    @DisplayName("An unknown target yields only the target clarification")
-    void unknownTargetYieldsOnlyClarification() {
+    @DisplayName("An unknown target keeps clarification and the global danger screen")
+    void unknownTargetKeepsClarificationAndGlobalDanger() {
         var context = QuestionCatalogFilter.FilterContext.of(
                 TargetEntity.UNKNOWN, CareStage.UNKNOWN, IntentType.SYMPTOM_TRIAGE,
                 ContextResolutionStatus.NEEDS_TARGET_ENTITY, Set.of("bleeding_amount"), Set.of());
+        assertThat(ids(filter.eligibleQuestions(context, null)))
+                .containsExactly("Q_CLARIFY_TARGET_ENTITY", "Q_GLOBAL_DANGER");
+    }
+
+    @Test
+    @DisplayName("A completed safety screen is not asked again while target remains unresolved")
+    void completedSafetyScreenKeepsOnlyTargetClarification() {
+        var context = new QuestionCatalogFilter.FilterContext(
+                TargetEntity.UNKNOWN, CareStage.UNKNOWN, IntentType.SYMPTOM_TRIAGE,
+                ContextResolutionStatus.NEEDS_TARGET_ENTITY, Set.of("bleeding_amount"), Set.of(),
+                Set.of(), Map.of(), "COMPLETE");
+
         assertThat(ids(filter.eligibleQuestions(context, null)))
                 .containsExactly("Q_CLARIFY_TARGET_ENTITY");
     }
@@ -96,7 +108,7 @@ class QuestionCatalogFilterTest {
                 TargetEntity.CONFLICTED, CareStage.UNKNOWN, IntentType.SYMPTOM_TRIAGE,
                 ContextResolutionStatus.CONFLICTED, Set.of(), Set.of());
         assertThat(ids(filter.eligibleQuestions(context, null)))
-                .containsExactly("Q_CLARIFY_TARGET_FIRST");
+                .containsExactly("Q_CLARIFY_TARGET_FIRST", "Q_GLOBAL_DANGER");
     }
 
     @Test
@@ -106,7 +118,7 @@ class QuestionCatalogFilterTest {
                 TargetEntity.MOTHER, CareStage.PREGNANCY, IntentType.UNKNOWN,
                 ContextResolutionStatus.NEEDS_INTENT, Set.of(), Set.of());
         assertThat(ids(filter.eligibleQuestions(context, null)))
-                .containsExactly("Q_CLARIFY_INTENT");
+                .containsExactly("Q_CLARIFY_INTENT", "Q_GLOBAL_DANGER");
     }
 
     @Test
@@ -117,7 +129,7 @@ class QuestionCatalogFilterTest {
                 ContextResolutionStatus.NEEDS_TARGET_ENTITY, Set.of("bleeding_amount"), Set.of());
         assertThat(ids(filter.eligibleQuestions(context,
                 List.of("Q_BLEEDING_AMOUNT", "Q_BABY_AGE_MONTHS"))))
-                .containsExactly("Q_CLARIFY_TARGET_ENTITY");
+                .containsExactly("Q_CLARIFY_TARGET_ENTITY", "Q_GLOBAL_DANGER");
     }
 
     // -------------------------------------------------------------- stage matching
@@ -154,7 +166,7 @@ class QuestionCatalogFilterTest {
         var context = new QuestionCatalogFilter.FilterContext(
                 base.targetEntity(), base.stage(), base.intent(), base.contextStatus(),
                 base.missingFields(), base.missingSignals(),
-                Set.of("Q_BLEEDING_AMOUNT"), Map.of());
+                Set.of("Q_BLEEDING_AMOUNT"), Map.of(), "INCOMPLETE");
         assertThat(ids(filter.eligibleQuestions(context, null)))
                 .doesNotContain("Q_BLEEDING_AMOUNT");
     }
@@ -165,7 +177,7 @@ class QuestionCatalogFilterTest {
         var unmeasurable = new QuestionCatalogFilter.FilterContext(
                 TargetEntity.MOTHER, CareStage.PREGNANCY, IntentType.SYMPTOM_TRIAGE,
                 ContextResolutionStatus.RESOLVED, Set.of("blood_pressure"), Set.of(),
-                Set.of(), Map.of("blood_pressure", "UNAWARE_OR_UNMEASURABLE"));
+                Set.of(), Map.of("blood_pressure", "UNAWARE_OR_UNMEASURABLE"), "INCOMPLETE");
         assertThat(filter.isEligible(q("Q_BP_IF_KNOWN"), unmeasurable)).isFalse();
 
         var answerable = QuestionCatalogFilter.FilterContext.of(

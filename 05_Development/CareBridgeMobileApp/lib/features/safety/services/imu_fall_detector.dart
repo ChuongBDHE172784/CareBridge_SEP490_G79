@@ -77,9 +77,13 @@ class FallCandidate {
 /// closed when samples are missing, out of order, or contain stale gyroscope
 /// readings.
 class ImuFallDetector {
-  static const double freeFallThreshold = 3.0;
-  static const double impactThreshold = 25.0;
-  static const double minimumJerk = 80.0;
+  // The detector must recognise a controlled 50 cm fall onto a pillow or
+  // mattress. Such a landing can have only a small rebound above gravity,
+  // unlike a hard-floor impact, so the three-phase sequence remains required
+  // while its free-fall, rebound and jerk limits are deliberately softer.
+  static const double freeFallThreshold = 6.5;
+  static const double impactThreshold = 9.5;
+  static const double minimumJerk = 40.0;
   static const double gravity = 9.81;
   static const double stationaryAccelerationTolerance = 2.0;
   static const double stationaryGyroscopeThreshold = 0.5;
@@ -91,9 +95,12 @@ class ImuFallDetector {
   static const Duration maximumPostImpactSampleGap = Duration(
     milliseconds: 500,
   );
-  static const Duration immobilityWindow = Duration(seconds: 4);
+  static const Duration immobilityWindow = Duration(seconds: 1);
   static const Duration maximumGyroscopeAge = Duration(milliseconds: 200);
-  static const Duration cooldown = Duration(seconds: 30);
+  // The three-phase detector already rejects a continuing impact pulse. Keep
+  // only a brief debounce so a user who has dismissed an alert can perform
+  // another controlled sensor check after the alert has settled.
+  static const Duration cooldown = Duration(seconds: 3);
 
   FallDetectionPhase _phase = FallDetectionPhase.idle;
   ImuSample? _previousSample;
@@ -134,7 +141,7 @@ class ImuFallDetector {
     return <ImuSample>[
       sample(Duration.zero, 2),
       sample(const Duration(milliseconds: 100), 30, gyro: 0.2),
-      for (var index = 1; index <= 20; index++)
+      for (var index = 1; index <= 5; index++)
         sample(Duration(milliseconds: 100 + index * 200), gravity),
     ];
   }
@@ -234,7 +241,7 @@ class ImuFallDetector {
 
     final sinceFirstImpact = sample.timestamp.difference(impactStartedAt);
     if (sinceFirstImpact <= impactSettlingGrace) {
-      if (sample.accelerationMagnitude > impact.accelerationMagnitude &&
+      if (sample.accelerationMagnitude > impact.accelerationMagnitude + 1 &&
           sample.accelerationMagnitude > impactThreshold &&
           _hasFreshGyroscope(sample)) {
         _impactSample = sample;

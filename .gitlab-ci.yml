@@ -97,7 +97,12 @@ test_web:
   stage: test
   image: node:22-alpine
   rules: *web_rules
-  script: ["cd 05_Development/CareBridgeWebApp", "npm ci", "npm run build", "echo 'No web test script is configured; build is the available verification.'"]
+  # The old comment here said no web test script was configured. That was wrong:
+  # package.json has had "test": "vitest run" all along, and the repo carries 31 test
+  # files with 138 tests. They were simply never run by CI, so a broken component test
+  # could reach carebridgevn.site with the pipeline green. Verified locally on
+  # 11/08/2026: 31 files, 138 tests, all passing in 54s.
+  script: ["cd 05_Development/CareBridgeWebApp", "npm ci", "npm run build", "npm test"]
 test_ai_evaluation:
   stage: test
   image: python:3.12-slim
@@ -319,14 +324,16 @@ deploy_staging:
 pages:
   stage: deploy
   image: node:22-alpine
+  # A project has exactly one GitLab Pages site, so every branch listed here could
+  # overwrite carebridgevn.site and the last pipeline to finish decided what the
+  # public portal served. Five of the seven were personal work-in-progress branches.
+  # Publishing is a deliberate act now: merge into page-web when the site should
+  # change. Pushing to dev no longer touches what users see.
+  #
+  # GitLab reads this file from the branch being pushed, so the personal branches
+  # keep their own seven-entry copy and can still publish until each one merges dev.
   rules:
-    - if: '$CI_COMMIT_BRANCH == "HuyND"'
-    - if: '$CI_COMMIT_BRANCH == "ChuongBD"'
-    - if: '$CI_COMMIT_BRANCH == "PhuongNT"'
-    - if: '$CI_COMMIT_BRANCH == "LamVH1"'
-    - if: '$CI_COMMIT_BRANCH == "BachNQ1"'
-    - if: '$CI_COMMIT_BRANCH == "dev"'
-    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+    - if: '$CI_COMMIT_BRANCH == "page-web"'
   script:
     - cd 05_Development/CareBridgeWebApp
     - npm ci

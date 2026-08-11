@@ -46,13 +46,13 @@ enum _SetupStep {
 enum _DatingMethod { lmp, conception, gestationalAge, dueDate }
 
 class _JourneySetupScreenState extends State<JourneySetupScreen> {
-  static const _primary = Color(0xFFC98C7B);
+  static const _primary = Color(0xFF845143);
   static const _primaryDark = Color(0xFF845143);
-  static const _canvas = Color(0xFFF6F1EC);
-  static const _surface = Colors.white;
-  static const _text = Color(0xFF5A463F);
-  static const _muted = Color(0xFF9C857C);
-  static const _border = Color(0xFFE8DDD6);
+  static const _canvas = Color(0xFFF8F5F1);
+  static const _surface = Color(0xFFFFFCF9);
+  static const _text = Color(0xFF2A211D);
+  static const _muted = Color(0xFF655650);
+  static const _border = Color(0xFFF1E6E0);
   static const _errorBg = Color(0xFFFFDAD6);
   static const _errorText = Color(0xFF93000A);
 
@@ -1073,12 +1073,12 @@ class _MethodCard extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  static const _primary = Color(0xFFC98C7B);
-  static const _surface = Colors.white;
-  static const _surfaceLow = Color(0xFFF2EAE4);
-  static const _text = Color(0xFF5A463F);
-  static const _muted = Color(0xFF9C857C);
-  static const _border = Color(0xFFE8DDD6);
+  static const _primaryContainer = Color(0xFFC98C7B);
+  static const _surface = Color(0xFFFFFCF9);
+  static const _surfaceLow = Color(0xFFF8EEE9);
+  static const _surfaceHigh = Color(0xFFF1E6E0);
+  static const _onSurface = Color(0xFF2A211D);
+  static const _onSurfaceVariant = Color(0xFF655650);
 
   @override
   Widget build(BuildContext context) {
@@ -1092,36 +1092,39 @@ class _MethodCard extends StatelessWidget {
           duration: const Duration(milliseconds: 220),
           decoration: BoxDecoration(
             color: selected ? _surfaceLow : _surface,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: selected ? _primary : _border, width: 2),
-            boxShadow: [
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: selected ? _primaryContainer : _surfaceHigh,
+              width: selected ? 2 : 1,
+            ),
+            boxShadow: const [
               BoxShadow(
-                color: _text.withAlpha(14),
-                blurRadius: 26,
-                offset: const Offset(0, 12),
+                color: Color(0x08000000),
+                blurRadius: 16,
+                offset: Offset(0, 4),
               ),
             ],
           ),
           child: Material(
             color: Colors.transparent,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(20),
             child: InkWell(
-              borderRadius: BorderRadius.circular(24),
+              borderRadius: BorderRadius.circular(20),
               onTap: onTap,
               child: Padding(
-                padding: const EdgeInsets.all(18),
+                padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
                     Container(
-                      width: 48,
-                      height: 48,
+                      width: 46,
+                      height: 46,
                       decoration: BoxDecoration(
-                        color: selected ? _primary : _surfaceLow,
+                        color: selected ? _primaryContainer : _surfaceHigh,
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
                         icon,
-                        color: selected ? Colors.white : _primary,
+                        color: selected ? Colors.white : const Color(0xFF845143),
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -1133,9 +1136,9 @@ class _MethodCard extends StatelessWidget {
                             title,
                             style: const TextStyle(
                               fontFamily: 'Lexend',
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: _text,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: _onSurface,
                               height: 1.35,
                             ),
                           ),
@@ -1145,7 +1148,7 @@ class _MethodCard extends StatelessWidget {
                             style: const TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 13,
-                              color: _muted,
+                              color: _onSurfaceVariant,
                               height: 1.35,
                             ),
                           ),
@@ -1158,7 +1161,7 @@ class _MethodCard extends StatelessWidget {
                       opacity: selected ? 1 : 0,
                       child: const Icon(
                         Icons.check_circle_rounded,
-                        color: _primary,
+                        color: _primaryContainer,
                       ),
                     ),
                   ],
@@ -1187,10 +1190,10 @@ class _NumberWheel extends StatelessWidget {
   final String label;
   final ValueChanged<int> onChanged;
 
-  static const _primary = Color(0xFFC98C7B);
-  static const _text = Color(0xFF5A463F);
-  static const _muted = Color(0xFF9C857C);
-  static const _surfaceLow = Color(0xFFF2EAE4);
+  static const _primary = Color(0xFF845143);
+  static const _onSurface = Color(0xFF2A211D);
+  static const _onSurfaceVariant = Color(0xFF655650);
+  static const _surfaceLow = Color(0xFFF8EEE9);
 
   @override
   Widget build(BuildContext context) {
@@ -1202,7 +1205,13 @@ class _NumberWheel extends StatelessWidget {
     return Stack(
       alignment: Alignment.center,
       children: [
-        Container(height: 58, color: _surfaceLow),
+        Container(
+          height: 58,
+          decoration: BoxDecoration(
+            color: _surfaceLow,
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
         CupertinoPicker(
           scrollController: FixedExtentScrollController(
             initialItem: initialItem,
@@ -1220,7 +1229,7 @@ class _NumberWheel extends StatelessWidget {
                     text: TextSpan(
                       style: const TextStyle(
                         fontFamily: 'Lexend',
-                        color: _muted,
+                        color: _onSurfaceVariant,
                         fontSize: 28,
                         fontWeight: FontWeight.w700,
                       ),
@@ -1230,7 +1239,7 @@ class _NumberWheel extends StatelessWidget {
                           style: TextStyle(
                             color: item == value
                                 ? _primary
-                                : _text.withAlpha(145),
+                                : _onSurface.withAlpha(145),
                             fontSize: item == value ? 34 : 28,
                             fontWeight: FontWeight.w900,
                           ),
@@ -1238,7 +1247,7 @@ class _NumberWheel extends StatelessWidget {
                         TextSpan(
                           text: ' $label',
                           style: TextStyle(
-                            color: item == value ? _primary : _muted,
+                            color: item == value ? _primary : _onSurfaceVariant,
                             fontSize: item == value ? 15 : 13,
                             fontWeight: FontWeight.w700,
                           ),
@@ -1261,9 +1270,9 @@ class _InfoPill extends StatelessWidget {
   final IconData icon;
   final String text;
 
-  static const _surfaceLow = Color(0xFFF2EAE4);
-  static const _text = Color(0xFF5A463F);
-  static const _primary = Color(0xFFC98C7B);
+  static const _surfaceLow = Color(0xFFF8EEE9);
+  static const _onSurface = Color(0xFF2A211D);
+  static const _primary = Color(0xFF845143);
 
   @override
   Widget build(BuildContext context) {
@@ -1284,8 +1293,8 @@ class _InfoPill extends StatelessWidget {
               style: const TextStyle(
                 fontFamily: 'Lexend',
                 fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: _text,
+                fontWeight: FontWeight.w600,
+                color: _onSurface,
                 height: 1.3,
               ),
             ),
@@ -1307,10 +1316,10 @@ class _ResultMetric extends StatelessWidget {
   final String label;
   final String value;
 
-  static const _primary = Color(0xFFC98C7B);
-  static const _surfaceLow = Color(0xFFF2EAE4);
-  static const _text = Color(0xFF5A463F);
-  static const _muted = Color(0xFF9C857C);
+  static const _primary = Color(0xFF845143);
+  static const _surfaceLow = Color(0xFFF8EEE9);
+  static const _onSurface = Color(0xFF2A211D);
+  static const _onSurfaceVariant = Color(0xFF655650);
 
   @override
   Widget build(BuildContext context) {
@@ -1341,8 +1350,8 @@ class _ResultMetric extends StatelessWidget {
                   style: const TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: _muted,
+                    fontWeight: FontWeight.w600,
+                    color: _onSurfaceVariant,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -1351,8 +1360,8 @@ class _ResultMetric extends StatelessWidget {
                   style: const TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                    color: _text,
+                    fontWeight: FontWeight.w700,
+                    color: _onSurface,
                     height: 1.25,
                   ),
                 ),
@@ -1371,26 +1380,26 @@ class _InsightCard extends StatelessWidget {
   final IconData icon;
   final String text;
 
-  static const _surface = Colors.white;
-  static const _surfaceLow = Color(0xFFF2EAE4);
-  static const _text = Color(0xFF5A463F);
-  static const _primary = Color(0xFFC98C7B);
-  static const _border = Color(0xFFE8DDD6);
+  static const _surface = Color(0xFFFFFCF9);
+  static const _surfaceLow = Color(0xFFF8EEE9);
+  static const _surfaceHigh = Color(0xFFF1E6E0);
+  static const _onSurface = Color(0xFF2A211D);
+  static const _primary = Color(0xFF845143);
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 26, 20, 20),
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
       decoration: BoxDecoration(
         color: _surface,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: _border.withAlpha(180)),
-        boxShadow: [
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _surfaceHigh),
+        boxShadow: const [
           BoxShadow(
-            color: _text.withAlpha(15),
-            blurRadius: 28,
-            offset: const Offset(0, 12),
+            color: Color(0x08000000),
+            blurRadius: 16,
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -1411,10 +1420,10 @@ class _InsightCard extends StatelessWidget {
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontFamily: 'Lexend',
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              color: _text,
-              height: 1.55,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: _onSurface,
+              height: 1.5,
             ),
           ),
         ],

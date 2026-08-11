@@ -29,9 +29,10 @@ public class FamilyMemberPortAdapter implements FamilyMemberPort {
 
     @Override
     public List<AlertRecipientEndpoint> getFamilyAlertRecipients(UUID userId) {
-        return careGroupMemberRepository.findAcceptedFamilyUserIds(userId).stream()
-                .flatMap(memberId -> deviceTokenRepository.findByUserIdAndActiveTrue(memberId).stream()
-                        .map(token -> new AlertRecipientEndpoint(memberId, token.getId(), token.getToken())))
+        return careGroupMemberRepository.findAcceptedFamilyMembersForEmergencyAlerts(userId).stream()
+                .flatMap(member -> deviceTokenRepository.findByUserIdAndActiveTrue(member.getUserId()).stream()
+                        .map(token -> new AlertRecipientEndpoint(
+                                member.getUserId(), token.getId(), member.getCareGroupId(), token.getToken())))
                 .distinct()
                 .toList();
     }

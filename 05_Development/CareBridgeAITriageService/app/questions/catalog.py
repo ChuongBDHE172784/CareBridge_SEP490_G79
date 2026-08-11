@@ -72,6 +72,17 @@ class Question:
                 or self.is_stage_clarification
                 or self.is_intent_clarification)
 
+    @property
+    def may_run_without_resolved_target(self) -> bool:
+        """Whether unresolved ownership may safely keep this question.
+
+        This mirrors Java ``QuestionCatalog.Question.mayRunWithoutResolvedTarget()``. Only a
+        question that resolves ownership/context, or the entity-agnostic global danger screen,
+        may bypass the resolved-target boundary.
+        """
+
+        return self.is_clarification or self.is_global_danger_screen
+
 
 CATALOG_PATH = Path(__file__).resolve().parents[2] / "data" / "question_catalog_v1.json"
 

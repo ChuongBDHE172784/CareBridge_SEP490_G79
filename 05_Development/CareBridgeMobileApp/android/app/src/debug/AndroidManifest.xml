@@ -4,4 +4,10 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- Plaintext HTTP belongs to debug builds only. Talking to a backend on a
+         laptop over the LAN needs it; a release build shipped with it lets any
+         network in the middle read tokens and patient data off the wire. Android
+         merges this into the debug manifest and leaves the release build alone. -->
+    <application android:usesCleartextTraffic="true" />
 </manifest>

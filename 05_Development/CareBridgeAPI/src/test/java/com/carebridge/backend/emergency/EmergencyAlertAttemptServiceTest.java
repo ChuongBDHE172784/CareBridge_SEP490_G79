@@ -2,6 +2,7 @@ package com.carebridge.backend.emergency;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -26,7 +27,7 @@ class EmergencyAlertAttemptServiceTest {
         var repository = mock(EmergencyAlertAttemptRepository.class);
         var service = new EmergencyAlertAttemptService(repository);
         UUID sessionId = UUID.randomUUID();
-        when(repository.claim(eq(sessionId), any(Instant.class)))
+        when(repository.claim(eq(sessionId), any(Instant.class), anyBoolean()))
                 .thenReturn(Optional.of(claim(sessionId)), Optional.empty());
 
         assertThat(service.claim(sessionId)).isPresent();
@@ -38,7 +39,7 @@ class EmergencyAlertAttemptServiceTest {
         var repository = mock(EmergencyAlertAttemptRepository.class);
         var service = new EmergencyAlertAttemptService(repository);
         UUID sessionId = UUID.randomUUID();
-        when(repository.claim(eq(sessionId), any(Instant.class)))
+        when(repository.claim(eq(sessionId), any(Instant.class), anyBoolean()))
                 .thenReturn(Optional.of(claim(sessionId)), Optional.of(claim(sessionId)));
 
         assertThat(service.claim(sessionId)).isPresent();

@@ -51,14 +51,15 @@ class PostAnswerScreen extends StatefulWidget {
 class _PostAnswerScreenState extends State<PostAnswerScreen> {
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
-  static const _canvas = Color(0xFFF6F1EC);
-  static const _surface = Colors.white;
-  static const _onSurfaceVariant = Color(0xFF524440);
+  static const _canvas = Color(0xFFF8F5F1);
+  static const _surface = Color(0xFFFFFCF9);
+  static const _onSurface = Color(0xFF2A211D);
+  static const _onSurfaceVariant = Color(0xFF655650);
   static const _errorContainer = Color(0xFFFFDAD6);
   static const _error = Color(0xFFBA1A1A);
   static const _onErrorContainer = Color(0xFF93000A);
-  static const _surfaceAccentMuted = Color(0xFFF2EAE4);
-  static const _outlineVariant = Color(0xFFD6C2BD);
+  static const _surfaceAccentMuted = Color(0xFFF8EEE9);
+  static const _outlineVariant = Color(0xFFE5D3CA);
 
   static const _experienceTags = [
     'Trải nghiệm thực tế',
@@ -162,46 +163,76 @@ class _PostAnswerScreenState extends State<PostAnswerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final topInset = MediaQuery.of(context).padding.top;
+    final canPop = ModalRoute.of(context)?.canPop ?? false;
+
     return Scaffold(
       backgroundColor: _canvas,
-      appBar: AppBar(
-        backgroundColor: _canvas,
-        elevation: 1,
-        shadowColor: Colors.black12,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: _primary),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: const Text(
-          'CareBridge',
-          style: TextStyle(
-            color: _primary,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.close, color: _onSurfaceVariant),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildQuestionContextCard(),
-                const SizedBox(height: 16),
-                _buildAnswerComposerCard(),
-              ],
+      body: SafeArea(
+        top: false,
+        child: Column(
+          children: [
+            Container(
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                color: _surface,
+                borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0x0A845143),
+                    blurRadius: 16,
+                    offset: Offset(0, 4),
+                  ),
+                ],
+              ),
+              padding: EdgeInsets.fromLTRB(16, topInset + 12, 16, 16),
+              child: Row(
+                children: [
+                  if (canPop) ...[
+                    IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      icon: const Icon(Icons.arrow_back_ios_new_rounded, color: _primary, size: 20),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                    const SizedBox(width: 12),
+                  ] else
+                    const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      widget.existingAnswer != null ? 'Chỉnh sửa câu trả lời' : 'Gửi câu trả lời',
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: _onSurface,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          if (_showPublishedModal) _buildPublishedModal(),
-        ],
+            Expanded(
+              child: Stack(
+                children: [
+                  SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildQuestionContextCard(),
+                        const SizedBox(height: 16),
+                        _buildAnswerComposerCard(),
+                      ],
+                    ),
+                  ),
+                  if (_showPublishedModal) _buildPublishedModal(),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

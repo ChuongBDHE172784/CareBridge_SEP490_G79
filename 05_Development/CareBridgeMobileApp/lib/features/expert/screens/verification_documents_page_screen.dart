@@ -121,6 +121,7 @@ class _VerificationDocumentsPageScreenState
         setState(() => _selectedFile = result.files.first);
       }
     } catch (_) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Không thể chọn tệp. Vui lòng thử lại.')),
       );
@@ -391,7 +392,7 @@ class _VerificationDocumentsPageScreenState
 
                           _buildLabel('Loại chứng chỉ', required: true),
                           DropdownButtonFormField<String>(
-                            value: _selectedType,
+                            initialValue: _selectedType,
                             decoration: _inputDecoration(
                               hint: '-- Chọn loại chứng chỉ --',
                             ),
@@ -424,7 +425,7 @@ class _VerificationDocumentsPageScreenState
 
                           _buildLabel('Đơn vị / Nơi cấp'),
                           DropdownButtonFormField<String>(
-                            value: _selectedIssuer,
+                            initialValue: _selectedIssuer,
                             decoration:
                                 _inputDecoration(hint: '-- Chọn nơi cấp --'),
                             items: _issuers

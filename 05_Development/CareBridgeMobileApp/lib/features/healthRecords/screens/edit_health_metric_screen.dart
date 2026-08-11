@@ -39,6 +39,18 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
   bool _isDeleting = false;
 
   late bool _isDualValue;
+  bool get _isBmi => widget.metric.metricCode == 'BMI' || widget.metric.metricType == MetricType.bmi;
+  bool get _isGlucose => widget.metric.metricCode == 'BLOOD_GLUCOSE';
+
+  String _glucoseContext = 'FASTING';
+  static const _glucoseContexts = [
+    DropdownMenuItem(value: 'FASTING', child: Text('Lúc đói')),
+    DropdownMenuItem(value: 'PRE_MEAL', child: Text('Trước ăn')),
+    DropdownMenuItem(value: 'POST_MEAL_1H', child: Text('Sau ăn 1 giờ')),
+    DropdownMenuItem(value: 'POST_MEAL_2H', child: Text('Sau ăn 2 giờ')),
+    DropdownMenuItem(value: 'RANDOM', child: Text('Ngẫu nhiên')),
+    DropdownMenuItem(value: 'OTHER_APPROVED', child: Text('Khác (đã được duyệt)')),
+  ];
 
   final _service = HealthMetricService();
 
@@ -46,14 +58,29 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
   void initState() {
     super.initState();
     final m = widget.metric;
-    _isDualValue = m.valueSecondary != null;
-    _valuePrimaryCtrl.text = m.valueNumeric % 1 == 0
-        ? m.valueNumeric.toStringAsFixed(0)
-        : m.valueNumeric.toStringAsFixed(1);
-    if (_isDualValue && m.valueSecondary != null) {
-      _valueSecondaryCtrl.text = m.valueSecondary! % 1 == 0
-          ? m.valueSecondary!.toStringAsFixed(0)
-          : m.valueSecondary!.toStringAsFixed(1);
+    _isDualValue = m.valueSecondary != null || _isBmi;
+
+    if (_isBmi) {
+      final weight = m.context['weightKg'] as num?;
+      final height = m.context['heightCm'] as num?;
+      if (weight != null) {
+        _valuePrimaryCtrl.text = weight % 1 == 0 ? weight.toStringAsFixed(0) : weight.toStringAsFixed(1);
+      }
+      if (height != null) {
+        _valueSecondaryCtrl.text = height % 1 == 0 ? height.toStringAsFixed(0) : height.toStringAsFixed(1);
+      }
+    } else {
+      _valuePrimaryCtrl.text = m.valueNumeric % 1 == 0
+          ? m.valueNumeric.toStringAsFixed(0)
+          : m.valueNumeric.toStringAsFixed(1);
+      if (_isDualValue && m.valueSecondary != null) {
+        _valueSecondaryCtrl.text = m.valueSecondary! % 1 == 0
+            ? m.valueSecondary!.toStringAsFixed(0)
+            : m.valueSecondary!.toStringAsFixed(1);
+      }
+    }
+    if (_isGlucose && m.context['measurementContext'] != null) {
+      _glucoseContext = m.context['measurementContext'].toString();
     }
     _noteCtrl.text = m.note ?? '';
     _measuredDate = m.measuredAt;
@@ -131,23 +158,44 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
       return;
     }
 
-    final primaryVal = double.tryParse(_valuePrimaryCtrl.text.trim());
-    if (primaryVal == null) {
-      _showError('Giá trị chỉ số không hợp lệ.');
-      return;
-    }
-
+    double? primaryVal;
     double? secondaryVal;
-    if (_isDualValue) {
-      secondaryVal = double.tryParse(_valueSecondaryCtrl.text.trim());
-      if (secondaryVal == null) {
-        _showError('Giá trị thứ hai không hợp lệ.');
+
+    if (_isBmi) {
+      final weightKg = double.tryParse(_valuePrimaryCtrl.text.trim());
+      final heightCm = double.tryParse(_valueSecondaryCtrl.text.trim());
+      if (weightKg == null || weightKg < 20 || weightKg > 300 || heightCm == null || heightCm < 100 || heightCm > 230) {
+        _showError('Nhập cân nặng 20–300 kg và chiều cao 100–230 cm.');
         return;
+      }
+      primaryVal = weightKg / ((heightCm / 100) * (heightCm / 100));
+    } else {
+      primaryVal = double.tryParse(_valuePrimaryCtrl.text.trim());
+      if (primaryVal == null) {
+        _showError('Giá trị chỉ số không hợp lệ.');
+        return;
+      }
+      if (_isDualValue) {
+        secondaryVal = double.tryParse(_valueSecondaryCtrl.text.trim());
+        if (secondaryVal == null) {
+          _showError('Giá trị thứ hai không hợp lệ.');
+          return;
+        }
       }
     }
 
     setState(() => _isSaving = true);
     try {
+      final contextPayload = Map<String, dynamic>.from(widget.metric.context);
+      if (_isBmi) {
+        contextPayload['weightKg'] = double.tryParse(_valuePrimaryCtrl.text.trim());
+        contextPayload['heightCm'] = double.tryParse(_valueSecondaryCtrl.text.trim());
+        contextPayload['pregnancyBasis'] = 'CURRENT_MEASUREMENT';
+      }
+      if (_isGlucose) {
+        contextPayload['measurementContext'] = _glucoseContext;
+      }
+
       await _service.updateMetric(
         widget.journeyId,
         widget.metric.id,
@@ -156,6 +204,7 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
           valueSecondary: secondaryVal,
           measuredAt: _resolvedMeasuredAt,
           note: _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
+          context: contextPayload.isEmpty ? null : contextPayload,
         ),
       );
       if (mounted) {
@@ -256,12 +305,6 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
             ),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.close_rounded, color: _onSurfaceVariant),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
@@ -410,7 +453,52 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (_isDualValue) ...[
+              if (_isBmi) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildInput(
+                        controller: _valuePrimaryCtrl,
+                        label: 'Cân nặng',
+                        suffix: 'kg',
+                        enabled: enabled,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        onChanged: (_) => setState(() {}),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildInput(
+                        controller: _valueSecondaryCtrl,
+                        label: 'Chiều cao',
+                        suffix: 'cm',
+                        enabled: enabled,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        onChanged: (_) => setState(() {}),
+                      ),
+                    ),
+                  ],
+                ),
+                if (_bmiPreview != null) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: _surfaceContainer.withAlpha(80),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      'BMI tự động tính: ${_bmiPreview!.toStringAsFixed(1)} kg/m²',
+                      style: const TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: _primary,
+                      ),
+                    ),
+                  ),
+                ],
+              ] else if (_isDualValue) ...[
                 Row(
                   children: [
                     Expanded(
@@ -443,6 +531,43 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
                   keyboardType: const TextInputType.numberWithOptions(
                     decimal: true,
                   ),
+                ),
+              ],
+              if (_isGlucose) ...[
+                const SizedBox(height: 14),
+                DropdownButtonFormField<String>(
+                  value: _glucoseContexts.any((item) => item.value == _glucoseContext)
+                      ? _glucoseContext
+                      : 'FASTING',
+                  decoration: InputDecoration(
+                    labelText: 'Bối cảnh đo',
+                    labelStyle: const TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 13,
+                      color: _onSurfaceVariant,
+                    ),
+                    filled: true,
+                    fillColor: enabled ? Colors.white : _surfaceContainer.withAlpha(60),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: const BorderSide(color: _surfaceContainer, width: 2),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: const BorderSide(color: _surfaceContainer, width: 2),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(20),
+                      borderSide: const BorderSide(color: _primaryContainer, width: 2),
+                    ),
+                  ),
+                  items: _glucoseContexts,
+                  onChanged: enabled
+                      ? (val) {
+                          if (val != null) setState(() => _glucoseContext = val);
+                        }
+                      : null,
                 ),
               ],
               const SizedBox(height: 14),
@@ -506,17 +631,26 @@ class _EditHealthMetricScreenState extends State<EditHealthMetricScreen> {
     );
   }
 
+  double? get _bmiPreview {
+    final weight = double.tryParse(_valuePrimaryCtrl.text.trim());
+    final height = double.tryParse(_valueSecondaryCtrl.text.trim());
+    if (weight == null || weight <= 0 || height == null || height <= 0) return null;
+    return weight / ((height / 100) * (height / 100));
+  }
+
   Widget _buildInput({
     required TextEditingController controller,
     required String label,
     required String suffix,
     required bool enabled,
     TextInputType keyboardType = TextInputType.text,
+    ValueChanged<String>? onChanged,
   }) {
     return TextFormField(
       controller: controller,
       enabled: enabled,
       keyboardType: keyboardType,
+      onChanged: onChanged,
       inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
       validator: (v) =>
           (v == null || v.isEmpty) ? 'Vui lòng nhập giá trị' : null,

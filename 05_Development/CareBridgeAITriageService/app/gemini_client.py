@@ -179,7 +179,7 @@ class GeminiClient:
             return None
         return result
 
-    def extract_triage_v2(self, *, text: str):
+    def extract_triage_v2(self, *, text: str, deadline: float | None = None):
         """V2 fact extraction only; its schema has no outcome/action/URL fields."""
 
         from app.triage_v2.extraction import EXTRACTION_SYSTEM, TriageV2Extraction
@@ -191,7 +191,9 @@ class GeminiClient:
             {"task": "extract reproductive health triage facts", "untrustedUserText": safe_text},
             ensure_ascii=False,
         )
-        return self._generate(prompt, TriageV2Extraction, EXTRACTION_SYSTEM, 0.0)
+        return self._generate(
+            prompt, TriageV2Extraction, EXTRACTION_SYSTEM, 0.0, deadline=deadline
+        )
 
     def compose_followup_questions(
         self,

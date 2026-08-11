@@ -75,7 +75,34 @@ void main() {
   });
 
   test(
-    'never starts background GPS even when LOCATION/SHARE is active',
+    'starts location-enabled monitoring only with config opt-in and consent',
+    () async {
+      final gateway = _FakeForegroundGateway();
+      const locationEnabledConfig = SafetyConfig(
+        fallDetectionEnabled: true,
+        sensitivityLevel: 'MEDIUM',
+        emergencyAutoAlert: true,
+        locationSharingEnabled: true,
+        sensorPermissionGranted: true,
+      );
+      final coordinator = SafetyForegroundServiceCoordinator.forTesting(
+        gateway: gateway,
+        isAuthenticated: () => true,
+        loadConfig: () async => locationEnabledConfig,
+        loadConsents: () async => [
+          consent('SENSOR_DATA', 'CREATE'),
+          consent('LOCATION', 'SHARE'),
+        ],
+      );
+
+      await coordinator.reconcile();
+
+      expect(gateway.locationSharingAllowed, isTrue);
+    },
+  );
+
+  test(
+    'does not start location monitoring without explicit config opt-in',
     () async {
       final gateway = _FakeForegroundGateway();
       final coordinator = SafetyForegroundServiceCoordinator.forTesting(

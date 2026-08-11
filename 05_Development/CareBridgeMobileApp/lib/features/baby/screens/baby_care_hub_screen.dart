@@ -241,8 +241,8 @@ class _BabyCareHubScreenState extends State<BabyCareHubScreen> {
         foregroundColor: _text,
         elevation: 0,
         title: const Text(
-          'Baby care hub',
-          style: TextStyle(fontWeight: FontWeight.w800),
+          'Tổng quan chăm sóc bé',
+          style: TextStyle(fontWeight: FontWeight.w800, fontFamily: 'Lexend'),
         ),
       ),
       body: _buildBody(),
@@ -272,20 +272,21 @@ class _BabyCareHubScreenState extends State<BabyCareHubScreen> {
         _buildBabySelector(),
         const SizedBox(height: 16),
         Text(
-          'Showing data for $_selectedNickname',
+          'Hiển thị dữ liệu của $_selectedNickname',
           key: const Key('active-baby-name'),
           style: const TextStyle(
             color: _text,
             fontSize: 18,
             fontWeight: FontWeight.w700,
+            fontFamily: 'Lexend',
           ),
         ),
         const SizedBox(height: 16),
         SegmentedButton<String>(
           segments: const [
-            ButtonSegment(value: 'overview', label: Text('Overview')),
-            ButtonSegment(value: 'timeline', label: Text('Timeline')),
-            ButtonSegment(value: 'preparation', label: Text('Preparation')),
+            ButtonSegment(value: 'overview', label: Text('Tổng quan')),
+            ButtonSegment(value: 'timeline', label: Text('Dòng thời gian')),
+            ButtonSegment(value: 'preparation', label: Text('Chuẩn bị')),
           ],
           selected: {_selectedTab},
           onSelectionChanged: (value) {
@@ -297,32 +298,32 @@ class _BabyCareHubScreenState extends State<BabyCareHubScreen> {
         const SizedBox(height: 20),
         _HubCard(
           key: const Key('baby-care-journal'),
-          title: 'Journal',
-          description: 'Recent observations and daily notes',
+          title: 'Nhật ký chăm sóc',
+          description: 'Ghi nhận và nhật ký theo dõi hàng ngày',
           babyName: _selectedNickname,
           onTap: () => context.push('/babies/$babyId/log-summary'),
         ),
         const SizedBox(height: 12),
         _HubCard(
           key: const Key('baby-care-growth'),
-          title: 'Growth',
-          description: 'Recorded measurements and history',
+          title: 'Chỉ số phát triển',
+          description: 'Lịch sử chiều cao, cân nặng và chỉ số bé',
           babyName: _selectedNickname,
           onTap: () => context.push('/babies/$babyId/growth'),
         ),
         const SizedBox(height: 12),
         _HubCard(
           key: const Key('baby-care-milestones'),
-          title: 'Milestones',
-          description: 'Observed development milestones',
+          title: 'Cột mốc phát triển',
+          description: 'Các cột mốc phát triển đáng nhớ của bé',
           babyName: _selectedNickname,
           onTap: () => context.push('/babies/detail/$babyId'),
         ),
         const SizedBox(height: 12),
         _HubCard(
           key: const Key('baby-care-vaccinations'),
-          title: 'Vaccinations',
-          description: 'Recorded doses and schedule',
+          title: 'Lịch tiêm chủng',
+          description: 'Lịch tiêm ngừa và lịch sử mũi tiêm của bé',
           babyName: _selectedNickname,
           onTap: () => context.push('/babies/detail/$babyId'),
         ),
@@ -354,7 +355,7 @@ class _BabyCareHubScreenState extends State<BabyCareHubScreen> {
                 .map(
                   (baby) => DropdownMenuItem<String>(
                     value: baby.id,
-                    child: Text(baby.nickname),
+                    child: Text(baby.nickname, style: const TextStyle(fontFamily: 'Lexend')),
                   ),
                 )
                 .toList(growable: false),
@@ -397,19 +398,19 @@ class _BabyCareHubScreenState extends State<BabyCareHubScreen> {
       );
     }
     final metrics = <({String label, int value, IconData icon})>[
-      (label: 'Journal', value: overview.journalCount, icon: Icons.notes),
+      (label: 'Nhật ký', value: overview.journalCount, icon: Icons.notes),
       (
-        label: 'Growth',
+        label: 'Phát triển',
         value: overview.growthMeasurementCount,
         icon: Icons.show_chart,
       ),
       (
-        label: 'Milestones',
+        label: 'Cột mốc',
         value: overview.milestoneCount,
         icon: Icons.flag_outlined,
       ),
       (
-        label: 'Vaccinations',
+        label: 'Tiêm chủng',
         value: overview.vaccinationRecordCount,
         icon: Icons.vaccines_outlined,
       ),

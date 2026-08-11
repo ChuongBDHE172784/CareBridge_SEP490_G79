@@ -38,19 +38,14 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
   // ── Design tokens (Warm Claymorphism palette) ──
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
-  static const _canvas = Color(0xFFF6F1EC);
-  static const _surface = Colors.white;
-  static const _surfaceContainerHigh = Color(0xFFFFE2D9);
-  static const _surfaceContainerLow = Color(0xFFFFF1EC);
-  static const _surfaceContainer = Color(0xFFFFE9E3);
-  // ignore: unused_field
-  static const _surfaceContainerHighest = Color(0xFFFADCD3);
-  // ignore: unused_field
-  static const _surfaceVariant = Color(0xFFFADCD3);
-  static const _secondaryContainer = Color(0xFFF6DACF);
-  static const _onSurface = Color(0xFF271812);
-  static const _onSurfaceVariant = Color(0xFF524440);
-  // ignore: unused_field
+  static const _canvas = Color(0xFFF8F5F1);
+  static const _surface = Color(0xFFFFFCF9);
+  static const _surfaceContainerHigh = Color(0xFFF1E6E0);
+  static const _surfaceContainerLow = Color(0xFFF8EEE9);
+  static const _outlineVariant = Color(0xFFE5D3CA);
+  static const _secondaryContainer = Color(0xFFF1E6E0);
+  static const _onSurface = Color(0xFF2A211D);
+  static const _onSurfaceVariant = Color(0xFF655650);
   static const _error = Color(0xFFBA1A1A);
 
   late ContentService _contentService;
@@ -376,6 +371,7 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
     return Scaffold(
       backgroundColor: _canvas,
       body: SafeArea(
+        top: false,
         child: RefreshIndicator(
           color: _primaryContainer,
           onRefresh: _load,
@@ -518,36 +514,48 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
 
   // ── App bar ──
   Widget _buildAppBar() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 4, 8, 0),
+    final topInset = MediaQuery.of(context).padding.top;
+    final canPop = ModalRoute.of(context)?.canPop ?? false;
+
+    return Container(
+      width: double.infinity,
+      decoration: const BoxDecoration(
+        color: _surface,
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+        boxShadow: [
+          BoxShadow(
+            color: Color(0x0A845143),
+            blurRadius: 16,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      padding: EdgeInsets.fromLTRB(16, topInset + 12, 16, 16),
       child: Row(
         children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back, color: _onSurface),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
+          if (canPop) ...[
+            IconButton(
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: _primary, size: 20),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+            const SizedBox(width: 12),
+          ] else
+            const SizedBox(width: 8),
           Expanded(
             child: Text(
               widget.mode == ContentBrowseMode.family
                   ? 'Nội dung & FAQ'
                   : 'Nội dung dành cho bạn',
-              textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontFamily: 'Lexend',
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: _primary,
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: _onSurface,
+                letterSpacing: -0.3,
               ),
             ),
-          ),
-          IconButton(
-            icon: const Icon(
-              Icons.notifications_outlined,
-              color: _onSurfaceVariant,
-            ),
-            onPressed: () {
-              // TODO: navigate to notification center
-            },
           ),
         ],
       ),
@@ -751,24 +759,42 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
             final isActive = _selectedTypeIndex == i;
             return Padding(
               padding: const EdgeInsets.only(right: 8),
-              child: ChoiceChip(
-                label: Text(_typeLabels[i]),
-                selected: isActive,
-                onSelected: (_) => setState(() => _selectedTypeIndex = i),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 10,
+              child: InkWell(
+                onTap: () => setState(() => _selectedTypeIndex = i),
+                borderRadius: BorderRadius.circular(20),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 9,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isActive ? _primary : _surface,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isActive ? _primary : _outlineVariant,
+                      width: 1,
+                    ),
+                    boxShadow: isActive
+                        ? [
+                            BoxShadow(
+                              color: _primary.withValues(alpha: 0.2),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Text(
+                    _typeLabels[i],
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 13,
+                      fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                      color: isActive ? Colors.white : _onSurface,
+                    ),
+                  ),
                 ),
-                labelStyle: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: isActive ? Colors.white : _onSurfaceVariant,
-                ),
-                selectedColor: _primaryContainer,
-                backgroundColor: _surfaceContainer,
-                side: BorderSide.none,
-                shape: const StadiumBorder(),
               ),
             );
           }),
@@ -780,7 +806,7 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
   // ── Stage filter chips ──
   Widget _buildStageChips() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(0, 12, 0, 4),
+      padding: const EdgeInsets.fromLTRB(0, 4, 0, 4),
       child: SizedBox(
         height: 44,
         child: ListView.separated(
@@ -791,23 +817,29 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
           itemBuilder: (_, i) {
             final stageIndex = i - 1;
             final isActive = _selectedStageIndex == stageIndex;
-            return GestureDetector(
+            return InkWell(
               onTap: () {
                 setState(() => _selectedStageIndex = stageIndex);
                 _load();
               },
-              child: Container(
+              borderRadius: BorderRadius.circular(20),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 10,
+                  horizontal: 16,
+                  vertical: 9,
                 ),
                 decoration: BoxDecoration(
-                  color: isActive ? _primaryContainer : _surfaceContainer,
-                  borderRadius: BorderRadius.circular(99),
+                  color: isActive ? _primary : _surface,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isActive ? _primary : _outlineVariant,
+                    width: 1,
+                  ),
                   boxShadow: isActive
                       ? [
                           BoxShadow(
-                            color: _primaryContainer.withAlpha(77),
+                            color: _primary.withValues(alpha: 0.2),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -818,9 +850,9 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                   i == 0 ? 'Tất cả giai đoạn' : _stageLabels[stageIndex],
                   style: TextStyle(
                     fontFamily: 'Lexend',
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: isActive ? Colors.white : _onSurfaceVariant,
+                    fontSize: 13,
+                    fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                    color: isActive ? Colors.white : _onSurface,
                   ),
                 ),
               ),
@@ -834,18 +866,18 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
   // ── Search input ──
   Widget _buildSearchInput() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
       child: Container(
         height: 48,
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(99),
-          border: Border.all(color: const Color(0xFFF2EAE4), width: 2),
+          color: _surfaceContainerLow,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: _outlineVariant, width: 1),
         ),
         child: Row(
           children: [
             const SizedBox(width: 16),
-            const Icon(Icons.search, color: _onSurfaceVariant, size: 22),
+            const Icon(Icons.search_rounded, color: _primary, size: 20),
             const SizedBox(width: 10),
             Expanded(
               child: TextField(
@@ -855,12 +887,12 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                   fontSize: 14,
                   color: _onSurface,
                 ),
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   hintText: 'Tìm bài viết, FAQ hoặc tag...',
                   hintStyle: TextStyle(
                     fontFamily: 'Lexend',
                     fontSize: 14,
-                    color: _onSurfaceVariant,
+                    color: _onSurfaceVariant.withValues(alpha: 0.7),
                   ),
                   border: InputBorder.none,
                   isDense: true,
@@ -878,25 +910,18 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
   }
 
   Widget _buildTopicRow() {
-    if (widget.mode == ContentBrowseMode.lifecycle)
+    if (widget.mode == ContentBrowseMode.lifecycle) {
       return const SizedBox.shrink();
+    }
     final topics = _topics.where((item) => !item.isHidden).toList();
     final tags = _tags.where((item) => !item.isHidden).toList();
     if (topics.isEmpty && tags.isEmpty) return const SizedBox.shrink();
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Lọc nội dung',
-            style: TextStyle(
-              fontFamily: 'Lexend',
-              fontWeight: FontWeight.w700,
-              color: _onSurface,
-            ),
-          ),
           if (topics.isNotEmpty)
             _filterDropdown(
               'Chủ đề',
@@ -926,25 +951,38 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
     String? selectedId,
     ValueChanged<String?> onSelect,
   ) => Padding(
-    padding: const EdgeInsets.only(top: 10),
-    child: DropdownButtonFormField<String>(
-      initialValue: selectedId ?? '',
-      isExpanded: true,
-      decoration: InputDecoration(
-        labelText: label,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+    padding: const EdgeInsets.only(top: 8),
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+      decoration: BoxDecoration(
+        color: _surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _outlineVariant, width: 1),
       ),
-      items: [
-        const DropdownMenuItem(value: '', child: Text('Tất cả')),
-        ...items.map(
-          (item) => DropdownMenuItem(
-            value: item.id,
-            child: Text(item.name, overflow: TextOverflow.ellipsis),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: selectedId ?? '',
+          isExpanded: true,
+          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _primary),
+          style: const TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: _onSurface,
           ),
+          onChanged: (value) =>
+              onSelect(value == null || value.isEmpty ? null : value),
+          items: [
+            const DropdownMenuItem(value: '', child: Text('Tất cả')),
+            ...items.map(
+              (item) => DropdownMenuItem(
+                value: item.id,
+                child: Text(item.name, overflow: TextOverflow.ellipsis),
+              ),
+            ),
+          ],
         ),
-      ],
-      onChanged: (value) =>
-          onSelect(value == null || value.isEmpty ? null : value),
+      ),
     ),
   );
 
@@ -956,7 +994,7 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
       return _selectedTypeIndex == 1
           ? const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-              child: Center(child: Text('Không có bài viết phù hợp.')),
+              child: Center(child: Text('Không có bài viết phù hợp.', style: TextStyle(fontFamily: 'Lexend', color: _onSurfaceVariant))),
             )
           : const SizedBox.shrink();
     }
@@ -966,30 +1004,33 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            spacing: 16,
-            runSpacing: 8,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
                 'Gợi ý hôm nay',
                 style: TextStyle(
                   fontFamily: 'Lexend',
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: FontWeight.w700,
                   color: _onSurface,
                 ),
               ),
-              GestureDetector(
+              InkWell(
                 onTap: () => setState(() => _selectedTypeIndex = 1),
-                child: const Text(
-                  'Xem tất cả',
-                  style: TextStyle(
-                    fontFamily: 'Lexend',
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: _primary,
-                  ),
+                child: const Row(
+                  children: [
+                    Text(
+                      'Xem tất cả',
+                      style: TextStyle(
+                        fontFamily: 'Lexend',
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: _primary,
+                      ),
+                    ),
+                    Icon(Icons.chevron_right_rounded, size: 18, color: _primary),
+                  ],
                 ),
               ),
             ],
@@ -997,13 +1038,14 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
           const SizedBox(height: 12),
           Container(
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
+              color: _surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: _outlineVariant, width: 1),
+              boxShadow: const [
                 BoxShadow(
-                  color: const Color(0x0F5A463F),
-                  blurRadius: 20,
-                  offset: const Offset(0, 4),
+                  color: Color(0x0A845143),
+                  blurRadius: 16,
+                  offset: Offset(0, 4),
                 ),
               ],
             ),
@@ -1013,46 +1055,37 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                 Stack(
                   children: [
                     Container(
-                      height: 176,
+                      height: 160,
                       decoration: BoxDecoration(
-                        color: _surfaceContainerHigh,
+                        color: _surfaceContainerLow,
                         borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(16),
-                        ),
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            _primaryContainer.withAlpha(51),
-                            _surfaceContainerHigh,
-                          ],
+                          top: Radius.circular(20),
                         ),
                       ),
-                      child:
-                          _featuredImageUrl == null ||
+                      child: _featuredImageUrl == null ||
                               _featuredImageContentId != article.id
                           ? const Center(
                               child: Icon(
-                                Icons.article_outlined,
-                                size: 48,
+                                Icons.article_rounded,
+                                size: 44,
                                 color: _primaryContainer,
                               ),
                             )
                           : ClipRRect(
                               borderRadius: const BorderRadius.vertical(
-                                top: Radius.circular(16),
+                                top: Radius.circular(20),
                               ),
                               child: Image.network(
                                 resolveVerifiedContentImageUrl(
                                   _featuredImageUrl!,
                                 ),
                                 width: double.infinity,
-                                height: 176,
+                                height: 160,
                                 fit: BoxFit.cover,
                                 errorBuilder: (_, _, _) => const Center(
                                   child: Icon(
-                                    Icons.broken_image_outlined,
-                                    size: 40,
+                                    Icons.article_rounded,
+                                    size: 44,
                                     color: _primaryContainer,
                                   ),
                                 ),
@@ -1066,23 +1099,24 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 10,
-                          vertical: 5,
+                          vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white.withAlpha(204),
-                          borderRadius: BorderRadius.circular(99),
+                          color: _surface.withValues(alpha: 0.9),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: _outlineVariant),
                         ),
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.verified, size: 14, color: _primary),
+                            Icon(Icons.verified_rounded, size: 14, color: Color(0xFF10B981)),
                             SizedBox(width: 4),
                             Text(
                               'Đã kiểm duyệt',
                               style: TextStyle(
                                 fontFamily: 'Lexend',
                                 fontSize: 11,
-                                fontWeight: FontWeight.w500,
+                                fontWeight: FontWeight.w600,
                                 color: _primary,
                               ),
                             ),
@@ -1097,10 +1131,7 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Stage tag + date
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
+                      Row(
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -1109,28 +1140,18 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                             ),
                             decoration: BoxDecoration(
                               color: _surfaceContainerLow,
-                              borderRadius: BorderRadius.circular(6),
+                              borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
                               _stageLabelFromValue(article.stage),
                               style: const TextStyle(
                                 fontFamily: 'Lexend',
-                                fontSize: 10,
+                                fontSize: 11,
                                 fontWeight: FontWeight.w600,
                                 color: _primary,
-                                letterSpacing: 0.5,
                               ),
                             ),
                           ),
-                          if (article.publishedAt != null)
-                            Text(
-                              article.publishedAt!,
-                              style: const TextStyle(
-                                fontFamily: 'Lexend',
-                                fontSize: 12,
-                                color: _onSurfaceVariant,
-                              ),
-                            ),
                         ],
                       ),
                       const SizedBox(height: 10),
@@ -1138,14 +1159,14 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                         article.title,
                         style: const TextStyle(
                           fontFamily: 'Lexend',
-                          fontSize: 16,
+                          fontSize: 15,
                           fontWeight: FontWeight.w700,
                           color: _onSurface,
                           height: 1.3,
                         ),
                       ),
                       if (article.summary?.trim().isNotEmpty ?? false) ...[
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 6),
                         Text(
                           article.summary!,
                           maxLines: 2,
@@ -1158,18 +1179,17 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                           ),
                         ),
                       ],
-                      const SizedBox(height: 16),
-                      // CTA button
+                      const SizedBox(height: 14),
                       SizedBox(
                         width: double.infinity,
-                        height: 48,
+                        height: 44,
                         child: ElevatedButton(
                           onPressed: () => _openContentDetail(article.id),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: _primary,
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(99),
+                              borderRadius: BorderRadius.circular(16),
                             ),
                             elevation: 0,
                           ),
@@ -1178,7 +1198,7 @@ class _ViewContentScreenState extends State<ViewContentScreen> {
                             style: TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 14,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ),

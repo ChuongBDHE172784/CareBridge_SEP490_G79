@@ -140,7 +140,7 @@ def test_real_interrupt_resume_reenters_validation_and_global_safety():
     first = triage_v2_graph.invoke(state, config)
     snapshot = triage_v2_graph.get_state(config)
 
-    assert first["plannedQuestionIds"] == ["Q_CLARIFY_TARGET_ENTITY"]
+    assert first["plannedQuestionIds"] == ["Q_CLARIFY_TARGET_ENTITY", "Q_GLOBAL_DANGER"]
     assert snapshot.interrupts
 
     resumed = triage_v2_graph.invoke(
