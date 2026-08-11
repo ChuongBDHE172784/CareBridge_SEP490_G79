@@ -494,7 +494,7 @@ export default function SafetyRuleManagementPage() {
             <div>
               <h1 className="text-[26px] font-bold text-on-surface m-0">AI & Chính sách an toàn</h1>
               <p className="text-on-surface-variant text-sm mt-1">
-                Quản lý chính sách kiểm duyệt nội dung AI và từ khóa cảnh báo khẩn cấp y tế. AI chỉ hỗ trợ đánh giá và ưu tiên — quyết định cuối cùng luôn thuộc về con người.
+                Quản lý chính sách kiểm duyệt nội dung AI và từ khóa cảnh báo khẩn cấp y tế. AI chỉ hỗ trợ đánh giá và ưu tiên - quyết định xử lý cuối cùng bắt buộc phải do con người phê duyệt.
               </p>
             </div>
             <div className="flex items-center gap-2 self-start md:self-auto">
@@ -550,8 +550,8 @@ export default function SafetyRuleManagementPage() {
                 type="button"
                 onClick={() => setTab(t.value)}
                 className={`py-2 px-5 rounded-full text-sm font-semibold cursor-pointer transition-colors flex items-center gap-2 ${tab === t.value
-                    ? 'bg-primary text-on-primary shadow-sm'
-                    : 'bg-surface border border-outline-variant text-on-surface-variant hover:bg-surface-container-low'
+                  ? 'bg-primary text-on-primary shadow-sm'
+                  : 'bg-surface border border-outline-variant text-on-surface-variant hover:bg-surface-container-low'
                   }`}
               >
                 <span className="material-symbols-outlined text-lg">
@@ -778,8 +778,8 @@ export default function SafetyRuleManagementPage() {
                                   disabled={policyStatusSubmitting}
                                   title={policy.active ? 'Tắt chính sách thay cho xóa cứng' : 'Kích hoạt lại chính sách'}
                                   className={`h-8 py-1 px-3 rounded-lg border text-xs font-semibold inline-flex items-center gap-1 disabled:cursor-not-allowed disabled:opacity-50 ${policy.active
-                                      ? 'border-error-container bg-surface text-error hover:bg-error-container cursor-pointer'
-                                      : 'border-outline-variant bg-surface text-primary hover:bg-surface-container-low cursor-pointer'
+                                    ? 'border-error-container bg-surface text-error hover:bg-error-container cursor-pointer'
+                                    : 'border-outline-variant bg-surface text-primary hover:bg-surface-container-low cursor-pointer'
                                     }`}
                                 >
                                   <span className="material-symbols-outlined text-base">
@@ -1065,8 +1065,8 @@ export default function SafetyRuleManagementPage() {
                                   disabled={rule.isSystemDefault}
                                   title={rule.isSystemDefault ? 'Không thể xóa quy tắc mặc định' : 'Xóa quy tắc'}
                                   className={`h-8 w-8 rounded-full border border-outline-variant flex items-center justify-center cursor-pointer ${rule.isSystemDefault
-                                      ? 'opacity-40 cursor-not-allowed text-outline-variant bg-surface'
-                                      : 'bg-surface text-outline hover:bg-error-container hover:text-error hover:border-error-container'
+                                    ? 'opacity-40 cursor-not-allowed text-outline-variant bg-surface'
+                                    : 'bg-surface text-outline hover:bg-error-container hover:text-error hover:border-error-container'
                                     }`}
                                 >
                                   <span className="material-symbols-outlined text-base">delete</span>
@@ -1306,8 +1306,8 @@ export default function SafetyRuleManagementPage() {
                         type="button"
                         onClick={() => togglePolicyTargetType(t)}
                         className={`py-1.5 px-3.5 rounded-full text-xs font-semibold cursor-pointer transition-colors flex items-center gap-1.5 ${isChecked
-                            ? 'bg-primary text-on-primary'
-                            : 'bg-surface border border-outline-variant text-on-surface-variant hover:bg-surface-container-low'
+                          ? 'bg-primary text-on-primary'
+                          : 'bg-surface border border-outline-variant text-on-surface-variant hover:bg-surface-container-low'
                           }`}
                       >
                         <span className="material-symbols-outlined text-base">
