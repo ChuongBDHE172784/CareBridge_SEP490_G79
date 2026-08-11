@@ -108,13 +108,61 @@ describe('ContentApprovalQueuePage sequence context', () => {
     fireEvent.click(screen.getByText('Xuất bản tất cả bài viết'));
 
     expect(await screen.findByText('Xuất bản tất cả bài viết?')).toBeTruthy();
-    expect(screen.getByText(/Bạn có chắc chắn muốn xuất bản tất cả 1 bài viết/)).toBeTruthy();
+    expect(screen.getByText(/Bạn có chắc chắn muốn xuất bản 1\/1 bài viết/)).toBeTruthy();
 
-    const confirmBtn = screen.getByRole('button', { name: /Xuất bản 1 mục/i });
+    const confirmBtn = screen.getByRole('button', { name: /Xuất bản \(1 mục\)/i });
     fireEvent.click(confirmBtn);
 
     await waitFor(() => {
       expect(harness.decideContent).toHaveBeenCalledWith('article-1', 'APPROVE');
     });
   });
+
+  it('allows expanding collapsible list and unchecking items in batch publish modal', async () => {
+    harness.fetchStaffContentList.mockResolvedValue({
+      content: [
+        {
+          id: 'article-1', title: 'Bài viết 1', type: 'ARTICLE', stage: 'PREGNANCY',
+          version: 1, createdAt: '2026-01-01T00:00:00Z', updatedAt: null,
+        },
+        {
+          id: 'article-2', title: 'Bài viết 2', type: 'ARTICLE', stage: 'POSTPARTUM',
+          version: 1, createdAt: '2026-01-01T00:00:00Z', updatedAt: null,
+        },
+      ],
+      number: 0, size: 50, totalElements: 2, totalPages: 1,
+    });
+    harness.fetchAdminChecklists.mockResolvedValue({ content: [], number: 0, size: 50, totalElements: 0, totalPages: 0 });
+    harness.decideContent.mockResolvedValue({ id: 'article-1', previousStatus: 'PENDING_REVIEW', newStatus: 'APPROVED' });
+
+    render(<ContentApprovalQueuePage />);
+
+    expect(await screen.findByText('Bài viết 1')).toBeTruthy();
+
+    const publishAllButtons = screen.getAllByRole('button', { name: /Xuất bản tất cả/i });
+    fireEvent.click(publishAllButtons[0]);
+    fireEvent.click(screen.getByText('Xuất bản tất cả bài viết'));
+
+    expect(await screen.findByText('Xuất bản tất cả bài viết?')).toBeTruthy();
+
+    const expandBtn = screen.getByRole('button', { name: /Danh sách mục chờ xuất bản/i });
+    fireEvent.click(expandBtn);
+
+    expect(screen.getByText('Đã chọn 2 / 2')).toBeTruthy();
+
+    const checkboxes = screen.getAllByRole('checkbox');
+    expect(checkboxes.length).toBe(2);
+
+    // Uncheck item 2
+    fireEvent.click(checkboxes[1]);
+
+    const confirmBtn = screen.getByRole('button', { name: /Xuất bản \(1 mục\)/i });
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(harness.decideContent).toHaveBeenCalledTimes(1);
+      expect(harness.decideContent).toHaveBeenCalledWith('article-1', 'APPROVE');
+    });
+  });
 });
+

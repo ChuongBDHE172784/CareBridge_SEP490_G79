@@ -121,6 +121,8 @@ export default function ContentApprovalQueuePage() {
   const [batchTarget, setBatchTarget] = useState<BatchTarget | null>(null);
   const [isBatchPublishing, setIsBatchPublishing] = useState(false);
   const [batchError, setBatchError] = useState('');
+  const [selectedBatchItemIds, setSelectedBatchItemIds] = useState<Set<string>>(new Set());
+  const [isBatchListExpanded, setIsBatchListExpanded] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -178,6 +180,14 @@ export default function ContentApprovalQueuePage() {
       CHECKLIST: checklist,
     };
   }, [items]);
+
+  const matchingBatchItems = useMemo(() => {
+    if (!batchTarget) return [];
+    return items.filter((item) => {
+      if (batchTarget === 'ALL') return true;
+      return item.type === batchTarget;
+    });
+  }, [items, batchTarget]);
 
   const filteredItems = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -247,16 +257,43 @@ export default function ContentApprovalQueuePage() {
   const openBatchConfirmation = (target: BatchTarget) => {
     setIsBatchMenuOpen(false);
     setBatchError('');
+    setIsBatchListExpanded(false);
+
+    const targetItems = items.filter((item) => {
+      if (target === 'ALL') return true;
+      return item.type === target;
+    });
+
+    setSelectedBatchItemIds(new Set(targetItems.map((item) => `${item.kind}-${item.id}`)));
     setBatchTarget(target);
+  };
+
+  const toggleSelectBatchItem = (key: string) => {
+    setSelectedBatchItemIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.add(key);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAllBatch = () => {
+    if (selectedBatchItemIds.size === matchingBatchItems.length) {
+      setSelectedBatchItemIds(new Set());
+    } else {
+      setSelectedBatchItemIds(new Set(matchingBatchItems.map((item) => `${item.kind}-${item.id}`)));
+    }
   };
 
   const confirmBatchPublish = async () => {
     if (!batchTarget) return;
 
-    const targetItems = items.filter((item) => {
-      if (batchTarget === 'ALL') return true;
-      return item.type === batchTarget;
-    });
+    const targetItems = matchingBatchItems.filter((item) =>
+      selectedBatchItemIds.has(`${item.kind}-${item.id}`),
+    );
 
     if (targetItems.length === 0) {
       setBatchTarget(null);
@@ -308,7 +345,6 @@ export default function ContentApprovalQueuePage() {
     ? checklistCoexistenceGuidance(pendingDecision.entry.displayOrder, pendingDecision.entry.stage)
     : null;
 
-  const batchTargetCount = batchTarget ? batchCounts[batchTarget] : 0;
   const batchDialogTitle = batchTarget === 'ALL'
     ? 'Xuất bản tất cả nội dung?'
     : batchTarget === 'ARTICLE'
@@ -325,10 +361,6 @@ export default function ContentApprovalQueuePage() {
     FAQ: 'câu hỏi FAQ',
     CHECKLIST: 'mẫu checklist',
   };
-
-  const batchDialogDescription = batchTargetCount === 0
-    ? 'Không có mục nào thuộc phân loại này đang chờ phê duyệt.'
-    : `Bạn có chắc chắn muốn xuất bản tất cả ${batchTargetCount} ${batchTarget ? batchTargetLabelMap[batchTarget] : ''} đang chờ phê duyệt không?`;
 
   return (
     <div className="p-8 font-sans">
@@ -666,16 +698,90 @@ export default function ContentApprovalQueuePage() {
         key={batchTarget ? `batch-${batchTarget}` : 'batch-none'}
         open={batchTarget !== null}
         title={batchDialogTitle}
-        description={batchDialogDescription}
+        description={
+          matchingBatchItems.length === 0
+            ? 'Không có mục nào thuộc phân loại này đang chờ phê duyệt.'
+            : `Bạn có chắc chắn muốn xuất bản ${selectedBatchItemIds.size}/${matchingBatchItems.length} ${batchTarget ? batchTargetLabelMap[batchTarget] : ''} đã chọn không?`
+        }
         icon="publish"
         tone="default"
-        confirmLabel={batchTargetCount > 0 ? `Xuất bản ${batchTargetCount} mục` : 'Đóng'}
+        confirmLabel={
+          matchingBatchItems.length === 0
+            ? 'Đóng'
+            : selectedBatchItemIds.size > 0
+              ? `Xuất bản (${selectedBatchItemIds.size} mục)`
+              : 'Chọn ít nhất 1 mục'
+        }
         submitting={isBatchPublishing}
         errorText={batchError}
-        onConfirm={batchTargetCount > 0 ? confirmBatchPublish : () => setBatchTarget(null)}
+        onConfirm={selectedBatchItemIds.size > 0 ? confirmBatchPublish : () => setBatchTarget(null)}
         onCancel={() => setBatchTarget(null)}
-      />
+      >
+        {matchingBatchItems.length > 0 && (
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={() => setIsBatchListExpanded((prev) => !prev)}
+              className="w-full py-2.5 px-3.5 rounded-xl border border-outline-variant bg-surface-container-low hover:bg-surface-container flex items-center justify-between text-xs font-semibold text-on-surface cursor-pointer font-sans transition-colors"
+            >
+              <span className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-base text-primary">list_alt</span>
+                <span>
+                  Danh sách mục chờ xuất bản ({selectedBatchItemIds.size}/{matchingBatchItems.length} đã chọn)
+                </span>
+              </span>
+              <span className="material-symbols-outlined text-base text-outline">
+                {isBatchListExpanded ? 'expand_less' : 'expand_more'}
+              </span>
+            </button>
+
+            {isBatchListExpanded && (
+              <div className="mt-2.5 max-h-56 overflow-y-auto rounded-xl border border-outline-variant bg-surface p-2 space-y-1">
+                <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-surface-container-highest text-xs font-semibold text-outline">
+                  <button
+                    type="button"
+                    onClick={toggleSelectAllBatch}
+                    className="text-primary cursor-pointer hover:underline bg-transparent border-0 p-0 text-xs font-semibold font-sans"
+                  >
+                    {selectedBatchItemIds.size === matchingBatchItems.length ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                  </button>
+                  <span>
+                    Đã chọn {selectedBatchItemIds.size} / {matchingBatchItems.length}
+                  </span>
+                </div>
+
+                {matchingBatchItems.map((item) => {
+                  const key = `${item.kind}-${item.id}`;
+                  const isChecked = selectedBatchItemIds.has(key);
+                  return (
+                    <label
+                      key={key}
+                      className="flex items-center justify-between p-2.5 rounded-lg hover:bg-surface-container-low cursor-pointer transition-colors"
+                    >
+                      <div className="flex flex-col flex-1 pr-3 max-w-[85%]">
+                        <span className="text-xs font-medium text-on-surface line-clamp-1">
+                          {item.title}
+                        </span>
+                        <span className="text-[11px] text-outline">
+                          {item.typeLabel} · {item.stageLabel}
+                        </span>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleSelectBatchItem(key)}
+                        className="w-4 h-4 text-primary rounded border-outline-variant focus:ring-primary/20 cursor-pointer accent-primary"
+                      />
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+      </ConfirmDialog>
     </div>
   );
 }
+
 
