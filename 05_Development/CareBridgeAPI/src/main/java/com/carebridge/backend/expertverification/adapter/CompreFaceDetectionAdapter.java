@@ -2,6 +2,8 @@ package com.carebridge.backend.expertverification.adapter;
 
 import com.carebridge.backend.expertverification.adapter.FaceDetectionResult;
 import com.carebridge.backend.expertverification.adapter.FaceBoundingBox;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.MediaType;
@@ -24,6 +26,8 @@ import java.util.Map;
 @Component
 public class CompreFaceDetectionAdapter implements FaceDetectionAdapter {
 
+    private static final Logger log = LoggerFactory.getLogger(CompreFaceDetectionAdapter.class);
+
     private final boolean enabled;
     private final String apiKey;
     private final Double detProbThreshold;
@@ -38,10 +42,6 @@ public class CompreFaceDetectionAdapter implements FaceDetectionAdapter {
             @Value("${carebridge.compreface.detection-limit:2}") int limit,
             @Value("${carebridge.compreface.connect-timeout-ms:3000}") int connectTimeoutMs,
             @Value("${carebridge.compreface.read-timeout-ms:8000}") int readTimeoutMs) {
-        System.out.println("=========================================");
-        System.out.println("CompreFaceDetectionAdapter initializing...");
-        System.out.println("INJECTED API KEY: [" + apiKey + "]");
-        System.out.println("=========================================");
         this.enabled = enabled;
         this.apiKey = apiKey;
         this.detProbThreshold = detProbThreshold;
@@ -133,9 +133,10 @@ public class CompreFaceDetectionAdapter implements FaceDetectionAdapter {
             return FaceDetectionResult.detected(faces);
 
         } catch (Exception ex) {
-            System.err.println("DETECTION PARSE ERROR: " + ex.getMessage());
-            ex.printStackTrace();
-            System.err.println("RESPONSE WAS: " + response);
+            // The response body carries face bounding boxes and embeddings for a
+            // real person, so it stays out of the log. The exception type and
+            // message are enough to tell a schema change from a transport fault.
+            log.warn("CompreFace detection response could not be parsed: {}", ex.toString());
             return FaceDetectionResult.providerError("DETECTION_PARSE_ERROR");
         }
     }

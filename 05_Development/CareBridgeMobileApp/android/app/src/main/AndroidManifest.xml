@@ -20,8 +20,7 @@
     <application
         android:label="CareBridge"
         android:name="${applicationName}"
-        android:icon="@mipmap/launcher_icon"
-        android:usesCleartextTraffic="true">
+        android:icon="@mipmap/launcher_icon">
         <!-- Impeller does not composite zego_express_engine's SurfaceView-based video
              canvas correctly on Android — the camera/remote view paints as an opaque
              full-screen layer over the rest of the UI (call controls, connection label).
