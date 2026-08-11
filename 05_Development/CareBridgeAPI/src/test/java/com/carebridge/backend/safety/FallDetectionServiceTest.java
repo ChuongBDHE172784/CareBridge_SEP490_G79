@@ -198,6 +198,20 @@ class FallDetectionServiceTest {
     }
 
     @Test
+    void confirmSafetyCheck_shouldMarkSensorSelfTestEventSafe() {
+        SafetyEvent event = makeSafetyEvent();
+        event.setEventType(SafetyEventType.SENSOR_SELF_TEST);
+        event.setStatus(SafetyEventStatus.TEST_OPEN);
+        when(safetyEventRepository.findLockedByIdAndUserId(event.getId(), USER_ID)).thenReturn(Optional.of(event));
+        when(safetyEventRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        SafetyEventResponse result = fallDetectionService.confirmSafetyCheck(USER_ID, event.getId(), "Diễn tập safe");
+
+        assertThat(result.getStatus()).isEqualTo("CONFIRMED_SAFE");
+        assertThat(event.getResponseType()).isEqualTo("I_AM_OK");
+    }
+
+    @Test
     void reportFalsePositive_shouldMarkEventFalsePositive() {
         SafetyEvent event = makeSafetyEvent();
         when(safetyEventRepository.findLockedByIdAndUserId(event.getId(), USER_ID)).thenReturn(Optional.of(event));

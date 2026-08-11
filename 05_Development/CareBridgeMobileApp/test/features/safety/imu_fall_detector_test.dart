@@ -102,6 +102,21 @@ void main() {
     expect(detector.phase, FallDetectionPhase.idle);
   });
 
+  test('rejects a short tap that looks like free fall for less than 80ms', () {
+    final detector = ImuFallDetector();
+    detector.addSample(sample(at: Duration.zero, acceleration: 2));
+
+    detector.addSample(
+      sample(at: const Duration(milliseconds: 60), acceleration: 12),
+    );
+
+    expect(detector.phase, FallDetectionPhase.idle);
+    expect(
+      detector.latestDecision.reason,
+      ImuDetectorDecisionReason.freeFallTooShort,
+    );
+  });
+
   test('rejects impact after the 1500ms free-fall window', () {
     final detector = ImuFallDetector();
     detector.addSample(sample(at: Duration.zero, acceleration: 2));
@@ -326,14 +341,15 @@ void main() {
 
     final samples = <ImuSample>[
       sample(at: Duration.zero, acceleration: 5.5),
+      sample(at: const Duration(milliseconds: 300), acceleration: 2.0),
       sample(
-        at: const Duration(milliseconds: 60),
+        at: const Duration(milliseconds: 320),
         acceleration: 9.6,
         gyro: 0.2,
       ),
       for (var index = 1; index <= 6; index++)
         sample(
-          at: Duration(milliseconds: 60 + index * 200),
+          at: Duration(milliseconds: 320 + index * 200),
           acceleration: 9.81,
           gyro: 0.1,
         ),

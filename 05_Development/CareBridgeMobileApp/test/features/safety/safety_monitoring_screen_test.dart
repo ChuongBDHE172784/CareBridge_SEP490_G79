@@ -39,6 +39,17 @@ void main() {
     expect(safeWrites, 1);
   });
 
+  test('sensor rehearsal routes safe action to onSafe', () async {
+    var safeCalled = false;
+    await dispatchSensorSelfTestCountdownResult(
+      result: const SafetyCountdownResult.safe(),
+      onSafe: () async => safeCalled = true,
+      onFalsePositive: (_, _) async {},
+      onComplete: (_) async {},
+    );
+    expect(safeCalled, isTrue);
+  });
+
   test('sensor rehearsal routes help to safe test completion only', () async {
     var emergencyWrites = 0;
     String? completedOutcome;

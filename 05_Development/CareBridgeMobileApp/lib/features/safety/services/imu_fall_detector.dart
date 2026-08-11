@@ -5,6 +5,7 @@ enum FallDetectionPhase { idle, freeFall, impact }
 enum ImuDetectorDecisionReason {
   awaitingFreeFall,
   freeFallDetected,
+  freeFallTooShort,
   awaitingImpact,
   impactWindowExpired,
   jerkTooLow,
@@ -90,6 +91,10 @@ class ImuFallDetector {
   static const double cancellationGyroscopeThreshold = 1.5;
   static const double strongMovementAccelerationDeviation = 6.0;
   static const double minimumStationaryRatio = 0.8;
+  // A 1 cm lift produces only about 45 ms of free-fall. Requiring four
+  // samples at the 50 Hz sensor cadence filters that tap while preserving a
+  // controlled fall from roughly 50 cm (about 320 ms of free-fall).
+  static const Duration minimumFreeFallDuration = Duration(milliseconds: 80);
   static const Duration impactWindow = Duration(milliseconds: 1500);
   static const Duration impactSettlingGrace = Duration(milliseconds: 250);
   static const Duration maximumPostImpactSampleGap = Duration(
@@ -190,6 +195,17 @@ class ImuFallDetector {
         _freeFallAt = sample.timestamp;
       }
       _setDecision(ImuDetectorDecisionReason.impactWindowExpired);
+      return null;
+    }
+
+    final freeFallDuration = sample.timestamp.difference(freeFallAt);
+    if (freeFallDuration < minimumFreeFallDuration) {
+      if (sample.accelerationMagnitude > impactThreshold) {
+        _resetCandidate();
+        _setDecision(ImuDetectorDecisionReason.freeFallTooShort);
+      } else {
+        _setDecision(ImuDetectorDecisionReason.awaitingImpact);
+      }
       return null;
     }
 

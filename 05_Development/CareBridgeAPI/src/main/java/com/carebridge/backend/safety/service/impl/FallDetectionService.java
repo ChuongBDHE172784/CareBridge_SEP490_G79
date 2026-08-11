@@ -294,12 +294,24 @@ public class FallDetectionService implements IFallDetectionService {
     private SafetyEvent respondEntity(UUID userId, UUID eventId, String responseType,
                                       SafetyEventStatus status, String reason, boolean escalation) {
         SafetyEvent event = findOwnedEvent(userId, eventId);
-        if (event.getResponseType() != null) {
-            if (event.getResponseType().equals(responseType)) {
-                return event;
-            }
-            if (!"TIMEOUT".equals(event.getResponseType()) || (!"I_AM_OK".equals(responseType) && !"FALSE_POSITIVE".equals(responseType))) {
+        if (event.getEventType() == SafetyEventType.SENSOR_SELF_TEST) {
+            if (event.getResponseType() != null) {
+                if (event.getResponseType().equals(responseType)) {
+                    return event;
+                }
                 throw new SafetyException(HttpStatus.CONFLICT, "SAFETY-010", "Safety event already has a response");
+            }
+            if (event.getStatus() != SafetyEventStatus.TEST_OPEN) {
+                throw new SafetyException(HttpStatus.CONFLICT, "SAFETY-010", "Sensor self-test is no longer open");
+            }
+        } else {
+            if (event.getResponseType() != null) {
+                if (event.getResponseType().equals(responseType)) {
+                    return event;
+                }
+                if (!"TIMEOUT".equals(event.getResponseType()) || (!"I_AM_OK".equals(responseType) && !"FALSE_POSITIVE".equals(responseType))) {
+                    throw new SafetyException(HttpStatus.CONFLICT, "SAFETY-010", "Safety event already has a response");
+                }
             }
         }
         Instant now = Instant.now();
