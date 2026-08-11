@@ -141,13 +141,39 @@ export default function ContentApprovalQueuePage() {
     setIsLoading(true);
     setError('');
     try {
-      const [contentPage, checklistPage] = await Promise.all([
-        fetchStaffContentList({ status: 'PENDING_REVIEW', size: 50 }),
-        fetchAdminChecklists({ status: 'PENDING_REVIEW', size: 50 }),
-      ]);
+      let allContent: ContentDetail[] = [];
+      let contentPageNum = 0;
+      let contentTotalPages = 1;
+
+      do {
+        const contentPage = await fetchStaffContentList({
+          status: 'PENDING_REVIEW',
+          size: 50,
+          page: contentPageNum,
+        });
+        allContent = [...allContent, ...(contentPage.content || [])];
+        contentTotalPages = contentPage.totalPages || 1;
+        contentPageNum += 1;
+      } while (contentPageNum < contentTotalPages && contentPageNum < 50);
+
+      let allChecklists: AdminChecklistTemplate[] = [];
+      let checklistPageNum = 0;
+      let checklistTotalPages = 1;
+
+      do {
+        const checklistPage = await fetchAdminChecklists({
+          status: 'PENDING_REVIEW',
+          size: 50,
+          page: checklistPageNum,
+        });
+        allChecklists = [...allChecklists, ...(checklistPage.content || [])];
+        checklistTotalPages = checklistPage.totalPages || 1;
+        checklistPageNum += 1;
+      } while (checklistPageNum < checklistTotalPages && checklistPageNum < 50);
+
       setItems([
-        ...contentPage.content.map(toContentEntry),
-        ...checklistPage.content.map(toChecklistEntry),
+        ...allContent.map(toContentEntry),
+        ...allChecklists.map(toChecklistEntry),
       ]);
     } catch {
       setItems([]);
