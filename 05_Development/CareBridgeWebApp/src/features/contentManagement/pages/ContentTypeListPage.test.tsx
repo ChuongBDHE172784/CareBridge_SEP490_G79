@@ -78,7 +78,7 @@ describe('ContentTypeListPage submit all for approval', () => {
       totalElements: 2,
       totalPages: 1,
       page: 0,
-      size: 100,
+      size: 50,
     });
 
     harness.updateContent.mockResolvedValue({ id: 'art-1', status: 'PENDING_REVIEW', versionNo: 1 });

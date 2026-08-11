@@ -75,11 +75,14 @@ export async function fetchStaffContentList(params: {
   size?: number;
 } = {},
 ): Promise<PaginatedResponse<ContentDetail>> {
+  const requestedSize = params.size ?? 50;
+  const safeSize = Math.min(Math.max(1, requestedSize), 50);
   const res = await apiClient.get<ApiResponse<PaginatedResponse<ContentDetail>>>('/api/v1/admin/content', {
-    params: { ...params, page: params.page ?? 0, size: params.size ?? 50 },
+    params: { ...params, page: params.page ?? 0, size: safeSize },
   });
   return res.data.data;
 }
+
 
 export async function searchContent(params: {
   keyword: string;

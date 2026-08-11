@@ -159,12 +159,23 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
     setIsFetchingDrafts(true);
     setSubmitAllError('');
     try {
-      const data = await fetchStaffContentList({
-        type,
-        status: 'DRAFT',
-        size: 100,
-      });
-      setDraftItemsToSubmit(data.content);
+      let allDrafts: ContentDetail[] = [];
+      let pageNum = 0;
+      let totalP = 1;
+
+      do {
+        const data = await fetchStaffContentList({
+          type,
+          status: 'DRAFT',
+          size: 50,
+          page: pageNum,
+        });
+        allDrafts = [...allDrafts, ...data.content];
+        totalP = data.totalPages;
+        pageNum += 1;
+      } while (pageNum < totalP && pageNum < 10);
+
+      setDraftItemsToSubmit(allDrafts);
       setIsSubmitAllConfirmOpen(true);
     } catch {
       setSubmitAllError('Không thể lấy danh sách bản nháp. Vui lòng thử lại.');
@@ -173,6 +184,7 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
       setIsFetchingDrafts(false);
     }
   };
+
 
   const handleConfirmSubmitAll = async () => {
     if (draftItemsToSubmit.length === 0) {
