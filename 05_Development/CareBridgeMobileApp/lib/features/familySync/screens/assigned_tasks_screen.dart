@@ -341,7 +341,7 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
                   const SizedBox(height: 4),
                   Builder(
                     builder: (context) {
-                      final DateTime? dueLocal = task.dueAt.toLocal();
+                      final DateTime dueLocal = task.dueAt.toLocal();
                       return Row(
                         children: [
                           const Icon(
@@ -351,9 +351,7 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            dueLocal == null
-                                ? 'Chưa xếp lịch'
-                                : '${dueLocal.hour.toString().padLeft(2, '0')}:${dueLocal.minute.toString().padLeft(2, '0')} - ${dueLocal.day}/${dueLocal.month}',
+                            '${dueLocal.hour.toString().padLeft(2, '0')}:${dueLocal.minute.toString().padLeft(2, '0')} - ${dueLocal.day}/${dueLocal.month}',
                             style: const TextStyle(
                               fontSize: 14,
                               color: Color(0xFF524440),
@@ -433,7 +431,7 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
               const SizedBox(height: 12),
               Builder(
                 builder: (context) {
-                  final DateTime? dueLocal = task.dueAt.toLocal();
+                  final DateTime dueLocal = task.dueAt.toLocal();
                   return Row(
                     children: [
                       const Icon(
@@ -443,9 +441,7 @@ class _AssignedTasksScreenState extends State<AssignedTasksScreen> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        dueLocal == null
-                            ? 'Chưa xếp lịch'
-                            : 'Hạn chót: ${dueLocal.hour.toString().padLeft(2, '0')}:${dueLocal.minute.toString().padLeft(2, '0')} - ${dueLocal.day}/${dueLocal.month}/${dueLocal.year}',
+                        'Hạn chót: ${dueLocal.hour.toString().padLeft(2, '0')}:${dueLocal.minute.toString().padLeft(2, '0')} - ${dueLocal.day}/${dueLocal.month}/${dueLocal.year}',
                         style: const TextStyle(
                           fontFamily: 'Lexend',
                           fontSize: 14,

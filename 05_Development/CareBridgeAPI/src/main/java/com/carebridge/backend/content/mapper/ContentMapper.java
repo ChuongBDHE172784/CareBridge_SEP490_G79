@@ -243,9 +243,11 @@ public class ContentMapper {
         return ChecklistItemResponse.builder()
                 .id(item.getId())
                 .itemText(item.getItemText())
+                .description(item.getDescription())
                 .order(item.getOrder())
                 .isRequired(item.getIsRequired())
                 .targetSubject(item.getTargetSubject())
+                .supportFunction(item.getSupportFunction())
                 .build();
     }
 

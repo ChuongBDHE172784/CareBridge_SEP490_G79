@@ -25,6 +25,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.io.InputStream;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -112,6 +113,66 @@ class TriageV2SessionServiceTest {
         assertThat(inserted.get().getResultJson()).contains("REDACTED_HEALTH_TEXT")
                 .doesNotContain("đau bụng riêng tư");
         verify(consent).ensureActiveConsent(USER);
+    }
+
+    @Test
+    void realPythonClarificationStateIsAcceptedWithoutFallback() throws Exception {
+        AtomicReference<IntakeSession> inserted = new AtomicReference<>();
+        when(repository.findByUserIdAndClientRequestId(USER, "request_1234567890"))
+                .thenAnswer(invocation -> Optional.ofNullable(inserted.get()));
+        when(writer.insertConversationIfAbsent(any())).thenAnswer(invocation -> {
+            inserted.set(invocation.getArgument(0));
+            return new IntakeSessionWriter.InsertResult(true);
+        });
+        try (InputStream stream = getClass().getResourceAsStream(
+                "/triage/python_clarification_state_v2.json")) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> captured = mapper.readValue(stream, Map.class);
+            when(workflow.executeTurn(any())).thenAnswer(invocation -> {
+                Map<String, Object> state = new LinkedHashMap<>(captured);
+                state.put("sessionId", inserted.get().getId().toString());
+                state.put("rulesetHash", HASH);
+                return new TriageV2WorkflowClient.WorkflowResult(
+                        state, "READY", "2.2.0", HASH);
+            });
+        }
+
+        var response = service.start(startRequest("Em thay kho chiu"), USER);
+
+        assertThat(response.outcome()).isEqualTo("NEEDS_MORE_INFO");
+        assertThat(response.action()).isEqualTo("ASK_CLARIFYING_QUESTIONS");
+        assertThat(response.questions()).containsExactly("Q_CLARIFY_INTENT", "Q_GLOBAL_DANGER");
+        assertThat(response.stop()).isFalse();
+        assertThat(response.readiness().get("technicalStatus")).isEqualTo("READY");
+        assertThat(metrics.failureCount(TriageV2Metrics.Failure.FALLBACK)).isZero();
+    }
+
+    @Test
+    void pythonCoverageFieldsRejectNestedFreeTextAtTheJavaBoundary() throws Exception {
+        AtomicReference<IntakeSession> inserted = new AtomicReference<>();
+        when(repository.findByUserIdAndClientRequestId(USER, "request_1234567890"))
+                .thenAnswer(invocation -> Optional.ofNullable(inserted.get()));
+        when(writer.insertConversationIfAbsent(any())).thenAnswer(invocation -> {
+            inserted.set(invocation.getArgument(0));
+            return new IntakeSessionWriter.InsertResult(true);
+        });
+        try (InputStream stream = getClass().getResourceAsStream(
+                "/triage/python_clarification_state_v2.json")) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> captured = mapper.readValue(stream, Map.class);
+            captured.put("coverageLimitations", List.of(Map.of("healthText", "raw symptom")));
+            when(workflow.executeTurn(any())).thenAnswer(invocation -> {
+                Map<String, Object> state = new LinkedHashMap<>(captured);
+                state.put("sessionId", inserted.get().getId().toString());
+                state.put("rulesetHash", HASH);
+                return new TriageV2WorkflowClient.WorkflowResult(
+                        state, "READY", "2.2.0", HASH);
+            });
+        }
+
+        service.start(startRequest("Em thay kho chiu"), USER);
+
+        assertThat(metrics.failureCount(TriageV2Metrics.Failure.FALLBACK)).isEqualTo(1);
     }
 
     @Test

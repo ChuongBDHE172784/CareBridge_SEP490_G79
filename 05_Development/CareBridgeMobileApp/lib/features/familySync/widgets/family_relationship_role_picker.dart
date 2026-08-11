@@ -50,7 +50,7 @@ class _FamilyRelationshipRolePickerContentState
         mainAxisSize: MainAxisSize.min,
         children: [
           DropdownButtonFormField<String>(
-            value: _role,
+            initialValue: _role,
             items: familyRelationshipLabels.entries
                 .map(
                   (entry) => DropdownMenuItem(

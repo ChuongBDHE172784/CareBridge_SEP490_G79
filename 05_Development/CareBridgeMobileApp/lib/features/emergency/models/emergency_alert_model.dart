@@ -10,6 +10,7 @@ class EmergencyAlert {
   final String? phoneNumber;
   final DateTime createdAt;
   final bool acknowledged;
+  final DateTime? acknowledgedAt;
 
   EmergencyAlert({
     required this.id,
@@ -23,6 +24,7 @@ class EmergencyAlert {
     this.phoneNumber,
     required this.createdAt,
     this.acknowledged = false,
+    this.acknowledgedAt,
   });
 
   factory EmergencyAlert.fromJson(Map<String, dynamic> json) {
@@ -40,6 +42,9 @@ class EmergencyAlert {
           ? DateTime.parse(json['createdAt'] as String)
           : DateTime.now(),
       acknowledged: json['acknowledged'] as bool? ?? false,
+      acknowledgedAt: json['acknowledgedAt'] != null
+          ? DateTime.tryParse(json['acknowledgedAt'].toString())
+          : null,
     );
   }
 
@@ -53,8 +58,13 @@ class EmergencyAlert {
       id: json['sessionId'] as String,
       alertType: triggerSource == 'FALL_DETECTION' ? 'FALL_DETECTED' : 'SOS',
       personName: json['motherName'] as String? ?? 'Người thân',
+      phoneNumber: json['motherPhone'] as String?,
       latitude: (json['latitude'] as num?)?.toDouble(),
       longitude: (json['longitude'] as num?)?.toDouble(),
+      acknowledged: json['acknowledged'] as bool? ?? false,
+      acknowledgedAt: json['acknowledgedAt'] != null
+          ? DateTime.tryParse(json['acknowledgedAt'].toString())
+          : null,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)
           : DateTime.now(),

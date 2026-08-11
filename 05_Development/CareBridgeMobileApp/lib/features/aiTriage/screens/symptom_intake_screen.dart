@@ -62,13 +62,13 @@ class SymptomIntakeScreen extends StatefulWidget {
 }
 
 class _SymptomIntakeScreenState extends State<SymptomIntakeScreen> {
-  static const _primary = Color(0xFFC98C7B);
+  static const _primary = Color(0xFF845143);
   static const _primaryDark = Color(0xFF845143);
-  static const _surface = Color(0xFFF6F1EC);
-  static const _surfaceLow = Color(0xFFF2EAE4);
-  static const _onSurface = Color(0xFF271812);
-  static const _onVariant = Color(0xFF524440);
-  static const _outline = Color(0xFFD6C2BD);
+  static const _surface = Color(0xFFF8F5F1);
+  static const _surfaceLow = Color(0xFFF8EEE9);
+  static const _onSurface = Color(0xFF2A211D);
+  static const _onVariant = Color(0xFF655650);
+  static const _outline = Color(0xFFF1E6E0);
   static const _maternalStages = maternalTriageStages;
 
   late final TriageService _service;

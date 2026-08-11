@@ -210,6 +210,20 @@ class FallDetectionServiceTest {
     }
 
     @Test
+    void reportFalsePositive_shouldAllowOverridingTimedOutEvent() {
+        SafetyEvent event = makeSafetyEvent();
+        event.setResponseType("TIMEOUT");
+        event.setStatus(SafetyEventStatus.TIMED_OUT);
+        when(safetyEventRepository.findLockedByIdAndUserId(event.getId(), USER_ID)).thenReturn(Optional.of(event));
+        when(safetyEventRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        SafetyEventResponse result = fallDetectionService.reportFalsePositive(USER_ID, event.getId(), "User reacted late");
+
+        assertThat(result.getStatus()).isEqualTo("FALSE_POSITIVE");
+        assertThat(event.getResponseType()).isEqualTo("FALSE_POSITIVE");
+    }
+
+    @Test
     void reportFalsePositive_preservesResponseReasonAndCapsCanonicalNote() {
         SafetyEvent event = makeSafetyEvent();
         String reason = "x".repeat(500);
@@ -266,6 +280,24 @@ class FallDetectionServiceTest {
         verify(safetyEventRepository, times(4)).findLockedByIdAndUserId(event.getId(), USER_ID);
         verify(emergencyService, times(1)).openFlow(any(), eq(USER_ID));
         verify(eventPublisher, never()).publishEvent(any(SuspectedFallDetected.class));
+    }
+
+    @Test
+    void sendEmergencyAlert_timeoutResponseContinuesEmergencyEscalation() {
+        SafetyEvent event = makeSafetyEvent();
+        event.setResponseType("TIMEOUT");
+        event.setStatus(SafetyEventStatus.TIMED_OUT);
+        event.setResolvedAt(Instant.now());
+        when(safetyEventRepository.findLockedByIdAndUserId(event.getId(), USER_ID))
+                .thenReturn(Optional.of(event));
+        when(safetyEventRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        fallDetectionService.sendEmergencyAlert(USER_ID, event.getId());
+
+        assertThat(event.getStatus()).isEqualTo(SafetyEventStatus.ESCALATION_REQUESTED);
+        assertThat(event.getResolvedAt()).isNull();
+        verify(emergencyService).openFlow(any(), eq(USER_ID));
+        verify(responseRepository, never()).insert(any());
     }
 
     @Test
@@ -395,6 +427,26 @@ class FallDetectionServiceTest {
     }
 
     @Test
+    void processImuData_onDeviceConfirmedSoftFallBypassesLegacyHardImpactThreshold() {
+        ImuMonitoringSession session = SafetyConfigTestFactory.makeActiveSession();
+        when(imuSessionRepository.findActiveForUpdateByUserId(USER_ID)).thenReturn(Optional.of(session));
+        when(safetyEventRepository.findByImuSessionIdAndSignalKey(any(), anyString())).thenReturn(Optional.empty());
+        when(safetyEventRepository.save(any())).thenAnswer(invocation -> {
+            SafetyEvent event = invocation.getArgument(0);
+            event.setId(UUID.randomUUID());
+            return event;
+        });
+
+        SafetyEventResponse response = fallDetectionService.processImuData(USER_ID,
+                new ImuDataPayload(9.6, 0, 0, 0.2, 0, 0, Instant.now(),
+                        "soft-surface-candidate", null, null, true));
+
+        assertThat(response).isNotNull();
+        assertThat(response.getEventType()).isEqualTo("SUSPECTED_FALL");
+        verify(algorithmService, never()).analyze(any(), anyString());
+    }
+
+    @Test
     void expiredCountdownPersistsTimeoutAndOpensEmergencyOnce() {
         SafetyEvent event = makeSafetyEvent();
         event.setCountdownDeadlineAt(Instant.now().minusSeconds(1));
@@ -462,7 +514,7 @@ class FallDetectionServiceTest {
         ImuMonitoringSession session = SafetyConfigTestFactory.makeActiveSession();
         when(imuSessionRepository.findActiveForUpdateByUserId(USER_ID)).thenReturn(Optional.of(session));
         ImuDataPayload stale = new ImuDataPayload(1, 2, 3, 4, 5, 6,
-                Instant.now().minusSeconds(25 * 60 * 60), "stale", null, null);
+                Instant.now().minusSeconds(25 * 60 * 60), "stale", null, null, false);
 
         assertThatThrownBy(() -> fallDetectionService.processImuData(USER_ID, stale))
                 .isInstanceOf(SafetyException.class)
@@ -485,7 +537,7 @@ class FallDetectionServiceTest {
         });
 
         SafetyEventResponse response = fallDetectionService.processImuData(USER_ID,
-                new ImuDataPayload(1, 2, 3, 4, 5, 6, clientTime, "ordered", null, null));
+                new ImuDataPayload(1, 2, 3, 4, 5, 6, clientTime, "ordered", null, null, false));
 
         assertThat(response.getClientDetectedAt()).isEqualTo(clientTime);
         assertThat(response.getDetectedAt()).isAfter(clientTime);
@@ -493,7 +545,7 @@ class FallDetectionServiceTest {
 
     private ImuDataPayload payload(String signalId) {
         return new ImuDataPayload(1, 2, 3, 4, 5, 6, Instant.now(), signalId,
-                new BigDecimal("10.123"), new BigDecimal("106.456"));
+                new BigDecimal("10.123"), new BigDecimal("106.456"), false);
     }
 
     private SafetyEvent makeSafetyEvent() {

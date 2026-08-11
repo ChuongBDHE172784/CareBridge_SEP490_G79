@@ -165,6 +165,9 @@ class SafetyForegroundServiceCoordinator {
         dataType: 'SENSOR_DATA',
         purpose: 'CREATE',
       );
+      final locationSharingAllowed =
+          config.locationSharingEnabled &&
+          _hasActiveConsent(consents, dataType: 'LOCATION', purpose: 'SHARE');
       if (!config.fallDetectionEnabled ||
           !config.sensorPermissionGranted ||
           !sensorConsent) {
@@ -176,8 +179,7 @@ class SafetyForegroundServiceCoordinator {
       _isRunning = true;
       if (!gatewayRunning) {
         _publishCoordinatorRunning();
-        // MF-14 deliberately does not request background-location access.
-        await _gateway.start(locationSharingAllowed: false);
+        await _gateway.start(locationSharingAllowed: locationSharingAllowed);
       }
     } catch (error) {
       debugPrint(
@@ -303,7 +305,12 @@ class _FlutterSafetyForegroundGateway implements SafetyForegroundGateway {
   Future<void> start({required bool locationSharingAllowed}) async {
     final result = await FlutterForegroundTask.startService(
       serviceId: 14136,
-      serviceTypes: const [ForegroundServiceTypes.health],
+      serviceTypes: locationSharingAllowed
+          ? const [
+              ForegroundServiceTypes.health,
+              ForegroundServiceTypes.location,
+            ]
+          : const [ForegroundServiceTypes.health],
       notificationTitle: 'CareBridge đang giám sát an toàn',
       notificationText: 'Nhấn để mở màn hình an toàn.',
       notificationInitialRoute: '/safety',
@@ -397,14 +404,23 @@ class _SafetyForegroundTaskHandler extends TaskHandler {
             grant.dataType == 'SENSOR_DATA' &&
             grant.purpose == 'CREATE',
       );
+      final locationSharingAllowed =
+          config.locationSharingEnabled &&
+          consents.any(
+            (grant) =>
+                grant.isActive &&
+                grant.dataType == 'LOCATION' &&
+                grant.purpose == 'SHARE',
+          );
       if (!config.fallDetectionEnabled ||
           !config.sensorPermissionGranted ||
           !sensorConsent) {
         await _stopTask();
         return;
       }
-      // Foreground health monitoring must not initiate background GPS reads.
-      await _sensorService.start(locationSharingAllowed: false);
+      await _sensorService.start(
+        locationSharingAllowed: locationSharingAllowed,
+      );
     } catch (error) {
       debugPrint(
         '[SafetyForegroundTaskHandler] eligibility validation failed: $error',

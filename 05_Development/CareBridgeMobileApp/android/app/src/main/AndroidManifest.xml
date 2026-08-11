@@ -12,6 +12,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.HIGH_SAMPLING_RATE_SENSORS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.VIBRATE" />
@@ -19,7 +20,8 @@
     <application
         android:label="CareBridge"
         android:name="${applicationName}"
-        android:icon="@mipmap/launcher_icon">
+        android:icon="@mipmap/launcher_icon"
+        android:usesCleartextTraffic="true">
         <!-- Impeller does not composite zego_express_engine's SurfaceView-based video
              canvas correctly on Android — the camera/remote view paints as an opaque
              full-screen layer over the rest of the UI (call controls, connection label).
@@ -29,8 +31,16 @@
             android:value="false" />
         <service
             android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
-            android:foregroundServiceType="health"
+            android:foregroundServiceType="health|location"
             android:exported="false" />
+        <receiver
+            android:name=".WatchMetricBroadcastReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.carebridge.health.HEART_RATE" />
+                <action android:name="com.carebridge.health.STRESS" />
+            </intent-filter>
+        </receiver>
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -65,6 +75,7 @@
 
          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
     <queries>
+        <package android:name="nodomain.freeyourgadget.gadgetbridge" />
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE"/>
         </intent>

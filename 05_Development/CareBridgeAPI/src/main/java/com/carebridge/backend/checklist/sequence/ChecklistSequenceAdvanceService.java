@@ -230,7 +230,8 @@ public class ChecklistSequenceAdvanceService {
     private ChecklistDistributionItem item(ChecklistItem item) {
         return new ChecklistDistributionItem(item.getId(), item.getItemText(),
                 item.getOrder() == null ? 0 : item.getOrder(), Boolean.TRUE.equals(item.getIsRequired()),
-                item.getTargetSubject(), item.getDueAnchorType(), item.getDueOffsetStart(), item.getDueOffsetUnit());
+                item.getTargetSubject(), item.getDueAnchorType(), item.getDueOffsetStart(), item.getDueOffsetUnit(),
+                item.getDescription(), item.getSupportFunction());
     }
 
     private static UUID actorOwner(ChecklistInstance instance) {

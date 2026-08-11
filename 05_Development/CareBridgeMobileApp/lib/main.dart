@@ -11,7 +11,14 @@ import 'features/aiTriage/widgets/floating_ai_triage_host.dart';
 import 'features/aiTriage/models/triage_entry_context.dart';
 import 'features/directChat/calls/direct_call_host.dart';
 import 'features/reminder/services/reminder_service.dart';
+import 'features/safety/models/safety_config_model.dart';
 import 'features/safety/services/safety_foreground_service.dart';
+
+@visibleForTesting
+bool shouldOpenSafetyMonitoringForDetectedEvent({
+  required String eventStatus,
+  required String currentPath,
+}) => eventStatus == 'OPEN' && currentPath != '/safety';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -66,10 +73,47 @@ void main() async {
   }
 }
 
-class CareBridgeApp extends StatelessWidget {
+class CareBridgeApp extends StatefulWidget {
   const CareBridgeApp({super.key, this.firebaseEnabled = true});
 
   final bool firebaseEnabled;
+
+  @override
+  State<CareBridgeApp> createState() => _CareBridgeAppState();
+}
+
+class _CareBridgeAppState extends State<CareBridgeApp> {
+  StreamSubscription<SafetyEvent>? _detectedSafetyEventSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    // This listener owns route-independent safety UX. The foreground task
+    // keeps collecting IMU samples while the app is open; a detected event
+    // must still bring the user to its countdown even outside `/safety`.
+    _detectedSafetyEventSubscription = SafetyForegroundServiceCoordinator
+        .instance
+        .detectedEvents
+        .listen(_openSafetyMonitoringForDetectedEvent);
+  }
+
+  void _openSafetyMonitoringForDetectedEvent(SafetyEvent event) {
+    if (!mounted) return;
+    final currentPath = appRouter.routeInformationProvider.value.uri.path;
+    if (!shouldOpenSafetyMonitoringForDetectedEvent(
+      eventStatus: event.status,
+      currentPath: currentPath,
+    )) {
+      return;
+    }
+    appRouter.go('/safety');
+  }
+
+  @override
+  void dispose() {
+    _detectedSafetyEventSubscription?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -103,7 +147,7 @@ class CareBridgeApp extends StatelessWidget {
       builder: (context, child) {
         final app = child ?? const SizedBox.shrink();
         return DirectCallHost(
-          manageAuthenticatedSession: firebaseEnabled,
+          manageAuthenticatedSession: widget.firebaseEnabled,
           child: FloatingAiTriageHost(
             authListenable: AuthState.instance,
             navigationListenable: appRouter.routeInformationProvider,

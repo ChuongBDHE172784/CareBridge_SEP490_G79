@@ -93,6 +93,9 @@ public interface NotificationRecordRepository extends JpaRepository<Notification
     Optional<NotificationRecord> findByUserIdAndReferenceIdAndTypeAndReferenceType(
             UUID userId, UUID referenceId, NotificationType type, String referenceType);
 
+    Optional<NotificationRecord> findByUserIdAndReferenceIdAndTypeAndReferenceTypeAndCareGroupId(
+            UUID userId, UUID referenceId, NotificationType type, String referenceType, UUID careGroupId);
+
     /** Mother's personal appointment milestone row; shared Family rows are scoped by care group. */
     @Query(value = """
             SELECT *

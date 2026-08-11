@@ -36,10 +36,14 @@ enum _MotherStage { planning, postpartum, pregnant, babyCare }
 
 class _MotherStageSelectionScreenState
     extends State<MotherStageSelectionScreen> {
-  static const _primary = Color(0xFFC98C7B);
-  static const _primaryDark = Color(0xFF845143);
-  static const _canvas = Color(0xFFF6F1EC);
-  static const _text = Color(0xFF5A463F);
+  static const _primary = Color(0xFF845143);
+  static const _primaryContainer = Color(0xFFC98C7B);
+  static const _canvas = Color(0xFFF8F5F1);
+  static const _surface = Color(0xFFFFFCF9);
+  static const _surfaceContainerHigh = Color(0xFFF1E6E0);
+  static const _surfaceContainerLow = Color(0xFFF8EEE9);
+  static const _onSurface = Color(0xFF2A211D);
+  static const _onSurfaceVariant = Color(0xFF655650);
   static const _errorBg = Color(0xFFFFDAD6);
   static const _errorText = Color(0xFF93000A);
 
@@ -430,8 +434,8 @@ class _MotherStageSelectionScreenState
         Container(
           width: 56,
           height: 56,
-          decoration: BoxDecoration(
-            color: _primary.withAlpha(38),
+          decoration: const BoxDecoration(
+            color: _surfaceContainerHigh,
             shape: BoxShape.circle,
           ),
           child: const Icon(Icons.auto_awesome_rounded, color: _primary),
@@ -441,20 +445,21 @@ class _MotherStageSelectionScreenState
           'Bạn đang ở giai đoạn nào?',
           style: TextStyle(
             fontFamily: 'Lexend',
-            fontSize: 31,
-            fontWeight: FontWeight.w800,
-            color: _primaryDark,
-            height: 1.18,
+            fontSize: 28,
+            fontWeight: FontWeight.w700,
+            color: _onSurface,
+            letterSpacing: -0.4,
+            height: 1.2,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         const Text(
           'CareBridge sẽ mở đúng hành trình chăm sóc cho mẹ và gia đình.',
           style: TextStyle(
             fontFamily: 'Lexend',
-            fontSize: 16,
-            color: _text,
-            height: 1.5,
+            fontSize: 14,
+            color: _onSurfaceVariant,
+            height: 1.45,
           ),
         ),
       ],
@@ -467,9 +472,9 @@ class _MotherStageSelectionScreenState
       child: Container(
         decoration: const BoxDecoration(
           color: _canvas,
-          border: Border(top: BorderSide(color: Color(0xFFE8DDD6))),
+          border: Border(top: BorderSide(color: _surfaceContainerHigh)),
         ),
-        padding: const EdgeInsets.fromLTRB(24, 12, 24, 16),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -499,14 +504,14 @@ class _MotherStageSelectionScreenState
             ],
             SizedBox(
               width: double.infinity,
-              height: 56,
+              height: 54,
               child: FilledButton(
                 key: const Key('mother-stage-continue'),
                 onPressed: _canContinue ? _continue : null,
                 style: FilledButton.styleFrom(
-                  backgroundColor: _primary,
+                  backgroundColor: _primaryContainer,
                   foregroundColor: Colors.white,
-                  disabledBackgroundColor: _primary.withAlpha(112),
+                  disabledBackgroundColor: _primaryContainer.withAlpha(112),
                   shape: const StadiumBorder(),
                   elevation: 0,
                 ),
@@ -524,7 +529,7 @@ class _MotherStageSelectionScreenState
                         style: const TextStyle(
                           fontFamily: 'Lexend',
                           fontSize: 16,
-                          fontWeight: FontWeight.w800,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
               ),
@@ -540,14 +545,14 @@ class _MotherStageSelectionScreenState
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: const Color(0xFFE8DDD6)),
+        color: _surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _surfaceContainerHigh),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x0F5A463F),
-            blurRadius: 30,
-            offset: Offset(0, 12),
+            color: Color(0x08000000),
+            blurRadius: 16,
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -559,8 +564,8 @@ class _MotherStageSelectionScreenState
             style: TextStyle(
               fontFamily: 'Lexend',
               fontSize: 18,
-              fontWeight: FontWeight.w800,
-              color: _text,
+              fontWeight: FontWeight.w700,
+              color: _onSurface,
             ),
           ),
           const SizedBox(height: 14),
@@ -584,19 +589,20 @@ class _MotherStageSelectionScreenState
                         });
                         _saveDraftInBackground();
                       },
-                selectedColor: _primary,
-                backgroundColor: const Color(0xFFF2EAE4),
+                selectedColor: _primaryContainer,
+                backgroundColor: _surfaceContainerLow,
                 checkmarkColor: Colors.white,
                 labelStyle: TextStyle(
-                  color: selected ? Colors.white : _text,
-                  fontWeight: FontWeight.w700,
+                  fontFamily: 'Lexend',
+                  color: selected ? Colors.white : _onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
                 ),
                 shape: const StadiumBorder(),
                 side: BorderSide(
                   color: selected
                       ? Colors.transparent
-                      : const Color(0xFFE8DDD6),
-                  width: 2,
+                      : _surfaceContainerHigh,
+                  width: 1.5,
                 ),
               );
             }).toList(),
@@ -614,9 +620,9 @@ class _MotherStageSelectionScreenState
         width: double.infinity,
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: const Color(0xFFF2EAE4),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: const Color(0xFFE8DDD6)),
+          color: _surfaceContainerLow,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: _surfaceContainerHigh),
         ),
         child: Material(
           color: Colors.transparent,
@@ -629,29 +635,30 @@ class _MotherStageSelectionScreenState
                     _consentAccepted = value == true;
                     _error = null;
                   }),
-            activeColor: _primary,
+            activeColor: _primaryContainer,
             controlAffinity: ListTileControlAffinity.leading,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(16),
             ),
             title: const Text(
               'Tôi đồng ý cho CareBridge lưu thông tin nền và cá nhân hóa hành trình theo Chính sách MOTHER_LIFECYCLE_V1.',
               style: TextStyle(
                 fontFamily: 'Lexend',
-                fontSize: 16,
+                fontSize: 14,
                 fontWeight: FontWeight.w600,
                 height: 1.45,
-                color: _text,
+                color: _onSurface,
               ),
             ),
             subtitle: const Padding(
-              padding: EdgeInsets.only(top: 8),
+              padding: EdgeInsets.only(top: 6),
               child: Text(
                 'Bạn có thể thu hồi đồng ý. Lịch sử đã tạo sẽ không bị thay đổi âm thầm.',
                 style: TextStyle(
-                  fontSize: 14,
+                  fontFamily: 'Lexend',
+                  fontSize: 13,
                   height: 1.4,
-                  color: Color(0xFF9C857C),
+                  color: _onSurfaceVariant,
                 ),
               ),
             ),
@@ -701,12 +708,12 @@ class _StageCard extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  static const _primary = Color(0xFFC98C7B);
-  static const _surface = Colors.white;
-  static const _surfaceLow = Color(0xFFF2EAE4);
-  static const _text = Color(0xFF5A463F);
-  static const _muted = Color(0xFF9C857C);
-  static const _border = Color(0xFFE8DDD6);
+  static const _primaryContainer = Color(0xFFC98C7B);
+  static const _surface = Color(0xFFFFFCF9);
+  static const _surfaceLow = Color(0xFFF8EEE9);
+  static const _surfaceHigh = Color(0xFFF1E6E0);
+  static const _onSurface = Color(0xFF2A211D);
+  static const _onSurfaceVariant = Color(0xFF655650);
 
   @override
   Widget build(BuildContext context) {
@@ -720,24 +727,24 @@ class _StageCard extends StatelessWidget {
           duration: const Duration(milliseconds: 220),
           decoration: BoxDecoration(
             color: selected ? _surfaceLow : _surface,
-            borderRadius: BorderRadius.circular(28),
+            borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: selected ? _primary : _border.withAlpha(160),
-              width: 2,
+              color: selected ? _primaryContainer : _surfaceHigh,
+              width: selected ? 2 : 1,
             ),
-            boxShadow: [
+            boxShadow: const [
               BoxShadow(
-                color: _text.withAlpha(15),
-                blurRadius: 30,
-                offset: const Offset(0, 12),
+                color: Color(0x08000000),
+                blurRadius: 16,
+                offset: Offset(0, 4),
               ),
             ],
           ),
           child: Material(
             color: Colors.transparent,
-            borderRadius: BorderRadius.circular(28),
+            borderRadius: BorderRadius.circular(24),
             child: InkWell(
-              borderRadius: BorderRadius.circular(28),
+              borderRadius: BorderRadius.circular(24),
               onTap: onTap,
               child: Padding(
                 padding: const EdgeInsets.all(20),
@@ -748,13 +755,13 @@ class _StageCard extends StatelessWidget {
                       width: 52,
                       height: 52,
                       decoration: BoxDecoration(
-                        color: selected ? _primary : _surfaceLow,
+                        color: selected ? _primaryContainer : _surfaceHigh,
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
                         icon,
-                        color: selected ? Colors.white : _primary,
-                        size: 28,
+                        color: selected ? Colors.white : const Color(0xFF845143),
+                        size: 26,
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -766,19 +773,19 @@ class _StageCard extends StatelessWidget {
                             title,
                             style: const TextStyle(
                               fontFamily: 'Lexend',
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                              color: _text,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: _onSurface,
                               height: 1.25,
                             ),
                           ),
-                          const SizedBox(height: 7),
+                          const SizedBox(height: 6),
                           Text(
                             subtitle,
                             style: const TextStyle(
                               fontFamily: 'Lexend',
-                              fontSize: 14,
-                              color: _muted,
+                              fontSize: 13,
+                              color: _onSurfaceVariant,
                               height: 1.45,
                             ),
                           ),
@@ -791,7 +798,7 @@ class _StageCard extends StatelessWidget {
                       duration: const Duration(milliseconds: 160),
                       child: const Icon(
                         Icons.check_circle_rounded,
-                        color: _primary,
+                        color: _primaryContainer,
                         size: 24,
                       ),
                     ),

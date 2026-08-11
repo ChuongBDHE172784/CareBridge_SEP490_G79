@@ -19,6 +19,7 @@ public class SafetyConfigMapper {
                         ? config.getSensitivityLevel().name()
                         : null)
                 .emergencyAutoAlert(config.isEmergencyAutoAlert())
+                .locationSharingEnabled(config.isLocationSharingEnabled())
                 .updatedAt(config.getUpdatedAt())
                 .build();
     }

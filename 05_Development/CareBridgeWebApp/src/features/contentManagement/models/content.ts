@@ -6,8 +6,31 @@ export type ChecklistTemplateType = 'MANDATORY' | 'OPTIONAL';
 export type ContentDecision = 'APPROVE' | 'REJECT';
 export type ChecklistRecipientRole = 'MOTHER' | 'FAMILY';
 export type ChecklistTargetSubject = 'MOTHER' | 'BABY';
+export type ChecklistSupportFunction =
+  | 'HEALTH_RECORDS'
+  | 'APPOINTMENTS'
+  | 'REMINDERS'
+  | 'JOURNEY'
+  | 'BABY_CARE'
+  | 'EXPERT_CONSULTATION'
+  | 'CONTENT_LIBRARY'
+  | 'AI_TRIAGE';
 export type ChecklistAnchorType = 'NONE' | 'LMP' | 'EDD' | 'DELIVERY_DATE' | 'BIRTH_DATE';
 export type ChecklistRangeUnit = 'DAY' | 'WEEK' | 'MONTH';
+
+export const CHECKLIST_SUPPORT_FUNCTION_OPTIONS: ReadonlyArray<{
+  value: ChecklistSupportFunction;
+  label: string;
+}> = [
+  { value: 'HEALTH_RECORDS', label: 'Hồ sơ sức khỏe' },
+  { value: 'APPOINTMENTS', label: 'Lịch hẹn' },
+  { value: 'REMINDERS', label: 'Nhắc nhở' },
+  { value: 'JOURNEY', label: 'Hành trình' },
+  { value: 'BABY_CARE', label: 'Chăm sóc em bé' },
+  { value: 'EXPERT_CONSULTATION', label: 'Tư vấn chuyên gia' },
+  { value: 'CONTENT_LIBRARY', label: 'Thư viện nội dung' },
+  { value: 'AI_TRIAGE', label: 'Sàng lọc AI' },
+];
 
 export interface ChecklistSubstage {
   code: string;
@@ -134,6 +157,8 @@ export interface ChecklistItem {
   order: number;
   isRequired: boolean;
   targetSubject: ChecklistTargetSubject;
+  description?: string | null;
+  supportFunction?: ChecklistSupportFunction | null;
 }
 
 export interface ChecklistItemInput {
@@ -142,6 +167,8 @@ export interface ChecklistItemInput {
   order: number;
   isRequired: boolean;
   targetSubject: ChecklistTargetSubject;
+  description?: string | null;
+  supportFunction?: ChecklistSupportFunction | null;
 }
 
 export interface CreateChecklistTemplatePayload {

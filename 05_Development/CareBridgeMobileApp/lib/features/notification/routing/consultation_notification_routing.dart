@@ -8,21 +8,28 @@ final RegExp _uuidPattern = RegExp(
 /// than guessing a destination from display text or arbitrary metadata.
 String? resolveNotificationRoute(NotificationRecord notification) {
   final referenceId = notification.referenceId;
+  final notificationType = notification.type.trim().toUpperCase();
+  final referenceType = notification.referenceType?.trim().toUpperCase();
+  if (notificationType == 'EMERGENCY' &&
+      referenceType == 'EMERGENCY_SESSION' &&
+      referenceId != null &&
+      _uuidPattern.hasMatch(referenceId)) {
+    return '/emergency/alert/${Uri.encodeComponent(referenceId)}';
+  }
   if (notification.referenceType?.trim().toUpperCase() ==
           'CONSULTATION_REQUEST' &&
       referenceId != null &&
       _uuidPattern.hasMatch(referenceId)) {
     return '/consultation-requests/${Uri.encodeComponent(referenceId)}';
   }
-  final referenceType = notification.referenceType?.trim().toUpperCase();
-  if (notification.type.trim().toUpperCase() == 'REMINDER' &&
+  if (notificationType == 'REMINDER' &&
       referenceType == 'REMINDER_SCHEDULE' &&
       referenceId != null &&
       _uuidPattern.hasMatch(referenceId)) {
     return '/reminder-schedules/${Uri.encodeComponent(referenceId)}';
   }
   final metadataScheduleId = notification.metadata?['scheduleId'];
-  if (notification.type.trim().toUpperCase() == 'REMINDER' &&
+  if (notificationType == 'REMINDER' &&
       referenceType == 'REMINDER_SCHEDULE' &&
       metadataScheduleId is String &&
       _uuidPattern.hasMatch(metadataScheduleId)) {
@@ -38,7 +45,7 @@ String? resolveNotificationRoute(NotificationRecord notification) {
     }
     return '/appointments/detail/${Uri.encodeComponent(referenceId)}';
   }
-  if (notification.type.trim().toUpperCase() == 'REMINDER' &&
+  if (notificationType == 'REMINDER' &&
       referenceId != null &&
       _uuidPattern.hasMatch(referenceId)) {
     return '/reminders/detail/${Uri.encodeComponent(referenceId)}';

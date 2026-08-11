@@ -334,8 +334,11 @@ void main() {
         await tester.tap(find.text('Direct lifecycle checklist'));
         await tester.pumpAndSettle();
 
+        // The detail action bar uses ElevatedButton.icon, whose factory returns the
+        // private _ElevatedButtonWithIcon subclass. find.byType matches the exact
+        // runtime type, so it never sees that button — match on the supertype instead.
         final action = tester.widget<ElevatedButton>(
-          find.byType(ElevatedButton).last,
+          find.byWidgetPredicate((widget) => widget is ElevatedButton).last,
         );
         expect(action.onPressed, isNotNull);
         expect(tester.takeException(), isNull);

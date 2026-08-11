@@ -61,29 +61,29 @@ def test_no_maternal_question_survives_a_baby_context():
 # ------------------------------------------------------- unresolved context lockdown
 
 
-def test_an_unknown_target_yields_only_the_target_clarification():
+def test_an_unknown_target_yields_clarification_and_global_danger():
     context = resolved(
         target_entity=TargetEntity.UNKNOWN,
         stage=CareStage.UNKNOWN,
         context_status=ContextResolutionStatus.NEEDS_TARGET_ENTITY,
     )
-    assert ids(eligible_questions(context)) == ["Q_CLARIFY_TARGET_ENTITY"]
+    assert ids(eligible_questions(context)) == ["Q_CLARIFY_TARGET_ENTITY", "Q_GLOBAL_DANGER"]
 
 
-def test_a_conflicted_target_asks_which_to_assess_first():
+def test_a_conflicted_target_asks_which_to_assess_first_and_global_danger():
     context = resolved(
         target_entity=TargetEntity.CONFLICTED,
         context_status=ContextResolutionStatus.CONFLICTED,
     )
-    assert ids(eligible_questions(context)) == ["Q_CLARIFY_TARGET_FIRST"]
+    assert ids(eligible_questions(context)) == ["Q_CLARIFY_TARGET_FIRST", "Q_GLOBAL_DANGER"]
 
 
-def test_an_unknown_intent_asks_about_intent():
+def test_an_unknown_intent_asks_about_intent_and_global_danger():
     context = resolved(
         intent=IntentType.UNKNOWN,
         context_status=ContextResolutionStatus.NEEDS_INTENT,
     )
-    assert ids(eligible_questions(context)) == ["Q_CLARIFY_INTENT"]
+    assert ids(eligible_questions(context)) == ["Q_CLARIFY_INTENT", "Q_GLOBAL_DANGER"]
 
 
 def test_a_caller_supplied_candidate_list_cannot_bypass_the_lockdown():
@@ -94,7 +94,7 @@ def test_a_caller_supplied_candidate_list_cannot_bypass_the_lockdown():
         context_status=ContextResolutionStatus.NEEDS_TARGET_ENTITY,
     )
     result = eligible_questions(context, ["Q_BLEEDING_AMOUNT", "Q_BABY_AGE_MONTHS"])
-    assert ids(result) == ["Q_CLARIFY_TARGET_ENTITY"]
+    assert ids(result) == ["Q_CLARIFY_TARGET_ENTITY", "Q_GLOBAL_DANGER"]
 
 
 # ------------------------------------------------------------------- stage matching

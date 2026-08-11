@@ -576,7 +576,7 @@ class _JoinGroupDialogState extends State<_JoinGroupDialog> {
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
-            value: _relationshipRole,
+            initialValue: _relationshipRole,
             decoration: InputDecoration(
               labelText: 'Vai trò trong gia đình',
               border: OutlineInputBorder(

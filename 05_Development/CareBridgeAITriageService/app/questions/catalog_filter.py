@@ -38,21 +38,34 @@ class FilterContext:
     missing_signals: frozenset[str] = frozenset()
     answered_question_ids: frozenset[str] = frozenset()
     signals: dict[str, object] | None = None
+    safety_screen_status: object = "INCOMPLETE"
 
 
-def _clarification_for(status: ContextResolutionStatus, entity: TargetEntity) -> tuple[str, ...]:
-    """The only questions permitted while the context is unresolved."""
+def _clarification_for(context: FilterContext) -> tuple[str, ...]:
+    """Return context clarification plus any still-required entity-agnostic danger screen."""
 
-    if entity is TargetEntity.CONFLICTED:
+    if context.target_entity is TargetEntity.CONFLICTED:
         # Both named: the user picks which to assess first. One session, one subject.
-        return ("Q_CLARIFY_TARGET_FIRST",)
-    if status is ContextResolutionStatus.NEEDS_TARGET_ENTITY:
-        return ("Q_CLARIFY_TARGET_ENTITY",)
-    if status is ContextResolutionStatus.NEEDS_INTENT:
-        return ("Q_CLARIFY_INTENT",)
-    if status is ContextResolutionStatus.CONFLICTED:
-        return ("Q_CLARIFY_TARGET_FIRST",)
-    return ()
+        selected = ["Q_CLARIFY_TARGET_FIRST"]
+    elif context.context_status is ContextResolutionStatus.NEEDS_TARGET_ENTITY:
+        selected = ["Q_CLARIFY_TARGET_ENTITY"]
+    elif context.context_status is ContextResolutionStatus.NEEDS_INTENT:
+        selected = ["Q_CLARIFY_INTENT"]
+    elif context.context_status is ContextResolutionStatus.CONFLICTED:
+        selected = ["Q_CLARIFY_TARGET_FIRST"]
+    else:
+        return ()
+
+    safety_status = getattr(context.safety_screen_status, "value", context.safety_screen_status)
+    danger = CATALOG.get("Q_GLOBAL_DANGER")
+    if (
+        safety_status != "COMPLETE"
+        and "Q_GLOBAL_DANGER" not in context.answered_question_ids
+        and danger is not None
+        and danger.may_run_without_resolved_target
+    ):
+        selected.append("Q_GLOBAL_DANGER")
+    return tuple(selected)
 
 
 def _is_unmeasurable(question: Question, signals: dict[str, object] | None) -> bool:
@@ -113,7 +126,7 @@ def eligible_questions(
     symptom question, whatever the caller passed in.
     """
 
-    clarifications = _clarification_for(context.context_status, context.target_entity)
+    clarifications = _clarification_for(context)
     if clarifications:
         return tuple(
             CATALOG[question_id] for question_id in clarifications

@@ -6,7 +6,6 @@ import '../models/safety_config_model.dart';
 import '../services/safety_demo_mode.dart';
 import '../services/safety_foreground_service.dart';
 import '../services/safety_service.dart';
-import '../widgets/disable_fall_detection_sheet.dart';
 import '../widgets/safety_countdown_sheet.dart';
 import 'enable_fall_detection_screen.dart';
 import '../../emergency/services/emergency_service.dart';
@@ -130,7 +129,6 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _surface = Color(0xFFFFF8F6);
   static const _surfaceContainerLowest = Color(0xFFFFFFFF);
-  static const _surfaceContainerHighest = Color(0xFFFADCD3);
   static const _surfaceContainer = Color(0xFFFFE9E3);
   static const _surfaceVariant = Color(0xFFFADCD3);
   static const _onSurface = Color(0xFF271812);
@@ -318,6 +316,11 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
         event: event,
         simulated: simulated,
         presentAsRealAlert: presentAsRealAlert,
+        onTimeout: () {
+          if (!simulated && event.eventType != 'SENSOR_SELF_TEST') {
+            unawaited(_safetyService.sendEmergencyAlertForEvent(event.id));
+          }
+        },
       ),
     );
     try {
@@ -331,7 +334,9 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
           ),
           onFalsePositive: (reasonCode, reason) => _reportEventFalsePositive(
             event,
-            note: 'Diễn tập IMU · $reasonCode: $reason',
+            note: reason == null || reason.isEmpty
+                ? 'Diễn tập IMU: báo phát hiện nhầm'
+                : 'Diễn tập IMU: $reason',
           ),
           onComplete: (outcome) =>
               _safetyService.completeSensorSelfTest(event.id, outcome: outcome),
@@ -344,8 +349,10 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
             event,
             note: 'Người dùng xác nhận an toàn trong thời gian đếm ngược.',
           ),
-          onFalsePositive: (reasonCode, reason) =>
-              _reportEventFalsePositive(event, note: '$reasonCode: $reason'),
+          onFalsePositive: (reasonCode, reason) => _reportEventFalsePositive(
+            event,
+            note: reason ?? 'Báo phát hiện nhầm',
+          ),
           onEmergency: () =>
               _safetyService.sendEmergencyAlertForEvent(event.id),
         );
@@ -464,19 +471,11 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
     await _emergencyService.resolve(sessionId);
   }
 
-  Future<void> _onFallDetectionToggle(bool enable) async {
-    if (enable) {
-      final activated = await Navigator.of(context).push<bool>(
-        MaterialPageRoute(builder: (_) => const EnableFallDetectionScreen()),
-      );
-      if (activated == true) await _load();
-    } else {
-      final disabled = await showDisableFallDetectionSheet(context);
-      if (disabled == true) {
-        await _foregroundCoordinator.stop();
-        await _load();
-      }
-    }
+  Future<void> _onFallDetectionToggle([bool? _]) async {
+    final activated = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const EnableFallDetectionScreen()),
+    );
+    if (activated == true) await _load();
   }
 
   Future<void> _onImuSensorToggle(bool enable) async {
@@ -525,23 +524,6 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
                     children: [
                       _buildTopBar(),
                       const SizedBox(height: 16),
-                      const Text(
-                        'Giám sát an toàn',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w600,
-                          color: _onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      const Text(
-                        'Theo dõi hoạt động và phát hiện sự cố theo thời gian thực.',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: _onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
                       _buildStatusCard(fallDetectionEnabled),
                       const SizedBox(height: 16),
                       _buildSensorSelfTestCard(),
@@ -566,49 +548,36 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
       height: 56,
       child: Row(
         children: [
-          SizedBox(
-            width: 40,
-            height: 40,
-            child: IconButton(
-              padding: EdgeInsets.zero,
-              icon: const Icon(Icons.arrow_back, color: _primary, size: 20),
-              onPressed: () => Navigator.of(context).pop(),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            width: 40,
-            height: 40,
-            decoration: const BoxDecoration(
-              color: _surfaceContainerHighest,
-              shape: BoxShape.circle,
-            ),
-            child: const Center(
-              child: Text(
-                'N',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: _primary,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'CareBridge',
-              style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.w700,
-                color: _primary,
-                letterSpacing: -0.5,
-              ),
-            ),
-          ),
           IconButton(
-            icon: const Icon(Icons.notifications_outlined, color: _primary),
-            onPressed: () {},
+            onPressed: () => Navigator.of(context).pop(),
+            icon: const Icon(Icons.arrow_back_rounded, color: _primary),
+          ),
+          const SizedBox(width: 4),
+          const Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Giám sát an toàn',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: _primary,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                Text(
+                  'Tự động phát hiện té ngã & hỗ trợ khẩn cấp',
+                  style: TextStyle(
+                    fontFamily: 'Lexend',
+                    fontSize: 12,
+                    color: _onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -690,26 +659,33 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
             ],
           ),
           const Divider(height: 24, color: _surfaceVariant),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
+          InkWell(
+            onTap: () => _onFallDetectionToggle(),
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Icon(Icons.personal_injury_outlined, color: _tertiary),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Phát hiện ngã (Fall Detection)',
-                    style: TextStyle(fontSize: 14, color: _onSurface),
+                  Row(
+                    children: const [
+                      Icon(Icons.personal_injury_outlined, color: _tertiary),
+                      SizedBox(width: 8),
+                      Text(
+                        'Phát hiện ngã (Fall Detection)',
+                        style: TextStyle(fontSize: 14, color: _onSurface),
+                      ),
+                    ],
+                  ),
+                  Switch(
+                    value: fallDetectionEnabled,
+                    activeThumbColor: Colors.white,
+                    activeTrackColor: _primaryContainer,
+                    onChanged: _onFallDetectionToggle,
                   ),
                 ],
               ),
-              Switch(
-                value: fallDetectionEnabled,
-                activeThumbColor: Colors.white,
-                activeTrackColor: _primaryContainer,
-                onChanged: _onFallDetectionToggle,
-              ),
-            ],
+            ),
           ),
         ],
       ),
@@ -854,7 +830,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
               ),
             ),
             TextButton(
-              onPressed: _load,
+              onPressed: _showAllEventsHistorySheet,
               child: const Text(
                 'Xem tất cả',
                 style: TextStyle(color: _primary, fontWeight: FontWeight.w500),
@@ -884,76 +860,162 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
             ),
           )
         else
-          ...eventDisplays.map(
-            (e) => InkWell(
-              onTap: e.event == null ? null : () => _showEventActions(e.event!),
-              borderRadius: BorderRadius.circular(28),
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: _surfaceContainerLowest,
-                  borderRadius: BorderRadius.circular(28),
-                  border: Border(left: BorderSide(color: e.color, width: 4)),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x0F5A463F),
-                      blurRadius: 20,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Icon(e.icon, color: e.color, size: 20),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  e.title,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: _onSurface,
-                                  ),
-                                ),
-                              ),
-                              Text(
-                                e.time,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: _onSurfaceVariant,
-                                ),
-                              ),
-                            ],
+          ...eventDisplays.map(_buildEventCard),
+      ],
+    );
+  }
+
+  Widget _buildEventCard(_SafetyEventDisplay e) {
+    return InkWell(
+      onTap: e.event == null ? null : () => _showEventActions(e.event!),
+      borderRadius: BorderRadius.circular(28),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: _surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(28),
+          border: Border(left: BorderSide(color: e.color, width: 4)),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x0F5A463F),
+              blurRadius: 20,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Icon(e.icon, color: e.color, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          e.title,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: _onSurface,
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            e.description,
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: _onSurfaceVariant,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
+                      Text(
+                        e.time,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: _onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    e.description,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: _onSurfaceVariant,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
-          ),
-      ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showAllEventsHistorySheet() async {
+    List<SafetyEvent> allEvents = _events;
+    try {
+      final fetched = await _safetyService.getSafetyEvents(size: 50);
+      if (fetched.isNotEmpty) {
+        allEvents = fetched;
+      }
+    } catch (_) {
+      // Fallback to currently loaded _events on error
+    }
+
+    if (!mounted) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: _surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      builder: (bottomSheetContext) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.75,
+          minChildSize: 0.4,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (context, scrollController) {
+            final displays = allEvents.map(_toEventDisplay).toList();
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+              child: Column(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: _onSurfaceVariant.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Lịch sử sự kiện an toàn',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: _onSurface,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.of(bottomSheetContext).pop(),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: displays.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'Chưa có sự kiện an toàn nào được ghi nhận.',
+                              style: TextStyle(fontSize: 14, color: _onSurfaceVariant),
+                            ),
+                          )
+                        : ListView.builder(
+                            controller: scrollController,
+                            itemCount: displays.length,
+                            itemBuilder: (context, index) {
+                              return _buildEventCard(displays[index]);
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 

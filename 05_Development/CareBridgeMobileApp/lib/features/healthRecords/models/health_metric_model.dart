@@ -225,6 +225,8 @@ enum MetricType {
   epds,
   bloodPressure,
   bloodSugar,
+  heartRate,
+  stress,
   temperature,
   fetalMovement,
   other,
@@ -245,6 +247,10 @@ extension MetricTypeExtension on MetricType {
         return 'Huyết áp';
       case MetricType.bloodSugar:
         return 'Đường huyết';
+      case MetricType.heartRate:
+        return 'Nhịp tim';
+      case MetricType.stress:
+        return 'Stress';
       case MetricType.temperature:
         return 'Nhiệt độ';
       case MetricType.fetalMovement:
@@ -271,6 +277,10 @@ extension MetricTypeExtension on MetricType {
       case 'BLOOD_SUGAR':
       case 'BLOOD_GLUCOSE':
         return MetricType.bloodSugar;
+      case 'MATERNAL_HEART_RATE':
+        return MetricType.heartRate;
+      case 'STRESS':
+        return MetricType.stress;
       case 'TEMPERATURE':
         return MetricType.temperature;
       case 'FETAL_MOVEMENT':
@@ -291,7 +301,7 @@ extension SourceTypeExtension on SourceType {
       case SourceType.manual:
         return 'Nhập thủ công';
       case SourceType.device:
-        return 'Thiết bị đo';
+        return 'Đồng hồ thông minh';
       case SourceType.sync:
         return 'Đồng bộ tự động';
     }

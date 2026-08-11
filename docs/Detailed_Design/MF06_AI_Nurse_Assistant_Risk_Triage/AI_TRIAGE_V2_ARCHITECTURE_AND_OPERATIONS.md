@@ -58,8 +58,19 @@ readiness/flags and Flutter parser are independent denial layers.
 
 The canonical catalog carries question ID, target/stage/intent applicability, fields/signals resolved,
 answer/options/measurement, priority, escalation signals and clarification/precondition flags. Hard
-filters prevent mother questions for a baby and vice versa. Unknown target permits target clarification
-only; `UNAWARE_OR_UNMEASURABLE` pivots rather than repeating a measurement.
+filters prevent mother questions for a baby and vice versa; `UNAWARE_OR_UNMEASURABLE` pivots rather
+than repeating a measurement.
+
+An unresolved target or intent permits clarification **and** the entity-agnostic global danger screen
+(`Q_GLOBAL_DANGER`, `isGlobalDangerScreen`), asked in the same turn. The screen also survives a
+coverage refusal, so a complaint the ruleset cannot stratify still gets screened for emergency signs
+before the turn ends. Both properties are enforced in `app/questions/catalog_filter.py` and
+`app/triage_v2/question_resume.py`, with Java parity in `rules/QuestionCatalogFilter.java`.
+
+A question is eligible only when it resolves a field or signal the engine is actually missing. Rule
+`requiredFields` and question `resolvesFields` must therefore share one vocabulary: a rule requiring
+`visual_change` while the question declares only the signal `VISUAL_DISTURBANCE` makes that question
+permanently ineligible. `tests/` holds the invariant that closes this class of defect.
 
 ## 7. API and persistence
 
@@ -87,9 +98,20 @@ lack of measured benefit. V2 never runtime-browses the Internet.
   signals, measurements and journey context are rejected at the Java authority boundary.
 - Python/registry/hash unavailable without explicit danger: controlled NMI/FALLBACK_ONLY.
 - Gemini invalid/timeout: deterministic path continues/NMI.
-- Free-text-only danger detection without Gemini is not claimed: the current global-gate and Java
-  fallback evidence uses trusted structured signals. A deterministic phrase-to-signal contract needs
-  source/rule review before it can be added; until then this remains a full-stack rollout blocker.
+- A deterministic phrase-to-signal floor now exists and runs before Gemini: `app/danger_phrases.py`
+  supplies the phrase groups, `app/triage_v2/deterministic_signals.py` maps them to signals, and
+  `app/triage_v2/api.py` merges them under (never over) caller-supplied observations, ahead of the
+  global safety gate. Free-text danger detection without Gemini is therefore partially claimed.
+  It remains a rollout blocker for a different reason than before: the phrase lists have **not**
+  been reviewed by a clinician, and coverage is incomplete — see the gap below.
+- Coverage gap, measured 2026-08-10: of the eight phrase groups in `danger_phrases.py`, five are
+  mapped to signals. `MATERNAL_HEAVY_BLEEDING_PHRASES`, `MATERNAL_SEVERE_HEADACHE_PHRASES` and
+  `MATERNAL_VISUAL_DISTURBANCE_PHRASES` are not. Those three feed the two maternal RED rules
+  (`PREG_RED_001`/`POST_RED_001` haemorrhage, `PREG_RED_002` pre-eclampsia), so with Gemini
+  unavailable a user describing either in her own words reaches NEEDS_MORE_INFO, not RED. The
+  original rationale — stage-scoped findings would require guessing the stage — does not hold when
+  the stage is already resolved from a trusted profile. Resolving this needs clinical review of the
+  phrase lists, not only code.
 - Corpus missing/rejected: disposition remains, citations empty.
 - Stale version: Flutter exposes a typed 409 failure. Automatic GET-refresh/retry is not yet implemented
   and remains required before a full multi-client E2E claim.
@@ -107,9 +129,37 @@ retention/legal policy, privileged purge design, migration and DB tests.
 
 ## 11. Evaluation
 
-The deterministic engineering corpus currently passes 14/14: global/stage RED recall 4/4, target
-accuracy 100%, wrong entity/question 0, OOS false positive 0 and unsupported GREEN 0. This is regression
-evidence, not clinical validation. Citation precision is not measurable with zero verified sources.
+Two corpora, with different jobs.
+
+**Engine regression corpus** (`tests/data/triage_v2_evaluation_cases.json`, 14 cases) passes 14/14:
+global/stage RED recall 4/4, target accuracy 100%, wrong entity/question 0, OOS false positive 0,
+unsupported GREEN 0. It exercises structured signals and guards against regression.
+
+**Vague-input corpus** (`tests/data/triage_v2_vague_corpus_v1.json`, 160 synthetic cases,
+baseline 2026-08-10) measures free-text Vietnamese as users actually write it — missing diacritics,
+typos, negation, "I don't know", multi-turn. Headline results, all cases / excluding cases whose
+failure was predicted against a known defect:
+
+| Metric | All | Excluding known defects |
+|---|---:|---:|
+| Case pass rate | 16.9% | 21.4% |
+| Target accuracy | 71.9% | 74.8% |
+| Stage accuracy | 63.8% | 62.1% |
+| First-turn question relevance | 83.2% | 72.8% |
+| RED recall (17 RED-only cases) | 52.9% | 60.0% |
+| Safety-question coverage | 100% | 100% |
+| Wrong-entity / wrong-stage / forbidden question | 0% | 0% |
+| Repeated question | 1.9% | 0% |
+| Unsupported GREEN | 0 | 0 |
+
+Read together: the **hard guards hold** — the engine never asks a wrong-entity, wrong-stage or
+forbidden question, and always screens for danger. What it gets wrong is **understanding who and
+where the user is**, and **reaching RED from free text**. Both are upstream of question ranking.
+
+This is engineering evidence, not clinical validation: every case carries
+`clinicalReviewStatus: PENDING`, all data is synthetic, and Gemini modes are local deterministic
+fixtures rather than live-provider measurements. Citation precision remains unmeasurable with zero
+verified sources.
 
 ## 12. Operations and observability
 
@@ -142,6 +192,30 @@ model-outcome/open-web paths are marked V1-only and forbidden to new V2 callers.
 ## 15. Known limitations
 
 - No clinical validation or external clinical sign-off.
+- **RED recall from free text is 52.9%** on the vague corpus. Three unmapped phrase groups (§9) and
+  free-text numerics are the known contributors: "Bé hai tháng đo được 38,2 độ" does not populate
+  `temperatureC`, and a spelled-out age does not populate `babyAgeMonths`, so the young-infant fever
+  rule cannot fire from a sentence.
+- **Target resolution is wrong in ~28% of vague inputs.** `score_message` splits on commas and
+  conjunctions and scores each clause independently, so a speaker's own pronoun in a separate clause
+  counts as a second patient: "Em lo quá, bé bỏ bú" and "Bé nóng người nhưng nhà em không có nhiệt kế"
+  both resolve CONFLICTED, while "Em thấy bé bú kém" (one clause) resolves BABY correctly.
+- **Stage resolution is wrong in ~36% of vague inputs**, including spelled-out ages
+  ("Con mười tháng" resolving to TODDLER_12_24M) and gestational statements in free text.
+- Intent is recomputed from the latest message only, with no session stickiness, while target has
+  `confirmed_conversation_target`. A vague follow-up therefore drops the clinical thread and returns
+  to `Q_CLARIFY_INTENT`.
+- `bleeding_amount` is absent from `dataset_requirements_v1.json` context fields, so a postpartum
+  bleeding complaint never reaches `Q_BLEEDING_AMOUNT`.
+- Seven signals have no question that resolves them — `CHEST_INDRAWING`, `CHEST_PAIN`,
+  `COUGH_OR_RUNNY_NOSE`, `DIARRHOEA`, `PERSISTENT_VOMITING`, `RASH`, `VOMITING` — so the rules
+  reading them are reachable only through Gemini extraction.
+- `current_status` is required by three maternal rules but no V2 component produces it.
+- `Q_BABY_TEMPERATURE` is not flagged `measurement` and has no `pivotTo`, so "no thermometer"
+  yields `FEVER: UNKNOWN` with no pivot to observable signs.
+- `GREEN_DEFAULT_001` lists `stage-specific minimum dataset` — prose in a machine field list.
+- Planning and review artifacts live under `_bmad-output/`, which `.gitignore` excludes, so no
+  planning, review or baseline artifact is version-controlled alongside the code it describes.
 - Verified source corpus: 0; citation coverage/precision unavailable.
 - GREEN rule/dataset/source coverage incomplete and public GREEN disabled.
 - Full DB-backed E2E/Flyway/DB chaos not run because Docker is unavailable.

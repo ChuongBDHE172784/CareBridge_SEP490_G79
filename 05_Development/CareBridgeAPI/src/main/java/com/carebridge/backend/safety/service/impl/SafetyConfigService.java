@@ -33,6 +33,9 @@ public class SafetyConfigService implements ISafetyConfigService {
         config.setFallDetectionEnabled(request.getFallDetectionEnabled());
         config.setSensitivityLevel(SensitivityLevel.valueOf(request.getSensitivityLevel()));
         config.setEmergencyAutoAlert(request.getEmergencyAutoAlert());
+        if (request.getLocationSharingEnabled() != null) {
+            config.setLocationSharingEnabled(request.getLocationSharingEnabled());
+        }
         if (request.getCountdownSeconds() != null) {
             if (request.getCountdownSeconds() != 15
                     && request.getCountdownSeconds() != 30
@@ -71,6 +74,7 @@ public class SafetyConfigService implements ISafetyConfigService {
                         .fallDetectionEnabled(false)
                         .sensitivityLevel("MEDIUM")
                         .emergencyAutoAlert(true)
+                        .locationSharingEnabled(false)
                         .countdownSeconds(30)
                         .sensorPermissionGranted(false)
                         .build());
@@ -83,6 +87,7 @@ public class SafetyConfigService implements ISafetyConfigService {
                 .fallDetectionEnabled(config.isFallDetectionEnabled())
                 .sensitivityLevel(config.getSensitivityLevel().name())
                 .emergencyAutoAlert(config.isEmergencyAutoAlert())
+                .locationSharingEnabled(config.isLocationSharingEnabled())
                 .countdownSeconds(config.getCountdownSeconds())
                 .sensorPermissionGranted(config.isSensorPermissionGranted())
                 .sensorPermissionRecordedAt(config.getSensorPermissionRecordedAt())

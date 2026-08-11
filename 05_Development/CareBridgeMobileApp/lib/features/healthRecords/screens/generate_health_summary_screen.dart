@@ -88,12 +88,6 @@ class _GenerateHealthSummaryScreenState
             fontFamily: 'Lexend',
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.close, color: Color(0xFF845143)),
-            onPressed: () => Navigator.pop(context),
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),

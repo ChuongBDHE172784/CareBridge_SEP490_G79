@@ -35,7 +35,12 @@ public class QuestionCatalogFilter {
             Set<String> missingFields,
             Set<String> missingSignals,
             Set<String> answeredQuestionIds,
-            Map<String, Object> signals) {
+            Map<String, Object> signals,
+            String safetyScreenStatus) {
+
+        public FilterContext {
+            safetyScreenStatus = safetyScreenStatus == null ? "INCOMPLETE" : safetyScreenStatus;
+        }
 
         public static FilterContext of(
                 TargetEntity entity, CareStage stage, IntentType intent,
@@ -44,7 +49,7 @@ public class QuestionCatalogFilter {
             return new FilterContext(entity, stage, intent, status,
                     missingFields == null ? Set.of() : missingFields,
                     missingSignals == null ? Set.of() : missingSignals,
-                    Set.of(), Map.of());
+                    Set.of(), Map.of(), "INCOMPLETE");
         }
     }
 
@@ -106,6 +111,14 @@ public class QuestionCatalogFilter {
                         .filter(question -> !context.answeredQuestionIds().contains(questionId))
                         .ifPresent(forced::add);
             }
+            catalog.questions().values().stream()
+                    .filter(QuestionCatalog.Question::isGlobalDangerScreen)
+                    .filter(QuestionCatalog.Question::mayRunWithoutResolvedTarget)
+                    .filter(question -> !"COMPLETE".equals(context.safetyScreenStatus()))
+                    .filter(question -> !context.answeredQuestionIds().contains(question.questionId()))
+                    .filter(question -> forced.stream().noneMatch(existing ->
+                            existing.questionId().equals(question.questionId())))
+                    .forEach(forced::add);
             return List.copyOf(forced);
         }
 

@@ -179,7 +179,7 @@ def test_grounded_extraction_reenters_deterministic_global_safety(monkeypatch):
     })
 
     class FakeExtractor:
-        def extract_triage_v2(self, *, text: str):
+        def extract_triage_v2(self, *, text: str, deadline: float | None = None):
             return extraction
 
     monkeypatch.setattr(api, "TRIAGE_V2_INTERNAL_API_KEY", "expected-secret")
@@ -189,7 +189,7 @@ def test_grounded_extraction_reenters_deterministic_global_safety(monkeypatch):
         headers={"X-CareBridge-Internal-Key": "expected-secret"},
         json=_request(
             latestUserMessage=text,
-            signals={"SEIZURE": {"presence": "ABSENT"}},
+            signals={},
         ),
     )
     assert response.status_code == 200

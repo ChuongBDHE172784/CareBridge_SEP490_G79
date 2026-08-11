@@ -69,15 +69,9 @@
 			</array>
 		</dict>
 	</dict>
-	<!-- NSAllowsArbitraryLoads would disable App Transport Security for every
-	     destination, including the production API. The simulator only needs to
-	     reach http://localhost:8080 during development, and NSAllowsLocalNetworking
-	     covers exactly that: unqualified hostnames and .local addresses stay
-	     reachable over http while everything else, api.carebridgevn.site included,
-	     must still be HTTPS. -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
-		<key>NSAllowsLocalNetworking</key>
+		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>

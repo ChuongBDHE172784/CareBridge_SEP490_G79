@@ -2,13 +2,18 @@ package com.carebridge.backend.emergency;
 
 import com.carebridge.backend.emergency.entity.EmergencySession;
 import com.carebridge.backend.emergency.event.EmergencySessionOpened;
+import com.carebridge.backend.emergency.event.EmergencySessionRealertRequested;
+import com.carebridge.backend.emergency.dto.request.OpenEmergencyRequest;
 import com.carebridge.backend.emergency.repository.IEmergencySessionRepository;
 import com.carebridge.backend.emergency.repository.IFamilyAlertLogRepository;
+import com.carebridge.backend.emergency.repository.EmergencyAlertAcknowledgementRepository;
+import com.carebridge.backend.emergency.repository.EmergencyAlertDetailRepository;
 import com.carebridge.backend.emergency.repository.TriageEmergencyEscalationLinkRepository;
 import com.carebridge.backend.emergency.service.FamilyMemberPort;
 import com.carebridge.backend.emergency.service.LocationConsentPort;
 import com.carebridge.backend.emergency.service.impl.EmergencyService;
 import com.carebridge.backend.security.repository.UserRepository;
+import com.carebridge.backend.security.entity.User;
 import com.carebridge.backend.triage.IntakeStatus;
 import com.carebridge.backend.triage.RiskLevel;
 import com.carebridge.backend.triage.entity.IntakeSession;
@@ -36,11 +41,51 @@ class EmergencyServiceTest {
     @Mock private FamilyMemberPort familyMemberPort;
     @Mock private LocationConsentPort locationConsentPort;
     @Mock private UserRepository userRepository;
+    @Mock private EmergencyAlertAcknowledgementRepository acknowledgementRepository;
+    @Mock private EmergencyAlertDetailRepository alertDetailRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
     @InjectMocks private EmergencyService service;
 
     private static final UUID USER_ID = UUID.randomUUID();
     private static final UUID INTAKE_ID = UUID.randomUUID();
+
+    @Test
+    void familyAlertDetailUsesRealMotherPhoneLocationAndAcknowledgement() {
+        UUID callerId = UUID.randomUUID();
+        EmergencySession session = emergencySession(null);
+        session.setTriggerSource("FALL_DETECTION");
+        User mother = User.builder()
+                .id(USER_ID)
+                .name("Mother Test")
+                .phone("0901234567")
+                .build();
+        Instant acknowledgedAt = Instant.parse("2026-08-10T11:00:00Z");
+        Instant notifiedAt = acknowledgedAt.minusSeconds(5);
+        Instant detectedAt = notifiedAt.minusSeconds(30);
+        when(emergencySessionRepository.findById(session.getId())).thenReturn(Optional.of(session));
+        when(familyMemberPort.isFamilyMember(USER_ID, callerId)).thenReturn(true);
+        when(locationConsentPort.hasLocationConsent(USER_ID)).thenReturn(true);
+        when(userRepository.findById(USER_ID)).thenReturn(Optional.of(mother));
+        when(familyAlertLogRepository.findBySessionId(session.getId())).thenReturn(Optional.empty());
+        when(acknowledgementRepository.find(session.getId(), callerId))
+                .thenReturn(new EmergencyAlertAcknowledgementRepository.AcknowledgementState(
+                        true, true, acknowledgedAt, notifiedAt));
+        when(alertDetailRepository.findLatestLinkedFall(session.getId(), USER_ID))
+                .thenReturn(Optional.of(new EmergencyAlertDetailRepository.LinkedFallSnapshot(
+                        new java.math.BigDecimal("10.762622"),
+                        new java.math.BigDecimal("106.660172"),
+                        detectedAt)));
+
+        var response = service.getAlertDetail(session.getId(), callerId);
+
+        assertThat(response.getMotherName()).isEqualTo("Mother Test");
+        assertThat(response.getMotherPhone()).isEqualTo("0901234567");
+        assertThat(response.getLatitude()).isEqualByComparingTo("10.762622");
+        assertThat(response.getLongitude()).isEqualByComparingTo("106.660172");
+        assertThat(response.isAcknowledged()).isTrue();
+        assertThat(response.getAcknowledgedAt()).isEqualTo(acknowledgedAt);
+        assertThat(response.getCreatedAt()).isEqualTo(detectedAt);
+    }
 
     @Test
     void triageReplayUsesCanonicalSafetyEventSourceIdentity() {
@@ -57,6 +102,26 @@ class EmergencyServiceTest {
         verify(emergencySessionRepository, never()).save(any());
         verify(emergencySessionRepository, never()).saveAndFlush(any());
         verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
+    void existingActiveEmergencyPublishesThrottledRealertTrigger() {
+        EmergencySession active = emergencySession(null);
+        when(emergencySessionRepository.findActiveByUserId(USER_ID)).thenReturn(Optional.of(active));
+        when(emergencySessionRepository.save(active)).thenReturn(active);
+
+        var response = service.openFlow(OpenEmergencyRequest.builder()
+                .triggerSource("FALL_DETECTION")
+                .userLatitude(new java.math.BigDecimal("10.762622"))
+                .userLongitude(new java.math.BigDecimal("106.660172"))
+                .build(), USER_ID);
+
+        assertThat(response.getSessionId()).isEqualTo(active.getId());
+        assertThat(active.getUserLatitude()).isEqualByComparingTo("10.762622");
+        assertThat(active.getUserLongitude()).isEqualByComparingTo("106.660172");
+        verify(emergencySessionRepository).save(active);
+        verify(eventPublisher).publishEvent(argThat((Object event) -> event instanceof EmergencySessionRealertRequested
+                && ((EmergencySessionRealertRequested) event).sessionId().equals(active.getId())));
     }
 
     @Test

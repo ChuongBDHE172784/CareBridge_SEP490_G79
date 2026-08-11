@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../aiTriage/models/triage_continuation.dart';
 import '../../aiTriage/services/triage_continuation_restore_coordinator.dart';
 import 'mother_home_screen.dart';
@@ -125,11 +126,15 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
     final useSelectedOnlyNavigationLabels =
         MediaQuery.textScalerOf(context).scale(1) >= 1.3;
 
-    return Scaffold(
-      backgroundColor: _canvas,
-      body: SafeArea(
-        bottom: false,
-        child: IndexedStack(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: _canvas,
+        body: IndexedStack(
           index: _index,
           children:
               widget.continuationArrival == null &&
@@ -137,8 +142,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
               ? _pages
               : _continuationPages,
         ),
-      ),
-      bottomNavigationBar: NavigationBar(
+        bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: _onDestinationSelected,
         backgroundColor: _canvas,
@@ -186,6 +190,7 @@ class _HomeShellState extends State<HomeShell> with WidgetsBindingObserver {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 }

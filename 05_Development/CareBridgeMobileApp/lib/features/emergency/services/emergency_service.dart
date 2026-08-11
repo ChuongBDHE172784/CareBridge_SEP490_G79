@@ -42,4 +42,12 @@ class EmergencyService {
     final data = await apiGet('/api/v1/emergency/sessions/$sessionId/alert');
     return EmergencyAlert.fromDetailJson(data['data'] as Map<String, dynamic>);
   }
+
+  Future<EmergencyAlert> acknowledgeAlert(String sessionId) async {
+    final data = await apiPut(
+      '/api/v1/emergency/sessions/$sessionId/alert/acknowledge',
+      const {},
+    );
+    return EmergencyAlert.fromDetailJson(data['data'] as Map<String, dynamic>);
+  }
 }

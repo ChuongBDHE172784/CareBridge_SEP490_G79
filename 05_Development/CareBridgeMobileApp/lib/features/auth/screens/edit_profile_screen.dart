@@ -135,7 +135,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           children: [
             IconButton(
               onPressed: () => Navigator.of(context).pop(),
-              icon: const Icon(Icons.close, color: _onSurface),
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: _primaryColor, size: 20),
             ),
             const Expanded(
               child: Text(

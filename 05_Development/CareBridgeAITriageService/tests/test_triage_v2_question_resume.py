@@ -43,13 +43,15 @@ def test_planner_returns_at_most_three_fixed_catalog_questions_and_advances_once
     assert updates["questionRound"] == 1
 
 
-def test_target_clarification_is_the_only_question_when_target_unknown():
+def test_target_clarification_and_global_danger_run_when_target_unknown():
     state = _state()
     state["targetEntity"] = TargetEntity.UNKNOWN
     state["contextResolutionStatus"] = ContextResolutionStatus.NEEDS_TARGET_ENTITY
     state["candidateQuestionIds"] = list(CATALOG)
 
-    assert question_planner(state)["plannedQuestionIds"] == ["Q_CLARIFY_TARGET_ENTITY"]
+    updates = question_planner(state)
+    assert updates["plannedQuestionIds"] == ["Q_CLARIFY_TARGET_ENTITY", "Q_GLOBAL_DANGER"]
+    assert updates["triageOutcome"] == "NEEDS_MORE_INFO"
 
 
 def test_unmeasurable_measurement_pivots_and_is_not_reasked():
@@ -83,7 +85,7 @@ def test_stale_version_is_a_controlled_non_clinical_conflict():
 
     updates = question_planner(state)
 
-    assert updates["triageOutcome"] is None
+    assert updates["triageOutcome"] == "NEEDS_MORE_INFO"
     assert updates["requiredAction"] == "STATE_VERSION_CONFLICT"
     assert updates["stopConversation"] is True
     assert updates["processingErrors"][0]["code"] == "STALE_STATE_VERSION"

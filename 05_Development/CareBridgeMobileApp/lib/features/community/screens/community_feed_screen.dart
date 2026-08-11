@@ -24,15 +24,15 @@ class _CommunityFeedScreenState extends State<CommunityFeedScreen> {
   // ── Design tokens (Warm Claymorphism palette) ──
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
-  static const _canvas = Color(0xFFFFF8F6);
-  static const _surfaceContainerHigh = Color(0xFFFFE2D9);
-  static const _surfaceContainer = Color(0xFFFFE9E3);
-  static const _surfaceContainerHighest = Color(0xFFFADCD3);
-  static const _onSurface = Color(0xFF271812);
-  static const _onSurfaceVariant = Color(0xFF524440);
+  static const _canvas = Color(0xFFF8F5F1);
+  static const _surfaceContainerHigh = Color(0xFFF1E6E0);
+  static const _surfaceContainer = Color(0xFFF8EEE9);
+  static const _surfaceContainerHighest = Color(0xFFE5D3CA);
+  static const _onSurface = Color(0xFF2A211D);
+  static const _onSurfaceVariant = Color(0xFF655650);
   static const _outline = Color(0xFF84736F);
-  static const _outlineVariant = Color(0xFFD6C2BD);
-  static const _surfaceContainerLowest = Colors.white;
+  static const _outlineVariant = Color(0xFFF1E6E0);
+  static const _surfaceContainerLowest = Color(0xFFFFFCF9);
 
   final _service = CommunityService.instance;
   final _scrollController = ScrollController();

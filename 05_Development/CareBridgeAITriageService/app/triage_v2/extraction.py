@@ -149,13 +149,17 @@ def gemini_transport_schema(model: type[BaseModel]) -> dict[str, object]:
 
 
 class Extractor(Protocol):
-    def extract_triage_v2(self, *, text: str) -> TriageV2Extraction | None: ...
+    def extract_triage_v2(
+        self, *, text: str, deadline: float | None = None
+    ) -> TriageV2Extraction | None: ...
 
 
-def extract_and_validate(text: str, extractor: Extractor) -> ValidatedExtraction | None:
+def extract_and_validate(
+    text: str, extractor: Extractor, *, deadline: float | None = None
+) -> ValidatedExtraction | None:
     """Return only independently grounded facts; any malformed model result is ignored."""
 
-    result = extractor.extract_triage_v2(text=text)
+    result = extractor.extract_triage_v2(text=text, deadline=deadline)
     if result is None:
         return None
     grounded_target = _grounded_spans(text, result.targetEvidenceSpans)

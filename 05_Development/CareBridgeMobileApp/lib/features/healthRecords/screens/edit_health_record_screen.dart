@@ -1,4 +1,7 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:mime/mime.dart';
 import '../models/health_record_model.dart';
 import '../services/health_record_service.dart';
 
@@ -20,6 +23,7 @@ class _EditHealthRecordScreenState extends State<EditHealthRecordScreen> {
   static const _onSurfaceVariant = Color(0xFF524440);
 
   final _service = HealthRecordService();
+  final _picker = ImagePicker();
   final _titleCtrl = TextEditingController();
   final _sourceNameCtrl = TextEditingController();
 
@@ -27,6 +31,7 @@ class _EditHealthRecordScreenState extends State<EditHealthRecordScreen> {
   String _recordType = 'EXAMINATION_RESULT';
   DateTime _recordDate = DateTime.now();
   bool _subjectIsMother = true;
+  final List<PlatformFile> _newSelectedFiles = [];
 
   bool _isLoading = true;
   bool _isSaving = false;
@@ -113,18 +118,234 @@ class _EditHealthRecordScreenState extends State<EditHealthRecordScreen> {
     if (picked != null) setState(() => _recordDate = picked);
   }
 
+  void _showAttachmentSourceSelector() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE5D3CA),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Thêm tệp đính kèm mới',
+                style: TextStyle(
+                  fontFamily: 'Lexend',
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: _onSurface,
+                ),
+              ),
+              const SizedBox(height: 20),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: _surface,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.camera_alt_rounded, color: _primary),
+                ),
+                title: const Text(
+                  'Chụp ảnh trực tiếp',
+                  style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
+                ),
+                subtitle: const Text(
+                  'Chụp ảnh kết quả hoặc tài liệu',
+                  style: TextStyle(fontFamily: 'Lexend', fontSize: 12),
+                ),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _takePhoto();
+                },
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: _surface,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.photo_library_rounded, color: _primary),
+                ),
+                title: const Text(
+                  'Chọn từ thư viện ảnh',
+                  style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
+                ),
+                subtitle: const Text(
+                  'Chọn một hoặc nhiều ảnh cùng lúc',
+                  style: TextStyle(fontFamily: 'Lexend', fontSize: 12),
+                ),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _pickMultipleImages();
+                },
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: _surface,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.description_rounded, color: _primary),
+                ),
+                title: const Text(
+                  'Chọn từ Tệp trên máy',
+                  style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w600),
+                ),
+                subtitle: const Text(
+                  'PDF, DOCX, XLSX, CSV, TXT, v.v.',
+                  style: TextStyle(fontFamily: 'Lexend', fontSize: 12),
+                ),
+                onTap: () {
+                  Navigator.of(ctx).pop();
+                  _pickFilesFromStorage();
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  static const _maxFileSizeBytes = 15 * 1024 * 1024; // 15MB
+
+  Future<void> _takePhoto() async {
+    try {
+      final photo = await _picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 85,
+      );
+      if (photo == null) return;
+      final bytes = await photo.readAsBytes();
+      if (bytes.length > _maxFileSizeBytes) {
+        _showSnack('Ảnh vượt quá dung lượng tối đa 15MB.');
+        return;
+      }
+      final name = 'photo_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      setState(() {
+        _newSelectedFiles.add(PlatformFile(
+          name: name,
+          size: bytes.length,
+          bytes: bytes,
+          path: photo.path,
+        ));
+      });
+    } catch (e) {
+      _showSnack('Không thể mở máy ảnh. Vui lòng kiểm tra quyền camera.');
+    }
+  }
+
+  Future<void> _pickMultipleImages() async {
+    try {
+      final images = await _picker.pickMultiImage(imageQuality: 85);
+      if (images.isEmpty) return;
+      bool sizeExceeded = false;
+      for (final img in images) {
+        final bytes = await img.readAsBytes();
+        if (bytes.length > _maxFileSizeBytes) {
+          sizeExceeded = true;
+          continue;
+        }
+        final name = img.name.isNotEmpty ? img.name : 'image_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        if (!_newSelectedFiles.any((existing) => existing.name == name)) {
+          _newSelectedFiles.add(PlatformFile(
+            name: name,
+            size: bytes.length,
+            bytes: bytes,
+            path: img.path,
+          ));
+        }
+      }
+      if (sizeExceeded) {
+        _showSnack('Một số tệp bị bỏ qua do vượt quá 15MB.');
+      }
+      setState(() {});
+    } catch (e) {
+      _showSnack('Không thể mở thư viện ảnh.');
+    }
+  }
+
+  Future<void> _pickFilesFromStorage() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: [
+        'jpg', 'jpeg', 'png', 'webp', 'heic', 'gif',
+        'pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'txt',
+      ],
+      allowMultiple: true,
+      withData: true,
+    );
+    if (result == null || result.files.isEmpty) return;
+    bool sizeExceeded = false;
+    setState(() {
+      for (final f in result.files) {
+        if (f.size > _maxFileSizeBytes) {
+          sizeExceeded = true;
+          continue;
+        }
+        if (!_newSelectedFiles.any((existing) => existing.name == f.name)) {
+          _newSelectedFiles.add(f);
+        }
+      }
+    });
+    if (sizeExceeded) {
+      _showSnack('Một số tệp bị bỏ qua do vượt quá dung lượng 15MB.');
+    }
+  }
+
+  String _mimeTypeFor(PlatformFile file) {
+    final ext = file.extension?.toLowerCase();
+    if (ext == 'pdf') return 'application/pdf';
+    if (ext == 'docx') return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    if (ext == 'doc') return 'application/msword';
+    if (ext == 'xlsx') return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    if (ext == 'xls') return 'application/vnd.ms-excel';
+    if (ext == 'csv') return 'text/csv';
+    if (ext == 'txt') return 'text/plain';
+
+    return lookupMimeType(file.name, headerBytes: file.bytes) ?? 'application/octet-stream';
+  }
+
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: _primary),
+    );
+  }
+
   Future<void> _save() async {
     if (_titleCtrl.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Vui lòng nhập tiêu đề hồ sơ.'),
-          backgroundColor: _primary,
-        ),
-      );
+      _showSnack('Vui lòng nhập tiêu đề hồ sơ.');
       return;
     }
     setState(() => _isSaving = true);
     try {
+      for (final file in _newSelectedFiles) {
+        if (file.bytes == null) continue;
+        await _service.uploadHealthRecordAttachment(
+          bytes: file.bytes!,
+          fileName: file.name,
+          mimeType: _mimeTypeFor(file),
+        );
+      }
+
       await _service.updateHealthRecord(
         widget.recordId,
         UpdateHealthRecordRequest(
@@ -140,15 +361,8 @@ class _EditHealthRecordScreenState extends State<EditHealthRecordScreen> {
       setState(() => _showSuccess = true);
       await Future.delayed(const Duration(seconds: 2));
       if (mounted) Navigator.of(context).pop(true);
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Không thể lưu. Vui lòng thử lại.'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+    } catch (e) {
+      _showSnack('Không thể cập nhật hồ sơ.');
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -302,13 +516,51 @@ class _EditHealthRecordScreenState extends State<EditHealthRecordScreen> {
             )
           else
             ...attachments.map((a) => _buildAttachmentRow(a)),
+          if (_newSelectedFiles.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            const Text(
+              'Tệp/ảnh mới chọn:',
+              style: TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: _primary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            ..._newSelectedFiles.map((file) => Container(
+                  margin: const EdgeInsets.only(bottom: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: _surface,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.insert_drive_file_rounded, size: 18, color: _primary),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          file.name,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontFamily: 'Lexend', fontSize: 13, color: _onSurface),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close_rounded, size: 18, color: Colors.red),
+                        onPressed: () => setState(() => _newSelectedFiles.remove(file)),
+                      ),
+                    ],
+                  ),
+                )),
+          ],
           const SizedBox(height: 12),
           OutlinedButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.upload_file_rounded, size: 18),
+            onPressed: _showAttachmentSourceSelector,
+            icon: const Icon(Icons.add_a_photo_rounded, size: 18),
             label: Text(
-              attachments.isEmpty ? 'Tải lên tệp' : 'Thay thế tệp',
-              style: const TextStyle(fontFamily: 'Lexend', fontSize: 13),
+              attachments.isEmpty && _newSelectedFiles.isEmpty ? 'Chụp ảnh hoặc Thêm tệp' : 'Thêm ảnh/tệp khác',
+              style: const TextStyle(fontFamily: 'Lexend', fontSize: 13, fontWeight: FontWeight.w600),
             ),
             style: OutlinedButton.styleFrom(
               foregroundColor: _primary,

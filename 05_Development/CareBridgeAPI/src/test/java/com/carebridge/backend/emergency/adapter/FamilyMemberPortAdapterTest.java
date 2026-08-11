@@ -29,6 +29,8 @@ class FamilyMemberPortAdapterTest {
             UUID.fromString("00000000-0000-0000-0000-000000000002");
     private static final UUID SECOND_CONTACT_ID =
             UUID.fromString("00000000-0000-0000-0000-000000000003");
+    private static final UUID CARE_GROUP_ID =
+            UUID.fromString("00000000-0000-0000-0000-000000000004");
 
     @Mock private CareGroupRepository careGroupRepository;
     @Mock private CareGroupMemberRepository careGroupMemberRepository;
@@ -39,8 +41,8 @@ class FamilyMemberPortAdapterTest {
     void recipientsUseAllAcceptedFamilyAccountsAndOnlyActiveDeviceTokens() {
         DeviceToken firstDevice = token(FIRST_CONTACT_ID, "first-device");
         DeviceToken secondDevice = token(SECOND_CONTACT_ID, "second-device");
-        when(careGroupMemberRepository.findAcceptedFamilyUserIds(OWNER_ID))
-                .thenReturn(List.of(FIRST_CONTACT_ID, SECOND_CONTACT_ID));
+        when(careGroupMemberRepository.findAcceptedFamilyMembersForEmergencyAlerts(OWNER_ID))
+                .thenReturn(List.of(member(FIRST_CONTACT_ID), member(SECOND_CONTACT_ID)));
         when(deviceTokenRepository.findByUserIdAndActiveTrue(FIRST_CONTACT_ID))
                 .thenReturn(List.of(firstDevice));
         when(deviceTokenRepository.findByUserIdAndActiveTrue(SECOND_CONTACT_ID))
@@ -49,9 +51,9 @@ class FamilyMemberPortAdapterTest {
         List<AlertRecipientEndpoint> recipients = adapter.getFamilyAlertRecipients(OWNER_ID);
 
         assertThat(recipients).containsExactly(
-                new AlertRecipientEndpoint(FIRST_CONTACT_ID, firstDevice.getId(), "first-device"),
-                new AlertRecipientEndpoint(SECOND_CONTACT_ID, secondDevice.getId(), "second-device"));
-        verify(careGroupMemberRepository).findAcceptedFamilyUserIds(OWNER_ID);
+                new AlertRecipientEndpoint(FIRST_CONTACT_ID, firstDevice.getId(), CARE_GROUP_ID, "first-device"),
+                new AlertRecipientEndpoint(SECOND_CONTACT_ID, secondDevice.getId(), CARE_GROUP_ID, "second-device"));
+        verify(careGroupMemberRepository).findAcceptedFamilyMembersForEmergencyAlerts(OWNER_ID);
         verifyNoInteractions(careGroupRepository);
     }
 
@@ -77,6 +79,14 @@ class FamilyMemberPortAdapterTest {
                 .userId(userId)
                 .token(value)
                 .active(true)
+                .build();
+    }
+
+    private static com.carebridge.backend.family.entity.CareGroupMember member(UUID userId) {
+        return com.carebridge.backend.family.entity.CareGroupMember.builder()
+                .careGroupId(CARE_GROUP_ID)
+                .userId(userId)
+                .inviteStatus(InviteStatus.ACCEPTED)
                 .build();
     }
 }

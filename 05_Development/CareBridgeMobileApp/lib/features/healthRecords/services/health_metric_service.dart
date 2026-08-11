@@ -77,6 +77,8 @@ class HealthMetricService {
         return 'BLOOD_PRESSURE_SYSTOLIC';
       case 'FETAL_MOVEMENT_SESSION':
         return 'FETAL_MOVEMENT_COUNT';
+      case 'HEART_RATE':
+        return 'MATERNAL_HEART_RATE';
       default:
         return metricType;
     }

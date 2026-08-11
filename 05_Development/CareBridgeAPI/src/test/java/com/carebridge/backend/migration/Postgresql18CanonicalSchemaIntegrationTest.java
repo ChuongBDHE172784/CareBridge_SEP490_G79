@@ -7,7 +7,9 @@ import java.sql.DriverManager;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+import com.carebridge.backend.testsupport.EmbeddedPostgresRoleFixture;
 import org.flywaydb.core.Flyway;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
@@ -39,6 +41,15 @@ class Postgresql18CanonicalSchemaIntegrationTest {
 
     @Container
     final PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:18.1-alpine");
+
+    // The checklist migrations refuse to run unless deployment has already created the
+    // NOLOGIN owner roles they hand objects to — Flyway itself has no CREATEROLE
+    // dependency by design. Provision them exactly as AbstractPostgresIntegrationTest does.
+    @BeforeEach
+    void provisionDeploymentRoles() throws Exception {
+        EmbeddedPostgresRoleFixture.provision(
+                postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+    }
 
     @Test
     void cleanBootstrapKeepsCanonicalTableCountAndPassesHibernateValidation() throws Exception {

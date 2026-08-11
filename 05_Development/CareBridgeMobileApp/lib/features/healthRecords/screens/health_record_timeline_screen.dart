@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../models/health_record_model.dart';
@@ -34,7 +35,14 @@ class _HealthRecordTimelineScreenState
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ));
+      _load();
+    });
   }
 
   @override
@@ -160,12 +168,18 @@ class _HealthRecordTimelineScreenState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _canvas,
-      body: SafeArea(
-        child: Column(
+    final topInset = MediaQuery.of(context).padding.top;
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: _canvas,
+        body: Column(
           children: [
-            _buildAppBar(),
+            _buildAppBar(topInset),
             _buildSearchControls(),
             Expanded(
               child: _loading
@@ -181,44 +195,59 @@ class _HealthRecordTimelineScreenState
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: _primaryContainer,
-        foregroundColor: Colors.white,
-        shape: const CircleBorder(),
-        onPressed: () async {
-          final created = await context.push<bool>('/health-records/add');
-          if (created == true && mounted) {
-            _load();
-          }
-        },
-        child: const Icon(Icons.add),
-      ),
     );
   }
 
-  Widget _buildAppBar() {
+  Widget _buildAppBar(double topInset) {
     return SizedBox(
-      height: 48,
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back, color: _onSurfaceVariant),
-          ),
-          const Expanded(
-            child: Text(
-              'Lịch sử sức khỏe',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontFamily: 'Lexend',
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-                color: _primary,
+      // 56 standard + topInset to fill behind Dynamic Island
+      height: 56 + topInset,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(8, topInset, 8, 0),
+        child: Row(
+          children: [
+            IconButton(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.arrow_back_rounded, color: _primary),
+            ),
+            const Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Hồ sơ sức khỏe',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: _primary,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  Text(
+                    'Sổ khám, kết quả xét nghiệm & siêu âm',
+                    style: TextStyle(
+                      fontFamily: 'Lexend',
+                      fontSize: 12,
+                      color: _onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ),
             ),
-          ),
-          const SizedBox(width: 48),
-        ],
+            IconButton(
+              tooltip: 'Thêm hồ sơ',
+              onPressed: () async {
+                final created = await context.push<bool>('/health-records/add');
+                if (created == true && mounted) {
+                  _load();
+                }
+              },
+              icon: const Icon(Icons.add_circle_outline, color: _primary, size: 26),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -226,7 +255,7 @@ class _HealthRecordTimelineScreenState
   Widget _buildSearchControls() {
     final hasPostedDate = _postedDate != null;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       child: Column(
         children: [
           TextField(
@@ -234,10 +263,15 @@ class _HealthRecordTimelineScreenState
             onChanged: (value) => setState(() => _searchQuery = value),
             textInputAction: TextInputAction.search,
             decoration: InputDecoration(
-              hintText: 'Tìm theo tên hồ sơ',
+              hintText: 'Tìm theo tên hồ sơ, kết quả...',
+              hintStyle: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 14,
+                color: _onSurfaceVariant,
+              ),
               prefixIcon: const Icon(
                 Icons.search_rounded,
-                color: _onSurfaceVariant,
+                color: _primary,
               ),
               suffixIcon: _searchQuery.isEmpty
                   ? null
@@ -260,15 +294,15 @@ class _HealthRecordTimelineScreenState
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(18),
-                borderSide: const BorderSide(color: Color(0xFFE8DAD6)),
+                borderSide: const BorderSide(color: Color(0xFFE5D3CA), width: 1.5),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(18),
-                borderSide: const BorderSide(color: Color(0xFFE8DAD6)),
+                borderSide: const BorderSide(color: Color(0xFFE5D3CA), width: 1.5),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(18),
-                borderSide: const BorderSide(color: _primaryContainer),
+                borderSide: const BorderSide(color: _primary, width: 2),
               ),
             ),
             style: const TextStyle(
@@ -283,7 +317,7 @@ class _HealthRecordTimelineScreenState
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: _pickPostedDate,
-                  icon: const Icon(Icons.calendar_today_rounded, size: 18),
+                  icon: const Icon(Icons.calendar_today_rounded, size: 16),
                   label: Text(
                     hasPostedDate
                         ? 'Ngày đăng ${_formatFullDate(_postedDate!)}'
@@ -291,20 +325,23 @@ class _HealthRecordTimelineScreenState
                     overflow: TextOverflow.ellipsis,
                   ),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: _onSurfaceVariant,
+                    foregroundColor: hasPostedDate ? _primary : _onSurfaceVariant,
                     backgroundColor: Colors.white,
-                    side: const BorderSide(color: Color(0xFFE8DAD6)),
+                    side: BorderSide(
+                      color: hasPostedDate ? _primary : const Color(0xFFE5D3CA),
+                      width: hasPostedDate ? 1.5 : 1,
+                    ),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(16),
                     ),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 14,
-                      vertical: 13,
+                      vertical: 12,
                     ),
                     textStyle: const TextStyle(
                       fontFamily: 'Lexend',
                       fontSize: 13,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
@@ -314,10 +351,10 @@ class _HealthRecordTimelineScreenState
                 IconButton.filledTonal(
                   tooltip: 'Bỏ lọc ngày',
                   onPressed: () => setState(() => _postedDate = null),
-                  icon: const Icon(Icons.close_rounded),
+                  icon: const Icon(Icons.close_rounded, size: 18),
                   style: IconButton.styleFrom(
                     foregroundColor: _primary,
-                    backgroundColor: const Color(0xFFFFE2D9),
+                    backgroundColor: const Color(0xFFF8EEE9),
                   ),
                 ),
               ],
@@ -483,18 +520,19 @@ class _RecordCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: const Color(0xFFFFF8F6),
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(20),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFE5D3CA), width: 1),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF5A463F).withAlpha(15),
-                blurRadius: 20,
+                color: const Color(0xFF845143).withAlpha(12),
+                blurRadius: 16,
                 offset: const Offset(0, 4),
               ),
             ],
@@ -510,11 +548,11 @@ class _RecordCard extends StatelessWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const Icon(
-                          Icons.upload_file_rounded,
-                          size: 16,
+                          Icons.calendar_today_outlined,
+                          size: 14,
                           color: Color(0xFF524440),
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 6),
                         Flexible(
                           child: Text(
                             'Đăng ${_formatDate(_postedAt)}',
@@ -522,6 +560,7 @@ class _RecordCard extends StatelessWidget {
                             style: const TextStyle(
                               fontFamily: 'Lexend',
                               fontSize: 12,
+                              fontWeight: FontWeight.w500,
                               color: Color(0xFF524440),
                             ),
                           ),
@@ -532,23 +571,25 @@ class _RecordCard extends StatelessWidget {
                   if (record.isShared)
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
+                        horizontal: 10,
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFFE2D9),
-                        borderRadius: BorderRadius.circular(8),
+                        color: const Color(0xFFF8EEE9),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFE5D3CA), width: 0.8),
                       ),
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.share, size: 14, color: Color(0xFF845143)),
+                          Icon(Icons.share_rounded, size: 12, color: Color(0xFF845143)),
                           SizedBox(width: 4),
                           Text(
                             'Đã chia sẻ',
                             style: TextStyle(
                               fontFamily: 'Lexend',
-                              fontSize: 10,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
                               color: Color(0xFF845143),
                             ),
                           ),
@@ -557,44 +598,46 @@ class _RecordCard extends StatelessWidget {
                     ),
                 ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 10),
               Text(
                 record.title,
                 style: const TextStyle(
                   fontFamily: 'Lexend',
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
                   color: Color(0xFF271812),
+                  letterSpacing: -0.2,
                 ),
               ),
-              if (record.facilityName != null) ...[
-                const SizedBox(height: 8),
+              if (record.facilityName != null && record.facilityName!.isNotEmpty) ...[
+                const SizedBox(height: 10),
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
+                    horizontal: 10,
+                    vertical: 5,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFF1EC),
-                    borderRadius: BorderRadius.circular(99),
+                    color: const Color(0xFFF2EAE4),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(
-                        Icons.local_hospital,
+                        Icons.local_hospital_outlined,
                         size: 14,
-                        color: Color(0xFF6E5A52),
+                        color: Color(0xFF845143),
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 6),
                       Flexible(
                         child: Text(
                           record.facilityName!,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
                             fontFamily: 'Lexend',
-                            fontSize: 11,
-                            color: Color(0xFF6E5A52),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Color(0xFF524440),
                           ),
                         ),
                       ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import '../models/health_metric_model.dart';
 import '../services/health_metric_service.dart';
@@ -27,12 +28,10 @@ class _MaternalHealthMetricScreenState
     extends State<MaternalHealthMetricScreen> {
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
-  static const _canvas = Color(0xFFF6F1EC);
-  static const _surface = Color(0xFFFFF8F6);
-  static const _onSurface = Color(0xFF271812);
-  static const _onSurfaceVariant = Color(0xFF524440);
-  static const _errorContainer = Color(0xFFFFDAD6);
-  static const _onErrorContainer = Color(0xFF93000A);
+  static const _canvas = Color(0xFFF8F5F1);
+  static const _surface = Color(0xFFFFFCF9);
+  static const _onSurface = Color(0xFF2A211D);
+  static const _onSurfaceVariant = Color(0xFF655650);
 
   final _service = HealthMetricService();
   HealthMetricDetail? _metric;
@@ -42,6 +41,13 @@ class _MaternalHealthMetricScreenState
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ));
+    });
     if (widget.initialMetric != null) {
       _metric = widget.initialMetric;
       _loading = false;
@@ -151,68 +157,95 @@ class _MaternalHealthMetricScreenState
     return '${hour12.toString().padLeft(2, '0')}:$mi $ampm';
   }
 
+  String _formatGlucoseContext(String code) {
+    switch (code) {
+      case 'FASTING':
+        return 'Lúc đói';
+      case 'PRE_MEAL':
+        return 'Trước ăn';
+      case 'POST_MEAL_1H':
+        return 'Sau ăn 1 giờ';
+      case 'POST_MEAL_2H':
+        return 'Sau ăn 2 giờ';
+      case 'RANDOM':
+        return 'Ngẫu nhiên';
+      case 'OTHER_APPROVED':
+        return 'Khác (đã được duyệt)';
+      case 'BEDTIME':
+        return 'Trước khi đi ngủ';
+      default:
+        return code;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _canvas,
-      body: SafeArea(
-        child: _loading
-            ? const Center(
-                child: CircularProgressIndicator(color: _primaryContainer),
+    final topInset = MediaQuery.of(context).padding.top;
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: _canvas,
+        body: _loading
+            ? Center(
+                child: Padding(
+                  padding: EdgeInsets.only(top: topInset),
+                  child: const CircularProgressIndicator(color: _primaryContainer),
+                ),
               )
             : _error != null
-            ? _buildErrorState()
-            : _buildContent(_metric!),
+            ? _buildErrorState(topInset)
+            : _buildContent(_metric!, topInset),
       ),
     );
   }
 
-  Widget _buildErrorState() {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.error_outline, size: 48, color: Color(0xFFBA1A1A)),
-          const SizedBox(height: 12),
-          Text(
-            _error!,
-            style: const TextStyle(
-              fontFamily: 'Lexend',
-              fontSize: 14,
-              color: _onSurfaceVariant,
+  Widget _buildErrorState(double topInset) {
+    return Padding(
+      padding: EdgeInsets.only(top: topInset),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.error_outline, size: 48, color: Color(0xFFBA1A1A)),
+            const SizedBox(height: 12),
+            Text(
+              _error!,
+              style: const TextStyle(
+                fontFamily: 'Lexend',
+                fontSize: 14,
+                color: _onSurfaceVariant,
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          TextButton(
-            onPressed: _load,
-            child: const Text(
-              'Thử lại',
-              style: TextStyle(fontFamily: 'Lexend', color: _primary),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: _load,
+              child: const Text(
+                'Thử lại',
+                style: TextStyle(fontFamily: 'Lexend', color: _primary),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildContent(HealthMetricDetail m) {
-    final readOnly = widget.initialMetric != null;
+  Widget _buildContent(HealthMetricDetail m, double topInset) {
     return Column(
       children: [
-        _buildAppBar(),
+        _buildAppBar(topInset),
         Expanded(
           child: SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
             child: Column(
               children: [
                 _buildMetricCard(m),
-                const SizedBox(height: 8),
+                const SizedBox(height: 16),
                 _buildDetailsCard(m),
-
-                if (!readOnly) ...[
-                  const SizedBox(height: 24),
-                  _buildActionButtons(m),
-                ],
               ],
             ),
           ),
@@ -221,35 +254,73 @@ class _MaternalHealthMetricScreenState
     );
   }
 
-  Widget _buildAppBar() {
+  Widget _buildAppBar(double topInset) {
+    final m = _metric;
     return Container(
       color: _surface,
-      height: 64,
+      // height = standard 56 + status bar so AppBar fills behind Dynamic Island
+      height: 56 + topInset,
+      padding: EdgeInsets.only(top: topInset),
       child: Row(
         children: [
           IconButton(
             onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back, color: _onSurfaceVariant),
+            icon: const Icon(Icons.arrow_back_rounded, color: _primary),
           ),
-          const Expanded(
+          Expanded(
             child: Text(
-              'Chi tiết chỉ số',
+              m != null ? 'Chi tiết ${m.metricType.displayLabel}' : 'Chi tiết chỉ số',
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontFamily: 'Lexend',
-                fontSize: 24,
+                fontSize: 20,
                 fontWeight: FontWeight.w700,
                 color: _primary,
                 letterSpacing: -0.24,
               ),
             ),
           ),
-          IconButton(
-            onPressed: () {
-              // TODO: more options (history, share) UC-187
-            },
-            icon: const Icon(Icons.more_vert, color: _onSurfaceVariant),
-          ),
+          if (m != null && widget.initialMetric == null)
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, color: _primary),
+              onSelected: (value) {
+                if (value == 'edit') {
+                  _openEdit(m);
+                } else if (value == 'delete') {
+                  _confirmDelete();
+                }
+              },
+              itemBuilder: (context) {
+                final isFetalMovement = m.metricCode == 'FETAL_MOVEMENT_SESSION' ||
+                    m.metricCode == 'FETAL_MOVEMENT_COUNT' ||
+                    m.metricCode == 'FETAL_MOVEMENT';
+                return [
+                  if (!isFetalMovement)
+                    const PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit_outlined, color: _primary, size: 18),
+                          SizedBox(width: 8),
+                          Text('Chỉnh sửa', style: TextStyle(fontFamily: 'Lexend')),
+                        ],
+                      ),
+                    ),
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete_outline, color: Color(0xFFBA1A1A), size: 18),
+                        SizedBox(width: 8),
+                        Text('Xóa chỉ số', style: TextStyle(fontFamily: 'Lexend', color: Color(0xFFBA1A1A))),
+                      ],
+                    ),
+                  ),
+                ];
+              },
+            )
+          else
+            const SizedBox(width: 48),
         ],
       ),
     );
@@ -370,6 +441,15 @@ class _MaternalHealthMetricScreenState
               value: '${bmiHeight.toStringAsFixed(1)} cm',
               showDivider: true,
             ),
+          if (m.metricCode == 'BLOOD_GLUCOSE' &&
+              m.context['measurementContext'] != null &&
+              m.context['measurementContext'].toString().isNotEmpty)
+            _DetailRow(
+              icon: Icons.restaurant_outlined,
+              label: 'Bối cảnh đo',
+              value: _formatGlucoseContext(m.context['measurementContext'].toString()),
+              showDivider: true,
+            ),
           _DetailRow(
             icon: Icons.devices_outlined,
             label: 'Nguồn',
@@ -383,57 +463,6 @@ class _MaternalHealthMetricScreenState
     );
   }
 
-  Widget _buildActionButtons(HealthMetricDetail metric) {
-    return Row(
-      children: [
-        Expanded(
-          child: SizedBox(
-            height: 48,
-            child: OutlinedButton.icon(
-              onPressed: () => _openEdit(metric),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: _primary,
-                side: const BorderSide(color: _primary, width: 2),
-                shape: const StadiumBorder(),
-              ),
-              icon: const Icon(Icons.edit_outlined, size: 20),
-              label: const Text(
-                'Sửa',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: SizedBox(
-            height: 48,
-            child: FilledButton.icon(
-              onPressed: _confirmDelete,
-              style: FilledButton.styleFrom(
-                backgroundColor: _errorContainer,
-                foregroundColor: _onErrorContainer,
-                shape: const StadiumBorder(),
-              ),
-              icon: const Icon(Icons.delete_outline, size: 20),
-              label: const Text(
-                'Xóa',
-                style: TextStyle(
-                  fontFamily: 'Lexend',
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 }
 
 double? _metricContextNumber(Object? value) {
@@ -478,11 +507,12 @@ class _Card extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFFFF8F6),
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE5D3CA), width: 1),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF5A463F).withAlpha(20),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
+            color: const Color(0xFF5A463F).withAlpha(18),
+            blurRadius: 16,
+            offset: const Offset(0, 3),
           ),
         ],
       ),

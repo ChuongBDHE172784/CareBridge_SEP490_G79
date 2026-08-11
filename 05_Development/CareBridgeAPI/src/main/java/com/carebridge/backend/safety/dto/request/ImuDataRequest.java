@@ -46,4 +46,10 @@ public class ImuDataRequest {
     @DecimalMin("-180.0")
     @DecimalMax("180.0")
     private BigDecimal longitude;
+
+    /**
+     * True only after the mobile detector has observed its complete
+     * free-fall, impact, and post-impact immobility sequence.
+     */
+    private boolean onDeviceFallConfirmed;
 }

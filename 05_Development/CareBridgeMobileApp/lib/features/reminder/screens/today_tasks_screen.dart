@@ -37,10 +37,10 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
         (widget.journeyId != null && widget.journeyId!.isNotEmpty) !=
         (widget.babyId != null && widget.babyId!.isNotEmpty);
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F1EC),
+      backgroundColor: const Color(0xFFF8F5F1),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF6F1EC),
-        foregroundColor: const Color(0xFF5A463F),
+        backgroundColor: const Color(0xFFF8F5F1),
+        foregroundColor: const Color(0xFF2A211D),
         elevation: 0,
         actions: [
           if (widget.audience == TodayTasksAudience.mother)
@@ -54,9 +54,11 @@ class _TodayTasksScreenState extends State<TodayTasksScreen> {
         title: const Text(
           'Việc hôm nay',
           style: TextStyle(
-            fontFamily: 'Quicksand',
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF5A463F),
+            fontFamily: 'Lexend',
+            fontSize: 22,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF2A211D),
+            letterSpacing: -0.3,
           ),
         ),
       ),

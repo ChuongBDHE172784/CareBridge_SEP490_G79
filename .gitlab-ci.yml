@@ -517,10 +517,9 @@ pages:
   # listed here could overwrite carebridgevn.site, last push winning — and five of
   # the seven previously listed were personal work-in-progress branches.
   #
-  # Note what this does and does not reach. GitLab reads .gitlab-ci.yml from the
-  # branch being pushed, and dev still carries the old seven-branch list, so a push
-  # to dev or to a personal branch can still publish. This restriction only governs
-  # pipelines that run from page-web. Closing that needs the same edit on dev.
+  # GitLab reads this file from the branch being pushed, so dev now carries the same
+  # single-branch rule, but the personal branches keep their own seven-entry copy and
+  # can still publish until each one merges dev.
   rules:
     - if: '$CI_COMMIT_BRANCH == "page-web"'
   variables:

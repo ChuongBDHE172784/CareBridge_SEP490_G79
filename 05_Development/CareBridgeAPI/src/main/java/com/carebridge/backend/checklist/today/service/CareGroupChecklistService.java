@@ -156,7 +156,8 @@ public class CareGroupChecklistService {
                         scope.careGroupId(), item.careContextType(), item.careContextId(),
                         scope.careGroupLabel(), item.careContextLabel(), item.title(),
                         item.targetSubject(), item.origin(), item.status(), item.timeBucket(),
-                canComplete ? item.allowedActions() : java.util.Set.of(), item.dueAt()))
+                canComplete ? item.allowedActions() : java.util.Set.of(), item.dueAt(),
+                item.description(), item.supportFunction()))
                 .toList();
     }
 
@@ -202,7 +203,7 @@ public class CareGroupChecklistService {
                 scope.careGroupLabel(), null, task.getTitleSnapshot(), task.getTargetSubject(),
                 ChecklistOrigin.USER_CREATED, task.getStatus().name(),
                 com.carebridge.backend.checklist.today.model.TaskTimeBucket.UNSCHEDULED,
-                Set.copyOf(actions), task.getDueAt());
+                Set.copyOf(actions), task.getDueAt(), task.getDescriptionSnapshot(), task.getSupportFunction());
     }
 
     private Map<UUID, ChecklistTemplate> shareableTemplates(TodayTaskSections sections) {

@@ -49,6 +49,7 @@ public class SafetyConfigStore {
                         ? SensitivityLevel.MEDIUM.name()
                         : config.getSensitivityLevel().name());
         user.setEmergencyAutoAlert(config.isEmergencyAutoAlert());
+        user.setSafetyLocationSharingEnabled(config.isLocationSharingEnabled());
         user.setEmergencyCountdownSeconds(config.getCountdownSeconds());
         user.setSensorPermissionGranted(config.isSensorPermissionGranted());
         user.setSensorPermissionRecordedAt(config.getSensorPermissionRecordedAt());
@@ -68,6 +69,7 @@ public class SafetyConfigStore {
         config.setFallDetectionEnabled(user.isFallDetectionEnabled());
         config.setSensitivityLevel(parseSensitivity(user.getFallDetectionSensitivityLevel()));
         config.setEmergencyAutoAlert(user.isEmergencyAutoAlert());
+        config.setLocationSharingEnabled(user.isSafetyLocationSharingEnabled());
         config.setCountdownSeconds(user.getEmergencyCountdownSeconds());
         config.setSensorPermissionGranted(user.isSensorPermissionGranted());
         config.setSensorPermissionRecordedAt(user.getSensorPermissionRecordedAt());

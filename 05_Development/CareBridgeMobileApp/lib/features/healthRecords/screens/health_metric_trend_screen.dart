@@ -1,10 +1,14 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../models/health_metric_model.dart';
 import '../services/health_metric_service.dart';
+import '../services/watch_metric_import_service.dart';
+import 'epds_screen.dart';
 
 class HealthMetricTrendScreen extends StatefulWidget {
   final String journeyId;
@@ -21,7 +25,8 @@ class HealthMetricTrendScreen extends StatefulWidget {
       _HealthMetricTrendScreenState();
 }
 
-class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
+class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen>
+    with WidgetsBindingObserver {
   static const _primary = Color(0xFF845143);
   static const _primaryContainer = Color(0xFFC98C7B);
   static const _canvas = Color(0xFFFFF8F6);
@@ -52,6 +57,18 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
       icon: Icons.water_drop_outlined,
     ),
     _MetricOption(
+      apiValue: 'MATERNAL_HEART_RATE',
+      label: 'Nhịp tim',
+      unit: 'bpm',
+      icon: Icons.monitor_heart_outlined,
+    ),
+    _MetricOption(
+      apiValue: 'STRESS',
+      label: 'Stress',
+      unit: 'điểm',
+      icon: Icons.psychology_alt_outlined,
+    ),
+    _MetricOption(
       apiValue: 'FETAL_MOVEMENT_SESSION',
       label: 'Cử động thai',
       unit: 'count',
@@ -60,6 +77,7 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
   ];
 
   final _service = HealthMetricService();
+  final _watchImportService = WatchMetricImportService();
   final _historyScrollController = ScrollController();
 
   late _MetricOption _selectedMetric;
@@ -78,8 +96,22 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _selectedMetric = _fallbackMetricOptions.first;
+    _watchImportService.start(
+      journeyId: widget.journeyId,
+      onImported: _handleWatchMetricImported,
+      onError: _showWatchMetricError,
+    );
+    unawaited(_watchImportService.drainQueuedEvents());
     _loadCapabilities();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ));
+    });
   }
 
   Future<void> _loadCapabilities() async {
@@ -149,6 +181,11 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
       case 'FETAL_MOVEMENT_COUNT':
       case 'FETAL_MOVEMENT_SESSION':
         return 'FETAL_MOVEMENT_SESSION';
+      case 'HEART_RATE':
+      case 'MATERNAL_HEART_RATE':
+        return 'MATERNAL_HEART_RATE';
+      case 'STRESS':
+        return 'STRESS';
       default:
         return value ?? 'BMI';
     }
@@ -156,8 +193,17 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _watchImportService.dispose();
     _historyScrollController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_watchImportService.drainQueuedEvents());
+    }
   }
 
   Future<void> _loadTrend() async {
@@ -197,6 +243,9 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
   bool get _isGlucose => _selectedMetric.apiValue == 'BLOOD_GLUCOSE';
   bool get _isFetalMovement =>
       _selectedMetric.apiValue == 'FETAL_MOVEMENT_SESSION';
+  bool get _isWatchMetric =>
+      _selectedMetric.apiValue == 'MATERNAL_HEART_RATE' ||
+      _selectedMetric.apiValue == 'STRESS';
 
   void _onMetricChanged(_MetricOption? opt) {
     if (opt == null || opt == _selectedMetric) return;
@@ -205,6 +254,18 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
   }
 
   Future<void> _openAddMetric() async {
+    if (_selectedMetric.apiValue == 'EPDS_SCORE') {
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => EpdsScreen(journeyId: widget.journeyId),
+        ),
+      );
+      if (mounted) {
+        await _loadTrend();
+      }
+      return;
+    }
+
     final changed = await context.push<bool>(
       '/journeys/${Uri.encodeComponent(widget.journeyId)}/metrics/add'
       '?metricType=${Uri.encodeQueryComponent(_selectedMetric.apiValue)}',
@@ -214,7 +275,62 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
     }
   }
 
+  Future<void> _openWatchMeasurement() async {
+    final opened = await _watchImportService.openGadgetbridge();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          opened
+              ? 'Đã mở Gadgetbridge. Hãy đồng bộ đồng hồ để gửi dữ liệu về CareBridge.'
+              : 'Không tìm thấy Gadgetbridge trên thiết bị.',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleWatchMetricImported(
+    WatchMetricImportResult result,
+  ) async {
+    if (!mounted) return;
+    if (result.metricType == _selectedMetric.apiValue) {
+      await _loadTrend();
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Đã lưu ${result.metricType == 'STRESS' ? 'Stress' : 'Nhịp tim'} từ đồng hồ.',
+        ),
+      ),
+    );
+  }
+
+  void _showWatchMetricError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
   Future<void> _openMetricDetail(MetricDataPoint point) async {
+    if (_selectedMetric.apiValue == 'EPDS_SCORE') {
+      final answers = parseEpdsAnswers(point.note);
+      if (answers != null) {
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => EpdsHistoryDetailScreen(
+              completedAt: point.measuredAt,
+              totalScore: point.valueNumeric.round(),
+              question10Score: point.valueSecondary?.round() ?? answers[9],
+              answers: answers,
+            ),
+          ),
+        );
+        return;
+      }
+    }
+
     final metricId = point.metricId;
     if (metricId != null && metricId.isNotEmpty) {
       final changed = await context.push<bool>(
@@ -263,61 +379,75 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _canvas,
-      appBar: AppBar(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
+      child: Scaffold(
         backgroundColor: _canvas,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: _onSurface),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: const Text(
-          'Chỉ số sức khỏe',
-          style: TextStyle(
-            fontFamily: 'Lexend',
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-            color: _primary,
+        appBar: AppBar(
+          backgroundColor: _canvas,
+          elevation: 0,
+          systemOverlayStyle: const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: Brightness.dark,
+            statusBarBrightness: Brightness.light,
           ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.close_rounded, color: _onSurfaceVariant),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded, color: _primary),
             onPressed: () => Navigator.of(context).pop(),
           ),
-        ],
-      ),
-      body: RefreshIndicator(
-        color: _primary,
-        onRefresh: _loadTrend,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildMetricSelector(),
-              const SizedBox(height: 16),
-              if (_isLoadingCapabilities || _isLoading)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(48),
-                    child: CircularProgressIndicator(color: _primaryContainer),
-                  ),
-                )
-              else if (!_isSupportedMetric)
-                _buildUnsupportedMetricCard()
-              else if (_errorMsg != null)
-                _buildErrorCard()
-              else ...[
-                _buildChartCard(),
+          title: const Text(
+            'Chỉ số sức khỏe',
+            style: TextStyle(
+              fontFamily: 'Lexend',
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: _primary,
+              letterSpacing: -0.3,
+            ),
+          ),
+          actions: [
+            IconButton(
+              tooltip: 'Nhập chỉ số',
+              icon: const Icon(Icons.add_circle_outline, color: _primary, size: 26),
+              onPressed: _openAddMetric,
+            ),
+          ],
+        ),
+        body: RefreshIndicator(
+          color: _primary,
+          onRefresh: _loadTrend,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildMetricSelector(),
                 const SizedBox(height: 16),
-                _buildHistoryCard(),
-                const SizedBox(height: 20),
-                _buildAddButton(),
+                if (_isLoadingCapabilities || _isLoading)
+                  const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(48),
+                      child: CircularProgressIndicator(color: _primaryContainer),
+                    ),
+                  )
+                else if (!_isSupportedMetric)
+                  _buildUnsupportedMetricCard()
+                else if (_errorMsg != null)
+                  _buildErrorCard()
+                else ...[
+                  _buildChartCard(),
+                  const SizedBox(height: 16),
+                  _buildHistoryCard(),
+                  const SizedBox(height: 20),
+                  _buildActionButtons(),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -680,28 +810,35 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
           else
             SizedBox(
               height: height,
-              child: Scrollbar(
+              child: ListView.separated(
                 controller: _historyScrollController,
-                thumbVisibility: points.length > 5,
-                child: ListView.separated(
-                  controller: _historyScrollController,
-                  padding: EdgeInsets.zero,
-                  itemCount: points.length,
-                  itemBuilder: (context, index) {
-                    return _HistoryTile(
-                      point: points[index],
-                      metric: _selectedMetric,
-                      unit: _trend?.unit ?? _selectedMetric.unit,
-                      onTap: () => _openMetricDetail(points[index]),
-                    );
-                  },
-                  separatorBuilder: (_, _) =>
-                      const Divider(height: 1, color: _surfaceContainer),
-                ),
+                padding: EdgeInsets.zero,
+                itemCount: points.length,
+                itemBuilder: (context, index) {
+                  return _HistoryTile(
+                    point: points[index],
+                    metric: _selectedMetric,
+                    unit: _trend?.unit ?? _selectedMetric.unit,
+                    onTap: () => _openMetricDetail(points[index]),
+                  );
+                },
+                separatorBuilder: (_, _) =>
+                    const Divider(height: 1, color: _surfaceContainer),
               ),
             ),
         ],
       ),
+    );
+  }
+
+  Widget _buildActionButtons() {
+    if (!_isWatchMetric) return _buildAddButton();
+    return Row(
+      children: [
+        Expanded(child: _buildAddButton()),
+        const SizedBox(width: 12),
+        Expanded(child: _buildWatchButton()),
+      ],
     );
   }
 
@@ -719,6 +856,23 @@ class _HealthMetricTrendScreenState extends State<HealthMetricTrendScreen> {
         padding: const EdgeInsets.symmetric(vertical: 14),
         shape: const StadiumBorder(),
         elevation: 0,
+      ),
+    );
+  }
+
+  Widget _buildWatchButton() {
+    return OutlinedButton.icon(
+      onPressed: _openWatchMeasurement,
+      icon: const Icon(Icons.watch_outlined, size: 18),
+      label: const Text(
+        'Đo từ đồng hồ',
+        style: TextStyle(fontFamily: 'Lexend', fontWeight: FontWeight.w700),
+      ),
+      style: OutlinedButton.styleFrom(
+        foregroundColor: _primary,
+        side: const BorderSide(color: _primary, width: 1.4),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        shape: const StadiumBorder(),
       ),
     );
   }
@@ -741,6 +895,9 @@ String _formatHistoryDateTime(DateTime dt) {
 }
 
 String _displayValue(MetricDataPoint point, _MetricOption metric) {
+  if (metric.apiValue == 'EPDS_SCORE') {
+    return '${point.valueNumeric.toStringAsFixed(0)}/30';
+  }
   if (metric.apiValue == 'FETAL_MOVEMENT_SESSION') {
     final count = point.valueNumeric.toStringAsFixed(0);
     return '$count cử động';

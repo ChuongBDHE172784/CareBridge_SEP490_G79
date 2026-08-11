@@ -76,9 +76,9 @@ class ReminderScheduleService {
     bool? active,
   }) async {
     final body = <String, dynamic>{
-      if (title != null) 'title': title,
-      if (times != null) 'times': times,
-      if (timeZone != null) 'timeZone': timeZone,
+      'title': ?title,
+      'times': ?times,
+      'timeZone': ?timeZone,
       if (recurrence != null) 'recurrence': recurrence.apiValue,
       if (startDate != null) 'startDate': _dateOnly(startDate),
       if (endDateSet) ...{
@@ -86,7 +86,7 @@ class ReminderScheduleService {
         'endDateSet': true,
       } else if (endDate != null)
         'endDate': _dateOnly(endDate),
-      if (active != null) 'active': active,
+      'active': ?active,
     };
     final raw = await _patchRequest(
       '/api/v1/reminder-schedules/$scheduleId',
@@ -111,8 +111,9 @@ class ReminderScheduleService {
   }
 
   static Map<String, dynamic> _object(dynamic value) {
-    if (value is! Map)
+    if (value is! Map) {
       throw const FormatException('Schedule response is invalid');
+    }
     return Map<String, dynamic>.from(value);
   }
 

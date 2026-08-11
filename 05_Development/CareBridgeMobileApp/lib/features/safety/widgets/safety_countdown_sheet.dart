@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_tts/flutter_tts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../models/safety_config_model.dart';
 
@@ -40,14 +42,96 @@ abstract class SafetyCountdownFeedback {
 
 class SystemSafetyCountdownFeedback implements SafetyCountdownFeedback {
   var _active = false;
+  FlutterTts? _tts;
+  bool _ttsInitialized = false;
+  Timer? _speechTimer;
+
+  Future<void> _initTts() async {
+    if (_ttsInitialized) return;
+    try {
+      _tts = FlutterTts();
+      try {
+        await _tts?.setLanguage('vi-VN');
+      } catch (_) {}
+      try {
+        await _tts?.setSpeechRate(0.48);
+      } catch (_) {}
+      try {
+        await _tts?.setVolume(1.0);
+      } catch (_) {}
+
+      // Android specific attributes (ignored on iOS)
+      try {
+        await _tts?.setAudioAttributesForNavigation();
+      } catch (_) {}
+
+      // iOS specific audio category to ensure loud speaker output even in silent mode
+      try {
+        await _tts?.setIosAudioCategory(
+          IosTextToSpeechAudioCategory.playback,
+          [
+            IosTextToSpeechAudioCategoryOptions.defaultToSpeaker,
+            IosTextToSpeechAudioCategoryOptions.duckOthers,
+          ],
+          IosTextToSpeechAudioMode.defaultMode,
+        );
+      } catch (_) {}
+
+      _ttsInitialized = true;
+    } catch (_) {
+      _ttsInitialized = false;
+    }
+  }
+
+  Future<void> _speakPhrase() async {
+    if (!_active) return;
+    try {
+      if (!_ttsInitialized) {
+        await _initTts();
+      }
+      if (_active) {
+        await _tts?.speak('Bạn có ổn không');
+      }
+    } catch (_) {}
+  }
+
+  void _triggerStrongVibration() {
+    try {
+      unawaited(HapticFeedback.vibrate());
+      unawaited(HapticFeedback.heavyImpact());
+      Future.delayed(const Duration(milliseconds: 150), () {
+        if (_active) {
+          unawaited(HapticFeedback.vibrate());
+          unawaited(HapticFeedback.heavyImpact());
+        }
+      });
+      Future.delayed(const Duration(milliseconds: 300), () {
+        if (_active) {
+          unawaited(HapticFeedback.vibrate());
+          unawaited(HapticFeedback.heavyImpact());
+        }
+      });
+    } catch (_) {
+      unawaited(HapticFeedback.vibrate());
+    }
+  }
 
   @override
-  void start() => _active = true;
+  void start() {
+    _active = true;
+    _speechTimer?.cancel();
+    unawaited(_speakPhrase());
+    _speechTimer = Timer.periodic(const Duration(milliseconds: 2500), (_) {
+      if (_active) {
+        unawaited(_speakPhrase());
+      }
+    });
+  }
 
   @override
   void pulse(int remainingSeconds) {
     if (!_active || !_shouldPulse(remainingSeconds)) return;
-    unawaited(HapticFeedback.vibrate());
+    _triggerStrongVibration();
     unawaited(SystemSound.play(SystemSoundType.alert));
   }
 
@@ -58,7 +142,14 @@ class SystemSafetyCountdownFeedback implements SafetyCountdownFeedback {
   }
 
   @override
-  void stop() => _active = false;
+  void stop() {
+    _active = false;
+    _speechTimer?.cancel();
+    _speechTimer = null;
+    try {
+      unawaited(_tts?.stop());
+    } catch (_) {}
+  }
 }
 
 class SafetyCountdownSheet extends StatefulWidget {
@@ -69,6 +160,8 @@ class SafetyCountdownSheet extends StatefulWidget {
     DateTime Function()? now,
     this.simulated = false,
     this.presentAsRealAlert = false,
+    this.onTimeout,
+    this.uriLauncher,
   }) : feedback = feedback ?? SystemSafetyCountdownFeedback(),
        now = now ?? DateTime.now;
 
@@ -77,6 +170,8 @@ class SafetyCountdownSheet extends StatefulWidget {
   final DateTime Function() now;
   final bool simulated;
   final bool presentAsRealAlert;
+  final VoidCallback? onTimeout;
+  final Future<bool> Function(Uri uri)? uriLauncher;
 
   @override
   State<SafetyCountdownSheet> createState() => _SafetyCountdownSheetState();
@@ -104,8 +199,11 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
 
   Timer? _timer;
   int _remainingSeconds = 0;
-  bool _completed = false;
+  bool _timedOut = false;
+  bool _dismissed = false;
+  bool _feedbackStopped = false;
   BuildContext? _reasonDialogContext;
+  BuildContext? _safeDialogContext;
 
   @override
   void initState() {
@@ -115,8 +213,14 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
   }
 
+  void _stopFeedback() {
+    if (_feedbackStopped) return;
+    _feedbackStopped = true;
+    if (_usesProductionPresentation) widget.feedback.stop();
+  }
+
   void _tick() {
-    if (_completed) return;
+    if (_dismissed) return;
     final deadline = widget.event.countdownDeadlineAt;
     final remaining = deadline == null
         ? Duration.zero
@@ -127,34 +231,68 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
     }
     final remainingSeconds =
         (remaining.inMicroseconds / Duration.microsecondsPerSecond).ceil();
-    if (_usesProductionPresentation) widget.feedback.pulse(remainingSeconds);
+    if (_usesProductionPresentation && !_timedOut) {
+      widget.feedback.pulse(remainingSeconds);
+    }
     if (mounted) setState(() => _remainingSeconds = remainingSeconds);
   }
 
-  void _complete(SafetyCountdownResult result) {
-    if (_completed) return;
-    _completed = true;
+  void _dismiss(SafetyCountdownResult result) {
+    if (_dismissed) return;
+    _dismissed = true;
     _timer?.cancel();
+    _stopFeedback();
     if (mounted) Navigator.of(context).pop(result);
   }
 
   void _completeTimeout() {
-    if (_completed) return;
-    final dialogContext = _reasonDialogContext;
-    if (dialogContext == null) {
-      _complete(const SafetyCountdownResult.timeout());
-      return;
-    }
-    _completed = true;
+    if (_timedOut || _dismissed) return;
+    _timedOut = true;
     _timer?.cancel();
-    if (dialogContext.mounted) {
+    _stopFeedback();
+    widget.onTimeout?.call();
+    final dialogContext = _reasonDialogContext;
+    if (dialogContext != null && dialogContext.mounted) {
       Navigator.of(dialogContext).pop();
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        Navigator.of(context).pop(const SafetyCountdownResult.timeout());
-      }
-    });
+    final safeDialogContext = _safeDialogContext;
+    if (safeDialogContext != null && safeDialogContext.mounted) {
+      Navigator.of(safeDialogContext).pop(false);
+    }
+    if (mounted) {
+      setState(() => _remainingSeconds = 0);
+    }
+  }
+
+  Future<void> _confirmSafe() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        _safeDialogContext = dialogContext;
+        return AlertDialog(
+          title: const Text('Xác nhận an toàn'),
+          content: const Text(
+            'Bạn xác nhận bản thân vẫn an toàn và muốn tắt cảnh báo ngã này?',
+          ),
+          actions: [
+            TextButton(
+              key: const Key('safety-countdown-cancel-safe-button'),
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Hủy'),
+            ),
+            FilledButton(
+              key: const Key('safety-countdown-confirm-safe-button'),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Xác nhận an toàn'),
+            ),
+          ],
+        );
+      },
+    );
+    _safeDialogContext = null;
+    if (_dismissed || confirmed != true || !mounted) return;
+    _dismiss(const SafetyCountdownResult.safe());
   }
 
   Future<void> _selectFalsePositiveReason() async {
@@ -180,8 +318,8 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
       },
     );
     _reasonDialogContext = null;
-    if (_completed || reason == null || !mounted) return;
-    _complete(
+    if (_dismissed || reason == null || !mounted) return;
+    _dismiss(
       SafetyCountdownResult.falsePositive(
         reasonCode: reason.code,
         reason: reason.label,
@@ -192,7 +330,7 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
   @override
   void dispose() {
     _timer?.cancel();
-    if (_usesProductionPresentation) widget.feedback.stop();
+    _stopFeedback();
     super.dispose();
   }
 
@@ -261,10 +399,12 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
             const SizedBox(height: 12),
             Text(
               _usesProductionPresentation
-                  ? 'CareBridge phát hiện dấu hiệu nghi ngờ ngã'
+                  ? (_remainingSeconds > 0
+                      ? 'CareBridge phát hiện dấu hiệu nghi ngờ ngã'
+                      : 'Đã chuyển sang hỗ trợ khẩn cấp!')
                   : 'Kiểm thử luồng phát hiện ngã bằng dữ liệu mô phỏng',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 8),
             if (widget.simulated && !widget.presentAsRealAlert) ...[
@@ -278,64 +418,106 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
             ],
             Text(
               _usesProductionPresentation
-                  ? 'Bạn có ổn không? Hãy phản hồi trước khi hết thời gian.'
+                  ? (_remainingSeconds > 0
+                      ? 'Bạn có ổn không? Hãy phản hồi trước khi hết thời gian.'
+                      : 'Hệ thống đã gửi thông báo đến người thân. Hãy gọi cấp cứu 115 nếu cần trợ giúp ngay.')
                   : 'Mô phỏng sẽ tự kết thúc sau $_remainingSeconds giây.',
               textAlign: TextAlign.center,
             ),
             if (_usesProductionPresentation) ...[
               const SizedBox(height: 16),
-              Container(
-                key: const Key('safety-countdown-large-timer'),
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 18),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFDAD6),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: const Color(0xFFFFB4AB)),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      '$_remainingSeconds',
-                      style: const TextStyle(
-                        fontSize: 64,
-                        height: 1,
-                        fontWeight: FontWeight.w900,
-                        color: Color(0xFF93000A),
+              if (_remainingSeconds > 0) ...[
+                Container(
+                  key: const Key('safety-countdown-large-timer'),
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 18),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFDAD6),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: const Color(0xFFFFB4AB)),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        '$_remainingSeconds',
+                        style: const TextStyle(
+                          fontSize: 64,
+                          height: 1,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF93000A),
+                        ),
                       ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'GIÂY TRƯỚC KHI CHUYỂN SANG HỖ TRỢ KHẨN CẤP',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF93000A),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ] else ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    key: const Key('safety-countdown-call-115-button'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFFBA1A1A),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 20,
+                        horizontal: 16,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      elevation: 4,
                     ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      'GIÂY TRƯỚC KHI CHUYỂN SANG HỖ TRỢ KHẨN CẤP',
-                      textAlign: TextAlign.center,
+                    onPressed: () async {
+                      final uri = Uri.parse('tel:115');
+                      if (widget.uriLauncher != null) {
+                        await widget.uriLauncher!(uri);
+                      } else if (await canLaunchUrl(uri)) {
+                        await launchUrl(uri);
+                      }
+                    },
+                    icon: const Icon(Icons.phone_in_talk, size: 32),
+                    label: const Text(
+                      'GỌI 115 NGAY',
                       style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF93000A),
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.1,
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
               const SizedBox(height: 14),
               _EmergencyStep(
                 number: '1',
                 text: _isSensorSelfTest
                     ? 'Khi ngã thật: CareBridge gửi cảnh báo cho người thân.'
-                    : 'Không phản hồi: CareBridge gửi cảnh báo cho người thân.',
+                    : (_remainingSeconds > 0
+                        ? 'Không phản hồi: CareBridge gửi cảnh báo cho người thân.'
+                        : 'CareBridge đã gửi cảnh báo khẩn cấp tới người thân của bạn.'),
               ),
               const SizedBox(height: 8),
               _EmergencyStep(
                 number: '2',
                 text: _isSensorSelfTest
                     ? 'Diễn tập dừng an toàn; luồng thật mới chuyển sang bước gọi 115.'
-                    : 'Nếu người thân chưa thể hỗ trợ, chuyển sang bước gọi 115.',
+                    : 'Bấm nút GỌI 115 NGAY ở trên để trực tiếp kết nối cấp cứu 115.',
               ),
             ],
             const SizedBox(height: 20),
             FilledButton.icon(
               key: const Key('safety-countdown-safe'),
-              onPressed: () => _complete(const SafetyCountdownResult.safe()),
+              onPressed: _confirmSafe,
               icon: const Icon(Icons.check_circle_outline),
               label: const Text('Tôi vẫn ổn — tắt cảnh báo'),
               style: FilledButton.styleFrom(
@@ -351,17 +533,6 @@ class _SafetyCountdownSheetState extends State<SafetyCountdownSheet> {
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size.fromHeight(48),
               ),
-            ),
-            const SizedBox(height: 10),
-            FilledButton.icon(
-              key: const Key('safety-countdown-help'),
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFFBA1A1A),
-                minimumSize: const Size.fromHeight(48),
-              ),
-              onPressed: () => _complete(const SafetyCountdownResult.help()),
-              icon: const Icon(Icons.emergency),
-              label: const Text('Cần trợ giúp ngay'),
             ),
           ],
         ),

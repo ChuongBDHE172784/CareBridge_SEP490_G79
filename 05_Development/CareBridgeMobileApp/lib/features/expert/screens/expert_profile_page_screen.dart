@@ -450,7 +450,7 @@ class _ExpertProfilePageScreenState extends State<ExpertProfilePageScreen> {
 
                         _buildLabel('Chức danh chuyên môn'),
                         DropdownButtonFormField<String>(
-                          value: _selectedTitle,
+                          initialValue: _selectedTitle,
                           decoration: _inputDecoration(hint: '-- Chọn chức danh --'),
                           items: _titles
                               .map(
@@ -515,7 +515,7 @@ class _ExpertProfilePageScreenState extends State<ExpertProfilePageScreen> {
                             child: ListView.separated(
                               shrinkWrap: true,
                               itemCount: _hospitalResults.length,
-                              separatorBuilder: (_, __) => const Divider(height: 1),
+                              separatorBuilder: (_, _) => const Divider(height: 1),
                               itemBuilder: (_, index) {
                                 final h = _hospitalResults[index];
                                 final name = h['name'] as String? ?? '';

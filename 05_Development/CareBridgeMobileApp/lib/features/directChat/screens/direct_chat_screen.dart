@@ -315,8 +315,9 @@ class _DirectChatScreenState extends State<DirectChatScreen>
         ],
       );
       final fileId = uploaded?['data']?['fileId'] as String?;
-      if (fileId == null)
+      if (fileId == null) {
         throw const FormatException('Không thể tải tài liệu lên');
+      }
       await DirectChatService.instance.sendMessage(
         widget.conversationId,
         clientMessageId: _uuid.v4(),
@@ -447,37 +448,42 @@ class _DirectChatScreenState extends State<DirectChatScreen>
     super.dispose();
   }
 
-  static const _primary = Color(0xFFC98C7B);
-  static const _primaryDark = Color(0xFF845143);
-  static const _surface = Color(0xFFF6F1EC);
-  static const _surfaceLow = Color(0xFFF2EAE4);
-  static const _onSurface = Color(0xFF271812);
-  static const _onVariant = Color(0xFF524440);
-  static const _outline = Color(0xFFD6C2BD);
+  static const _primary = Color(0xFF845143);
+  static const _canvas = Color(0xFFF8F5F1);
+  static const _surface = Color(0xFFFFFCF9);
+  static const _surfaceContainerLow = Color(0xFFF8EEE9);
+  static const _onSurface = Color(0xFF2A211D);
+  static const _onSurfaceVariant = Color(0xFF655650);
+  static const _outlineVariant = Color(0xFFE5D3CA);
 
   @override
   Widget build(BuildContext context) {
     final currentUserId = AuthState.instance.userId;
     return Scaffold(
-      backgroundColor: _surface,
+      backgroundColor: _canvas,
       appBar: AppBar(
-        backgroundColor: _primaryDark,
+        backgroundColor: _surface,
         elevation: 0,
-        foregroundColor: Colors.white,
         centerTitle: true,
+        iconTheme: const IconThemeData(color: _onSurface),
         title: const Text(
           'Trò chuyện Trực tiếp',
-          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+          style: TextStyle(
+            fontFamily: 'Lexend',
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
+            color: _onSurface,
+          ),
         ),
         actions: [
           IconButton(
             tooltip: 'Gọi thoại',
-            icon: const Icon(Icons.phone_rounded),
+            icon: const Icon(Icons.phone_rounded, color: _primary),
             onPressed: _expertAvailable ? () => _placeCall('VOICE') : null,
           ),
           IconButton(
             tooltip: 'Gọi video',
-            icon: const Icon(Icons.videocam_rounded),
+            icon: const Icon(Icons.videocam_rounded, color: _primary),
             onPressed: _expertAvailable ? () => _placeCall('VIDEO') : null,
           ),
           const SizedBox(width: 4),
@@ -507,6 +513,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
                           child: Text(
                             'Chuyên gia hiện không khả dụng. Bạn vẫn có thể xem lại lịch sử trò chuyện.',
                             style: TextStyle(
+                              fontFamily: 'Lexend',
                               color: Color(0xFF92400E),
                               fontSize: 13,
                               height: 1.3,
@@ -536,7 +543,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
                             padding: EdgeInsets.symmetric(vertical: 8),
                             child: Center(
                               child: CircularProgressIndicator(
-                                strokeWidth: 2,
+                                strokeWidth: 2.5,
                                 color: _primary,
                               ),
                             ),
@@ -567,11 +574,11 @@ class _DirectChatScreenState extends State<DirectChatScreen>
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: const BoxDecoration(
-          color: Colors.white,
+          color: _surface,
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
           boxShadow: [
             BoxShadow(
-              color: Color(0x105A463F),
+              color: Color(0x0A845143),
               blurRadius: 16,
               offset: Offset(0, -4),
             ),
@@ -580,20 +587,20 @@ class _DirectChatScreenState extends State<DirectChatScreen>
         child: Row(
           children: [
             Container(
-              decoration: BoxDecoration(
-                color: _surfaceLow,
+              decoration: const BoxDecoration(
+                color: _surfaceContainerLow,
                 shape: BoxShape.circle,
               ),
               child: IconButton(
                 icon: const Icon(
                   Icons.add_photo_alternate_rounded,
-                  color: _primaryDark,
+                  color: _primary,
                 ),
                 onPressed: _sending
                     ? null
                     : () => showModalBottomSheet<void>(
                         context: context,
-                        backgroundColor: Colors.white,
+                        backgroundColor: _surface,
                         shape: const RoundedRectangleBorder(
                           borderRadius: BorderRadius.vertical(
                             top: Radius.circular(24),
@@ -602,14 +609,15 @@ class _DirectChatScreenState extends State<DirectChatScreen>
                         builder: (sheetContext) => SafeArea(
                           child: Wrap(
                             children: [
-                              Padding(
-                                padding: const EdgeInsets.all(16),
+                              const Padding(
+                                padding: EdgeInsets.all(16),
                                 child: Text(
                                   'Tệp đính kèm',
                                   style: TextStyle(
+                                    fontFamily: 'Lexend',
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
-                                    color: _primaryDark,
+                                    color: _onSurface,
                                   ),
                                 ),
                               ),
@@ -618,7 +626,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
                                   Icons.photo_library_outlined,
                                   color: _primary,
                                 ),
-                                title: const Text('Chọn từ thư viện'),
+                                title: const Text('Chọn từ thư viện', style: TextStyle(fontFamily: 'Lexend')),
                                 onTap: () {
                                   Navigator.pop(sheetContext);
                                   _attachImage(ImageSource.gallery);
@@ -629,7 +637,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
                                   Icons.attach_file_rounded,
                                   color: _primary,
                                 ),
-                                title: const Text('Chọn tài liệu'),
+                                title: const Text('Chọn tài liệu', style: TextStyle(fontFamily: 'Lexend')),
                                 onTap: () {
                                   Navigator.pop(sheetContext);
                                   _attachDocument();
@@ -640,7 +648,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
                                   Icons.camera_alt_outlined,
                                   color: _primary,
                                 ),
-                                title: const Text('Chụp ảnh'),
+                                title: const Text('Chụp ảnh', style: TextStyle(fontFamily: 'Lexend')),
                                 onTap: () {
                                   Navigator.pop(sheetContext);
                                   _attachImage(ImageSource.camera);
@@ -657,19 +665,23 @@ class _DirectChatScreenState extends State<DirectChatScreen>
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                  color: _surface,
+                  color: _surfaceContainerLow,
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: _outline.withValues(alpha: 0.6)),
+                  border: Border.all(color: _outlineVariant),
                 ),
                 child: TextField(
                   controller: _textController,
                   minLines: 1,
                   maxLines: 4,
-                  style: const TextStyle(color: _onSurface, fontSize: 14),
-                  decoration: const InputDecoration(
+                  style: const TextStyle(fontFamily: 'Lexend', color: _onSurface, fontSize: 14),
+                  decoration: InputDecoration(
                     hintText: 'Nhập tin nhắn...',
-                    hintStyle: TextStyle(color: _onVariant, fontSize: 14),
-                    contentPadding: EdgeInsets.symmetric(
+                    hintStyle: TextStyle(
+                      fontFamily: 'Lexend',
+                      color: _onSurfaceVariant.withValues(alpha: 0.7),
+                      fontSize: 14,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 10,
                     ),
@@ -682,7 +694,7 @@ class _DirectChatScreenState extends State<DirectChatScreen>
             const SizedBox(width: 8),
             Container(
               decoration: const BoxDecoration(
-                color: _primaryDark,
+                color: _primary,
                 shape: BoxShape.circle,
               ),
               child: IconButton(
@@ -702,11 +714,11 @@ class _DirectChatScreenState extends State<DirectChatScreen>
 }
 
 class _TimelineTile extends StatelessWidget {
-  static const _primary = Color(0xFFC98C7B);
-  static const _surfaceLow = Color(0xFFF2EAE4);
-  static const _onSurface = Color(0xFF271812);
-  static const _onVariant = Color(0xFF524440);
-  static const _outline = Color(0xFFD6C2BD);
+  static const _primary = Color(0xFF845143);
+  static const _surface = Color(0xFFFFFCF9);
+  static const _onSurface = Color(0xFF2A211D);
+  static const _onSurfaceVariant = Color(0xFF655650);
+  static const _outlineVariant = Color(0xFFE5D3CA);
 
   final TimelineItem item;
   final String conversationId;
@@ -769,10 +781,10 @@ class _TimelineTile extends StatelessWidget {
                 maxWidth: MediaQuery.of(context).size.width * 0.75,
               ),
               decoration: BoxDecoration(
-                color: isOwnMessage ? _primary : Colors.white,
+                color: isOwnMessage ? _primary : _surface,
                 border: isOwnMessage
                     ? null
-                    : Border.all(color: _outline.withValues(alpha: 0.6)),
+                    : Border.all(color: _outlineVariant),
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(18),
                   topRight: const Radius.circular(18),
@@ -781,7 +793,7 @@ class _TimelineTile extends StatelessWidget {
                 ),
                 boxShadow: const [
                   BoxShadow(
-                    color: Color(0x0A5A463F),
+                    color: Color(0x0A845143),
                     blurRadius: 8,
                     offset: Offset(0, 3),
                   ),
@@ -791,8 +803,9 @@ class _TimelineTile extends StatelessWidget {
                   ? Text(
                       'Tin nhắn đã được thu hồi',
                       style: TextStyle(
+                        fontFamily: 'Lexend',
                         fontStyle: FontStyle.italic,
-                        color: isOwnMessage ? Colors.white70 : _onVariant,
+                        color: isOwnMessage ? Colors.white70 : _onSurfaceVariant,
                         fontSize: 13,
                       ),
                     )
@@ -815,6 +828,7 @@ class _TimelineTile extends StatelessWidget {
                         Text(
                           'Tài liệu',
                           style: TextStyle(
+                            fontFamily: 'Lexend',
                             color: isOwnMessage ? Colors.white : _onSurface,
                             fontWeight: FontWeight.w500,
                           ),
@@ -824,6 +838,7 @@ class _TimelineTile extends StatelessWidget {
                   : Text(
                       item.messageBody ?? '',
                       style: TextStyle(
+                        fontFamily: 'Lexend',
                         color: isOwnMessage ? Colors.white : _onSurface,
                         fontSize: 14,
                         height: 1.4,
@@ -836,7 +851,7 @@ class _TimelineTile extends StatelessWidget {
               padding: const EdgeInsets.only(bottom: 6, left: 4, right: 4),
               child: Text(
                 _formatTimestamp(item.createdAt),
-                style: const TextStyle(fontSize: 11, color: _onVariant),
+                style: const TextStyle(fontFamily: 'Lexend', fontSize: 11, color: _onSurfaceVariant),
               ),
             ),
           if (failed)
@@ -845,7 +860,7 @@ class _TimelineTile extends StatelessWidget {
               icon: const Icon(Icons.refresh, size: 14, color: Colors.red),
               label: const Text(
                 'Gửi lại',
-                style: TextStyle(fontSize: 12, color: Colors.red),
+                style: TextStyle(fontFamily: 'Lexend', fontSize: 12, color: Colors.red),
               ),
             )
           else if (sending)
@@ -853,7 +868,7 @@ class _TimelineTile extends StatelessWidget {
               padding: EdgeInsets.only(bottom: 6),
               child: Text(
                 'Đang gửi...',
-                style: TextStyle(fontSize: 11, color: _onVariant),
+                style: TextStyle(fontFamily: 'Lexend', fontSize: 11, color: _onSurfaceVariant),
               ),
             ),
         ],
@@ -885,8 +900,9 @@ class _TimelineTile extends StatelessWidget {
       final url = data?['presignedUrl'] as String?;
       final name = data?['originalName'] as String? ?? 'carebridge_document';
       final mime = data?['mimeType'] as String? ?? 'application/octet-stream';
-      if (url == null || url.isEmpty)
+      if (url == null || url.isEmpty) {
         throw const FormatException('Missing file URL');
+      }
       if (!context.mounted) return;
       showModalBottomSheet<void>(
         context: context,
@@ -1007,8 +1023,9 @@ class _InlineChatImageState extends State<_InlineChatImage> {
       '/api/v1/direct-conversations/${widget.conversationId}/messages/${widget.messageId}/attachment',
     );
     final url = json['data']?['presignedUrl'] as String?;
-    if (url == null || url.isEmpty)
+    if (url == null || url.isEmpty) {
       throw const FormatException('Missing image URL');
+    }
     return url;
   }
 
@@ -1041,7 +1058,7 @@ class _InlineChatImageState extends State<_InlineChatImage> {
             width: 220,
             height: 168,
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => const SizedBox(
+            errorBuilder: (_, _, _) => const SizedBox(
               width: 220,
               height: 96,
               child: Center(child: Icon(Icons.broken_image_outlined)),

@@ -347,20 +347,23 @@ class FamilyDashboardServiceTest {
     }
 
     @Test
-    void alertsPermissionFalseReturnsNoAlertDataOrAggregate() {
+    void emergencyAlertsRemainVisibleWhenOptionalAlertsPermissionIsDisabled() {
         UUID groupId = UUID.randomUUID();
         CareGroupMember membership = membership(groupId, userId, Instant.now());
         stubAcceptedGroups(List.of(membership), Map.of(groupId, group(groupId, "A")));
+        when(notificationRepository.findByUserIdAndTypeAndCareGroupId(
+                        userId, NotificationType.EMERGENCY, groupId))
+                .thenReturn(List.of(alert(groupId)));
         when(memberRepository.findByCareGroupIdAndInviteStatusIn(groupId, List.of(InviteStatus.ACCEPTED)))
                 .thenReturn(List.of(membership));
 
         var response = service.get(userId, groupId);
 
         assertThat(response.groups().get(0).permissionScope().alerts()).isFalse();
-        assertThat(response.globalAggregate().alerts()).isZero();
-        assertThat(response.selectedGroupDetail().alerts()).isEmpty();
-        verify(notificationRepository, never())
-                .findByUserIdAndTypeAndCareGroupId(any(), any(), any());
+        assertThat(response.globalAggregate().alerts()).isEqualTo(1);
+        assertThat(response.selectedGroupDetail().alerts()).hasSize(1);
+        assertThat(response.selectedGroupDetail().sharedDataSummary().categories())
+                .anyMatch(category -> category.category().equals("ALERTS") && category.permitted());
     }
 
     @Test

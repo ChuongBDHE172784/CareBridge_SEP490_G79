@@ -43,6 +43,7 @@ class SafetyConfigServiceTest {
 
         verify(configStore).save(any(SafetyMonitoringConfig.class));
         assertThat(result).isNotNull();
+        assertThat(result.isLocationSharingEnabled()).isTrue();
     }
 
     @Test
@@ -59,6 +60,35 @@ class SafetyConfigServiceTest {
     }
 
     @Test
+    void configure_shouldPersistExplicitLocationSharingOptIn() {
+        when(configStore.findByUserId(USER_ID)).thenReturn(Optional.of(SafetyConfigTestFactory.makeConfig()));
+        when(configStore.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        SafetyConfigRequest request = SafetyConfigTestFactory.makeRequest();
+        request.setLocationSharingEnabled(true);
+        SafetyConfigResponse result = safetyConfigService.configure(request, USER_ID);
+
+        ArgumentCaptor<SafetyMonitoringConfig> captor = ArgumentCaptor.forClass(SafetyMonitoringConfig.class);
+        verify(configStore).save(captor.capture());
+        assertThat(captor.getValue().isLocationSharingEnabled()).isTrue();
+        assertThat(result.isLocationSharingEnabled()).isTrue();
+    }
+
+    @Test
+    void configure_oldClientShouldRetainStoredLocationSharingPreference() {
+        SafetyMonitoringConfig existing = SafetyConfigTestFactory.makeConfig();
+        existing.setLocationSharingEnabled(true);
+        when(configStore.findByUserId(USER_ID)).thenReturn(Optional.of(existing));
+        when(configStore.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        SafetyConfigRequest request = SafetyConfigTestFactory.makeRequest();
+        request.setLocationSharingEnabled(null);
+        SafetyConfigResponse result = safetyConfigService.configure(request, USER_ID);
+
+        assertThat(result.isLocationSharingEnabled()).isTrue();
+    }
+
+    @Test
     void getConfig_whenNoRecord_shouldReturnDefault() {
         // SCONFIG-TC-004
         when(configStore.findByUserId(USER_ID)).thenReturn(Optional.empty());
@@ -67,5 +97,6 @@ class SafetyConfigServiceTest {
 
         assertThat(result.isFallDetectionEnabled()).isFalse();
         assertThat(result.getSensitivityLevel()).isEqualTo("MEDIUM");
+        assertThat(result.isLocationSharingEnabled()).isFalse();
     }
 }

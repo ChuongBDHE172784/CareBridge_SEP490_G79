@@ -14,6 +14,7 @@ class SafetyService {
     required bool fallDetectionEnabled,
     required String sensitivityLevel,
     required bool emergencyAutoAlert,
+    bool? locationSharingEnabled,
     int? countdownSeconds,
     bool? sensorPermissionGranted,
   }) async {
@@ -21,6 +22,7 @@ class SafetyService {
       fallDetectionEnabled: fallDetectionEnabled,
       sensitivityLevel: sensitivityLevel,
       emergencyAutoAlert: emergencyAutoAlert,
+      locationSharingEnabled: locationSharingEnabled,
       countdownSeconds: countdownSeconds,
       sensorPermissionGranted: sensorPermissionGranted,
     );
@@ -33,12 +35,14 @@ class SafetyService {
     required bool fallDetectionEnabled,
     required String sensitivityLevel,
     required bool emergencyAutoAlert,
+    bool? locationSharingEnabled,
     int? countdownSeconds,
     bool? sensorPermissionGranted,
   }) => <String, dynamic>{
     'fallDetectionEnabled': fallDetectionEnabled,
     'sensitivityLevel': sensitivityLevel,
     'emergencyAutoAlert': emergencyAutoAlert,
+    'locationSharingEnabled': ?locationSharingEnabled,
     'countdownSeconds': ?countdownSeconds,
     'sensorPermissionGranted': ?sensorPermissionGranted,
   };
@@ -66,6 +70,7 @@ class SafetyService {
     required double gyroscopeY,
     required double gyroscopeZ,
     required DateTime timestamp,
+    bool onDeviceFallConfirmed = false,
     String? signalId,
     double? latitude,
     double? longitude,
@@ -78,6 +83,7 @@ class SafetyService {
       'gyroscopeY': gyroscopeY,
       'gyroscopeZ': gyroscopeZ,
       'timestamp': timestamp.toUtc().toIso8601String(),
+      'onDeviceFallConfirmed': onDeviceFallConfirmed,
       'signalId': ?signalId,
       'latitude': ?latitude,
       'longitude': ?longitude,

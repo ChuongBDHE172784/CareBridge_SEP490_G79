@@ -21,9 +21,9 @@ public final class CanonicalUserFixture {
             String role) {
         jdbcTemplate.update(
                 "INSERT INTO users (user_id, person_id, full_name, display_name, phone, "
-                        + "phone_number, role, enabled, locked, email_verified, phone_verified, "
+                        + "role, enabled, locked, email_verified, phone_verified, "
                         + "created_at, updated_at) "
-                        + "VALUES (?, ?, ?, ?, ?, ?, ?, true, false, false, false, now(), now())",
-                userId, userId, displayName, displayName, phone, phone, role);
+                        + "VALUES (?, ?, ?, ?, ?, ?, true, false, false, false, now(), now())",
+                userId, userId, displayName, displayName, phone, role);
     }
 }

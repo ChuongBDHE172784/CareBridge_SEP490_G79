@@ -168,3 +168,94 @@
   POSTURE_FEEDBACK rows, `115/75 mmHg`), even though the entity field is named `note`. Check
   what a column actually holds before mapping something onto it on the strength of its Java
   field name.
+
+## 2026-08-08 — Live Supabase metadata audit
+
+- Never run `PrintSupabaseTablesTest` for a read-only audit: it drops and recreates `public`. Query `information_schema` through Supabase's read-only endpoint, or use JDBC with both `Connection#setReadOnly(true)` and `SET default_transaction_read_only = on`.
+- Count current catalog columns by fully qualified `schema.table`, and report application tables in `public` separately from Supabase-managed schemas such as `auth`, `storage`, `realtime`, and `vault`.
+- JShell can fail in the Windows sandbox because Registry-backed preferences are unavailable. Java source-file mode from `D:\tmp` is a reliable one-off JDBC fallback that keeps credential values inside the existing local `.env`.
+
+## 2026-08-08 — Column-level Supabase cleanup audit
+
+- An all-null or constant column is only a candidate, not deletion evidence. Subtype entities, native writers, indexes, constraints, RLS, external consumers, and legal/clinical meaning can keep a currently empty column essential.
+- Wide polymorphic tables should usually be split by lifecycle and retention boundary instead of having isolated columns dropped. PostgreSQL's null bitmap makes empty nullable columns cheap; operational complexity and oversized indexes are the larger costs.
+- Profile data growth before schema cleanup. `safety_events` contained 9,054 alert-attempt rows for 4,527 logical attempts across only three sessions because `NO_RECIPIENTS` was retried every minute without a cap; deleting rows before fixing that writer would only hide the root cause.
+- A contract-drop shortlist must survive separate verification. Security counters, consent/audit fields, temporal interval fields, and compatibility identifiers stay in review until canonical ownership and external-reference gates are explicit.
+
+## 2026-08-08 — `public.users` feature-to-column audit
+
+- An unused physical column can coexist with an active same-named feature stored in JSON. Trace exact ORM annotations, native SQL, and compiled classes before deciding whether to drop the column, migrate the feature into it, or remove the feature.
+- Five JPA entities mapped onto one wide row create ownership hazards beyond null-column count: lifecycle callbacks can overwrite another aggregate's fields, defaults become meaningless for unrelated roles, and one shared `updated_at` loses domain-specific meaning.
+- Similar-looking profile fields must be judged by exposure boundary, not name alone. Private/public avatar and area/region pairs can be intentional, while `phone`/`phone_number` is a real dual-source problem unless product semantics explicitly distinguish them.
+- For security state currently mirrored in `settings_jsonb`, prefer a typed canonical column plus a gated cutover of every reader and writer; do not infer redundancy from all-null physical data while the application still stores the live value elsewhere.
+
+## 2026-08-08 - Duplicate user phone column cleanup
+
+- When removing `public.users.phone_number`, keep `users.phone` as the canonical storage and remap `UserProfile` before applying the contract migration; otherwise Hibernate validation or profile writes will still target the dropped column.
+- Native integration fixtures must be migrated with the schema. The embedded PostgreSQL suite applied the full Flyway chain and passed without Docker, while container-based profile tests remained unavailable when Docker was not installed.
+
+## 2026-08-08 — Semantic duplicate-column audit
+
+- Same-name heuristics must be classified by boundary: private/public fields, surrogate ID/business code, identifier/human snapshot, generated JSON projection, provenance snapshot, and polymorphic subtype fields are not interchangeable even when names look similar.
+- Live equality does not establish canonical ownership. `users.must_change_password` matched its JSON key on every populated row, but the JPA property is `@Transient` and the application writes the JSON representation; source ownership has to be checked before choosing the cutover direction.
+- Default-shaped values can create vacuous equality in wide tables. `safety_events.alert_*_recipient_count` matched generic recipient counts on thousands of action rows largely because the alert columns are NOT NULL with zero defaults, not because both field families represent one writable source.
+- A deterministic mirror is lower risk than two independent writers but still has a contract. Exercise configuration JSON is regenerated from typed fields and hashed, so removing duplicate keys requires versioning the hash/projection rather than simply dropping JSON data.
+- Identity aliases and their indexes are separate cleanup decisions: all live `users.user_id/person_id` pairs matched, but active entity callbacks still require the alias; one duplicate UNIQUE constraint can be removed safely before the broader identity-adapter cutover.
+
+## 2026-08-08 — Presentation ERD synchronization
+
+- Treat edited domain tabs as the authoritative ordered `(key, name, meta)` projection and verify the Complete tab against all of them before editing.
+- For a large draw.io XML file, line-preserving cell-span edits avoid unrelated entity/whitespace churn from DOM serialization; guard the final copy with source and preview hashes.
+- For use-case ellipses, `autosize=1` plus `spacing=8` lets Draw.io resize labels during editing; keep content-based initial geometry and verify containment/overlap after resizing.
+- In PowerShell array literals, parenthesize concatenations such as `($rowId + '_key')`; otherwise the comma operator can emit a stray suffix (`_key`) and hide the real lookup error.
+- Re-baseline the current ERD before every follow-up edit: this file gained three legitimate edges between turns, so relying on the previous `150` count would have deleted or misreported user work; the correct guarded transition was `153 -> 147`.
+
+## 2026-08-09 — Use-case diagram style synchronization
+
+- Treat an already-dirty Draw.io file as authoritative and preserve the existing reference pages before changing the remaining pages.
+- For large Draw.io XML, line-scoped patches avoid unrelated serialization churn; validate XML parsing, edge source/target references, `targetUc/ucId` metadata, and geometry containment after visual-style changes.
+- If an uncommitted Draw.io version disappears, inspect backups, stashes and unreachable Git objects first; if no exact copy exists, reconstruct from the session's verified use-case/edge definitions and report that limitation explicitly.
+
+## 2026-08-09 — Checklist task detail and support routing
+
+- New template fields that become distributed-task snapshots need both write-path propagation and a live-upgrade backfill; otherwise pre-existing rows lose content and idempotency comparisons can turn into false key conflicts.
+- Treat support destinations as client-owned enum-to-route mappings rather than API-provided URLs, so unknown values remain non-navigable and every supported destination is testable.
+- On this Windows setup, Flutter verification needs workspace-local `APPDATA`, `LOCALAPPDATA`, and `PUB_CACHE`; the SDK lockfile under `Program Files` may still require an elevated no-pub test/analyze run.
+
+## 2026-08-09 — Exercise history contract diagnosis
+
+- `PaginatedResponse<T>` serializes `data` as a top-level list and keeps page metadata beside it; a mobile parser that assumes `data.content` will fail at runtime even when the list is empty. Cover the actual JSON envelope in a cross-stack contract test.
+- Filter labels and request parameters are one contract: exercise-type values such as `YOGA` cannot be sent as `trimesterScope`, and a label such as “Tháng này” must send real `from`/`to` bounds.
+- Forward seed reconciliation needs gates for every JPA enum-backed column. The legacy exercise template retained `stage = 'PREGNANCY'` and `template_status = 'ACTIVE'`, values that `TrimesterScope` and `ExerciseStatus` cannot hydrate, so a history title lookup can turn otherwise valid completed-session data into HTTP 500.
+- Navigation-only widget tests do not cover a data flow. Exercise history needs both a mobile service/widget test for the canonical paginated envelope and a backend embedded-Postgres endpoint test that reads the seeded completed session.
+
+## 2026-08-09 — End-day artifact and index recovery
+
+- Draw.io Desktop's `--page-index` is 1-based. Treat the generator's canonical page order as the contract, then require validator counts, unique export hashes, and OCR role mapping before publishing; otherwise a duplicated first page can shift every later PNG while still producing valid images.
+- A tracked file under an ignored generated directory can appear modified even when its filtered and raw hashes match `HEAD`. Refresh it with `git add -u -- <tracked-path>` and confirm `git diff --cached --quiet` before deciding it is a real change; do not commit generated noise.
+- A strict end-day preflight should stop on the wrong branch or any dirty entry. Preserve verified work through explicit commits and ancestry-proven fast-forwards rather than hiding state with stash, reset, clean, or force operations.
+
+## 2026-08-09 - Account lock appeal ERD restoration
+
+- A 5 MB Draw.io XML can exceed both the patch helper's 64 KB transport limit and selective text editors' artifact-size limit. Use a temporary, hash-guarded transformation script with exact-once anchors, candidate XML validation, and an atomic replace that keeps a backup until the final hash matches.
+- Rectangle non-overlap is not enough after reflow: an existing auto-routed FK can cross a newly inserted table. Export and inspect the affected modules, then place the new entity in a clear routing corridor and separate relationship labels with explicit waypoints.
+- Exporting the full Complete ERD can hang Draw.io Desktop. Build a temporary preview by importing only the relevant table-ID prefixes and edges into a one-page document; constructing a new XML tree is much faster than repeatedly removing thousands of cells.
+- Derive summary counters from the final XML, not from the existing subtitle. Restoring one table and two FK edges changed the authoritative Complete projection from 62/147 to 63/149, while the old displayed 150-FK counter was already stale.
+
+## 2026-08-10 — Checklist cadence design discovery
+
+- `ChecklistRangeUnit.DAY|WEEK|MONTH` measures an eligibility or due-date offset; it is not a recurrence discriminator. A daily recurring checklist needs explicit cadence metadata so existing one-day milestones are not silently reinterpreted.
+- The canonical checklist aggregate can represent daily or weekly occurrences without a new table: keep template policy on `care_item_templates` and use the existing `checklist_instances.window_start/window_end` plus the centralized distribution-key factory for occurrence identity.
+- `stage = null` already means lifecycle-neutral compatibility, especially for FAMILY-only authoring. Do not repurpose every null-stage template as cross-stage DAILY; either require an explicit discriminator with guarded semantics or publish separate stage-specific templates.
+- The Spreadsheets skill treats a missing `load_workspace_dependencies`/artifact-tool runtime as a hard read blocker. Do not fall back to alternate XLSX libraries or ZIP/XML parsing; report the limitation and keep the source workbook unchanged.
+- Architecture reviewer gates should attack both the target design and the current runtime: the checklist GET path accepted a caller date and rollover historized/cancelled old windows, so those are explicit cutover tests rather than assumed invariants.
+- Additive cadence fields do not protect old clients by themselves. A server capability/contract gate must control both projections and actions, with a documented status/envelope and cache variation.
+- For shared-table root/item entities, “add columns” is incomplete design evidence. State physical nullability, entry-type row-shape checks, JPA ownership, clone propagation, and effective-timestamp boundary semantics together.
+- Recurrence safety needs budgets at every layer: per-context candidates, whole invocation, and projected child rows, serialized by one existing lock/coordination primitive with deterministic continuation.
+- A source count is not traceability. Pin source hashes and import batches, exclude structural checkboxes, assign hierarchical leaf locators/text hashes, and require a bijection before clinical approval.
+
+## 2026-08-10 — Recovery branch integration
+
+- A branch-specific `.gitignore` can make a worktree look clean on the recovery branch and expose many existing generated artifacts after switching to an older target. Group the untracked paths and compare them against the incoming tree before proceeding; a collision-free fast-forward can preserve the artifacts while applying the incoming ignore rule.
+- A timed-out `git commit` may still have completed successfully. Check `HEAD`, the index/worktree status, `index.lock`, and live Git processes before retrying so the same content is not committed twice.
+- Publishing a locally merged branch is a separate external action from merging and deleting a local recovery branch. If push is not explicitly authorized, leave remote refs untouched and report their exact lag.

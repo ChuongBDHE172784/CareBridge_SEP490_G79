@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.sql.DriverManager;
 import org.flywaydb.core.Flyway;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -21,6 +22,15 @@ class DatabaseGate0IntegrationTest {
 
     @Container
     final PostgreSQLContainer postgres = new PostgreSQLContainer(POSTGRES_IMAGE);
+
+    // The checklist migrations refuse to run unless deployment has already created the
+    // NOLOGIN owner roles they hand objects to — Flyway itself has no CREATEROLE
+    // dependency by design. Provision them exactly as AbstractPostgresIntegrationTest does.
+    @BeforeEach
+    void provisionDeploymentRoles() throws Exception {
+        EmbeddedPostgresRoleFixture.provision(
+                postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
+    }
 
     @Test
     void cleanBootstrapAppliesTheRepositoryMigrationChainOnce() throws Exception {
