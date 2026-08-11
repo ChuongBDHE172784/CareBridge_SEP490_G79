@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ConfirmDialog from '../../../shared/components/ConfirmDialog';
 import { fetchStaffContentList, archiveContent, updateContent } from '../services/contentApi';
 import type { ContentDetail, ContentStage, ContentStatus, ContentType } from '../models/content';
 import { STAGE_LABELS, STAGE_OPTIONS, STATUS_LABELS } from '../models/content';
@@ -64,6 +65,14 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
   const [actionError, setActionError] = useState('');
   const [sortKey, setSortKey] = useState<'title' | 'stage' | 'status' | 'updatedAt'>('updatedAt');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+
+  // Submit all state
+  const [isSubmitAllConfirmOpen, setIsSubmitAllConfirmOpen] = useState(false);
+  const [isFetchingDrafts, setIsFetchingDrafts] = useState(false);
+  const [isSubmittingAll, setIsSubmittingAll] = useState(false);
+  const [submitAllError, setSubmitAllError] = useState('');
+  const [draftItemsToSubmit, setDraftItemsToSubmit] = useState<ContentDetail[]>([]);
+
   const latestRequestId = useRef(0);
   const debouncedKeyword = useDebouncedValue(searchInput.trim());
   const pageSize = 10;
@@ -146,6 +155,70 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
     }
   };
 
+  const handleOpenSubmitAllModal = async () => {
+    setIsFetchingDrafts(true);
+    setSubmitAllError('');
+    try {
+      const data = await fetchStaffContentList({
+        type,
+        status: 'DRAFT',
+        size: 100,
+      });
+      setDraftItemsToSubmit(data.content);
+      setIsSubmitAllConfirmOpen(true);
+    } catch {
+      setSubmitAllError('Không thể lấy danh sách bản nháp. Vui lòng thử lại.');
+      setIsSubmitAllConfirmOpen(true);
+    } finally {
+      setIsFetchingDrafts(false);
+    }
+  };
+
+  const handleConfirmSubmitAll = async () => {
+    if (draftItemsToSubmit.length === 0) {
+      setIsSubmitAllConfirmOpen(false);
+      return;
+    }
+
+    setIsSubmittingAll(true);
+    setSubmitAllError('');
+
+    try {
+      const results = await Promise.allSettled(
+        draftItemsToSubmit.map((item) =>
+          updateContent(item.id, {
+            title: item.title,
+            body: item.body,
+            summary: item.summary ?? undefined,
+            stage: item.stage,
+            topicId: item.topicId ?? undefined,
+            tagIds: item.tagIds,
+            eligibleFromWeek: item.eligibleFromWeek ?? null,
+            eligibleToWeek: item.eligibleToWeek ?? null,
+            recommendationPriority: item.recommendationPriority ?? 0,
+            status: 'PENDING_REVIEW',
+            sourceLabel: item.sourceLabel ?? undefined,
+            sources: item.sources,
+          }),
+        ),
+      );
+
+      const failedCount = results.filter((r) => r.status === 'rejected').length;
+      if (failedCount > 0) {
+        const successCount = results.length - failedCount;
+        setSubmitAllError(`Đã gửi duyệt ${successCount}/${results.length} mục. ${failedCount} mục gặp lỗi, vui lòng thử lại.`);
+        await loadData();
+      } else {
+        setIsSubmitAllConfirmOpen(false);
+        await loadData();
+      }
+    } catch {
+      setSubmitAllError('Không thể gửi duyệt các mục đã chọn. Vui lòng thử lại.');
+    } finally {
+      setIsSubmittingAll(false);
+    }
+  };
+
   const handleDelete = async (item: ContentDetail) => {
     const reason = window.prompt(`Nhập lý do xóa (lưu trữ) "${item.title}":`);
     if (reason === null) return;
@@ -171,6 +244,19 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
           <p className="text-on-surface-variant text-sm mt-1">{subtitle}</p>
         </div>
         <div className="flex gap-2.5">
+          <button
+            type="button"
+            onClick={() => void handleOpenSubmitAllModal()}
+            disabled={isLoading || isFetchingDrafts}
+            className="flex items-center gap-2 py-3 px-5 rounded-full border border-primary/40 bg-surface text-primary text-sm font-semibold cursor-pointer whitespace-nowrap hover:bg-primary-container/20 transition-colors disabled:opacity-50"
+          >
+            {isFetchingDrafts ? (
+              <span className="material-symbols-outlined text-lg animate-spin">sync</span>
+            ) : (
+              <span className="material-symbols-outlined text-lg">send</span>
+            )}
+            Gửi phê duyệt tất cả
+          </button>
           <button
             type="button"
             onClick={() => setIsImportModalOpen(true)}
@@ -364,6 +450,25 @@ export default function ContentTypeListPage({ type, title, subtitle, createLabel
         onClose={() => setIsImportModalOpen(false)}
         onSuccess={loadData}
       />
+
+      <ConfirmDialog
+        key="submit-all-confirm-dialog"
+        open={isSubmitAllConfirmOpen}
+        title={type === 'ARTICLE' ? 'Gửi phê duyệt tất cả bài viết?' : 'Gửi phê duyệt tất cả FAQ?'}
+        description={
+          draftItemsToSubmit.length === 0
+            ? `Không có ${type === 'ARTICLE' ? 'bài viết' : 'FAQ'} bản nháp nào cần gửi phê duyệt.`
+            : `Bạn có chắc chắn muốn gửi phê duyệt tất cả ${draftItemsToSubmit.length} ${type === 'ARTICLE' ? 'bài viết' : 'FAQ'} bản nháp không? Các mục này sẽ được chuyển sang trạng thái Chờ duyệt.`
+        }
+        icon="send"
+        tone="default"
+        confirmLabel={draftItemsToSubmit.length > 0 ? `Gửi phê duyệt (${draftItemsToSubmit.length} mục)` : 'Đóng'}
+        submitting={isSubmittingAll}
+        errorText={submitAllError}
+        onConfirm={draftItemsToSubmit.length > 0 ? handleConfirmSubmitAll : () => setIsSubmitAllConfirmOpen(false)}
+        onCancel={() => setIsSubmitAllConfirmOpen(false)}
+      />
     </div>
   );
 }
+
