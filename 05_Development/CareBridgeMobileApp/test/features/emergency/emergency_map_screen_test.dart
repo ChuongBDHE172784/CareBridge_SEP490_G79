@@ -12,6 +12,7 @@ import 'package:untitled/features/aiTriage/services/triage_continuation_store.da
 import 'package:untitled/features/aiTriage/services/triage_service.dart';
 import 'package:untitled/features/emergency/models/emergency_session_model.dart';
 import 'package:untitled/features/emergency/models/care_facility_model.dart';
+import 'package:untitled/features/emergency/models/location_share_result.dart';
 import 'package:untitled/features/emergency/screens/emergency_map_screen.dart';
 import 'package:untitled/features/emergency/services/care_facility_service.dart';
 import 'package:untitled/features/emergency/services/emergency_service.dart';
@@ -32,18 +33,19 @@ class _RecordingFacilityService extends CareFacilityService {
   }
 }
 
-Position _position() => Position(
-  longitude: 106.66,
-  latitude: 10.76,
-  timestamp: DateTime(2026),
-  accuracy: 5,
-  altitude: 0,
-  altitudeAccuracy: 0,
-  heading: 0,
-  headingAccuracy: 0,
-  speed: 0,
-  speedAccuracy: 0,
-);
+Position _position({double latitude = 10.76, double longitude = 106.66}) =>
+    Position(
+      longitude: longitude,
+      latitude: latitude,
+      timestamp: DateTime(2026),
+      accuracy: 5,
+      altitude: 0,
+      altitudeAccuracy: 0,
+      heading: 0,
+      headingAccuracy: 0,
+      speed: 0,
+      speedAccuracy: 0,
+    );
 
 class _RecordingEmergencyService extends EmergencyService {
   int openCalls = 0;
@@ -56,6 +58,10 @@ class _RecordingEmergencyService extends EmergencyService {
   );
   Object? activeError;
   Object? openError;
+  Object? shareError;
+  int shareCalls = 0;
+  double? sharedLatitude;
+  double? sharedLongitude;
 
   @override
   Future<EmergencySession?> getActive() async {
@@ -79,6 +85,23 @@ class _RecordingEmergencyService extends EmergencyService {
       triggerSource: triggerSource,
     );
   }
+
+  @override
+  Future<LocationShareResult> shareCurrentLocation({
+    required double latitude,
+    required double longitude,
+  }) async {
+    shareCalls++;
+    sharedLatitude = latitude;
+    sharedLongitude = longitude;
+    if (shareError != null) throw shareError!;
+    return LocationShareResult(
+      shareId: 'share-$shareCalls',
+      recipientCount: 2,
+      pushDeliveredCount: 2,
+      sharedAt: DateTime.utc(2026, 8, 11, 1, 2),
+    );
+  }
 }
 
 class _QueuedEmergencyService extends _RecordingEmergencyService {
@@ -89,6 +112,23 @@ class _QueuedEmergencyService extends _RecordingEmergencyService {
     activeCalls++;
     final request = Completer<EmergencySession?>();
     requests.add(request);
+    return request.future;
+  }
+}
+
+class _QueuedLocationShareService extends _RecordingEmergencyService {
+  final List<Completer<LocationShareResult>> shareRequests = [];
+
+  @override
+  Future<LocationShareResult> shareCurrentLocation({
+    required double latitude,
+    required double longitude,
+  }) {
+    shareCalls++;
+    sharedLatitude = latitude;
+    sharedLongitude = longitude;
+    final request = Completer<LocationShareResult>();
+    shareRequests.add(request);
     return request.future;
   }
 }
@@ -272,36 +312,45 @@ void main() {
     expect(find.text('Gọi cấp cứu 115'), findsOneWidget);
   });
 
-  testWidgets(
-    'triage handoff checks notification request without claiming delivery',
-    (tester) async {
-      final service = _RecordingEmergencyService();
-      await tester.pumpWidget(
-        MaterialApp(
-          home: EmergencyMapScreen(
-            emergencyService: service,
-            existingSession: const EmergencySession(
-              sessionId: 'triage-session',
-              userId: 'mother',
-              status: 'ACTIVE',
-              triggerSource: 'AI_TRIAGE',
-            ),
+  testWidgets('location action sends a fresh position to family accounts', (
+    tester,
+  ) async {
+    final service = _RecordingEmergencyService();
+    var locationReads = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: EmergencyMapScreen(
+          emergencyService: service,
+          facilityService: _RecordingFacilityService(),
+          locationConsentProbe: () async => true,
+          permissionService: SafetyPermissionService(
+            locationReader: () async {
+              locationReads++;
+              return locationReads == 1
+                  ? _position(latitude: 10.70, longitude: 106.60)
+                  : _position(latitude: 10.76, longitude: 106.66);
+            },
           ),
         ),
-      );
-      await tester.pump();
+      ),
+    );
+    await tester.pumpAndSettle();
 
-      expect(service.openCalls, 0);
-      await tester.tap(find.byKey(const Key('emergency-family-alert')));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text('Gửi vị trí'), findsOneWidget);
+    expect(find.text('Báo động gia đình'), findsNothing);
+    await tester.tap(find.byKey(const Key('emergency-family-alert')));
+    await tester.pumpAndSettle();
 
-      expect(service.openCalls, 0);
-      expect(service.activeCalls, 1);
-      expect(find.byKey(const Key('emergency-session-status')), findsNothing);
-      expect(find.textContaining('Đã gửi báo động'), findsNothing);
-    },
-  );
+    expect(locationReads, 2);
+    expect(service.shareCalls, 1);
+    expect(service.sharedLatitude, 10.76);
+    expect(service.sharedLongitude, 106.66);
+    expect(find.text('Đã gửi vị trí'), findsOneWidget);
+    expect(
+      find.text('Đã gửi vị trí hiện tại cho 2 người thân.'),
+      findsOneWidget,
+    );
+  });
 
   testWidgets(
     'restored postpartum triage route GETs active and hides pediatric map',
@@ -546,7 +595,7 @@ void main() {
     expect(find.byKey(const Key('emergency-session-status')), findsNothing);
   });
 
-  testWidgets('manual entry still opens a MANUAL emergency session', (
+  testWidgets('manual nearby-care entry does not open an emergency session', (
     tester,
   ) async {
     final service = _RecordingEmergencyService();
@@ -555,10 +604,11 @@ void main() {
     );
     await tester.pump();
 
-    expect(service.openCalls, 1);
+    expect(service.openCalls, 0);
+    expect(service.activeCalls, 0);
   });
 
-  testWidgets('manual open failure shows explicit failure without success', (
+  testWidgets('manual nearby-care entry ignores emergency session failures', (
     tester,
   ) async {
     final service = _RecordingEmergencyService()
@@ -569,13 +619,11 @@ void main() {
     );
     await tester.pump();
 
-    await tester.tap(find.byKey(const Key('emergency-family-alert')));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
-
-    expect(service.openCalls, 2);
+    expect(find.text('Gửi vị trí'), findsOneWidget);
+    expect(find.byKey(const Key('emergency-session-retry')), findsNothing);
+    expect(service.openCalls, 0);
+    expect(service.shareCalls, 0);
     expect(find.byKey(const Key('emergency-session-status')), findsNothing);
-    expect(find.text('Không thể gửi báo động. Hãy thử lại.'), findsOneWidget);
   });
 
   testWidgets('triage active-session reconciliation is single-flight', (
@@ -665,13 +713,18 @@ void main() {
   );
 
   testWidgets(
-    'late family-alert reconciliation from previous account is discarded',
+    'late location-share response from previous account is discarded',
     (tester) async {
-      final service = _QueuedEmergencyService();
+      final service = _QueuedLocationShareService();
       await tester.pumpWidget(
         MaterialApp(
           home: EmergencyMapScreen(
             emergencyService: service,
+            facilityService: _RecordingFacilityService(),
+            permissionService: SafetyPermissionService(
+              locationReader: () async => _position(),
+            ),
+            locationConsentProbe: () async => true,
             existingSession: const EmergencySession(
               sessionId: 'account-a-emergency',
               userId: 'account-a',
@@ -682,23 +735,23 @@ void main() {
           ),
         ),
       );
-      await tester.pump();
+      await tester.pumpAndSettle();
 
       await tester.tap(find.byKey(const Key('emergency-family-alert')));
       await tester.pump();
-      expect(service.requests, hasLength(1));
+      expect(service.shareRequests, hasLength(1));
       await AuthState.instance.setTokens(
         accessToken: 'access-b',
         refreshToken: 'refresh-b',
         userId: 'account-b',
         role: 'MOTHER',
       );
-      service.requests.single.complete(
-        const EmergencySession(
-          sessionId: 'account-a-emergency',
-          userId: 'account-a',
-          status: 'ACTIVE',
-          triggerSource: 'AI_TRIAGE',
+      service.shareRequests.single.complete(
+        LocationShareResult(
+          shareId: 'late-share',
+          recipientCount: 2,
+          pushDeliveredCount: 2,
+          sharedAt: DateTime.utc(2026, 8, 11, 1, 2),
         ),
       );
       await tester.pump();
@@ -713,7 +766,7 @@ void main() {
     },
   );
 
-  testWidgets('single-flight retry unlocks family-alert action on completion', (
+  testWidgets('triage session retry disables location action independently', (
     tester,
   ) async {
     final service = _QueuedEmergencyService();
@@ -730,7 +783,7 @@ void main() {
     service.requests[0].complete(null);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('emergency-family-alert')));
+    await tester.tap(find.byKey(const Key('emergency-session-retry')));
     await tester.pump();
     expect(service.requests, hasLength(2));
 
@@ -758,6 +811,7 @@ void main() {
       find.byKey(const Key('family-alert')),
     );
     expect(action.onPressed, isNotNull);
+    expect(service.shareCalls, 0);
     expect(find.byKey(const Key('emergency-session-retry')), findsNothing);
   });
 
@@ -815,7 +869,7 @@ void main() {
     expect(find.byKey(const Key('emergency-session-retry')), findsNothing);
   });
 
-  testWidgets('AI triage session never falls through to MANUAL open', (
+  testWidgets('supplied active AI triage session never opens MANUAL flow', (
     tester,
   ) async {
     final service = _RecordingEmergencyService()..activeSession = null;
@@ -823,6 +877,11 @@ void main() {
       MaterialApp(
         home: EmergencyMapScreen(
           emergencyService: service,
+          facilityService: _RecordingFacilityService(),
+          permissionService: SafetyPermissionService(
+            locationReader: () async => _position(),
+          ),
+          locationConsentProbe: () async => true,
           existingSession: const EmergencySession(
             sessionId: 'triage-session',
             userId: 'mother',
@@ -833,14 +892,12 @@ void main() {
         ),
       ),
     );
-    await tester.pump();
-
-    await tester.tap(find.byKey(const Key('emergency-family-alert')));
     await tester.pumpAndSettle();
 
-    expect(service.activeCalls, 1);
+    expect(service.activeCalls, 0);
     expect(service.openCalls, 0);
-    expect(find.byKey(const Key('emergency-session-retry')), findsOneWidget);
+    expect(service.shareCalls, 0);
+    expect(find.byKey(const Key('emergency-session-retry')), findsNothing);
   });
 
   testWidgets('stage is normalized before maternal routing', (tester) async {

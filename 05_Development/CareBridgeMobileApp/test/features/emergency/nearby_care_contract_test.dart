@@ -1,14 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:untitled/core/network/api_client.dart';
 import 'package:untitled/features/emergency/models/care_facility_model.dart';
 import 'package:untitled/features/emergency/models/emergency_session_model.dart';
+import 'package:untitled/features/emergency/models/location_share_result.dart';
 import 'package:untitled/features/emergency/screens/emergency_map_screen.dart';
 import 'package:untitled/features/emergency/services/care_facility_service.dart';
 import 'package:untitled/features/emergency/services/emergency_service.dart';
 import 'package:untitled/features/safety/services/safety_permission_service.dart';
 
 class _EmergencyStub extends EmergencyService {
+  int shareCalls = 0;
+  double? sharedLatitude;
+  double? sharedLongitude;
+  Object? shareError;
+
   @override
   Future<EmergencySession> openFlow({
     required String triggerSource,
@@ -20,6 +27,23 @@ class _EmergencyStub extends EmergencyService {
     status: 'ACTIVE',
     triggerSource: triggerSource,
   );
+
+  @override
+  Future<LocationShareResult> shareCurrentLocation({
+    required double latitude,
+    required double longitude,
+  }) async {
+    shareCalls++;
+    sharedLatitude = latitude;
+    sharedLongitude = longitude;
+    if (shareError != null) throw shareError!;
+    return LocationShareResult(
+      shareId: 'share-$shareCalls',
+      recipientCount: 2,
+      pushDeliveredCount: 1,
+      sharedAt: DateTime.utc(2026, 8, 11, 1, 2),
+    );
+  }
 }
 
 class _RetryEmergencyStub extends EmergencyService {
@@ -40,6 +64,17 @@ class _RetryEmergencyStub extends EmergencyService {
       triggerSource: triggerSource,
     );
   }
+
+  @override
+  Future<LocationShareResult> shareCurrentLocation({
+    required double latitude,
+    required double longitude,
+  }) async => LocationShareResult(
+    shareId: 'share-1',
+    recipientCount: 1,
+    pushDeliveredCount: 1,
+    sharedAt: DateTime.utc(2026, 8, 11, 1, 2),
+  );
 }
 
 class _FacilityStub extends CareFacilityService {
@@ -361,7 +396,7 @@ void main() {
     },
   );
 
-  testWidgets('failed initial family alert exposes independent retry', (
+  testWidgets('nearby-care entry never starts a family emergency alert', (
     tester,
   ) async {
     final emergency = _RetryEmergencyStub();
@@ -380,18 +415,51 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Thử gửi lại báo động gia đình'), findsOneWidget);
+    expect(find.byKey(const Key('emergency-session-retry')), findsNothing);
+    expect(find.text('Gửi vị trí'), findsOneWidget);
+    expect(emergency.calls, 0);
+    expect(find.text('Báo động gia đình'), findsNothing);
+  });
+
+  testWidgets('failed location share exposes retry state', (tester) async {
+    final emergency = _EmergencyStub()
+      ..shareError = ApiException(500, '{"message":"temporary failure"}');
+    await tester.pumpWidget(
+      MaterialApp(
+        home: EmergencyMapScreen(
+          facilityService: _FacilityStub(const []),
+          permissionService: SafetyPermissionService(
+            locationReader: () async => _position(),
+          ),
+          emergencyService: emergency,
+          locationConsentProbe: () async => true,
+          uriLauncher: (_) async => true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
     await tester.tap(find.byKey(const Key('family-alert')));
     await tester.pumpAndSettle();
-    expect(emergency.calls, 2);
-    expect(find.text('Báo động gia đình'), findsOneWidget);
+
+    expect(emergency.shareCalls, 1);
+    expect(find.text('Thử gửi lại vị trí'), findsOneWidget);
     expect(
-      find.text(
-        'Yêu cầu hỗ trợ đã được gửi; thông báo gia đình đang được xử lý.',
-      ),
+      find.text('Máy chủ chưa thể lưu vị trí. Hãy thử gửi lại sau ít phút.'),
       findsOneWidget,
     );
-    expect(find.text('Đã gửi báo động đến người thân'), findsNothing);
+    expect(find.text('Báo động gia đình'), findsNothing);
+
+    emergency.shareError = null;
+    await tester.tap(find.byKey(const Key('family-alert')));
+    await tester.pumpAndSettle();
+
+    expect(emergency.shareCalls, 2);
+    expect(find.text('Đã gửi vị trí'), findsOneWidget);
+    expect(
+      find.text('Đã gửi vị trí hiện tại cho 2 người thân.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('renders provider labels and route for nullable facility ID', (
@@ -436,22 +504,39 @@ void main() {
     // Both facilities are listed even though only one carries a facilityId: the list is keyed by
     // position, so a null id must not drop a result or collapse the provider labels.
     const offstage = false;
-    expect(find.byKey(const Key('facility-0'), skipOffstage: offstage), findsOneWidget);
-    expect(find.byKey(const Key('facility-1'), skipOffstage: offstage), findsOneWidget);
-    expect(find.text('Phòng khám gần nhất', skipOffstage: offstage), findsWidgets);
+    expect(
+      find.byKey(const Key('facility-0'), skipOffstage: offstage),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('facility-1'), skipOffstage: offstage),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Phòng khám gần nhất', skipOffstage: offstage),
+      findsWidgets,
+    );
     expect(find.text('Cơ sở xa hơn', skipOffstage: offstage), findsWidgets);
 
     // Each tile states where the record came from and whether CareBridge verified it, so an
     // unverified TrackAsia import can never be presented as verified care.
     expect(
-      find.textContaining('Nguồn TrackAsia · Đã được CareBridge xác minh',
-          skipOffstage: offstage),
+      find.textContaining(
+        'Nguồn TrackAsia · Đã được CareBridge xác minh',
+        skipOffstage: offstage,
+      ),
       findsOneWidget,
     );
     expect(
-      find.textContaining('Chưa được CareBridge xác minh', skipOffstage: offstage),
+      find.textContaining(
+        'Chưa được CareBridge xác minh',
+        skipOffstage: offstage,
+      ),
       findsOneWidget,
     );
-    expect(find.textContaining('9.0 km', skipOffstage: offstage), findsOneWidget);
+    expect(
+      find.textContaining('9.0 km', skipOffstage: offstage),
+      findsOneWidget,
+    );
   });
 }

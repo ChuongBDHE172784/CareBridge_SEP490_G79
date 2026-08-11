@@ -14,6 +14,7 @@ import '../../features/checklist/screens/checklist_detail_screen.dart';
 import '../../features/home/screens/home_shell.dart';
 import '../../features/home/screens/expert_home_shell.dart';
 import '../../features/home/screens/family_member_home_screen.dart';
+import '../../features/notification/screens/notification_center_screen.dart';
 import '../../features/journey/screens/mother_stage_selection_screen.dart';
 import '../../features/journey/screens/journey_setup_screen.dart';
 import '../../features/journey/screens/postpartum_recovery_setup_screen.dart';
@@ -411,6 +412,10 @@ final GoRouter appRouter = GoRouter(
           initialIndex: initialIndex,
         );
       },
+    ),
+    GoRoute(
+      path: '/notifications',
+      builder: (context, state) => const NotificationCenterScreen(),
     ),
     GoRoute(
       path: '/mother-home',
