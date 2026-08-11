@@ -384,3 +384,32 @@ export async function archiveContent(id: string, reason: string): Promise<{ prev
   );
   return res.data.data;
 }
+
+export interface BulkImportItemPayload {
+  rowIndex: number;
+  title: string;
+  body: string;
+  summary?: string;
+  stage: string;
+  categoryName?: string;
+  topicId?: string;
+  sourceLabel?: string;
+  sourceUrl?: string;
+  sourcePublisher?: string;
+}
+
+export interface BulkImportResult {
+  totalRows: number;
+  successCount: number;
+  failedCount: number;
+  errors: string[];
+  createdIds: string[];
+}
+
+export async function importContentBatch(data: {
+  type: ContentType;
+  items: BulkImportItemPayload[];
+}): Promise<BulkImportResult> {
+  const res = await apiClient.post<ApiResponse<BulkImportResult>>('/api/v1/admin/content/import-batch', data);
+  return res.data.data;
+}

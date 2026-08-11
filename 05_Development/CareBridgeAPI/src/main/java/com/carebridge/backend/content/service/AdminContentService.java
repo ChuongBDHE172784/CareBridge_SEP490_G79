@@ -47,4 +47,7 @@ public interface AdminContentService {
      * @throws com.carebridge.backend.content.exception.ContentException (CNT-007) if reason is blank (ADR-005)
      */
     HideContentResponse hideContent(UUID id, HideContentRequest request, Principal principal);
+
+    com.carebridge.backend.content.dto.response.BulkImportResponse importContentBatch(
+            com.carebridge.backend.content.dto.request.BulkImportContentRequest request, UUID authorUserId);
 }
