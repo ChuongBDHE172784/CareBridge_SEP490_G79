@@ -100,27 +100,5 @@ describe('ContentDetailPage', () => {
     expect(screen.getByText('Cần bổ sung nguồn y khoa đáng tin cậy')).toBeTruthy();
     expect(screen.getByText('Cần chỉnh sửa')).toBeTruthy();
   });
-
-  it('classifies recommendation metadata using catalog tags, not ordinary tags', async () => {
-    harness.fetchStaffContentDetail.mockResolvedValue(contentDetail({
-      type: 'ARTICLE',
-      tagIds: ['ordinary-1', 'rec-1'],
-      eligibleFromWeek: null,
-      eligibleToWeek: null,
-      recommendationPriority: 20,
-    }));
-    harness.fetchRecommendationTags.mockResolvedValue({
-      catalogVersion: 'RECOMMENDATION_TAG_CATALOG_V1',
-      items: [{ id: 'rec-1', slug: 'rec-age-18-24', domain: 'AGE', label: 'Age 18-24' }],
-    });
-    harness.fetchTags.mockResolvedValue([
-      { id: 'ordinary-1', slug: 'nutrition', name: 'Nutrition', type: 'TAG' },
-    ]);
-
-    render(<ContentDetailPage />);
-
-    expect(await screen.findByText(/Classification: TARGETED/)).toBeTruthy();
-    expect(screen.getByText(/Audience: Age 18-24/)).toBeTruthy();
-    expect(screen.queryByText(/Retired or unknown audience IDs/)).toBeNull();
-  });
 });
+

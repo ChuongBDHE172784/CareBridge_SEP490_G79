@@ -55,7 +55,6 @@ import SecurityEventDetailPage from '../../features/security/pages/SecurityEvent
 import SecurityIncidentInvestigationPage from '../../features/security/pages/SecurityIncidentInvestigationPage';
 import SecurityIncidentResolutionPage from '../../features/security/pages/SecurityIncidentResolutionPage';
 import NotificationCenterPage from '../../features/notification/pages/NotificationCenterPage';
-import PrivacySettingsPage from '../../features/settings/pages/PrivacySettingsPage';
 
 // Content Management screens (CB-073..081)
 import ContentDashboardPage from '../../features/contentManagement/pages/ContentDashboardPage';
@@ -180,7 +179,6 @@ export const router = createBrowserRouter([
               { path: '/admin/security/incidents/:eventId/investigate', element: <SecurityIncidentInvestigationPage /> },
               { path: '/admin/security/incidents/:eventId/resolve', element: <SecurityIncidentResolutionPage /> },
               { path: '/admin/notifications', element: <NotificationCenterPage /> },
-              { path: '/admin/settings/privacy', element: <PrivacySettingsPage /> },
               { path: '/admin/posture-configs', element: <PostureConfigListPage /> },
               { path: '/admin/posture-configs/new', element: <EditPostureConfigPage /> },
               { path: '/admin/posture-configs/:exerciseId', element: <PostureConfigDetailPage /> },
