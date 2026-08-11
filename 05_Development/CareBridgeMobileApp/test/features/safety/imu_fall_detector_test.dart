@@ -380,6 +380,48 @@ void main() {
     expect(detector.latestDecision.reason, ImuDetectorDecisionReason.cooldown);
   });
 
+  test(
+    'alert response clears partial phases but preserves a three-second cooldown',
+    () {
+      final detector = ImuFallDetector();
+      detector.addSample(sample(at: Duration.zero, acceleration: 2));
+      detector.addSample(
+        sample(at: const Duration(milliseconds: 100), acceleration: 30),
+      );
+      expect(completeImmobility(detector), isNotNull);
+
+      detector.addSample(
+        sample(at: const Duration(milliseconds: 4200), acceleration: 2),
+      );
+      expect(detector.phase, FallDetectionPhase.freeFall);
+
+      final respondedAt = sample(
+        at: const Duration(milliseconds: 4300),
+        acceleration: 9.81,
+      ).timestamp;
+      detector.rearmAfterAlertResponse(respondedAt);
+      expect(detector.phase, FallDetectionPhase.idle);
+
+      detector.addSample(
+        sample(at: const Duration(milliseconds: 7200), acceleration: 2),
+      );
+      expect(detector.phase, FallDetectionPhase.idle);
+      expect(
+        detector.latestDecision.reason,
+        ImuDetectorDecisionReason.cooldown,
+      );
+
+      detector.addSample(
+        sample(at: const Duration(milliseconds: 7400), acceleration: 9.81),
+      );
+      expect(detector.phase, FallDetectionPhase.idle);
+      expect(
+        detector.latestDecision.reason,
+        ImuDetectorDecisionReason.awaitingFreeFall,
+      );
+    },
+  );
+
   test('reports structured phase transitions and rejection reasons', () {
     final detector = ImuFallDetector();
 

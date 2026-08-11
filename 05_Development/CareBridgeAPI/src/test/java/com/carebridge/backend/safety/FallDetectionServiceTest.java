@@ -238,6 +238,41 @@ class FallDetectionServiceTest {
     }
 
     @Test
+    void confirmSafetyCheck_shouldOverrideNeedHelpAndReturnEmergencySession() {
+        SafetyEvent event = makeSafetyEvent();
+        UUID emergencySessionId = UUID.randomUUID();
+        event.setResponseType("NEED_HELP");
+        event.setStatus(SafetyEventStatus.EMERGENCY_ALERT_SENT);
+        event.setEmergencySessionId(emergencySessionId);
+        when(safetyEventRepository.findLockedByIdAndUserId(event.getId(), USER_ID)).thenReturn(Optional.of(event));
+        when(safetyEventRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        SafetyEventResponse result = fallDetectionService.confirmSafetyCheck(
+                USER_ID, event.getId(), "User confirmed safe after escalation started");
+
+        assertThat(result.getStatus()).isEqualTo("CONFIRMED_SAFE");
+        assertThat(result.getEmergencySessionId()).isEqualTo(emergencySessionId);
+        assertThat(event.getResponseType()).isEqualTo("I_AM_OK");
+        assertThat(event.getResolvedAt()).isNotNull();
+    }
+
+    @Test
+    void reportFalsePositive_shouldOverrideNeedHelpForSuppressedDuplicate() {
+        SafetyEvent event = makeSafetyEvent();
+        event.setResponseType("NEED_HELP");
+        event.setStatus(SafetyEventStatus.ESCALATION_REQUESTED);
+        when(safetyEventRepository.findLockedByIdAndUserId(event.getId(), USER_ID)).thenReturn(Optional.of(event));
+        when(safetyEventRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        SafetyEventResponse result = fallDetectionService.reportFalsePositive(
+                USER_ID, event.getId(), "Automatically merged duplicate fall event");
+
+        assertThat(result.getStatus()).isEqualTo("FALSE_POSITIVE");
+        assertThat(event.getResponseType()).isEqualTo("FALSE_POSITIVE");
+        assertThat(event.getResolvedAt()).isNotNull();
+    }
+
+    @Test
     void reportFalsePositive_preservesResponseReasonAndCapsCanonicalNote() {
         SafetyEvent event = makeSafetyEvent();
         String reason = "x".repeat(500);

@@ -34,6 +34,17 @@ void main() {
     );
   });
 
+  test('does not stack a second safety route while navigation is active', () {
+    expect(
+      shouldOpenSafetyMonitoringForDetectedEvent(
+        eventStatus: 'OPEN',
+        currentPath: '/mother-home',
+        navigationInFlight: true,
+      ),
+      isFalse,
+    );
+  });
+
   testWidgets('back from an automatic fall alert restores the prior screen', (
     tester,
   ) async {

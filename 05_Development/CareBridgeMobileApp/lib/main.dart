@@ -19,7 +19,8 @@ import 'features/safety/services/safety_foreground_service.dart';
 bool shouldOpenSafetyMonitoringForDetectedEvent({
   required String eventStatus,
   required String currentPath,
-}) => eventStatus == 'OPEN' && currentPath != '/safety';
+  bool navigationInFlight = false,
+}) => eventStatus == 'OPEN' && currentPath != '/safety' && !navigationInFlight;
 
 @visibleForTesting
 Future<T?> pushSafetyMonitoringRoute<T extends Object?>(GoRouter router) =>
@@ -89,6 +90,7 @@ class CareBridgeApp extends StatefulWidget {
 
 class _CareBridgeAppState extends State<CareBridgeApp> {
   StreamSubscription<SafetyEvent>? _detectedSafetyEventSubscription;
+  bool _safetyNavigationInFlight = false;
 
   @override
   void initState() {
@@ -102,18 +104,24 @@ class _CareBridgeAppState extends State<CareBridgeApp> {
         .listen(_openSafetyMonitoringForDetectedEvent);
   }
 
-  void _openSafetyMonitoringForDetectedEvent(SafetyEvent event) {
+  Future<void> _openSafetyMonitoringForDetectedEvent(SafetyEvent event) async {
     if (!mounted) return;
     final currentPath = appRouter.routeInformationProvider.value.uri.path;
     if (!shouldOpenSafetyMonitoringForDetectedEvent(
       eventStatus: event.status,
       currentPath: currentPath,
+      navigationInFlight: _safetyNavigationInFlight,
     )) {
       return;
     }
     // Preserve the screen that was active before the fall alert. Using go()
     // replaces the entire stack and leaves a black screen when Safety pops.
-    unawaited(pushSafetyMonitoringRoute(appRouter));
+    _safetyNavigationInFlight = true;
+    try {
+      await pushSafetyMonitoringRoute(appRouter);
+    } finally {
+      _safetyNavigationInFlight = false;
+    }
   }
 
   @override

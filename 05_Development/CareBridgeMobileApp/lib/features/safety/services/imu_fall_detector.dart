@@ -368,6 +368,18 @@ class ImuFallDetector {
     _setDecision(ImuDetectorDecisionReason.reset);
   }
 
+  void rearmAfterAlertResponse(DateTime respondedAt) {
+    _resetCandidate();
+    _previousSample = null;
+    final requestedCooldownUntil = respondedAt.toUtc().add(cooldown);
+    final currentCooldownUntil = _cooldownUntil;
+    if (currentCooldownUntil == null ||
+        requestedCooldownUntil.isAfter(currentCooldownUntil)) {
+      _cooldownUntil = requestedCooldownUntil;
+    }
+    _setDecision(ImuDetectorDecisionReason.cooldown);
+  }
+
   void _resetCandidate() {
     _phase = FallDetectionPhase.idle;
     _freeFallAt = null;

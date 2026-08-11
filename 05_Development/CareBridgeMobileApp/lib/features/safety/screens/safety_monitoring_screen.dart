@@ -61,6 +61,22 @@ bool isLikelyDuplicateFallEvent(SafetyEvent first, SafetyEvent second) {
   return firstAt.difference(secondAt).abs() <= const Duration(seconds: 10);
 }
 
+typedef ReportDuplicateFalsePositive =
+    Future<SafetyEvent> Function(String eventId, {String? note});
+
+Future<SafetyEvent> closeDuplicateFallEvent({
+  required SafetyEvent event,
+  required ReportDuplicateFalsePositive reportFalsePositive,
+  required Future<void> Function(SafetyEvent event) resolveEmergency,
+}) async {
+  final updated = await reportFalsePositive(
+    event.id,
+    note: 'Tự động gộp bản ghi trùng của cùng một lần phát hiện ngã.',
+  );
+  await resolveEmergency(updated);
+  return updated;
+}
+
 Future<void> dispatchSensorSelfTestCountdownResult({
   required SafetyCountdownResult? result,
   required Future<void> Function() onSafe,
@@ -166,6 +182,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
   DateTime? _sensorSelfTestArmedAt;
   final SafetyRealEventQueue _pendingRealEvents = SafetyRealEventQueue();
   final Set<String> _suppressedDuplicateEventIds = {};
+  final Set<String> _duplicateCleanupInFlight = {};
   String? _countdownEventId;
   SafetyEvent? _countdownEvent;
   bool _loading = true;
@@ -282,8 +299,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
             if (event.id != active.id &&
                 isPendingSafetyCountdown(event) &&
                 isLikelyDuplicateFallEvent(active, event)) {
-              _suppressedDuplicateEventIds.add(event.id);
-              _pendingRealEvents.remove(event.id);
+              _suppressDuplicateEvent(event);
             }
           }
         } else {
@@ -300,8 +316,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
               if (event.id != pending.id &&
                   isPendingSafetyCountdown(event) &&
                   isLikelyDuplicateFallEvent(pending, event)) {
-                _suppressedDuplicateEventIds.add(event.id);
-                _pendingRealEvents.remove(event.id);
+                _suppressDuplicateEvent(event);
               }
             }
             unawaited(_showCountdown(pending));
@@ -329,7 +344,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
     if (!mounted) return;
     final active = _countdownEvent;
     if (active != null && isLikelyDuplicateFallEvent(active, event)) {
-      _suppressedDuplicateEventIds.add(event.id);
+      _suppressDuplicateEvent(event);
       setState(() {
         _events = [event, ..._events.where((item) => item.id != event.id)];
       });
@@ -340,6 +355,47 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
       _events = [event, ..._events.where((item) => item.id != event.id)];
     });
     unawaited(_showCountdown(event));
+  }
+
+  void _suppressDuplicateEvent(SafetyEvent event) {
+    _suppressedDuplicateEventIds.add(event.id);
+    _pendingRealEvents.remove(event.id);
+    if (_duplicateCleanupInFlight.add(event.id)) {
+      unawaited(_closeSuppressedDuplicateEvent(event));
+    }
+  }
+
+  Future<void> _closeSuppressedDuplicateEvent(SafetyEvent event) async {
+    try {
+      final updated = await closeDuplicateFallEvent(
+        event: event,
+        reportFalsePositive: _safetyService.reportFalsePositive,
+        resolveEmergency: _resolveEventEmergency,
+      );
+      if (mounted) {
+        setState(() {
+          _events = [
+            updated,
+            ..._events.where((item) => item.id != updated.id),
+          ];
+        });
+      }
+    } on ApiException catch (error) {
+      if (error.statusCode == 409 && error.errorCode == 'SAFETY-010') {
+        if (mounted) unawaited(_load());
+        return;
+      }
+      _restoreDuplicateAfterCleanupFailure(event);
+    } catch (_) {
+      _restoreDuplicateAfterCleanupFailure(event);
+    } finally {
+      _duplicateCleanupInFlight.remove(event.id);
+    }
+  }
+
+  void _restoreDuplicateAfterCleanupFailure(SafetyEvent event) {
+    _suppressedDuplicateEventIds.remove(event.id);
+    _pendingRealEvents.enqueue(event);
   }
 
   Future<void> _showCountdown(
@@ -522,6 +578,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
       event.id,
       note: note,
     );
+    _foregroundCoordinator.rearmFallDetectorAfterResponse();
     await _resolveEventEmergency(updated);
   }
 
@@ -533,6 +590,7 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
       event.id,
       note: note,
     );
+    _foregroundCoordinator.rearmFallDetectorAfterResponse();
     await _resolveEventEmergency(updated);
   }
 

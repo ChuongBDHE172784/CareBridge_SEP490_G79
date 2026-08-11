@@ -329,7 +329,10 @@ public class FallDetectionService implements IFallDetectionService {
                 if (event.getResponseType().equals(responseType)) {
                     return event;
                 }
-                if (!"TIMEOUT".equals(event.getResponseType()) || (!"I_AM_OK".equals(responseType) && !"FALSE_POSITIVE".equals(responseType))) {
+                boolean lateOwnerSafetyResponse =
+                        ("TIMEOUT".equals(event.getResponseType()) || "NEED_HELP".equals(event.getResponseType()))
+                                && ("I_AM_OK".equals(responseType) || "FALSE_POSITIVE".equals(responseType));
+                if (!lateOwnerSafetyResponse) {
                     throw new SafetyException(HttpStatus.CONFLICT, "SAFETY-010", "Safety event already has a response");
                 }
             }

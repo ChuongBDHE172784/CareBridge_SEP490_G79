@@ -151,6 +151,44 @@ void main() {
   });
 
   test(
+    'closes a suppressed duplicate and resolves its emergency session',
+    () async {
+      const duplicate = SafetyEvent(
+        id: 'fall-duplicate',
+        eventType: 'SUSPECTED_FALL',
+        magnitude: 10,
+        status: 'OPEN',
+      );
+      const closed = SafetyEvent(
+        id: 'fall-duplicate',
+        eventType: 'SUSPECTED_FALL',
+        magnitude: 10,
+        status: 'FALSE_POSITIVE',
+        responseType: 'FALSE_POSITIVE',
+        emergencySessionId: 'emergency-1',
+      );
+      String? reportedEventId;
+      String? reportedNote;
+      SafetyEvent? resolvedEvent;
+
+      final result = await closeDuplicateFallEvent(
+        event: duplicate,
+        reportFalsePositive: (eventId, {note}) async {
+          reportedEventId = eventId;
+          reportedNote = note;
+          return closed;
+        },
+        resolveEmergency: (event) async => resolvedEvent = event,
+      );
+
+      expect(result, same(closed));
+      expect(reportedEventId, duplicate.id);
+      expect(reportedNote, contains('gộp bản ghi trùng'));
+      expect(resolvedEvent, same(closed));
+    },
+  );
+
+  test(
     'dedicated queue preserves a real event across API list replacement',
     () {
       const realEvent = SafetyEvent(

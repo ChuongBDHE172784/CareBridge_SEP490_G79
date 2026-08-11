@@ -259,6 +259,11 @@ class FallDetectionSensorService {
     _latestGyroscope = event;
   }
 
+  void rearmAfterAlertResponse(DateTime respondedAt) {
+    if (!_running) return;
+    _detector.rearmAfterAlertResponse(respondedAt);
+  }
+
   void _publishSamplingDiagnostics(ImuSample sample, {bool force = false}) {
     final previousAt = _lastAccelerometerAt;
     if (previousAt != null && sample.timestamp.isAfter(previousAt)) {
