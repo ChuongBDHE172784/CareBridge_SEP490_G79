@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../../../core/network/api_client.dart';
 import '../models/imu_diagnostics_model.dart';
 import '../models/safety_config_model.dart';
 import '../services/safety_demo_mode.dart';
@@ -365,6 +366,22 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
         await _showDemoEmergencyEscalation();
       }
     } catch (error) {
+      if (error is ApiException &&
+          error.statusCode == 409 &&
+          error.errorCode == 'SAFETY-010') {
+        // Timeout escalation and the user's final safe tap may cross on the
+        // wire. The server has already recorded one terminal response; close
+        // the local flow and refresh instead of showing a raw conflict.
+        if (mounted) {
+          try {
+            await _load();
+          } catch (_) {
+            // The response was already persisted; a refresh failure must not
+            // turn the handled race back into a visible error.
+          }
+        }
+        return;
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -999,7 +1016,10 @@ class _SafetyMonitoringScreenState extends State<SafetyMonitoringScreen>
                         ? const Center(
                             child: Text(
                               'Chưa có sự kiện an toàn nào được ghi nhận.',
-                              style: TextStyle(fontSize: 14, color: _onSurfaceVariant),
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: _onSurfaceVariant,
+                              ),
                             ),
                           )
                         : ListView.builder(

@@ -199,6 +199,13 @@ public class FallDetectionService implements IFallDetectionService {
             throw new SafetyException(HttpStatus.CONFLICT, "SAFETY-013",
                     "Sensor self-test events cannot trigger emergency alerts");
         }
+        // The countdown timeout callback can race with the user's final
+        // "I am safe" tap. Once a safe/false-positive response is persisted,
+        // a late emergency request is already obsolete and must be harmless.
+        if ("I_AM_OK".equals(requestedEvent.getResponseType())
+                || "FALSE_POSITIVE".equals(requestedEvent.getResponseType())) {
+            return;
+        }
         // The expiry job can persist TIMEOUT milliseconds before the mobile
         // countdown sheet posts its timeout action. Both outcomes mean the
         // same thing: no safety acknowledgement arrived, so emergency alerting

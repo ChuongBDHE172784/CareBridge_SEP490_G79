@@ -63,6 +63,7 @@ class FallDetectionSensorService {
       SafetySensorSelfTestDetector();
   GyroscopeEvent? _latestGyroscope;
   bool _sending = false;
+  FallCandidate? _pendingCandidate;
   bool _running = false;
   int _runGeneration = 0;
   bool _locationSharingAllowed = false;
@@ -186,6 +187,7 @@ class FallDetectionSensorService {
     _latestGyroscope = null;
     _detector.reset();
     _sending = false;
+    _pendingCandidate = null;
     _locationSharingAllowed = false;
     _latestPosition = null;
     _locationReadAt = null;
@@ -243,7 +245,14 @@ class FallDetectionSensorService {
                 const Duration(seconds: 30))) {
       _scheduleLocationRefresh();
     }
-    if (candidate == null || _sending) return;
+    if (candidate == null) return;
+    if (_sending) {
+      // Do not lose a valid fall while a previous request is retrying. Keep
+      // the newest candidate and send it as soon as the in-flight request
+      // finishes.
+      _pendingCandidate = candidate;
+      return;
+    }
 
     _sending = true;
     unawaited(_sendCandidate(candidate, _runGeneration));
@@ -476,6 +485,12 @@ class FallDetectionSensorService {
       }
     } finally {
       _sending = false;
+      final pending = _pendingCandidate;
+      _pendingCandidate = null;
+      if (pending != null && _running && _runGeneration == runGeneration) {
+        _sending = true;
+        unawaited(_sendCandidate(pending, runGeneration));
+      }
     }
   }
 

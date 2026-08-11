@@ -279,6 +279,34 @@ class FallDetectionServiceTest {
     }
 
     @Test
+    void sendEmergencyAlert_afterSafeResponseIsIdempotent() {
+        SafetyEvent event = makeSafetyEvent();
+        event.setResponseType("I_AM_OK");
+        event.setStatus(SafetyEventStatus.CONFIRMED_SAFE);
+        when(safetyEventRepository.findLockedByIdAndUserId(event.getId(), USER_ID))
+                .thenReturn(Optional.of(event));
+
+        fallDetectionService.sendEmergencyAlert(USER_ID, event.getId());
+
+        verify(emergencyService, never()).openFlow(any(), any());
+        verify(responseRepository, never()).insert(any());
+    }
+
+    @Test
+    void sendEmergencyAlert_afterFalsePositiveResponseIsIdempotent() {
+        SafetyEvent event = makeSafetyEvent();
+        event.setResponseType("FALSE_POSITIVE");
+        event.setStatus(SafetyEventStatus.FALSE_POSITIVE);
+        when(safetyEventRepository.findLockedByIdAndUserId(event.getId(), USER_ID))
+                .thenReturn(Optional.of(event));
+
+        fallDetectionService.sendEmergencyAlert(USER_ID, event.getId());
+
+        verify(emergencyService, never()).openFlow(any(), any());
+        verify(responseRepository, never()).insert(any());
+    }
+
+    @Test
     void sendEmergencyAlert_sameResponseTwiceOpensOnlyOneEmergency() {
         SafetyEvent event = makeSafetyEvent();
         UUID emergencySessionId = UUID.randomUUID();
