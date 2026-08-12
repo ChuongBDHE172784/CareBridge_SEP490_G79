@@ -376,7 +376,7 @@ public class RecommendationService implements RecommendationConsentCleanup {
                     i + 1,
                     isTargeted ? SelectionType.TARGETED : SelectionType.FALLBACK,
                     isTargeted ? ReasonCode.PERSONALIZED_CONTEXT : ReasonCode.LIFECYCLE_FALLBACK,
-                    isTargeted ? "Selected for your current care context" : "Useful for your current stage",
+                    isTargeted ? "Phù hợp với ngữ cảnh chăm sóc của bạn" : "Hữu ích cho giai đoạn hiện tại của bạn",
                     new ContentSummary(candidate.item().getId(), candidate.item().getType().name(), candidate.item().getTitle(),
                             candidate.item().getSummary(), candidate.item().getStage().name(), candidate.item().getTopicId(), candidate.item().getPublishedAt())));
         }

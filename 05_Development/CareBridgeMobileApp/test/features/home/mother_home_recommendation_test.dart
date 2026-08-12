@@ -51,7 +51,7 @@ RecommendationContentResponse _response(String id, String title) =>
         RecommendationContentItem(
           rank: 1,
           selectionType: RecommendationSelectionType.targeted,
-          reasonLabel: 'Selected for your current care context',
+          reasonLabel: 'Phù hợp với ngữ cảnh chăm sóc của bạn',
           id: id,
           title: title,
           summary: 'Actionable and approved guidance.',
